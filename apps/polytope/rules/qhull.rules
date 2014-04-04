@@ -1,0 +1,95 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+CREDIT qhull
+  The Quickhull algorithm for convex hulls.
+  Copyright by The Geometry Center, University of Minnesota
+  http://www.qhull.org/
+
+# path to the qhull executable
+custom $qhull;
+
+CONFIGURE {
+   find_program($qhull, "qhull");
+}
+
+require Polymake::ProgramPipe;
+
+object Polytope<Float> {
+
+# @category Convex hull computation
+# Use the [[wiki:external_software#qhull]] program for convex hull computation.
+label qhull
+
+sub run_qhull {
+   my ($points)=@_;
+   my $Q=new ProgramPipe($qhull, qw{Fd n i});
+   print $Q "begin\n", $points->rows, " ", $points->cols, " real\n", $points, "end\n";
+
+   local $_=<$Q>;	# dimension
+   my ($d)= /(\d+)/;
+   $_=<$Q>;		# number of facets
+   my ($n)= /(\d+)/;
+   my $FACETS=new Matrix<Float>($n,$d);  --$d;
+
+   # toggle the signs and move the facet offset in the first position
+   for (my $i=0; $i<$n; ++$i) {
+      $_=<$Q> or die "premature end of input\n";
+      my $f=new Vector<Float>($_);
+      @{$FACETS->[$i]}=(-$f->[$d], @{ -($f->slice(0,$d)) });
+   }
+
+   $_=<$Q>;
+   /(\d+)/ && $1==$n or die "inconsistency in qhull output\n";
+   my @VIF; $#VIF=$n-1;
+   for (my $i=0; $i<$n; ++$i) {
+      $_=<$Q> or die "premature end of input\n";
+      chomp;
+      $VIF[$i]="{$_}";
+   }
+   close $Q;
+   ($n, $FACETS, \@VIF);
+}
+
+rule qhull.convex_hull.primal: FACETS, N_FACETS, VERTICES_IN_FACETS : VERTICES {
+   my ($n, $FACETS, $VIF)=run_qhull($this->VERTICES);
+   $this->FACETS=$FACETS;
+   $this->N_FACETS=$n;
+   $this->VERTICES_IN_FACETS=$VIF;
+}
+precondition : BOUNDED;
+precondition : FULL_DIM;
+weight 4.10;
+permutation : FacetPerm;
+
+# @notest
+rule qhull.convex_hull.primal: FACETS, N_FACETS, POINTS_IN_FACETS : POINTS {
+   my ($n, $FACETS, $VIF)=run_qhull($this->POINTS);
+   $this->FACETS=$FACETS;
+   $this->N_FACETS=$n;
+   $this->POINTS_IN_FACETS=$VIF;
+}
+precondition : BOUNDED;
+precondition : FULL_DIM;
+weight 4.10;
+permutation : FacetPerm;
+
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# End:

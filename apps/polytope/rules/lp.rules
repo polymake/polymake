@@ -1,0 +1,91 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+object Polytope {
+
+# @category Optimization
+# Linear program applied to the polytope
+property LP : LinearProgram<Scalar> : multiple;
+
+# @notest  Rule defined "in stock" - currently without use
+rule LP.ABSTRACT_OBJECTIVE : VertexPerm.LP.ABSTRACT_OBJECTIVE, VertexPerm.PERMUTATION {
+   $this->LP->ABSTRACT_OBJECTIVE=permuted($this->VertexPerm->LP->ABSTRACT_OBJECTIVE, $this->VertexPerm->PERMUTATION);
+}
+
+rule LP.DIRECTED_GRAPH.ADJACENCY, LP.MAXIMAL_VALUE, LP.MINIMAL_VALUE, LP.MAXIMAL_FACE, LP.MINIMAL_FACE \
+     : LP.LINEAR_OBJECTIVE, GRAPH.ADJACENCY, VERTICES, FAR_FACE {
+   $this->LP->DIRECTED_GRAPH->ADJACENCY=dgraph($this, $this->LP);
+}
+weight 2.50;
+
+rule LP.DIRECTED_GRAPH.ADJACENCY, LP.MAXIMAL_VALUE, LP.MINIMAL_VALUE, LP.MAXIMAL_FACE, LP.MINIMAL_FACE \
+     : LP.ABSTRACT_OBJECTIVE, GRAPH.ADJACENCY, VERTICES {
+   $this->LP->DIRECTED_GRAPH->ADJACENCY=dgraph($this, $this->LP);
+}
+weight 2.50;
+
+rule LP.MAXIMAL_FACE, LP.MAXIMAL_VALUE : LP.LINEAR_OBJECTIVE, VERTICES, GRAPH.ADJACENCY, FAR_FACE {
+   pseudo_simplex($this, $this->LP, 1);
+}
+
+rule LP.MINIMAL_FACE, LP.MINIMAL_VALUE : LP.LINEAR_OBJECTIVE, VERTICES, GRAPH.ADJACENCY, FAR_FACE {
+   pseudo_simplex($this, $this->LP, 0);
+}
+
+rule LP.MAXIMAL_VERTEX : VERTICES, FAR_FACE, LP.MAXIMAL_FACE {
+   my $f=$this->LP->MAXIMAL_FACE-$this->FAR_FACE;
+   if (@$f) {
+      $this->LP->MAXIMAL_VERTEX=$this->VERTICES->[$f->[0]];
+   }
+}
+weight 0.10;
+
+rule LP.MINIMAL_VERTEX : VERTICES, FAR_FACE, LP.MINIMAL_FACE {
+   my $f=$this->LP->MINIMAL_FACE-$this->FAR_FACE;
+   if (@$f) {
+      $this->LP->MINIMAL_VERTEX=$this->VERTICES->[$f->[0]];
+   }
+}
+weight 0.10;
+
+rule ONE_VERTEX : LP.MINIMAL_VERTEX | LP.MAXIMAL_VERTEX {
+  $this->ONE_VERTEX=$this->LP->MINIMAL_VERTEX | MAXIMAL_VERTEX;
+}
+precondition : POINTED;
+weight 0.10;
+
+rule ONE_VERTEX, FEASIBLE : FACETS | INEQUALITIES, CONE_AMBIENT_DIM {
+   my $lp=$this->add("LP", temporary, LINEAR_OBJECTIVE => new Vector<Scalar>($this->CONE_AMBIENT_DIM));
+   $this->ONE_VERTEX=$lp->MINIMAL_VERTEX;
+   $this->FEASIBLE=defined($lp->MINIMAL_VERTEX);
+}
+weight 3.20;
+
+}
+
+object LinearProgram {
+
+rule RANDOM_EDGE_EPL : DIRECTED_GRAPH.ADJACENCY {
+   $this->RANDOM_EDGE_EPL=random_edge_epl($this->DIRECTED_GRAPH->ADJACENCY);
+}
+
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

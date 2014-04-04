@@ -1,0 +1,190 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object PointConfiguration {
+
+
+file_suffix pc
+
+# @category Input property
+# The Points of the configuration
+property POINTS : Matrix<Scalar> {
+   sub canonical { &canonicalize_point_configuration; }
+}
+
+# @category Geometry
+# The polytope being the convex hull of the point configuration.
+
+property CONVEX_HULL : Polytope<Scalar> {
+
+   # Indices of [[Polytope::VERTICES]] of the [[CONVEX_HULL]] as [[POINTS]].
+   property VERTEX_POINT_MAP : Array<Int>;
+
+   rule VERTEX_POINT_MAP : VertexPerm.VERTEX_POINT_MAP, VertexPerm.PERMUTATION {
+     $this->VERTEX_POINT_MAP=permuted($this->VertexPerm->VERTEX_POINT_MAP, $this->VertexPerm->PERMUTATION);
+   }
+   weight 1.10;
+
+}
+
+
+# @category Geometry
+# Dimension of the space in which the point configuration lives.
+
+property AMBIENT_DIM : Int;
+
+
+# @category Geometry
+# True if the point configuration is a bounded polytope.
+
+property BOUNDED : Bool;
+
+
+# @category Geometry
+# Number of [[POINTS]].
+
+property N_POINTS : Int;
+
+
+# @category Geometry
+# Dimension of the affine hull of the point configuration.
+
+property DIM : Int;
+
+# @category Geometry
+# True if the [[POINTS]] are in convex position.
+
+property CONVEX : Bool;
+
+# @category Geometry
+# [[POINTS]] that are not [[Polytope::VERTICES]] of the [[CONVEX_HULL]]
+
+property NON_VERTICES : Set;
+
+# @category Geometry
+# Indices of [[Polytope::VERTICES]] of the [[CONVEX_HULL]] as [[POINTS]]
+
+property VERTEX_POINT_MAP : Array<Int>;
+
+
+# @category Geometry
+# Dual basis of the affine hull of the polyhedron.
+
+property AFFINE_HULL : Matrix<Scalar>;
+
+# @category Combinatorics
+# Graph of the point configuration.
+# Two points are adjacent if they lie in a common edge of the [[CONVEX_HULL]].
+
+property GRAPH : objects::Graph;
+
+
+# @category Unbounded polyhedra
+# Indices of [[POINTS]] that are rays.
+
+property FAR_POINTS : Set;
+
+# @category Geometry
+# The center of gravity of the point configuration.
+
+property BARYCENTER : Vector<Scalar>;
+
+
+# @category Triangulation and volume
+# Some triangulation of the point configuration.
+
+property TRIANGULATION : topaz::GeometricSimplicialComplex<Scalar> : multiple {
+
+   # The splits that are coarsenings of the current [[TRIANGULATION]].
+   # If the triangulation is regular these form the unique split decomposition of
+   # the corresponding weight function.
+
+   property REFINED_SPLITS : Set<Int>;
+   
+   # GKZ-vector
+   # 	See Chapter 7 in Gelfand, Kapranov, and Zelevinsky:
+   # 	Discriminants, Resultants and Multidimensional Determinants, Birkhäuser 1994
+   property GKZ_VECTOR : Vector<Scalar>;
+
+
+   # Weight vector to construct a regular [[TRIANGULATION]].
+   # Must be generic.
+   property WEIGHTS : Vector<Scalar>;
+
+}
+
+property TRIANGULATION.BOUNDARY {
+
+   # DOC_FIXME: Incomprehensible description!
+   # For each facet the set of simplex indices of BOUNDARY that triangulate it.
+   property FACET_TRIANGULATIONS : Array<Set>;
+}
+
+# @category Triangulation and volume
+# For each simplex in the [[TRIANGULATION]], this contains the sign of the determinant of its coordinate matrix, 
+# which is the orientation of the simplex.
+# @return Array<int>
+user_method TRIANGULATION_SIGNS : TRIANGULATION.FACETS, POINTS {
+   my $this=shift;
+   triang_sign($this->TRIANGULATION->FACETS, $this->POINTS);
+}
+
+# @category Visualization
+# Unique names assigned to the [[POINTS]].
+# If specified, they are shown by visualization tools instead of point indices.
+
+property LABELS : Array<String> : mutable;
+
+# The splits of the point configuration, i.e., hyperplanes cutting the configuration in
+# two parts such that we have a regular subdivision.
+
+property SPLITS : Matrix<Scalar>;
+
+# Two [[SPLITS]] are compatible if the defining hyperplanes do not intersect in the
+# interior of the point configuration.  This defines a graph.
+
+property SPLIT_COMPATIBILITY_GRAPH : objects::Graph;
+
+
+# @category Visualization
+# [[Polytope::VIF_CYCLIC_NORMAL]] of the [[CONVEX_HULL]], but with
+# the indices form [[POINTS]] instead of [[Polytope::VERTICES]]
+property PIF_CYCLIC_NORMAL : Array< Array<Int> >;
+
+# @category Oriented matroids
+# Chirotope corresponding to [[POINTS]]
+
+property CHIROTOPE : Text;
+
+# @category Oriented matroids
+# Circuits in [[POINTS]]
+
+property CIRCUITS : Set<Pair<Set<Int>,Set<Int>>>;
+
+# @category Oriented matroids
+# Cocircuits in [[POINTS]]
+
+property COCIRCUITS : Set<Pair<Set<Int>,Set<Int>>>;
+
+# @category Geometry
+# Tells if there exists multiple points.
+property MULTIPLE_POINTS : Bool;
+
+}
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:4
+# End:

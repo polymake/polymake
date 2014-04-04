@@ -1,0 +1,66 @@
+#N canvas 947 124 477 467 10;
+#X obj 207 422 sendOSC;
+#X msg 233 385 connect localhost 5600;
+#X obj 185 18 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 0
+1;
+#X obj 270 48 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 0
+1;
+#X obj 67 46 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 0 1
+;
+#X obj 189 72 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 0
+1;
+#X msg 206 72 send /wii/button/down \$1;
+#X msg 201 18 send /wii/button/up \$1;
+#X msg 287 48 send /wii/button/right \$1;
+#X msg 85 46 send /wii/button/left \$1;
+#X obj 180 224 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 0
+1;
+#X obj 182 182 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 0
+1;
+#X msg 200 139 send /wii/button/b \$1;
+#X obj 182 138 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 0
+1;
+#X obj 182 118 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 0
+1;
+#X msg 200 118 send /wii/button/a \$1;
+#X msg 199 182 send /wii/button/plus \$1;
+#X msg 199 224 send /wii/button/minus \$1;
+#X obj 16 143 vsl 15 128 -90 90 0 0 empty empty roll 0 -9 0 10 -262144
+-1 -1 8700 1;
+#X obj 47 143 vsl 15 128 -90 90 0 0 empty empty pitch 0 -9 0 10 -262144
+-1 -1 3200 1;
+#X msg 16 381 send /wii/orientation \$1 \$2;
+#X obj 16 355 pack \$1 \$2;
+#X obj 35 333 t b f;
+#X obj 232 361 loadbang;
+#X obj 14 302 t f;
+#X obj 181 203 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 0
+1;
+#X msg 200 203 send /wii/button/home \$1;
+#X connect 1 0 0 0;
+#X connect 2 0 7 0;
+#X connect 3 0 8 0;
+#X connect 4 0 9 0;
+#X connect 5 0 6 0;
+#X connect 6 0 0 0;
+#X connect 7 0 0 0;
+#X connect 8 0 0 0;
+#X connect 9 0 0 0;
+#X connect 10 0 17 0;
+#X connect 11 0 16 0;
+#X connect 12 0 0 0;
+#X connect 13 0 12 0;
+#X connect 14 0 15 0;
+#X connect 15 0 0 0;
+#X connect 16 0 0 0;
+#X connect 17 0 0 0;
+#X connect 18 0 24 0;
+#X connect 19 0 22 0;
+#X connect 20 0 0 0;
+#X connect 21 0 20 0;
+#X connect 22 0 21 0;
+#X connect 22 1 21 1;
+#X connect 23 0 1 0;
+#X connect 24 0 21 0;
+#X connect 25 0 26 0;
+#X connect 26 0 0 0;

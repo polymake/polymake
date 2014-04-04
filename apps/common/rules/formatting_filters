@@ -1,0 +1,119 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# @category Formatting
+# Prepares a matrix for printing, prepends each row with a label and a colon.
+# @param Matrix data  to be printed
+# @param Array<String>  row_labels labels for the rows
+# @param Array<String> elem_labels  optional labels for elements;
+#  if //data// is an [[IncidenceMatrix]], [[Array<Set>]], or similar, each element will be replaced by its label.
+# @return Array<String> each string ending with end-of-line
+
+user_function rows_labeled($;$$) {
+   my ($data, $row_labels, $elem_labels)=@_;
+   if (defined $row_labels) {
+      is_array($row_labels) or croak( "row_labels must be an array" );
+   }
+   if (defined $elem_labels) {
+      is_array($elem_labels) or croak( "elem_labels must be an array" );
+   }
+   my $i=-1;
+   map {
+      ++$i;
+      (defined($row_labels) ? $row_labels->[$i] : $i) . ":" . join(" ", defined($elem_labels) ? @$elem_labels[@$_] : @$_) . "\n"
+   } @$data;
+}
+
+# @category Formatting
+# Like above, but specialized for Graphs (defined for convenience: a PTL Graph is not a container)
+# @param Graph graph to be printed
+# @param Array<String> elem_labels labels for the elements
+# @return Array<String> each string ending with end-of-line
+
+user_function rows_labeled(Graph;$) {
+   my ($graph, $labels)=@_;
+   rows_labeled(adjacency_matrix($graph), $labels, $labels);
+}
+
+# @category Formatting
+# Equivalent to [[rows_labeled]] with omitted //row_labels// argument.
+# Formerly called "numbered".
+# @param Matrix data to be printed
+# @return Array<String> each string ending with end-of-line
+
+user_function rows_numbered {
+   &rows_labeled;
+}
+
+# @category Formatting
+# LaTeX output of a matrix.
+# @param Matrix data to be printed
+# @param Array<String> elem_labels  optional labels for elements;
+#  if //data// is an [[IncidenceMatrix]], [[Array<Set>]], or similar, each element will be replaced by its label.
+# @return String to be used with \usepackage{amsmath}
+
+user_function latex($;$) {
+   my ($data, $elem_labels)=@_;
+   if (defined $elem_labels) {
+      is_array($elem_labels) or croak( "elem_labels must be an array" );
+   }
+   # The matrix environment is more convenient than array as it is not necessary to know the number of
+   # columns in advance.  Also works with rows of varying lengths.
+   my $latex_string="\\begin{matrix}\n";
+   my $first_line=1;
+   foreach (@$data) {
+     $latex_string .= "\\\\\n" unless $first_line;
+     $latex_string .= join(" & ", defined($elem_labels) ? @$elem_labels[@$_] : @$_);
+     $first_line=0;
+   }
+   $latex_string .= "\n\\end{matrix}\n";
+   return $latex_string;
+}
+
+# @category Formatting
+# Prepares a vector for printing, prepends each element with a label and a colon.
+# @param Vector data  to be printed
+# @param Array<String> elem_labels  optional labels for elements;
+#  if //data// is a [[Set]], or similar, each element will be replaced by its label.
+# @return String
+
+user_function labeled($;$) {
+   my ($data, $elem_labels)=@_;
+   if (defined $elem_labels) {
+      is_array($elem_labels) or croak( "elem_labels must be an array" );
+   }
+   my $i=-1;
+   my @result=map {
+      ++$i;
+      (defined($elem_labels) ? $elem_labels->[$i] : $i) . ":" . $_
+   } @$data;
+   return join (" ", @result);
+}
+
+# @category Formatting
+# Equivalent to [[labeled]] with omitted //elem_labels// argument.
+# @param Vector data to be printed
+# @return String
+
+user_function numbered {
+   &labeled;
+}
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

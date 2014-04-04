@@ -1,0 +1,479 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# @topic objects/Visual::Polytope
+# @category Visualization
+# Visualization of a polytope as a graph (if 1d), or as a solid object (if 2d or 3d),
+# or as a Schlegel diagram (4d).
+# @relates Polytope
+
+package Visual::Polytope;
+
+use Polymake::Struct (
+   [ '@ISA' => 'Container' ],
+   [ '$Polytope' => '#%', default => 'undef' ],
+);
+
+# where to keep the view transformation matrix etc.
+method representative { $_[0]->Polytope }
+
+method basis_solid { $_[0]->elements->[0] }
+
+method add_faces {
+   my $self=shift;
+   my %to_merge;
+   while (my ($face, $decor)=splice @_, 0, 2) {
+      my $f=0;
+      foreach my $facet (@{$self->Polytope->VERTICES_IN_FACETS}) {
+         my $rel=incl($facet,$face);
+         if ($rel==0) {
+            my $has_facet_decor;
+            foreach my $decor_key (grep { /^Facet/ } keys %$decor) {
+               $to_merge{$decor_key}->{$f}=$decor->{$decor_key};
+               $has_facet_decor=1;
+            }
+            last if $has_facet_decor;
+         }
+         if ($rel!=2) {
+            foreach my $decor_key (grep { /^Vertex/ } keys %$decor) {
+               $to_merge{$decor_key}->{$_}=$decor->{$decor_key} for @$face;
+            }
+            last;
+         }
+         ++$f;
+      }
+   }
+   basis_solid($self)->merge(%to_merge);
+}
+
+##########################################################################################
+#
+# LP-related supplements
+
+# Illustrate the behavior of a linear objective function on the polytope.
+# Draw the facets contained in [[MAXIMAL_FACE]] and [[MINIMAL_FACE]] in distinct colors.
+# @param LinearProgram lp a LinearProgram object attached to the polytope.
+# @option Color min minimal face decoration (default: yellow vertices and/or facets)
+# @option Color max maximal face decoration (default: red vertices and/or facets)
+# @return Visual::Polytope
+
+user_method MIN_MAX_FACE(; LinearProgram { min => $Visual::Color::min, max => $Visual::Color::max }) {
+   my ($self, $lp, $decor)=@_;
+   if (defined $lp) {
+      if ($lp->parent != $self->Polytope) {
+         croak("LinearProgram object does not belong to this Polytope");
+      }
+   } else {
+      $lp=$self->Polytope->LP;
+   }
+   foreach (values %$decor) {
+      unless (is_hash($_)) {
+         my $c=get_RGB($_);
+         $_={ VertexColor=>$c, FacetColor=>$c };
+      }
+   }
+
+   $self->add_faces($lp->MINIMAL_FACE, $decor->{min}, $lp->MAXIMAL_FACE, $decor->{max});
+   visualize($self);
+}
+
+
+# Illustrate the behavior of a linear objective function on the polytope.
+# Color the vertices according to the values of the objective function.
+# @param LinearProgram lp a LinearProgram object attached to the polytope
+# @option Color min minimal vertex color (default: yellow)
+# @option Color max maximal vertex color (default: red)
+# @return Visual::Polytope
+
+user_method VERTEX_COLORS(; LinearProgram { min => $Visual::Color::min, max => $Visual::Color::max }) {
+   my ($self, $lp, $decor)=@_;
+   if (defined $lp) {
+      if ($lp->parent != $self->Polytope) {
+         croak("LinearProgram object does not belong to this Polytope");
+      }
+   } else {
+      $lp=$self->Polytope->LP;
+   }
+   $_=get_RGB($_) for values %$decor;
+   $self->basis_solid->VertexColor=vertex_colors($self->Polytope, $lp, $decor);
+   visualize($self);
+}
+
+
+# Illustrate the behavior of a linear objective function on the polytope.
+# Superpose the drawing with the directed graph induced by the objective function.
+# @param LinearProgram lp a Linear Program object attached to the polytope
+# @return Visual::Polytope
+
+user_method DIRECTED_GRAPH(; LinearProgram) {
+   my ($self, $lp)=@_;
+   if (defined $lp) {
+      if ($lp->parent != $self->Polytope) {
+         croak("LinearProgram object does not belong to this Polytope");
+      }
+   } else {
+      $lp=$self->Polytope->LP;
+   }
+   $self->basis_solid->EdgeStyle="hidden";
+   push @{$self->elements},
+        new Visual::Graph( Name => "GRAPH directed with LP " . $lp->subobj_name,
+                           Graph => $lp->DIRECTED_GRAPH,
+                           Coord => $self->basis_solid->Vertices,
+                           NodeStyle => "hidden",
+                         );
+   visualize($self);
+}
+
+##########################################################################################
+#
+#  Triangulation as supplement
+
+# @category Visualization
+# Add the triangulation to the drawing.  The facets of the whole polytope become transparent.
+#
+# You may specify any triangulation of the current polytope.
+# Per default, the [[Polytope::TRIANGULATION|TRIANGULATION]] property is taken.
+# (Currently there is only one possible alternative triangulation: [[Polytope::TRIANGULATION_INT|TRIANGULATION_INT]]).
+#
+# **Hint:** Use the method __Method -> Effect -> Explode Group of Geometries__
+# of [[wiki:external_software#JavaView|JavaView]] for better insight in the internal structure.
+# @param Array<Set<Int>> TR facets of the triangulation
+# @return Visual::Polytope
+
+user_method TRIANGULATION(; $=$_[0]->Polytope->TRIANGULATION->FACETS, %Visual::Polygons::decorations) {
+   my ($self, $TR, $decor)=@_;
+   my $d=$self->Polytope->CONE_AMBIENT_DIM-1;
+   if ($d > 3) {
+      die "don't know how to visualize the triangulation of a $d-d polytope\n";
+   }
+
+   my $skeleton=$self->basis_solid;
+   $skeleton->VertexStyle="hidden";
+   $skeleton->FacetStyle="hidden";
+
+   my $vertex_labels= delete $decor->{VertexLabels};
+   if ($vertex_labels ne "hidden") {
+      $vertex_labels=$skeleton->VertexLabels;
+   } else {
+      undef $vertex_labels;
+   }
+   my ($Points, $Signs);
+   # FIXME: TRIANGULATION as a proper sub-object
+   if ($TR == $self->Polytope->lookup("TRIANGULATION.FACETS")) {
+      $Points=$skeleton->Vertices;
+      $Signs=$self->Polytope->TRIANGULATION_SIGNS;
+   } elsif ($TR == $self->Polytope->lookup("TRIANGULATION_INT")) {
+      $Points=dehomogenize(convert_to<Float>($self->Polytope->POINTS));
+      $Signs=$self->Polytope->TRIANGULATION_INT_SIGNS;
+      undef $vertex_labels;
+   } else {
+      die "Visualization of arbitrary triangulations is not yet implemented\n";
+   }
+
+   $self->Name="Triangulation of ".$self->Polytope->name;
+   push @{$self->elements}, [ $self->Polytope->VisualSimplices($TR,$Points,$Signs,$vertex_labels,$decor) ];
+
+   visualize($self);
+}
+
+# @category Visualization
+# Draw the edges of the [[Polytope::TRIANGULATION_BOUNDARY]].
+# The facets are made transparent.
+# @return Visual::Polytope
+
+user_method TRIANGULATION_BOUNDARY(%Visual::Graph::decorations) {
+   my ($self, $decor)=@_;
+   my $P=$self->basis_solid;
+   $P->FacetTransparency ||= 0.5;
+   $P->EdgeThickness ||= 1;
+   $self->Name="Triangulation Boundary of ".$self->Polytope->name;
+   my $graph = new graph::Graph(ADJACENCY =>  $self->Polytope->TRIANGULATION->BOUNDARY->GRAPH->ADJACENCY - $self->Polytope->GRAPH->ADJACENCY);
+   push @{$self->elements},
+        new Visual::Graph( Name => $self->Polytope->name."-inner-edges",
+                           Graph => $graph,
+                           Coord => $P->Vertices,
+                           NodeStyle => "hidden",
+                           EdgeThickness => 0.5,
+                           $decor
+                         );
+   visualize($self);
+}
+##################################################################################################
+
+object Polytope {
+
+my @simplex_faces_3d=([ [0,2,1], [0,1,3], [0,3,2], [1,2,3] ],   # +
+                      [ [0,1,2], [0,3,1], [0,2,3], [1,3,2] ]);  # -
+my @simplex_faces_2d=([ [0,1,2] ],      # +
+                      [ [0,2,1] ]);     # -
+my @simplex_neighbor_faces=([ [2,3,1], [0,3,2], [1,3,0], [0,2,1] ],     # +
+                            [ [1,3,2], [2,3,0], [0,3,1], [1,2,0] ]);    # -
+
+# utility for visualization methods: converts an array of simplices to an array of Visual::Polygons
+method VisualSimplices {
+   my ($self, $Simplices, $Points, $Signs, $vertex_labels, $decor)=@_;
+   my $d=$Points->cols;
+   my $simplex_faces=  $d==3 ? \@simplex_faces_3d : \@simplex_faces_2d;
+
+   my $i=0;
+   map {
+      my $s=(1-$Signs->[$i++])/2;               # 0: positive, 1: negative
+      my @face=@$_;
+      new Visual::Polygons( Name => $self->name."-{@face}",
+			    Vertices => $Points->minor($_,All),
+			    VertexLabels => $vertex_labels && sub { $vertex_labels->($face[$_[0]]) },
+			    Facets => $simplex_faces->[$s],
+			    $d==3 ? (FacetNeighbors => $simplex_neighbor_faces[$s]) : (),
+			    NEdges => $d==3? 6 : 3,
+			    $decor
+			  );
+   } @$Simplices;
+}
+
+# @category Visualization
+# Options for visualizing polytopes.
+options %geometric_options=(
+  # Matrix
+  BoundingBox => undef, 
+);
+
+sub apply_bounding_box($;$) {
+    my ($this,$bbox) = @_; # Polytope object, Matrix
+
+    # the surplus of 6/5 for the bounding box is just a random choice
+    $bbox //= bounding_box($this->VERTICES, 6/5, 1);
+    
+    my $bounded=$this->type->construct->($this->name."_bounded", INEQUALITIES => $this->FACETS / $bbox, EQUATIONS=>$this->AFFINE_HULL);
+    if (!$bounded->BOUNDED) {
+        die "apply_bounding_box: Invalid bounding box!";
+    }
+
+    # mark artificial facets
+    my $original_facets=new Map< Vector<Scalar>, Bool>;
+    $original_facets->{$_}=1 for @{$this->FACETS};
+    my $bbox_facets=new Map<Vector<Scalar>, Bool>;
+    foreach (@$bbox) {
+        $bbox_facets->{$_}=1 unless exists $original_facets->{$_}
+    }
+
+    my $vertex_map=new Map<Vector<Scalar>, String>;
+    my $f=0;
+    if (defined (my $labels=$this->lookup("VERTEX_LABELS"))) {
+        $vertex_map->{$_}=$labels->[$f++] for @{$this->VERTICES};
+    } else {
+        $vertex_map->{$_}=$f++ for @{$this->VERTICES};
+    }
+    
+    return [ $bounded, $bbox_facets,             $vertex_map ];
+    #        Polytope  Map<Vector<Scalar>, Bool> Map<Vector<Scalar>, String>
+}
+
+# @category Visualization
+# Visualize a polytope as a graph (if 1d), or as a solid object (if 2d or 3d),
+# or as a Schlegel diagram (4d).
+# @options %Visual::Polygons::decorations
+# @options %geometric_options
+# @return Visual::Polytope
+
+user_method VISUAL(%Visual::PointSet::decorations, %geometric_options) : CONE_DIM {
+   my ($this, $decor, $geom)=@_;
+   my $P=new Visual::PointSet( Name => $this->name,
+                               Points => dehomogenize(convert_to<Float>($this->VERTICES)),
+                               PointLabels => $this->lookup("VERTEX_LABELS"),
+                               $decor
+                             );
+   visualize($P);
+}
+precondition : CONE_DIM { $this->CONE_DIM==1 }
+precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM<=4 }
+
+
+# @hide
+user_method VISUAL(%Visual::Wire::decorations) : CONE_DIM {
+   my ($this, $decor)=@_;
+   my $G=$this->GRAPH->VISUAL(Name=>$this->name, Coord=>dehomogenize(convert_to<Float>($this->VERTICES)), $decor);
+   visualize( new Visual::Polytope(Name => $this->name, Polytope => $this, $G) );
+}
+precondition : CONE_DIM { $this->CONE_DIM==2 }
+precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM<=4 }
+precondition : BOUNDED;
+
+# @hide
+user_method VISUAL(%Visual::Polygons::decorations, %geometric_options) : VERTICES, VIF_CYCLIC_NORMAL {
+   my ($this, $decor, $geom)=@_;
+
+   my $vertex_labels=$this->lookup("VERTEX_LABELS");
+   my $to_visualize=$this;
+   my $bbox_facets={};
+
+   if (defined($geom->{BoundingBox})) {
+       my $vertex_map={};
+       ($to_visualize, $bbox_facets, $vertex_map) = @{apply_bounding_box($this,$geom->{BoundingBox})};
+
+       my @vertex_labels=map { $vertex_map->{$_} // " " } @{$to_visualize->VERTICES};
+       $vertex_labels=\@vertex_labels;
+   }
+
+   my $P= $this->CONE_DIM==3
+	  ? new Visual::Polygon( Name => $this->name,
+				 Vertices => dehomogenize(convert_to<Float>($this->VERTICES)),
+				 VertexLabels => $this->lookup("VERTEX_LABELS"),
+				 Facet => $this->VIF_CYCLIC_NORMAL->[0],
+				 NEdges => $this->N_EDGES,
+				 $decor
+			       )
+	  : new Visual::Polygons( Name => $this->name,
+				  Vertices => dehomogenize(convert_to<Float>($this->VERTICES)),
+				  VertexLabels => $this->lookup("VERTEX_LABELS"),
+				  Facets => $this->VIF_CYCLIC_NORMAL,
+                                  FacetNormals => $this->FACETS,
+				  FacetNeighbors => $this->NEIGHBOR_FACETS_CYCLIC_NORMAL,
+				  FacetLabels => $this->lookup("FACET_LABELS") || "hidden",
+				  Closed => 1,
+				  NEdges => $this->N_EDGES,
+				  $decor
+				);
+   visualize( new Visual::Polytope(Name => $this->name, Polytope => $this, $P));
+}
+precondition : CONE_DIM { $this->CONE_DIM>=3 }
+precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM<=4 }
+precondition : BOUNDED;
+
+
+# @hide @notest
+user_method VISUAL(%Visual::Wire::decorations) : CONE_AMBIENT_DIM {
+   my ($this, $decor)=@_;
+   $this->SCHLEGEL({},{},$decor);
+}
+precondition : CONE_DIM { $this->CONE_DIM==5 }
+precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM==5 }
+precondition : BOUNDED;
+
+
+# @hide
+user_method VISUAL(%Visual::Polygons::decorations, %geometric_options) : CONE_DIM {
+   my ($this, $decor, $geom)=@_;
+
+   # since we are unbounded we have to cut off somewhere
+   my ($bounded, $bbox_facets, $vertex_map) = @{apply_bounding_box($this,$geom->{BoundingBox})};
+   my @vertex_labels=map { $vertex_map->{$_} // " " } @{$bounded->VERTICES};
+   $bounded->VERTEX_LABELS=\@vertex_labels;
+
+   # now call VISUAL for bounded polyhedra
+   if ($bounded->CONE_DIM==4)  {
+      visualize($bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " },
+                                 FacetColor=>[ map { exists $bbox_facets->{$_} ? $Visual::Color::cutoff : $Visual::Color::facets } @{$bounded->FACETS} ],
+                                 $decor));
+   }
+   else {
+      visualize($bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " },
+                                 $decor));
+   }
+}
+precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM<=4 }
+precondition : !BOUNDED;
+
+
+# @hide
+user_method VISUAL(%geometric_options) : FEASIBLE {
+	croak("Cannot visualize an empty polytope\n");
+}
+precondition : FEASIBLE { $this->FEASIBLE==0 }
+
+
+# @category Visualization
+# Visualize the dual polytope as a solid 3-d object. The polytope must be [[BOUNDED]] and [[CENTERED]].
+# @return Visual::Polygons
+user_method VISUAL_DUAL(%Visual::Polygons::decorations) : FACETS, FTV_CYCLIC_NORMAL {
+   my ($this, $decor)=@_;
+   my $P= $this->CONE_AMBIENT_DIM==3
+          ? new Visual::Polygon( Name => "dual of ".$this->name,
+				 Vertices => dehomogenize(convert_to<Float>($this->FACETS)),
+				 VertexLabels => $this->lookup("FACET_LABELS"),
+				 Facet => $this->FTV_CYCLIC_NORMAL->[0],
+				 NEdges => $this->N_EDGES,
+				 $decor,
+			       )
+	  : new Visual::Polygons( Name => "dual of ".$this->name,
+				  Vertices => dehomogenize(convert_to<Float>($this->FACETS)),
+				  VertexLabels => $this->lookup("FACET_LABELS"),
+				  Facets => $this->FTV_CYCLIC_NORMAL,
+                                  FacetNormals=> $this->VERTICES,
+				  FacetNeighbors => $this->NEIGHBOR_VERTICES_CYCLIC_NORMAL,
+				  FacetLabels => $this->lookup("VERTEX_LABELS") || "hidden",
+				  Closed => 1,
+				  NEdges => $this->N_EDGES,
+				  $decor,
+				);
+   visualize($P);
+}
+precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM==3 || $this->CONE_AMBIENT_DIM==4 }
+precondition : BOUNDED;
+precondition : CENTERED;
+
+
+# FIXME: make use of topaz tools here
+
+#method TRIANGULATION_BOUNDARY_as_Graph {
+#   my ($this)=@_;
+#   my $G=new props::Graph($this->N_VERTICES);
+#   foreach (@{$this->TRIANGULATION_BOUNDARY}) {
+#      foreach my $simplex (@$_) {
+#        foreach my $v (@$simplex) {
+#           $G->adjacent_nodes($v) += $simplex-$v;
+#        }
+#      }
+#   }
+#   return $G;
+#}
+
+# @category Visualization
+# Visualize the [[Polytope::TRIANGULATION_BOUNDARY|TRIANGULATION_BOUNDARY]] of the polytope.
+# **Obsolete:** the preferred procedure is to create a [[topaz::SimplicialComplex|SimplicialComplex]] using
+# the [[boundary_complex]] client of the application 
+# <a target="_top" href="../../topaz/model.html">topaz</a>
+# and call its [[topaz::SimplicialComplex::VISUAL|VISUAL]] method.
+# @return Visual::Polygons
+# @notest
+
+user_method VISUAL_TRIANGULATION_BOUNDARY(%Visual::Polygon::decorations) : TRIANGULATION.BOUNDARY.FACETS {
+   my ($this, $decor)=@_;
+   warn_print( <<'.' );
+Method VISUAL_TRIANGULATION_BOUNDARY is obsolete.
+The preferred procedure is to create a SimplicialComplex using
+the boundary_complex client of the application topaz
+and call its VISUAL method.
+.
+   visualize( new Visual::Polygons(
+      Name => "Triangulation Boundary of ".$this->name,
+      Vertices => dehomogenize(convert_to<Float>($this->VERTICES)),
+      VertexLabels => $this->lookup("VERTEX_LABELS"),
+      Facets => $this->TRIANGULATION->BOUNDARY->FACETS,
+      NEdges => $this->N_EDGES,
+      $decor,
+   ));
+}
+precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM==4 }
+precondition : BOUNDED;
+
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

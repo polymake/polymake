@@ -1,0 +1,169 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @topic application
+# 
+# Matroids encode the concept of "(in)dependence" in an abstract way.  You
+# can define matroids via vector configurations or graphs, do basic
+# conversions between different descriptions and perform basic operations such
+# as deletions and contractions.
+
+IMPORT
+  graph common
+
+USE
+  polytope
+
+file_suffix mat
+
+# A matroid on the set //{0,...,n-1}//.  Here //n// is the same as [[N_ELEMENTS]].
+# 
+declare object Matroid;
+
+INCLUDE
+  matroid_properties.rules
+
+object Matroid {
+
+rule RANK : BASES {
+  $this->RANK = @{$this->BASES->[0]};
+} 
+weight 0.10;
+
+rule BASES, N_BASES, RANK, N_ELEMENTS : POINTS {
+  bases_from_points($this)
+}
+
+rule POLYTOPE.VERTICES, POLYTOPE.CONE_AMBIENT_DIM : BASES, N_ELEMENTS {
+  matroid_polytope($this)
+}
+
+rule RANK : NON_BASES {# should be more expensive as the computation from BASES
+    if ($this->NON_BASES->size()==0) { # uniform matroid
+        die "cannot determine RANK from empty set of NON_BASES";
+    }
+  $this->RANK = @{$this->NON_BASES->[0]};
+} 
+weight 0.15;
+
+rule BASES : NON_BASES, N_ELEMENTS {
+  if ($this->NON_BASES->size()==0) { # uniform matroid
+    my $r=$this->lookup("RANK");
+    die "cannot determine BASES from NON_BASES without RANK" unless defined($r);
+    $this->BASES=new Set<Set>(all_subsets_of_k($r,0..$this->N_ELEMENTS-1));
+  }
+  else {
+    $this->BASES = invert_bases($this->NON_BASES, $this->N_ELEMENTS)
+  }
+}
+weight 3.10;
+
+rule NON_BASES : BASES, N_ELEMENTS {
+  $this->NON_BASES = invert_bases($this->BASES, $this->N_ELEMENTS)
+}
+weight 3.10;
+
+rule CIRCUITS : BASES, N_ELEMENTS {
+   $this->CIRCUITS = bases_to_circuits($this->BASES, $this->N_ELEMENTS);
+}
+weight 4.10;
+
+rule COCIRCUITS : BASES, N_ELEMENTS {
+   $this->COCIRCUITS = bases_to_cocircuits($this->BASES, $this->N_ELEMENTS);
+}
+weight 4.10;
+
+
+rule BASES : CIRCUITS, N_ELEMENTS {
+   $this->BASES = circuits_to_bases($this->CIRCUITS, $this->N_ELEMENTS);
+}
+weight 4.10;
+
+rule BASES : COCIRCUITS, N_ELEMENTS {
+   $this->BASES = cocircuits_to_bases($this->COCIRCUITS, $this->N_ELEMENTS);
+}
+weight 4.10;
+
+rule BASES : CIRCUITS, N_ELEMENTS, RANK {
+   $this->BASES = circuits_to_bases_rank($this->CIRCUITS, $this->N_ELEMENTS, $this->RANK);
+}
+weight 3.10;
+
+rule BASES : COCIRCUITS, N_ELEMENTS, RANK {
+   $this->BASES = cocircuits_to_bases_rank($this->COCIRCUITS, $this->N_ELEMENTS, $this->RANK);
+}
+weight 3.10;
+
+rule LOOPS, COLOOPS : BASES, N_ELEMENTS {
+    loops_coloops($this);
+}
+weight 1.10;
+
+rule N_BASES : BASES {
+   $this->N_BASES = $this->BASES->size();
+}
+weight 0.10;
+
+rule N_CIRCUITS : CIRCUITS {
+   $this->N_CIRCUITS = $this->CIRCUITS->size();
+}
+weight 0.10;
+
+rule N_COCIRCUITS : COCIRCUITS {
+   $this->N_COCIRCUITS = $this->COCIRCUITS->size();
+}
+weight 0.10;
+
+rule N_LOOPS : LOOPS {
+   $this->N_LOOPS = $this->LOOPS->size();
+}
+weight 0.10;
+
+rule N_COLOOPS : COLOOPS {
+   $this->N_COLOOPS = $this->COLOOPS->size();
+}
+weight 0.10;
+
+rule PAVING : CIRCUITS, RANK {
+    $this->PAVING=$this->RANK==min(map{$_->size()}@{$this->CIRCUITS});
+}
+weight 1.10;
+
+rule BINARY, BINARY_POINTS, TERNARY, TERNARY_POINTS : BASES, NON_BASES, N_ELEMENTS, RANK {
+    finite_representation($this);
+}
+weight 2.10;
+
+rule REGULAR : BINARY, TERNARY {
+    if(defined($this->TERNARY)){
+        $this->REGULAR=$this->BINARY && $this->TERNARY; # See [Oxley:matroid theory (2nd ed.) Thm. 6.6.3]
+    }
+}
+weight 0.10;
+
+rule POINTS : BINARY_POINTS, TERNARY_POINTS {
+    $this->POINTS=3*($this->BINARY_POINTS)-2*($this->TERNARY_POINTS); #this rule is baesd on the specific computation in finite_representation
+}
+precondition : REGULAR;
+weight 0.10;
+
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

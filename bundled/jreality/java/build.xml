@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<project default="all">
+  <property name="package.prefix" value="de/tuberlin/polymake" />
+  <property name="build.sysclasspath" value="ignore" />
+
+  <property name="jreality.path" value="${polymake.top}/bundled/jreality/external/jreality"/>
+
+  <target name="build.jreality">
+    <sequential>
+      <ant
+          dir="${jreality.path}"
+          antfile="build.xml">
+        <target name="core"/>
+        <target name="io"/>
+        <target name="jogl"/>
+        <target name="soft"/>
+        <target name="renderman"/>
+        <target name="gpgpu"/>
+        <target name="sunflow"/>
+        <target name="plugin"/>
+        <target name="vr"/>
+      </ant>
+      <copy todir="${jar.dir}"
+            preservelastmodified="yes">
+        <fileset dir="${jreality.path}/dist" includes="*.jar" />
+      </copy>
+    </sequential>
+  </target>
+
+  <target name="clean.jreality">
+    <ant
+        dir="${jreality.path}"
+        antfile="build.xml" 
+        target="clean"/>
+  </target>
+
+  <target name="init" depends="build.jreality">
+    <!-- Create the time stamp -->
+    <tstamp/>
+    <mkdir dir="${build.dir}/java" />
+    <condition property="debug" value="on" else="off">
+      <available file="testscenarios" filepath="${polymake.top}" type="dir" />
+    </condition>
+  </target>
+
+  <path id="compile.classpath">
+    <fileset dir="${jreality.path}/lib" includes="*.jar" />
+    <fileset dir="${jar.dir}" erroronmissingdir="yes">
+      <include name="polymake_java.jar" />
+      <include name="jReality-*.jar" />
+    </fileset>
+  </path>
+
+  <target name="compile" depends="init">
+    <sequential>
+      <javac 
+             executable="${javac}"
+             srcdir="src"
+             destdir="${build.dir}/java"
+             failonerror="true"
+             debug="${debug}">
+        <include name="${package.prefix}/**"/>
+        <classpath refid="compile.classpath"/>
+      </javac>
+      <copy todir="${build.dir}/java"
+            preservelastmodified="yes">
+        <fileset 
+                dir="src"
+                includes="**/*.txt"
+                excludes="**/*.java" />
+      </copy>
+    </sequential>
+  </target>
+
+  <target name="all" depends="compile">
+    <jar destfile="${jar.dir}/${jar.name}">
+        <fileset 
+                 dir="${build.dir}/java"
+        	 includes="${package.prefix}/**" />
+      </jar>
+  </target>
+
+  <target name="clean" depends="clean.jreality">
+    <delete quiet="true">
+      <fileset dir="${build.dir}/java" />
+    </delete>
+  </target>
+</project>

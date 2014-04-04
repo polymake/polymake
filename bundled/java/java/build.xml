@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<project default="all">
+  <property name="package.prefix" value="de/tuberlin/polymake" />
+  <property name="build.sysclasspath" value="ignore" />
+
+  <target name="init">
+    <!-- Create the time stamp -->
+    <tstamp/>
+    <!-- Create the build directory structure used by compile -->
+    <mkdir dir="${build.dir}/java" />
+    <mkdir dir="${build.dir}/jni" />
+    <condition property="debug" value="on" else="off">
+      <available file="testscenarios" filepath="${polymake.top}" type="dir" />
+    </condition>
+  </target>
+
+  <target name="compile" depends="init">
+    <sequential>
+      <javac 
+             executable="${javac}"
+             srcdir="src"
+             destdir="${build.dir}/java"
+             failonerror="true"
+             debug="${debug}">
+        <include name="${package.prefix}/**"/>
+      </javac>
+      <copy todir="${build.dir}/java"
+            preservelastmodified="yes">
+        <fileset 
+                dir="src"
+                includes="**/*.txt"
+                excludes="**/*.java" />
+      </copy>
+    </sequential>
+  </target>
+
+  <target name="native-header" depends="compile">
+    <javah 
+           force="yes"
+           class="de.tuberlin.polymake.common.SharedMemoryMatrix" 
+           outputfile="${build.dir}/jni/polymake_java.h">
+      <classpath location="${build.dir}/java" />
+    </javah>
+  </target>
+
+  <target name="all" depends="compile,native-header">
+    <jar destfile="${jar.dir}/${jar.name}">
+        <fileset 
+                 dir="${build.dir}/java"
+        	 includes="${package.prefix}/**" />
+      </jar>
+  </target>
+
+  <target name="clean">
+    <delete quiet="true">
+      <fileset dir="${build.dir}/java" />
+      <fileset dir="${build.dir}/jni" />
+    </delete>
+  </target>
+</project>

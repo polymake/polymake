@@ -1,0 +1,121 @@
+<toolconfig>
+
+	<rawdevices>
+		<rawdevice id="Keyboard" type="de.jreality.toolsystem.raw.DeviceKeyboard" />
+		<!--
+			rawdevice id="KeyboardSWT"
+			type="de.jreality.toolsystem.raw.DeviceKeyboardSWT"/
+		-->
+	</rawdevices>
+
+	<rawslots>
+		<mapping device="Keyboard" src="VK_SPACE" target="JumpActivation" />
+		<mapping device="Keyboard" src="VK_SHIFT" target="Secondary" />
+		<mapping device="Keyboard" src="VK_CONTROL" target="Meta" />
+		<mapping device="Keyboard" src="VK_ALT" target="AltMeta" />
+		<mapping device="Keyboard" src="VK_1" target="key1" />
+		<mapping device="Keyboard" src="VK_2" target="key2" />
+		<mapping device="Keyboard" src="VK_3" target="key3" />
+		<mapping device="Keyboard" src="VK_4" target="key4" />
+		<mapping device="Keyboard" src="VK_5" target="key5" />
+		<mapping device="Keyboard" src="VK_W" target="forward" />
+		<mapping device="Keyboard" src="VK_A" target="left" />
+		<mapping device="Keyboard" src="VK_S" target="backward" />
+		<mapping device="Keyboard" src="VK_D" target="right" />
+		<mapping device="Keyboard" src="VK_UP" target="forward" />
+		<mapping device="Keyboard" src="VK_LEFT" target="left" />
+		<mapping device="Keyboard" src="VK_DOWN" target="backward" />
+		<mapping device="Keyboard" src="VK_RIGHT" target="right" />
+		<mapping device="Keyboard" src="VK_G" target="GravityToggle" />
+		<mapping device="Keyboard" src="VK_F" target="GroundToggle" />
+		<mapping device="Keyboard" src="VK_E" target="EncompassActivation" />
+		<mapping device="Keyboard" src="VK_L" target="LookSwitch" />
+		<mapping device="Keyboard" src="VK_R" target="DrawPickActivation" />
+		<mapping device="Keyboard" src="VK_P" target="ShowPick" />
+		<mapping device="Keyboard" src="VK_0" target="IncreaseSpeed" />
+		<mapping device="Keyboard" src="VK_9" target="DecreaseSpeed" />
+		<mapping device="Keyboard" src="VK_PAGE_DOWN" target="pageDown" />
+		<mapping device="Keyboard" src="VK_PAGE_UP" target="pageUp" />
+	</rawslots>
+	
+	<!-- rawslots>
+		<mapping device="KeyboardSWT" src="32" target="JumpActivation" />
+		<mapping device="KeyboardSWT" src="131072" target="Secondary" />
+		<mapping device="KeyboardSWT" src="262144" target="Meta" />
+		<mapping device="KeyboardSWT" src="119" target="forward" />
+		<mapping device="KeyboardSWT" src="97" target="left" />
+		<mapping device="KeyboardSWT" src="115" target="backward" />
+		<mapping device="KeyboardSWT" src="100" target="right" />
+		<mapping device="KeyboardSWT" src="101" target="EncompassActivation" />
+		<mapping device="KeyboardSWT" src="108" target="LookSwitch" />
+	</rawslots -->
+	
+	<virtualdevices>
+	
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualMergedAxis">
+      <inputslot>forward</inputslot>
+      <inputslot>backward</inputslot>
+      <outputslot>ForwardBackwardAxis</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualMergedAxis">
+      <inputslot>right</inputslot>
+      <inputslot>left</inputslot>
+      <outputslot>LeftRightAxis</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualMergedAxis">
+      <inputslot>pageDown</inputslot>
+      <inputslot>pageUp</inputslot>
+      <outputslot>UpDownAxis</outputslot>
+    </virtualdevice>
+    
+    
+    <!--  used in AnimatedRotation tool, was for GFZ demo i think (steffen) -->
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualToggleAxis">
+      <inputslot>JumpActivation</inputslot>    <!-- SPACE -->
+      <outputslot>RotationToggle</outputslot>
+    </virtualdevice>
+
+   <virtualdevice type="de.jreality.toolsystem.virtual.VirtualCoupledAxis">
+      <inputslot>left</inputslot>
+      <inputslot>Secondary</inputslot>
+      <outputslot>ShiftLeft</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualCoupledAxis">
+      <inputslot>right</inputslot>
+      <inputslot>Secondary</inputslot>
+      <outputslot>ShiftRight</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualCoupledAxis">
+      <inputslot>forward</inputslot>
+      <inputslot>Secondary</inputslot>
+      <outputslot>ShiftForward</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualCoupledAxis">
+      <inputslot>backward</inputslot>
+      <inputslot>Secondary</inputslot>
+      <outputslot>ShiftBackward</outputslot>
+    </virtualdevice>
+
+
+       <virtualdevice type="de.jreality.toolsystem.virtual.VirtualMergedAxis">
+      <inputslot>ShiftForward</inputslot>
+      <inputslot>ShiftBackward</inputslot>
+      <outputslot>ShiftForwardBackwardAxis</outputslot>
+    </virtualdevice>
+    
+       <virtualdevice type="de.jreality.toolsystem.virtual.VirtualMergedAxis">
+      <inputslot>ShiftRight</inputslot>
+      <inputslot>ShiftLeft</inputslot>
+      <outputslot>ShiftLeftRightAxis</outputslot>
+    </virtualdevice>
+    
+    
+    
+	</virtualdevices>
+
+</toolconfig>

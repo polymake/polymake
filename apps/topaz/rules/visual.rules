@@ -1,0 +1,427 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+package Visual::Color;
+
+# special TOPAZ blue for an distinguished subcomplex
+custom $distinguished_subcomplex="147 178 255";
+
+# special TOPAZ red for an distinguished set of faces
+custom $distinguished_face="231 0 74";
+
+# arrows in MORSE_MATCHING
+custom $morse_matching_dim_1="255 211 27";
+
+custom $morse_matching_dim_DIM="133 15 255";
+
+# GRAPH in topaz: black
+custom $topaz_gr="0 0 0";
+
+# GRAPH in mixed_graph : yellow
+custom $primal_gr="255 255 0";
+
+# DUAL_GRAPH in mixed_graph: blue
+custom $dual_gr="0 0 255";
+
+# MIXED_GRAPH: black
+custom $mixed_gr="0 0 0";
+
+###########################################################################
+
+# @topic objects/Visual::SimplicialComplex
+# Visualization of the simplicial complex.
+# @relates SimplicialComplex
+
+package Visual::SimplicialComplex;
+
+use Polymake::Struct (
+   [ '@ISA' => 'Container' ],
+   [ '$SimplicialComplex' => '#%' ],
+);
+
+# where to keep the view transformation matrix etc.
+method representative { $_[0]->SimplicialComplex }
+
+# @topic objects/Visual::SimplicialComplexLattice
+# Visualization of the [[HASSE_DIAGRAM]] of a simplicial complex as a multi-layer graph.
+# @relates SimplicialComplex
+
+package Visual::SimplicialComplexLattice;
+
+use Polymake::Struct (
+   [ '@ISA' => 'Container' ],
+   [ '$SimplicialComplex' => '#%' ],
+);
+
+# where to keep the view transformation matrix etc.
+method representative { $_[0]->SimplicialComplex }
+
+###########################################################################
+package application;
+
+custom %mixed_graph_params=(
+# edge_weight => 1      # increases the ideal length of the mixed edges
+);
+
+    
+sub vis_facets($$$$$$) {
+   my ($facets, $coord, $vertex_labels, $face_decor, $edge_decor, $point_decor)=@_;
+   my @cells;
+   map{
+      my $face = $_;
+      my $verts=$coord->minor($face,All);
+      my @labels= defined($vertex_labels) ? map {$vertex_labels->[$_]} @$face : @$face;
+      
+      if ($#$face >= 2) {
+         my @twofaces = all_subsets_of_k(3,0..$#$face);
+         new Visual::Polygons( Name=> (join " ", @labels),
+                               Vertices=>$verts,
+                               VertexLabels=>\@labels,
+                               Facets => \@twofaces,
+                               NEdges => $#$face*($#$face+1)/2,
+                               $face_decor );
+
+      } elsif ($#$face == 1) {
+         #it's only an edge
+          my $adj = new props::Graph("{1}\n{0}\n");
+         new Visual::Graph( Name=> (join " ", @labels), Graph => new Graph(ADJACENCY => $adj), Coord => $verts, NodeLabels => \@labels, $edge_decor );
+
+      } else {
+         #it's a singular point
+         new Visual::PointSet( Name=>$labels[0], Points => $verts,VertexLabels => \@labels, $point_decor );
+      }
+
+   } @$facets;
+}
+
+
+# An abstract simplicial complex represented by its facets.
+
+object SimplicialComplex {
+
+# @category Visualization
+# The nodes of the mixed graph are the nodes of the primal [[GRAPH]] and
+# the [[DUAL_GRAPH]]. Additional to the primal and dual edges, there is
+# an edge between a primal and a dual node iff the primal node represents
+# a vertex of the corresponding facet of the dual node.
+# **FIXME:** temporary
+property MIXED_GRAPH : EdgeWeightedGraph;
+
+
+rule MIXED_GRAPH.ADJACENCY, MIXED_GRAPH.EDGE_WEIGHTS : FACETS, GRAPH.ADJACENCY, DUAL_GRAPH.ADJACENCY, DIM {
+   mixed_graph($this);
+}
+
+
+# @category Visualization
+# Visualizes the complex.
+#
+# If [[G_DIM]] < 4, the [[GRAPH]] and the facets
+# are visualized using the [[COORDINATES]].
+#
+# Otherwise, the spring embedder and the [[GRAPH]] are used to
+# produce coordinates for the visualization.
+#
+# If [[wiki:external_software#javaview|JavaView]] is used to visualize the complex, all faces of
+# one facet build a geometry in the jvx-file, so you may use
+# __Method -> Effect -> Explode Group of Geometries__ in the JavaView menu.
+#
+# @option Bool mixed_graph  use the [[MIXED_GRAPH]] for the spring embedder
+# @option Int seed  random seed value for the string embedder
+# @return Visual::SimplicialComplex
+
+user_method VISUAL(%Visual::Polygon::decorations, %Visual::Graph::decorations, { mixed_graph => 0 }, { seed => undef }) {
+   my ($this, $face_decor, $graph_decor, $options, $seed)=@_;
+
+   my $coord=do {
+      if ( $options->{mixed_graph} ) {
+         spring_embedding_3d($this->MIXED_GRAPH->ADJACENCY,'edge-weights' => $this->MIXED_GRAPH->EDGE_WEIGHTS, $seed)->compute->minor(sequence(0,$this->N_VERTICES),All);
+      } elsif ($this->isa("GeometricSimplicialComplex") && defined($this->lookup("COORDINATES")) &&
+               $this->G_DIM<=3) {
+         convert_to<Float>($this->COORDINATES);
+      } else {
+         spring_embedding_3d($this->GRAPH->ADJACENCY, $seed)->compute;
+      }
+   };
+
+   my $labels=$this->lookup("VERTEX_LABELS");
+   my $graph= new Visual::Graph( Name => 'GRAPH of '.$this->name,
+                                 Graph => $this->GRAPH,
+                                 Coord => $coord,
+                                 VertexLabels => $labels,
+                                 VertexColor => $Visual::Color::topaz_gr,
+                                 $graph_decor
+                               );
+   visualize(new Visual::SimplicialComplex(Name => $this->name,
+                                           SimplicialComplex=>$this,
+                                           vis_facets($this->FACETS, $coord, $labels, $face_decor,$face_decor,$face_decor),
+                                           $graph));
+}
+
+
+# @category Visualization
+# Uses the spring embedder to visualize the [[GRAPH]].
+# @option Int seed  random seed value for the string embedder
+# @return Visual::SimplicialComplex
+
+user_method VISUAL_GRAPH(%Visual::Graph::decorations, { seed => undef }) {
+   my ($this, $decor, $seed)=@_;
+   my $VG=$this->GRAPH->VISUAL( Name => $this->name,
+                                NodeColor => $Visual::Color::topaz_gr,
+                                $decor, $seed );
+   visualize( new Visual::SimplicialComplex(Name => 'GRAPH of '.$this->name, SimplicialComplex=>$this, $VG));
+}
+
+
+# @category Visualization
+# Uses the spring embedder to visualize the [[DUAL_GRAPH]].
+# @option Int seed  random seed value for the string embedder
+# @return Visual::SimplicialComplex
+
+user_method VISUAL_DUAL_GRAPH(%Visual::Graph::decorations, { seed => undef }) {
+   my ($this, $decor, $seed)=@_;
+   my $VG=$this->DUAL_GRAPH->VISUAL( Name => $this->name,
+                                     NodeColor => $Visual::Color::topaz_gr,
+                                     $decor, $seed );
+   visualize( new Visual::SimplicialComplex(Name => 'DUAL_GRAPH of '.$this->name, SimplicialComplex=>$this, $VG));
+}
+
+
+# @category Visualization
+# Uses the spring embedder to visualize the [[MIXED_GRAPH]].
+# @option Int seed  random seed value for the string embedder
+
+user_method VISUAL_MIXED_GRAPH(%Visual::Graph::decorations, { seed => undef }) {
+   my ($this, $decor, $seed)=@_;
+   my $coord=spring_embedding_3d($this->MIXED_GRAPH->ADJACENCY,'edge-weights' => $this->MIXED_GRAPH->EDGE_WEIGHTS, $seed)->compute;
+   compose( new Visual::Graph( Name => 'GRAPH of '.$this->name,
+                               Graph => $this->GRAPH,
+                               Coord => $coord->minor(sequence(0,$this->N_VERTICES),All),
+                               NodeLabels => $this->lookup("VERTEX_LABELS"),
+                               NodeColor => $Visual::Color::primal_gr,
+                               EdgeColor => $Visual::Color::primal_gr,
+                               $decor
+                             ),
+            new Visual::Graph( Name => 'DUAL_GRAPH of '.$this->name,
+                               Graph => $this->DUAL_GRAPH,
+                               Coord => $coord->minor(range($this->N_VERTICES, $this->N_VERTICES+$this->N_FACETS-1),All),
+                               NodeColor => $Visual::Color::dual_gr,
+                               EdgeColor => $Visual::Color::dual_gr,
+                               $decor
+                             ),
+            new Visual::Graph( Name => 'MIXED_GRAPH of '.$this->name,
+                               Graph => $this->MIXED_GRAPH,
+                               Coord => $coord,
+                               NodeColor => $Visual::Color::mixed_gr,
+                               EdgeColor => $Visual::Color::mixed_gr,
+                               EdgeThickness => 0.1666667,
+                               $decor
+                             ),
+            Title => $this->name
+          );
+}
+
+}
+
+
+package Visual::SimplicialComplex;
+
+# Add a subcomplex with optional different graphical attributes.
+# @param String PROPERTY_NAME or [ Facets ]
+user_method SUBCOMPLEX($ %Visual::Polygon::decorations, %Visual::Graph::decorations, %Visual::PointSet::decorations) {
+   my ($self, $subcomplex, $facet_decor, $edge_decor, $point_decor)=@_;
+   if (!ref($subcomplex)) {
+      $subcomplex=$self->SimplicialComplex->give($subcomplex);
+   }
+
+   $facet_decor->{FacetColor} ||= $Visual::Color::distinguished_subcomplex;
+
+   $edge_decor->{EdgeThickness} ||= 6;
+   $edge_decor->{EdgeColor} ||= $Visual::Color::distinguished_subcomplex;
+
+   $point_decor->{VertexThickness} ||= "2";
+   $point_decor->{VertexColor} ||= $Visual::Color::distinguished_subcomplex;
+
+   my $labels=$self->SimplicialComplex->lookup("VERTEX_LABELS");
+
+   compose($self, vis_facets($subcomplex, $self->elements->[-1]->Coord, $labels, $facet_decor, $edge_decor, $point_decor));
+}
+
+# Add faces with optional different graphical attributes.
+# @param String PROPERTY_NAME or [ Faces ]
+user_method FACES($ %Visual::Polygon::decorations) {
+   my ($self, $faces, $facet_decor)=@_;
+   if (!ref($faces)) {
+      $faces=$self->SimplicialComplex->give($faces);
+   }
+
+   my (%edge_decor, %point_decor);
+   if (!exists $facet_decor->{FacetColor} && !exists $facet_decor->{FacetStyle}) {
+      $facet_decor->{FacetColor}=$Visual::Color::distinguished_face;
+   }
+
+   $edge_decor{EdgeColor}=delete $facet_decor->{EdgeColor} || $Visual::Color::distinguished_face;
+   $edge_decor{EdgeStyle}=delete $facet_decor->{EdgeStyle} || "thickness 2";
+
+   $point_decor{VertexColor}=delete $facet_decor->{VertexColor} || $Visual::Color::distinguished_face;
+   $point_decor{VertexStyle}=delete $facet_decor->{VertexStyle} || "thickness 2";
+
+   $edge_decor{VertexStyle}="hidden";
+   $facet_decor->{EdgeStyle}="hidden";
+   $facet_decor->{VertexStyle}="hidden";
+
+   my $labels=$self->SimplicialComplex->lookup("VERTEX_LABELS");
+
+   compose($self, vis_facets($faces, $self->elements->[-1]->Coord, $labels, $facet_decor, \%edge_decor, \%point_decor));
+}
+
+# Add the [[SimplicialComplex.MORSE_MATCHING|MORSE_MATCHING]] to the visualization of the [[SimplicialComplex]].
+user_method MORSE_MATCHING(%Visual::Graph::decorations) {
+   my ($this, $decor)=@_;
+   my $complex = $this->SimplicialComplex;
+   my @mm = @{$complex->MORSE_MATCHING};
+   my $complex_dim = $complex->DIM;
+   my @vertices = @{$this->elements->[-1]->Coord};
+   my $dim = 0;
+   my @dims = split(/\s+/,$mm[0]);
+   shift @dims;
+   shift @mm;
+   my @graph;
+   my $i = 0;
+   my %arrow_colors;
+
+   my @colors;
+   my @rgb_1 = split(/\s+/,$Visual::Color::morse_matching_dim_1);
+   my @rgb_DIM = split(/\s+/,$Visual::Color::morse_matching_dim_DIM);
+   for (my $d=0; $d<$complex_dim; ++$d) {
+     my @this_color;
+     for (my $j=0; $j<3; ++$j) {
+       $this_color[$j] = int( ($d*$rgb_1[$j]+($complex_dim-1-$d)*$rgb_DIM[$j])/($complex_dim-1) );
+     }
+     push(@colors,join(" ",@this_color));
+   }
+
+   my @barycenters;
+   foreach my $line (@mm) {
+      ++$dim if ($i+1 >= $dims[$dim]);
+      my $barycenter;
+      chomp $line;
+      my ($face, $edges) = ($line =~ m/^<?\(\{(\d+(?:\s+\d+)*)\}\s+{((?:\(\d+\s+[01]\)\s*)+)?}\)$/);
+      next if($face eq "");
+      my @face = split(/\s+/,$face);
+      $barycenters[$i] = barycenter(@vertices[@face]);
+      my @edges = ($edges =~ m/\(\d+\s+[01]\)/g);
+      foreach my $edge(@edges) {
+         my ($to_node, $matched) = ($edge =~ m/\((\d+)\s+([01])\)/);
+         if ($matched) {
+            $graph[$i] = "{".($to_node-1)."}";
+            $arrow_colors{"$i ".($to_node-1)} = $colors[$dim-1];
+            last;
+         } else {
+            $graph[$i] = "{}";
+         }
+      }
+      ++$i;
+   }
+   $this->defaults->{FacetStyle} ||= "transparency 0.5";
+   my $mmatching = new Visual::Graph(
+                                     Name => "MORSE_MATCHING of " . $this->SimplicialComplex->name,
+                                     Graph => \@graph,
+                                     Coord => \@barycenters,
+                                     Directed => 1,
+                                     NodeStyle => "hidden",
+                                     EdgeColor => \%arrow_colors,
+                                     $decor
+                                    );
+   compose($this,$mmatching);
+}
+
+
+sub barycenter(@) {
+   my @vertices = @_;
+   my @barycenter;
+   foreach my $vertex (@vertices) {
+      my @vertex = split(/\s+/,$vertex);
+      for ( my $j = 0; $j <= $#vertex; ++$j) {
+         $barycenter[$j] += $vertex[$j];
+      }
+   }
+   map { $_ /= (scalar @vertices) } @barycenter;
+   return join(" ",@barycenter);
+}
+
+object SimplicialComplex {
+
+# @category Visualization
+# Visualize the [[HASSE_DIAGRAM]] of a simplicial complex as a multi-layer graph.
+# @option Int seed  random seed value for the node placement
+# @return Visual::SimplicialComplexLattice
+
+user_method VISUAL_FACE_LATTICE(%Visual::Lattice::decorations, { seed => undef }) : HASSE_DIAGRAM {
+   my ($this, $decor, $seed)=@_;
+   $decor->{Name} ||= $this->name;
+   visualize( new Visual::SimplicialComplexLattice( Name => "Face lattice of ".$this->name,
+                                           SimplicialComplex => $this,
+                                           $this->HASSE_DIAGRAM->VISUAL(AtomLabels=>$this->lookup("VERTEX_LABELS"),
+                                                                        $decor,$seed)
+                                         ));
+}
+
+}
+
+package Visual::SimplicialComplexLattice;
+
+### FIXME: MORSE_MATCHING not migrated yet.
+# Add the [[SimplicialComplex.MORSE_MATCHING]] to the visualization of the face lattice of the simplicial complex.
+# Decoration options @c EdgeColor and @c EdgeStyle apply to the matched edges only.
+#user_method MORSE_MATCHING(%Visual::Lattice::decorations) {
+#   my ($self, $decor)=@_;
+#   $decor->{EdgeColor} ||= $Visual::Color::distinguished_face;
+#   $self->add_matching($self->SimplicialComplex->MORSE_MATCHING, $decor);
+#   visualize($self);
+#}
+
+
+# Add a subcomplex with different graphical attributes.
+# @param String property name of the subcomplex property (to be changed in the near future)
+user_method SUBCOMPLEX($ %Visual::Lattice::decorations) {
+   my ($self, $subcomplex, $decor)=@_;
+   if (!ref($subcomplex)) {
+      $subcomplex=$self->SimplicialComplex->give($subcomplex);
+   }
+   $decor->{NodeColor} ||= $Visual::Color::distinguished_subcomplex;
+   $decor->{EdgeColor} ||= $decor->{NodeColor};
+   $self->add_subcomplex($self->SimplicialComplex->HASSE_DIAGRAM, $subcomplex, $decor);
+   visualize($self);
+}
+
+# Add distinguished faces with different graphical attributes //NodeColor// and //NodeStyle//.
+# @param Array<Set> faces (to be changed in the near future)
+user_method FACES($ %Visual::Lattice::decorations) {
+   my ($self, $faces, $decor)=@_;
+   if (!ref($faces)) {
+      $faces=$self->SimplicialComplex->give($faces);
+   }
+   $decor->{NodeColor} ||= $Visual::Color::distinguished_face;
+   $self->add_faces($self->SimplicialComplex->HASSE_DIAGRAM, $faces, $decor);
+   visualize($self);
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

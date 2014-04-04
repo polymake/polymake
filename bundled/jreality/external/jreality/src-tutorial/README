@@ -1,0 +1,39 @@
+See http://www3.math.tu-berlin.de/jreality/mediawiki/index.php/Developer_Tutorial
+for an up-to-date documentation of these tutorial examples.  
+
+The following directions stem from a much earlier release of jReality and 
+are intended to be used only if you do not have access to an IDE such as 
+eclipse (www.eclipse.org).
+
+Old directions:
+tutorial readme:
+
+To get started, download the jar file from www3.math.tu-berlin.de/jreality.
+Add it into your classpath. Then change to this folder and type
+  
+  javac de/jreality/tutorial/*/*.java
+  
+When compilation finished, you can run an example,
+i. e. de.jreality.tutorial.geom.Cube04, by
+
+  java de.jreality.tutorial.geom.Cube04
+  
+HINT: Try pressing 'E' (first click into the viewer component) to encompass.
+  
+Up to now, you will only have software rendering, to get much faster
+OpenGL rendering, download jogl https://jogl.dev.java.net/ - choose 
+the current release build. Download both the file jogl.jar (put this into
+your classpath) and the jogl-natives-{platform}.jar. Then unzip all
+.dll (win), .so (linux/solaris) or .dynlib (macos) files to this folder:
+
+  unzip jogl-natives-linux-i586.jar *.so (for linux)
+
+Now run the example again, but add the current folder as java.library.path:
+
+  java -Djava.library.path=. de.jreality.tutorial.geom.Cube04
+  
+Now the application should startup with the jogl viewer - rendering
+much faster than the software viewer.
+
+Please check Documentation/Wiki/Forum and post questions in our
+Forum (www.jreality.de).

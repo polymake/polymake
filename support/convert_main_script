@@ -1,0 +1,101 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+use strict;
+use Getopt::Long qw( GetOptions :config require_order no_ignore_case );
+use Config;
+
+my %opts;
+
+if ( !GetOptions(\%opts, 'bindir=s', 'perldir=s', 'prefix=s', 'perllib=s')
+     or !exists $opts{bindir} || !-d $opts{bindir}) {
+   $!=1;
+   die "usage: $0 --bindir DIR [ --perldir DIR --prefix DIR ]\n";
+}
+
+my ($InstallArch)=map { /^InstallArch=(.*)/ ? $1 : () } @ARGV
+  or die "InstallArch not specified\n";
+
+undef $/;
+open S, "perl/polymake" or die "can't read perl/polymake: $!\n";
+$_=<S>;
+close S;
+
+if ($^O eq "darwin" && $ENV{ARCHFLAGS} =~ /-arch /) {
+   s{^\#!\S+}{#!/usr/bin/arch $ENV{ARCHFLAGS} $^X}s;
+} else {
+   s{^\#!\S+}{#!$Config::Config{perlpath}}s;
+}
+my $vars="";
+
+if (exists $opts{prefix}) {
+   my $tail=rindex($opts{bindir},$opts{prefix});
+   die "prefix does not match bindir\n" if $tail<0;
+   $tail=substr($opts{bindir},$tail+length($opts{prefix}))."/polymake";
+   $vars="   my (\$PREFIX)= \$0 =~ m{^(.*)$tail};\n";
+   s|(Install\w+=)$opts{prefix}|$1\$PREFIX| for (@ARGV);
+}
+
+$vars.=join("", map { s/=/="/; "   \$$_\";\n" } @ARGV);
+if (exists $opts{perllib}) {
+   $vars.="   \@addlibs=qw($opts{perllib});\n";
+}
+s|(^BEGIN\s*\{\s*\n)(?s:.*?)(^\}\n)|$1$vars$2|m;
+
+unlink "$opts{bindir}/polymake";
+open T, ">$opts{bindir}/polymake" or die "can't create $opts{bindir}/polymake: $!\n";
+print T;
+close T;
+
+chmod(0555, "$opts{bindir}/polymake") or die "chmod $opts{bindir}/polymake failed: $!\n";
+
+# apply similar transformations to the configuration utility
+
+my $Version;
+open PM, "perllib/Polymake.pm" or die "can't read perllib/Polymake.pm: $!\n";
+while (<PM>) {
+   if (/\$Version\s*=\s*(.*);/) {
+      $Version=$1;
+      last;
+   }
+}
+close PM;
+defined($Version) or die "can't extract \$Version from perllib/Polymake.pm\n";
+
+open S, "perl/polymake-config" or die "can't read perl/polymake-config: $!\n";
+$_=<S>;
+close S;
+
+if ($^O eq "darwin" && $ENV{ARCHFLAGS} =~ /-arch /) {
+   s{^\#!\S+}{#!/usr/bin/arch $ENV{ARCHFLAGS} $^X}s;
+} else {
+   s{^\#!\S+}{#!$Config::Config{perlpath}}s;
+}
+
+s/=Version(?=;)/=$Version/;
+s/=InstallArch(?=;)/="$InstallArch"/;
+
+unlink "$opts{bindir}/polymake-config";
+open T, ">$opts{bindir}/polymake-config" or die "can't create $opts{bindir}/polymake-config: $!\n";
+print T;
+close T;
+
+chmod(0555, "$opts{bindir}/polymake-config") or die "chmod $opts{bindir}/polymake-config failed: $!\n";
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# indent-tabs-mode:nil
+# End:

@@ -1,0 +1,103 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+REQUIRE_EXTENSION bundled:graph_compare
+
+CREDIT graph_compare = bundled:graph_compare
+
+# @category Comparing
+# true if //IncidenceMatrix1// and //IncidenceMatrix2// are isomorphic.
+# @param IncidenceMatrix IncidenceMatrix1
+# @param IncidenceMatrix IncidenceMatrix2
+# @return Bool
+
+user_function isomorphic(IncidenceMatrix, IncidenceMatrix) : c++ (include => "polymake/graph/compare.h");
+
+# @category Comparing
+# true if //graph1// and //graph2// are isomorphic.
+# @param props::Graph graph1
+# @param props::Graph graph2
+# @return Bool
+
+user_function isomorphic(props::Graph, props::Graph) : c++ (include => "polymake/graph/compare.h");
+
+# @category Comparing
+# Find the node permutation mapping //graph1// to //graph2//.
+# If the given graphs are not isomorphic, throw an expection.
+# @param props::Graph graph1
+# @param props::Graph graph2
+# @return Array<Int>
+
+user_function find_node_permutation(props::Graph, props::Graph) : c++ (include => "polymake/graph/compare.h");
+
+
+# @category Comparing
+# Find the permutations mapping the non-symmetric incidence matrix //m1// to //m2//.
+# If the given matrices are not isomorphic, throw an expection.
+# @param IncidenceMatrix<NonSymmetric> m1
+# @param IncidenceMatrix<NonSymmetric> m2
+# @return Pair<Array<Int>,Array<Int>> ''first'' permutation applies to the rows, ''second'' applies to the columns.
+
+user_function find_row_col_permutation(IncidenceMatrix<NonSymmetric>, IncidenceMatrix<NonSymmetric>) \
+   : c++ (include => "polymake/graph/compare.h");
+
+
+# @category Comparing
+# Find the automorphism group of the graph.
+# @param props::Graph graph
+# @return Array<Array<Int>> each element encodes a node permutation.
+
+user_function automorphisms(props::Graph) : c++ (include => "polymake/graph/compare.h");
+
+
+# @category Comparing
+# Find the order of the automorphism group of the graph.
+# @param props::Graph graph
+# @return Int the order of the automorphism group
+
+user_function n_automorphisms(props::Graph) : c++ (include => "polymake/graph/GraphIso.h");
+
+
+# @category Comparing
+# Find the automorphism group of the symmetric incidence matrix.
+# @param IncidenceMatrix<Symmetric> m
+# @return Array<Array<Int>> each element encodes a permutation of its rows (=columns).
+
+user_function automorphisms(IncidenceMatrix<Symmetric>) : c++ (include => "polymake/graph/compare.h");
+
+
+# @category Comparing
+# Find the automorphism group of the non-symmetric incidence matrix.
+# @param IncidenceMatrix<NonSymmetric> m
+# @return Array<Pair<Array<Int>,Array<Int>>> each element encodes a permutation of its rows (''first'') and columns (''second'').
+
+user_function automorphisms(IncidenceMatrix<NonSymmetric>) : c++ (include => "polymake/graph/compare.h");
+
+object Graph {
+
+# @notest  Rule defined "in stock" - currently without use
+rule NodePerm.PERMUTATION : NodePerm.ADJACENCY, ADJACENCY {
+   $this->NodePerm->PERMUTATION=find_node_permutation($this->NodePerm->ADJACENCY, $this->ADJACENCY);
+}
+weight 5.10;
+
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

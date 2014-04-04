@@ -1,0 +1,395 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+INCLUDE
+   morse_matching.rules
+
+# convert Int {+1,0,-1} to Bool {true,false,undef} to capture heuristical approaches
+sub ternary_to_bool($) {
+  my ($truth_value)=@_;
+  if ($truth_value>=0) { # arrived at a decision
+    return $truth_value;
+  } else {
+    return undef; # heuristics unsuccessful
+  }
+}
+
+object SimplicialComplex {
+
+rule FACETS, VERTEX_INDICES, N_VERTICES : INPUT_FACES {
+   faces_to_facets($this, $this->INPUT_FACES);
+}
+
+rule FACETS : HASSE_DIAGRAM {
+   $this->FACETS=facets_from_hasse_diagram($this->HASSE_DIAGRAM);
+}
+
+rule PURE, DIM : FACETS {
+    my $n=$this->FACETS->size;
+    my $pure=1; # let's be optimistic
+    my $sz=0;   # simplicial complex may be empty
+    if ($n) {
+	$sz=$this->FACETS->[0]->size;
+	for (my $i=1; $i<$n; ++$i) {
+	    my $s=$this->FACETS->[$i]->size();
+	    $pure= 0 if $sz!=$s;
+	    assign_max($sz,$s);
+	}
+    }
+    $this->PURE= $pure;
+    $this->DIM=  $sz-1;
+}
+weight 1.10;
+
+rule N_FACETS : FACETS {
+   $this->N_FACETS=$this->FACETS->size();
+}
+weight 0.10;
+
+rule N_MINIMAL_NON_FACES : MINIMAL_NON_FACES {
+   $this->N_MINIMAL_NON_FACES=$this->MINIMAL_NON_FACES->size();
+}
+weight 0.10;
+
+rule DIM : FACETS {
+   $this->DIM=$this->FACETS->[0]->size()-1;
+}
+precondition : PURE;
+weight 0.10;
+
+rule GRAPH.ADJACENCY : FACETS {
+   $this->GRAPH->ADJACENCY=vertex_graph($this->FACETS);
+}
+weight 2.10;
+
+rule DUAL_GRAPH.ADJACENCY : FACETS {
+   $this->DUAL_GRAPH->ADJACENCY=dual_graph($this->FACETS);
+}
+
+rule GRAPH.NODE_LABELS = VERTEX_LABELS;
+
+# methods for backward compatibility
+
+# Degrees of vertices in the [[GRAPH]].
+user_method VERTEX_DEGREES = GRAPH.NODE_DEGREES;
+
+# True if the [[GRAPH]] is a connected graph.
+user_method CONNECTED = GRAPH.CONNECTED;
+
+# True if the [[DUAL_GRAPH]] is a connected graph.
+user_method DUAL_CONNECTED = DUAL_GRAPH.CONNECTED;
+
+# The connected components of the [[GRAPH]], encoded as node sets. 
+user_method CONNECTED_COMPONENTS = GRAPH.CONNECTED_COMPONENTS;
+
+# The connected components of the [[DUAL_GRAPH]], encoded as node sets. 
+user_method DUAL_CONNECTED_COMPONENTS = DUAL_GRAPH.DUAL_CONNECTED_COMPONENTS;
+
+# Number of connected components of the [[GRAPH]].
+user_method N_CONNECTED_COMPONENTS = GRAPH.N_CONNECTED_COMPONENTS;
+
+# The maximal cliques of the [[GRAPH]], encoded as node sets.
+user_method MAX_CLIQUES = GRAPH.MAX_CLIQUES;
+
+# The maximal cliques of the [[DUAL_GRAPH]], encoded as node sets.
+user_method DUAL_MAX_CLIQUES = DUAL_GRAPH.MAX_CLIQUES;
+
+# Node connectivity of the [[GRAPH]], that is, the minimal number of nodes to be removed from the graph such that the result is disconnected.
+user_method CONNECTIVITY = GRAPH.CONNECTIVITY;
+
+# Node connectivity of the [[DUAL_GRAPH]]. Dual to [[CONNECTIVITY]].
+user_method DUAL_CONNECTIVITY = DUAL_GRAPH.CONNECTIVITY;
+
+# True if [[GRAPH]] is a __bipartite__. 
+user_method BIPARTITE = GRAPH.BIPARTITE;
+
+# True if [[DUAL_GRAPH]] is a __bipartite__.
+user_method DUAL_BIPARTITE = DUAL_GRAPH.BIPARTITE;
+
+# Difference of the black and white nodes if the [[GRAPH]] is [[BIPARTITE]]. Otherwise -1.
+user_method GRAPH_SIGNATURE = GRAPH.SIGNATURE;
+
+# Difference of the black and white nodes if the [[DUAL_GRAPH]] is [[BIPARTITE]]. Otherwise -1. 
+user_method DUAL_GRAPH_SIGNATURE = DUAL_GRAPH.SIGNATURE;
+
+
+rule FOLDABLE : PROJ_ORBITS, DIM {
+    $this->FOLDABLE = ($this->PROJ_ORBITS->size() == $this->DIM+1);
+}
+precondition : DUAL_GRAPH.CONNECTED;
+weight 0.10;
+
+rule F_VECTOR : FACETS, DIM, PURE {
+  $this->F_VECTOR=f_vector($this->FACETS,$this->DIM,$this->PURE);
+}
+weight 3.20;
+
+rule H_VECTOR : F_VECTOR {
+  $this->H_VECTOR=h_vector($this->F_VECTOR);
+}
+weight 1.00;
+
+rule SHELLING : H_VECTOR {
+  $this->SHELLING=shelling($this);
+}
+precondition : PURE;
+weight 5.00;
+
+rule SHELLABLE : SHELLING {
+  my @shell = @{$this->SHELLING};
+  my $firstface = $shell[0];
+  $this->SHELLABLE=@$firstface != 0;
+}
+precondition : PURE;
+
+rule F_VECTOR, F2_VECTOR : HASSE_DIAGRAM {
+   $this->F2_VECTOR=f2_vector($this->HASSE_DIAGRAM);
+   $this->F_VECTOR=$this->F2_VECTOR->diagonal;
+}
+
+rule EULER_CHARACTERISTIC : F_VECTOR {
+   my $euler_char = -1;
+   my $sign = 1;
+   my $d = $this->F_VECTOR->size();
+   for (my $i=0; $i<$d; ++$i) {
+       my $f=$this->F_VECTOR->[$i];
+       $euler_char += $sign*$f;
+       $sign = -$sign
+   }
+   $this->EULER_CHARACTERISTIC=$euler_char;
+}
+weight 0.40;
+
+rule N_VERTICES : FACETS {
+   my $n=0;
+   foreach my $f (@{$this->FACETS}) {
+      assign_max($n, $f->[-1]+1) if @$f;
+   }
+   $this->N_VERTICES=$n;
+}
+weight 1.10;
+
+
+rule default.homology: HOMOLOGY : FACETS {
+   $this->HOMOLOGY=homology($this->FACETS, 0);
+}
+weight 4.10;
+precondition : DIM { $this->DIM>=0 }
+
+rule COHOMOLOGY : FACETS {
+   $this->COHOMOLOGY=homology($this->FACETS, 1);
+}
+weight 4.10;
+precondition : DIM { $this->DIM>=0 }
+
+rule default.homology: HOMOLOGY, CYCLES : FACETS {
+   ($this->HOMOLOGY, $this->CYCLES) = homology_and_cycles($this->FACETS, 0);
+}
+weight 4.50;
+precondition : DIM { $this->DIM>=0 }
+
+rule COHOMOLOGY, COCYCLES : FACETS {
+   ($this->COHOMOLOGY, $this->COCYCLES) = homology_and_cycles($this->FACETS, 1);
+}
+weight 4.50;
+precondition : DIM { $this->DIM>=0 }
+
+rule INTERSECTION_FORM : CYCLES, COCYCLES {
+   intersection_form($this);
+}
+
+rule STIEFEL_WHITNEY : FACETS {
+   $this->STIEFEL_WHITNEY=stiefel_whitney($this->FACETS);
+}
+precondition : CLOSED_PSEUDO_MANIFOLD;
+weight 5.10;
+
+rule ODD_SUBCOMPLEX.FACETS : FACETS {
+   odd_complex($this);
+}
+precondition : PURE;
+weight 3.10;
+
+rule ODD_SUBCOMPLEX.INPUT_FACES : FACETS, BOUNDARY.INPUT_FACES {
+   odd_complex_of_manifold($this);
+}
+precondition : MANIFOLD;
+weight 2.10;
+
+rule SURFACE : DIM, GRAPH.CONNECTED, MANIFOLD {
+   $this->SURFACE= $this->GRAPH->CONNECTED && $this->MANIFOLD && $this->DIM==2;
+}
+weight 0.10;
+
+rule GENUS : ORIENTED_PSEUDO_MANIFOLD, EULER_CHARACTERISTIC {
+  my $euler_char = $this->EULER_CHARACTERISTIC;
+  if ($this->ORIENTED_PSEUDO_MANIFOLD) {
+    $this->GENUS = (1-$euler_char)/2;
+  } else {
+    $this->GENUS = 1-$euler_char;
+  }
+}
+precondition : SURFACE;
+precondition : CLOSED_PSEUDO_MANIFOLD;
+weight 0.20;
+
+rule MANIFOLD : { $this->MANIFOLD=1; }
+precondition : BALL | SPHERE;
+weight 0.10;
+
+# deterministic
+rule MANIFOLD : FACETS, DIM, N_VERTICES {
+   $this->MANIFOLD=ternary_to_bool(is_manifold($this));
+}
+precondition : PURE;
+precondition : DIM { $this->DIM < 4 }
+weight 4.10;
+
+# heuristics
+rule MANIFOLD : HASSE_DIAGRAM, CLOSED_PSEUDO_MANIFOLD {
+   $this->MANIFOLD=ternary_to_bool(is_manifold_h($this));
+}
+precondition : PSEUDO_MANIFOLD;
+weight 4.50;
+
+rule PSEUDO_MANIFOLD : {  $this->PSEUDO_MANIFOLD=1; }
+precondition : MANIFOLD | CLOSED_PSEUDO_MANIFOLD | ORIENTED_PSEUDO_MANIFOLD;
+weight 0.10;
+
+rule PSEUDO_MANIFOLD : HASSE_DIAGRAM {
+   is_pseudo_manifold($this);
+}
+precondition : PURE;
+weight 1.50;
+
+rule MANIFOLD, PSEUDO_MANIFOLD : {
+   $this->MANIFOLD=0;
+   $this->PSEUDO_MANIFOLD=0;
+}
+precondition : !PURE;
+weight 0.10;
+
+rule CLOSED_PSEUDO_MANIFOLD : HASSE_DIAGRAM {
+   is_closed_pseudo_manifold($this);
+}
+precondition : PURE;
+weight 1.50;
+
+rule CLOSED_PSEUDO_MANIFOLD : {
+   $this->CLOSED_PSEUDO_MANIFOLD=0;
+}
+precondition : !PURE;
+weight 0.10;
+
+rule ORIENTED_PSEUDO_MANIFOLD, ORIENTATION : FACETS, DUAL_GRAPH, PSEUDO_MANIFOLD {
+   orientation($this);
+}
+
+rule BALL : FACETS, DIM, N_VERTICES, HASSE_DIAGRAM {
+   $this->BALL=ternary_to_bool(is_ball_or_sphere($this,0));
+}
+precondition : PSEUDO_MANIFOLD;
+precondition : !CLOSED_PSEUDO_MANIFOLD;
+weight 4.10;
+
+rule BALL : {
+   $this->BALL=0;
+}
+precondition : CLOSED_PSEUDO_MANIFOLD;
+weight 0.10;
+
+rule SPHERE : FACETS, DIM, N_VERTICES, HASSE_DIAGRAM {
+   $this->SPHERE=ternary_to_bool(is_ball_or_sphere($this,1));
+}
+precondition : CLOSED_PSEUDO_MANIFOLD;
+weight 4.10;
+
+rule SPHERE : {
+   $this->SPHERE=0;
+}
+precondition : !CLOSED_PSEUDO_MANIFOLD;
+weight 0.10;
+
+
+rule HASSE_DIAGRAM : FACETS, PURE, DIM {
+   hasse_diagram($this);
+}
+weight 4.10;
+
+
+rule MINIMAL_NON_FACES : HASSE_DIAGRAM {
+   $this->MINIMAL_NON_FACES=minimal_non_faces($this->HASSE_DIAGRAM);
+}
+weight 4.10 : DIM { $this->DIM <= 10 ? [0,0] : [4,10] }
+
+
+# This implements an old algorithm described by Lawler:
+# "Covering problems: duality relations and a new method of solution"
+# SIAM J. Appl. Math., Vol. 14, No. 5, 1966
+#
+# See also Chapter 2 of "Hypergraphs", C. Berge, North-Holland, Amsterdam, 1989
+
+rule MINIMAL_NON_FACES : FACETS, DIM, N_VERTICES {
+   $this->MINIMAL_NON_FACES=lawler_minimal_non_faces($this->FACETS, $this->N_VERTICES);
+}
+weight 4.10 : DIM { $this->DIM > 10 ? [0,0] : [4,10] }
+
+
+rule LOCALLY_STRONGLY_CONNECTED : {
+   $this->LOCALLY_STRONGLY_CONNECTED=1;
+}
+precondition : MANIFOLD;
+weight 0.10;
+
+rule LOCALLY_STRONGLY_CONNECTED : HASSE_DIAGRAM {
+   $this->LOCALLY_STRONGLY_CONNECTED=is_locally_strongly_connected($this);
+}
+weight 2.10;
+
+rule BOUNDARY.INPUT_FACES : HASSE_DIAGRAM {
+   $this->BOUNDARY->INPUT_FACES=boundary_of_pseudo_manifold($this->HASSE_DIAGRAM);
+}
+precondition : PSEUDO_MANIFOLD;
+weight 1.10;
+
+rule VERTEX_LABELS : N_VERTICES {
+   my @labels = (0..$this->N_VERTICES-1);
+   $this->VERTEX_LABELS="@labels";
+}
+weight 0.10;
+
+rule PROJ_ORBITS, PROJ_DICTIONARY : N_VERTICES, FACETS, DUAL_GRAPH.ADJACENCY {
+   ($this->PROJ_ORBITS, $this->PROJ_DICTIONARY)=projectivities($this);
+}
+precondition : DUAL_GRAPH.CONNECTED;
+weight 1.10;
+
+
+}
+
+user_function barycentric_subdivision($ { relabel => 1, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", geometric_realization=>0, coord_section=>"VERTICES" }) {
+    barycentric_subdivision_impl(@_);
+}
+
+user_function iterated_barycentric_subdivision($ $ { relabel => 1, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", geometric_realization=>0, coord_section=>"VERTICES" }) {
+  iterated_barycentric_subdivision_impl(@_);
+}
+
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

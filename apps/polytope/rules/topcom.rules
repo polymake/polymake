@@ -1,0 +1,203 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+CREDIT topcom
+  TOPCOM is a package for computing Triangulations Of Point Configurations and Oriented Matroids.
+  Copyright by Jörg Rambau.
+  http://www.rambau.wm.uni-bayreuth.de/TOPCOM/
+
+# path to the programs from the TOPCOM package
+custom $topcom;
+
+CONFIGURE {
+   $topcom =~ s{(?<=\S)$}{/points2chiro};
+   my $path=find_program($topcom, "points2chiro", { prompt => "the `points2chiro' program from the TOPCOM package" }) or return;
+   ($topcom) = $path =~ $directory_re;
+}
+
+require Polymake::ProgramPipe;
+
+# @category Triangulation and volume
+# Use the [[wiki:external_software#TOPCOM]] package for computing polytope triangulations.
+
+label topcom
+
+sub call_topcom_chiro($) {
+   my $P=new ProgramPipe($DebugLevel ? () : ("2>/dev/null"), "$topcom/points2chiro", "--nosymmetries");
+   # TOPCOM expects the homogeneous coordinate at the last position in the vector
+   print $P "[", join(",", map { "[".join(",", @{$_->slice(1)}, $_->[0])."]" } @{$_[0]}), "][]\n";
+   local $/;
+   local $_=<$P>;
+   s/\[\]\n$//s;
+   $_
+}
+
+sub call_topcom_co_or_circuits {
+   my $P=new ProgramPipe($DebugLevel ? () : ("2>/dev/null"), "$_[1]");
+   print $P "$_[0]\n";
+   local $_;
+   <$P>; # dimensions
+   <$P>; # opening bracket
+   my @circuits=();
+   while (<$P>) {
+     if ( $_ =~ /\{/ ) {  # not the closing bracket
+       chomp;
+       my $pair=new Pair<Set<Int>,Set<Int>>;
+       my @e =( split /\},\{/, $_ );
+       $_=$e[0];
+       s/\{//g; s/\[//g; s/\]//g; s/\}//g;
+       my @x=( split /,/, $_ );
+       $pair->first=\@x;
+
+       $_=$e[1];
+       s/\{//g; s/\[//g; s/\]//g; s/\}//g;
+       @x=( split /,/, $_ );                 #/
+       $pair->second=\@x;
+
+       push @circuits, $pair;
+     }
+   }
+   new Set<Pair<Set,Set>>(\@circuits);
+}
+
+sub call_topcom_circuits($)
+{
+   call_topcom_co_or_circuits($_[0], "$topcom/chiro2circuits");
+}
+
+sub call_topcom_cocircuits($)
+{
+   call_topcom_co_or_circuits($_[0], "$topcom/chiro2cocircuits");
+}
+
+sub call_topcom_triang($) {
+   my $P=new ProgramPipe($DebugLevel ? () : ("2>/dev/null"), "$topcom/chiro2placingtriang");
+   print $P $_[0], "\n";
+   local $/;
+   local $_=<$P>;
+   chomp;
+   s/^\{//; s/\}$//; s/\},\{/}\n{/g; tr/,/ /;
+   [ split /\n/, $_ ];
+}
+
+sub call_topcom_triangs($) {
+   my $P=new ProgramPipe($DebugLevel ? () : ("2>/dev/null"), "$topcom/chiro2finetriangs");
+   print $P $_[0], "\n";
+   local $_;
+   my @triangs=();
+   while (<$P>) {
+     s/T.*://; s/\];//; s/^\{//; s/\}$//; s/\},\{/}\n{/g; tr/,/ /;
+     my @e =( split /\n/, $_ );     
+     push @triangs, \@e;
+   }
+   \@triangs;
+}
+
+
+sub call_topcom_allfinetriangs($) {
+   my $P=new ProgramPipe($DebugLevel ? () : ("2>/dev/null"), "$topcom/chiro2allfinetriangs");
+   print $P $_[0], "\n";
+   local $_;
+   my @triangs=();
+   while (<$P>) {
+     s/T.*://; s/\];//; s/^\{//; s/\}$//; s/\},\{/}\n{/g; tr/,/ /;
+     my @e =( split /\n/, $_ );     
+     push @triangs, \@e;
+   }
+   \@triangs;
+}
+
+
+object Polytope {
+
+rule CHIROTOPE : VERTICES {
+   $this->CHIROTOPE=call_topcom_chiro($this->VERTICES);
+}
+weight 6.10;
+
+
+rule topcom.triangulation: TRIANGULATION : CHIROTOPE {
+    my $facets = new Array<Set<Int>>(call_topcom_triang($this->CHIROTOPE));
+    my $triang = new topaz::GeometricSimplicialComplex(FACETS=>$facets);
+    $this->TRIANGULATION = $triang;
+}
+
+}
+
+# @category Triangulations, subdivisions and volume
+# Compute all triangulations of a point configuration via its chirotope.
+# @param PointConfiguration pc input point configuration
+# @return Array<Array<Set<Int>>>
+user_function topcom_all_triangulations {
+    my $self=shift;
+    return new Array<Array<Set<Int>>>(call_topcom_allfinetriangs($self->CHIROTOPE));
+}
+
+object PointConfiguration {
+
+
+rule CHIROTOPE : POINTS {
+   $this->CHIROTOPE=call_topcom_chiro($this->POINTS);
+}
+weight 6.10;
+precondition : !MULTIPLE_POINTS;
+
+rule topcom.circuits : CIRCUITS : CHIROTOPE {
+   $this->CIRCUITS=call_topcom_circuits($this->CHIROTOPE);
+}
+weight 6.10;
+precondition : !MULTIPLE_POINTS;
+
+rule topcom.cocircuits : COCIRCUITS : CHIROTOPE {
+   $this->COCIRCUITS=call_topcom_cocircuits($this->CHIROTOPE);
+}
+weight 6.10;
+precondition : !MULTIPLE_POINTS;
+
+rule topcom.triangulation: TRIANGULATION : CHIROTOPE {
+    my $facets = new Array<Set<Int>>(call_topcom_triang($this->CHIROTOPE));
+    my $triang = new topaz::GeometricSimplicialComplex(FACETS=>$facets);
+    $this->TRIANGULATION = $triang;
+}
+precondition : !MULTIPLE_POINTS;
+
+}
+
+# @category Triangulations, subdivisions and volume
+# returns all sets of points that form a 
+# circuit with the given list of points
+# @param Polytope or PointConfiguration P
+# @param Set<Int> S subset of point indices
+# @return Set<Set<Int>> A list of point sets that intersect positively the set S
+user_function positive_circuits {
+   my $self=shift;
+   my $set=new Set<Int>(num_sorted_uniq(sort {$b <=> $a} @_));
+   my $pos_circuits = new Set<Set<Int>>;
+   foreach (@{$self->CIRCUITS}) {
+     if ( $_->first == $set ) {
+	$pos_circuits += $_->second;
+     } else {
+       if ( $_->second == $set ) {
+        $pos_circuits += $_->first;
+       }
+     }
+   }
+   return $pos_circuits;
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# End:

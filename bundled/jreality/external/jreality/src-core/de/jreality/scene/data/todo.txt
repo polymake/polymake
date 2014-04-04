@@ -1,0 +1,8 @@
+WISHLIST
+
+- investigate problems
+- default storagemodel in dl
+- avoid copies in geometries
+- how to write into a datalist?
+-- cheep datalist
+-- evaluate math with datalists

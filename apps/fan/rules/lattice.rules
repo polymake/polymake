@@ -1,0 +1,96 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+  
+object PolyhedralFan<Rational> {
+
+# @category Toric Varieties
+# A fan is [[Q_GORENSTEIN]] if each maximal cone is a [[polytope::Cone<Rational>::Q_GORENSTEIN_CONE]]
+  property Q_GORENSTEIN : Bool;
+
+# @category Toric Varieties
+# If a fan is [[Q_GORENSTEIN]], then its [[Q_GORENSTEIN_INDEX]] is the least common multiple of the Q-Gorenstein indices of its maximal cones. Otherwise [[Q_GORENSTEIN_INDEX]] is undefined.
+  property Q_GORENSTEIN_INDEX : Int;
+
+# @category Toric Varieties
+# A fan is [[GORENSTEIN]] if it is [[Q_GORENSTEIN]] with [[Q_GORENSTEIN_INDEX]] equal to one
+  property GORENSTEIN : Bool;
+
+# @category Toric Varieties
+# A fan is smooth if all cones of the fan are smooth.
+  property SMOOTH_FAN : Bool;
+
+  rule Q_GORENSTEIN, Q_GORENSTEIN_INDEX : RAYS, MAXIMAL_CONES, FAN_DIM {
+
+    my $r = 1;
+    foreach (@{$this->MAXIMAL_CONES}) {
+      my $g = polytope::q_gorenstein_cone($this->RAYS->minor($_,All),$this->FAN_DIM);
+      if ( !$g->first ) { 
+	  $this->Q_GORENSTEIN = 0; 
+	  return; 
+      } else {
+        $r = lcm($r, $g->second);
+      }
+    }
+
+    $this->Q_GORENSTEIN = 1;
+    $this->Q_GORENSTEIN_INDEX = $r;
+  }
+  weight 1.10;
+
+  rule GORENSTEIN : Q_GORENSTEIN, Q_GORENSTEIN_INDEX {
+
+    if ( $this->Q_GORENSTEIN && $this->Q_GORENSTEIN_INDEX == 1 ) {
+        $this->GORENSTEIN = 1;
+	return;
+      }
+    $this->GORENSTEIN = 0;
+  }
+  weight 0.10;
+
+  rule GORENSTEIN, Q_GORENSTEIN, Q_GORENSTEIN_INDEX : {
+    $this->GORENSTEIN = 1;
+    $this->Q_GORENSTEIN = 1;
+    $this->Q_GORENSTEIN_INDEX = 1;
+  }
+  precondition : SMOOTH_FAN;
+  weight 0.10;
+
+  rule SMOOTH_FAN : RAYS, MAXIMAL_CONES, SIMPLICIAL {
+    if ( !$this->SIMPLICIAL ) {
+      $this->SMOOTH_FAN = 0;
+    } else {
+      my $rays = primitive($this->RAYS);
+      my $smooth_fan = 1;
+      foreach (@{$this->MAXIMAL_CONES}) {
+	my $g = 0;
+	my $m = $rays->minor($_,All);
+	foreach (all_subsets_of_k($m->rows,0..$m->cols-1)) {
+	  $g = gcd($g,abs(det($m->minor(All,$_))));
+	  last if ($g == 1);
+	}
+	$smooth_fan = 0, last if $g != 1;
+      }
+
+      $this->SMOOTH_FAN = $smooth_fan;
+    }
+  }
+  weight 1.10;
+
+}
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:
+

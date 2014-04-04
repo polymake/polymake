@@ -1,0 +1,82 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+object Polytope {
+
+# @category Polarization
+# Valid strict inequality for all affine points of the polyhedron.
+
+property FAR_HYPERPLANE : Vector<Scalar>;
+
+
+rule REL_INT_POINT : CONE_AMBIENT_DIM {
+   $this->REL_INT_POINT=unit_vector<Scalar>($this->CONE_AMBIENT_DIM,0);
+}
+precondition : CENTERED;
+weight 0.10;
+
+rule FAR_HYPERPLANE : CONE_AMBIENT_DIM {
+   my $dim=$this->CONE_AMBIENT_DIM-1;	
+   $this->FAR_HYPERPLANE= "1".(" 0" x $dim);
+}
+weight 0.10;
+
+rule REL_INT_POINT : VERTEX_BARYCENTER {
+   $this->REL_INT_POINT=$this->VERTEX_BARYCENTER;
+}
+precondition : BOUNDED;
+weight 0.10;
+
+
+rule REL_INT_POINT : CENTROID {
+   $this->REL_INT_POINT=$this->CENTROID;
+}
+precondition : BOUNDED;
+weight 0.10;
+
+rule REL_INT_POINT : VERTICES | POINTS {
+   $this->REL_INT_POINT=inner_point($this->VERTICES | POINTS);
+}
+
+rule FAR_HYPERPLANE : FACETS | INEQUALITIES {
+   $this->FAR_HYPERPLANE=inner_point($this->FACETS | INEQUALITIES);
+}
+
+rule CONE_DIM, REL_INT_POINT : FACETS | INEQUALITIES, ONE_VERTEX, BOUNDED {
+   rel_int_point($this);
+}
+weight 3.25;
+
+rule REL_INT_POINT : FACETS | INEQUALITIES, LINEALITY_SPACE {
+   my $p;
+   if (defined (my $AH = $this->lookup("AFFINE_HULL | EQUATIONS"))) {
+      $p=new Polytope(INEQUALITIES=>$this->FACETS | INEQUALITIES,EQUATIONS=>$this->LINEALITY_SPACE/$AH);
+   }
+   else {
+      $p=new Polytope(INEQUALITIES=>$this->FACETS | INEQUALITIES,EQUATIONS=>$this->LINEALITY_SPACE);
+   }
+   $this->REL_INT_POINT = $p->REL_INT_POINT;
+}
+precondition : !POINTED;
+weight 3.40;
+
+}
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

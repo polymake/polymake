@@ -1,0 +1,262 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+###################################################################
+# subs:
+# - getContainedPoints($p, $points)
+# - getContainedPointsIndices($p, $points)
+# - getContainedOrbReps($rep_index, $group, $lp_reps, $selection)
+# - getIndexFromMatrix(Vector vec, Matrix mat) 
+# - getArrayNumberFromArrayOfSets(Int $index, Array $arrOfSets) -> Int
+# - getLexMin($mat)
+# user_functions:
+# - nestedOPGraph($gen_point, $points, $lattice_points, $group)
+# - ortho_project($p)
+# - vlabels(Matrix vertices, Bool wo_zero)
+###################################################################
+
+
+sub getContainedPoints {
+    my ($p, $points) = @_;
+    my $indices = new Set<Int>();
+    for ( my $i=0; $i<$points->rows; ++$i ) {
+	my @res = separating_hyperplane($points->[$i], $p->VERTICES);
+	if ( !$res[0] ) { # points->row(i) is contained in $p
+	    $indices += $i;
+	}
+    }
+    my $containedPoints = new Matrix( $points->minor($indices, All) );
+    return $containedPoints;
+}
+
+sub getContainedPointsIndices {
+    my ($p, $points) = @_;
+    my $indices = new Set<Int>();
+    for ( my $i=0; $i<$points->rows; ++$i ) {
+	my @res = separating_hyperplane($points->[$i], $p->VERTICES);
+	if ( !$res[0] ) { # points->row(i) is contained in $p
+	    $indices += $i;
+	}
+    }
+    return $indices;
+}
+
+
+# without the point //rep// itself!
+sub getContainedOrbReps {
+    my ($rep_index, $group, $lp_reps, $selection) = @_;
+    my $p = orbit_polytope($lp_reps->[$rep_index], $group); 
+    $p->VERTICES; # just to help the scheduler
+    my $indices = new Set<Int>();
+
+    foreach my $sel ( @$selection ) { 
+	if ( $rep_index != $sel ) { # exclude rep from output
+	    my @res = separating_hyperplane($lp_reps->[$sel], $p->VERTICES);
+	    if ( !$res[0] ) { # lp_reps->row(sel) cannot be separated from $p
+		$indices += $sel;
+	    }
+	}
+    }
+    return $indices;
+}
+
+sub getIndexFromMatrix {
+    my ($vec, $mat) = @_;
+    for ( my $i = 0; $i < $mat->rows; ++$i ) {
+	if ( $vec == $mat->row($i) ) {
+	    return $i;
+	}
+    }
+    return -1;
+}
+
+sub getLexMin {
+    my ($mat) = @_;
+    my @rows = map {$mat->row($_)} 0..$mat->rows-1;
+    my @sorted = sort @rows;
+    return new Vector($sorted[0]);
+}
+
+sub getArrayNumberFromArrayOfSets {
+    my ($index, $arrOfSets) = @_;
+    my $found = 0;
+
+    for ( my $i=0; $i<$arrOfSets->size; ++$i ) {
+	my $set = $arrOfSets->[$i];  
+	if ( $set->contains($index) ) {
+	    $found = 1;
+	    return $i;
+	}
+    }
+
+    if ( !$found ) {
+	croak("The index $index was not contained in the array of sets");
+    }
+
+}
+
+# @category Symmetry
+# Constructs the NOP-graph of an orbit polytope.
+# It is used by the rule for the [[NOP_GRAPH]].
+# @param Vector gen_point the generating point
+# @param Matrix points the vertices of the orbit polytope
+# @param Matrix lattice_points the lattice points of the orbit polytope
+# @param group::GroupOfPolytope group the generating group
+# @param Bool verbose print out additional information
+# @return PerlArray ($Graph, $lp_reps, $minInStartOrbit, \@core_point_reps, $CPindices)
+
+user_function nestedOPGraph (Vector, Matrix, Matrix, group::GroupOfPolytope, $){
+    my ($gen_point, $points, $lattice_points, $group, $verbose) = @_;
+    
+    my @core_point_reps = ();
+
+#    # construct orbit polytope orb_\Gamma($gen_point)
+#    my $p = orbitPolytope($gen_point,$group); 
+#    $p = new LatticePolytope(VERTICES=>$p->POINTS,LINEALITY_SPACE=>[]);
+#    #$p->VERTICES; # just to help the scheduler
+#    prefer_now "normaliz2"; $p->LATTICE_POINTS;
+#    my $lattice_points=$p->LATTICE_POINTS;
+
+
+    my $minInStartOrbit = getLexMin( $points ); 
+    # compute orbit decomposition of lattice points in orb_\Gamma($gen_point)
+    my $orbit_decomp = group::orbit_coord_action($group,$lattice_points);
+
+    my $CPindices=new Set<Int>();
+    if ($orbit_decomp->size == 1) {
+	if ($verbose) {
+	    print "The starting point [$gen_point] is a core point!\n";
+	}
+	$CPindices += 0;
+	push(@core_point_reps, $gen_point);
+    }
+
+    # filter out starting point
+    my $index=getIndexFromMatrix($minInStartOrbit,$lattice_points);
+    my $orbOfStart = getArrayNumberFromArrayOfSets( $index, $orbit_decomp );
+ 
+    my @permsOfStart = map{$lattice_points->row($_)} @{$orbit_decomp->[$orbOfStart]};
+    my $permsOfStartMat = new Matrix(\@permsOfStart);
+    #print $orbOfStart.": ".$permsOfStartMat."\n";
+
+    # take any(!) representative per orbit except for orbit of starting point
+    my @rep_ind = map{ if($_ != $orbOfStart) { @{$orbit_decomp->[$_]}[0]; } else {} } 0..$orbit_decomp->size-1;
+    my $rep_ind = new Set<Int>(\@rep_ind);
+    my $lp_reps = new Matrix( vector2row( convert_to<Rational>($minInStartOrbit) ) / ( new Matrix( $lattice_points->minor($rep_ind, All) ) ) ); #$start at row 0
+    if ($verbose) {
+	print "All lattice point representatives in orb([$gen_point]):\n".$lp_reps."\n";
+    }
+
+    # fill graph
+    my $graph=new props::Graph<Directed>();
+    $graph->add_node; # added node for start
+    for ( my $i=1; $i<$lp_reps->rows; ++$i) { # add edges to all lattice points inside orb\Gamma(start); skip $start at row 0
+	$graph->add_node; # the node has the same number as the corresponding row in $lp_reps
+	$graph->edge(0, $i); # edges reflect inclusions between orbit polytopes
+    }
+
+
+    for ( my $i=1; $i<$lp_reps->rows; ++$i) { # index-based! Be careful: number in graph must coincide with row number in lp_reps!
+
+	my $selection = new Set<Int>(0..$lp_reps->rows-1);
+	my $containedOrbReps = getContainedOrbReps($i, $group, $lp_reps, $selection);
+	
+	if ($containedOrbReps->size == 0) {
+	    my $cp = $lp_reps->[$i];
+	    if ($verbose) {
+		print "[$cp] is a core point!\n";
+	    }
+	    $CPindices += $i;
+	    push(@core_point_reps, $cp);
+	} else {
+
+	    if ($verbose) {
+		print "Representatives of contained orbits w.r.t. [($lp_reps->[$i])] : ".$containedOrbReps."\n";
+	    }
+
+	    foreach (@$containedOrbReps) {
+		$graph->edge($i, $_); # add edge from current node to contained reps
+	    }
+	}
+
+
+    }
+
+    my @labels = map{ sprintf($lp_reps->[$_]) } 0..$lp_reps->rows-1;
+    my $Graph = new Graph<Directed>(ADJACENCY=>$graph, NODE_LABELS=>\@labels);
+    my $sliced_minstart=$minInStartOrbit->slice(1,$minInStartOrbit->dim-1);
+    my $groupname = $group->name;  
+    #$Graph->name="Orbit-Polytope-Graph of [$sliced_minstart] w.r.t. Group $groupname";
+    $Graph->name="NOP-graph of [$gen_point] ([$sliced_minstart]) w.r.t. Group $groupname";
+    return ($Graph, $lp_reps, $minInStartOrbit, \@core_point_reps, $CPindices);
+
+}
+
+
+
+
+
+# @category Symmetry
+# Projects a symmetric polytope in R4 cap H<sub>1,k</sub> to R3.
+# (See also the polymake extension 'tropmat' by S. Horn.)
+# @param Polytope p the symmetric polytope to be projected
+# @return Polytope the image of //p// in R3
+
+user_function ortho_project (Polytope) {
+	my $poly = $_[0];
+ 	if ($poly->AMBIENT_DIM != 4) { 
+	   die "ortho_poly: the ambient dimension of the given polytope is not equal to 4!"
+	}
+	my @nvs = ();
+	for (my $i=0; $i<$poly->N_VERTICES; ++$i) {
+           my $v = $poly->VERTICES->[$i];
+           my $nv = new Vector(4);
+	   $nv->[0]=1;
+	   for (my $j=1; $j<4; ++$j) {
+    		$nv->[$j] = $v->[$j] - 1/3*$v->[4];
+		push(@nvs,$nv);
+	   }
+	}
+	
+	my $r = new polytope::Polytope(POINTS=>\@nvs);
+	return $r;
+}
+
+
+# @category Visualization
+# Creates vertex labels for visualization from the //vertices// 
+# of the polytope. The parameter //wo_zero// decides whether
+# the entry at position 0 (homogenizing coordinate) is omitted (1)
+# or included (0) in the label string." 
+# @param Matrix vertices the vertices of the polytope
+# @param Bool wo_zero includes (0) or omits (1) the entry at position 0
+# @return arrayref a reference to an array of vertex label strings
+
+user_function vlabels (Matrix,$) {
+    my ($vertices, $wo_zero) = @_;
+    my @vlabels=();
+    if ($wo_zero) {
+	@vlabels = map {"(".join(",",@{$vertices->[$_]->slice(1,$vertices->cols-1)}).")"} 0..$vertices->rows-1;
+    } else {
+	@vlabels = map {"(".join(",",@{$vertices->[$_]}).")"} 0..$vertices->rows-1;	
+    }
+    return \@vlabels;
+}
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:4
+# End:

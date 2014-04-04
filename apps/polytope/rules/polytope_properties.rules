@@ -1,0 +1,595 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+object Polytope {
+
+file_suffix poly
+
+# @category Input property
+# Points such that the polyhedron is their convex hull.
+# Redundancies are allowed.
+# The vector (x<sub>0</sub>, x<sub>1</sub>, ... x<sub>d</sub>) represents a point in d-space given in homogeneous coordinates.
+# Affine points are identified by x<sub>0</sub> > 0.
+# Points with x<sub>0</sub> = 0 can be interpreted as rays.
+#
+# polymake automatically normalizes each coordinate vector, dividing them by the first non-zero element.
+# The clients and rule subroutines can always assume that x<sub>0</sub> is either 0 or 1.
+# All vectors in this section must be non-zero.
+# Dual to [[INEQUALITIES]].
+#
+# Input section only.  Ask for [[VERTICES]] if you want to compute a V-representation from an H-representation.
+
+property POINTS = override INPUT_RAYS;
+
+
+# @category Geometry
+# Vertices of the polyhedron. No redundancies are allowed.
+# All vectors in this section must be non-zero.
+# The coordinates are normalized the same way as [[POINTS]]. Dual to [[FACETS]].
+# This section is empty if and only if the polytope is empty. 
+# The property [[VERTICES]] appears only in conjunction with the property [[LINEALITY_SPACE]].
+# The specification of the property [[VERTICES]] requires the specification of [[LINEALITY_SPACE]], and vice versa.
+
+property VERTICES = override RAYS;
+
+
+# @topic objects/Polytope/properties/Input property/INEQUALITIES
+# Inequalities that describe half-spaces such that the polyhedron is their intersection.
+# Redundancies are allowed.  Dual to [[POINTS]].
+#
+# A vector (A<sub>0</sub>, A<sub>1</sub>, ..., A<sub>d</sub>) defines the
+# (closed affine) half-space of points (1, x<sub>1</sub>, ..., x<sub>d</sub>) such that
+# A<sub>0</sub> + A<sub>1</sub> x<sub>1</sub> + ... + A<sub>d</sub> x<sub>d</sub> >= 0.
+#
+# Input section only.  Ask for [[FACETS]] and [[AFFINE_HULL]] if you want to compute an H-representation
+# from a V-representation.
+
+
+# @topic objects/Polytope/properties/Input property/EQUATIONS
+# Equations that hold for all points of the polyhedron.
+#
+# A vector (A<sub>0</sub>, A<sub>1</sub>, ..., A<sub>d</sub>) describes the hyperplane
+# of all points (1, x<sub>1</sub>, ..., x<sub>d</sub>) such that A<sub>0</sub> + A<sub>1</sub> x<sub>1</sub> + ... + A<sub>d</sub> x<sub>d</sub> = 0.
+# All vectors in this section must be non-zero.
+#
+# Input section only.  Ask for [[AFFINE_HULL]] if you want to see an irredundant description of the affine span.
+
+# @category Geometry 
+# Dual basis of the affine hull of the polyhedron. 
+# The property [[AFFINE_HULL]] appears only in conjunction with the property [[FACETS]].
+# The specification of the property [[FACETS]] requires the specification of [[AFFINE_HULL]], and vice versa.
+
+property AFFINE_HULL = override LINEAR_SPAN; 
+
+
+method canonical_ineq {
+   add_extra_polytope_ineq(@_);
+}
+
+
+# @category Geometry
+# The i-th row is the normal vector of a hyperplane separating the i-th vertex from the others.
+# This property is a by-product of redundant point elimination algorithm.
+# All vectors in this section must be non-zero.
+
+property VERTEX_NORMALS = override RAY_SEPARATORS;
+
+# @category Geometry
+# Some point belonging to the polyhedron.
+
+property VALID_POINT : Vector<Scalar> {
+   sub canonical { &canonicalize_rays; }
+}
+
+# @category Geometry
+# True if the polyhedron is not empty.
+
+property FEASIBLE : Bool;
+
+# @topic objects/Polytope/properties/Geometry/CONE_DIM
+# One more than the dimension of the affine hull of the polyhedron 
+#   = one more than the dimension of the polyhedron.
+#   = dimension of the homogenization of the polyhedron 
+# If the polytope is given purely combinatorially, this is the dimension of a minimal embedding space
+
+# @topic objects/Polytope/properties/Geometry/CONE_AMBIENT_DIM
+# One more than the dimension of the space in which the polyhedron lives.
+#   = dimension of the space in which the homogenization of the polyhedron lives
+
+# @topic  objects/Polytope/properties/Geometry/POINTED
+# True if the polyhedron does not contain an affine line.
+
+# @category Geometry
+# A vertex of a pointed polyhedron.
+property ONE_VERTEX = override ONE_RAY;
+
+
+# @category Geometry
+# True if and only if [[LINEALITY_SPACE]] trivial and [[FAR_FACE]] is trivial.
+property BOUNDED : Bool;
+
+
+# @category Geometry
+# True if (1, 0, 0, ...) is in the relative interior.
+# If full-dimensional then polar to [[BOUNDED]].
+property CENTERED : Bool;
+
+
+# @category Geometry
+# True if (1, 0, 0, ...) is contained (possibly in the boundary).
+property WEAKLY_CENTERED : Bool;
+
+
+# @category Geometry
+# The following is defined for //CENTERED// polytopes only:
+# A facet is special if the cone over that facet with the origin as the apex contains the //VERTEX_BARYCENTER//.
+# Motivated by Obro's work on Fano polytopes.
+property SPECIAL_FACETS : Set;
+
+
+# @category Geometry
+# True if P = -P.
+property CENTRALLY_SYMMETRIC : Bool;
+
+# @category Geometry
+# The permutation induced by the central symmetry, if present.
+property CS_PERMUTATION : Array<Int>;
+
+
+# @category Geometry
+# Number of [[POINTS]].
+property N_POINTS = override N_INPUT_RAYS;
+
+
+# @category Combinatorics
+# Number of [[VERTICES]].
+
+property N_VERTICES = override N_RAYS;
+
+
+# @category Combinatorics
+# Number of pairs of incident vertices and facets.
+
+property N_VERTEX_FACET_INC = override N_RAY_FACET_INC;
+
+
+# @category Combinatorics
+# Vertex-facet incidence matrix, with rows corresponding to facets and columns
+# to vertices. Vertices and facets are numbered from 0 to [[N_VERTICES]]-1 rsp.
+# [[N_FACETS]]-1, according to their order in [[VERTICES]] rsp. [[FACETS]].
+# 
+# This property is at the core of all combinatorial properties.  It has the following semantics:
+# (1) The combinatorics of an unbounded and pointed polyhedron is defined to be the combinatorics
+#     of the projective closure.
+# (2) The combiantorics of an unbounded polyhedron which is not pointed is defined to be the
+#     combinatorics of the quotient modulo the lineality space.
+# Therefore: [[VERTICES_IN_FACETS]] and each other property which is grouped under "Combinatorics"
+# always refers to some polytope.
+
+property VERTICES_IN_FACETS = override RAYS_IN_FACETS;
+
+
+# @category Geometry
+# Similar to [[VERTICES_IN_FACETS]], but with columns corresponding to [[POINTS]] instead of [[VERTICES]].
+# This property is a byproduct of convex hull computation algorithms.
+# It is discarded as soon as [[VERTICES_IN_FACETS]] is computed.
+
+property POINTS_IN_FACETS = override INPUT_RAYS_IN_FACETS;
+
+
+
+# @category Combinatorics
+# transposed [[VERTICES_IN_FACETS]]
+# Notice that this is a temporary property; it will not be stored in any file.
+
+property FACETS_THRU_VERTICES = override FACETS_THRU_RAYS;
+
+# @category Geometry
+# similar to [[FACETS_THRU_VERTICES]], but with [[POINTS]] instead of [[VERTICES]]
+# Notice that this is a temporary property; it will not be stored in any file.
+
+property FACETS_THRU_POINTS = override FACETS_THRU_INPUT_RAYS;
+
+# @category Geometry
+# Similar to [[VERTICES_IN_FACETS]], but with rows corresponding to [[INEQUALITIES]] instead of [[FACETS]].
+# This property is a byproduct of convex hull computation algorithms.
+# It is discarded as soon as [[VERTICES_IN_FACETS]] is computed.
+
+property VERTICES_IN_INEQUALITIES = override RAYS_IN_INEQUALITIES;
+
+
+
+# @category Geometry
+# transposed [[VERTICES_IN_INEQUALITIES]]
+
+property INEQUALITIES_THRU_VERTICES = override INEQUALITIES_THRU_RAYS;
+
+
+
+# @category Combinatorics
+# Number of incident facets for each vertex.
+
+property VERTEX_SIZES = override RAY_SIZES;
+
+# @topic objects/Polytope/properties/Combinatorics/HASSE_DIAGRAM
+# Number of incident vertices for each facet.
+
+# @category Unbounded polyhedra
+# Indices of vertices that are rays.
+
+property FAR_FACE : Set;
+
+rule FAR_FACE : VertexPerm.FAR_FACE, VertexPerm.PERMUTATION {
+   $this->FAR_FACE=permuted($this->VertexPerm->FAR_FACE, $this->VertexPerm->PERMUTATION);
+}
+weight 1.10;
+
+# @category Combinatorics
+# Vertex-edge graph.
+
+property GRAPH {
+
+   # Difference of the vertices for each edge (only defined up to signs).
+   property EDGE_DIRECTIONS : EdgeMap<Undirected, Vector<Scalar>> : construct(ADJACENCY);
+
+   # Squared Euclidean length of each edge
+   property SQUARED_EDGE_LENGTHS : EdgeMap<Undirected, Scalar> : construct(ADJACENCY);
+
+}
+
+# @category Combinatorics
+# Lists for each occurring size (= number of incident vertices or edges) of a 2-face how many there are.
+
+property TWO_FACE_SIZES : Map<Int,Int>;
+
+
+# @category Combinatorics
+# Lists for each occurring size (= number of incident facets or ridges) of a subridge how many there are.
+
+property SUBRIDGE_SIZES : Map<Int,Int>;
+
+
+# @category Combinatorics
+# Let M be the vertex-facet incidence matrix, then the Altshulter determinant is
+# defined as max{det(M &lowast; M<sup>T</sup>), det(M<sup>T</sup> &lowast; M)}.
+
+property ALTSHULER_DET : Integer;
+
+
+# @topic objects/Polytope/properties/Combinatorics/F_VECTOR
+# f<sub>k</sub> is the number of k-faces.
+
+# @topic objects/Polytope/properties/Combinatorics/F2_VECTOR
+# f<sub>ik</sub> is the number of incident pairs of i-faces and k-faces; the main diagonal contains the [[F_VECTOR]].
+
+# @topic objects/Polytope/properties/Combinatorics/SIMPLICIAL
+# True if the polytope is simplicial.
+
+# @topic objects/Polytope/properties/Combinatorics/SIMPLE
+# True if the polytope is simple. Dual to [[SIMPLICIAL]].
+
+# @topic objects/Polytope/properties/Combinatorics/SELF_DUAL
+# True if the polytope is self-dual.
+
+
+# @category Combinatorics
+# Maximal dimension in which all faces are simplices.
+
+property SIMPLICIALITY : Int;
+
+
+# @category Combinatorics
+# Maximal dimension in which all dual faces are simplices.
+
+property SIMPLICITY : Int;
+
+
+# @category Combinatorics
+# Maximal dimension in which all faces are simple polytopes.
+
+property FACE_SIMPLICITY : Int;
+
+
+# @category Combinatorics
+# True if all facets are cubes.
+
+property CUBICAL : Bool;
+
+
+# @category Combinatorics
+# Maximal dimension in which all facets are cubes.
+
+property CUBICALITY : Int;
+
+
+# @category Combinatorics
+# Dual to [[CUBICAL]].
+
+property COCUBICAL : Bool;
+
+
+# @category Combinatorics
+# Dual to [[CUBICALITY]].
+
+property COCUBICALITY : Int;
+
+
+# @category Combinatorics
+# True if the polytope is neighborly.
+
+property NEIGHBORLY : Bool;
+
+
+# @category Combinatorics
+# Maximal dimension in which all facets are neighborly.
+
+property NEIGHBORLINESS : Int;
+
+
+# @category Combinatorics
+# Dual to [[NEIGHBORLY]].
+
+property BALANCED : Bool;
+
+
+# @category Combinatorics
+# Maximal dimension in which all facets are balanced.
+
+property BALANCE : Int;
+
+
+# @category Combinatorics
+# Parameter describing the shape of the face-lattice of a 4-polytope.
+
+property FATNESS : Float;
+
+
+# @category Combinatorics
+# Parameter describing the shape of the face-lattice of a 4-polytope.
+
+property COMPLEXITY : Float;
+
+
+# @category Geometry
+# The center of gravity of the vertices of a bounded polytope.
+
+property VERTEX_BARYCENTER : Vector<Scalar>;
+
+
+# @category Geometry
+# The minimal angle between any two vertices (seen from the [[VERTEX_BARYCENTER]]).
+
+property MINIMAL_VERTEX_ANGLE : Float;
+
+
+# @category Geometry
+# The rows of this matrix contain a configuration of affine points in homogeneous cooordinates.
+# The zonotope is obtained as the Minkowski sum of all rows, normalized to x_0 = 1.
+# Thus, if the input matrix has n columns, the ambient affine dimension of the resulting zonotope is n-1.
+
+property ZONOTOPE_INPUT_POINTS : Matrix<Scalar>;
+
+
+# @category Geometry
+# is the zonotope calculated from ZONOTOPE_INPUT_POINTS or ZONOTOPE_INPUT_VECTORS to be centered at the origin?
+# The zonotope is always calculated as the Minkowski sum of all segments conv {x,v}, where 
+# * v ranges over the ZONOTOPE_INPUT_POINTS or ZONOTOPE_INPUT_VECTORS, and 
+# * x = -v if CENTERED_ZONOTOPE = 1,
+# * x = 0  if CENTERED_ZONOTOPE = 0.
+# Input section only.  
+
+property CENTERED_ZONOTOPE : Bool;
+
+} # /Polytope
+
+declare object AffineLattice<Scalar=Rational> {
+
+# an affine point, ie first coordinate non-zero
+property ORIGIN : Vector<Scalar>; 
+
+# rows are vectors, ie first coordinate zero
+property BASIS : Matrix<Scalar>;  
+
+
+property SQUARED_DETERMINANT : Scalar;
+
+
+rule SQUARED_DETERMINANT : BASIS {
+   $this->SQUARED_DETERMINANT = det($this->BASIS * transpose($this->BASIS));
+}
+
+} # /AffineLattice
+
+
+object Polytope {
+
+# @category Geometry
+# An affine lattice L such that P + L tiles the affine span of P
+
+property TILING_LATTICE : AffineLattice<Scalar>;
+
+
+# @topic category properties/Triangulation and volume
+# Everything in this group is defined for [[BOUNDED]] polytopes only.
+
+
+# @category Triangulation and volume
+# Volume of the polytope.
+
+property VOLUME : Scalar;
+
+
+# @category Triangulation and volume
+# Array of the squared relative //k//-dimensional volumes of the simplices in 
+# a triangulation of a //d//-dimensional polytope.
+
+property SQUARED_RELATIVE_VOLUMES : Array<Scalar>;
+
+
+# @category Geometry
+# Centroid (center of mass) of the polytope.
+
+property CENTROID : Vector<Scalar>;
+
+
+
+# @category Triangulation and volume
+# For each simplex in the [[TRIANGULATION]], contains the sign of the determinant of its coordinate matrix, telling about its orientation.
+# @return Array<Int>
+
+user_method TRIANGULATION_SIGNS : TRIANGULATION.FACETS, VERTICES {
+   my $this=shift;
+   triang_sign($this->TRIANGULATION->FACETS, $this->VERTICES);
+}
+
+
+# @category Combinatorics
+# Minimal non-faces of a [[SIMPLICIAL]] polytope.
+
+property MINIMAL_NON_FACES : Array<Set>;
+
+rule MINIMAL_NON_FACES : VertexPerm.MINIMAL_NON_FACES, VertexPerm.PERMUTATION {
+   $this->MINIMAL_NON_FACES=permuted_elements($this->VertexPerm->MINIMAL_NON_FACES, $this->VertexPerm->PERMUTATION);
+}
+weight 1.20;
+
+
+# @category Visualization
+# Reordered [[VERTICES_IN_FACETS]] for 2d and 3d-polytopes.
+# Vertices are listed in the order of their appearance
+# when traversing the facet border counterclockwise seen from outside of the polytope.
+#
+# For a 2d-polytope (which is a closed polygon), lists all vertices in the border traversing order.
+
+property VIF_CYCLIC_NORMAL = override RIF_CYCLIC_NORMAL;
+
+# @category Visualization
+# Reordered transposed [[VERTICES_IN_FACETS]]. Dual to [[VIF_CYCLIC_NORMAL]].
+
+property FTV_CYCLIC_NORMAL = override FTR_CYCLIC_NORMAL;
+
+# @category Visualization
+# Reordered [[GRAPH]]. Dual to [[NEIGHBOR_FACETS_CYCLIC_NORMAL]].
+
+property NEIGHBOR_VERTICES_CYCLIC_NORMAL = override NEIGHBOR_RAYS_CYCLIC_NORMAL;
+
+
+# FIXME^2 What is the meaning of this FIXME?
+# FIXME how to deal with  mutable properties
+
+# @category Visualization
+# Unique names assigned to the [[VERTICES]].
+# If specified, they are shown by visualization tools instead of vertex indices.
+#
+# For a polytope build from scratch, you should create this property by yourself,
+# either manually in a text editor, or with a client program.
+#
+# If you build a polytope with a construction function
+# taking some other input polytope(s), you can create the labels automatically if you
+# call the function with a //relabel// option. The exact format of the labels is dependent on the
+# construction, and is described in the corresponding help topic.
+# @option Bool relabel
+
+property VERTEX_LABELS = override RAY_LABELS;
+
+# Find the vertices by given labels.
+# @param String label ... vertex labels
+# @return Set<Int> vertex indices
+
+user_method labeled_vertices {
+   my $this=shift;
+   if (defined (my $labels=$this->lookup("VERTEX_LABELS"))) {
+      new Set([ find_labels($labels, @_) ]);
+   } else {
+      die "No VERTEX_LABELS stored in this complex";
+   }
+}
+
+# @topic objects/Polytope/properties/Visualization/FACET_LABELS
+# Unique names assigned to the [[FACETS]], analogous to [[VERTEX_LABELS]].
+
+# @category Geometry
+# The splits of the polytope, i.e., hyperplanes cutting the polytope in
+# two parts such that we have a regular subdivision.
+
+property SPLITS : Matrix<Scalar>;
+
+# @category Geometry
+# Two [[SPLITS]] are compatible if the defining hyperplanes do not intersect in the
+# interior of the polytope.  This defines a graph.
+
+property SPLIT_COMPATIBILITY_GRAPH : objects::Graph;
+
+# @category Oriented matroids
+# Chirotope corresponding to the [[VERTICES]]. TOPCOM format.
+
+property CHIROTOPE : Text;
+
+# @category Geometry
+# Returns the inner description of a Polytope:
+# [V,L] where V are the vertices and L is the lineality space
+# @return Array<Matrix<Scalar> >
+user_method INNER_DESCRIPTION : VERTICES, LINEALITY_SPACE {
+    my $this=shift;
+    new Array<Matrix>([$this->VERTICES, $this->LINEALITY_SPACE]);
+}
+
+# @category Geometry
+# Returns the outer description of a Polytope:
+# [F,A] where F are the facets and A is the affine hull
+# @return Array<Matrix<Scalar> >
+user_method OUTER_DESCRIPTION : FACETS, AFFINE_HULL {
+    my $this=shift;
+    new Array<Matrix>([$this->FACETS, $this->AFFINE_HULL]);
+}
+
+}
+
+
+
+# @category Coordinate conversions
+# provide a Polytope object with desired coordinate type
+# @tparam Coord target coordinate type
+# @param Polytope P source object
+# @return Polytope<Coord> //P// if it already has the requested type, a new object otherwise
+
+user_function convert_to<Coord>(Polytope) {
+   my $target_type=typeof Coord;
+   if ($_[0]->type->param==$target_type) {
+      $_[0]
+   } else {
+      new Polytope<Coord>($_[0]);
+   }
+}
+
+# @category Coordinate conversions
+# Dehomogenize the [[VERTICES|vertex coordinates]] and convert them to Float
+# @param Polytope P source object
+# @return Matrix<Float> the dehomogenized vertices converted to Float
+
+user_function affine_float_coords(Polytope) {
+   my $P=shift;
+   if ($P->FAR_FACE->size()==0) {
+      croak("polytope must be bounded");
+   }
+   dehomogenize(convert_to<Float>($P->VERTICES));
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

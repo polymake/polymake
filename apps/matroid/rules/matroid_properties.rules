@@ -1,0 +1,131 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+object Matroid {
+
+
+# Size of the ground set.  The ground set itself always consists of the first integers starting with zero.
+
+property N_ELEMENTS : Int;
+
+
+# Unique names assigned to the elements of the matroid.
+#
+# For a matroid build from scratch, you should create this property by yourself.
+# If you build the matroid with a construction client, (e.g. [[matroid_from_graph]])
+# the labels may be assigend for you in a meaningful way.
+
+property LABELS : Array<String> : mutable;
+
+# Subsets of the ground set which form the bases of the matroid.
+# Note that if you want to define a matroid via its bases, you should also specify [[N_ELEMENTS]], because
+# we allow matroids with loops.
+
+property BASES : Array<Set>;
+
+
+# All subsets of the ground sets with cardinality [[RANK]] that are not bases.
+
+property NON_BASES : Array<Set>;
+
+
+# The number of [[BASES]].
+
+property N_BASES : Int;
+
+
+# Rank of the matroid, i.e., number of elements in each basis.
+
+property RANK : Int;
+
+
+# Circuits, i.e., minimal dependent sets.
+
+property CIRCUITS : Array<Set>;
+
+
+# The number of [[CIRCUITS]].
+
+property N_CIRCUITS : Int;
+
+
+# Cocircuits (or bonds) of the matroid, i.e., minimal sets intersecting every basis.
+
+property COCIRCUITS : Array<Set>;
+
+
+# The number of [[COCIRCUITS]].
+
+property N_COCIRCUITS : Int;
+
+
+# Loops
+
+property LOOPS : Set;
+
+# The number of [[LOOPS]].
+
+property N_LOOPS : Int;
+
+# Coloops
+
+property COLOOPS : Set;
+
+# The number of [[COLOOPS]].
+
+property N_COLOOPS : Int;
+
+# Polytope whose vertices are the characteristic vectors of the bases.
+
+property POLYTOPE : polytope::Polytope;
+
+
+# If the matroid is realizable over the rationals, this property contains
+# coordinates for some realization. Specifying coordinates is one way
+# to define a matroid.
+
+property POINTS : Matrix;
+
+
+# Whether the matroid is paving
+property PAVING : Bool;
+
+# Whether the matroid is representable over GF(2)
+property BINARY : Bool;
+
+# If the matroid is realizable over the field GF(2) with two elements, this property contains
+# coordinates for some realization.
+property BINARY_POINTS : Matrix<Int>;
+
+# Whether the matroid is representable over GF(3)
+# NOTE: the property is 'undef' when its hard to decide. 
+property TERNARY : Bool;
+
+# If the matroid is realizable over the field GF(3) with three elements, this property contains
+# coordinates for some realization.
+property TERNARY_POINTS : Matrix<Int>;
+
+# Whether the matroid is representable over every field, that is the repesentation is unimodular.
+# NOTE: the property is 'undef' when its hard to decide, whether the matroid is ternary. 
+property REGULAR : Bool;
+
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

@@ -1,0 +1,55 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @topic category functions/Producing a polytope from scratch
+# With these clients you can create polytopes belonging to various parameterized
+# families which occur frequently in polytope theory, as well as random
+# polytopes with different models of randomness.
+
+
+# @topic category functions/Producing a polytope from polytopes
+# An important way of constructing polytopes is to modify an 
+# already existing polytope.
+#
+# Actually, these functions don't alter the input polytope
+# (it is forbidden in polymake), but create a new polytope object.
+#
+# Many functions can at your choice either calculate the vertex or facet coordinates,
+# or constrain themselves on the purely combinatorial description of the
+# resulting polytope.
+
+
+# @topic category functions/Transformations
+# These functions take a realized polytope and produce a new one by applying a
+# suitable affine or projective transformation in order to obtain some special
+# coordinate description but preserve the combinatorial type.
+#
+# For example, before you can polarize an arbitrary polyhedron, it
+# must be transformed to a combinatorially equivalent bounded polytope with the
+# origin as a relatively interior point. It is achieved with the sequence
+# [[orthantify]] - [[bound]] - [[center]] - [[polarize]].
+
+
+# @topic category functions/Coordinate conversions
+# The following functions allow for the conversion of the coordinate type of cones and polytopes.
+
+
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

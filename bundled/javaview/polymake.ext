@@ -1,0 +1,7 @@
+CREDIT
+  JavaView is a 3D geometry viewer and a mathematical visualization software.
+  Copyright by Konrad Polthier and JavaView Project Team.
+  http://www.javaview.de/
+
+REQUIRE
+  bundled:java

@@ -1,0 +1,12 @@
+# This is a bundled extension.
+
+CREDIT
+  The Parma Polyhedra Library (PPL): A C++ library for convex polyhedra
+  and other numerical abstractions.
+  http://www.cs.unipr.it/ppl/
+
+# REQUIRE
+# Names of other bundled extensions which are prerequisite for this one
+
+# CONFLICT
+# Names of other bundled extensions which are incompatible with this one.

@@ -1,0 +1,86 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# @category Optimization
+# A linear program specified by a linear or abstract objective function
+# @relates Polytope
+declare object LinearProgram<Scalar=Rational> {
+
+# Linear objective function. In d-space a linear objective function is given by a (d+1)-vector. 
+# The first coordinate specifies a constant that is added to the resulting value.
+
+property LINEAR_OBJECTIVE : Vector<Scalar>;
+
+
+# Abstract objective function.  Defines a direction for each edge such that each non-empty
+# face has a unique source and a unique sink. 
+# The i-th element is the value of the objective function at vertex number i.
+# Only defined for bounded polytopes.
+
+property ABSTRACT_OBJECTIVE : Vector<Scalar>;
+
+
+# Indices of vertices at which the maximum of the objective function is attained.
+property MAXIMAL_FACE : Set;
+
+# Similar to [[MAXIMAL_FACE]].
+property MINIMAL_FACE : Set;
+
+
+# Coordinates of a (possibly not unique) affine vertex at which the maximum of the objective function is attained.
+property MAXIMAL_VERTEX : Vector<Scalar>;
+
+# Similar to [[MAXIMAL_VERTEX]].
+property MINIMAL_VERTEX : Vector<Scalar>;
+
+# Maximum value of the objective function. Negated if linear problem is unbounded.
+property MAXIMAL_VALUE : Scalar;
+
+# Similar to [[MAXIMAL_VALUE]].
+property MINIMAL_VALUE : Scalar;
+
+# Subgraph of [[Polytope::GRAPH]]. Consists only of directed arcs along which the value of the objective function increases.
+property DIRECTED_GRAPH : Graph<Directed>;
+
+# methods for backward compatibility
+
+# Array of out-degrees for all nodes of [[DIRECTED_GRAPH]]
+# or numbers of objective increasing edges at each vertex
+user_method VERTEX_OUT_DEGREES = DIRECTED_GRAPH.NODE_OUT_DEGREES;
+
+# Array of in-degrees for all nodes of [[DIRECTED_GRAPH]]
+# or numbers of objective decreasing edges at each vertex
+user_method VERTEX_IN_DEGREES = DIRECTED_GRAPH.NODE_IN_DEGREES;
+
+
+# Expected average path length for a simplex algorithm employing "random edge" pivoting strategy.
+property RANDOM_EDGE_EPL : Vector<Rational>;
+
+}
+
+package Visual::Color;
+
+# distinguished color for MAX_FACE: red
+custom $max="255 0 0";
+
+# distinguished color for MIN_FACE: yellow
+custom $min="255 255 0";
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

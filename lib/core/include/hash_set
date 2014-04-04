@@ -1,0 +1,94 @@
+/* Copyright (c) 1997-2014
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+   http://www.polymake.org
+
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2, or (at your option) any
+   later version: http://www.gnu.org/licenses/gpl.txt.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+--------------------------------------------------------------------------------
+*/
+
+#ifndef POLYMAKE_HASH_SET_
+#define POLYMAKE_HASH_SET_
+
+#include <tr1/unordered_set>
+#include "polymake/internal/hash_iterators.h"
+
+namespace pm {
+
+template <typename Key, typename Params=void>
+class hash_set
+   : public std::tr1::unordered_set<Key, hash_func<Key>, typename hash_table_cmp_adapter<Key,Params>::type> {
+   typedef std::tr1::unordered_set<Key, hash_func<Key>, typename hash_table_cmp_adapter<Key,Params>::type> _super;
+public:
+   hash_set() {}
+   explicit hash_set(size_t start_cap) : _super(start_cap) {}
+
+   template <typename Iterator>
+   hash_set(Iterator first, Iterator last) : _super(first,last) {}
+
+   // let's make it at least partially compatible with Set
+
+   hash_set& operator+= (const Key& k)
+   {
+      this->insert(k);
+      return *this;
+   }
+
+   hash_set& operator-= (const Key& k)
+   {
+      this->erase(k);
+      return *this;
+   }
+
+   hash_set& operator^= (const Key& k)
+   {
+      std::pair<typename _super::iterator, bool> inserted=this->insert(k);
+      if (!inserted.second) this->erase(inserted.first);
+      return *this;
+   }
+
+   bool exists(const Key& k) const
+   {
+      return this->find(k) != this->end();
+   }
+
+   bool operator== (const hash_set& other) const
+   {
+      if (this->size() != other.size()) return false;
+      typename _super::const_iterator not_found=this->end();
+      for (typename _super::const_iterator elem=other.begin(), other_end=other.end(); elem != other_end; ++elem)
+         if (this->find(*elem) == not_found)
+            return false;
+      return true;
+   }
+};
+
+template <typename Key, typename KeyComparator>
+struct choose_generic_object_traits< hash_set<Key,KeyComparator>, false, false >
+   : spec_object_traits<is_container> {
+   typedef void generic_type;
+   typedef hash_set<Key,KeyComparator> persistent_type;
+   typedef is_unordered_set generic_tag;
+   static const IO_separator_kind IO_separator=IO_sep_inherit;
+};
+
+} // end namespace pm
+
+namespace polymake {
+   using pm::hash_set;
+}
+
+#endif // POLYMAKE_HASH_SET_
+
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:

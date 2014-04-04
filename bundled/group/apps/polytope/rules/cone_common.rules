@@ -1,0 +1,66 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object Cone {
+
+# @category Combinatorics
+# The interior //d//-dimensional simplices of a cone of combinatorial dimension //d//
+# symmetries of the cone are NOT taken into account
+rule MAX_INTERIOR_SIMPLICES : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS {
+    $this->MAX_INTERIOR_SIMPLICES = max_interior_simplices($this);
+}
+
+# @category Combinatorics
+# The interior //d-1//-dimensional simplices of a cone of combinatorial dimension //d//
+# symmetries of the cone are NOT taken into account
+rule INTERIOR_RIDGE_SIMPLICES, MAX_BOUNDARY_SIMPLICES : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS {
+    my $pair=interior_and_boundary_ridges($this);
+    $this->INTERIOR_RIDGE_SIMPLICES = $pair->first;
+    $this->MAX_BOUNDARY_SIMPLICES = $pair->second;
+}
+
+# @category Combinatorics
+# A matrix whose rows contain the cocircuit equations of a cone C
+# symmetries of the cone are NOT taken into account
+rule COCIRCUIT_EQUATIONS : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, MAX_INTERIOR_SIMPLICES {
+    $this->COCIRCUIT_EQUATIONS = cocircuit_equations($this->COMBINATORIAL_DIM, $this->RAYS, $this->RAYS_IN_FACETS, $this->MAX_INTERIOR_SIMPLICES);
+}
+
+# @category Combinatorics
+# A matrix whose rows contain the cocircuit equations of a cone C
+# symmetries of the cone are NOT taken into account
+rule FOLDABLE_COCIRCUIT_EQUATIONS : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, INTERIOR_RIDGE_SIMPLICES, MAX_INTERIOR_SIMPLICES {
+    $this->FOLDABLE_COCIRCUIT_EQUATIONS = foldable_cocircuit_equations($this->COMBINATORIAL_DIM, $this->RAYS, $this->RAYS_IN_FACETS, $this->INTERIOR_RIDGE_SIMPLICES, $this->MAX_INTERIOR_SIMPLICES);
+}
+
+} # /Cone
+
+sub max_interior_simplices_impl; # FIXME #586
+
+# @category Triangulations, subdivisions and volume
+# Find the maximal interior simplices of a polytope P.
+# Symmetries of P are NOT taken into account.
+# @param Polytope P the input polytope
+# @return Array<Set>
+user_function max_interior_simplices<Scalar>(Cone<Scalar>) {
+    max_interior_simplices_impl<Scalar>(@_);
+}
+
+
+
+# Local Variables:
+# c-basic-offset:3
+# mode: perl
+# End:

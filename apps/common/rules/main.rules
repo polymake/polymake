@@ -1,0 +1,54 @@
+
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @topic application
+#
+# This artificial application gathers functionality shared by many "real"
+# applications.  While most users can probably do without looking into this
+# you may find some useful functions here.
+
+CREDIT _team
+  The following people currently contribute to polymake:
+  Benjamin Assarf, Ewgenij Gawrilow, Katrin Herr, Sven Herrmann,
+  Silke Horn, Michael Joswig, Lars Kastner, Benjamin Lorenz, 
+  Andreas Paffenholz, Julian Pfeifle, Thomas Rehn, Thilo Rörig,
+  Benjamin Schröter.
+  
+INCLUDE
+  basic_types
+  misc_functions
+  formatting_filters
+  visual.rules
+  geomview.rules
+  postscript.rules
+  povray.rules
+  sketch.rules
+  tikz.rules
+  lattice.rules
+  property_viewer.rules
+  poly_parser.rules
+
+# for algorithms shipped with polymake, as opposed to those imported from external software packages
+label default
+
+# activate them right now, to give other rules the chance to superpose it
+prefer default
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

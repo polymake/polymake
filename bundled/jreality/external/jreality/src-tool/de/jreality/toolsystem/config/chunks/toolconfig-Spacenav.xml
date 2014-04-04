@@ -1,0 +1,203 @@
+<toolconfig>
+
+	<rawdevices>
+		<rawdevice id="SpaceNavigator"
+			type="de.jreality.toolsystem.raw.DeviceSpacenav">
+			<prop name="sensitivity">
+				<double>0.0025</double>
+			</prop>
+            <prop name="screensaver-wakeup-cmd">
+            	<string>/usr/bin/xscreensaver-command -deactivate</string>
+            </prop>
+		</rawdevice>
+	</rawdevices>
+
+	<rawslots>
+		<mapping device="SpaceNavigator" src="x" target="RawX" />
+		<mapping device="SpaceNavigator" src="y" target="Y" />
+		<mapping device="SpaceNavigator" src="z" target="RawZ" />
+		<mapping device="SpaceNavigator" src="rx" target="RawRX" />
+		<mapping device="SpaceNavigator" src="ry" target="RawRY" />
+		<mapping device="SpaceNavigator" src="rz" target="RawRZ" />
+		<!--DragActivation == 'Shoot-Imputslot' -->
+		<mapping device="SpaceNavigator" src="buttonRight" target="Shoot" />
+		<mapping device="SpaceNavigator" src="buttonLeft" target="key2"/>
+	</rawslots>
+
+	<virtualdevices>
+	
+	<virtualdevice type="de.jreality.toolsystem.virtual.VirtualMap">
+		<inputslot>Shoot</inputslot>
+		<outputslot>DragActivation</outputslot>
+   	</virtualdevice>
+   	
+	<virtualdevice type="de.jreality.toolsystem.virtual.VirtualFixedOnPressed">
+		<inputslot>Shoot</inputslot>
+		<outputslot>PointerNDC</outputslot>
+    </virtualdevice>
+	
+	
+
+<!-- 
+
+All axes are first averaged (mostly a moving average computation, but it also sorts out
+exceptional values). Then we bump the axis around zero, to enable control for very slow
+movements. This is done by applying the two virtual devices
+
+- de.jreality.toolsystem.virtual.VirtualSpaceNavigatorFixAxisFirst
+- de.jreality.toolsystem.virtual.VirtualBumpAxis //TODO: ??? this is not used...
+
+to the axes (in that order).
+
+Before, negative values are scaled by 1.7, to make device values more symmetric.
+
+-->
+
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualScaleAxis">
+			<inputslot>RawRY</inputslot>
+			<outputslot>ScaledRY</outputslot>
+			<prop name="scaleNeg">
+				<double>1.7</double>
+			</prop>
+		</virtualdevice>
+
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualSpaceNavigatorFixAxisFirst">
+			<inputslot>ScaledRY</inputslot>
+			<outputslot>AveragedRY</outputslot>
+		</virtualdevice>
+
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualFilterAxis">
+			<inputslot>AveragedRY</inputslot>
+			<outputslot>RY</outputslot>
+		</virtualdevice>
+
+
+
+
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualScaleAxis">
+			<inputslot>RawRX</inputslot>
+			<outputslot>ScaledRX</outputslot>
+			<prop name="scaleNeg">
+				<double>1.7</double>
+			</prop>
+		</virtualdevice>
+
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualSpaceNavigatorFixAxisFirst">
+			<inputslot>ScaledRX</inputslot>
+			<outputslot>AveragedRX</outputslot>
+		</virtualdevice>
+		
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualFilterAxis">
+			<inputslot>AveragedRX</inputslot>
+			<outputslot>RX</outputslot>
+		</virtualdevice>
+
+
+
+
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualScaleAxis">
+			<inputslot>RawX</inputslot>
+			<outputslot>ScaledX</outputslot>
+			<prop name="scaleNeg">
+				<double>1.7</double>
+			</prop>
+		</virtualdevice>
+
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualSpaceNavigatorFixAxisFirst">
+			<inputslot>ScaledX</inputslot>
+			<outputslot>AveragedX</outputslot>
+		</virtualdevice>
+
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualFilterAxis">
+			<inputslot>AveragedX</inputslot>
+			<outputslot>X</outputslot>
+		</virtualdevice>
+
+
+
+
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualScaleAxis">
+			<inputslot>RawZ</inputslot>
+			<outputslot>ScaledZ</outputslot>
+			<prop name="scaleNeg">
+				<double>1.7</double>
+			</prop>
+		</virtualdevice>
+
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualSpaceNavigatorFixAxisFirst">
+			<inputslot>ScaledZ</inputslot>
+			<outputslot>AveragedZ</outputslot>
+		</virtualdevice>
+
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualFilterAxis">
+			<inputslot>AveragedZ</inputslot>
+			<outputslot>Z</outputslot>
+		</virtualdevice>
+
+
+
+		
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualReverseAxis">
+			<inputslot>X</inputslot>
+			<outputslot>LeftRightAxis</outputslot>
+		</virtualdevice>
+
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualReverseAxis">
+			<inputslot>Y</inputslot>
+			<outputslot>ReverseY</outputslot>
+		</virtualdevice>
+
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualReverseAxis">
+			<inputslot>Z</inputslot>
+			<outputslot>ForwardBackwardAxis</outputslot>
+		</virtualdevice>
+
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualReverseAxis">
+			<inputslot>RY</inputslot>
+			<outputslot>ReverseRY</outputslot>
+		</virtualdevice>
+
+		<virtualdevice
+					type="de.jreality.toolsystem.virtual.VirtualTimestepEvolution">
+			<inputslot>RX</inputslot>
+			<inputslot>SystemTime</inputslot>
+			<outputslot>VerticalHeadRotationAngleEvolution</outputslot>
+			<prop name="gain">
+				<double>1.0</double>
+			</prop>
+		</virtualdevice>
+
+		<virtualdevice
+					type="de.jreality.toolsystem.virtual.VirtualTimestepEvolution">
+			<inputslot>ReverseRY</inputslot>
+			<inputslot>SystemTime</inputslot>
+			<outputslot>HorizontalShipRotationAngleEvolution</outputslot>
+			<prop name="gain">
+				<double>1.0</double>
+			</prop>
+		</virtualdevice>
+
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualExtractPositive">
+			<inputslot>ReverseY</inputslot>
+			<outputslot>JumpActivation</outputslot>
+			<prop name="threshold">
+				<double>0.75</double>
+			</prop>
+		</virtualdevice>
+
+	</virtualdevices>
+
+
+</toolconfig>

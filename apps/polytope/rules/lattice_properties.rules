@@ -1,0 +1,268 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object Cone<Rational> {
+
+# # The Hilbert basis spanned of the cone spanned by P x {1}
+# property HILBERT_BASIS : Matrix<Integer> {
+# 
+#    sub equal { &equal_up_to_row_permutation; }
+# }
+
+# The number of elements of [[HILBERT_BASIS]]
+property N_HILBERT_BASIS : Int;
+
+
+# Generators for the Hilbert basis of a posiibly non-pointed cone 
+# the first matrix is a Hilbert basis of a pointed part of the cone
+# the second matrix is a lattice basis of the lineality space
+# note: the pointed part used in this property need not be the same as the one described by [[RAYS]] or [[INPUT_RAYS]]
+#       it will be if the cone is pointed (the polytope is bounded)
+property HILBERT_BASIS_GENERATORS : Array<Matrix<Integer> > {
+
+  # FIXME This test is too restrictive
+  sub equal { 
+    my ($a, $b) = @_;
+    return equal_up_to_row_permutation($a->[0],$b->[0]) && equal_up_to_row_permutation($a->[1],$b->[1]);
+  }
+}
+
+}
+
+
+object Polytope<Rational> {
+
+# @category Lattice Points in Polytopes
+# The lattice points in the polytope
+#property LATTICE_POINTS : Matrix<Integer> {
+#
+#    sub equal { &equal_up_to_row_permutation; }
+#}
+
+# @category Lattice Points in Polytopes
+# The number of [[LATTICE_POINTS]]
+property N_LATTICE_POINTS : Integer;
+
+# @category Lattice Points Generators in Polytopes
+# The lattice points generators in the polytope.
+# The output consists of three matrices [P,R,L], where
+# P are lattice points which are contained in the polytope
+# R are rays and L is the lineality
+# Together they form a description of all lattice points.
+# Every lattice point can be described as
+#    p + lambda*R + mu*L
+# where p is a row in P and lambda has only non-negative
+# integral coordinates and mu has arbitrary integral coordinates.
+property LATTICE_POINTS_GENERATORS : Array<Matrix<Integer> >{
+
+  sub equal { 
+    my ($a, $b) = @_;
+    return equal_up_to_row_permutation($a->[0],$b->[0]) && equal_up_to_row_permutation($a->[1],$b->[1]) && equal_up_to_row_permutation($a->[2],$b->[2]);
+  }
+};
+    
+# @category Lattice Points in Polytopes
+# The lattice points on the boundary of the polytope, including the vertices
+property BOUNDARY_LATTICE_POINTS : Matrix<Integer> {
+
+    sub equal { &equal_up_to_row_permutation; }
+}
+
+# @category Lattice Points in Polytopes
+# The number of [[BOUNDARY_LATTICE_POINTS]]
+property N_BOUNDARY_LATTICE_POINTS : Integer;
+    
+# @category Lattice Points in Polytopes
+# The lattice points strictly in the interior of the polytope
+property INTERIOR_LATTICE_POINTS : Matrix<Integer> {
+
+    sub equal { &equal_up_to_row_permutation; }
+}
+    
+# @category Lattice Points in Polytopes
+# The number of [[INTERIOR_LATTICE_POINTS]]
+property N_INTERIOR_LATTICE_POINTS : Integer;
+    
+
+# The cone of all Minkowski summands of the polytope P.
+# Up to scaling, a polytope S is a Minkowski summand of P if and only if 
+# the edge directions of S are a subset of those of P, 
+# and the closing condition around any 2-face of P is preserved. 
+# Coordinates of the cone correspond to the rescaled lengths 
+# of the edges of the graph of P (in the order given by the property [[EDGES]] of the [[GRAPH]] of P). 
+# The Minkowski cone is defined as the intersection of all 
+# equations given by the closing condition around 2-faces with the positive orthant.
+# For more information see e.g. 
+#      Klaus Altmann: The versal deformation of an isolated toric Gorenstein singularity
+property MINKOWSKI_CONE : polytope::Cone<Rational>;
+
+}
+
+object LatticePolytope {
+
+# [[VERTICES]] are interpreted as coefficient vectors for this basis
+# given in affine form
+# assumed to the the standard basis if not explicitely specified
+    property LATTICE_BASIS : Matrix<Rational>;
+
+# True if the polytope and its dual have integral vertices.
+    property REFLEXIVE : Bool;
+
+# The polytope is __Gorenstein__ if a dilation of the polytope is reflexive up to translation.
+    property GORENSTEIN : Bool;
+    
+# If the polytope is Gorenstein then this is the multiple such that the polytope is reflexive.
+    property GORENSTEIN_INDEX : Integer;
+    
+# If the polytope is Gorenstein, then this is the unique interior lattice point
+# in the multiple of the polytope that is reflexive.
+    property GORENSTEIN_VECTOR : Vector<Integer>;
+    
+# The polytope is __canonical__ if there is exactly one interior lattice point.
+    property CANONICAL : Bool;
+
+# The polytope is __terminal__ if there is exactly one interior lattice point and all other lattice points are vertices.
+    property TERMINAL : Bool;
+
+# True if the polytope contains no lattice points other than the vertices.
+    property LATTICE_EMPTY : Bool;
+
+# The normalized volume of the polytope.
+    property LATTICE_VOLUME : Integer;
+
+# The degree of the h*-polynomial or Ehrhart polynomial.
+    property LATTICE_DEGREE : Int;
+
+# [[POLYTOPE_DIM]]+1-[[LATTICE_DEGREE]] or the smallest integer k such that k*P has an interior lattice point.
+    property LATTICE_CODEGREE : Int;
+
+# The coefficients of the Ehrhart polynomial starting at the constant coefficient.
+    property EHRHART_POLYNOMIAL_COEFF : Vector<Rational>;
+
+# The polytope is __normal__ if the cone spanned by P x {1} is generated in height 1.
+    property NORMAL : Bool;
+
+# The entry (i,j) equals the lattice distance of vertex j from facet i.
+  property FACET_VERTEX_LATTICE_DISTANCES : Matrix<Integer>;
+
+# The maximal integral width of the polytope with respect to the facet normals.
+    property FACET_WIDTH : Integer;
+    
+# The integral width of the polytope with respect to each facet normal.
+    property FACET_WIDTHS : Vector<Integer>;
+
+# True if the facet width is one.
+    property COMPRESSED : Bool;
+
+# The polytope is __smooth__ if the associated projective variety is smooth; the determinant of the edge directions is +/-1 at every vertex.
+    property SMOOTH : Bool;
+
+# The lattice polytope is __polar to smooth__ if it is reflexive and the polar of the polytope (wrt to its interior point) is a smooth lattice polytope; 
+    property POLAR_SMOOTH : Bool;
+
+# The polytope is __very ample__ if the Hilbert Basis of the cone spanned by the edge-directions of any vertex lies inside the polytope.
+    property VERY_AMPLE : Bool;
+
+
+# The Groebner basis of the homogeneous toric ideal associated to the polytope,
+# the term order is given in matrix form.
+    declare object GroebnerBasis {
+
+# The Groebner basis for a defined term order
+       property BASIS : Matrix<Integer>;
+
+# The term order in matrix form;
+# if not square, then a tie breaker is used.
+       property TERM_ORDER_MATRIX : Matrix<Integer>;
+
+# A term order by name;
+# allowed acronyms are ''lex'', ''deglex'' and ''degrevlex''.
+       property TERM_ORDER_NAME : String;
+
+       rule initial : TERM_ORDER_NAME {
+           $this->TERM_ORDER_NAME =~ /^(lex|deglex|degrevlex)$/ or croak ("unknown term order")
+       }
+    }
+
+# The Groebner basis for the toric ideal associated to the lattice points in the polytope using any term order.
+  property GROEBNER_BASIS : GroebnerBasis : multiple;
+
+  property GRAPH {
+
+    # the lattice lengths of the edges of the polytope
+    # i.e. for each edge one less than the number of lattice points on that edge
+    property LATTICE_EDGE_LENGTHS : EdgeMap<Undirected, Integer> : construct(ADJACENCY);
+
+
+    # a map associating to each edge length of the polytope the number of edges with this length
+    # the lattice edge length of an edge is one less than the number of lattice points on that edge
+    property LATTICE_ACCUMULATED_EDGE_LENGTHS : Map<Integer,Int>;
+  }
+}
+
+
+
+object Cone<Rational> {
+
+# A cone is Q-Gorenstein if all primitive generators of the cone lie in an affine hyperplane spanned by a lattice functional in the dual cone (but not in the lineality space of the dual cone).
+  property Q_GORENSTEIN_CONE : Bool;
+
+# If a cone is Q-Gorenstein, then its index is the common lattice height of the primitive generators with respect to the origin. Otherwise [[Q_GORENSTEIN_CONE_INDEX]] is undefined.
+  property Q_GORENSTEIN_CONE_INDEX : Int;
+
+# A cone is [[GORENSTEIN_CONE]] if it is Q-Gorenstein with index one
+  property GORENSTEIN_CONE : Bool;
+
+# A cone is smooth is the primitive generators are part of a lattice basis
+  property SMOOTH_CONE : Bool;
+
+# true if the primitive generators of the rays lie on an affine hyperplane in the span of the rays
+  property HOMOGENEOUS : Bool;
+
+# A grading for the monoid given by the intersection of the cone with the 
+# lattice Z^d, should be positive for all generators.
+#
+# If this property is not specified by the user there are two defaults:
+#     For rational polytopes the affine hyperplane defined by (1,0,\ldots,0) will be used.
+#     For [[HOMOGENEOUS]] cones the affine hyperplane containing the primitive generators 
+#     will be used.
+  property MONOID_GRADING : Vector<Integer>;
+
+# Elements of the [[HILBERT_BASIS]] for the cone of degree 1 with respect
+# to the [[MONOID_GRADING]].
+  property DEGREE_ONE_GENERATORS : Matrix<Integer> {
+
+    sub equal { &equal_up_to_row_permutation; }
+}
+
+
+# Hilbert series of the monoid, given by the intersection of the cone with 
+# the lattice Z^d with respect to the [[MONOID_GRADING]]
+  property HILBERT_SERIES : RationalFunction;
+
+# The coefficients of the Hilbert polynomial,
+# the h^*-polynomial for lattice polytopes, 
+# with respect to the [[MONOID_GRADING]]
+# starting at the constant coefficient.
+  property H_STAR_VECTOR : Vector<Integer>;
+
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:4
+# indent-tabs-mode:nil
+# End:

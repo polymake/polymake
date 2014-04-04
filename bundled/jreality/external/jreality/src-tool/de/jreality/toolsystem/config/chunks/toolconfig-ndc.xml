@@ -1,0 +1,76 @@
+<toolconfig>
+
+<virtualdevices>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualInvertMatrix">
+      <inputslot>CameraToNDC</inputslot>
+      <outputslot>NDCToCamera</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualInvertMatrix">
+      <inputslot>WorldToCamera</inputslot>
+      <outputslot>CameraToWorld</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualProductMatrix">
+      <inputslot>CameraToNDC</inputslot>
+      <inputslot>WorldToCamera</inputslot>
+      <outputslot>WorldToNDC</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualProductMatrix">
+      <inputslot>CameraToWorld</inputslot>
+      <inputslot>NDCToCamera</inputslot>
+      <outputslot>NDCToWorld</outputslot>
+    </virtualdevice>
+    
+   	<virtualdevice type="de.jreality.toolsystem.virtual.VirtualExtractAxis">
+		<inputslot>PointerNDC</inputslot>
+		<outputslot>PointerNdcX</outputslot>
+		<prop name="axis">
+			<string>translationX</string>
+		</prop>
+	</virtualdevice>
+
+	<virtualdevice type="de.jreality.toolsystem.virtual.VirtualExtractAxis">
+		<inputslot>PointerNDC</inputslot>
+		<outputslot>PointerNdcY</outputslot>
+		<prop name="axis">
+			<string>translationY</string>
+		</prop>
+	</virtualdevice>
+
+	<virtualdevice type="de.jreality.toolsystem.virtual.VirtualExtractAxis">
+		<inputslot>PointerNDCevolution</inputslot>
+		<outputslot>PointerNdcYevolution</outputslot>
+		<prop name="axis">
+			<string>translationY</string>
+		</prop>
+	</virtualdevice>
+
+	<virtualdevice type="de.jreality.toolsystem.virtual.VirtualExtractAxis">
+		<inputslot>PointerNDCevolution</inputslot>
+		<outputslot>PointerNdcXevolution</outputslot>
+		<prop name="axis">
+			<string>translationX</string>
+		</prop>
+	</virtualdevice>
+	
+	<virtualdevice type="de.jreality.toolsystem.virtual.VirtualRotation">
+		<inputslot>PointerNDC</inputslot>
+		<inputslot>CameraToWorld</inputslot>
+		<outputslot>TrackballTransformation</outputslot>
+		<prop name="gain">
+			<double>3.14</double>
+		</prop>
+	</virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualMousePointerTrafo">
+		<inputslot>NDCToWorld</inputslot>
+		<inputslot>PointerNDC</inputslot>
+		<outputslot>PointerTransformation</outputslot>
+	</virtualdevice>
+
+</virtualdevices>
+
+</toolconfig>

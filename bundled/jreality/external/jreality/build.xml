@@ -1,0 +1,865 @@
+<project name="jReality" default="dist" basedir=".">
+	<description>
+		jReality build file
+	</description>
+	
+	<property environment="env"/>
+	
+	<echo message="Using Java version ${ant.java.version}."/>
+	
+	<tstamp>
+		<format property="version" pattern="yyyy-MM-dd"/>
+	</tstamp>
+		
+	<property name="source" value="1.6"/>
+	<property name="target" value="1.6"/>	
+
+	<!-- the following should belong to core... -->
+	<property name="core" location="src-core" />
+	<property name="audio" location="src-audio" />
+	<property name="tools" location="src-tool" />
+	<property name="io" location="src-io" />
+	<property name="backends-share" location="src-backends-share" />
+	<property name="ui" location="src-ui" />
+
+	<!-- backends (dependencies from top to bottom) -->
+	<property name="soft" location="src-soft" />
+	<property name="soft-new" location="src-soft-new" />
+	<property name="renderman" location="src-renderman" />
+	<property name="sunflow" location="src-sunflow" />
+	<property name="jogl" location="src-jogl" />
+	<property name="jogl3" location="src-jogl3" />
+	<property name="gpgpu" location="src-gpgpu" />
+	<property name="portal" location="src-portal" />
+	<property name="proxies" location="src-proxies" />
+	<property name="swt" location="src-swt" />
+	<property name="tutorial" location="src-tutorial" />
+
+	<property name="vr" location="src-vr" />
+	<property name="examples" location="src-examples" />
+	<property name="swing" location="src-swing" />
+
+	<property name="plugin" location="src-plugin" />
+
+	<!-- these folders will be created -->
+	<property name="build" location="build" />
+	<property name="javadoc" location="docs/api" />
+	<property name="lib" location="lib" />
+	<property name="dist" location="dist" />
+	<property name="release_dir" location="release" />
+
+	<property name="jni-linux32" location="jni/linux32" />
+	<property name="jni-linux64" location="jni/linux64" />
+	<property name="jni-macosx" location="jni/macosx" />
+	<property name="jni-win32" location="jni/win32" />
+	<property name="jni-win64" location="jni/win64" />
+
+	<path id="backends-share.classpath">
+		<fileset dir="dist">
+			<include name="jReality-core.jar"/>
+		</fileset>
+	</path>
+
+	<path id="tools.classpath">
+		<fileset dir="dist">
+			<include name="jReality-core.jar"/>
+		</fileset>
+		<fileset dir="lib">
+			<include name="jinput.jar"/>
+			<include name="netutil.jar" />
+		</fileset>
+	</path>
+
+	<path id="audio.classpath">
+		<fileset dir="dist">
+			<include name="jReality-core.jar"/>
+			<include name="jReality-tools.jar"/>
+		</fileset>
+		<fileset dir="lib">
+			<include name="jacknativeclient.jar"/>
+			<include name="libpd.jar"/>
+		</fileset>
+	</path>
+
+	<path id="swing.classpath">
+		<fileset dir="dist">
+			<include name="jReality-core.jar"/>
+			<include name="jReality-backends-share.jar"/>
+			<include name="jReality-tools.jar"/>
+		</fileset>
+	</path>
+
+	<path id="backend.classpath">
+		<path refid="backends-share.classpath"/>
+		<fileset dir="dist">
+			<include name="jReality-backends-share.jar"/>
+		</fileset>
+	</path>
+
+	<path id="io.classpath">
+		<path refid="backend.classpath"/>
+		<fileset dir="lib">
+			<include name="antlr-3.4-complete.jar"/>
+			<include name="xstream-1.4.2.jar"/>
+			<include name="xpp3-1.1.4c.jar"/>
+			<include name="itextpdf-5.3.2.jar"/>
+		</fileset>
+		<fileset dir="dist">
+			<include name="jReality-tools.jar"/>
+		</fileset>
+	</path>
+
+	<path id="sunflow.classpath">
+		<path refid="backend.classpath"/>
+		<fileset dir="dist">
+			<include name="jReality-soft.jar"/>
+			<include name="jReality-io.jar"/>
+		</fileset>
+		<fileset dir="lib">
+			<include name="sunflow.jar"/>
+			<include name="smrj-app.jar"/>
+		</fileset>
+	</path>
+
+	<path id="ui.classpath">
+		<path refid="backend.classpath"/>
+		<fileset dir="dist">
+			<include name="jReality-soft.jar"/>
+			<include name="jReality-renderman.jar"/>
+			<include name="jReality-io.jar"/>
+			<include name="jReality-jogl.jar"/>
+			<include name="jReality-tools.jar"/>
+		</fileset>
+		<fileset dir="lib">
+			<include name="beans.jar"/>
+			<include name="jterm.jar"/>
+			<include name="bsh.jar"/>
+		</fileset>
+	</path>
+
+	<path id="vr.classpath">
+		<path refid="ui.classpath"/>
+		<fileset dir="dist">
+			<include name="jReality-ui.jar"/>
+			<include name="jReality-swing.jar"/>
+			<include name="jReality-sunflow.jar"/>
+			<include name="jReality-portal.jar"/>
+		</fileset>
+		<fileset dir="lib">
+			<include name="sunflow.jar"/>
+		</fileset>
+	</path>
+
+	<path id="examples.classpath">
+		<path refid="vr.classpath"/>
+		<fileset dir="dist">
+			<include name="*.jar"/>
+		</fileset>
+		<fileset dir="lib">
+			<include name="*.jar"/>
+		</fileset>
+	</path>
+
+	<path id="proxies.classpath">
+		<path refid="backend.classpath"/>
+		<fileset dir="lib">
+			<include name="smrj.jar"/>
+		</fileset>
+	</path>
+	
+	<path id="jogl.classpath">
+		<path refid="backend.classpath"/>
+		<fileset dir="lib">
+			<include name="jogl-all.jar"/>
+			<include name="gluegen-rt.jar"/>
+		</fileset>
+	</path>
+	
+	<path id="jogl3.classpath">
+		<path refid="backend.classpath"/>
+		<fileset dir="lib">
+			<include name="jogl-all.jar"/>
+			<include name="gluegen-rt.jar"/>
+		</fileset>
+		<fileset dir="dist">
+			<include name="jReality-jogl.jar"/>
+		</fileset>
+	</path>
+
+	<path id="gpgpu.classpath">
+		<path refid="jogl.classpath"/>
+		<fileset dir="dist">
+			<include name="jReality-jogl.jar"/>
+		</fileset>
+	</path>
+
+	<path id="swt.classpath">
+		<path refid="jogl.classpath"/>
+		<fileset dir="lib">
+			<include name="swt.jar"/>
+		</fileset>
+		<fileset dir="dist">
+			<include name="jReality-jogl.jar"/>
+			<include name="jReality-tools.jar"/>
+		</fileset>
+	</path>
+
+	<path id="tests.classpath">
+		<path refid="proxies.classpath"/>
+		<fileset dir="lib">
+			<include name="alex.jar"/>
+			<include name="discreteGroup.jar"/>
+			<include name="junit.jar"/>
+			<include name="jogl-all.jar"/>
+		</fileset>
+		<fileset dir="dist">
+			<include name="jReality-io.jar"/>
+			<include name="jReality-soft.jar"/>
+			<include name="jReality-jogl.jar"/>
+			<include name="jReality-proxies.jar"/>
+		</fileset>
+	</path>
+
+	<path id="apps.classpath">
+		<path refid="proxies.classpath"/>
+		<fileset dir="lib">
+			<include name="*.jar"/>
+		</fileset>
+		<fileset dir="dist">
+			<include name="*.jar"/>
+		</fileset>
+	</path>
+
+	<path id="portal.classpath">
+		<path refid="backend.classpath"/>
+		<fileset dir="lib">
+			<include name="smrj.jar"/>
+			<include name="jogl-all.jar"/>
+		</fileset>
+		<fileset dir="dist">
+			<include name="jReality-io.jar"/>
+			<include name="jReality-ui.jar"/>
+			<include name="jReality-jogl.jar"/>
+			<include name="jReality-soft.jar"/>
+			<include name="jReality-proxies.jar"/>
+			<include name="jReality-tools.jar"/>
+		</fileset>
+	</path>
+
+	<path id="plugin.classpath">
+		<path refid="backend.classpath"/>
+		<fileset dir="lib">
+			<include name="smrj.jar"/>
+			<include name="jogl-all.jar"/>
+			<include name="jjack_min.jar"/>
+			<include name="colorpicker.jar"/>
+			<include name="beans.jar"/>
+			<include name="xstream-1.4.2.jar"/>
+			<include name="jrworkspace.jar"/>
+			<include name="jython-standalone-2.5.3.jar"/>
+		</fileset>
+		<fileset dir="dist">
+			<include name="jReality-io.jar"/>
+			<include name="jReality-ui.jar"/>
+			<include name="jReality-jogl.jar"/>
+			<include name="jReality-soft.jar"/>
+			<include name="jReality-proxies.jar"/>
+			<include name="jReality-tools.jar"/>
+			<include name="jReality-portal.jar"/>
+			<include name="jReality-audio.jar"/>
+			<include name="jReality-swing.jar"/>
+		</fileset>
+	</path>
+
+	<path id="tutorial.classpath">
+		<fileset dir="dist">
+			<include name="*.jar"/>
+		</fileset>
+        <fileset dir="lib">
+            <include name="jrworkspace.jar" />
+        	<include name="beans.jar" />
+            <include name="jogl-all.jar" />
+            <include name="numericalMethods.jar" />
+        </fileset>
+	</path>
+
+
+	<target name="init">
+		<!-- Create the build directory structure used by compile -->
+		<mkdir dir="${build}" />
+		<mkdir dir="${lib}" />
+		<mkdir dir="${dist}" />
+	</target>
+
+	<!-- all the core classes will be build here - all backends depend on it-->
+	<target name="core" depends="init" description="compile the source ">
+		<mkdir dir="${build}/core" />
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${core}" destdir="${build}/core" 
+			debug="true" includeantruntime="false">
+		</javac>
+		<copy todir="${build}/core">
+			<fileset dir="${core}">
+				<exclude name="**/*.java"/>
+				<exclude name="**/*.gif"/>
+			</fileset>
+		</copy>
+		<jar jarfile="${dist}/jReality-core.jar" basedir="${build}/core" />
+	</target>
+
+	<target name="tools" depends="core" description="compile the source ">
+		<mkdir dir="${build}/tools" />
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${tools}" destdir="${build}/tools" 
+			debug="true" includeantruntime="false">
+			<classpath refid="tools.classpath"/>
+		</javac>
+		<copy todir="${build}/tools">
+			<fileset dir="${tools}">
+				<exclude name="**/*.java"/>
+				<exclude name="**/*.gif"/>
+			</fileset>
+		</copy>
+		<jar jarfile="${dist}/jReality-tools.jar" basedir="${build}/tools" />
+	</target>
+
+	<target name="audio" depends="core" description="compile the src-audio">
+		<mkdir dir="${build}/audio" />
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${audio}" destdir="${build}/audio" 
+			debug="true" includeantruntime="false">
+			<classpath refid="audio.classpath"/>
+		</javac>
+		<jar jarfile="${dist}/jReality-audio.jar" basedir="${build}/audio" />
+	</target>
+
+	<target name="backends-share" depends="core" description="compile the backends-share">
+		<mkdir dir="${build}/backends-share" />
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${backends-share}" destdir="${build}/backends-share" 
+			debug="true" includeantruntime="false">
+			<classpath refid="backends-share.classpath"/>
+		</javac>
+		<jar jarfile="${dist}/jReality-backends-share.jar" basedir="${build}/backends-share" />
+	</target>
+
+    <target name="swing" depends="core,tools,backends-share" description="compile the swing widget integration">
+        <condition property="java6">
+        	<equals arg1="${ant.java.version}" arg2="${target}"/>
+      	</condition>
+        <mkdir dir="${build}/swing" />
+        <javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+        	srcdir="${swing}" destdir="${build}/swing" 
+        	debug="true" includeantruntime="false">
+        	<exclude name="**/Fake*5.java" if="java6"/>
+        	<exclude name="**/Fake*6.java" if="java5"/>
+        	<classpath refid="swing.classpath"/>
+        </javac>
+     	<jar jarfile="${dist}/jReality-swing.jar" basedir="${build}/swing" />
+    </target>
+	
+	
+	<target name="io" depends="core, tools, backends-share" description="build readers and writers">
+		<mkdir dir="${build}/io" />
+		<antlr target="${io}/de/jreality/reader/vrml/vrml-v1.0.g">
+			<classpath refid="io.classpath"/>
+		</antlr>
+		<antlr target="${io}/de/jreality/reader/vrml/vrml-v2.0.g">
+			<classpath refid="io.classpath"/>
+		</antlr>
+		<antlr target="${io}/de/jreality/reader/mathematica/mathematica6.g">
+			<classpath refid="io.classpath"/>
+		</antlr>
+		<antlr target="${io}/de/jreality/reader/mathematica/mathematica.g">
+			<classpath refid="io.classpath"/>
+		</antlr>
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${io}" destdir="${build}/io" 
+			debug="true" includeantruntime="false">
+			<classpath refid="io.classpath"/>
+		</javac>
+		<copy todir="build/io">
+			<!-- copy shader progs -->
+			<fileset dir="${io}">
+				<exclude name="**/*.java"/>
+				<exclude name="**/*.pdf"/>
+				<exclude name="**/*.gif"/>
+			</fileset>
+		</copy>
+		<jar jarfile="${dist}/jReality-io.jar" basedir="${build}/io"/>
+	</target>
+
+	<target name="ui" depends="core, tools, io, jogl, soft" description="compile the ui">
+		<mkdir dir="${build}/ui" />
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${ui}" destdir="${build}/ui" 
+			debug="true" includeantruntime="false">
+			<classpath refid="ui.classpath"/>
+		</javac>
+		<copy todir="${build}/ui">
+			<fileset dir="src-ui">
+				<exclude name="**/*.java"/>
+			</fileset>
+		</copy>
+		<jar jarfile="${dist}/jReality-ui.jar" basedir="${build}/ui" />
+	</target>
+
+	<target name="vr" depends="core, ui, swing, sunflow" description="compile vr">
+		<mkdir dir="${build}/vr" />
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${vr}" destdir="${build}/vr" 
+			debug="true" includeantruntime="false">
+			<classpath refid="vr.classpath"/>
+		</javac>
+		<copy todir="${build}/vr">
+			<fileset dir="src-vr">
+				<exclude name="**/*.java"/>
+			</fileset>
+		</copy>
+		<jar jarfile="${dist}/jReality-vr.jar" basedir="${build}/vr" />
+	</target>
+
+	<target name="examples" depends="vr" description="compile the examples">
+		<mkdir dir="${build}/examples" />
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${examples}" destdir="${build}/examples" 
+			debug="true" includeantruntime="false">
+			<classpath refid="examples.classpath"/>
+		</javac>
+		<copy todir="${build}/examples">
+			<fileset dir="src-examples">
+				<exclude name="**/*.java"/>
+			</fileset>
+		</copy>
+		<jar jarfile="${dist}/jReality-examples.jar" basedir="${build}/examples" />
+	</target>
+
+
+	<target name="proxies" depends="core" description="compile the proxies">
+		<mkdir dir="${build}/proxies" />
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${proxies}" destdir="${build}/proxies" 
+			debug="true" includeantruntime="false">
+			<classpath refid="proxies.classpath"/>
+		</javac>
+		<jar jarfile="${dist}/jReality-proxies.jar" basedir="${build}/proxies" />
+	</target>
+
+	<target name="soft" depends="backends-share" description="build soft backend">
+		<mkdir dir="${build}/soft" />
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${soft}:${soft-new}" destdir="${build}/soft" 
+			debug="true" includeantruntime="false">
+			<classpath refid="backend.classpath"/>
+		</javac>
+		<jar jarfile="${dist}/jReality-soft.jar" basedir="${build}/soft" />
+	</target>
+	
+	<target name="jogl" depends="backends-share, proxies" description="build jogl backend">
+		<mkdir dir="${build}/jogl" />
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${jogl}"  destdir="${build}/jogl" 
+			debug="true" includeantruntime="false">
+			<classpath refid="jogl.classpath"/>
+		</javac>
+		<copy todir="build/jogl">
+			<!-- copy shader progs -->
+			<fileset dir="${jogl}">
+				<exclude name="**/*.java"/>
+				<exclude name="**/*.gif"/>
+			</fileset>
+		</copy>
+		<jar jarfile="${dist}/jReality-jogl.jar" basedir="${build}/jogl" />
+	</target>
+	
+	<target name="jogl3" depends="backends-share, proxies, jogl" description="build jogl3 backend">
+		<mkdir dir="${build}/jogl3" />
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${jogl3}"  destdir="${build}/jogl3" 
+			debug="true" includeantruntime="false">
+			<classpath refid="jogl3.classpath"/>
+		</javac>
+		<copy todir="build/jogl3">
+			<!-- copy shader progs -->
+			<fileset dir="${jogl3}">
+				<exclude name="**/*.java"/>
+				<exclude name="**/*.gif"/>
+			</fileset>
+		</copy>
+		<jar jarfile="${dist}/jReality-jogl3.jar" basedir="${build}/jogl3" />
+	</target>
+
+	<target name="gpgpu" depends="jogl" description="build gpgpu backend">
+		<mkdir dir="${build}/gpgpu" />
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${gpgpu}"  destdir="${build}/gpgpu" 
+			debug="true" includeantruntime="false">
+			<classpath refid="gpgpu.classpath"/>
+		</javac>
+		<copy todir="build/gpgpu">
+			<!-- copy shader progs -->
+			<fileset dir="${gpgpu}">
+				<exclude name="**/*.java"/>
+				<exclude name="**/*.gif"/>
+			</fileset>
+		</copy>
+		<jar jarfile="${dist}/jReality-gpgpu.jar" basedir="${build}/gpgpu" includes="de/jreality/jogl/**"/>
+	</target>
+
+	<target name="swt" depends="jogl, tools" description="build swt viewer for the jogl backend">
+		<mkdir dir="${build}/swt" />
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${swt}"  destdir="${build}/swt" 
+			debug="true" includeantruntime="false">
+			<classpath refid="swt.classpath"/>
+		</javac>
+		<jar jarfile="${dist}/jReality-swt.jar" basedir="${build}/swt" />
+	</target>
+
+	<target name="renderman" depends="core" description="build renderman backend">
+		<mkdir dir="${build}/renderman" />
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${renderman}" destdir="${build}/renderman" 
+			debug="true" includeantruntime="false">
+			<classpath refid="backend.classpath"/>
+		</javac>
+		<jar jarfile="${dist}/jReality-renderman.jar" basedir="${build}/renderman" />
+	</target>
+
+	<target name="sunflow" depends="core,backends-share" description="build sunflow backend">
+		<mkdir dir="${build}/sunflow" />
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${sunflow}" destdir="${build}/sunflow" 
+			debug="true" includeantruntime="false">
+			<classpath refid="sunflow.classpath"/>
+		</javac>
+		<jar jarfile="${dist}/jReality-sunflow.jar" basedir="${build}/sunflow" />
+	</target>
+
+	<target name="portal" depends="ui,jogl,soft,proxies" description="build portal backend">
+		<mkdir dir="${build}/portal" />
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${portal}" destdir="${build}/portal" 
+			debug="true" includeantruntime="false">
+			<classpath refid="portal.classpath"/>
+		</javac>
+		<jar jarfile="${dist}/jReality-portal.jar" basedir="${build}/portal" />
+		<!--jar jarfile="${dist}/jReality-portal-native-linux.jar" basedir="native" /-->
+	</target>
+
+	<target name="plugin" depends="audio,ui,jogl,soft,proxies,portal,swing" description="build the jrworkspace plugins">
+		<mkdir dir="${build}/plugin" />
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${plugin}" destdir="${build}/plugin" 
+			debug="true" includeantruntime="false">
+			<classpath refid="plugin.classpath"/>
+		</javac>
+		<copy todir="${build}/plugin">
+			<fileset dir="${plugin}">
+				<exclude name="**/*.java"/>
+			</fileset>
+		</copy>
+		<jar jarfile="${dist}/jReality-plugin.jar" basedir="${build}/plugin" />
+	</target>
+
+	<target name="tutorial" depends="audio,ui,jogl,soft,proxies,portal,swing,plugin" description="build tutorial ">
+		<mkdir dir="${build}/tutorial" />
+		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
+			srcdir="${tutorial}" destdir="${build}/tutorial" 
+			debug="true" includeantruntime="false">
+			<classpath refid="tutorial.classpath"/>
+		</javac>
+		<copy todir="${build}/tutorial">
+			<!-- copy shader progs -->
+			<fileset dir="${tutorial}">
+				<exclude name="**/*.java"/>
+				<exclude name="**/.svn/**"/>
+			</fileset>
+		</copy>
+		<jar jarfile="${dist}/jReality-tutorial.jar" basedir="${build}/tutorial" />
+	</target>
+
+	<target name="javadoc" description="generate javadoc in docs/api">
+		<mkdir dir="${javadoc}" />
+		<javadoc destdir="${javadoc}" access="public" author="true" version="true" use="true" useexternalfile="true" windowtitle="jReality API" source="${source}">
+			<fileset dir="${core}" defaultexcludes="yes">
+				<include name="de/jreality/**/*.java" />
+			</fileset>
+			<fileset dir="${tools}" defaultexcludes="yes">
+				<include name="de/jreality/**/*.java" />
+			</fileset>
+			<fileset dir="${io}" defaultexcludes="yes">
+				<include name="de/jreality/**/*.java" />
+				<exclude name="de/jreality/reader/*/*.java" />
+				<exclude name="de/jreality/reader/*/**/*.java" />
+			</fileset>
+			<fileset dir="${ui}" defaultexcludes="yes">
+				<include name="de/jreality/**/*.java" />
+			</fileset>
+			<fileset dir="${vr}" defaultexcludes="yes">
+				<include name="de/jreality/**/*.java" />
+			</fileset>
+			<fileset dir="${plugin}" excludes="de/jreality/plugin/experimental/**/*.java" defaultexcludes="yes">
+				<include name="de/jreality/**/*.java" />
+			</fileset>
+			<fileset dir="${tutorial}" defaultexcludes="yes">
+				<include name="de/jreality/**/*.java" />
+			</fileset>
+			<link href="http://docs.oracle.com/javase/6/docs/api/"/>
+			<link href="http://www3.math.tu-berlin.de/jtem/beans/api/"/>
+			<link href="http://www3.math.tu-berlin.de/jtem/jrworkspace/api/"/>
+			<link href="http://www3.math.tu-berlin.de/jtem/jterm/api/"/>
+		</javadoc>
+	</target>
+
+	<target name="dist" depends="core,audio,io,jogl,jogl3,soft,renderman,portal,gpgpu,sunflow,plugin,examples,tutorial" description="generate the distribution">
+	</target>
+
+	<target name="release" depends="release-jar, release-src, release-javadoc, release-3rdparty, release-tutorial, release-jni" description="generate a big jar that contains all classes needed for the tutorial">
+		<copy file="${lib}/vrData.jar" todir="${release_dir}" />
+	</target>
+
+	<target name="release-plugin" depends="dist">
+		<property name="basic_folder" value="de/jreality/plugin/basic"/>
+		<property name="content_folder" value="de/jreality/plugin/content"/>
+		<property name="menu_folder" value="de/jreality/plugin/menu"/>
+		<property name="scene_folder" value="de/jreality/plugin/scene"/>
+		<property name="experimental_folder" value="de/jreality/plugin/experimental"/>
+		
+		<property name="vr_plugins" value="
+			${content_folder}/TerrainAligned**,
+			${scene_folder}/Avatar**,
+			${scene_folder}/Sky**, 
+			${scene_folder}/Terrain**, 
+			${scene_folder}/VRExamples**
+			${scene_folder}/VRPanel**
+		"/>
+		
+		<property name="audio_plugins" value="
+			de/jreality/plugin/audio/**,
+		"/>
+		
+		<property name="shared" value="
+			de/jreality/plugin/help/**, 
+			de/jreality/plugin/icon/**, 
+			de/jreality/ui/**
+		"/>
+		
+		<property name="plugin_folder" value="${release_dir}/plugin"/>
+		<mkdir dir="${plugin_folder}"/>
+		
+		<jar destfile="${plugin_folder}/jReality-plugin-view.jar">
+			<fileset dir="${build}/plugin" 
+				excludes="
+					${audio_plugins},
+					${vr_plugins}, 
+					${experimental_folder}/**, 
+					${shared} 
+			"/>
+		</jar>
+
+		<jar destfile="${plugin_folder}/jReality-plugin-vr.jar">
+			<fileset dir="${build}/plugin" 
+				includes="${vr_plugins}"
+			/>
+		</jar>
+		
+		<jar destfile="${plugin_folder}/jReality-plugin-experimental.jar">
+			<fileset dir="${build}/plugin"
+				includes="${experimental_folder}/**"
+			/>
+		</jar>
+		<jar destfile="${plugin_folder}/jReality-plugin-audio.jar">
+			<fileset dir="${build}/plugin"
+				includes="${audio_plugins}"
+			/>
+		</jar>		
+		<jar destfile="${plugin_folder}/jReality-plugin-share.jar">
+			<fileset dir="${build}/plugin"
+				includes="${shared}"/>
+		</jar>
+	</target>
+
+	<target name="release-jar" depends="dist" description="generate a big jar that contains all classes needed for the tutorial">
+		<mkdir dir="${release_dir}" />
+		<jar jarfile="${release_dir}/jReality.jar">
+			
+			<manifest>
+				<attribute name="Built-By" value="${user.name}"/>
+				<attribute name="Implementation-Title" value="http://www3.jreality.de"/>
+				<attribute name="Implementation-Version" value="${version}"/>
+				<attribute name="Implementation-URL" value="http://fs.math.tu-berlin.de:8000/svn/jreality/"/>
+			</manifest>
+			
+			<fileset dir="${build}/core" />
+			<fileset dir="${build}/tools" />
+			<fileset dir="${build}/audio" />
+			<fileset dir="${build}/backends-share" />
+			<fileset dir="${build}/io" />
+			<fileset dir="${build}/ui" />
+
+			<fileset dir="${build}/soft" />
+			<fileset dir="${build}/renderman" />
+			<fileset dir="${build}/sunflow" />
+			<fileset dir="${build}/jogl" />
+			<fileset dir="${build}/jogl3" />
+			<fileset dir="${build}/plugin" />
+
+			<fileset dir="${build}/proxies" />
+			<fileset dir="${build}/portal" />
+
+			<!--fileset dir="${swt}" /-->
+			<fileset dir="${build}/gpgpu" />
+			<fileset dir="${build}/swing" />
+			<fileset dir="${build}/vr" />
+
+			<fileset dir="${build}/examples">
+				<exclude name="**/SwtExample*"/>
+			</fileset>
+		</jar>
+
+	</target>
+
+	<target name="release-src" depends="dist" description="generate a big jar that contains all classes needed for the tutorial">
+		<mkdir dir="${release_dir}" />
+		<mkdir dir="${release_dir}/tmp/src" />
+		<copy todir="${release_dir}/tmp/src">
+			<fileset dir="." excludesfile="excludes.txt">
+				<include name="src-*/**/*" />
+			</fileset>
+		</copy>
+		<zip destfile="${release_dir}/jReality-src.zip" basedir="${release_dir}/tmp"/>
+		<delete dir="${release_dir}/tmp"/>
+	</target>
+
+	<target name="release-javadoc" depends="dist, javadoc" description="generate a big jar that contains all classes needed for the tutorial">
+		<mkdir dir="${release_dir}" />
+		<mkdir dir="${release_dir}/tmp/javadoc" />
+		<copy todir="${release_dir}/tmp/javadoc">
+			<fileset dir="${javadoc}" />
+		</copy>
+		<zip destfile="${release_dir}/jReality-javadoc.zip" >
+			<fileset dir="${release_dir}/tmp" />
+		</zip>
+		<delete dir="${release_dir}/tmp"/>
+		<mkdir dir="${release_dir}/tmp/tutorial" />
+		<copy todir="${release_dir}/tmp/tutorial">
+			<fileset dir="src-tutorial" />
+		</copy>
+		<zip destfile="${release_dir}/jReality-tutorial.zip" basedir="${release_dir}/tmp"/>
+		<delete dir="${release_dir}/tmp"/>
+
+	</target>
+
+	<target name="release-3rdparty" depends="dist" description="zip all jars">
+		<mkdir dir="${release_dir}" />
+		<mkdir dir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/jython-standalone-2.5.3.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/jython_console.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/antlr-3.4-complete.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/beans.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/bsh.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/colorpicker.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/itextpdf-5.3.2.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/janino.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/jterm.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/jrworkspace.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/NetUtil.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/sunflow.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/xstream-1.4.2.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/xpp3-1.1.4c.jar" todir="${release_dir}/tmp/lib" />
+		<copy todir="${release_dir}/tmp/lib">
+			<fileset dir="3rd-party" />
+		</copy>
+		<zip destfile="${release_dir}/jReality-3rd-party.zip" >
+			<fileset dir="${release_dir}/tmp" />
+		</zip>
+
+		<delete dir="${release_dir}/tmp"/>
+	</target>
+
+	
+	<target name="release-jni-linux32" depends="dist" description="zip all jni libs">
+		<mkdir dir="${release_dir}" />
+		<mkdir dir="${release_dir}/tmp/jni" />
+		<copy todir="${release_dir}/tmp/jni">
+			<fileset dir="${jni-linux32}" />
+		</copy>
+		<zip destfile="${release_dir}/jReality-jni-linux32.zip" >
+			<fileset dir="${release_dir}/tmp" />
+		</zip>
+		<delete dir="${release_dir}/tmp"/>
+	</target>
+
+	<target name="release-jni-linux64" depends="dist" description="zip all jni libs">
+		<mkdir dir="${release_dir}" />
+		<mkdir dir="${release_dir}/tmp/jni" />
+		<copy todir="${release_dir}/tmp/jni">
+			<fileset dir="${jni-linux64}" />
+		</copy>
+		<zip destfile="${release_dir}/jReality-jni-linux64.zip" >
+			<fileset dir="${release_dir}/tmp" />
+		</zip>
+		<delete dir="${release_dir}/tmp"/>
+	</target>
+	
+	<target name="release-jni-macosx" depends="dist" description="zip all jni libs">
+		<mkdir dir="${release_dir}" />
+		<mkdir dir="${release_dir}/tmp/jni" />
+		<copy todir="${release_dir}/tmp/jni">
+			<fileset dir="${jni-macosx}" />
+		</copy>
+		<zip destfile="${release_dir}/jReality-jni-macosx.zip" >
+			<fileset dir="${release_dir}/tmp" />
+		</zip>
+		<delete dir="${release_dir}/tmp"/>
+	</target>
+
+	<target name="release-jni-win32" depends="dist" description="zip all jni libs">
+		<mkdir dir="${release_dir}" />
+		<mkdir dir="${release_dir}/tmp/jni" />
+		<copy todir="${release_dir}/tmp/jni">
+			<fileset dir="${jni-win32}" />
+		</copy>
+		<zip destfile="${release_dir}/jReality-jni-win32.zip" >
+			<fileset dir="${release_dir}/tmp" />
+		</zip>
+		<delete dir="${release_dir}/tmp"/>
+	</target>
+
+	<target name="release-jni-win64" depends="dist" description="zip all jni libs">
+		<mkdir dir="${release_dir}" />
+		<mkdir dir="${release_dir}/tmp/jni" />
+		<copy todir="${release_dir}/tmp/jni">
+			<fileset dir="${jni-win64}" />
+		</copy>
+		<zip destfile="${release_dir}/jReality-jni-win64.zip" >
+			<fileset dir="${release_dir}/tmp" />
+		</zip>
+		<delete dir="${release_dir}/tmp"/>
+	</target>
+
+	<target name="release-jni" depends="release-jni-linux32,release-jni-linux64,release-jni-macosx,release-jni-win32,release-jni-win64" />
+
+	<target name="release-tutorial" depends="dist, javadoc" description="generate a big jar that contains all classes needed for the tutorial">
+		<mkdir dir="${release_dir}" />
+		<mkdir dir="${release_dir}/tmp/src-tutorial" />
+		<copy todir="${release_dir}/tmp/src-tutorial">
+			<fileset dir="src-tutorial" />
+		</copy>
+		<zip destfile="${release_dir}/jReality-tutorial-src.zip" basedir="${release_dir}/tmp"/>
+		<delete dir="${release_dir}/tmp"/>
+	</target>
+
+	<target name="tutorial-src" description="create a zip file containing tutorial src">
+		<zip destfile="${dist}/tutorial.zip" basedir="." includes="src-tutorial/**/*" defaultexcludes="yes"/>
+	</target>
+
+	<target name="clean" description="clean up">
+		<delete dir="${release_dir}" />
+		<delete dir="${build}" />
+		<delete dir="${dist}" />
+		<delete dir="${javadoc}"/>
+	</target>
+
+</project>

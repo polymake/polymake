@@ -1,0 +1,210 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+package Visual::PointConfiguration;
+use Polymake::Struct (
+   [ '@ISA' => 'Container' ],
+   [ '$PointConfiguration' => '#%' ],
+);
+
+# where to keep the view transformation matrix etc.
+method representative { $_[0]->PointConfiguration }
+
+method basis_solid { $_[0]->elements->[0] }
+
+# @category Visualization
+# Visualize the [[TRIANGULATION]] of a point configuration
+# @options %Visual::Polygons::decorations
+# @return Visual::PointConfiguration
+user_method TRIANGULATION(;%Visual::Polygons::decorations) {
+   my ($self, $decor)=@_;
+   my $d=$self->PointConfiguration->AMBIENT_DIM;
+   if ($d > 3) {
+      die "don't know how to visualize the triangulation of a $d-d configuration\n";
+   }
+
+   my $skeleton=$self->basis_solid;
+   $skeleton->VertexStyle="hidden";
+   $skeleton->FacetStyle="hidden";
+   
+   my $labels= delete $decor->{VertexLabels};
+   if ($labels ne "hidden") {
+      $labels=$skeleton->VertexLabels;
+   } else {
+      undef $labels;
+   }
+   
+   
+   my $Points=dehomogenize(convert_to<Float>($self->PointConfiguration->POINTS));
+   my $Signs=$self->PointConfiguration->TRIANGULATION_SIGNS;
+    
+   $self->Name="Triangulation of ".$self->PointConfiguration->name;
+   push @{$self->elements}, [ $self->PointConfiguration->CONVEX_HULL->VisualSimplices($self->PointConfiguration->TRIANGULATION->FACETS,$Points,$Signs,$labels,$decor) ];
+
+   visualize($self);
+}
+
+# @category Visualization
+# Draw the edges of the [[PointConfiguration::TRIANGULATION_BOUNDARY|TRIANGULATION_BOUNDARY]].
+# The facets are made transparent.
+# @options %Visual::Graph::decorations
+# @return Visual::PointConfiguration
+user_method TRIANGULATION_BOUNDARY(%Visual::Graph::decorations) {
+   my ($self, $decor)=@_;
+   my $P=$self->basis_solid;
+   $P->FacetTransparency ||= 0.5;
+   $P->EdgeThickness ||= 1;
+   $self->Name="Triangulation Boundary of ".$self->PointConfiguration->name;
+   my $graph = new graph::Graph(ADJACENCY => 
+       $self->PointConfiguration->TRIANGULATION->BOUNDARY->GRAPH->ADJACENCY - $self->PointConfiguration->GRAPH->ADJACENCY);
+   push @{$self->elements}, new Visual::Graph( Name => $self->PointConfiguration->name."-inner-edges", 
+                                               Graph => $graph,   
+                                               Coord => $P->Points, 
+                                               NodeStyle => "hidden", 
+                                               EdgeThickness => 0.5, 
+                                               $decor );
+   visualize($self);
+}
+
+# @category Visualization
+# Visualize the [[POLYTOPAL_SUBDIVISION]] of a point configuration.
+# @options %Visual::Polygons::decorations
+# @return Visual::PointConfiguration
+user_method POLYTOPAL_SUBDIVISION(;%Visual::Polygons::decorations) {
+    my ($self, $decor)=@_;
+    my $d=$self->PointConfiguration->AMBIENT_DIM;
+    if ($d > 3) {
+        die "don't know how to visualize the polytopal subdivision of a $d-d configuration\n";
+    }
+    $self->Name="Polytopal subdivision of ".$self->PointConfiguration->name;
+    my $pc=$self->PointConfiguration->POINTS;
+    my $psd=$self->PointConfiguration->POLYTOPAL_SUBDIVISION->MAXIMAL_POLYTOPES;
+    my @faces=();
+
+    my $skeleton=$self->basis_solid;
+#    $skeleton->EdgeStyle="hidden";
+    if ( $d == 3 ) {
+	$skeleton->FacetStyle="hidden";
+	foreach (@{$psd}) {
+	    my $p=new polytope::Polytope<Rational>(POINTS=>$pc->minor($_,All));
+	    my $P=new Visual::Polygons( Vertices => dehomogenize(convert_to<Float>($p->VERTICES)),
+					Facets => $p->VIF_CYCLIC_NORMAL,
+					VertexLabels => "hidden",
+					FacetNeighbors => $p->NEIGHBOR_FACETS_CYCLIC_NORMAL,
+					Closed => 1,
+					NEdges => $p->N_EDGES,
+					$decor
+		);
+	    push @faces, new Visual::Polytope(Polytope=>$p,$P);
+	}
+    } else {
+	foreach (@{$psd}) {
+	    my $p=new polytope::Polytope<Rational>(POINTS=>$pc->minor($_,All));
+	    my $P=new Visual::Polygon(Vertices => dehomogenize(convert_to<Float>($p->VERTICES)),
+				 VertexLabels => "hidden",
+				 Facet => $p->VIF_CYCLIC_NORMAL->[0],
+				 NEdges => $p->N_EDGES,
+				 $decor
+			       );
+	    push @{faces}, new Visual::Polytope(Polytope=>$p,$P);
+	}
+    }
+    compose($self,@faces);
+}
+
+
+
+package Visual::Color;
+
+# Color for the non-vertices.
+custom $non_vertices="255 255 0";
+
+
+# @topic objects/Visual::PointConfiguration
+# @category Visualization
+# Visualization of the point configuration.
+
+object PointConfiguration {
+
+# @category Visualization
+# Visualize the [[POINTS]] of a point configuration.
+# @options %Visual::Polygons::decorations
+# @return Visual::PointSet
+user_method VISUAL_POINTS(%Visual::Polygons::decorations) : POINTS, NON_VERTICES, N_POINTS {
+   my ($this, $decor)=@_;
+   my @colors = map { exists $this->NON_VERTICES->{$_} ? $Visual::Color::non_vertices : $Visual::Color::vertices } @{range(0,$this->N_POINTS-1)};
+   visualize( new Visual::PointSet(Name => $this->name,
+                                   Points => dehomogenize(convert_to<Float>($this->POINTS)),
+                                   PointLabels =>$this->lookup("LABELS"),
+                                   PointColor => \@colors,
+                                 $decor
+                               ));
+}
+
+
+# @category Visualization
+# Visualize a point configuration.
+# @options %Visual::Polygons::decorations
+# @return Visual::PointConfiguration
+
+user_method VISUAL(%Visual::Polygons::decorations) : POINTS, NON_VERTICES, N_POINTS, PIF_CYCLIC_NORMAL {
+   my ($this, $decor)=@_;
+   my @colors = map { exists $this->NON_VERTICES->{$_} ? $Visual::Color::non_vertices : $Visual::Color::vertices } @{range(0,$this->N_POINTS-1)};
+   my $P= $this->DIM==2
+	  ? new Visual::Polygon( Name => $this->name,
+				 Points => dehomogenize(convert_to<Float>($this->POINTS)),
+				 PointLabels =>$this->lookup("LABELS") ,
+				 PointColor => \@colors,
+				 Facet => $this->PIF_CYCLIC_NORMAL->[0],
+				 FacetTransparency => 0.5,
+                                 NEdges => $this->CONVEX_HULL->N_EDGES,
+   				 $decor
+			       )
+	  : new Visual::Polygons( Name => $this->name,
+				  Points => dehomogenize(convert_to<Float>($this->POINTS)),
+				  PointLabels => $this->lookup("LABELS"),
+				  PointColor => \@colors,
+				  Facets => $this->PIF_CYCLIC_NORMAL,
+				  FacetNeighbors => $this->CONVEX_HULL->NEIGHBOR_FACETS_CYCLIC_NORMAL,
+				  FacetLabels => $this->CONVEX_HULL->lookup("FACET_LABELS") || "hidden",
+				  FacetTransparency => 0.5,
+				  Closed => 1,
+				  NEdges => $this->CONVEX_HULL->N_EDGES,
+				  $decor
+				);
+   visualize( new Visual::PointConfiguration(Name => $this->name, PointConfiguration => $this, $P));
+}
+precondition : DIM { $this->DIM>=2 }
+precondition : AMBIENT_DIM { $this->AMBIENT_DIM<=3 }
+precondition : BOUNDED;
+
+# @hide
+user_method VISUAL(%Visual::Polygons::decorations) : POINTS, GRAPH.ADJACENCY {
+   my ($this, $decor)=@_;
+   my $pc=$this->VISUAL_POINTS(Name=>'points', $decor);
+   my $G=$this->GRAPH->VISUAL(Name=>$this->name, Coord=>dehomogenize(convert_to<Float>($this->POINTS)), $decor);
+   visualize( new Visual::PointConfiguration(Name => $this->name, PointConfiguration => $this, $G, $pc) );
+}
+precondition : DIM { $this->DIM==1 }
+precondition : AMBIENT_DIM { $this->AMBIENT_DIM<=3 }
+precondition : BOUNDED;
+
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:4
+# indent-tabs-mode:nil
+# End:

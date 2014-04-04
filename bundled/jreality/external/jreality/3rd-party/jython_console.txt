@@ -1,0 +1,3 @@
+The jython console is licensed under the LGPL
+http://www.gnu.org/licenses/lgpl.html
+http://code.google.com/p/jythonconsole/

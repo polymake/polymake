@@ -1,0 +1,14 @@
+# demo CAVE configuration file
+
+parent: demo.props
+
+frame.title: floor
+
+frame.offset.x: 744
+frame.offset.y: 248
+
+#frame.offset.x: 248
+#frame.offset.y: 648
+
+camera.orientation: 180. 0. 1. 0.
+

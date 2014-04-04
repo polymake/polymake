@@ -1,0 +1,67 @@
+<toolconfig>
+
+<import href="chunks/toolconfig-mouse.xml" />
+<import href="chunks/toolconfig-keyboard.xml" />
+
+<virtualdevices>
+    <mapping src="Secondary" target="RunActivation"/>
+
+    <mapping src="Meta" target="DragAlongViewDirection"/>
+    
+    <!-- mapping src="AltMeta" target="Tertiary" / -->
+    <mapping src="Meta" target="Tertiary" />
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualMap">
+      <inputslot>PrimaryAction</inputslot>
+      <outputslot>SelectionActivation</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualDoubleClick">
+      <inputslot>PrimaryAction</inputslot>
+      <outputslot>PanelActivation</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualDoubleClick">
+      <inputslot>PrimarySelection</inputslot>
+      <outputslot>Duplication</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualCoupledAxis">
+      <inputslot>PrimaryAction</inputslot>
+      <inputslot>Secondary</inputslot>
+      <outputslot>SecondaryAction</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualCoupledAxis">
+      <inputslot>PrimarySelection</inputslot>
+      <inputslot>Secondary</inputslot>
+      <outputslot>SecondarySelection</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualCoupledAxis">
+      <inputslot>PrimaryMenu</inputslot>
+      <inputslot>Secondary</inputslot>
+      <outputslot>SecondaryMenu</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualCoupledAxis">
+      <inputslot>PrimaryAction</inputslot>
+      <inputslot>Tertiary</inputslot>
+      <outputslot>TertiaryAction</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualCoupledAxis">
+      <inputslot>PrimarySelection</inputslot>
+      <inputslot>Tertiary</inputslot>
+      <outputslot>TertiarySelection</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualCoupledAxis">
+      <inputslot>PrimaryMenu</inputslot>
+      <inputslot>Tertiary</inputslot>
+      <outputslot>TertiaryMenu</outputslot>
+    </virtualdevice>
+
+</virtualdevices>
+
+</toolconfig>

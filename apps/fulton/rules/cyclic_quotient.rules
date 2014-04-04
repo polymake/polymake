@@ -1,0 +1,93 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+###################################################
+###################################################
+###
+###  CyclicQuotient rules
+###
+###################################################
+###################################################
+object CyclicQuotient {
+
+   rule N, Q : DUAL_CONTINUED_FRACTION {
+      my $check = cf2rational($this->DUAL_CONTINUED_FRACTION);
+      $this->N = new Integer(numerator($check));
+      $this->Q = new Integer(numerator($check) - denominator($check));
+   }
+
+   rule DUAL_CONTINUED_FRACTION : N, Q {
+      my $check = new Rational($this->N, ($this->N)-($this->Q));
+      $this->DUAL_CONTINUED_FRACTION = rational2cf($check);
+   }
+
+   rule RAYS : N, Q {
+      $this->RAYS = new Matrix([1,0],[-$this->Q, $this->N]);
+   }
+
+   rule MAXIMAL_CONES : {
+      $this->MAXIMAL_CONES = [[0, 1]];
+   }
+
+   rule CONTINUED_FRACTION : N, Q {
+      my $check = new Rational($this->N, $this->Q);
+      # print $check."\n";
+      $this->CONTINUED_FRACTION = rational2cf($check);
+   }
+
+   rule N, Q : CONTINUED_FRACTION {
+      my $check = cf2rational($this->CONTINUED_FRACTION);
+      $this->N = new Integer(numerator($check));
+      $this->Q = new Integer(denominator($check));
+   }
+}
+
+
+###################################################
+###################################################
+###
+###  User functions
+###
+###################################################
+###################################################
+
+
+
+# Compute the continued fraction corresponding to a rational number.
+user_function rational2cf(Rational){
+   my($check) = @_;
+   my @result = ();
+   while($check != 0){
+      push @result, new Integer(ceil($check));
+      $check = ceil($check)- $check;
+      $check = $check !=0 ? 1/$check : 0;
+      # print $check."\n";
+   }
+   return new Vector(@result);
+}
+
+# Compute the rational number corresponding to a continued fraction.
+user_function cf2rational(Vector<Integer>){
+   my($v) = @_;
+   my @chain = @$v;
+   my $check = new Rational(pop @chain);
+   my $s = @chain;
+   while($s > 0){
+      $check = (new Rational(pop @chain)) - 1/$check;
+      $s = @chain;
+   }
+   return $check;
+}
+

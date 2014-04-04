@@ -1,0 +1,146 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object Polytope {
+
+rule FAR_FACE : VERTICES {
+   $this->FAR_FACE=far_points($this->VERTICES);
+}
+weight 1.10;
+
+method has_far_facet {
+   my ($this)=@_;
+   my $Points=$this->VERTICES | POINTS;
+   rank($Points->minor(far_points($Points), range(1,$Points->cols-1))) == $this->CONE_DIM-1
+}
+
+# @category Unbounded polyhedra
+# Indices of facets that are unbounded.
+
+property UNBOUNDED_FACETS : Set;
+
+# @notest  Rule defined "in stock" - currently without use
+rule UNBOUNDED_FACETS : FacetPerm.UNBOUNDED_FACETS, FacetPerm.PERMUTATION {
+   $this->UNBOUNDED_FACETS=permuted($this->FacetPerm->UNBOUNDED_FACETS, $this->FacetPerm->PERMUTATION);
+}
+weight 1.10;
+
+rule UNBOUNDED_FACETS : VERTICES_IN_FACETS, FAR_FACE {
+   $this->UNBOUNDED_FACETS=incident_rows($this->VERTICES_IN_FACETS, $this->FAR_FACE);
+}
+
+
+# @category Unbounded polyhedra
+# A linear objective function for which each unbounded edge is increasing;
+# only defined for unbounded polyhedra.
+
+property TOWARDS_FAR_FACE : Vector<Scalar>;
+
+rule TOWARDS_FAR_FACE : VERTICES, AFFINE_HULL {
+   my $cone=new Polytope<Rational>(INEQUALITIES => $this->VERTICES->minor($this->FAR_FACE,All),
+                                   EQUATIONS => $this->AFFINE_HULL);
+   $this->TOWARDS_FAR_FACE=$cone->REL_INT_POINT;
+}
+precondition : FAR_FACE { $this->FAR_FACE->size()>0 };
+
+rule TOWARDS_FAR_FACE : { $this->TOWARDS_FAR_FACE=undef }
+precondition : FAR_FACE { $this->FAR_FACE->size()==0 };
+
+
+# @category Unbounded polyhedra
+# True if each bounded vertex of a (possibly unbounded) d-polyhedron has vertex degree d in the [[GRAPH]].
+# The vertex degrees of the vertices on the [[FAR_FACE]] do not matter.
+
+property SIMPLE_POLYHEDRON : Bool;
+
+rule SIMPLE, SIMPLE_POLYHEDRON : COMBINATORIAL_DIM, FAR_FACE, GRAPH.NODE_DEGREES {
+   my $simple=1;
+   my $simple_polyhedron=1;
+   my $v=0;
+   foreach (@{$this->GRAPH->NODE_DEGREES}) {
+      if ($_ != $this->COMBINATORIAL_DIM) {
+         $simple=0;
+         if (!exists($this->FAR_FACE->{$v})) {
+            $simple_polyhedron=0;
+            last;
+         }
+      }
+      ++$v;
+   }
+   $this->SIMPLE=$simple;
+   $this->SIMPLE_POLYHEDRON=$simple_polyhedron;
+}
+weight 1.10;
+
+
+rule SIMPLE_POLYHEDRON : { $this->SIMPLE_POLYHEDRON=1 }
+precondition : SIMPLE;
+weight 0.10;
+
+
+# @category Unbounded polyhedra
+# Number of bounded vertices (non-rays).
+
+property N_BOUNDED_VERTICES : Int;
+
+rule N_BOUNDED_VERTICES : N_VERTICES, FAR_FACE {
+   $this->N_BOUNDED_VERTICES=$this->N_VERTICES-@{$this->FAR_FACE};
+}
+weight 0.10;
+
+# @category Unbounded polyhedra
+# Indices of [[VERTICES]] that are no rays.
+# @return Set<Int>
+user_method BOUNDED_VERTICES : FAR_FACE, N_VERTICES {
+   my $this=shift;
+   range(0,$this->N_VERTICES-1) - $this->FAR_FACE;
+}
+
+# @category Unbounded polyhedra
+# Indices of [[FACETS]] that are bounded.
+# @return Set<Int> 
+user_method BOUNDED_FACETS : UNBOUNDED_FACETS, N_FACETS {
+   my $this=shift;
+   range(0,$this->N_FACETS-1) - $this->UNBOUNDED_FACETS;
+}
+
+}
+
+
+object LinearProgram {
+
+# @category Unbounded polyhedra
+# Subgraph of [[BOUNDED_GRAPH]]. Consists only of directed arcs along which the value of the objective function increases.
+
+property DIRECTED_BOUNDED_GRAPH : Graph<Directed>;
+
+}
+
+object Polytope {
+
+rule LP.DIRECTED_BOUNDED_GRAPH.ADJACENCY : LP.DIRECTED_GRAPH.ADJACENCY, FAR_FACE, BOUNDED {
+   $this->LP->DIRECTED_BOUNDED_GRAPH->ADJACENCY= $this->BOUNDED ? $this->LP->DIRECTED_GRAPH->ADJACENCY : induced_subgraph($this->LP->DIRECTED_GRAPH->ADJACENCY, ~ $this->FAR_FACE);
+}
+weight 1.20;
+
+}
+
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

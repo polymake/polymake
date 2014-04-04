@@ -1,0 +1,61 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object Polytope {
+
+# @category Combinatorics
+# A lower bound for the number of simplices needed to triangulate the convex hull
+# Symmetries are NOT taken into account
+#rule SIMPLEXITY_LOWER_BOUND : VOLUME, MAX_INTERIOR_SIMPLICES, VERTICES, COMBINATORIAL_DIM, COCIRCUIT_EQUATIONS {
+#    $this->SIMPLEXITY_LOWER_BOUND = simplexity_lower_bound($this->COMBINATORIAL_DIM, $this->VERTICES, $this->MAX_INTERIOR_SIMPLICES, $this->VOLUME, $this->COCIRCUIT_EQUATIONS);
+#}
+
+# @category Combinatorics
+# The symmetrized version of SIMPLEXITY_LOWER_BOUND
+#rule SIMPLEXITY_LOWER_BOUND : VOLUME, MAX_INTERIOR_SIMPLICES | GROUP.REPRESENTATIVE_SIMPLICES, VERTICES, COMBINATORIAL_DIM, COCIRCUIT_EQUATIONS | GROUP.COCIRCUIT_EQUATIONS, VERTICES_IN_FACETS {
+
+rule GROUP.SIMPLEXITY_LOWER_BOUND : VOLUME, GROUP.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, VERTICES, COMBINATORIAL_DIM, GROUP.SYMMETRIZED_COCIRCUIT_EQUATIONS {
+   my $d=$this->COMBINATORIAL_DIM;
+   my $facet_reps = $this->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES;
+   $this->GROUP->SIMPLEXITY_LOWER_BOUND = simplexity_lower_bound($d, $this->VERTICES, $facet_reps, $this->VOLUME, $this->GROUP->SYMMETRIZED_COCIRCUIT_EQUATIONS);
+}
+
+}
+
+
+sub write_simplexity_ilp;
+
+user_function write_simplexity_ilp<Scalar>(Polytope<Scalar> $) {
+    my $p = shift;
+    my $outfilename = shift;
+    my $rmis = new Array<Set>($p->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES);
+    return simplexity_ilp($p->COMBINATORIAL_DIM, $p->VERTICES, $rmis, $p->VOLUME, $p->GROUP->COCIRCUIT_EQUATIONS, filename => $outfilename);
+}
+
+
+sub write_foldable_max_signature_ilp;
+
+user_function write_foldable_max_signature_ilp<Scalar>(Polytope<Scalar> $) {
+    my $p = shift;
+    my $outfilename = shift;
+    return foldable_max_signature_ilp($p->COMBINATORIAL_DIM, $p->VERTICES, $p->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, $p->VOLUME, $p->GROUP->FOLDABLE_COCIRCUIT_EQUATIONS, filename => $outfilename);
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

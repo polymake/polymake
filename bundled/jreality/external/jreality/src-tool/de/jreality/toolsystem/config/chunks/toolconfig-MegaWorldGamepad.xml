@@ -1,0 +1,42 @@
+<toolconfig>
+
+	<rawdevices>
+		<rawdevice id="Gamepad"
+			type="de.jreality.toolsystem.raw.DeviceJinputController">
+			<prop name="id_string">
+				<string>Mega World USB 2-Axis 4-Button Gamepad</string>
+			</prop>
+		</rawdevice>
+	</rawdevices>
+
+	<rawslots>
+		<mapping device="Gamepad" src="button_3" target="Button3" />
+		<mapping device="Gamepad" src="button_0" target="Button0" />
+		<mapping device="Gamepad" src="button_1" target="Button1" />
+		<mapping device="Gamepad" src="button_2" target="Button2" />
+		<mapping device="Gamepad" src="axis_4" target="RightLeftAxis" />
+		<mapping device="Gamepad" src="axis_5" target="ForwardBackwardAxis" />
+	</rawslots>
+
+	<virtualdevices>
+
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualReverseAxis">
+			<inputslot>RightLeftAxis</inputslot>
+			<outputslot>LeftRightAxis</outputslot>
+		</virtualdevice>
+
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualMergedAxis">
+			<inputslot>Button0</inputslot>
+			<inputslot>Button3</inputslot>
+			<outputslot>HorizontalShipRotationAngleEvolution</outputslot>
+		</virtualdevice>
+
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualMergedAxis">
+			<inputslot>Button2</inputslot>
+			<inputslot>Button1</inputslot>
+			<outputslot>VerticalHeadRotationAngleEvolution</outputslot>
+		</virtualdevice>
+
+	</virtualdevices>
+
+</toolconfig>

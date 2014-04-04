@@ -1,0 +1,39 @@
+%
+%---------------------------------------------------------------------------------
+%
+% Polymake LaTeX template for Sketch-Output
+% Copyright (c) 1997-2014
+% Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+% http://www.polymake.org
+\documentclass[12pt]{article}
+\usepackage[x11names,rgb]{xcolor}
+\usepackage{tikz}
+\usepackage{ifthen}
+\usepackage{amsmath}
+
+\usetikzlibrary{snakes}
+\usetikzlibrary{arrows}
+\usetikzlibrary{shapes}
+\usetikzlibrary{backgrounds}
+
+\pagestyle{empty}
+
+\usepackage[papersize={640pt, 480pt}, margin=0pt, marginratio=1:1]{geometry}
+
+\newsavebox{\sketchoutput}
+\savebox{\sketchoutput}{
+%%SKETCH_OUTPUT%%
+}
+\newlength{\scaledwidth}
+\settowidth{\scaledwidth}{\resizebox{!}{400pt}{\usebox{\sketchoutput}}}
+
+\begin{document}
+\rlap{\smash{\raisebox{-2.5\baselineskip}{\includegraphics[height=3\baselineskip]{pmlogo.png}} }}%
+\vspace*{37.5pt}
+\centering
+\ifthenelse{\lengthtest{\scaledwidth < 500pt}}{
+  \resizebox{!}{400pt}{\usebox{\sketchoutput}}
+}{
+  \resizebox{500pt}{!}{\usebox{\sketchoutput}}
+}
+\end{document}

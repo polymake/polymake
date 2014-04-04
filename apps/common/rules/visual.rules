@@ -1,0 +1,352 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+###############################################################################
+#
+#  some common colors
+#
+package Visual::Color;
+
+# file with symbolic color names (as shipped with X11 system)
+custom $RGBtxt_path;
+
+CONFIGURE_OPT {
+   find_file_and_confirm($RGBtxt_path, "rgb.txt",
+                         qw( /usr/X11/lib/X11 /usr/share/X11 /usr/X11/share/X11 /usr/X11R6/lib/X11
+                             /usr/local/X11/lib/X11 /usr/local/X11R6/lib/X11 /usr/openwin/lib/X11 
+                             /usr/local/lib/X11 ),
+                         { prompt => "color name database",
+                           abort => "disable\nusing symbolic color names in visualization methods" });
+}
+
+# @topic custom
+# All colors defined here are RGB values in integer representation (0..255)
+# You may use symbolic names defined in the file $RGBtxt as well.
+
+# facets in famous polymake-green
+custom $facets="119 236 158";
+
+# edges of facets and graphs: black
+custom $edges="0 0 0";
+
+# vertices: red
+custom $vertices="255 0 0";
+
+# color for artificial facets resulting from cutting off
+custom $cutoff="255 0 0";
+
+###############################################################################
+#
+#  geometric primitives and decoration attributes
+#
+
+package application;
+
+require Visual;
+require Visual::DynamicCoords;
+require Visual::PointSet;
+require Visual::Wire;
+require Visual::Polygon;
+require Visual::Polygons;
+
+# @category Visualization
+# A color described as a Red-Green-Blue triple.
+# Can be constructed from a list of three integral values from the range 0..255,
+# or a list of three floating-point values from the range 0..1,
+# or one of symbolic names listed in the system-wide file ''rgb.txt''.
+
+declare property_type RGB : c++ (include=>["polymake/color.h"]) {
+
+   method parse_string {
+      my ($proto, $value)=@_;
+      if ($value =~ /[^\s\d.]/) {
+         # symbolic color name?
+         Visual::get_sym_color($value) // croak("unknown color name '$value'");
+      } else {
+         &CPlusPlus::construct_parsed;
+      }
+   }
+
+   method construct(Int,Int,Int) : c++;
+
+   method construct(Float,Float,Float) : c++;
+
+   method toInt { join($_[1] || " ", map { POSIX::ceil($_*255) } @{$_[0]}) }
+
+   method toHex { sprintf "#%02X%02X%02X", map { POSIX::ceil($_*255) } @{$_[0]} }
+
+   method toFloat { my $sep=$_[1] || " "; sprintf "%.4g$sep%.4g$sep%.4g", @{$_[0]} }
+}
+
+# @category Visualization
+# A color described as a Hue-Saturation-Value triple.
+# Is convertible to and from an RGB representation.
+
+declare property_type HSV : c++ (include=>["polymake/color.h"]) {
+
+   method construct(Float,Float,Float) : c++;
+
+   method construct(RGB) : c++;
+
+   method toFloat { my $sep=$_[1] || " "; sprintf "%.4g$sep%.4g$sep%.4g", @{$_[0]} }
+}
+
+property_type RGB {
+
+   method construct(HSV) : c++;
+}
+
+
+# @topic property_types/Visualization/Flexible
+# This is a pseudo-type for documentation purposes only.
+# Many options of visualization functions modifying the appearance of some set of graphical elements
+# like points, edges, facets, etc. accept a wide range of possible values, allowing for different grades
+# of flexibility (and complexity):
+#
+#  SCALAR  the same attribute value is applied to all elements
+#  ARRAY   each element gets its individual attribute value
+#  HASH    elements found in the hash get their individual attribute values, for the rest the appropriate default applies
+#  SUB     a piece of code computing the attribute value for the given element
+#
+# Unless specified explicitly in the detailed option description, the indices, keys, or
+# subroutine arguments used for retrieval of the attribute values are just the zero-based ordinal numbers of the elements.
+
+
+# @category Visualization
+# Common attributes modifying the appearance of PointSets and all visual objects derived thereof.
+# Please be aware that no one visualization program interfaced to polymake supports all of them.
+# Unsupported options are normally ignored.
+
+options %Visual::PointSet::decorations=(
+   # String  the name of the drawing
+   Title => undef,
+
+   # String  the name of this visual object in the drawing
+   Name => undef,
+
+   # Bool  if set to true, the visual object is not rendered
+   #       (useful for interactive visualization programs allowing for switching details on and off)
+   Hidden => 0,
+
+   # String  if set to "hidden", no point labels are displayed
+   PointLabels => undef, #enum("hidden"),
+
+   # String  alias for PointLabels
+   VertexLabels => undef, #enum("hidden"),
+
+   # Flexible<RGB>  color of the spheres or rectangles representing the points
+   PointColor => undef,
+
+   # Flexible<RGB>  alias for PointColor
+   VertexColor => undef,
+
+   # Flexible<Float>  scaling factor for the size of the spheres or rectangles representing the points
+   PointThickness => undef,
+
+   # Flexible<Float>  alias for PointThickness
+   VertexThickness => undef,
+
+   # Flexible<RGB>  color of the border line of rectangles representing the points
+   PointBorderColor => undef,
+
+   # Flexible<Float>  alias for PointBorderColor
+   VertexBorderColor => undef,
+
+   # Flexible<Float>  scaling factor for the thickness of the border line of rectangles representing the points
+   PointBorderThickness => undef,
+
+   # Flexible<Float>  alias for PointBorderThickness
+   VertexBorderThickness => undef,
+
+   # Flexible<String>  if set to "hidden", neither point nor its label is rendered
+   PointStyle => undef,
+
+   # Flexible<String>  alias for PointStyle
+   VertexStyle => undef,
+
+   # Vector<Float>  ViewPoint for Sketch visualization
+   ViewPoint => undef,
+
+   # Vector<Float>  ViewDirection for Sketch visualization
+   ViewDirection => undef,
+
+   # Vector<Float>  ViewUp for Sketch visualization
+   ViewUp => undef,
+
+   # Float  scale for Sketch visualization
+   Scale => undef,
+);
+
+# @category Visualization
+# Attributes modifying the appearance of "wire frameworks".
+# Unlike the rest, the flexible edge attributes are retrieved using the //edge iterator// as an index/key/argument.
+
+options %Visual::Wire::decorations=(
+   %Visual::PointSet::decorations,
+
+   # Flexible<RGB>  color of the lines representing the edges
+   EdgeColor => undef,
+
+   # Flexible<Float>  scaling factor for the thickness of the lines representing the edges
+   EdgeThickness => undef,
+
+   # EdgeMap<String>  textual labels to be placed along the edges
+   EdgeLabels => undef,
+
+   # Flexible<String>  if set to "hidden", neither the edge nor its label is rendered
+   EdgeStyle => undef,
+);
+
+
+# @category Visualization
+# Attributes modifying the appearance of filled polygons.
+
+options %Visual::Polygon::decorations=(
+   %Visual::PointSet::decorations,
+
+   # RGB  filling color of the polygon
+   FacetColor => undef,
+
+   # Float  transparency factor of the polygon between 0 (opaque) and 1 (completely translucent)
+   FacetTransparency => undef,
+
+   # String  if set to "hidden", the inner area of the polygon is not rendered
+   FacetStyle => enum("hidden"),
+
+   # RGB  color of the boundary lines
+   EdgeColor => undef,
+
+   # Float  scaling factor for the thickness of the boundary lines
+   EdgeThickness => undef,
+
+   # String  if set to "hidden", the boundary lines are not rendered
+   EdgeStyle => enum("hidden"),
+);
+
+
+# @category Visualization
+# Attributes modifying the appearance of a set of polygons (like a polygonal surface).
+
+options %Visual::Polygons::decorations=(
+   %Visual::PointSet::decorations,
+
+   # Flexible<RGB>  filling color of the polygons
+   FacetColor => undef,
+
+   # Flexible<Float>  transparency factor of the polygons between 0 (opaque) and 1 (completely translucent)
+   FacetTransparency => undef,
+
+   # Flexible<String>  if set to "hidden", the inner area of the polygons are not rendered at all
+   FacetStyle => undef,
+
+   # String  if set to "hidden", the facet labels are not displayed (in the most cases this is the default behavior)
+   FacetLabels => enum("hidden"),
+
+   # RGB  color of the boundary lines
+   EdgeColor => undef,
+
+   # Float  scaling factor for the thickness of the boundary lines
+   EdgeThickness => undef,
+
+   # String  if set to "hidden", the boundary lines are not rendered
+   EdgeStyle => enum("hidden"),
+);
+
+
+###############################################################################
+#
+#  basic visualization functions
+#
+
+# @category Visualization
+# Create a composite drawing of several objects.
+# @param Visual::Object vis_obj ... objects to be drawn together
+# @option String Title name of the whole drawing; per default the name of the first Object is taken.
+# @option any decorations to be applied to all components as default values.
+# @return Visual::Container if called in void context, immediately starts the preferred rendering program.
+
+user_function compose(Visual::Object+, %) {
+   my $decor=pop;
+   visualize(new Visual::Container(Title => delete $decor->{Title} // $_[0]->Title // $_[0]->Name,
+                                   defaults => $decor, @_));
+}
+
+# @category Visualization
+# Add new objects to a composite drawing.
+# @param Visual::Container vis_container drawing produced by some visualization function
+# @param Visual::Object vis_obj ... objects to be added
+# @option String Title  new name for the drawing
+# @option any decorations  to be applied to all components as default values.
+# @return Visual::Container if called in void context, immediately starts the preferred rendering program.
+
+user_function compose(Visual::Container, Visual::Object+, %) {
+   my $container=shift;
+   my $decor=pop;
+   if (defined (my $title=delete $decor->{Title})) {
+      $container->Title=$title;
+   }
+   push %{$container->defaults}, %$decor if keys %$decor;
+   push @{$container->elements}, @_;
+   visualize($container);
+}
+
+function bounding_box(Visual::DynamicCoords) {
+   my $emb=shift;
+   my $dummy=@$emb;     # enforce computations
+   bounding_box($emb->coord);
+}
+
+sub enforce_static_coord {
+   my ($vis, $attr)=@_;
+   my $dummy=@{$vis->$attr};
+}
+
+function enforce_static(Visual::Object) { }
+
+function enforce_static(Visual::Container) {
+   my $c=shift;
+   foreach my $vis (@{$c->elements}) {
+      enforce_static($vis);
+   }
+}
+
+function enforce_static(Visual::PointSet) {
+   enforce_static_coord($_[0], "Vertices");
+}
+
+function enforce_static($) {
+   croak( "don't know how to disable dynamic coordinates in ", (ref($_[0]) || "'$_[0]'") ) unless is_ARRAY($_[0]);
+   foreach (@{$_[0]}) {
+      enforce_static($_);
+   }
+}
+
+# @category Visualization
+# Suppress creation of dynamic (interactive) scenes.
+# @param Visual::Object vis_obj drawing, e.g. created by ''VISUAL_GRAPH'' or ''SCHLEGEL''.
+# @return Visual::Object if called in void context, immediately starts the preferred rendering program.
+
+user_function static(Visual::Object) {
+   enforce_static($_[0]);
+   visualize($_[0]);
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

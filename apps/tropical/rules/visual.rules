@@ -1,0 +1,103 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+package Visual::TropicalPolytope;
+use Polymake::Struct (
+   [ '@ISA' => 'Container' ],
+   [ '$TropicalPolytope' => '#%' ],
+);
+
+# where to keep the view transformation matrix etc.
+method representative { $_[0]->TropicalPolytope }
+
+package Visual::Color;
+
+# Color for the pseudo-vertices of a tropical polytope which are not vertices.
+custom $pseudovertices="255 255 0";
+
+object TropicalPolytope {
+
+  sub choose_colors($$$$) {
+    my ($points,$pseudovertices,$p_color,$pv_color)=@_;
+    my $generators=new HashSet<Vector<Rational>>;
+    $generators+=dehomogenize_trop($_) for @{$points};
+    my @pseudovertex_colors = map {
+      exists $generators->{ dehomogenize_trop($_) } ? $p_color : $pv_color
+    } @{$pseudovertices};
+    return \@pseudovertex_colors;
+  }
+
+# @category Visualization
+# Visualize the [[PSEUDOVERTEX_GRAPH]] of a tropical polytope.
+# @option Int seed random seed value for the string embedder
+# @return Visual::TropicalPolytope
+
+user_method VISUAL_PSEUDOVERTEX_GRAPH (%Visual::Graph::decorations, { seed => undef }) \
+  : VERTICES, PSEUDOVERTICES, PSEUDOVERTEX_GRAPH.ADJACENCY, PSEUDOVERTEX_LABELS {
+  my ($this, $decor, $seed)=@_;
+
+  my $VG=$this->PSEUDOVERTEX_GRAPH->VISUAL(
+     Name => $this->name,
+     $this->AMBIENT_DIM<=3 ? (Coord => pseudovertices_float_coords($this)) : (),
+     NodeColor => choose_colors($this->POINTS,$this->PSEUDOVERTICES,$Visual::Color::vertices,$Visual::Color::pseudovertices),
+     NodeLabels => $this->PSEUDOVERTEX_LABELS,
+     $decor, $seed
+  );
+  visualize( new Visual::TropicalPolytope( Name => "PSEUDOVERTEX_GRAPH of " . $this->name,
+                                           TropicalPolytope => $this,
+                                           $VG ) );
+}
+
+# @category Visualization
+# Visualize the tropical polytope projected onto the plane.
+# @option Matrix Directions directions to project onto
+# @return Visual::TropicalPolytope
+
+user_method VISUAL_PLANAR (%Visual::Graph::decorations, { Directions => undef }) {
+  my ($this, $decor, $directions)=@_;
+  $this->VISUAL_PSEUDOVERTEX_GRAPH(Coord=>planar_coords((convert_to<Float>($this->PSEUDOVERTICES)), $directions), $decor);
+}
+
+# @category Visualization
+# Visualize the tropical polytope.
+# @return Visual::TropicalPolytope
+
+user_method VISUAL(%Visual::Polygons::decorations) : POINTS, PSEUDOVERTICES, AMBIENT_DIM, ENVELOPE.BOUNDED_COMPLEX.MAXIMAL_POLYTOPES {
+  my ($this, $decor)=@_;
+  my $pseudovertex_colors=choose_colors($this->POINTS,$this->PSEUDOVERTICES,$Visual::Color::vertices,$Visual::Color::pseudovertices);
+  my @cells_visual = map {
+    my $indices=$_;
+    my @indic=@{$_};
+    my $vertices=$this->PSEUDOVERTICES->minor($indices,range(1,$this->AMBIENT_DIM));
+    my $n_vertices=scalar(@{$vertices});
+    my $all_ones=new Vector<Rational>([ (1)x$n_vertices ]);
+    my $p=new polytope::Polytope<Rational>("@{$indices}",
+                                           VERTICES => ($all_ones|$vertices),
+                                           VERTEX_LABELS => \@indic);
+    $p->VISUAL( VertexColor => [ map { $pseudovertex_colors->[$_] } @{$indices} ], $decor );
+  } @{$this->ENVELOPE->BOUNDED_COMPLEX->MAXIMAL_POLYTOPES};
+  visualize( new Visual::TropicalPolytope( Name => $this->name,
+                                           TropicalPolytope => $this,
+                                           @cells_visual ));
+}
+
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

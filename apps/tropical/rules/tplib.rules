@@ -1,0 +1,87 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+CREDIT tplib
+  TPLib: Tropical Polyhedra Library
+  Copyright by Xavier Allamigeon
+  https://gforge.inria.fr/projects/tplib/
+
+# path to the tplib executable
+custom $tplib_compute_halfspaces;
+
+CONFIGURE {
+   find_program($tplib_compute_halfspaces, "compute_halfspaces") or return;
+
+   # check the version
+   open TPLIB_OUT, "$tplib_compute_halfspaces -help |"
+       or die "can't run $tplib_compute_halfspaces: $!";
+   local $/;
+   my $version=<TPLIB_OUT>;
+   close TPLIB_OUT;
+   $version =~ /Version of TPLib:\s+([\d\.]+)/ and $version=$1;
+   eval("v$version") ge v1.1.1
+      or die <<'.';
+polymake requires TPLib v1.1.1 or newer;
+Please download the current version
+and repeat the auto-configuration.
+.
+}
+
+object TropicalPolytope {
+
+# @Category Tropical convex hulls
+# Tropical double description method.
+label tplib
+
+# Allamigeon, Xavier
+#   Static analysis of memory manipulations by abstract interpretation,
+#   PhD thesis, Ecole Polytechnique, 2009.
+
+rule tplib.half_spaces : HALF_SPACES : POINTS, AMBIENT_DIM {
+  my $d=$this->AMBIENT_DIM+1;
+  my @points=@{$this->POINTS};
+  my $n_points=scalar(@points);
+
+  my $tempname=new Tempfile;
+  open TPLIB_FILE, ">$tempname"
+    or die "can't create temporary file $tempname: $!";
+  for (my $i=0; $i<$n_points; ++$i) {
+    my $p=$this->POINTS->[$i];
+    my $single_point="$p"; $single_point =~ s/ +/,/g;
+    print TPLIB_FILE "[$single_point]\n";
+  }
+  close TPLIB_FILE;
+
+  my @halfspaces;
+  open TPLIB_OUT, "$tplib_compute_halfspaces -min-plus -numerical-data ocaml_big_rat $d < $tempname |"
+    or die "can't read TPLib output: $!";
+  foreach my $line (<TPLIB_OUT>) {
+    my ($apex,$sectors) = ($line =~ /\(\[(.*)\],\[(.*)\]\)/);
+    $apex =~ s/,/ /g; $sectors =~ s/,/ /g; $sectors="{$sectors}";
+    my $apex_as_vector=new Vector<Rational>($apex);
+    my $sectors_as_set=new Set<Int>($sectors);
+    push @halfspaces, [$apex_as_vector,$sectors_as_set];
+  }
+  close TPLIB_OUT;
+
+  $this->HALF_SPACES=\@halfspaces;
+}
+
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# End:

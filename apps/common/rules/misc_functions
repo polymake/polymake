@@ -1,0 +1,164 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# @category Data Conversion
+# Change the type of the polymake object:
+# only downcast (to a derived type) and upcast (to an ancestor type) are allowed.
+# @tparam Target  the desired new type
+# @param Object object  to be modified
+# @return Object  the same //object//, but with modified type
+
+user_function cast<Target>(Core::Object) { (shift)->cast_me(typeof Target); }
+
+
+# @category Utilities
+# Returns the maximal element of an array.
+# @param Array array
+
+user_function maximum($) {
+   my ($data)=@_;
+   my $max;
+   assign_max($max, $_) for @$data;
+   return $max;
+}
+
+
+# @category Utilities
+# Returns the minimal element of an array.
+# @param Array array
+
+user_function minimum($) {
+   my ($data)=@_;
+   my $min;
+   assign_min($min, $_) for @$data;
+   return $min;
+}
+
+
+# @category Utilities
+# Returns the average value of the array elements.
+# @param Array array
+
+user_function average($) {
+   my ($data)=@_;
+   my $n=@$data or return;
+   my $s=0;
+   $s+= $_ for @$data;
+   return $s/$n;
+}
+
+
+# @category Utilities
+# Produce a histogram of a container: each different element value is mapped on the number of its occurences.
+# @param Container<Element> data
+# @return Map<Element, Int>
+
+user_function histogram {
+   my ($data)=@_;
+   return unless @$data;
+   my $element_type=Core::PropertyType::guess_element_type($data);
+   my $map=Map->type($element_type, Int->type)->new_object;
+   ++$map->{$_} for @$data;
+   $map
+}
+
+
+# @category Utilities
+# Returns the first //m// Fibonacci numbers.
+# @param Int m
+# @return ARRAY
+user_function fibonacci {
+   my ($m) = @_;
+   my @numbers;
+   if ($m>=1) {
+      push @numbers, 1;
+      if ($m>=2) {
+	 push @numbers, 1;
+	 for (my $i=2; $i<$m; ++$i) {
+	    push @numbers, $numbers[$i-1]+$numbers[$i-2];
+	 }
+      }
+   }
+   return @numbers;
+}
+
+# FIXME: replace with C++ function from PowerSet.h ?
+# k, item, item, ... => list of k_subsets: [ item, ... ], ...
+function all_subsets_of_k {
+   my $k=shift;
+   my $n=@_;
+   croak( "parameter k=$k out of range" ) if $k<0 || $k>$n;
+   return [] if !$k;
+   my @result;
+   my @index=0..$k-1;
+   my $ptr=$k-1;
+
+   while (1) {
+      push @result, [ @_[@index] ];
+      next if ++$index[$ptr] < $n;
+      do {
+	 return @result if --$ptr<0;
+      } while ((++$index[$ptr])+$k-$ptr > $n);
+      while ($ptr<$k-1) {
+	 ++$ptr;
+	 $index[$ptr]=$index[$ptr-1]+1;
+      }
+   }
+}
+
+
+# Takes (vertex) labels and incidence information to produce new (facet) labels.
+function induced_labels(Array, IncidenceMatrix) {
+   my ($v_labels, $incidence)=@_;
+   new Array<String>( map { join(",", @$v_labels[ @$_ ]) } @$incidence);
+}
+
+# @category Utilities
+# Find the given labels in an array and return their indices.
+# @param Array<String> array
+# @param String label label ...
+# @return Int Int ...
+
+function find_labels {
+   my $array=shift;
+   my %asked;
+   my $notfound=@_;
+   foreach (@_) {
+      $asked{$_}++ and croak( "label $_ occurs twice" );
+   }
+   my @ret;
+   my $i=0;
+   foreach (@$array) {
+      if (delete $asked{$_}) {
+         push @ret, $i;
+         --$notfound or last;
+      }
+      ++$i;
+   }
+   if ($notfound) {
+      if ($notfound>1) {
+         croak( "Labels ", join(", ", keys %asked), " do not exist" );
+      } else {
+         croak( "Label ", keys(%asked), " does not exist" );
+      }
+   }
+   @ret;
+}
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

@@ -1,0 +1,36 @@
+The interactive Schlegel diagram viewer has an additional "Pick Vertex" mode,
+allowing you to manipulate the Schlegel projection.
+
+Since the central point of the projection (let's call it V) lies outside the
+projection plane and is therefore invisible, its position is controlled
+indirectly.
+
+Imagine a point P lying in the interior of the projection facet (it always coincides
+with the origin of the visual coordinate system) and a ray PV pointing to the outside
+of the polytope. Now you can influence the position of V by
+
+- changing the zoom factor: The direction PV is fixed, V slides along this ray.
+  Zoom factor 0 makes V coinciding with P (therefore forbidden),
+  while zoom factor 1 corresponds to the maximal allowed distance PV by which
+  the Schlegel diagram remains a valid polytopal complex.
+
+- dragging a vertex of the projection facet (incident to black edges):
+  The vector PV is translated in the opposite direction.
+
+- dragging a vertex of other facets (incident to green edges): The point P and
+  the distance PV stay fixed, the ray PV is inclined to "catch" the new
+  projection of the point being dragged.
+
+The message "can't drag beyond the projection facet boundary" appears when the
+movement can't be continued without violating the polytopal complex property,
+that is, a projection of some point from the polytope back side has
+reached the boundary of the projection facet.
+
+Note that the "Pick Vertex" mode is active from the very beginning, unlike the
+standard javaview behavior, where it starts with "Rotate, Orbit". Please refer to
+the general javaview help how to switch between the major modes.
+     
+The New Projection Facet button allows you to display different projections: 
+  Mark some vertices (using 'm' and 'u' keys), then click on this button.
+  A new window will be opened with a Schlegel diagram projected on the facet
+  defined by the selected vertices.

@@ -1,0 +1,20 @@
+<html>
+<body>
+Contains all jReality shading-related classes and interfaces. 
+<p>
+Technically each backend is responsible for reading the state of the {@link Appearance}
+hierarchy and rendering correctly.  In practice this  This includes utility classes for 
+keeping track of Appearance attributes; classes supporting a variety of texture maps, from simple images
+to relection maps, shadow maps, and reflection maps; plus a variety of interfaces which encapsulate the 
+functionality of the standard shaders: these can be thought of as an organizing layer 
+between the raw Appearance and the specific backend implementation of the various shaders.
+<p>
+This interfaces in this package ending with <code>Shader</code>
+can be used in conjunction with the de.jreality.scene.data.AttributeEntity
+class to set the actual Appearance attributes which the various
+backends use when rendering the scene.  This avoids having to use the keys for these attributes 
+(see de.jreality.shader.CommonAttributes). Backend writers can
+use a similar strategy to get the attributes, too.
+</body>
+</html>
+

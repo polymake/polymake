@@ -1,0 +1,397 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# A tropical hypersurface is the set of points in the tropical (d-1)-torus for which
+# the minimum of a tropical polynomial is attained at least twice. It is given as a
+# list of [[MONOMIALS]] and [[COEFFICIENTS]].
+# 
+# Currently polymake supports tropical hypersurfaces given by a homogeneous polynomial only!
+# Our tropical addition is min.
+#
+# Throughout this hypersurface is seen as a rational polyhedral complex in R<sup>d-1</sup>. 
+declare object Hypersurface<Addition=Min> [ typechecks::is_tropical_addition(Addition) ] {
+
+
+# @category Basic properties
+# Monomials of the (tropical) polynomial defining the hypersurface (Laurent polynomials are allowed.)
+# The rows stands for the monomials, the columns for the variables. I.e., the entry in position (i,j) is the exponent of x<sub>j</sub> in the i-th monomial. 
+
+property MONOMIALS : Matrix<Int>;
+
+declare permutation MonomPerm {
+
+  # Transforming [[MONOMIALS]] from this into basic object
+  property PERMUTATION : Array<Int>;
+}
+
+# FIXME #652: function find_matrix_row_permutation should be in apps/common
+rule MonomPerm.PERMUTATION : MonomPerm.MONOMIALS, MONOMIALS {
+   $this->MonomPerm->PERMUTATION=polytope::find_matrix_row_permutation($this->MonomPerm->MONOMIALS, $this->MONOMIALS);
+}
+
+rule MONOMIALS : MonomPerm.MONOMIALS, MonomPerm.PERMUTATION {
+   $this->MONOMIALS=permuted_rows($this->MonomPerm->MONOMIALS, $this->MonomPerm->PERMUTATION);
+}
+weight 1.10;
+
+# @category Basic properties
+# Number of terms.
+
+property N_TERMS : Int;
+
+# @category Basic properties
+# Number of variables = homogeneous dimension of ambient space + 1
+
+property N_VARS : Int;
+
+rule N_TERMS, N_VARS : MONOMIALS {
+    $this->N_TERMS=$this->MONOMIALS->rows();
+    $this->N_VARS=$this->MONOMIALS->cols();
+}
+
+# @category Basic properties
+# Coefficients of the (tropical) polynomial defining the hypersurface.
+
+property COEFFICIENTS : Vector<Rational>;
+
+rule COEFFICIENTS : MonomPerm.COEFFICIENTS, MonomPerm.PERMUTATION {
+   $this->COEFFICIENTS=permuted($this->MonomPerm->COEFFICIENTS,$this->MonomPerm->PERMUTATION);
+}
+weight 1.10;
+
+# @category Basic properties
+# Indices of [[MONOMIALS]] which do not define facets of the [[DOME]].
+
+property REDUNDANT_MONOMIALS : Set;
+
+rule REDUNDANT_MONOMIALS : MonomPerm.COEFFICIENTS, MonomPerm.PERMUTATION {
+   $this->REDUNDANT_MONOMIALS=permuted($this->MonomPerm->REDUNDANT_MONOMIALS,$this->MonomPerm->PERMUTATION);
+}
+weight 1.10;
+
+# @category Basic properties
+# Homogeneous: must be true (at least for now), since algorithms rely on this.
+
+property HOMOGENEOUS : Bool;
+
+# @category Basic properties
+# Since we require our hypersurfaces to be defined by [[HOMOGENEOUS]] polynomials,
+# all (homogeneous) degree concepts lead to the same.
+
+property DEGREE : Int;
+
+# @category Basic properties
+# True if all monomials have non-neative exponents, this means that the hypersurface is defined by
+# an ordinary polynomial (that is, not a Laurent polynomial).
+
+property NON_NEGATIVE : Bool;
+
+rule HOMOGENEOUS, DEGREE, NON_NEGATIVE : MONOMIALS {
+    my $M=$this->MONOMIALS;
+    my ($n,$d)=($M->rows(),$M->cols());
+    my $deg=0;
+    my $homogeneous=1;
+    my $non_negative=1;
+    for (my $k=0; $k<$d; ++$k) {
+        my $c=$M->(0,$k);
+        $non_negative = 0 if $c<0;
+        $deg += $c;
+    }
+    for (my $i=1; $i<$n; ++$i) {
+        my $mdeg=0;
+        for (my $k=0; $k<$d; ++$k) {
+            my $c=$M->($i,$k);
+            $non_negative = 0 if $c<0;
+            $mdeg += $c;
+        }
+        $homogeneous = 0 if $mdeg!=$deg;
+    }
+    $this->HOMOGENEOUS = $homogeneous;
+    $this->DEGREE = $deg;
+    $this->NON_NEGATIVE = $non_negative;
+}
+
+# @category Basic properties
+# Dome of the tropical hypersurface.
+
+property DOME : polytope::Polytope<Rational>;
+
+# @category Basic properties
+# Points and rays of the hypersurface, vertices of the complex.
+# No canonicalization enforced.  Note that a tropical hypersurface may be [[HOMOGENEOUS]] or not.
+
+property POINTS : Matrix<Rational>;
+
+declare permutation PointsPerm {
+
+  # Transforming [[VERTICES]] from this into basic object
+  property PERMUTATION : Array<Int>;
+}
+
+rule PointsPerm.PERMUTATION : PointsPerm.POINTS, POINTS {
+   $this->PointsPerm->PERMUTATION=polytope::find_matrix_row_permutation($this->PointsPerm->POINTS, $this->POINTS);
+}
+
+rule POINTS : PointsPerm.POINTS, PointsPerm.PERMUTATION {
+   $this->POINTS=permuted_rows($this->PointsPerm->POINTS, $this->PointsPerm->PERMUTATION);
+}
+weight 1.10;
+
+# @category Basic properties
+# Indices of the points that are rays.
+
+property RAYS : Set;
+
+rule RAYS : PointsPerm.RAYS, PointsPerm.PERMUTATION {
+   $this->RAYS=permuted($this->PointsPerm->RAYS, $this->PointsPerm->PERMUTATION);
+}
+weight 1.10;
+
+# @category Basic properties
+# Maximal faces of the hypersurface as a polyhedral complex.
+# Each such face is encoded as a set of [[POINTS]] indices.
+
+property MAXIMAL_FACES : Array<Set>;
+
+rule MAXIMAL_FACES : PointsPerm.MAXIMAL_FACES, PointsPerm.PERMUTATION {
+   my $mf=new Array<Set>($this->PointsPerm->MAXIMAL_FACES);
+   foreach (@{$mf}) {
+      $_=permuted($_, $this->PointsPerm->PERMUTATION);
+   }
+   $this->MAXIMAL_FACES=$mf;
+}
+weight 1.10;
+
+# @category Basic properties
+# Connected components of the complement.
+# rows correspond to [[DOME.FACETS]], i.e. non-redundant [[MONOMIALS]] , columns correspond to [[POINTS]]
+
+property REGIONS : IncidenceMatrix;
+
+rule REGIONS : PointsPerm.REGIONS, PointsPerm.PERMUTATION {
+   $this->REGIONS=permuted_cols($this->PointsPerm->REGIONS, $this->PointsPerm->PERMUTATION);
+}
+weight 1.10;
+
+# @category Basic properties
+# Number of [[MONOMIALS]] and [[COEFFICIENTS]].
+
+property SUPPORT_SIZE : Int;
+
+
+# @category Basic properties
+# Dimension of the hypersurface.
+# Depends on whether [[HOMOGENEOUS]] or not.
+
+property DIM : Int;
+
+
+# @category Basic properties
+# Number of [[VERTICES]].
+
+property N_VERTICES : Int;
+
+
+# @category Basic properties
+# Number of maximal faces.
+
+property N_MAXIMAL_FACES : Int;
+
+
+# @category Basic properties
+# Number of [[POINTS]] (vertices plus rays).
+
+property N_POINTS : Int;
+
+
+# @category Basic properties
+# Number of [[RAYS]].
+
+property N_RAYS : Int;
+
+
+rule SUPPORT_SIZE : MONOMIALS {
+  $this->SUPPORT_SIZE=$this->MONOMIALS->rows;
+}
+weight 0.10;
+
+rule DIM : N_VARS, HOMOGENEOUS {
+   $this->DIM=$this->HOMOGENEOUS? $this->N_VARS-2 : $this->N_VARS-1;
+}
+weight 0.10;
+
+rule N_VERTICES : POINTS, RAYS {
+   $this->N_VERTICES=$this->POINTS->rows-@{$this->RAYS};
+}
+weight 0.10;
+
+rule N_POINTS : POINTS {
+   $this->N_POINTS=$this->POINTS->rows;
+}
+weight 0.10;
+
+rule N_RAYS : RAYS {
+   $this->N_RAYS=@{$this->RAYS};
+}
+weight 0.10;
+
+rule N_MAXIMAL_FACES : MAXIMAL_FACES {
+   $this->N_MAXIMAL_FACES=@{$this->MAXIMAL_FACES};
+}
+weight 0.10;
+
+rule DOME, POINTS, RAYS, MAXIMAL_FACES, REDUNDANT_MONOMIALS, REGIONS : MONOMIALS, COEFFICIENTS, NON_NEGATIVE, HOMOGENEOUS {
+   hypersurface($this,$this->HOMOGENEOUS);
+}
+permutation : PointsPerm;
+
+
+# @category Basic properties
+# List indices of the [[MONOMIALS]] for which the minimum at a given point is attained.
+# @param Vector x given point
+# @return Set
+
+user_method opt_attained($) : MONOMIALS, COEFFICIENTS {
+  my ($this,$x)=@_;
+  my $n=scalar(@{$this->MONOMIALS});
+  my $val=$this->COEFFICIENTS->[0]+($x*$this->MONOMIALS->[0]);
+  my @val_attained=(0);
+  foreach my $i (1..$n-1) {
+    my $v=$this->COEFFICIENTS->[$i]+($x*$this->MONOMIALS->[$i]);
+    if (orientation<Addition>()*($val-$v)>0) {
+      $val=$v;
+      @val_attained=($i);
+    } elsif ($v==$val) {
+      push @val_attained,$i;
+    }
+  }
+  return new Set(\@val_attained);
+}
+
+# @category Basic properties
+# Vertices of the hypersurface.
+
+user_method VERTICES : RAYS, POINTS {
+   my $this=shift;
+   $this->POINTS->minor(~$this->RAYS, ~[0]);
+}
+
+# @category Basic properties
+# Privileged subdivision dual to the tropical hypersurface.
+# The vertices of this PolyhedralComplex are the non-redundant [[MONOMIALS]].
+
+user_method privileged_subdivision : MONOMIALS, REDUNDANT_MONOMIALS, REGIONS, RAYS {
+   my $this=shift;
+   my $red=$this->REDUNDANT_MONOMIALS;
+   my $n=$this->MONOMIALS->rows()-$red->size();
+   my $homogenized=new Matrix<Rational>((new Vector<Int>(ones_vector($n)))|$this->MONOMIALS->minor(~$red,All));
+   my $d=$homogenized->cols();
+   my $dual_cells=transpose(new IncidenceMatrix($this->REGIONS));
+   new fan::PolyhedralComplex<Rational>(VERTICES=>$homogenized,
+                                        MAXIMAL_POLYTOPES=>$dual_cells->minor(~$this->RAYS,All),
+                                        LINEALITY_SPACE=>[],
+                                        FAN_AMBIENT_DIM=>$d);
+}
+
+# @category Visualization
+# Visualizes the tropical hypersurface.
+# @return Visual::TropicalHypersurface
+
+user_method VISUAL(; $=undef, %Visual::Polygons::decorations) \
+   : POINTS, HOMOGENEOUS, MAXIMAL_FACES {
+# FIXME: The following would be much nicer as it avoids code duplication.  It dows work.
+#        Yet, the visualization of fan::PolyhedralComplex should be modified to consider infinite rays
+#        (for more suitable pictures).
+#   my $this=shift;
+#   my $points=$this->POINTS;
+#   if ($this->HOMOGENEOUS) { $points=$points->minor(All, ~[1]) };
+#   my $d=$points->cols();
+#   my $pc=new fan::PolyhedralComplex<Rational>(POINTS=>$points,
+#                                               INPUT_POLYTOPES=>$this->MAXIMAL_FACES,
+#                                               FAN_AMBIENT_DIM=>$d);
+#   return $pc->VISUAL();
+   my ($this,$bbox,$decor)=@_;
+   my $m=$this->POINTS;
+   if ($this->HOMOGENEOUS) { $m=$m->minor(All, ~[1]) };
+   if (!defined($bbox)) {
+       $bbox=bounding_box($m, 6/5, 1);
+   }
+   #my $bbox_facets=new Map< Vector<Rational>, Bool>;
+   #$bbox_facets->{$_}=1 for @$bbox;
+   my $vertex_map=new Map< Vector<Rational>, String>;
+   my $f=0;
+   #if (defined (my $labels=$this->lookup("LABELS"))) {
+   #   $vertex_map->{$_}=$labels->[$f++] for @{$m};
+   #} else {
+      $vertex_map->{$_}=$f++ for @{$m};
+   #}
+   my @cells_visual = map {
+      my $p=new polytope::Polytope<Rational>("$_",POINTS => $m->minor($_,All));
+      if ($p->BOUNDED) {
+         my @vertex_labels=map { $vertex_map->{$_} // " " } @{$p->VERTICES};
+         $p->VERTEX_LABELS=\@vertex_labels;
+         $p->VISUAL;
+      }
+      else {
+         my $p_bounded=new polytope::Polytope<Rational>($p->name."_bounded",INEQUALITIES => $p->FACETS / $bbox, EQUATIONS=>$p->AFFINE_HULL);
+         my @vertex_labels=map { $vertex_map->{$_} // " " } @{$p_bounded->VERTICES};
+         $p_bounded->VERTEX_LABELS=\@vertex_labels;
+         #if ($p_bounded->DIM>2) {
+         #   $p_bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " },FacetColor=>[ map { exists $bbox_facets->{$_} ? "red" : $Visual::Color::facets } @{$p_bounded->FACETS} ]);
+         #}
+         #else {
+            $p_bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " });
+         #}
+      }
+   } (@{$this->MAXIMAL_FACES});
+   visualize( new Visual::TropicalHypersurface( Name => $this->name,
+                                                Hypersurface => $this,
+                                                @cells_visual));
+
+}
+precondition : DIM { $this->DIM<=2 }
+
+
+} # object Hypersurface
+
+# @category Producing a tropical hypersurface from scratch
+# Create a tropical hyperplane as object of type Hypersurface.
+# @tparam Addition
+# @param Vector<Rational> coefs coefficients of tropical linear form
+# @return Hypersurface<Addition>
+
+user_function hyperplane<Addition=Min> (Vector<Rational>) {
+    my ($coefs) = @_;
+    my $d=$coefs->dim();
+    return new Hypersurface<Addition>(MONOMIALS=>unit_matrix($d),COEFFICIENTS=>$coefs);
+}
+
+
+package Visual::TropicalHypersurface;
+use Polymake::Struct (
+   [ '@ISA' => 'Container' ],
+   [ '$Hypersurface' => '#%' ],
+);
+
+# where to keep the view transformation matrix etc.
+method representative { $_[0]->Hypersurface }
+
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

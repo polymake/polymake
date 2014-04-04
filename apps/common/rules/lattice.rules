@@ -1,0 +1,88 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+
+# @category Lattice Tools
+# Checks whether all coordinates of a  rational vector are integral.
+# @param Vector v
+# @return Bool
+
+user_function is_integral(Vector<Rational>) : c++ (include => "polymake/common/lattice_tools.h");
+
+# @category Lattice Tools
+# Checks whether all coordinates of a  rational matrix are integral.
+# @param Matrix m
+# @return Bool
+
+user_function is_integral(Matrix<Rational>) : c++ (include => "polymake/common/lattice_tools.h");
+
+# @category Lattice Tools
+# Scale a vector with the least common multiple of the denominators of its coordinates.
+# @param Vector v
+# @return Vector<Integer>
+
+user_function eliminate_denominators(Vector<Rational>) : c++ (include => "polymake/common/lattice_tools.h");
+
+# @category Lattice Tools
+# Scale a matrix rowwise with the least common multiple of the denominators of its coordinates.
+# @param Matrix v
+# @return Matrix<Integer>
+
+user_function eliminate_denominators_in_rows(Matrix<Rational>) : c++ (include => "polymake/common/lattice_tools.h");
+
+# @category Lattice Tools
+# Scales entire matrix with the least common multiple of the denominators of its coordinates.
+# @param Matrix v
+# @return Matrix<Integer>
+
+user_function eliminate_denominators_entire(Matrix<Rational>) : c++ (include => "polymake/common/lattice_tools.h");
+
+# @category Lattice Tools
+# Scales entire matrix with the least common multiple of the denominators of its coordinates (ignore first column).
+# @param Matrix v
+# @return Matrix<Integer>
+user_function eliminate_denominators_entire_affine(Matrix<Rational>) : c++ (include => "polymake/common/lattice_tools.h");
+
+# @category Lattice Tools
+# Scales the vector to a primitive integral vector.
+# @param Vector v
+# @return Vector<Integer>
+user_function primitive(Vector) : c++ (include => "polymake/common/lattice_tools.h");
+
+# @category Lattice Tools
+# Scales each row of the matrix to a primitive integral vector.
+# @param Matrix M
+# @return Matrix<Integer>
+user_function primitive(Matrix) : c++ (include => "polymake/common/lattice_tools.h");
+
+# @category Lattice Tools
+# Scales the affine part of a vector to a primitive integral vector.
+# @param Vector v
+# @return Vector<Integer>
+user_function primitive_affine(Vector) : c++ (include => "polymake/common/lattice_tools.h");
+
+# @category Lattice Tools
+# Scales the affine part of each row of the matrix to a primitive integral vector.
+# @param Matrix M
+# @return Matrix<Integer>
+user_function primitive_affine(Matrix) : c++ (include => "polymake/common/lattice_tools.h");
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

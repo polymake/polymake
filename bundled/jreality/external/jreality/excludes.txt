@@ -1,0 +1,25 @@
+# this file contains the filenames that should not be compiled.
+
+#
+# To build jars that work with both Java 1.5 and Java 6 do the following:
+# 1. set JAVA_HOME to point to a Java 1.5 installation
+# 2. exclude **/Fake*6.java (and do not exclude **/Fake*5.java)
+# 3. call 'ant'
+# 4. set JAVA_HOME to point to a Java 6 installation
+# 5. exclude **/Fake*5.java (and do not exclude **/Fake*6.java)
+# 6. call 'ant' again
+#
+
+**/RemoteExecutor.java
+**/MasterApplication.java
+**/ODEExample.java
+
+**/JLink*.java
+**/SwtExample.java
+**/csound/**
+# this uses CSound:
+**/MinimalExample.java
+**/u3d/TestScene.java
+**/DeviceSpacenav.java
+**/WiiMoteOSC.java
+**/OSCPool.java

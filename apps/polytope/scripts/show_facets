@@ -1,0 +1,43 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+die "usage: polymake --script polytope::show_facets FILE\n" unless @ARGV;
+
+my $p=$ARGV[0];
+ref($p) or $p=load($p);
+my @list=();
+
+FACETS:
+for (my $i=0; $i<$p->N_FACETS; ++$i) {
+   my $facet=facet($p,$i,relabel=>1);
+   foreach my $other_facet (@list) {
+      next FACETS if isomorphic($facet, $other_facet);
+   }
+   $facet=projection_full($facet);
+   $facet->name="facet $i";
+   push @list, $facet;
+}
+
+if ($p->DIM>5) {
+   static($_->VISUAL_GRAPH) for @list;
+} else {
+   $_->VISUAL for @list;
+}
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

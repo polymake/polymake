@@ -1,0 +1,84 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object NormalToricVariety {
+
+   declare object TDivisor;
+
+   object TDivisor {
+   
+       # @category Toric Divisors
+       # true if the divisor is ample
+       property AMPLE : Bool;
+       
+       # @category Toric Divisors
+       # true if the divisor is basepoint-free
+       property BASEPOINT_FREE : Bool;
+       
+       # @category Toric Divisors
+       # true if the divisor is Cartier
+       property CARTIER : Bool;
+       
+       # @category Toric Divisors
+       # contains the Cartier data of the divisor, if it is Cartier
+       # i.e. contains a list of vertices of the lattice polytope P defined by the divisor and the variety
+       # the vertices appear in the same order as the maximal cones of the fan
+       property CARTIER_DATA : Map<Set<Int>,Vector>;
+       
+       # @category Toric Divisors
+       # The divisor on a toric variety, 
+       # given as a list of coefficients for the torus invariant divisors corresponding to the [[RAYS]] of the fan.
+       # Take care of labeling of the Rays.
+       property COEFFICIENTS : Vector<Rational>;
+       
+       # @category Toric Divisors
+       # true if the divisor is effective
+       property EFFECTIVE : Bool;
+       
+       # @category Toric Divisors
+       # true if the divisor is integral  		
+       property INTEGRAL : Bool;
+       
+       # @category Toric Divisors
+       # true if the divisor is nef
+       property NEF : Bool;
+       
+       # @category Toric Divisors
+       # true if the divisor is principal
+       property PRINCIPAL : Bool;
+       
+       # @category Toric Divisors
+       # true if the divisor is Q-Cartier, i.e. some multiple of it is Cartier
+       property Q_CARTIER : Bool;
+       
+       # @category Toric Divisors
+       # The polytope whose lattice points correspond to the global sections of the divisor.
+       property SECTION_POLYTOPE : Polytope<Rational>;
+       
+       # @category Toric Divisors
+       # true if the divisor is semiample
+       property SEMIAMPLE : Bool; 
+       
+   }
+   
+  	# @category Toric Varieties
+  	# a toric invariant divisor on the variety given by the fan
+  	# it is represented by n integer vector with entries corresponding to the rays of the fan
+  	# the actual divisor is stored in the property [[COEFFICIENTS]]
+   property DIVISOR : TDivisor : multiple;
+
+}
+
+

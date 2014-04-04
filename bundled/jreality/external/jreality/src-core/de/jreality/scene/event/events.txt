@@ -1,0 +1,19 @@
+- AppearanceEvent (AppearanceListener): appearance attribute was added/changed
+- GeometryEvent (GeometryListener): geometry changed
+- SceneContainerEvent (SceneContainerListener): child of the component (node?)
+renamed to SceneGraphComponentEvent
+
+  was added/removed/replaced
+- SceneEvent (--): superclass for all jReality events
+- SceneHirarchyEvent (SceneTreeListener / SceneAncestorListener):
+  these are possibly not used -> attic
+- ToolEvent (ToolListener): tool added/removed in the container
+- TransformationEvent (TransformationListener): trafo changed
+
+TODO:
+- add visibility notification to SceneGraphComponentEvent (done)
+- add Light/Camera event (done)
+- remove Events in src-attic (done)
+- move listeners +add/remove methods from SceneGraphNode to the corresponding nodes (done)
+
+

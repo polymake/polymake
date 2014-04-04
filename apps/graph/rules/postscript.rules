@@ -1,0 +1,52 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+package Postscript;
+
+# for arrows in directed graphs and Gale diagrams
+custom $arrowheadlength=14;
+
+# for arrows in directed graphs and Gale diagrams
+custom $arrowheadwidth=6;
+
+# relative to arrowheadlength
+custom $arrowheaddent=0.1;
+
+# between the nodes of a face lattice (relative to the face label box width)
+custom $face_spacing=0.2;
+
+require PostscriptGraph;
+
+package Postscript::Viewer;
+
+# the trailing @ in the signature allows to draw several graphs
+# together on the same page
+global_method postscript.graph: draw(Visual::Graph, @) {
+   my ($self, $Graph)=@_;
+   $self->current_page->addGraph($Graph);
+}
+
+global_method postscript.lattice: draw(Visual::Lattice) {
+   my ($self, $Lattice)=@_;
+   $self->current_page->addLattice($Lattice);
+}
+
+prefer postscript.lattice
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# End:

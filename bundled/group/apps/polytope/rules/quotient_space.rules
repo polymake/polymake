@@ -1,0 +1,214 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# A topological quotient space obtained from a polytope by identifying faces.
+# This object will sit inside a Polytope.
+declare object QuotientSpace {
+
+# @category Basic properties
+# The group encoding the quotient space.
+# The faces of the space are the orbits of the faces of the polytope under the group.
+property IDENTIFICATION_GROUP : group::Group;
+
+# @category Combinatorics
+# The dimension of the quotient space, defined to be the dimension of the polytope.
+property DIM : Int;
+
+# @category Combinatorics
+# A simplicial complex obtained by two stellar subdivisions of the defining polytope.
+property SIMPLICIAL_COMPLEX : topaz::SimplicialComplex : multiple;
+
+# @category Combinatorics
+# The faces of the quotient space, ordered by dimension. One representative of each orbit class is kept.
+property FACES : Array<Array<Set<Int>>>;
+
+# @category Combinatorics
+# The orbits of faces of the quotient space, ordered by dimension.
+property FACE_ORBITS : Array<Set<Array<Set<Int>>>>;
+
+# @category Combinatorics
+# The symmetry group induced by the symmetry group of the polytope on the @see FACES of the quotient space
+property SYMMETRY_GROUP : group::Group;
+
+# @category Combinatorics
+# All simplices in the quotient space
+property SIMPLICES : Array<Array<Set<Int>>>;
+
+# @category Combinatorics
+# The (//d//-1)-dimensional simplices in the interior.    
+property REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES : Array<boost_dynamic_bitset>;
+
+# @category Combinatorics
+# The interior //d//-dimensional simplices of a cone of combinatorial dimension //d//
+property REPRESENTATIVE_MAX_INTERIOR_SIMPLICES : Array<boost_dynamic_bitset>;
+
+# @category Combinatorics
+# The boundary (//d//-1)-dimensional simplices of a cone of combinatorial dimension //d//
+property REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES : Array<boost_dynamic_bitset>;
+
+# @category Combinatorics
+# The simplices made from points of the quotient space (also internal simplices, not just faces)
+property N_SIMPLICES : Array<Int>;
+
+# @category Combinatorics
+# An array that tells how many faces of each dimension there are
+property F_VECTOR : Array<Int>;
+
+# @category Combinatorics
+# a SparseMatrix whose rows are the sum of all cocircuit equations corresponding to a fixed symmetry class of interior ridge
+property COCIRCUIT_EQUATIONS : SparseMatrix;
+
+# @category Combinatorics
+# A lower bound for the number of simplices needed to triangulate the quotient space
+property SIMPLEXITY_LOWER_BOUND: Int;
+
+}
+
+object Polytope {
+
+property QUOTIENT_SPACE : QuotientSpace : multiple;
+
+rule QUOTIENT_SPACE.DIM : COMBINATORIAL_DIM {
+    $this->QUOTIENT_SPACE->DIM = $this->COMBINATORIAL_DIM;
+}
+
+}
+
+# @category Quotient spaces
+# Return a 2-dimensional cylinder obtained by identifying two opposite sides of a square
+user_function cylinder_2 {
+    my $p = cube(2);
+    my $g = new group::Group(GENERATORS=>[[2,3,0,1]]);
+    my $qs = new QuotientSpace(IDENTIFICATION_GROUP=>$g);
+    $p->QUOTIENT_SPACE = $qs;
+    $p->description="2-dimensional cylinder";
+    return $p; 
+}
+
+# @category Quotient spaces
+# Return the 3-dimensional Euclidean manifold obtained by identifying opposite faces
+# of a 3-dimensional cube by a quarter turn. After identification, two classes 
+# of vertices remain.
+user_function quarter_turn_manifold {
+    my $p = cube(3);
+    $p->GROUP = linear_symmetries($p,1); # this will disappear with ticket #553
+    my $g = new group::Group(GENERATORS=>[[5,7,4,6,2,0,3,1],[6,2,1,5,7,3,0,4]]); 
+    my $q = new QuotientSpace(IDENTIFICATION_GROUP=>$g);
+    $q->name = "Quarter turn manifold";
+    $q->description = "Quarter turn manifold obtained by identifying facets of a 3-cube";
+    $p->QUOTIENT_SPACE = $q;
+    return $p; 
+}
+
+# @category Quotient spaces
+# For a centrally symmetric polytope, return the quotient space obtained by dividing
+# out the central symmetry, i.e, identifying diametrically opposite faces
+user_function cs_quotient {
+    my $this = shift;
+    die "cs_quotient: input not centrally symmetric" unless $this->CENTRALLY_SYMMETRIC;
+    my $gen = $this->CS_PERMUTATION;
+    my $arr = new Array<Array<Int>>([ $gen ]);
+    my $g = new group::Group(GENERATORS=>$arr);
+    my $qs = new QuotientSpace(IDENTIFICATION_GROUP=>$g);
+    $qs->description = "Quotient space mod Z_2 of " . $this->description; 
+    $this->QUOTIENT_SPACE = $qs;
+    return $this;
+}
+
+# FIXME This doesn't work because regular_120_cell() isn't available here ?!
+# The problem is related to #534.
+# As a fix for now you can make it a script!
+
+# Return the 4-dimensional hyperbolic manifold obtained by Michael Davis 
+# [Proceedings of the AMS, Vol. 93, No. 2 (Feb., 1985), pp. 325-328]
+# by identifying opposite faces of the 120-cell
+# user function davis_manifold<QuadraticExtension>() { 
+#    my $c120=regular_120_cell();
+#    return cs_quotient($c120);
+#}
+
+
+object Polytope {
+
+rule QUOTIENT_SPACE.FACES, QUOTIENT_SPACE.FACE_ORBITS, QUOTIENT_SPACE.SYMMETRY_GROUP.GENERATORS : COMBINATORIAL_DIM, N_VERTICES, HASSE_DIAGRAM, GROUP.GENERATORS, QUOTIENT_SPACE.IDENTIFICATION_GROUP.GENERATORS {
+    quotient_space_faces($this);
+}
+
+rule QUOTIENT_SPACE.F_VECTOR : QUOTIENT_SPACE.FACES {
+    my $cds = $this->QUOTIENT_SPACE->FACES;
+    my @n_vector = map { $cds->[$_]->size } (0..$cds->size-1);
+    $this->QUOTIENT_SPACE->F_VECTOR = \@n_vector;
+}
+
+rule QUOTIENT_SPACE.SIMPLICIAL_COMPLEX : VERTICES_IN_FACETS, HASSE_DIAGRAM, QUOTIENT_SPACE.IDENTIFICATION_GROUP {
+    my $bs = iterated_barycentric_subdivision($this, 2, geometric_realization=>0 );
+    $this->QUOTIENT_SPACE->SIMPLICIAL_COMPLEX = topaz::bs2quotient($this, $bs); 
+}
+
+rule QUOTIENT_SPACE.SIMPLICES : COMBINATORIAL_DIM, VERTICES, QUOTIENT_SPACE.SYMMETRY_GROUP.GENERATORS {
+    $this->QUOTIENT_SPACE->SIMPLICES = representative_simplices($this->COMBINATORIAL_DIM, $this->VERTICES, $this->QUOTIENT_SPACE->SYMMETRY_GROUP->GENERATORS);
+}
+
+# @category Combinatorics
+# The equivalence classes of maximal-dimensional simplices in the interior and boundary under a symmetry group 
+rule QUOTIENT_SPACE.REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, QUOTIENT_SPACE.REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES : COMBINATORIAL_DIM, RAYS_IN_FACETS, RAYS, QUOTIENT_SPACE.SYMMETRY_GROUP.GENERATORS {
+    my $pair = representative_interior_and_boundary_ridges($this);
+    $this->QUOTIENT_SPACE->REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES = $pair->first;
+    $this->QUOTIENT_SPACE->REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES = $pair->second;
+}
+
+# @category Combinatorics
+# The equivalence classes of maximal-dimensional simplices in the boundary under a symmetry group 
+rule QUOTIENT_SPACE.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES : COMBINATORIAL_DIM, RAYS, QUOTIENT_SPACE.SYMMETRY_GROUP.GENERATORS {
+    $this->QUOTIENT_SPACE->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES = representative_max_interior_simplices($this->COMBINATORIAL_DIM, $this->RAYS, $this->QUOTIENT_SPACE->SYMMETRY_GROUP->GENERATORS);
+}
+
+rule QUOTIENT_SPACE.N_SIMPLICES : QUOTIENT_SPACE.SIMPLICES {
+    my $cds = $this->QUOTIENT_SPACE->SIMPLICES;
+    my @n_vector = map { $cds->[$_]->size } (0..$cds->size-1);
+    $this->QUOTIENT_SPACE->N_SIMPLICES = \@n_vector;
+}
+
+rule QUOTIENT_SPACE.COCIRCUIT_EQUATIONS : QUOTIENT_SPACE.REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, QUOTIENT_SPACE.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, QUOTIENT_SPACE.SYMMETRY_GROUP.GENERATORS {
+   my $d = $this->COMBINATORIAL_DIM;
+   my $interior_ridge_reps = $this->QUOTIENT_SPACE->REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES;
+   print $interior_ridge_reps, "\n";
+   my $facet_reps = $this->QUOTIENT_SPACE->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES;
+   print $facet_reps, "\n";
+   $this->QUOTIENT_SPACE->COCIRCUIT_EQUATIONS = symmetrized_cocircuit_equations($d, $this->RAYS, $this->RAYS_IN_FACETS, $this->QUOTIENT_SPACE->SYMMETRY_GROUP->GENERATORS, $interior_ridge_reps, $facet_reps);
+}
+
+rule QUOTIENT_SPACE.SIMPLEXITY_LOWER_BOUND : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, QUOTIENT_SPACE.REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES, QUOTIENT_SPACE.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, VOLUME, QUOTIENT_SPACE.COCIRCUIT_EQUATIONS, QUOTIENT_SPACE.SYMMETRY_GROUP.GENERATORS, QUOTIENT_SPACE.IDENTIFICATION_GROUP.GENERATORS {
+   my $d = $this->COMBINATORIAL_DIM;
+   my $exterior_ridge_reps = $this->QUOTIENT_SPACE->REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES;
+   my $facet_reps = $this->QUOTIENT_SPACE->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES;
+   $this->QUOTIENT_SPACE->SIMPLEXITY_LOWER_BOUND = quotient_space_simplexity_lower_bound($d, $this->VERTICES, $this->VERTICES_IN_FACETS, $exterior_ridge_reps, $facet_reps, $this->VOLUME, $this->QUOTIENT_SPACE->COCIRCUIT_EQUATIONS, $this->QUOTIENT_SPACE->SYMMETRY_GROUP->GENERATORS, $this->QUOTIENT_SPACE->IDENTIFICATION_GROUP->GENERATORS);
+}
+
+}
+
+sub write_quotient_space_simplexity_ilp;
+
+user_function write_quotient_space_simplexity_ilp<Scalar>(Polytope<Scalar> $) {
+    my $q = shift;
+    my $outfilename = shift;
+    return quotient_space_simplexity_ilp($q->COMBINATORIAL_DIM, $q->VERTICES, $q->VERTICES_IN_FACETS, $q->QUOTIENT_SPACE->REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES, $q->QUOTIENT_SPACE->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, $q->VOLUME, $q->QUOTIENT_SPACE->COCIRCUIT_EQUATIONS, $q->QUOTIENT_SPACE->SYMMETRY_GROUP->GENERATORS, $q->QUOTIENT_SPACE->IDENTIFICATION_GROUP->GENERATORS, filename => $outfilename);
+}
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

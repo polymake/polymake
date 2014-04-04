@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scene>
+  <sceneRoot>
+    <name>root</name>
+    <visible>true</visible>
+    <transformation/>
+    <appearance>
+      <name>root appearance</name>
+      <attribute name="polygonShader">
+        <java-class>de.jreality.shader.DefaultPolygonShader</java-class>
+      </attribute>
+      <attribute name="lineShader">
+        <java-class>de.jreality.shader.DefaultLineShader</java-class>
+      </attribute>
+      <attribute name="&lt;de.jreality.shader.DefaultGeometryShader&gt;">
+        <java-class>de.jreality.shader.DefaultGeometryShader</java-class>
+      </attribute>
+      <attribute name="&lt;de.jreality.shader.RootAppearance&gt;">
+        <java-class>de.jreality.shader.RootAppearance</java-class>
+      </attribute>
+      <attribute name="pointShader">
+        <java-class>de.jreality.shader.DefaultPointShader</java-class>
+      </attribute>
+    </appearance>
+    <camera/>
+    <light/>
+    <geometry/>
+    <children>
+      <child>
+        <name>scene</name>
+        <visible>true</visible>
+        <transformation>
+          <name>Unnamed 0</name>
+          <matrix>1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0</matrix>
+        </transformation>
+        <appearance/>
+        <camera/>
+        <light/>
+        <geometry/>
+        <children/>
+        <tools>
+          <de.jreality.tools.EncompassTool/>
+          <de.jreality.tools.RotateTool>
+            <fixOrigin>false</fixOrigin>
+            <moveChildren>false</moveChildren>
+            <animTimeMin>250.0</animTimeMin>
+            <animTimeMax>750.0</animTimeMax>
+            <updateCenter>false</updateCenter>
+          </de.jreality.tools.RotateTool>
+          <de.jreality.tools.DraggingTool>
+            <moveChildren>false</moveChildren>
+          </de.jreality.tools.DraggingTool>
+        </tools>
+      </child>
+      <child>
+        <name>lightComp 1</name>
+        <visible>true</visible>
+        <transformation>
+          <name>Unnamed 0</name>
+          <matrix>0.8535533905932737 0.14644660940672619 -0.4999999999999999 0.0 0.14644660940672619 0.8535533905932737 0.4999999999999999 0.0 0.4999999999999999 -0.4999999999999999 0.7071067811865476 0.0 0.0 0.0 0.0 1.0</matrix>
+        </transformation>
+        <appearance/>
+        <camera/>
+        <light type="DirectionalLight">
+          <name>light 1</name>
+          <color>
+            <red>255</red>
+            <green>255</green>
+            <blue>255</blue>
+            <alpha>255</alpha>
+          </color>
+          <intensity>0.75</intensity>
+        </light>
+        <geometry/>
+        <children/>
+        <tools/>
+      </child>
+      <child>
+        <name>lightComp 2</name>
+        <visible>true</visible>
+        <transformation>
+          <name>Unnamed 1</name>
+          <matrix>0.8535533905932737 0.14644660940672619 -0.4999999999999999 0.0 0.14644660940672619 0.8535533905932737 0.4999999999999999 0.0 0.4999999999999999 -0.4999999999999999 0.7071067811865476 0.0 0.0 0.0 0.0 1.0</matrix>
+        </transformation>
+        <appearance/>
+        <camera/>
+        <light type="DirectionalLight">
+          <name>light 2</name>
+          <color>
+            <red>255</red>
+            <green>255</green>
+            <blue>255</blue>
+            <alpha>255</alpha>
+          </color>
+          <intensity>0.75</intensity>
+        </light>
+        <geometry/>
+        <children/>
+        <tools/>
+      </child>
+      <child>
+        <name>avatar</name>
+        <visible>true</visible>
+        <transformation>
+          <name>avatar Trafo</name>
+          <matrix>1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0</matrix>
+        </transformation>
+        <appearance/>
+        <camera/>
+        <light/>
+        <geometry/>
+        <children>
+          <child>
+            <name>camera Node</name>
+            <visible>true</visible>
+            <transformation>
+              <name>Unnamed 2</name>
+              <matrix>1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 16.0 0.0 0.0 0.0 1.0</matrix>
+            </transformation>
+            <appearance/>
+            <camera>
+              <name>camera</name>
+              <eyeSeparation>0.1</eyeSeparation>
+              <far>50.0</far>
+              <fieldOfView>29.999999999999996</fieldOfView>
+              <focus>3.0</focus>
+              <near>3.0</near>
+              <onAxis>false</onAxis>
+              <orientationMatrix></orientationMatrix>
+              <perspective>true</perspective>
+              <stereo>false</stereo>
+            </camera>
+            <light type="DirectionalLight">
+              <name>light 2</name>
+              <color>
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
+                <alpha>255</alpha>
+              </color>
+              <intensity>0.75</intensity>
+            </light>
+            <geometry/>
+            <children/>
+            <tools>
+              <de.jreality.tools.PortalHeadMoveTool/>
+            </tools>
+          </child>
+        </children>
+        <tools>
+          <de.jreality.tools.FlyTool>
+            <gain>1.0</gain>
+          </de.jreality.tools.FlyTool>
+        </tools>
+      </child>
+    </children>
+    <tools/>
+  </sceneRoot>
+  <scenePaths>
+    <path name="cameraPath">
+      <node reference="../../../sceneRoot"/>
+      <node reference="../../../sceneRoot/children/child[4]"/>
+      <node reference="../../../sceneRoot/children/child[4]/children/child"/>
+      <node reference="../../../sceneRoot/children/child[4]/children/child/camera"/>
+    </path>
+    <path name="avatarPath">
+      <node reference="../../../sceneRoot"/>
+      <node reference="../../../sceneRoot/children/child[4]"/>
+    </path>
+    <path name="emptyPickPath">
+      <node reference="../../../sceneRoot"/>
+      <node reference="../../../sceneRoot/children/child"/>
+    </path>
+  </scenePaths>
+  <sceneAttributes/>
+</scene>

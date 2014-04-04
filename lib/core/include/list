@@ -1,0 +1,85 @@
+/* Copyright (c) 1997-2014
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+   http://www.polymake.org
+
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2, or (at your option) any
+   later version: http://www.gnu.org/licenses/gpl.txt.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+--------------------------------------------------------------------------------
+*/
+
+#ifndef POLYMAKE_LIST_
+#define POLYMAKE_LIST_
+
+#include <list>
+#include <cstring>
+#include <new>
+
+#include "polymake/internal/iterators.h"
+
+namespace pm {
+
+template <typename Value, typename Alloc>
+struct spec_object_traits< std::list<Value,Alloc> >
+   : spec_object_traits<is_container> {
+   static const IO_separator_kind IO_separator=IO_sep_inherit;
+};
+
+template <typename Value, typename Alloc> inline
+void relocate(std::list<Value,Alloc>* from, std::list<Value,Alloc>* to)
+{
+   (new(to) std::list<Value,Alloc>())->swap(*from);
+   _Destroy(from);
+}
+
+template <typename Value, typename Alloc=std::allocator<Value> >
+class std_list_traits : public std::list<Value,Alloc> {
+protected:
+   std_list_traits();
+   ~std_list_traits();
+public:
+   typedef typename std::list<Value,Alloc>::_Node Node;
+
+#if defined(__GNUC__)
+   static Node* to_node(Value* data)
+   {
+      return reverse_cast(data, &Node::_M_data);
+   }
+   static const Node* to_node(const Value* data)
+   {
+      return reverse_cast(data, &Node::_M_data);
+   }
+#endif
+};
+
+#ifndef _GLIBCXX_STD
+#define _GLIBCXX_STD _GLIBCXX_STD_A
+#endif
+
+template <typename Value>
+struct iterator_cross_const_helper<_GLIBCXX_STD::_List_iterator<Value>, true> {
+   typedef _GLIBCXX_STD::_List_iterator<Value> iterator;
+   typedef _GLIBCXX_STD::_List_const_iterator<Value> const_iterator;
+};
+
+template <typename Value>
+struct iterator_cross_const_helper<_GLIBCXX_STD::_List_const_iterator<Value>, true> {
+   typedef _GLIBCXX_STD::_List_iterator<Value> iterator;
+   typedef _GLIBCXX_STD::_List_const_iterator<Value> const_iterator;
+};
+
+} // end namespace pm
+
+#endif // POLYMAKE_LIST_
+
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:

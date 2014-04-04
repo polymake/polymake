@@ -1,0 +1,283 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# @topic objects/Visual::PolytopeGraph
+# @category Visualization
+# Visualization of the graph of a polyhedron.
+# @relates Polytope
+
+package Visual::PolytopeGraph;
+
+use Polymake::Struct (
+   [ '@ISA' => 'Container' ],
+   [ '$Polytope' => '#%' ],
+   [ '$bounded' => '#%' ],
+);
+
+# where to keep the view transformation matrix etc.
+method representative { $_[0]->Polytope }
+
+method basis_graph { $_[0]->elements->[0] }
+
+# In the spring embedding of the graph with a superposed linear objective function,
+# controls the relative force magnitude along the z-axis
+custom $embedding_objective_factor=1;
+
+sub LP_influence_on_embedding {
+   my ($self, $lp)=@_;
+   if (instanceof Visual::GraphEmbedding($self->basis_graph->Coord)) {
+      my $obj=$lp->lookup("ABSTRACT_OBJECTIVE");
+      if (!defined($obj)) {
+         if ($self->bounded) {
+            $obj=$self->Polytope->VERTICES * $lp->LINEAR_OBJECTIVE;
+         } else {
+            $obj=objective_values_for_embedding($self->Polytope,$lp);
+         }
+      }
+      if ($self->basis_graph->Graph->ADJACENCY->has_gaps) {
+         $obj=$obj->slice(nodes($self->basis_graph->Graph->ADJACENCY));
+      }
+      $self->basis_graph->Coord->merge_options('z-ordering' => $obj, 'z-factor' => $embedding_objective_factor);
+   }
+}
+
+# @category Visualization
+# Illustrate the behavior of a linear objective function on the polytope.
+# Color the nodes according to the value the objective function takes
+# on the vertices.
+# 
+# The spring embedder applies an additional force, which tries to arrange the nodes in the z-axis direction
+# corresponding to the objective function values.
+# 
+# @param LinearProgram lp a LinearProgram object attached to the polytope.
+# @option Color min minimal face color (default: yellow)
+# @option Color max maximal face color (default: red)
+# @return Visual::PolytopeGraph
+
+user_method VERTEX_COLORS(; LinearProgram { min => $Visual::Color::min, max => $Visual::Color::max }) {
+   my ($self, $lp, $decor)=@_;
+   if (defined $lp) {
+      if ($lp->parent != $self->Polytope) {
+         croak("LinearProgram object does not belong to this Polytope");
+      }
+   } else {
+      $lp=$self->Polytope->LP;
+   }
+   $_=get_RGB($_) for values %$decor;
+   $self->basis_graph->NodeColor=vertex_colors($self->Polytope, $lp, $decor);
+   LP_influence_on_embedding($self,$lp);
+   visualize($self);
+}
+
+# @category Visualization
+# Illustrate the behavior of a linear objective function on the polytope.
+# The vertices belonging to [[MINIMAL_FACE]] and [[MAXIMAL_FACE]] are drawn in distinct colors
+# 
+# The spring embedder applies an additional force, which tries to arrange the nodes in the z-axis direction
+# corresponding to the objective function values.
+# 
+# @param LinearProgram lp a LinearProgram object attached to the polytope
+# @option Color min minimal face decoration (default: yellow nodes)
+# @option Color max maximal face decoration (default: red nodes)
+# @return Visual::PolytopeGraph
+
+user_method MIN_MAX_FACE(; LinearProgram { min => $Visual::Color::min, max => $Visual::Color::max }) {
+   my ($self, $lp, $decor)=@_;
+   if (defined $lp) {
+      if ($lp->parent != $self->Polytope) {
+         croak("LinearProgram object does not belong to this Polytope");
+      }
+   } else {
+      $lp=$self->Polytope->LP;
+   }
+   foreach (values %$decor) {
+      unless (is_hash($_)) {
+         my $c=get_RGB($_);
+         $_={ NodeColor=>$c };
+      }
+   }
+
+   if (!$self->bounded || isfinite($lp->MINIMAL_VALUE)) {
+      $self->basis_graph->add_node_subset($lp->MINIMAL_FACE, $decor->{min});
+   }
+   if (!$self->bounded || isfinite($lp->MAXIMAL_VALUE)) {
+      $self->basis_graph->add_node_subset($lp->MAXIMAL_FACE, $decor->{max});
+   }
+   LP_influence_on_embedding($self,$lp);
+   visualize($self);
+}
+
+# @category Visualization
+# Show the growth direction of a linear objective function via arrowed edges.
+# @param LinearProgram lp a LinearProgram object attached to the polytope
+# @return Visual::PolytopeGraph
+
+user_method DIRECTED_GRAPH(; LinearProgram) {
+   my ($self, $lp)=@_;
+   if (defined $lp) {
+      if ($lp->parent != $self->Polytope) {
+         croak("LinearProgram object does not belong to this Polytope");
+      }
+   } else {
+      $lp=$self->Polytope->LP;
+   }
+   $self->Name.=" DIRECTED with LP " . $lp->subobj_name;
+   my $G=$self->basis_graph;
+   if ($G->Graph->ADJACENCY->has_gaps) {
+      $G->Graph = new graph::Graph(ADJACENCY => induced_subgraph($lp->DIRECTED_GRAPH->ADJACENCY, nodes($G->Graph->ADJACENCY)));
+   } else {
+      $G->Graph=$lp->DIRECTED_GRAPH;
+   }
+   $G->ArrowStyle=1;
+   visualize($self);
+}
+
+
+
+###########################################################################################
+
+object Polytope {
+
+# @category Visualization
+# Visualize the [[GRAPH]] of a polyhedron.
+# @option Int seed random seed value for the string embedder
+# @return Visual::PolytopeGraph
+
+user_method VISUAL_GRAPH(%Visual::Graph::decorations, { seed => undef }) {
+   my ($this, $decor, $seed)=@_;
+   my $VG=$this->GRAPH->VISUAL( Name => $this->name,
+                                (exists $decor->{NodeBorderColor} || exists $decor->{VertexColor} ? () : (NodeColor => $Visual::Color::vertices)),
+                                $decor, $seed );
+   visualize( new Visual::PolytopeGraph( Name => "GRAPH of " . $this->name,
+                                         Polytope => $this,
+                                         $VG ));
+}
+
+
+# @category Visualization
+# Visualize the [[DUAL_GRAPH]] of a polyhedron.
+# @option Int seed random seed value for the string embedder
+# @return Visual::Graph
+
+user_method VISUAL_DUAL_GRAPH(%Visual::Graph::decorations, { seed => undef }) {
+   my ($this, $decor, $seed)=@_;
+   $this->DUAL_GRAPH->VISUAL( Name => $this->name,
+                              Title => "DUAL_GRAPH of ".$this->name,
+                              (exists $decor->{NodeBorderColor} || exists $decor->{VertexColor} ? () : (NodeColor => $Visual::Color::vertices)),
+                              $decor, $seed );
+}
+
+}
+#########################################################################################
+#
+#  Face lattice visualization
+#
+
+# @topic objects/Visual::PolytopeLattice
+# @category Visualization
+# Visualization of the [[HASSE_DIAGRAM]] of a polyhedron as a multi-layer graph..
+# @relates Polytope
+
+package Visual::PolytopeLattice;
+
+use Polymake::Struct (
+   [ '@ISA' => 'Container' ],
+   [ '$Polytope' => '#%' ],
+);
+
+# where to keep the view transformation matrix etc.
+method representative { $_[0]->Polytope }
+
+method basis_lattice { $_[0]->elements->[0] }
+
+
+# Illustrate the behavior of a linear objective function on the polytope.
+# Draw the filters of the [[MAXIMAL_FACE]] and [[MINIMAL_FACE]] in distinct colors.
+#
+# @param LinearProgram lp a LinearProgram object attached to the polytope
+# @option Color min minimal face decoration (default: yellow border and ingoing edges)
+# @option Color max maximal face decoration (default: red border and ingoing edges)
+# @return Visual::PolytopeLattice
+
+user_method MIN_MAX_FACE(; LinearProgram { min => $Visual::Color::min, max => $Visual::Color::max }) {
+   my ($self, $lp, $decor)=@_;
+   if (defined $lp) {
+      if ($lp->parent != $self->Polytope) {
+         croak("LinearProgram object does not belong to this Polytope");
+      }
+   } else {
+      $lp=$self->Polytope->LP;
+   }
+   foreach (values %$decor) {
+      unless (is_hash($_)) {
+         my $c=get_RGB($_);
+         $_={ NodeBorderColor=>$c, EdgeColor=>$c };
+      }
+      $_->{show_filter}=1;
+   }
+
+   if (defined (my $min_face=$lp->MINIMAL_FACE)) {
+      $self->basis_lattice->add_subcomplex($self->Polytope->HASSE_DIAGRAM, [ $min_face ], $decor->{min});
+   }
+   if (defined (my $max_face=$lp->MAXIMAL_FACE)) {
+      $self->basis_lattice->add_subcomplex($self->Polytope->HASSE_DIAGRAM, [ $max_face ], $decor->{max});
+   }
+   visualize($self);
+}
+
+#########################################################################################
+
+object Polytope {
+
+# @category Visualization
+# Visualize the [[HASSE_DIAGRAM]] of a polyhedron as a multi-layer graph.
+# @option Int seed random seed value for the node placement
+# @return Visual::PolytopeLattice
+
+user_method VISUAL_FACE_LATTICE(%Visual::Lattice::decorations, { seed => undef }) : HASSE_DIAGRAM {
+   my ($this, $decor, $seed)=@_;
+   $decor->{Name} ||= $this->name;
+   visualize( new Visual::PolytopeLattice( Name => "Face lattice of ".$this->name,
+                                           Polytope => $this,
+                                           $this->HASSE_DIAGRAM->VISUAL(AtomLabels=>$this->lookup("VERTEX_LABELS"),
+                                                                        $decor,$seed)
+                                         ));
+}
+
+
+# @category Visualization
+# Visualize the dual [[HASSE_DIAGRAM|face lattice]] of a polyhedron as a multi-layer graph.
+# @option Int seed random seed value for the node placement
+# @return Visual::PolytopeLattice
+
+user_method VISUAL_DUAL_FACE_LATTICE(%Visual::Lattice::decorations, { seed => undef }) : HASSE_DIAGRAM {
+   my ($this, $decor, $seed)=@_;
+   $decor->{Name} ||= $this->name;
+   visualize( new Visual::PolytopeLattice( Name => "Dual face lattice of ".$this->name,
+                                           Polytope => $this,
+                                           $this->HASSE_DIAGRAM->VISUAL_DUAL(AtomLabels=>$this->lookup("FACET_LABELS"),
+                                                                             $decor,$seed)
+                                         ));
+}
+
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

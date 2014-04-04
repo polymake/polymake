@@ -1,0 +1,347 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+CREDIT 4ti2
+  4ti2 -- A software package for algebraic, geometric and combinatorial problems on linear spaces.
+  Copyright by 4ti2 team.
+  http://www.4ti2.de/
+
+# path to groebner
+custom $groebner;
+
+# path to zsolve
+custom $zsolve;
+
+CONFIGURE {
+    find_program($groebner, "groebner", { prompt => "the program `groebner' from the 4ti2 package" }) or return;
+    # FIXME temporarily excluded 4ti2 version 1.5 from configuration, as its interface is not compatible to version 1.3
+    my $ver = `$groebner -h 2>&1 | grep -o \"version 1\..\"`;
+    chomp $ver;
+    if ( $ver eq "version 1.5" ) { die "polymake currently does not work with 4ti2 version 1.5 bundled with latte integrale. Please install version 1.3 available from www.4ti2.de" ; }
+    ($zsolve=$groebner) =~ s/groebner$/zsolve/;
+}
+
+# additional command line parameter for 4ti2's "groebner"
+# see the manual of 4ti2 for explanations of the various possible options
+custom $_4ti2_groebner_param="";
+
+label _4ti2
+
+object LatticePolytope {
+
+    rule GROEBNER_BASIS.BASIS : CONE_AMBIENT_DIM , LATTICE_POINTS_GENERATORS {
+        my $dim = $this->CONE_AMBIENT_DIM-1;
+        my $lp = $this->LATTICE_POINTS_GENERATORS->[0]->rows;
+        my $tempname=new Tempfile;
+
+        # write all lattice points into $tempname.mat
+	groebner_write( $tempname,'mat',transpose($this->LATTICE_POINTS_GENERATORS->[0]) );
+
+	# check whether a term order is defined
+	# otherwise take 4ti2's default
+        if (defined (my $tom = $this->lookup("GROEBNER_BASIS.TERM_ORDER_MATRIX") ) ) {
+          # write all lattice points into $tempname.cost
+	  groebner_write( $tempname,'cost', $tom );
+        } elsif (defined (my $ton = $this->lookup("GROEBNER_BASIS.TERM_ORDER_NAME") ) ) {
+	  if ( $ton eq 'lex' ) {
+	    groebner_write( $tempname,'cost', unit_matrix<Int>($lp) );
+	  } elsif ( $ton eq 'degrevlex' ) {
+	    my $tom = new Matrix<Int>($lp,$lp);
+	    $tom->row(0) = ones_vector<Int>($lp);
+            foreach (1..$lp-1) { $tom->[$_][$lp-$_] = -1; }
+	    groebner_write( $tempname,'cost', $tom );
+	  } elsif ( $ton eq 'deglex' ) {
+	    my $tom = new Matrix<Int>($lp,$lp);
+	    $tom->row(0) = ones_vector<Int>($lp);
+            foreach (1..$lp-1) { $tom->[$_][$_-1] = 1; }
+	    groebner_write( $tempname,'cost', $tom );
+	  } else {
+	    die "unknown term order";
+	  }
+	}
+        
+        # run groebner with standard precision
+        my $runarb = 0;
+        if ($Verbose::external) {
+            dbg_print( "running 4ti2's groebner: $groebner $_4ti2_groebner_param $tempname" );
+        }
+        open(my $P, "$groebner $_4ti2_groebner_param $tempname 2>&1 |")
+            or die "couldn't run 4ti2's 'groebner': $!";
+
+        local $_;
+        while(<$P>) {
+            if (/ERROR: Try running 4ti2 with arbitrary precision/) {
+                $runarb = 1;
+            }
+        }
+        close $P;
+        open($P, "<$tempname.gro")
+            or $runarb = 1;
+        
+        close $P;
+
+        # run groebner with arbitrary precision if necessary
+        if ($runarb == 1) {
+            if ($Verbose::external) {
+               dbg_print( "running 4ti2's groebner: $groebner -parb $_4ti2_groebner_param $tempname" );
+            }
+            open(my $P, "$groebner -parb $_4ti2_groebner_param $tempname 2>&1 |")
+                or die "couldn't run 4ti2's 'groebner': $!";
+
+            while(<$P>) {
+            }
+            close $P;
+        }
+
+        # read groebner basis
+        open(my $outfile, "<$tempname.gro")
+            or die "can't open output file $tempname.gro: $!";
+        my $dimline = <$outfile>;
+        my @gromat=();
+        my $i;
+        while (<$outfile>) {
+            my @vec = split;
+            push @gromat, \@vec;
+            $i++;
+        }
+        if ($i > 0) {
+            $this->GROEBNER_BASIS->BASIS = \@gromat;
+        }
+        close $outfile;
+    }
+    precondition : BOUNDED;
+    weight 5.10;
+
+}
+
+object Cone<Rational> {
+
+#    rule _4ti2.hilbert, _4ti2.integer_points: HILBERT_BASIS : CONE_AMBIENT_DIM , FACETS | INEQUALITIES {
+#        my $tempname = new Tempfile;
+#        
+#        zsolve_print($tempname,$this);
+#        
+#        _4ti2_run($zsolve,$tempname);
+#        
+#        zsolve_parse($tempname,$this,hilb=>1);
+#    }
+#    precondition : POINTED;
+#    weight 5.65;
+
+    rule _4ti2.hilbert, _4ti2.integer_points: HILBERT_BASIS_GENERATORS : CONE_AMBIENT_DIM , FACETS | INEQUALITIES {
+        my $tempname=new Tempfile;
+
+	# 4ti2 version 1.6 cannot handle the case of a full-dimensional linear space
+	# hence we handle this case separately
+	my $n_ineq = ($this->FACETS | INEQUALITIES)->rows;
+	if (defined (my $AH = $this->lookup("LINEAR_SPAN | EQUATIONS"))) {
+	    $n_ineq += $AH->rows;
+	}
+	if ( $n_ineq == 0 ) {
+	    my $cad = $this->CONE_AMBIENT_DIM;
+	    my $rays = new Matrix<Integer>(0,$cad);
+	    my $lin = unit_matrix<Integer>($cad); 
+	    $this->HILBERT_BASIS_GENERATORS=[$rays , $lin];
+	    return;
+	}
+        
+        zsolve_print($tempname,$this);
+        
+        _4ti2_run($zsolve,$tempname);
+        
+        zsolve_parse($tempname,$this,hilb=>1);
+    }
+    weight 5.35;   
+
+
+}
+
+object Polytope<Rational> {
+
+    rule _4ti2.integer_points: LATTICE_POINTS_GENERATORS : CONE_AMBIENT_DIM , FACETS | INEQUALITIES {
+        my $tempname=new Tempfile;
+        
+        zsolve_print($tempname,$this,polytope=>1);
+        
+        _4ti2_run($zsolve,$tempname);
+        
+        zsolve_parse($tempname,$this,polytope=>1);
+    }
+    weight 5.35;   
+}
+
+sub groebner_write {
+  my ($filebase,$suffix,$m) = @_;
+
+  open(my $M, ">$filebase.$suffix")
+    or die "can't create temporary file $filebase.$suffix: $!";
+  #header
+  print $M $m->rows, " ", $m->cols, "\n";
+  print $M new Matrix<Integer>($m);
+  close $M;
+}
+
+sub _4ti2_run {
+    my $prog = shift;
+    # run $prog
+    if ($Verbose::external) {
+        dbg_print( "running 4ti2: $prog -q @_" );
+    }
+    system("$prog -q @_".(!$DebugLevel && " >/dev/null 2>&1"))
+        and die "couldn't run 4ti2: $prog -q @_\n";
+}
+
+sub zsolve_print {
+    my ($tempname, $this, %flags) = @_;
+    
+    # prepare data: ineq / eq
+    my $dim = $this->CONE_AMBIENT_DIM;
+    if ($flags{polytope}) { --$dim; }
+
+    my $n_ineq = ($this->FACETS | INEQUALITIES)->rows;
+    my $facets = dense(eliminate_denominators_in_rows($this->FACETS | INEQUALITIES));
+    
+    if (!check_int_limit($facets)) {
+        die("input values exceed int limits");
+    }
+
+    my $n_lines = $n_ineq;
+    my $ah;
+    if (defined (my $AH = $this->lookup("LINEAR_SPAN | EQUATIONS"))) {
+        $n_lines += $AH->rows;
+        $ah=dense(eliminate_denominators_in_rows($AH));
+        if (!check_int_limit($ah)) {
+            die("input values exceed int limits");
+        }
+    }
+ 
+    # matrix file 
+    open(my $M, ">$tempname.mat")
+        or die "can't create temporary file $tempname.mat: $!";
+    $flags{polytope} ? 
+	print $M "$n_lines $dim\n", $facets->minor(All,range(1,$dim)) : 
+	print $M "$n_lines $dim\n", $facets;
+
+    # right hand side
+    open(my $R, ">$tempname.rhs")
+        or die "can't create temporary file $tempname.rhs: $!";
+    if ($flags{polytope}) {
+	print $R "1 $n_lines\n", -($facets->col(0)), " ";
+    } else {
+	my $rhs= zero_vector<Integer>($n_lines);
+	print $R "1 $n_lines\n", $rhs, " ";
+    }
+    
+    # relations file
+    open(my $E, ">$tempname.rel")
+        or die "can't create temporary file $tempname.rel: $!";
+    print $E "1 $n_lines\n", "> " x $n_ineq;
+
+    # equalities if necessary
+    if ($n_lines > $n_ineq) {
+	if ($flags{polytope}) {
+	    print $M $ah->minor(All,range(1,$dim));
+	    print $R -($ah->col(0));
+	} else {
+	    print $M $ah;
+	    # right hand side has been dealt with already above.
+	}
+	print $E "= " x ($n_lines-$n_ineq);
+    }
+
+    close $E;
+    close $M;
+    close $R;
+}
+
+sub zsolve_parse {
+    my ($tempname,$this,%flags) = @_;
+    
+    # parse output
+    open(my $outfile, "<$tempname.zhom")
+	or die "can't open output file $tempname.zhom: $!";
+    my $dimline = <$outfile>;
+    my @rays=();
+    my @points=();
+    my @lineality=();
+    local $_;
+
+    while(<$outfile>) {
+	if(/^$/) {
+	    next;
+	}
+	# read one point and append to output 
+	my @p;
+	if ( $flags{polytope} ) {
+	    @p = (0, split);
+	} else {
+	    @p = split;
+	}
+	push @rays, \@p;
+    }
+    close $outfile;
+
+    if ( $flags{polytope} ) {
+
+	open(my $outfile, "<$tempname.zinhom")
+	    or die "can't open output file $tempname.zinhom: $!";
+	my $dimline = <$outfile>;
+	local $_;
+	while(<$outfile>) {
+	    if(/^$/) {
+		next;
+	    }
+	    # read one point and append to output inklusive proj 1
+	    my @p = (1, split);
+	    push @points, \@p;
+	}
+	close $outfile;
+    }
+
+    if ( $flags{polytope} || $flags{hilb} ) {
+
+	if(-e "$tempname.zfree")
+	{
+	    open(my $outfile, "<$tempname.zfree")
+		or die "can't open output file $tempname.zfree: $!";
+	    my $dimline = <$outfile>;
+	    local $_;
+	    while(<$outfile>) {
+		if(/^$/) {
+		    next;
+		}
+		# read one point and append to output inklusive proj 1
+		my @p;
+		if ( $flags{polytope} ) {
+		    @p = (0, split);
+		} else {
+		    @p = split;
+		}
+		push @lineality, \@p;
+	    }
+	    close $outfile;
+	}
+    }
+
+    $this->LATTICE_POINTS_GENERATORS=[\@points, \@rays , \@lineality] if $flags{polytope};
+    $this->HILBERT_BASIS_GENERATORS=[\@rays , \@lineality] if $flags{hilb};
+    
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:4
+# End:

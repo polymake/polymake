@@ -1,0 +1,119 @@
+.TH "sympol" "1" "0.1.6" "SymPol" "User Commands"
+.SH "NAME"
+sympol \- symmetric polyhedra tool
+.SH "SYNOPSIS"
+.B sympol
+[\fIOPTIONS\fP] [\fIINPUT_FILE\fP]
+.SH "DESCRIPTION"
+.PP
+SymPol computes restricted automorphisms of polyhedra and performs polyhedral
+description conversion up to a given or computed symmetry group.
+.PP
+SymPol mostly uses the .ine/.ext file format used by cddlib and lrslib;
+(http://cgm.cs.mcgill.ca/~avis/C/lrslib/USERGUIDE.html#File%20Formats).
+However, unlike cddlib, SymPol requires that every inequality
+(H-representation) or vertex and ray (V-representation) occupy a single line.
+In addition, SymPol offers an extension to the format
+.PP
+The extension permits the inclusion of the automorphism group of a polyhedron,
+or parts of it, in the file.  It is given after the end of the H- or
+V-representation of a permutation group, as follows.
+.LP
+permutation group
+.br
+p
+.br
+ { list of #p group generators }
+.br
+q
+.br
+ { #q base points separated by whitespace }
+.PP
+The \fIp\fP group generators are to be given in cycle form, where commas
+separate cycles.  The value \fIq\fP may be set to zero if no base of the group
+is known.
+.SH "OPTIONS"
+.TP
+\fB\-h\fP, \fB\-\-help\fP
+Show a help message.
+.TP
+\fB\-v\fP, \fB\-\-verbose\fP[=\fIN\fP]
+Set the verbosity level, 0 by default.  If \fIN\fP is omitted, 1 is assumed.
+.TP
+\fB\-t\fP, \fB\-\-time\fP
+Enable time measurement.
+.TP
+\fB\-i\fP, \fB\-\-input\-file\fP \fIFILE\fP
+Read an input file (.ine or .ext).  The file can also be listed last on the
+command line.
+.TP
+\fB\-\-automorphisms\-only\fP
+Compute only restricted automorphisms and then exit.
+.TP
+\fB\-\-no\-automorphisms\fP
+Ignores the given symmetry group and does not attempt to compute restricted
+automorphisms.
+.TP
+\fB\-\-bliss\fP
+Use bliss graph automorphism tool to compute restricted automorphisms (default
+if bliss is available).
+.TP
+\fB\-\-permlibmatrix\fP
+Use PermLib matrix automorphism search to compute restricted automorphisms.
+.TP
+\fB\-\-eigen\fP
+Use floating point arithmetic based on Eigen to compute restricted automorphisms.
+.TP
+\fB\-e\fP, \fB\-\-estimation\-only\fP
+Compute only LRS estimation and then exit.
+.TP
+\fB\-d\fP, \fB\-\-direct\fP
+Compute dual description directly.
+.TP
+\fB\-a\fP, \fB\-\-adm\fP
+Use one level of adjacency decomposition, solve subproblems directly.
+.TP
+\fB\-\-idm\-adm\-level\fP \fIidm\-level\fP \fIadm\-level\fP
+Use a combined IDM/ADM strategy with the indicated levels.
+.TP
+\fB\-\-adm\-idm\-level\fP \fIadm\-level\fP \fIidm\-level\fP
+Use a combined ADM/IDM strategy with the indicated levels.
+.TP
+\fB\-\-adm\-estimate\fP \fIthreshold\fP
+Use adjacency decomposition method up to the given estimate threshold.
+.TP
+\fB\-\-adm\-dim\fP \fIthreshold\fP
+Use adjacency decomposition method up to the given dimension threshold.
+.TP
+\fB\-\-adm\-incidence\fP \fIthreshold\fP
+Use adjacency decomposition method up to the given incidence number threshold.
+.TP
+\fB\-\-idm\-adm\fP \fIidm\-threshold\fP \fIadm\-threshold\fP
+Use a combined IDM/ADM strategy with the indicated thresholds.
+.TP
+\fB\-\-cdd\fP
+Use cdd for core dual description conversion (EXPERIMENTAL).
+.TP
+\fB\-\-adjacencies\fP
+Record facet adjaencies.  Requires ADM method at level 0.
+.SH "PARAMETERS"
+.TP
+\fB\-\-conf\-lrs\-estimates\fP=\fIN\fP
+The number of estimates that LRS performs (default: 8).
+.TP
+\fB\-\-conf\-lrs\-estimate\-maxdepth\fP=\fIN\fP
+The maximal allowed depth of LRS estimates (default: 3).
+.TP
+\fB\-\-conf\-compute\-invariants\fP=\fIN\fP
+The maximal degree of permutation group invariant polynomials to use (default:
+0).
+.TP
+\fB\-\-conf\-compute\-orbit\-limit\fP=\fIN\fP
+Memory limit in megabytes for computing the full orbit (default: 1024).
+.TP
+\fB\-\-conf\-compute\-canonical\-representatives\fP=\fIN\fP
+Nonzero to compute canonical representatives for faces (default: 0).
+.TP
+\fB\-\-conf\-intermediate\-poly\-fileprefix\fP=\fIPREFIX\fP
+Prefix for filenames in which intermediate polyhedra are saved.  This is
+useful for debugging and analyzing instances.  Default: empty prefix.

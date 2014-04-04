@@ -1,0 +1,384 @@
+<toolconfig>
+
+  <rawdevices>
+    <rawdevice id="Keyboard" type="de.jreality.toolsystem.raw.DeviceKeyboard"/>
+    <!--rawdevice id="KeyboardSWT" type="de.jreality.toolsystem.raw.DeviceKeyboardSWT"/-->
+    <rawdevice id="Mouse" type="de.jreality.toolsystem.raw.DeviceMouse"/>
+    <!--rawdevice id="Mouse" type="de.jreality.toolsystem.raw.DeviceMouseSWT"/-->
+    <rawdevice id="SystemTimer" type="de.jreality.toolsystem.raw.DeviceSystemTimer"/>
+    <!--rawdevice id="Joystick" type="de.jreality.toolsystem.raw.DeviceJinputJoystick"/-->
+    
+ 	<!-- 
+    <rawdevice id="MacSMS" type="de.jreality.toolsystem.raw.DeviceMacbookSuddenMotionSensor" />
+ 	<rawdevice id="WiiMoteOSC" type="de.jreality.toolsystem.raw.WiiMoteOSC"/>
+ 	-->
+ 	
+  </rawdevices>
+
+  <rawslots>
+
+  <!-- map slots of raw devices to InputSlots -->
+  
+  <!--
+    <mapping device="MacSMS" src="SMSout" target="GravityVector" />
+
+  	<mapping device="WiiMoteOSC" src="/wii/button/up" target="forward"/>
+  	<mapping device="WiiMoteOSC" src="/wii/button/down" target="backward"/>
+  	<mapping device="WiiMoteOSC" src="/wii/button/left" target="left"/>
+  	<mapping device="WiiMoteOSC" src="/wii/button/right" target="right"/>
+  	<mapping device="WiiMoteOSC" src="/wii/button/a" target="PrimaryAction"/>
+  	<mapping device="WiiMoteOSC" src="/wii/button/b" target="PrimarySelection"/>
+  	<mapping device="WiiMoteOSC" src="/wii/button/home" target="PrimaryMenu"/>
+  	<mapping device="WiiMoteOSC" src="/wii/button/plus" target="JumpActivation"/>
+  	<mapping device="WiiMoteOSC" src="/wii/button/minus" target="GravityToggle"/>
+  	<mapping device="WiiMoteOSC" src="/wii/button/one" target="pageUp"/>
+  	<mapping device="WiiMoteOSC" src="/wii/button/two" target="pageDown"/>
+  	<mapping device="WiiMoteOSC" src="pointer" target="PointerNDC"/>
+  	<mapping device="WiiMoteOSC" src="evolution" target="PointerNDCevolution"/>
+  -->	
+  
+    <mapping device="Keyboard" src="VK_SPACE" target="JumpActivation"/>
+    <mapping device="KeyboardSWT" src="32" target="JumpActivation"/>
+    
+    <mapping device="Keyboard" src="VK_SHIFT" target="Secondary"/>
+    <mapping device="KeyboardSWT" src="131072" target="Secondary"/> <!-- SPACE -->
+    
+    <mapping device="Keyboard" src="VK_CONTROL" target="Meta"/>
+    <mapping device="KeyboardSWT" src="262144" target="Meta"/>
+
+    <mapping device="Keyboard" src="VK_1" target="key1"/>
+    <mapping device="Keyboard" src="VK_2" target="key2"/>
+    <mapping device="Keyboard" src="VK_3" target="key3"/>
+    <mapping device="Keyboard" src="VK_4" target="key4"/>
+    <mapping device="Keyboard" src="VK_5" target="key5"/>
+    <mapping device="Keyboard" src="VK_W" target="forward"/>
+    <mapping device="Keyboard" src="VK_A" target="left"/>
+    <mapping device="Keyboard" src="VK_S" target="backward"/>
+    <mapping device="Keyboard" src="VK_D" target="right"/>
+    <mapping device="Keyboard" src="VK_UP" target="forward"/>
+    <mapping device="Keyboard" src="VK_LEFT" target="left"/>
+    <mapping device="Keyboard" src="VK_DOWN" target="backward"/>
+    <mapping device="Keyboard" src="VK_RIGHT" target="right"/>
+    <mapping device="KeyboardSWT" src="119" target="forward"/>
+    <mapping device="KeyboardSWT" src="97" target="left"/>
+    <mapping device="KeyboardSWT" src="115" target="backward"/>
+    <mapping device="KeyboardSWT" src="100" target="right"/>
+
+    <mapping device="Keyboard" src="VK_G" target="GravityToggle"/>
+    <mapping device="Keyboard" src="VK_F" target="GroundToggle"/>
+
+    <mapping device="Keyboard" src="VK_E" target="EncompassActivation"/>
+    <mapping device="KeyboardSWT" src="101" target="EncompassActivation"/>
+
+    <mapping device="Keyboard" src="VK_L" target="LookSwitch"/>
+    <mapping device="KeyboardSWT" src="108" target="LookSwitch"/>
+
+    <mapping device="Keyboard" src="VK_R" target="DrawPickActivation"/>
+    <mapping device="Keyboard" src="VK_P" target="ShowPick"/>
+    <mapping device="Keyboard" src="VK_0" target="IncreaseSpeed"/>
+    <mapping device="Keyboard" src="VK_9" target="DecreaseSpeed"/>
+    
+    <mapping device="Keyboard" src="VK_PAGE_DOWN" target="pageDown"/>
+    <mapping device="Keyboard" src="VK_PAGE_UP" target="pageUp"/>
+    
+    <mapping device="Mouse" src="left" target="PrimaryAction"/>
+    <mapping device="Mouse" src="right" target="PrimarySelection"/>
+    <mapping device="Mouse" src="center" target="PrimaryMenu"/>
+    <mapping device="Mouse" src="wheel_up" target="PrimaryUp"/>
+    <mapping device="Mouse" src="wheel_down" target="PrimaryDown"/>
+    <mapping device="Mouse" src="axes" target="PointerNDC"/>
+    <mapping device="Mouse" src="axesEvolution" target="PointerNDCevolution"/>
+    
+    <mapping device="SystemTimer" src="tick" target="SystemTime"/>
+
+    <!--mapping device="Joystick" src="axis_0_5" target="ForwardBackwardAxis"/>
+    <mapping device="Joystick" src="axis_0_4" target="RightLeftAxis"/>
+    <mapping device="Joystick" src="button_0_0" target="JumpActivation"/>
+    <mapping device="Joystick" src="button_0_1" target="RunActivation"/-->
+    
+    <!--mapping device="Joystick" src="axis_3_0" target="GtXaxis"/>
+    <mapping device="Joystick" src="axis_3_1" target="GtYaxis"/>
+    <mapping device="Joystick" src="axis_3_2" target="GtZaxis"/>
+    <mapping device="Joystick" src="axis_3_3" target="GtUaxis"/>
+    <mapping device="Joystick" src="axis_3_4" target="GtVaxis"/>
+    <mapping device="Joystick" src="axis_3_5" target="GtWaxis"/-->
+  </rawslots>
+  
+  
+  <virtualdevices>
+   
+    <mapping src="Secondary" target="RunActivation"/>
+    
+    <mapping src="PrimaryAction" target="PanelAction"/>
+    <mapping src="PrimaryMenu" target="PanelMenu"/>
+    <mapping src="PrimarySelection" target="PanelSelection"/>
+    
+    <mapping src="PrimarySelection" target="ShowPanel"/>
+    <mapping src="PrimaryAction" target="RotateActivation"/>
+    <mapping src="PrimaryAction" target="AllDragActivation"/>
+    <mapping src="PrimaryAction" target="PointDragActivation"/>
+    <mapping src="PrimaryAction" target="EdgeDragActivation"/>
+    <mapping src="PrimaryAction" target="FaceDragActivation"/>
+    <mapping src="PrimaryMenu" target="DragActivation"/>
+    <mapping src="PrimarySelection" target="ScaleActivation"/>
+    <mapping src="PrimaryAction" target="DeformActivation"/>
+
+    <mapping src="Meta" target="DragAlongViewDirection"/>
+    
+    <mapping src="PointerNdcXevolution" target="HorizontalShipRotationAngleEvolution"/>
+    <mapping src="PointerNdcXevolution" target="ScaleAxis"/>
+    <mapping src="PointerNdcYevolution" target="VerticalShipRotationAngleEvolution"/>
+    <mapping src="PointerNdcYevolution" target="VerticalHeadRotationAngleEvolution"/>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualMap">
+      <inputslot>PrimaryAction</inputslot>
+      <outputslot>SelectionActivation</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualDoubleClick">
+      <inputslot>PrimaryAction</inputslot>
+      <outputslot>PanelActivation</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualDoubleClick">
+      <inputslot>PrimarySelection</inputslot>
+      <outputslot>Duplication</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualToggleAxis">
+      <inputslot>JumpActivation</inputslot>    <!-- SPACE -->
+      <outputslot>RotationToggle</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualMap">
+      <inputslot>PrimaryAction</inputslot>
+      <outputslot>PickShowActivation</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualMap">
+      <inputslot>PrimarySelection</inputslot>
+      <outputslot>ShipRotateActivation</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualToggleAxis">
+      <inputslot>LookSwitch</inputslot>
+      <inputslot>ShipRotateActivation</inputslot>
+      <outputslot>ShipRotateActivation</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualCoupledAxis">
+      <inputslot>PrimaryAction</inputslot>
+      <inputslot>Secondary</inputslot>
+      <outputslot>SecondaryAction</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualCoupledAxis">
+      <inputslot>PrimarySelection</inputslot>
+      <inputslot>Secondary</inputslot>
+      <outputslot>SecondarySelection</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualCoupledAxis">
+      <inputslot>PrimaryMenu</inputslot>
+      <inputslot>Secondary</inputslot>
+      <outputslot>SecondaryMenu</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualInvertMatrix">
+      <inputslot>CameraToNDC</inputslot>
+      <outputslot>NDCToCamera</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualInvertMatrix">
+      <inputslot>WorldToCamera</inputslot>
+      <outputslot>CameraToWorld</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualProductMatrix">
+      <inputslot>CameraToNDC</inputslot>
+      <inputslot>WorldToCamera</inputslot>
+      <outputslot>WorldToNDC</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualProductMatrix">
+      <inputslot>CameraToWorld</inputslot>
+      <inputslot>NDCToCamera</inputslot>
+      <outputslot>NDCToWorld</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualMousePointerTrafo">
+      <inputslot>NDCToWorld</inputslot>
+      <inputslot>PointerNDC</inputslot>
+      <outputslot>PointerTransformation</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualInvertMatrix">
+      <inputslot>AvatarTransformation</inputslot>
+      <outputslot>AvatarInverseTransformation</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualProductMatrix">
+      <inputslot>AvatarInverseTransformation</inputslot>
+      <inputslot>PointerTransformation</inputslot>
+      <outputslot>PointerShipTransformation</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualExtractTranslationTrafo">
+      <inputslot>PointerTransformation</inputslot>
+      <outputslot>PointerTranslation</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualEvolutionOperator">
+      <inputslot>PointerTranslation</inputslot>
+      <outputslot>DeltaTranslation</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualMergedAxis">
+      <inputslot>forward</inputslot>
+      <inputslot>backward</inputslot>
+      <outputslot>ForwardBackwardAxis</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualMergedAxis">
+      <inputslot>right</inputslot>
+      <inputslot>left</inputslot>
+      <outputslot>LeftRightAxis</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualMergedAxis">
+      <inputslot>pageDown</inputslot>
+      <inputslot>pageUp</inputslot>
+      <outputslot>UpDownAxis</outputslot>
+    </virtualdevice>
+    
+    <!--virtualdevice type="de.jreality.toolsystem.virtual.VirtualReverseAxis">
+      <inputslot>RightLeftAxis</inputslot>
+      <outputslot>LeftRightAxis</outputslot>
+    </virtualdevice-->
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualRotation">
+      <inputslot>PointerNDC</inputslot>
+      <inputslot>CameraToWorld</inputslot>
+      <outputslot>TrackballTransformation</outputslot>
+      <prop name="gain">
+        <double>3.14</double>
+      </prop>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualEvolutionOperator">
+      <inputslot>PointerTransformation</inputslot>
+      <outputslot>PointerEvolution</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualExtractAxis">
+      <inputslot>PointerNDC</inputslot>
+      <outputslot>PointerNdcX</outputslot>
+      <prop name="axis">
+        <string>translationX</string>
+      </prop>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualExtractAxis">
+      <inputslot>PointerNDC</inputslot>
+      <outputslot>PointerNdcY</outputslot>
+      <prop name="axis">
+        <string>translationY</string>
+      </prop>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualExtractAxis">
+      <inputslot>PointerNDCevolution</inputslot>
+      <outputslot>PointerNdcYevolution</outputslot>
+      <prop name="axis">
+        <string>translationY</string>
+      </prop>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualExtractAxis">
+      <inputslot>PointerNDCevolution</inputslot>
+      <outputslot>PointerNdcXevolution</outputslot>
+      <prop name="axis">
+        <string>translationX</string>
+      </prop>
+    </virtualdevice>
+
+<!--
+    <constant name="CorrectionSMS_MacBookPro_Peter">
+      <array class="double" length="16">
+        
+        <void index="0"><double>-1</double></void>
+        <void index="1"><double>0</double></void>
+        <void index="2"><double>0</double></void>
+        <void index="3"><double>0</double></void>        
+        
+        <void index="4"><double>0</double></void>
+        <void index="5"><double>0</double></void>
+        <void index="6"><double>-1</double></void>
+        <void index="7"><double>0</double></void>
+        
+        <void index="8"><double>0</double></void>
+        <void index="9"><double>1</double></void>
+        <void index="10"><double>0</double></void>
+        <void index="11"><double>0</double></void>
+
+        <void index="12"><double>0</double></void>
+        <void index="13"><double>0</double></void>
+        <void index="14"><double>0</double></void>
+        <void index="15"><double>1</double></void>
+      </array>
+    </constant>
+    
+    <constant name="CorrectionSMS_MacBookPro_5,3">
+      <array class="double" length="16">
+        
+        <void index="0"><double>0</double></void>
+        <void index="1"><double>1</double></void>
+        <void index="2"><double>0</double></void>
+        <void index="3"><double>0</double></void>        
+        
+        <void index="4"><double>0</double></void>
+        <void index="5"><double>0</double></void>
+        <void index="6"><double>1</double></void>
+        <void index="7"><double>0</double></void>
+        
+        <void index="8"><double>-1</double></void>
+        <void index="9"><double>0</double></void>
+        <void index="10"><double>0</double></void>
+        <void index="11"><double>0</double></void>
+
+        <void index="12"><double>0</double></void>
+        <void index="13"><double>0</double></void>
+        <void index="14"><double>0</double></void>
+        <void index="15"><double>1</double></void>
+      </array>
+    </constant>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualProductMatrix">
+      <inputslot>CorrectionSMS_MacBookPro_5,3</inputslot>
+      <inputslot>RawGravityVector</inputslot>
+      <outputslot>GravityVector</outputslot>
+    </virtualdevice>
+    
+-->
+
+	<!--virtualdevice type="de.jreality.toolsystem.virtual.VirtualGameTrackTranslation">
+      <inputslot>GtXaxis</inputslot>
+      <inputslot>GtYaxis</inputslot>
+      <inputslot>GtZaxis</inputslot>
+      <outputslot>GameTrackTranslationL</outputslot>
+      <prop name="offset">
+        <double>0.05</double>
+      </prop>
+    </virtualdevice>
+
+	<virtualdevice type="de.jreality.toolsystem.virtual.VirtualGameTrackTranslation">
+      <inputslot>GtUaxis</inputslot>
+      <inputslot>GtVaxis</inputslot>
+      <inputslot>GtWaxis</inputslot>
+      <outputslot>GameTrackTranslationR</outputslot>
+      <prop name="offset">
+        <double>-0.05</double>
+      </prop>
+    </virtualdevice-->
+  </virtualdevices>
+</toolconfig>

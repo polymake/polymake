@@ -1,0 +1,58 @@
+The interactive SpringEmbedder viewer allows you to modify most
+of the parameters responsible for the dynamic behavior of the
+spring embedding algorithm along the lines of
+    Thomas Fruchtermann and Edward Reingold:
+      Graph Drawing by Force-directed Placement.
+      Software Practice and Experience Vol. 21, 1129-1164 (1992), no. 11
+
+
+The spring embedding algorithm uses a physical model, where
+the edges (springs) try to reach a given length. Nodes which
+are not connected repulse each other. The forces exerted on 
+the nodes will force them to an equilibrium configuration.
+
+You can hold down the 'p' key and move nodes to change the
+starting configuration of the spring embedder. To recalculate 
+an embedding, press the 'Recompute' button.
+
+You can also fix vertices to a preferred position. To fix one vertex
+you have to drag it to your preferred position, using the 'p' key,
+and then mark it, using the 'm' key. Points may be released using the
+'u'-nmark key. These marked vertices will not move in the spring 
+embedding process.
+
+The panels on the bottom of the frame allow you to change
+some parameters:
+
+Animation Steps:
+  Specify after how many iterations of the spring embedding a
+  result is displayed. The stop button allows you to stop a
+  running animation. To continue press the "Recompute Points"
+  button. The sliders cannot be changed during the animation.
+
+Viscosity:
+  The viscosity of the 3-dimensional space. A higher viscosity will
+  make it harder for the nodes to move.
+
+Inertion:
+  The inertion of the nodes.
+
+Repulsion:
+  The repulsion of the nodes, which are not connected.
+
+Orientation:
+  If the nodes already have an embedding in $R^d$ and there is a linear
+  objective function defined in the coordinate space, it can be used to
+  rearrange the 3-d embedding along the z-axis corresponding to the
+  objective function growth. The value will change the influence of
+  the linear objective on the embedding.
+
+Reset: 
+  The nodes will be placed randomly on the unit sphere and the sliders
+  will be reset to the startup custom values. To recalculate a 3-d 
+  embedding press <Recompute>.
+
+Recompute:
+  The spring embedding algorithm will recompute an embedding of the
+  graph. The actual point configuration will be used as the starting
+  configuration of the algorithm.

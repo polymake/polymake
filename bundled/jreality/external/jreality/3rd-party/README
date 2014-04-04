@@ -1,0 +1,86 @@
+3rd party libraries NOT distributed with jReality:
+
+JOGL
+    - Java OpenGL bindings - BSD license
+    - needed for the jogl backend (OpenGL rendering)
+    - http://jogamp.org/deployment/archive/master/jogl-old-1.1.1/
+    
+GlueGen
+    - JOGL dependency to call C-libraries
+    - http://jogamp.org/deployment/archive/master/gluegen-old-1.0b6/
+
+JackNativeClient
+    - Java bindings for JACK, the JACK Audio Connection Kit - LGPL
+    - needed for the JACK audio backend
+    - https://github.com/nettoyeurny/jacknativeclient
+
+libpd
+    - Pure Data as an embeddable library - LGPL
+    - needed for PureDataHub (audio nodes using Pd)
+    - https://github.com/libpd
+
+jInput
+    - java bindings for various input devices - BSD license
+    - needed for Input devices like Joysticks, Gamepads etc.
+    - http://java.net/projects/jinput
+
+SMRJ
+    - Simple Multicast Remote Java - BSD license
+    - only for Portal/Cave(TM)-like backend or multiple-screen
+      rendering, enables simultanious rendering on multiple clients
+    - http://smrj.sf.net
+    
+3rd party libraries we distribute with jReality:
+
+Antlr
+    - ANother Tool for Language Recognition - free software
+    - Several jReality readers are gernerated with Antlr
+    - http://www.antlr.org
+    
+beans
+    - java bean inspector - GPL or BSD
+    - used for automatic Inspector panel generation
+    - http://www.jtem.de   
+
+ColorPicker
+    - Copyright (c) 2008 by Jeremy Wood - LGPL
+    - all color picker widgets in the JRViewer system
+	
+jTerm
+    - java terminal - GPL or BSD
+    - used as a terminal for the beanshell in the ViewerApp
+    - http://www.jtem.de
+
+jrworkspace
+    - Plug-in SDK - BSD
+    - used for the JRViewer plug-in system
+    - http://www.jtem.de	
+	
+NetUtil
+    - java library for sending and receiving messages using the OpenSoundControl (OSC) protocol - LGPL
+    - needed for OSC tools as well as WiiMote device class
+    - http://www.sciss.de/netutil/
+    
+XStream
+    - an xml serialization library - BSD license
+    - our JRS file format is based on XStream serialization
+    - http://xstream.codehaus.org 
+    
+XPP3
+    - XML Pull Parser - Indiana University Extreme! Lab Software License
+    - xStream uses it to parse XML
+    - http://www.extreme.indiana.edu/xgws/xsoap/xpp
+    
+iTextpdf   
+    - create and manipulate PDF documents
+    - http://itextpdf.com/   
+
+Sunflow
+    - java rendering system for photo-realistic image synthesis - MIT License
+    - ATTENTION: uses janino (http://www.janino.net/) - BSD License !!!!!
+    - http://sunflow.sourceforge.net
+ 
+janino
+    - ATTENTION: related to Sunflow!!!!!!!!
+    - super-small, super-fast Java™ compiler 
+    - http://docs.codehaus.org/display/JANINO/Home

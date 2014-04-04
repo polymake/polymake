@@ -1,0 +1,145 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object PolyhedralComplex {
+
+# warning: do not additionally introduce the reverse shortcuts!
+
+rule MAXIMAL_POLYTOPES = MAXIMAL_CELLS;
+precondition : CONVEX;
+
+rule VERTICES = POINTS;
+precondition : CONVEX;
+
+method construct(topaz::GeometricSimplicialComplex) {
+  my $complex=$_[1];
+  if (!defined ($complex->lookup("FACETS"))) {
+      return new PolyhedralComplex(POINTS=>(ones_vector()|$complex->COORDINATES),INPUT_POLYTOPES=>$complex->INPUT_FACES,INPUT_LINEALITY=>[]);
+  }
+  return new PolyhedralComplex(VERTICES=>(ones_vector()|$complex->COORDINATES->minor($complex->VERTEX_INDICES,All)),MAXIMAL_POLYTOPES=>$complex->FACETS,LINEALITY_SPACE=>[]);
+}
+
+rule VERTICES, MAXIMAL_POLYTOPES : POINTS, MAXIMAL_CELLS {
+   my $points=$this->POINTS;
+   my $n_points=$points->rows();
+   my $max_cells=$this->MAXIMAL_CELLS;
+   my $vertices=new Set<Vector<Scalar>>;
+   # VERTICES are the union of all vertices of MAXIMAL_CELLS
+   foreach (@{$max_cells}) {
+      my $cell=$_;
+      my $v=$points->minor($cell,All);
+      my $p=new polytope::Polytope<Scalar>(POINTS => $v);
+      $vertices+=new Set<Vector<Scalar>>(rows($p->VERTICES));
+   }
+   # find the non-vertex points
+   my @point_map;
+   my $idx=0;
+   my $vertex_indices=new Set;
+   for (my $i=0; $i<$n_points; ++$i) {
+       my $this_point=$this->POINTS->[$i];
+       if ($vertices->contains($this_point)) {
+	   $point_map[$i]=$idx++;
+	   $vertex_indices+=$i;
+       } else {
+	   $point_map[$i]=-1;
+       }
+   }
+   # re-index MAXIMAL_CELLS
+   # requires that MAXIMAL_CELLS are really maximal
+   my $n_cells=$max_cells->rows();
+   my $max_polytopes=new Array<Set>($n_cells);
+   for (my $i=0; $i<$n_cells; ++$i) {
+       my $mod_cell=new Set;
+       foreach (@{$max_cells->[$i]}) {
+	   my $id=$point_map[$_];
+	   $mod_cell+=$id unless $id<0;
+       }
+       $max_polytopes->[$i]=$mod_cell;
+   }
+   $this->VERTICES=$points->minor($vertex_indices,All);
+   $this->MAXIMAL_POLYTOPES=$max_polytopes;
+}
+
+
+rule FAR_VERTICES : VERTICES {
+   $this->FAR_VERTICES=polytope::far_points($this->VERTICES);
+}
+weight 1.10;
+
+}
+
+object polytope::Polytope{
+
+property POLYTOPAL_SUBDIVISION {
+
+  rule CONVEX : {
+    $this->CONVEX=1;
+  }
+  weight 0.10;
+
+  rule MAXIMAL_CELLS : VERTICES, WEIGHTS {
+    $this->MAXIMAL_CELLS=regular_subdivision($this->VERTICES, $this->WEIGHTS);
+  }
+  weight 3.10;
+
+  rule WEIGHTS : VERTICES, MAXIMAL_CELLS {
+    $this->WEIGHTS=is_regular($this->VERTICES,$this->MAXIMAL_CELLS)->second;
+  }
+
+}
+
+rule POLYTOPAL_SUBDIVISION.VERTICES=VERTICES;
+
+rule POLYTOPAL_SUBDIVISION.LINEALITY_SPACE=LINEALITY_SPACE;
+
+
+rule POLYTOPAL_SUBDIVISION.REFINED_SPLITS : SPLITS, VERTICES, POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS {
+   $this->POLYTOPAL_SUBDIVISION->REFINED_SPLITS=splits_in_subdivision($this->VERTICES,$this->POLYTOPAL_SUBDIVISION->MAXIMAL_CELLS,$this->SPLITS);
+}
+
+}
+
+object polytope::PointConfiguration{
+
+property POLYTOPAL_SUBDIVISION {
+
+  rule MAXIMAL_CELLS : POINTS, WEIGHTS {
+    $this->MAXIMAL_CELLS=regular_subdivision($this->POINTS, $this->WEIGHTS);
+  }
+  weight 3.10;
+
+  rule WEIGHTS : POINTS, MAXIMAL_CELLS {
+    $this->WEIGHTS=is_regular($this->POINTS,$this->MAXIMAL_CELLS)->second;
+  }
+
+}
+
+rule POLYTOPAL_SUBDIVISION.POINTS=POINTS;
+
+rule POLYTOPAL_SUBDIVISION.LINEALITY_SPACE=CONVEX_HULL.LINEALITY_SPACE;
+
+rule POLYTOPAL_SUBDIVISION.CONVEX=CONVEX;
+
+rule POLYTOPAL_SUBDIVISION.REFINED_SPLITS : SPLITS, POINTS, POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS {
+   $this->POLYTOPAL_SUBDIVISION->REFINED_SPLITS=splits_in_subdivision($this->POINTS,$this->POLYTOPAL_SUBDIVISION->MAXIMAL_CELLS,$this->SPLITS);
+}
+
+}
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

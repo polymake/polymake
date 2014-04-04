@@ -1,0 +1,23 @@
+#!/bin/bash
+
+JR=PATH_TO_YOUR_WORKSPACE/jreality
+ARGS="-Xms128M -Xmx256M"
+
+java -Djreality.config=demo.left $ARGS -jar ../lib/smrj-client.jar &
+java -Djreality.config=demo.center $ARGS -jar ../lib/smrj-client.jar &
+java -Djreality.config=demo.right $ARGS -jar ../lib/smrj-client.jar &
+#java -Djreality.config=demo.floor $ARGS -jar ../lib/smrj-client.jar &
+#java -Djreality.config=demo.ceiling $ARGS -jar ../lib/smrj-client.jar &
+java -Djreality.config=demo.floor-square $ARGS -jar ../lib/smrj-client.jar &
+java -Djreality.config=demo.ceiling-square $ARGS -jar ../lib/smrj-client.jar &
+java -Djreality.config=demo.back $ARGS -jar ../lib/smrj-client.jar &
+
+
+#
+# to test the cave rendering on 6 walls
+# run JRViewer or tutorials with the following vm arguments:
+#
+# -Dde.jreality.scene.Viewer=de.jreality.portal.PortalServerViewer
+# -Dde.jreality.viewerapp.env=portal
+# -Dde.jreality.portal.localViewer=de.jreality.jogl.Viewer
+#

@@ -1,0 +1,12 @@
+<toolconfig>
+
+	<rawdevices>
+		<rawdevice id="MacSMS"
+			type="de.jreality.toolsystem.raw.DeviceMacbookSuddenMotionSensor" />
+	</rawdevices>
+
+	<rawslots>
+		<mapping device="MacSMS" src="SMSout" target="GravityVector" />
+	</rawslots>
+
+</toolconfig>

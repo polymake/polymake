@@ -1,0 +1,17 @@
+
+
+# FIXME this needs a CONFIGURE block that checks for  
+# FIXME a Gtk2 installation on the system 
+
+CONFIGURE { 
+    return 0; 
+} 
+
+user_function property_viewer(Core::Object) {
+  if ($ENV{DISPLAY}) { 
+      Polymake::User::script("PropertyViewer.pl", @_);
+  } else { 
+      croak("no connection to a diplay found");
+  }
+}
+

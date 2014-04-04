@@ -1,0 +1,99 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+###################################################
+###################################################
+###
+###  object declarations
+###
+###################################################
+###################################################
+
+object CyclicQuotient {
+
+   declare object VersalComponent;
+
+}
+
+###################################################
+###################################################
+###
+###  CyclicQuotient properties
+###
+###################################################
+###################################################
+object CyclicQuotient {
+
+   # @category Input property
+   # Every cyclic quotient variety corresponds to a cone given by the rays
+   # (1,0) and (-q,n).
+   property N : Integer;
+
+   # @category Input property
+   # Every cyclic quotient variety corresponds to a cone given by the rays
+   # (1,0) and (-q,n).
+   property Q : Integer;
+    
+   # @category Input property
+   # Representation of the number n/q as a Hirzebruch-Jung continued fraction.
+   # Take care that this property agrees with the dual property.
+   property CONTINUED_FRACTION : Vector<Integer>;
+   
+   # @category Input property
+   # Representation of the number n/(n-q) as a Hirzebruch-Jung continued
+   # fraction.  Take care that this property agrees with the dual property.
+   property DUAL_CONTINUED_FRACTION : Vector<Integer>;
+
+   property VERSAL_COMPONENT : VersalComponent : multiple;
+   
+   property VERSAL_COMPONENTS : Matrix;
+
+   property VERSAL_DEFORMATION : Ideal;
+
+}
+
+###################################################
+###################################################
+###
+###  VersalComponent properties
+###
+###################################################
+###################################################
+object CyclicQuotient {
+
+   object VersalComponent {
+
+      property CONTINUED_FRACTION : Vector<Integer>;
+
+      property PYRAMID_LATTICE : Map<Vector<Integer>, Vector<Integer>>;
+
+      property ALPHA_LATTICE : Map<Vector<Integer>, Vector<Integer>>;
+
+      property TOTAL_SPACE : Ideal;
+
+      property CQS_MATRIX : Matrix;
+
+      property N_GON_TRIANGULATION : Graph;
+
+      property TRIANGLES : Matrix<Integer>;
+
+      property P_RESOLUTION : PolyhedralFan<Rational>;
+
+      property DIMENSION : Integer;
+
+   }
+
+}
+

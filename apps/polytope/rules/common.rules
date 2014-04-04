@@ -1,0 +1,711 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+function far_points(Matrix) : c++ (include => "polymake/linalg.h");
+
+
+object Polytope {
+
+# Here we have to compute the intersection of the cone with one linear halfspace.
+# This is done implicitly in the initial rules.  Beware: the combinatorics may change.
+
+# with the check for already_homogeneous we provide for the following special case:
+# we might have a cone that already *is* a homogenized polytope, 
+# e.g. when we extract one polytope from a polyhedral complex (which is done via the corresponding function for the fan).
+# for this, we just run over the first column of  RAYS and LINEALITY_SPACE and check whether we only have zeros and ones
+# if true, we make a true copy, otherwise we use FACETS to construct the polytope
+method construct(Cone) {
+  my $cone=$_[1];
+  my $already_homogeneous=0;
+  if ( defined(my $verts=$cone->lookup("RAYS") ) ) {
+      $already_homogeneous=1;
+      foreach (@{$verts->col(0)}) { if ( $_!=0 && $_!=1 ) { $already_homogeneous=0; last; } }
+      my $lin_space;
+      if ( $already_homogeneous && defined( $lin_space=$cone->lookup("LINEALITY_SPACE") ) && $lin_space->rows ) {
+          foreach (@{$lin_space->col(0)}) { if ( $_!=0 && $_!=1 ) { $already_homogeneous=0; last; } }
+      }
+  }
+  if ( $already_homogeneous ) {
+      my $p = new Polytope();
+      Polymake::Core::Object::new_filled_copy($p->type,$cone);
+  } else {
+      new Polytope(INEQUALITIES=>$cone->FACETS,EQUATIONS=>$cone->LINEAR_SPAN);
+  }
+}
+
+rule LINEALITY_SPACE : FACETS | INEQUALITIES {
+   my $F;
+   if (defined (my $AH=$this->lookup("AFFINE_HULL | EQUATIONS"))) {
+      $F=($this->FACETS | INEQUALITIES) / $AH;
+   } else {
+      $F=$this->FACETS | INEQUALITIES;
+   }
+   my $cmp=$this->prepare_computations;
+   $this->LINEALITY_SPACE=common::lineality_space($F);
+}
+precondition : CONE_AMBIENT_DIM {
+   $this->CONE_AMBIENT_DIM>=1;
+}
+weight 1.10;
+override : SUPER::cone_only;
+
+rule FEASIBLE : { $this->FEASIBLE=1 }
+precondition : defined(ONE_VERTEX | VALID_POINT);
+weight 0.10;
+
+# the property FEASIBLE is geometric, hence it is strictly illegal to derive
+# it from, e.g., N_VERTICES (which is combinatorial)
+rule FEASIBLE : VERTICES | POINTS {
+   $this->FEASIBLE = ($this->VERTICES | POINTS)->rows() > 0;
+}
+weight 0.10;
+
+# @category Backward compatibility
+# The number of edges of the [[GRAPH]]
+user_method N_EDGES = GRAPH.N_EDGES;
+
+# @category Combinatorics
+# The number of ridges (faces of codimension 2) of the polytope
+# equals the number of edges of the [[DUAL_GRAPH]]
+user_method N_RIDGES = DUAL_GRAPH.N_EDGES;
+
+
+# @topic objects/Polytope/properties/Backward compatibility/VERTEX_DEGREES
+# Vertex degrees of the polytope
+# @return Vector<Int> - in the same order as [[VERTICES]]
+
+# @topic objects/Polytope/properties/Backward compatibility/FACET_DEGREES
+# Facet degrees of the polytope.
+# The __degree__ of a facet is the number of adjacent facets.
+# @return Vector<Int> - in the same order as [[FACETS]]
+
+# @topic objects/Polytope/properties/Backward compatibility/DIAMETER
+# @category Backward compatibility
+# The diameter of the [[GRAPH]] of the polytope
+
+
+# IMPORTANT
+# For the combinatorial rules below bear in mind the following semantics:
+# (1) The combinatorics of an unbounded and pointed polyhedron is defined to be the combinatorics
+#     of the projective closure.
+# (2) The combinatorics of an unbounded polyhedron which is not pointed is defined to be the
+#     combinatorics of the quotient modulo the lineality space.
+# Therefore: Each property which is grouped under "Combinatorics" always refers to a polytope.
+
+# simplex case
+rule SIMPLICITY, SIMPLICIALITY : COMBINATORIAL_DIM {
+   $this->SIMPLICIALITY=$this->SIMPLICITY=$this->COMBINATORIAL_DIM;
+}
+precondition : COMBINATORIAL_DIM, N_VERTICES {
+   $this->COMBINATORIAL_DIM >= 0 && $this->COMBINATORIAL_DIM+1 == $this->N_VERTICES
+}
+weight 0.10;
+
+rule SIMPLICIALITY : F_VECTOR, F2_VECTOR {
+   # a polytope is k-simplicial if each k-face is a simplex,
+   # i.e. f_{0,k} = (k+1) * f_k
+   my $k=0;
+   my $d=$#{$this->F_VECTOR};
+   ++$k while ($k<=$d && $this->F2_VECTOR->(0,$k) == ($k+1)*$this->F_VECTOR->[$k]);
+   $this->SIMPLICIALITY=$k-1;
+}
+precondition : COMBINATORIAL_DIM, N_VERTICES {
+   $this->COMBINATORIAL_DIM+1 != $this->N_VERTICES
+}
+
+rule SIMPLICITY : F_VECTOR, F2_VECTOR {
+   # dual notion to simpliciality,
+   # i.e. f_{k,d-1} = (k+1) * f_k
+   my $k=0;
+   my $d=$#{$this->F_VECTOR};
+   ++$k while ($k<=$d && $this->F2_VECTOR->($d-$k,$d) == ($k+1)*$this->F_VECTOR->[$d-$k]);
+   $this->SIMPLICITY=$k-1;
+}
+precondition : COMBINATORIAL_DIM, N_VERTICES {
+   $this->COMBINATORIAL_DIM+1 != $this->N_VERTICES
+}
+
+rule FACE_SIMPLICITY : COMBINATORIAL_DIM {
+   $this->FACE_SIMPLICITY=$this->COMBINATORIAL_DIM;
+}
+precondition : SIMPLE;
+
+rule FACE_SIMPLICITY : F2_VECTOR {
+   # a polytope is k-face-simple if all k-faces are simple
+   # i.e. 2 f_{1,k} = f_{0,1,k} = k * f_{0,k}
+   my $k=1;
+   my $dim=$this->F2_VECTOR->rows-1;
+   ++$k while ($k<=$dim && 2 * $this->F2_VECTOR->($k,1) == $k * $this->F2_VECTOR->($k,0));
+   $this->FACE_SIMPLICITY=$k-1;
+}
+precondition : !SIMPLE;
+
+rule CUBICALITY : F2_VECTOR {
+   # a polytope is k-cubical if its graph is bipartite and all j-faces have 2^j vertices for all j<=k
+   # i.e. f_{j,0} = 2^j * f_j
+   my $k=1;
+   my $k2=2; # 2^k
+   my $dim=$this->F2_VECTOR->rows-1;
+   my $n_vertices=$this->F2_VECTOR->(0,0);
+   while ($k<$dim) {
+      $k2*=2;
+      last if $this->F2_VECTOR->($k+1,0) != $k2 * $this->F2_VECTOR->($k+1,$k+1);
+      ++$k;
+   }
+   ++$k if ($k==$dim && $n_vertices==2*$k2);    # it's a cube
+   $this->CUBICALITY=$k;
+}
+precondition : CONE_DIM { $this->CONE_DIM >= 2 };
+precondition : GRAPH.BIPARTITE;
+
+rule N_VERTEX_FACET_INC : F2_VECTOR {
+   $this->N_VERTEX_FACET_INC=$this->F2_VECTOR->[0]->[-1];
+}
+weight 0.10;
+
+rule CUBICAL : FACET_SIZES {
+   # this is a special case of the previous rule which is useful for 4-polytopes with a very large face lattice
+   my $cubical=1;
+   foreach my $fs (@{$this->FACET_SIZES}) {
+      $cubical=0, last if $fs != 8;
+   }
+   $this->CUBICAL=$cubical;
+}
+precondition : GRAPH.BIPARTITE, COMBINATORIAL_DIM {
+  $this->GRAPH->BIPARTITE && $this->COMBINATORIAL_DIM==4
+}
+weight 1.10;
+
+rule GRAPH.ADJACENCY : HASSE_DIAGRAM {
+   $this->GRAPH->ADJACENCY=vertex_graph($this->HASSE_DIAGRAM);
+}
+precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM>=2 };
+
+rule DUAL_GRAPH.ADJACENCY : HASSE_DIAGRAM {
+   $this->DUAL_GRAPH->ADJACENCY=facet_graph($this->HASSE_DIAGRAM);
+}
+precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM>=2 };
+
+rule CUBICALITY : COMBINATORIAL_DIM {
+   $this->CUBICALITY= $this->COMBINATORIAL_DIM>0;
+}
+precondition : !GRAPH.BIPARTITE;
+weight 0.10;
+
+rule CUBICAL : CUBICALITY, COMBINATORIAL_DIM {
+   $this->CUBICAL= $this->CUBICALITY >= $this->COMBINATORIAL_DIM-1;
+}
+weight 0.10;
+
+rule COCUBICALITY : F2_VECTOR {
+   # a polytope is k-cocubical if its dual is k-cubical
+   # f_{d-1-j,d-1} = 2^j * f_j for all j<=k
+   my $k=1;
+   my $k2=2; # 2^k
+   my $dim=$this->F2_VECTOR->rows-1;
+   my $n_facets=$this->F2_VECTOR->($dim,$dim);
+   while ($k<$dim) {
+      $k2*=2;
+      last if $this->F2_VECTOR->($dim-($k+1),$dim) != $k2 * $this->F2_VECTOR->($dim-($k+1),$dim-($k+1));
+      ++$k;
+   }
+   ++$k if ($k==$dim && $n_facets==2*$k2);      # it's a cross polytope
+   $this->COCUBICALITY=$k;
+}
+precondition : DUAL_GRAPH.BIPARTITE;
+
+rule COCUBICALITY : COMBINATORIAL_DIM {
+   $this->COCUBICALITY= $this->COMBINATORIAL_DIM>0;
+}
+precondition : !DUAL_GRAPH.BIPARTITE;
+weight 0.10;
+
+rule COCUBICAL : COCUBICALITY, COMBINATORIAL_DIM {
+   $this->COCUBICAL= $this->COCUBICALITY >= $this->COMBINATORIAL_DIM-1;
+}
+weight 0.10;
+
+rule NEIGHBORLINESS : F_VECTOR {
+   # a polytope is k-neighborly if any k vertices form a face (which is necessarily simplicial)
+   # i.e. f_{k-1} = binomial(n,k), where n = N_VERTICES
+   my $d=$#{$this->F_VECTOR};
+   if ( $d >= 0 ) {
+     my $k=1;
+     my $n_vertices=$this->F_VECTOR->[0];
+     ++$k while ($k<=$d && $this->F_VECTOR->[$k] == binomial($n_vertices, $k+1));
+     $this->NEIGHBORLINESS=$k;
+   } else {
+     $this->NEIGHBORLINESS=0;
+   }
+}
+
+rule BALANCE : F_VECTOR {
+   # dual notion to neighborliness
+   # i.e. f_{d-k} = binomial(n,k), where n = N_FACETS
+   my $d=$#{$this->F_VECTOR};
+   if ( $d >= 0 ) {
+     my $k=0;
+     my $n_facets=$this->F_VECTOR->[$d];
+     ++$k while ($k<=$d && $this->F_VECTOR->[$d-$k] == binomial($n_facets, $k+1));
+     $this->BALANCE=$k;
+   } else {
+     $this->BALANCE=0;
+   }
+}
+
+rule SIMPLICIAL : SIMPLICIALITY, COMBINATORIAL_DIM {
+   $this->SIMPLICIAL= $this->SIMPLICIALITY >= $this->COMBINATORIAL_DIM-1;
+}
+weight 0.10;
+
+rule SIMPLE : SIMPLICITY, COMBINATORIAL_DIM {
+   $this->SIMPLE= $this->SIMPLICITY >= $this->COMBINATORIAL_DIM-1;
+}
+weight 0.10;
+
+rule NEIGHBORLY : NEIGHBORLINESS, COMBINATORIAL_DIM {
+   $this->NEIGHBORLY= $this->NEIGHBORLINESS >= $this->COMBINATORIAL_DIM/2;
+}
+weight 0.10;
+
+rule BALANCED : BALANCE, COMBINATORIAL_DIM {
+   $this->BALANCED= $this->BALANCE >= $this->COMBINATORIAL_DIM/2;
+}
+weight 0.10;
+
+rule FATNESS : F_VECTOR {
+   $this->FATNESS = (new Float($this->F_VECTOR->[1]+$this->F_VECTOR->[2]-20))/(new Float($this->F_VECTOR->[0]+$this->F_VECTOR->[3]-10));
+}
+precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM==4 }
+
+rule COMPLEXITY : F_VECTOR, F2_VECTOR {
+   $this->COMPLEXITY = (new Float($this->F2_VECTOR->(0,3)-20))/(new Float($this->F_VECTOR->[0]+$this->F_VECTOR->[3]-10));
+}
+precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM==4 }
+
+rule TWO_FACE_SIZES : HASSE_DIAGRAM {
+   $this->TWO_FACE_SIZES=two_face_sizes($this->HASSE_DIAGRAM);
+}
+precondition : COMBINATORIAL_DIM {
+$this->COMBINATORIAL_DIM>=2
+}
+
+rule TWO_FACE_SIZES : GRAPH.ADJACENCY, VERTICES_IN_FACETS {
+   two_face_sizes_simple($this);
+}
+precondition : SIMPLE;
+precondition : COMBINATORIAL_DIM {
+   $this->COMBINATORIAL_DIM>=2
+}
+
+rule SUBRIDGE_SIZES : HASSE_DIAGRAM {
+   $this->SUBRIDGE_SIZES=subridge_sizes($this->HASSE_DIAGRAM);
+}
+precondition : COMBINATORIAL_DIM {
+   $this->COMBINATORIAL_DIM>=2
+}
+
+rule SUBRIDGE_SIZES : DUAL_GRAPH.ADJACENCY, VERTICES_IN_FACETS {
+   subridge_sizes_simple($this);
+}
+precondition : SIMPLICIAL;
+precondition : COMBINATORIAL_DIM {
+   $this->COMBINATORIAL_DIM>=2
+}
+
+rule GRAPH.EDGE_DIRECTIONS : GRAPH.ADJACENCY, VERTICES, FAR_FACE {
+   $this->GRAPH->EDGE_DIRECTIONS = edge_directions($this->GRAPH,$this->VERTICES,$this->FAR_FACE);
+}
+
+rule GRAPH.SQUARED_EDGE_LENGTHS : VERTICES, GRAPH.ADJACENCY, FAR_FACE {
+   my $el = new EdgeMap<Undirected, Scalar>($this->GRAPH->ADJACENCY);
+   my $vert = dehomogenize($this->VERTICES);
+
+   for ( my $e=entire(edges($this->GRAPH->ADJACENCY)); $e; ++$e ) { 
+      my $w= $vert->[$e->from_node]-$vert->[$e->to_node];
+      $el->[$$e] = $w * $w;
+   }
+   $this->GRAPH->SQUARED_EDGE_LENGTHS=$el;
+}
+precondition : FAR_FACE { $this->FAR_FACE->size()==0 }
+
+
+rule BOUNDED : VERTICES | POINTS, POINTED {
+  if (!$this->POINTED) {
+    $this->BOUNDED=0;
+  } else {
+    foreach my $v (@{$this->VERTICES | POINTS}) {
+      if ($v->[0]==0) {
+        $this->BOUNDED=0;
+        return;
+      }
+    }
+    $this->BOUNDED=1;
+  }
+}
+weight 1.10;
+
+# FIXME #195 #473
+# the rule below would save a lot of computation time,
+# e.g., in the sequence "$r=rand_sphere(3,200); $r->FACETS;"
+# but it confuses the scheduler (to take even more time).
+# Of course, there is also the contraposition to this rule;
+# which should also be introduced once the scheduler is sane.
+
+#rule POINTED : {
+#    $this->POINTED=1;
+#}
+#precondition : BOUNDED;
+#weight 0.10;
+
+
+rule SPLITS : VERTICES, FACETS, GRAPH.ADJACENCY, CONE_DIM {
+   $this->SPLITS = splits($this->VERTICES,$this->GRAPH->ADJACENCY,$this->FACETS,$this->CONE_DIM-1);
+}
+precondition : CONE_DIM {
+   $this->CONE_DIM > 1;
+}
+precondition : POINTED;
+ 
+rule SPLIT_COMPATIBILITY_GRAPH.ADJACENCY : FACETS, AFFINE_HULL, SPLITS {
+   $this->SPLIT_COMPATIBILITY_GRAPH->ADJACENCY = split_compatibility_graph($this->SPLITS,$this);
+}
+
+rule TRIANGULATION.REFINED_SPLITS : SPLITS, VERTICES, TRIANGULATION.FACETS {
+   $this->TRIANGULATION->REFINED_SPLITS=splits_in_subdivision($this->VERTICES,$this->TRIANGULATION->FACETS,$this->SPLITS);
+}
+
+
+rule WEAKLY_CENTERED : FACETS, AFFINE_HULL {
+   my $zero=0;
+   foreach my $f (@{$this->FACETS}) {
+      if ($f->[0] < 0) {
+         $this->WEAKLY_CENTERED=0;
+         return;
+      }
+   }
+   foreach my $f (@{$this->AFFINE_HULL}) {
+      if ($f->[0] != $zero) {
+         $this->WEAKLY_CENTERED=0;
+         return;
+      }
+   }
+   $this->WEAKLY_CENTERED=1;
+}
+weight 1.10;
+
+rule CENTERED : FACETS, AFFINE_HULL {
+   foreach my $f (@{$this->FACETS}) {
+      if ($f->[0] <= 0) {
+         $this->CENTERED=0;
+         return;
+      }
+   }
+   foreach my $f (@{$this->AFFINE_HULL}) {
+      if ($f->[0] != 0) {
+         $this->CENTERED=0;
+         return;
+      }
+   }
+   $this->CENTERED=1;
+}
+weight 1.10;
+
+rule WEAKLY_CENTERED : {
+    $this->WEAKLY_CENTERED=1;
+}
+precondition : CENTERED;
+weight 0.10;
+
+rule CENTRALLY_SYMMETRIC, CS_PERMUTATION : VERTICES {
+    cs_permutation($this);
+}
+weight 1.10;
+
+rule ALTSHULER_DET : VERTICES_IN_FACETS {
+   $this->ALTSHULER_DET=altshuler_det($this->VERTICES_IN_FACETS);
+}
+
+rule TRIANGULATION.BOUNDARY.FACETS, TRIANGULATION.BOUNDARY.FACET_TRIANGULATIONS : TRIANGULATION.FACETS, VERTICES_IN_FACETS {
+   ($this->TRIANGULATION->BOUNDARY->FACETS, $this->TRIANGULATION->BOUNDARY->FACET_TRIANGULATIONS)=
+     triang_boundary($this->TRIANGULATION->FACETS, $this->VERTICES_IN_FACETS);
+}
+
+rule TRIANGULATION.BOUNDARY.FACETS, TRIANGULATION.BOUNDARY.FACET_TRIANGULATIONS : VERTICES_IN_FACETS, N_FACETS {
+   $this->TRIANGULATION->BOUNDARY->FACETS=[ @{$this->VERTICES_IN_FACETS} ];
+   $this->TRIANGULATION->BOUNDARY->FACET_TRIANGULATIONS=[ map { scalar2set($_) } 0 .. $this->N_FACETS-1 ];
+}
+precondition : SIMPLICIAL;
+weight 1.10;
+
+rule SPECIAL_FACETS : VERTEX_BARYCENTER, VERTICES_IN_FACETS, VERTICES {
+   my $v=dehomogenize($this->VERTEX_BARYCENTER);
+   my $vif=$this->VERTICES_IN_FACETS;
+   my @special_facets=();
+   for (my $f=0; $f<$vif->rows(); ++$f) {
+      my $vertices_in_f=$this->VERTICES->minor($vif->[$f],~[0]);
+      my $cone_f=new Cone<Scalar>(RAYS=>$vertices_in_f);
+      my $facets_of_cone=$cone_f->FACETS;
+      my $is_special=1;
+      for (my $ff=0; $ff<$facets_of_cone->rows(); ++$ff) {
+         if ($v*$facets_of_cone->[$ff]<0) {
+            $is_special=0;
+            last;
+         }
+      }
+      push @special_facets, $f if $is_special;
+   }
+   $this->SPECIAL_FACETS=\@special_facets;
+}
+precondition : BOUNDED;
+precondition : CENTERED;
+
+# helper clients for various visualization tasks
+
+rule VIF_CYCLIC_NORMAL, NEIGHBOR_FACETS_CYCLIC_NORMAL : CONE_DIM, VERTICES, AFFINE_HULL, VERTICES_IN_FACETS, DUAL_GRAPH.ADJACENCY {
+   neighbors_cyclic_normal_primal($this);
+}
+precondition : BOUNDED;
+precondition : CONE_DIM { $this->CONE_DIM>=3 && $this->CONE_DIM<=4 }
+
+rule VIF_CYCLIC_NORMAL = VERTICES_IN_FACETS;
+precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM<=1 }
+
+# FIXME check dependence on dim
+# FIXME: Added precondition POINTED!
+rule FTV_CYCLIC_NORMAL, NEIGHBOR_VERTICES_CYCLIC_NORMAL : CONE_DIM, FACETS, VERTICES_IN_FACETS, GRAPH.ADJACENCY {
+   neighbors_cyclic_normal_dual($this);
+}
+precondition : BOUNDED;
+precondition : CONE_DIM { $this->CONE_DIM>=3 && $this->CONE_DIM<=4 }
+
+# @category Triangulation and volume
+# the orientation of the simplices of [[TRIANGULATION_INT]] in the given order of the [[POINTS]]
+# @return Array<Int> - +1/-1 array specifying the sign of the determinant of each simplex
+user_method TRIANGULATION_INT_SIGNS : TRIANGULATION_INT, POINTS {
+   my $this=shift;
+   triang_sign($this->TRIANGULATION_INT, $this->POINTS);
+}
+
+
+# clients capable of handling different coordinate types
+
+
+rule AFFINE_HULL : CONE_AMBIENT_DIM {
+   $this->AFFINE_HULL=unit_matrix<Scalar>($this->CONE_AMBIENT_DIM);
+}
+precondition : !FEASIBLE;
+
+
+rule VERTEX_BARYCENTER : VERTICES, N_VERTICES {
+   $this->VERTEX_BARYCENTER=$this->N_VERTICES ? barycenter($this->VERTICES) : undef;
+}
+precondition : BOUNDED;
+weight 1.10;
+
+rule default.volume: CENTROID, VOLUME : VERTICES, TRIANGULATION {
+   centroid_volume($this, $this->VERTICES, $this->TRIANGULATION->FACETS);
+}
+precondition : BOUNDED;
+precondition : FULL_DIM;
+weight 2.30;
+
+rule CENTROID, VOLUME : POINTS, TRIANGULATION_INT {
+   centroid_volume($this, $this->POINTS, $this->TRIANGULATION_INT);
+}
+precondition : BOUNDED;
+precondition : FULL_DIM;
+weight 2.40;
+
+rule VOLUME : {
+   $this->VOLUME=0;
+}
+precondition : BOUNDED;
+precondition : CONE_DIM, CONE_AMBIENT_DIM {
+   $this->CONE_DIM < max($this->CONE_AMBIENT_DIM,2);
+}
+weight 0.10;
+
+rule default.squared_relative_volumes: SQUARED_RELATIVE_VOLUMES : VERTICES, TRIANGULATION.FACETS {
+   $this->SQUARED_RELATIVE_VOLUMES=squared_relative_volumes($this->VERTICES, $this->TRIANGULATION->FACETS);
+}
+precondition : BOUNDED;
+precondition : CONE_DIM {
+   $this->CONE_DIM>1;
+}
+weight 2.20;
+
+rule default.squared_relative_volumes: SQUARED_RELATIVE_VOLUMES : POINTS, TRIANGULATION_INT {
+   $this->SQUARED_RELATIVE_VOLUMES=squared_relative_volumes($this->POINTS, $this->TRIANGULATION_INT);
+}
+precondition : BOUNDED;
+precondition : CONE_DIM {
+   $this->CONE_DIM>1;
+}
+weight 2.30;
+
+rule MINIMAL_VERTEX_ANGLE : VERTICES, VERTEX_BARYCENTER {
+   $this->MINIMAL_VERTEX_ANGLE = minimal_vertex_angle($this);
+}
+
+# Triangulation
+
+# quick fix for #302
+# compute minimal non-faces of a simplicial polytope 
+# using the corresponding functions from application topaz
+rule MINIMAL_NON_FACES : HASSE_DIAGRAM {    
+    $this->MINIMAL_NON_FACES=topaz::minimal_non_faces($this->HASSE_DIAGRAM);
+}
+weight 4.10 : CONE_DIM { $this->CONE_DIM <= 12 ? [0,0] : [4,10] }
+precondition : SIMPLICIAL;
+
+rule MINIMAL_NON_FACES : VERTICES_IN_FACETS, CONE_DIM, N_VERTICES {
+    my $f = new Array<Set<Int>>(@{$this->VERTICES_IN_FACETS});
+    $this->MINIMAL_NON_FACES=topaz::lawler_minimal_non_faces($f,$this->N_VERTICES);
+}
+weight 4.10 : CONE_DIM { $this->CONE_DIM > 12 ? [0,0] : [4,10] }
+precondition : SIMPLICIAL;
+
+
+
+rule TRIANGULATION.VERTEX_LABELS = VERTEX_LABELS;
+
+rule TRIANGULATION.COORDINATES : VERTICES {
+   $this->TRIANGULATION->COORDINATES(temporary)=$this->VERTICES->minor(All,~[0]);
+}
+weight 0.10;
+
+rule TRIANGULATION.BALL : {
+   $this->TRIANGULATION->BALL=1;
+}
+weight 0.10;
+
+rule TRIANGULATION.VOLUME = VOLUME;
+
+rule TRIANGULATION.G_DIM : CONE_AMBIENT_DIM {
+    $this->TRIANGULATION->G_DIM=CONE_AMBIENT_DIM-1;
+}
+
+#rule TRIANGULATION.BOUNDARY.COORDINATES : VERTICES {
+#   $this->TRIANGULATION->BOUNDARY->COORDINATES(temporary)=$this->VERTICES->minor(All,~[0]);
+#}
+#weight 0.10;
+
+rule TRIANGULATION.BOUNDARY.SPHERE : {
+   $this->TRIANGULATION->BOUNDARY->SPHERE=1;
+}
+weight 0.10;
+
+#rule TRIANGULATION.BOUNDARY.G_DIM : CONE_AMBIENT_DIM {
+#    $this->TRIANGULATION->BOUNDARY->G_DIM=CONE_AMBIENT_DIM-1;
+#}
+
+
+user_method AMBIENT_DIM {
+  my ($self)=@_;
+  return ($self->CONE_AMBIENT_DIM-1);
+}
+
+user_method DIM {
+  my ($self)=@_;
+  if (!defined ($self->lookup("LINEALITY_SPACE | INPUT_LINEALITY | INPUT_RAYS | RAYS | INEQUALITIES | EQUATIONS | FACETS | LINEAR_SPAN"))) {
+    return $self->COMBINATORIAL_DIM;
+  }
+  return $self->CONE_DIM-1;
+}
+
+user_method contains {
+  my ($self,$v)=@_;
+#   my $zero=new_Scalar($self,0); # FIXME replaced this line with $zero=0. What was the purpose of this? new_Scalar is nowhere defined, and $zero=0 seems to work with all coord types
+  my $zero=0;
+  if (defined (my $f=$self->lookup("FACETS | INEQUALITIES"))) {
+    if (defined (my $ah=$self->lookup("AFFINE_HULL | EQUATIONS")) ) {
+      if ( $ah->rows ) {  
+        my $b=$ah*$v;
+        foreach (@{$b}) { if ( $_ != $zero ) { return; } }
+      }
+    }
+    my $b=$f*$v;
+    foreach (@{$b}) { if ( $_ < $zero ) { return; } }
+    return 1;
+  } else {
+    return polytope_contains_point($self,$v);
+  }
+}
+
+# FIXME #603
+# the implementation of the following  user_method is *not* efficient,
+# if the polytope is given via vertices it
+# should be done in the same way as the one above
+user_method contains_in_interior {
+  my ($self,$v)=@_;
+  my $f = $self->give("FACETS | INEQUALITIES");
+    if (defined (my $ah=$self->lookup("AFFINE_HULL | EQUATIONS")) ) {
+      if ( $ah->rows ) {  
+        my $b=$ah*$v;
+        foreach (@{$b}) { if ( $_ != 0 ) { return; } }
+      }
+    }
+  my $b=$f*$v;
+  foreach (@{$b}) { if ( $_ <= 0 ) { return; } }
+  return 1;
+}
+
+}
+
+
+# @category Producing a cone
+# retuns the recession cone (tail cone, characteristic cone) of a polytope
+# @param Polytope<Scalar> P polytope
+# @return Cone<Scalar>
+
+user_function recession_cone<Scalar>(Polytope<Scalar>) {
+  my $self=shift;
+  my @r= map { $_->[0]==0 ? $_ : (); } @{$self->VERTICES};
+  my $rays=new Matrix<Scalar>(@r);
+  my $c=new Cone<Scalar>(RAYS=>$rays->minor(All,~[0]), LINEALITY_SPACE=>$self->LINEALITY_SPACE->minor(All,~[0]));
+  return $c;
+}
+
+
+# @category Geometric properties
+# Compute the dihedral angle between two (oriented) affine or linear hyperplanes.
+# @param Vector<Scalar> H1 : first hyperplane
+# @param Vector<Scalar> H2 : second hyperplane
+# @options deg=>0  : output in degrees rather than radians
+# @options cone=>0 : hyperplanes seen as linear hyperplanes
+# @return Float
+
+user_function dihedral_angle<Scalar> (Vector<Scalar>, Vector<Scalar>; { deg=>0, cone=>0 }) {
+  # this code is slightly more elaborate than necessary in order to compute exactly as long as possible
+  my ($H1,$H2,$options) = @_;
+  if (!$options->{cone}) {
+    $H1=$H1->slice(1); $H2=$H2->slice(1);
+  }
+  my ($norm1, $norm2) = (sqrt(convert_to<Float>($H1*$H1)), sqrt(convert_to<Float>($H2*$H2)));
+  $H1=(1/$norm1)*convert_to<Float>($H1); $H2=(1/$norm2)*convert_to<Float>($H2);
+  my $pi=2*Math::Trig::asin(1);
+  my $angle=$pi-Math::Trig::acos($H1*$H2);
+  if ($options->{deg}) {
+    $angle=$angle/$pi*180;
+  }
+  return $angle;
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

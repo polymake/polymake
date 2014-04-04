@@ -1,0 +1,31 @@
+<toolconfig>
+
+  <!-- Import required controllers here /-->
+  <import href="chunks/toolconfig-mouse-keyboard.xml" />
+  <import href="chunks/toolconfig-desktop.xml" />
+  <!-- import href="chunks/toolconfig-Spacenav.xml" /-->
+  <!-- import href="chunks/toolconfig-Saitek-P880.xml" /-->
+  <!-- import href="chunks/toolconfig-no-mouse.xml" /-->
+  <!-- import href="chunks/toolconfig-optimusmini.xml" /-->
+  
+
+  <rawdevices>
+    <rawdevice id="SystemTimer" type="de.jreality.toolsystem.raw.DeviceSystemTimer"/>     	
+  </rawdevices>
+
+  <rawslots>
+    <mapping device="SystemTimer" src="tick" target="SystemTime"/>
+  </rawslots>
+  
+  
+  <virtualdevices>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualEvolutionOperator">
+      <inputslot>PointerTransformation</inputslot>
+      <outputslot>PointerEvolution</outputslot>
+    </virtualdevice>
+
+  </virtualdevices>
+</toolconfig>
+
+

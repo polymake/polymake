@@ -1,0 +1,39 @@
+/* Copyright (c) 2012
+   by authors as mentioned on:
+   https://github.com/lkastner/polymake_algebra/wiki/Authors
+
+   Project home:
+   https://github.com/lkastner/polymake_algebra
+
+   For licensing we cite the original Polymake code:
+
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2, or (at your option) any
+   later version: http://www.gnu.org/licenses/gpl.txt.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+*/
+
+#ifndef POLYMAKE_IDEAL_SINGULAR_FULL_H
+#define POLYMAKE_IDEAL_SINGULAR_FULL_H
+
+
+#include "polymake/ideal/singularRingManager.h"
+#include "polymake/ideal/singularConvertTypes.h"
+
+namespace polymake { 
+namespace ideal {
+namespace singular {
+   
+
+
+} // end namespace singular
+} // end namespace ideal
+} // end namespace polymake
+
+
+#endif

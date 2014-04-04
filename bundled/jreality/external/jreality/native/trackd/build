@@ -1,0 +1,11 @@
+#! /bin/sh
+
+export JAVA_HOME=/central/java/jdk1.6.0_02
+export TRACKD_API=./trackdAPI-2.1/
+
+$JAVA_HOME/bin/javah -classpath ../bin/ de.jreality.devicedriver.TrackdJNI
+
+gcc -c -I $JAVA_HOME/include -I $JAVA_HOME/include/linux -I $TRACKD_API/include TrackdAPI.c
+
+gcc -shared -Wl -o libJavaTrackdAPI.so TrackdAPI.o $TRACKD_API/lib32/linux/libtrackdAPI_c.a
+

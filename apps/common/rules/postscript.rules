@@ -1,0 +1,153 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+package Postscript;
+
+# a postscript file viewer, e.g. ghostscript
+custom $viewer;
+
+CONFIGURE_OPT {
+   find_program($viewer, qw( gv evince kghostview ggv okular ghostview ), { prompt => "a PostScript viewer program" });
+}
+
+# @topic custom
+# All numeric constants defined here are in postscript points (1/72")
+
+# height of DIN A4 sheet
+custom $Hpaper=841;
+
+# width of DIN A4 sheet
+custom $Wpaper=595;
+
+# vertical margin
+custom $Hmargin=50;
+
+# horizontal margin
+custom $Wmargin=30;
+
+# text labels
+custom $fontname="Times-Roman";
+
+# text labels
+custom $fontsize=10;
+
+# for circles representing single geometric points
+custom $point_radius=4;
+
+# normal line width
+custom $line_width=1;
+
+# spacing between points (lines) and labels
+custom $text_spacing=3;
+
+use Postscript;
+
+# @category Visualization
+# Create a PostScript (tm) drawing and show it with your favorite viewer.
+label postscript
+
+###########################################################################################
+#
+#  Basic class implementing the required back-end interface.
+#
+
+package Postscript::Viewer;
+use BackgroundViewer;
+
+use Polymake::Struct [ '@ISA' => 'Background::Viewer' ];
+
+sub file_suffix { ".ps" }
+
+sub new {
+   unless (defined $viewer) {
+      die <<'.';
+no Postscript viewer configured: please specify the output File option
+or call  reconfigure("common::postscript.rules");
+.
+   }
+   my $self=&_new;
+   $self->graphics=new Postscript::File;
+   $self;
+}
+
+sub command {
+   my ($self, $filename)=@_;
+   "$viewer $filename";
+}
+
+sub new_drawing {
+   my $self=shift;
+   $self->graphics->new_page(@_);
+   $self;
+}
+
+sub current_page {
+   shift->graphics->pages->[-1];
+}
+
+global_method postscript.geometry: draw(Visual::PointSet, @) {
+   my ($self, $P)=@_;
+   $self->current_page->addPointSet(new Postscript::PointSet($P));
+}
+
+global_method postscript.geometry: draw(Visual::Polygon, @) {
+   my ($self, $P)=@_;
+   $self->current_page->addPointSet(new Postscript::Polygon($P));
+}
+
+global_method postscript.geometry: draw(Visual::Polygons, @) {
+   my ($self, $P)=@_;
+   $self->current_page->addPointSet(new Postscript::Polygons($P));
+}
+
+
+###########################################################################################
+#
+#  Writes a PS file without rendering
+#
+
+package Postscript::File::Writer;
+import Visual::FileWriter(multiple => 1);
+
+###########################################################################################
+
+package application;
+
+# @category Visualization
+# Create a Postscript (tm) drawing with the given visual objects.
+#
+# @param Visual::Object vis_obj ... objects to draw
+#
+# @option String File "filename" or "AUTO"
+#  Store the drawing in a file without starting the viewer.
+#  The ''.ps'' suffix is automatically added to the file name.
+#
+#  Specify //AUTO// if you want the filename be automatically derived
+#  from the drawing title.
+#
+#  You can also use any expression allowed for the ''open'' function,
+#  including "-" for terminal output, "&HANDLE" for an already opened file handle,
+#  or "| program" for a pipe.
+
+user_function postscript(Visual::Object+, { File => undef }) {
+   visualize_explicit(@_, "Postscript");
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# End:

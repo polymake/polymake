@@ -1,0 +1,154 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object PolyhedralComplex {
+
+file_suffix pcom
+
+# overrides of derived [[PolyhedralFan]] properties;
+# similar to overrides for [[Polytope]] objects derived from [[Cone]]
+
+property POINTS = override INPUT_RAYS;
+
+property N_POINTS = override N_INPUT_RAYS;
+
+property POINT_LABELS = override INPUT_RAY_LABELS;
+
+property VERTICES = override RAYS;
+
+property N_VERTICES = override N_RAYS;
+
+property VERTEX_LABELS = override RAY_LABELS;
+
+property AFFINE_HULL = override LINEAR_SPAN_NORMALS;
+
+property INPUT_POLYTOPES = override INPUT_CONES;
+
+property MAXIMAL_POLYTOPES = override MAXIMAL_CONES;
+
+property N_MAXIMAL_POLYTOPES = override N_MAXIMAL_CONES;
+
+property MAXIMAL_POLYTOPES_INCIDENCES = override MAXIMAL_CONES_INCIDENCES;
+
+property MAXIMAL_POLYTOPES_COMBINATORIAL_DIMS = override MAXIMAL_CONES_COMBINATORIAL_DIMS;
+
+property MAXIMAL_POLYTOPES_AFFINE_HULL_NORMALS = override MAXIMAL_CONES_LINEAR_SPAN_NORMALS;
+
+property MAXIMAL_POLYTOPES_FACETS = override MAXIMAL_CONES_FACETS;
+
+# @category Combinatorics
+# Maximal cells of the polyhedral complex.
+# Indices refer to [[POINTS]]. Points do not have to be vertices of the cells.
+property MAXIMAL_CELLS : IncidenceMatrix;
+
+# @category Combinatorics
+# True if each object in [[MAXIMAL_POLYTOPES]] is bounded.
+property BOUNDED : Bool;
+
+# @category Combinatorics
+# Indices of vertices that are rays.
+
+property FAR_VERTICES : Set;
+
+# @category Geometry
+# True if [[POINTS]] are in convex position.
+# In this case [[POINTS]] and [[RAYS]], and [[MAXIMAL_CELLS]] and [[MAXIMAL_POLYTOPES]]
+# are equal.
+# FIXME: This should possibly either go or be duplicated in application polytope.  Keep an eye on it!
+property CONVEX : Bool;
+
+
+# @category Geometry
+# returns the //i//-th facet of the complex as a polytope
+# @param Int i 
+# @return Polytope
+# warning: might be unbounded
+user_method polytope($) : MAXIMAL_POLYTOPES {
+   my $p=new Polytope<Scalar>($_[0]->cone($_[1]));
+   return $p;
+}
+
+user_method AMBIENT_DIM {
+  my ($self)=@_;
+  return $self->FAN_AMBIENT_DIM-1;
+}
+
+user_method DIM {
+  my ($self)=@_;
+  if (!defined ($self->lookup("LINEALITY_SPACE | INPUT_LINEALITY | INPUT_RAYS | RAYS | FACET_NORMALS | LINEAR_SPAN_NORMALS"))) {
+    return $self->COMBINATORIAL_DIM;
+  }
+  return $self->FAN_DIM-1;
+}
+
+
+}
+
+
+object polytope::Polytope {
+
+
+# @category Triangulation and volume
+# Polytopal Subdivision of the polytope using only its vertices.
+property POLYTOPAL_SUBDIVISION : PolyhedralComplex<Scalar> : multiple {
+
+  # The splits that are coarsenings of the subdivision.
+  # If the subdivision is regular these form the unique split decomposition of
+  # the corresponding weight function.
+  property REFINED_SPLITS : Set<Int>;
+
+  # Vector assigning a weight to each vertex to get a regular subdivision.
+  property WEIGHTS : Vector<Scalar>;
+
+}
+
+
+rule POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS : VertexPerm.POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS, VertexPerm.PERMUTATION {
+   $this->POLYTOPAL_SUBDIVISION->MAXIMAL_CELLS=permuted_cols($this->VertexPerm->POLYTOPAL_SUBDIVISION->MAXIMAL_CELLS, $this->VertexPerm->PERMUTATION);
+}
+weight 1.20;
+
+}
+
+
+
+object polytope::PointConfiguration {
+
+
+# @category Triangulation and volume
+#Polytopal Subdivision of the point configuration
+property POLYTOPAL_SUBDIVISION : PolyhedralComplex<Scalar> : multiple {
+
+  # The splits that are coarsenings of the subdivision.
+  # If the subdivision is regular these form the unique split decomposition of
+  # the corresponding weight function.
+  property REFINED_SPLITS : Set<Int>;
+
+
+  # Vector assigning a weight to each point to get a regular subdivision.
+  property WEIGHTS : Vector<Scalar>;
+
+}
+
+
+}
+
+
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

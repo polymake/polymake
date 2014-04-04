@@ -1,0 +1,57 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @topic application
+# This application deals with polyhedral fans. You can define a fan, e.g. via its [[RAYS]] and [[MAXIMAL_CONES]]
+# and compute several properties like [[HASSE_DIAGRAM]] and [[F_VECTOR]].
+
+IMPORT polytope
+
+USE ideal
+
+file_suffix fan
+
+# A polyhedral fan.
+# The current restriction is that each cone in the fan has to be pointed.  This will be relaxed later.
+# If a fan is specified via [[INPUT_RAYS]] and [[INPUT_CONES]] each input cone must list all the input rays incident.
+#
+# Once non-trivial linealities are allowed the following will apply:
+# The [[RAYS]] always lie in a linear subspace which is complementary to the [[LINEALITY_SPACE]].
+declare object PolyhedralFan<Scalar=Rational> [ typechecks::is_ordered_field(Scalar) ];
+
+# A polyhedral complex.  The derivation from [[PolyhedralFan]] works like the derivation of [[Polytope]] from [[Cone]].
+declare object PolyhedralComplex<Scalar=Rational> [ typechecks::is_ordered_field(Scalar) ] : PolyhedralFan<Scalar>;
+
+INCLUDE
+  fan_properties.rules
+  tropical_variety_properties.rules
+  polyhedral_complex_properties.rules
+  common.rules
+  incidence_perm.rules
+  polyhedral_complex.rules
+  bounded_complex.rules
+  bounded_complex_visual_graph.rules
+  visual.rules
+  lattice.rules
+  symmetric_fan.rules
+  gfan.rules
+
+default_object PolyhedralFan;
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

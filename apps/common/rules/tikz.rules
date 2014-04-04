@@ -1,0 +1,220 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+package TikZ;
+
+CREDIT tikz
+  TikZ, a graphical toolkit for LaTeX.
+  http://pgf.sourceforge.net.
+  
+# pdflatex executable
+custom $pdflatex;
+
+# pdf viewer
+custom $pdfviewer;
+
+CONFIGURE_OPT {
+   find_program($pdflatex, qw( pdflatex ), { prompt => "the PDFLaTeX executable" });
+   find_program($pdfviewer, qw( evince acroread xpdf ), { prompt => "executable of some PDF viewer" });
+}
+
+
+package TikZ::default;
+
+# coordinates of the viewpoint
+custom @view_point=(10,11,9);
+
+# coordinates of a point on the view axis: default is the origin
+custom @view_direction=(0,0,0);
+
+# camera orientation: default is y-axis towards zenith
+custom @view_up=(0,1,0);
+
+# scaling factor
+custom $scale=2;
+
+
+package TikZ::Viewer;
+
+use TikZ;
+use BackgroundViewer;
+use Visual::Transformation;
+
+# The default behavior is to produce a LaTeX output, then call PDFLaTeX
+# and finally a PDF viewer.
+
+use Polymake::Struct [ '@ISA' => 'SimpleViewer' ];
+
+sub file_suffix { ".tikz" }
+
+sub new {
+   unless (defined($pdflatex) && defined($pdfviewer)) {
+      die <<'.';
+requires PDFLaTeX and a PDF viewer;
+please specify the output File option or call reconfigure("common::tikz.rules");
+.
+   }
+   &_new;
+}
+
+sub command {
+   my ($self, $filename)=@_;
+   my $latextemplate = $self->tempfile.".tex";
+   open my $fh, ">", $latextemplate;
+   print $fh write_latextemplate("$filename");
+   
+   my $pdfout = $self->tempfile.".pdf";
+   my $pdfout_dir = $self->tempfile->dir;
+   my $pdfout_name = $self->tempfile->basename;
+   "$pdflatex --output-directory=$pdfout_dir --jobname=$pdfout_name $latextemplate 1>/dev/null ; $pdfviewer $pdfout 1>/dev/null 2>/dev/null";
+}
+
+sub new_drawing {
+   my ($self, $title, $vis)=@_;
+   $self->SUPER::new_drawing($title);
+   if (defined (my $rep=$vis->representative)) {
+      $self->graphics->transform=Visual::Transformation->get_transformation_matrix($rep);
+   }
+   $self;
+}
+
+sub append {
+   my $self=shift;
+   $self->graphics->append(@_);
+}
+
+sub write_latextemplate {
+my $tikzfilename=shift;
+my $text = <<'|';
+%
+%---------------------------------------------------------------------------------
+%
+% Polymake LaTeX template for TikZ-Output
+% Copyright (c) 1997-2014
+% Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+% http://www.polymake.org
+\documentclass[12pt]{article}
+\usepackage[x11names,rgb]{xcolor}
+\usepackage{tikz}
+\usepackage{ifthen}
+\usepackage{amsmath}
+
+\usetikzlibrary{3d}
+\usetikzlibrary{snakes}
+\usetikzlibrary{arrows}
+\usetikzlibrary{shapes}
+\usetikzlibrary{backgrounds}
+
+\pagestyle{empty}
+
+\usepackage[papersize={640pt, 480pt}, margin=0pt, marginratio=1:1]{geometry}
+
+\newsavebox{\tikzoutput}
+\savebox{\tikzoutput}{
+|
+    $text .= "\\input{$tikzfilename}\n";
+$text .= <<'|';
+}
+\newlength{\scaledwidth}
+\settowidth{\scaledwidth}{\resizebox{!}{400pt}{\usebox{\tikzoutput}}}
+
+\begin{document}
+|
+#\rlap{\smash{\raisebox{-2.5\baselineskip}{\includegraphics[height=3\baselineskip]{%
+#  $text .= $InstallTop."/resources/logo/png/logo.png";
+#}} }}
+#\vspace*{37.5pt}
+$text .=<<'|';
+\centering
+\ifthenelse{\lengthtest{\scaledwidth < 500pt}}{
+  \resizebox{!}{400pt}{\usebox{\tikzoutput}}
+}{
+  \resizebox{500pt}{!}{\usebox{\tikzoutput}}
+}
+\end{document}
+|
+return $text;
+}
+
+
+# @category Visualization
+# Create a tikz drawing, write it to a file suitable for LaTeX.
+label tikz
+
+# The following are rarely used.
+# Much more common are the methods in apps/{graph,polytope,...}/rules/tikz.rules
+
+global_method tikz.geometry: draw(Visual::PointSet, @) {
+   my ($self, $PointSet)=@_;
+   $self->append(new TikZ::PointSet($PointSet));
+}
+
+global_method tikz.geometry: draw(Visual::Wire, @) {
+   my ($self, $G)=@_;
+   $self->append(new TikZ::Wire($G));
+}
+
+global_method tikz.geometry: draw(Visual::Polygon, @) {
+   my ($self, $P)=@_;
+   $self->append(new TikZ::Solid($P));
+}
+
+global_method tikz.geometry: draw(Visual::Polygons, @) {
+   my ($self, $P)=@_;
+   $self->append(new TikZ::Solid($P));
+}
+
+
+package TikZ::File::Writer;
+import Visual::FileWriter;
+
+sub file_suffix { ".tikz" }
+
+sub new_drawing {
+   my ($self, $title, $vis)=@_;
+   if (defined (my $rep=$vis->representative)) {
+      $self->graphics->transform=Visual::Transformation->get_transformation_matrix($rep);
+   }
+   $self->title=$title;
+   $self;
+}
+
+sub DESTROY { }
+
+
+package application;
+
+# @Category Visualization
+# Produce a TikZ file with given visual objects.
+# @param Visual::Object vis_obj object to display
+#
+# @option String File "filename" or "AUTO"
+#
+#  For the file name you can use any expression allowed for the ''open'' function,
+#  including "-" for terminal output, "&HANDLE" for an already opened file handle,
+#  or "| program" for a pipe.  Real file names are automatically completed with the ''.tikz'' suffix if needed.
+#
+#  An automatically generated file name is displayed in the verbose mode.
+
+user_function tikz(Visual::Object+, { File => undef }) {
+   visualize_explicit(@_, "TikZ");
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# End:

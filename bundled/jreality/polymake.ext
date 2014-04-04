@@ -1,0 +1,6 @@
+CREDIT
+  jReality is a visualization and sonification library focused on mathematical and scientific content.
+  http://www.jreality.de
+
+REQUIRE
+  bundled:java

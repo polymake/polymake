@@ -1,0 +1,519 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+function equal_up_to_row_permutation(Matrix, Matrix) {
+    my ($M1, $M2)=@_;
+    $M1==$M2 || defined(eval { find_matrix_row_permutation($M1,$M2) })
+}
+
+object Cone {
+
+file_suffix cone
+
+# rules only intended for cones and not for polytopes should have this label
+label cone_only
+
+# @category Input property
+# (Non-homogenous) vectors whose linear span defines a subset of the lineality space of the cone; 
+# redundancies are allowed. All vectors in the input must be non-zero.
+# Dual to [[EQUATIONS]].
+#
+# Input section only.  Ask for [[LINEALITY_SPACE]] if 
+# you want to compute a V-representation from an H-representation.
+property INPUT_LINEALITY : Matrix<Scalar> {
+  sub canonical { &canonicalize_rays; }
+}
+
+
+# @category Input property
+# (Non-homogenous) vectors whose positive span form the cone; redundancies are allowed.
+# Dual to [[INEQUALITIES]]. All vectors in the input must be non-zero.
+#
+# Input section only.  Ask for [[RAYS]] if you want to compute a V-representation from an H-representation.
+property INPUT_RAYS : Matrix<Scalar> {
+
+  method canonical { 
+      my ($this,$M)=@_;
+      canonicalize_rays($M); 
+      if ($this->isa("Polytope")) {
+	  canonicalize_polytope_generators($M);
+	  canonicalize_rays($M); # FIXME here we have to canonicalize again, this should be included in the above function!
+      }
+  }
+}
+
+# @category Geometry
+# The number of [[INPUT_RAYS]]
+property N_INPUT_RAYS : Int;
+
+# @category Geometry
+# The number of [[INPUT_LINEALITY]]
+property N_INPUT_LINEALITY : Int;
+
+# @category Geometry
+# The dimension of the space in which the cone lives.
+property CONE_AMBIENT_DIM : Int;
+
+# @category Combinatorics
+# Combinatorial dimension
+# This is the dimension all combinatorial properties of the cone
+# like e.g. [[RAYS_IN_FACETS]] or the [[HASSE_DIAGRAM]] refer to.
+#
+# Geometrically, the combinatorial dimension is the dimension 
+# of the intersection of the pointed part of the cone 
+# with a hyperplane that creates a bounded intersection.
+property COMBINATORIAL_DIM : Int;
+
+# @category Geometry
+# True if the cone does not contain a non-trivial linear subspace.
+property POINTED : Bool;
+
+# @category Geometry
+# A ray of a pointed cone.
+property ONE_RAY : Vector<Scalar> {
+  sub canonical { &canonicalize_rays; }
+}
+
+# to be overloaded in special cases like Scalar==Float
+sub prepare_computations { undef }
+
+# @category Geometry
+# Rays of the cone. No redundancies are allowed.
+# All vectors in this section must be non-zero.
+# The property [[RAYS]] appears only in conjunction with the property [[LINEALITY_SPACE]].
+# The specification of the property [[RAYS]] requires the specification of [[LINEALITY_SPACE]], and vice versa.
+property RAYS : Matrix<Scalar> {
+   sub canonical { &canonicalize_rays; }
+}
+
+declare permutation VertexPerm {
+
+   # Transforming [[RAYS]] from this into basic object
+   property PERMUTATION : Array<Int>;
+}
+
+rule VertexPerm.PERMUTATION : VertexPerm.RAYS, RAYS {
+   my $cmp=$this->prepare_computations;
+   $this->VertexPerm->PERMUTATION=find_representation_permutation($this->VertexPerm->RAYS, $this->RAYS, $this->LINEALITY_SPACE, 0);
+}
+
+rule RAYS : VertexPerm.RAYS, VertexPerm.PERMUTATION {
+   $this->RAYS=permuted_rows($this->VertexPerm->RAYS, $this->VertexPerm->PERMUTATION);
+}
+weight 1.10;
+
+# @category Combinatorics
+# The number of [[RAYS]]
+property N_RAYS : Int;
+
+
+# @category Input property
+# Inequalities giving rise to the cone; redundancies are allowed.
+# All vectors in this section must be non-zero.
+# Dual to [[INPUT_RAYS]].
+#
+# Input section only.  Ask for [[FACETS]] if you want to compute an H-representation from a V-representation.
+property INEQUALITIES : Matrix<Scalar> {
+
+   method canonical {
+      my $self=shift;
+      $self->canonical_ineq(@_);
+   }
+}
+
+# To be overloaded in derived classes
+sub canonical_ineq { }
+
+# @category Geometry
+# The number of [[INEQUALITIES]]
+property N_INEQUALITIES : Int;
+
+
+# @category Geometry
+# Dual basis of the linear span of the cone.
+# All vectors in this section must be non-zero.
+# The property [[LINEAR_SPAN]] appears only in conjunction with the property [[FACETS]].
+# The specification of the property [[FACETS]] requires the specification of [[LINEAR_SPAN]],
+# or [[AFFINE_HULL]], respectively, and vice versa.
+property LINEAR_SPAN : Matrix<Scalar> {
+
+   sub canonical { &orthogonalize_subspace; }
+
+   method equal {
+     my ($this,$M1,$M2)=@_;
+     $this->prepare_computations;
+     $M1==$M2 || equal_bases($M1,$M2);
+   }
+}
+
+
+# @category Geometry
+# Facets of the cone, encoded as inequalities. 
+# All vectors in this section must be non-zero.
+# Dual to [[RAYS]].
+# This section is empty if and only if the cone is trivial (e.g. if it encodes an empty polytope).
+# Notice that a polytope which is a single point defines a one-dimensional cone, the face at infinity is a facet.
+# The property [[FACETS]] appears only in conjunction with the property [[LINEAR_SPAN]], or [[AFFINE_HULL]], respectively.
+# The specification of the property [[FACETS]] requires the specification of [[LINEAR_SPAN]],
+# or [[AFFINE_HULL]], respectively, and vice versa.
+property FACETS : Matrix<Scalar>;
+
+declare permutation FacetPerm {
+
+   # Transforming [[FACETS]] from this into basic object
+   property PERMUTATION : Array<Int>;
+}
+
+rule FacetPerm.PERMUTATION : FacetPerm.FACETS, FACETS, LINEAR_SPAN {
+   my $cmp=$this->prepare_computations;
+   $this->FacetPerm->PERMUTATION=find_representation_permutation($this->FacetPerm->FACETS, $this->FACETS, $this->LINEAR_SPAN,1);
+}
+
+rule FacetPerm.LINEAR_SPAN = LINEAR_SPAN;
+
+rule FACETS : FacetPerm.FACETS, FacetPerm.PERMUTATION {
+   $this->FACETS=permuted_rows($this->FacetPerm->FACETS, $this->FacetPerm->PERMUTATION);
+}
+weight 1.10;
+
+
+# @category Geometry
+# The number of [[FACETS]].
+property N_FACETS : Int;
+
+# @category Geometry
+# The i-th row is the normal vector of a hyperplane separating the i-th vertex from the others.
+# This property is a by-product of redundant point elimination algorithm.
+property RAY_SEPARATORS : Matrix<Scalar>;
+
+rule RAY_SEPARATORS : VertexPerm.RAY_SEPARATORS, VertexPerm.PERMUTATION {
+   $this->RAY_SEPARATORS=permuted_rows($this->VertexPerm->RAY_SEPARATORS, $this->VertexPerm->PERMUTATION);
+}
+weight 1.10;
+
+
+# @category Input property
+# Equations that hold for all [[INPUT_RAYS]] of the cone.
+# All vectors in this section must be non-zero.
+#
+# Input section only.  Ask for [[LINEAR_SPAN]] if you want to see an irredundant description of the linear span.
+property EQUATIONS : Matrix<Scalar>;
+
+# @category Geometry
+# The number of [[EQUATIONS]].
+property N_EQUATIONS : Int;
+
+
+# @category Geometry
+# Dimension of the linear span of the cone = dimension of the cone.
+# If the cone is given purely combinatorially, this is the dimension of a minimal embedding space
+# deduced from the combinatorial structure.
+property CONE_DIM : Int;
+
+
+# @category Geometry
+# [[CONE_AMBIENT_DIM]] and [[CONE_DIM]] coincide.  Notice that this makes sense also for the derived Polytope class.
+property FULL_DIM : Bool;
+
+# @category Geometry
+# A point in the relative interior of the cone.
+property REL_INT_POINT : Vector<Scalar>;
+
+# @category Geometry
+# Basis of the linear subspace orthogonal to all [[INEQUALITIES]] and [[EQUATIONS]]
+# All vectors in this section must be non-zero.
+# The property [[LINEALITY_SPACE]] appears only in conjunction with the property [[RAYS]], or [[VERTICES]], respectively.
+# The specification of the property [[RAYS]] or [[VERTICES]] requires the specification of [[LINEALITY_SPACE]], and vice versa.
+property LINEALITY_SPACE : Matrix<Scalar> {
+   sub canonical { &orthogonalize_subspace; }
+
+   method equal {
+     my ($this,$M1,$M2)=@_;
+     $this->prepare_computations;
+     $M1==$M2 || equal_bases($M1,$M2);
+   }
+}
+
+# @category Geometry
+# Dimension of the [[LINEALITY_SPACE]] (>0 in the non-POINTED case)
+property LINEALITY_DIM : Int;
+
+# @category Geometry
+# True if all [[RAYS]] of the cone have non-negative coordinates, 
+# that is, if the pointed part of the cone lies entirely in the positive orthant.
+property POSITIVE : Bool;
+
+# @category Combinatorics
+# Number of pairs of incident vertices and facets.
+property N_RAY_FACET_INC : Int;
+
+# @category Combinatorics
+# Ray-facet incidence matrix, with rows corresponding to facets and columns
+# to rays. Rays and facets are numbered from 0 to [[N_RAYS]]-1 rsp.
+# [[N_FACETS]]-1, according to their order in [[RAYS]] rsp. [[FACETS]].
+property RAYS_IN_FACETS : IncidenceMatrix;
+
+rule RAYS_IN_FACETS : VertexPerm.RAYS_IN_FACETS, VertexPerm.PERMUTATION {
+   $this->RAYS_IN_FACETS=permuted_cols($this->VertexPerm->RAYS_IN_FACETS, $this->VertexPerm->PERMUTATION);
+}
+weight 1.20;
+
+rule RAYS_IN_FACETS : FacetPerm.RAYS_IN_FACETS, FacetPerm.PERMUTATION {
+   $this->RAYS_IN_FACETS=permuted_rows($this->FacetPerm->RAYS_IN_FACETS, $this->FacetPerm->PERMUTATION);
+}
+weight 1.20;
+
+# @category Geometry
+# Input_ray-facet incidence matrix, with rows corresponding to facets and columns
+# to input_rays. Input_rays and facets are numbered from 0 to [[N_INPUT_RAYS]]-1 rsp.
+# [[N_FACETS]]-1, according to their order in [[INPUT_RAYS]]
+# rsp. [[FACETS]].
+property INPUT_RAYS_IN_FACETS : IncidenceMatrix;
+
+# @notest  Rule defined "in stock" - currently without use
+rule INPUT_RAYS_IN_FACETS : FacetPerm.INPUT_RAYS_IN_FACETS, FacetPerm.PERMUTATION {
+   $this->INPUT_RAYS_IN_FACETS=permuted_rows($this->FacetPerm->INPUT_RAYS_IN_FACETS, $this->FacetPerm->PERMUTATION);
+}
+weight 1.20;
+
+# @category Combinatorics
+# transposed [[RAYS_IN_FACETS]]
+# Notice that this is a temporary property; it will not be stored in any file.
+property FACETS_THRU_RAYS : IncidenceMatrix;
+
+rule FACETS_THRU_RAYS : RAYS_IN_FACETS{
+    $this->FACETS_THRU_RAYS(temporary)=transpose($this->RAYS_IN_FACETS);
+}
+
+# @category Geometry
+# transposed [[INPUT_RAYS_IN_FACETS]]
+# Notice that this is a temporary property; it will not be stored in any file.
+property FACETS_THRU_INPUT_RAYS : IncidenceMatrix;
+
+rule FACETS_THRU_INPUT_RAYS : INPUT_RAYS_IN_FACETS{
+    $this->FACETS_THRU_INPUT_RAYS(temporary)=transpose($this->INPUT_RAYS_IN_FACETS);
+}
+
+# @category Geometry
+# Ray-inequality incidence matrix, with rows corresponding to facets and columns
+# to rays. Rays and inequalities are numbered from 0 to [[N_RAYS]]-1 rsp.
+# [[N_INEQUALITIES]]-1, according to their order in [[RAYS]]
+# rsp. [[INEQUALITIES]].
+property RAYS_IN_INEQUALITIES : IncidenceMatrix;
+
+# @notest  Rule defined "in stock" - currently without use
+rule RAYS_IN_INEQUALITIES : VertexPerm.RAYS_IN_INEQUALITIES, VertexPerm.PERMUTATION {
+   $this->RAYS_IN_INEQUALITIES=permuted_cols($this->VertexPerm->RAYS_IN_INEQUALITIES, $this->VertexPerm->PERMUTATION);
+}
+weight 1.20;
+
+# @category Geometry
+# transposed [[RAYS_IN_INEQUALITIES]]
+# Notice that this is a temporary property; it will not be stored in any file.
+property INEQUALITIES_THRU_RAYS : IncidenceMatrix;
+
+rule INEQUALITIES_THRU_RAYS : RAYS_IN_INEQUALITIES{
+    $this->INEQUALITIES_THRU_RAYS(temporary)=transpose($this->RAYS_IN_INEQUALITIES);
+}
+
+# @category Combinatorics
+# The face lattice of the cone organized as a directed graph.
+# Each node corresponds to some proper face of the cone.
+# The nodes corresponding to the rays and facets appear in the same order
+# as the elements of [[RAYS]] and [[FACETS]] properties.
+#
+# Two special nodes represent the whole cone and the empty face.
+property HASSE_DIAGRAM : FaceLattice;
+
+rule HASSE_DIAGRAM : VertexPerm.HASSE_DIAGRAM, VertexPerm.PERMUTATION {
+   $this->HASSE_DIAGRAM=permuted_atoms($this->VertexPerm->HASSE_DIAGRAM, $this->VertexPerm->PERMUTATION);
+}
+
+rule HASSE_DIAGRAM : FacetPerm.HASSE_DIAGRAM, FacetPerm.PERMUTATION {
+   $this->HASSE_DIAGRAM=permuted_coatoms($this->FacetPerm->HASSE_DIAGRAM, $this->FacetPerm->PERMUTATION);
+}
+
+# @category Combinatorics
+# Number of incident facets for each ray.
+property RAY_SIZES : Array<Int>;
+
+
+# @category Combinatorics
+# Number of incident rays for each facet.
+property FACET_SIZES : Array<Int>;
+
+
+# @category Combinatorics
+# Vertex-edge graph obtained by intersecting the cone with a transversal hyperplane.
+property GRAPH : objects::Graph;
+
+rule GRAPH.NodePerm.PERMUTATION = VertexPerm.PERMUTATION;
+
+# @category Combinatorics
+# Facet-ridge graph. Dual to [[GRAPH]].
+property DUAL_GRAPH : objects::Graph;
+
+rule DUAL_GRAPH.NodePerm.PERMUTATION = FacetPerm.PERMUTATION;
+
+# @category Combinatorics
+# The vector counting the number of faces (`f<sub>k</sub>` is the number of `(k+1)`-faces).
+property F_VECTOR : Vector<Integer>;
+
+# @category Combinatorics
+# The vector counting the number of incidences between pairs of faces.
+# `f<sub>ik</sub>` is the number of incident pairs of `(i+1)`-faces and `(k+1)`-faces. 
+# The main diagonal contains the [[F_VECTOR]].
+property F2_VECTOR : Matrix<Integer>;
+
+
+# @category Combinatorics
+# All intermediate polytopes (with respect to the given insertion order) in the beneath-and-beyond algorithm are simplicial.
+# We have the implications: [[RAYS]] in general position => ESSENTIALLY_GENERIC => [[SIMPLICIAL]]
+property ESSENTIALLY_GENERIC : Bool;
+
+# @category Triangulation and volume
+# Some triangulation of the cone using only its [[RAYS]].
+property TRIANGULATION : topaz::GeometricSimplicialComplex<Scalar> : multiple {
+
+   # The splits that are coarsenings of the current [[TRIANGULATION]].
+   # If the triangulation is regular these form the unique split decomposition of
+   # the corresponding weight function.
+   property REFINED_SPLITS : Set<Int>;
+
+   # GKZ-vector 
+   #    See Chapter 7 in Gelfand, Kapranov, and Zelevinsky:
+   #    Discriminants, Resultants and Multidimensional Determinants, Birkhäuser 1994
+   property GKZ_VECTOR : Vector<Scalar>;
+
+  
+   # Weight vector to construct a regular [[TRIANGULATION]].
+   # Must be generic.
+   property WEIGHTS : Vector<Scalar>;
+
+   property BOUNDARY {
+
+       # For each facet the set of simplex indices of BOUNDARY that triangulate it.
+       property FACET_TRIANGULATIONS : Array<Set>;
+   }
+
+}
+
+
+rule TRIANGULATION.VertexPerm.PERMUTATION = VertexPerm.PERMUTATION;
+
+rule TRIANGULATION.BOUNDARY.FACET_TRIANGULATIONS : FacetPerm.TRIANGULATION.BOUNDARY.FACET_TRIANGULATIONS, FacetPerm.PERMUTATION {
+   $this->TRIANGULATION->BOUNDARY->FACET_TRIANGULATIONS=permuted($this->FacetPerm->TRIANGULATION->BOUNDARY->FACET_TRIANGULATIONS, $this->FacetPerm->PERMUTATION);
+}
+weight 1.10;
+
+
+# @category Combinatorics
+# True if the facets of the cone are simplicial.
+property SIMPLICIAL : Bool; 
+
+# @category Combinatorics
+# True if the cone is simplicial.
+property SIMPLICIAL_CONE : Bool; 
+
+# @category Triangulation and volume
+# Similar to [[TRIANGULATION]], but using [[POINTS]].
+property TRIANGULATION_INT : Array<Set>;
+
+# @category Combinatorics
+# True if the facets of the cone are simple. Dual to [[SIMPLICIAL]].
+property SIMPLE : Bool;
+
+# @category Combinatorics
+# True if the cone is self-dual.
+property SELF_DUAL : Bool;
+
+# @category Visualization
+# Unique names assigned to the [[RAYS]].
+# If specified, they are shown by visualization tools instead of ray indices.
+#
+# For a cone built from scratch, you should create this property by yourself,
+# either manually in a text editor, or with a client program. If you build a cone with a construction client
+# taking some other input cone(s), you can create the labels automatically if you
+# call the client with a //relabel// option. The exact format of the labels is dependent on the
+# construction, and is described by the corresponding client.
+property RAY_LABELS : Array<String> : mutable;
+
+rule RAY_LABELS : VertexPerm.RAY_LABELS, VertexPerm.PERMUTATION {
+   $this->RAY_LABELS=permuted($this->VertexPerm->RAY_LABELS, $this->VertexPerm->PERMUTATION);
+}
+weight 1.10;
+
+
+# @category Visualization
+# Unique names assigned to the [[FACETS]], analogous to [[RAY_LABELS]].
+property FACET_LABELS : Array<String> : mutable;
+
+rule FACET_LABELS : FacetPerm.FACET_LABELS, FacetPerm.PERMUTATION {
+   $this->FACET_LABELS=permuted($this->FacetPerm->FACET_LABELS, $this->FacetPerm->PERMUTATION);
+}
+weight 1.10;
+
+# @category Visualization
+# Unique names assigned to the coordinate directions, analogous to [[RAY_LABELS]].
+property COORDINATE_LABELS : Array<String> : mutable;
+
+
+# @category Visualization
+# Reordered [[RAYS_IN_FACETS]] for 2d and 3d-cones.
+# Rays are listed in the order of their appearance
+# when traversing the facet border counterclockwise seen from outside of the origin.
+property RIF_CYCLIC_NORMAL : Array< Array<Int> >;
+
+# @category Visualization
+# Reordered [[DUAL_GRAPH]] for 3d-cones.
+# The neighbor facets are listed in the order corresponding to [[RIF_CYCLIC_NORMAL]],
+# so that the first two vertices in RIF_CYCLIC_NORMAL make up the ridge to the first neighbor
+# facet and so on.
+property NEIGHBOR_FACETS_CYCLIC_NORMAL : Array< List<Int> >;
+
+# @category Visualization
+# Reordered transposed [[RAYS_IN_FACETS]]. Dual to [[VIF_CYCLIC_NORMAL]].
+property FTR_CYCLIC_NORMAL : Array< List<Int> >;
+
+# @category Visualization
+# Reordered [[GRAPH]]. Dual to [[NEIGHBOR_FACETS_CYCLIC_NORMAL]].
+property NEIGHBOR_RAYS_CYCLIC_NORMAL : Array< List<Int> >;
+
+
+}
+
+
+# @category Coordinate conversions
+# Creates a new Cone object with different coordinate type
+# target coordinate type //Coord// must be specified in angle brackets
+# e.g. $new_cone = convert_to<Coord>($cone)
+# @tparam Coord target coordinate type
+# @param Cone c the input cone
+# @return Cone<Coord> a new cone object or //C// itself it has the requested type
+user_function convert_to<Coord>(Cone) {
+   my $target_type=typeof Coord;
+   if ($_[0]->type->param==$target_type) {
+      $_[0]
+   } else {
+      new Cone<Coord>($_[0]);
+   }
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

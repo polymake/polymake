@@ -1,0 +1,280 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @topic category property_types/Set Types
+# In this category you find all property types related to sets, such as Set, Map, HashMap, IncidenceMatrix, ...
+
+# @topic category functions/Set Operations
+# This category contains functions performing operations on Sets.
+
+# @category Set Types
+# A type for sets containing elements of type //Element//.
+#
+# You can for example create a new Set by:
+#	$s = new Set(2, 3, 5, 7);
+#
+# You can perform set theoretic operations:
+# 	$s1 + $s2  union
+#	$s1 * $s2  intersection
+# 	$s1 - $s2  difference
+#	$s1 ^ $s2  symmetric difference 
+# @tparam Element default: Int
+declare property_type Set<Element=Int> : c++ (include => "polymake/Set.h", operators => '@sets @compare') {
+
+   method contains {
+      my ($self, $key)=@_;
+      exists $self->{$key};
+   }
+
+	# The cardinality of the set.
+	# @return Int
+   user_method size() : c++;
+}
+
+# @category Set Operations
+# Analyze the inclusion relation of two sets.
+# @param Set s1
+# @param Set s2
+# @return Int 	0	if s1 = s2,
+#				-1 	if s1 &sub; s2,
+#				1	if s1 &sup; s2,
+#				2	otherwise.
+user_function incl(Set,Set) : c++ (include => "polymake/Set.h");
+
+
+# @category Set Operations
+# Creates the [[Set]] {//a//, //a//+1, ..., //b//-1, //b//} for //a// &le; //b//-1.
+# (The result will be empty if //a// = //b//-1.)
+# @param Int a
+# @param Int b
+# @return Set<Int>
+user_function range(Int,Int) : c++ (include => "polymake/Set.h") {
+   if ($_[0] > $_[1]) {
+      croak( "invalid range: lower limit > upper limit" );
+   }
+   &{pop(@_)};
+}
+
+# @category Set Operations
+# Creates the [[Set]] {//a//, //a//+1, ..., //a//+//c//-1}.
+# @param Int a the smallest element
+# @param Int c the cardinality
+# @return Set<Int>
+user_function sequence(Int,Int) : c++ (include => "polymake/Set.h") {
+   if ($_[1] < 0) {
+      croak( "invalid sequence: negative size" );
+   }
+   &{pop(@_)};
+}
+
+function permuted(Set, *) : c++;
+
+function permuted_inv(Set, *) : c++;
+
+# @category Set Operations
+# Returns the subset of //s// given by the //indices//.
+# @param Set s
+# @param Set<Int> indices
+# @return Set
+user_function select_subset(*:wary:anchor,*) : c++ (name => 'select', include => "polymake/IndexedSubset.h");
+
+# @category Set Operations
+# Returns the singleton set {//s//}.
+# @param Scalar s
+# @return Set<Scalar>
+user_function scalar2set(*) : c++ (name => 'pm::scalarcopy2set', include => "polymake/Set.h");
+
+# @category Set Types
+# A [[Set]] whose elements are of type Set<//Element//>.
+# @tparam Element default: Int
+declare property_type PowerSet<Element=Int> : Set<Set<Element>> : c++ (include => "polymake/PowerSet.h");
+
+function permuted(PowerSet, *) : c++;
+
+function permuted_inv(PowerSet, *) : c++;
+
+
+
+# allow to write ~[0,1,2] in contexts where a Set<Int> is expected
+function _construct_set($) : subst_const_op( ~ ) {
+   if ($#{$_[0]} > 0) {
+      new Set($_[0])
+   } else {
+      scalar2set(@{$_[0]});
+   }
+}
+
+# @category Set Types
+# A FacetList is a collection of sets of integral numbers from a closed contiguous range [0..n-1]. The contained sets usually encode facets and the set elements vertices of a simplicial complex.
+declare property_type FacetList : c++ (include => "polymake/FacetList.h") {
+   
+   # Add a new facet if and only if there are no facets including it. If this holds, remove also all facets that are included in the new one. Return true if the new facet was really included.
+   # @param Set facet
+   # @return Bool
+   user_method insertMax(Set) : non_const : c++;
+
+	# The opposite of [[insertMax]]: add a new facet if and only if there are no facets included in it, remove all facets including the new facet.
+	# @param Set facet
+	# @return Bool
+   user_method insertMin(Set) : non_const : c++;
+
+	# The number of facets in the list.
+	# @return Int
+   user_method size() : c++;
+
+}
+
+##################################################################################
+
+# @category Set Types
+# Labels an [[IncidenceMatrix]] as __non-symmetric__.
+declare property_type NonSymmetric : c++ (special => 'NonSymmetric', include => "polymake/IncidenceMatrix.h");
+
+# @category Set Types
+# Labels an [[IncidenceMatrix]] as __symmetric__.
+declare property_type Symmetric : c++ (special => 'Symmetric', include => "polymake/IncidenceMatrix.h");
+
+# @category Set Types
+# A 0/1 incidence matrix.
+# @tparam Sym one of [[Symmetric]] or [[NonSymmetric]], default: [[NonSymmetric]]
+declare property_type IncidenceMatrix<Sym=NonSymmetric> : c++ \
+   (include => "polymake/IncidenceMatrix.h", operators => '@sets:wary /:wary:anchor |:wary:anchor /=:wary |=:wary @compare:wary') {
+
+   method construct(*,Int) : c++;
+
+   method construct(Int,Int) : c++;
+
+	# Returns the number of rows.
+	# @return Int
+   user_method rows() : c++;
+
+	# Returns the number of columns.
+	# @return Int
+   user_method cols() : c++;
+
+   # Returns the //i//-th row.
+   # @param Int i
+   # @return SparseVector<Int>
+   user_method row($) : lvalue_opt : wary : c++;
+
+   # Returns the //i//-th column.
+   # @param Int i
+   # @return SparseVector<Int>
+   user_method col($) : lvalue_opt : wary : c++;
+
+ 	# Returns a __minor__ of the matrix containing the rows in //r// and the columns in //c//. You can pass [[all_rows_or_cols|All]] if you want all rows or columns and ~ for the complement of a set. E.g. 
+	#	$A->minor(All, ~[0]);
+	# will give you the minor of a matrix containing all rows and all but the 0-th column.
+	# @param Set r the rows
+	# @param Set c the columns
+	# @return IncidenceMatrix
+   user_method minor(*:anchor,*:anchor) : lvalue_opt : wary : c++;
+
+   method operator($,$) : lvalue_opt : wary : c++;
+
+ 	# Removes empty rows and columns.
+	# The remaining rows and columns are renumbered without gaps.
+   user_method squeeze() : non_const : void : c++;
+
+	# Removes empty rows.
+	# The remaining rows are renumbered without gaps.
+   user_method squeeze_rows() : non_const : void : c++;
+
+	# Removes empty columns.
+	# The remaining columns are renumbered without gaps.
+   user_method squeeze_cols() : non_const : void : c++;
+}
+
+user_function rows(IncidenceMatrix:anchor) : c++;
+
+user_function cols(IncidenceMatrix:anchor) : c++;
+
+function permuted_rows(IncidenceMatrix *) : c++;
+
+function permuted_inv_rows(IncidenceMatrix *) : c++;
+
+function permuted_cols(IncidenceMatrix *) : c++;
+
+function permuted_inv_cols(IncidenceMatrix *) : c++;
+
+
+# @category Linear Algebra
+# Computes the __transpose__ //A//<sup>T</sup> of an incidence matrix //A//, i.e., (a<sup>T</sup>)<sub>ij</sub> = a<sub>ji</sub>.
+# @param IncidenceMatrix A
+# @return IncidenceMatrix
+user_function transpose(IncidenceMatrix:anchor) : c++ (name => 'T');
+
+
+##################################################################################
+
+# @category Set Types
+# Maps are sorted associative containers that contain unique key/value pairs. 
+# Maps are sorted by their keys. 
+#
+# Accessing or inserting a value needs logarithmic time O(log n), where n is the size of the map.
+# 
+# You can create a new Map mapping Ints to Strings by 
+#	$mymap = new Map<Int, String>([1, "Monday"], [2, "Tuesday"]);
+# On the perl side Maps are treated like hashrefs.
+# You can add a new key/value pair by
+#	$mymap->{3} = "Wednesday";
+# (If the key is already contained in the Map, the corresponding value is replaced by the new one.)
+# or ask for the value of a key by
+#	print $mymap->{1};
+# @tparam Key type of the key values
+# @tparam Value	type of the mapped value
+declare property_type Map<Key,Value> : c++ (include => "polymake/Map.h", operators => '@string') {
+
+   method equal {
+      my ($self, $m1, $m2)=@_;
+      return 0 unless keys(%$m1) == keys(%$m2);
+      my ($pk, $pv)=@{$self->param};
+      while (my ($k1, $v1, $k2, $v2)=(each(%$m1), each(%$m2))) {
+         return 0 unless $pk->equal->($k1,$k2) && $pv->equal->($v1,$v2);
+      }
+      1
+   }
+}
+
+##################################################################################
+
+# @category Set Types
+# Similar to [[Set]].
+# (But keep in mind differences in performance and memory demand.)
+# @tparam Element
+declare property_type HashSet<Element> : c++ (name => 'hash_set', include => "polymake/hash_set", operators => '+= -= ^=');
+
+# @category Set Types
+# Similar to [[Map]].
+# HashMaps are associative containers that contain unique key/value pairs. 
+#
+# The values are stored in a hash table. Accessing and interserting a value by its key 
+# works in constant time O(1).
+#
+# You can create a new HashMap mapping Ints to Strings by 
+#	$myhashmap = new HashMap<Int, String>([1, "Monday"], [2, "Tuesday"]);
+# On the perl side HashMaps are treated like hashrefs.
+# You can work with a HashMap like you work with a [[Map]] (keeping in mind differences in performance
+# and memory demand).
+# @tparam Key type of the key values
+# @tparam Value	type of the mapped value
+declare property_type HashMap<Key,Value> : c++ (name => 'hash_map', include => "polymake/hash_map");
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<project default="all">
+  <property name="package.prefix" value="de/tuberlin/polymake" />
+  <property name="build.sysclasspath" value="ignore" />
+
+  <target name="init">
+    <!-- Create the time stamp -->
+    <tstamp/>
+    <mkdir dir="${build.dir}/java" />
+    <condition property="debug" value="on" else="off">
+      <available file="testscenarios" filepath="${polymake.top}" type="dir" />
+    </condition>
+  </target>
+
+  <path id="compile.classpath">
+    <fileset dir="${javaview.path}/jars" includes="*.jar" erroronmissingdir="yes" />
+    <fileset dir="${jar.dir}" includes="polymake_java.jar" erroronmissingdir="yes" />
+  </path>
+
+  <target name="compile" depends="init">
+    <sequential>
+      <javac 
+             executable="${javac}"
+             srcdir="src"
+             destdir="${build.dir}/java"
+             failonerror="true"
+             debug="${debug}">
+        <include name="${package.prefix}/**"/>
+        <classpath refid="compile.classpath"/>
+      </javac>
+      <copy todir="${build.dir}/java"
+            preservelastmodified="yes">
+        <fileset 
+                dir="src"
+                includes="**/*.txt"
+                excludes="**/*.java" />
+      </copy>
+    </sequential>
+  </target>
+
+  <target name="all" depends="compile">
+    <jar destfile="${jar.dir}/${jar.name}">
+        <fileset 
+                 dir="${build.dir}/java"
+        	 includes="${package.prefix}/**" />
+      </jar>
+  </target>
+
+  <target name="clean">
+    <delete quiet="true">
+      <fileset dir="${build.dir}/java" />
+    </delete>
+  </target>
+</project>

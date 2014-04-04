@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>polymake git java</name>
+	<comment></comment>
+	<projects>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+			<name>org.eclipse.jdt.core.javabuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+		<nature>org.eclipse.jdt.core.javanature</nature>
+	</natures>
+	<linkedResources>
+		<link>
+			<name>javaview-src</name>
+			<type>2</type>
+			<location>/home/thilosch/git/polymake/bundled/javaview/java/src</location>
+		</link>
+		<link>
+			<name>jreality-src</name>
+			<type>2</type>
+			<location>/home/thilosch/git/polymake/bundled/jreality/java/src</location>
+		</link>
+	</linkedResources>
+</projectDescription>

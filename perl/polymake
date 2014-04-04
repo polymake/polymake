@@ -1,0 +1,371 @@
+#!/usr/bin/perl
+#
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+use v5.10;
+
+package Polymake;
+
+# global variables needed for the bootstrap
+use vars qw($InstallTop $InstallArch $Arch $DeveloperMode);
+my @addlibs;
+BEGIN {
+   require Cwd;
+   $InstallTop=Cwd::abs_path( $0 =~ m{(?:^|/+)[^/]+/+[^/]+$} ? ($` || ".") : ".." );
+   do "$InstallTop/support/locate_build_dir";
+   ($InstallArch, $Arch, @addlibs)=locate_build_dir($InstallTop);
+   $DeveloperMode=-d "$InstallTop/testscenarios";
+}
+
+use lib "$InstallTop/perllib", "$InstallArch/perlx", @addlibs;
+
+#########################################################################################
+#
+#  Parsing the command line
+#
+use Getopt::Long qw( GetOptions :config require_order bundling no_ignore_case );
+
+my ($verbose, $script, $iscript, $mscript, $connect, $touch, $help, $tell_version, $start_application, $reconfigure);
+my $config_path=$ENV{POLYMAKE_CONFIG_PATH} || "user";
+
+if ( ! GetOptions( 'v+' => \$verbose, 'd+' => \$DebugLevel,
+                   'n' => \$Polymake::Core::Scheduler::dry_run,
+                   'A=s' => \$start_application,
+                   'T=f' => \$Polymake::Core::Rule::timeout,
+                   'script=s' => sub { $script=$_[1]; die "!FINISH\n" },
+                   'iscript=s' => sub { $iscript=$_[1]; die "!FINISH\n" },
+                   'mscript=s' => sub { $config_path="none"; $mscript=$_[1]; die "!FINISH\n" },
+                   'connect=s' => \$connect,
+                   'touch' => \$touch, 'help' => \$help, 'version' => \$tell_version,
+                   'config-path=s' => \$config_path,
+                   'no-config' => sub { $config_path="none" },
+                   'ignore-config' => sub { $config_path="ignore" },
+                   'reconfigure' => \$reconfigure,
+                 )
+     #  --*script --connect --touch --help --version are mutually exclusive
+     or defined($script)+defined($iscript)+defined($mscript)+defined($connect)+(@ARGV==1 && $ARGV[0] eq "-")+$touch+$help+$tell_version > 1
+     #  --help --version do not consume any additional args
+     or $help+$tell_version && @ARGV
+     #  -n is only applicable in compatibility mode
+     or $Polymake::Core::Scheduler::dry_run && (defined($script) || @ARGV<2) ) {
+
+   $!=1;
+   die <<'.';
+usage: polymake [-dv] [-A <application>] [-T <timeout>]
+                [--reconfigure] [--config-path "DIR;..." | --no-config | --ignore-config]
+                [ --script | --iscript | --mscript <script_file> arg ... ] | '<code>' | --connect SOCKETFILE || HOST:PORT | -
+                [-n] <file> <property|method> ... |
+                --touch <file> ... | --help | --version
+.
+}
+
+if ($help) {
+   print STDERR <<'.';
+usage: polymake [options] [arguments]
+   Called without arguments:
+      start an interactive shell.
+
+   Arguments may be one of the following:
+      --help
+         Print this text and exit.
+      --version
+         Print the version number, copyright notice, and exit.
+      [--script] [application::]script_file
+         Execute the script stored in a file.
+         If application prefix is specified, this application is loaded
+         and the script file is looked up in its script directory.
+      --script [application::]script_file arguments ...
+         Execute the script, passing the arguments in @ARGV .
+      --iscript [application::]script_file arguments ...
+         Execute the script which may contain interactive commands.
+      --mscript script_file arguments ...
+         Execute a maintenance script without loading any applications
+      'code'
+         Interpret the string as a perl expression.
+      -
+         Read and execute the commands from the standard input.
+         Standard output and error streams are not redirected.
+      --connect SOCKETFILE
+         Read and execute the commands from a named socket.
+         Print commands send the data back into the socket.
+      --connect HOST:PORT
+         Connect to the remote host, read and execute commands.
+         Standard output and error streams are sent back to the host.
+
+      file PROPERTY | METHOD [ ... ]
+         Legacy mode (resembling polymake <= 2.3):
+         Read the object from the data file, print the properties or
+         run the user methods.
+
+      --touch file [ file ... ]
+         Read the files and write them out; useful for converting from
+         older polymake versions.
+
+   Options are:
+      -A application_name
+          Start with this application, ignoring the $default_application and
+          @start_applications settings.
+      -d  Produce some debug output; can be repeated to increase the debug level.
+      -v  Tell what's going on; can be repeated to increase the verbosity level.
+          This is an obsolete option, please use custom variables $Verbose::*
+          to gain more detailed control.
+
+      --reconfigure
+          Rerun the autoconfiguration sections in all rule files.
+      --config-path "DIR;..."
+          Import settings from global configuration files in given directories;
+          If the last entry in the list has a form "user=DIR",
+          use it instead of ~/.polymake to keep the private settings.
+          DIR may start with ~/ which is treated as $HOME.
+          Default is "user", using only private configuration located at
+          $POLYMAKE_USER_DIR or ~/.polymake .
+      --no-config
+          Don't read any configuration files,
+          don't try to configure rules automatically,
+          don't load rule files requiring auto-configuration.
+          Equivalent to --config-path=none .
+      --ignore-config
+          Don't read any configuration files,
+          skip auto-configuration routines in the rule files.
+          Equivalent to --config-path=ignore .
+      -n  `Dry run' mode: show the production rules that would be applied to the
+          object, but don't run any; only applicable to the compatibility mode.
+
+      -T sec
+          Set a time limit for the execution of production rules (currently without effect).
+.
+   exit;
+}
+
+# Getopt::Long does not allow to combine short option bundling with multi-value options
+# Here is a work-around
+sub collect_arglist {
+   my $list=shift;
+   @$list=@_;
+   while (@ARGV && $ARGV[0] !~ /^-/) {
+      push @$list, shift @ARGV;
+   }
+}
+
+#########################################################################################
+#
+#  Start of the real work
+#
+use strict;
+use Polymake;
+use namespaces;
+
+if ($tell_version) {
+   print STDERR Main::greeting();
+   exit;
+}
+
+Core::UserSettings::init($config_path);
+
+if ($verbose || $DebugLevel) {
+   print STDERR "polymake version $Version\n";
+}
+
+if ($DebugLevel) {
+   $Verbose::rules=3;
+   $Verbose::cpp=2;
+   assign_max($Verbose::scheduler, $DebugLevel);
+   if ($DebugLevel>1) {
+      $Verbose::external=1;
+   }
+}
+if ($verbose) {
+   assign_max($Verbose::rules,$verbose);
+   assign_max($Verbose::scheduler,$verbose);
+}
+if ($reconfigure) {
+   $Core::Application::configured_at=time;
+}
+
+init Core::CPlusPlus(1);
+
+if ($touch) {
+   if (Main::load_apps()) {
+      require Polymake::Core::Shell;
+      Core::Shell::start();
+      Main::touch_files();
+   }
+
+} elsif (defined $script) {
+   Main::run_script($script);
+
+} elsif (defined $iscript) {
+   if (-t STDIN) {
+      require Polymake::Core::Shell;
+      Core::Shell::start();
+      Main::run_script($iscript);
+   } else {
+      die "can't execute the interactive script without terminal input\n";
+   }
+
+} elsif (defined $mscript) {
+   do $mscript;
+   beautify_error() if $@;
+
+} elsif (defined $connect) {
+   ### named socket or host connection
+   require Polymake::Sockets;
+   my ($socket, $redirects);
+   if (-S $connect) {
+      $socket=new ClientSocket($connect);
+      $redirects=1;
+   } elsif (!-e $connect && $connect =~ /^(.*):(\d+)$/) {
+      $socket=new ClientSocket($1, $2);
+      $redirects=3;
+   } else {
+      die "option --connect requires a named socket file or a remote host:port\n";
+   }
+   require Polymake::Core::Shell;
+   if (Main::load_apps()) {
+      Core::Shell::start($socket, $redirects);
+      Core::Shell::run_pipe();
+   }
+
+} elsif (@ARGV<=1) {
+   if (@ARGV==0) {
+      if (-t STDIN) {
+         ### interactive shell
+         print "Welcome to ", Main::greeting(), "\nLoading applications now...";
+         STDOUT->flush();
+         require Polymake::Core::Shell;
+         if (Main::load_apps()) {
+            Core::Shell::start();
+            Core::Shell::run();
+         }
+      } else {
+         die "can't start the interactive shell without terminal input\n";
+      }
+
+   } else {
+      my $arg=shift;
+      if ($arg eq "-") {
+         ### anonymous pipe
+         require Polymake::Core::Shell;
+         if (Main::load_apps()) {
+            Core::Shell::start(\*STDIN, 0);
+            Core::Shell::run_pipe();
+         }
+      } elsif ($arg !~ /[\s'"(){}\[\]\$]/) {
+         ### script file
+         Main::run_script($arg);
+      } elsif (Main::load_apps()) {
+         local_unshift(\@INC, $User::application);
+         local $Scope=new Scope();
+         $User::application->eval_expr->("package Polymake::User; $arg");
+         beautify_error() if $@;
+      }
+   }
+} elsif (Main::load_apps()) {
+   require Polymake::Core::Compat;
+   eval {
+      Polymake::User::Compat::execute(@ARGV);
+   }
+}
+if ($@) {
+   err_print($@);
+   exit 1;
+}
+
+package Polymake::Main;
+
+sub greeting {
+   my $full_version="$Version";
+   if ($DeveloperMode && -d "$InstallTop/.git") {
+      my ($branch);
+      my $branch = `cd "$InstallTop"; git rev-parse --abbrev-ref HEAD`;
+      chomp $branch;
+      $full_version .= ", branch $branch ";
+      my $upstream = `git rev-parse --abbrev-ref --symbolic-full-name \@{u} 2>&1`;
+      chomp $upstream;
+      unless ($?) {
+         my ($ahead,$behind) = split '\t',`git rev-list --left-right --count $branch...$upstream`;
+         chomp $ahead;
+         chomp $behind;
+         $full_version .= "[";
+         $full_version .= "$ahead ahead " if ($ahead > 0);
+         $full_version .= "$behind behind " if ($behind > 0);
+         $full_version .= "$upstream]";
+      }
+   }
+
+   "polymake version $full_version", <<'.';
+
+Copyright (c) 1997-2014
+Ewgenij Gawrilow, Michael Joswig (TU Berlin)
+http://www.polymake.org
+
+This is free software licensed under GPL; see the source for copying conditions.
+There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+.
+}
+
+sub load_apps {
+   if ($start_application // $User::default_application) {
+      eval {
+         init Core::Extension;
+         unless (defined $start_application) {
+            foreach my $app_name (@User::start_applications) {
+               add Core::Application($app_name);
+            }
+         }
+         User::application($start_application // $User::default_application);
+         1
+      }
+   } else {
+      $@="Start application not specified\n";
+      0
+   }
+}
+
+sub run_script {
+   init Core::Extension;
+   my ($filename)=@_;
+   if ($filename =~ s/^($id_re)::(?!$)//o) {
+      User::application($1);
+   } else {
+      $User::application=new Core::NeutralScriptLoader();
+   }
+   replace_special_paths($filename);
+   my ($full_path, $tm, $app)=Core::StoredScript::locate_file($filename)
+      or die "script file '$filename' not found\n";
+   local_unshift(\@INC, $app || $User::application);
+   local $Scope=new Scope();
+   do "script" . (defined($app) ? ":" : "=") . $full_path;
+   beautify_error() if $@;
+}
+
+sub touch_files {
+   local $Scope=new Scope();
+   local $Core::XMLhandler::force_verification=1;
+   foreach (@ARGV) {
+      eval { User::load($_) };
+      err_print($@) if $@;
+   }
+}
+
+# to serve as a breakpoint in the perl debugger
+sub Polymake::stop_here { print STDERR "@_\n" if @_ }
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

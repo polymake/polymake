@@ -1,0 +1,899 @@
+/*
+ * Created on Dec 5, 2003
+ * 
+ * This file is part of the jReality package.
+ * 
+ * This program is free software; you can redistribute and/or modify it under
+ * the terms of the GNU General Public License as published by the Free
+ * Software Foundation; either version 2 of the license, or any later version.
+ * 
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITTNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ * 
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+ * Place, Suite 330, Boston, MA 02111-1307 USA
+ */
+package de.jreality.soft;
+
+import java.util.Arrays;
+/*
+ * implementation notes: for speed reasons  we do not interpolate y coordinates 
+ * and normals at all.
+ * Moreover x is only interpolated as long as needed. 
+ * All other quantities are interpolated when requested by the shading type.
+ * 
+ *
+ */
+
+/**
+ * @version 1.0
+ * @author <a href="mailto:hoffmann@math.tu-berlin.de">Tim Hoffmann</a>
+ *  
+ */
+public class NewPolygonRasterizer implements PolygonRasterizer {
+    //For fixpoint math:
+    protected static final int FIXP = 16;
+    protected final static int FIXPS = 1 << FIXP;
+    protected final static long DFIXPS = 1L << (2*FIXP);
+    protected static final int FIXMASK = ~(0xffffffff << FIXP);
+    
+    private static final int  COLOR_CH_SCALE = fpInverse(255<<FIXP);
+    private static final int     COLOR_CH_MASK  = 255;
+    private static final int     OPAQUE         = (COLOR_CH_MASK << 24);
+    protected static final int R_MASK = (0xff0000 );
+    protected static final int G_MASK = (0xff00 );
+    protected static final int B_MASK = (0xff );
+   
+    private static final boolean correctInterpolation = true;
+
+    // up to what entries in the polygon do we interpolate?
+    // currently 10 means no normals
+    
+    //private static final int INTERPOLATION_LENGTH =10;
+    
+    //private static final int INTERPOLATION_LENGTH =Polygon.VERTEX_LENGTH;
+    
+    //dimensions of the image to render into:
+
+    private int xmin = 0;
+    private int xmax = 0;
+    private int ymin = 0;
+    private int ymax = 0;
+
+    // store half the size of the screen:
+    //minDim is the min of wh and hh;
+    private int wh;
+    private int hh;
+    private int minDim;
+    private int maxDim;
+    private int[][] polygon =
+        new int[Polygon.MAXPOLYVERTEX][Polygon.VERTEX_LENGTH];
+    //private final Quantity[] quantities = new Quantity[Polygon.VERTEX_LENGTH];
+    private InterpolateQuantity1 xxx = new InterpolateQuantity1();
+    //private InterpolateQuantity1 yyy = new InterpolateQuantity1();
+    private InterpolateQuantity1 zzz = new InterpolateQuantity1();
+    private InterpolateQuantity1 www = new InterpolateQuantity1();
+    private InterpolateQuantity3 rgb = new InterpolateQuantity3();
+    private InterpolateQuantity1 alpha = new InterpolateQuantity1();
+    private InterpolateQuantity2 uv = new InterpolateQuantity2();
+    private InterpolateQuantity3 normals = new InterpolateQuantity3();
+    
+    private boolean interpolateColor;
+    private boolean interpolateUV;
+    
+    protected int transparency = 0;
+
+    private Texture texture = null;
+
+    private int zBuffer[];
+    private int w;
+    private int h;
+
+    private int[] pixels;
+    private int background;
+
+    
+    /**
+     *  
+     */
+    public NewPolygonRasterizer(int[] pixelBuf) {
+        super();
+        pixels=pixelBuf;
+        System.out.println(">NEW INTEGER RASTERIZER<");
+        xxx.interpolation = true;
+        zzz.interpolation = true;
+       
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see de.jreality.soft.Renderer#renderPolygon(de.jreality.soft.Polygon,
+     *      double[],int,int,int,int)
+     */
+    public final void renderPolygon(
+        final Polygon p,
+        final double[] vertexData,
+        final boolean outline /*
+                               * , final int xmin, final int xmax, final int
+                               * ymin, final int ymax
+                               */
+    ) {
+        transparency = (int)(FIXP*
+             p.getShader().getVertexShader().getTransparency()) ;
+        
+        
+        texture = p.getShader().getTexture();
+        interpolateUV = texture != null;
+        if( interpolateUV) {
+            uv.interpolation =true;
+            
+        } else {
+            uv.interpolation =false;
+        }
+        
+        interpolateColor = p.getShader().interpolateColor();
+        
+        www.interpolation =correctInterpolation&&(interpolateColor||interpolateUV);
+        
+        
+        final int pLength = p.length;
+        for (int i = 0; i < pLength; i++) {
+            int pos = p.vertices[i];
+            int[] pi = polygon[i];
+
+            double w = FIXPS / vertexData[pos + Polygon.SW];
+            double wxy = w * minDim;
+            pi[Polygon.SX] =  (int)(wh + vertexData[pos + Polygon.SX] * wxy);
+            pi[Polygon.SY] =  (int)(hh - vertexData[pos + Polygon.SY] * wxy);
+            pi[Polygon.SZ] =  (int)(vertexData[pos + Polygon.SZ] * w *(Integer.MAX_VALUE>>FIXP));
+            
+            //note normScale contains FIXPS
+//            double wxy = w * normScale;
+//            pi[Polygon.SX] = (int) (vertexData[pos + Polygon.SX] * wxy);
+//            pi[Polygon.SY] = (int) (vertexData[pos + Polygon.SY] * wxy);
+//            pi[Polygon.SZ] = (int) (vertexData[pos + Polygon.SZ] * w * FIXPS);
+//            
+            if (p.getShader() instanceof SkyboxPolygonShader)
+                pi[Polygon.SZ] = Integer.MAX_VALUE;
+            int iw = www.interpolation? (int)w: FIXPS;
+
+                pi[Polygon.SW] = iw;
+//                System.out.println(" w is set" + w);
+                pi[Polygon.U] =
+                    (int)(vertexData[pos + Polygon.U] *  iw);
+                pi[Polygon.V] =
+                     (int)(vertexData[pos + Polygon.V] *  iw);
+                pi[Polygon.A] =
+                     (int)(vertexData[pos + Polygon.A] *  iw);
+                
+                if(interpolateColor) {
+                    pi[Polygon.R] =
+                         (int)((vertexData[pos + Polygon.R] >= 1
+                            ? 1
+                            : (vertexData[pos + Polygon.R] ))
+                            * iw);
+                    pi[Polygon.G] =
+                         (int)((vertexData[pos + Polygon.G] >= 1
+                            ? 1
+                            : (vertexData[pos + Polygon.G] ))
+                            * iw);
+                    pi[Polygon.B] =
+                         (int)((vertexData[pos + Polygon.B] >= 1
+                            ? 1
+                            : (vertexData[pos + Polygon.B] ))
+                            * iw);
+                }
+                        
+        }
+        
+            if( interpolateColor) {
+                rgb.interpolation =true;
+            } else {
+                rgb.interpolation =false;
+                int pos = p.vertices[0];
+                rgb.q1.value = (int) Math.min(FIXPS,vertexData[pos + Polygon.R]*FIXPS);
+                rgb.q2.value = (int) Math.min(FIXPS,vertexData[pos + Polygon.G]*FIXPS);
+                rgb.q3.value = (int) Math.min(FIXPS,vertexData[pos + Polygon.B]*FIXPS);
+           }
+            www.q1.value = polygon[0][Polygon.SW];
+            
+            
+            alpha.interpolation = p.getShader().interpolateAlpha();
+            if(!alpha.interpolation) alpha.q1.value =1;
+            
+        if (outline) {
+            transparency = 0;
+            for (int j = 0; j < pLength - 1; j++) {
+                line(
+                        polygon[j][Polygon.SX],
+                        polygon[j][Polygon.SY],
+                        polygon[j][Polygon.SZ],
+                        polygon[j + 1][Polygon.SX],
+                        polygon[j + 1][Polygon.SY],
+                        polygon[j + 1][Polygon.SZ],xmin,xmax,ymin,ymax);
+            }
+            line(
+                    polygon[pLength - 1][Polygon.SX],
+                    polygon[pLength - 1][Polygon.SY],
+                    polygon[pLength - 1][Polygon.SZ],
+                    polygon[0][Polygon.SX],
+                    polygon[0][Polygon.SY],
+                    polygon[0][Polygon.SZ],xmin,xmax,ymin,ymax);
+        }
+
+        //interpolateColor = p.getShader().interpolateColor();
+        
+            /*
+             * private int[][] tri = new int[3][];
+             * tri[0] = t0; for(int i =1;i <pLength;i++) { tri[1]
+             * =polygon[i-1]; tri[2] =polygon[i];
+             * scanPolyI(tri,3,xmin,xmax-1,ymin,ymax-1); } tri[1] =polygon[0];
+             * tri[2] =polygon[pLength-1];
+             * scanPolyI(tri,3,xmin,xmax-1,ymin,ymax-1);
+             */
+       
+        scanPolygon(polygon, pLength, xmin, xmax - 1, ymin, ymax - 1);
+
+    }
+    
+    private final class InterpolateQuantity1 {
+        final Quantity q1 = new Quantity();
+        boolean interpolation = false;
+        
+        InterpolateQuantity1() {
+            super();
+        }
+        final  void makeXIncrement(final int dx, final int frac) {
+            if(interpolation) {
+               q1.makeXIncrement(dx, frac);
+            }
+        }
+        
+        final void makeLeftYIncrement(final int start, final int end, final int dy, final int frac) {
+            if(interpolation) {
+                q1.makeLeftYIncrement(start, end, dy, frac);
+            }
+            
+        }
+        final void makeRightYIncrement(final int start, final int end, final int dy, final int frac) {
+            if(interpolation) {
+                q1.makeRightYIncrement(start,end,dy,frac);
+            }
+        }
+        final void incrementY() {
+            if(interpolation) {
+               q1.incrementY();
+            }
+            
+        }
+        final void incrementX() {
+            if(interpolation) {
+                q1.incrementX();
+            }
+        }
+    }
+    private final class InterpolateQuantity2 {
+        final Quantity q1 = new Quantity();
+        final Quantity q2 = new Quantity();
+        boolean interpolation = false;
+        
+        InterpolateQuantity2() {
+            super();
+        }
+        final  void makeXIncrement(final int dx, final int frac) {
+            if(interpolation) {
+                q1.makeXIncrement(dx, frac);
+                q2.makeXIncrement(dx, frac);
+            }
+        }
+        
+        final void makeLeftYIncrement(final int s1, final int e1, final int s2, final int e2, final int dy, final int frac) {
+            if(interpolation) {
+                q1.makeLeftYIncrement(s1, e1, dy, frac);
+                q2.makeLeftYIncrement(s2, e2, dy, frac);
+            }
+            
+        }
+        final void makeRightYIncrement(final int s1, final int e1, final int s2, final int e2, final int dy, final int frac) {
+            if(interpolation) {
+                q1.makeRightYIncrement(s1,e1,dy,frac);
+                q2.makeRightYIncrement(s2,e2,dy,frac);
+            }
+        }
+        final void incrementY() {
+            if(interpolation) {
+                q1.incrementY();
+                q2.incrementY();
+            }
+            
+        }
+        final void incrementX() {
+            if(interpolation) {
+                q1.incrementX();
+                q2.incrementX();
+            }
+        }
+    }
+    private final class InterpolateQuantity3 {
+        final Quantity q1 = new Quantity();
+        final Quantity q2 = new Quantity();
+        final Quantity q3 = new Quantity();
+        boolean interpolation = false;
+        
+        InterpolateQuantity3() {
+            super();
+        }
+        final  void makeXIncrement(final int dx, final int frac) {
+            if(interpolation) {
+                q1.makeXIncrement(dx, frac);
+                q2.makeXIncrement(dx, frac);
+                q3.makeXIncrement(dx, frac);
+            }
+        }
+        
+        final void makeLeftYIncrement(final int s1, final int e1, final int s2, final int e2, final int s3, final int e3, final int dy, final int frac) {
+            if(interpolation) {
+                q1.makeLeftYIncrement(s1, e1, dy, frac);
+                q2.makeLeftYIncrement(s2, e2, dy, frac);
+                q3.makeLeftYIncrement(s3, e3, dy, frac);
+            }
+                        
+        }
+        final void makeRightYIncrement(final int s1, final int e1, final int s2, final int e2, final int s3, final int e3, final int dy, final int frac) {
+            if(interpolation) {
+                q1.makeRightYIncrement(s1,e1,dy,frac);
+                q2.makeRightYIncrement(s2,e2,dy,frac);
+                q3.makeRightYIncrement(s3,e3,dy,frac);
+            }
+        }
+        final void incrementY() {
+            if(interpolation) {
+                q1.incrementY();
+                q2.incrementY();
+                q3.incrementY();
+            }
+            
+        }
+        final void incrementX() {
+            if(interpolation) {
+                q1.incrementX();
+                q2.incrementX();
+                q3.incrementX();
+            }
+        }
+    }
+    /*
+     * a class for interpolatable quantities;
+     * 
+     * @version 1.0
+     * @author timh
+     *
+     */
+    private final class Quantity {
+        int leftValue;
+        int leftYIncrement;
+        int rightValue;
+        int rightYIncrement;
+        int value;
+        int xIncrement;
+       
+        
+        Quantity() {
+            super();
+        }
+        
+        final  void makeXIncrement(final int dx, final int frac) {
+            
+                xIncrement = fpTimes(rightValue- leftValue, dx);
+                value = leftValue + fpTimes(xIncrement , frac);
+                int i = 1;
+//                System.out.println("value "+(value/(double)FIXPS)+" incr "+(xIncrement/(double)FIXPS)+" frac "+(frac/(double)FIXPS)+" leftV "+(leftValue/(double)FIXPS));
+            
+        }
+        
+        final void makeLeftYIncrement(final int start, final int end, final int dy, final int frac) {
+          
+                leftYIncrement = fpTimes(end - start, dy);
+                leftValue = start + fpTimes(leftYIncrement, frac);
+//                System.out.println("YINC: leftValue "+(leftValue/(double)FIXPS)+" leftYIncr "+(leftYIncrement/(double)FIXPS));
+           //     System.out.println("   start "+(( start)/(double)FIXPS));
+//                System.out.println("    (end - start)*dy "+(fpTimes((end - start),dy)/(double)FIXPS));
+//                System.out.println("    dy "+(dy/(double)FIXPS));
+//                System.out.println("  ---> "+(fpTimes((int)(0.01*FIXPS),FIXPS))/(double)FIXPS  );
+//                System.out.println("  ---> "+(((int)(-0.01*FIXPS)))/(double)FIXPS  );
+           
+        
+        }
+        final void makeRightYIncrement(final int start, final int end, final int dy, final int frac) {
+          
+                rightYIncrement = fpTimes(end - start,dy);
+                rightValue = start + fpTimes(rightYIncrement, frac);
+            
+        }
+        final void incrementY() {
+         
+                leftValue += leftYIncrement;
+                rightValue += rightYIncrement;
+                //System.out.println("Yincrement leftValue "+leftValue+" value "+value);
+            
+            
+        }
+        final void incrementX() {
+            
+                value += xIncrement;
+            
+        }
+
+        /**
+         * 
+         */
+        public void dump() {
+            System.out.println("dumP:");
+            System.out.println("value      :"+value);
+            System.out.println("xIncr      :"+xIncrement);
+            System.out.println("leftValue  :"+leftValue);
+            System.out.println("leftIncr   :"+leftYIncrement);
+            System.out.println("rightValue :"+rightValue);
+            System.out.println("rightIncr  :"+rightYIncrement);
+            
+        }
+    }
+    public static final int fpTimes(final int x, final int y) {
+//        final boolean xpos =x>0;
+//        final boolean ypos =y>0;
+//        final int xhi = xpos?(x>>FIXP):-((-x)>>FIXP);//(x<0) ? -fpInteger(x) : fpInteger(x);
+//        final int yhi = ypos?(y>>FIXP):-((-y)>>FIXP);//(y<0) ? -fpInteger(y) : fpInteger(y);
+//        final int xlo = xpos? (x  & FIXMASK):-((-x) & FIXMASK);//fpFraction(x);
+//        final int ylo = xpos? (y  & FIXMASK):-((-y) & FIXMASK);//fpFraction(y);
+//        final int tmp = (xhi * yhi);
+//        return  (tmp << FIXP) +
+//        (xhi * ylo) + (xlo * yhi) +
+//        (((xlo * ylo) >> FIXP) & FIXMASK);
+//        return ((x*yhi + xhi*y) - xhi*yhi + ( (xlo*ylo)>>FIXP));
+        return (int)( ( (long)x * (long)y)>>FIXP);
+//            return (x>>(FIXP/2))*(y>>(FIXP/2));
+    }
+        
+    public static int  fpInverse( final int x) {
+        return (int) (DFIXPS/(long)x);
+        //return (FIXPS/x);
+    }
+    /*
+    public static int  fpDivFloor( int x,  int y)
+    {
+        int answer;
+        
+//        if (y == 0) {
+//            System.err.println("Error: fpDiv -- can't divide by 0!\n");
+//            return 0;
+//        }
+//        else 
+        if (y < 0) {
+            y = -y;
+            x = -x;
+        }
+        if (x >= 0) {
+            int tmp = x/y;
+            answer = tmp << FIXP;
+        }
+        else {
+            int tmp = ((x/y) + (((x % y) == 0) ? 0 : -1));
+            answer = tmp << FIXP;
+        }
+        return answer;
+    }
+    */
+    public static final int fpInteger(final int  x)
+    {
+        final int floor = x >> FIXP;
+        final int  bits = (x & FIXMASK);
+        
+//        if (x < 0) {
+//            if (bits!=0) return(floor);
+        if (x < 0 && bits != 0 )
+            return(floor+1);
+        else 
+            return (floor);
+    }
+    /* return fraction part, in bits */
+    public static final int fpFraction(final int  x)
+    {
+        if (x < 0) return((-x) & FIXMASK);
+        else return(x & FIXMASK);
+    }
+        
+   public static final int fpCeil(final int x) {
+       return ((x + FIXPS - 1) >> FIXP);
+   }
+   public static final int fpFloor(final int x) {
+       return (x >> FIXP);
+   }
+
+    private final void scanPolygon(
+        final int[][] p,
+        final int plength,
+        final int wxmin,
+        final int wxmax,
+        final int wymin,
+        final int wymax) {
+        int  y, ly, ry;
+        int top = 0;
+        int ymin;
+        
+        //TODO remove this test?
+        if (plength > Polygon.MAXPOLYVERTEX) {
+            System.err.println(
+                "scanPoly: polygon had to many vertices: " + plength);
+            return;
+        }
+        //System.out.println("scan poly");
+
+        ymin = Integer.MAX_VALUE;
+        for (int i = 0; i < plength; i++) {
+            if (p[i][Polygon.SY] < ymin) {
+                ymin = p[i][Polygon.SY];
+                top = i;
+            }
+        }
+        // now we have the topmost vertex.
+        int li = top;
+        int ri = top;
+        int rem = plength;
+
+        //y =(int)Math.ceil(ymin -.5);
+        y = fpCeil(ymin-FIXPS/2);
+        //y = ((ymin + FIXPS / 2 - 1) >> FIXP);
+
+        ly = ry = y - 1;
+
+        while (rem > 0) {
+            int i =li;
+            while (ly <= y && rem > 0) {
+                rem--;
+                li = i;
+                i = i - 1;
+                if (i < 0)
+                    i = plength - 1;
+                //ly = (int)Math.floor(p[i][Polygon.SY] +.5);
+                ly = fpFloor(p[i][Polygon.SY] +FIXPS/2);
+            }
+            if(i!=li) {
+                makeYIncrement(p[li], p[i], y,true);
+                li = i;
+            }
+            i =ri;
+            while (ry <= y && rem > 0) {
+                rem--;
+                ri = i;
+                i = i + 1;
+                if (i >= plength)
+                    i = 0;
+                //ry = (int)Math.floor(p[i][Polygon.SY] + .5) ;
+                ry = fpFloor(p[i][Polygon.SY] + FIXPS/2) ;
+            }
+            if(i!=ri) {
+                makeYIncrement(p[ri], p[i], y,false);
+                ri = i;
+            }
+            //System.out.println("    y "+y+" ly "+ly+" ry "+ry);
+
+            while (y < ly && y < ry) {
+                
+                if (y >= wymin && y <= wymax) {
+                    scanline(y,wxmin, wxmax);
+                }
+                y++;
+//                for(int k = 0;k<INTERPOLATION_LENGTH;k++)
+//                    quantities[k].incrementY();
+                xxx.incrementY();
+                zzz.incrementY();
+                www.incrementY();
+                rgb.incrementY();
+                alpha.incrementY();
+                uv.incrementY();
+                //normals.incrementY();
+                
+            }
+        }
+    }
+
+ 
+
+    
+    private final void makeYIncrement(final int[] p1, final int[] p2, final int y, final boolean left) {
+        
+        final int p1y = p1[Polygon.SY];
+        final int dy = fpInverse(Math.max(FIXPS, (p2[Polygon.SY] - p1y)));
+        //if (dy <1) 
+        //    dy = 1;
+        //dy =1/dy;
+        final int frac = (y<<FIXP) + FIXPS/2 - p1y;
+//        System.out.println("y "+y+" frac "+frac/(double)FIXPS+" p1y "+p1y/(double)FIXPS);
+        if(left) {
+//        for(int k=0;k<INTERPOLATION_LENGTH;k++)
+//            quantities[k].makeLeftYIncrement(p1[k],p2[k],dy,frac);
+            xxx.makeLeftYIncrement(p1[Polygon.SX],p2[Polygon.SX],dy,frac);
+            zzz.makeLeftYIncrement(p1[Polygon.SZ],p2[Polygon.SZ],dy,frac);
+            www.makeLeftYIncrement(p1[Polygon.SW],p2[Polygon.SW],dy,frac);
+            rgb.makeLeftYIncrement(p1[Polygon.R],p2[Polygon.R],p1[Polygon.G],p2[Polygon.G],p1[Polygon.B],p2[Polygon.B],dy,frac);
+            alpha.makeLeftYIncrement(p1[Polygon.A],p2[Polygon.A],dy,frac);
+            uv.makeLeftYIncrement(p1[Polygon.U],p2[Polygon.U],p1[Polygon.V],p2[Polygon.V],dy,frac);
+            //normals.makeLeftYIncrement(p1[0],p2[0],dy,frac);
+        } else {
+//            for(int k=0;k<INTERPOLATION_LENGTH;k++)
+//                quantities[k].makeRightYIncrement(p1[k],p2[k],dy,frac);
+            xxx.makeRightYIncrement(p1[Polygon.SX],p2[Polygon.SX],dy,frac);
+            zzz.makeRightYIncrement(p1[Polygon.SZ],p2[Polygon.SZ],dy,frac);
+            www.makeRightYIncrement(p1[Polygon.SW],p2[Polygon.SW],dy,frac);
+            rgb.makeRightYIncrement(p1[Polygon.R],p2[Polygon.R],p1[Polygon.G],p2[Polygon.G],p1[Polygon.B],p2[Polygon.B],dy,frac);
+            alpha.makeRightYIncrement(p1[Polygon.A],p2[Polygon.A],dy,frac);
+            uv.makeRightYIncrement(p1[Polygon.U],p2[Polygon.U],p1[Polygon.V],p2[Polygon.V],dy,frac);
+        }
+    }
+
+    private final void scanline(final int y, final int wxmin, final int wxmax) {
+//        final Quantity[] quantities=this.quantities;
+        final Quantity qSX=xxx.q1;
+        final int l = qSX.leftValue, r = qSX.rightValue;
+        final boolean lr = l<r;
+        int lx, rx;
+        if(lr) {
+            lx = fpCeil (l - FIXPS/2);
+            rx = fpFloor(r - FIXPS/2);
+            if(lx < wxmin) lx = wxmin;
+            if(rx > wxmax) rx = wxmax;
+        }else {
+            lx = fpFloor(l - FIXPS/2);
+            rx = fpCeil (r - FIXPS/2);
+            if(rx < wxmin) rx = wxmin;
+            if(lx > wxmax) lx = wxmax;
+        }
+        makeXincrement(lx);
+        final int inc=(lr)? 1: -1;
+        final int posOff=y*w;
+        for(int x = lx; lr? (x <= rx): (x >= rx); x+=inc) {
+            colorize(x+posOff);
+//            for(int k = 2; k<INTERPOLATION_LENGTH; k++) 
+//            quantities[k].incrementX();
+            zzz.incrementX();
+            www.incrementX();
+            rgb.incrementX();
+            alpha.incrementX();
+            uv.incrementX();
+            //normals.incrementX();
+        }
+    }
+    
+    private final void makeXincrement(final int leftBound) {
+//        final Quantity[] quantities=this.quantities;
+        final Quantity qSX=xxx.q1;
+        final int dx = fpInverse(Math.max(FIXPS, Math.abs(qSX.rightValue - qSX.leftValue)));
+        
+        final int frac = Math.abs( ((leftBound<<FIXP)  + FIXPS/2 - qSX.leftValue));
+        //System.out.println("x "+leftBound+" frac "+frac/(double)FIXPS+" dx "+dx/(double)FIXPS);
+//        for(int k = 2; k<INTERPOLATION_LENGTH; k++) 
+//            quantities[k].makeXIncrement(dx, frac);
+        zzz.makeXIncrement(dx,frac);
+        www.makeXIncrement(dx,frac);
+        rgb.makeXIncrement(dx,frac);
+        alpha.makeXIncrement(dx,frac);
+        uv.makeXIncrement(dx,frac);
+//            Quantity q =quantities[Polygon.R];
+//            if(q.value<0|| q.value>1) {
+//                //System.out.println("z WARNING " + q.value+" dx "+dx);
+//        System.out.println("->R: "+q.value+" xIncr "+q.xIncrement+" left "+q.leftValue+" right "+q.rightValue);
+//            }
+        //System.out.println("r "+quantities[Polygon.R].value);
+        
+    }
+    
+    private final int[] color = new int[4];
+
+    private final void colorize(final int pos) {
+        final int z = zzz.q1.value;
+        if (z >= zBuffer[pos]) return;
+        final int[] color=this.color;
+////        final Quantity[] quantities = this.quantities;
+//        final Quantity qSW=quantities[Polygon.SW];
+//        final Quantity qR= quantities[Polygon.R];
+        final int ww = www.q1.value;
+        if(ww == 0) {
+            www.q1.dump();
+            throw new RuntimeException();
+        }
+        int   r = (rgb.q1.value*255)/ww; 
+        int   g = (rgb.q2.value*255)/ww;
+        int   b = (rgb.q3.value*255)/ww;
+        //System.out.println("  r "+r+"  g "+g+"  b "+b);
+        
+        
+        int omt = (255*(FIXPS - transparency))>>FIXP;
+        if(alpha.interpolation) omt = (omt*alpha.q1.value) / ww;
+        
+        if (uv.interpolation) {
+            double WW = (correctInterpolation) ? www.q1.value : FIXPS;
+            texture.getColor(
+                    uv.q1.value /WW, uv.q2.value /WW, color);
+            omt = (omt*color[3]*COLOR_CH_SCALE)>>FIXP;
+            r   = (r  *color[0]*COLOR_CH_SCALE)>>FIXP;
+            g   = (g  *color[1]*COLOR_CH_SCALE)>>FIXP;
+            b   = (b  *color[2]*COLOR_CH_SCALE)>>FIXP;    
+        }
+        if(omt<255) {
+            final int sample = pixels[pos];
+
+            int t = (255-omt);
+            
+            int sb =  sample      & COLOR_CH_MASK;
+            int sg = (sample>>8)  & COLOR_CH_MASK;
+            int sr = (sample>>16) & COLOR_CH_MASK;
+            
+            r = ((r*omt + t*sr)*257) & R_MASK ;
+            g = (((g*omt + t*sg)*257)>>8)&G_MASK;
+            b = (((b*omt + t*sb)*257)>>16)&B_MASK;
+        } else{
+            r = (r<<16)&R_MASK;;
+            g =(g<<8)&G_MASK;
+            b = b&B_MASK;
+        }
+            
+        pixels[pos]  = OPAQUE |r |g | b;
+        
+        /*
+        int omt = (FIXPS - transparency);
+        final int factor = 255*fpInverse(ww);
+
+        int r = fpTimes(Math.abs(qR                   .value),factor);
+        int g = fpTimes(Math.abs(quantities[Polygon.G].value),factor);
+        int b = fpTimes(Math.abs(quantities[Polygon.B].value),factor);
+
+        if(false) {
+        System.out.println("R "+quantities[Polygon.R].value/(double)FIXPS);
+        System.out.println("G "+quantities[Polygon.G].value/(double)FIXPS);
+        System.out.println("B "+quantities[Polygon.B].value/(double)FIXPS);
+        
+        System.out.println("r "+(Math.abs(r)>>FIXP));
+        System.out.println("g "+(Math.abs(g)>>FIXP));
+        System.out.println("b "+(Math.abs(b)>>FIXP));
+        }
+        int divWW =(correctInterpolation) ? fpInverse(qSW.value) : FIXPS;
+        final Quantity qU=quantities[Polygon.U];
+        if (qU.interpolation) {
+            double WW = (correctInterpolation) ? qSW.value : FIXPS;
+            texture.getColor(
+              qU.value /WW, quantities[Polygon.V].value /WW, color);
+            omt = fpTimes(omt,color[3]*COLOR_CH_SCALE);
+            r   = fpTimes(r  ,color[0]*COLOR_CH_SCALE);
+            g   = fpTimes(g  ,color[1]*COLOR_CH_SCALE);
+            b   = fpTimes(b  ,color[2]*COLOR_CH_SCALE);    
+        }
+        final Quantity qA=quantities[Polygon.A];
+        if(qA.interpolation) omt = fpTimes(omt,fpTimes(qA.value , divWW));
+
+        if(omt<FIXPS) {
+            final int sample = pixels[pos];
+
+            int t = (FIXPS-omt);
+            
+            int sb =  sample      & COLOR_CH_MASK;
+            int sg = (sample>>8)  & COLOR_CH_MASK;
+            int sr = (sample>>16) & COLOR_CH_MASK;
+            
+            r = fpTimes(r,omt) + t*sr;
+            g = fpTimes(g,omt) + t*sg;
+            b = fpTimes(b,omt) + t*sb;
+        }
+        pixels[pos]  = OPAQUE | ( (r >>(FIXP-16)) & R_MASK ) | ( (g >>(FIXP-8)) & G_MASK ) | (b>>FIXP);
+        */
+        zBuffer[pos]= z;
+    }
+    
+
+    
+
+
+
+    //
+    //
+    // line with z
+    //
+    //
+    private static final int ZEPS = (int) (-0.0001 * FIXPS);
+    private final void line(
+            final int x1,
+            final int y1,
+            final int z1,
+            final int x2,
+            final int y2,
+            final int z2,
+            final int xmin,
+            final int xmax,
+            final int ymin,
+            final int ymax) {
+        int dirX = x2 - x1;
+        int dirY = y2 - y1;
+        int dirZ = z2 - z1;
+        double l = ((double) dirX) * dirX + ((double) dirY) * dirY;
+        l = Math.sqrt(l);
+        int il = 1 * (((int) l) >> FIXP);
+        if (il == 0)
+            return;
+        dirX /= il;
+        dirY /= il;
+        dirZ /= il;
+
+        int zz1 = z1 - dirZ + ZEPS;
+        int zz2 = z2 + dirZ + ZEPS;
+
+        //TODO find a replacement
+        //interpolateColor = false;
+        //interpolateTexture = false;
+        
+        scanPolygon(new int[][] {
+                { x1 - dirX - dirY, y1 - dirY + dirX, zz1, 0, 0, 0, 0, 0, 1 },
+                {
+                    x1 - dirX + dirY, y1 - dirY - dirX, zz1, 0, 0, 0, 0, 0, 1 }, {
+                        x2 + dirX + dirY, y2 + dirY - dirX, zz2, 0, 0, 0, 0, 0, 1 }, {
+                            x2 + dirX - dirY, y2 + dirY + dirX, zz2, 0, 0, 0, 0, 0, 1 }
+        }, 4, xmin, xmax - 1, ymin, ymax - 1);
+
+    }
+    
+
+    public final void setWindow(int xmin, int xmax, int ymin, int ymax) {
+        this.xmin = xmin;
+        this.xmax = xmax;
+        this.ymin = ymin;
+        this.ymax = ymax;
+        //        w = xmax - xmin;
+        //        h = ymax -ymin;
+        int nw=xmax-xmin, nh=ymax-ymin;
+        if(nw!=w||nh!=h) {
+            w=nw;
+            h=nh;
+            final int numPx=w*h;
+            zBuffer=new int[numPx];
+        }
+
+    }
+    public final void setSize(double width, double height) {
+        wh = ((int) width)  / 2;
+        hh = ((int) height)  / 2;
+        minDim = Math.min(wh, hh);
+        maxDim = Math.max(wh, hh);
+        wh *= FIXPS;
+        hh *= FIXPS;
+    }
+
+    public void setBackground(int argb) {
+        background=argb;
+    }
+    /* (non-Javadoc)
+     * @see de.jreality.soft.Renderer#clear()
+     */
+    public final void clear() {
+        Arrays.fill(zBuffer, Integer.MAX_VALUE);
+        Arrays.fill(pixels, background);
+        
+    }
+    /* (non-Javadoc)
+     * @see de.jreality.soft.PolygonRasterizer#start()
+     */
+    public final void start() {
+        // TODO Auto-generated method stub
+        
+    }
+
+    /* (non-Javadoc)
+     * @see de.jreality.soft.PolygonRasterizer#stop()
+     */
+    public final  void stop() {
+        // TODO Auto-generated method stub
+        
+    }
+    
+}

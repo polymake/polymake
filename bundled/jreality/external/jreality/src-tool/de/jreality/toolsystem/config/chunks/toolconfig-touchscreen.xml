@@ -1,0 +1,26 @@
+<toolconfig>
+
+	<!-- use touch screen for shooting balls in museum installation -->
+
+	<rawdevices>
+		<rawdevice id="Mouse" type="de.jreality.toolsystem.raw.DeviceMouse" />
+	</rawdevices>
+
+	<rawslots>
+		<mapping device="Mouse" src="left" target="RotateActivation" />
+		<mapping device="Mouse" src="axes" target="PointerNDC" />
+	</rawslots>
+
+	<virtualdevices>
+	
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualClick">
+			<inputslot>RotateActivation</inputslot>
+			<outputslot>DragActivation</outputslot>
+			<prop name="maxDelay">
+				<double>80</double>
+            </prop>
+        </virtualdevice>
+        
+	</virtualdevices>
+
+</toolconfig>

@@ -1,0 +1,67 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+require MetapostGraph;
+
+# @category Visualization
+# Produce a MetaPost input file with the given drawing.
+label metapost
+
+package Metapost::File::Writer;
+import Visual::FileWriter(multiple => 1);
+
+sub file_suffix { ".mp" }
+
+global_method metapost.geometry: draw(Visual::PointSet, @) {
+   my ($self, $PointSet)=@_;
+   $self->append(new Metapost::Element($PointSet));
+}
+
+global_method metapost.graph: draw(Visual::Graph, @) {
+   my ($self, $Graph)=@_;
+   $self->append(new Metapost::Graph($Graph));
+}
+
+global_method metapost.lattice: draw(Visual::Lattice) {
+   my ($self, $Lattice)=@_;
+   $self->append(new Metapost::Lattice($Lattice));
+}
+
+package application;
+
+# @category Visualization
+# Produce a MetaPost input file with given visual objects.
+# @param Visual::Object vis_obj ... objects to display
+#
+# @option String File "filename" or "AUTO"
+#  The MetaPost description always has to be stored in a file, there is no interactive viewer for this
+#  kind of visualization.
+#
+#  For the file name you can use any expression allowed for the ''open'' function,
+#  including "-" for terminal output, "&HANDLE" for an already opened file handle,
+#  or "| program" for a pipe.  Real file names are automatically completed with the ''.mp'' suffix if needed.
+#
+#  The default setting "AUTO" lets the file name be derived from the drawing title.
+#  The automatically generated file name is displayed in the verbose mode.
+
+user_function metapost(Visual::Object+, { File => "AUTO" }) {
+   visualize_explicit(@_, "Metapost");
+}
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

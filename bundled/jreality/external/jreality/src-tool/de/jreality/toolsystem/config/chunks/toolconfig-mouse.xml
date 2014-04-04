@@ -1,0 +1,48 @@
+<toolconfig>
+
+	<rawdevices>
+		<rawdevice id="Mouse" type="de.jreality.toolsystem.raw.DeviceMouse" />
+		<!--
+			rawdevice id="Mouse"
+			type="de.jreality.toolsystem.raw.DeviceMouseSWT"/
+		-->
+	</rawdevices>
+
+	<rawslots>
+		<mapping device="Mouse" src="left" target="PrimaryAction" />
+		<mapping device="Mouse" src="right" target="PrimarySelection" />
+		<mapping device="Mouse" src="center" target="PrimaryMenu" />
+		<mapping device="Mouse" src="wheel_up" target="PrimaryUp" />
+		<mapping device="Mouse" src="wheel_down" target="PrimaryDown" />
+		<mapping device="Mouse" src="axes" target="PointerNDC" />
+		<mapping device="Mouse" src="axesEvolution" target="PointerNDCevolution" />
+	</rawslots>
+
+	<virtualdevices>
+
+		<mapping src="PrimaryAction" target="PanelAction" />
+		<mapping src="PrimaryMenu" target="PanelMenu" />
+		<mapping src="PrimarySelection" target="PanelSelection" />
+		<mapping src="PrimarySelection" target="ShowPanel" />
+		<mapping src="PrimaryAction" target="RotateActivation" />
+		<mapping src="PrimaryAction" target="AllDragActivation" />
+		<mapping src="PrimaryAction" target="PointDragActivation" />
+		<mapping src="PrimaryAction" target="EdgeDragActivation" />
+		<mapping src="PrimaryAction" target="FaceDragActivation" />
+		<mapping src="PrimaryMenu" target="DragActivation" />
+		<mapping src="PrimarySelection" target="ScaleActivation" />
+		<mapping src="PrimaryAction" target="DeformActivation" />
+		
+		<mapping src="PointerNdcXevolution" target="HorizontalShipRotationAngleEvolution" />
+		<mapping src="PointerNdcXevolution" target="ScaleAxis" />
+		<mapping src="PointerNdcYevolution" target="VerticalShipRotationAngleEvolution" />
+		<mapping src="PointerNdcYevolution" target="VerticalHeadRotationAngleEvolution" />
+
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualMap">
+			<inputslot>PrimarySelection</inputslot>
+			<outputslot>ShipRotateActivation</outputslot>
+		</virtualdevice>
+
+	</virtualdevices>
+
+</toolconfig>

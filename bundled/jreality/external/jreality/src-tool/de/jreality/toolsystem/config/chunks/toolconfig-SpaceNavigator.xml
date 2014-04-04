@@ -1,0 +1,92 @@
+<toolconfig>
+
+    <!-- better use toolconfig-Spacenav.xml !!! -->
+
+	<rawdevices>
+		<rawdevice id="SpaceNavigator"
+			type="de.jreality.toolsystem.raw.DeviceJinputController">
+			<prop name="id_string">
+				<string>.*SpaceNavigator.*</string>
+			</prop>
+		</rawdevice>
+	</rawdevices>
+
+	<rawslots>
+		<mapping device="SpaceNavigator" src="axis_2" target="X" />
+		<mapping device="SpaceNavigator" src="axis_3" target="Y" />
+		<mapping device="SpaceNavigator" src="axis_4" target="Z" />
+		<mapping device="SpaceNavigator" src="axis_5" target="RXRaw" />
+		<mapping device="SpaceNavigator" src="axis_6" target="RYRaw" />
+		<mapping device="SpaceNavigator" src="axis_7" target="RZRaw" />
+		<!--DragActivation == 'Shoot-Imputslot' -->
+		<mapping device="SpaceNavigator" src="button_1" target="DragActivation" />
+		<!--
+			mapping device="SpaceNavigator" src="button_0"
+			target="PrimaryAction"/
+		-->
+	</rawslots>
+
+	<virtualdevices>
+
+		<mapping src="X" target="LeftRightAxis" />
+		<mapping src="RZ" target="HorizontalShipRotationAngleSpeed" />
+		<mapping src="Y" target="ForwardBackwardAxis" />
+		<mapping src="RX" target="VerticalHeadRotationAngleSpeed" />
+		<!--mapping src="Z" target="JumpActivation" /-->
+
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualSpaceNavigatorFixAxis">
+			<inputslot>RXRaw</inputslot>
+			<outputslot>RX</outputslot>
+		</virtualdevice>
+
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualSpaceNavigatorFixAxis">
+			<inputslot>RYRaw</inputslot>
+			<outputslot>RY</outputslot>
+		</virtualdevice>
+
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualSpaceNavigatorFixAxis">
+			<inputslot>RZRaw</inputslot>
+			<outputslot>RZ</outputslot>
+		</virtualdevice>
+ <!--
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualSpaceNavigatorFixAxis">
+			<inputslot>RX</inputslot>
+			<outputslot>VerticalHeadRotationAngleSpeed</outputslot>
+		</virtualdevice>
+ --> 
+		<virtualdevice
+					type="de.jreality.toolsystem.virtual.VirtualTimestepEvolution">
+			<inputslot>VerticalHeadRotationAngleSpeed</inputslot>
+			<inputslot>SystemTime</inputslot>
+			<outputslot>VerticalHeadRotationAngleEvolution</outputslot>
+			<prop name="gain">
+				<double>3</double>
+			</prop>
+		</virtualdevice>
+
+		<virtualdevice
+					type="de.jreality.toolsystem.virtual.VirtualTimestepEvolution">
+			<inputslot>HorizontalShipRotationAngleSpeed</inputslot>
+			<inputslot>SystemTime</inputslot>
+			<outputslot>HorizontalShipRotationAngleEvolution</outputslot>
+			<prop name="gain">
+				<double>3</double>
+			</prop>
+		</virtualdevice>
+
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualExtractPositive">
+			<inputslot>Z</inputslot>
+			<outputslot>JumpActivation</outputslot>
+			<prop name="threshold">
+				<double>0.75</double>
+			</prop>
+		</virtualdevice>
+
+	</virtualdevices>
+
+
+</toolconfig>

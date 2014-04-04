@@ -1,0 +1,41 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @topic application
+# The application group provides basic functionality for working with permutation
+# groups. An object 'Group' is defined by a list of generators describing the 
+# permutation of some indices. 
+# The object 'GroupOfCone' encapsulates symmetry information of a cone.
+# It can act on the indices of rays (DOMAIN=>1), of facets(2), or on coordinates(3).
+
+IMPORT
+  common
+
+file_suffix grp
+
+# A finite permutation group.
+# 
+declare object Group;
+
+INCLUDE
+  group_properties.rules
+  group_of_cone.rules
+  group_of_polytope.rules
+  group.rules
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

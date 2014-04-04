@@ -1,0 +1,19 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#cmakedefine HAVE_SYSCONF_PROTO 1
+#cmakedefine HAVE_GETRUSAGE_PROTO 1
+#cmakedefine HAVE_NAUTY 1
+#cmakedefine HAVE_NTL 1
+#cmakedefine HAVE_BLISS 1
+#cmakedefine HAVE_EIGEN 1
+
+#cmakedefine HAVE_UINT 1
+#cmakedefine HAVE_ULONG 1
+#cmakedefine HAVE_SYS_TYPES_H 1
+#cmakedefine HAVE_STDINT_H 1
+#cmakedefine HAVE_STDDEF_H 1
+
+#define SYMPOL_VERSION "@SYMPOL_VERSION@"
+
+#endif //CONFIG_H
