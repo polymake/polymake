@@ -13,10 +13,17 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-object Cone<Rational> {
-
 label libnormaliz
 
+# The libnormaliz convex hull computation is currently disabled to avoid 
+# overloading the scheduler with too many convex hull codes.
+# It can still be used directly via normaliz_compute.
+#
+# To enable the rules just remove the comment from the INCLUDE statement.
+
+#INCLUDE convexhull.rules
+
+object Cone<Rational> {
 
    rule libnormaliz.integer_points: DEGREE_ONE_GENERATORS : RAYS {
       my @list = normaliz_compute($this,degree_one_generators=>1);

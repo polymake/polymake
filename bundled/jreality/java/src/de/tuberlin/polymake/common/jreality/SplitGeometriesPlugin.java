@@ -57,7 +57,7 @@ public class SplitGeometriesPlugin extends ShrinkPanelPlugin implements ActionLi
 
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
-		Utils.splitIndexedFaceSetsGeometry(geom);
+		Utils.splitAllIndexedFaceSetsGeometry(geom);
 	}
 	
 }

@@ -47,7 +47,7 @@ property AMBIENT_DIM : Int;
 
 
 # @category Geometry
-# True if the point configuration is a bounded polytope.
+# True if the point configuration is bounded.
 
 property BOUNDED : Bool;
 
@@ -80,7 +80,7 @@ property VERTEX_POINT_MAP : Array<Int>;
 
 
 # @category Geometry
-# Dual basis of the affine hull of the polyhedron.
+# Dual basis of the affine hull of the point configuration
 
 property AFFINE_HULL : Matrix<Scalar>;
 
@@ -91,7 +91,7 @@ property AFFINE_HULL : Matrix<Scalar>;
 property GRAPH : objects::Graph;
 
 
-# @category Unbounded polyhedra
+# @category Geometry
 # Indices of [[POINTS]] that are rays.
 
 property FAR_POINTS : Set;

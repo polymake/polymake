@@ -109,6 +109,10 @@ namespace polymake { namespace polytope {
          todo.set(libnormaliz::ConeProperty::HilbertSeries);
       if (options["dual_algorithm"])
          todo.set(libnormaliz::ConeProperty::DualMode);
+      if (options["facets"])
+         todo.set(libnormaliz::ConeProperty::SupportHyperplanes);
+      if (options["rays"])
+         todo.set(libnormaliz::ConeProperty::ExtremeRays);
       perl::ListReturn result;
       if (!options["skip_long"])
       {
@@ -116,7 +120,7 @@ namespace polymake { namespace polytope {
          {
             // try with long first
             libnormaliz::Cone<long> nmzCone = libnormaliz_create_cone<long>(
-                   options["from_facets"] ? c.give("FACETS") : c.give("RAYS"),
+                   options["from_facets"] ? c.give("FACETS | INEQUALITIES") : c.give("RAYS | INPUT_RAYS"),
                    options["from_facets"] );
             if (withgrading)
                nmzCone.setGrading(pmVector_to_stdvector<long>(c.lookup("MONOID_GRADING")));
@@ -129,6 +133,12 @@ namespace polymake { namespace polytope {
                result << convert_to<Integer>(Vector<mpz_class>(nmzCone.getHilbertSeries().getNum()));
             if (options["hilbert_series"])
                result << nmz_convert_HS(nmzCone.getHilbertSeries());
+            if (options["facets"]) {
+	       result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getSupportHyperplanes()));
+	       result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getEquations()));
+	    }
+            if (options["rays"])
+	       result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getExtremeRays()));
             return result;
          } 
          catch(const pm::GMP::error& ex)
@@ -143,7 +153,7 @@ namespace polymake { namespace polytope {
          }
       }
       libnormaliz::Cone<Integer> nmzCone = libnormaliz_create_cone<Integer>(
-             options["from_facets"] ? c.give("FACETS") : c.give("RAYS"),
+             options["from_facets"] ? c.give("FACETS | INEQUALITIES") : c.give("RAYS | INPUT_RAYS"),
              options["from_facets"] );
       if (withgrading)
          nmzCone.setGrading(pmVector_to_stdvector<Integer>(c.lookup("MONOID_GRADING")));
@@ -156,6 +166,12 @@ namespace polymake { namespace polytope {
          result << convert_to<Integer>(Vector<mpz_class>(nmzCone.getHilbertSeries().getNum()));
       if (options["hilbert_series"])
          result << nmz_convert_HS(nmzCone.getHilbertSeries());
+      if (options["facets"]) {
+         result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getSupportHyperplanes()));
+         result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getEquations()));
+      }
+      if (options["rays"])
+         result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getExtremeRays()));
       return result;
    }
 
@@ -169,11 +185,13 @@ UserFunction4perl("# @category Geometric properties"
                   "# @option Bool hilbert_basis compute Hilbert basis of the cone C"
                   "# @option Bool h_star_vector compute Hilbert h-vector of the cone C"
                   "# @option Bool hilbert_series compute Hilbert series of the monoid"
+                  "# @option Bool facets compute support hyperplanes (=FACETS,LINEAR_SPAN)"
+                  "# @option Bool rays compute extreme rays (=RAYS)"
                   "# @option Bool dual_algorithm use the dual algorithm by Pottier"
                   "# @option Bool skip_long do not try to use long coordinates first"
                   "# @option Bool verbose libnormaliz debug output"
-                  "# @return perl::ListReturn (degree one generators, Hilbert basis, Hilbert h-vector, Hilbert series) (if they are requested)",
-                  &normaliz_compute, "normaliz_compute(Cone { from_facets => 0, degree_one_generators=>0, hilbert_basis=>0, h_star_vector=>0, hilbert_series=>0, dual_algorithm=>0, skip_long=>0, verbose => 0 })");
+                  "# @return perl::ListReturn (degree one generators, Hilbert basis, Hilbert h-vector, Hilbert series, facets, linear_span, rays) (if they are requested)",
+                  &normaliz_compute, "normaliz_compute(Cone { from_facets => 0, degree_one_generators=>0, hilbert_basis=>0, h_star_vector=>0, hilbert_series=>0, facets=>0, rays=>0, dual_algorithm=>0, skip_long=>0, verbose => 0 })");
 
 }
 }

@@ -87,15 +87,12 @@ import de.jreality.ui.viewerapp.actions.edit.TogglePickable;
 import de.jreality.ui.viewerapp.actions.edit.ToggleVisibility;
 import de.jreality.ui.viewerapp.actions.edit.export.ExportIFStoOBJ;
 import de.jreality.ui.viewerapp.actions.edit.export.ExportIFStoSTL;
-import de.jreality.ui.viewerapp.actions.edit.export.ExportIFStoVRML;
 import de.jreality.ui.viewerapp.actions.file.ExportImage;
 import de.jreality.ui.viewerapp.actions.file.ExportPDF;
 import de.jreality.ui.viewerapp.actions.file.ExportPS;
-import de.jreality.ui.viewerapp.actions.file.ExportRIB;
 import de.jreality.ui.viewerapp.actions.file.ExportSTL;
 import de.jreality.ui.viewerapp.actions.file.ExportSVG;
 import de.jreality.ui.viewerapp.actions.file.ExportU3D;
-import de.jreality.ui.viewerapp.actions.file.ExportVRML;
 import de.jreality.ui.viewerapp.actions.file.LoadFile;
 import de.jreality.ui.viewerapp.actions.file.LoadScene;
 import de.jreality.ui.viewerapp.actions.file.Quit;
@@ -157,7 +154,6 @@ public class ViewerAppMenu {
 	public static String ROTATE_REFLECTIONMAP_SIDES = "Rotate reflection map sides";
 	public static String GEOMETRY = "Geometry";
 	public static String EXPORT_OBJ = "Write OBJ";
-	public static String EXPORT_VRML = "Write VRML";
 	public static String EXPORT_STL = "Write STL";
 	public static String TOGGLE_PICKABLE = "Toggle pickable";
 	public static String ADD_TOOL = "Add Tools";
@@ -254,10 +250,8 @@ private JMenu createFileMenu() {
 			e.printStackTrace();
 			LoggingSystem.getLogger(this).log(Level.CONFIG, "no sunflow", e);
 		}
-		export.add(new JMenuItem(new ExportRIB("RIB", viewer, parentComp)));
 		export.add(new JMenuItem(new ExportSVG("SVG", viewer, parentComp)));
 		export.add(new JMenuItem(new ExportPS("PS", viewer, parentComp)));
-		export.add(new JMenuItem(new ExportVRML("VRML", viewer, parentComp)));
 		export.add(new JMenuItem(new ExportSTL("STL", viewer, parentComp)));
 		//   if (viewer.getDelegatedViewer() instanceof ViewerSwitch) {
 		exportImageAction = new ExportImage("Image",viewerApp.getViewerSwitch(), parentComp);
@@ -334,7 +328,6 @@ private JMenu createFileMenu() {
 		});
 		editMenu.add(geometry);
 		geometry.add(new JMenuItem(new ExportIFStoOBJ(EXPORT_OBJ, sm, parentComp)));
-		geometry.add(new JMenuItem(new ExportIFStoVRML(EXPORT_VRML, sm, parentComp)));
 		geometry.add(new JMenuItem(new ExportIFStoSTL(EXPORT_STL, sm, parentComp)));
 		geometry.add(new JMenuItem(new TogglePickable(TOGGLE_PICKABLE, sm)));
 		editMenu.addSeparator();

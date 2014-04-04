@@ -15,13 +15,13 @@
 */
 
 #include "polymake/Rational.h"
-#include "polymake/Set.h"
+#include "polymake/common/boost_dynamic_bitset.h"
 #include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Array.h"
 #include "polymake/SparseMatrix.h"
-#include "polymake/common/boost_dynamic_bitset.h"
 #include "polymake/QuadraticExtension.h"
+#include "polymake/Set.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -31,14 +31,15 @@ namespace polymake { namespace polytope { namespace {
       WrapperReturn( (simplexity_lower_bound<T0,T1>(arg0, arg1.get<T2>(), arg2.get<T3>(), arg3, arg4.get<T4>(), arg5)) );
    };
 
+   template <typename T0, typename T1, typename T2, typename T3>
+   FunctionInterface4perl( simplexity_ilp_x_X_X_x_X_o, T0,T1,T2,T3 ) {
+      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]), arg3(stack[4]), arg4(stack[5]), arg5(stack[6]);
+      WrapperReturn( (simplexity_ilp<T0>(arg0, arg1.get<T1>(), arg2.get<T2>(), arg3, arg4.get<T3>(), arg5)) );
+   };
+
+   FunctionInstance4perl(simplexity_ilp_x_X_X_x_X_o, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< Set< int > > >, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
+   FunctionInstance4perl(simplexity_lower_bound_x_X_X_x_X_o, Rational, Set< int >, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< Set< int > > >, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
    FunctionInstance4perl(simplexity_lower_bound_x_X_X_x_X_o, Rational, boost_dynamic_bitset, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< boost_dynamic_bitset > >, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
    FunctionInstance4perl(simplexity_lower_bound_x_X_X_x_X_o, QuadraticExtension< Rational >, boost_dynamic_bitset, perl::Canned< const SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >, perl::Canned< const Array< boost_dynamic_bitset > >, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
-   FunctionInstance4perl(simplexity_lower_bound_x_X_X_x_X_o, Rational, Set< int >, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< Set< int > > >, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
-   FunctionWrapper4perl( pm::Integer (int, pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, pm::Rational const&, pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, perl::OptionSet) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]), arg4(stack[4]), arg5(stack[5]);
-      IndirectWrapperReturn( arg0, arg1.get< perl::TryCanned< const Matrix< Rational > > >(), arg2.get< perl::TryCanned< const Array< Set< int > > > >(), arg3.get< perl::TryCanned< const Rational > >(), arg4.get< perl::TryCanned< const SparseMatrix< Rational, NonSymmetric > > >(), arg5 );
-   }
-   FunctionWrapperInstance4perl( pm::Integer (int, pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, pm::Rational const&, pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, perl::OptionSet) );
-
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

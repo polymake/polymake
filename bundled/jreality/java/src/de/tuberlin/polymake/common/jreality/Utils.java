@@ -29,6 +29,7 @@ import de.jreality.scene.Geometry;
 import de.jreality.scene.IndexedFaceSet;
 import de.jreality.scene.PointSet;
 import de.jreality.scene.SceneGraphComponent;
+import de.jreality.scene.SceneGraphNode;
 import de.jreality.scene.Transformation;
 import de.jreality.scene.data.Attribute;
 import de.jreality.scene.data.DataList;
@@ -68,6 +69,9 @@ public class Utils {
 
 				double[] mat = m.getArray();
 				Transformation trans = new Transformation(mat);
+				if(childComponent.getName().equalsIgnoreCase("CoordinateSystem")){
+				    continue;
+				}
 				childComponent.setTransformation(trans);
 			}
 		}
@@ -85,7 +89,9 @@ public class Utils {
 			}
 		}
 		for(SceneGraphComponent child : sgc.getChildComponents()) {
-			pointsList.addAll(collectPoints(child));
+		    if(!child.getName().equalsIgnoreCase("BAS") && !child.getName().equalsIgnoreCase("CoordinateSystem")) {
+				pointsList.addAll(collectPoints(child));
+			} 
 		}
 		return pointsList;
 	}
@@ -99,7 +105,6 @@ public class Utils {
 			if(geometry == null) {
 				refineGeometry(child, null, level, sphere);
 			} else if(geometry instanceof IndexedFaceSet) {
-				System.out.println(geometry);
 				SceneGraphUtility.removeChildNode(geom, child);
 				IndexedFaceSet ifs = (IndexedFaceSet) geometry;
 				int[][] indices = ifs.getFaceAttributes(Attribute.INDICES).toIntArrayArray().toIntArrayArray(null);
@@ -233,51 +238,59 @@ public class Utils {
 			for (Attribute attr : dls.storedAttributes()) {
 				Object dl = new Object();
 				dls.getList(attr).copyTo(dls.getList(attr).getStorageModel(),dl);
-				System.out.println(dls.getList(attr).toString());
 				sgc.getGeometry().setAttributes(category, attr,(DataList)dl);	
 			}
-			System.out.println(dls);
-			
 		}
 		return sgc;
 	}
 
-	public static void splitIndexedFaceSetsGeometry(SceneGraphComponent geom) {
+	public static void splitAllIndexedFaceSetsGeometry(SceneGraphComponent geom) {
 		for(SceneGraphComponent child : new LinkedList<SceneGraphComponent>(geom.getChildComponents())) {
-			Geometry geometry = child.getGeometry();
-			if(geometry == null) {
-				splitIndexedFaceSetsGeometry(child);
-			} else if(geometry instanceof IndexedFaceSet) {
-				Appearance appearance = child.getAppearance();
-				SceneGraphUtility.removeChildNode(geom, child);
-				String name = child.getName();
-				IndexedFaceSet ifs = (IndexedFaceSet) geometry;
-				int[][] indices = ifs.getFaceAttributes(Attribute.INDICES).toIntArrayArray().toIntArrayArray(null);
-				double[][] coords = ifs.getVertexAttributes(Attribute.COORDINATES).toDoubleArrayArray(null);
-				SceneGraphComponent newChild = new SceneGraphComponent(name);
-				for(int i = 0; i < indices.length; ++i) {
-					
-					SceneGraphComponent face = new SceneGraphComponent("Face "+i);
-					int length = indices[i].length;
-					int[][] fincid = new int[1][length];
-					double[][] fcoord = new double[length][coords[0].length];
-					for(int j = 0; j < indices[i].length; ++j) {
-						fincid[0][j] = j; 
-						System.arraycopy(coords[indices[i][j]], 0, fcoord[j], 0, coords[0].length);
-					}
-					IndexedFaceSetFactory ifsf = new IndexedFaceSetFactory();
-					ifsf.setGenerateFaceNormals(true);
-					ifsf.setGenerateEdgesFromFaces(true);
-					ifsf.setVertexCount(fcoord.length);
-					ifsf.setFaceCount(1);
-					ifsf.setVertexCoordinates(fcoord);
-					ifsf.setFaceIndices(fincid);
-					ifsf.update();
-					face.setGeometry(ifsf.getGeometry());
-					face.setAppearance(SceneGraphUtility.copy(appearance));
-					newChild.addChild(face);
+			splitAllIndexedFaceSetsGeometry(child);
+			splitIndexedFaceSet(child);
+		}
+	}
+
+	public static void splitIndexedFaceSet(SceneGraphComponent sgc) {
+		Geometry geometry = sgc.getGeometry();
+		if(geometry instanceof IndexedFaceSet) {
+			Appearance appearance = sgc.getAppearance();
+//			SceneGraphUtility.removeChildNode(parent, child);
+			for(SceneGraphNode node : sgc.getChildNodes()) {
+				if(node instanceof Geometry) {
+					SceneGraphUtility.removeChildNode(sgc, node);
+				} else if(node instanceof Appearance) {
+					SceneGraphUtility.removeChildNode(sgc, node);
 				}
-				geom.addChild(newChild);
+			}
+			IndexedFaceSet ifs = (IndexedFaceSet) geometry;
+			int[][] indices = ifs.getFaceAttributes(Attribute.INDICES).toIntArrayArray().toIntArrayArray(null);
+			double[][] coords = ifs.getVertexAttributes(Attribute.COORDINATES).toDoubleArrayArray(null);
+			for(int i = 0; i < indices.length; ++i) {
+				
+				SceneGraphComponent face = new SceneGraphComponent("Face "+i);
+				int length = indices[i].length;
+				int[][] fincid = new int[1][length];
+				double[][] fcoord = new double[length][coords[0].length];
+				for(int j = 0; j < indices[i].length; ++j) {
+					fincid[0][j] = j; 
+					System.arraycopy(coords[indices[i][j]], 0, fcoord[j], 0, coords[0].length);
+				}
+				IndexedFaceSetFactory ifsf = new IndexedFaceSetFactory();
+				ifsf.setGenerateFaceNormals(true);
+				ifsf.setGenerateEdgesFromFaces(true);
+				ifsf.setVertexCount(fcoord.length);
+				ifsf.setFaceCount(1);
+				ifsf.setVertexCoordinates(fcoord);
+				ifsf.setFaceIndices(fincid);
+				ifsf.update();
+				face.setGeometry(ifsf.getGeometry());
+				if(appearance != null) {
+					face.setAppearance(SceneGraphUtility.copy(appearance));
+				} else {
+					face.setAppearance(new Appearance());
+				}
+				sgc.addChild(face);
 			}
 		}
 	}

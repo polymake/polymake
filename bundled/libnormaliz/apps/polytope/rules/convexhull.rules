@@ -1,0 +1,39 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.de
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object Cone<Rational> {
+
+   rule libnormaliz.convex_hull.primal: FACETS, LINEAR_SPAN : RAYS | INPUT_RAYS {
+      my ($f,$ls) = normaliz_compute($this,from_facets=>0,facets=>1,verbose=>0,skip_long=>0);
+      $this->FACETS = $f;
+      $this->LINEAR_SPAN = $ls;
+   }
+   weight 4.10;
+   precondition : N_RAYS | N_INPUT_RAYS;
+   precondition : POINTED;
+   permutation : FacetPerm;
+
+   rule libnormaliz.convex_hull.dual: RAYS , LINEALITY_SPACE : FACETS | INEQUALITIES {
+      my ($r) = normaliz_compute($this,from_facets=>1,rays=>1,verbose=>0,skip_long=>0);
+      $this->RAYS = $r;
+      $this->LINEALITY_SPACE = new Matrix();
+   }
+   weight 4.10;
+   precondition : FULL_DIM;
+   precondition : POINTED;
+   permutation : VertexPerm;
+
+}
+

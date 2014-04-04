@@ -1,7 +1,0 @@
-# PORTAL configuration file
-
-parent: portal.props
-
-frame.offset.x: 0
-
-camera.orientation: -90. 0. 1. 0.

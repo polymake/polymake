@@ -704,6 +704,25 @@ user_function dihedral_angle<Scalar> (Vector<Scalar>, Vector<Scalar>; { deg=>0, 
   return $angle;
 }
 
+
+user_function minkowski_sum<Scalar> (Polytope<Scalar>, Polytope<Scalar> ) {
+    my ($p1,$p2) = @_;
+    return minkowski_sum(1,$p1,1,$p2);
+}
+
+user_function minkowski_sum<Scalar> ($, Polytope<Scalar>, $, Polytope<Scalar> ) {
+    my ($l1,$p1,$l2,$p2) = @_;
+    my $v1=$p1->give("VERTICES | POINTS");
+    my $v2=$p2->give("VERTICES | POINTS");
+    my $p=minkowski_sum_client($l1,$v1,$l2,$v2);
+    my $ls1=$p1->give("LINEALITY_SPACE");
+    my $ls2=$p2->give("LINEALITY_SPACE");
+    my $p_out = new Polytope(POINTS=>$p, INPUT_LINEALITY=>$ls1/$ls2);
+    $p_out->description = "Minkowski sum of ".$l1."*".$p1->name." and ".$l2."*".$p2->name;
+    return $p_out;
+}
+
+
 # Local Variables:
 # mode: perl
 # cperl-indent-level: 3

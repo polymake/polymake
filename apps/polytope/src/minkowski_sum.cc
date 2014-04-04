@@ -29,23 +29,17 @@ minkowski_sum(const GenericMatrix<Matrix1,E>& A, const GenericMatrix<Matrix2,E>&
    return result;
 }
 
+
+
 template <typename Scalar>
-perl::Object minkowski_sum(const Scalar& lambda1, perl::Object p_in1, const Scalar& lambda2, perl::Object p_in2)
+Matrix<Scalar>
+minkowski_sum_client(const Scalar& lambda1, const Matrix<Scalar>& V1, const Scalar& lambda2, const Matrix<Scalar>& V2)
 {
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
-   p_out.set_description() << "Minkowski sum of " << lambda1 <<"*"<< p_in1.name() << " and " << lambda2 << "*" << p_in2.name() << endl;
-
-   const Matrix<Scalar> V1=p_in1.give("VERTICES | POINTS"),
-                        V2=p_in2.give("VERTICES | POINTS");
-
-   if (V1.cols() != V2.cols())
+  if (V1.cols() != V2.cols())
       throw std::runtime_error("dimension mismatch");
 
    const Set<int> rays1=far_points(V1),
                   rays2=far_points(V2);
-
-   const Matrix<Scalar> L1=p_in1.give("LINEALITY_SPACE"),
-                        L2=p_in2.give("LINEALITY_SPACE");
 
    const Matrix<Scalar> P= rays1.empty() && rays2.empty()
                            ? minkowski_sum(lambda1*V1,lambda2*V2)
@@ -53,29 +47,10 @@ perl::Object minkowski_sum(const Scalar& lambda1, perl::Object p_in1, const Scal
                              (sign(lambda1)*V1.minor(rays1,All)) /
                              (sign(lambda2)*V2.minor(rays2,All)) ;
 
-   const Matrix<Scalar> L=L1 / L2;
-
-   p_out.take("INPUT_LINEALITY")<<L;
-   p_out.take("POINTS") << P;
-   return p_out;
+   return P;
 }
 
-UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
-                          "# Produces the polytope //lambda//*//P1//+//mu//*//P2//, where * and + are scalar multiplication"
-                          "# and Minkowski addition, respectively."
-                          "# @param Scalar lambda"
-                          "# @param Polytope P1"
-                          "# @param Scalar mu"
-                          "# @param Polytope P2"
-                          "# @return Polytope",
-                          "minkowski_sum<Scalar>($ Polytope<Scalar> $ Polytope<Scalar>)");
-
-InsertEmbeddedRule("# @category Producing a polytope from polytopes\n"
-                   "# Produces the Minkowski sum of //P1// and //P2//.\n"
-                   "# @param Polytope P1\n"
-                   "# @param Polytope P2\n"
-                   "# @return Polytope\n"
-                   "user_function minkowski_sum(Polytope Polytope) { minkowski_sum(1,$_[0],1,$_[1]); }\n");
+FunctionTemplate4perl("minkowski_sum_client<Scalar>($, Matrix<Scalar>, $, Matrix<Scalar>)");
 
 } }
 

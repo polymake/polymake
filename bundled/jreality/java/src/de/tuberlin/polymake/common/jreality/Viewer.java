@@ -62,8 +62,6 @@ public class Viewer extends PolymakeViewer {
 
 	private ExplodePlugin explodePlugin = new ExplodePlugin();
 	
-    // private SunflowPlugin sunflowPlugin = new SunflowPlugin();
-	
     public Viewer(EmbeddedGeometries eg) {
         this(eg, (Transformation)null, new Plugin[]{});
     }
@@ -122,7 +120,6 @@ public class Viewer extends PolymakeViewer {
             jrviewer.registerPlugin(explodePlugin);
             explodePlugin.setSceneGraphComponent(polymakeRoot);
         }
-        jrviewer.registerPlugin(new SplitGeometriesPlugin(polymakeRoot));
         VisualizationPlugin visualizationPlugin = new VisualizationPlugin(polymakeRoot);
         if(eg.getName().contains("fan:")) {
             visualizationPlugin.setSphericalRefineEnabled(true);

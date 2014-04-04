@@ -14,20 +14,13 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/Rational.h"
-#include "polymake/Matrix.h"
-#include "polymake/IncidenceMatrix.h"
-#include "polymake/SparseMatrix.h"
-
-namespace polymake { namespace polytope { namespace {
+namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0, typename T1, typename T2>
-   FunctionInterface4perl( minkowski_sum_client_x_X_x_X, T0,T1,T2 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]), arg3(stack[4]);
-      WrapperReturn( (minkowski_sum_client<T0>(arg0, arg1.get<T1>(), arg2, arg3.get<T2>())) );
-   };
+   FunctionWrapper4perl( pm::Array<int, void> (int, perl::OptionSet) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      IndirectWrapperReturn( arg0, arg1 );
+   }
+   FunctionWrapperInstance4perl( pm::Array<int, void> (int, perl::OptionSet) );
 
-   FunctionInstance4perl(minkowski_sum_client_x_X_x_X, Rational, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >, perl::Canned< const Matrix< Rational > >);
-   FunctionInstance4perl(minkowski_sum_client_x_X_x_X, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Matrix< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

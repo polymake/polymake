@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Collection;
 
 import javax.swing.AbstractAction;
 import javax.swing.DefaultListCellRenderer;
@@ -23,6 +24,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JSpinner;
+import javax.swing.JTable;
 import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
 import javax.swing.ScrollPaneConstants;
@@ -31,6 +33,10 @@ import javax.swing.SwingConstants;
 import javax.swing.event.ListDataListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+import javax.swing.event.TableModelListener;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableModel;
 
 import de.jreality.geometry.CoordinateSystemFactory;
 import de.jreality.geometry.SphereUtility;
@@ -49,7 +55,7 @@ import de.jtem.jrworkspace.plugin.sidecontainer.widget.ShrinkPanel;
 
 public class VisualizationPlugin 
 		extends ShrinkPanelPlugin 
-		implements ListSelectionListener, ActionListener {
+		implements ActionListener {
 		
 	private SpinnerNumberModel 
 		levelModel = new SpinnerNumberModel(3, 0, 10, 1);
@@ -58,13 +64,15 @@ public class VisualizationPlugin
 		levelSpinner = new JSpinner(levelModel);
 	
 	private JButton 
-		refineButton = new JButton("Refine");
+	    refineButton = new JButton("Refine"),
+	    rescanButton = new JButton("Rescan"),
+	    splitButton = new JButton("Split");
 	
 	private GeometryModel
 		geometryModel = null; 
 	
-	private JList
-		geometryList = null;
+	private JTable
+		geometryTable = null;
 	
 	private ShrinkPanel
 		fanShrinkPanel = new ShrinkPanel("Fan refinement"),
@@ -100,37 +108,46 @@ public class VisualizationPlugin
 	public VisualizationPlugin(SceneGraphComponent root) {
 		this.root = root;
 		geometryModel = new GeometryModel(new LinkedList<SceneGraphComponent>(root.getChildComponents()));
-		geometryList = new JList(geometryModel);
-		geometryList.setPreferredSize(new Dimension(150, 40));
+		geometryTable = new JTable(geometryModel);
 
-		geometryList.setCellRenderer(new GeometryCellRenderer());
-		geometryList.getSelectionModel().addListSelectionListener(geometryModel);
-		geometryList.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		geometryTable.setDefaultRenderer(SceneGraphComponent.class, new GeometryCellRenderer());
+		geometryTable.getColumnModel().getColumn(0).setMaxWidth(20);
+		geometryTable.getSelectionModel().addListSelectionListener(geometryModel);
+		geometryTable.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		
 		shrinkPanel.setLayout(new GridBagLayout());
 		
 		GridBagConstraints gbc2 = LayoutFactory.createRightConstraint();
-		
+		shrinkPanel.setPreferredSize(new Dimension(150,300));
 		shrinkPanel.add(new JLabel("Geometries"),gbc2);
-		JScrollPane listPane = new JScrollPane(geometryList, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-		listPane.setMaximumSize(new Dimension(0,10));
+		JScrollPane listPane = new JScrollPane(geometryTable, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+		listPane.setPreferredSize(new Dimension(150,100));
 		shrinkPanel.add(listPane,gbc2);
-		geometryList.addListSelectionListener(this);
-		shrinkPanel.add(new JSeparator(SwingConstants.HORIZONTAL),gbc2);
+		gbc2.gridwidth = 1;
+		shrinkPanel.add(splitButton, gbc2);
+		gbc2.gridwidth = GridBagConstraints.REMAINDER;
+		shrinkPanel.add(rescanButton,gbc2);
 		
-		appearanceShrinkPanel.setLayout(new GridLayout(2,1));
-		appearanceShrinkPanel.add(appearanceInspector);
-		appearanceInspector.setMaximalRadius(5.0);
+//		appearanceShrinkPanel.setLayout(new GridLayout(3,1));
+		appearanceShrinkPanel.setPreferredSize(new Dimension(150,150));
+		appearanceShrinkPanel.add(appearanceInspector, gbc2);
+		appearanceInspector.setPreferredSize(new Dimension(100,100));
+		appearanceInspector.setMaximalRadius(10.0);
 		appearanceShrinkPanel.setShrinked(false);
 		JPanel clearPanel = new JPanel();
-		clearPanel.add(new JLabel("Clear"));
+		clearPanel.setPreferredSize(new Dimension(100,32));
+		clearPanel.setLayout(new GridBagLayout());
+		gbc2.gridwidth = 1;
+		clearPanel.add(new JLabel("Clear"),gbc2);
 		JButton clearAppearanceButton = new JButton(new RemoveAppearanceAction());
 		clearAppearanceButton.setToolTipText("Clear colors and sizes in Appearance");
-		clearPanel.add(clearAppearanceButton);
+		clearPanel.add(clearAppearanceButton,gbc2);
 		JButton clearAttributesButton = new JButton(new RemoveGeometryAttributesAction());
 		clearAttributesButton.setToolTipText("Clear individual colors/sizes in Attributes");
-		clearPanel.add(clearAttributesButton);
-		appearanceShrinkPanel.add(clearPanel);
+		gbc2.gridwidth = GridBagConstraints.REMAINDER;
+		clearPanel.add(clearAttributesButton,gbc2);
+		appearanceShrinkPanel.add(new JSeparator(SwingConstants.HORIZONTAL),gbc2);
+		appearanceShrinkPanel.add(clearPanel, gbc2);
 		shrinkPanel.add(appearanceShrinkPanel, gbc2);
 		
 		
@@ -171,6 +188,16 @@ public class VisualizationPlugin
 		coordSystem.showBoxArrows(true);
 		coordSystem.beautify(true);
 		coordSystem.setColor(Color.DARK_GRAY);
+		Appearance coordAppearance = new Appearance();
+		coordAppearance.setAttribute(CommonAttributes.VERTEX_DRAW, false);
+		coordAppearance.setAttribute(CommonAttributes.EDGE_DRAW, true);
+		coordAppearance.setAttribute(CommonAttributes.FACE_DRAW, true);
+		coordAppearance.setAttribute(CommonAttributes.POLYGON_SHADER + "." + CommonAttributes.SMOOTH_SHADING, true);
+		
+		coordSystem.getCoordinateSystem().setAppearance(coordAppearance);
+
+		rescanButton.addActionListener(this);
+		splitButton.addActionListener(this);
 	}
 	
 	@Override
@@ -183,8 +210,11 @@ public class VisualizationPlugin
 		return View.class;
 	}
 
-	private class GeometryModel implements ListModel, ListSelectionListener {
+	private class GeometryModel extends DefaultTableModel implements ListSelectionListener{
 
+		private String[] 
+				columnNames = {"", "Name"};
+		
 		private List<SceneGraphComponent>
 			geometryComponents = null;
 		
@@ -195,34 +225,17 @@ public class VisualizationPlugin
 			geometryComponents = cps;
 		}
 		
-		@Override
-		public int getSize() {
-			return geometryComponents.size();
-		}
-
-		@Override
-		public Object getElementAt(int index) {
-			return geometryComponents.get(index);
-		}
-
 		public List<SceneGraphComponent> getElements() {
 			return geometryComponents;
 		}
 		
 		@Override
-		public void addListDataListener(ListDataListener l) {
-			// TODO Auto-generated method stub
-		}
-
-		@Override
-		public void removeListDataListener(ListDataListener l) {
-			// TODO Auto-generated method stub
-		}
-
-		@Override
 		public void valueChanged(ListSelectionEvent e) {
-			SceneGraphComponent sgc = (SceneGraphComponent)geometryList.getSelectedValue();
-			if(sgc == selectedComponent) {
+		        int i = geometryTable.getSelectedRow();
+
+			if(e.getValueIsAdjusting()) { return; }
+			SceneGraphComponent sgc = geometryComponents.get(i);
+			if(sgc == null || sgc == selectedComponent) {
 				return;
 			} else {
 				selectedComponent = sgc;
@@ -237,7 +250,9 @@ public class VisualizationPlugin
 			SceneGraphComponent basc = basPanel.getSceneGraphComponent();
 			basc.setVisible(showArrows);
 			componentArrowsMap.put(selectedComponent,basc);
-			sgc.addChild(basc);
+			if(sgc != basc) {
+				sgc.addChild(basc);
+			}
 			
 			Appearance newApp = selectedComponent.getAppearance();
 			if(newApp == null) {
@@ -258,27 +273,93 @@ public class VisualizationPlugin
 				basPanel.setShowArrows(showArrows);
 			}
 		}
+
+		@Override
+		public int getRowCount() {
+			if(geometryComponents == null) {
+				return 0;
+			}
+			return geometryComponents.size();
+		}
+
+		@Override
+		public int getColumnCount() {
+			return 2;
+		}
+
+		@Override
+		public String getColumnName(int columnIndex) {
+			return columnNames[columnIndex];
+		}
+
+		@Override
+		public Class<?> getColumnClass(int columnIndex) {
+			switch (columnIndex) {
+			case 0:
+				return Boolean.class;
+			case 1:
+				return SceneGraphComponent.class;
+			default:
+				return String.class;
+			}
+		}
+
+		@Override
+		public boolean isCellEditable(int rowIndex, int columnIndex) {
+			if(columnIndex == 0) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+
+		@Override
+		public Object getValueAt(int rowIndex, int columnIndex) {
+			if(columnIndex == 1) {
+				return geometryComponents.get(rowIndex);
+			} else {
+				return geometryComponents.get(rowIndex).isVisible();
+			}
+		}
+
+		@Override
+		public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
+			if(columnIndex == 0) {
+				geometryComponents.get(rowIndex).setVisible((Boolean)aValue);
+			}
+		}
+
+		public SceneGraphComponent getSelectedComponent() {
+			return selectedComponent;
+		}
+	    
+	        public void clear() {
+		    geometryComponents.clear();
+		}
+	   
+	    public void addAll(Collection<SceneGraphComponent> c) {
+		geometryComponents.addAll(c);
+	    }
+
 	}
 	
-	private class GeometryCellRenderer extends DefaultListCellRenderer {
+	private class GeometryCellRenderer extends DefaultTableCellRenderer {
 
 		private static final long serialVersionUID = 1L;
 
 		public GeometryCellRenderer() {}
 
 		@Override
-		public Component getListCellRendererComponent(
-				JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+		public Component getTableCellRendererComponent(JTable table,
+				Object value, boolean isSelected, boolean hasFocus, int row,
+				int column) {
 			if(value instanceof SceneGraphComponent) {
-				return super.getListCellRendererComponent(list, ((SceneGraphComponent)value).getName(), index, isSelected, cellHasFocus);
+				return super.getTableCellRendererComponent(table, ((SceneGraphComponent)value).getName(), isSelected, hasFocus, row, column);
 			} else {
-				return super.getListCellRendererComponent(list, value, index, isSelected,cellHasFocus);
+				return super.getTableCellRendererComponent(table, value, isSelected, hasFocus,
+					row, column);
 			}
 		}
-	}
-
-	@Override
-	public void valueChanged(ListSelectionEvent e) {
 	}
 
 	@Override
@@ -290,8 +371,15 @@ public class VisualizationPlugin
 	public void actionPerformed(ActionEvent e) {
 		Object source = e.getSource();
 		if(source == refineButton) { 
-			for(int i = 0; i < geometryModel.getSize(); ++i) { 
+			for(int i = 0; i < geometryModel.getRowCount(); ++i) { 
 				Utils.refineGeometry(root, geometryModel.getElements(), levelModel.getNumber().intValue(),showSphere.isSelected());
+			}
+		} else if(source == rescanButton) {
+		    rescanPolymakeRoot();
+		} else if(source == splitButton) {
+			SceneGraphComponent sgc = geometryModel.getSelectedComponent();
+			if(sgc != null) {
+				Utils.splitIndexedFaceSet(sgc);
 			}
 		}
 		coordSystem.showAxes(axesBox.isSelected());		
@@ -301,6 +389,41 @@ public class VisualizationPlugin
 		updateUnitSphereComponent();
 	}
 	
+	private void rescanPolymakeRoot() {
+		List<SceneGraphComponent> geometries = collectGeometries(root);
+		updateGeometryTable(geometries);
+	}
+
+	private void updateGeometryTable(List<SceneGraphComponent> geometries) {
+		geometryModel.clear();
+		geometryModel.addAll(geometries);
+		geometryModel.fireTableDataChanged();
+	}
+
+	private List<SceneGraphComponent> collectGeometries(SceneGraphComponent r) {
+		List<SceneGraphComponent> children = r.getChildComponents();
+		List<SceneGraphComponent> geomNodes = filterGeometries(children);
+		for(SceneGraphComponent child : children) {
+			if(child.getName().equalsIgnoreCase("BAS")) {
+				// do nothing.
+				// geomNodes.add(child);
+			} else if(child != auxiliaryGeometryComponent && child != coordSystem.getCoordinateSystem()) {
+				geomNodes.addAll(collectGeometries(child));
+			}
+		}
+		return geomNodes;
+	}
+
+	private List<SceneGraphComponent> filterGeometries(List<SceneGraphComponent> cps) {
+		List<SceneGraphComponent> geometries = new LinkedList<SceneGraphComponent>();
+		for(SceneGraphComponent sgc : cps) {
+			if(sgc.getGeometry() != null) {
+				geometries.add(sgc);
+			}
+		}
+		return geometries;
+	}
+
 	private void initUnitSphereComponent() {
 		unitSphereComponent.setGeometry(SphereUtility.tessellatedIcosahedronSphere(2));
 		unitSphereComponent.setVisible(false);
@@ -333,7 +456,7 @@ public class VisualizationPlugin
 		
 		@Override
 		public void actionPerformed(ActionEvent e) {
-			SceneGraphComponent sgc = (SceneGraphComponent)geometryList.getSelectedValue();
+			SceneGraphComponent sgc = geometryModel.getSelectedComponent();
 			Utils.clearAttributes(sgc);
 		}
 	}
@@ -348,7 +471,7 @@ public class VisualizationPlugin
 		
 		@Override
 		public void actionPerformed(ActionEvent e) {
-			SceneGraphComponent sgc = (SceneGraphComponent)geometryList.getSelectedValue();
+			SceneGraphComponent sgc = geometryModel.getSelectedComponent();
 			Utils.clearAppearance(sgc);
 			Appearance emptyAppearance = sgc.getAppearance();
 			if(emptyAppearance != null) {

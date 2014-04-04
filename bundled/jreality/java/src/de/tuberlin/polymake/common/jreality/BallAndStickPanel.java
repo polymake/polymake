@@ -32,10 +32,10 @@ public class BallAndStickPanel extends JPanel implements ActionListener, ChangeL
 		showArrowBox = new JCheckBox("Show arrows");
 	
 	private SpinnerNumberModel
-		stickRadiusModel = new SpinnerNumberModel(0.1, 0.0, 2.0, 0.1),
+		stickRadiusModel = new SpinnerNumberModel(0.02, 0.0, 2.0, 0.1),
 		positionModel = new SpinnerNumberModel(.7, 0.0, 1.0, 0.1),
 		scaleModel = new SpinnerNumberModel(.1, 0.0, 1.0, 0.1),
-		slopeModel = new SpinnerNumberModel(1.5,0.5,10.0,0.5);
+		slopeModel = new SpinnerNumberModel(2.5,0.5,10.0,0.5);
 	
 	private JSpinner
 		stickRadiusSpinner = new JSpinner(stickRadiusModel),

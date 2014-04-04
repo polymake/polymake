@@ -41,7 +41,7 @@ user_function write_simplexity_ilp<Scalar>(Polytope<Scalar> $) {
     my $p = shift;
     my $outfilename = shift;
     my $rmis = new Array<Set>($p->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES);
-    return simplexity_ilp($p->COMBINATORIAL_DIM, $p->VERTICES, $rmis, $p->VOLUME, $p->GROUP->COCIRCUIT_EQUATIONS, filename => $outfilename);
+    return simplexity_ilp($p->COMBINATORIAL_DIM, $p->VERTICES, $rmis, $p->VOLUME, $p->GROUP->SYMMETRIZED_COCIRCUIT_EQUATIONS, filename => $outfilename);
 }
 
 
