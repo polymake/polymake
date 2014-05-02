@@ -510,7 +510,7 @@ options %schlegel_init=(
 # @option FIXME proj_facet decorations for the Edges of the projection face 
 # @return Visual::SchlegelDiagram
 
-user_method SCHLEGEL(%schlegel_init,  { proj_facet => undef },  %Visual::Wire::decorations) {
+user_method SCHLEGEL(%schlegel_init,  { proj_facet => undef },  %Visual::Wire::decorations) : VERTICES, VERTICES_IN_FACETS, N_FACETS, GRAPH {
    my ($this, $schlegel_init, $proj_facet_decor, $decor)=@_;
    if (!defined(wantarray) && !keys %$schlegel_init and my @SD=@{$this->lookup("SCHLEGEL_DIAGRAM")}) {
       $_->VISUAL($proj_facet_decor,$decor) for @SD;

@@ -66,6 +66,9 @@ user_function scalar_product<Addition>($$) {
 
 # Tropical convex hull of finitely many points in the tropical (d-1)-torus, as introduced by Develin and Sturmfels.
 # One construction is via the bounded subcomplex of an unbounded ordinary convex polyhedron.
+# 
+# Currently only works for Min as tropical addition (subject to change in future versions of polymake).
+#
 declare object TropicalPolytope<Scalar=Rational> [ typechecks::is_ordered_field_with_unlimited_precision(Scalar) ];
 
 
