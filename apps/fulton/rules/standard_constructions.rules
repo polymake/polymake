@@ -1,0 +1,44 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# @category Normal Toric Varieties
+# takes one parameter r
+# and returns the polyhedral fan corresponding the the 
+# Hirzebruch surface H_r
+user_function hirzebruch_surface {
+
+  my $r=shift;
+  $r >= 0 or die "hirzebruch_surface: index must be non-negative\n";
+  my $m=new Matrix<Rational>((unit_matrix<Rational>(2))/(-(unit_matrix<Rational>(2))));
+  $m->(2,1)=$r;
+  my $f=new NormalToricVariety(RAYS=>$m, MAXIMAL_CONES=>[[0,1],[1,2],[2,3],[0,3]],COMPLETE=>1,PROJECTIVE=>1,SIMPLICIAL=>1,DEGENERATE=>0);
+  return $f;
+}
+
+# @category NormalToric Varieties
+# takes one parameter r
+# and returns the fan corresponding to the r-dimensional projective space
+user_function projective_space {
+
+  my $r=shift;
+  $r > 0 or die "projective_space: dimension must be positive\n";
+
+  my $m=new Matrix<Rational>((unit_matrix<Rational>($r))/(-(ones_vector<Rational>($r))));
+  my @a=();
+  foreach (all_subsets_of_k($r,0..$r)) { push @a, $_; }
+  my $f=new NormalToricVariety(RAYS=>$m, MAXIMAL_CONES=>\@a,COMPLETE=>1,PROJECTIVE=>1,SIMPLICIAL=>1,DEGENERATE=>0);
+  return $f;
+}

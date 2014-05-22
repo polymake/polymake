@@ -1,0 +1,188 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object Graph {
+
+rule N_NODES : ADJACENCY {
+   $this->N_NODES=$this->ADJACENCY->nodes;
+}
+weight 0.10;
+
+rule N_EDGES : ADJACENCY {
+   $this->N_EDGES=$this->ADJACENCY->edges;
+}
+weight 0.10;
+
+rule NODE_DEGREES : ADJACENCY {
+   $this->NODE_DEGREES(temporary)=[ map { $this->ADJACENCY->degree($_) } 0..($this->ADJACENCY->nodes-1) ];
+}
+weight 1.10;
+
+rule DIAMETER : ADJACENCY {
+   $this->DIAMETER=diameter($this->ADJACENCY);
+}
+precondition : CONNECTED;
+
+rule CONNECTED : ADJACENCY {
+   $this->CONNECTED=is_connected($this->ADJACENCY);
+}
+weight 1.10;
+
+rule CONNECTED_COMPONENTS : ADJACENCY {
+   $this->CONNECTED_COMPONENTS=connected_components($this->ADJACENCY);
+}
+
+rule N_CONNECTED_COMPONENTS : CONNECTED_COMPONENTS {
+   $this->N_CONNECTED_COMPONENTS=@{$this->CONNECTED_COMPONENTS};
+}
+weight 0.10;
+
+rule CONNECTED : N_CONNECTED_COMPONENTS {
+   $this->CONNECTED = $this->N_CONNECTED_COMPONENTS <= 1;
+}
+weight 0.10;
+
+
+# Explore the graph as a sequence of its edges.
+# @return Array<Set<Int>>
+user_method EDGES {
+  my $g = shift;
+  my $a = new Array<Set<Int> >($g->N_EDGES);
+  my $i = 0;
+  for ( my $e=entire(edges($g->ADJACENCY)); $e; ++$e, ++$i ) { 
+     $a->[$i] = new Set<Int>([$e->from_node,$e->to_node]);
+  }
+  return $a;
+}
+
+}
+
+object Graph<Undirected> {
+
+rule BIPARTITE, SIGNATURE : ADJACENCY {
+   bipartite_signature($this);
+}
+precondition : N_NODES;
+weight 1.10;
+
+
+rule TRIANGLE_FREE : ADJACENCY {
+   $this->TRIANGLE_FREE=triangle_free($this->ADJACENCY);
+}
+
+rule TRIANGLE_FREE : { $this->TRIANGLE_FREE=1 }
+precondition : BIPARTITE;
+weight 0.10;
+
+rule CONNECTIVITY : ADJACENCY {
+   $this->CONNECTIVITY=connectivity($this->ADJACENCY);
+}
+
+rule MAX_CLIQUES : ADJACENCY {
+   $this->MAX_CLIQUES=max_cliques($this->ADJACENCY);
+}
+
+rule DEGREE_SEQUENCE, AVERAGE_DEGREE : ADJACENCY {
+   degree_sequence($this);
+}
+
+rule CHARACTERISTIC_POLYNOMIAL : N_NODES, ADJACENCY {
+   my $r = new Ring(1);
+   my $x = new UniPolynomial($r->variable());
+   my $u = new UniPolynomial(-1);
+   my $n = $this->N_NODES;
+   my $m = new Matrix<UniPolynomial>($n, $n); # don't use unit_matrix because it will get full
+   
+   for (my $i=0; $i<$n; ++$i) {
+      $m->[$i]->[$i] = $x;
+   }
+   
+   for ( my $e=entire(edges($this->ADJACENCY)); $e; ++$e ) { 
+      $m->[$e->from_node]->[$e->to_node] = $u;
+      $m->[$e->to_node]->[$e->from_node] = $u;
+   }
+
+   $this->CHARACTERISTIC_POLYNOMIAL = det($m);
+}
+
+}
+
+object Graph<Directed> {
+
+rule NODE_OUT_DEGREES : ADJACENCY {
+   $this->NODE_OUT_DEGREES(temporary)=[ map { $this->ADJACENCY->out_degree($_) } 0..($this->ADJACENCY->nodes-1) ];
+}
+weight 1.10;
+rule NODE_IN_DEGREES : ADJACENCY {
+   $this->NODE_IN_DEGREES(temporary)=[ map { $this->ADJACENCY->in_degree($_) } 0..($this->ADJACENCY->nodes-1) ];
+}
+weight 1.10;
+
+}
+
+############################################################################
+
+# @category Other
+# Creates a graph from a given list of //edges//.
+# @param Array<Set<Int>> edges
+# @return Graph
+user_function graph_from_edges($) {
+   my $edges = shift;
+   my $max = 0;
+   foreach (@$edges ) {
+      ( $#$_ == 1 && $_->[0] != $_->[1] ) or croak("not a list of edges\n");
+      assign_max($max, $_->[0]);
+      assign_max($max, $_->[1]);
+   }
+
+   my $g = new props::Graph($max+1);
+   for ( @$edges ) {
+      $g->edge(@$_);
+   }
+
+   return new Graph(ADJACENCY=>$g);
+}
+
+# @category Combinatorics
+# creates the Laplacian matrix of a graph
+# @param Graph G
+# @return Matrix
+user_function laplacian($) {
+    my $g = shift;
+    my $e = new Matrix<Rational>(signed_incidence_matrix($g));
+    return $e * transpose($e);
+}
+
+# @category Combinatorics
+# creates the line graph of a graph
+# @param Graph G
+# @return Graph
+user_function line_graph(props::Graph) : c++ (include=>["polymake/graph/line_graph.h"]);
+
+############################################################################
+
+function is_connected(props::Graph) : c++ (include=>["polymake/graph/connected.h"]);
+
+function connected_components(props::Graph) : c++ (include=>["polymake/graph/connected.h"]);
+
+function max_cliques(props::Graph) : c++ (include=>["polymake/graph/max_cliques.h"]);
+
+function diameter(props::Graph) : c++ (include=>["polymake/graph/diameter.h"]);
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

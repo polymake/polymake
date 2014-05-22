@@ -1,0 +1,49 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# n_polytopes, dimension, n_vertices (in each) => list of Polytope<Rational>
+sub generate_random_spheres {
+   my ($n, $d, $n_vert)=@_;
+
+   map { rand_sphere($d, $n_vert) } 1..$n;
+}
+
+# list of polytopes => saves the polytope with the greatest number of facets in a file
+sub save_max_facets {
+   # construct the file name from the dimension and the number of vertices
+   my $filename= "max_facets_" . $_[0]->DIM . "_" . $_[0]->N_VERTICES;
+
+   my $p= -f "$filename.poly" ? load($filename) : shift;
+   foreach (@_) {
+      $p=$_ if $_->N_FACETS > $p->N_FACETS;
+   }
+
+   save($p, $filename);
+   print "$filename has ", $p->N_FACETS, " facets\n";
+}
+
+# main
+if (@ARGV != 3) {
+   die "usage: polymake --script polytope::rand_polytopes n_polytopes dimension n_vertices\n";
+}
+my @p=generate_random_spheres(@ARGV);
+save_max_facets(@p);
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

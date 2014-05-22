@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map>
+      <entry key="showPickInScene" value="false"/>
+      <entry key="panelInScene" value="false"/>
+    </map>
+    <node name="align">
+      <map>
+        <entry key="offset" value="0.3"/>
+        <entry key="size" value="21.513016051298735"/>
+      </map>
+    </node>
+    <node name="app">
+      <map>
+        <entry key="linesReflecting" value="true"/>
+        <entry key="showLines" value="true"/>
+        <entry key="pointColorGreen" value="0"/>
+        <entry key="pointReflection" value="0.7000000000000001"/>
+        <entry key="facesFlat" value="false"/>
+        <entry key="transparencyEnabled" value="false"/>
+        <entry key="transparency" value="0.7000000000000001"/>
+        <entry key="pointColorRed" value="0"/>
+        <entry key="faceReflection" value="0.7000000000000001"/>
+        <entry key="showPoints" value="false"/>
+        <entry key="tubes" value="true"/>
+        <entry key="lineColorBlue" value="0"/>
+        <entry key="faceColorGreen" value="255"/>
+        <entry key="faceColorRed" value="255"/>
+        <entry key="tubeRadius" value="0.32"/>
+        <entry key="spheres" value="true"/>
+        <entry key="pointRadius" value="0.4"/>
+        <entry key="pointsReflecting" value="false"/>
+        <entry key="showFaces" value="true"/>
+        <entry key="faceColorBlue" value="255"/>
+        <entry key="lineColorRed" value="255"/>
+        <entry key="lineReflection" value="0.46"/>
+        <entry key="lineColorGreen" value="0"/>
+        <entry key="facesReflecting" value="true"/>
+        <entry key="pointColorBlue" value="255"/>
+      </map>
+    </node>
+    <node name="env">
+      <map>
+        <entry key="backgroundColorBlue" value="255"/>
+        <entry key="environment" value="snow"/>
+        <entry key="skyBoxHidden" value="false"/>
+        <entry key="backgroundColorRed" value="255"/>
+        <entry key="backgroundColorGreen" value="255"/>
+      </map>
+    </node>
+    <node name="terrain">
+      <map>
+        <entry key="transparency" value="0.3"/>
+        <entry key="colorGreen" value="255"/>
+        <entry key="texScale" value="0.7162977777745736"/>
+        <entry key="reflection" value="0.3"/>
+        <entry key="sphericalTerrain" value="false"/>
+        <entry key="texture" value="rust"/>
+        <entry key="colorBlue" value="255"/>
+        <entry key="reflecting" value="true"/>
+        <entry key="colorRed" value="255"/>
+        <entry key="texScaleEnabled" value="true"/>
+        <entry key="transparencyEnabled" value="false"/>
+        <entry key="geometry" value="flat"/>
+      </map>
+    </node>
+    <node name="tex">
+      <map>
+        <entry key="textureScale" value="19.999999999999996"/>
+        <entry key="texture" value="none"/>
+      </map>
+    </node>
+    <node name="tool">
+      <map>
+        <entry key="rotationEnabled" value="false"/>
+        <entry key="pickEdges" value="false"/>
+        <entry key="dragEnabled" value="false"/>
+        <entry key="navSpeed" value="4.0"/>
+        <entry key="pickFaces" value="true"/>
+        <entry key="pickVertices" value="false"/>
+        <entry key="snapToGrid" value="false"/>
+        <entry key="invertMouse" value="false"/>
+        <entry key="gravity" value="9.81"/>
+      </map>
+    </node>
+  </root>
+</preferences>

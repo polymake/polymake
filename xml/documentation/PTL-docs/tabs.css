@@ -1,0 +1,146 @@
+
+div.navigation {
+	float: left;
+	position:relative;
+	width:40%;
+	margin-top:10px;
+	padding-bottom: 10px;
+}
+
+DIV.tabs
+{
+	float:left;
+	clear:left;
+	width:100%;
+	margin-top:5px;
+}
+
+DIV.tabs UL
+{
+   margin           : 0px;
+   padding:			: 0px;
+   padding-left     : 20px;
+   list-style       : none;
+}
+
+DIV.tabs LI, DIV.tabs FORM
+{
+	display:inline;
+   margin           : 0px;
+   padding          : 0px;
+}
+
+DIV.tabs FORM
+{
+   float            : right;
+}
+
+DIV.tabs A
+{
+   float            : left;
+   font-size        : x-small;
+   font-weight      : bold;
+   text-decoration  : none;
+
+	margin-right:2px;
+}
+
+DIV.tabs
+{
+   float            : left;
+   width            : 100%;
+   background       : url("tab_b_new.gif") repeat-x bottom;
+   margin-bottom    : 4px;
+}
+
+DIV.tabs A
+{
+   float            : left;
+   background       : url("tab_r_new.gif") no-repeat right top;
+   border-bottom    : 1px solid #A7431A;
+   font-size        : 80%;
+   font-weight      : bold;
+   text-decoration  : none;	    
+}
+
+DIV.tabs SPAN
+{
+   float            : left;
+   display          : block;
+   background       : url("tab_l_new.gif") no-repeat left top;
+   padding          : 5px 9px;
+   white-space      : nowrap;
+   color	    : #A7431A;
+}
+
+DIV.tabs A:hover
+{
+	background-position: 100% -150px;
+}
+
+DIV.tabs A:link, DIV.tabs A:visited,
+DIV.tabs A:active, DIV.tabs A:hover
+{
+       color: #1A419D;
+}
+
+DIV.tabs SPAN
+{
+   float            : left;
+   display          : block;
+   padding          : 5px 9px;
+   white-space      : nowrap;
+}
+
+DIV.tabs INPUT
+{
+   float            : right;
+   display          : inline;
+   font-size        : 1em;
+}
+
+DIV.tabs TD
+{
+   font-size        : x-small;
+   font-weight      : bold;
+   text-decoration  : none;
+}
+
+
+
+/* Commented Backslash Hack hides rule from IE5-Mac \*/
+DIV.tabs SPAN {float : none;}
+/* End IE5-Mac hack */
+
+DIV.tabs A:hover SPAN
+{
+	color: #484848;
+}
+
+DIV.tabs LI.current A
+{
+	background-color: #ECEDED;
+}
+
+DIV.tabs LI.current SPAN
+{
+	color: #484848;
+}
+
+DIV.tabs A:hover SPAN
+{
+   background-position: 0% -150px;
+}
+
+DIV.navpath
+{
+   background       : none;
+   border           : none;
+   margin-left:0px;
+   padding-left:0px;
+   float:left;
+}
+
+div.navpath a.el {
+	margin-top: 30px;
+}

@@ -1,0 +1,17 @@
+Left MouseButton: 
+		Orbit/Rotate Object
+		
+Middle MouseButton: 
+		Translate Object
+		
+Mousewheel: 
+		Scale the object
+		
+"e":
+		encompass/fit geometry				
+
+To select a vertex:
+	Left-Click on the vertex
+
+To drag a vertex:
+	Middle-Click and drag a vertex

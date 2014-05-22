@@ -1,0 +1,68 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+#
+#  Creation and reading tarballs containing polymake Objects
+
+use Archive::Tar;
+
+
+# usage: pack_tarball fpack_archive("tarfilename", Object, ...);
+
+sub pack_tarball {
+   my $filename=shift;
+   replace_special_paths($filename);
+   my $compressed=1;
+   if ($filename =~ /\.tar$/) {
+      $compressed=0;
+   } elsif ($filename !~ /\.(?:tar\.gz|tgz)$/) {
+      $filename .= ".tar.gz";
+   }
+
+   my $ar=new Archive::Tar();
+   my $unnamed="unnamed_0";
+
+   foreach my $object (@_) {
+      $ar->add_data(($object->name // ++$unnamed).".".$object->default_file_suffix, $object->toXMLstring);
+   }
+   $ar->write($filename, $compressed);
+}
+
+
+# usage: @object_list=unpack_tarball("tarfilename", "name", ...);
+# "name" arguments are optional; they constrain the output to archive members matching the given names.
+
+sub unpack_tarball {
+   my $filename=shift;
+   replace_special_paths($filename);
+   my $compressed= $filename =~ /\.(?:tar\.gz|tgz)$/;
+   my $ar=new Archive::Tar($filename, $compressed);
+
+   if (my @files=$ar->get_files(@_)) {
+      map {
+         my $obj=Core::Object->fromXMLstring($_->get_content);
+         $obj->name //= $_->name ;
+         $obj
+      } @files;
+   } else {
+      die "no matching archive members found\n";
+   }
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

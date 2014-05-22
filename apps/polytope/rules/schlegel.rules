@@ -1,0 +1,531 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# A Schlegel diagram of a polytope.
+# @tparam Scalar default [[Rational]]
+# @relates Polytope
+declare object SchlegelDiagram<Scalar=Rational> {
+
+# The facet number in the original polytope, giving the projection plane.
+property FACET : Int = 0;
+
+# Zoom factor.
+property ZOOM : Scalar = 9/10;
+
+# The intersection point of the projection facet and the view ray.
+property FACET_POINT : Vector<Scalar>;
+
+# The center point of the projection, lying outside the polytope.
+property VIEWPOINT : Vector<Scalar>;
+
+# A point on the view ray lying inside the polytope.
+property INNER_POINT : Vector<Scalar>;
+
+# Matrix of a projective transformation mapping the whole polytope into the [[FACET]]
+# The points belonging to this facet stay fixed.
+
+property TRANSFORM : Matrix<Scalar>;
+
+
+# Coordinates in affine 3-space of the vertices which
+# correspond to a 3-dimensional (Schlegel-) projection of a 4-polytope.
+
+property VERTICES : Matrix<Float>;
+
+
+# Rotation matrix making the projection facet coinciding with (0 0 0 -1)
+# We want a negatively oriented coordinate system
+# since the view point lies on the negative side of the facet.
+
+property ROTATION : Matrix<Float>;
+
+
+# Default point on the projection facet is its barycenter
+rule FACET_POINT : FACET {
+   $this->FACET_POINT=facet($this->parent, $this->FACET)->VERTEX_BARYCENTER;
+}
+
+method transform_points {
+   my ($this, $points)=@_;
+   dehomogenize((convert_to<Float>($points)) * convert_to<Float>($this->TRANSFORM));
+}
+
+method transform_and_rotate_points {
+   my ($this, $points)=@_;
+   &transform_points * $this->ROTATION;
+}
+
+}
+
+object Polytope {
+
+# @category Visualization
+# Holds one special projection (the Schlegel diagram) of the polytope.
+property SCHLEGEL_DIAGRAM : SchlegelDiagram<Scalar> : multiple;
+
+rule initial : SCHLEGEL_DIAGRAM.FACET, N_FACETS {
+   if ($this->SCHLEGEL_DIAGRAM->FACET < 0 || $this->SCHLEGEL_DIAGRAM->FACET >= $this->N_FACETS) {
+      die "Schlegel Diagram FACET index out of valid range 0..", $this->N_FACETS-1, "\n";
+   }
+}
+
+rule SCHLEGEL_DIAGRAM.INNER_POINT = VERTEX_BARYCENTER;
+
+rule SCHLEGEL_DIAGRAM.TRANSFORM, SCHLEGEL_DIAGRAM.VIEWPOINT : VERTICES, FACETS, DUAL_GRAPH.ADJACENCY, \
+     SCHLEGEL_DIAGRAM.FACET, SCHLEGEL_DIAGRAM.ZOOM, SCHLEGEL_DIAGRAM.FACET_POINT, SCHLEGEL_DIAGRAM.INNER_POINT {
+   schlegel_transform($this->SCHLEGEL_DIAGRAM, $this);
+}
+precondition : BOUNDED;
+
+rule SCHLEGEL_DIAGRAM.ROTATION : FACETS, SCHLEGEL_DIAGRAM.FACET {
+   $this->SCHLEGEL_DIAGRAM->ROTATION(temporary)=rotate_hyperplane($this->FACETS->[$this->SCHLEGEL_DIAGRAM->FACET], -1);
+}
+
+rule SCHLEGEL_DIAGRAM.VERTICES : VERTICES, SCHLEGEL_DIAGRAM.TRANSFORM, SCHLEGEL_DIAGRAM.ROTATION {
+   $this->SCHLEGEL_DIAGRAM->VERTICES(temporary)=$this->SCHLEGEL_DIAGRAM->transform_and_rotate_points($this->VERTICES);
+}
+
+}
+
+##################################################################################
+
+# @topic objects/Visual::SchlegelDiagram
+# @category Visualization
+# Visualization of the Schlegel diagram of a polytope.
+# @relates SchlegelDiagram
+
+package Visual::SchlegelDiagram;
+use Polymake::Struct (
+   [ '@ISA' => 'Container' ],
+   [ '$SchlegelObject' => '#%' ],
+);
+
+# where to store the view transformation matrix etc.
+method representative { $_[0]->SchlegelObject }
+
+# the diagram itself as an embedded graph
+method basis_graph { $_[0]->elements->[0] }
+
+# Color of the Schlegel projection facet (RGB)
+custom $proj_facet="0 0 0";
+
+# Color of the facets on the Schlegel projection (RGB)
+custom $solid_color="0 0 255";
+
+##########################################################################################
+#
+# LP-related supplements
+
+# Illustrate the behavior of a linear objective function on the polytope.
+# Superpose the drawing with the directed graph induced by the objective function.
+# @param LinearProgram lp a LinearProgram object attached to the polytope.
+# @return Visual::SchlegelDiagram
+
+user_method DIRECTED_GRAPH(; LinearProgram) {
+   my ($self, $lp)=@_;
+   if (defined $lp) {
+      if ($lp->parent != $self->SchlegelObject->parent) {
+         croak("LinearProgram object does not belong to this Polytope");
+      }
+   } else {
+      $lp=$self->SchlegelObject->parent->LP;
+   }
+
+   $self->Name.=" DIRECTED with LP " . $lp->name;
+   my $bg = $self->basis_graph;
+   $bg->Graph = $lp->DIRECTED_GRAPH;
+   $bg->ArrowStyle=1;
+
+   # draw the edges orthogonal to the LP gradient as thin lines without arrows
+   my $orthG = ($self->SchlegelObject->parent->GRAPH->ADJACENCY - $bg->Graph->ADJACENCY);
+   if ($orthG->nodes) {
+      my $eth= defined($bg->EdgeThickness)
+               ? ref($bg->EdgeThickness)
+                 ? sub { $bg->EdgeThickness->(@_)/3 }
+                 : $bg->EdgeThickness/3
+               : 1.0/3.0;
+      my $graph = new graph::Graph(ADJACENCY => $orthG);
+      push @{$self->elements},
+           new Visual::Graph( Name => $self->SchlegelObject->parent->name." - edges orthogonal to LP gradient",
+                              Graph => $graph,
+                              Coord => $bg->Coord,
+                              NodeStyle => "hidden",
+                              EdgeColor => $bg->EdgeColor,
+                              EdgeThickness => $eth,
+                            );
+   }
+
+   visualize($self);
+}
+
+
+# Illustrate the behavior of a linear objective function on the polytope.
+# Color the vertices according to the values of the objective function.
+# @param LinearProgram lp a LinearProgram object attached to the polytope.
+# @option Color min minimal vertex color (default: yellow)
+# @option Color max maximal vertex color (default: red)
+# @return Visual::SchlegelDiagram
+
+user_method VERTEX_COLORS(; LinearProgram { min => $Visual::Color::min, max => $Visual::Color::max }) {
+   my ($self, $lp, $decor)=@_;
+   if (defined $lp) {
+      if ($lp->parent != $self->SchlegelObject->parent) {
+         croak("LinearProgram object does not belong to this Polytope");
+      }
+   } else {
+      $lp=$self->SchlegelObject->parent->LP;
+   }
+   $_=get_RGB($_) for values %$decor;
+   $self->basis_graph->NodeColor=vertex_colors($self->SchlegelObject->parent, $lp, $decor);
+   visualize($self);
+}
+
+# Illustrate the behavior of a linear objective function on the polytope.
+# The vertices belonging to [[MINIMAL_FACE]] and [[MAXIMAL_FACE]] are drawn in distinct colors
+# @param LinearProgram lp a LinearProgram object attached to the polytope.
+# @option Color min minimal face decoration (default: yellow vertices and/or facets)
+# @option Color max maximal face decoration (default: red vertices and/or facets)
+# @return Visual::SchlegelDiagram
+
+user_method MIN_MAX_FACE(; LinearProgram { min => $Visual::Color::min, max => $Visual::Color::max }) {
+   my ($self, $lp, $decor)=@_;
+   if (defined $lp) {
+      if ($lp->parent != $self->SchlegelObject->parent) {
+         croak("LinearProgram object does not belong to this Polytope");
+      }
+   } else {
+      $lp=$self->SchlegelObject->parent->LP;
+   }
+   foreach (values %$decor) {
+      unless (is_hash($_)) {
+         my $c=get_RGB($_);
+         $_={ NodeColor=>$c };
+      }
+   }
+   $self->basis_graph->add_node_subset($lp->MINIMAL_FACE, $decor->{min});
+   $self->basis_graph->add_node_subset($lp->MAXIMAL_FACE, $decor->{max});
+   visualize($self);
+}
+
+##########################################################################################
+#
+#  Triangulations and other complex-like drawings
+
+# Draw the edges of the [[Visual::Polytope::TRIANGULATION_BOUNDARY|TRIANGULATION_BOUNDARY]]
+# @options %Visual::Graph::decorations
+# @return Visual::SchlegelDiagram
+
+user_method TRIANGULATION_BOUNDARY(%Visual::Graph::decorations) {
+   my ($self, $decor)=@_;
+   my $P=$self->SchlegelObject->parent;
+   my $G=$self->basis_graph;
+   $self->Name="Triangulation Boundary of ".$P->name;
+   my $th=delete $decor->{EdgeThickness} || 0.5;
+   my $eth= defined($G->EdgeThickness)
+               ? ref($G->EdgeThickness)
+                 ? sub { $G->EdgeThickness->(@_)*$th }
+                 : $G->EdgeThickness*$th
+               : $th;
+   my $adj = new props::Graph($P->TRIANGULATION->BOUNDARY->GRAPH->ADJACENCY - $P->GRAPH->ADJACENCY);
+   my $graph = new graph::Graph(ADJACENCY => $adj);
+   push @{$self->elements},
+        new Visual::Graph(
+            Name => $P->name."-inner-edges",
+            Graph => $graph,
+            Coord => $G->Coord,
+            NodeStyle => "hidden",
+            EdgeThickness => $eth,
+            $decor
+        );
+   visualize($self);
+}
+
+# Draw the boundary simplices of the triangulation as solid tetrahedra.
+# @options %Visual::Polygons::decorations
+# @return Visual::SchlegelDiagram
+
+user_method TRIANGULATION_BOUNDARY_SOLID(%Visual::Polygons::decorations) {
+   my ($self, $decor)=@_;
+   my $G=$self->basis_graph;
+   $G->VertexStyle = "hidden";
+   my $P=$self->SchlegelObject->parent;
+   my $Signs=triang_sign($P->TRIANGULATION->BOUNDARY->FACETS, $P->TRIANGULATION->BOUNDARY->FACET_TRIANGULATIONS, $P->VERTICES, $P->REL_INT_POINT);
+   my $vertex_labels= delete $decor->{VertexLabels};
+   if ($vertex_labels ne "hidden") {
+      $vertex_labels=$G->VertexLabels;
+   } else {
+      undef $vertex_labels;
+   }
+   $decor->{FacetColor} ||= $solid_color;
+
+   $self->Name="Triangulation Boundary of ".$P->name;
+   my $i=-1;
+   push @{$self->elements},
+        [ map { ++$i; map { substr($_->Name,0,0)="Facet $i of "; $_ }             
+          $P->VisualSimplices([map $P->TRIANGULATION->BOUNDARY->FACETS->[$_], @$_ ],$G->Coord,$Signs->[$i],$vertex_labels,$decor) }
+              @{$P->TRIANGULATION->BOUNDARY->FACET_TRIANGULATIONS} ];
+   visualize($self);
+}
+
+# Draw the facets of the Schlegel diagram as polytopes.
+# @options %Visual::Polygons::decorations
+# @return Visual::SchlegelDiagram
+
+user_method SOLID(%Visual::Polygons::decorations) {
+   my ($self, $decor)=@_;
+   my $G=$self->basis_graph;
+   $G->VertexStyle = "hidden";
+   my $P=$self->SchlegelObject->parent;
+   my @facets;
+   for (my ($i,$end)=(0,$P->N_FACETS); $i<$end; ++$i) {
+      next if $i==$self->SchlegelObject->FACET;
+      my $F=facet($P,$i,relabel=>1);
+      push @facets,
+           new Visual::Polygons( Name => "Facet #$i of ".$P->name,
+				 Vertices => $G->Coord->minor($P->VERTICES_IN_FACETS->[$i],All),
+				 VertexLabels => $F->VERTEX_LABELS,
+				 Facets => $F->VIF_CYCLIC_NORMAL,
+				 FacetNeighbors => $F->NEIGHBOR_FACETS_CYCLIC_NORMAL,
+				 FacetColor => $solid_color,
+				 Closed => 1,
+				 NEdges => $F->N_EDGES,
+				 $decor,
+			       );
+   }
+   push @{$self->elements}, \@facets;
+   visualize($self);
+}
+
+# Visualize the construction of a 3D Schlegel diagram, that is, the Viewpoint, the 3-polytope and
+# the projection onto one facet.
+# @options %Visual::Polygons::decorations
+# @return Visual::SchlegelDiagram
+
+user_method CONSTRUCTION(%Visual::Polygons::decorations) {
+   my ($self, $decor)=@_;
+   my $P=$self->SchlegelObject->parent;
+   die "polytope must be 3-dimensional.\n" if $P->CONE_DIM-1 != 3;
+
+   $self->basis_graph->Coord=$self->SchlegelObject->transform_points($P->VERTICES);
+   $self->basis_graph->EdgeThickness=1.5;
+   $self->basis_graph->Name="Schlegel diagram of ".$P->name;
+   my $VP = $P->VISUAL( EdgeThickness => 1, FacetStyle => "hidden", VertexStyle => "hidden" )->elements->[0];
+   my $Cgraph = new props::Graph($P->N_VERTICES+1);
+   $Cgraph->edge(0,$_) for 1 .. $P->N_VERTICES;
+   my $G = new graph::Graph(ADJACENCY => $Cgraph);
+   my $Vpoint=dehomogenize(convert_to<Float>($self->SchlegelObject->VIEWPOINT));
+   my $CG=new Visual::Graph( Name =>  "Projection Rays of ". $P->name,
+                             Graph => $G,
+                             Coord => $Vpoint / $VP->Vertices,
+                             NodeStyle => "hidden",
+                             EdgeColor => "0 0 0",
+                             EdgeThickness => 0.25,
+                           );
+   my $VV=new Visual::PointSet( Name => "Viewpoint of Schlegel diagram of ".$P->name,
+                                Points => (new Matrix<Float>($Vpoint)),
+                                PointThickness => 2,
+                                PointColor => "0 0 255",
+                                PointLabels => ["ViewPoint"],
+                              );
+   compose($self, $VP, $CG, $VV);
+}
+
+#################################################################################
+package Visual::SchlegelTransform;
+use Polymake::Struct (
+   [ '@ISA' => 'DynamicCoords' ],
+   [ new => '$$' ],
+   [ '$points' => '#2' ],
+   [ '$polytope' => '#1 ->parent' ],
+   [ '$basis_graph' => '#2 -> rows' ],
+);
+
+# perform static computations
+sub compute {
+   my ($self)=@_;
+   $self->source->transform_and_rotate_points($self->points);
+}
+
+# run interactive calculator
+sub run {
+   my ($self, $window)=@_;
+   $self->coord=[ 0..$self->basis_graph-1 ];
+   $self->client_object=schlegel_interactive($self->source, $self->points);
+   $window->client_port=$self->client_object->port;
+}
+
+sub feedback {
+   my ($self, $cmd, $pipe, $viewer, $window)=@_;
+   if ($cmd =~ s/^f\s+//) {
+      my $vertices=new Set([ $cmd =~ /\d+/g ]);
+      my ($f, @other_facets)=@{common_rows($self->polytope->VERTICES_IN_FACETS, $vertices)};
+      if (@other_facets) {
+         print $pipe "e ", $window->id, " Selected vertices belong to more than one facet\n";
+      } elsif (!defined($f)) {
+         print $pipe "e ", $window->id, " Selected vertices do not belong to a single facet\n";
+      } elsif ($viewer->find_window(sub { grep { instanceof SchlegelTransform($_) and $_->source->FACET==$f } @{$_[0]->feedback_listener} })) {
+         print $pipe "e ", $window->id, " Schlegel projection on the facet $f is already being displayed\n";
+      } else {
+         $viewer->visualize($self->polytope->SCHLEGEL_DIAGRAM(FACET=>$f,temporary)->VISUAL);
+      }
+      1
+   } elsif ($cmd eq "S\n") {
+      $self->source=$self->polytope->SCHLEGEL_DIAGRAM(FACET => $self->source->FACET)=$self->client_object->store;
+      foreach (@{$window->feedback_listener}) {
+         if (instanceof Visual::Transformation($_)) {
+            $_->new_representative($self->source);
+            last;
+         }
+      }
+      1
+   } else {
+      0
+   }
+}
+
+method cols { $_[0]->points->cols-2 }
+
+method minor($ all_rows_or_cols) { pop; new Minor(@_) }
+
+method add_points(Visual::SchlegelTransform) {
+   my ($self, $other)=@_;
+   if ($other->source != $self->source) {
+      croak( "Can't mix two different Schlegel projections in one drawing" );
+   }
+   my $offset=$self->points->rows;
+   my @indices=$offset..$offset+$other->basis_graph-1;
+   $self->points=$self->points / $other->points;
+   bless $other, "Visual::SchlegelTransform::Minor";
+   $other->source=$self;
+   $other->points=\@indices;
+}
+
+method add_points(Visual::SchlegelTransform::Minor) {
+   my ($self, $other)=@_;
+   my $other_source=$other->source;
+   if ($other_source != $self) {
+      if ($other_source->source != $self) {
+         croak( "Can't mix two different Schlegel projections in one drawing" );
+      }
+      my $offset=$other_source->points->[0];
+      $other->source=$self;
+      $other->points=[ map { $offset+$_ } @{$other->points} ];
+   }
+}
+
+package Visual::SchlegelTransform::Minor;
+use Polymake::Struct (
+   [ '@ISA' => 'SchlegelTransform' ],
+   [ '$polytope' => '#1 ->polytope' ],
+   [ '$basis_graph' => 'undef' ],
+);
+
+sub compute {
+   my ($self)=@_;
+   if (ref($self->source->coord) eq "ARRAY") {
+      # dynamic context: pure indices needed
+      $self->points
+   } else {
+      my $dummy=@{$self->source};               # enforce computation
+      $self->source->coord->minor($self->points,All);
+   }
+}
+
+method cols { $_[0]->source->cols }
+
+#################################################################################
+
+object SchlegelDiagram {
+
+# @category Visualization
+# Draw the Schlegel diagram
+# @option pm::perl::Hash proj_facet decoration for the edges of the projection face
+# @options %Visual::Graph::decorations
+# @return Visual::SchlegelDiagram
+
+user_method VISUAL({ proj_facet => undef }, %Visual::Graph::decorations) {
+   my ($this, $proj_facet_decor, $decor)=@_;
+   if (!$this->parent->BOUNDED) {
+      die "polytope ", $this->parent->name, " is not BOUNDED and therefore cannot be visualized\n";
+   }
+
+   my $basis_graph=new Visual::Graph( Name => $this->parent->name,
+                                      Graph => $this->parent->GRAPH,
+                                      VertexLabels => $this->parent->lookup("VERTEX_LABELS"),
+                                      Coord => (new Visual::SchlegelTransform($this, $this->parent->VERTICES)),
+                                      EdgeColor => $Visual::Color::facets,
+                                      $decor );
+
+   my $proj_facet=$this->parent->VERTICES_IN_FACETS->[$this->FACET];
+   $proj_facet_decor= $proj_facet_decor->{proj_facet} || { EdgeColor => $Visual::SchlegelDiagram::proj_facet };
+   while (my ($decor_key, $value)=each %$proj_facet_decor) {
+      if ($decor_key =~ /^Edge/) {
+         $basis_graph->merge($decor_key, sub {
+                                my $e=shift;
+                                exists $proj_facet->{$e->from_node} && exists $proj_facet->{$e->to_node} ? $value : undef;
+                             });
+      } else {
+         die "only edge attributes (EdgeColor, EdgeThickness, EdgeStyle) can be specified for the projection face\n";
+      }
+   }
+
+   visualize( new Visual::SchlegelDiagram( Name => "Schlegel diagram of " . $this->parent->name . " on facet " . $this->FACET,
+                                           SchlegelObject => $this,
+                                           $basis_graph ));
+}
+
+}
+#################################################################################
+
+object Polytope {
+
+# @category Visualization
+# Initial properties of the Schlegel diagram to be displayed.
+options %schlegel_init=(
+  # Int  index of the projection facet, see [[Visual::SchlegelDiagram::FACET]]
+  FACET => undef,
+  # Rational  zoom factor, see [[Visual::SchlegelDiagram::ZOOM]]
+  ZOOM => undef,
+  # Vector  see [[Visual::SchlegelDiagram::FACET_POINT]]
+  FACET_POINT => undef,
+  # Vector  see [[Visual::SchlegelDiagram::INNER_POINT]]
+  INNER_POINT => undef,
+);
+
+# @category Visualization
+# Create a Schlegel diagram and draw it.
+# @options %schlegel_init
+# @option FIXME proj_facet decorations for the Edges of the projection face 
+# @options %Visual::Wire::decorations
+# @return Visual::SchlegelDiagram
+
+user_method SCHLEGEL(%schlegel_init,  { proj_facet => undef },  %Visual::Wire::decorations) : VERTICES, VERTICES_IN_FACETS, N_FACETS, GRAPH {
+   my ($this, $schlegel_init, $proj_facet_decor, $decor)=@_;
+   if (!defined(wantarray) && !keys %$schlegel_init and my @SD=@{$this->lookup("SCHLEGEL_DIAGRAM")}) {
+      $_->VISUAL($proj_facet_decor,$decor) for @SD;
+   } else {
+      $this->SCHLEGEL_DIAGRAM($schlegel_init, temporary)->VISUAL($proj_facet_decor,$decor);
+   }
+}
+
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

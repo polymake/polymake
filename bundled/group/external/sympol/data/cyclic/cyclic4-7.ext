@@ -1,0 +1,12 @@
+* (4,7)-cyclic polytope
+V-representation
+begin
+ 7 5 integer
+1 1 1 1 1
+1 2 4 8 16
+1 3 9 27 81
+1 4 16 64 256
+1 5 25 125 625
+1 6 36 216 1296
+1 7 49 343 2401
+end

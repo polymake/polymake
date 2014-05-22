@@ -1,0 +1,7 @@
+There is an incompatibility between Java 5 and Java 6 with regard to the FakeFrame class.
+
+If you compiling with a Java 6 compiler, then remove the classes FakeFramePeer5.java and FakeToolKit5.java from your build path.
+
+And, if you are compiling with a Java 5 compiler, do the same for the classes FakeFramePeer6 and FakeToolKit6.
+
+The management.

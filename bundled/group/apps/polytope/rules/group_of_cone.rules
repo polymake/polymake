@@ -1,0 +1,48 @@
+object group::GroupOfCone {
+
+#*******************************************************
+#* representatives of simplices
+#*******************************************************
+
+# @category Symmetric cones
+# An array of size [[polytope::Cone::COMBINATORIAL_DIM|COMBINATORIAL_DIM]] whose //k//-th entry stores one representative for each 
+# symmetry class of //k//-dimensional simplices in the cone.
+property REPRESENTATIVE_SIMPLICES : Array<Array<boost_dynamic_bitset>>;
+
+# @category Symmetric cones
+# An array of size [[polytope::Cone::COMBINATORIAL_DIM|COMBINATORIAL_DIM]] whose //k//-th entry stores the number of
+# symmetry classes of //k//-dimensional simplices in the cone.
+property N_REPRESENTATIVE_SIMPLICES : Array<Int>;
+
+# @category Combinatorics
+# The interior //d//-dimensional simplices of a cone of combinatorial dimension //d//
+property REPRESENTATIVE_MAX_INTERIOR_SIMPLICES : Array<boost_dynamic_bitset>;
+
+# @category Combinatorics
+# The boundary (//d//-1)-dimensional simplices of a cone of combinatorial dimension //d//
+property REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES : Array<boost_dynamic_bitset>;
+
+# @category Combinatorics
+# The (//d//-1)-dimensional simplices in the interior.
+property REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES : Array<boost_dynamic_bitset>;
+
+
+
+#*******************************************************
+#* properties related to triangulations
+#*******************************************************
+
+# @category Symmetric cones
+# a SparseMatrix whose rows are the sum of all cocircuit equations corresponding to a fixed symmetry class of interior ridge
+property SYMMETRIZED_COCIRCUIT_EQUATIONS : SparseMatrix;
+
+# @category Combinatorics
+# The symmetrized version of SIMPLEXITY_LOWER_BOUND
+property SIMPLEXITY_LOWER_BOUND : Int;
+
+}
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

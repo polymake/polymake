@@ -1,0 +1,39 @@
+# demo CAVE configuration file
+
+# inherit configuration attributes via
+# parent: parentPropFile.props
+
+#
+# setup the frame: fullscreen, undecorated, width, height (in pixel)
+#
+#
+frame.fullscreen: false
+frame.undecorated: true
+frame.width: 248
+frame.height: 200
+
+#
+# these values are overwritten for each side of the portal:
+# how to rotate the camera to look towards the wall
+#
+# format: angle-in-degrees dirX dirY dirZ
+#
+camera.orientation: 0. 0. 1. 0.
+
+#
+#
+# by screen we mean the rectangle to which the frame is projected.
+#
+# the screen size and offsets are in meters,
+# offsets are relative to the CAVE origin (the down
+# at the floor in the middle of the CAVE). x y and z refer to
+# the screen/frame coordinate axes, e.g., z is the distance of the
+# screen from the origin.
+#
+#
+screen.width: 2.48
+screen.height: 2.00
+screen.offset.x: -1.24
+screen.offset.y: 0.0
+screen.offset.z: 1.24
+

@@ -1,0 +1,303 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# For a finite set of [[SITES]] //S// the Voronoi region of each site is the set of points closest
+# (with respect to Euclidean distance) to the given site.  All Voronoi regions (and their faces)
+# form a polyhedral complex which is a vertical projection of the boundary complex of an unbounded
+# polyhedron P(S).  This way VoronoiDiagram becomes a derived class from [[Polytope<Scalar>]].
+
+declare object VoronoiDiagram<Scalar=Rational> : Polytope<Scalar> {
+
+# Coordinates of the sites in case the polyhedron is Voronoi.
+# Sites must be pairwise distinct.
+
+property SITES : Matrix<Scalar>;
+
+# Number of [[SITES]]
+
+property N_SITES : Int;
+
+rule N_SITES : SITES {
+   $this->N_SITES=$this->SITES->rows;
+}
+weight 0.10;
+
+# The polyhedron defined by the set of [[SITES]] is the Voronoi polyhedron.  Beware of facet at infinity.
+rule FACETS, AFFINE_HULL, REL_INT_POINT, FEASIBLE, BOUNDED : SITES {
+  voronoi($this);
+}
+permutation : FacetPerm;
+
+
+# Unique names assigned to the [[SITES]].  Works like [[VERTEX_LABELS]].
+
+property SITE_LABELS : Array<String>;
+
+
+# Vertices of the Voronoi diagram of the [[SITES]].
+
+property VORONOI_VERTICES : Matrix<Scalar>;
+
+
+# Graph of the Delaunay decomposition Del([[SITES]]).
+
+property DELAUNAY_GRAPH : Graph;
+
+
+# Graph of the Del([[SITES]]) + Vor([[SITES]]).
+
+property ITERATED_DELAUNAY_GRAPH : Graph;
+
+
+# Graph of the crust as defined by Amenta, Bern, and Eppstein.
+
+property CRUST_GRAPH : Graph;
+
+
+# Graph of the nearest neighbor crust, as defined in:
+#
+#       T. K. Dey and P. Kumar: A simple provable algorithm for curve reconstruction.
+#       Proc. 10th. Annu. ACM-SIAM Sympos. Discrete Alg., 1999, 893-894.
+#
+# Polygonal reconstruction of a smooth planar curve from a finite set of samples.
+# Sampling rate of <= 1/3 suffices.
+
+property NN_CRUST_GRAPH : Graph;
+
+
+# Graph of the nearest neighbors.  This is a subgraph of [[NN_CRUST_GRAPH]].
+
+property NN_GRAPH : Graph;
+
+
+# Graph of the Voronoi diagram of the [[SITES]].  The homogeneous coordinates after projection are stored as node attributes.
+# The graph is truncated according to the [[VORONOI_GRAPH.BOUNDING_BOX|BOUNDING_BOX]].
+# All vertices of the Voronoi diagram are visible (and represented in the [[VORONOI_GRAPH]]) for the default BOUNDING_BOX.
+
+property VORONOI_GRAPH : GeometricGraph<Scalar>;
+
+# Graph of the joint Voronoi diagram of the [[SITES]] and the vertices of Vor(SITES).  The coordinates (homogeneous, before projection)
+# are stored as node attributes.  The graph is truncated according to the [[VORONOI_GRAPH.BOUNDING_BOX]].
+# For the default BOUNDING_BOX it may happen that some of the iterated Voronoi vertices are truncated.
+# Create new objects of type [[VoronoiDiagram]] to produce proper iterated Voronoi diagrams.
+
+property ITERATED_VORONOI_GRAPH : GeometricGraph<Scalar>;
+
+# Delaunay triangulation of the [[SITES|sites]]. (Delaunay subdivision, non-simplices are triangulated.)
+
+property DELAUNAY_TRIANGULATION : Array<Set>;
+### FIXME: $apply_diff{SITES}=\&permuted_elements;
+
+rule VORONOI_VERTICES : VERTICES, FAR_FACE {
+   $this->VORONOI_VERTICES=$this->VERTICES->minor(~$this->FAR_FACE, range(0, $this->VERTICES->cols-2));
+}
+
+rule VORONOI_GRAPH.BOUNDING_BOX : SITES, VERTICES, FAR_FACE, N_VERTICES {
+  my $Points = $this->SITES / $this->VERTICES->minor($this->BOUNDED_VERTICES, range(0, $this->VERTICES->cols-2));
+  $this->VORONOI_GRAPH->BOUNDING_BOX = bounding_box($Points,1/10,1);
+}
+precondition : POINTED;
+
+rule VORONOI_GRAPH.BOUNDING_BOX : SITES {
+  $this->VORONOI_GRAPH->BOUNDING_BOX = bounding_box($this->SITES,1/10,1);
+}
+precondition : !POINTED;
+
+rule VORONOI_GRAPH.ADJACENCY, VORONOI_GRAPH.COORDINATES : VERTICES, GRAPH.ADJACENCY, VORONOI_GRAPH.BOUNDING_BOX {
+#   clip_graph($this->VORONOI_GRAPH, $this->VERTICES->minor(All,range(0,$this->VERTICES->cols-2)), $this->GRAPH->ADJACENCY);
+   my $clipped=graph::clip_graph($this->GRAPH->ADJACENCY, $this->VERTICES->minor(All,range(0,$this->VERTICES->cols-2)), $this->VORONOI_GRAPH->BOUNDING_BOX);
+   $this->VORONOI_GRAPH->ADJACENCY=$clipped->ADJACENCY;
+   $this->VORONOI_GRAPH->COORDINATES=$clipped->COORDINATES;
+}
+
+rule DELAUNAY_GRAPH.ADJACENCY : DUAL_GRAPH.ADJACENCY, N_SITES {
+   # for this it is essential that the first few facets correspond to the sites
+   $this->DELAUNAY_GRAPH->ADJACENCY = renumber_nodes(induced_subgraph($this->DUAL_GRAPH->ADJACENCY, range(0,$this->N_SITES-1)));
+}
+
+rule NN_GRAPH.ADJACENCY, NN_CRUST_GRAPH.ADJACENCY : SITES, DELAUNAY_GRAPH.ADJACENCY {
+   nn_crust($this);
+}
+
+rule CRUST_GRAPH.ADJACENCY, ITERATED_DELAUNAY_GRAPH.ADJACENCY, ITERATED_VORONOI_GRAPH : SITES, VORONOI_VERTICES, VORONOI_GRAPH {
+   my $sites2 = $this->SITES / $this->VORONOI_VERTICES;
+   my $crust_poly = new VoronoiDiagram(SITES => $sites2);
+   my $site_set = range(0, $this->SITES->rows-1);
+   my $idg = $crust_poly->DELAUNAY_GRAPH->ADJACENCY;
+   $this->ITERATED_DELAUNAY_GRAPH->ADJACENCY=$idg;
+   $this->CRUST_GRAPH->ADJACENCY=renumber_nodes(induced_subgraph($idg,$site_set));
+   $this->ITERATED_VORONOI_GRAPH=$crust_poly->VORONOI_GRAPH;
+}
+
+
+# FIXME: Added precondition POINTED!
+rule DELAUNAY_TRIANGULATION : VERTICES_IN_FACETS, FAR_FACE, FACETS, SITES, CONE_DIM {
+   $this->DELAUNAY_TRIANGULATION=delaunay_triangulation($this);
+}
+precondition : POINTED;
+
+
+# @category Visualization
+# Draw a Voronoi diagram and its [[DELAUNAY_GRAPH|dual]].  Use the interactive features of the viewer to select.
+# @return Visual::Container
+
+user_method VISUAL_VORONOI(%Visual::Graph::decorations) : SITES, VORONOI_GRAPH, DELAUNAY_GRAPH {
+   my ($this, $decor)=@_;
+
+# Delaunay graph
+   my $dGraph=new Visual::Graph( Name => $this->name." delaunay graph",
+                                 Graph => $this->DELAUNAY_GRAPH,
+                                 NodeLabels => $this->lookup("SITE_LABELS"),
+                                 Coord => dehomogenize(convert_to<Float>($this->SITES)),
+                                 NodeColor => $Visual::Color::DelaunayVertex,
+                                 NodeBorderColor => $Visual::Color::DelaunayVertexBorder,
+                                 EdgeColor => $Visual::Color::DelaunayEdge,
+                                 EdgeThickness => $Visual::Style::DelaunayEdge,
+                                 $decor,
+                               );
+# Voronoi graph (without the vertices)
+   my $vGraph=new Visual::Graph( Name => $this->name." voronoi graph",
+                                 Graph => $this->VORONOI_GRAPH,
+                                 Coord => dehomogenize(new Matrix<Float>($this->VORONOI_GRAPH->COORDINATES)),
+                                 NodeStyle => "hidden",
+                               );
+# Voronoi vertices
+   my $vVertices=new Visual::PointSet( Name => $this->name." voronoi vertices",
+                                       Points => dehomogenize(convert_to<Float>($this->VORONOI_VERTICES)),
+                                     );
+   compose($dGraph, $vGraph, $vVertices, Title => $this->name." Voronoi Diagram");
+}
+precondition : CONE_AMBIENT_DIM {
+   $this->CONE_AMBIENT_DIM==4 || $this->CONE_AMBIENT_DIM==5
+}
+
+
+# @category Visualization
+# Draw a Voronoi diagram, its [[DELAUNAY_GRAPH||dual graph]] and the [[CRUST_GRAPH|crust]].  Use the interactive features of the viewer to select.
+# @return Visual::Container
+
+user_method VISUAL_CRUST(%Visual::Graph::decorations) : SITES, VORONOI_GRAPH, DELAUNAY_GRAPH, ITERATED_DELAUNAY_GRAPH, CRUST_GRAPH {
+   my ($this, $decor)=@_;
+
+   my $visual_container=$this->VISUAL_VORONOI($decor);
+   $visual_container->Name = $this->name." crust graph";
+   my $sites2 = $this->SITES / $this->VORONOI_VERTICES;
+
+# iterated Delaunay graph
+   my $idGraph=new Visual::Graph( Name => $this->name." iterated delaunay graph",
+                                  Graph => $this->ITERATED_DELAUNAY_GRAPH,
+                                  Coord => dehomogenize(convert_to<Float>($sites2)),
+                                  NodeStyle => "hidden",
+                                  EdgeColor => $Visual::Color::IteratedDelaunayEdge,
+                                  EdgeThickness => $Visual::Style::IteratedDelaunayEdge,                                                                       );
+# crust graph
+   my $cGraph=new Visual::Graph( Name => $this->name." crust graph",
+                                 Graph => $this->CRUST_GRAPH,
+                                 NodeLabels => $this->lookup("SITE_LABELS"),
+                                 Coord => dehomogenize(convert_to<Float>($this->SITES)),
+                                 NodeColor => $Visual::Color::CrustVertex,
+                                 EdgeColor => $Visual::Color::CrustEdge,
+                                 EdgeThickness => $Visual::Style::CrustEdge,
+                               );
+
+   compose($visual_container, $idGraph, $cGraph);
+}
+precondition : CONE_AMBIENT_DIM {
+   $this->CONE_AMBIENT_DIM==4 || $this->CONE_AMBIENT_DIM==5
+}
+
+
+# @category Visualization
+# Draw a Voronoi diagram, its dual graph and the [[NN_CRUST_GRAPH|nearest neighbor crust]].  Use the interactive features of the viewer to select.
+# @return Visual::Container
+
+user_method VISUAL_NN_CRUST(%Visual::Graph::decorations) : SITES, VORONOI_GRAPH, DELAUNAY_GRAPH, NN_GRAPH, NN_CRUST_GRAPH {
+   my ($this, $decor)=@_;
+
+   my $visual_container=$this->VISUAL_VORONOI($decor);
+   $visual_container->Name = $this->name." nn-crust graph";
+
+# nearest neighbor graph
+   my $nGraph=new Visual::Graph( Name => $this->name." nearest neighbor graph",
+                                 Graph => $this->NN_GRAPH,
+                                 Coord => dehomogenize(convert_to<Float>($this->SITES)),
+                                 NodeStyle => "hidden",
+                                 EdgeThickness => $Visual::Style::NearestNeighbors,
+                               );
+# nearest neighbor crust graph
+   my $cGraph=new Visual::Graph( Name => $this->name." nn-crust graph",
+                                 Graph => $this->NN_CRUST_GRAPH,
+                                 NodeLabels => $this->lookup("SITE_LABELS"),
+                                 Coord => dehomogenize(convert_to<Float>($this->SITES)),
+                                 NodeColor => $Visual::Color::CrustVertex,
+                                 EdgeColor => $Visual::Color::CrustEdge,
+                                 EdgeThickness => $Visual::Style::CrustEdge,
+                               );
+
+   compose($visual_container, $nGraph, $cGraph);
+}
+precondition : CONE_AMBIENT_DIM {
+   $this->CONE_AMBIENT_DIM==4 || $this->CONE_AMBIENT_DIM==5
+}
+
+}
+
+package Visual::Color;
+
+# vertices of the Delaunay decomposition: filled white
+custom $DelaunayVertex="255 255 255";
+
+# vertices of the Delaunay decomposition: border black
+custom $DelaunayVertexBorder="0 0 0";
+
+# edges of the Delaunay decomposition: shabby orange
+custom $DelaunayEdge="255 192 128";
+
+# vertices of the crust: white
+custom $CrustVertex="255 255 255";
+
+# edges of the crust: yellow
+custom $CrustEdge="255 255 0";
+
+# vertices of Vor(Vor([[SITES]])): grey
+custom $IteratedVoronoiVertex="64 64 64";
+
+# edges of Del(Vor([[SITES]])): shabby blue
+custom $IteratedDelaunayEdge="100 100 255";
+
+
+package Visual::Style;
+
+# edge thickness of Vor([[SITES]])
+custom $VoronoiEdge=1.5;
+
+# edge thickness of Del([[SITES]])
+custom $DelaunayEdge=1.5;
+
+# edge thickness of Del(Vor([[SITES]]))
+custom $IteratedDelaunayEdge=1;
+
+# edge thickness between nearest neighbors
+custom $NearestNeighbors=1;
+
+# edge thickness for crust edges
+custom $CrustEdge=0.333;
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

@@ -1,0 +1,136 @@
+use POSIX qw(floor log10);
+
+application 'polytope';
+
+sub normal2color($$) {
+  my ($facets,$i) = @_;
+  my @facets = @{$facets};
+  my $normal = $facets[$i];
+  my ($a,$r,$g,$b) = split(/\s+/,$normal);
+  no integer;
+  my $norm = sqrt($r*$r+$g*$g+$b*$b);
+  map { $_ = floor(255*$_/$norm) } ($r,$g,$b);
+	
+  return join(" ",($r,$g,$b));
+}
+
+#
+# @param compose 0  cut
+#                1  cut + polytope 
+#                2  all cuts + polytope
+#                3  color the cut differently
+#
+#
+
+die "usage: polymake --script cuts <polytope with LP> <n_cuts> <compose>\n" unless($#ARGV == 2);
+
+my $poly=ref($ARGV[0]) ? $ARGV[0] : load($ARGV[0]);
+
+die "defined for objects of type Polytope<Scalar> only" unless ref($poly) =~ m/^Polymake::polytope::Polytope__/;
+die "defined for polytopes of dimension 3 and 4 only" unless($poly->DIM == 3 || $poly->DIM == 4);
+
+shift @ARGV;
+
+my ($n_cuts,$compose) = @ARGV;
+
+my $n_digits = floor(log10($n_cuts));
+
+no integer;
+my ($min,$max) = ($poly->LP->MINIMAL_VALUE,$poly->LP->MAXIMAL_VALUE);
+
+my $step = ($max-$min)/$n_cuts;
+
+my @normal = split(/\s+/,$poly->LP->LINEAR_OBJECTIVE);
+
+my @cuts = ();
+
+my %cut_params = (FacetColor  => "25 25 255",
+		  EdgeThickness => ".3",
+		  VertexThickness => ".5",
+		  VertexColor => "255 127 0",
+		  VertexStyle => "hidden"
+		 );
+
+my %visual_params = (FacetStyle => "hidden",
+		     EdgeThickness  => ".4",
+		     VertexThickness => ".6",
+		     VertexColor=> "red"
+		    );
+
+for(my $i = 0; $i <= $n_cuts; ++$i) {
+  print ".";
+  print "\n" if(($i+1) % 20 == 0);
+  no integer;
+  $normal[0] = $min + $i*$step;
+  my $cut = new Polytope<Rational>("cut at height $normal[0]");
+  my $equation = join(" ",@normal)."\n";
+  if($compose == 3) {
+    $cut->INEQUALITIES = [$equation, @{$poly->FACETS}];
+  } else {
+    $cut->INEQUALITIES = \@{$poly->FACETS};
+    $cut->EQUATIONS = $equation;
+  }
+  $cut->commit;
+  if($poly->DIM == 4 && $cut->DIM == 3) {
+    my $cut3D = projection($cut,[1,2,3]);
+    $cut3D->name = "cut at height $normal[0] in 3D";
+    my $filename = $poly->name;
+    $filename =~ s/(.*)\..*$/$1/;
+    $filename .= ".".("0"x($n_digits-floor(log10($i)))).$i.".pov";
+    my %cut_params = (  FacetColor      => "25 25 255",
+		      EdgeThickness   => ".3",
+		      VertexThickness => ".5",
+		      VertexColor     => "255 127 0"
+		      );
+    povray(static($cut3D->VISUAL(\%cut_params))) if $cut3D->DIM == 3;
+#    povray(static($cut3D->VISUAL(FacetColor => sub {my $i = shift; return normal2color($cut3D->FACETS,$i);})),File=>"$filename") unless $cut3D->DIM != 3;
+  } elsif($poly->DIM == 3) {
+    my $filename = $poly->name;
+    $filename =~ s/(.*)\..*$/$1/;
+    $filename .= ".".("0"x($n_digits-floor(log10($i)))).$i.".pov";
+    if($compose == 1) {
+       compose($poly->VISUAL(\%visual_params),static($cut->VISUAL(\%cut_params))) unless $cut->DIM < 2;
+    } elsif ($compose == 0) {
+       compose(static($cut->VISUAL(\%cut_params))) unless $cut->DIM < 2;
+    } elsif ($compose == 2) {
+	push @cuts,$cut->VISUAL(\%cut_params) unless $cut->DIM < 2;
+    } elsif ($compose == 3) {
+      my @facet0 = (${$cut->FACETS}[0] =~ m/\d+/g);
+      my %facet0;
+      map { $facet0{$_} = 1 } @facet0;
+      my %cut_params = (
+		      EdgeThickness   => ".3",
+		      VertexThickness => ".5",
+		      );
+      compose(static($cut->VISUAL(\%cut_params,
+					 VertexColor => sub { 
+					   my $index = shift; 
+					   if($facet0{$index} == 1) { 
+					     return "255 0 0"; 
+					   } else { 
+					     return "255 127 0";} 
+					 },
+					 FacetColor => sub { 
+					   my $index = shift; 
+					   if($index == 0) { 
+					     return "255 127 0"; 
+					   } else { 
+					     return "0 0 255";} 
+					 },
+
+					))) unless $cut->DIM < 2;
+	
+    }
+  }
+}
+print "\n";
+if($compose == 2) {
+  my $filename = $poly->name;
+  $filename =~ s/(.*)\..*$/$1/;
+  compose($poly->VISUAL(\%visual_params),@cuts);
+}
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

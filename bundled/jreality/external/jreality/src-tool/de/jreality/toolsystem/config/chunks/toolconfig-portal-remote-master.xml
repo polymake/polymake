@@ -1,0 +1,21 @@
+<toolconfig>
+
+  <import href="chunks/toolconfig-portal-trackd.xml" />
+
+  <rawdevices>
+   
+    <rawdevice id="SystemTimer" type="de.jreality.toolsystem.raw.DeviceSystemTimer"/>
+
+  </rawdevices>
+
+  <rawslots>
+
+    <mapping device="SystemTimer" src="tick" target="SystemTime"/>
+    
+  </rawslots>
+  
+  <virtualdevices>
+
+  </virtualdevices>
+  
+</toolconfig>

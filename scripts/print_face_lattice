@@ -1,0 +1,35 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# script copied from FAQ
+# usage: polymake --script print_face_lattice FILE.poly
+
+use application 'polytope';
+
+my $file=shift;
+my $p=is_object($file) ? $file : load($file);
+my $HD=$p->HASSE_DIAGRAM;
+my $dim=$HD->dim;
+for (my $d=0; $d<=$dim; ++$d) {
+   print "DIM=$d\n";
+   foreach my $n (@{$HD->nodes_of_dim($d)}) {
+      print "$n: ", $HD->FACES->[$n], "\n";
+   }
+}
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

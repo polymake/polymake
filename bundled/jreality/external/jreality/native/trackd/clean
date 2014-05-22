@@ -1,0 +1,4 @@
+#! /bin/sh
+
+rm de_jreality_devicedriver_TrackdJNI.h TrackdAPI.o libJavaTrackdAPI.so
+

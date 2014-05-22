@@ -1,0 +1,6 @@
+#!/bin/bash
+#
+# usage: ./batchrender in.jrs out.png imgWidth imgHeight
+#
+cp=bin:lib/antlr.jar:lib/bsh.jar:lib/jogl.jar:lib/beans.jar:lib/jterm.jar:lib/smrj.jar:lib/sunflow.jar:lib/xpp3.jar:lib/xstream.jar:lib/jinput.jar:lib/smrj-app.jar
+java -Xms256M -Xmx768M -classpath ${cp} de.jreality.sunflow.batchrender.BatchRenderer $1 $2 $3 $4

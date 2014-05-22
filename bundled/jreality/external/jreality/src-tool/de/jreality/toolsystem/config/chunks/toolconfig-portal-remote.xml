@@ -1,0 +1,151 @@
+<toolconfig>  
+
+  <rawdevices>
+    <rawdevice id="Remote" type="de.jreality.toolsystem.raw.DevicePortalRemote"/>
+  </rawdevices>
+   
+  <rawslots>
+  <!-- map slots of raw devices to InputSlots -->
+    <mapping device="Remote" src="tick" target="SystemTime"/>
+
+    <mapping device="Remote" src="button_0" target="PrimaryAction"/>
+    <mapping device="Remote" src="button_1" target="PrimaryMenu"/>
+    <mapping device="Remote" src="button_2" target="PrimarySelection"/>
+    <mapping device="Remote" src="button_3" target="PanelActivation"/>
+    <!--mapping device="Remote" src="button_4" target="JumpActivation"/-->
+    <mapping device="Remote" src="button_5" target="GravityToggle"/>
+    <mapping device="Remote" src="valuator_0" target="PrimaryNavigationNDC_X"/>
+    <mapping device="Remote" src="valuator_1" target="PrimaryNavigationNDC_Y"/>
+    <mapping device="Remote" src="sensor_0" target="RawPointerShipTransformation"/>
+    <mapping device="Remote" src="sensor_1" target="RawShipHeadTransformation"/>
+    
+  </rawslots>
+  
+  <virtualdevices>
+  
+	<mapping src="PrimaryAction" target="PanelAction"/>
+    <mapping src="PrimaryMenu" target="PanelMenu"/>
+    <mapping src="PrimarySelection" target="PanelSelection"/>
+
+    <mapping src="PrimarySelection" target="PanelActivation"/>
+    <mapping src="PrimaryAction" target="RotateActivation"/>
+    <mapping src="PrimarySelection" target="JumpActivation"/>
+    <mapping src="PrimaryAction" target="AllDragActivation"/>
+    <mapping src="PrimaryMenu" target="DragActivation"/>
+    <mapping src="PrimarySelection" target="ResetActivation"/>
+    <mapping src="PrimaryAction" target="PointDragActivation"/>
+    
+   <virtualdevice type="de.jreality.toolsystem.virtual.VirtualScalePortalCoordinateSystem">
+      <inputslot>RawPointerShipTransformation</inputslot>
+      <outputslot>PointerShipTransformation</outputslot>
+    </virtualdevice>
+
+   <virtualdevice type="de.jreality.toolsystem.virtual.VirtualScalePortalCoordinateSystem">
+      <inputslot>RawShipHeadTransformation</inputslot>
+      <outputslot>ShipHeadTransformation</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualDoubleClick">
+      <inputslot>PrimaryAction</inputslot>
+      <outputslot>PanelActivation</outputslot>
+    </virtualdevice>
+
+    <constant name="FollowPointerSwitch">
+      <double>1</double>
+    </constant>
+    
+    <constant name="ShipRotateActivation">
+      <double>1</double>
+    </constant>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualZReflectTransformation">
+      <inputslot>PointerShipTransformation</inputslot>
+      <outputslot>FlippedPointerShipTransformation</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualProductMatrix">
+      <inputslot>AvatarTransformation</inputslot>
+      <inputslot>PointerShipTransformation</inputslot>
+      <outputslot>PointerTransformation</outputslot>
+    </virtualdevice>
+
+   <virtualdevice type="de.jreality.toolsystem.virtual.VirtualProductMatrix">
+      <inputslot>AvatarTransformation</inputslot>
+      <inputslot>FlippedPointerShipTransformation</inputslot>
+      <outputslot>FlippedPointerTransformation</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualCoupledAxis">
+      <inputslot>PrimaryAction</inputslot>
+      <inputslot>PrimarySelection</inputslot>
+      <outputslot>EncompassActivation</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualExtractRotationTrafo">
+      <inputslot>PointerTransformation</inputslot>
+      <outputslot>PointerRotation</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualExtractRotationTrafo">
+      <inputslot>FlippedPointerTransformation</inputslot>
+      <outputslot>FlippedPointerRotation</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualEvolutionOperator">
+      <inputslot>FlippedPointerRotation</inputslot>
+      <outputslot>TrackballTransformation</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualEvolutionOperator">
+      <inputslot>PointerTransformation</inputslot>
+      <outputslot>PointerEvolution</outputslot>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualProductMatrix">
+      <inputslot>AvatarTransformation</inputslot>
+      <inputslot>AvatarShipTransformation</inputslot>
+      <outputslot>WorldToCamera</outputslot>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualMergedNDC">
+      <inputslot>PrimaryNavigationNDC_X</inputslot>
+      <inputslot>PrimaryNavigationNDC_Y</inputslot>
+      <outputslot>PrimaryNavigationNDC</outputslot>
+      <prop name="factorX">
+        <double>1</double>
+      </prop>
+      <prop name="factorY">
+        <double>-1</double>
+      </prop>
+    </virtualdevice>
+
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualExtractAxis">
+      <inputslot>PrimaryNavigationNDC</inputslot>
+      <outputslot>ForwardBackwardAxis</outputslot>
+      <prop name="axis">
+        <string>translationY</string>
+      </prop>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualExtractAxis">
+      <inputslot>PrimaryNavigationNDC</inputslot>
+      <outputslot>HorizontalShipRotationAngleEvolutionRAW</outputslot>
+      <prop name="axis">
+        <string>translationX</string>
+      </prop>
+      <prop name="gain">
+        <double>1</double>
+      </prop>
+    </virtualdevice>
+    
+    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualTimestepEvolution">
+		<inputslot>HorizontalShipRotationAngleEvolutionRAW</inputslot>
+		<inputslot>SystemTime</inputslot>
+		<outputslot>HorizontalShipRotationAngleEvolution</outputslot>
+		<prop name="gain">
+			<double>1</double>
+		</prop>
+	</virtualdevice>
+    
+ </virtualdevices>
+</toolconfig>

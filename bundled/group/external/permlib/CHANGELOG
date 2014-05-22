@@ -1,0 +1,63 @@
+ChangeLog of PermLib
+-----------------------
+
+v0.2.8:
+fix compiler error (thanks to Jerry James for the report and patch)
+
+v0.2.7:
+Add Abstract* classes that 
+  - wrap the old API
+	- provide a fast implementation especially for direct products of symmetric groups
+Add function 'largeDiagonalSubgroup'
+Fix a bug in group_refinement (thanks to Ewgenij Gawrilow for reporting this)
+Remove code fragments for computing invariants
+
+v0.2.6:
+Improve group file format that is used for unit tests
+Add -Wshadow, fix shadow warnings
+Make PermLib compile with clang (i.e. fix some compliance issues in PermLib)
+Improve type recognition
+Minor API change in MatrixAutomorphismSearch constructor for initial partition
+Fix a bug in Permutation class *= operator (thanks to Peter Lietz for reporting this)
+
+v0.2.5:
+Fix bug in BSGS construction algorithm
+Add example for finding a small generating set with few generators
+Add very basic permutation group type recognition feature
+Performance improvements for backtrack search
+Add API for vector stabilization
+Add experimental backtrack search to determine if a set is not lexicographically
+    minimal in its orbit
+Convenience constructor for cyclic groups
+Methods for computation of the order of a permutation and for group conjugation
+Functionality to export a BSGS in elementary data types (C-arrays)
+
+v0.2.4:
+Correct handling of trivial group
+More unit tests
+Fix group copying bug
+
+v0.2.3:
+typename clean-up
+compute orbits for arbitrary domains
+
+v0.2.2:
+Directory clean-up
+Implemented search for lexicographically smallest set image in orbit
+
+v0.2.1:
+High-level C++ API
+
+v0.2:
+Major refactoring of directory structure
+BSGS-like structure for the symmetric group
+Major changes to API of classic and partition backtracking to support search in symmetric groups
+Implemented automorphism search for symmetric matrices
+
+
+v0.1.1:
+Fix Doxygen-CMake dependency
+
+v0.1:
+Initial release with basic BSGS, orbit, set stabilizer, set image and 
+group intersection functionality.

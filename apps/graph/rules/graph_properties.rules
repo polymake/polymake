@@ -1,0 +1,129 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# A graph with optional node and edge attributes.
+#
+declare object Graph<Dir=Undirected> {
+
+file_suffix graph
+
+# combinatorial description of the Graph in the form of adjacency matrix
+property ADJACENCY : props::Graph<Dir>;
+
+declare permutation NodePerm {
+
+   # Transforming this [[ADJACENCY]] into the basic object
+   property PERMUTATION : Array<Int>;
+}
+
+rule ADJACENCY : NodePerm.ADJACENCY, NodePerm.PERMUTATION {
+   $this->ADJACENCY=permuted_nodes($this->NodePerm->ADJACENCY, $this->NodePerm->PERMUTATION);
+}
+weight 1.20;
+
+# Number of nodes of the graph.
+property N_NODES : Int;
+
+# Number of [[EDGES]] of the graph.
+property N_EDGES : Int;
+
+# Degrees of nodes in the graph.
+property NODE_DEGREES : Array<Int>;
+
+# The diameter of the graph.
+property DIAMETER : Int;
+
+# True if the graph is a connected graph.
+property CONNECTED : Bool;
+
+# The connected components, encoded as node sets.
+property CONNECTED_COMPONENTS : PowerSet;
+
+# Number of [[CONNECTED_COMPONENTS]] of the graph.
+property N_CONNECTED_COMPONENTS : Int;
+
+# Labels of the nodes of the graph.
+property NODE_LABELS : Array<String> : mutable;
+
+# @notest  Rule defined "in stock" - currently without use
+rule NODE_LABELS : NodePerm.NODE_LABELS, NodePerm.PERMUTATION {
+   $this->NODE_LABELS=permuted($this->NodePerm->NODE_LABELS, $this->NodePerm->PERMUTATION);
+}
+weight 1.10;
+
+# Signed vertex-edge incidence matrix; for undirected graphs, the orientation comes from the lexicographic order of the nodes.
+property SIGNED_INCIDENCE_MATRIX : SparseMatrix<Int>;
+
+rule SIGNED_INCIDENCE_MATRIX : ADJACENCY {
+    $this->SIGNED_INCIDENCE_MATRIX = signed_incidence_matrix($this);
+}
+
+# Characteristic polynomial of the adjacency matrix; its roots are the eigenvalues
+property CHARACTERISTIC_POLYNOMIAL : UniPolynomial;
+
+}
+
+object Graph<Undirected> {
+
+# True if the graph is a bipartite.
+property BIPARTITE : Bool;
+
+# Difference of the black and white nodes if the graph is [[BIPARTITE]].
+# Otherwise -1.
+property SIGNATURE : Int;
+
+# Determine whether the graph has triangles or not.
+property TRIANGLE_FREE : Bool;
+
+# Node connectivity of the graph, that is, the minimal number of nodes to be removed
+# from the graph such that the result is disconnected.
+property CONNECTIVITY : Int;
+
+# The maximal cliques of the graph, encoded as node sets.
+property MAX_CLIQUES : PowerSet;
+
+# How many times a node of a given degree occurs
+property DEGREE_SEQUENCE : Map<Int,Int>;
+
+# The average degree of a node
+property AVERAGE_DEGREE : Rational;
+
+}
+
+object Graph<Directed> {
+
+# The number of outgoing edges of the graph nodes.
+property NODE_OUT_DEGREES : Array<Int>;
+
+# The number of incoming edges of the graph nodes.
+property NODE_IN_DEGREES : Array<Int>;
+
+}
+
+
+# A graph with edge weights.
+declare object EdgeWeightedGraph : Graph<Undirected> {
+
+   # Associated edge weights.
+
+   property EDGE_WEIGHTS : EdgeMap<Undirected,Float> : construct(ADJACENCY);
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

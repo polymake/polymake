@@ -1,0 +1,87 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+object PointConfiguration {
+
+# @category Combinatorics
+# The full-dimensional simplices that contain no points except for the vertices.
+rule MAX_INTERIOR_SIMPLICES : DIM, POINTS, CONVEX_HULL.VERTICES_IN_FACETS {
+    $this->MAX_INTERIOR_SIMPLICES = max_interior_simplices($this);
+}
+
+# @category Combinatorics
+# The number of MAX_INTERIOR_SIMPLICES
+rule N_MAX_INTERIOR_SIMPLICES : MAX_INTERIOR_SIMPLICES {
+    $this->N_MAX_INTERIOR_SIMPLICES = $this->MAX_INTERIOR_SIMPLICES->size();
+}
+
+# @category Combinatorics
+# The full-dimensional simplices on the boundary that contain no points except for the vertices.
+rule MAX_BOUNDARY_SIMPLICES : DIM, POINTS, CONVEX_HULL.VERTICES_IN_FACETS {
+    $this->MAX_BOUNDARY_SIMPLICES = max_boundary_simplices($this);
+}
+
+# @category Combinatorics
+# The number of MAX_BOUNDARY_SIMPLICES
+rule N_MAX_BOUNDARY_SIMPLICES : MAX_BOUNDARY_SIMPLICES {
+    $this->N_MAX_BOUNDARY_SIMPLICES = $this->MAX_BOUNDARY_SIMPLICES->size();
+}
+
+# @category Combinatorics
+# A matrix whose rows contain the cocircuit equations of C
+rule COCIRCUIT_EQUATIONS : DIM, POINTS, CONVEX_HULL.VERTICES_IN_FACETS, MAX_INTERIOR_SIMPLICES {
+    $this->COCIRCUIT_EQUATIONS = cocircuit_equations($this->DIM, $this->POINTS, $this->CONVEX_HULL->VERTICES_IN_FACETS, $this->MAX_INTERIOR_SIMPLICES);
+}
+
+# @category Combinatorics
+# A lower bound for the number of simplices needed to triangulate the convex hull
+# Symmetries are NOT taken into account
+rule SIMPLEXITY_LOWER_BOUND : CONVEX_HULL.VOLUME, MAX_INTERIOR_SIMPLICES, POINTS, DIM, COCIRCUIT_EQUATIONS {
+    $this->SIMPLEXITY_LOWER_BOUND = simplexity_lower_bound($this->DIM, $this->POINTS, $this->MAX_INTERIOR_SIMPLICES, $this->CONVEX_HULL->VOLUME, $this->COCIRCUIT_EQUATIONS);
+}
+
+
+}  # /PointConfiguration
+
+
+# @category Triangulations, subdivisions and volume
+# find the maximal interior simplices of a point configuration 
+# that DO NOT contain any point in their closure, except for the vertices.
+# Symmetries of the configuration are NOT taken into account.
+# @param PointConfiguration P the input point configuration
+user_function max_interior_simplices<Scalar>(PointConfiguration<Scalar>) {
+    max_interior_simplices_impl<Scalar>(@_);
+}
+
+
+# @category Triangulations, subdivisions and volume
+# Find the cocircuit equations of a polytope P.
+# There is one of these for each interior cocircuit of P, and they come as 
+# the rows of a matrix whose columns correspond to the maximal-dimensional simplices of P.
+# @param Polytope P the input polytope
+# @option filename the name of a file to store the equations
+# @return ListMatrix
+# user_function cocircuit_equations<Scalar>(PointConfiguration<Scalar> { filename=>'' }) {
+#    cocircuit_equations_impl<Scalar>(@_);
+# }
+
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

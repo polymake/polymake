@@ -1,0 +1,86 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# Bounded subcomplex of an unbounded polyhedron, which is associated with a finite metric space.
+# The tight span is 1-dimensional if and only if the metric is tree-like.  In this sense, the tight
+# span captures the deviation of the metric from a tree-like one.
+
+declare object TightSpan<Scalar=Rational> : Polytope<Scalar> {
+
+
+# @category Phylogenetic Analysis
+# Finite metric space encoded as a (symmetric) distance matrix.
+
+property METRIC : Matrix<Scalar>;
+
+
+# @category Phylogenetic Analysis
+# Coherent non-trivial splits.
+
+property COHERENT_SPLITS : Array< Pair<Set,Set> >;
+
+
+# @category Phylogenetic Analysis
+# Labels for the rows and columns of the [[METRIC]] space.
+# Default TAXA are just consecutive numbers.
+
+property TAXA : Array<String>;
+
+
+# @category Phylogenetic Analysis
+# Row indices in the [[METRIC]] matrix or -1
+property VERTICES_IN_METRIC : Array<Int>;
+
+# @notest  Rule defined "in stock" - currently without use
+rule VERTICES_IN_METRIC : VertexPerm.VERTICES_IN_METRIC, VertexPerm.PERMUTATION {
+   $this->VERTICES_IN_METRIC=permuted($this->VertexPerm->VERTICES_IN_METRIC, $this->VertexPerm->PERMUTATION);
+}
+weight 1.10;
+
+rule INEQUALITIES : METRIC {
+   $this->INEQUALITIES = metric2poly($this->METRIC);
+}
+
+rule COHERENT_SPLITS : METRIC {
+   $this->COHERENT_SPLITS = metric2splits($this->METRIC);
+}
+
+rule TAXA : METRIC {
+   $this->TAXA=[ 0 .. $this->METRIC->rows-1 ];
+}
+weight 0.10;
+
+rule VERTICES_IN_METRIC : METRIC, VERTICES {
+   $this->VERTICES_IN_METRIC = vertices_in_metric($this->VERTICES,$this->METRIC);
+}
+weight 1.10;
+
+rule VERTEX_LABELS : TAXA, VERTICES_IN_METRIC {
+   $this->VERTEX_LABELS=[ map { $_>=0 ? $this->TAXA->[$_] : " " } @{$this->VERTICES_IN_METRIC} ];
+}
+weight 0.10;
+
+rule BOUNDED : {
+    $this->BOUNDED=0;
+}
+weight 0.10;
+
+}
+
+
+# Local Variables:
+# c-basic-offset:3
+# mode: perl
+# End:

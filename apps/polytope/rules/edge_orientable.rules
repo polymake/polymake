@@ -1,0 +1,68 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object Polytope {
+
+# @category Combinatorics
+# True if there exists an edge-orientation (see [[EDGE_ORIENTATION]] for a definition).
+# The polytope is required to be 2-cubical.
+
+property EDGE_ORIENTABLE : Bool;
+
+
+# @category Combinatorics
+# List of all edges with orientation, such that for each 2-face the opposite edges point in the same direction.
+# Each line is of the form (u v), which indicates that the edge {u,v} is oriented from u to v.
+# The polytope is required to be 2-cubical.
+
+property EDGE_ORIENTATION : Matrix<Int>;
+
+
+# @category Combinatorics
+# Ordered list of edges of a Moebius strip with parallel interior edges. 
+# Consists of k lines of the form (v<sub>i</sub> w<sub>i</sub>), for i=1, ..., k. 
+#
+# The Moebius strip in question is given by the quadrangles 
+# (v<sub>i</sub>, w<sub>i</sub>, w<sub>i+1</sub>,v<sub>i+1</sub>), for i=1, ..., k-1, and the quadrangle (v<sub>1</sub>, w<sub>1</sub>, v<sub>k</sub>, w<sub>k</sub>).
+#
+# Validity can be verified with the client [[validate_moebius_strip]].
+# The polytope is required to be 2-cubical.
+
+property MOEBIUS_STRIP_EDGES : Matrix<Int>;
+
+
+# @category Combinatorics
+# Unordered list of quads which forms a Moebius strip with parallel interior edges.
+# Each line lists the vertices of a quadrangle in cyclic order.
+#
+# Validity can be verified with the client [[validate_moebius_strip_quads]].
+# The polytope is required to be 2-cubical.
+
+property MOEBIUS_STRIP_QUADS : Matrix<Int>;
+
+
+rule EDGE_ORIENTABLE, EDGE_ORIENTATION, MOEBIUS_STRIP_EDGES : CUBICALITY, HASSE_DIAGRAM {
+   edge_orientable($this);
+}
+
+rule MOEBIUS_STRIP_EDGES : MOEBIUS_STRIP_QUADS, HASSE_DIAGRAM {
+  $this->MOEBIUS_STRIP_EDGES=validate_moebius_strip_quads($this);
+}
+
+}
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

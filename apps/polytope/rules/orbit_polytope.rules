@@ -1,0 +1,126 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# A symmetric polytope defined as the convex hull of the orbit of a single point
+# under a permutation group acting on coordinates.
+declare object OrbitPolytope<Scalar=Rational> : SymmetricPolytope<Scalar> {
+
+#------------------------------------------------------
+# properties
+#------------------------------------------------------
+
+# The generating point of the orbit polytope.
+property GEN_POINT : Vector<Scalar>;
+
+
+# The NOP-graph of [[GEN_POINT]] with respect to the
+# [[GENERATING_GROUP]]. The nodes of the NOP-graph
+# correspond to the [[REPRESENTATIVE_CERTIFIERS]], 
+# which represent the different orbit polytopes
+# contained in the given orbit polytope.
+property NOP_GRAPH : Graph<Directed>;
+
+
+# A matrix of representatives of all certifiers
+# for [[GEN_POINT]] with respect to the
+# [[GENERATING_GROUP]].
+# A certifier is an integer point in the
+# given orbit polytope. 
+# Note that the representative certifiers must be in 
+# the same order as the corresponding nodes
+# in the [[NOP_GRAPH]]. Further, the [[CP_INDICES]]
+# refer to row indices of this property.
+property REPRESENTATIVE_CERTIFIERS : Matrix<Scalar>;
+
+
+# The number of [[REPRESENTATIVE_CERTIFIERS]].
+property N_REPRESENTATIVE_CERTIFIERS : Int;
+
+
+# The row indices of all core points among
+# the [[REPRESENTATIVE_CERTIFIERS]].
+property CP_INDICES : Set<Int>;
+
+
+# A matrix of representatives of all core points in
+# the given orbit polytope.
+# A core point is an integer point whose orbit
+# polytope is lattice-free (i.e. does not contain
+# integer points besides its vertices).
+property REPRESENTATIVE_CORE_POINTS : Matrix<Scalar>;
+
+
+# The number of [[REPRESENTATIVE_CORE_POINTS]].
+property N_REPRESENTATIVE_CORE_POINTS : Int;
+
+
+#------------------------------------------------------
+# rules
+#------------------------------------------------------
+
+
+rule initial : GEN_POINT : GEN_POINTS {
+   if ($this->GEN_POINTS->rows != 1) {
+      croak( "An OrbitPolytope has only one generating point!");
+   } else {
+       $this->GEN_POINT = $this->GEN_POINTS->[0];
+   }   
+}
+
+
+rule GEN_POINTS : GEN_POINT {
+    $this->GEN_POINTS = vector2row($this->GEN_POINT);
+} 
+
+#rule NOP_GRAPH : LATTICE_POINTS, GENERATING_GROUP { #FIXME: normaliz kann nicht verwendet werden, da der cast von OrbitPolytope nach LatticePolytope nicht funktioniert!
+rule NOP_GRAPH, REPRESENTATIVE_CERTIFIERS, REPRESENTATIVE_CORE_POINTS, CP_INDICES : GEN_POINT, POINTS, GENERATING_GROUP {
+    
+    my $lattice_poly = new LatticePolytope(VERTICES=>$this->POINTS, LINEALITY_SPACE=>[]); 
+    my @res=nestedOPGraph($this->GEN_POINT, $this->POINTS, $lattice_poly->LATTICE_POINTS, $this->GENERATING_GROUP, 0);
+    $this->NOP_GRAPH = $res[0];
+    $this->REPRESENTATIVE_CERTIFIERS = $res[1];
+    $this->REPRESENTATIVE_CORE_POINTS = $res[3];
+    $this->CP_INDICES = $res[4];
+}
+
+
+rule N_REPRESENTATIVE_CERTIFIERS : REPRESENTATIVE_CERTIFIERS {
+    $this->N_REPRESENTATIVE_CERTIFIERS = $this->REPRESENTATIVE_CERTIFIERS->rows;
+}
+
+
+rule N_REPRESENTATIVE_CORE_POINTS : REPRESENTATIVE_CORE_POINTS {
+    $this->N_REPRESENTATIVE_CORE_POINTS = $this->REPRESENTATIVE_CORE_POINTS->rows;
+}
+
+
+}
+
+
+
+package Visual::Color;
+# Color for the visualization of core points
+custom $CorePointColor="236 101 0"; #tud8b
+
+# Color for the visualization of non core points
+custom $NonCorePointColor="0 131 204"; #tud2b
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:
+

@@ -1,0 +1,231 @@
+/*
+  Copyright (c) 1997-2014
+  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+  http://www.polymake.org
+
+  This program is free software; you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation; either version 2, or (at your option) any
+  later version: http://www.gnu.org/licenses/gpl.txt.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+===============================================================================
+*/
+
+h2,h3 {
+	border-bottom-width:1pt;
+	border-bottom-style:solid;
+}
+div.object h3 {
+	margin-top:1em;
+	font-size: 17px;
+}
+div.category h3 {
+	margin-top: .7em;
+	font-size: 16px;
+}
+
+span.category {
+	color: #000;
+}
+
+span.object {
+	color: #000;
+}
+
+em.u {
+	text-decoration:underline;
+}
+
+
+/* -------- Page -------- */
+
+
+span.pm {
+	font-weight: bolder;
+	text-decoration: none;
+}
+
+.descr_func > div.descr {
+	margin-bottom: 1em;
+}
+
+div.unfoldable, .descr {
+	margin-top: .5em;
+}
+
+td > div.descr {
+	margin-top: 0em;
+}
+
+div.undoc {
+	color:rgb(240,20,50) !important;
+}
+span.undoc {
+	color:rgb(240,20,50) !important;
+}
+p{
+	margin-top:.2em;
+	margin-bottom:.5em;
+}
+
+li {
+	margin-bottom:.7em;
+}
+
+li.args {
+	margin-top:0;
+	margin-bottom:0;	
+}
+
+ul.ext{
+	margin-top: 1em;
+	padding-left: 5em;
+}
+ul.ext li {
+	margin-bottom: 0;
+	font-weight: normal;
+	font-size: 90%;
+}
+
+div.author {
+	margin-left: 2em;
+	font-size: 12px;	
+	margin-top: .5em;
+}
+
+
+/* -------- Unfolding -------- */
+
+ul.unfoldable{
+	list-style-image:none;
+	list-style-type:none;
+	
+	padding: 0;
+	margin-left: 2em;
+}
+
+div.icon {
+	width:20px;
+	float:left;
+	cursor:pointer;
+	
+	background-image:url(images/plus.png);
+	background-position: 0 5px;
+	background-repeat:no-repeat;
+}
+
+div.unfoldable {
+	margin-left:20px;
+}
+
+
+/* -------- Table for index -------- */
+
+table {
+	border-spacing: 0px 0px;
+	background-color: #ECEDED;
+	border-collapse: collapse;
+	vertical-align: middle;
+	
+	display: table;
+	font-size: 13px;
+	margin-bottom: 12px;
+	margin-left: 0px;
+	margin-right: 0px;
+	margin-top: 0px;
+	padding-bottom: 0px;
+	padding-left: 0px;
+	padding-right: 0px;
+	padding-top: 0px;
+}
+
+th {
+	font-weight: bold;
+}
+
+th, td {
+	border: 1px solid;
+	padding: 3px;	
+	display: table-cell;
+}
+
+
+/* -------- Table for arguments -------- */
+
+table.args {
+	margin: 0 0 0 0;
+}
+
+table.args tbody {
+	vertical-align: top;
+}
+
+table.args td{
+	border: 0;
+	padding: 3px;
+}
+
+
+
+
+/* -------- Links -------- */
+
+
+h2 a, h2 a:visited, a.javalink {
+	color: #484848 !important;
+	text-decoration:none;
+}
+h2 a:hover, a.javalink:hover {
+	color: #4671D5 !important;
+}
+
+a.ambiguous:before {
+        font-weight: bold;
+        color: rgb(255, 0, 0);
+        content: "AMBIGUOUS REF: "
+}
+
+a.invalid:before {
+        font-weight: bold;
+        color: rgb(255, 0, 0);
+        content: "INVALID REF: "
+}
+
+
+/* -------- Set Colours -------- */
+
+
+/* border lines */
+h1, h2, h3, td {
+	border-color: #AAAAAA;
+}
+
+/* cell background colour */
+th {
+	background-color: #E0A300;
+	border-color: #484848;
+	color:#fff;
+	background-color: #A7431A;
+}
+
+/* parameters */
+em.param, table.args td.param {
+	color: rgb(180,0,0);
+}
+
+
+/* used colours 
+
+darkest blue:		rgb(67, 105, 118)	descriptions, header, border below header
+middle blue:		rgb(99, 140, 156)	not used at the moment
+lighter blue:		rgb(140, 172, 187)	border lines
+very light blue:	rgb(222, 231, 236)	logo, table cell background-color
+green:				rgb(0, 153, 0)		links
+purple:				purple				visited links
+dark red:			rgb(150,0,0)		parameters
+bright red			rgb(255,0,0)		warnings, etc.
+*/

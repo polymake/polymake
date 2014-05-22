@@ -1,0 +1,79 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+die "usage: polymake --script visual_unbounded object|DATA-FILE\n" unless @ARGV;
+
+my $p=ref($ARGV[0]) ? $ARGV[0] : load($ARGV[0]);
+
+die "defined for objects of type Polytope<Scalar> only" unless ref($p) =~ m/^Polymake::polytope::Polytope__/;
+die "polyhedron is bounded, use VISUAL\n" if $p->BOUNDED;
+die "polyhedron has non-trivial LINEALITY_SPACE\n" if $p->LINEALITY_SPACE->rows()>0;
+
+if ($p->DIM==3) {
+   my $cut_off_factor = new Rational(6,5);
+   my $bbox=bounding_box($p->VERTICES, $cut_off_factor, 1);
+   my $bounded=$p->type->construct->($p->name."_bounded", INEQUALITIES => $p->FACETS / $bbox);
+
+   my $bbox_facets=new Map< Vector<Rational>, Bool>;
+   $bbox_facets->{$_}=1 for @$bbox;
+
+   my $vertex_map=new Map< Vector<Rational>, String>;
+   my $f=0;
+   if (defined (my $labels=$p->lookup("VERTEX_LABELS"))) {
+      $vertex_map->{$_}=$labels->[$f++] for @{$p->VERTICES};
+   } else {
+      $vertex_map->{$_}=$f++ for @{$p->VERTICES};
+   }
+   my @vertex_labels=map { $vertex_map->{$_} // " " } @{$bounded->VERTICES};
+   $bounded->VERTEX_LABELS=\@vertex_labels;
+
+   $bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " },
+		    FacetColor=>[ map { exists $bbox_facets->{$_} ? "red" : $Visual::Color::facets } @{$bounded->FACETS} ],
+		   );
+
+} elsif ($p->DIM==2) {
+   # there can be only one or two rays; we look for the affine vertices adjacent to them
+   my @rays=@{$p->FAR_FACE};
+   my ($av1)=@{$p->GRAPH->ADJACENCY->adjacent_nodes($rays[0]) - $p->FAR_FACE};
+   my ($av2)=@{$p->GRAPH->ADJACENCY->adjacent_nodes($rays[-1]) - $p->FAR_FACE};
+
+   my $V=$p->VERTICES->minor($p->BOUNDED_VERTICES,All) /
+         ($p->VERTICES->[$av1]+$p->VERTICES->[$rays[0]]) /
+	 ($p->VERTICES->[$av2]+$p->VERTICES->[$rays[-1]]);
+
+   my @vertex_labels;
+   if (defined (my $labels=$p->lookup("VERTEX_LABELS"))) {
+      @vertex_labels=(@$labels[@{$p->BOUNDED_VERTICES}], " ", " ");
+   } else {
+      @vertex_labels=(@{$p->BOUNDED_VERTICES}, " ", " ");
+   }
+
+   my $bounded=$p->type->construct->($p->name."_bounded", VERTICES => $V, VERTEX_LABELS => \@vertex_labels);
+   my $nb=$p->N_BOUNDED_VERTICES;
+
+   $bounded->VISUAL_GRAPH(Coord => dehomogenize(convert_to<Float>($V)),
+			  VertexThickness => sub { $_[0]<$nb },
+			  EdgeStyle => sub { my $e=shift; $e->from_node>=$nb && $e->to_node>=$nb && "hidden" },
+			 );
+} else {
+   die "Sorry, implemented only for 2-d and 3-d polyhedra\n";
+}
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

@@ -1,0 +1,250 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+CREDIT latte
+  LattE (Lattice point Enumeration) is a computer software dedicated to the 
+  problems of counting lattice points and integration inside convex polytopes.
+  Copyright by Matthias Koeppe, Jesus A. De Loera and others.
+  http://www.math.ucdavis.edu/~latte/
+
+# path to the LattE binaries
+custom $latte_count;
+
+CONFIGURE {
+   find_program($latte_count, "count", { prompt => "the program `count' from the LattE package" });
+}
+
+# additional parameters for calling LattE's "count". See the manual of LattE for details, recommended options are
+# "--irrational-all-primal": use irrational decomposition instead of polarization
+# "--maxdet=<n>": stop triangulating if determinant of cone < n (needs LiDIA)
+# "--exponential": use exponential substitution for evaluating the generating function
+custom $latte_count_param="";
+
+# additional parameters for calling latte's "count --ehrhart-polynomial"
+# see $latte_count_param for details
+custom $latte_ehrhart_param="";
+
+label latte
+
+sub write_latte_ineq {
+   my $tempname = shift;
+   my $this = shift;
+   my $int = shift;
+   # daten: ineq / eq
+   my $n_ineq = ($this->FACETS | INEQUALITIES)->rows;
+   my $fac = dense(eliminate_denominators_in_rows($this->FACETS | INEQUALITIES));
+   my $n_lines = $n_ineq;
+   my $ah;
+   if (defined (my $AH = $this->lookup("AFFINE_HULL | EQUATIONS"))) {
+      $n_lines = $n_lines + ($AH->rows);
+      $ah = dense(eliminate_denominators_in_rows($AH));
+   }
+        
+   open(my $P, ">$tempname")
+    or die "can't create temporary file $tempname: $!";
+   #header
+   print $P $n_lines, " ", ($this->CONE_AMBIENT_DIM), "\n";
+        
+   # facet lines
+   if ($int) {
+      $fac=$fac*($this->CONE_DIM);
+      for (my $i=0; $i<$fac->rows; $i++) {
+        $fac->($i,0) -= 1;
+      }
+   }
+   print $P $fac;
+
+   # affine hull lines
+   if ($n_lines > $n_ineq) {
+      print $P $ah;
+      print $P "linearity ", $n_lines-$n_ineq, " ";
+      print $P ++$n_ineq," " while $n_ineq < $n_lines;
+      print $P "\n";
+   }
+   close $P;
+}
+
+sub write_latte_vertices {
+   my $tempname = shift;
+   my $this = shift;
+   my $vert = dense($this->VERTICES);
+        
+   open(my $P, ">$tempname")
+    or die "can't create temporary file $tempname: $!";
+   
+   print $P $vert->rows, " ", ($this->CONE_AMBIENT_DIM), "\n";
+   print $P $vert;
+
+   close $P;
+}
+
+sub parse_latte_points {
+   my $P = shift;
+   local $_;
+   while (<$P>) {
+       if (my ($n)=/number of lattice points\D+(\d+)/) {
+           close $P;
+           latte_cleanup();
+           return $n;
+       } elsif(/Empty polytope/ or /The polytope is empty!/) {
+           close $P;
+           latte_cleanup();
+           return 0;
+       }
+   }
+   close $P;
+   latte_cleanup();
+   die "can't parse output from LattE's 'count'\n";
+}
+
+sub latte_cleanup {
+    unlink qw( latte_cdd.ext latte_cdd.ddl latte_cdd.out latte_cdd.ead latte_cdd.ine latte_cdd.ecd Check_emp.ddl Check_emp.out numOfLatticePoints Check_emp.lp Check_emp.lps numOfUnimodularCones Check_emp.ddl.old latte_stats totalTime );
+}
+
+object Polytope<Rational> {
+
+    rule latte.integer_points: N_LATTICE_POINTS : CONE_AMBIENT_DIM , FACETS | INEQUALITIES {
+        my $tempname=new Tempfile;
+        my $interior = 0;
+        write_latte_ineq($tempname, $this, $interior);
+        
+        # latte 1.2 does not do a full redundancy check by default, so force it when using inequalities
+        # furthermore it might produce wrong output for 0-dim polytopes when given the far face inequality
+        my $check = "--redundancy-check=full-cddlib";
+        if (defined($this->lookup("FACETS")) && $this->lookup("CONE_DIM") > 1) {
+            $check = "--redundancy-check=none";
+        }
+        if ($Verbose::external) {
+            dbg_print( "running latte's count: $latte_count $check $latte_count_param $tempname" );
+        }
+        open my $P, "$latte_count $check $latte_count_param $tempname 2>&1 |"
+            or die "couldn't run LattE's 'count': $!";
+        $this->N_LATTICE_POINTS = parse_latte_points($P);
+    }
+    precondition : BOUNDED;
+    precondition : FEASIBLE;
+    weight 5.3;
+
+    rule latte.integer_points: N_LATTICE_POINTS : CONE_AMBIENT_DIM , VERTICES {
+        my $tempname=new Tempfile;
+        write_latte_vertices($tempname, $this);
+        
+        if ($Verbose::external) {
+            dbg_print( "running latte's count: $latte_count $latte_count_param vrep $tempname" );
+        }
+        open my $P, "$latte_count $latte_count_param vrep $tempname 2>&1 |"
+            or die "couldn't run LattE's 'count': $!";
+        $this->N_LATTICE_POINTS = parse_latte_points($P);
+        
+        # FULL_DIM precodition because latte 1.2 fails for some non full-dim polytopes
+    }
+    precondition : BOUNDED;
+    precondition : FEASIBLE;
+    precondition : FULL_DIM;
+    weight 5.3;
+    
+
+    # Read [[FACETS]], multiply with POLYTOPE_DIM+1 (or CONE_DIM, respectively!) and substract 1 from the first column.
+    # Call LattE's count on the polytope having this matrix as facet matrix.
+    rule latte.integer_points: N_INTERIOR_LATTICE_POINTS : CONE_AMBIENT_DIM , FACETS | INEQUALITIES , CONE_DIM {
+        my $tempname=new Tempfile;
+        my $interior = 1;
+        write_latte_ineq($tempname, $this, $interior);
+        
+        # latte 1.2 does not do a full redundancy check by default, so force it when using inequalities
+        # furthermore it might produce wrong output for 0-dim polytopes when given the far face inequality
+        my $check = "--redundancy-check=full-cddlib";
+        if (defined($this->lookup("FACETS")) && $this->lookup("CONE_DIM") > 1) {
+            $check = "--redundancy-check=none";
+        }
+        if ($Verbose::external) {
+            dbg_print( "running latte's count: $latte_count $check $latte_count_param $tempname" );
+        }
+        open my $P, "$latte_count $check $latte_count_param $tempname 2>&1 |"
+            or die "couldn't run LattE's 'count': $!";
+        $this->N_INTERIOR_LATTICE_POINTS = parse_latte_points($P);
+    }
+    weight 5.3;
+    precondition : BOUNDED;
+    precondition : FEASIBLE;
+
+}
+
+object LatticePolytope {
+
+    rule EHRHART_POLYNOMIAL_COEFF : {
+      $this->EHRHART_POLYNOMIAL_COEFF = ones_vector<Rational>(1);
+    }
+    precondition : CONE_DIM { $this->CONE_DIM == 1 }
+    precondition : LATTICE;
+
+    rule latte.ehrhartpoly: LATTICE , EHRHART_POLYNOMIAL_COEFF : CONE_AMBIENT_DIM , FACETS | INEQUALITIES {
+        my $tempname=new Tempfile;
+        write_latte_ineq($tempname, $this);
+        
+        if ($Verbose::external) {
+            dbg_print( "running latte's count: $latte_count $latte_ehrhart_param --ehrhart-polynomial $tempname" );
+        }
+        open my $P, "$latte_count $latte_ehrhart_param --ehrhart-polynomial $tempname 2>&1 |"
+            or die "couldn't run LattE's 'count': $!";
+        local $_;
+        while (<$P>) {
+            if(/only implemented for integral polytopes/) {
+                $this->LATTICE = 0;
+                close $P;
+                latte_cleanup();
+                return;
+            } elsif (/^Ehrhart polynomial: /) {
+                # parse: Ehrhart polynomial:  + 1 * t^0 + 6 * t^1 + 12 * t^2 + 8 * t^3
+                #					+ 1 * t^0 + 8/3 * t^1 + 2 * t^2 + 4/3 * t^3
+		s/ //g;
+                my @list = m/\+?(-?\d+\/?\d*)\*t\^(\d+)/gc;
+                my $poly = new Vector<Rational>($list[-1]+1);
+                while (@list) {
+                    $poly->[shift(@list)] = shift(@list);
+                }
+                $this->EHRHART_POLYNOMIAL_COEFF = $poly;
+                $this->LATTICE=1;
+                close $P;
+                latte_cleanup();
+                return;
+            } elsif (/^The number of lattice points is 1\./ || /Total number of lattice points: 1/) {
+                $this->LATTICE=1;
+                $this->EHRHART_POLYNOMIAL_COEFF = ones_vector<Rational>(1);
+                close $P;
+                latte_cleanup();
+                return;
+            }
+        }
+        close $P;
+        latte_cleanup();
+        die "could not parse output from latte";
+
+    }
+    weight 5.8;
+    precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM > 0 && $this->CONE_AMBIENT_DIM <= 100 } # upper limits for matrix dimension: 
+    precondition : N_FACETS | N_INEQUALITIES { ($this->N_FACETS | N_INEQUALITIES) <= 50000 }          # default values stored explicitely of cdd used by latte
+    precondition : CONE_DIM { $this->CONE_DIM > 1 }                                                   # latte does not like polytopes that only hav a far facet
+    precondition : FEASIBLE;
+
+
+
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:4
+# End:

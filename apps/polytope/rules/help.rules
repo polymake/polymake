@@ -1,0 +1,110 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+INCLUDE
+  global_categories.rules
+
+# @topic category functions/Producing a polytope from scratch
+# With these clients you can create polytopes belonging to various parameterized
+# families which occur frequently in polytope theory, as well as random
+# polytopes with different models of randomness.
+
+
+# @topic category functions/Producing a polytope from polytopes
+# An important way of constructing polytopes is to modify an 
+# already existing polytope.
+#
+# Actually, these functions don't alter the input polytope
+# (it is forbidden in polymake), but create a new polytope object.
+#
+# Many functions can at your choice either calculate the vertex or facet coordinates,
+# or constrain themselves on the purely combinatorial description of the
+# resulting polytope.
+
+
+# @topic category functions/Transformations
+# These functions take a realized polytope and produce a new one by applying a
+# suitable affine or projective transformation in order to obtain some special
+# coordinate description but preserve the combinatorial type.
+#
+# For example, before you can polarize an arbitrary polyhedron, it
+# must be transformed to a combinatorially equivalent bounded polytope with the
+# origin as a relatively interior point. It is achieved with the sequence
+# [[orthantify]] - [[bound]] - [[center]] - [[polarize]].
+
+
+# @topic category functions/Coordinate conversions
+# The following functions allow for the conversion of the coordinate type of cones and polytopes.
+
+
+# @topic category functions/Other
+# Functions for special purpose.
+
+
+# @topic category functions/Comparing
+# Functions based on graph isomorphisms.
+
+
+# @topic category functions/Geometric properties
+# Properties depending on the coordinates of the polytopes.
+
+
+# @topic category functions/Optimization
+# Functions related to linear and integer linear programming.
+
+
+# @topic category functions/Producing a cone
+# Various constructions of cones.
+
+
+# @topic category functions/Producing a polytope from graphs
+# Polytope constructions which take graphs as input.
+
+
+# @topic category functions/Producing a point configuration
+# Constructing a point configuration, either from scratch or from existing objects.
+
+
+# @topic category functions/Producing other objects
+# Functions producing big objects which are not contained in application polytope.
+
+
+# @topic category functions/Quotient spaces
+# Topologic cell complexes defined as quotients over polytopes modulo a discrete group.
+
+
+# @topic category functions/Symmetry
+# Functions related to actions of permutation groups on polytopes.
+
+
+# @topic category functions/Triangulations, subdivisions and volume
+# Metric properties of polytopes related to measure and volume.
+
+
+# @topic category functions/Visualization
+# Functions for visualizing polytopes.
+
+
+# @topic category functions/Consistency check
+# Functions for checking the consistency of some properties of polytopes.
+
+
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

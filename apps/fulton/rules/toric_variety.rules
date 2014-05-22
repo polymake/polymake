@@ -1,0 +1,56 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object NormalToricVariety {
+
+   method construct(Cone<Rational>) {
+      my $cone = $_[1];
+      return new NormalToricVariety(check_fan_objects($cone));
+   }
+
+   method construct(PolyhedralFan<Rational>) {
+      my $fan = $_[1];
+      my $result = new NormalToricVariety();
+      $fan->copy_contents($result);
+      return $result;
+   }
+
+   rule AFFINE : N_MAXIMAL_CONES{
+      $this->AFFINE = ($this->N_MAXIMAL_CONES == 1);
+   }
+   
+   rule DEGENERATE : LINEALITY_DIM {
+      $this->DEGENERATE = $this->LINEALITY_DIM > 0;
+   }
+   weight 0.10;
+
+   rule PROJECTIVE : RAYS, MAXIMAL_CONES {
+      $this->PROJECTIVE = regular($this);
+   }
+  
+	# the number of maximal torus orbits 
+	# they correspond to the rays of the fan
+	rule N_MAXIMAL_TORUS_ORBITS : N_RAYS {
+  		$this->N_MAXIMAL_TORUS_ORBITS = $this->N_RAYS;
+	}
+	weight 0.10;
+	
+	rule ORBIFOLD : SIMPLICIAL {
+  		$this->ORBIFOLD = $this->SIMPLICIAL; 
+	}
+	weight 0.10;
+    
+}
+

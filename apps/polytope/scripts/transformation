@@ -1,0 +1,68 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+my $default_iterations=50;
+
+# Polytope, Transformation Matrix, #iterations =>
+sub visual_transformation {
+   my ($Poly, $Transform, $n_iter)=@_;
+   if ($Poly->AMBIENT_DIM>3) {
+      die "only 2-d and 3-d polytopes are allowed\n";
+   }
+   $n_iter ||= $default_iterations;
+
+   my @vis=($Poly->VISUAL(VertexThickness=>0.1));
+   my $name=$Poly->name;
+   for (my $i=1; $i<=$n_iter; ++$i) {
+      $Poly=$Poly->type->construct->("${name}_$i", VERTICES => $Poly->VERTICES * $Transform);
+      push @vis, $Poly->VISUAL(VertexThickness=>0.1/$n_iter, FacetTransparency=>0.5);
+   }
+
+   compose(@vis);
+}
+
+# Polytope, Array<Transformation Matrix>, #iterations =>
+sub visual_random_transformation {
+   my ($Poly, $Transformations, $n_iter)=@_;
+   if ($Poly->AMBIENT_DIM>3) {
+      die "only 2-d and 3-d polytopes are allowed\n";
+   }
+   $n_iter ||= $default_iterations;
+
+   my $m=@$Transformations;
+   $n_iter*=$m;
+   my @transformed=($Poly);
+   $#transformed=$n_iter+1;
+
+   my @colors=("red","blue","yellow","green","orange");
+
+   my @vis=($Poly->VISUAL(VertexThickness=>0.1, VertexLabels=>"hidden"));
+   for (my $i=1; $i<$n_iter; ++$i) {
+      my $rnd_tr=$Transformations->[int(rand($m))];
+      my $rnd_poly=$transformed[int(rand($i))];
+      $transformed[$i]=$Poly->type->construct->($Poly->name."_$i", VERTICES => $rnd_poly->VERTICES * $rnd_tr);
+      push @vis, $transformed[$i]->VISUAL(VertexThickness=>0.1,
+					  FacetColor=>$colors[$i%5],
+					  FacetTransparency=>0.5,
+					  VertexLabels=>"hidden");
+   }
+
+   compose(@vis);
+}
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

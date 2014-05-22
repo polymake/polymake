@@ -1,0 +1,86 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# application 'polytope';
+
+sub truncateRational {
+  my ($rational,$N_digits)=@_;
+  my $shiftedRat=$rational*(10**$N_digits);
+  my $truncatedRat=new Rational((numerator($shiftedRat)/denominator($shiftedRat)),10**$N_digits);
+  return $truncatedRat;
+}
+
+sub truncateMatrix {
+  my ($m,$N_digits)=@_;
+  my $truncatedMatrix=new Matrix<Rational>($m->rows,$m->cols);
+  for(my $i=0;$i<$m->rows;$i++){
+    for(my $j=0;$j<$m->cols;$j++){
+      $truncatedMatrix->row($i)->[$j]=truncateRational($m->row($i)->[$j],$N_digits);
+    }
+  }
+  return $truncatedMatrix;
+}
+
+# n random simplicial d-polytopes with 2d vertices
+sub random_hirsch {
+  application 'polytope';
+
+  my ($n, $d, $seed)=@_;
+  my $logfile="log";
+  
+  # it does not harm to fix one standard (d-1)-simplex
+  my $simplex1=simplex($d-1);
+  
+  open LOG, ">>$logfile";
+  $|=1;
+  print LOG "[ random_hirsch(#=$n,dim=$d,initial seed=$seed) on $ENV{HOSTNAME}; format: N_VERTICES N_FACETS SIMPLICIAL DUAL_DIAMETER ]\n";
+  
+# for dimension below 10 beneath_beyond will be (slightly) faster
+  $d<=10 ? prefer_now "beneath_beyond" : prefer_now "lrs";
+
+  # generate random (d-1)-simplices and construct the Cayley embedding of the two simplices 
+  # check for the Hirsch bound and save the output (if interesting)
+  for (my $i=$seed; $i<$seed+$n; ++$i) {
+    my $simplex2=new Polytope<Rational>(VERTICES=>truncateMatrix(rand_sphere($d-1,$d)->VERTICES,3));
+    my $p=cayley_embedding($simplex1,$simplex2);
+    # let create all properties at once
+    $p->provide("N_VERTICES", "N_FACETS", "SIMPLICIAL", "DIM", "GRAPH");
+    my ($nv, $nf, $simplicial, $dim, $dual_diam)=($p->N_VERTICES,$p->N_FACETS,$p->SIMPLICIAL,$p->DIM,$p->DUAL_DIAMETER);
+    my $now=localtime();
+    print LOG "$now $ENV{HOSTNAME} ($d,$i): $nv $nf $simplicial $dual_diam";
+    if ($dual_diam > $nv - $dim) {
+      print LOG "*";
+      $p->name= "hirsch_" . $dim . "_" . $i;
+      save($p);
+    }
+      print LOG "\n";
+   }
+
+   close LOG;
+}
+
+if (@ARGV == 2) {
+   push @ARGV, time;
+} elsif (@ARGV != 3) {
+   die "usage: polymake --script random_hirsch #polytopes dim [ seed ]\n";
+}
+
+random_hirsch(@ARGV);
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

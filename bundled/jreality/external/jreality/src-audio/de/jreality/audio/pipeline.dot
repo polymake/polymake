@@ -1,0 +1,35 @@
+digraph pipeline {
+x [label = "source position\n(relative to microphone)"]
+node[shape = "box"]
+a [label = "sample source\n(wav-file, soft synth)"]
+b [label = "sample rate conversion"]
+c [label = "preprocessing\n(early reflections, effects)"]
+d [label = "gain"]
+e [label = "general distance cues\n(low-pass filter)"]
+f [label = "distance-dependent delay\n(Doppler effects)"]
+g [label = "directed distance cues\n(attenuation)"]
+h [label = "directed encoding\n(Ambisonics)"]
+i [label = "directionless gain"]
+j [label = "directionless processing\n(reverberation)"]
+k [label = "directionless encoding"]
+l [label = "audio device\n(Ambisonics decoder)"]
+
+x -> e
+x -> f
+x -> g
+x -> h
+
+a -> b
+b -> c
+c -> d
+d -> e
+e -> f
+f -> g
+g -> h
+f -> i
+i -> j
+j -> k
+
+h -> l
+k -> l
+}

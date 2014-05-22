@@ -1,0 +1,119 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object Polytope {
+
+# @category Geometry
+# A weighted inner point depending on the outer angle called Steiner point for all faces of dimensions 2 to d.
+
+property STEINER_POINTS : Matrix<Scalar>;
+
+# Steiner point of the whole polytope.
+property STEINER_POINT : Vector<Scalar>;
+
+# @notest
+rule STEINER_POINTS : HASSE_DIAGRAM, GRAPH.ADJACENCY, VERTICES, CONE_DIM {
+   $this->STEINER_POINTS=all_steiner_points($this);
+}
+precondition : BOUNDED;
+weight 6.10;
+
+# @notest
+rule STEINER_POINT : GRAPH.ADJACENCY, VERTICES, CONE_DIM {
+   $this->STEINER_POINT=steiner_point($this);
+}
+precondition : BOUNDED;
+weight 5.10;
+
+# @notest
+rule STEINER_POINT : STEINER_POINTS {
+   $this->STEINER_POINT=$this->STEINER_POINTS->[0];
+}
+weight 0.10;
+
+}
+
+package Visual::Color;
+
+# Steiner points are drawn in blue
+custom $steiner_point="0 0 255";
+
+package application;
+
+# Steiner points are drawn thicker than the vertices
+custom $steiner_point_thickness=1;
+
+
+###################################################################################
+#
+#  decoration methods adding Steiner points to various drawings
+#
+package Visual::Polytope;
+
+# Add the [[Polytope::STEINER_POINTS|STEINER_POINTS]] to the 3-d visualization.
+# The facets become transparent.
+# @options %Visual::PointSet::decorations
+# @return Visual::Polytope
+
+user_method STEINER(%Visual::PointSet::decorations) {
+   my ($self, $decor)=@_;
+   my $VP=$self->basis_solid;
+   $VP->FacetTransparency //= 0.5;
+   my $P=$self->Polytope;
+   my $SP=new Visual::PointSet( Name => "Steiner points of " . $P->name,
+			        Points => dehomogenize(convert_to<Float>($P->STEINER_POINTS)),
+				PointColor => $Visual::Color::steiner_point,
+				PointThickness => $steiner_point_thickness,
+				PointLabels => "hidden",
+				$decor,
+			      );
+   compose($self, $SP);
+}
+
+
+package Visual::SchlegelDiagram;
+# Add the [[Visual::SchlegelDiagram::STEINER_POINTS|STEINER_POINTS]] to the Schlegel Diagram
+# @options %Visual::PointSet::decorations
+# @option Bool center place the projection center to the Steiner point of the polytope
+#                     and the view ray through the Steiner point of the facet
+# @return Visual::SchlegelDiagram
+
+user_method STEINER(%Visual::PointSet::decorations, { center => undef }) {
+   my ($self, $decor, $opts)=@_;
+   my $S=$self->SchlegelObject;
+   my $P=$S->parent;
+   if ($opts->{center}) {
+      $S->begin_transaction;
+      $S->INNER_POINT=$P->STEINER_POINTS->[0];
+      $S->FACET_POINT=$P->STEINER_POINTS->[$S->FACET+1];
+      $S->commit;
+   }
+   # omit the Steiner point of the whole polytope and the one on the projection facet
+   my $omit_points=new Set(0, $S->FACET+1);
+   my $SP=new Visual::PointSet( Name => "Steiner points of " . $P->name,
+				Points => (new Visual::SchlegelTransform($S, $P->STEINER_POINTS->minor(~$omit_points,All))),
+				PointColor => $Visual::Color::steiner_point,
+				PointThickness => $steiner_point_thickness,
+				PointLabels => "hidden",
+				$decor
+			      );
+   compose($self, $SP);
+}
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

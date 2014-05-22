@@ -1,0 +1,54 @@
+# A permutation group which acts on a polytope by permuting
+# (1) its [[polytope::Polytope::VERTICES|VERTICES]], (2) its [[polytope::Polytope::FACETS|FACETS]], or (3) the coordinates. 
+declare object GroupOfPolytope : GroupOfCone  {
+
+method construct(Group,$$@) { &Core::Object::new_filled_copy }
+
+method construct(GroupOfCone) { &Core::Object::new_filled_copy } 
+
+# @category Symmetric cones
+# An array that contains a set of indices (of vertices) for each orbit of vertices. 
+# The indices of the vertices correspond to their indices in the polymake object.
+property VERTICES_IN_ORBITS = override RAYS_IN_ORBITS;
+
+# @category Symmetric cones
+# The number of orbits of vertices.
+property N_ORBITS_OF_VERTICES = override N_ORBITS_OF_RAYS;
+
+# @category Symmetric cones
+# An array that contains a set of indices (of points) for each orbit of points. 
+# The indices of the points correspond to their indices in the polymake object.
+property POINTS_IN_ORBITS = override INPUT_RAYS_IN_ORBITS;
+
+# @category Symmetric cones
+# The number of orbits of points.
+property N_ORBITS_OF_POINTS = override N_ORBITS_OF_INPUT_RAYS;
+
+# @category Symmetric cones
+# The symmetrized vertices of the polytope. Same order as in the [[polytope::Polytope::VERTICES|VERTICES]]-section.
+#
+# Explanation: The symmetry group of a polytope also act on the vertices.
+#   If the polytope has a non-trivial lineality space, however, the vertices may appear
+#   unsymmetric. Nevertheless, there always exists some symmetric vertex description.
+property SYMMETRIC_VERTICES : Matrix<Rational>;
+
+# @category Symmetric cones
+# Representatives for the orbits of vertices of the polytope under this group action.
+# No redundancies are allowed.
+property REPRESENTATIVE_VERTICES = override REPRESENTATIVE_RAYS;
+
+# @category Symmetric cones
+# The number of vertex representatives.
+property N_REPRESENTATIVE_VERTICES = override N_REPRESENTATIVE_RAYS;
+
+# @category Symmetric cones
+# Representatives for the orbits of linear span of the polytope under this group action.
+# No redundancies are allowed.
+property REPRESENTATIVE_AFFINE_HULL = override REPRESENTATIVE_LINEAR_SPAN;
+
+}
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

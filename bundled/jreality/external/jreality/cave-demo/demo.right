@@ -1,0 +1,10 @@
+# demo CAVE configuration file
+
+parent: demo.props
+
+camera.orientation: -90. 0. 1. 0.
+
+frame.title: right
+
+frame.offset.x: 496
+frame.offset.y: 248

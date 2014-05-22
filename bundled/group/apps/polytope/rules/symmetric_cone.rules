@@ -1,0 +1,103 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object SymmetricCone {
+
+########################################################
+# properties
+########################################################
+
+
+CREDIT permlib
+
+#*******************************************************
+#* generating group properties
+#*******************************************************
+#RAYS_IN_ORBITS
+rule GENERATING_GROUP.RAYS_IN_ORBITS, GENERATING_GROUP.SYMMETRIC_RAYS : GENERATING_GROUP.GENERATORS, RAYS, LINEALITY_SPACE {          
+    my $sym_rays=symmetrize_poly_reps($this->RAYS,$this->LINEALITY_SPACE,$this->GENERATING_GROUP);
+    $this->GENERATING_GROUP->SYMMETRIC_RAYS=$sym_rays->first;
+    $this->GENERATING_GROUP->RAYS_IN_ORBITS=$sym_rays->second;
+} 
+
+
+rule GENERATING_GROUP.N_ORBITS_OF_RAYS : GENERATING_GROUP.RAYS_IN_ORBITS {
+    $this->GENERATING_GROUP->N_ORBITS_OF_RAYS=$this->GENERATING_GROUP->RAYS_IN_ORBITS->size;
+}
+
+
+#FACETS_IN_ORBITS
+rule GENERATING_GROUP.FACETS_IN_ORBITS, GENERATING_GROUP.SYMMETRIC_FACETS : GENERATING_GROUP.GENERATORS, FACETS, LINEAR_SPAN {        
+    my $sym_facets=symmetrize_poly_reps($this->FACETS,$this->LINEAR_SPAN,$this->GENERATING_GROUP);
+    $this->GENERATING_GROUP->SYMMETRIC_FACETS=$sym_facets->first;
+    $this->GENERATING_GROUP->FACETS_IN_ORBITS=$sym_facets->second;
+} 
+ 
+
+rule GENERATING_GROUP.N_ORBITS_OF_FACETS : GENERATING_GROUP.FACETS_IN_ORBITS {
+    $this->GENERATING_GROUP->N_ORBITS_OF_FACETS=$this->GENERATING_GROUP->FACETS_IN_ORBITS->size;
+}
+
+
+#COORDINATES_IN_ORBITS
+
+rule GENERATING_GROUP.COORDINATES_IN_ORBITS : GENERATING_GROUP.GENERATORS {
+    $this->GENERATING_GROUP->COORDINATES_IN_ORBITS=group::orbits_of_domain($this->GENERATING_GROUP);
+} 
+
+rule GENERATING_GROUP.N_ORBITS_OF_COORDINATES : GENERATING_GROUP.COORDINATES_IN_ORBITS {
+    $this->GENERATING_GROUP->N_ORBITS_OF_COORDINATES=$this->GENERATING_GROUP->COORDINATES_IN_ORBITS->size;
+}
+
+
+
+########################################################
+# rules
+########################################################
+
+rule INPUT_LINEALITY, INPUT_RAYS, GENERATING_GROUP.INPUT_RAYS_IN_ORBITS : GENERATING_GROUP.GENERATORS, GEN_INPUT_RAYS {
+    my @ray_result=group::orbits_coord_action_complete($this->GENERATING_GROUP,$this->GEN_INPUT_RAYS);
+    $this->INPUT_RAYS=$ray_result[0];
+    $this->GENERATING_GROUP->INPUT_RAYS_IN_ORBITS=$ray_result[1];
+    if (defined (my $gen_lin=$this->lookup("GEN_INPUT_LINEALITY"))) {
+        my @lin_result=group::orbits_coord_action_complete($this->GENERATING_GROUP,$gen_lin);
+        $this->INPUT_LINEALITY=$lin_result[0];
+    } else {
+        $this->INPUT_LINEALITY=new Matrix<Rational>(0,$ray_result[0]->cols);
+    }
+}
+
+
+rule EQUATIONS, INEQUALITIES, GENERATING_GROUP.INEQUALITIES_IN_ORBITS : GENERATING_GROUP.GENERATORS, GEN_INEQUALITIES {
+    my @ineq_result=group::orbits_coord_action_complete($this->GENERATING_GROUP,$this->GEN_INEQUALITIES);
+    $this->INEQUALITIES=$ineq_result[0];
+    $this->GENERATING_GROUP->INEQUALITIES_IN_ORBITS=$ineq_result[1];
+    if (defined (my $gen_eqs=$this->lookup("GEN_EQUATIONS"))) {
+        my @eq_result=group::orbits_coord_action_complete($this->GENERATING_GROUP,$gen_eqs);
+        $this->EQUATIONS=$eq_result[0];
+    } else {
+        $this->EQUATIONS=new Matrix<Rational>(0,$ineq_result[0]->cols);
+    }
+
+}
+
+
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

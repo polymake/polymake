@@ -1,0 +1,39 @@
+<toolconfig>
+
+  <rawdevices>
+  
+    <rawdevice id="Trackd" type="de.jreality.toolsystem.raw.DevicePortalTrackd">
+      <prop name="tracker_shmkey">
+        <int>4126</int>
+      </prop>
+      <prop name="controller_shmkey">
+        <int>4127</int>
+      </prop>
+      <prop name="head_sensor">
+      	<int>1</int>
+      </prop>
+    </rawdevice>
+    
+  </rawdevices>
+
+  <rawslots>
+
+    <mapping device="Trackd" src="button_0" target="PrimaryAction"/>
+    <mapping device="Trackd" src="button_1" target="PrimaryMenu"/>
+    <mapping device="Trackd" src="button_2" target="PrimarySelection"/>
+    <mapping device="Trackd" src="button_3" target="PanelActivation"/>
+    <mapping device="Trackd" src="button_4" target="JumpActivation"/>
+    <mapping device="Trackd" src="button_5" target="GravityToggle"/>
+    
+    <mapping device="Trackd" src="valuator_0" target="PrimaryNavigationNDC_X"/>
+    <mapping device="Trackd" src="valuator_1" target="PrimaryNavigationNDC_Y"/>
+    <mapping device="Trackd" src="sensor_0" target="RawPointerShipTransformation"/>
+    <mapping device="Trackd" src="sensor_1" target="RawShipHeadTransformation"/>
+    
+  </rawslots>
+  
+  <virtualdevices>
+  
+  </virtualdevices>
+  
+</toolconfig>

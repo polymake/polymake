@@ -1,0 +1,42 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+
+# @category Producing other objects
+# Produces the Coxeter group of type //type//. 
+# The Dynkin diagrams of the different types can be
+# found in the description of the clients [[simple_roots_type_A|simple_roots_type_*]].
+# @param String type the type of the Coxeter group
+# @return group::GroupOfPolytope the Coxeter group of type //type// 
+user_function coxeter_group {
+    my $type = $_[0];
+    if (length($type) < 2) {
+        die "coxeter_group: Type needs single letter followed by rank.";
+    }
+    my @chars = split(//, $type);
+    my $n = $chars[1];
+    my $rings = new Set<Int>(0..$n-1);
+    my $p = wythoff($type,$rings);
+    return new group::GroupOfPolytope($p->GROUP);
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:
+

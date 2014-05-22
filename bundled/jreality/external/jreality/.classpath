@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry excluding="de/jreality/audio/csound/|de/jreality/audio/jass/" kind="src" path="src-audio"/>
+	<classpathentry kind="src" path="src-backends-share"/>
+	<classpathentry kind="src" path="src-core">
+		<attributes>
+			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="jreality/jni/linux64"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry excluding="de/jreality/examples/SwtExample.java" kind="src" path="src-examples"/>
+	<classpathentry kind="src" path="src-gpgpu"/>
+	<classpathentry kind="src" path="src-io"/>
+	<classpathentry kind="src" path="src-jinput"/>
+	<classpathentry kind="src" path="src-jogl"/>
+	<classpathentry kind="src" path="src-jogl3"/>
+	<classpathentry kind="src" path="src-plugin"/>
+	<classpathentry kind="src" path="src-portal"/>
+	<classpathentry kind="src" path="src-proxies"/>
+	<classpathentry kind="src" path="src-renderman"/>
+	<classpathentry kind="src" path="src-soft"/>
+	<classpathentry kind="src" path="src-soft-new"/>
+	<classpathentry kind="src" path="src-sunflow"/>
+	<classpathentry kind="src" path="src-swing"/>
+	<classpathentry excluding="de/jreality/toolsystem/raw/DeviceSpacenav.java|de/jreality/toolsystem/raw/WiiMoteOSC.java" kind="src" path="src-tool"/>
+	<classpathentry excluding="de/jreality/tutorial/audio/Example.java|de/jreality/tutorial/misc/JLinkExample.java|de/jreality/tutorial/audio/MinimalExample.java" kind="src" path="src-tutorial"/>
+	<classpathentry kind="src" path="src-ui"/>
+	<classpathentry kind="src" path="src-vr"/>
+	<classpathentry kind="src" path="test"/>
+	<classpathentry excluding="de/jreality/audio/jack/|de/jreality/audio/csound/|de/jreality/audio/jass/" kind="src" path="test-audio"/>
+	<classpathentry kind="src" path="test-backends-share"/>
+	<classpathentry kind="src" path="test-portal"/>
+	<classpathentry kind="src" path="test-proxies"/>
+	<classpathentry kind="src" path="test-swing"/>
+	<classpathentry kind="src" path="src-python"/>
+	<classpathentry kind="lib" path="lib/jterm.jar"/>
+	<classpathentry kind="lib" path="lib/smrj.jar"/>
+	<classpathentry kind="lib" path="lib/sunflow.jar"/>
+	<classpathentry kind="lib" path="lib/smrj-app.jar"/>
+	<classpathentry kind="lib" path="lib/bsh.jar"/>
+	<classpathentry kind="lib" path="lib/colorpicker.jar"/>
+	<classpathentry kind="lib" path="lib/vrData.jar"/>
+	<classpathentry kind="lib" path="lib/jacknativeclient.jar"/>
+	<classpathentry kind="lib" path="lib/vrExamples.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/beans.jar"/>
+	<classpathentry kind="lib" path="lib/antlr-3.4-complete.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/NetUtil.jar"/>
+	<classpathentry kind="lib" path="lib/jinput.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/libpd.jar"/>
+	<classpathentry kind="lib" path="lib/numericalMethods.jar" sourcepath="/numericalMethods"/>
+	<classpathentry kind="lib" path="lib/jython_console.jar"/>
+	<classpathentry kind="lib" path="lib/jython-standalone-2.5.3.jar"/>
+	<classpathentry kind="lib" path="lib/xstream-1.4.2.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
+	<classpathentry exported="true" kind="lib" path="lib/jrworkspace.jar" sourcepath="/jrworkspace"/>
+	<classpathentry kind="lib" path="lib/itextpdf-5.3.2.jar"/>
+	<classpathentry kind="lib" path="lib/gluegen-rt.jar" sourcepath="jni/gluegen-java-src.zip">
+		<attributes>
+			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="jreality/lib"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry exported="true" kind="lib" path="lib/jogl-all.jar" sourcepath="jni/jogl-java-src.zip">
+		<attributes>
+			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="jreality/lib"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="lib/xpp3-1.1.4c.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

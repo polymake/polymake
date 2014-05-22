@@ -1,0 +1,29 @@
+#!/bin/sh
+
+top=$(dirname $0)
+[ $top = . ] || cd $top
+
+Script=support/configure.pl
+
+ExtractPerl() {
+  Perl=perl
+  while [ $# -gt 0 ]; do
+    arg="${1#PERL=}"
+    if [ "$arg" != "$1" ]; then
+      Perl="$arg"
+      return
+    fi
+    shift
+  done
+}
+
+case "$*" in *PERL=*)
+  ExtractPerl "$@"
+  exec $Perl $Script "$@"
+  ;;
+?*)
+  exec perl $Script "$@"
+  ;;
+esac
+
+exec perl $Script

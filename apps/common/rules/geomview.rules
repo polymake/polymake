@@ -1,0 +1,204 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+package Geomview::Viewer;
+
+CREDIT geomview
+  Geomview is an interactive 3D viewing program, originally developed
+  at The Geometry Center, at the University of Minnesota.
+  http://www.geomview.org/
+
+# path to the main geomview executable
+custom $geomview;
+
+CONFIGURE {
+   find_program($geomview, "geomview");
+}
+
+# @category Visualization
+# Use [[wiki:external_software#geomview|geomview]], an alternative tool for the visualization
+# of 3- or 4-dimensional geometrical objects.
+label geomview
+
+###########################################################################################
+#
+#  Drawing methods for graphical primitives defined in this module
+#
+
+use Geomview;
+
+sub point_appearance {
+   my $P=shift;
+   my $style=$P->VertexStyle;
+   ( defined($style) && !is_code($style) && $style =~ $Visual::hidden_re
+     ? () :
+     defined($P->VertexColor)
+     ? (pointColors => $P->VertexColor) : (),
+     points => $P->Points,
+     dim => $P->Dim,
+   );
+}
+
+sub facet_appearance {
+   my $P=shift;
+   my $style=$P->FacetStyle;
+   if (defined($style) && !is_code($style) && $style =~ $Visual::hidden_re) {
+      ( appearance => "-face +edge ".($P->Closed ? "" : " -backcull") );
+   } else {
+      my $transp=$P->FacetTransparency;
+      ( defined($transp)
+	? is_code($transp)
+	  ? ( appearance => "face transparent -edge",
+	      facetAlpha => $transp,
+	    )
+	  : ( appearance => "face transparent -edge material { alpha $transp }" )
+	: $P->Closed ? () : ( appearance => "-backcull" ),
+	defined($P->FacetColor)
+	? ( facetColors => $P->FacetColor) : ()
+      );
+   }
+}
+
+sub line_appearance {
+   my ($G)=@_;
+   my ($appearance, @params);
+   my $thickness=$G->EdgeThickness;
+   if (defined($thickness) && !is_code($thickness)) {
+      $appearance="linewidth $thickness";
+   }
+   if (defined (my $color=$G->EdgeColor)) {
+      if (is_code($color)) {
+	 @params=( lineColors => $color );
+      } else {
+	 $appearance.=" material { edgecolor " . $color->toFloat . " }";
+      }
+   }
+   push @params, ( appearance => $appearance ) if $appearance;
+   @params;
+}
+
+global_method geomview.geometry: draw(Visual::PointSet, @) {
+   my ($self, $P)=@_;
+   my $geom=new Geomview::OFF( name => $P->Name,
+			       point_appearance($P),
+			       facets => [ ],
+			     );
+   $self->append($geom);
+}
+
+global_method geomview.geometry: draw(Visual::Polygon, @) {
+   my ($self, $P)=@_;
+   my $geom=new Geomview::OFF( name => $P->Name,
+			       point_appearance($P),
+			       facets => $P->Facets,
+			       facet_appearance($P),
+			     );
+   $self->append($geom);
+}
+
+global_method geomview.geometry: draw(Visual::Polygons, @) {
+   my ($self, $P)=@_;
+   my $geom=new Geomview::OFF( name => $P->Name,
+			       point_appearance($P),
+			       facets => $P->Facets,
+                               facet_appearance($P),
+			     );
+   $self->append($geom);
+}
+
+global_method geomview.graph: draw(Visual::WireBase, @) {
+   my ($self, $G)=@_;
+   my $geom=new Geomview::SKEL( name => $G->Name,
+				points => $G->Vertices,
+				dim => $G->Dim,
+				lines => $G->all_edges,
+				n_lines => $G->n_edges,
+				line_appearance($G),
+			      );
+   $self->append($geom);
+}
+
+###########################################################################################
+#
+#  Implementation of the Viewer interface
+#
+
+use BackgroundViewer;
+use Polymake::Struct [ '@ISA' => 'Background::Viewer' ];
+
+sub file_suffix { ".gcl" }
+
+sub new {
+   my $self=&_new;
+   $self->graphics=new Geomview::File;
+   $self;
+}
+
+sub command {
+   my ($self, $filename)=@_;
+   "$geomview $filename";
+}
+
+sub new_drawing {
+   my ($self, $title)=@_;
+   push @{$self->graphics->geom}, new geom($title);
+   $self;
+}
+
+sub append {
+   my $self=shift;
+   $self->graphics->geom->[-1]->append(@_);
+}
+
+###########################################################################################
+#
+#  Writes to a gcl file without starting a GUI
+#
+
+package Geomview::File::Writer;
+import Visual::FileWriter(multiple => 1);
+
+###########################################################################################
+
+package application;
+
+# @category Visualization
+# Run [[wiki:external_software#geomview|geomview]] to display given visual objects.
+#
+# @param Visual::Object vis_obj ... objects to display
+#
+# @option String File "filename" or "AUTO"
+#  Store the objects in a ''gcl'' (geomview control language) file instead of starting the interactive GUI.
+#  The geometric data in ''OFF'' format is embedded in the Lisp-style commands, but can be easily extracted
+#  using any text editor, if needed.
+#
+#  The ''.gcl'' suffix is automatically added to the file name.
+#
+#  Specify //AUTO// if you want the filename be automatically derived
+#  from the drawing title.
+#
+#  You can also use any expression allowed for the ''open'' function,
+#  including "-" for terminal output, "&HANDLE" for an already opened file handle,
+#  or "| program" for a pipe.
+
+user_function geomview(Visual::Object+, { File => undef }) {
+   visualize_explicit(@_, "Geomview");
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# End:

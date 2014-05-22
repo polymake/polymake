@@ -1,0 +1,91 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+CREDIT porta
+  PORTA is a collection of routines for analyzing polytopes and polyhedra.
+  Copyright by Thomas Christof and Andreas Loebel.
+  http://www.iwr.uni-heidelberg.de/groups/comopt/software/PORTA/
+
+# path to the xporta executable
+custom $xporta;
+
+CONFIGURE {
+   find_program($xporta, "xporta");
+}
+
+require PortaParser;
+
+object Polytope<Rational> {
+
+# @category Convex hull computation
+# Run the [[wiki:external_software#porta]] program, implementing the Fourier-Motzkin elimination method.
+# The essential drawback of this tool is that it employs a limited-precision arithmetic,
+# and therefore can fail on numerically difficult problems.
+label porta
+
+
+rule porta.convex_hull.primal: FACETS, AFFINE_HULL : CONE_AMBIENT_DIM, CONE_DIM, VERTICES | POINTS {
+   my $tempname=new Tempfile;
+   my $converter=new PortaConverter("$tempname.poi");
+   $converter->print_dim($this->CONE_AMBIENT_DIM-1);
+   $converter->print_points($this->VERTICES | POINTS);
+   undef $converter;
+
+   my $command="$xporta -l -T $tempname.poi";
+   $command.=" >/dev/null 2>&1" unless $DebugLevel;
+   system($command) and die "porta exited with error code\n";
+
+   my $parser=new PortaParser("$tempname.poi.ieq");
+   if ($this->has_far_facet) {
+      push @{$parser->Ineq}, [ 1, (0) x ($this->CONE_AMBIENT_DIM-1) ];
+   }
+   $this->FACETS=$parser->Ineq;
+   $this->AFFINE_HULL=$parser->Eq;
+   unlink "porta.log";
+}
+weight 4.20;
+precondition : CONE_DIM { $this->CONE_DIM > 1 }
+precondition : POINTED;
+permutation : FacetPerm;
+
+
+rule porta.convex_hull.dual: VERTICES, LINEALITY_SPACE : CONE_AMBIENT_DIM, FACETS | INEQUALITIES, VALID_POINT {
+   my $tempname=new Tempfile;
+   my $converter=new PortaConverter("$tempname.ieq");
+   $converter->print_dim($this->CONE_AMBIENT_DIM-1);
+   $converter->print_valid_point($this->VALID_POINT);
+   $converter->print_inequalities($this->FACETS | INEQUALITIES, $this->lookup("AFFINE_HULL | EQUATIONS"));
+   undef $converter;
+
+   my $command="$xporta -l -T $tempname.ieq";
+   $command.=" >/dev/null 2>&1" unless $DebugLevel;
+   system($command) and die "xporta exited with error code\n";
+
+   my $parser=new PortaParser("$tempname.ieq.poi");
+   $this->VERTICES=$parser->Points;
+   $this->LINEALITY_SPACE=new Matrix<Rational>;
+   unlink "porta.log";
+}
+weight 4.10;
+precondition : POINTED;
+permutation : VertexPerm;
+
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# End:

@@ -1,0 +1,255 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+package Visual::Color;
+
+# graph edges: black
+custom $graph="0 0 0";
+
+require Visual::Graph;
+require Visual::Lattice;
+
+# @category Visualization
+# Attributes modifying the appearance of graphs
+
+options %Visual::Graph::decorations=(
+   %Visual::Wire::decorations,
+
+   # Matrix<Float>  2-d or 3-d coordinates of the nodes.
+   #                If not specified, a random embedding is generated using a pseudo-physical spring model
+   Coord => undef,
+
+   # Flexible<RGB>  alias for PointColor
+   NodeColor => undef,
+
+   # Flexible<Float>  alias for PointThickness
+   NodeThickness => undef,
+
+   # Flexible<RGB>  alias for PointBorderColor
+   NodeBorderColor => undef,
+
+   # Flexible<Float>  alias for PointBorderThickness
+   NodeBorderThickness => undef,
+
+   # Flexible<String>  alias for PointStyle
+   NodeStyle => undef,
+
+   # String  alias for PointLabels
+   NodeLabels => undef,
+);
+
+
+# @category Visualization
+# Attributes modifying the appearance of face lattices
+
+options %Visual::Lattice::decorations=(
+   %Visual::Graph::decorations,
+
+   # Flexible<Int>  How to draw directed edges: 0 (like undirected), 1 (with an arrow pointing towards the edge),
+   #                or -1 (with an arrow pointing against the edge).  Default is 1.
+   ArrowStyle => undef,
+
+   # Array<String>  Labels of atoms, to use as building blocks for node labels.  By default the ordinal numbers are taken.
+   AtomLabels => undef,
+);
+
+###############################################################################
+#
+# Home-made 3-d spring embedder with variations
+#
+package Visual::GraphEmbedding;
+
+# Tuning parameters for the graph embedder.
+# Almost all are multiplicative factors; the comments describe
+# the effect of INCREASING of the corresponding parameter.
+custom %graph_parameters=(
+   scale => 1,           # Float  the average edge length increases
+   inertion => 0.1,      # Float  the computations might converge more slowly, but more steadily
+   viscosity => 1,       # Float  improves the convergence at the risk of being stuck at a bad local minimum
+   balance => 10,        # Float  the non-neighbor nodes are more spread away from each other
+   'max-iterations' => 10000,  # Int  The iteration limit. Not multiplicative!
+);
+
+# Additional tuning parameters for the interactive spring embedder.
+custom %interactive_parameters=(
+   eps => 1e-4           # Float  the relative movement to be accepted as "no movement"
+);
+
+@ISA=qw( Visual::DynamicCoords );
+
+# perform static computations
+sub compute {
+   my ($self)=@_;
+   $self->merge_options(\%graph_parameters);
+   spring_embedder($self->source, $self->options);
+}
+
+# run interactive embedder
+sub run {
+   my ($self, $window)=@_;
+   $self->merge_options(\%graph_parameters);
+   $self->merge_options(\%interactive_parameters);
+   $self->coord=[ 0..$self->source->nodes-1 ];
+   $self->client_object=interactive_spring_embedder($self->source, $self->options);
+   $window->client_port=$self->client_object->port;
+}
+
+sub cols { 3 }
+
+###############################################################################
+
+package Visual::HDEmbedding;
+
+use Polymake::Struct (
+   [ '@ISA' => 'DynamicCoords' ],
+   '@label_width',
+);
+
+sub compute {
+   my ($self)=@_;
+   hd_embedder($self->source, $self->label_width, $self->options);
+}
+
+sub cols { 2 }
+
+###############################################################################
+
+package application;
+
+# Graph object, { optional parameters } => Visual::GraphEmbedding
+function spring_embedding_3d {
+    my $g_undir=new Graph<Undirected>(ADJACENCY=>$_[0]);
+    $_[0]=$g_undir->ADJACENCY;
+    new Visual::GraphEmbedding(@_);
+}
+
+# FaceLattice object, { optional parameters } => Visual::HDEmbedding
+function hd_embedding {
+   new Visual::HDEmbedding(@_);
+}
+
+function enforce_static(Visual::Graph) {
+   enforce_static_coord($_[0], "Vertices");
+}
+
+###############################################################################
+
+object Graph {
+
+# @category Visualization
+# Visualizes the graph.
+# Decorations may include ''Coord'', disabling the default spring embedder.
+# @options %Visual::Graph::decorations
+# @option Int seed random seed value for the spring embedder
+# @return Visual::Graph
+
+user_method VISUAL(%Visual::Graph::decorations, { seed => undef }) : ADJACENCY {
+   my ($this, $decor, $seed)=@_;
+   my $coord=delete $decor->{Coord};
+   if (defined $coord) {
+      if (instanceof Matrix($coord)) {
+         $coord=convert_to<Float>($coord);
+      } else {
+         $coord=new Matrix<Float>($coord);
+      }
+   } else {
+      $coord=spring_embedding_3d($this->ADJACENCY->has_gaps ? renumber_nodes($this->ADJACENCY) : $this->ADJACENCY, $seed);
+   }
+   visualize( new Visual::Graph( Name => $this->name,
+                                 Graph => $this,
+                                 NodeLabels => $this->lookup("NODE_LABELS"),
+                                 Coord => $coord,
+                                 $decor,
+                               ));
+}
+
+}
+
+###############################################################################
+
+object FaceLattice {
+
+# @category Visualization
+# Visualize the FaceLattice.
+# @options %Visual::Lattice::decorations
+# @option Int seed random seed value for the node placement
+# @return Visual::Lattice
+
+user_method VISUAL(%Visual::Lattice::decorations, { seed => undef }) {
+   my ($this, $decor, $seed)=@_;
+   my $top_node=$this->top_node;
+   my $VL=new Visual::Lattice( Name => $this->name,
+                               Graph => $this,
+                               Faces => $this->FACES,
+                               top_node => $top_node,
+                               ArrowStyle => 0,
+                               NodeBorderColor => "black",
+                               Coord => hd_embedding($this,$seed),
+                               $decor
+                             );
+   my $black_top_node=sub { $_[0]==$top_node ? "0 0 0" : undef };
+   $VL->merge(NodeColor => $black_top_node);
+   if (exists $decor->{NodeBorderColor}) { $VL->merge(NodeBorderColor => $black_top_node); }
+   visualize($VL);
+}
+
+# @category Visualization
+# Visualize the dual FaceLattice.
+# @options %Visual::Lattice::decorations
+# @option Int seed random seed value for the node placement
+# @return Visual::Lattice
+user_method VISUAL_DUAL(%Visual::Lattice::decorations, { seed => undef }) {
+   my ($this, $decor, $seed)=@_;
+   my $top_node=$this->top_node;
+   my $VL=new Visual::Lattice( Name => "Dual to ".$this->name,
+                               Graph => $this,
+                               Faces => $this->dual_faces,
+                               Mode => "dual",
+                               top_node => $top_node,
+                               ArrowStyle => 0,
+                               NodeBorderColor => "black",
+                               Coord => hd_embedding($this,$seed),
+                               $decor
+                             );
+   my $black_top_node=sub { $_[0]==$top_node ? "0 0 0" : undef };
+   $VL->merge(NodeColor => $black_top_node);
+   if (exists $decor->{NodeBorderColor}) { $VL->merge(NodeBorderColor => $black_top_node); }
+   visualize($VL);
+}
+
+}
+
+# @category Visualization
+# Write a graph in LEDA input format.
+# @param props::Graph G
+user_function LEDA_graph(props::Graph $) {
+   my ($G, $out)=@_;
+   my $n=$G->nodes;
+   print $out <<".", ("|{}|\n")x$n, $G->edges, "\n";
+LEDA.GRAPH
+
+
+$n
+.
+   for (my $e=entire(edges($G)); $e; ++$e) {
+      print $out $e->from_node, " ", $e->to_node, " 0 |{}|\n";
+   }
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

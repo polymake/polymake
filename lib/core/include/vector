@@ -1,0 +1,151 @@
+/* Copyright (c) 1997-2014
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+   http://www.polymake.org
+
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2, or (at your option) any
+   later version: http://www.gnu.org/licenses/gpl.txt.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+--------------------------------------------------------------------------------
+*/
+
+#ifndef POLYMAKE_VECTOR_
+#define POLYMAKE_VECTOR_
+
+#include <vector>
+#include <cstring>
+#include "polymake/internal/operations.h"
+#include "polymake/internal/modified_containers.h"
+
+namespace pm {
+
+template <typename Value, typename Alloc>
+struct spec_object_traits< std::vector<Value,Alloc> >
+   : spec_object_traits<is_container> { };
+
+template <typename Value, typename Alloc> inline
+void relocate(std::vector<Value,Alloc>* from, std::vector<Value,Alloc>* to)
+{
+   std::memcpy(to, from, sizeof(*from));
+}
+
+template <typename IteratorRef, typename Container>
+struct random_iterator_assoc_adapter {
+   typedef IteratorRef argument_type;
+   typedef iterator_traits<typename deref<IteratorRef>::type> it_traits;
+   typedef std::pair<typename it_traits::difference_type, typename it_traits::reference> result_type;
+
+   random_iterator_assoc_adapter() : c(0) { }
+
+   random_iterator_assoc_adapter(const Container& c_arg)
+      : c(&c_arg) { }
+
+   template <typename IteratorRef2>
+   random_iterator_assoc_adapter(const random_iterator_assoc_adapter<IteratorRef2,Container>& op)
+      : c(op.c) { }
+
+   result_type operator() (argument_type it) const
+   {
+      return result_type(it-c->begin(), *it);
+   }
+
+protected:
+   const Container* c;
+   template <typename, typename> friend struct random_iterator_assoc_adapter;
+};
+
+template <typename Container>
+struct Build_random_iterator_assoc_adapter { };
+
+template <typename Container, typename Iterator, typename ElemRef>
+struct unary_op_builder<Build_random_iterator_assoc_adapter<Container>, Iterator, ElemRef> {
+   typedef random_iterator_assoc_adapter<const Iterator&, Container> operation;
+   static operation create(const Build_random_iterator_assoc_adapter<Container>& c)
+   {
+      return reinterpret_cast<const Container&>(c);
+   }
+   static const operation& create(const operation& op) { return op; }
+
+   typedef typename if_else<attrib<ElemRef>::is_const,
+                            const random_iterator_assoc_adapter<typename attrib<ElemRef>::minus_const, Container>, operation>::type
+      alt_operation;
+   static operation create(alt_operation& op) { return operation(op); }
+};
+
+template <typename Value>
+class vector_as_property_map
+   : public modified_container_impl< vector_as_property_map<Value>,
+                                     list( Container< std::vector<Value> >,
+                                           Operation< Build_random_iterator_assoc_adapter< std::vector<Value> > >) > {
+   typedef modified_container_impl<vector_as_property_map> _super;
+public:
+   typedef typename _super::container vec_type;
+   typedef int key_type;
+   typedef Value mapped_type;
+   typedef typename vec_type::reference reference;
+   typedef typename vec_type::const_reference const_reference;
+
+   vec_type& get_container() { return vec; }
+   const vec_type& get_container() const { return vec; }
+   const typename _super::operation& get_operation() const
+   {
+      return reinterpret_cast<const typename _super::operation&>(vec);
+   }
+
+   typedef pair<int, Value> value_type;
+
+   explicit vector_as_property_map(size_t expected_size=0)
+      : def_val()
+   {
+      if (expected_size) vec.reserve(expected_size);
+   }
+
+   reference operator() (size_t k)
+   {
+      if (k >= vec.size()) vec.resize(k+1, def_val);
+      return vec[k];
+   }
+
+   const_reference operator() (size_t k) const
+   {
+      if (k < vec.size()) return vec[k];
+      return def_val;
+   }
+
+   reference operator[] (size_t k) { return vec[k]; }
+   const_reference operator[] (size_t k) const { return vec[k]; }
+
+   pair<typename _super::iterator, bool> insert(int k, typename function_argument<Value>::type v)
+   {
+      if ((size_t)k >= vec.size() || vec[k]==def_val) {
+         (*this)(k)=v;
+         return std::make_pair(typename _super::iterator(vec.begin()+k), true);
+      }
+      return std::make_pair(typename _super::iterator(vec.begin()+k), false);
+   }
+
+   void set_default_value(typename function_argument<Value>::type default_value)
+   {
+      def_val=default_value;
+   }
+
+   void clear() { vec.clear(); }
+protected:
+   vec_type vec;
+   Value def_val;
+};
+
+} // end namespace pm
+
+#endif // POLYMAKE_VECTOR_
+
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:

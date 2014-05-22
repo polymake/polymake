@@ -1,0 +1,73 @@
+<toolconfig>
+
+    <!-- TODO: create a common set of InputSlots for gamepads and
+               move virtual device config to a shared file for all game pads. -->
+
+	<rawdevices>
+		<rawdevice id="Gamepad"
+			type="de.jreality.toolsystem.raw.DeviceJinputController">
+			<prop name="id_string">
+				<string>DragonRise.*</string>
+			</prop>
+		</rawdevice>
+	</rawdevices>
+
+	<rawslots>
+		<!--DragActivation == 'Shoot-Imputslot' -->
+		<mapping device="Gamepad" src="Base" target="key1" />
+		<mapping device="Gamepad" src="Base 2" target="key2" />
+
+		<mapping device="Gamepad" src="Thumb" target="DragActivation" />
+		<mapping device="Gamepad" src="Thumb 2" target="JumpActivation" />
+		<mapping device="Gamepad" src="x" target="RawX" />
+		<mapping device="Gamepad" src="y" target="RawY" />
+		<mapping device="Gamepad" src="rx" target="RawRX" />
+		<mapping device="Gamepad" src="rz" target="RawRZ" />
+	</rawslots>
+
+	<virtualdevices>
+
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualReverseAxis">
+			<inputslot>RawX</inputslot>
+			<outputslot>LeftRightAxisRaw</outputslot>
+		</virtualdevice>
+	
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualScaleAxis">
+			<inputslot>LeftRightAxisRaw</inputslot>
+			<outputslot>LeftRightAxis</outputslot>
+			<prop name="scale">
+				<double>0.5</double>
+			</prop>
+		</virtualdevice>
+	
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualScaleAxis">
+			<inputslot>RawY</inputslot>
+			<outputslot>ForwardBackwardAxis</outputslot>
+			<prop name="scale">
+				<double>1.75</double>
+			</prop>
+		</virtualdevice>
+	
+		<virtualdevice
+					type="de.jreality.toolsystem.virtual.VirtualTimestepEvolution">
+			<inputslot>RawRZ</inputslot>
+			<inputslot>SystemTime</inputslot>
+			<outputslot>VerticalHeadRotationAngleEvolution</outputslot>
+			<prop name="gain">
+				<double>1.0</double>
+			</prop>
+		</virtualdevice>
+
+		<virtualdevice
+					type="de.jreality.toolsystem.virtual.VirtualTimestepEvolution">
+			<inputslot>RawRX</inputslot>
+			<inputslot>SystemTime</inputslot>
+			<outputslot>HorizontalShipRotationAngleEvolution</outputslot>
+			<prop name="gain">
+				<double>1.0</double>
+			</prop>
+		</virtualdevice>
+	</virtualdevices>
+</toolconfig>

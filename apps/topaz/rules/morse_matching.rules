@@ -1,0 +1,123 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+INCLUDE
+   complex_properties.rules
+
+object SimplicialComplex {
+
+# @category Topology
+# A Morse matching is a reorientation of the arcs in the Hasse diagram of a simplicial complex
+# such that at most one arc incident to each face is reoriented (matching condition) and the
+# resulting orientation is acyclic (acyclicity condition). Morse matchings capture the main
+# structure of discrete Morse functions, see
+#
+#	Robin Forman: Morse Theory for Cell-Complexes,
+#	Advances in Math., 134 (1998), pp. 90-145.
+#
+# This property is computed by one of two heuristics. The default heuristic is
+# a simple greedy algorithm ([[greedy]]). The alternative is to use a canceling algorithm
+# due to Forman ([[cancel]]). Note that the computation of a Morse matching of largest
+# size is NP-hard. See
+#
+#	Michael Joswig, Marc E. Pfetsch: Computing Optimal Morse Matchings
+#	SIAM J. Discrete Math., 2006, to appear
+#
+
+# @category Topology
+# to compute a Morse matching by the greedy algorithm
+label morse_greedy
+
+# @category Topology
+# to compute a Morse matching by Forman's canceling algorithm
+label morse_cancel
+
+# @category Topology
+# to compute a Morse matching by both the greedy algorithm and Forman's canceling algorithm
+label morse_both
+
+property HASSE_DIAGRAM {
+
+property MORSE_MATCHING : EdgeMap<Directed, Int> : construct(ADJACENCY);
+
+
+# @category Topology
+# Size of the computed Morse matching.
+# FIXME: temporary
+property MORSE_MATCHING_SIZE : Int;
+
+
+# @category Topology
+# The critical faces of the computed Morse matching, i.e., the faces not
+# incident to any reoriented arc (not matched).
+# FIXME: temporary
+property MORSE_MATCHING_CRITICAL_FACES : Array<Set>;
+
+
+# @category Topology
+# The vector of critical faces in each dimension.
+# FIXME: temporary
+property MORSE_MATCHING_CRITICAL_FACE_VECTOR : Array<Int>;
+
+
+# @category Topology
+# Number of critical faces of the computed Morse matching.
+# FIXME: temporary
+property MORSE_MATCHING_N_CRITICAL_FACES : Int;
+
+
+} # end property HASSE_DIAGRAM
+
+
+# clients to compute Morse matching:
+rule morse_greedy.morse_matching: HASSE_DIAGRAM.MORSE_MATCHING : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.FACES, HASSE_DIAGRAM.DIMS, PSEUDO_MANIFOLD {
+   $this->HASSE_DIAGRAM->MORSE_MATCHING = morse_matching($this, heuristic=>1);
+}
+
+rule morse_cancel.morse_matching: HASSE_DIAGRAM.MORSE_MATCHING : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.FACES, HASSE_DIAGRAM.DIMS, PSEUDO_MANIFOLD {
+   $this->HASSE_DIAGRAM->MORSE_MATCHING = morse_matching($this, heuristic=>2);
+}
+
+rule morse_both.morse_matching: HASSE_DIAGRAM.MORSE_MATCHING : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.FACES, HASSE_DIAGRAM.DIMS, PSEUDO_MANIFOLD {
+   $this->HASSE_DIAGRAM->MORSE_MATCHING = morse_matching($this, heuristic=>0);
+}
+
+
+rule HASSE_DIAGRAM.MORSE_MATCHING_SIZE : HASSE_DIAGRAM.MORSE_MATCHING {
+   $this->HASSE_DIAGRAM->MORSE_MATCHING_SIZE = morse_matching_size($this);
+}
+
+
+rule HASSE_DIAGRAM.MORSE_MATCHING_CRITICAL_FACES, HASSE_DIAGRAM.MORSE_MATCHING_CRITICAL_FACE_VECTOR : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.FACES, HASSE_DIAGRAM.DIMS, HASSE_DIAGRAM.MORSE_MATCHING {
+   morse_matching_critical_faces($this);
+}
+
+
+rule HASSE_DIAGRAM.MORSE_MATCHING_N_CRITICAL_FACES: HASSE_DIAGRAM.MORSE_MATCHING_CRITICAL_FACE_VECTOR {
+   my $n=0;
+   foreach my $f (@{$this->HASSE_DIAGRAM->MORSE_MATCHING_CRITICAL_FACE_VECTOR}) {
+      $n += $f;
+   }
+   $this->HASSE_DIAGRAM->MORSE_MATCHING_N_CRITICAL_FACES = $n;
+}
+
+
+}
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

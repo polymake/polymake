@@ -1,0 +1,179 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+object Cone {
+
+CREDIT sympol
+  A software package for polyhedral description conversion up to symmetries.
+  Written by Thomas Rehn and Achill Schürmann.
+  http://www.math.uni-rostock.de/~rehn/software/sympol.html 
+
+
+rule GROUP.REPRESENTATIVE_RAYS : GROUP.GENERATORS, GROUP.DOMAIN, FACETS, LINEAR_SPAN {
+   if ($this->GROUP->DOMAIN != $domain_OnFacets) {
+      croak("Incompatible group action: expected action OnFacets.");
+   }
+   my $rayCompMethod = 0; # TODO: provisional: chooses sympol ray computation via lrs (set to 1 for computation via cdd)
+   my ($success, $ineq, $eq) = representation_conversion_up_to_symmetry($this, $this->GROUP, 0, $rayCompMethod);
+   if (!$success) {
+      croak("internal sympol error");
+   }
+   $this->GROUP->REPRESENTATIVE_RAYS = $ineq;
+}
+weight 5.10;
+
+rule GROUP.REPRESENTATIVE_LINEAR_SPAN, GROUP.REPRESENTATIVE_FACETS : GROUP.GENERATORS, GROUP.DOMAIN, RAYS, LINEALITY_SPACE {
+   if ($this->GROUP->DOMAIN != $domain_OnRays) {
+      croak("Incompatible group action: expected action OnRays.");
+   }
+   my $rayCompMethod = 0; # TODO: provisional: chooses sympol ray computation via lrs (set to 1 for computation via cdd)
+   my ($success, $ineq, $eq) = representation_conversion_up_to_symmetry($this, $this->GROUP, 1, $rayCompMethod);
+   if (!$success) {
+      croak("internal sympol error");
+   }
+   $this->GROUP->REPRESENTATIVE_FACETS = $ineq;
+   $this->GROUP->REPRESENTATIVE_LINEAR_SPAN = $eq;
+}
+weight 5.10;
+
+CREDIT off
+
+
+rule GROUP.N_REPRESENTATIVE_RAYS : GROUP.REPRESENTATIVE_RAYS {
+   $this->GROUP->N_REPRESENTATIVE_RAYS = $this->GROUP->REPRESENTATIVE_RAYS->rows;
+}
+
+rule GROUP.N_REPRESENTATIVE_FACETS : GROUP.REPRESENTATIVE_FACETS {
+   $this->GROUP->N_REPRESENTATIVE_FACETS = $this->GROUP->REPRESENTATIVE_FACETS->rows;
+}
+
+
+# @category Combinatorics
+# The equivalence classes of maximal-dimensional simplices under a symmetry group 
+rule GROUP.REPRESENTATIVE_SIMPLICES : COMBINATORIAL_DIM, RAYS, GROUP.GENERATORS {
+    my $cds = representative_simplices($this->COMBINATORIAL_DIM, $this->RAYS, $this->GROUP->GENERATORS);
+    $this->GROUP->REPRESENTATIVE_SIMPLICES = $cds;
+}
+
+# @category Combinatorics
+# The number of equivalence classes of maximal-dimensional simplices under a symmetry group 
+rule GROUP.N_REPRESENTATIVE_SIMPLICES : GROUP.REPRESENTATIVE_SIMPLICES {
+    my $cds = $this->GROUP->REPRESENTATIVE_SIMPLICES;
+    my @n_vector = map { $cds->[$_]->size } (0..$cds->size-1);
+    $this->GROUP->N_REPRESENTATIVE_SIMPLICES = \@n_vector;
+}
+
+# @category Combinatorics
+# The equivalence classes of maximal-dimensional simplices in the interior and boundary under a symmetry group 
+rule GROUP.REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, GROUP.REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES : COMBINATORIAL_DIM, RAYS_IN_FACETS, RAYS, GROUP.GENERATORS {
+    my $pair = representative_interior_and_boundary_ridges($this);
+    $this->GROUP->REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES = $pair->first;
+    $this->GROUP->REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES = $pair->second;
+}
+
+# @category Combinatorics
+# The equivalence classes of maximal-dimensional simplices in the boundary under a symmetry group 
+rule GROUP.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES : COMBINATORIAL_DIM, RAYS, GROUP.GENERATORS {
+    $this->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES = representative_max_interior_simplices($this->COMBINATORIAL_DIM, $this->RAYS, $this->GROUP->GENERATORS);
+}
+
+
+# @category Combinatorics
+# The symmetrized version of the cocircuit equations, where equivalent simplices have been merged into the same variable
+rule GROUP.SYMMETRIZED_COCIRCUIT_EQUATIONS : GROUP.REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, GROUP.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, GROUP.DOMAIN, COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, GROUP.GENERATORS {
+    my $group_on_vertices = group_acting_on_vertices($this, "GROUP");
+    # the following is incorrect, because the new group always gets added to $this->GROUP.
+    # In reality, the method group_acting_on_vertices() should add the new group to 
+    # the $this->GROUP array, if necessary, and return the index to the good group.
+    my $d = $this->COMBINATORIAL_DIM;
+    my $cceqs = symmetrized_cocircuit_equations($d, $this->RAYS, $this->RAYS_IN_FACETS, $group_on_vertices->GENERATORS, $this->GROUP->REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, $this->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES);
+    $this->GROUP->SYMMETRIZED_COCIRCUIT_EQUATIONS = $cceqs;
+}
+
+
+}
+
+sub group_acting_on_vertices {
+# This function SHOULD do the following:
+# 1. Iterate over all instances of $group_name found in $this
+# 2. If no group is found, return -1
+# 3. If it finds a group with DOMAIN==1, it returns its index in the $group_name array
+# 4. If no such group is found, it should call convert_domain on the first group,
+# 5. save the obtained group in the $group_name array,
+# 6. and return the index of the new group.
+# Everything except 5 and 6 works. The new group is returned instead of the index.
+   my ($this, $group_name) = @_;
+   my $i=1;
+   my $grp_index = -1;
+   my $is_group = 1;
+   while ($is_group) {
+      # now follows a dirty perl hack equivalent to
+      # if (defined $this->GROUP->[$i-1]) {
+      #    if ($this->GROUP->[$i-1]->DOMAIN == 1) ...
+      # }
+      # but where GROUP is replaced by $group_name
+      my $g = ::Polymake::Core::Object::give_pv($this, $group_name)->[$i];
+      $is_group = is_array($g);
+      if ($is_group) {
+         if ($g->[0]->DOMAIN == $domain_OnRays) {
+            $grp_index = $i-1;
+            last;
+         }
+         ++$i;
+      }
+   } 
+   if ($grp_index != -1) {
+      return ($i, ::Polymake::Core::Object::give_pv($this, $group_name)->[$grp_index+1]->[0]);
+   }
+   my $first_group = ::Polymake::Core::Object::give_pv($this, $group_name)->[1]->[0];
+   my $group_on_vertices = convert_group_domain($first_group, $this->VERTICES_IN_FACETS);
+   # I now want to add the new $group_on_vertices to $this->$group_name. 
+   # But the following doesn't work:  
+   #  ::Polymake::Core::Object::_add_multi($this, $group_name, $group_on_vertices);
+   return ($i, $group_on_vertices);
+}
+
+
+# @category Triangulations, subdivisions and volume
+# Find a set of representative simplices of the cone or polytope, up to its symmetry group in GROUP.
+# The return value is an array whose //k//-th entry is the set of //k//-dimensional representatives.
+# @param Cone P the input cone or polytope
+# @option group_name the symmetry group to use; default is GROUP
+# @return Array<Set<Set<Int>>>
+#user_function representative_simplices<Scalar>(Cone<Scalar> { group_name=>'GROUP' }) {
+#    representative_simplices_impl<Scalar>(@_);
+#}
+
+
+# # @category Matroid properties
+# # Find projections of the representatives for the cocircuit equations of a Cone, up to symmetry
+# # @param Cone P the input cone or polytope
+# # @return SparseMatrix
+# user_function symmetrized_cocircuit_equations<Scalar>(Cone<Scalar> { filename=>'', reduce_rows=>1 }) {
+#     my ($this, $options) = @_;
+# if (defined($this->GROUP )) {
+#    croak("no GROUP defined here");
+# }
+#     my $grp_index = index_of_group_acting_on_vertices($this, $this->GROUP);
+#     symmetrized_cocircuit_equations_impl<Scalar>($this, $this->GROUP->[$grp_index], $options);
+# }
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

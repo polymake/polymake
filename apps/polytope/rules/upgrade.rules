@@ -1,0 +1,486 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+INCLUDE
+   graph::upgrade.rules
+
+#  The aim of all these methods is to convert the obsolete properties read from a plain data file
+#  to the corresponding sub-object properties.
+
+object Polytope {
+
+   # the graph and dual graph related properties
+
+   method upgrade_plain_GRAPH {
+      my ($this, $value)=@_;
+      $this->take("GRAPH.ADJACENCY", $value);
+   }
+
+   method upgrade_plain_DUAL_GRAPH {
+      my ($this, $value)=@_;
+      $this->take("DUAL_GRAPH.ADJACENCY", $value);
+   }
+
+   method upgrade_plain_N_EDGES {
+      my ($this, $value)=@_;
+      $this->take("GRAPH.N_EDGES", $value);
+   }
+
+   method upgrade_plain_N_RIDGES {
+      my ($this, $value)=@_;
+      $this->take("DUAL_GRAPH.N_EDGES", $value);
+   }
+
+   method upgrade_plain_VERTEX_DEGREES {
+      my ($this, $value)=@_;
+      $this->take("GRAPH.NODE_DEGREES", $value);
+   }
+
+   method upgrade_plain_FACET_DEGREES {
+      my ($this, $value)=@_;
+      $this->take("DUAL_GRAPH.NODE_DEGREES", $value);
+   }
+
+   method upgrade_plain_DIAMETER {
+      my ($this, $value)=@_;
+      $this->take("GRAPH.DIAMETER", $value);
+   }
+
+   method upgrade_plain_DUAL_DIAMETER {
+      my ($this, $value)=@_;
+      $this->take("DUAL_GRAPH.DIAMETER", $value);
+   }
+
+   method upgrade_plain_TRIANGLE_FREE {
+      my ($this, $value, $boolean_value)=@_;
+      $this->take("GRAPH.TRIANGLE_FREE", $boolean_value);
+   }
+
+   method upgrade_plain_DUAL_TRIANGLE_FREE {
+      my ($this, $value, $boolean_value)=@_;
+      $this->take("DUAL_GRAPH.TRIANGLE_FREE", $boolean_value);
+   }
+
+   method upgrade_plain_EVEN {
+      my ($this, $value, $boolean_value)=@_;
+      $this->take("GRAPH.BIPARTITE", $boolean_value);
+   }
+
+   method upgrade_plain_DUAL_EVEN {
+      my ($this, $value, $boolean_value)=@_;
+      $this->take("DUAL_GRAPH.BIPARTITE", $boolean_value);
+   }
+
+   method upgrade_plain_GRAPH_SIGNATURE {
+      my ($this, $value)=@_;
+      $this->take("GRAPH.SIGNATURE", $value);
+   }
+
+   method upgrade_plain_DUAL_GRAPH_SIGNATURE {
+      my ($this, $value)=@_;
+      $this->take("DUAL_GRAPH.SIGNATURE", $value);
+   }
+
+   method upgrade_plain_CONNECTIVITY {
+      my ($this, $value)=@_;
+      $this->take("GRAPH.CONNECTIVITY", $value);
+   }
+
+   method upgrade_plain_DUAL_CONNECTIVITY {
+      my ($this, $value)=@_;
+      $this->take("DUAL_GRAPH.CONNECTIVITY", $value);
+   }
+
+   method upgrade_plain_HASSE_DIAGRAM {
+      my ($this, $value)=@_;
+      $this->HASSE_DIAGRAM=graph::FaceLattice_from_plain_text($value);
+   }
+
+   method upgrade_plain_BOUNDED_COMPLEX {
+      my ($this, $value)=@_;
+      $this->BOUNDED_COMPLEX->HASSE_DIAGRAM=graph::FaceLattice_from_plain_text($value);
+   }
+
+   # Triangulations
+   
+   method upgrade_plain_TRIANGULATION {
+      my ($this, $value)=@_;
+      $this->take("TRIANGULATION.FACETS", $value);
+   }
+   
+   method upgrade_plain_TRIANGULATION_BOUNDARY {
+      my ($this, $value)=@_;
+      my $tb_new;
+      foreach (split /\n/, $value) {
+         s/\{\{/\{/;
+	 s/\}\}/\}/;
+	 s/\}\s\{/\}\n\{/g;
+	 $tb_new.=$_;
+      }
+      $this->take("TRIANGULATION.BOUNDARY.FACETS",$tb_new);
+      my $tb=new Array<PowerSet>($value);
+      my $n_facets=scalar(@$tb);
+      my $tb_f_triag=new Array<Set<Int> >($n_facets);
+      my $n_simplices=0;
+      for (my $i=0; $i<$n_facets;++$i) {
+         my $ns_f=$tb->[$i]->size;
+         $tb_f_triag->[$i]=sequence($n_simplices,$ns_f);
+	 $n_simplices+=$ns_f;
+      }
+      print $tb_f_triag; 
+      $this->TRIANGULATION->BOUNDARY->FACET_TRIANGULATIONS=$tb_f_triag;
+   }
+
+   # Schlegel diagrams
+
+   method upgrade_plain_SCHLEGEL_PARAMS {
+      my ($this, $value)=@_;
+      my ($facet, $zoom, $facet_point, $inner_point)= $value =~ /\A\s* (\d+) \s+ (\S+) \s* ^(.*)$ \n ^(.*)$/xm;
+      $this->SCHLEGEL_DIAGRAM(FACET=>$facet, ZOOM=>$zoom, FACET_POINT=>$facet_point, INNER_POINT=>$inner_point);
+   }
+
+   method upgrade_plain_SCHLEGEL_TRANSFORM {
+      my ($this, $value)=@_;
+      $this->take("SCHLEGEL_DIAGRAM.TRANSFORM", $value);
+   }
+
+   method upgrade_plain_SCHLEGEL_VIEWPOINT {
+      my ($this, $value)=@_;
+      $this->take("SCHLEGEL_DIAGRAM.VIEWPOINT", $value);
+   }
+
+   method upgrade_plain_SCHLEGEL_VERTICES {
+      my ($this, $value)=@_;
+      $this->take("SCHLEGEL_DIAGRAM.VERTICES", $value);
+   }
+
+   # LP related properties
+
+   method upgrade_plain_LINEAR_OBJECTIVE {
+      my ($this, $value)=@_;
+      $this->take("LP.LINEAR_OBJECTIVE", $value);
+   }
+
+   method upgrade_plain_ABSTRACT_OBJECTIVE {
+      my ($this, $value)=@_;
+      $this->take("LP.ABSTRACT_OBJECTIVE", $value);
+   }
+
+   method upgrade_plain_MAXIMAL_FACE {
+      my ($this, $value)=@_;
+      $this->take("LP.MAXIMAL_FACE", $value);
+   }
+
+   method upgrade_plain_MINIMAL_FACE {
+      my ($this, $value)=@_;
+      $this->take("LP.MINIMAL_FACE", $value);
+   }
+
+   method upgrade_plain_MAXIMAL_VERTEX {
+      my ($this, $value)=@_;
+      $this->take("LP.MAXIMAL_VERTEX", $value);
+   }
+
+   method upgrade_plain_MINIMAL_VERTEX {
+      my ($this, $value)=@_;
+      $this->take("LP.MINIMAL_VERTEX", $value);
+   }
+
+   method upgrade_plain_MAXIMAL_VALUE {
+      my ($this, $value)=@_;
+      if ($value !~ $PropertyValue::UNDEF_re) {
+	 $this->take("LP.MAXIMAL_VALUE", $value);
+      }
+   }
+
+   method upgrade_plain_MINIMAL_VALUE {
+      my ($this, $value)=@_;
+      if ($value !~ $PropertyValue::UNDEF_re) {
+	 $this->take("LP.MINIMAL_VALUE", $value);
+      }
+   }
+
+   method upgrade_plain_DIRECTED_GRAPH {
+      my ($this, $value)=@_;
+      $this->take("LP.DIRECTED_GRAPH.ADJACENCY", $value);
+   }
+
+   method upgrade_plain_VERTEX_OUT_DEGREES {
+      my ($this, $value)=@_;
+      $this->take("LP.DIRECTED_GRAPH.NODE_OUT_DEGREES", $value);
+   }
+
+   method upgrade_plain_VERTEX_IN_DEGREES {
+      my ($this, $value)=@_;
+      $this->take("LP.DIRECTED_GRAPH.NODE_IN_DEGREES", $value);
+   }
+
+   method upgrade_plain_VERTEX_COLORS { }	# discard it
+
+   method upgrade_plain_RANDOM_EDGE_EPL {
+      my ($this, $value)=@_;
+      $this->take("LP.RANDOM_EDGE_EPL", $value);
+   }
+
+   method upgrade_plain_VARIABLE_NAMES {
+      my ($this, $value)=@_;
+      $this->take("COORDINATE_LABELS", $value);
+   }
+
+   # attributed graphs are converted to graphs with property maps
+
+   method upgrade_plain_BOUNDED_GRAPH {
+      my ($this, $value)=@_;
+      my $n;
+      # we dare not use rules on an object being built up
+      unless (defined ($n=$this->lookup("N_VERTICES"))) {
+	 if (defined (my $v=$this->lookup("VERTICES"))) {
+	    $n=$v->rows;
+	 } elsif (defined (my $v=$this->lookup("VERTICES_IN_FACETS"))) {
+	    $n=$v->cols;
+	 } elsif (defined (my $G=$this->lookup("GRAPH.ADJACENCY"))) {
+	    $n=$G->nodes;
+	 } else {
+	    return;
+	 }
+      }
+      my $BG=new props::Graph($n);
+      my @renumber= map { /^\s*\(\s*(\d+)/ } split /\n/, $value;
+      my $from=0;
+      foreach (split /\n/, $value) {
+	 my ($edges)=/\{(.*)\}/;
+	 foreach my $to ($edges =~ /\d+/g) {
+	    if ($from>=$to) {
+	       $BG->edge($renumber[$from], $renumber[$to]);
+	    }
+	 }
+	 ++$from;
+      }
+      $from=0;
+      foreach (@renumber) {
+	 while ($from<$_) {
+	    $BG->delete_node($from);
+	    ++$from;
+	 }
+	 ++$from;
+      }
+      while ($from<$n) {
+	 $BG->delete_node($from++);
+      }
+      $this->take("BOUNDED_COMPLEX.GRAPH.ADJACENCY", $BG);
+      1
+   }
+
+   sub parse_graph_with_edge_attributes {
+      my ($value, $attr_re)=@_;
+      my $adjacency="";
+      my @map;
+      my $from=0;
+      foreach (split /\n/, $value) {
+         s{\(\s*(\d+)\s+($attr_re)\s*\)}{
+            if ($from>=$1) {
+               push @map, $2; $1
+            } else {
+               ""
+            }
+         }eg;
+         $adjacency.="$_\n";
+         ++$from;
+      }
+      return ($adjacency, \@map);
+   }
+
+   method upgrade_plain_EDGE_COLORED_BOUNDED_GRAPH {
+      my ($this, $value)=@_;
+      my ($adjacency, $colors)=parse_graph_with_edge_attributes($value, qr/\d+/);
+      if ($this->lookup("BOUNDED_COMPLEX.GRAPH.ADJACENCY") || upgrade_plain_BOUNDED_GRAPH($this,$adjacency)) {
+         $this->take("BOUNDED_COMPLEX.GRAPH.EDGE_COLORS", $colors);
+      }
+   }
+      
+   method upgrade_plain_EDGE_DIRECTIONS_GRAPH {
+      my ($this, $value)=@_;
+      my ($adjacency, $dirs)=parse_graph_with_edge_attributes($value, qr/<.*?>/);
+      $this->lookup("GRAPH.ADJACENCY") || upgrade_plain_GRAPH($this,$adjacency);
+      tr/<>/  / for @$dirs;
+      $this->take("GRAPH.EDGE_DIRECTIONS", $dirs);
+   }
+
+   method upgrade_plain_EDGE_DIRECTED_BOUNDED_GRAPH {
+      my ($this, $value)=@_;
+      my ($adjacency, $dirs)=parse_graph_with_edge_attributes($value, qr/<.*?>/);
+      if ($this->lookup("BOUNDED_COMPLEX.GRAPH.ADJACENCY") || upgrade_plain_BOUNDED_GRAPH($this,$adjacency)) {
+	 tr/<>/  / for @$dirs;
+	 $this->take("BOUNDED_COMPLEX.GRAPH.EDGE_DIRECTIONS", $dirs);
+      }
+   }
+
+   # new object types introduced
+
+   method cast_if_seen_SUM_PRODUCT_GRAPH { "PropagatedPolytope" }
+
+   method cast_if_seen_VORONOI_BOUNDING_BOX { "VoronoiDiagram" }
+
+   method cast_if_seen_VORONOI_GRAPH { "VoronoiDiagram" }
+
+   method cast_if_seen_DELAUNAY_GRAPH { "VoronoiDiagram" }
+   
+   method cast_if_seen_NN_GRAPH { "VoronoiDiagram" }
+
+   method cast_if_seen_NN_CRUST_GRAPH { "VoronoiDiagram" }
+
+   sub convert_to_PointConfiguration {
+      my $this=shift;
+      if (defined (my $pts=$this->lookup("POINTS"))) {
+	 my $pc=new PointConfiguration;
+	 $pc->take("POINTS", $pts);
+	 $this->remove("POINTS");
+	 [ $pc, "CONVEX_HULL" ]
+      } else {
+	 undef
+      }
+   }
+
+   method cast_if_seen_TRIANGULATION_INT {
+      if (defined $_[0]->lookup("VERTICES")) {
+	 # do nothing
+	 undef;
+      } else {
+	 &convert_to_PointConfiguration;
+      }
+   }
+
+   method cast_if_seen_CHIROTOPE_INT {
+      &convert_to_PointConfiguration;
+   }
+
+   # properties with changed semantics
+
+   method upgrade_plain_H_VECTOR {
+      my ($this, $value)=@_;
+      if ($this->lookup("SIMPLICIAL")) {
+	 $this->take("H_VECTOR",$value);
+      } elsif ($this->lookup("SIMPLE")) {
+	 $this->take("DUAL_H_VECTOR",$value);
+      }  # if neither SIMPLE nor SIMPLICIAL known, discard this section
+   }
+
+   # obsolete properties
+
+   method upgrade_plain_TRIANGULATION_SIGNS { }  # discard
+
+   method upgrade_plain_TRIANGULATION_INT_SIGNS { }  # discard
+
+   method upgrade_plain_REVERSE_TRANSFORMATION {
+      my ($this, $value)=@_;
+      $this->attach("REVERSE_TRANSFORMATION", new Matrix<Scalar>($value));
+   }
+
+   # dimensions renamed after the switch to cones
+
+   method upgrade_plain_AMBIENT_DIM {
+      my ($this, $value)=@_;
+      $this->take("CONE_AMBIENT_DIM", $value+1);
+   }
+
+   method upgrade_plain_DIM {
+      my ($this, $value)=@_;
+      my $as_dim;
+      if(defined($this->lookup("POINTS | VERTICES | INEQUALITIES | FACETS | EQUATIONS | AFFINE_HULL"))){
+	  $as_dim="CONE_DIM"; #POLYTOPE_AMBIENT_DIM was wrong! Should have been POLYTOPE_DIM!
+	  $value++;
+      } else {
+	  $as_dim="COMBINATORIAL_DIM";
+      }
+      $this->take($as_dim, $value);
+   }
+}
+
+
+object PropagatedPolytope {
+
+   method upgrade_plain_SUM_PRODUCT_GRAPH {
+      my ($this, $value)=@_;
+      my (@adjacency, @trans);
+      foreach (split /\n/, $value) {
+	 while (s/\((\d+) \s+ <? ([^>)]+) >?\s*\)/$1/x) {
+	    push @trans, $2;
+	 }
+	 push @adjacency, $_;
+      }
+      $this->take("SUM_PRODUCT_GRAPH.ADJACENCY", \@adjacency);
+      $this->take("SUM_PRODUCT_GRAPH.TRANSLATIONS", \@trans);
+   }
+}
+
+
+object VoronoiDiagram {
+
+   method upgrade_plain_DELAUNAY_GRAPH {
+      my ($this, $value)=@_;
+      $this->take("DELAUNAY_GRAPH.ADJACENCY", $value);
+   }
+
+   method upgrade_plain_VORONOI_GRAPH {
+      my ($this, $value)=@_;
+      convert_graph_with_coords($this, $value, "VORONOI_GRAPH");
+   }
+
+   method upgrade_plain_VORONOI_BOUNDING_BOX {
+      my ($this, $value)=@_;
+      $this->take("VORONOI_GRAPH.BOUNDING_BOX", $value);
+   }
+
+   method upgrade_plain_NN_GRAPH {
+      my ($this, $value)=@_;
+      $this->take("NN_GRAPH.ADJACENCY", $value);
+   }
+
+   method upgrade_plain_NN_CRUST_GRAPH {
+      my ($this, $value)=@_;
+      $this->take("NN_CRUST_GRAPH.ADJACENCY", $value);
+   }
+
+   sub convert_graph_with_coords {
+      my ($this, $value, $prop_name)=@_;
+      my (@adjacency, @coords);
+      while (/^\s*\(\s*<? (.*?) >?\s* (\{.*?\})/xm) {
+	 push @coords, $1;
+	 push @adjacency, $2;
+      }
+      $this->take("$prop_name.ADJACENCY", \@adjacency);
+      $this->take("$prop_name.COORDINATES", \@coords);
+   }
+
+}
+
+object PointConfiguration {
+
+   method upgrade_plain_TRIANGULATION_INT {
+      my ($this, $value)=@_;
+      $this->take("TRIANGULATION", $value);
+   }
+
+   method upgrade_plain_CHIROTOPE_INT {
+      my ($this, $value)=@_;
+      $this->take("CHIROTOPE", $value);
+   }
+}
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

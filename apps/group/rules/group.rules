@@ -1,0 +1,52 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object Group {
+
+rule DEGREE : GENERATORS {
+    $this->DEGREE=$this->GENERATORS->[0]->size;
+}
+
+#counts the number of elements in each transversal that are not null
+rule TRANSVERSAL_SIZES : TRANSVERSALS{
+    my $trans_sizes=new Array<Int>($this->TRANSVERSALS->size);
+    for(my $i=0;$i<$this->TRANSVERSALS->size;$i++){
+        my $trans_size=1;
+        my $single_trans=$this->TRANSVERSALS->[$i];
+        for(my $j=0;$j<$single_trans->size;$j++){
+            if($single_trans->[$j]>=0){
+                $trans_size++;
+            }
+        }
+        $trans_sizes->[$i]=$trans_size;
+    }
+    $this->TRANSVERSAL_SIZES=$trans_sizes;
+}
+
+rule ORDER : TRANSVERSAL_SIZES {
+    my $order = new Integer(1);
+    foreach (@{$this->TRANSVERSAL_SIZES}) {
+        $order *= $_;
+    }
+    $this->ORDER = $order;
+}
+
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

@@ -1,0 +1,5 @@
+Here are scripts etc. that do not belong anywhere else. For now, this is:
+
+* Java-Header replacement stuff (add jreality header to all the files)
+* a batch script for remote (?) rendering
+

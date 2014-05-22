@@ -1,0 +1,43 @@
+<toolconfig>
+
+	<rawdevices>
+		<rawdevice id="Joystick"
+			type="de.jreality.toolsystem.raw.DeviceJinputJoystick">
+			<!--  TODO: configure to use the correct event device... -->
+		</rawdevice>
+	</rawdevices>
+
+	<rawslots>
+		<mapping device="Joystick" src="axis_3_0" target="GtXaxis" />
+		<mapping device="Joystick" src="axis_3_1" target="GtYaxis" />
+		<mapping device="Joystick" src="axis_3_2" target="GtZaxis" />
+		<mapping device="Joystick" src="axis_3_3" target="GtUaxis" />
+		<mapping device="Joystick" src="axis_3_4" target="GtVaxis" />
+		<mapping device="Joystick" src="axis_3_5" target="GtWaxis" />
+	</rawslots>
+
+	<virtualdevices>
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualGameTrackTranslation">
+			<inputslot>GtXaxis</inputslot>
+			<inputslot>GtYaxis</inputslot>
+			<inputslot>GtZaxis</inputslot>
+			<outputslot>GameTrackTranslationL</outputslot>
+			<prop name="offset">
+				<double>0.05</double>
+			</prop>
+		</virtualdevice>
+
+		<virtualdevice
+			type="de.jreality.toolsystem.virtual.VirtualGameTrackTranslation">
+			<inputslot>GtUaxis</inputslot>
+			<inputslot>GtVaxis</inputslot>
+			<inputslot>GtWaxis</inputslot>
+			<outputslot>GameTrackTranslationR</outputslot>
+			<prop name="offset">
+				<double>-0.05</double>
+			</prop>
+		</virtualdevice>
+	</virtualdevices>
+
+</toolconfig>

@@ -1,0 +1,125 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+package Visual::Polytope;
+
+# Visualize the [[LATTICE_POINTS]] of a polytope
+# @options %Visual::PointSet::decorations
+# @return Visual::Polytope
+
+user_method LATTICE(%Visual::PointSet::decorations) {
+    my ($self, $decor)=@_;
+    my $VP=$self->basis_solid;
+    $VP->VertexStyle //= "hidden";
+    my $P=$self->Polytope;
+    if ($P->CONE_DIM > 2) {
+        $VP->FacetStyle //= "hidden";
+    }
+    my $vert = $P->VERTICES;
+    my $lp = $P->LATTICE_POINTS;
+    my @nlv = ();
+    foreach (@$vert) {
+        if (!is_integral($_)) {
+            push @nlv, new Vector<Rational>($_);
+        }
+    }
+    if (@nlv != 0) {
+        my $V = new Visual::PointSet(Name => "Vertices of ". $P->name,
+                                    Points => dehomogenize(new Matrix<Float>(\@nlv)),
+                                    PointColor => $Visual::Color::vertices,
+                                    PointLabels => "hidden",
+                                    $decor,
+                                );
+        push @{$self->elements}, $V;
+    }
+    if ($P->N_LATTICE_POINTS > 0) {
+        my $LP=new Visual::PointSet( Name => "Lattice points of " . $P->name,
+                                  Points => dehomogenize(convert_to<Float>($lp)),
+                                  PointColor => $Visual::Color::LatticePointColor,
+                                  PointLabels => "hidden",
+                                  $decor,
+                                );
+        push @{$self->elements}, $LP;
+    }
+    visualize($self);
+}
+
+# Visualize the [[LATTICE_POINTS]] of a polytope in different colors (interior / boundary / vertices)
+# @options %Visual::PointSet::decorations
+# @return Visual::Polytope
+
+user_method LATTICE_COLORED(%Visual::PointSet::decorations) {
+    my ($self, $decor)=@_;
+    my $VP=$self->basis_solid;
+    $VP->VertexStyle //= "hidden";
+    my $P=$self->Polytope;
+    if ($P->CONE_DIM > 2) {
+        $VP->FacetStyle //= "hidden";
+    }
+    $P->provide("LATTICE_POINTS_GENERATORS");
+    my $vert = $P->VERTICES;
+    my @nlv = ();
+    foreach (@$vert) {
+        if (!is_integral($_)) {
+            push @nlv, new Vector<Rational>($_);
+        }
+    }
+    if (@nlv != 0) {
+        my $V = new Visual::PointSet(Name => "Vertices of ". $P->name,
+                                    Points => dehomogenize(new Matrix<Float>(\@nlv)),
+                                    PointColor => $Visual::Color::vertices,
+                                    PointLabels => "hidden",
+                                    $decor,
+                                );
+        push @{$self->elements}, $V;
+    }
+    if ($P->N_INTERIOR_LATTICE_POINTS>0) {
+        my $ILP=new Visual::PointSet( Name => "Interior lattice points of " . $P->name,
+                                    Points => dehomogenize(convert_to<Float>($P->INTERIOR_LATTICE_POINTS)),
+                                    PointColor => $Visual::Color::InteriorLatticePointColor,
+                                    PointLabels => "hidden",
+                                    $decor,
+                                );
+        push @{$self->elements}, $ILP;
+    }
+    if ($P->N_BOUNDARY_LATTICE_POINTS>0) {
+        my $BLP=new Visual::PointSet( Name => "Boundary lattice points of " . $P->name,
+                                    Points => dehomogenize(convert_to<Float>($P->BOUNDARY_LATTICE_POINTS)),
+                                    PointColor => $Visual::Color::BoundaryLatticePointColor,
+                                    PointLabels => "hidden",
+                                    $decor,
+                                );
+        push @{$self->elements}, $BLP;
+    }
+    visualize($self);
+}
+
+package Visual::Color;
+
+# Color for the visualization of interior lattice points
+custom $InteriorLatticePointColor="30 250 30";
+
+# Color for the visualization of boundary lattice points
+custom $BoundaryLatticePointColor="70 150 70";
+
+# Color for the visualization of lattice points
+custom $LatticePointColor="70 150 70";
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:4
+# End:

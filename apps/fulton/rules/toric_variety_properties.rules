@@ -1,0 +1,95 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object NormalToricVariety {
+
+file_suffix tv
+
+   # @category Basic properties
+   # Evaluates true if the toric variety is affine, i.e. the fan consists of a single
+   # cone.
+   property AFFINE : Bool;
+
+   # @category Normal Toric Varieties
+   # a toric variety is [[DEGENERATE]] if the fan is not [[FULL_DIM]]
+   property DEGENERATE : Bool;  	
+
+   # @category Normal Toric Varieties
+   # The cone of effective divisors in the rational class group
+   # A class of divisors D is effective if the corresponding polytope P_D is non-empty
+   property EFFECTIVE_CONE : Cone<Rational>;
+
+   # @category Normal Toric Varieties
+   # a toric variety is [[FANO]] if the anticanonical divisor is [[AMPLE]]
+   # true if the toric variety is a Fano variety
+   property FANO : Bool;
+
+   # @category Basic properties
+   # Polytope such that the fan of the toric variety is the normal fan of this polytope.
+   # This does not necessarily exist. For determining existence and computation we use
+   # Shepards theorem.
+   property GENERATING_POLYTOPE : Polytope<Rational>;
+
+   # @category Normal Toric Varieties
+   # The dual of the [[NEF_CONE]]
+   property MORI_CONE : Cone<Rational>;   
+
+   # @category Normal Toric Varieties
+   # The cone of nef divisors in the rational class group
+   # this is the closure of the cone of ample divisors, where
+   # a divisor of the variety is ample if the fan coincides with the normal fan of P_D
+   # equivalently, a divisor is nef if the inequalities it defines are tight on P_D
+   property NEF_CONE : Cone<Rational>;
+
+   # @category Normal Toric Varieties
+   # the number of maximal torus orbits. Equals the number of rays of the fan
+   property N_MAXIMAL_TORUS_ORBITS : Int;
+
+   # @category Normal Toric Varieties
+   # a toric variety is an [[ORBIFOLD]] if the fan is [[SIMPLICIAL]]
+   property ORBIFOLD : Bool;
+
+   # @category Basic properties
+   # Evaluates to true if the corresponding fan is the normal fan of some polytope.
+   property PROJECTIVE = override REGULAR;
+
+   # @category Normal Toric Varieties
+   # The class group Cl(X) of Weil divisors on the toric variety 
+   # defined by the fan is a finitely generated abelian group of rank [[N_RAYS]]-[[DIM]]. 
+   # It usually contains torsion.
+   # The rational divisor class group is the tensor product of Cl(X) with Q over Z. 
+   # This group is torsion free and corresponds to the Picard group if the variety is non-singular.
+   declare object RationalDivisorClassGroup {
+
+      # @category Divisor classes
+      # maps a divisor on the variety onto its representation in the class group
+      property PROJECTION : Matrix<Integer>;
+
+      # @category Divisor classes
+      # lifts a divisor in the class group onto a divisor on the fan
+      property LIFTING : Matrix<Integer>;
+
+   }
+
+   # @category Normal Toric Varieties
+   # the torsion free part of the class group
+   property RATIONAL_DIVISOR_CLASS_GROUP : RationalDivisorClassGroup;
+
+  # @category Normal Toric Varieties
+  # A toric variety is __smooth__ if the fan is [[PolyhedralFan<Rational>::SMOOTH_FAN|smooth]].
+   property SMOOTH = override SMOOTH_FAN;
+
+}
+

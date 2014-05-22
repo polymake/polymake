@@ -1,0 +1,46 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-----------------------------------------------------------------------------
+#
+#  Generate automated documentation of PTL via doxygen
+#
+
+unless (@ARGV) {
+   die "usage: polymake --script doxygen OutDir",
+       "from the shell: script(\"doxygen\", \"OutDir\");\n";
+}
+
+my $outdir=shift @ARGV;
+my $tmpfile=new Tempfile;
+my $doxy_file="$tmpfile.doxy";
+
+File::Path::mkpath($outdir);
+
+open DOXY, ">$doxy_file" or die "cannot write to $doxy_file\n";;
+print DOXY <<".";
+\@INCLUDE_PATH         = $InstallTop/support
+\@INCLUDE              = Doxyfile.tmpl
+PROJECT_NUMBER         = $Version
+OUTPUT_DIRECTORY       = $outdir
+INPUT                  = $InstallTop/include/core
+STRIP_FROM_PATH        = $InstallTop
+.
+close DOXY;
+
+system("doxygen $doxy_file");
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# End:

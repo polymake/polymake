@@ -1,0 +1,85 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object SimplicialComplex {
+
+# @category Topology
+# A finite representation of the fundamental group.
+# The fundamental group is represented as a pair of an integer,
+# the number of generators, and a list of relations. The generators are numbered
+# consecutively starting with zero. A relation is encoded as a list of pairs,
+# each pair consisting of a generator and its exponent.
+#
+# You may use the [[fundamental2gap]] method to produce a ''GAP'' file.
+
+property FUNDAMENTAL_GROUP : Tuple< Int,List< List< Tuple <Int,Int> > > >;
+
+
+# @category Topology
+# Labels of the generators of the [[FUNDAMENTAL_GROUP]].
+# The labels can be chosen freely. If the [[FUNDAMENTAL_GROUP]] is computed
+# by polymake, the generators correspond to the edges of the
+# complex. Hence they are labeled ''g'' followed by the vertices of the edge, e.g.
+# ''g3_6'' corresponds to the edge {3 6}.
+
+property FUNDAMENTAL_GROUP_GEN_LABELS : Array<String>;
+
+
+rule FUNDAMENTAL_GROUP, FUNDAMENTAL_GROUP_GEN_LABELS : FACETS, GRAPH.ADJACENCY {
+   fundamental_group($this);
+}
+precondition : GRAPH.CONNECTED;
+
+# @category Topology
+# Writes the [[FUNDAMENTAL_GROUP]] using [[FUNDAMENTAL_GROUP_GEN_LABELS]] to
+# the given file in [[wiki:external_software#GAP|GAP]] input format.
+
+user_method fundamental2gap(;$) {
+   my ($this, $gap_file)=@_;
+   $gap_file ||= $this->name . ".gap";
+   open my $out, ">", "$gap_file" or die "fundamental2gap: can't open $gap_file for writing";
+   my @gen_labels = split /\s+/, $this->FUNDAMENTAL_GROUP_GEN_LABELS;
+   my ($n_relations,$relations) = @{$this->FUNDAMENTAL_GROUP};
+
+   my @gap_relations;
+   foreach (@$relations) {
+      my @terms =  map {
+          my ($gen_id,$exp) = @$_;
+         "$gen_labels[$gen_id]" . ( $exp==1 ? "" : "^$exp");
+      } @$_;
+      push @gap_relations, join("*", @terms);
+   }
+   foreach (@gen_labels) {
+      $_ = "\"$_\"";
+   }
+   print $out "F := FreeGroup(", join(", ",@gen_labels), ");\n";
+   print $out "AssignGeneratorVariables(F);\n";
+   print $out "G := F / [",join(", ",@gap_relations),"];\n";
+   print $out <<'.';
+Print("FreeGroup is called F, after division by relators it's called G.\n");
+Print("Use H:=SimplifiedFpGroup(G) to get a simplified representation H of the group G.\n");
+.
+   close $out;
+   $gap_file;   # as return value
+}
+
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

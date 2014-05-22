@@ -1,0 +1,82 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+#
+#  Find all rules in an application that could trigger a permutation but don't declare this
+#
+
+if (@ARGV != 1) {
+   warn "usage: polymake --script list_suspicious_rules APPLICATION_NAME\n";
+   exit(1);
+}
+
+application($ARGV[0]);
+
+my %unique;
+my @perms=map { grep { $_->flags & $Core::Property::is_permutation and !$unique{$_}++ } values %{$_->properties} }
+              @{$application->object_types};
+
+foreach my $rule (@{$application->rules}) {
+   next if !defined($rule->code)                # skip shortcut rules and user methods
+        or $rule->flags & $Core::Rule::is_function
+        or (grep { Core::get_array_flags($_) & $Core::Property::is_permutation } @{$rule->input});   # skip rules dealing with some permutation
+
+   my (%seen_in, %seen_out);
+   foreach (@{$rule->input}) {
+      possible_permutations($_,\%seen_in) for @$_;
+   }
+   possible_permutations($_,\%seen_out) for @{$rule->output};
+   delete @seen_out{keys %seen_in};
+   delete $seen_out{$rule->with_permutation->permutation} if defined $rule->with_permutation;
+
+   if (keys %seen_out) {
+      print '"', sub_file($rule->code), '", line ', sub_firstline($rule->code), ": rule ", $rule->header, "\n";
+      while (my ($perm, $list)=each %seen_out) {
+         print "   ", $perm->name, " : ", join(", ", map { is_object($_) ? $_->name : join(".", map { $_->name } @$_) } @$list), "\n";
+      }
+      print "\n";
+   }
+}
+
+
+sub possible_permutations {
+   my ($path, $seen)=@_;
+   if (is_object($path)) {
+      foreach my $permutation (@perms) {
+         if (defined $permutation->sensitive_props->{$path->key}) {
+            push @{$seen->{$permutation}}, $path;
+         }
+      }
+   } else {
+      foreach my $permutation (@perms) {
+         if (defined $permutation->find_sensitive_sub_property(@$path)) {
+            push @{$seen->{$permutation}}, $path;
+         } else {
+            for (my $depth=0; $depth<$#$path; ++$depth) {
+               if (defined (my $sub_permutation=$permutation->find_sub_permutation(@$path[0..$depth]))) {
+                  if (defined $sub_permutation->find_sensitive_sub_property(@$path[$depth+1..$#$path])) {
+                     push @{$seen->{$permutation}}, $path;
+                  }
+               }
+            }
+         }
+      }
+   }
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

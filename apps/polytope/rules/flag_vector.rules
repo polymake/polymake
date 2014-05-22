@@ -1,0 +1,337 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+object Cone {
+
+# @category Combinatorics
+# Condensed form of the flag vector, containing all entries indexed by sparse sets in {0, ..., [[COMBINATORIAL_DIM]]-1}
+# in the following order: 
+#       (1, f<sub>0</sub>, f<sub>1</sub>, f<sub>2</sub>, f<sub>02</sub>, f<sub>3</sub>, f<sub>03</sub>, f<sub>13</sub>, f<sub>4</sub>, f<sub>04</sub>, f<sub>14</sub>, f<sub>24</sub>, f<sub>024</sub>, f<sub>5</sub>, ...).
+# Use Dehn-Sommerville equations, via user function [[N_FLAGS]], to extend.
+
+property FLAG_VECTOR : Vector<Integer>;
+
+rule FLAG_VECTOR : HASSE_DIAGRAM, COMBINATORIAL_DIM {
+  # FIXME temporary fix for #322: HASSE_DIAGRAM has wrong dimensions for points and empty polytopes
+    my $d=$this->COMBINATORIAL_DIM;
+  if ( $d <= 0 ) {
+    if ( $d == 0 ) {
+      $this->FLAG_VECTOR=new Vector<Integer>();
+    } else {
+      $this->FLAG_VECTOR=undef;
+    }
+  } else {
+   $this->FLAG_VECTOR=flag_vector($this->HASSE_DIAGRAM);
+  }
+}
+weight 4.10;
+
+sub alternating_sum_and_sign {
+   my $alternating_sum=new Integer;
+   my $sign=1;
+   while (@_) {
+      $alternating_sum+=shift;
+      $sign=-1;
+      if (@_) {
+         $alternating_sum-=shift;
+         $sign=1;
+      }
+   }
+   ($alternating_sum,$sign);
+}
+
+rule F_VECTOR, F2_VECTOR : FLAG_VECTOR, COMBINATORIAL_DIM {
+   my $d=$this->COMBINATORIAL_DIM;
+   if ( $d == 0 ) {
+     $this->F_VECTOR = new Vector<Integer>();
+     $this->F2_VECTOR = new Matrix<Integer>();
+   } else {
+     my @Fib=fibonacci($d+1);
+     my $flag_vector=$this->FLAG_VECTOR;
+     my @f_vector= map { $flag_vector->[$Fib[$_+1]] } (0..$d-2);
+     my ($as,$sgn)=alternating_sum_and_sign(@f_vector); # last f-vector entry determined by Euler's equation
+     push @f_vector, $sgn*(1+$sgn-$as);
+     $this->F_VECTOR=\@f_vector;
+     my @f2_vector; # array of array references
+     push @f2_vector, [ $f_vector[0] ];
+     for (my $i=1; $i<$d-1; ++$i) {
+         my @one_line_f2_vector;
+         for (my $k=0; $k<$i-1; ++$k) {
+             push @one_line_f2_vector, $flag_vector->[$Fib[$i+1]+$Fib[$k+1]]; # line i
+         }
+         ($as,$sgn)=alternating_sum_and_sign(@one_line_f2_vector);
+         push @one_line_f2_vector, $sgn*($f_vector[$i]*(1+$sgn)-$as), $f_vector[$i];
+         push @f2_vector, \@one_line_f2_vector;
+     }
+     {  my @one_line_f2_vector;
+        for (my $k=0; $k<$d-1; ++$k) {
+            ($as,$sgn)=alternating_sum_and_sign(map { $f2_vector[$_][$k] } ($k+1..$d-2));
+            push @one_line_f2_vector, $sgn*($f_vector[$k]*(1+$sgn)-$as);
+        }
+        push @one_line_f2_vector, $f_vector[$d-1];
+        push @f2_vector, \@one_line_f2_vector;
+     }
+     my @F2_VECTOR;
+     for (my $i=0; $i<$d; ++$i) {
+         push @F2_VECTOR, [ map { $i>=$_ ? $f2_vector[$i][$_] : $f2_vector[$_][$i] } (0..$d-1) ];
+     }
+     $this->F2_VECTOR=\@F2_VECTOR;
+   }
+}
+   
+sub recursive_n_flags {
+   my ($d, $Fib, $flag_vector, @type)=@_;
+# COMBINATORIAL_DIM, first d+1 Fibonacci numbers, FLAG_VECTOR, type w/ unique entries in descending order
+   my $k=0;
+   unshift @type, $d; # only to determine the proper $k
+   while ($k<$#type && $type[$k]!=$type[$k+1]+1) { ++$k }
+   shift(@type);            # here we get rid of it again
+   --$k;
+   if ($k==$#type) {
+      my $idx=0;
+      $idx += $Fib->[$_+1] for @type;
+      return $flag_vector->[$idx];
+   } else {
+      push @type, -1, $d;
+      my ($low,$high)=($type[$k+2]+1,$type[$k]-2);
+      pop @type; pop @type;
+      my ($sum,$sgn)=(0,-1);
+      foreach ($low..$high) {
+         $type[$k+1]=$_;
+         $sum += $sgn*recursive_n_flags($d,$Fib,$flag_vector,@type);
+         $sgn = -$sgn;
+      }
+      splice @type, $k+1, 1;
+      $sum += (1-$sgn)*recursive_n_flags($d,$Fib,$flag_vector,@type);
+      $sum *= -$sgn;
+      return $sum;
+   }
+}
+
+# @category Combinatorics
+# Determine the number of flags of a given type.
+# //type// must belong to {0,...,[[COMBINATORIAL_DIM]]-1}.
+# Example: "N_FLAGS(0,3,4)" determines the entry f<sub>034</sub> of the flag vector.
+# @param Int type ... flag type
+user_method N_FLAGS {
+   my $self=shift;
+   my @set=num_sorted_uniq(sort {$b <=> $a} @_);        # in descending order
+   if (@set) {
+      if ($set[0] >= $self->COMBINATORIAL_DIM  ||  $set[-1] < 0) {
+         die "N_FLAGS: set elements out of range (0..", $self->COMBINATORIAL_DIM-1, ")\n";
+      }
+      my @Fib=fibonacci($self->COMBINATORIAL_DIM+1);
+      return recursive_n_flags($self->COMBINATORIAL_DIM,\@Fib,$self->FLAG_VECTOR,@set);
+   }
+   return 1;                    # f_(emptyset) == 1
+}
+
+
+}
+
+
+
+object Polytope {
+
+
+
+# @category Combinatorics
+# Coefficients of the cd-index.
+
+property CD_INDEX_COEFFICIENTS : Vector<Integer>;
+
+
+# @category Combinatorics
+# h-vector, defined via recursion on the face lattice of a polytope.
+# Coincides for simplicial polytopes with the combinatorial definition
+# of the h-vector via shellings
+
+property H_VECTOR : Vector<Integer>;
+
+
+# @category Combinatorics
+# dual h-vector, defined via recursion on the face lattice of a polytope.
+# Coincides for simple polytopes with the combinatorial definition
+# of the h-vector via abstract objective functions.
+
+property DUAL_H_VECTOR : Vector<Integer>;
+
+
+# @category Combinatorics
+# h-vector of the bounded subcomplex, defined for not necessarily bounded polyhedra
+# which are simple (as polyhedra, i.e., [[VERTEX_DEGREES]] on the [[FAR_FACE]] do not matter).
+# Coincides with the reverse h-vector of the dual simplicial ball.
+# Note that this vector will usually start with a number of zero entries.
+
+property DUAL_BOUNDED_H_VECTOR : Vector<Integer>;
+
+
+# @category Combinatorics
+# Cubical h-vector. Defined for cubical polytopes.
+
+property CUBICAL_H_VECTOR : Vector<Integer>;
+
+
+# @category Combinatorics
+# (Toric) g-vector, defined via the (generalized) h-vector as g<sub>i</sub> = h<sub>i</sub> - h<sub>i-1</sub>.
+
+property G_VECTOR : Vector<Integer>;
+
+
+rule DUAL_H_VECTOR : CONE_AMBIENT_DIM, COMBINATORIAL_DIM, VERTICES, GRAPH.ADJACENCY, FAR_FACE {
+   my $lp=$this->add("LP", temporary, LINEAR_OBJECTIVE => unit_vector<Scalar>($this->CONE_AMBIENT_DIM, 1));
+   my $DG=dgraph($this, $lp, generic=>1);
+   my $h=new Vector<Integer>($this->COMBINATORIAL_DIM+1);
+   ++($h->[$DG->in_degree($_)]) for 0..$DG->nodes-1;
+   $this->DUAL_H_VECTOR=$h;
+}
+precondition : FAR_FACE { $this->FAR_FACE->size()==0 }
+precondition : SIMPLE;
+precondition : CONE_DIM { $this->CONE_DIM > 1 }
+
+rule DUAL_H_VECTOR : COMBINATORIAL_DIM {
+  if ( $this->COMBINATORIAL_DIM < 0 ) {
+      $this->DUAL_H_VECTOR = new Vector<Integer>([]);
+  } else {
+    $this->DUAL_H_VECTOR = new Vector<Integer>([1]);
+  }
+}
+precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM <= 0 }
+
+rule DUAL_BOUNDED_H_VECTOR : DUAL_H_VECTOR {
+   $this->DUAL_BOUNDED_H_VECTOR = $this->DUAL_H_VECTOR;
+}
+precondition : FAR_FACE { $this->FAR_FACE->size()==0 }
+precondition : SIMPLE;
+weight 0.10;
+
+
+rule DUAL_BOUNDED_H_VECTOR : VERTICES, GRAPH.ADJACENCY, FAR_FACE, TOWARDS_FAR_FACE, COMBINATORIAL_DIM {
+   my $lp=$this->add("LP", temporary, LINEAR_OBJECTIVE => $this->TOWARDS_FAR_FACE);
+   my $DG=dgraph($this, $lp, generic=>1);
+   my $h=new Vector<Integer>($this->COMBINATORIAL_DIM+1);
+   exists($this->FAR_FACE->{$_}) or ++($h->[$DG->in_degree($_)]) for 0..$DG->nodes-1;
+   $this->DUAL_BOUNDED_H_VECTOR=$h;
+}
+precondition : FAR_FACE { $this->FAR_FACE->size()>0 }
+precondition : SIMPLE_POLYHEDRON;
+
+
+rule H_VECTOR : F_VECTOR {
+  h_vector($this,1);
+}
+precondition : SIMPLICIAL;
+weight 1.10;
+
+rule DUAL_H_VECTOR : F_VECTOR {
+  h_vector($this,0);
+}
+precondition : SIMPLE;
+weight 1.10;
+
+rule F_VECTOR : H_VECTOR {
+   f_vector($this,1);
+}
+precondition : SIMPLICIAL;
+precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM >= 0 }
+weight 1.10;
+
+rule F_VECTOR : DUAL_H_VECTOR {
+   f_vector($this,0);
+}
+precondition : SIMPLE;
+precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM >= 0 }
+weight 1.10;
+
+rule CUBICAL_H_VECTOR : F_VECTOR {
+   cubical_h_vector($this,1);
+}
+precondition : CUBICAL;
+
+rule CUBICAL_H_VECTOR : F_VECTOR {
+   cubical_h_vector($this,0);
+}
+precondition : COCUBICAL;
+
+rule G_VECTOR, H_VECTOR : COMBINATORIAL_DIM, CD_INDEX_COEFFICIENTS {
+   toric_g_vector($this);
+}
+weight 4.10;
+
+rule CD_INDEX_COEFFICIENTS : FLAG_VECTOR, COMBINATORIAL_DIM {
+   cd_index($this);
+}
+
+# construct string from a cd-monomial for user method CD_INDEX
+sub monomial_string {
+   my ($mon, $d, $Fib) = @_;
+   return "1" if $d==0;
+   my ($monstr,$last_sym,$this_sym,$occurrences)=("","","",0);
+   while ($d > 0) {
+     if ($d == 1) {
+       --$d;
+       $this_sym = "c";
+     } elsif ($mon >= ${$Fib}[$d-1]) {
+       $mon -= ${$Fib}[$d-1];
+       $d -= 2;
+       $this_sym = "d";
+     } else {
+       --$d;
+       $this_sym = "c";
+     }
+     if ($this_sym eq $last_sym || $occurrences==0) {
+       ++$occurrences;
+     } else {
+       $monstr .= $occurrences==1 ? $last_sym : $last_sym . "^" . $occurrences;
+       $occurrences = 1;
+     }
+     $last_sym=$this_sym;
+   }
+   $monstr .= $occurrences==1 ? $last_sym : $last_sym . "^" . $occurrences;
+   return $monstr;
+}
+
+# @category Formatting
+# Prettily print the cd-index given in [[CD_INDEX_COEFFICIENTS]]
+
+user_method CD_INDEX() {
+   my ($self)=@_;
+   my @Fib=fibonacci($self->COMBINATORIAL_DIM+1);
+   my $cdindex="";
+   my $k=0;
+   foreach (@{$self->CD_INDEX_COEFFICIENTS}) {
+      if ($_) {
+         if ($k>0) {
+            $cdindex .= " + ";
+         }
+         if ($_!=1) {
+            $cdindex .= $_;
+         }
+         $cdindex .= monomial_string($k, $self->COMBINATORIAL_DIM, \@Fib);
+      }
+      ++$k;
+   }
+   return $cdindex;
+}
+
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

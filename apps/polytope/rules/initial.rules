@@ -1,0 +1,184 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object Cone {
+
+   # A Cone defined by [[RAYS]] only gets a trivial [[LINEALITY_SPACE]] assigned.
+   rule initial : LINEALITY_SPACE : {
+      if (defined ($this->RAYS)) {
+         my $empty=new Matrix<Scalar>();
+         $this->LINEALITY_SPACE = $empty;
+      }
+   }
+   precondition : exists(RAYS);
+
+   # A Cone defined by [[FACETS]] only gets a trivial [[LINEAR_SPAN]] assigned.
+   rule initial : LINEAR_SPAN : {
+      if (defined ($this->FACETS)) {
+         my $empty=new Matrix<Scalar>();
+         $this->LINEAR_SPAN = $empty;
+      }
+   }
+   precondition : exists(FACETS);
+
+   # Defining a cone or polytope with one of the linear span/lineality properties only is not allowed
+   # For the non-reduced properties [[INPUT_LINEALITY]] or [[EQUATIONS]] we require that [[INPUT_RAYS]] or [[INEQUALITIES]] are defined, resp.
+   #
+   # We specifically do not want the same kind of rules for the canonical versions [[LINEALITY_SPACE]] and [[AFFINE_HULL]]:  There are
+   # too many different cases to check and we do not want an unnnessary slow-down.
+   #
+   # Here are reasons for the set-up chosen:
+   # * To define an initial rule that silently adds the vertex/facet property we would have to distingiush between cones and polytopes:
+   #   the latter always need one entry in [[POINTS]]/[[VERTICES]] or [[INEQUALITIES]]/[[FACETS]] that represents the 
+   #   pointed part (i.e. the restriction to x0>=0 in the homogenization.
+   # * Another problem of silently adding this would be clients that define a new polytope and 
+   #   e.g. write [[VERTICES]]/[[LINEALITY_SPACE]] and [[AFFINE_HULL]], but not [[FACETS]]. 
+   # * An initial rule checking for [[AFFINE_HULL]] without [[FACETS]] would erroneously make [[FACETS]] empty.
+
+   rule initial : INPUT_RAYS : {
+     croak("\nillegal input: to define a linear or affine space you have to specify INPUT_RAYS/POINTS explicitely\nThis should be an empty matrix for an object of type Cone and a single point for an object of type Polytope");
+
+   }
+   precondition : exists (INPUT_LINEALITY);
+
+   rule initial : INEQUALITIES : {
+     croak("\nillegal input: to define a linear or affine space you have to specify INEQUALITIES explicitely\nThis should be an empty matrix for an object of type Cone and the single inequality [1,0,0,...] for an object of type Polytope");
+
+   }
+   precondition : exists (EQUATIONS);
+
+}
+
+
+object Polytope<Rational> {
+
+  # A Polytope defined in terms of [[INEQUALITIES]] and/or [[EQUATIONS]] is checked for [[FEASIBLE]] right away.
+  # If infeasible it is replaced by the unique representation of the empty polytope.
+  rule initial : FEASIBLE : {
+    my $feasible = cdd_input_feasible($this);
+    if ($feasible) {
+      $this->FEASIBLE = 1;
+    } else {
+      my $empty=new Matrix<Rational>();
+      my $cone_ambient_dim=0; my $M;
+      if (defined ($M=$this->lookup("INEQUALITIES")) && $M->cols()>0) {
+          $cone_ambient_dim = $M->cols();
+      } else { # due to precondition EQUATIONS must be defined
+          $cone_ambient_dim = $this->EQUATIONS->cols();
+      }
+      my $repl=new Core::Object::Replacement(VERTICES => $empty, FACETS => $empty, AFFINE_HULL => $empty, LINEALITY_SPACE => $empty, CONE_DIM=>0, CONE_AMBIENT_DIM=>$cone_ambient_dim, FEASIBLE => 0);
+      foreach my $prop (qw(INEQUALITIES EQUATIONS INPUT_LINEALITY)) {
+        if (defined (my $val=$this->lookup($prop))) {
+	  $repl->attach($prop, $val);
+        }
+      }
+      die $repl;
+    }
+  }
+  precondition : exists(INEQUALITIES | EQUATIONS);
+
+}
+
+# FIXME #534
+# once we have template specialization it should not be necessary to copy the rule above
+
+object Polytope<Float> {
+
+  # A Polytope defined in terms of [[INEQUALITIES]] and/or [[EQUATIONS]] is checked for [[FEASIBLE]] right away.
+  # If infeasible it is replaced by the unique represnetation of the empty polytope.
+  rule initial : FEASIBLE : {
+    my $feasible = cdd_input_feasible($this);
+    if ($feasible) {
+      $this->FEASIBLE = 1;
+    } else {
+      my $empty=new Matrix<Float>();
+      my $cone_ambient_dim=0; my $M;
+      if (defined ($M=$this->lookup("INEQUALITIES")) && $M->cols()>0) {
+          $cone_ambient_dim = $M->cols();
+      } else { # due to precondition EQUATIONS must be defined
+          $cone_ambient_dim = $this->EQUATIONS->cols();
+      }
+      my $repl=new Core::Object::Replacement(VERTICES => $empty, FACETS => $empty, AFFINE_HULL => $empty, LINEALITY_SPACE => $empty, CONE_DIM => 0, CONE_AMBIENT_DIM=>$cone_ambient_dim, FEASIBLE => 0);
+      foreach my $prop (qw(INEQUALITIES EQUATIONS INPUT_LINEALITY)) {
+        if (defined (my $val=$this->lookup($prop))) {
+	  $repl->attach($prop, $val);
+        }
+      }
+      die $repl;
+    }
+  }
+  precondition : exists(INEQUALITIES | EQUATIONS);
+
+}
+
+object Polytope<QuadraticExtension<Rational>> {
+
+  # A Polytope defined in terms of [[INEQUALITIES]] and/or [[EQUATIONS]] is checked for [[FEASIBLE]] right away.
+  # If infeasible it is replaced by the unique represnetation of the empty polytope.
+
+  # FIXME #534
+  # once we have template specialization this should be the default; for Polytope<Rational> cdd is faster
+  rule initial : FEASIBLE : {
+    my $feasible = to_input_feasible($this);
+    if ($feasible) {
+      $this->FEASIBLE = 1;
+    } else {
+      my $empty=new Matrix<QuadraticExtension<Rational>>();
+      my $cone_ambient_dim=0; my $M;
+      if (defined ($M=$this->lookup("INEQUALITIES")) && $M->cols()>0) {
+          $cone_ambient_dim = $M->cols();
+      } else { # due to precondition EQUATIONS must be defined
+          $cone_ambient_dim = $this->EQUATIONS->cols();
+      }
+      my $repl=new Core::Object::Replacement(VERTICES => $empty, FACETS => $empty, AFFINE_HULL => $empty, LINEALITY_SPACE => $empty, CONE_DIM=>0, CONE_AMBIENT_DIM=>$cone_ambient_dim, FEASIBLE => 0);
+      foreach my $prop (qw(INEQUALITIES EQUATIONS INPUT_LINEALITY)) {
+        if (defined (my $val=$this->lookup($prop))) {
+	  $repl->attach($prop, $val);
+        }
+      }
+      die $repl;
+    }
+  }
+  precondition : exists(INEQUALITIES | EQUATIONS);
+
+}
+
+
+object Polytope {
+
+  # A Polytope defined by a non-empty set of [[VERTICES]] or [[POINTS]] is always [[FEASIBLE]].
+  rule initial : FEASIBLE : {
+    if (defined (my $p=$this->VERTICES | POINTS)) {
+      $this->FEASIBLE = $p->rows > 0;
+    }
+  }
+  precondition : exists(VERTICES | POINTS);
+
+  # A Polytope defined by a non-empty set of [[FACETS]] is [[FEASIBLE]].
+  rule initial : FEASIBLE : {
+    if (defined (my $f=$this->FACETS)) {
+      $this->FEASIBLE = $f->rows > 0;
+    }
+  }
+  precondition : exists(FACETS);
+
+
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

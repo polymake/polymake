@@ -1,0 +1,223 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+use JReality;
+use InteractiveViewer;
+
+package JReality::Viewer;
+
+# enable using JOGL in jReality; by default, a slow software renderer is used
+custom $jogl;
+
+# path where jogl.jar is located
+custom $jogl_path;
+
+# path to jogl native libraries
+custom $jogl_native_path;
+
+CONFIGURE_OPT {
+   my $configured=load_extension_config_vars();
+   if (defined($configured->{JoglJars}) && defined($configured->{JoglNative})) {
+      $jogl_path =        $configured->{JoglJars}   =~ /^\$\{/ ? "bundled" : $configured->{JoglJars};
+      $jogl_native_path = $configured->{JoglNative} =~ /^\$\{/ ? "bundled" : $configured->{JoglNative};
+      $jogl=1;
+   } else {
+      undef $jogl_path;
+      undef $jogl_native_path;
+      $jogl=0;
+   }
+}
+
+use Polymake::Struct (
+   [ '@ISA' => 'InteractiveViewer' ],
+);
+
+# the active Viewer instance
+my $active;
+
+sub instance : lvalue { $active }   declare_nodebug(\&instance) if defined($DB::sub);
+
+{  # capture the own extension
+   my $ext=$Polymake::Core::Application::extension;
+
+   sub java_extensions { @{$ext->requires}, $ext }
+}
+
+sub start_properties {
+   my %jre_properties;
+   if ($jogl) {
+      $jre_properties{"java.library.path"}= $jogl_native_path eq "bundled" ? "$InstallArch/lib/jni/jreality" : $jogl_native_path;
+   }
+   if ($DebugLevel) {
+      $jre_properties{"polymake.debug"}=$DebugLevel>=2 ? "max" : "yes";
+   }
+   \%jre_properties
+}
+
+sub classpath {
+   my @all_jars=glob("$InstallArch/jars/{jReality-*.jar,jreality/*.jar}");
+   if ($jogl) {
+      if ($jogl_path ne "bundled") {
+         push @all_jars, map { "$jogl_path/$_.jar" } qw(jogl gluegen-rt);
+      }
+      @all_jars;
+   } else {
+      grep { !m{/(?:jogl | gluegen-rt)\.jar $}x } @all_jars;
+   }
+}
+
+use Visual::Transformation;
+
+sub new_drawing {
+   my ($self, $title, $vis)=@_;
+   push @{$self->new_windows}, (my $win=new Window(new File($title, $self->total_windows)));
+   if (defined (my $rep=$vis->representative)) {
+      push @{$win->feedback_listener}, (my $tr=new Visual::Transformation($rep));
+      $win->contents->transform=$tr->get_transformation_matrix;
+   }
+   $self;
+}
+
+# for feedback routines
+sub visualize {
+   shift;
+   jreality(@_);        # call the user function in void context
+   ()
+}
+
+sub parse_transformation_matrix {
+   my ($self, $string)=@_;
+   my @tr=$string =~ /(\S+)/g;
+   return new Matrix<Float>([[@tr[15, 3, 7, 11]],
+                             [@tr[12, 0, 1, 2]],
+                             [@tr[13, 4, 5, 6]],
+                             [@tr[14, 8, 9, 10]]]);
+}
+
+###########################################################################################
+#
+#  Drawing methods for graphical primitives defined in this application
+#
+
+# @category Visualization
+# Use [[wiki:external_software#jreality|jReality]], the experimental 3-D visualization software
+label jreality
+
+prefer jreality.geometry
+
+global_method jreality.geometry: draw(Visual::PointSet, @) {
+   my ($self, $P)=@_;
+   $self->append(new PointSet($P));
+}
+
+global_method jreality.geometry: draw(Visual::Polygon, @) {
+   my ($self, $P)=@_;
+   if (@{$P->Vertices} >= 3) {
+      $self->append(new Solid($P));
+   } else {
+      $self->append(new Wire(new Visual::DegeneratedPolygon($P)));
+   }
+}
+
+global_method jreality.geometry: draw(Visual::Polygons, @) {
+   my ($self, $P)=@_;
+   $self->append(new Solid($P));
+}
+
+global_method jreality.geometry: draw(Visual::Wire, @) {
+   my ($self, $G)=@_;
+   $self->append(new Wire($G));
+}
+
+###########################################################################################
+package JReality::Viewer::Window;
+
+use Polymake::Struct (
+   [ '@ISA' => 'InteractiveViewer::Window' ],
+   [ '$class' => '"de.tuberlin.polymake.common.jreality.StaticControl"' ],
+);
+
+method detect_dynamic($) { 0 }
+
+sub launch {
+   my ($self, $pipe)=@_;
+   foreach (@{$self->contents->geometries}) {
+      if ($self->detect_dynamic($_->source->Vertices)) {
+         $_->name =~ s/^/dynamic:/;
+      }
+   }
+   $self->SUPER::launch($pipe);
+}
+
+###########################################################################################
+package JReality::default;
+
+custom $points_color = "140 140 140";
+
+custom $faces_color = "119 236 158";
+
+custom $lines_color = "70 70 70";
+
+custom $points_thickness = 1;
+
+custom $lines_thickness = 0.5;
+
+###########################################################################################
+#
+#  Direct writing to a bsh file without starting a GUI. The bsh file contains beanshell
+#  code to be read by jreality.
+#
+
+package JReality::File::Writer;
+import Visual::FileWriter;
+
+sub file_suffix { ".bsh" }
+
+sub new_drawing {
+   my ($self, $title)=@_;
+   $self->title=$title;
+   $self;
+}
+
+sub DESTROY { }
+
+package application;
+
+# @category Visualization
+# Run [[wiki:external_software#jreality|jReality]] to display given visual objects.
+#
+# @param Visual::Object vis_obj ... objects to display
+#
+# @option String File "filename" or "AUTO"
+#  Store the object description in a bean shell source file without starting the interactive GUI.
+#  The ''.bsh'' suffix is automatically added to the file name.
+#
+#  Specify //AUTO// if you want the filename be automatically derived
+#  from the drawing title.
+#
+#  You can also use any expression allowed for the ''open'' function,
+#  including "-" for terminal output, "&HANDLE" for an already opened file handle,
+#  or "| program" for a pipe.
+
+user_function jreality(Visual::Object+, { File => undef }) {
+   visualize_explicit(@_, "JReality");
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

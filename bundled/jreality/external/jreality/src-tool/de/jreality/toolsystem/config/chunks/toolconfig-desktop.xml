@@ -1,0 +1,20 @@
+<toolconfig>
+
+    <import href="chunks/toolconfig-ndc.xml" />
+
+	<virtualdevices>
+
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualInvertMatrix">
+			<inputslot>AvatarTransformation</inputslot>
+			<outputslot>AvatarInverseTransformation</outputslot>
+		</virtualdevice>
+
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualProductMatrix">
+			<inputslot>AvatarInverseTransformation</inputslot>
+			<inputslot>PointerTransformation</inputslot>
+			<outputslot>PointerShipTransformation</outputslot>
+		</virtualdevice>
+
+	</virtualdevices>
+
+</toolconfig>

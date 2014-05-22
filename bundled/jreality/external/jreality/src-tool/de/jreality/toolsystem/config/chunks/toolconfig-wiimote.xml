@@ -1,0 +1,23 @@
+<toolconfig>
+
+	<rawdevices>
+		<rawdevice id="WiiMoteOSC" type="de.jreality.toolsystem.raw.WiiMoteOSC" />
+	</rawdevices>
+
+	<rawslots>
+		<mapping device="WiiMoteOSC" src="/wii/button/up" target="forward" />
+		<mapping device="WiiMoteOSC" src="/wii/button/down" target="backward" />
+		<mapping device="WiiMoteOSC" src="/wii/button/left" target="left" />
+		<mapping device="WiiMoteOSC" src="/wii/button/right" target="right" />
+		<mapping device="WiiMoteOSC" src="/wii/button/a" target="PrimaryAction" />
+		<mapping device="WiiMoteOSC" src="/wii/button/b" target="PrimarySelection" />
+		<mapping device="WiiMoteOSC" src="/wii/button/home" target="PrimaryMenu" />
+		<mapping device="WiiMoteOSC" src="/wii/button/plus" target="JumpActivation" />
+		<mapping device="WiiMoteOSC" src="/wii/button/minus" target="GravityToggle" />
+		<mapping device="WiiMoteOSC" src="/wii/button/one" target="pageUp" />
+		<mapping device="WiiMoteOSC" src="/wii/button/two" target="pageDown" />
+		<mapping device="WiiMoteOSC" src="pointer" target="PointerNDC" />
+		<mapping device="WiiMoteOSC" src="evolution" target="PointerNDCevolution" />
+	</rawslots>
+
+</toolconfig>

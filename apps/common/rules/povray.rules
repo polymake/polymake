@@ -1,0 +1,142 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+package Povray;
+
+CREDIT povray
+  Persistence of Vision Ray tracer, a tool for creating 3-d photo-realistic images.
+  http://www.povray.org
+
+# a povray renderer, e.g. povray
+custom $viewer;
+
+CONFIGURE {
+   find_program($viewer, "povray");
+}
+
+# options for povray rendering
+custom $cmd_options = "+D +A0.5";
+
+# width of picture
+custom $width = 400;
+
+# height of picture
+custom $height = 300;
+
+# length of arrow head
+custom $headLength = 0.3;
+
+# relative width of arrow head
+custom $headWidth = 2;
+
+# thickness of the points
+custom $points_thickness = 0.06;
+
+# thickness of the lines/tubes
+custom $lines_thickness = 0.03;
+
+# @category Visualization
+# Use [[wiki:external_software#povray|POVRAY]] for drawing.
+label povray
+
+################################################################################
+#
+#  Implementing the Viewer interface
+#
+package Povray::Viewer;
+
+use Povray;
+use BackgroundViewer;
+use Polymake::Struct [ '@ISA' => 'SimpleViewer' ];
+
+sub file_suffix { ".pov" }
+
+sub command {
+   my ($self, $filename)=@_;
+   my $outputfile = $self->graphics->title;
+   $outputfile =~ s|[ /.]|_|g;
+   if (-e "${outputfile}.tga") {
+      my $i = 1;
+      ++$i while (-e "${outputfile}_${i}.tga");
+      $outputfile .= "_${i}.tga";
+   } else {
+      $outputfile .= ".tga";
+   }
+   "$viewer +P -V $cmd_options +W$width +H$height +O$outputfile $filename; echo CREATED $outputfile"
+}
+
+sub append {
+   my $self=shift;
+   $self->graphics->append(@_);
+}
+
+global_method povray.geometry: draw(Visual::PointSet, @) {
+   my ($self, $P)=@_;
+   $self->append(new Povray::PointSet($P));
+}
+
+global_method povray.geometry: draw(Visual::Polygon, @) {
+   my ($self, $P)=@_;
+   if (@{$P->Vertices} >= 3) {
+      $self->append(new Povray::Solid($P));
+   } else {
+      $self->append(new Povray::Wire(new Visual::DegeneratedPolygon($P)));
+   }
+}
+
+global_method povray.geometry: draw(Visual::Polygons, @) {
+   my ($self, $P)=@_;
+   $self->append(new Povray::Solid($P));
+}
+
+global_method povray.geometry: draw(Visual::Wire, @) {
+   my ($self, $G)=@_;
+   $self->append(new Povray::Wire($G));
+}
+
+#  Writes to a POV file without rendering
+
+package Povray::File::Writer;
+import Visual::FileWriter;
+
+###########################################################################################
+
+package application;
+
+# @category Visualization
+# Run [[wiki:external_software#povray|POVRAY]] to display given visual objects.
+#
+# @param Visual::Object vis_obj ... objects to display
+#
+# @option String File "filename" or "AUTO"
+#  Store the object description in a POVRAY source file without actual rendering.
+#  The ''.pov'' suffix is automatically added to the file name.
+#
+#  Specify //AUTO// if you want the filename be automatically derived
+#  from the drawing title.
+#
+#  You can also use any expression allowed for the ''open'' function,
+#  including "-" for terminal output, "&HANDLE" for an already opened file handle,
+#  or "| program" for a pipe.
+
+user_function povray(Visual::Object+, { File => undef }) {
+   visualize_explicit(@_, "Povray");
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# End:

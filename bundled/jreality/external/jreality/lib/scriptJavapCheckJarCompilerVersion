@@ -1,0 +1,20 @@
+#!/bin/bash
+# Set the JAR name
+jar = $1
+
+# proofs the given argument
+while test -z $jar
+do
+    echo "There is no argument." 
+    echo "You have to type the name of the jar"
+    read jar
+done 
+echo ""
+# Loop through the classes (everything ending in .class)
+for class in $(jar -tf $jar | grep '.class'); do 
+    # Replace /'s with .'s
+    class=${class//\//.};
+    echo $class;
+    # javap
+    javap -v -classpath $jar ${class//.class/} | grep major;
+done

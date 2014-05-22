@@ -1,0 +1,128 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-----------------------------------------------------------------------------
+#
+#  Complete production cycle for automatic part of documentation
+#
+
+my ($noHTML, $snapshot);
+
+if ( !GetOptions( noHTML => \$noHTML, snapshot => \$snapshot ) or
+     !@ARGV ) {
+   die "usage: polymake --script generate_docs [--noHTML] OutDir AppName ... \n",
+       "from the polymake shell: script(\"generate_docs\", \"OutDir\");\n";
+}
+
+my $Wiki="http://polymake.org/";
+
+my $docdir="$InstallTop/xml/documentation";
+
+my $outdir=shift @ARGV;
+
+my @Apps=@ARGV;
+if ($Shell->interactive) {
+   unless (@Apps) { @ARGV=known Core::Application; }
+} else {
+   # running in batch mode
+   unless (@Apps) { @Apps=@start_applications or die "no applications specified\n"; }
+}
+
+File::Path::mkpath($outdir);
+
+my $tmpdir=Tempfile->new_dir;
+
+script("extract_docs", '--wiki' => $Wiki, '--outsuffix' => '.html', '--outdir' => $tmpdir, @Apps);
+
+my $pmdocns=doc_namespace();
+
+my $writer=open_doc_file("version.xml");
+$writer->startTag([ $pmdocns, "version" ]);
+if ($DeveloperMode && $snapshot) {
+   my ($rev)= `git rev-parse --short HEAD`;
+   $writer->dataElement("commit", $rev);
+} else {
+   $writer->dataElement("release", $Version);
+}
+if ($#Core::Extension::active >= $Core::Extension::num_bundled) {
+   $writer->startTag("extensions");
+   my @e = @Core::Extension::active[$Core::Extension::num_bundled .. $#Core::Extension::active];
+   for (@Core::Extension::active[$Core::Extension::num_bundled .. $#Core::Extension::active]) {
+   	  $writer->startTag("extension");
+   	  $writer->dataElement("URI", $_->URI);
+   	  $writer->dataElement("name", $_->short_name) if ($_->short_name);
+   	  $writer->dataElement("text", $_->credit->text) if ($_->credit);
+      my $ext_file = $_->URI;
+	  $ext_file =~ s|http://||og;
+	  $ext_file =~ s|[/:.]|_|og;
+   	  $writer->dataElement("file", $ext_file);
+   	  $writer->endTag;
+   }
+   $writer->endTag;
+}
+$writer->endTag;
+close_doc_file($writer);
+
+sub run_xsltproc {
+   my ($out, $stylesheet, $in, $ext_name)=@_;
+   if (system("xsltproc", "--path", $tmpdir, "--stringparam", "Wiki", $Wiki, "--stringparam", "ext_name", $ext_name, "-o", $out, "$docdir/$stylesheet.xsl", "$in")) {
+      die "Command 'xsltproc @_' returned with error code $?\n",
+          "Temporary files preserved in $tmpdir\n";
+   }
+}
+
+system("cp -p $docdir/entities/* $tmpdir/");
+
+push(@Apps, "core") if -f "$tmpdir/core.xml";
+foreach (@Apps) {
+   run_xsltproc("$outdir/inc/$_.inc", "doc", "$_.xml");
+}
+
+$writer=open_doc_file("applications.xml");
+$writer->startTag([ $pmdocns, "applications" ]);
+$writer->emptyTag("file", name => "$_.xml") for @Apps;
+$writer->endTag;
+close_doc_file($writer);
+
+run_xsltproc("$outdir/inc/index.inc",     "index",     "applications.xml");
+run_xsltproc("$tmpdir/all.xml",           "all",       "applications.xml");
+run_xsltproc("$outdir/inc/doc_index.inc", "doc_index", "all.xml");
+
+foreach (@Core::Extension::active) {
+   my $ext_name = $_->URI;
+   my $ext_file = $_->URI;
+   $ext_file =~ s|http://||og;
+   $ext_file =~ s|[/:.]|_|og;
+   run_xsltproc("$tmpdir/$ext_file.xml",		"extension", 	"all.xml", $ext_name);
+   run_xsltproc("$outdir/inc/$ext_file.inc",	"doc", 	   		"$ext_file.xml", $ext_name);
+   run_xsltproc("$outdir/$ext_file.html", 		"export", "$outdir/inc/$ext_file.inc") unless ($noHTML);
+}
+
+unless ($noHTML) {
+   foreach (@Apps) {
+      run_xsltproc("$outdir/$_.html", "export", "$outdir/inc/$_.inc");
+   }
+   run_xsltproc("$outdir/index.html", "export", "$outdir/inc/index.inc");
+   run_xsltproc("$outdir/doc_index.html", "export", "$outdir/inc/doc_index.inc");
+}
+
+File::Path::mkpath("$outdir/images");
+system("cp -p $docdir/images/*.png $outdir/images");
+system("cp -p $docdir/*.js $docdir/*.css $outdir/");
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

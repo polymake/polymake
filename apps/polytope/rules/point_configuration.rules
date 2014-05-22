@@ -1,0 +1,269 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# The object point configuration also deals with non-convex finite point sets.
+declare object PointConfiguration<Scalar=Rational>;
+
+INCLUDE
+  point_configuration_properties.rules
+
+object PointConfiguration {
+
+rule CONVEX_HULL.POINTS = POINTS;
+
+rule AFFINE_HULL = CONVEX_HULL.AFFINE_HULL;
+
+rule DIM : CONVEX_HULL.CONE_DIM {
+   $this->DIM=($this->CONVEX_HULL->CONE_DIM) - 1;
+}
+
+rule AMBIENT_DIM : POINTS {
+   $this->AMBIENT_DIM=($this->POINTS)->cols-1;
+}
+weight 0.10;
+
+rule AMBIENT_DIM : CONVEX_HULL.CONE_AMBIENT_DIM {
+    $this->AMBIENT_DIM=$this->CONVEX_HULL->CONE_AMBIENT_DIM-1;
+}
+
+rule N_POINTS : POINTS {
+   $this->N_POINTS=$this->POINTS->rows;
+}
+weight 0.10;
+
+rule BOUNDED : FAR_POINTS {
+   $this->BOUNDED= !@{$this->FAR_POINTS};
+}
+weight 0.10;
+
+
+rule BOUNDED : POINTS {
+   foreach my $v (@{$this->POINTS}) {
+      if (! $v->[0]) {
+	 $this->BOUNDED=0;
+	 return;
+      }
+   }
+   $this->BOUNDED=1;
+}
+weight 1.10;
+
+rule BOUNDED = CONVEX_HULL.BOUNDED;
+
+rule CONVEX_HULL.BOUNDED = BOUNDED;
+
+rule CONVEX : N_POINTS, CONVEX_HULL.N_VERTICES {
+   $this->CONVEX=$this->N_POINTS==$this->CONVEX_HULL->N_VERTICES;
+}
+weight 0.10;
+
+
+rule CONVEX_HULL.VERTICES = POINTS;
+precondition : CONVEX;
+
+rule CONVEX_HULL.VERTEX_POINT_MAP : POINTS, CONVEX_HULL.VERTICES{
+    $this->CONVEX_HULL->VERTEX_POINT_MAP=vertex_point_map($this->CONVEX_HULL->VERTICES,$this->POINTS);
+}
+weight 2.10;
+
+rule VERTEX_POINT_MAP=CONVEX_HULL.VERTEX_POINT_MAP;
+
+rule NON_VERTICES : POINTS, CONVEX_HULL.VERTICES {
+   $this->NON_VERTICES = non_vertices($this->POINTS,$this->CONVEX_HULL->VERTICES);
+}
+weight 2.10;
+
+rule GRAPH.ADJACENCY : CONVEX_HULL.POINTS_IN_FACETS, CONVEX_HULL.FACETS, POINTS, DIM{
+   $this->GRAPH->ADJACENCY=points_graph_from_incidence($this->POINTS,$this->CONVEX_HULL->POINTS_IN_FACETS,$this->CONVEX_HULL->FACETS,$this->DIM);
+}
+precondition : DIM { $this->DIM>1 } 
+weight 3.10;
+
+rule GRAPH.ADJACENCY : N_POINTS, VERTEX_POINT_MAP {
+   my $g = new common::Graph($this->N_POINTS);
+   $g->edge($this->VERTEX_POINT_MAP->[0],$this->VERTEX_POINT_MAP->[1]);
+   $this->GRAPH->ADJACENCY = $g;
+}
+precondition : DIM { $this->DIM==1 } 
+weight 1.10;
+
+rule GRAPH.ADJACENCY : N_POINTS {
+   my $g = new common::Graph($this->N_POINTS);
+   $this->GRAPH->ADJACENCY = $g;
+}
+precondition : DIM { $this->DIM==0 } 
+weight 1.10;
+
+rule GRAPH.ADJACENCY = CONVEX_HULL.GRAPH.ADJACENCY;
+precondition : CONVEX;
+
+rule FAR_POINTS : POINTS {
+   $this->FAR_POINTS=far_points($this->POINTS);
+}
+weight 1.10;
+
+
+rule BARYCENTER : POINTS {
+   $this->BARYCENTER=barycenter($this->POINTS);
+}
+precondition : BOUNDED;
+weight 1.10;
+
+rule TRIANGULATION.FACETS : POINTS {
+	if ( defined(my $weights=$this->lookup("TRIANGULATION.WEIGHTS") ) ) {
+		   $this->TRIANGULATION->FACETS=regular_subdivision($this->POINTS, $weights);
+	   } else {
+		   $this->TRIANGULATION->FACETS=placing_triangulation($this->POINTS);
+	   }
+}
+weight 4.10;
+
+rule TRIANGULATION.GKZ_VECTOR : POINTS, TRIANGULATION.FACETS {
+   $this->TRIANGULATION->GKZ_VECTOR=gkz_vector($this->POINTS,$this->TRIANGULATION->FACETS);
+}
+
+rule SPLITS : POINTS, GRAPH.ADJACENCY, CONVEX_HULL.FACETS, DIM{
+   $this->SPLITS = splits($this->POINTS,$this->GRAPH->ADJACENCY,$this->CONVEX_HULL->FACETS,$this->DIM);
+}
+
+rule SPLIT_COMPATIBILITY_GRAPH.ADJACENCY : CONVEX_HULL.FACETS, CONVEX_HULL.AFFINE_HULL, SPLITS {
+   $this->SPLIT_COMPATIBILITY_GRAPH->ADJACENCY = split_compatibility_graph($this->SPLITS,$this->CONVEX_HULL);
+}
+
+rule TRIANGULATION.REFINED_SPLITS : SPLITS, POINTS, TRIANGULATION.FACETS {
+   $this->TRIANGULATION->REFINED_SPLITS=splits_in_subdivision($this->POINTS,$this->TRIANGULATION->FACETS,$this->SPLITS);
+}
+
+rule TRIANGULATION.BOUNDARY.INPUT_FACES, TRIANGULATION.BOUNDARY.FACET_TRIANGULATIONS : TRIANGULATION.FACETS, CONVEX_HULL.POINTS_IN_FACETS {
+   ($this->TRIANGULATION->BOUNDARY->INPUT_FACES, $this->TRIANGULATION->BOUNDARY->FACET_TRIANGULATIONS)=
+     triang_boundary($this->TRIANGULATION->FACETS, $this->CONVEX_HULL->POINTS_IN_FACETS);
+}
+
+rule CONVEX_HULL.TRIANGULATION_INT = TRIANGULATION.FACETS;
+
+rule LABELS : N_POINTS {
+   my @labels = (0..$this->N_POINTS-1);
+   $this->LABELS="@labels";
+}
+weight 0.10;
+
+#Visualization
+
+rule PIF_CYCLIC_NORMAL : CONVEX_HULL.VIF_CYCLIC_NORMAL, VERTEX_POINT_MAP{
+  my $pif=new Array<Array<Int>>($this->CONVEX_HULL->VIF_CYCLIC_NORMAL);
+  foreach (@$pif) {
+     foreach (@$_) {
+        $_=@{$this->VERTEX_POINT_MAP}[$_];
+     }
+   }	
+   $this->PIF_CYCLIC_NORMAL(temporary)=$pif;
+}
+
+
+# Triangulation
+
+rule TRIANGULATION.VERTEX_LABELS = LABELS;
+
+rule TRIANGULATION.COORDINATES : POINTS {
+   $this->TRIANGULATION->COORDINATES(temporary)=$this->POINTS->minor(All,~[0]);
+}
+weight 0.10;
+
+rule TRIANGULATION.BALL : {
+   $this->TRIANGULATION->BALL=1;
+}
+
+rule TRIANGULATION.VOLUME = CONVEX_HULL.VOLUME;
+
+rule TRIANGULATION.G_DIM = AMBIENT_DIM;
+
+#rule TRIANGULATION.BOUNDARY.COORDINATES : POINTS {
+#   $this->TRIANGULATION->BOUNDARY->COORDINATES(temporary)=$this->POINTS->minor(All,~[0]);
+#}
+#weight 0.10;
+
+rule TRIANGULATION.BOUNDARY.SPHERE : {
+   $this->TRIANGULATION->BOUNDARY->SPHERE=1;
+}
+weight 0.10;
+
+#rule TRIANGULATION.BOUNDARY.G_DIM = AMBIENT_DIM;
+
+rule MULTIPLE_POINTS : POINTS {
+   $this->MULTIPLE_POINTS=detect_multiple(new Matrix<Rational>($this->POINTS)); 
+}
+weight 1.10;   
+
+
+}
+
+
+# @category Triangulations, subdivisions and volume
+# Create a simplicial complex as the barycentric subdivision of a given point configuration.
+# Each vertex in the new complex corresponds to a face in the old complex.
+# @param PointConfiguration pc input point configuration
+# @option Bool relabel generate vertex labels from the faces of the original complex; default true
+# @option Bool geometric_realization read [[POINTS]] of the input complex,
+#  compute the coordinates of the new vertices and store them as
+#  [[POINTS]] of the produced complex; default false
+# @return PointConfiguration
+user_function barycentric_subdivision(PointConfiguration { relabel => 1, geometric_realization => 1, pin_hasse_section => 'TRIANGULATION.HASSE_DIAGRAM', label_section => 'LABELS', coord_section => 'POINTS' }) {
+   topaz::barycentric_subdivision_impl(@_);
+}
+
+# @category Triangulations, subdivisions and volume
+# Computes the complex obtained by stellar subdivision of all //faces// of the [[TRIANGULATION]] of the PointConfiguration.
+# @param PointConfiguration pc input point configuration
+# @param Array<Set<Int>> faces list of faces to subdivide
+# @option Bool no_labels : do not write any labels
+# @return PointConfiguration
+user_function stellar_subdivision(PointConfiguration, Array<Set<Int>>, { no_labels => 0}) {
+   topaz::stellar_subdivision(@_);
+}
+
+
+# @category Producing a point configuration
+# Produces the Minkowski sum of //P1// and //P2//.
+# @param PointConfiguration P1
+# @param PointConfiguration P2
+# @return PointConfiguration
+user_function minkowski_sum<Scalar> (PointConfiguration<Scalar>, PointConfiguration<Scalar> ) {
+    my ($p1,$p2) = @_;
+    return minkowski_sum(1,$p1,1,$p2);
+}
+
+# @category Producing a point configuration
+# Produces the polytope //lambda//*//P1//+//mu//*//P2//, where * and + are scalar multiplication
+# and Minkowski addition, respectively.
+# @param Scalar lambda
+# @param PointConfiguration P1
+# @param Scalar mu
+# @param PointConfiguration P2
+# @return PointConfiguration
+user_function minkowski_sum<Scalar> ($, PointConfiguration<Scalar>, $, PointConfiguration<Scalar> ) {
+    my ($l1,$p1,$l2,$p2) = @_;
+    my $v1=$p1->give("POINTS");
+    my $v2=$p2->give("POINTS");
+    my $p=minkowski_sum_client($l1,$v1,$l2,$v2);
+    my $p_out = new PointConfiguration(POINTS=>$p);
+    $p_out->description = "Minkowski sum of ".$l1."*".$p1->name." and ".$l2."*".$p2->name;
+    return $p_out;
+}
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:4
+# End:

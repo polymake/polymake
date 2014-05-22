@@ -1,0 +1,144 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object NormalToricVariety {
+   
+	rule DIVISOR.SECTION_POLYTOPE.INEQUALITIES : RAYS, DIVISOR.COEFFICIENTS {
+		my $a = $this->DIVISOR->COEFFICIENTS;
+		my $rays = primitive($this->RAYS);		
+		my $ineq = $a | (convert_to<Rational>($rays));
+		$this->DIVISOR->SECTION_POLYTOPE->INEQUALITIES = $ineq;
+	}
+   
+   object TDivisor {
+         
+      rule INTEGRAL : COEFFICIENTS {		
+         $this->INTEGRAL = (eliminate_denominators($this->COEFFICIENTS) - $this->COEFFICIENTS == zero_vector($this->COEFFICIENTS->dim));
+      }
+      
+      rule CARTIER :  {
+         $this->CARTIER = 1;
+      }
+      precondition : PRINCIPAL;
+
+      rule Q_CARTIER : {
+         $this->Q_CARTIER = 1;
+      }
+      precondition : CARTIER;
+
+   }
+   
+   rule DIVISOR.PRINCIPAL : RAYS, DIVISOR.COEFFICIENTS {
+		my $c = $this->DIVISOR->COEFFICIENTS;
+		my $eq = -$c | convert_to<Rational>(primitive($this->RAYS));
+		my $bla = new Polytope<Rational>(INEQUALITIES=>(unit_vector<Rational>($eq->cols,0)),EQUATIONS => $eq);
+		$bla->VERTICES;
+		my $sol = grep($_->[0]==1, @{$bla->LATTICE_POINTS});
+		$this->DIVISOR->PRINCIPAL=($sol > 0);
+	}
+
+   # [[AMPLE]] implies [[NEF]]
+   rule DIVISOR.NEF : {
+      $this->DIVISOR->NEF = 1;
+   }
+   weight 0.10;
+   precondition : DIVISOR.AMPLE;
+
+   # [[AMPLE]] implies [[COMPLETE]] and [[CARTIER]]
+   rule DIVISOR.AMPLE : {
+      $this->DIVISOR->AMPLE = 0;
+   }
+   weight 0.10;
+   precondition : DIVISOR.CARTIER, COMPLETE {
+      !$this->DIVISOR.CARTIER | !$this->COMPLETE;
+   }
+
+   # [[AMPLE]] implies [[CARTIER]]
+   rule DIVISOR.CARTIER : {
+      $this->DIVISOR->CARTIER = 1;
+   }
+   weight 0.10;
+   precondition : DIVISOR.AMPLE;
+
+   # [[CARTIER]] implies [[Q_CARTIER]]
+   rule DIVISOR.CARTIER : {
+      $this->DIVISOR->CARTIER = 0;
+   }
+   weight 0.10;
+   precondition : !DIVISOR.Q_CARTIER;
+
+   # On a smooth ntv every Weil divisor is Cartier.
+   rule DIVISOR.CARTIER : {
+      $this->DIVISOR->CARTIER = 1;
+   }
+   precondition : DIVISOR.INTEGRAL;
+   precondition : SMOOTH_FAN;
+
+   # On a simplicial ntv every Weil divisor has a multiple which is Cartier.
+   rule DIVISOR.Q_CARTIER : {
+      $this->DIVISOR->Q_CARTIER = 1;
+   }
+   precondition : DIVISOR.INTEGRAL;
+   precondition : SIMPLICIAL;
+
+   
+   
+   # This rule implements Theorem 4.2.8 of Cox,Little,Schenck:Toric Varieties.
+   # The Cartier data determined is exactly the set of the m_\sigma for all
+   # maximal cones.
+	rule DIVISOR.Q_CARTIER, DIVISOR.CARTIER_DATA : RAYS, DIVISOR.COEFFICIENTS, MAXIMAL_CONES, LINEALITY_SPACE {
+		my $maxcones = $this->MAXIMAL_CONES;
+		my $map = new Map<Set<Int>,Vector>;
+		my $rays = primitive($this->RAYS);
+		my $lin = primitive($this->LINEALITY_SPACE);
+		$lin = zero_vector($lin->rows) | convert_to<Rational>($lin);
+		my $coefficients = $this->DIVISOR->COEFFICIENTS;
+		foreach my $s (@$maxcones){
+		   my $eq = $coefficients->slice($s) | convert_to<Rational>($rays->minor($s,All));
+			my $ns=new Matrix;
+			if ( $lin->rows ) {
+			    $ns = null_space($eq/$lin);
+			} else {
+			    $ns = null_space($eq);
+			}
+			die "too many solutions for Cartier data\n" if $ns->rows > 1;
+			if ( $ns->rows == 0 ) {
+			    $this->DIVISOR->Q_CARTIER = 0;
+			    return;
+			}
+			my $v = $ns->row(0);
+			$map->{$s} = $v/$v->[0];
+		}
+		$this->DIVISOR->Q_CARTIER = 1;
+		$this->DIVISOR->CARTIER_DATA = $map;
+	}
+
+
+   # This rule implements Theorem 4.2.8 of Cox,Little,Schenck:Toric Varieties.
+   # We use the vertices m_\sigma according to part (d) of the theorem.
+   rule DIVISOR.CARTIER : DIVISOR.CARTIER_DATA, MAXIMAL_CONES {
+      my $cd = $this->DIVISOR->CARTIER_DATA;
+      my $mc = $this->MAXIMAL_CONES;
+      foreach (@{$mc}) {
+         if ( $cd->{$_} != primitive($cd->{$_}) ) { 
+            $this->DIVISOR->CARTIER=0; 
+            return; 
+         }
+      }
+      $this->DIVISOR->CARTIER=1;
+   }
+   precondition : DIVISOR.Q_CARTIER;
+
+}

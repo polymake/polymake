@@ -1,0 +1,746 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# A polytope all of whose vertex coordinates are integral.
+
+declare object LatticePolytope : Polytope<Rational>;
+
+
+INCLUDE
+  lattice_properties.rules
+  lattice_visual.rules
+  _4ti2.rules + normaliz2.rules | lattice_missing_hilbert.rules
+  latte.rules + normaliz2.rules | lattice_missing_ehrhart.rules
+
+
+object Polytope<Rational> {
+
+    auto_cast : LatticePolytope;
+    precondition : LATTICE;
+    precondition : BOUNDED;
+
+    rule N_LATTICE_POINTS : LATTICE_POINTS_GENERATORS {
+        $this->N_LATTICE_POINTS = $this->LATTICE_POINTS_GENERATORS->[0]->rows;
+    }
+    precondition : BOUNDED;
+    weight 0.10;
+    
+    rule BOUNDARY_LATTICE_POINTS, INTERIOR_LATTICE_POINTS : LATTICE_POINTS_GENERATORS , FACETS {
+        my $lattice_points = $this->LATTICE_POINTS_GENERATORS->[0];
+        my $facets = $this->FACETS;
+
+        my (@blp, @ilp);
+        foreach my $l (@$lattice_points) {
+            my $interior=1;
+            foreach my $f (@$facets) {
+                if ($f * $l == 0) {
+                    push @blp, new Vector<Integer>($l);
+                    $interior=0;
+                    last;
+                }
+            }
+            if ($interior) {
+                push @ilp, new Vector<Integer>($l);
+            }
+        }
+        $this->BOUNDARY_LATTICE_POINTS=\@blp; 
+        $this->INTERIOR_LATTICE_POINTS=\@ilp;
+    }
+    precondition : BOUNDED;
+    weight 2.10;
+    
+    rule N_BOUNDARY_LATTICE_POINTS : N_LATTICE_POINTS , N_INTERIOR_LATTICE_POINTS {
+        $this->N_BOUNDARY_LATTICE_POINTS = $this->N_LATTICE_POINTS - $this->N_INTERIOR_LATTICE_POINTS;
+    }
+    weight 0.10;
+    
+    rule N_BOUNDARY_LATTICE_POINTS : BOUNDARY_LATTICE_POINTS {
+        $this->N_BOUNDARY_LATTICE_POINTS = $this->BOUNDARY_LATTICE_POINTS->rows;
+    }
+    weight 0.10;
+    
+    rule N_INTERIOR_LATTICE_POINTS : INTERIOR_LATTICE_POINTS {
+        $this->N_INTERIOR_LATTICE_POINTS = $this->INTERIOR_LATTICE_POINTS->rows;
+    }
+    weight 0.10;
+    
+    rule N_INTERIOR_LATTICE_POINTS : N_LATTICE_POINTS , N_BOUNDARY_LATTICE_POINTS {
+        $this->N_INTERIOR_LATTICE_POINTS = $this->N_LATTICE_POINTS - $this->N_BOUNDARY_LATTICE_POINTS;
+    }
+    weight 0.10;
+
+    rule LATTICE_POINTS_GENERATORS : HILBERT_BASIS_GENERATORS {
+        $this->LATTICE_POINTS_GENERATORS = [ [ grep { $_->[0] == 1 } @{$this->HILBERT_BASIS_GENERATORS->[0]} ], [], []];
+    }
+    precondition : BOUNDED;
+    weight 1.10;
+    
+    rule N_LATTICE_POINTS : HILBERT_BASIS_GENERATORS {
+        my $hilb = $this->HILBERT_BASIS_GENERATORS->[0];
+        my $count = 0;
+        foreach (@{$hilb->col(0)}) {
+            if ($_ == 1) {
+                $count++;
+            }
+        }
+        $this->N_LATTICE_POINTS = $count;
+    }
+    precondition : BOUNDED;
+    weight 1.10;
+    
+    rule N_INTERIOR_LATTICE_POINTS , N_LATTICE_POINTS : {
+      $this->N_LATTICE_POINTS = 0;
+      $this->N_INTERIOR_LATTICE_POINTS = 0;
+    }
+    weight 0.10;
+    precondition : !FEASIBLE;
+
+    rule LATTICE_POINTS_GENERATORS : DEGREE_ONE_GENERATORS {
+      $this->LATTICE_POINTS_GENERATORS = [$this->DEGREE_ONE_GENERATORS,[],[]];
+    }
+    precondition : BOUNDED;
+    precondition : MONOID_GRADING { $this->MONOID_GRADING == unit_vector<Integer>($this->MONOID_GRADING->dim,0); };
+    weight 0.10;
+    
+
+    rule MINKOWSKI_CONE : HASSE_DIAGRAM, GRAPH.ADJACENCY, GRAPH.EDGE_DIRECTIONS, FAR_FACE {
+        $this->MINKOWSKI_CONE = minkowski_cone($this->HASSE_DIAGRAM, $this->GRAPH->ADJACENCY, $this->GRAPH->EDGE_DIRECTIONS, $this->FAR_FACE);
+    }
+    precondition : CONE_DIM { $this->CONE_DIM > 2; }
+    
+    # Returns the lattice points in bounded Polytopes.
+    # @return Matrix<Integer>
+    user_method LATTICE_POINTS {
+      my $p = shift;
+      if (!($p->BOUNDED)) { die "input polytope must be bounded" }
+      return $p->LATTICE_POINTS_GENERATORS->[0];
+    }
+    
+    # returns the Minkowski summand of a polytope P given by 
+    # a coefficient vector to the rays of the [[MINKOWSKI_CONE]].
+    # @param Vector<Rational> coeff coefficient vector to the rays of the Minkowski summand cone
+    # @return Polytope<Rational>
+    user_method MINKOWSKI_CONE_COEFF {
+        
+        my ($p, $coeff)  = @_;
+        return minkowski_cone_coeff($coeff, $p->MINKOWSKI_CONE, $p->GRAPH, $p->FAR_FACE, new Matrix(grep($_->[0]==0, @{$p->VERTICES})));
+    }
+    
+    # returns the Minkowski summand of a polytope P given by 
+    # a point in the [[MINKOWSKI_CONE]].
+    # @param Vector<Rational> point point in the Minkowski summand cone
+    # @return Polytope<Rational>
+    user_method MINKOWSKI_CONE_POINT {
+        my $p = shift;
+        my $point = new Vector<Rational>(shift);
+        my $c = $p->give("MINKOWSKI_CONE");
+        foreach ( @{$point} ) {
+            if ( $_ < 0 ) {  die "given point is not in Minkowski cone"; }
+        } 
+        # foreach ( @{$c->LINEAR_SPAN * $point} ) {
+        #     if ( $_ != 0 ) {  die "given point is not in Minkowski cone"; }
+        # } 
+        my $vertices = $p->give("VERTICES");
+        return  minkowski_cone_point($point, new Matrix(grep($_->[0]==0, @$vertices)), $p->GRAPH, $p->FAR_FACE);
+    }
+
+    rule MONOID_GRADING : CONE_AMBIENT_DIM {
+       $this->MONOID_GRADING = unit_vector<Integer>($this->CONE_AMBIENT_DIM,0);
+    }
+    weight 0.10;
+
+
+label projection
+
+    rule projection.integer_points : LATTICE_POINTS_GENERATORS : FACETS , AFFINE_HULL , VERTICES_IN_FACETS , VERTICES , CONE_AMBIENT_DIM , CONE_DIM {
+        $this->LATTICE_POINTS_GENERATORS = [integer_points_projection($this,0), [],[]];
+    }
+    precondition : BOUNDED;
+    weight 5.10;
+
+
+label bbox
+
+    rule bbox.integer_points : LATTICE_POINTS_GENERATORS : FACETS | INEQUALITIES , AFFINE_HULL | EQUATIONS {
+        $this->LATTICE_POINTS_GENERATORS = [integer_points_bbox($this), [], []];
+    }
+    precondition : BOUNDED;
+    weight 5.20;
+}
+
+
+object LatticePolytope {
+
+    rule LATTICE_BASIS : CONE_AMBIENT_DIM {
+        $this->LATTICE_BASIS = unit_matrix<Rational>($this->CONE_AMBIENT_DIM-1);
+    }
+    weight 0.10;
+
+    user_method POLYTOPE_IN_STD_BASIS {
+        my $this=shift;
+        my $p=new Polytope<Rational>;
+        if ( defined(my $v=$this->VERTICES) ) {
+            $p->VERTICES=(ones_vector<Rational>($v->rows))|($v->minor(All,~[0])*$this->LATTICE_BASIS);
+        } elsif(defined(my $v=$this->POINTS)) {
+            $p->POINTS=(ones_vector<Rational>($v->rows))|($v->minor(All,~[0])*$this->LATTICE_BASIS);
+        }
+
+        if ( defined(my $f=$this->FACETS) ) {
+            $p->FACETS=$f->col(0)|($f->minor(All,~[0])*inv($this->LATTICE_BASIS));
+        } elsif(defined(my $f=$this->INEQUALITIES)) {
+            $p->INEQUALITIES=$f->col(0)|($f->minor(All,~[0])*inv($this->LATTICE_BASIS));
+        }
+
+        if ( defined(my $f=$this->VERTICES_IN_FACETS) ) {
+            $p->VERTICES_IN_FACETS=$this->VERTICES_IN_FACETS;
+        }
+
+        return $p;
+    }
+
+    rule N_LATTICE_POINTS : EHRHART_POLYNOMIAL_COEFF {
+        my $e = $this->EHRHART_POLYNOMIAL_COEFF;
+        my $dim = $#$e;
+        my $num = new Rational(0);
+        for (my $i = 0; $i <= $dim; $i++) {
+            $num += $e->[$i];
+        }
+        $this->N_LATTICE_POINTS=new Int($num);
+    }
+    weight 0.10;
+    
+    rule N_LATTICE_POINTS : H_STAR_VECTOR {
+        $this->N_LATTICE_POINTS = $this->H_STAR_VECTOR->[1] + scalar(@{$this->H_STAR_VECTOR});
+    }
+    precondition : CONE_DIM { $this->CONE_DIM > 1; }
+    weight 0.10;
+    
+    
+    # @category Lattice polytopes
+    # The number of [[LATTICE_POINTS]] in the //n//-th dilation of the polytope
+    # @param Int n dilation factor
+    user_method N_LATTICE_POINTS_IN_DILATION {
+        my ($this, $n)=@_;
+        my $ev = $this->EHRHART_POLYNOMIAL_COEFF;
+        my $dim = $#$ev;
+        my $n_lp = new Rational($ev->[-1]);
+        for (my $i = $dim-1; $i >= 0; $i--) {
+            $n_lp *= $n;
+            $n_lp += $ev->[$i];
+        }
+        if ($dim % 2 && $n < 0) {
+            return new Int(-$n_lp);
+        } else {
+            return new Int($n_lp); 
+        }
+    }
+        
+    rule N_INTERIOR_LATTICE_POINTS : EHRHART_POLYNOMIAL_COEFF {
+        my $e = $this->EHRHART_POLYNOMIAL_COEFF;
+        my $dim = $#$e;
+        my $num = new Rational(0);
+        for (my $i = 0; $i <= $dim; $i++) {
+            if ($i%2==0) {
+                $num += $e->[$i];
+            } else {
+                $num -= $e->[$i];
+            }
+        }
+        $this->N_INTERIOR_LATTICE_POINTS=new Int(abs($num));
+    }
+    weight 0.10;
+    
+    rule N_INTERIOR_LATTICE_POINTS : H_STAR_VECTOR {
+        my $h = $this->H_STAR_VECTOR;
+        my $dim = $#$h;
+        $this->N_INTERIOR_LATTICE_POINTS = $h->[$dim];
+    }
+    weight 0.10;
+
+    rule EHRHART_POLYNOMIAL_COEFF, N_INTERIOR_LATTICE_POINTS, N_LATTICE_POINTS :  {
+      $this->EHRHART_POLYNOMIAL_COEFF=new Vector<Rational>();
+      $this->N_LATTICE_POINTS = 0;
+      $this->N_INTERIOR_LATTICE_POINTS = 0;
+    }
+    weight 0.10;
+    precondition : !FEASIBLE;
+    
+    # Check, whether the polar dual is also a lattice polytope.
+    rule REFLEXIVE : FACETS {
+        my $n_int = $this->lookup("N_INTERIOR_LATTICE_POINTS");
+        if (defined($n_int) && $n_int != 1) {
+            $this->REFLEXIVE = 0;
+            return;
+        }
+        my $fac = eliminate_denominators_in_rows($this->FACETS);
+        foreach (@$fac) {
+            my $a = $_->[0];
+            for (my $i=1; $i<scalar(@$_); $i++) {
+                if (($_->[$i])%$a != 0) {
+                    $this->REFLEXIVE = 0;
+                    return;
+                }
+            } 
+        }
+        $this->REFLEXIVE = 1;
+    }
+    precondition : CENTERED;
+    precondition : FULL_DIM;
+    weight 1.10;
+    
+    rule REFLEXIVE : GORENSTEIN , GORENSTEIN_INDEX {
+        if ($this->GORENSTEIN) {
+            if ($this->GORENSTEIN_INDEX == 1) {
+                $this->REFLEXIVE = 1;
+            } else {
+                $this->REFLEXIVE = 0;
+            }
+        } else {
+            $this->REFLEXIVE = 0;
+        }
+    }
+    precondition : FULL_DIM;
+    weight 0.10;
+    
+    rule REFLEXIVE : H_STAR_VECTOR {
+        my $h = $this->H_STAR_VECTOR;
+        my $dim = $#$h;
+        my $i = 0;
+        if ($this->H_STAR_VECTOR->[$dim] == 0) {
+            $this->REFLEXIVE = 0;
+            return;
+        }
+        while ($i < $dim-$i) {
+            if($this->H_STAR_VECTOR->[$i] != $this->H_STAR_VECTOR->[$dim-$i]) {
+                $this->REFLEXIVE = 0;
+                return;
+            }
+            $i++;
+        }
+        $this->REFLEXIVE = 1;
+    }
+    precondition : FEASIBLE;
+    weight 0.10;
+    
+    rule GORENSTEIN , GORENSTEIN_INDEX : {
+        $this->GORENSTEIN = 1;
+        $this->GORENSTEIN_INDEX = 1;
+    }
+    precondition : REFLEXIVE;
+    weight 0.10;
+    
+    rule GORENSTEIN : H_STAR_VECTOR {
+        my $h = $this->H_STAR_VECTOR;
+        my $max = $#$h;
+        while ($this->H_STAR_VECTOR->[$max] == 0) {
+            $max--;
+        }
+        my $i = 0;
+        while ($i < $max-$i) {
+            if($this->H_STAR_VECTOR->[$i] != $this->H_STAR_VECTOR->[$max-$i]) {
+                $this->GORENSTEIN = 0;
+                return;
+            }
+            $i++;
+        }
+        $this->GORENSTEIN = 1;
+    }
+    precondition : FEASIBLE;
+    weight 0.10;
+    
+    #Read FACETS f1, . . . , fk (in lattice minimal form) and check whether there is a lattice minimal x ??? L such that hx, fii = 1 for all 1 . i . k. If so, then P is Gorenstein, and the first coordinate r of x of is the Gorenstein index of P. x is the unique inner lattice point of rP
+    rule GORENSTEIN , GORENSTEIN_INDEX , GORENSTEIN_VECTOR : FACETS , CONE_AMBIENT_DIM {
+        my $p = new Polytope<Rational>(POINTS => ((ones_vector<Integer>()) | primitive($this->FACETS)));
+        if ($p->CONE_DIM <= $this->CONE_AMBIENT_DIM) {
+            my $x = dehomogenize($p->AFFINE_HULL->row(0));
+            if (is_integral($x)) {
+                $this->GORENSTEIN = 1;
+                my $lx = primitive($x->[0]>0 ? $x : -$x);
+                $this->GORENSTEIN_INDEX = abs($lx->[0]);
+                $lx->[0]=1;
+                $this->GORENSTEIN_VECTOR = $lx;
+                return;
+            }
+        }
+        $this->GORENSTEIN = 0;
+    }
+    precondition : FULL_DIM;
+    precondition : FEASIBLE;
+    weight 3.10;
+    
+    rule GORENSTEIN_VECTOR : INTERIOR_LATTICE_POINTS {
+        $this->GORENSTEIN_VECTOR = $this->INTERIOR_LATTICE_POINTS->row(0);
+    }
+    precondition : REFLEXIVE;
+    weight 0.10;
+    
+    rule CANONICAL : N_INTERIOR_LATTICE_POINTS {
+        $this->CANONICAL = ($this->N_INTERIOR_LATTICE_POINTS == 1);
+    }
+    weight 0.10;
+    
+    rule TERMINAL : CANONICAL , N_LATTICE_POINTS , N_VERTICES {
+        $this->TERMINAL = ($this->CANONICAL && ($this->N_LATTICE_POINTS == $this->N_VERTICES + 1));
+    }
+    weight 0.10;
+    
+    rule LATTICE_EMPTY : N_LATTICE_POINTS , N_VERTICES {
+        if ($this->N_LATTICE_POINTS == $this->N_VERTICES) {
+            $this->LATTICE_EMPTY = 1;
+        } else {
+            $this->LATTICE_EMPTY = 0;
+        }
+    }
+    weight 0.10;   
+    
+    rule LATTICE_VOLUME : H_STAR_VECTOR {
+        my $h = $this->H_STAR_VECTOR;
+        my $dim = $#$h;
+        my $vol = new Integer(0);
+        $vol += $_ for @{$this->H_STAR_VECTOR};
+        $this->LATTICE_VOLUME = $vol;
+    }
+    weight 0.10;    
+    
+    rule LATTICE_VOLUME : VOLUME , CONE_DIM {
+        $this->LATTICE_VOLUME = $this->VOLUME * fac($this->CONE_DIM-1);
+    }
+    precondition : FULL_DIM;
+    weight 0.10;
+    
+    rule VOLUME : LATTICE_VOLUME , CONE_DIM {
+        my $vol = new Rational($this->LATTICE_VOLUME);
+        $this->VOLUME = $vol / fac($this->CONE_DIM-1);
+    }
+    precondition : FULL_DIM;
+    weight 0.10;
+
+    rule LATTICE_VOLUME : EHRHART_POLYNOMIAL_COEFF , CONE_DIM {
+        $this->LATTICE_VOLUME = $this->EHRHART_POLYNOMIAL_COEFF->[$this->CONE_DIM-1] * fac($this->CONE_DIM-1);
+    } 
+    weight 0.10;
+    
+    rule LATTICE_DEGREE : LATTICE_CODEGREE , CONE_DIM {
+        $this->LATTICE_DEGREE = $this->CONE_DIM - $this->LATTICE_CODEGREE;
+    }
+    weight 0.10;
+    
+    rule LATTICE_DEGREE : H_STAR_VECTOR {
+        my $h = $this->H_STAR_VECTOR;
+        my $i = $#$h;
+        while ($h->[$i] == 0) {
+            $i--;
+        }
+        $this->LATTICE_DEGREE = $i;
+    }
+    weight 0.10;
+    
+    rule LATTICE_CODEGREE : GORENSTEIN_INDEX {
+        my $index = $this->GORENSTEIN_INDEX;
+        if($index > 0) {
+            $this->LATTICE_CODEGREE = $index;
+        }
+    }
+    precondition : GORENSTEIN;
+    weight 0.10;
+    
+    rule LATTICE_CODEGREE : LATTICE_DEGREE , CONE_DIM {
+        $this->LATTICE_CODEGREE = $this->CONE_DIM - $this->LATTICE_DEGREE;
+    }
+    weight 0.10;
+
+    rule EHRHART_POLYNOMIAL_COEFF : H_STAR_VECTOR {
+        $this->EHRHART_POLYNOMIAL_COEFF = binomial_to_power_basis(new Vector<Rational>($this->H_STAR_VECTOR));
+    }
+    weight 0.10;
+
+    rule H_STAR_VECTOR : EHRHART_POLYNOMIAL_COEFF {
+        $this->H_STAR_VECTOR = power_to_binomial_basis($this->EHRHART_POLYNOMIAL_COEFF);
+    }
+    weight 0.10;
+    
+    rule NORMAL : HILBERT_BASIS_GENERATORS {
+        my $hilb = $this->HILBERT_BASIS_GENERATORS->[0];
+        foreach (@{$hilb->col(0)}) {
+            if ($_ != 1) {
+                $this->NORMAL = 0;
+                return;
+            }
+        }
+        $this->NORMAL = 1;
+    }
+    precondition : BOUNDED;
+    weight 1.10;
+    
+    rule NORMAL : N_LATTICE_POINTS , N_HILBERT_BASIS {
+        $this->NORMAL = ($this->N_LATTICE_POINTS == $this->N_HILBERT_BASIS);
+    }
+    weight 0.10;
+
+    rule FACET_WIDTH : FACET_WIDTHS {
+        $this->FACET_WIDTH = maximum($this->FACET_WIDTHS);
+    }
+    weight 0.10;
+
+    rule FACET_VERTEX_LATTICE_DISTANCES : VERTICES, FACETS {
+        $this->FACET_VERTEX_LATTICE_DISTANCES = primitive($this->FACETS) * transpose(numerators($this->VERTICES));
+    }
+    precondition : FULL_DIM;
+
+
+    # @category Lattice polytopes
+    # Vector containing the distances of a given point //v// from all facets
+    # @param Vector<Rational> v point in the ambient space of the polytope
+    # @return Vector<Integer>
+    user_method FACET_POINT_LATTICE_DISTANCES($) : FACETS {
+        my ($p, $v_in)=@_;
+        my $v = new Vector<Integer>([ 1, @$v_in ]);
+        $v->dim == $p->CONE_DIM or die "polytope - point dimension mismatch\n";  
+        return primitive($p->FACETS) * $v;
+    }
+    precondition : FULL_DIM;
+
+    rule FACET_WIDTHS : VERTICES , FACETS , CONE_AMBIENT_DIM {
+        $this->FACET_WIDTHS = [
+            map {
+                my $f=$_;
+                my $max;
+                assign_max($max, $f * $_) for @{numerators($this->VERTICES)};
+                $max;
+            } @{ primitive($this->FACETS) }
+        ];
+    }
+    precondition : FULL_DIM;
+    weight 3.10;
+
+    rule COMPRESSED : FACET_WIDTH {
+        $this->COMPRESSED=($this->FACET_WIDTH==1);
+    }
+    weight 0.10;
+
+    rule SMOOTH : N_VERTICES, GRAPH.ADJACENCY, GRAPH.EDGE_DIRECTIONS, SIMPLE {
+
+        if ( !$this->SIMPLE ) { $this->SMOOTH = 0; return; }
+
+        for ( my $v=0; $v < $this->N_VERTICES; ++$v ) {
+            my $m=new Matrix<Integer>; 
+            for ( my $e=entire($this->GRAPH->ADJACENCY->out_edges($v)); $e; ++$e ) { 
+                $m /= primitive($this->GRAPH->EDGE_DIRECTIONS->[$$e]); 
+            }
+
+            my $g = 0;
+            foreach (all_subsets_of_k($m->rows,1..$m->cols-1)) {
+                $g = gcd($g,abs(det($m->minor(All,$_))));
+                last if ($g == 1);
+            }
+        
+            if ($g != 1) { $this->SMOOTH = 0; return; }
+        }
+
+        $this->SMOOTH = 1;
+    }
+    weight 3.10;
+
+    rule POLAR_SMOOTH : VERTICES, VERTICES_IN_FACETS, INTERIOR_LATTICE_POINTS, SIMPLICIAL, CONE_DIM, CONE_AMBIENT_DIM {
+      
+        if ( !$this->SIMPLICIAL ) { $this->POLAR_SMOOTH = 0; return; }
+
+        my $ip=repeat_row($this->INTERIOR_LATTICE_POINTS->[0],$this->CONE_DIM-1);
+
+	foreach my $v (@{$this->VERTICES_IN_FACETS}) {
+	
+	  my $m=primitive(($this->VERTICES->minor($v,All)-$ip));
+
+	  my $g = 0;
+	  foreach (all_subsets_of_k($this->CONE_DIM-1,1..$this->CONE_AMBIENT_DIM-1)) {
+	    $g = gcd($g,abs(det( $m->minor(All,$_) )));
+	    last if ($g == 1);
+	  }
+        
+	  if ($g != 1) { $this->POLAR_SMOOTH = 0; return; }
+	}
+
+	$this->POLAR_SMOOTH=1;
+    }
+    precondition : REFLEXIVE;
+    weight 3.10;
+  
+    rule VERY_AMPLE : GRAPH.ADJACENCY, GRAPH.EDGE_DIRECTIONS, N_VERTICES, VERTICES, FACETS | INEQUALITIES {
+        my $sched;
+        for ( my $v=0; $v < $this->N_VERTICES; ++$v ) {
+            my @dirs = ();
+            push @dirs, unit_vector<Rational>($this->VERTICES->cols, 0);
+            for (my $e = entire($this->GRAPH->ADJACENCY->out_edges($v)); $e; ++$e) {
+                push @dirs, ($e->to_node > $e->from_node) ? -$this->GRAPH->EDGE_DIRECTIONS->[$$e] : $this->GRAPH->EDGE_DIRECTIONS->[$$e];
+            }
+            my $p = new Cone<Rational>(INPUT_RAYS=>\@dirs);
+            $sched ||= $p->get_schedule("HILBERT_BASIS_GENERATORS")
+                   || die "don't know how to compute HILBERT_BASIS: please install 4ti2 or normaliz2\n";
+            $sched->apply($p);
+            foreach my $h (@{$p->HILBERT_BASIS_GENERATORS->[0]}) {
+                next if ($h->[0]==1);
+                foreach (@{$this->FACETS|INEQUALITIES}) {
+                    if ($_*($h+$this->VERTICES->[$v]) < 0) {
+                        $this->VERY_AMPLE=0;
+                        return;
+                    }
+                }
+                if (defined (my $AH = $this->lookup("AFFINE_HULL | EQUATIONS"))) {
+                    foreach (@$AH) {
+                        if ($_*($h+$this->VERTICES->[$v]) != 0) {
+                            $this->VERY_AMPLE=0;
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+        $this->VERY_AMPLE=1;
+    }
+    weight 5.50;
+
+    rule VERY_AMPLE : { $this->VERY_AMPLE = 1; }
+    precondition : SMOOTH | NORMAL;
+    weight 0.10;
+
+    rule GRAPH.LATTICE_EDGE_LENGTHS : VERTICES, GRAPH.ADJACENCY {
+        my $el = new EdgeMap<Undirected, Integer>($this->GRAPH->ADJACENCY);
+        my $vert = numerators($this->VERTICES);
+    
+        for ( my $e=entire(edges($this->GRAPH->ADJACENCY)); $e; ++$e ) { 
+            my $w= $vert->[$e->from_node]-$vert->[$e->to_node];
+            $el->[$$e] = gcd($w);
+        }
+    
+        $this->GRAPH->LATTICE_EDGE_LENGTHS=$el;
+    }
+
+    rule GRAPH.LATTICE_ACCUMULATED_EDGE_LENGTHS : GRAPH.LATTICE_EDGE_LENGTHS {
+        my $m = new Map<Integer, Int>;
+        foreach my $e (@{$this->GRAPH->LATTICE_EDGE_LENGTHS}) {
+            $m->{$e}++;
+        }
+    
+        $this->GRAPH->LATTICE_ACCUMULATED_EDGE_LENGTHS=$m;
+    }
+
+    rule HOMOGENEOUS : {
+       $this->HOMOGENEOUS = 1;
+    }
+    weight 0.10;
+}
+
+
+object Cone<Rational> {
+
+    # for a cone this method returns a Hilbert basis of the cone
+    # for a polytope this method returns a Hilbert basis of the homogenization cone of the polytope
+    # note: if the cone is not pointed (the polytope is not bounded) then the returned basis is not unique and usually not minimal
+    # @return Matrix<Integer>
+    user_method HILBERT_BASIS {
+        my $c = shift;
+        my $h = $c->HILBERT_BASIS_GENERATORS->[0];
+        my $l = $c->HILBERT_BASIS_GENERATORS->[1];
+        if ($l->rows) { return $h/$l/(-$l); } 
+        return $h;
+    }
+
+
+  rule N_HILBERT_BASIS : HILBERT_BASIS_GENERATORS {
+    $this->N_HILBERT_BASIS = $this->HILBERT_BASIS_GENERATORS->[0]->rows;
+  }
+  precondition : POINTED;
+  weight 0.10;
+
+  rule SMOOTH_CONE : RAYS, SIMPLICIAL_CONE {
+    if ( !$this->SIMPLICIAL_CONE ) {
+      $this->SMOOTH_CONE = 0;
+    } else {
+      my $rays = primitive($this->RAYS);
+      my $g = 0;
+      foreach (all_subsets_of_k($rays->rows,0..$rays->cols-1)) {
+        $g = gcd($g,abs(det($rays->minor(All,$_))));
+        last if ($g == 1);
+      } 
+      $this->SMOOTH_CONE = ( $g == 1 );
+    }
+  }
+  weight 1.10;
+  
+  rule Q_GORENSTEIN_CONE, Q_GORENSTEIN_CONE_INDEX : RAYS, CONE_DIM {
+    my $g = q_gorenstein_cone($this->RAYS, $this->CONE_DIM);
+    if ( $g->first ) {
+      $this->Q_GORENSTEIN_CONE = 1;
+      $this->Q_GORENSTEIN_CONE_INDEX = $g->second;
+    } else {
+      $this->Q_GORENSTEIN_CONE = 0;
+    }
+  }
+  weight 1.10;
+
+  rule GORENSTEIN_CONE : {
+    $this->GORENSTEIN_CONE = 0;
+  }
+  precondition : !Q_GORENSTEIN_CONE;
+
+  rule GORENSTEIN_CONE : Q_GORENSTEIN_CONE, Q_GORENSTEIN_CONE_INDEX {
+    if ( !$this->Q_GORENSTEIN_CONE ) {
+      $this->GORENSTEIN_CONE = 0;
+    } else {
+      $this->GORENSTEIN_CONE = ( $this->Q_GORENSTEIN_CONE_INDEX == 1 );
+    }
+  }
+  weight 0.10;
+
+  rule GORENSTEIN_CONE, Q_GORENSTEIN_CONE, Q_GORENSTEIN_CONE_INDEX : { 
+    $this->GORENSTEIN_CONE = 1; 
+    $this->Q_GORENSTEIN_CONE = 1; 
+    $this->Q_GORENSTEIN_CONE_INDEX = 1; 
+  }
+  precondition : SMOOTH_CONE;
+  weight 0.10;
+
+
+rule HOMOGENEOUS : RAYS, LINEAR_SPAN {
+    my $r = new Matrix<Rational>(primitive($this->RAYS));
+    my $ls = $this->LINEAR_SPAN;
+    $r = $r - repeat_row($r->[0],$r->rows);
+    my $ns = null_space($r->minor(~[0],All));
+    $this->HOMOGENEOUS = ( rank($ls/$ns) - $ls->rows > 0 );
+}
+precondition : POINTED;
+weight 1.10;
+
+rule MONOID_GRADING : RAYS {
+    my $r = primitive($this->RAYS);
+    $r = $r - repeat_row($r->[0],$r->rows);
+    my $ns = null_space($r->minor(~[0],All));
+    $ns *= -1 if ($ns->rows > 0 and $ns->[0] * $this->RAYS->[0] < 0);
+    $this->MONOID_GRADING = $ns->rows > 0 ? primitive($ns->[0]) : undef;
+}
+precondition : FULL_DIM ;
+precondition : POINTED ;
+precondition : HOMOGENEOUS ;
+weight 1.10;
+
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:4
+# indent-tabs-mode:nil
+# End:

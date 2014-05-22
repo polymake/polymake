@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<jnlp spec="1.0" 
+      codebase="CODEBASE"
+      href="CLASSNAME.jnlp">
+  <information>
+    <title>jReality Tutorial CLASSNAME</title>
+    <vendor>jReality Team</vendor>
+    <homepage href="http://www3.math.tu-berlin.de/jreality"/>
+    <description>Automatically generated tutorial WebStart</description>
+    <offline-allowed/>
+  </information>
+  
+  <security>
+    <all-permissions/>
+  </security>
+
+    <resources>
+      <j2se href="http://java.sun.com/products/autodl/j2se" version="1.5+" inital-heap-size="64m" max-heap-size="512m" java-vm-args="-Dsun.java2d.d3d=false"/>
+      <jar href="../jars/jReality-tutorial.jar" main="true" />
+      <jar href="../jars/jReality.jar"  download="lazy"/>
+      <jar href="../jars/vrData.jar" download="lazy"/>
+      <jar href="../jars/vrExamples.jar" download="lazy"/>     
+
+      <jar href="../jars/antlr-3.4-complete.jar" download="lazy"/>
+      <jar href="../jars/beans.jar" download="lazy"/>
+      <jar href="../jars/bsh.jar" download="lazy"/>
+      <jar href="../jars/colorpicker.jar" download="lazy"/>
+      <jar href="../jars/itextpdf-5.3.2.jar" download="lazy"/>
+      <jar href="../jars/janino.jar" download="lazy"/>
+      <jar href="../jars/jrworkspace.jar" download="lazy"/>
+      <jar href="../jars/jterm.jar" download="lazy"/>
+      <jar href="../jars/NetUtil.jar" download="lazy"/>
+      <jar href="../jars/sunflow.jar" download="lazy"/>
+      <jar href="../jars/xpp3-1.1.4c.jar" download="lazy"/>
+      <jar href="../jars/xstream-1.4.2.jar" download="lazy"/>
+      
+      <extension name="jogl" href="http://www3.math.tu-berlin.de/jreality/ws/jogl2/jogl.jnlp" />
+    </resources>
+
+  <application-desc main-class="de.jreality.tutorial.PACKAGE.CLASSNAME">
+  </application-desc>
+</jnlp>

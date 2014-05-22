@@ -1,0 +1,67 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+use Visual::Gale;
+
+object Polytope {
+
+# @category Basic properties
+# Coordinates of the Gale transform.
+
+property GALE_TRANSFORM : Matrix<Scalar>;
+
+
+# @category Visualization
+# Coordinates of points for an affine Gale diagram.
+
+property GALE_VERTICES : Matrix<Float>;
+
+rule GALE_TRANSFORM : VERTICES {
+   $this->GALE_TRANSFORM=transpose(null_space(transpose($this->VERTICES)));
+}
+precondition : BOUNDED;
+
+rule GALE_VERTICES : GALE_TRANSFORM {
+   $this->GALE_VERTICES(temporary)=gale_vertices($this->GALE_TRANSFORM);
+}
+
+# @category Visualization
+# Generate the Gale diagram of a //d//-polyhedron with at most //d+4// vertices.
+# @return Visual::Gale
+
+user_method GALE (%Visual::Gale::decorations) : GALE_TRANSFORM, GALE_VERTICES, VERTICES_IN_FACETS {
+   my ($this, $decor)=@_;
+   my $d=$this->GALE_TRANSFORM->cols;
+   if ($d<2 || $d>3) {
+     print "Visualization of 1- and 2-dimensional affine Gale diagrams only.\n";
+     0;
+   } else {
+     visualize( new Visual::Gale(
+		  Name => $this->name,
+		  Title => "Gale diagram of " . $this->name,
+		  VertexLabels => $this->lookup("VERTEX_LABELS"),
+		  Polytope => $this,
+		  $decor
+		));
+   }
+}
+
+}
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

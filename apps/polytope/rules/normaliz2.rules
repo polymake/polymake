@@ -1,0 +1,417 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+CREDIT normaliz2
+  Normaliz is a tool for computations in affine monoids, vector configurations, lattice polytopes, and rational cones.
+  Copyright by Winfried Bruns, Bogdan Ichim, Christof Soeger.
+  http://www.math.uos.de/normaliz/
+
+# path to norm64
+custom $norm64;
+
+# path to normbig
+custom $normbig;
+
+CONFIGURE {
+    find_program($normbig, qw( normaliz normbig ), { prompt => "the program `normaliz' or `normbig' from the Normaliz2 package" }) || return;
+    ($norm64=$normbig) =~ s/big$/64/ 
+      or $normbig="$normbig -B";
+    
+    if ($Verbose::external) {
+        dbg_print( "testing norm64: $norm64 @_" );
+    }
+    open my $P, "$norm64 -i test 2>&1 |"
+        or die "couldn't run 'norm64': $!";
+    local $_;
+    while (<$P>) {
+        if (/Unknown option i/) {
+            if ($Verbose::external) {
+                dbg_print( "normaliz2 version 2.0 found" );
+            }
+            die <<'.';
+polymake requires normaliz2 v2.1 or newer;
+Please download the current version
+and repeat the auto-configuration.
+.
+        }
+    }
+    return 1;
+}
+
+# additional parameters for calling normaliz2
+# "-i": ignore setup.txt (default)
+# "-e": Check for possible arithmetic overflow (default)
+custom $normaliz2_param="-i -e";
+
+
+label normaliz2
+
+object Cone<Rational> {
+
+    rule normaliz2.hilbert, normaliz2.integer_points: HILBERT_BASIS_GENERATORS : CONE_AMBIENT_DIM , RAYS | INPUT_RAYS {
+        my $tempname=new Tempfile;
+        # write rays to tempfile
+        normaliz2_print_rays($tempname,$this);
+        run_normaliz2("-N",$tempname);
+
+        my $done = normaliz2_parse($tempname,$this,hilb=>1);
+        if ($done == 0) {
+            die "could not parse $tempname.out";
+        }
+    }
+    precondition : POINTED;
+    weight 5.60;
+    
+    rule normaliz2.hilbert, normaliz2.integer_points: HILBERT_BASIS_GENERATORS : CONE_AMBIENT_DIM , FACETS | INEQUALITIES {
+        my $tempname=new Tempfile;
+        # write facets to tempfile
+        normaliz2_print_coneineq($tempname,$this);
+        run_normaliz2("-N",$tempname);
+        
+        my $done = normaliz2_parse($tempname,$this,hilb=>1);
+        if ($done == 0) {
+            die "could not parse $tempname.out";
+        }
+    }
+    precondition : FULL_DIM;
+    precondition : POINTED;
+    weight 5.65;
+
+}
+
+object LatticePolytope {
+    
+    rule normaliz2.integer_points: \
+    LATTICE_POINTS_GENERATORS : CONE_AMBIENT_DIM , VERTICES | POINTS {
+        my $tempname=new Tempfile;
+        # write vertices to tempfile
+        normaliz2_print_rays($tempname,$this);
+        run_normaliz2("-1",$tempname);
+        
+        my $done = normaliz2_parse($tempname,$this,points=>1);
+        if ($done == 0) {
+            die "could not parse $tempname.out";
+        }
+    }
+    weight 5.30;
+    
+    rule normaliz2.integer_points: \
+    LATTICE_POINTS_GENERATORS : CONE_AMBIENT_DIM , FACETS | INEQUALITIES {
+        my $tempname=new Tempfile;
+        # write facets to tempfile
+        normaliz2_print_coneineq($tempname,$this);
+        run_normaliz2("-1",$tempname);
+        
+        my $done = normaliz2_parse($tempname,$this,points=>1);
+        if ($done == 0) {
+            die "could not parse $tempname.out";
+        }
+    }
+    precondition : FULL_DIM;
+    weight 5.35;
+
+    rule normaliz2.ehrhartpoly, normaliz2.integer_points: \
+    LATTICE_VOLUME , EHRHART_POLYNOMIAL_COEFF , H_STAR_VECTOR , LATTICE_POINTS_GENERATORS : CONE_AMBIENT_DIM , VERTICES | POINTS {
+        my $tempname=new Tempfile;
+        # write vertices to tempfile
+        normaliz2_print_rays($tempname,$this);
+        run_normaliz2("-p", $tempname);
+        
+        my $done = normaliz2_parse($tempname,$this,volume=>1,ehr=>1,points=>1);
+        if ($done == 0) {
+            die "could not parse $tempname.out";
+        }
+    }
+    weight 5.40;
+    
+    rule normaliz2.ehrhartpoly, normaliz2.integer_points: \
+    LATTICE_VOLUME , EHRHART_POLYNOMIAL_COEFF , H_STAR_VECTOR , LATTICE_POINTS_GENERATORS : CONE_AMBIENT_DIM , FACETS | INEQUALITIES {
+        my $tempname=new Tempfile;
+        # write facets to tempfile
+        normaliz2_print_coneineq($tempname,$this);
+        run_normaliz2("-p", $tempname);
+        
+        my $done = normaliz2_parse($tempname,$this,volume=>1,ehr=>1,points=>1);
+        if ($done == 0) {
+            die "could not parse $tempname.out";
+        }
+    }
+    precondition : FULL_DIM;
+    weight 5.45;
+    
+    
+    rule normaliz2.integer_points, normaliz2.normal, normaliz2.hilbert: \
+    NORMAL , LATTICE_VOLUME , N_LATTICE_POINTS , HILBERT_BASIS_GENERATORS : CONE_AMBIENT_DIM , VERTICES | POINTS {
+        my $tempname=new Tempfile;
+        # write vertices to tempfile
+        normaliz2_print_rays($tempname,$this);
+        run_normaliz2("-n",$tempname);
+        
+        my $done = normaliz2_parse($tempname,$this,npoints=>1,volume=>1,norm=>1,hilb=>1);
+        if ($done == 0) {
+            die "could not parse $tempname.out";
+        }
+    }
+    weight 5.60;
+    override : Cone<Rational>::normaliz2.hilbert;
+    override : Cone<Rational>::normaliz2.hilbert;
+
+    rule normaliz2.integer_points, normaliz2.normal, normaliz2.hilbert: \
+    NORMAL , LATTICE_VOLUME , N_LATTICE_POINTS , HILBERT_BASIS_GENERATORS : CONE_AMBIENT_DIM , FACETS | INEQUALITIES {
+        my $tempname=new Tempfile;
+        # write facets to tempfile
+        normaliz2_print_coneineq($tempname,$this);
+        run_normaliz2("-n",$tempname);
+        
+        my $done = normaliz2_parse($tempname,$this,npoints=>1,volume=>1,norm=>1,hilb=>1);
+        if ($done == 0) {
+            die "could not parse $tempname.out";
+        }
+    }
+    precondition : FULL_DIM;
+    weight 5.65;
+
+
+    rule normaliz2.integer_points, normaliz2.hilbert, normaliz2.ehrhartpoly, normaliz2.normal: \
+    HILBERT_BASIS_GENERATORS , N_LATTICE_POINTS , NORMAL , LATTICE_VOLUME , EHRHART_POLYNOMIAL_COEFF , \
+    H_STAR_VECTOR : CONE_AMBIENT_DIM , VERTICES | POINTS {
+        my $tempname=new Tempfile;
+        # write vertices to tempfile
+        normaliz2_print_rays($tempname,$this);
+        run_normaliz2("-h", $tempname);
+        
+        my $done = normaliz2_parse($tempname,$this,npoints=>1,hilb=>1,volume=>1,norm=>1,ehr=>1);
+        if ($done == 0) {
+            die "could not parse $tempname.out";
+        }
+    }
+    weight 5.70;
+
+    rule normaliz2.integer_points, normaliz2.hilbert, normaliz2.ehrhartpoly, normaliz2.normal: \
+    HILBERT_BASIS_GENERATORS , N_LATTICE_POINTS , NORMAL , LATTICE_VOLUME , EHRHART_POLYNOMIAL_COEFF , \
+    H_STAR_VECTOR : CONE_AMBIENT_DIM , FACETS | INEQUALITIES {
+        my $tempname=new Tempfile;
+        # write facets to tempfile
+        normaliz2_print_coneineq($tempname,$this);
+        run_normaliz2("-h", $tempname);
+        
+        my $done = normaliz2_parse($tempname,$this,npoints=>1,hilb=>1,volume=>1,norm=>1,ehr=>1);
+        if ($done == 0) {
+            die "could not parse $tempname.out";
+        }
+    }
+    precondition : FULL_DIM;
+    weight 5.75;
+    
+}
+    
+    
+#   parameters:   $tempname             read $tempname.out
+#                 $this                 object to store data
+#                 %flags                store these values     (npoints, points, hilb, volume, norm, ehr)
+sub normaliz2_parse {
+    my ($tempname,$this,%flags) = @_;
+    
+    my $readpoints = 0;
+    my $readpoints2 = 0;
+    my $pointsdone = 0;
+    my $isnormal = 1;
+    my $count = 0;
+    my $nhilb = 0;
+    my @hilb = ();
+    my @latt = ();
+    my $done=0;
+    
+    # parse outout
+    open(my $outfile, "<$tempname.out")
+        or die "can't open output file $tempname.out: $!";
+    local $_;
+    while (<$outfile>) {
+        if ($readpoints == 1) {
+            # read hilbert basis
+            if (/^$/) {
+                # all generators read
+                $this->LATTICE_POINTS_GENERATORS=[\@latt, [], []] if ($flags{points});
+                $pointsdone = 1;
+
+                $this->HILBERT_BASIS_GENERATORS = [\@hilb, []] if ($flags{hilb});
+                
+                $this->NORMAL=$isnormal if ($flags{norm});
+	      
+                $this->N_LATTICE_POINTS=$count if ($flags{npoints});
+	      
+                $done++;
+                $readpoints=0;
+            } elsif (/^\t*\s*1\s/) {
+                # generator with 1
+                if ($flags{points} || $flags{hilb}) {
+                    my @entry = split;
+                    push @latt, \@entry if ($flags{points});
+                    push @hilb, \@entry if ($flags{hilb});
+                }
+                $count++;
+            } else {
+                # found generator with !=1 as first coordinate !
+                if ($flags{hilb}) {
+                    my @entry = split;
+                    push @hilb, \@entry;
+                }
+                $isnormal = 0;
+            }
+        } elsif ($readpoints2 == 1) {
+            if (/^$/) {
+                $this->LATTICE_POINTS_GENERATORS=[\@latt, [], []] if ($flags{points});
+                $pointsdone=1;
+                
+                $done++;
+                
+                $readpoints2 = 0;
+            } else {
+                if ($flags{points}) {
+                    my @entry = split;
+                    push @latt, \@entry;
+                }
+            }
+        } elsif ((($nhilb) = /^(\d+) generators of integral closure:/) || 
+                 (($nhilb) = /^(\d+) Hilbert basis elements:/)) {
+            # start reading hilbert basis
+            if ( ($flags{points} && !$pointsdone) || $flags{hilb} || $flags{norm} || ((!$this->isa("LatticePolytope") && !($this->isa("Polytope") && $this->lookup("LATTICE"))) && $flags{npoints})) {
+                $readpoints=1;
+            }
+            $this->N_HILBERT_BASIS=$nhilb if ($flags{nhilb});
+            $done++;
+        } elsif (((($count) = /^(\d+) height 1 generators of integral closure:/) || 
+                  (($count) = /^(\d+) height 1 Hilbert basis elements:/) ||
+                  (($count) = /^(\d+) Hilbert basis elements of (height|degree) 1:/) ) 
+               && ( $this->isa("LatticePolytope") 
+                    || ($this->isa("Polytope") && $this->lookup("LATTICE"))) ) {
+            # start reading lattice points
+            if ($flags{points} && !$pointsdone) {
+                $readpoints2=1;
+            }
+            $this->N_LATTICE_POINTS=$count if ($flags{npoints});
+            $done++;
+        } elsif (my ($hv)=/^h-vector\s=\s(.*)$/) {
+            $this->H_STAR_VECTOR=new Vector<Integer>(split(' ',$hv)) if ($flags{ehr});
+            $done++;
+        } elsif (/^h-vector:/) {
+            $this->H_STAR_VECTOR=new Vector<Integer>(split(' ',<$outfile>))  if ($flags{ehr});
+            $done++;
+        } elsif (/^Hilbert series:/) {
+            my $hstar =new Vector<Integer>(split(' ',<$outfile>));
+            if(my ($dim) = <$outfile> =~ /^denominator with (\d+) factors:$/) {
+                # h^star vector needs to be padded with the correct number of
+                # zeros in v2.8
+                $hstar |= (new Vector<Integer>('0 ' x ($dim-$hstar->dim)));
+            }
+            $this->H_STAR_VECTOR = $hstar if ($flags{ehr});
+            $done++;
+        } elsif (my ($ep)=/^Hilbert\spoly.*\s:\s(.*)/) {
+            # parse ehrhart polynomial coefficients
+            $this->EHRHART_POLYNOMIAL_COEFF=new Vector<Rational>(split(' ',$ep)) if ($flags{ehr});
+            $done++;
+        } elsif (/^Hilbert\spolynomial:/) {
+            my $ehrhart=new Vector<Rational>(split(' ',<$outfile>));
+            if(my ($denominator) = <$outfile> =~ /^with common denominator = (\d+)$/) {
+                # denominator is split off in v2.8
+                $ehrhart /= new Integer($denominator);
+            }
+            $this->EHRHART_POLYNOMIAL_COEFF=$ehrhart if ($flags{ehr});
+            $done++;
+        } elsif (my ($vol) = /^multiplicity\s=\s*(\d+)$/) {
+            $this->LATTICE_VOLUME = $vol if ($flags{volume});
+            $done++;
+        }
+    }
+    close $outfile;
+    
+    return $done;
+}
+
+sub normaliz2_print_rays {
+    my ($tempname, $this) = @_;
+
+    open(my $infile, ">$tempname.in")
+        or die "can't create temporary file $tempname.in: $!";
+    
+    my $vert = dense(eliminate_denominators_in_rows($this->RAYS | INPUT_RAYS));
+    
+    # header
+    print $infile $vert->rows, "\n", $this->CONE_AMBIENT_DIM, "\n";
+    # data
+    print $infile $vert;
+    # mode 0
+    print $infile "0\n";
+    close $infile;
+}
+
+sub normaliz2_print_coneineq {
+    my ($tempname, $this) = @_;
+
+    open(my $infile, ">$tempname.in")
+        or die "can't create temporary file $tempname.in: $!";
+    
+    my $ineq = dense(eliminate_denominators_in_rows($this->FACETS | INEQUALITIES));
+    my $n_ineq = $ineq->rows;
+    my $n_lines = $n_ineq;
+    my $ah;
+    if (defined (my $AH = $this->lookup("LINEAR_SPAN | EQUATIONS"))) {
+        $n_lines = $n_lines + ($AH->rows);
+        $ah = dense(eliminate_denominators_in_rows($AH));
+    }
+    
+    # header
+    print $infile $n_lines, "\n", $this->CONE_AMBIENT_DIM, "\n";
+    # data
+    print $infile $ineq;
+    if ($n_lines > $n_ineq) {
+        print $infile $ah;
+        print $infile (-$ah);
+    }
+    
+    # mode 4
+    print $infile "4\n";
+    close $infile;
+}
+
+# run normaliz / normbig
+sub run_normaliz2 {
+   if ($Verbose::external) {
+      dbg_print( "running norm64: $norm64 $normaliz2_param @_" );
+   }
+   open my $P, "$norm64 $normaliz2_param @_ 2>&1 |"
+     or die "couldn't run 'norm64': $!";
+   local $_;
+   while (<$P>) {
+      if (/NormalizException/ || /Arithmetic Overflow detected/ || /Po(s+)ible arithmetic overflow/ || /Some error detected/ || /bad format of the input file/) {
+         if ($Verbose::external) {
+            dbg_print( "norm64 failed: $_" );
+            dbg_print( "running normbig: $normbig $normaliz2_param @_" );
+         }
+         system("$normbig $normaliz2_param @_");
+         if ($? == -1) {
+            die "failed to execute: $!\n";
+         } elsif ($? & 127) {
+            die ("normbig failed");
+         }
+      }
+   }
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:4
+# End:

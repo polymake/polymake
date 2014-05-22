@@ -1,0 +1,101 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+package Graphviz;
+
+CREDIT graphviz
+  Graph Visualization Software, originally developed by AT&T.
+  http://www.graphviz.org/
+
+# path to the dot program
+custom $dot;
+
+# path to the neato program
+custom $neato;
+
+CONFIGURE {
+   find_program($dot, "dot", { prompt => "the `dot' program from the graphviz package" })
+      and
+   ($neato=$dot) =~ s/\bdot$/neato/;
+}
+
+use Graphviz;
+use BackgroundViewer;
+
+# @category Visualization
+# Use [[wiki:external_software#graphviz|graphviz]] to draw graphs and face lattices.
+label graphviz
+
+package Graphviz::Viewer;
+use Polymake::Struct [ '@ISA' => 'SimpleViewer' ];
+
+sub file_suffix { ".dot" }
+
+sub command {
+   my ($self, $dotfile)=@_;
+   (my $psfile=$dotfile) =~ s/\.dot/.ps/;
+   $self->graphics->command . " -Tps -o$psfile $dotfile; $Postscript::viewer $psfile"
+}
+
+global_method graphviz.graph: draw(Visual::Graph) {
+   my ($self, $Graph)=@_;
+   $self->graphics->addGraph($Graph);
+}
+
+global_method graphviz.lattice: draw(Visual::Lattice) {
+   my ($self, $Lattice)=@_;
+   $self->graphics->addLattice($Lattice);
+}
+
+prefer graphviz.lattice
+
+#  Writes to a dot file without Postscript conversion
+
+package Graphviz::File::Writer;
+import Visual::FileWriter;
+
+###########################################################################################
+
+package application;
+
+# @category Visualization
+# Draw the given graph or face lattice object using [[wiki:external_software#graphviz|graphviz]] program
+# ''neato'' or ''dot'' respectively.
+# The output is rendered in PostScript format and fed into a viewer program, if one is configured.
+# If you prefer to produce another output format, please use the //File// option and call the ''neato''
+# or ''dot'' program manually.
+#
+# @param Visual::Object vis_obj ... objects to display
+#
+# @option String File "filename" or "AUTO"
+#  Store the graph description in a DOT source file without starting the interactive GUI.
+#  The ''.dot'' suffix is automatically added to the file name.
+#
+#  Specify //AUTO// if you want the filename be automatically derived
+#  from the drawing title.
+#
+#  You can also use any expression allowed for the ''open'' function,
+#  including "-" for terminal output, "&HANDLE" for an already opened file handle,
+#  or "| program" for a pipe.
+
+user_function graphviz(Visual::Object+, { File => undef }) {
+   visualize_explicit(@_, "Graphviz");
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# End:

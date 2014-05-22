@@ -1,0 +1,109 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+CREDIT gfan
+  Gfan is a software package for computing Groebner fans and tropical varieties.
+  Copyright by Anders Jensen
+  http://home.imf.au.dk/jensen/software/gfan/gfan.html
+
+# path to gfan_bases
+custom $gfan_bases;
+
+# path to gfan_secondaryfan
+custom $gfan_secondaryfan;
+
+# path to gfan_topolyhedralfan
+custom $gfan_topolyhedralfan;
+
+CONFIGURE {
+    find_program($gfan_bases,           "gfan_bases");
+	($gfan_secondaryfan=$gfan_bases) =~ s/gfan_bases$/gfan_secondaryfan/;
+    find_program($gfan_secondaryfan,    "gfan_secondaryfan");
+	($gfan_topolyhedralfan=$gfan_bases) =~ s/gfan_bases$/gfan_topolyhedralfan/;
+    find_program($gfan_topolyhedralfan, "gfan_topolyhedralfan");
+}
+
+
+package application;
+
+# @category Secondary Fans
+# Call [[wiki:external_software#gfan]] to compute the secondary cone of a vector configuration.
+#
+# @param Matrix M whose rows are the vectors in the configuration
+
+user_function secondary_fan(Matrix) {
+  my ($M)=@_;
+  my $tempfile=new Tempfile;
+  gfan_print_matrix($tempfile,eliminate_denominators_entire_affine($M));
+  system ("$gfan_secondaryfan --xml <$tempfile.txt >$tempfile.fan");
+  my $gfan_out= User::load("$tempfile.fan");
+  # WARNING: file automatically converted via XSLT to correct F_VECTOR
+  return $gfan_out;
+}
+
+sub gfan_print_matrix {
+  my ($tempname, $M) = @_;
+
+  open(my $infile, ">$tempname.txt")
+    or die "can't create temporary file $tempname.txt: $!";
+
+  print $infile "{";
+  my $r=$M->rows();
+  my $c=$M->cols();
+  for (my $i=0; $i<$r; ++$i) {
+    print $infile "," unless $i==0;
+    print $infile "(";
+    for (my $j=0; $j<$c; ++$j) {
+      print $infile "," unless $j==0;
+      print $infile $M->($i,$j);
+    }
+      print $infile ")";
+  }
+  print $infile "}\n";
+
+  close $infile;
+}
+
+# @category Groebner Fans
+# Call [[wiki:external_software#gfan]] to compute the greobner fan of an ideal.
+#
+# @param Ideal I
+
+user_function groebner_fan(ideal::Ideal) {
+  my ($I)=@_;
+  my $tempfile=new Tempfile;
+  gfan_print_ideal($tempfile,$I);
+  system ("$gfan_bases <$tempfile.txt | $gfan_topolyhedralfan --xml >$tempfile.fan");
+  my $gfan_out= User::load("$tempfile.fan");
+  # WARNING: file automatically converted via XSLT to correct F_VECTOR
+  return $gfan_out;
+}
+
+sub gfan_print_ideal {
+  my ($tempname, $I) = @_;
+
+  open(my $infile, ">$tempname.txt")
+    or die "can't create temporary file $tempname.txt: $!";
+
+  print $infile "Q[", (join ",", $I->RING->variables), "]\n";
+  print $infile "{", (join ",", @{$I->GENERATORS}), "}\n";
+
+  close $infile;
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:4
+# End:

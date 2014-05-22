@@ -1,0 +1,9 @@
+To generate java classes from the grammar file:
+
+% java antlr.Tool vrml-v1.0.g
+
+The antlr jar can be downloaded from www.antlr.org, and needs to be put into the build path for the jReality project in eclipse, and obviously also included in the CLASSPATH in order for the above command to function..
+
+Charles Gunn
+November 30, 2005.
+

@@ -1,0 +1,47 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# Polytope propagation means to define a polytope inductively by assigning vectors to arcs
+# of a directed graph.  At each node of such a graph a polytope arises as the joint convex hull
+# of the polytopes at the translated sources of the inward pointing arcs.
+#
+# For details see 
+#       Joswig: Polytope Propagation on Graphs.
+#       Chapter 6 in 
+#       Pachter/Sturmfels: Algebraic Statistics for Computational Biology, Cambridge 2005.
+declare object PropagatedPolytope<Scalar=Rational> : Polytope<Scalar> {
+
+# Directed graph to define the propagated polytope.  There is a (translation) vector assigned to each arc.
+# We assume that this graph is acyclic with a unique sink.
+
+property SUM_PRODUCT_GRAPH : Graph<Directed> {
+
+   # The translation vectors of the arcs.
+   property TRANSLATIONS : EdgeMap<Directed, Vector<Scalar> > : construct(ADJACENCY);
+
+}
+
+rule VERTICES, VERTEX_NORMALS, LINEALITY_SPACE : SUM_PRODUCT_GRAPH, CONE_AMBIENT_DIM {
+   sum_product($this);
+}
+permutation : VertexPerm;
+
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

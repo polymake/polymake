@@ -1,0 +1,71 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+object Group {
+
+# Some generating set for the group. All generators must have 
+# the same length [[DEGREE]]. 
+# FIXME: Concrete description as second row of permutation representation
+property GENERATORS : Array< Array<Int> >;
+
+rule initial : GENERATORS {
+   my $g=$this->GENERATORS;
+   my $length=$g->size && $g->[0]->size;
+   foreach (@$g) {
+      if ($_->size != $length) {
+         croak( "all generators must have the same length" );
+      }
+      my %vals;
+      foreach my $entry (@$_) {
+         if ($entry<0 || $entry>=$length) {
+            croak( "each generator must be a permutation of (0,...,DEGREE-1)" );
+         }
+         $vals{$entry}++;
+      }
+      if (keys %vals != $length) {
+         croak( "each generator must be a permutation of (0,...,DEGREE-1)" );
+      }
+   }
+}
+
+# Strong generating set with respect to [[BASE]].
+property STRONG_GENERATORS : Array< Array<Int> >;
+
+# The number of strong generators.
+property N_STRONG_GENERATORS : Int;
+
+# A base for [[STRONG_GENERATORS]].
+property BASE : Array<Int>;
+
+# The degree of the permutation representation.
+property DEGREE : Int;
+
+# The order of the group.
+property ORDER : Integer;
+
+# Transversals along the stabilizer chain. 
+property TRANSVERSALS : Array < Array<Int> >;
+
+# The number of group elements per transversal.
+property TRANSVERSAL_SIZES : Array<Int>;
+
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

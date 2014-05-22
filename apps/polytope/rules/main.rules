@@ -1,0 +1,107 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# @topic application
+# This is the historically first application, and the largest one.
+#
+# It deals with convex pointed polyhedra.  It allows to define a polyhedron either as a convex hull of a point set, an intersection of
+# halfspaces, or as an incidence matrix without any embedding.  Then you can ask for a plenty of its (especially combinatorial)
+# properties,  construct new polyhedra by modifying it,  or study the behavior of the objective functions.
+#
+# There is a wide range of visualization methods for polyhedra, even for dimensions > 4 and purely combinatorial descriptions,
+# including interfaces to interactive geometry viewers (such as [[wiki:external_software#JavaView|JavaView]] or [[wiki:external_software#geomview|geomview]]), generating
+# PostScript drawings and povray scene files.
+
+IMPORT common graph
+
+USE topaz group ideal
+
+HELP help.rules
+
+
+# A polyhedral cone, not necessarily pointed.
+# Note that in contrast to the vertices of a polytope, the [[RAYS]] are given in affine coordinates.
+declare object Cone<Scalar=Rational> [ typechecks::is_ordered_field(Scalar) ];
+
+# Not necessarily bounded or unbounded polyhedron.
+# Nonetheless, the name "Polytope" is used for two reasons:
+# Firstly, combinatorially we always deal with polytopes; see the description of [[VERTICES_IN_FACETS]] for details.
+# The second reason is historical.
+# We use homogeneous coordinates, which is why Polytope is derived from [[Cone]].
+# Note that a pointed polyhedron is projectively equivalent to a polytope.
+# //Scalar// is the numeric data type used for the coordinates.
+declare object Polytope<Scalar=Rational> [ typechecks::is_ordered_field(Scalar) ] : Cone<Scalar>;
+
+
+# these rules are intrinsic: they don't depend on any external software to be installed separately
+INCLUDE
+  cone_properties.rules  
+  polytope_properties.rules
+  lp_properties.rules
+  initial.rules
+  cone_common.rules
+  incidence_perm.rules
+  common.rules
+  lp.rules
+  to.rules
+  unbounded_polyhedron.rules
+  arbitrary_coords.rules
+  rational.rules
+  float.rules
+  quadratic_extension.rules
+  flag_vector.rules
+  lattice.rules
+  group.rules
+  point_configuration.rules
+  polarize.rules
+  visual.rules
+  schlegel.rules
+  visual_graph.rules
+  gale.rules
+  steiner.rules
+  voronoi.rules
+  tight_span.rules
+  propagated_polytope.rules
+  edge_orientable.rules
+  visual_point_configuration.rules
+  symmetric_cone.rules
+  symmetric_polytope.rules
+  symmetry.rules
+  coxeter.rules  
+  orbit_polytope.rules	
+  orbit_polytope_helpers.rules
+  orbit_polytope_visual.rules
+  wronski.rules
+	
+
+# self-configuring rules
+INCLUDE
+  postscript.rules
+  common::geomview.rules
+  splitstree.rules
+  topcom.rules
+  azove.rules
+
+default_object Polytope;
+
+prefer *.convex_hull cdd, lrs, beneath_beyond
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

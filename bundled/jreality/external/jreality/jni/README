@@ -1,0 +1,16 @@
+To add the native libraries for jogl add:
+
+ -Djava.library.path=<relative or absolute path to the jni directory>/<system specific sub directory>
+ 
+to the java-VM arguments.
+ 
+If you use ECLIPSE, change 
+
+Project 
+  ->Properties
+    ->Java Build Path 
+      ->Source
+         ->jreality/src-core
+           ->  Native library location 
+           
+ to the appropriate sub directory, e.g., "jreality/jni/linux64"

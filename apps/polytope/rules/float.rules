@@ -1,0 +1,117 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @topic objects/Polytope<Float>
+# A pointed polyhedron realized in R<sup>d</sup>.
+#
+# Convex hull and related algorithms use floating-point arithmetics.
+# Due to numerical errors inherent to this kind of computations, the resulting
+# combinatorial description can be arbitrarily far away from the truth, or even
+# not correspond to any valid polytope.  You have been warned.
+#
+# None of the standard construction clients produces objects of this type.
+# If you want to get one, create it with the explicit constructor or [[convert_to]].
+
+object Cone<Float> {
+
+# Threshold for zero test for scalar products (e.g. vertex * facet normal)
+property EPSILON : Float;
+
+method prepare_computations {
+   my $eps=$_[0]->lookup("EPSILON");
+   defined($eps) && local_epsilon($eps);
+}
+
+CREDIT cddlib
+
+rule cdd.convex_hull.primal: FACETS, LINEAR_SPAN : RAYS | INPUT_RAYS {
+   cdd_ch_primal($this);
+}
+weight 4.10;
+precondition : N_RAYS | N_INPUT_RAYS;
+permutation : FacetPerm;
+
+rule cdd.convex_hull.dual: RAYS, LINEALITY_SPACE, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
+   cdd_ch_dual($this);
+}
+weight 4.10;
+permutation : VertexPerm;
+
+# cdd redundancy checks
+rule cdd.convex_hull.canon: POINTED, RAYS, LINEALITY_SPACE : INPUT_RAYS {
+   cdd_canonicalize($this,0);
+}
+weight 3.10;
+permutation : VertexPerm;
+
+rule cdd.convex_hull.lineality: LINEALITY_SPACE, POINTED : INPUT_RAYS {
+   cdd_canonicalize_lineality($this,0);
+}
+weight 3.10;
+
+rule cdd.convex_hull.redund: RAYS, RAY_SEPARATORS, LINEALITY_SPACE : INPUT_RAYS {
+   cdd_eliminate_redundant_points($this);
+}
+weight 3.20;
+precondition : POINTED;
+permutation : VertexPerm;
+
+rule cdd.convex_hull.separators: RAY_SEPARATORS : RAYS {
+   cdd_vertex_normals($this);
+}
+weight 3.20;
+permutation : VertexPerm;
+
+rule cdd.convex_hull.canon : FACETS, LINEAR_SPAN : INEQUALITIES { 
+  cdd_canonicalize($this,1)
+}
+weight 3.20;
+permutation : FacetPerm;
+
+rule cdd.convex_hull.linear_span : LINEAR_SPAN : INEQUALITIES {     
+   cdd_canonicalize_lineality($this,1);
+}
+weight 3.10;
+
+
+}
+
+object Polytope<Float> {
+
+# FIXME #195 #473
+# see also corresponding rule in rational.rules
+# caution: rule weight set to 1.20 to allow immediate execution of rule
+# independent of actual complexity of the computation
+rule BOUNDED : FACETS | INEQUALITIES, LINEALITY_SPACE {
+    $this->BOUNDED = cdd_input_bounded($this);
+}
+weight 1.20;
+
+}
+
+# intrinsic rules
+INCLUDE
+  lp_float.rules
+
+# self-configuring rules
+INCLUDE
+  vinci.rules
+  qhull.rules
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

@@ -1,0 +1,10 @@
+# sample data file with two triangles
+#
+# the first triangle:
+0.0 0.0 0.0
+1.0 0.0 0.0
+1.0 1.0 0.0
+# the second triangle:
+0.0 0.0 0.0
+1.0 1.0 0.0
+0.0 1.0 0.0

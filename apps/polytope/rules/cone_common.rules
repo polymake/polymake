@@ -1,0 +1,583 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object Cone {
+
+rule N_INPUT_RAYS : INPUT_RAYS {
+    $this->N_INPUT_RAYS=$this->INPUT_RAYS->rows;
+}
+weight 0.10;
+
+rule N_INPUT_LINEALITY : INPUT_LINEALITY {
+    $this->N_INPUT_LINEALITY=$this->INPUT_LINEALITY->rows;
+}
+weight 0.10;
+
+rule N_EQUATIONS : EQUATIONS{
+    $this->N_EQUATIONS=$this->EQUATIONS->rows;
+}
+weight 0.10;
+
+rule N_RAYS : RAYS {
+    $this->N_RAYS=$this->RAYS->rows;
+}
+weight 0.10;
+
+rule N_INEQUALITIES : INEQUALITIES{
+    $this->N_INEQUALITIES=$this->INEQUALITIES->rows;
+}
+weight 0.10;
+
+rule N_FACETS : FACETS{
+    $this->N_FACETS=$this->FACETS->rows;
+}
+weight 0.10;
+
+rule RAY_LABELS : FACET_LABELS, FACETS_THRU_RAYS {
+   $this->RAY_LABELS=induced_labels($this->FACET_LABELS, $this->FACETS_THRU_RAYS);
+}
+
+# the following rule exists to force the existence of default labels, e.g., to allow meaningful FACET_LABELS
+
+rule RAY_LABELS : N_RAYS {
+   my @labels = (0..$this->N_RAYS-1);
+   $this->RAY_LABELS="@labels";
+}
+weight 4.10;
+
+rule FACET_LABELS : RAY_LABELS, RAYS_IN_FACETS {
+   $this->FACET_LABELS=induced_labels($this->RAY_LABELS, $this->RAYS_IN_FACETS);
+}
+
+# The purpose of the following rule is to have simpler preconditions in subsequent rules.
+# The scheduler efficiently handles preconditions which amount to checking a boolean.
+rule FULL_DIM : CONE_AMBIENT_DIM, CONE_DIM {
+  $this->FULL_DIM=($this->CONE_AMBIENT_DIM==$this->CONE_DIM);
+}
+weight 0.10;
+
+rule CONE_AMBIENT_DIM : {
+  my $d=0;
+  foreach ("RAYS", "INPUT_RAYS", "LINEALITY_SPACE", "INPUT_LINEALITY", "INEQUALITIES", "FACETS", "EQUATIONS", "LINEAR_SPAN") {
+    my $M;
+    if (defined ($M=$this->lookup($_)) && $M->cols()>0) {
+      $d=$M->cols();
+      last;
+    }
+  } 
+  $this->CONE_AMBIENT_DIM=$d;
+}
+precondition : defined(RAYS | INPUT_RAYS | LINEALITY_SPACE | INPUT_LINEALITY | INEQUALITIES | FACETS | EQUATIONS | LINEAR_SPAN);
+weight 0.10;
+
+rule CONE_DIM : CONE_AMBIENT_DIM, LINEAR_SPAN {
+   $this->CONE_DIM= $this->CONE_AMBIENT_DIM - $this->LINEAR_SPAN->rows;
+}
+weight 0.10;
+
+rule LINEAR_SPAN : {
+   $this->LINEAR_SPAN=new Matrix<Scalar>;
+}
+precondition : FULL_DIM;
+weight 0.10;
+
+rule CONE_DIM : RAYS | INPUT_RAYS {
+   my $cmp=$this->prepare_computations;
+   my $r;
+   if (defined (my $l=$this->lookup("LINEALITY_SPACE | INPUT_LINEALITY"))) {
+       $r = ($this->RAYS | INPUT_RAYS) / $l;
+   } else {
+       $r = $this->RAYS | INPUT_RAYS;
+   }
+   $this->CONE_DIM=rank($r);
+}
+weight 1.10;
+
+rule COMBINATORIAL_DIM : CONE_DIM, LINEALITY_DIM {
+   $this->COMBINATORIAL_DIM = $this->CONE_DIM - $this->LINEALITY_DIM-1;
+}
+weight 0.10;
+
+rule CONE_DIM : COMBINATORIAL_DIM, LINEALITY_DIM {
+   $this->CONE_DIM = $this->COMBINATORIAL_DIM + $this->LINEALITY_DIM+1;
+}
+weight 0.10;
+
+rule LINEALITY_DIM : COMBINATORIAL_DIM, CONE_DIM {
+   $this->LINEALITY_DIM = $this->CONE_DIM - $this->COMBINATORIAL_DIM-1;
+}
+weight 0.10;
+
+rule LINEALITY_DIM : LINEALITY_SPACE {
+   $this->LINEALITY_DIM=$this->LINEALITY_SPACE->rows;
+}
+weight 0.10;
+
+rule POINTED : LINEALITY_DIM {
+   $this->POINTED=!$this->LINEALITY_DIM;
+}
+weight 0.10;
+
+rule POINTED : RAYS {
+  if ( defined(my $l=$this->lookup("INPUT_LINEALITY | LINEALITY_SPACE") ) ) {
+    $this->POINTED=$l->rows ? 0 : 1;
+  } else {
+    $this->POINTED=1;
+  }
+}
+weight 0.10;
+
+# caution: rule weight set to 0.10 to allow immediate execution of rule
+# independent of actual complexity of the computation
+rule POINTED : INPUT_RAYS {
+    if ( defined(my $l=$this->lookup("INPUT_LINEALITY | LINEALITY_SPACE") ) ) {
+        if (  $l->rows>0 ) { $this->POINTED=0; return; }
+    } 
+      
+    my $v=$this->INPUT_RAYS;
+    $v=(zero_vector<Scalar>($v->rows))|((ones_vector<Scalar>($v->rows))|$v);
+    my $w=new Vector<Scalar>($v->cols); $w->[0]=1; $w->[1]=-1;
+    my $lp=new LinearProgram<Scalar>(LINEAR_OBJECTIVE=>unit_vector<Scalar>($v->cols,1));
+    my $p=new Polytope<Scalar>(INEQUALITIES=>-$v/$w,LP=>$lp);
+    $this->POINTED= $p->LP->MAXIMAL_VALUE > 0  ? 1 : 0;
+}
+weight 0.10;
+
+rule POINTED : FACETS | INEQUALITIES, LINEAR_SPAN | EQUATIONS, CONE_AMBIENT_DIM {
+  $this->POINTED=rank(($this->FACETS | INEQUALITIES)/($this->LINEAR_SPAN | EQUATIONS))==$this->CONE_AMBIENT_DIM;
+}
+weight 3.10;
+
+rule cone_only : LINEALITY_SPACE : FACETS | INEQUALITIES {
+   my $F;
+   if (defined (my $AH=$this->lookup("LINEAR_SPAN | EQUATIONS"))) {
+      $F=($this->FACETS | INEQUALITIES) / $AH;
+   } else {
+      $F=$this->FACETS | INEQUALITIES;
+   }
+   my $cmp=$this->prepare_computations;
+   if ($F->rows()) {
+       $this->LINEALITY_SPACE=common::null_space($F);
+   } else {
+       $this->LINEALITY_SPACE=unit_matrix<Scalar>($this->CONE_AMBIENT_DIM);
+   }
+}
+precondition : CONE_AMBIENT_DIM {
+   $this->CONE_AMBIENT_DIM>=0;
+}
+weight 1.10;
+
+rule LINEALITY_DIM, LINEALITY_SPACE : {
+   $this->LINEALITY_DIM=0;
+   $this->LINEALITY_SPACE=new Matrix<Scalar>;
+}
+precondition : POINTED;
+weight 0.10;
+
+rule ONE_RAY : RAYS, N_RAYS {
+  $this->ONE_RAY= $this->N_RAYS ? $this->RAYS->[0] : undef;
+}
+weight 0.10;
+
+rule cone_only : REL_INT_POINT : RAYS {
+   $this->REL_INT_POINT=barycenter($this->RAYS);
+}
+precondition : N_RAYS;
+weight 1.10;
+
+rule cone_only : REL_INT_POINT : LINEALITY_DIM, CONE_AMBIENT_DIM {
+   $this->REL_INT_POINT=$this->LINEALITY_DIM ? (zero_vector<Scalar>($this->CONE_AMBIENT_DIM)) : undef;
+}
+precondition : !N_RAYS;
+weight 0.10;
+
+rule N_RAYS : RAYS_IN_FACETS {
+   $this->N_RAYS = $this->RAYS_IN_FACETS->cols;
+}
+weight 0.10;
+
+rule N_FACETS : RAYS_IN_FACETS {
+   $this->N_FACETS=$this->RAYS_IN_FACETS->rows;
+}
+weight 0.10;
+
+
+rule GRAPH.NODE_LABELS = RAY_LABELS;
+
+rule DUAL_GRAPH.NODE_LABELS = FACET_LABELS;
+
+rule N_RAY_FACET_INC : RAYS_IN_FACETS {
+   my $n=0;
+   foreach (@{$this->RAYS_IN_FACETS}) { $n+=@$_ }
+   $this->N_RAY_FACET_INC=$n;
+}
+weight 1.10;
+
+rule SIMPLICIAL : { $this->SIMPLICIAL=1 }
+precondition : ESSENTIALLY_GENERIC;
+weight 0.10;
+
+# FIXME no testcases
+rule SIMPLICIAL_CONE : N_RAYS, LINEALITY_DIM, COMBINATORIAL_DIM {
+    if ( $this->LINEALITY_DIM > 0 ) {
+	$this->SIMPLICIAL_CONE = 0;
+    } else {
+	$this->SIMPLICIAL_CONE = ( $this->N_RAYS == $this->COMBINATORIAL_DIM+1 );
+    }
+}
+weight 0.10;
+
+rule SIMPLICIAL : COMBINATORIAL_DIM, RAYS_IN_FACETS {
+   foreach (@{$this->RAYS_IN_FACETS}) {
+      if (@$_ != $this->COMBINATORIAL_DIM) {
+	 $this->SIMPLICIAL=0;
+	 return;
+      }
+   }
+   $this->SIMPLICIAL=1;
+}
+weight 1.10;
+
+rule SIMPLE : COMBINATORIAL_DIM, RAYS_IN_FACETS {
+   foreach (@{transpose($this->RAYS_IN_FACETS)}) {
+      if (@$_ != $this->COMBINATORIAL_DIM) {
+	 $this->SIMPLE=0;
+	 return;
+      }
+   }
+   $this->SIMPLE=1;
+}
+weight 1.10;
+
+# @category Combinatorics
+# Ray degrees of the cone
+# @return Vector<Int> - in the same order as [[RAYS]]
+user_method VERTEX_DEGREES = GRAPH.NODE_DEGREES;
+
+# @category Combinatorics
+# Facet degrees of the polytope.
+# The __degree__ of a facet is the number of adjacent facets.
+# @return Vector<Int> - in the same order as [[FACETS]]
+user_method FACET_DEGREES = DUAL_GRAPH.NODE_DEGREES;
+
+# @category Backward compatibility
+# The diameter of the [[GRAPH]] of the polytope
+user_method DIAMETER = GRAPH.DIAMETER;
+
+# @category Backward compatibility
+# The diameter of the [[DUAL_GRAPH]]
+user_method DUAL_DIAMETER = DUAL_GRAPH.DIAMETER;
+
+# @category Backward compatibility
+# True if the [[GRAPH]] contains no triangle
+user_method TRIANGLE_FREE = GRAPH.TRIANGLE_FREE;
+
+# @category Backward compatibility
+# True if the [[DUAL_GRAPH]] contains no triangle
+user_method DUAL_TRIANGLE_FREE = DUAL_GRAPH.TRIANGLE_FREE;
+
+# @category Combinatorics
+# True if the [[GRAPH]] is bipartite
+user_method EVEN = GRAPH.BIPARTITE;
+
+# @category Combinatorics
+# True if the [[DUAL_GRAPH]] is bipartite
+user_method DUAL_EVEN = DUAL_GRAPH.BIPARTITE;
+
+# @category Topology
+# Difference of the black and white nodes if the [[GRAPH]] is [[BIPARTITE]].
+# Otherwise -1.
+user_method GRAPH_SIGNATURE = GRAPH.SIGNATURE;
+
+# @category Topology
+# Difference of the black and white nodes if the [[DUAL_GRAPH]] is [[BIPARTITE]].
+# Otherwise -1.
+user_method DUAL_GRAPH_SIGNATURE = DUAL_GRAPH.SIGNATURE;
+
+# @category Combinatorics
+# Connectivity of the [[GRAPH]]
+# this is the minimum number of nodes that have to be removed from the [[GRAPH]] to make it disconnected
+user_method CONNECTIVITY = GRAPH.CONNECTIVITY;
+
+# @category Combinatorics
+# Connectivity of the [[DUAL_GRAPH]]
+# this is the minimum number of nodes that have to be removed from the [[DUAL_GRAPH]] to make it disconnected
+user_method DUAL_CONNECTIVITY = DUAL_GRAPH.CONNECTIVITY;
+
+
+rule GRAPH.CONNECTED : {
+  $this->GRAPH->CONNECTED = 1;
+}
+weight 0.10;
+
+rule DUAL_GRAPH.CONNECTED : {
+  $this->DUAL_GRAPH->CONNECTED = 1;
+}
+weight 0.10;
+
+rule N_RAY_FACET_INC : F2_VECTOR {
+   $this->N_RAY_FACET_INC=$this->F2_VECTOR->[0]->[-1];
+}
+weight 0.10;
+
+rule F2_VECTOR : HASSE_DIAGRAM, COMBINATORIAL_DIM {
+# FIXME temporary fix for #322: HASSE_DIAGRAM has wrong dimensions for points and empty polytopes
+  my $d=$this->COMBINATORIAL_DIM;
+  if ( $d <= 0 ) {  # polytope empty or point
+    if ( $d == 0 ) {
+      $this->F2_VECTOR=new Matrix<Integer>();
+    } else {
+      $this->F2_VECTOR=undef;
+    }
+  } else {
+   $this->F2_VECTOR=f2_vector($this->HASSE_DIAGRAM);
+  }
+}
+weight 3.10;
+
+# only for COMBINATORIAL_DIM >= 1
+# as diagonal requires at least one row/column in F2_VECTOR
+rule F_VECTOR : F2_VECTOR {
+   $this->F_VECTOR=$this->F2_VECTOR->diagonal;
+}
+precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM >= 1 }
+weight 0.10;
+
+rule F_VECTOR : HASSE_DIAGRAM {
+  # FIXME temporary fix for #322: HASSE_DIAGRAM has wrong dimensions for points and empty polytopes
+  my $n=$this->HASSE_DIAGRAM->N_NODES;
+  if ( $n >= 3 ) {
+      my @d=@{$this->HASSE_DIAGRAM->DIMS};
+      my @f=map { $d[$_]-$d[$_-1] } 1..$#d;
+      $this->F_VECTOR= $this->HASSE_DIAGRAM->top_node ? \@f : [ reverse @f ];
+  } else {  # polytope empty or point
+    if ( $n == 2 ) {
+      $this->F_VECTOR=new Vector<Integer>();
+    } else {
+      $this->F_VECTOR=undef;
+    }
+  }
+}
+weight 0.10;
+
+rule GRAPH.ADJACENCY : RAYS_IN_FACETS {
+   $this->GRAPH->ADJACENCY=graph_from_incidence($this->RAYS_IN_FACETS);
+}
+weight 3.10;
+
+rule DUAL_GRAPH.ADJACENCY : RAYS_IN_FACETS {
+   $this->DUAL_GRAPH->ADJACENCY=dual_graph_from_incidence($this->RAYS_IN_FACETS);
+}
+weight 3.10;
+
+rule HASSE_DIAGRAM : RAYS_IN_FACETS {
+   $this->HASSE_DIAGRAM=hasse_diagram($this->RAYS_IN_FACETS);
+}
+weight 6.20;
+
+rule COMBINATORIAL_DIM : RAYS_IN_FACETS {
+   $this->COMBINATORIAL_DIM=dim_from_incidence($this->RAYS_IN_FACETS);
+}
+weight 3.10;
+
+rule COMBINATORIAL_DIM : HASSE_DIAGRAM {
+   $this->COMBINATORIAL_DIM=$this->HASSE_DIAGRAM->dim;
+}
+weight 1.10;
+
+# FIXME DIM : check dependence on dim in client
+rule cone_only : GRAPH.ADJACENCY : HASSE_DIAGRAM {
+   $this->GRAPH->ADJACENCY=vertex_graph($this->HASSE_DIAGRAM);
+}
+precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM>=2 };
+
+# FIXME DIM : check dependence on dim in client
+rule cone_only : DUAL_GRAPH.ADJACENCY : HASSE_DIAGRAM {
+   $this->DUAL_GRAPH->ADJACENCY=facet_graph($this->HASSE_DIAGRAM);
+}
+precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM>=2 };
+
+rule RAY_SIZES : RAYS_IN_FACETS {
+   $this->RAY_SIZES(temporary)=[ map { scalar(@$_) } @{transpose($this->RAYS_IN_FACETS)} ];
+}
+weight 1.10;
+
+rule FACET_SIZES : RAYS_IN_FACETS {
+   $this->FACET_SIZES(temporary)=[ map { scalar(@$_) } @{$this->RAYS_IN_FACETS} ];
+}
+weight 1.10;
+
+rule POSITIVE : RAYS | INPUT_RAYS {
+   foreach my $v (@{$this->RAYS | INPUT_RAYS}) {
+      foreach my $x (@$v) {
+	 if ($x<0) {
+	    $this->POSITIVE=0;
+	    return;
+	 }
+      }
+   }
+   $this->POSITIVE=1;
+}
+precondition : POINTED;
+weight 1.10;
+
+rule LINEAR_SPAN : RAYS | INPUT_RAYS {
+   my $cmp=$this->prepare_computations;
+   my $r =new Matrix<Scalar>($this->RAYS | INPUT_RAYS);
+   if (defined (my $l = $this->lookup("LINEALITY_SPACE | INPUT_LINEALITY"))) {
+     $r /= $l;
+   }
+   $this->LINEAR_SPAN=null_space($r);
+}
+weight 1.10;
+
+# the following rule is wrong (since INPUT_RAYS are not addressed); moreover it should not depend on mixed input
+# replace by something sensible or delete altogether
+#
+#rule LINEALITY_SPACE : INPUT_LINEALITY, RAYS {
+# the RAYS must exist, but they are not processed in this rule
+#  $this->LINEALITY_SPACE = $this->INPUT_LINEALITY->minor(basis_rows($this->INPUT_LINEALITY),All);
+#}
+#weight 1.10;
+
+rule RAYS_IN_FACETS : RAYS, FACETS {
+   my $cmp=$this->prepare_computations;
+   $this->RAYS_IN_FACETS=incidence_matrix($this->FACETS, $this->RAYS);
+}
+
+rule INPUT_RAYS_IN_FACETS : INPUT_RAYS, FACETS {
+   my $cmp=$this->prepare_computations;
+   $this->INPUT_RAYS_IN_FACETS=incidence_matrix($this->FACETS, $this->INPUT_RAYS);
+}
+
+rule RAYS_IN_INEQUALITIES : INEQUALITIES, RAYS {
+   my $cmp=$this->prepare_computations;
+   $this->RAYS_IN_INEQUALITIES=incidence_matrix($this->INEQUALITIES, $this->RAYS);
+}
+
+rule RAYS_IN_FACETS, RAYS, LINEALITY_SPACE : INPUT_RAYS_IN_FACETS, INPUT_RAYS {
+   my $cmp=$this->prepare_computations;
+   compress_incidence_primal($this);
+   $this->remove("INPUT_RAYS_IN_FACETS");
+}
+permutation : VertexPerm;
+
+rule RAYS_IN_FACETS, FACETS, LINEAR_SPAN : RAYS_IN_INEQUALITIES, INEQUALITIES {
+   my $cmp=$this->prepare_computations;
+   compress_incidence_dual($this);
+   $this->remove("RAYS_IN_INEQUALITIES");
+}
+permutation : FacetPerm;
+
+rule FACETS, LINEAR_SPAN : RAYS, LINEALITY_SPACE, RAYS_IN_FACETS {
+   my $cmp=$this->prepare_computations;
+   facets_from_incidence($this);
+}
+precondition : N_RAYS;
+
+rule RAYS, LINEALITY_SPACE : FACETS, LINEAR_SPAN, RAYS_IN_FACETS {
+   my $cmp=$this->prepare_computations;
+   vertices_from_incidence($this);
+}
+
+# helper clients for various visualization tasks
+
+# FIXME check dependence on dim
+rule RIF_CYCLIC_NORMAL, NEIGHBOR_FACETS_CYCLIC_NORMAL : CONE_DIM, RAYS, LINEAR_SPAN, RAYS_IN_FACETS, DUAL_GRAPH.ADJACENCY {
+   neighbors_cyclic_normal_primal($this);
+}
+precondition : CONE_DIM { $this->CONE_DIM>=3 && $this->CONE_DIM<=4 }
+
+# FIXME check dependence on dim
+rule RIF_CYCLIC_NORMAL = RAYS_IN_FACETS;
+precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM<=1 }
+
+# FIXME check dependence on dim
+rule FTR_CYCLIC_NORMAL, NEIGHBOR_RAYS_CYCLIC_NORMAL : CONE_DIM, FACETS, RAYS_IN_FACETS, GRAPH.ADJACENCY {
+   neighbors_cyclic_normal_dual($this);
+}
+
+user_method AMBIENT_DIM {
+  my ($self)=@_;
+  return $self->CONE_AMBIENT_DIM;
+}
+
+user_method DIM {
+  my ($self)=@_;
+  if (!defined ($self->lookup("LINEALITY_SPACE | INPUT_LINEALITY | INPUT_RAYS | RAYS | INEQUALITIES | EQUATIONS | FACETS | LINEAR_SPAN"))) {
+    return $self->COMBINATORIAL_DIM;
+  }
+  return $self->CONE_DIM;
+}
+
+rule TRIANGULATION.FACETS : RAYS {
+   $this->TRIANGULATION->FACETS=placing_triangulation($this->RAYS);
+}
+weight 4.10;
+
+}
+
+# @category Triangulations, subdivisions and volume
+# Create a simplicial complex as a barycentric subdivision of a given cone or polytope.
+# Each vertex in the new complex corresponds to a face in the old complex.
+# @param Cone c input cone or polytope
+# @option Bool relabel generate vertex labels from the faces of the original complex; default true
+# @option Bool geometric_realization read [[RAYS]] of the input complex,
+#  compute the coordinates of the new vertices and store them as
+#  [[RAYS]] of the produced complex; default true
+# @return SimplicialComplex or GeometricSimplicialComplex
+user_function barycentric_subdivision<Scalar>(Cone<Scalar> { relabel=>1, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", geometric_realization=>1, coord_section=>"RAYS" }) {
+  topaz::barycentric_subdivision_impl<Scalar>(@_);
+}
+
+# 
+
+# @category Triangulations, subdivisions and volume
+# Create a simplicial complex as an iterated barycentric subdivision of a given cone or polytope.
+# @param Cone c input cone or polytope
+# @param Int how many times to subdivide
+# @option Bool relabel write labels of new points; default don't write labels
+# @option Bool geometric_realization read [[RAYS]] of the input complex,
+#  compute the coordinates of the new vertices and store them as
+#  [[RAYS]] of the produced complex; default false
+# @return SimplicialComplex
+user_function iterated_barycentric_subdivision<Scalar>(Cone<Scalar> $ { relabel=>1, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", pout_section=>"TRIANGULATION.FACETS", geometric_realization=>0, coord_section=>"RAYS" }) {
+    topaz::iterated_barycentric_subdivision_impl<Scalar>(@_);
+}
+
+# @category Producing a polytope from polytopes
+# Create the Lawrence polytope Lambda(P) corresponding to P.
+# If //V// is the matrix whose rows are the //n// vertices of P, 
+# then the vertices of Lambda(P) are the rows of the matrix
+# ( //V//   //I_n// )
+# ( //0_n// //I_n// ).
+# Lambda(P) has the property that 
+# Gale(Lambda(P)) = Gale(P) union -Gale(P).
+# @param Cone P an input cone or polytope
+# @return Cone the Lawrence cone or polytope to P
+user_function lawrence<Scalar>(Cone<Scalar>) {
+    my $p = shift;
+    my $n = $p->N_VERTICES;
+    my $d = $p->COMBINATORIAL_DIM;
+    my $v1 = $p->VERTICES | unit_matrix<Scalar>($n);
+    my $v2 = ((ones_vector<Scalar>($n)) | (zero_matrix<Scalar>($n,$d))) 
+	| (unit_matrix<Scalar>($n));
+    return new Polytope<Scalar>(VERTICES=>$v1/$v2);
+}
+
+# Local Variables:
+# c-basic-offset:3
+# mode: perl
+# End:

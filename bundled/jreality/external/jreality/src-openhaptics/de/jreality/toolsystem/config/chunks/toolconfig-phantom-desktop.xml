@@ -1,0 +1,61 @@
+<toolconfig>
+	<rawdevices>
+		<rawdevice id="PhantomDesktop"
+			type="de.jreality.toolsystem.raw.PhantomDesktop">
+			<prop name="p0">
+		    	<array class="double" length="3">
+			        <void index="0"><double>-5</double></void>
+			        <void index="1"><double>-5</double></void>
+			        <void index="2"><double>-5</double></void>
+     			 </array>
+			</prop>
+			<prop name="p1">
+		    	<array class="double" length="3">
+			        <void index="0"><double>5</double></void>
+			        <void index="1"><double>5</double></void>
+			        <void index="2"><double>5</double></void>
+     			 </array>
+			</prop>
+		</rawdevice>
+	</rawdevices>
+
+	<rawslots>
+		<mapping device="PhantomDesktop" src="trafo" target="PointerTransformation" />
+		<mapping device="PhantomDesktop" src="button_1" target="PrimaryAction" />
+	</rawslots>
+
+	<virtualdevices>
+	<!-- 
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualRepeater">
+			<inputslot>PointerTrafo</inputslot>
+			<inputslot>SystemTime</inputslot>
+			<outputslot>PointerTransformation</outputslot>
+		</virtualdevice>
+	 -->
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualDoubleClick">
+			<inputslot>PrimaryAction</inputslot>
+			<outputslot>PanelActivation</outputslot>
+		</virtualdevice>
+		
+		<mapping src="PrimaryAction" target="PanelAction" />
+		<mapping src="PrimaryMenu" target="PanelMenu" />
+		<mapping src="PrimarySelection" target="PanelSelection" />
+		<mapping src="PrimarySelection" target="ShowPanel" />
+		<mapping src="PrimaryAction" target="RotateActivation" />
+		<mapping src="PrimaryAction" target="AllDragActivation" />
+		<mapping src="PrimaryAction" target="PointDragActivation" />
+		<mapping src="PrimaryAction" target="EdgeDragActivation" />
+		<mapping src="PrimaryAction" target="FaceDragActivation" />
+		<mapping src="PrimaryAction" target="DragActivation" />
+		<mapping src="PrimarySelection" target="ScaleActivation" />
+		<mapping src="PrimaryAction" target="DeformActivation" />
+		
+		<!-- mapping device="PhantomDesktop" src="PrimaryAction" target="SelectionActivation" / -->
+	    <virtualdevice type="de.jreality.toolsystem.virtual.VirtualMap">
+     		<inputslot>PrimaryAction</inputslot>
+      		<outputslot>SelectionActivation</outputslot>
+    	</virtualdevice>
+	 
+	</virtualdevices>
+
+</toolconfig>

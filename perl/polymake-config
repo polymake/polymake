@@ -1,0 +1,180 @@
+#!/usr/bin/perl
+#
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+use strict;
+
+my $Version=Version;
+my $InstallArch=InstallArch;
+
+sub usage {
+  print STDERR <<'.';
+usage: polymake-config --help | --version | [--debug] --OPTION
+
+Print bits of polymake configuration useful to compose Makefiles
+for programs linked with its callable library.
+
+OPTION may be one of:
+  --cc          print the name of C++ compiler and linker
+  --cflags      print the C++ compiler flags without header paths
+  --includes    print the C++ compiler flags for header paths
+  --ldflags     print the linker flags
+  --libs        print the libraries to link with
+.
+  exit(0);
+}
+
+@ARGV || usage;
+
+my %conf;
+
+if (-f "$InstallArch/conf.make" ) {
+   open CONF, "$InstallArch/conf.make" or die "can't read $InstallArch/conf.make: $!\n";
+   while (<CONF>) {
+      if (/^(?:override\s+)?(\w+)\s*:=\s*(.*)\n/) {
+         $conf{$1}=$2;
+      }
+   }
+   close CONF;
+} else {
+  die "Installation error: configuration file $InstallArch/conf.make does not exist\n";
+}
+
+if ($conf{LDcallableFlags} eq "none") {
+   die <<'.';
+polymake has been built without callable library,
+probably because of missing shared library libperl.
+.
+}
+
+my $debug;
+my $tmpdir;
+foreach ($ENV{TMPDIR}, "/tmp", "/var/tmp", ".", $ENV{HOME}) {
+   if (defined($_) && -d $_ && -w _ && -x _) {
+      $tmpdir=$_; last;
+   }
+}
+defined($tmpdir) or die <<'.';
+Can't find any writable directory for temporary files;
+Please set enviroment variable TMPDIR to an appropriate location.
+.
+my $tmpfile="$tmpdir/polymake-config-$$";
+my $debug_asked;
+
+while (defined ($_=shift)) {
+   if ($_ eq "--debug") {
+      if (defined $debug_asked) {
+         usage;
+      } else {
+         $debug=1;
+      }
+
+   } elsif ($_ eq "--version") {
+      print $Version, "\n";
+
+   } elsif ($_ eq "--cc") {
+      print $conf{CXX}, "\n";
+
+   } elsif ($_ eq "--cflags") {
+      $_="$conf{CsharedFlags} $conf{CXXflags}";
+      if ($^O eq "darwin") {
+         s/\$\{ARCHFLAGS\}/$conf{ARCHFLAGS}/;
+      }
+      s/-I\S+//g; s/^\s+//; s/\s+$//; s/\s{2,}/ /g;
+      if ($debug_asked=defined($debug)) {
+         print "$_ $conf{CXXDEBUG} -DPOLYMAKE_DEBUG=1\n";
+      } else {
+         print "$_ $conf{CXXOPT} -DPOLYMAKE_DEBUG=0\n";
+      }
+
+   } elsif ($_ eq "--includes") {
+      my $inc=join(" ", grep { /^-I/ } split /\s+/, $conf{CXXflags});
+      if ($inc !~ /(?:^|\s)-I$conf{InstallInc}(?:\s|$)/) {
+         $inc="-I$conf{InstallInc} $inc";
+      }
+      open CF, ">$tmpfile.cc" or die "can't create temporary file $tmpfile.cc: $!\n";
+      print CF "int main() { return 0; }\n";
+      close CF;
+      open CC, "$conf{CXX} -o $tmpfile.bin -v $tmpfile.cc 2>&1 |" or die "can't run C++ compiler $conf{CXX}: $!\n";
+      while (<CC>) {
+         last if (/^\#include.*starts here/i);
+      }
+      while (<CC>) {
+         last if /end of search list/i;
+         if (! /^\#/ && /(\S+)/) {
+            my $dir=$1;
+            $inc =~ s/(^|\s)-I$dir(\s\$)/$1$2/;
+         }
+      }
+      close CC;
+      $inc=~s/^\s+//; $inc=~s/\s+$//; $inc=~s/\s{2,}/ /g;
+      print $inc, "\n";
+
+   } elsif ($_ eq "--ldflags") {
+      my $ldflags=$conf{LDflags};
+      if ($ldflags !~ /(?:^|\s)-L$conf{InstallLib}(?:\s|$)/) {
+         $ldflags="-L$conf{InstallLib} $ldflags";
+      }
+      my $add_rpath=1;
+      open CF, ">$tmpfile.cc" or die "can't create temporary file $tmpfile.cc: $!\n";
+      print CF "int main() { return 0; }\n";
+      close CF;
+      open CC, "$conf{CXX} -o $tmpfile.bin -v $tmpfile.cc 2>&1 |" or die "can't run C++ compiler $conf{CXX}: $!\n";
+      while (<CC>) {
+         if (/^LIBRARY_PATH=/i) {
+            foreach my $dir (split /:/, $') {
+               $ldflags =~ s/(^|\s)-L$dir(\s\$)/$1$2/;
+               $add_rpath &&= $dir ne $conf{InstallLib};
+            }
+            last;
+         }
+      }
+      close CC;
+      if ($^O eq "darwin") {
+         $ldflags="$conf{ARCHFLAGS} $ldflags -flat_namespace";
+      } elsif ($add_rpath) {
+         $ldflags.=" -Wl,-rpath,$conf{InstallLib}";
+      }
+      $ldflags=~s/^\s+//; $ldflags=~s/\s+$//; $ldflags=~s/\s{2,}/ /g;
+      if ($debug_asked=defined($debug)) {
+         print "$ldflags $conf{CXXDEBUG}\n";
+      } else {
+         print $ldflags, "\n";
+      }
+   } elsif ($_ eq "--libs") {
+      my $libs="-lgmp $conf{Libs} $conf{LIBXML2_LIBS}";
+      $libs=~s/\s+$//;
+      if ($debug_asked=defined($debug)) {
+         print "-lpolymake-d -lpolymake-apps $libs\n";
+      } else {
+         print "-lpolymake -lpolymake-apps $libs\n";
+      }
+   } else {
+      usage;
+   }
+}
+
+END {
+   if (defined $tmpfile) {
+      unlink $_ for glob "$tmpfile*";
+   }
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

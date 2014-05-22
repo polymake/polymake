@@ -1,0 +1,195 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+
+sub getRadius_sq {
+    my $vec = $_[0];
+    my $vec_sliced=$vec->slice(1,$vec->dim-1); # cut off homog. 1
+    my $rad_sq=0;
+    foreach my $entry (@$vec_sliced) {
+	$rad_sq+=$entry*$entry;
+    }
+    return $rad_sq;
+}
+
+sub listOfRadii {
+    my $lp_reps = $_[0];
+    my %radii = ();
+    my $rad=-1;
+    for (my $i=0; $i<$lp_reps->rows; ++$i) {
+	$rad=sprintf( getRadius_sq($lp_reps->[$i]) );
+	my @list=();
+	if(exists($radii{$rad})) {
+	    my $list_ref=$radii{$rad};
+	    @list=@$list_ref;
+	}
+	push(@list,$i);
+	$radii{$rad}=\@list;
+    }
+
+    my @array = ();
+    my $count = 0;
+    foreach(keys %radii) {
+	my $list_ref=$radii{$_};
+	my @nodes=@$list_ref;
+	$array[$count]=new Pair< Int,Set<Int> >($_,(new Set<Int>(@nodes)));
+	++$count;
+    }
+    return new Array < Pair< Int,Set<Int> > >(\@array);
+}
+
+
+# FIXME: needs more checks for programs (graphviz,dot,Postscript viewer)
+sub visualizeNOPGraph_sub {
+    my ($Graph,$colors_ref,$filename,$radii)=@_;
+    my $my_tmp=new Tempfile;
+    my $my_tmp_tred=new Tempfile;
+    graphviz($Graph->VISUAL(NodeColor=>$colors_ref),File=>"$my_tmp");
+    my $command_txt1 = "tred $my_tmp.dot > $my_tmp_tred.dot;";
+    $command_txt1 .= " sed \'\$d\' $my_tmp_tred.dot > $filename.dot\;";
+    system($command_txt1);
+    open DOT_FILE, ">>$filename.dot"
+	or die "cannot open file: $!";
+    my @my_radii=map {$_->first} @$radii;
+    my @sorted_radii=sort{$a<=>$b} (@my_radii);
+    print DOT_FILE << ".";
+    ranksep=1;
+    nodesep=0.25;
+    node [shape=plaintext, fontsize=14];
+    edge [shape=plaintext, fontsize=14];
+    /* radii */
+.
+
+    for (my $i=$radii->size-1;$i>0;--$i){ 
+	    my $r=$sorted_radii[$i]; 
+	    print DOT_FILE '"r^2='.$r.'"'; 
+	    print DOT_FILE ' -> '; 
+    } 
+    print DOT_FILE '"r^2='.$sorted_radii[0].'";'."\n";
+
+    foreach ( @$radii ) { 
+	print DOT_FILE '{'."\n rank = same\;\n"; 
+	my $r=$_->first; 
+	print DOT_FILE '"r^2='.$r.'";'; 
+	foreach my $index(@{$_->second}) {
+	    print DOT_FILE '"n'.$index.'"; '
+	} 
+	print DOT_FILE "\n".'};'."\n"; 
+    } 
+
+    print DOT_FILE "\n\n".'};'; # closing bracket was removed by sed
+    close DOT_FILE;
+
+    #my $dot;
+    #my $dot_found = find_program($dot, "dot", { prompt => "the `dot' program from the graphviz package" });
+    #if ($dot_found != "") { 
+	my $command_txt2 = "dot -Tps -o$filename.ps $filename.dot; $Postscript::viewer $filename.ps \&";
+	system($command_txt2);
+    #}
+}
+
+
+
+# @category Symmetry
+# Visualizes the NOP-graph of an orbit polytope.
+# Requires 'graphviz' and a Postscript viewer.
+# Produces a file which is to be processed with
+# the program 'dot' from the graphviz package.
+# If 'dot' is installed, the NOP-graph is visualized
+# by the Postscript viewer.
+# @param OrbitPolytope orb the orbit polytope
+# @param String filename the filename for the 'dot' file
+# @return void
+
+user_function visualizeNOPGraph (OrbitPolytope,$) {
+    my ($orb, $filename) = @_;
+    my @colors = map {$orb->CP_INDICES->contains($_) ? $Visual::Color::CorePointColor : $Visual::Color::NonCorePointColor} 0..$orb->N_REPRESENTATIVE_CERTIFIERS-1;
+    my $radii = listOfRadii($orb->REPRESENTATIVE_CERTIFIERS);
+    visualizeNOPGraph_sub($orb->NOP_GRAPH,\@colors,$filename,$radii);
+}
+
+
+# @category Symmetry
+# Visualizes all (nested) orbit polytopes contained in 
+# //orb// in one picture.
+# @param OrbitPolytope orb the orbit polytope
+# @param Scalar colors_ref the reference to an array of colors
+# @param Scalar trans_ref the reference to an array of transparency values
+# @return void 
+
+user_function visualizeNOP (OrbitPolytope,$,$) {
+    my ($orb, $colors_ref, $trans_ref) = @_;
+    my $N_reps = $orb->N_REPRESENTATIVE_CERTIFIERS;
+    my @polys = ();
+    my @polys_degen = ();
+    if ($orb->AMBIENT_DIM > 4) {
+	die "visualizeNestedOPs: Cannot visualize orbit polytopes of dimension greater than 4!";
+    } else {
+	for (my $i = 0; $i < $N_reps; ++$i) {
+	    my $p = new OrbitPolytope(GEN_POINT=>$orb->REPRESENTATIVE_CERTIFIERS->[$i],GENERATING_GROUP=>$orb->GENERATING_GROUP); 
+	    if ($orb->AMBIENT_DIM == 4) {
+		my $proj = ortho_project($p);
+		if ($proj->DIM == 3) {
+		    push(@polys,$proj);
+		} else {
+		    push(@polys_degen,$proj);
+		}
+	    } else {
+		if ($p->DIM == 3) {
+		    push(@polys,$p);
+		} else {
+		    push(@polys_degen,$p);
+		}
+	    }
+	}
+    } 
+
+    my @colors = @{$colors_ref};
+    if (scalar(@colors) < $N_reps) {
+	print "\nWarning: Number of specified colors is too small! Added default color 'red'.\n";
+	while (scalar(@colors) < $N_reps) {
+	    push(@colors,"red");
+	}
+    }
+    my @trans = @{$trans_ref};
+    if (scalar(@trans) < $N_reps) {
+	print "\nWarning: Number of specified transparency values is too small! Added default transparency value '0.2'\n.";
+	while (scalar(@trans) < $N_reps) {
+	    push(@trans,0.2);
+	}
+    }
+
+    compose((map{$polys[$_]->VISUAL(FacetTransparency=>$trans[$_],
+				   FacetColor=>$colors[$_],
+				   EdgeColor=>$colors[$_],
+				   EdgeThickness=>2,
+				   VertexThickness=>0.6,
+				   VertexLabels=>[],
+				   VertexColor=>$colors[$_]
+		                  )}0..$#polys),
+	    (map{$polys_degen[$_]->VISUAL(
+				   VertexThickness=>1,
+				   VertexLabels=>[],
+				   VertexColor=>$colors[$_+scalar(@polys)]
+		                  )}0..$#polys_degen)
+	);
+}
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:4
+# End:

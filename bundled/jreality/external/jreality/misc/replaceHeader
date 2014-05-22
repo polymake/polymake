@@ -1,0 +1,14 @@
+#!/bin/bash
+export TMP_FILE=/tmp/foo.gaga
+gr=$(grep -n "package \(de.jreality\|szg.\)" $1 | grep -o "[0-9]*" );
+topLine=$(expr "$gr" - 1);
+
+cat jRealityHeader > $TMP_FILE;
+
+if [ "$gr" = "1" ]; then
+  cat $1 >> $TMP_FILE;
+else
+  sed -e "1,${topLine}d" $1 >> $TMP_FILE
+fi
+cp $TMP_FILE $1
+

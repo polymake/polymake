@@ -1,0 +1,140 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# @category Other
+# Returns a Wronski polynomial of a [[topaz::FOLDABLE]] triangulation of a lattice polytope
+# @param Matrix<Int> M points (in homogeneous coordinates); affinely span the space
+# @param Vector<Int> lambda height function on lattice points
+# @param Array<Rational> coeff coefficients
+# @param Scalar<Rational> s additional Parameter in the polynomial
+# @option topaz::SimplicialComplex triangulation The triangulation of the pointset corresponding to the lifting function
+# @option Ring ring the ring in which the polynomial should be
+user_function wronski_polynomial(Matrix<Int>, Vector<Int>, Array<Rational>, $; {triangulation => undef,  ring => undef }) {
+    my ($M, $lambda, $coeffs, $s, $options) = @_;
+    my ($n, $d) = ($M->rows(), $M->cols()-1);
+
+    my $T = $options->{"triangulation"};
+    if (!defined($options->{"triangulation"})) {
+      $T=new topaz::SimplicialComplex(FACETS=>polytope::regular_subdivision($M,$lambda));
+    }
+
+    die "wronski_polynomial: triangulation not foldable" unless $T->FOLDABLE;
+    die "wronski_polynomial: dimension mismatch" unless $coeffs->size() == $d+1;
+
+    my $Q_x0d_ = $options->{"ring"};
+    if (!defined($options->{"ring"})) { # default ring
+        $Q_x0d_ = new Ring($d);
+    }
+    die "wronski_polynomial: ring mismatch" unless $Q_x0d_->n_vars() == $d;
+    my $i = 0;
+    my $m = new Map<Int, Int>;
+    map { $m->{$_}= $i++ } @{$T->FACETS->[0]};
+
+    my $full_coeffs = new Vector<Rational>(map { $s**($lambda->[$_])*$coeffs->[$m->{$T->PROJ_DICTIONARY->[$_]}] } 0..($n-1));
+    return (new Polynomial($M->minor(All,~[0]),$full_coeffs,$Q_x0d_));
+}
+
+
+# @category Other
+# Returns a Wronski system of a [[topaz::FOLDABLE]] triangulation of a lattice polytope
+# @param Matrix<Int> M points (in homogeneous coordinates); affinely span the space
+# @param Vector<Int> lambda height function on lattice points
+# @param Array<Array<Rational>> coeff_array coefficients
+# @param Scalar<Rational> s additional Parameter in the polynomial
+# @option topaz::SimplicialComplex triangulation The triangulation of the pointset corresponding to the lifting function
+# @option Ring ring the ring in which the polynomial should be
+user_function wronski_system(Matrix<Int>, Vector<Int>, Array<Array<Rational> >, $; {triangulation => undef, ring => undef }) {
+    my ($M, $lambda, $coeffs_array,$s, $options) = @_;
+    my ($n, $d) = ($M->rows(), $M->cols()-1);
+
+    my $T = $options->{"triangulation"};
+    if (!defined($options->{"triangulation"})) {
+      $T=new topaz::SimplicialComplex(FACETS=>polytope::regular_subdivision($M,$lambda));
+    }
+
+    die "wronski_system: triangulation not foldable" unless $T->FOLDABLE;
+    die "wronski_system: dimension mismatch" unless $coeffs_array->size() == $d;
+    my $RR = $options->{"ring"};
+    if (!defined($options->{"ring"})) { # default ring
+        $RR = new Ring($d);
+    }
+
+    my @wSystem = ();
+    map { push @wSystem, wronski_polynomial($M,$lambda,$coeffs_array->[$_],$s, triangulation=>$T, ring=>$RR) } (0..$d-1);
+
+    return new ideal::Ideal(GENERATORS=>\@wSystem);
+}
+
+
+# @category Other
+# Returns a system of polynomials which is
+# necessary to check if degeneration avoids center of projection:
+# compute eliminant e(s); this must not have a zero in (0,1)
+# @param Matrix<Int> L lattice points
+# @param Vector<Int> lambda height function on lattice points
+user_function wronski_center_ideal(Matrix<Int>, Vector<Int>; {ring => undef, triangulation => undef}) {
+  my ($L,$lambda, $options) = @_;
+
+  my $d=$L->cols()-1; # ambient dimension
+  my $N=$L->rows();   # number of lattice points
+
+  # usually one wants to get the triangulation before since otherwise it is impossible
+  # to predict which coefficient is assigned to which monomial;
+  # however, e.g., for random constructions the line below might be convenient
+  my $T = $options->{"triangulation"};
+  if (!defined($options->{"triangulation"})) {
+    $T=new topaz::SimplicialComplex(FACETS=>polytope::regular_subdivision($L,$lambda));
+  }
+
+  die "subdivision not a triangulation\n" unless $T->DIM==$d;
+  die "triangulation induced by lifting not foldable\n" unless $T->FOLDABLE;
+
+  # group the lattice points according to color
+  my %c=();
+  map { $c{$T->PROJ_ORBITS->[$_]->[0]}=$_ } (0..$d);
+  my @points_by_color=(); foreach (0..$d) { push @points_by_color, [] }
+  for (my $pt=0; $pt<$N; ++$pt) {
+    my $pt_color=$c{$T->PROJ_DICTIONARY->[$pt]};
+    push @{$points_by_color[$pt_color]}, $pt;
+  }
+
+  my $RR = $options->{"ring"};
+  if (!defined($options->{"ring"})) { # default ring
+    my @vars = map { "x$_" } (0..$d-1); push @vars, "s";
+    $RR=new Ring(@vars); 
+  }  
+ 
+  my $monomials=new Matrix<Int>($L->minor(All,~[0])|$lambda);
+
+  my @eqs=();
+  for (my $col=0; $col<=$d; ++$col) {
+    my $points_of_this_color=$points_by_color[$col];
+    my $sz=scalar(@$points_of_this_color);
+    my @coeffs=(); map { push @coeffs, 1 } (1..$sz); 
+
+    my $eq=new Polynomial($monomials->minor($points_of_this_color,All),\@coeffs,$RR);
+    push @eqs, $eq;
+  }
+
+  return new ideal::Ideal(GENERATORS=>\@eqs);
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:4
+# indent-tabs-mode:nil
+# End:

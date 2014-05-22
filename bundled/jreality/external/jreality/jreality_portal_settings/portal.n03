@@ -1,0 +1,7 @@
+# PORTAL configuration file
+
+parent: portal.props
+
+frame.offset.x: 55
+
+
