@@ -16,17 +16,18 @@
 
   <target name="compile" depends="init">
     <sequential>
-      <javac 
+      <javac
              executable="${javac}"
              srcdir="src"
              destdir="${build.dir}/java"
              failonerror="true"
-             debug="${debug}">
+             debug="${debug}"
+             encoding="UTF8">
         <include name="${package.prefix}/**"/>
       </javac>
       <copy todir="${build.dir}/java"
             preservelastmodified="yes">
-        <fileset 
+        <fileset
                 dir="src"
                 includes="**/*.txt"
                 excludes="**/*.java" />
@@ -35,9 +36,9 @@
   </target>
 
   <target name="native-header" depends="compile">
-    <javah 
+    <javah
            force="yes"
-           class="de.tuberlin.polymake.common.SharedMemoryMatrix" 
+           class="de.tuberlin.polymake.common.SharedMemoryMatrix"
            outputfile="${build.dir}/jni/polymake_java.h">
       <classpath location="${build.dir}/java" />
     </javah>
@@ -45,7 +46,7 @@
 
   <target name="all" depends="compile,native-header">
     <jar destfile="${jar.dir}/${jar.name}">
-        <fileset 
+        <fileset
                  dir="${build.dir}/java"
         	 includes="${package.prefix}/**" />
       </jar>
