@@ -21,7 +21,8 @@ object PolyhedralFan {
          if($ic->size == 0){
             my $emptySet = new Array<Set<Int>>();
             my $empty = new Matrix<Scalar>();
-            my $ambient_dim=0; my $M;
+            my $ambient_dim= $this->lookup("FAN_AMBIENT_DIM")//0 ; 
+            my $M;
             if ((defined ($M=$this->lookup("INPUT_RAYS")) && $M->cols()>0)
                 || (defined ($M=$this->lookup("INPUT_LINEALITY")) && $M->cols()>0))
             {
