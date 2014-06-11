@@ -30,7 +30,12 @@ void remove_redundant_cones(perl::Object f)
    {
       max_cones.insertMax(i_cones.row(i));
    }
-   f.take("MAXIMAL_CONES")<<max_cones;
+
+   // Take care of the empty fan and the fan containing only the origin
+   if(max_cones.empty() && n_i_cones > 0)
+      f.take("MAXIMAL_CONES")<< IncidenceMatrix<>(1,0);
+   else
+      f.take("MAXIMAL_CONES")<<max_cones;
 }
 
 Function4perl(&remove_redundant_cones,"remove_redundant_cones(PolyhedralFan) : void");

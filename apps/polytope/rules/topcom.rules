@@ -36,12 +36,11 @@ label topcom
 
 sub call_topcom_chiro($$) {
    my $P=new ProgramPipe($DebugLevel ? () : ("2>/dev/null"), "$topcom/points2chiro", (defined $_[1] ? "" : "--nosymmetries"));
-   # TOPCOM expects the homogeneous coordinate at the last position in the vector
-   print $P "[", join(",", map { "[".join(",", @{$_->slice(1)}, $_->[0])."]" } @{$_[0]}), "]";
+   print $P "[", join(",", map { "[".join(",", @{$_})."]" } @{$_[0]}), "]";
    if (!defined $_[1]) { 
       print $P "[]\n";
    } else {
-      print $P "\n[[".join("],[", map { join(",", @{$_}) } @{$_[1]})."]", "]\n";
+      print $P "\n[[".join("],[", map { join(",", @{$_}) } @{$_[1]})."]]\n";
    }
    local $/;
    local $_=<$P>;
@@ -97,8 +96,8 @@ sub call_topcom_triang($) {
    [ split /\n/, $_ ];
 }
 
-sub call_topcom_triangs($) {
-   my $P=new ProgramPipe($DebugLevel ? () : ("2>/dev/null"), "$topcom/chiro2finetriangs");
+sub call_topcom_alltriangs($) {
+   my $P=new ProgramPipe($DebugLevel ? () : ("2>/dev/null"), "$topcom/chiro2triangs");
    print $P $_[0], "\n";
    local $_;
    my @triangs=();
@@ -111,7 +110,7 @@ sub call_topcom_triangs($) {
 }
 
 
-sub call_topcom_allfinetriangs($) {
+sub call_topcom_finetriangs($) {
    my $P=new ProgramPipe($DebugLevel ? () : ("2>/dev/null"), "$topcom/chiro2finetriangs");
    print $P $_[0], "\n";
    local $_;
@@ -122,23 +121,6 @@ sub call_topcom_allfinetriangs($) {
      push @triangs, \@e;
    }
    \@triangs;
-}
-
-
-object Polytope {
-
-rule CHIROTOPE : VERTICES {
-   $this->CHIROTOPE=call_topcom_chiro($this->VERTICES, $this->lookup("GROUP.GENERATORS"));
-}
-weight 6.10;
-
-
-rule topcom.triangulation: TRIANGULATION : CHIROTOPE {
-    my $facets = new Array<Set<Int>>(call_topcom_triang($this->CHIROTOPE));
-    my $triang = new topaz::GeometricSimplicialComplex(FACETS=>$facets);
-    $this->TRIANGULATION = $triang;
-}
-
 }
 
 # @category Triangulations, subdivisions and volume
@@ -147,37 +129,12 @@ rule topcom.triangulation: TRIANGULATION : CHIROTOPE {
 # @return Array<Array<Set<Int>>>
 user_function topcom_all_triangulations {
     my $self=shift;
-    return new Array<Array<Set<Int>>>(call_topcom_allfinetriangs($self->CHIROTOPE));
+    return new Array<Array<Set<Int>>>(call_topcom_alltriangs($self->CHIROTOPE));
 }
 
-object PointConfiguration {
-
-
-rule CHIROTOPE : POINTS {
-   $this->CHIROTOPE=call_topcom_chiro($this->POINTS);
-}
-weight 6.10;
-precondition : !MULTIPLE_POINTS;
-
-rule topcom.circuits : CIRCUITS : CHIROTOPE {
-   $this->CIRCUITS=call_topcom_circuits($this->CHIROTOPE);
-}
-weight 6.10;
-precondition : !MULTIPLE_POINTS;
-
-rule topcom.cocircuits : COCIRCUITS : CHIROTOPE {
-   $this->COCIRCUITS=call_topcom_cocircuits($this->CHIROTOPE);
-}
-weight 6.10;
-precondition : !MULTIPLE_POINTS;
-
-rule topcom.triangulation: TRIANGULATION : CHIROTOPE {
-    my $facets = new Array<Set<Int>>(call_topcom_triang($this->CHIROTOPE));
-    my $triang = new topaz::GeometricSimplicialComplex(FACETS=>$facets);
-    $this->TRIANGULATION = $triang;
-}
-precondition : !MULTIPLE_POINTS;
-
+user_function topcom_all_fine_triangulations {
+    my $self=shift;
+    return new Array<Array<Set<Int>>>(call_topcom_finetriangs($self->CHIROTOPE));
 }
 
 # @category Triangulations, subdivisions and volume
@@ -201,6 +158,67 @@ user_function positive_circuits {
    }
    return $pos_circuits;
 }
+
+
+object Polytope {
+
+rule CHIROTOPE : VERTICES {
+   $this->CHIROTOPE=call_topcom_chiro($this->VERTICES, $this->lookup("GROUP.GENERATORS"));
+}
+weight 6.10;
+
+
+rule topcom.triangulation.poly: TRIANGULATION : CHIROTOPE {
+    my $facets = new Array<Set<Int>>(call_topcom_triang($this->CHIROTOPE));
+    my $triang = new topaz::GeometricSimplicialComplex(FACETS=>$facets);
+    $this->TRIANGULATION = $triang;
+}
+
+} # end object Polytope
+
+
+object VectorConfiguration {
+
+rule CHIROTOPE : VECTORS {
+   $this->CHIROTOPE=call_topcom_chiro($this->VECTORS, $this->lookup("GROUP.GENERATORS"));
+}
+weight 6.10;
+precondition : FULL_DIM;
+
+rule topcom.circuits : CIRCUITS : CHIROTOPE {
+   $this->CIRCUITS=call_topcom_circuits($this->CHIROTOPE);
+}
+weight 6.10;
+precondition : FULL_DIM;
+
+rule topcom.cocircuits : COCIRCUITS : CHIROTOPE {
+   $this->COCIRCUITS=call_topcom_cocircuits($this->CHIROTOPE);
+}
+weight 6.10;
+precondition : FULL_DIM;
+
+} # end object VectorConfiguration
+
+
+object PointConfiguration {
+
+rule CHIROTOPE : POINTS {
+   $this->CHIROTOPE=call_topcom_chiro($this->POINTS, $this->lookup("GROUP.GENERATORS"));
+}
+weight 6.10;
+precondition : FULL_DIM;
+
+rule topcom.triangulation.pc : TRIANGULATION : CHIROTOPE {
+    my $facets = new Array<Set<Int>>(call_topcom_triang($this->CHIROTOPE));
+    my $triang = new topaz::GeometricSimplicialComplex(FACETS=>$facets);
+    $this->TRIANGULATION = $triang;
+}
+precondition : FULL_DIM;
+
+} # end object PointConfiguration
+
+
+
 
 # Local Variables:
 # mode: perl

@@ -27,6 +27,17 @@ property GROUP : group::GroupOfCone : multiple;
 }
 
 
+object VectorConfiguration {
+
+# @category Symmetric cones
+# A group acting on the cone via permutation of its 
+# rays ([[group::GroupOfCone::DOMAIN|DOMAIN]]=1), facets ([[group::GroupOfCone::DOMAIN|DOMAIN]]=2), or
+# coordinates ([[group::GroupOfCone::DOMAIN|DOMAIN]]=3). 
+property GROUP : group::GroupOfCone : multiple;
+
+}
+
+
 # Local Variables:
 # mode: perl
 # cperl-indent-level: 3

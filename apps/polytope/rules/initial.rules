@@ -162,6 +162,20 @@ object Polytope {
   rule initial : FEASIBLE : {
     if (defined (my $p=$this->VERTICES | POINTS)) {
       $this->FEASIBLE = $p->rows > 0;
+      if($p->rows == 0){
+          my $empty = $p;
+          my $cone_ambient_dim=0; my $M;
+          if (defined ($M=$this->lookup("INPUT_LINEALITY")) && $M->cols()>0) {
+              $cone_ambient_dim = $M->cols();
+          }
+          my $repl=new Core::Object::Replacement(VERTICES => $empty, FACETS => $empty, AFFINE_HULL => $empty, LINEALITY_SPACE => $empty, CONE_DIM=>0, CONE_AMBIENT_DIM=>$cone_ambient_dim, FEASIBLE => 0); 
+          foreach my $prop (qw(INPUT_LINEALITY)) {
+              if (defined (my $val=$this->lookup($prop))) {
+                  $repl->attach($prop, $val);
+              }
+          }
+          die $repl;
+      }
     }
   }
   precondition : exists(VERTICES | POINTS);

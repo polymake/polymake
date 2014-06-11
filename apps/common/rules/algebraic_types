@@ -542,6 +542,9 @@ declare property_type SparseMatrix<Element=Rational, Sym=NonSymmetric> : Matrix<
    # Removes empty columns.
    # The remaining columns are renumbered without gaps.
    user_method squeeze_cols() : non_const : void : c++;
+
+   # Resize the matrix
+   user_method resize($$) : non_const : void : c++;
 }
 
 function entire(SparseVector:anchor) : c++ : returns(SparseIterator<*>);

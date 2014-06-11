@@ -114,9 +114,9 @@ void cdd_canonicalize(perl::Object p, bool primal = true)
          p.take("POINTED") << ( non_red.second.size()>0 ? 0 : 1 );
       }
    } else {
-      p.take("RAYS") << Matrix<Scalar>();
-      p.take("LINEALITY_SPACE") << Matrix<Scalar>();     
-      p.take("POINTED") << 0;
+      p.take(primal ? "FACETS" : "RAYS") << Matrix<Scalar>();
+      p.take(primal ? "LINEAR_SPAN" : "LINEALITY_SPACE") << Matrix<Scalar>();     
+      if (primal) p.take("POINTED") << 0;
    }
 }
 

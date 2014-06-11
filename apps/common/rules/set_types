@@ -41,6 +41,14 @@ declare property_type Set<Element=Int> : c++ (include => "polymake/Set.h", opera
    # The cardinality of the set.
    # @return Int
    user_method size() : c++;
+
+   # The first element of the (implicitly sorted) set
+   # @return Int
+   user_method front() : c++;
+
+   # The last element of the (implicitly sorted) set
+   # @return Int
+   user_method back() : c++;
 }
 
 # @category Set Operations

@@ -14,10 +14,13 @@
 #-------------------------------------------------------------------------------
 
 
+object VectorConfiguration {
+
+#property GROUP : group::GroupOfCone : multiple;
+
+}
+
 object PointConfiguration {
-
-property GROUP : group::GroupOfCone : multiple;
-
 
 # @category Combinatorics
 # The equivalence classes of maximal-dimensional simplices under a symmetry group 

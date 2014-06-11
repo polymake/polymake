@@ -15,20 +15,18 @@
   
 object PolyhedralFan {
 
-rule FAN_AMBIENT_DIM : RAYS | INPUT_RAYS | LINEALITY_SPACE{
-   $this->FAN_AMBIENT_DIM=($this->RAYS | INPUT_RAYS | LINEALITY_SPACE)->cols;
+rule FAN_AMBIENT_DIM : {
+  my $d=0;
+  foreach (qw(RAYS INPUT_RAYS LINEALITY_SPACE INPUT_LINEALITY FACET_NORMALS LINEAR_SPAN_NORMALS)) {
+    my $M;
+    if (defined ($M=$this->lookup($_)) && $M->cols()>0) {
+      $d=$M->cols();
+      last;
+    }
+  } 
+  $this->FAN_AMBIENT_DIM=$d;
 }
-weight 0.10;
-
-rule FAN_AMBIENT_DIM : LINEALITY_SPACE {
-   $this->FAN_AMBIENT_DIM=$this->LINEALITY_SPACE->cols;
-}
-weight 0.10;
-precondition : LINEALITY_DIM { $this->LINEALITY_DIM!=0; }
-
-rule FAN_AMBIENT_DIM : FACET_NORMALS | LINEAR_SPAN_NORMALS {
-   $this->FAN_AMBIENT_DIM=($this->FACET_NORMALS | LINEAR_SPAN_NORMALS)->cols;
-}
+precondition : defined(RAYS | INPUT_RAYS | LINEALITY_SPACE | INPUT_LINEALITY | FACET_NORMALS | LINEAR_SPAN_NORMALS);
 weight 0.10;
 
 rule N_RAYS : RAYS {
@@ -106,7 +104,7 @@ weight 1.10;
 rule COMBINATORIAL_DIM, PURE : MAXIMAL_CONES_COMBINATORIAL_DIMS {
    if ($this->MAXIMAL_CONES_COMBINATORIAL_DIMS->size == 0) {
       $this->PURE=1;
-      $this->COMBINATORIAL_DIM=0;
+      $this->COMBINATORIAL_DIM=-2;
       return;
    }
 

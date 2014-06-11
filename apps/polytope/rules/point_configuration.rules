@@ -13,8 +13,10 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-# The object point configuration also deals with non-convex finite point sets.
-declare object PointConfiguration<Scalar=Rational>;
+# The POINTS of an object of type PointConfiguration encode a not necessarily convex finite point set.
+# The difference to a parent VectorConfiguration is that the POINTS have homogeneous coordinates, i.e.
+# they will be normalized to have first coordinate 1 without warning.
+declare object PointConfiguration<Scalar=Rational> : VectorConfiguration<Scalar>;
 
 INCLUDE
   point_configuration_properties.rules
@@ -37,6 +39,14 @@ weight 0.10;
 rule AMBIENT_DIM : CONVEX_HULL.CONE_AMBIENT_DIM {
     $this->AMBIENT_DIM=$this->CONVEX_HULL->CONE_AMBIENT_DIM-1;
 }
+
+# The purpose of the following rule is to have simpler preconditions in subsequent rules.
+# The scheduler efficiently handles preconditions which amount to checking a boolean.
+rule FULL_DIM : AMBIENT_DIM, DIM {
+  $this->FULL_DIM=($this->AMBIENT_DIM==$this->DIM);
+}
+weight 0.10;
+
 
 rule N_POINTS : POINTS {
    $this->N_POINTS=$this->POINTS->rows;

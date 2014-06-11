@@ -16,6 +16,31 @@
 
 object Cone {
 
+
+# A Cone defined with an empty [[RAYS]] or [[INPUT_RAYS]] matrix gets trivial [[FACETS]] assigned
+# Note that all convex hull clients need at least one ray.
+rule FACETS, LINEAR_SPAN : {
+	my $ambientdim = $this->lookup("CONE_AMBIENT_DIM");
+	if (!defined($ambientdim)) {
+		foreach (qw(INEQUALITIES EQUATIONS INPUT_LINEALITY LINEALITY_SPACE)) {
+			my $m;
+			last if (defined($m = $this->lookup($_)) && ($ambientdim = $m->cols) > 0);
+		}
+	}
+	$this->FACETS = new Matrix<Scalar>();
+	my $ls = $this->lookup("LINEALITY_SPACE | INPUT_LINEALITY");
+	if (defined($ls) && $ls->rows > 0) {
+		$this->LINEAR_SPAN = null_space($ls);
+	} else {
+		$this->LINEAR_SPAN = unit_matrix<Scalar>($ambientdim);
+	}
+}
+precondition : defined(INPUT_RAYS | RAYS);
+precondition : INPUT_RAYS | RAYS {
+	$this->lookup("INPUT_RAYS | RAYS")->rows == 0;
+}
+weight 1.10;
+
 # @category Convex hull computation
 # Use the sequential (beneath-beyond) convex hull algorithm. It performs well at lower dimensions
 # and produces a triangulation of the polytope as a byproduct. There is no dual (vertex enumeration)
@@ -36,6 +61,7 @@ rule beneath_beyond.convex_hull.primal, default.triangulation: \
    beneath_beyond($this, 0, 0);
 }
 weight 4.10;
+precondition : N_INPUT_RAYS;
 precondition : POINTED;
 permutation : FacetPerm;
 

@@ -14,11 +14,22 @@
 --------------------------------------------------------------------------------
 */
 
-///==== this line controls the automatic file splitting: max.instances=20
+///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/client.h"
+#include "polymake/linalg.h"
+#include "polymake/Matrix.h"
+#include "polymake/Rational.h"
+#include "polymake/IncidenceMatrix.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1>
+   FunctionInterface4perl( project_to_orthogonal_complement_X2_X_f16, T0,T1 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      WrapperReturnVoid( (project_to_orthogonal_complement(arg0.get<T0>(), arg1.get<T1>())) );
+   };
+
+   FunctionInstance4perl(project_to_orthogonal_complement_X2_X_f16, perl::Canned< Matrix< Rational > >, perl::Canned< const Matrix< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

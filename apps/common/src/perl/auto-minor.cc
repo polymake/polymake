@@ -17,13 +17,13 @@
 ///==== this line controls the automatic file splitting: max.instances=20
 
 #include "polymake/client.h"
-#include "polymake/SparseMatrix.h"
-#include "polymake/QuadraticExtension.h"
+#include "polymake/Matrix.h"
 #include "polymake/Rational.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/Array.h"
-#include "polymake/Matrix.h"
 #include "polymake/Set.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/QuadraticExtension.h"
+#include "polymake/Array.h"
 #include "polymake/linalg.h"
 #include "polymake/Integer.h"
 
@@ -46,5 +46,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(minor_X8_X8_f5, perl::Canned< const Wary< pm::ColChain<pm::SingleCol<pm::SameElementVector<pm::Rational const&> const&>, pm::Matrix<pm::Rational> const&> > >, perl::Canned< const pm::Complement<pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&>, int, pm::operations::cmp> >, perl::Enum<pm::all_selector>);
    FunctionInstance4perl(minor_X8_X8_f5, perl::Canned< Wary< pm::MatrixMinor<pm::Matrix<double>&, pm::Series<int, true> const&, pm::all_selector const&> > >, perl::Canned< const Set< int > >, perl::Enum<pm::all_selector>);
    FunctionInstance4perl(minor_X8_X8_f5, perl::Canned< const Wary< SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > > >, perl::TryCanned< const Array< int > >, perl::Enum<pm::all_selector>);
+   FunctionInstance4perl(minor_X8_X8_f5, perl::Canned< const Wary< Matrix< Rational > > >, perl::Canned< const pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> >, perl::Enum<pm::all_selector>);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

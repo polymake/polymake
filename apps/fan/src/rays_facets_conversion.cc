@@ -73,8 +73,12 @@ void raysToFacetNormals(perl::Object f)
    {
       if (linealityDim > 0)
          fanLinearSpan = null_space(rays/linealitySpace);
-      else 
-         fanLinearSpan = null_space(rays);
+      else {
+         if (rays.rows() > 0)
+            fanLinearSpan = null_space(rays);
+         else
+            fanLinearSpan = unit_matrix<Coord>(ambientDim);
+      }
       
       linearSpan /= fanLinearSpan;
       fanLinearSpanIndices += sequence(0,fanLinearSpan.rows());
@@ -115,7 +119,7 @@ void raysToFacetNormals(perl::Object f)
          }
       }
       
-      if (coneDim < 1)
+      if (coneDim < 1 || coneSet.size() == 0)
       {
          coneNum++;
          continue;

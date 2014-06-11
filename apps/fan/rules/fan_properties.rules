@@ -57,6 +57,8 @@ property INPUT_RAYS : Matrix<Scalar>;
 # Maybe redundant list of not necessarily maximal cones.  Indices refer to [[INPUT_RAYS]].
 # Each cone must list all rays of [[INPUT_RAYS]] it contains.
 # The cones are allowed to contain lineality.
+# Cones which do not have any rays correspond to the trivial cone (contains only the origin).
+# An empty fan does not have any cones.
 #
 # Input section only. Ask for [[MAXIMAL_CONES]] if you want to know the maximal cones (indexed by [[RAYS]]).
 
@@ -106,6 +108,8 @@ property N_INPUT_RAYS : Int;
 
 # @category Combinatorics
 # Non redundant list of maximal cones.  Indices refer to [[RAYS]].
+# Cones which do not have any rays correspond to the trivial cone (contains only the origin).
+# An empty fan does not have any cones.
 property MAXIMAL_CONES : IncidenceMatrix;
 
 rule MAXIMAL_CONES : RaysPerm.MAXIMAL_CONES, RaysPerm.PERMUTATION {
@@ -249,7 +253,7 @@ property F2_VECTOR : Matrix<Integer>;
 
 
 # @category Combinatorics
-# f<sub>k</sub> is the number of k-dimensional cones.
+# f<sub>k</sub> is the number of k-dimensional cones starting from dimension k=1.
 
 property F_VECTOR : Vector<Integer>;
 

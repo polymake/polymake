@@ -39,6 +39,7 @@ declare object PolyhedralComplex<Scalar=Rational> [ typechecks::is_ordered_field
 
 INCLUDE
   fan_properties.rules
+  initial.rules
   tropical_variety_properties.rules
   polyhedral_complex_properties.rules
   common.rules

@@ -74,10 +74,8 @@ void compress_incidence_primal(perl::Object p)
       } else {
          // we have no facet. In this case our object must be a cone, and this cone defines a linear space
 
-         L /= V.minor(VIF.row(0),All);   // all input rays must be in the lineality space. Add them, they will be reduced later
          Matrix<Scalar> empty;
          V = empty; // this cone has no rays
-         VIF.resize(0,0);
       }
    }
    

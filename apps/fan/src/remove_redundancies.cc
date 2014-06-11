@@ -80,8 +80,13 @@ void remove_redundancies(perl::Object f)
    for(typename Entire<hash_map<Vector<Coord>,int> >::const_iterator r=entire(rays); !r.at_end(); ++r)
       R.row(r->second)=r->first;
    f.take("RAYS")<<R;
-   f.take("MAXIMAL_CONES")<<max_cones;
    f.take("LINEALITY_SPACE")<<lineality_space;
+
+   // Take care of the empty fan and the fan containing only the origin
+   if(max_cones.empty() && n_i_cones > 0)
+      f.take("MAXIMAL_CONES")<< IncidenceMatrix<>(1,0);
+   else
+      f.take("MAXIMAL_CONES")<<max_cones;
 }
   
 FunctionTemplate4perl("remove_redundancies<Coord>(PolyhedralFan<Coord>) : void");

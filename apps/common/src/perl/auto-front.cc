@@ -14,9 +14,7 @@
 --------------------------------------------------------------------------------
 */
 
-///==== this line controls the automatic file splitting: max.instances=20
-
-#include "polymake/client.h"
+///==== this line controls the automatic file splitting: max.instances=40
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====

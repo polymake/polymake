@@ -1,0 +1,146 @@
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# An object of type VectorConfiguration deals with properties of row vectors,
+# assembled into an n x d matrix called VECTORS. 
+# The entries of these row vectors are interpreted as non-homogeneous coordinates. 
+# In particular, the coordinates of a VECTOR will *NOT* be normalized to have a leading 1.
+declare object VectorConfiguration<Scalar=Rational>;
+
+INCLUDE
+  vector_configuration_properties.rules
+
+object VectorConfiguration {
+
+rule N_VECTORS : VECTORS {
+    $this->N_VECTORS=$this->VECTORS->rows;
+}
+weight 0.10;
+
+rule LABELS : N_VECTORS {
+   my @labels = (0..$this->N_VECTORS-1);
+   $this->LABELS="@labels";
+}
+weight 4.10;
+
+# The purpose of the following rule is to have simpler preconditions in subsequent rules.
+# The scheduler efficiently handles preconditions which amount to checking a boolean.
+rule FULL_DIM : AMBIENT_DIM, DIM {
+  $this->FULL_DIM=($this->AMBIENT_DIM==$this->DIM);
+}
+weight 0.10;
+
+rule AMBIENT_DIM : VECTORS {
+   $this->AMBIENT_DIM=$this->VECTORS->cols;
+}
+weight 0.10;
+
+rule DIM : AMBIENT_DIM, LINEAR_SPAN {
+   $this->DIM= $this->AMBIENT_DIM - $this->LINEAR_SPAN->rows;
+}
+weight 0.10;
+
+rule LINEAR_SPAN : {
+   $this->LINEAR_SPAN=new Matrix<Scalar>;
+}
+precondition : FULL_DIM;
+weight 0.10;
+
+rule DIM : VECTORS {
+   $this->DIM=rank($this->VECTORS);
+}
+weight 1.10;
+
+
+rule POSITIVE : VECTORS {
+   foreach my $v (@{$this->VECTORS}) {
+      foreach my $x (@$v) {
+	 if ($x<0) {
+	    $this->POSITIVE=0;
+	    return;
+	 }
+      }
+   }
+   $this->POSITIVE=1;
+}
+weight 1.10;
+
+rule LINEAR_SPAN : VECTORS {
+   $this->LINEAR_SPAN=null_space($this->VECTORS);
+}
+weight 1.10;
+
+
+}
+
+# @category Combinatorics
+# Convert CIRCUITS or COCIRCUITS to a 0/+1/-1 matrix, with one row for each circuit/cocircuit, 
+# and as many columns as there are VECTORs/POINTS.
+# @param Set<Pair<Set<Int>,Set<Int>>> co/circuits a set of circuits or cocircuits
+# @return SparseMatrix<Rational>
+user_function circuits2matrix(Set<Pair<Set<Int>,Set<Int>>>) {
+   my $circuits = shift;
+   my $m = $circuits->size();
+   my $n = 0;
+   my $mat = new SparseMatrix($m, $n+1);
+   my $i=0;
+   for (my $e=entire($circuits); $e; ++$e, $i++) {
+      if ($$e->first->size()) {
+	 $n = max($n, $$e->first->back());
+      }
+      if ($$e->second->size()) {
+	 $n = max($n, $$e->second->back());
+      }
+      $mat->resize($m, $n+1);
+      for (my $pos = entire($$e->first); $pos; ++$pos) {
+	 $mat->[$i]->[$$pos] = 1;
+      }
+      for (my $neg = entire($$e->second); $neg; ++$neg) {
+	 $mat->[$i]->[$$neg] = -1;
+      }
+   }
+   return $mat;
+}
+
+
+# @category Combinatorics
+# contract a vector configuration along a specified vector
+# @param VectorConfiguration an input configuration
+# @param Int index which vector to contract
+user_function contraction(VectorConfiguration $) {
+   my ($vc, $index) = @_;
+   my $vcc = new Matrix($vc->VECTORS);
+   my $vcm = new Matrix($vc->VECTORS->minor([$index], All));
+   project_to_orthogonal_complement($vcc, $vcm);
+   my @labels = @{$vc->LABELS};
+   splice @labels, $index, 1;
+   return new VectorConfiguration(VECTORS => $vcc->minor(~[$index],All), LABELS => "@labels");
+}
+
+# @category Combinatorics
+# delete a specified vector from a vector configuration
+# @param VectorConfiguration an input configuration
+# @param Int index which vector to delete
+user_function deletion(VectorConfiguration $) {
+   my ($vc, $index) = @_;
+   my @labels = @{$vc->LABELS};
+   splice @labels, $index, 1;
+   return new VectorConfiguration(VECTORS => $vc->VECTORS->minor(~[$index],All), LABELS => "@labels");
+}
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:4
+# End:

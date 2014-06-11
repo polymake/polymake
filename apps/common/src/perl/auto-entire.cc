@@ -17,6 +17,7 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/client.h"
+#include "polymake/Set.h"
 #include "polymake/SparseVector.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/IncidenceMatrix.h"
@@ -24,7 +25,6 @@
 #include "polymake/Vector.h"
 #include "polymake/Rational.h"
 #include "polymake/QuadraticExtension.h"
-#include "polymake/Set.h"
 #include "polymake/Integer.h"
 
 namespace polymake { namespace common { namespace {
@@ -54,5 +54,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(entire_R_X8, perl::Canned< const NodeMap< Undirected, int > >);
    FunctionInstance4perl(entire_R_X8, perl::Canned< const SparseVector< int > >);
    FunctionInstance4perl(entire_R_X8, perl::Canned< const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<int, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric> >);
+   FunctionInstance4perl(entire_R_X8, perl::Canned< const Set< std::pair< Set< int >, Set< int > > > >);
+   FunctionInstance4perl(entire_R_X8, perl::Canned< const Set< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

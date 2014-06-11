@@ -26,7 +26,6 @@ property POINTS : Matrix<Scalar> {
 
 # @category Geometry
 # The polytope being the convex hull of the point configuration.
-
 property CONVEX_HULL : Polytope<Scalar> {
 
    # Indices of [[Polytope::VERTICES]] of the [[CONVEX_HULL]] as [[POINTS]].
@@ -41,76 +40,54 @@ property CONVEX_HULL : Polytope<Scalar> {
 
 
 # @category Geometry
-# Dimension of the space in which the point configuration lives.
-
-property AMBIENT_DIM : Int;
-
-
-# @category Geometry
 # True if the point configuration is bounded.
-
 property BOUNDED : Bool;
 
 
 # @category Geometry
 # Number of [[POINTS]].
-
 property N_POINTS : Int;
 
 
 # @category Geometry
-# Dimension of the affine hull of the point configuration.
-
-property DIM : Int;
-
-# @category Geometry
 # True if the [[POINTS]] are in convex position.
-
 property CONVEX : Bool;
 
 # @category Geometry
 # [[POINTS]] that are not [[Polytope::VERTICES]] of the [[CONVEX_HULL]]
-
 property NON_VERTICES : Set;
 
 # @category Geometry
 # Indices of [[Polytope::VERTICES]] of the [[CONVEX_HULL]] as [[POINTS]]
-
 property VERTEX_POINT_MAP : Array<Int>;
 
 
 # @category Geometry
 # Dual basis of the affine hull of the point configuration
-
 property AFFINE_HULL : Matrix<Scalar>;
 
 # @category Combinatorics
 # Graph of the point configuration.
 # Two points are adjacent if they lie in a common edge of the [[CONVEX_HULL]].
-
 property GRAPH : objects::Graph;
 
 
 # @category Geometry
 # Indices of [[POINTS]] that are rays.
-
 property FAR_POINTS : Set;
 
 # @category Geometry
 # The center of gravity of the point configuration.
-
 property BARYCENTER : Vector<Scalar>;
 
 
 # @category Triangulation and volume
 # Some triangulation of the point configuration.
-
 property TRIANGULATION : topaz::GeometricSimplicialComplex<Scalar> : multiple {
 
    # The splits that are coarsenings of the current [[TRIANGULATION]].
    # If the triangulation is regular these form the unique split decomposition of
    # the corresponding weight function.
-
    property REFINED_SPLITS : Set<Int>;
    
    # GKZ-vector
@@ -141,20 +118,12 @@ user_method TRIANGULATION_SIGNS : TRIANGULATION.FACETS, POINTS {
    triang_sign($this->TRIANGULATION->FACETS, $this->POINTS);
 }
 
-# @category Visualization
-# Unique names assigned to the [[POINTS]].
-# If specified, they are shown by visualization tools instead of point indices.
-
-property LABELS : Array<String> : mutable;
-
 # The splits of the point configuration, i.e., hyperplanes cutting the configuration in
 # two parts such that we have a regular subdivision.
-
 property SPLITS : Matrix<Scalar>;
 
 # Two [[SPLITS]] are compatible if the defining hyperplanes do not intersect in the
 # interior of the point configuration.  This defines a graph.
-
 property SPLIT_COMPATIBILITY_GRAPH : objects::Graph;
 
 
@@ -162,21 +131,6 @@ property SPLIT_COMPATIBILITY_GRAPH : objects::Graph;
 # [[Polytope::VIF_CYCLIC_NORMAL]] of the [[CONVEX_HULL]], but with
 # the indices form [[POINTS]] instead of [[Polytope::VERTICES]]
 property PIF_CYCLIC_NORMAL : Array< Array<Int> >;
-
-# @category Oriented matroids
-# Chirotope corresponding to [[POINTS]]
-
-property CHIROTOPE : Text;
-
-# @category Oriented matroids
-# Circuits in [[POINTS]]
-
-property CIRCUITS : Set<Pair<Set<Int>,Set<Int>>>;
-
-# @category Oriented matroids
-# Cocircuits in [[POINTS]]
-
-property COCIRCUITS : Set<Pair<Set<Int>,Set<Int>>>;
 
 # @category Geometry
 # Tells if there exists multiple points.

@@ -64,6 +64,7 @@ INCLUDE
   quadratic_extension.rules
   flag_vector.rules
   lattice.rules
+  vector_configuration.rules
   group.rules
   point_configuration.rules
   polarize.rules
@@ -85,7 +86,6 @@ INCLUDE
   orbit_polytope_helpers.rules
   orbit_polytope_visual.rules
   wronski.rules
-	
 
 # self-configuring rules
 INCLUDE
