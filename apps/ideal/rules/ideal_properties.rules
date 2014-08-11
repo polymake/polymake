@@ -76,8 +76,11 @@ object Groebner {
    property INITIAL_IDEAL : Ideal;
 
    property ORDER_MATRIX : Matrix<Int>;
+   
+   property ORDER_VECTOR : Vector<Int>;
+   
+   property ORDER_NAME : String;
 
-   property ORDER : String;
 }
 
 # Local Variables:

@@ -495,6 +495,7 @@ if (defined($GCCversion)) {
    if (v_cmp($GCCversion, "4.6")<0) {
       $CXXflags .= " -fno-inline-functions-called-once";
    } else {
+      $CXXflags .= " -fwrapv";
       $CflagsSuppressWarnings .= " -Wno-unused-but-set-variable -Wno-enum-compare -Wno-sign-compare -Wno-switch -Wno-format -Wno-write-strings";
    }
    if (v_cmp($GCCversion, "4.3")<0) {

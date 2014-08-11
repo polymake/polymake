@@ -18,10 +18,11 @@
 
 #include "polymake/client.h"
 #include "polymake/Array.h"
+#include "polymake/Polynomial.h"
+#include "polymake/Rational.h"
 #include "polymake/Graph.h"
 #include "polymake/Set.h"
 #include "polymake/Vector.h"
-#include "polymake/Rational.h"
 #include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
@@ -49,5 +50,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new, Array< Vector< Rational > >);
    OperatorInstance4perl(convert, Array< int >, perl::Canned< const Set< int > >);
    OperatorInstance4perl(assign, Array< int >, perl::Canned< const pm::cascaded_iterator<pm::unary_transform_iterator<pm::unary_transform_iterator<pm::graph::valid_node_iterator<pm::iterator_range<pm::graph::node_entry<pm::graph::Undirected, (pm::sparse2d::restriction_kind)0> const*>, pm::BuildUnary<pm::graph::valid_node_selector> >, pm::graph::line_factory<true, pm::graph::incident_edge_list, void> >, pm::operations::masquerade<pm::graph::uniq_edge_list> >, pm::end_sensitive, 2> >);
+   FunctionInstance4perl(new_X, Array< Polynomial< Rational, int > >, perl::Canned< const Array< Polynomial< Rational, int > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -21,6 +21,7 @@
 #include "polymake/Array.h"
 #include "polymake/Polynomial.h"
 #include "polymake/Rational.h"
+#include "polymake/Vector.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
@@ -33,8 +34,16 @@ namespace polymake { namespace ideal { namespace {
       WrapperReturnNew(T0, (arg0.get<T1>(), arg1.get<T2>()) );
    };
 
+   template <typename T0, typename T1>
+   FunctionInterface4perl( new_X_std__string, T0,T1 ) {
+      perl::Value arg0(stack[1]), arg1(stack[2]);
+      WrapperReturnNew(T0, (arg0.get<T1>(), arg1.get<std::string>()) );
+   };
+
    Class4perl("Polymake::ideal::SingularIdeal", SingularIdeal);
+   FunctionInstance4perl(new_X_std__string, SingularIdeal, perl::Canned< const Array< Polynomial< Rational, int > > >);
    FunctionInstance4perl(new_X_X, SingularIdeal, perl::Canned< const Array< Polynomial< Rational, int > > >, perl::Canned< const SparseMatrix< int, NonSymmetric > >);
    FunctionInstance4perl(new_X_X, SingularIdeal, perl::Canned< const Array< Polynomial< Rational, int > > >, perl::Canned< const Matrix< int > >);
+   FunctionInstance4perl(new_X_X, SingularIdeal, perl::Canned< const Array< Polynomial< Rational, int > > >, perl::Canned< const Vector< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

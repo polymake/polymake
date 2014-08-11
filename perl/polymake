@@ -293,10 +293,10 @@ sub greeting {
       my $branch = `cd "$InstallTop"; git rev-parse --abbrev-ref HEAD`;
       chomp $branch;
       $full_version .= ", branch $branch ";
-      my $upstream = `git rev-parse --abbrev-ref --symbolic-full-name \@{u} 2>&1`;
+      my $upstream = `cd "$InstallTop"; git rev-parse --abbrev-ref --symbolic-full-name \@{u} 2>&1`;
       chomp $upstream;
       unless ($?) {
-         my ($ahead,$behind) = split '\t',`git rev-list --left-right --count $branch...$upstream`;
+         my ($ahead,$behind) = split '\t',`cd "$InstallTop"; git rev-list --left-right --count $branch...$upstream`;
          chomp $ahead;
          chomp $behind;
          $full_version .= "[";

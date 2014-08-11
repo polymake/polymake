@@ -107,6 +107,12 @@ EXTERN_C AV* Perl_av_fake(pTHX_ I32 size, SV **strp);
 # define PadlistMAX(x)   AvFILLp(x)
 #endif
 
+#if PerlVersion >= 5200
+# define PmEmptyArraySlot NULL
+#else
+# define PmEmptyArraySlot &PL_sv_undef
+#endif
+
 /* these values have to be checked in toke.c for each new perl release */
 #define LEX_KNOWNEXT 0
 #define LEX_NORMAL 10

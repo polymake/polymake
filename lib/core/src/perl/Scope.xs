@@ -210,7 +210,7 @@ void undo_local_push(pTHX_ void* p)
    if (n>0) {
       for (e=AvARRAY(av)+AvFILLp(av), eend=e-n; e>eend; --e) {
          SvREFCNT_dec(*e);
-         *e=&PL_sv_undef;
+         *e=PmEmptyArraySlot;
       }
       AvFILLp(av)-=n;
    } else {
@@ -220,7 +220,7 @@ void undo_local_push(pTHX_ void* p)
       ++eend;
       Move(eend-n, eend, AvFILLp(av)+1, SV*);
       for (e=eend+AvFILLp(av)+1, eend=e-n; e<eend; ++e)
-         *e=&PL_sv_undef;
+         *e=PmEmptyArraySlot;
    }
    Safefree(p);
 }

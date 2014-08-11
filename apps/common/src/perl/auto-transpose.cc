@@ -18,6 +18,7 @@
 
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
@@ -38,5 +39,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(transpose_X8, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
    FunctionInstance4perl(transpose_X8, perl::Canned< const Matrix< Integer > >);
    FunctionInstance4perl(transpose_X8, perl::Canned< const SparseMatrix< int, NonSymmetric > >);
+   FunctionInstance4perl(transpose_X8, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

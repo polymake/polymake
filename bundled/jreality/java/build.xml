@@ -30,7 +30,7 @@
   <target name="clean.jreality">
     <ant
         dir="${jreality.path}"
-        antfile="build.xml" 
+        antfile="build.xml"
         target="clean"/>
   </target>
 
@@ -53,18 +53,19 @@
 
   <target name="compile" depends="init">
     <sequential>
-      <javac 
+      <javac
              executable="${javac}"
              srcdir="src"
              destdir="${build.dir}/java"
              failonerror="true"
-             debug="${debug}">
+             debug="${debug}"
+             encoding="UTF8">
         <include name="${package.prefix}/**"/>
         <classpath refid="compile.classpath"/>
       </javac>
       <copy todir="${build.dir}/java"
             preservelastmodified="yes">
-        <fileset 
+        <fileset
                 dir="src"
                 includes="**/*.txt"
                 excludes="**/*.java" />
@@ -74,7 +75,7 @@
 
   <target name="all" depends="compile">
     <jar destfile="${jar.dir}/${jar.name}">
-        <fileset 
+        <fileset
                  dir="${build.dir}/java"
         	 includes="${package.prefix}/**" />
       </jar>

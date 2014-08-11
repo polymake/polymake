@@ -134,6 +134,11 @@ property CONNECTED : Bool;
 #Whether the matroid is series-parallel
 property SERIES_PARALLEL : Bool;
 
+#The h-vector of a matroid
+property H_VECTOR : Vector<Integer>;
+
+#The f-vector of a matroid
+property F_VECTOR : Vector<Integer>;
 }
 
 # Local Variables:

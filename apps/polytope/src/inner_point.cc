@@ -20,13 +20,13 @@
 
 namespace polymake { namespace polytope {
 
-template <typename Coord>
-Vector<Coord> inner_point(const Matrix<Coord> &V)
+template <typename Matrix, typename Coord>
+Vector<Coord> inner_point(const GenericMatrix<Matrix, Coord>& V)
 {
    const Set<int> b=basis_rows(V);
 
    // center of gravity of the basis vectors
-   const Vector<Coord> rel_int_pt=average(rows(V.minor(b,All)));
+   const Vector<Coord> rel_int_pt=average(rows(V.minor(b, All)));
 
    // we require rel_int_pt to be affine
    // otherwise we might be in trouble with the orientation

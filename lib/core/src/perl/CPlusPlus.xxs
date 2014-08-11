@@ -182,9 +182,16 @@ int assigned_to_canned_lvalue(pTHX_ SV* lval_sv, MAGIC* lval_mg)
          SvREFCNT_dec(SvRV(lval_sv));
       } else {
          if (SvPOK(lval_sv) && SvPVX(lval_sv) && SvLEN(lval_sv)) {
-            Safefree(SvPVX(lval_sv));
-            SvPVX(lval_sv)=NULL;
-            SvLEN(lval_sv)=0;
+#if PerlVersion >= 5200
+            if (SvIsCOW(lval_sv)) {
+               sv_force_normal_flags(lval_sv, SV_COW_DROP_PV);
+            } else
+#endif
+            {
+               Safefree(SvPVX(lval_sv));
+               SvPVX(lval_sv)=NULL;
+               SvLEN(lval_sv)=0;
+            }
          }
          SvFLAGS(lval_sv) &= ~SVf_OK;
          SvROK_on(lval_sv);
@@ -228,7 +235,7 @@ void destroy_iterators(pTHX_ AV* av, MAGIC* mg, bool final)
 {
    SV *it_sv=AvARRAY(av)[1];
    const container_access_vtbl *acct=((const container_vtbl*)mg->mg_virtual)->acc + (mg->mg_flags & value_read_only);
-   if (SvIOK(it_sv)) {
+   if (it_sv != NULL && SvIOK(it_sv)) {
       if (acct->destructor) (acct->destructor)(SvPVX(it_sv));
       SvIOK_off(it_sv);
    }
@@ -237,7 +244,7 @@ void destroy_iterators(pTHX_ AV* av, MAGIC* mg, bool final)
    acct+=2;
    if (acct->begin) {
       it_sv=AvARRAY(av)[2];
-      if (SvIOK(it_sv)) {
+      if (it_sv != NULL && SvIOK(it_sv)) {
          if (acct->destructor) (acct->destructor)(SvPVX(it_sv));
          SvIOK_off(it_sv);
       }
@@ -545,7 +552,7 @@ int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy,
       acct+=2;
    }
    it_sv=AvARRAY(my_av)[it_index];
-   if (SvIOK(it_sv)) {
+   if (it_sv != NULL && SvIOK(it_sv)) {
       // iterator already created
       it=SvPVX(it_sv);
       if ((SvIVX(it_sv)+=it_incr) == index) goto DerefIt;

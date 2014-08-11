@@ -419,13 +419,11 @@ user_function ones_vector<Element=Rational>(;$=0) : c++ (include => "polymake/li
    &{pop(@_)}
 }
 
-
 # @category Linear Algebra
 # Compute the __null space__ of a matrix //A//.
 # @param Matrix A
 # @return Matrix
 user_function null_space(Matrix) : c++ (include => "polymake/linalg.h");
-
 
 # @category Linear Algebra
 # Compute the __null space__ of a vector //b//.
@@ -433,13 +431,11 @@ user_function null_space(Matrix) : c++ (include => "polymake/linalg.h");
 # @return Matrix
 user_function null_space(Vector) : c++ (include => "polymake/linalg.h");
 
-
 # @category Linear Algebra
 # Compute the __lineality space__ of a matrix //A//.
 # @param Matrix A
 # @return Matrix
 user_function lineality_space(Matrix) : c++ (include => "polymake/linalg.h");
-
 
 # @category Linear Algebra
 # Computes the solution of the system //A//x = //b//
@@ -448,22 +444,26 @@ user_function lineality_space(Matrix) : c++ (include => "polymake/linalg.h");
 # @return Vector
 user_function lin_solve(Matrix:wary, Vector:wary) : c++ (include => "polymake/linalg.h");
 
-
 # @category Linear Algebra
 # The matrix //A// is totally unimodular if the determinant of each square submatrix equals 0, 1, or -1.
 # This is the naive test (exponential in the size of the matrix).
+# [For a better implementation try Matthias Walter's polymake extension at
+#  https://github.com/xammy/unimodularity-test/wiki/Polymake-Extension .]
 # @param Matrix A
 # @return Bool
 user_function totally_unimodular(Matrix) : c++ (include => "polymake/totally_unimodular.h");
 
 # @category Linear Algebra
-# Check whether both matrices are bases of the same linear subspace.
-# @param Matrix A1
-# @param Matrix A2
+# Check whether both matrices are bases of the same linear subspace. 
+# Note: It is assumed that they are *bases* of the row space.
+# @param Matrix M1
+# @param Matrix M2
 # @return Bool
 user_function equal_bases(Matrix, Matrix) {
    my ($M1, $M2)=@_;
-   return $M1->rows==$M2->rows && is_zero(null_space($M1) * transpose($M2));
+   # we first need to check for full rank matrices as null_space gives an empty matrix in that case
+   return $M1 == $M2 || $M1->rows==$M2->rows && 
+          ($M1->rows == $M1->cols || is_zero(null_space($M1) * transpose($M2)));
 }
 
 # @category Data Conversion

@@ -15,87 +15,57 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/vector"
-#include "polymake/Rational.h"
-#include "polymake/linalg.h"
+#include "polymake/polytope/cayley_embedding.h"
 
 namespace polymake { namespace polytope {
+
 template<typename Scalar>
-perl::Object cayley_embedding(perl::Object p_in1, perl::Object p_in2,
-                              const Scalar& z, const Scalar& z_prime, 
+perl::Object cayley_embedding(const perl::Object& p_in1, const perl::Object& p_in2,
+                              const Scalar& t, const Scalar& t_prime, 
                               perl::OptionSet options)
 {
-   const bool pointed=p_in1.give("POINTED") && p_in2.give("POINTED");
-   if (!pointed)
-      throw std::runtime_error("prism: at least one input polyhedron not pointed");
+   Array<perl::Object> p_array(2);
+   p_array[0] = p_in1; p_array[1] = p_in2;
 
-   if (z==z_prime)
-      throw std::runtime_error("z and z' must be different");
+   Array<Scalar> t_array(2);
+   t_array[0] = t; t_array[1] = t_prime;
 
-   std::string has_VERTICES1, has_VERTICES2;
-   const Matrix<Scalar> 
-      V1=p_in1.give_with_property_name("VERTICES | POINTS", has_VERTICES1),
-      V2=p_in2.give_with_property_name("VERTICES | POINTS", has_VERTICES2);
-   bool VERTICES_out= has_VERTICES1=="VERTICES" && has_VERTICES2=="VERTICES";
-
-   const int n_vertices1 = V1.rows(),
-             n_vertices2 = V2.rows(),
-                       d = V1.cols();
-   if (V2.cols() != d)
-      throw std::runtime_error("cayley_embedding: dimension mismatch");
-   
-   const Set<int> rays1=far_points(V1),
-                  rays2=far_points(V2);
-
-   if (VERTICES_out && !rays1.empty() && !rays2.empty()) VERTICES_out=false;
-
-   const bool relabel=options["relabel"];
-   if (!VERTICES_out && relabel)
-      throw std::runtime_error("can't produce VERTEX_LABELS since VERTICES are unknown");
-
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
-   p_out.set_description() << "Cayley embedding of " << p_in1.name() << " and " << p_in2.name() << endl;
-
-   const Matrix<Scalar> V_out=
-      rays1.empty() && rays2.empty()
-      ? Matrix<Scalar>( (V1 | same_element_vector(z, n_vertices1)) /
-                          (V2 | same_element_vector(z_prime, n_vertices2)) )
-      : Matrix<Scalar>( (V1 | same_element_sparse_vector(~rays1, z, n_vertices1)) /
-                          (V2 | same_element_sparse_vector(~rays2, z_prime, n_vertices2)) );
-
-   p_out.take(VERTICES_out ? "VERTICES" : "POINTS") << V_out;
-   p_out.take(VERTICES_out ? "LINEALITY_SPACE" : "INPUT_LINEALITY") << Matrix<Scalar>();
-
-   if (relabel) {
-      std::vector<std::string> labels(n_vertices1+n_vertices2);
-      read_labels(p_in1, "VERTEX_LABELS", non_const(select(labels, sequence(0,n_vertices1))));
-      read_labels(p_in2, "VERTEX_LABELS", non_const(select(labels, sequence(n_vertices1,n_vertices2))));
-      const char tick='\'';
-      for (std::vector<std::string>::iterator l=labels.begin()+n_vertices1, l_end=labels.end(); l!=l_end; ++l)
-         (*l) += tick;
-      p_out.take("VERTEX_LABELS") << labels;
-   }
-
-   return p_out;
+   return cayley_embedding(p_array, t_array, options);
 }
+
 
 UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# Create a Cayley embedding of two polytopes (one of them must be pointed)."
-                          "# The vertices of the first polytope //P// get an extra coordinate //z//"
-                          "# and the vertices of the second polytope //P_prime// get //z_prime//."
+                          "# The vertices of the first polytope //P_0// get embedded to //(t_0,0)//"
+                          "# and the vertices of the second polytope //P_1// to //(0,t_1)//."
                           "# "
-                          "# Default values are //z//=1 and //z_prime//=-//z//."
+                          "# Default values are //t_0//=//t_1//=1."
                           "# "
                           "# The option //relabel// creates an additional section [[VERTEX_LABELS]]."
-                          "# The vertices of //P// inherit the original labels unchanged;"
-                          "# the vertex labels of //P_prime// get a tick (') appended."
-                          "# @param Polytope P the first polytope"
-                          "# @param Polytope P_prime the second polytope"
-                          "# @param Scalar z the extra coordinate for the vertices of //P//"
-                          "# @param Scalar z_prime the extra coordinate for the vertices of //P_prime//"
+                          "# @param Polytope P_0 the first polytope"
+                          "# @param Polytope P_1 the second polytope"
+                          "# @param Scalar t_0 the extra coordinate for the vertices of //P_0//"
+                          "# @param Scalar t_1 the extra coordinate for the vertices of //P_1//"
                           "# @option Bool relabel"
                           "# @return Polytope",
-                          "cayley_embedding<_ExtraType, Scalar={ typechecks::is_ordered_field(_ExtraType) ? _ExtraType : Rational }>(Polytope, Polytope; _ExtraType=1, _ExtraType=(-$_[2]), { relabel => undef })");
+                          "cayley_embedding<_ExtraType, Scalar={ typechecks::is_ordered_field(_ExtraType) ? _ExtraType : Rational }>(Polytope, Polytope; _ExtraType=1, _ExtraType=($_[2]), { relabel => undef })");
+
+
+UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
+                          "# Create a Cayley embedding of an array (P1,...,Pm) of polytopes. "
+                          "# All polytopes must have the same dimension, at least one of them must be pointed, "
+                          "# and all must be defined over the same number type. "
+                          "# Each vertex //v// of the //i//-th polytope is embedded to //v//|//t_i e_i//, "
+                          "# where //t_i// is the //i//-th entry of the optional array //t//. "
+                          "# "
+                          "# The option //relabel// creates an additional section [[VERTEX_LABELS]]."
+                          "# @param Array<Polytope> A the input polytopes"
+                          "# @option Array<Scalar> t scaling for the Cayley embedding; defaults to the all-1 vector"
+                          "# @option Bool relabel"
+                          "# @return Polytope",
+                          "cayley_embedding<Scalar>(Array<Polytope<Scalar>>; Array<Scalar>=[], { relabel => undef })");
+
+
 } }
 
 // Local Variables:

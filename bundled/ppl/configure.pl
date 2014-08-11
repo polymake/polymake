@@ -61,8 +61,8 @@ int main() {
 		"Please investigate the reasons and fix the installation.\n";
 	 } else {
       $PPL_version=$PPL_output;
-      if(Polymake::Configure::v_cmp($PPL_version, "1.1") < 0) {
-        die "PPL version is $PPL_version. Minimal required version is 1.1\n"
+      if(Polymake::Configure::v_cmp($PPL_version, "0.11.2") < 0) {
+        die "PPL version is $PPL_version. Minimal required version is 0.11.2\n"
       }
    }
       } else {

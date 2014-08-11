@@ -92,6 +92,14 @@ sub MY::xs_c {
    return $text.$copy;
 }
 
+sub MY::c_o {
+   package MY;
+   my $text=(shift)->SUPER::c_o;
+   # remove harmful compilation rules for C++ modules
+   $text =~ s{^\.(?:C|c[^.\$]).*?:\n\t.*?\n}{}mg;
+   return $text;
+}
+
 my (@CCFiles, @CFiles);
 foreach (@sources) {
    if (/\.xxs$/) {

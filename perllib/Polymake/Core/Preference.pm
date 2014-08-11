@@ -134,6 +134,16 @@ END {
    }
 }
 ####################################################################################
+# return the items from a control list, removing duplicates
+sub get_items {
+   my ($self)=@_;
+   my (%seen, @items);
+   for (my ($i, $last)=(0, $#{$self->items}); $i<$last; $i+=2) {
+      push @items, $self->items->[$i] unless $seen{$self->items->[$i]}++;
+   }
+   @items;
+}
+####################################################################################
 # return the items from a control list, sorted by rank
 # each bag starts with the rank value
 # the last bag may contain unordered items (and rank is undef)

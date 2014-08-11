@@ -41,6 +41,10 @@ user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cu
    }
    my $d=$this->RAYS->cols;
    my $rays=normalized(convert_to<Float>($this->RAYS));
+   my $lineality = convert_to<Float>($this->LINEALITY_SPACE);
+   my $bbox = $lineality->rows > 0 ?
+         polytope::bounding_box<Float>((ones_vector<Float>()) | $rays, 6/5)
+         : undef;
    my $zero=new Vector<Float>($d);
    my @cells_visual = ();
    my $rays_graph = new props::Graph($rays->rows + 1);
@@ -64,14 +68,16 @@ user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cu
       my $cone=$_;
       my $all_ones=ones_vector<Float>($cone->size()+1);
       my $v=$all_ones | ($rays->minor($cone,All) / $zero);
-      my $p=new polytope::Polytope<Rational>(VERTICES => $v, LINEALITY_SPACE => $this->LINEALITY_SPACE);
-      my $pv=$p->VISUAL( $decor );
+      my $p=new polytope::Polytope<Float>(VERTICES => $v, LINEALITY_SPACE => (zero_vector<Float>($lineality->rows)) | $lineality);
+      my $pv= $lineality->rows > 0 && $this->FAN_DIM > 1 ?
+         $p->VISUAL( $decor , BoundingBox=>$bbox ) :
+         $p->VISUAL( $decor );
       my (@cutoff_attrs);
       my $dim=$p->DIM;
       if ($dim==3) {
         while (my @kv=each %$cutoff_decor3d) {
           my ($attr, $value)=@kv;
-          push @cutoff_attrs, $attr, sub { $p->FACETS->[shift]->[0] ? $value : undef };
+          push @cutoff_attrs, $attr, sub { $_[0] < $p->FACETS->rows && $p->FACETS->[shift]->[0] ? $value : undef };
         }
       }
       #else {if ($dim==2) {

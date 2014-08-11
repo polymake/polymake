@@ -787,13 +787,7 @@ package __::Weight;
 use Polymake::Ext;
 
 sub new {
-   my $self=pack('i*', (0)x($max_major+1));
-   bless \$self;
-}
-
-sub copy {
-   my $new=${$_[0]};
-   bless \$new;
+   init($max_major+1);
 }
 
 sub add {
@@ -801,11 +795,11 @@ sub add {
    $_[0];
 }
 
-sub decode {
-   join(".", unpack('i*', $ {$_[0]}));
+sub toString {
+   join(".", &toList);
 }
 
-use overload '=' => \&copy, '""' => \&decode, '+=' => \&add, '<=>' => \&compare;
+use overload '=' => \&copy, '""' => \&toString, '+=' => \&add, '<=>' => \&compare;
 
 ####################################################################################
 package __::SensitivityCheck;

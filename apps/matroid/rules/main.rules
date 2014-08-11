@@ -34,6 +34,7 @@ declare object Matroid;
 
 INCLUDE
   matroid_properties.rules
+  _4ti2.rules
 
 object Matroid {
 
@@ -45,6 +46,7 @@ weight 0.10;
 rule BASES, N_BASES, RANK, N_ELEMENTS : POINTS {
   bases_from_points($this)
 }
+weight 4.50;
 
 rule POLYTOPE.VERTICES, POLYTOPE.CONE_AMBIENT_DIM : BASES, N_ELEMENTS {
   matroid_polytope($this)
@@ -212,6 +214,45 @@ rule SERIES_PARALLEL, CONNECTED : BETA_INVARIANT{ # See [David Speyer:tropical l
     }
 }
 
+rule H_VECTOR : BASES, RANK {
+   my $bases = $this->BASES;
+   my $r = $this->RANK;
+   my $h_vector = new Vector<Integer>($r+1);
+   foreach (@{$bases}) {
+      $h_vector->[$r-internal_activity($_, $bases)]++;
+   }
+   $this->H_VECTOR=$h_vector;
+}
+
+# TODO need to adjust this for vector configurations
+#rule F_VECTOR : H_VECTOR {
+#   polytope::f_vector($this,1);
+#}
+
+}
+
+# @category Combinatorics
+# calculate the internal activity of a base with respect to a given ordering of all bases.
+# Let the given base B = B_j be the j-th one in the given ordering B_1, B_2, ...
+# The internal activity of B_j is the number of "necessary" elements in B_j, 
+# i.e., the number of elements i in B_j such that B_j - {i} is not a subset of any B_k, k<j.
+# @return Int
+user_function internal_activity(Set<Int>, Array<Set<Int>>) {
+   my ($B, $bases) = @_;
+   my $activity = $B->size();
+   foreach my $r (all_subsets_of_k($B->size()-1, @{$B})) {
+      my $ridge = new Set($r);
+      foreach my $basis (@{$bases}) {
+         if ($basis == $B) {
+            last;
+         }
+         if (incl($ridge,$basis) < 0) {
+            $activity--;
+            last;
+         }
+      }
+   }
+   return $activity;
 }
 
 

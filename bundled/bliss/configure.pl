@@ -44,7 +44,7 @@ sub proceed {
       }
 
    } else {
-      my $error=Polymake::Configure::build_test_program(<<'---', Libs => "-lbliss");
+      my $error=Polymake::Configure::build_test_program(<<'---', Libs => "-lbliss -lgmp");
 #include "bliss/graph.hh"
 int main() {
   bliss::Graph g1(5);

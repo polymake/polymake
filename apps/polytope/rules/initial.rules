@@ -72,11 +72,12 @@ object Polytope<Rational> {
       $this->FEASIBLE = 1;
     } else {
       my $empty=new Matrix<Rational>();
-      my $cone_ambient_dim=0; my $M;
+      my $cone_ambient_dim=$this->lookup("CONE_AMBIENT_DIM") // 0;
+      my $M;
       if (defined ($M=$this->lookup("INEQUALITIES")) && $M->cols()>0) {
           $cone_ambient_dim = $M->cols();
-      } else { # due to precondition EQUATIONS must be defined
-          $cone_ambient_dim = $this->EQUATIONS->cols();
+      } elsif ($this->lookup("EQUATIONS")->cols() > 0) { # due to precondition EQUATIONS must be defined
+          $cone_ambient_dim = $this->lookup("EQUATIONS")->cols();
       }
       my $repl=new Core::Object::Replacement(VERTICES => $empty, FACETS => $empty, AFFINE_HULL => $empty, LINEALITY_SPACE => $empty, CONE_DIM=>0, CONE_AMBIENT_DIM=>$cone_ambient_dim, FEASIBLE => 0);
       foreach my $prop (qw(INEQUALITIES EQUATIONS INPUT_LINEALITY)) {
@@ -104,11 +105,12 @@ object Polytope<Float> {
       $this->FEASIBLE = 1;
     } else {
       my $empty=new Matrix<Float>();
-      my $cone_ambient_dim=0; my $M;
+      my $cone_ambient_dim=$this->lookup("CONE_AMBIENT_DIM") // 0;
+      my $M;
       if (defined ($M=$this->lookup("INEQUALITIES")) && $M->cols()>0) {
           $cone_ambient_dim = $M->cols();
-      } else { # due to precondition EQUATIONS must be defined
-          $cone_ambient_dim = $this->EQUATIONS->cols();
+      } elsif ($this->lookup("EQUATIONS")->cols() > 0) { # due to precondition EQUATIONS must be defined
+          $cone_ambient_dim = $this->lookup("EQUATIONS")->cols();
       }
       my $repl=new Core::Object::Replacement(VERTICES => $empty, FACETS => $empty, AFFINE_HULL => $empty, LINEALITY_SPACE => $empty, CONE_DIM => 0, CONE_AMBIENT_DIM=>$cone_ambient_dim, FEASIBLE => 0);
       foreach my $prop (qw(INEQUALITIES EQUATIONS INPUT_LINEALITY)) {
@@ -136,11 +138,12 @@ object Polytope<QuadraticExtension<Rational>> {
       $this->FEASIBLE = 1;
     } else {
       my $empty=new Matrix<QuadraticExtension<Rational>>();
-      my $cone_ambient_dim=0; my $M;
+      my $cone_ambient_dim=$this->lookup("CONE_AMBIENT_DIM") // 0;
+      my $M;
       if (defined ($M=$this->lookup("INEQUALITIES")) && $M->cols()>0) {
           $cone_ambient_dim = $M->cols();
-      } else { # due to precondition EQUATIONS must be defined
-          $cone_ambient_dim = $this->EQUATIONS->cols();
+      } elsif ($this->lookup("EQUATIONS")->cols() > 0) { # due to precondition EQUATIONS must be defined
+          $cone_ambient_dim = $this->lookup("EQUATIONS")->cols();
       }
       my $repl=new Core::Object::Replacement(VERTICES => $empty, FACETS => $empty, AFFINE_HULL => $empty, LINEALITY_SPACE => $empty, CONE_DIM=>0, CONE_AMBIENT_DIM=>$cone_ambient_dim, FEASIBLE => 0);
       foreach my $prop (qw(INEQUALITIES EQUATIONS INPUT_LINEALITY)) {
@@ -164,7 +167,8 @@ object Polytope {
       $this->FEASIBLE = $p->rows > 0;
       if($p->rows == 0){
           my $empty = $p;
-          my $cone_ambient_dim=0; my $M;
+          my $cone_ambient_dim=$this->lookup("CONE_AMBIENT_DIM") // 0;
+          my $M;
           if (defined ($M=$this->lookup("INPUT_LINEALITY")) && $M->cols()>0) {
               $cone_ambient_dim = $M->cols();
           }

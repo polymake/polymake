@@ -1,11 +1,6 @@
-#  Copyright (c) 2012
-#  by authors as mentioned on:
-#  https://github.com/lkastner/polymake_algebra/wiki/Authors
-#  
-#  Project home:
-#  https://github.com/lkastner/polymake_algebra
-#
-#  For licensing we cite the original Polymake code:
+#  Copyright (c) 1997-2014
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of the GNU General Public License as published by the
@@ -16,6 +11,7 @@
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
 
 
 CREDIT Singular
@@ -27,6 +23,10 @@ object Groebner {
    declare property_type SingularIdeal : c++ (include => ["polymake/ideal/singularIdeal.h"]) {
 
       method construct(Array<Polynomial>, Matrix<Int>) : c++;
+      
+      method construct(Array<Polynomial>, Vector<Int>) : c++;
+      
+      method construct(Array<Polynomial>, String) : c++;
       
       method groebner() : void : c++ ;
       
@@ -63,6 +63,28 @@ object Ideal {
       $this->GROEBNER->INITIAL_IDEAL = new Ideal(GENERATORS=>$i->polynomials($this->RING), RING=>$this->RING);
    }
 
+   rule GROEBNER.SINGULAR_IDEAL : GENERATORS, GROEBNER.ORDER_MATRIX {
+      $this->GROEBNER->SINGULAR_IDEAL = new SingularIdeal($this->GENERATORS, $this->GROEBNER->ORDER_MATRIX);
+      $this->GROEBNER->SINGULAR_IDEAL->groebner();
+   }
+   precondition : !ZERO;
+   
+   rule GROEBNER.SINGULAR_IDEAL : GENERATORS, GROEBNER.ORDER_VECTOR {
+      $this->GROEBNER->SINGULAR_IDEAL = new SingularIdeal($this->GENERATORS, $this->GROEBNER->ORDER_VECTOR);
+      $this->GROEBNER->SINGULAR_IDEAL->groebner();
+   }
+   precondition : !ZERO;
+   
+   rule GROEBNER.SINGULAR_IDEAL : GENERATORS, GROEBNER.ORDER_NAME {
+      $this->GROEBNER->SINGULAR_IDEAL = new SingularIdeal($this->GENERATORS, $this->GROEBNER->ORDER_NAME);
+      $this->GROEBNER->SINGULAR_IDEAL->groebner();
+   }
+   precondition : !ZERO;
+   
+   rule GROEBNER.BASIS : GROEBNER.SINGULAR_IDEAL, RING {
+      $this->GROEBNER->BASIS = $this->GROEBNER->SINGULAR_IDEAL->polynomials($this->RING);
+   }
+   
    rule GROEBNER.INITIAL_IDEAL, GROEBNER.BASIS, GROEBNER.SINGULAR_IDEAL : GENERATORS, GROEBNER.ORDER_MATRIX , RING {
       $this->GROEBNER->SINGULAR_IDEAL = new SingularIdeal($this->GENERATORS, $this->GROEBNER->ORDER_MATRIX);
       $this->GROEBNER->SINGULAR_IDEAL->groebner();
@@ -75,12 +97,13 @@ object Ideal {
    
    rule GROEBNER.SINGULAR_IDEAL : GROEBNER.BASIS , GROEBNER.ORDER_MATRIX {
       $this->GROEBNER->SINGULAR_IDEAL = new SingularIdeal($this->GROEBNER->BASIS, $this->GROEBNER->ORDER_MATRIX);
+      $this->GROEBNER->SINGULAR_IDEAL->groebner();
    }
 
    rule MONOMIAL : RING , GENERATORS {
       my $si;
       unless (defined($si = $this->lookup("GROEBNER"))) {
-         $si = $this->GROEBNER(ORDER=>"dp",temporary);
+         $si = $this->GROEBNER(ORDER_NAME=>"dp",temporary);
       }
       my $result = 1;
       # One can easily show that it suffices to check whether the generators
@@ -94,8 +117,9 @@ object Ideal {
    rule DIM : RING , GENERATORS {
       my $si;
       unless (defined($si = $this->lookup("GROEBNER.SINGULAR_IDEAL"))) {
-         $si = $this->GROEBNER(ORDER=>"dp",temporary)->SINGULAR_IDEAL;
+         $si = $this->GROEBNER(ORDER_NAME=>"dp",temporary)->SINGULAR_IDEAL;
       }
+
       $this->DIM = $si->dim();
    }
 
@@ -103,7 +127,7 @@ object Ideal {
      my $this = shift;
      my $si;
      unless (defined($si = $this->lookup("GROEBNER.SINGULAR_IDEAL"))) {
-         $si = $this->GROEBNER(ORDER=>"dp",temporary)->SINGULAR_IDEAL;
+         $si = $this->GROEBNER(ORDER_NAME=>"dp",temporary)->SINGULAR_IDEAL;
      }
      $si->solve();     
    }
@@ -112,7 +136,7 @@ object Ideal {
       my $ring = $this->RING;
       my $si;
       unless (defined($si = $this->lookup("GROEBNER.SINGULAR_IDEAL"))) {
-         $si = $this->GROEBNER(ORDER=>"dp",temporary)->SINGULAR_IDEAL;
+         $si = $this->GROEBNER(ORDER_NAME=>"dp",temporary)->SINGULAR_IDEAL;
       }
       my @pd = $si->primary_decomposition();
       my @res;
@@ -125,7 +149,7 @@ object Ideal {
    rule RADICAL : RING, GENERATORS {
       my $si;
       unless (defined($si = $this->lookup("GROEBNER.SINGULAR_IDEAL"))) {
-         $si = $this->GROEBNER(ORDER=>"dp",temporary)->SINGULAR_IDEAL;
+         $si = $this->GROEBNER(ORDER_NAME=>"dp",temporary)->SINGULAR_IDEAL;
       }
       my $radical = $si->radical();
       $this->RADICAL = new Ideal(GENERATORS=>$radical->polynomials($this->RING),RING=>$this->RING);

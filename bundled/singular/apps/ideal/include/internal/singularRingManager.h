@@ -1,11 +1,6 @@
-/* Copyright (c) 2012
-   by authors as mentioned on:
-   https://github.com/lkastner/polymake_algebra/wiki/Authors
-
-   Project home:
-   https://github.com/lkastner/polymake_algebra
-
-   For licensing we cite the original Polymake code:
+/* Copyright (c) 1997-2014
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+   http://www.polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -16,26 +11,29 @@
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
+--------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_IDEAL_SINGULAR_RING_MANAGER_H
-#define POLYMAKE_IDEAL_SINGULAR_RING_MANAGER_H
+#ifndef POLYMAKE_IDEAL_INTERNAL_SINGULAR_RING_MANAGER_H
+#define POLYMAKE_IDEAL_INTERNAL_SINGULAR_RING_MANAGER_H
 
 
 // polymake includes
 #include "polymake/client.h"
 #include "polymake/Map.h"
 
-#include "polymake/ideal/singularTermOrderMap.h"
+#include <Singular/libsingular.h>
+#include "polymake/ideal/internal/singularTermOrderData.h"
+#include "polymake/ideal/internal/singularTermOrderMap.h"
+#include "polymake/ideal/internal/singularConvertTypes.h"
 #include "polymake/ideal/singularInit.h"
 
 namespace polymake { 
 namespace ideal {
 namespace singular {
-   
-   extern SingularTermOrderMap stom_new;
-   extern unsigned int ringidcounter;
 
+   extern unsigned int ringidcounter;
+   extern SingularTermOrderMap stom_new;
 
    // Check ring routines:
 
@@ -44,7 +42,7 @@ namespace singular {
    idhdl check_ring(const Ring<> r);
     
    template <typename OrderType>
-   idhdl check_ring(const Ring<> polymakeRing, SingularTermOrderData<OrderType> termOrder){
+   idhdl check_ring(const Ring<> polymakeRing, SingularTermOrderData<OrderType> termOrder) {
       init_singular();
       Ring<>::id_type id = polymakeRing.id();
       std::pair<Ring<>::id_type, SingularTermOrderData<OrderType > > pair_to(id, termOrder);
@@ -76,10 +74,9 @@ namespace singular {
    }
 
 
-
 } // end namespace singular
 } // end namespace ideal
 } // end namespace polymake
 
-
 #endif
+

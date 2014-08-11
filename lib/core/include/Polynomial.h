@@ -1731,13 +1731,15 @@ public:
          // leading terms are equal:
          // create copies of both polynomials, repeat deleting equal leading terms until a difference is found
          Polynomial_base p1(*data), p2(*p.data);
-         lt1=p1.data.the_terms.find(lt1->first);
-         lt2=p2.data.the_terms.find(lt2->first);
+         lt1=p1.data.get()->the_terms.find(lt1->first);
+         lt2=p2.data.get()->the_terms.find(lt2->first);
          do {
             p1.data.get()->the_terms.erase(lt1);
             p2.data.get()->the_terms.erase(lt2);
             if (p1.trivial()) return p2.trivial() ? cmp_eq : cmp_lt;
             if (p2.trivial()) return cmp_gt;
+            lt1 = p1.find_lm(cmp_order);
+            lt2 = p2.find_lm(cmp_order);
             cmp_leading=term_type::compare_values(*lt1, *lt2, cmp_order);
          }
          while (cmp_leading == cmp_eq);

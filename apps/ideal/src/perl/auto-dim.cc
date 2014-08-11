@@ -20,6 +20,7 @@
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/SparseVector.h"
 #include "polymake/Set.h"
 #include "polymake/Integer.h"
 #include "polymake/SparseMatrix.h"
@@ -38,5 +39,10 @@ namespace polymake { namespace ideal { namespace {
    FunctionInstance4perl(dim_f1, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer>&>, pm::Series<int, true>, void> >);
    FunctionInstance4perl(dim_f1, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer> const&>, pm::Series<int, true>, void> >);
    FunctionInstance4perl(dim_f1, perl::Canned< const pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&, void> >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>&, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const pm::VectorChain<pm::SparseVector<pm::Rational> const&, pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>&, pm::Series<int, true>, void> const&> >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const pm::VectorChain<pm::VectorChain<pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>&, pm::Series<int, true>, void> const&, pm::SparseVector<pm::Rational> const&> const&, pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>&, pm::Series<int, true>, void> const&> >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const pm::VectorChain<pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>&, pm::Series<int, true>, void> const&, pm::SparseVector<pm::Rational> const&> >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

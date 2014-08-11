@@ -37,5 +37,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new, Term< Rational, int >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Term< Rational, int > >, perl::Canned< const Term< Rational, int > >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Term< Rational, int > >, perl::Canned< const Polynomial< Rational, int > >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const Term< Rational, int > >, perl::Canned< const Term< Rational, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

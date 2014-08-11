@@ -115,58 +115,81 @@ void finish_undo(pTHX_ ToRestore *to_restore)
 }
 
 static
-int find_undo_level(pTHX_ int skip_frames)
+PERL_CONTEXT* find_undo_level(pTHX_ int skip_frames)
 {
-   I32 cix=cxstack_ix;
+   PERL_CONTEXT *cx_bottom=cxstack, *cx=cx_bottom+cxstack_ix;
    while (skip_frames--) {
       int t;
-      do { t=CxTYPE(cxstack+cix); --cix; } while (t!=CXt_SUB);
+      do { t=CxTYPE(cx); --cx; } while (t!=CXt_SUB);
+      assert(cx>=cx_bottom);
       if (pm_perl_skip_debug_cx) {
-         while (CxTYPE(cxstack+cix)!=CXt_SUB || CvSTASH(cxstack[cix].blk_sub.cv)==PL_debstash) --cix;
+         while (CxTYPE(cx) != CXt_SUB || CvSTASH(cx->blk_sub.cv) == PL_debstash) {
+            --cx;
+            assert(cx>=cx_bottom);
+         }
       }
    }
-   if (CxTYPE(cxstack+cix) == CXt_SUB && CvSPECIAL(cxstack[cix].blk_sub.cv)) {
+   if (CxTYPE(cx) == CXt_SUB && CvSPECIAL(cx->blk_sub.cv)) {
       for (;;) {
-         --cix;
-         switch (CxTYPE(cxstack+cix)) {
+         --cx;
+         assert(cx>=cx_bottom);
+         switch (CxTYPE(cx)) {
          case CXt_BLOCK:
             if (pm_perl_skip_debug_cx) {
-               COP *cop=cxstack[cix].blk_oldcop;
-               if (CopSTASH_eq(cop,PL_debstash))
+               COP *cop=cx->blk_oldcop;
+               if (CopSTASH_eq(cop, PL_debstash))
                   continue;
             }
             break;
          case CXt_SUB:
-            if (pm_perl_skip_debug_cx && CvSTASH(cxstack[cix].blk_sub.cv)==PL_debstash)
+            if (pm_perl_skip_debug_cx && CvSTASH(cx->blk_sub.cv) == PL_debstash)
                continue;
             break;
          case CXt_EVAL:
-            return cix-1;
+            if (cx == cx_bottom) {
+               if (PL_curstackinfo->si_type == PERLSI_MAIN) {
+                  /* perl < 5.20: reached the outermost scope in the main script */
+                  return NULL;
+               } else {
+                  /* perl >= 5.20: "require" is handled in an own stack environment */
+                  PERL_SI* prev_si=PL_curstackinfo->si_prev;
+                  assert(prev_si != NULL);
+                  return prev_si->si_cxix >= 0 ? prev_si->si_cxstack + prev_si->si_cxix : NULL;
+               }
+            }
+            return cx-1;
          }
          break;
       }
    }
    Perl_croak(aTHX_ "namespaces::{un,}import may not be used directly; write 'use namespaces' or 'no namespaces' instead");
    /* UNREACHABLE */
-   return -1;
+   return NULL;
 }
 
 static
 void insert_undo(pTHX_ int skip_frames)
 {
    ANY* saves;
-   int cix=find_undo_level(aTHX_ skip_frames);
+   PERL_CONTEXT* cx=find_undo_level(aTHX_ skip_frames);
    ToRestore* to_restore=newToRestore(aTHX_ FALSE);
 
-   if (cix>=0) {
-      /* there is a useful ENTER at the beginning of yyparse() which marks the suitable position on the save stack */
-      saves=PL_savestack+PL_scopestack[cxstack[cix].blk_oldscopesp]-3;
+   if (cx != NULL) {
+      /* There is a useful ENTER at the beginning of yyparse() which marks the suitable position on the save stack.
+       * In newer perls this seems to be the second ENTER executed within the context block,
+       * while in the older versions one had to go deeper into the scope stack, for reasons long forgotten and obscure now */
+#if PerlVersion >= 5160
+      saves=PL_savestack+PL_scopestack[cx->blk_oldscopesp+1];
+#else
+      saves=PL_savestack+PL_scopestack[cx->blk_oldscopesp]-3;
+#endif
       to_restore->replaced=3;
       memcpy(to_restore->saved, saves, 3 * sizeof(to_restore->saved[0]));
       (saves++)->any_dxptr=&reset_ptrs;
       (saves++)->any_ptr=to_restore;
       (saves++)->any_i32=SAVEt_DESTRUCTOR_X;
    } else {
+      /* we are in the main script scope, no further enclosing contexts */
       SV* restore_holder=newSV(0);
       sv_magicext(restore_holder, 0, PERL_MAGIC_ext, &restore_holder_vtbl, 0, 0);
       SvMAGIC(restore_holder)->mg_ptr=(char*)to_restore;
@@ -183,6 +206,18 @@ int reset_ptrs_via_magic(pTHX_ SV* sv, MAGIC* mg)
    reset_ptrs(aTHX_ mg->mg_ptr);
    return 0;
 }
+
+#if PerlVersion >= 5200
+/* op_clear reaches into PL_comppad_name which points to something different during the execution phase */
+# define SetPadnamesOfCurrentSub(savevar) \
+  AV* savevar=PL_comppad_name; \
+  PL_comppad_name=PadlistNAMES(CvPADLIST(pm_perl_get_cur_cv(aTHX)))
+# define RestorePadnames(savevar) \
+  PL_comppad_name=savevar
+#else
+# define SetPadnamesOfCurrentSub(savevar)
+# define RestorePadnames(savevar)
+#endif
 
 #if PerlVersion >= 5140
 #  define refcounted_he_fetch_sv(chain, keysv, hash, flags) Perl_refcounted_he_fetch_sv(aTHX_ chain, keysv, hash, flags)
@@ -413,7 +448,7 @@ void remove_imp_stash(pTHX_ AV *dotLOOKUP, HV *imp_stash)
          if ((HV*)SvRV(*lookp)==imp_stash) {
             SvREFCNT_dec(*lookp);
             if (lookp<endp) Move(lookp+1, lookp, endp-lookp, SV**);
-            *endp=&PL_sv_undef;
+            *endp=PmEmptyArraySlot;
             AvFILLp(dotLOOKUP)--;
             break;
          }
@@ -569,9 +604,13 @@ void do_repair_gvop(pTHX_ SV *old_sv, SV *new_sv, PADOFFSET pad_ix)
       PADLIST *padlist=CvPADLIST(cv);
       PAD **padstart=PadlistARRAY(padlist), **pads, **epads;
       if (PL_comppad==padstart[CvDEPTH(cv)]) {
-         if ((I32)pad_ix <= PadMAX(*padstart) && 
-               SvTYPE((SV*)PadARRAY(*padstart)[pad_ix]))
-            Perl_croak(aTHX_ "namespaces::do_repair_gvop - internal error");
+#ifdef DEBUGGING
+         if ((I32)pad_ix <= PadMAX(*padstart)) {
+            SV* empty_slot=PadARRAY(*padstart)[pad_ix];
+            if (empty_slot != NULL && SvTYPE(empty_slot))
+               Perl_croak(aTHX_ "namespaces::do_repair_gvop - internal error");
+         }
+#endif
          PADOFFSET max = PadlistMAX(padlist);
          while (!PadlistARRAY (padlist)[max])
             max--;
@@ -883,8 +922,8 @@ void lookup(pTHX_ GV* var_gv, I32 type, OP** pnext_op, OP* access_op)
       GV* imp_gv;
 
       if (access_op) {
-         for (;;) {
-            OP* o_next=access_op->op_next;
+         OP* o_next;
+         while ((o_next=access_op->op_next) != NULL) {
             if (o_next->op_type==OP_GVSV) {
                defer_defuse_declare=TRUE;
                access_op=o_next;
@@ -1701,6 +1740,7 @@ OP* pp_class_method(pTHX)
    } else if (SvCUR(method_name)==sizeof(instanceof)-1 && PL_stack_base+TOPMARK+2==SP &&
               !memcmp(SvPVX(method_name),instanceof,sizeof(instanceof)-1)) {
       OP *o=PL_op, *sub_op=o->op_next;
+      SetPadnamesOfCurrentSub(padnames_save);
       Perl_op_clear(aTHX_ o);
       o->op_ppaddr=&pp_instance_of;
       cSVOPo->op_sv=SvREFCNT_inc_simple_NN((SV*)class);
@@ -1709,6 +1749,7 @@ OP* pp_class_method(pTHX)
       if (!o->op_sibling) o=cUNOPo->op_first;
       o->op_ppaddr=&Perl_pp_null;               /* suppress PUSHMARK, skip CONST(package_name) */
       o->op_next=o->op_next->op_next;
+      RestorePadnames(padnames_save);
       SP[-1]=SP[0]; --SP;
       (void)POPMARK; PUTBACK;
       return pp_instance_of(aTHX);
@@ -1717,6 +1758,7 @@ OP* pp_class_method(pTHX)
    if ((method_gv=gv_fetchmethod(class, SvPVX(method_name)))) {
       CV *method_cv=GvCV(method_gv);
       OP *o=PL_op;
+      SetPadnamesOfCurrentSub(padnames_save);
       Perl_op_clear(aTHX_ o);
       o->op_ppaddr=PL_ppaddr[OP_CONST];
       o->op_type=OP_CONST;
@@ -1731,6 +1773,7 @@ OP* pp_class_method(pTHX)
          Perl_op_clear(aTHX_ o);
          cSVOPo->op_sv=PL_stack_base[TOPMARK+1]= io_gv ? newRV((SV*)io_gv) : newSVpvn_share(HvNAME(class), l, 0);
       }
+      RestorePadnames(padnames_save);
    } else {
       Perl_croak(aTHX_ "Can't locate object method \"%.*s\" via package \"%s\"", (int)SvCUR(method_name), SvPVX(method_name), HvNAME(class));
    }
@@ -2014,7 +2057,7 @@ void disable_check_const_op(pTHX_ AV *dotSUBST_OP)
       for (i=0, e=AvFILLp(dotSUBST_OP); i<=e; ++i) {
          AV *op_descr=(AV*)SvRV(AvARRAY(dotSUBST_OP)[i]);
          SV *op_methods=AvARRAY(op_descr)[2];
-         if (op_methods != &PL_sv_undef)
+         if (op_methods != PmEmptyArraySlot)
             PL_check[SvIVX(AvARRAY(op_descr)[0])]=((subst_op_methods*)SvPVX(op_methods))->reset;
       }
    }
@@ -2028,7 +2071,7 @@ void enable_check_const_op(pTHX_ AV *dotSUBST_OP)
       for (i=0, e=AvFILLp(dotSUBST_OP); i<=e; ++i) {
          AV *op_descr=(AV*)SvRV(AvARRAY(dotSUBST_OP)[i]);
          SV *op_methods=AvARRAY(op_descr)[2];
-         if (op_methods != &PL_sv_undef)
+         if (op_methods != PmEmptyArraySlot)
             PL_check[SvIVX(AvARRAY(op_descr)[0])]=((subst_op_methods*)SvPVX(op_methods))->catch;
       }
    }
@@ -2411,6 +2454,14 @@ CODE:
       cur_lexical_flags=0;
       ENTER;
    }
+}
+
+void
+is_active()
+PPCODE:
+{
+   dTARGET;
+   PUSHi(current_mode());
 }
 
 void

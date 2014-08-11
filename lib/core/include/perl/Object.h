@@ -533,7 +533,7 @@ public:
 };
 
 template <typename Container>
-void read_labels(Object& p, const char* label_prop, Container& labels)
+void read_labels(const Object& p, const char* label_prop, Container& labels)
 {
    if (!(p.lookup(label_prop) >> labels)) {
       std::ostringstream label;

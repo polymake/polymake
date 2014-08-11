@@ -14,9 +14,10 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/Rational.h"
+#include "polymake/linalg.h"
 #include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/SparseMatrix.h"
@@ -46,5 +47,8 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(bounding_box_X_x_x, QuadraticExtension< Rational >, perl::Canned< const pm::RowChain<pm::SparseMatrix<pm::QuadraticExtension<pm::Rational>, pm::NonSymmetric> const&, pm::MatrixMinor<pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&, pm::Set<int, pm::operations::cmp> const&, pm::Series<int, true> const&> const&> >);
    FunctionInstance4perl(bounding_box_X_x_x, Rational, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
    FunctionInstance4perl(bounding_box_X_x_x, double, perl::Canned< const Matrix< double > >);
+   FunctionInstance4perl(bounding_box_X_x_x, double, perl::Canned< const pm::RowChain<pm::Matrix<double> const&, pm::Matrix<double> const&> >);
+   FunctionInstance4perl(bounding_box_X_x_x, double, perl::Canned< const pm::RowChain<pm::ColChain<pm::SingleCol<pm::SameElementVector<double const&> const&>, pm::Matrix<double> const&> const&, pm::ColChain<pm::SingleCol<pm::SameElementVector<double const&> const&>, pm::Matrix<double> const&> const&> >);
+   FunctionInstance4perl(bounding_box_X_x_x, double, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<double const&> const&>, pm::Matrix<double> const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -17,8 +17,24 @@
 ///==== this line controls the automatic file splitting: max.instances=20
 
 #include "polymake/client.h"
+#include "polymake/Matrix.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/linalg.h"
+#include "polymake/Rational.h"
+#include "polymake/QuadraticExtension.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1>
+   FunctionInterface4perl( new_X, T0,T1 ) {
+      perl::Value arg0(stack[1]);
+      WrapperReturnNew(T0, (arg0.get<T1>()) );
+   };
+
+   OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< Matrix< QuadraticExtension< Rational > > > >, perl::Canned< const pm::Transposed<pm::Matrix<pm::QuadraticExtension<pm::Rational> > > >);
+   FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<double const&> const&>, pm::Matrix<double> const&> >);
+   FunctionInstance4perl(new_X, Matrix< double >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<double const&> const&>, pm::Matrix<double> const&> >);
+   OperatorInstance4perl(Binary_diva, perl::Canned< const Wary< pm::ColChain<pm::SingleCol<pm::SameElementVector<double const&> const&>, pm::Matrix<double> const&> > >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<double const&> const&>, pm::Matrix<double> const&> >);
+   OperatorInstance4perl(Binary_diva, perl::Canned< const Wary< Matrix< double > > >, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

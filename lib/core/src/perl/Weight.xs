@@ -16,61 +16,107 @@
 
 #include "polymake/perl/Ext.h"
 
+static HV* my_stash;
+
 MODULE = Polymake::Core::Rule::Weight           PACKAGE = Polymake::Core::Rule::Weight
 
 PROTOTYPES: DISABLE
 
 void
-add_atom(wt,major,minor)
+init(len)
+   I32 len;
+PPCODE:
+{
+   SV* wt=newSV_type(SVt_PV);
+   I32* body;
+   Newxz(body, len, I32);
+   SvPVX(wt)=(char*)body;
+   SvCUR_set(wt, len*sizeof(I32));
+   SvLEN_set(wt, len*sizeof(I32));
+   SvPOKp_on(wt);
+   PUSHs(sv_2mortal(sv_bless(newRV_noinc(wt), my_stash)));
+}
+
+
+void
+copy(srcref, ...)
+   SV* src=SvRV(ST(0));
+PPCODE:
+{
+   SV* wt=newSV_type(SVt_PV);
+   I32 len=SvCUR(src)/sizeof(I32);
+   I32* body;
+   Newx(body, len, I32);
+   Copy(SvPVX(src), body, len, I32);
+   SvPVX(wt)=(char*)body;
+   SvCUR_set(wt, len*sizeof(I32));
+   SvLEN_set(wt, len*sizeof(I32));
+   SvPOKp_on(wt);
+   PUSHs(sv_2mortal(sv_bless(newRV_noinc(wt), my_stash)));
+}
+
+
+void
+add_atom(wt, major, minor)
    SV *wt=SvRV(ST(0));
    I32 major;
    I32 minor;
 CODE:
-   {
-      I32 l=SvCUR(wt)/sizeof(I32);
-      ((I32*)SvPVX(wt))[l-1-major] += minor;
-   }
+{
+   I32 len=SvCUR(wt)/sizeof(I32);
+   ((I32*)SvPVX(wt))[len-1-major] += minor;
+}
+
 
 void
-set_atom(wt,major,minor)
-   SV *wt=SvRV(ST(0));
-   I32 major;
-   I32 minor;
-CODE:
-   {
-      I32 l=SvCUR(wt)/sizeof(I32);
-      ((I32*)SvPVX(wt))[l-1-major] = minor;
-   }
-
-void
-sum(wt1,wt2)
+sum(wt1, wt2)
    SV *wt1=SvRV(ST(0));
    SV *wt2=SvRV(ST(1));
 CODE:
-   {
-      I32 *wtp1=(I32*)SvPVX(wt1),
-          *wtp2=(I32*)SvPVX(wt2);
-      I32 l=SvCUR(wt1)/sizeof(I32);
-      for ( ; l>0; l--)
-         (*wtp1++) += (*wtp2++);
-   }
+{
+   I32 *wtp1=(I32*)SvPVX(wt1),
+       *wtp2=(I32*)SvPVX(wt2);
+   I32 len=SvCUR(wt1)/sizeof(I32);
+   while (--len >= 0)
+      (*wtp1++) += (*wtp2++);
+}
+
 
 I32
-compare(wt1,wt2,reverse)
+compare(wt1, wt2, reverse)
    SV *wt1 = SvRV(ST(0));
    SV *wt2 = SvRV(ST(1));
    I32 reverse;
 CODE:
    RETVAL=0;
-   {
-      I32* wtp1=(I32*)SvPVX(wt1);
-      I32* wtp2=(I32*)SvPVX(wt2);
-      I32 l=SvCUR(wt1)/sizeof(I32);
-      while (--l>=0 && !(RETVAL = (*wtp1++) - (*wtp2++))) ;
-      if (reverse) RETVAL=-RETVAL;
-   }
+{
+   I32* wtp1=(I32*)SvPVX(wt1);
+   I32* wtp2=(I32*)SvPVX(wt2);
+   I32 len=SvCUR(wt1)/sizeof(I32);
+   while (--len >= 0 && !(RETVAL = (*wtp1++) - (*wtp2++))) ;
+   if (reverse) RETVAL=-RETVAL;
+}
 OUTPUT:
    RETVAL
+
+
+void
+toList(wt, ...)
+   SV* wt=SvRV(ST(0));
+PPCODE:
+{
+   I32 len=SvCUR(wt)/sizeof(I32);
+   I32 *limb=(I32*)SvPVX(wt), *end=limb+len;
+   EXTEND(SP, len);
+   for (; limb < end; ++limb)
+      PUSHs(sv_2mortal(newSViv(*limb)));
+}
+
+
+BOOT:
+{
+   my_stash=gv_stashpv("Polymake::Core::Rule::Weight", FALSE);
+}
 
 =pod
 // Local Variables:

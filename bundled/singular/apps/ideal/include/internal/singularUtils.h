@@ -1,11 +1,6 @@
-/* Copyright (c) 2012
-   by authors as mentioned on:
-   https://github.com/lkastner/polymake_algebra/wiki/Authors
-
-   Project home:
-   https://github.com/lkastner/polymake_algebra
-
-   For licensing we cite the original Polymake code:
+/* Copyright (c) 1997-2014
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+   http://www.polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -16,19 +11,30 @@
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
+--------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_IDEAL_SINGULAR_FULL_H
-#define POLYMAKE_IDEAL_SINGULAR_FULL_H
+#ifndef POLYMAKE_IDEAL_INTERNAL_SINGULAR_UTILS_H
+#define POLYMAKE_IDEAL_INTERNAL_SINGULAR_UTILS_H
 
+// Singular includes
+#include <Singular/libsingular.h>
 
-#include "polymake/ideal/singularRingManager.h"
-#include "polymake/ideal/singularConvertTypes.h"
+// polymake includes
+#include "polymake/client.h"
+#include "polymake/Map.h"
+// #include "polymake/Polynomial.h"
 
 namespace polymake { 
 namespace ideal {
 namespace singular {
    
+
+   // Storing the handles for the Singular functions globally.
+   extern Map<std::string, idhdl> singular_function_map;
+
+   idhdl get_singular_function(std::string s);
+
 
 
 } // end namespace singular

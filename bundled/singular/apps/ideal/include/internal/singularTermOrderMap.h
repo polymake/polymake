@@ -1,11 +1,6 @@
-/* Copyright (c) 2012
-   by authors as mentioned on:
-   https://github.com/lkastner/polymake_algebra/wiki/Authors
-
-   Project home:
-   https://github.com/lkastner/polymake_algebra
-
-   For licensing we cite the original Polymake code:
+/* Copyright (c) 1997-2014
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+   http://www.polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -16,10 +11,16 @@
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
+--------------------------------------------------------------------------------
 */
 
+#ifndef POLYMAKE_IDEAL_SINGULAR_TERM_ORDER_MAP_H
+#define POLYMAKE_IDEAL_SINGULAR_TERM_ORDER_MAP_H
+
 #include "polymake/Map.h"
-#include "polymake/ideal/singularTermOrderData.h"
+#include "polymake/ideal/internal/singularTermOrderData.h"
+
+#include <Singular/libsingular.h>
 
 namespace polymake { 
 namespace ideal {
@@ -58,4 +59,5 @@ public:
 } // end namespace ideal
 } // end namespace polymake
 
+#endif
 

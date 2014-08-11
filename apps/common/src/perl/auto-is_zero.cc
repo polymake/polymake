@@ -19,8 +19,10 @@
 #include "polymake/client.h"
 #include "polymake/internal/comparators.h"
 #include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/IncidenceMatrix.h"
+
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
@@ -31,5 +33,6 @@ namespace polymake { namespace common { namespace {
 
    FunctionInstance4perl(is_zero_X, perl::Canned< const Matrix<Rational> >);
    FunctionInstance4perl(is_zero_X, perl::Canned< const Matrix<double> >);
+   FunctionInstance4perl(is_zero_X, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -202,12 +202,11 @@ namespace {
                  e += coefficients[j] * PPL::Variable(j-1);
               }
 
-              PPL::Generator v;
               if (coefficients[0] != 0) {
-                 v = PPL::point(e, lcm_of_row_denom.gmp() ); // v is a point
+                 PPL::Generator v = PPL::point(e, lcm_of_row_denom.gmp() ); // v is a point
                  gs.insert(v);
               } else {
-                 v = PPL::ray(e); // v is a ray
+                 PPL::Generator v = PPL::ray(e); // v is a ray
                  gs.insert(v);
               }
            } 

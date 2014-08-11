@@ -61,5 +61,7 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary_add, perl::Canned< const Polynomial< Rational, int > >, perl::Canned< const Polynomial< Rational, int > >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Polynomial< Rational, int > >, int);
    FunctionInstance4perl(new_X, Polynomial< Rational, int >, perl::Canned< const Term< Rational, int > >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const Polynomial< Rational, int > >, perl::Canned< const Term< Rational, int > >);
+   OperatorInstance4perl(Binary__gt, perl::Canned< const Polynomial< Rational, int > >, perl::Canned< const Polynomial< Rational, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }
