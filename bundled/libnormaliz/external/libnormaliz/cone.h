@@ -27,11 +27,12 @@
 #include <vector>
 #include <map>
 #include <utility> //for pair
-#include <boost/dynamic_bitset.hpp>
+//#include <boost/dynamic_bitset.hpp>
 
 #include "libnormaliz.h"
 #include "cone_property.h"
 #include "sublattice_representation.h"
+#include "matrix.h"
 #include "HilbertSeries.h"
 
 namespace libnormaliz {
@@ -40,7 +41,7 @@ using std::map;
 using std::pair;
 
 template<typename Integer> class Full_Cone;
-template<typename Integer> class Matrix;
+//template<typename Integer> class Matrix;
 
 // type for simplex, short in contrast to class Simplex
 template<typename Integer> struct SHORTSIMPLEX {

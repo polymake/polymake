@@ -18,12 +18,12 @@
 
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
-#include "polymake/Rational.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/QuadraticExtension.h"
 #include "polymake/linalg.h"
-#include "polymake/Set.h"
 #include "polymake/Vector.h"
+#include "polymake/Rational.h"
+#include "polymake/QuadraticExtension.h"
+#include "polymake/Set.h"
 #include "polymake/Integer.h"
 
 namespace polymake { namespace common { namespace {
@@ -69,5 +69,8 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary__ora, perl::Canned< const pm::SameElementVector<pm::Rational const&> >, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
    OperatorInstance4perl(Binary_add, perl::Canned< const Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::QuadraticExtension<pm::Rational> > const&>, pm::Series<int, true>, void> > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::QuadraticExtension<pm::Rational> > const&>, pm::Series<int, true>, void> >);
    OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::QuadraticExtension<pm::Rational> > const&>, pm::Series<int, true>, void> >);
+   OperatorInstance4perl(Binary__ora, int, perl::Canned< const Vector< double > >);
+   OperatorInstance4perl(Binary_div, perl::Canned< const Wary< pm::VectorChain<pm::SingleElementVector<double>, pm::Vector<double> const&> > >, perl::Canned< const Matrix< double > >);
+   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double>&>, pm::Series<int, true>, void>, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSet<int>, double> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

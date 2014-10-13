@@ -146,11 +146,14 @@ perl::Object secondary_cone(const Matrix<Scalar> &verts,const Array<Set <int> >&
 
    perl::Object p(perl::ObjectType::construct<Scalar>("Cone"));
 
-   if (subdiv.size()==1 && subdiv[0].size() == verts.rows()) {
-      p.take("RAYS")<<(new Matrix<Scalar>(0,verts.rows()));
-      p.take("AMBIENT_DIM")<<verts.rows();
+  
+   if (subdiv.size()==1 && subdiv[0].size() == verts.rows() && rank(verts) == verts.rows()) {
+      p.take("RAYS")<<Matrix<Scalar>(0,verts.rows());
+      p.take("CONE_AMBIENT_DIM")<<verts.rows();
+      p.take("LINEALITY_SPACE")<<unit_matrix<Scalar>(verts.rows());
       return p;
    }
+  
 
    std::pair<const Matrix<Scalar>,const Matrix<Scalar> > mats = secondary_cone_ineq(verts,subdiv,options);
 

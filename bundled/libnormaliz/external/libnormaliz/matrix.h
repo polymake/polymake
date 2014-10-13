@@ -216,10 +216,10 @@ public:
     // In the following routines denom is the absolute value of the determinant of the
     // left side matrix ( =this).
 
-    Matrix solve(Matrix Right_side, Integer& denom) const;// solves the system
+    Matrix solve(const Matrix& Right_side, Integer& denom) const;// solves the system
     //this*Solution=denom*Right_side. this should be a quadratic matrix with nonzero determinant.
 
-    Matrix solve(Matrix Right_side, vector< Integer >& diagonal, Integer& denom) const;// solves the system
+    Matrix solve(const Matrix& Right_side, vector< Integer >& diagonal, Integer& denom) const;// solves the system
     //this*Solution=denom*Right_side. this should be a quadratic /matrix with nonzero determinant.
     //The diagonal of this after transformation into an upper triangular matrix
     //is saved in diagonal
@@ -245,8 +245,17 @@ public:
     //same as find_linear_form but also works with not maximal rank
     //uses a linear transformation to get a full rank matrix
 
-    vector<Integer> solve(vector<Integer> v) const;
-    // like find_linear_form, but for right side v
+    // The next two solve routines do not require the matrix to be square.
+    // However, we want rank = number of columns, ensuring unique solvability
+    
+    vector<Integer> solve(const vector<Integer>& v, Integer& denom) const;
+    // computes solution vector for right side v, solution over the rationals
+    // with denominator denom. 
+    // gcd of denom and solution is extracted !!!!!
+    
+    vector<Integer> solve(const vector<Integer>& v) const;
+    // computes solution vector for right side v
+    // insists on integrality of the solution
     
     Matrix<Integer> kernel () const;
     // computes a ZZ-basis of the solutions of (*this)x=0

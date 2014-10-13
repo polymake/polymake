@@ -913,13 +913,13 @@ size_t Matrix<Integer>::rank_destructive(){
     if(!test_arithmetic_overflow)
         return rk;
             
-    Integer det=elements[0][0];
-    for(i=1;i<rk;i++){
+    Integer det = 1;
+    for (i=0; i<rk; i++){
         det*=elements[i][i];
     }
         
-    Integer test_det=elements[0][0]%overflow_test_modulus;
-    for(i=1;i<rk;i++){
+    Integer test_det = 1;
+    for (i=0; i<rk; i++) {
         test_det=(test_det*elements[i][i]%overflow_test_modulus)%overflow_test_modulus;
     }
     if(test_det!=det%overflow_test_modulus){
@@ -974,16 +974,16 @@ Integer Matrix<Integer>::vol_destructive(){
         return 0;
     
     
-    Integer det=elements[0][0];
-    for(i=1;i<nr;i++){
+    Integer det = 1;
+    for (i=0; i<nr; i++){
         det*=elements[i][i];
     }
 
     if(!test_arithmetic_overflow)
         return Iabs(det);
         
-    Integer test_det=elements[0][0]%overflow_test_modulus;
-    for(i=1;i<nr;i++){
+    Integer test_det = 1;
+    for (i=0; i<nr; i++){
         test_det=(test_det*elements[i][i]%overflow_test_modulus)%overflow_test_modulus;
     }
     if(test_det!=det%overflow_test_modulus){
@@ -1154,18 +1154,19 @@ Matrix<Integer> Matrix<Integer>::solve_destructive(Matrix<Integer>& Right_side, 
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-Matrix<Integer> Matrix<Integer>::solve(Matrix<Integer> Right_side, Integer& denom) const {
-    Matrix<Integer> Left_side(*this);
+Matrix<Integer> Matrix<Integer>::solve(const Matrix<Integer>& Right_side, Integer& denom) const {
+    // Matrix<Integer> Left_side(*this);
     vector<Integer> dummy_diag(nr);
-    return Left_side.solve_destructive(Right_side, dummy_diag, denom);
+    return solve(Right_side, dummy_diag, denom);
 }
 
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-Matrix<Integer> Matrix<Integer>::solve(Matrix<Integer> Right_side, vector< Integer >& diagonal, Integer& denom) const {
+Matrix<Integer> Matrix<Integer>::solve(const Matrix<Integer>& Right_side, vector< Integer >& diagonal, Integer& denom) const {
     Matrix<Integer> Left_side(*this);
-    return Left_side.solve_destructive(Right_side, diagonal, denom);
+    Matrix<Integer> Copy_Right_Side=Right_side;
+    return Left_side.solve_destructive(Copy_Right_Side, diagonal, denom);
 }    
 
 //---------------------------------------------------------------------------
@@ -1183,12 +1184,11 @@ Matrix<Integer> Matrix<Integer>::invert(vector< Integer >& diagonal, Integer& de
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-vector<Integer> Matrix<Integer>::solve(vector<Integer> v) const {
+vector<Integer> Matrix<Integer>::solve(const vector<Integer>& v, Integer& denom) const {
     if (nc == 0 || nr == 0) { //return zero-vector as solution
         return vector<Integer>(nc,0);
     }
     size_t i;
-    Integer denom;
     vector<key_t>  rows=max_rank_submatrix_lex();
     Matrix<Integer> Left_Side=submatrix(rows);
     assert(nc == Left_Side.nr); //otherwise input hadn't full rank //TODO 
@@ -1198,23 +1198,41 @@ vector<Integer> Matrix<Integer>::solve(vector<Integer> v) const {
     Matrix<Integer> Solution=Left_Side.solve(Right_Side, denom);
     vector<Integer> Linear_Form(nc);
     for (i = 0; i <nc; i++) {
-        Linear_Form[i] = Solution.read(i,0);
+        Linear_Form[i] = Solution[i][0];  // the solution vector is called Linear_Form
     }
-    denom/=v_make_prime(Linear_Form);
-    vector<Integer> test = MxV(Linear_Form);
-    //cout << denom << " v= " << v;
-    //cout << denom << " t= " << test; 
+    // cout << denom << " v= " << v;
+    // denom/=v_make_prime(Linear_Form);
+    vector<Integer> test = MxV(Linear_Form); // we have solved the system by taking a square submatrix
+    // cout << denom << " v= " << v;         // now we must test whether the solution satisfies the full system
+    // cout << denom << " t= " << test; 
     for (i = 0; i <nr; i++) {
         if (test[i] != denom * v[i]){
             return vector<Integer>();
         }
     }
+    Integer total_gcd =gcd(denom,v_gcd(Linear_Form)); // extract the gcd of denom and solution
+    denom/=total_gcd;
+    v_scalar_division(Linear_Form,total_gcd);
     return Linear_Form;
 }
 
 template<typename Integer>
+vector<Integer> Matrix<Integer>::solve(const vector<Integer>& v) const {
+
+    Integer denom;
+    vector<Integer> result=solve(v,denom);
+    if(denom!=1)
+        result.clear();
+    return result;
+}
+
+template<typename Integer>
 vector<Integer> Matrix<Integer>::find_linear_form() const {
-    return solve(vector<Integer>(nr,1));
+
+    Integer denom;
+    vector<Integer> result=solve(vector<Integer>(nr,1),denom);
+    v_make_prime(result);
+    return result;
 }
 
 //---------------------------------------------------------------------------

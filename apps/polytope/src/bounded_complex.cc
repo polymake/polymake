@@ -30,7 +30,7 @@ IncidenceMatrix<>
 bounded_complex_from_incidence(const IncidenceMatrix<>& VIF, const Set<int>& far_face, const int upper_bound)
 {
    graph::HasseDiagram HD;
-   face_lattice::compute_bounded(VIF, far_face, filler(HD), upper_bound);
+   face_lattice::compute_bounded(VIF, far_face, filler(HD,true), upper_bound);
    IncidenceMatrix<> BC(HD.max_faces(), VIF.cols());
    BC.squeeze_cols();
    return BC;

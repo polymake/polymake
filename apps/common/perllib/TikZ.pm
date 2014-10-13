@@ -72,7 +72,8 @@ sub trailer {
 
 sub toString {
    my ($self)=@_;
-   my $trans= defined($self->transform) ? $self->transform : (new Matrix<Float>([[1,0,0,0],[0,2,0,-0.4],[0,0,2,-1],[0,0,0,1]]));
+   my $trans= defined($self->transform) ? (new Matrix<Float>($self->transform)) : (new Matrix<Float>([[1,0,0,0],[0,0.9,-0.06,-0.44],[0,-0.076,0.95,-0.29],[0,0.43,0.3,0.85]]));
+   $trans->row(0) = unit_vector<Float>(4,0);
    $self->header($trans) . join("", map { $_->toString($trans) } @{$self->geometries}) . $self->trailer;
 }
 
@@ -130,13 +131,13 @@ sub pointsToString {
             foreach my $e(@{$self->source->Vertices}){
                 my @own_color_array = split(/ /, $color->($i)->toFloat);
                 my $ocstring = join ",", @own_color_array;
-                $text .= "  \\definecolor{pointcolor_$id"."_$i}{rgb}{ $ocstring }\n";
+                $text .= "  \\definecolor{pointcolor\_$id"."_$i}{rgb}{ $ocstring }\n";
                 ++$i;
             }}
 
         $text.= <<".";
-  \\definecolor{pointcolor_$id}{rgb}{ $vcstring }
-  \\tikzstyle{pointstyle_$id} = [fill=pointcolor_$id]
+  \\definecolor{pointcolor\_$id}{rgb}{ $vcstring }
+  \\tikzstyle{pointstyle\_$id} = [fill=pointcolor\_$id]
 
 .
     }
@@ -146,7 +147,7 @@ sub pointsToString {
     foreach (@{$self->source->Vertices}) {
         my $point=ref($_) ? Visual::print_coords($_) : "$_".(" 0"x($d-1));
         $point =~ s/\s+/, /g;
-        $text .= "  \\coordinate (v$k) at ($point);\n";
+        $text .= "  \\coordinate (v$k\_$id) at ($point);\n";
         ++$k;
     }
     $text .= "\n";
@@ -181,7 +182,7 @@ sub linesToString {
     my $color_flag= is_code($color) ? "show" : "hide";
     my @linecolor = ($color_flag eq "show") ? split(/ /, $color->($self->source->all_edges)) : split(/ /, $color->toFloat);
     my $lcstring = join ",", @linecolor;
-    my $lsstring = "color=linecolor_$id, thick";
+    my $lsstring = "color=linecolor\_$id, thick";
     if($arrows==1) {
         $lsstring .= ", arrows = -stealth, shorten >= 1pt";
     } elsif($arrows==-1) {
@@ -211,8 +212,8 @@ sub linesToString {
     if ($line_flag eq "show"){
         $text .= "\n  % EDGE STYLE\n";    
         $text = <<".";
-  \\definecolor{linecolor_$id}{rgb}{ $lcstring }
-  \\tikzstyle{linestyle_$id} = [$lsstring]
+  \\definecolor{linecolor\_$id}{rgb}{ $lcstring }
+  \\tikzstyle{linestyle\_$id} = [$lsstring]
 
 .
 
@@ -222,7 +223,7 @@ sub linesToString {
                     my $own_color =  $color->($e)->toFloat;
                     my @own_color_array = split(/ /, $color->($e)->toFloat);
                     my $ocstring = join ",", @own_color_array;
-                    $text .= "\n  \\definecolor{linecolor_$id"."_v$a"."_v$b}{rgb}{ $ocstring }\n";
+                    $text .= "\n  \\definecolor{linecolor\_$id"."_v$a"."_v$b}{rgb}{ $ocstring }\n";
                 }
         }
 
@@ -233,10 +234,10 @@ sub linesToString {
         for (my $e=$self->source->all_edges; $e; ++$e) {
             my @vertices_to_draw=();
             my $a=$e->[0]; my $b=$e->[1];
-            my $option_string = "linestyle_$id";
-            $option_string .= ($color_flag eq "show") ? ", linecolor_$id"."_v$a"."_v$b" : "";
+            my $option_string = "linestyle\_$id";
+            $option_string .= ($color_flag eq "show") ? ", linecolor\_$id"."_v$a"."_v$b" : "";
             $text .= <<".";
-  \\draw[$option_string] (v$a) -- (v$b);
+  \\draw[$option_string] (v$a\_$id) -- (v$b\_$id);
 .
                 if (!--$vertex_count->[$a]){
                     push @vertices_to_draw, $a;
@@ -250,10 +251,11 @@ sub linesToString {
                 $text.="\n\n%POINTS\n";
                 foreach my $i (@vertices_to_draw) {
                     if (defined($point_labels)) {
-                        $text .= "  \\node at (v$i) [inner sep=0.5pt, above right, black] {\\tiny{".'$'.$point_labels->($i).'$}};'."\n";
+                        $text .= "  \\node at (v$i\_$id) [inner sep=0.5pt, above right, black] {\\tiny{".'$'.$point_labels->($i).'$}};'."\n";
                     }
-                    my $option_string = ($point_color_flag eq "show") ? "pointcolor_$id"."_$i" : "pointcolor_$id";
-                    $text .= "  \\fill[$option_string] (v$i) circle ($point_thickness pt);\n";
+                    my $option_string = ($point_color_flag eq "show") ? "pointcolor\_$id"."\_$i" : "pointcolor\_$id";
+                    my $pthick = ($point_thickness_flag eq "show") ? $point_thickness->($i) : $point_thickness;
+                    $text .= "  \\fill[$option_string] (v$i\_$id) circle ($pthick pt);\n" if ($pthick ne "");
                 }
                 $text.="\n\n%EDGES\n";
             }
@@ -326,12 +328,12 @@ sub facesToString {
     if ($face_flag eq "show" || $edge_flag eq "show"){
         $text .= "\n  % FACES STYLE\n";  
         my $option_string = "";
-        $option_string .= ($face_flag eq "show") ? "fill=facetcolor_$id, opacity=$transp," : "";
-        $option_string .= ($edge_flag eq "show") ? "draw=edgecolor_$id, line width=$thickness pt, line cap=round, line join=round" : "draw=none";
-        $text .= ($face_flag eq "show") ? "  \\definecolor{facetcolor_$id}{rgb}{ $fcstring }\n" : "";
-        $text .= ($edge_flag eq "show") ? "  \\definecolor{edgecolor_$id}{rgb}{ $egstring }\n" : "";
+        $option_string .= ($face_flag eq "show") ? "fill=facetcolor\_$id, opacity=$transp," : "";
+        $option_string .= ($edge_flag eq "show") ? "draw=edgecolor\_$id, line width=$thickness pt, line cap=round, line join=round" : "draw=none";
+        $text .= ($face_flag eq "show") ? "  \\definecolor{facetcolor\_$id}{rgb}{ $fcstring }\n" : "";
+        $text .= ($edge_flag eq "show") ? "  \\definecolor{edgecolor\_$id}{rgb}{ $egstring }\n" : "";
         $text .= <<".";
-  \\tikzstyle{facetstyle_$id} = [$option_string]
+  \\tikzstyle{facetstyle\_$id} = [$option_string]
 
 .
     }
@@ -362,7 +364,7 @@ sub facesToString {
         foreach my $e(@sorted_facets){
             my @own_color_array = split(/ /, $facet_color->($i)->toFloat);
             my $ocstring = join ",", @own_color_array;
-            $text .= "\n\\definecolor{facetcolor_$id"."_$e}{rgb}{ $ocstring }\n";
+            $text .= "\n\\definecolor{facetcolor\_$id"."_$e}{rgb}{ $ocstring }\n";
         }
         $text .="\n";
     }
@@ -374,17 +376,17 @@ sub facesToString {
         $text .= "\n  % FACES and EDGES and POINTS in the right order\n";    
         foreach my $facet(@sorted_facets) {
             my @vertices_to_draw=();
-            my $option_string = "fill,facetstyle_$id";
-            $option_string .= ($facet_color_flag eq "show") ? ", facetcolor_$id"."_$facet" : "";      
+            my $option_string = "fill,facetstyle\_$id";
+            $option_string .= ($facet_color_flag eq "show") ? ", facetcolor\_$id"."_$facet" : "";      
             $text .= "  \\draw[$option_string]";
             foreach my $vertex(@{$facets->[$facet]}) {
-                $text.=" (v$vertex) --";
+                $text.=" (v$vertex\_$id) --";
                 if (!--$vertex_count[$vertex]){
                     push @vertices_to_draw, $vertex;
                 }
             }
             my $first_v=$facets->[$facet]->[0];
-            $text.=" (v$first_v) -- cycle;";
+            $text.=" (v$first_v\_$id) -- cycle;";
             $text.="\n";
 
             ###
@@ -393,10 +395,10 @@ sub facesToString {
                 $text.="\n\n%POINTS\n";
                 foreach my $i (@vertices_to_draw) {
                     if (defined($point_labels)) {
-                        $text .= "  \\node at (v$i) [inner sep=0.5pt, above right, black] {\\tiny{".'$'.$point_labels->($i).'$}};'."\n";
+                        $text .= "  \\node at (v$i\_$id) [inner sep=0.5pt, above right, black] {\\tiny{".'$'.$point_labels->($i).'$}};'."\n";
                     }
-                    my $option_string = ($point_color_flag eq "show") ? "pointcolor_$id"."_$i" : "pointcolor_$id";
-                    $text .= "  \\fill[$option_string] (v$i) circle ($point_thickness pt);\n";
+                    my $option_string = ($point_color_flag eq "show") ? "pointcolor\_$id"."\_$i" : "pointcolor\_$id";
+                    $text .= "  \\fill[$option_string] (v$i\_$id) circle ($point_thickness pt);\n";
                 }
                 $text.="\n\n%FACETS\n";
             }

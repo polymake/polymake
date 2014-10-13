@@ -537,7 +537,8 @@ void Cone<Integer>::prepare_input_lattice_ideal(const map< InputType, vector< ve
 
     if (isComputed(ConeProperty::Grading)) {
         // solve GeneratorsOfToricRing * grading = old_grading
-        Grading = Positive_Embedded_Generators.solve(Grading);
+        Integer dummyDenom;
+        Grading = Positive_Embedded_Generators.solve(Grading,dummyDenom);
         if (Grading.size() != dim) {
             errorOutput() << "Grading could not be transfered!"<<endl;
             is_Computed.set(ConeProperty::Grading, false);
@@ -1069,9 +1070,10 @@ ConeProperties Cone<Integer>::compute(ConeProperties ToCompute) {
 
     if (ToCompute.test(ConeProperty::DualMode)) {
         compute_dual(ToCompute);
-        if (ToCompute.none())
-            return ToCompute;
     }
+    ToCompute.reset(is_Computed);
+    if (ToCompute.none())
+        return ToCompute;
 
     /* preparation: get generators if necessary */
     compute_generators();
@@ -1206,7 +1208,7 @@ void Cone<Integer>::compute_generators() {
                 setGrading(Grading);
             }
             // compute grading, so that it is also known if nothing else is done afterwards
-            if (!isComputed(ConeProperty::Grading)) {
+            if (!isComputed(ConeProperty::Grading) && !inhomogeneous) {
                 // Generators = ExtremeRays
                 vector<Integer> lf = BasisChange.to_sublattice(Generators).find_linear_form();
                 if (lf.size() == BasisChange.get_rank()) {
@@ -1630,6 +1632,12 @@ void Cone<Integer>::set_zero_cone() {
 
         ModuleGenerators = Matrix<Integer>(0,dim);
         is_Computed.set(ConeProperty::ModuleGenerators);
+
+        affine_dim = -1;
+        is_Computed.set(ConeProperty::AffineDim);
+
+        recession_rank = 0;
+        is_Computed.set(ConeProperty::RecessionRank);
     }
 
     if (inhomogeneous || ExcludedFaces.nr_of_rows() != 0) {

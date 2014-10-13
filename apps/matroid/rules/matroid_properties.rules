@@ -56,6 +56,9 @@ property RANK : Int;
 
 property CIRCUITS : Array<Set>;
 
+# Hyperplanes, i.e. flats of rank RANK-1.
+
+property MATROID_HYPERPLANES : Array<Set>;
 
 # The number of [[CIRCUITS]].
 
@@ -131,8 +134,24 @@ property BETA_INVARIANT : Integer;
 #Whether the matroid is connected
 property CONNECTED : Bool;
 
+#The connected componets
+property CONNECTED_COMPONENTS : Array<Set>{
+    sub equal {
+        my ($M1,$M2)=@_;
+        eval {
+            find_permutation($M1,$M2);
+            1;
+        } or do {
+            0;
+        }
+    }
+}
+
 #Whether the matroid is series-parallel
 property SERIES_PARALLEL : Bool;
+
+#The lattice of flats, this is a graph with all closed sets as nodes
+property LATTICE_OF_FLATS : FaceLattice;
 
 #The h-vector of a matroid
 property H_VECTOR : Vector<Integer>;

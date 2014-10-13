@@ -42,7 +42,7 @@ namespace libnormaliz {
 
 template <typename T>
 ostream& operator<< (ostream& out, const list<T>& l) {
-    typename list< vector<T> >::const_iterator i;
+    typename list<T>::const_iterator i;
     for (i =l.begin(); i != l.end(); i++) {
         out << *i <<" ";
     }

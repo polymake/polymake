@@ -45,7 +45,7 @@ perl::Object hasse_diagram(const IncidenceMatrix<> &MaximalCones,
       
    // fill the hasse diagram
    graph::HasseDiagram HD;
-   graph::HasseDiagram::_filler HD_filler(HD);
+   graph::HasseDiagram::_filler HD_filler(HD,false);
 
    // the number of the next node added in the Hasse diagram
    int i=0;

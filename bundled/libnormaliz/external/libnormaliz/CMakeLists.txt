@@ -1,0 +1,49 @@
+# libnormaliz source files
+SET(sources cone_property.cpp HilbertSeries.cpp libnormaliz-templated.cpp)
+# libnormaliz header files
+SET(headers cone.h cone_property.h general.h HilbertSeries.h integer.h libnormaliz.h map_operations.h matrix.h my_omp.h normaliz_exception.h sublattice_representation.h vector_operations.h)
+
+# add the necessary include directories
+INCLUDE_DIRECTORIES(.)
+FIND_PACKAGE(Boost REQUIRED)
+IF (Boost_FOUND)
+  MESSAGE(STATUS "Boost found with include dir: ${Boost_INCLUDE_DIR}")
+ENDIF()
+INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
+
+SET (NMZ_BUILD_BOTH "NO" CACHE BOOL "build shared AND static libnormaliz")
+
+IF (NMZ_BUILD_BOTH OR NOT NMZ_BUILD_STATIC)
+  # create the shared library
+  ADD_LIBRARY(normaliz-shared SHARED ${sources})
+  SET_TARGET_PROPERTIES(normaliz-shared PROPERTIES OUTPUT_NAME normaliz VERSION ${VERSION} SOVERSION 0)
+  IF (${APPLE}) #for some reason needed on mac
+    TARGET_LINK_LIBRARIES (normaliz-shared ${GMPXX_LIBRARIES} ${GMP_LIBRARIES})
+  ENDIF ()
+  INSTALL(TARGETS normaliz-shared
+    LIBRARY DESTINATION lib${LIB_SUFFIX}
+    COMPONENT sharedlibs
+  )
+ENDIF ()
+
+IF (NMZ_BUILD_BOTH OR NMZ_BUILD_STATIC)
+  #create the static library
+  ADD_LIBRARY(normaliz-static STATIC ${sources})
+  SET_TARGET_PROPERTIES(normaliz-static PROPERTIES OUTPUT_NAME normaliz VERSION ${VERSION} SOVERSION 0)
+  INSTALL(TARGETS normaliz-static ARCHIVE DESTINATION lib${LIB_SUFFIX})
+ENDIF ()
+
+INSTALL(FILES ${headers} DESTINATION include/${PROJECT_NAME} COMPONENT headers)
+
+SET(LIBNORMALIZ_INCLUDE_DIR ${includedir})
+SET(LIBNORMALIZ_INCLUDE_DIRS ${LIBNORMALIZ_INCLUDE_DIR})
+SET(LIBNORMALIZ_ROOT_DIR ${prefix})
+SET(LIBNORMALIZ_VERSION_STRING ${VERSION_STRING})
+SET(LIBNORMALIZ_VERSION_MAJOR ${MAJOR_VERSION})
+SET(LIBNORMALIZ_VERSION_MINOR ${MINOR_VERSION})
+SET(LIBNORMALIZ_VERSION_PATCH ${PATCH_VERSION})
+SET(LIBNORMALIZ_USE_FILE ${CMAKE_INSTALL_PREFIX}/${LIBNORMALIZ_CMAKE_CONFIG_DIR}/UseLibnormaliz.cmake)
+CONFIGURE_FILE(../LibnormalizConfig.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/LibnormalizConfig.cmake @ONLY)
+#INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/LibnormalizConfig.cmake ../UseLibnormaliz.cmake DESTINATION ${LIBNORMALIZ_CMAKE_CONFIG_DIR})
+
+#ADD_SUBDIRECTORY(examples)

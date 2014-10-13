@@ -53,7 +53,7 @@ sub non_zero_indices{
 # @return Matrix
 user_function _4ti2Circuits(Matrix){
    my($B) = @_;
-   my $A = transpose($B);
+   my $A = transpose(new Matrix($B));
    my $tempname = new Tempfile;
    open(my $filePipe, ">".$tempname.".mat");
    print $filePipe $A->rows." ".$A->cols."\n";

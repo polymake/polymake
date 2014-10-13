@@ -163,12 +163,11 @@ sub pointsToString {
         $text .= 'special|\node at #1 [inner sep=0.5pt, above right] {\tiny{$'.$labels->($i).'$}};'."\n|[lay=in] (v$i)";
       }
     
-       my $option_string = "dotsize=$thickness pt, style=pointstyle_$id";
+       my $pthick = ($thickness_flag eq "show") ? $thickness->($i) : $thickness;      
+       my $option_string = "dotsize=$pthick pt, style=pointstyle_$id";
        $option_string .= ($color_flag eq "show") ? ", color=pointcolor_$id"."_$i" : "";
 
-      $text .= <<".";
-  dots [$option_string] (v$i)
-.
+      $text .= "  dots [$option_string] (v$i)\n" if ($pthick ne "");
    }      
  }
 

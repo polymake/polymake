@@ -18,10 +18,10 @@
 
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
-#include "polymake/IncidenceMatrix.h"
-#include "polymake/linalg.h"
 #include "polymake/Rational.h"
+#include "polymake/IncidenceMatrix.h"
 #include "polymake/QuadraticExtension.h"
+#include "polymake/linalg.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -36,5 +36,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, Matrix< double >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<double const&> const&>, pm::Matrix<double> const&> >);
    OperatorInstance4perl(Binary_diva, perl::Canned< const Wary< pm::ColChain<pm::SingleCol<pm::SameElementVector<double const&> const&>, pm::Matrix<double> const&> > >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<double const&> const&>, pm::Matrix<double> const&> >);
    OperatorInstance4perl(Binary_diva, perl::Canned< const Wary< Matrix< double > > >, int);
+   OperatorInstance4perl(Unary_neg, perl::Canned< const Wary< Matrix< QuadraticExtension< Rational > > > >);
+   OperatorInstance4perl(assign, Matrix< Rational >, perl::Canned< const Matrix< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

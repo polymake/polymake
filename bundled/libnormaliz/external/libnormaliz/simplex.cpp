@@ -140,6 +140,7 @@ SimplexEvaluator<Integer>::SimplexEvaluator(Full_Cone<Integer>& fc)
   dim(fc.dim),
   det_sum(0),
   mult_sum(0),
+  key(dim),
   candidates_size(0),
   collected_elements_size(0),
   Generators(dim,dim),
@@ -178,6 +179,10 @@ SimplexEvaluator<Integer>::SimplexEvaluator(Full_Cone<Integer>& fc)
         InExSimplData[i].hvector.resize(hv_max);
         InExSimplData[i].gen_degrees.reserve(fc.dim);
     }
+    
+    full_cone_simplicial=(C_ptr->nr_gen==C_ptr->dim);
+    is_complete_simplex=true; // to be changed later if necessrary
+    mother_simplex=this; // to be changed later if necessrary
 }
 
 //---------------------------------------------------------------------------
@@ -202,7 +207,7 @@ void SimplexEvaluator<Integer>::add_to_inex_faces(const vector<Integer> offset, 
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void SimplexEvaluator<Integer>::prepare_inclusion_exclusion_simpl(const vector<key_t>& key,size_t Deg) {
+void SimplexEvaluator<Integer>::prepare_inclusion_exclusion_simpl(size_t Deg) {
      
      Full_Cone<Integer>& C = *C_ptr;
      // map<boost::dynamic_bitset<>, long> InExSimpl;      // local version of nExCollect   
@@ -272,11 +277,13 @@ void SimplexEvaluator<Integer>::update_inhom_hvector(long level_offset, size_t D
 size_t Unimod=0, Ht1NonUni=0, Gcd1NonUni=0, NonDecided=0, NonDecidedHyp=0;
 size_t TotDet=0;
 
-/* evaluates a simplex in regard to all data */
+//---------------------------------------------------------------------------
+
 template<typename Integer>
-Integer SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
-    Integer& volume = s.vol;
-    vector<key_t>& key = s.key;
+Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s) {
+
+    volume = s.vol;
+    key = s.key;
     Full_Cone<Integer>& C = *C_ptr;
 
     bool do_only_multiplicity =
@@ -291,7 +298,7 @@ Integer SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
         for (i=0; i<dim; i++)
             gen_degrees[i] = C.gen_degrees[key[i]];
             
-    size_t nr_level0_gens=0;
+    nr_level0_gens=0;
     level0_gen_degrees.clear();
     
     if(C.inhomogeneous){
@@ -305,8 +312,6 @@ Integer SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
     }
     
 
-         
-        
     if(do_only_multiplicity){
         if(volume == 0) { // not known in advance
             for(i=0; i<dim; ++i)
@@ -315,12 +320,7 @@ Integer SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
             #pragma omp atomic
             TotDet++;
         }
-        if(C.inhomogeneous){
-            if(nr_level0_gens==C.level0_dim)
-                update_mult_inhom(volume);
-        }
-        else
-            addMult(volume);
+        addMult(volume);
         return volume;
     }  // done if only mult is asked for
     
@@ -360,15 +360,6 @@ Integer SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
             Ht1NonUni++;
     }
 
-    if (unimodular && !C.do_h_vector && !C.do_Stanley_dec) {
-        if(C.inhomogeneous){
-            if(nr_level0_gens==C.level0_dim)
-                update_mult_inhom(volume);
-        }
-        else
-            addMult(volume);
-        return volume;
-    }
 
     // we need the GDiag if not unimodular (to be computed from Gen)
     // if potentially unimodular, we combine its computation with that of the i-th support forms for Ind[i]==0
@@ -402,13 +393,16 @@ Integer SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
             GDiag_computed=true;
         }
     }
+    
+    // take care of multiplicity unless do_only_multiplicity
+    // Can't be done earlier since volume is not always known earlier
 
-    if(C.inhomogeneous){
-        if(nr_level0_gens==C.level0_dim)
-                update_mult_inhom(volume);
-        }
-    else
-        addMult(volume);
+
+    addMult(volume);
+        
+    if (unimodular && !C.do_h_vector && !C.do_Stanley_dec) { // in this case done
+        return volume;
+    }
 
 
     // now we must compute the matrix InvGenSelRows (selected rows of InvGen)
@@ -476,8 +470,7 @@ Integer SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
 
     Integer Test;
     size_t Deg=0;
-    long level=0, level_offset=0; // level_offset is the level of the lement in par + its offset in the Stanley dec
-    Integer level_Int=0;
+    long level_offset=0; // level_offset is the level of the lement in par + its offset in the Stanley dec
     for(i=0;i<dim;i++)
         Excluded[i]=false;
     for(i=0;i<dim;i++){ // excluded facets and degree shift for 0-vector
@@ -527,9 +520,7 @@ Integer SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
     // cout << "--- " << inhom_hvector;
     
     if(C.do_excluded_faces)
-        prepare_inclusion_exclusion_simpl(key,Deg);
-
-    Matrix<Integer>* StanleyMat=&GenCopy; //just to initialize it and make GCC happy
+        prepare_inclusion_exclusion_simpl(Deg);
 
     if(C.do_Stanley_dec){                          // prepare space for Stanley dec
         STANLEYDATA<Integer> SimplStanley;         // key + matrix of offsets
@@ -546,9 +537,9 @@ Integer SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
                 (*StanleyMat)[0][i]=volume;
     }
 
-    size_t StanIndex=1;  // counts the number of components in the Stanley dec. vector at 0 already filled if necessary
+    StanIndex=1;  // counts the number of components in the Stanley dec. Vector at 0 already filled if necessary
 
-    if (unimodular) {
+    if (unimodular) {    // conclusion in the unimodular case
         if(C.do_h_vector){
             if(C.inhomogeneous)
                 Hilbert_Series.add(inhom_hvector,level0_gen_degrees);    
@@ -562,19 +553,25 @@ Integer SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
         }
         return volume;
     } // the unimodular case has been taken care of
-
-
-    // now we create and evaluate the points in par
-    Integer norm;
-    Integer normG;
+    
     Candidates.clear();
     candidates_size = 0;
-    typename list <vector <Integer> >::iterator c;
+    
+    return(volume);
+    
+}
+
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+void SimplexEvaluator<Integer>::evaluation_loop_sequential() {
+
     size_t last;
     vector<Integer> point(dim,0);
 
     Matrix<Integer> elements(dim,dim); //all 0 matrix
-    vector<Integer> help;
+    // vector<Integer> help;
 
 
     //now we need to create the candidates
@@ -593,12 +590,31 @@ Integer SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
         point[last]++;
         v_add_to_mod(elements[last], InvGenSelRows[last], volume);
 
-        for (i = last+1; i <dim; i++) {
+        for (size_t i = last+1; i <dim; i++) {
             point[i]=0;
             elements[i] = elements[last];
         }
         
-        // now the vector in par has been produced and is in elements[last]
+        evaluate_element(elements[last]);
+    }
+
+}
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+void SimplexEvaluator<Integer>::evaluate_element(const vector<Integer>& element){
+
+    // now we create and evaluate the points in par
+    Integer norm;
+    Integer normG;
+    size_t i;
+
+    Full_Cone<Integer>& C = *C_ptr;
+    
+    typename list <vector <Integer> >::iterator c;
+        
+        // now the vector in par has been produced and is in element
         
         // DON'T FORGET: THE VECTOR PRODUCED IS THE "REAL" VECTOR*VOLUME !!
 
@@ -606,22 +622,23 @@ Integer SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
                 // it is used to sort the Hilbert basis candidates
         normG = 0;  // the degree according to the grading
         for (i = 0; i < dim; i++) {  // since generators have degree 1
-            norm+=elements[last][i];
+            norm+=element[i];
             if(C.do_h_vector || C.do_deg1_elements) {
-                normG += elements[last][i]*gen_degrees[i];
+                normG += element[i]*gen_degrees[i];
             }
         }
         
 
-        level_Int=0;
+        long level,level_offset=0;
+        Integer level_Int=0;
         
         if(C.inhomogeneous){
             for(i=0;i<dim;i++)
-                level_Int+=elements[last][i]*gen_levels[i];
+                level_Int+=element[i]*gen_levels[i];
             level=explicit_cast_to_long<Integer>(level_Int/volume); // have to divide by volume; see above
-            // cout << level << " ++ " << volume << " -- " << elements[last];
+            // cout << level << " ++ " << volume << " -- " << element;
             
-            if(level>1) continue; // ***************** nothing to do for this vector
+            if(level>1) return; // ***************** nothing to do for this vector
                                   // if we sahould decide to allow Stanley dec in the inhomogeneous case, this must be changed
             
             // cout << "Habe ihn" << endl;
@@ -629,7 +646,7 @@ Integer SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
             if(C.do_h_vector){
                 level_offset=level; 
                 for(i=0;i<dim;i++)
-                    if(elements[last][i]==0 && Excluded[i])
+                    if(element[i]==0 && Excluded[i])
                         level_offset+=gen_levels[i];
             }
         }
@@ -639,7 +656,7 @@ Integer SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
         if(C.do_h_vector){
             Deg = explicit_cast_to_long<Integer>(normG/volume);
             for(i=0;i<dim;i++) { // take care of excluded facets and increase degree when necessary
-                if(elements[last][i]==0 && Excluded[i]) {
+                if(element[i]==0 && Excluded[i]) {
                     Deg += gen_degrees[i];
                 }
             }
@@ -651,39 +668,43 @@ Integer SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
                 hvector[Deg]++;
             
             if(C.do_excluded_faces)
-                add_to_inex_faces(elements[last],Deg);
+                add_to_inex_faces(element,Deg);
         }
 
         if(C.do_Stanley_dec){
-            (*StanleyMat)[StanIndex]=elements[last];
+            (*StanleyMat)[StanIndex]=element;
             for(i=0;i<dim;i++)
-                if(Excluded[i]&&elements[last][i]==0)
+                if(Excluded[i]&&element[i]==0)
                     (*StanleyMat)[StanIndex][i]+=volume;
             StanIndex++;
         }
 
-        // the case of Hilbert bases and degree 1 elements, only added if height >=2
-//        if (!C.do_partial_triangulation || s.height >= 2) {
             if (C.do_Hilbert_basis) {
-                vector<Integer> candi = v_merge(elements[last],norm);
+                vector<Integer> candi = v_merge(element,norm);
                 if (!is_reducible(candi, Hilbert_Basis)) {
                     Candidates.push_back(candi);
                     candidates_size++;
-                    if (candidates_size >= 1000) {
+                    if (candidates_size >= 1000 && is_complete_simplex) {
                         local_reduction();
                     }
                 }
-                continue;
+                return;
             }
-            if(C.do_deg1_elements && normG==volume && !isDuplicate(elements[last])) {
-                help=GenCopy.VxM(elements[last]);
+            if(C.do_deg1_elements && normG==volume && !isDuplicate(element)) {
+                vector<Integer> help=GenCopy.VxM(element);
                 v_scalar_division(help,volume);
-                Collected_Elements.push_back(help);
+                Collected_Deg1_Elements.push_back(help);
                 collected_elements_size++;
             }
-//        }
-    }
+}
 
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+void SimplexEvaluator<Integer>::conclude_evaluation() {
+
+    Full_Cone<Integer>& C = *C_ptr;
 
     if(C.do_h_vector) {
         if(C.inhomogeneous){
@@ -701,27 +722,53 @@ Integer SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
     // cout << Hilbert_Series << endl;
 
 
-    if(!C.do_Hilbert_basis)
-        return volume;  // no local reduction in this case
+    if(!C.do_Hilbert_basis || !is_complete_simplex)
+        return;  // no further reduction in this case
 
     local_reduction();
 
-    //inverse transformation
+    //inverse transformation and reduction against global reducers
     //some test for arithmetic overflow may be implemented here
+    bool inserted;
     typename list< vector<Integer> >::iterator jj = Hilbert_Basis.begin();
-    while (jj != Hilbert_Basis.end()) {
-        if (isDuplicate(*jj)) { //delete the element
-            jj = Hilbert_Basis.erase(jj);
-        } else {
+    for(;jj != Hilbert_Basis.end();++jj) {
+        if (!isDuplicate(*jj)) { //skip the element
             jj->pop_back(); //remove the norm entry at the end
+            
+            // transform to global coordinates 
             *jj = GenCopy.VxM(*jj);
             v_scalar_division(*jj,volume);
-            ++jj;
-            collected_elements_size++;
+            
+            // reduce against global reducers in C.OldCandidates and insert into Collected_HB_Elements
+            if(full_cone_simplicial){ // no global reduction necessary
+                Collected_HB_Elements.Candidates.push_back(Candidate<Integer>(*jj,C));
+                inserted=true;
+            }
+            else         
+                inserted=Collected_HB_Elements.reduce_by_and_insert(*jj,C,C.OldCandidates);
+            if(inserted)
+                collected_elements_size++;
         }
     }
+    
+    Hilbert_Basis.clear(); // this is not a local variable !!
+    
+}
 
-    Collected_Elements.splice(Collected_Elements.end(),Hilbert_Basis);
+
+//---------------------------------------------------------------------------
+
+
+/* evaluates a simplex in regard to all data */
+template<typename Integer>
+Integer SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
+
+    start_evaluation(s);
+    s.vol=volume;
+    if(volume==1 || C_ptr->do_only_multiplicity)
+        return volume;
+    evaluation_loop_sequential();
+    conclude_evaluation();
 
     return volume;
 }
@@ -741,11 +788,7 @@ bool SimplexEvaluator<Integer>::isDuplicate(const vector<Integer>& cand) const {
 template<typename Integer>
 void SimplexEvaluator<Integer>::update_mult_inhom(Integer volume){
 
-    // cout << "Update " << volume << endl;
-
-    if (volume==0) throw volume;
-    det_sum += volume;
-        if (!C_ptr->isComputed(ConeProperty::Grading))
+    if (!C_ptr->isComputed(ConeProperty::Grading) || !C_ptr->do_triangulation)
             return;
     if(C_ptr->level0_dim==dim-1){ // the case of codimension 1
         size_t i;    
@@ -763,13 +806,13 @@ void SimplexEvaluator<Integer>::update_mult_inhom(Integer volume){
         Integer corr_fact=1;
         for(i=0;i<dim;++i)
             if(gen_levels[i]>0){
-                // cout << "i " << i << " j " << j << endl;
-                ProjGen[j]=C_ptr->ProjToLevel0Quot.MxV(Generators[i]);
+                // cout << "i " << i << " j " << j << " level " << gen_levels[i] << endl;
+                ProjGen[j]=C_ptr->ProjToLevel0Quot.MxV(C_ptr->Generators[key[i]]); // Generators of evaluator may be destroyed
                 corr_fact*=gen_degrees[i];
                 j++;
             }
-        volume/=ProjGen.vol_destructive();
         volume*=corr_fact;
+        volume/=ProjGen.vol_destructive();
         // cout << "After corr "  << volume << endl;      
         addMult_inner(volume);
     }
@@ -780,11 +823,21 @@ void SimplexEvaluator<Integer>::update_mult_inhom(Integer volume){
 template<typename Integer>
 void SimplexEvaluator<Integer>::addMult(const Integer& volume) {
 
-    if (volume==0) throw volume;
+    assert(volume != 0);
     det_sum += volume;
-    if (!C_ptr->isComputed(ConeProperty::Grading))
+    if (!C_ptr->isComputed(ConeProperty::Grading) || !C_ptr->do_triangulation)
         return;
-    addMult_inner(volume);
+        
+    // the homogeneous case
+    if(!C_ptr->inhomogeneous){
+        addMult_inner(volume);
+        return;
+    }
+    
+    // Now we are in the inhomogeneous case
+    if(nr_level0_gens==C_ptr->level0_dim){
+        update_mult_inhom(volume);
+    }     
 }
 
 //---------------------------------------------------------------------------
@@ -810,12 +863,12 @@ void SimplexEvaluator<Integer>::addMult_inner(const Integer& volume) {
 template<typename Integer>
 void SimplexEvaluator<Integer>::local_reduction() {
     // reduce new against old elements
-//now done directly    reduce(Candidates, Hilbert_Basis);
+    //now done directly    reduce(Candidates, Hilbert_Basis);
 
     // interreduce
     Candidates.sort(compare_last<Integer>);
     reduce(Candidates, Candidates);
-//cout << Candidates.size() << endl;
+    //cout << Candidates.size() << endl;
 
     // reduce old elements
     reduce(Hilbert_Basis, Candidates);
@@ -828,7 +881,7 @@ void SimplexEvaluator<Integer>::reduce(list< vector< Integer > >& Candi, list< v
     typename list <vector <Integer> >::iterator cand=Candi.begin();
     while (cand != Candi.end()) {
         if (is_reducible(*cand, Reducers)) // erase the candidate
-            cand = Candidates.erase(cand);
+            cand = Candi.erase(cand);
         else // continue
             ++cand;
     }
@@ -874,19 +927,32 @@ bool SimplexEvaluator<Integer>::is_reducible(const vector< Integer >& new_elemen
 
 template<typename Integer>
 void SimplexEvaluator<Integer>::transfer_candidates() {
-    if ( (C_ptr->do_deg1_elements || C_ptr->do_Hilbert_basis)
-       && collected_elements_size > 0 ) {
+    if(collected_elements_size==0)
+        return;
+    if (C_ptr->do_Hilbert_basis) {
         #pragma omp critical(CANDIDATES)
-        C_ptr->Candidates.splice(C_ptr->Candidates.begin(),Collected_Elements);
+        C_ptr->NewCandidates.splice(Collected_HB_Elements);
         #pragma omp atomic
         C_ptr->CandidatesSize += collected_elements_size;
-        collected_elements_size = 0;
     }
+    if (C_ptr->do_deg1_elements){
+        #pragma omp critical(CANDIDATES)
+        C_ptr->Deg1_Elements.splice(C_ptr->Deg1_Elements.begin(), Collected_Deg1_Elements);
+        #pragma omp atomic
+        C_ptr->CandidatesSize += collected_elements_size;
+    }
+    
+    collected_elements_size = 0;
 }
 
 template<typename Integer>
 Integer SimplexEvaluator<Integer>::getDetSum() const {
     return det_sum;
+}
+
+template<typename Integer>
+size_t SimplexEvaluator<Integer>::get_collected_elements_size(){
+     return collected_elements_size;
 }
 
 template<typename Integer>

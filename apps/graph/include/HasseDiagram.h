@@ -34,8 +34,9 @@ protected:
    graph_type G;
    faces_map_type F;
    std::vector<int> dim_map, count_map;
+   bool built_min_first;
 public:
-   bool built_dually() const { return G.in_degree(0)!=0; }
+   bool built_dually() const { return !built_min_first; }
 
    HasseDiagram() : F(G) {}
 
@@ -222,7 +223,7 @@ public:
    protected:
       mutable HasseDiagram* HD;
    public:
-      _filler(HasseDiagram& HD_arg) : HD(&HD_arg) { if (HD->nodes()) HD->clear(); }
+      _filler(HasseDiagram& HD_arg, bool min_first) : HD(&HD_arg) { if (HD->nodes()) HD->clear(); HD->built_min_first=min_first;}
 
       _filler(const _filler& f) : HD(f.HD) { f.HD=0; }
 
@@ -256,7 +257,7 @@ public:
       ~_filler() { if (HD) HD->G.resize(HD->G.nodes()); } // FIXME: w/o effect now!
    };
 
-   friend _filler filler(HasseDiagram& me) { return _filler(me); }
+   friend _filler filler(HasseDiagram& me, bool min_first) {return _filler(me, min_first); }
 
    perl::Object makeObject() const;
    void fromObject(const perl::Object&);

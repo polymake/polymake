@@ -171,6 +171,16 @@ user_function laplacian($) {
 # @return Graph
 user_function line_graph(props::Graph) : c++ (include=>["polymake/graph/line_graph.h"]);
 
+# @category Combinatorics
+# creates the complement graph of a graph
+# @param Graph G
+# @return Graph
+user_function complement_graph($){
+    my $g = shift;
+    my $inv_adj = ~( adjacency_matrix($g->ADJACENCY) )- index_matrix( unit_matrix($g->N_NODES) );
+    return new Graph(ADJACENCY=>$inv_adj, N_NODES=>$g->N_NODES, NODE_LABELS=>$g->NODE_LABELS);
+}
+
 ############################################################################
 
 function is_connected(props::Graph) : c++ (include=>["polymake/graph/connected.h"]);

@@ -29,6 +29,7 @@
 #include "list_operations.cpp"
 #include "lineare_transformation.cpp"
 #include "sublattice_representation.cpp"
+#include "reduction.cpp"
 #include "full_cone.cpp"
 #include "cone_dual_mode.cpp"
 #include "cone.cpp"

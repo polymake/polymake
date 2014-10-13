@@ -15,32 +15,26 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/polytope/face_lattice_tools.h"
+#include "polymake/matroid/lattice_of_flats_tools.h"
 #include "polymake/graph/HasseDiagram.h"
 
-namespace polymake { namespace polytope {
+namespace polymake { namespace matroid {
 
+//this is a copy from hasse_diagram.cc
 template <typename Matrix>
-perl::Object hasse_diagram(const GenericIncidenceMatrix<Matrix>& VIF, int dim_upper_bound=-1)
+perl::Object lattice_of_flats(const GenericIncidenceMatrix<Matrix>& mat_hyperplanes,const int level=-1)
 {
-   graph::HasseDiagram HD;
-   if (dim_upper_bound>=0 || VIF.cols() <= VIF.rows())
-      face_lattice::compute(VIF, filler(HD,true), face_lattice::Primal(), dim_upper_bound);
+   graph::HasseDiagram LF;
+   if(mat_hyperplanes.cols() <= mat_hyperplanes.rows())
+      flat_lattice::compute_lattice_of_flats(mat_hyperplanes, filler(LF,true), polytope::face_lattice::Primal(),level);
    else
-      face_lattice::compute(T(VIF), filler(HD,false), face_lattice::Dual());
-   return HD.makeObject();
+      flat_lattice::compute_lattice_of_flats(T(mat_hyperplanes), filler(LF,false), polytope::face_lattice::Dual(),level);
+   
+   return LF.makeObject();
 }
 
-template <typename Matrix, typename Set>
-perl::Object bounded_hasse_diagram(const GenericIncidenceMatrix<Matrix>& VIF, const GenericSet<Set>& far_face, int dim_upper_bound=-1)
-{
-   graph::HasseDiagram HD;
-   face_lattice::compute_bounded(VIF, far_face, filler(HD,true), dim_upper_bound);
-   return HD.makeObject();
-}
+FunctionTemplate4perl("lattice_of_flats(IncidenceMatrix; $=-1)");
 
-FunctionTemplate4perl("hasse_diagram(IncidenceMatrix; $=-1)");
-FunctionTemplate4perl("bounded_hasse_diagram(IncidenceMatrix Set; $=-1)");
 
 } }
 

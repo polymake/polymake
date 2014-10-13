@@ -35,6 +35,7 @@
 #include "simplex.h"
 #include "cone_dual_mode.h"
 #include "HilbertSeries.h"
+#include "reduction.h"
 // #include "sublattice_representation.h"
 
 namespace libnormaliz {
@@ -45,12 +46,18 @@ using std::pair;
 using boost::dynamic_bitset;
 
 template<typename Integer> class Cone;
+template<typename Integer> class SimplexEvaluator;
+template<typename Integer> class CandidateList;
+template<typename Integer> class Candidate;
+template<typename Integer> class Simplex;
 
 template<typename Integer>
 class Full_Cone {
 
     friend class Cone<Integer>;
     friend class SimplexEvaluator<Integer>;
+    friend class CandidateList<Integer>;
+    friend class Candidate<Integer>;
     
     size_t dim;
     size_t level0_dim; // dim of cone in level 0 of the inhomogeneous case
@@ -89,12 +96,14 @@ class Full_Cone {
     // data of the cone (input or output)
     vector<Integer> Truncation;  //used in the inhomogeneous case to suppress vectors of level > 1
     vector<Integer> Grading;
+    vector<Integer> Sorting;
     mpq_class multiplicity;
     Matrix<Integer> Generators;
     vector<bool> Extreme_Rays;
     list<vector<Integer> > Support_Hyperplanes;
+    size_t nrSupport_Hyperplanes;
     list<vector<Integer> > Hilbert_Basis;
-    list<vector<Integer> > Candidates;   // for the Hilbert basis
+    CandidateList<Integer> OldCandidates,NewCandidates;   // for the Hilbert basis
     size_t CandidatesSize;
     list<vector<Integer> > Deg1_Elements;
     HilbertSeries Hilbert_Series;
@@ -109,7 +118,7 @@ class Full_Cone {
     Matrix<Integer> ProjToLevel0Quot;  // projection matrix onto quotient modulo level 0 sublattice    
 
     // privare data controlling the computations
-    vector<size_t> HypCounter; // counters used to give uniqoe number to jyperplane
+    vector<size_t> HypCounter; // counters used to give unique number to hyperplane
                                // must be defined thread wise to avoid critical
                                
     vector<bool> in_triang;  // intriang[i]==true means that Generators[i] has been actively inserted
@@ -177,6 +186,9 @@ class Full_Cone {
     size_t totalNrSimplices;   // total number of simplices evaluated
     size_t nrSimplicialPyr;
     size_t totalNrPyr;
+    
+    bool use_existing_facets;  // in order to avoid duplicate computation of already computed facets
+    size_t start_from;
 
 /* ---------------------------------------------------------------------------
  *              Private routines, used in the public routines
@@ -194,6 +206,7 @@ class Full_Cone {
                       typename list< FACETDATA >::iterator hyp, size_t start_level);
     void select_supphyps_from(const list<FACETDATA>& NewFacets, const size_t new_generator, 
                       const vector<key_t>& Pyramid_key);
+    bool check_pyr_buffer(const size_t level);
     void evaluate_stored_pyramids(const size_t level);
     void match_neg_hyp_with_pos_hyps(const FACETDATA& hyp, size_t new_generator,list<FACETDATA*>& PosHyps, boost::dynamic_bitset<>& Zero_P);
     void collect_pos_supphyps(list<FACETDATA*>& PosHyps, boost::dynamic_bitset<>& Zero_P, size_t& nr_pos);
@@ -210,7 +223,9 @@ class Full_Cone {
     void select_deg1_elements(const Full_Cone& C);
     
     void build_top_cone(); 
-    void build_cone();   
+    void build_cone();
+    void get_supphyps_from_copy(bool from_scratch);   // if evealuation starts before support hyperplanes are fully computed
+    void update_reducers();   // update list of reducers after evaluation of simplices
     
 
     bool is_reducible(list<vector<Integer> *> & Irred, const vector<Integer> & new_element);
@@ -229,6 +244,8 @@ class Full_Cone {
     void set_degrees();
     void set_levels(); // for truncation in the inhomogeneous case
     void find_module_rank(); // finds the module rank in the inhom case
+    void find_module_rank_from_HB();
+    void find_module_rank_from_proj();  // used if Hilbert basis is not computed
     void find_level0_dim(); // ditto for the level 0 dimension 
     void sort_gens_by_degree();
     void compute_support_hyperplanes();
@@ -237,6 +254,7 @@ class Full_Cone {
     void evaluate_triangulation();
     void transfer_triangulation_to_top();
     void primal_algorithm(); 
+    void remove_duplicate_ori_gens_ftom_HB();
 
     void minimize_support_hyperplanes();   
     void compute_extreme_rays();
@@ -258,7 +276,7 @@ class Full_Cone {
     void reset_tasks();
     void addMult(Integer& volume, const vector<key_t>& key, const int& tn); // multiplicity sum over thread tn
 
-public:
+// public:
 /*---------------------------------------------------------------------------
  *                      Constructors
  *---------------------------------------------------------------------------

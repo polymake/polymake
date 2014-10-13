@@ -110,9 +110,6 @@ void ConeProperties::set_preconditions() {
     if (CPs.test(ConeProperty::IsPointed))
         CPs.set(ConeProperty::ExtremeRays);
 
-    if (CPs.test(ConeProperty::Generators))
-        CPs.set(ConeProperty::ExtremeRays);
-
     if (CPs.test(ConeProperty::ExtremeRays))
         CPs.set(ConeProperty::SupportHyperplanes);
 }

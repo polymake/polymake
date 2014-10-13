@@ -11,7 +11,7 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
 --------------------------------------------------------------------------------
-   $Id$
+   $Id: TOSimplex.h 11319 2013-08-18 10:28:33Z opfer $
 */
 
 #ifndef TOSIMPLEX_H
@@ -66,7 +66,6 @@
 
 #include <iostream>
 #include <algorithm>
-#include <pthread.h>
 #include <list>
 #include <ctime>
 #include <cmath>
@@ -144,41 +143,6 @@ class TOSolver
 			int ind;
 		};
 
-		struct DSE_reinit_helper {
-			pthread_mutex_t mutex;
-			int nextDSE;
-			TOSolver* plex;
-		};
-
-		struct DSE_thread_helper {
-			pthread_mutex_t mutex;
-			pthread_cond_t mainCond;
-			pthread_cond_t DSECond;
-			pthread_cond_t readyCond;
-			bool DSEWork;
-			bool mainWork;
-			bool ready;
-			bool exit;
-			T* tau;
-			TOSolver* plex;
-		};
-
-		struct mulANT_thread_helper {
-			pthread_mutex_t mutex;
-			pthread_mutex_t nextColMutex;
-			pthread_cond_t mainCond;
-			pthread_cond_t helperCond;
-			pthread_cond_t readyCond;
-			T* vector;
-			T* result;
-			int nextCol;
-			bool helperWork;
-			bool mainWork;
-			bool ready;
-			bool exit;
-			TOSolver* plex;
-		};
-
 		std::vector<T> Acolwise;
 		std::vector<int> Acolwiseind;
 		std::vector<int> Acolpointer;
@@ -232,11 +196,6 @@ class TOSolver
 		std::vector<T> DSE;
 		std::vector<T> DSEtmp;
 		bool antiCycle;
-		DSE_thread_helper DSEhelper;
-		pthread_t DSEthread;
-
-		pthread_t mulANTthread;
-		mulANT_thread_helper mulANThelper;
 
 		std::vector<double> rayGuess;
 		std::vector<T> farkasProof;
@@ -244,17 +203,12 @@ class TOSolver
 		int lastLeavingBaseVar;
 
 		void copyTransposeA( int orgLen, const std::vector<T>& orgVal, const std::vector<int>& orgInd, const std::vector<int>& orgPointer, int newLen, std::vector<T>& newVal, std::vector<int>& newInd, std::vector<int>& newPointer );
-		static void* mulANT_threaded_helper( void* ptr );
-		void mulANT_threaded( T* result, T* vector );
-		void mulANTCol( int &i, T* &result, T* &vector );
+		void mulANT( T* result, T* vector );
 
-		static void* DSE_threaded_helper( void* ptr );
 		void FTran( T* work, T* permSpike = NULL, int* permSpikeInd = NULL, int* permSpikeLen = NULL );
 		void BTran( T* work );
 		void updateB( int leaving, T* permSpike, int* permSpikeInd, int* permSpikeLen );
 		bool refactor();
-		void recalcDSE();
-		static void* recalcDSE_threaded_helper( void* ptr );
 		void findPiv( const std::vector<std::vector<int> >& Urowind, const std::vector<std::vector<int> >& Ucolind, bilist* const &R, bilist* const &C, const std::vector<bilist>& Ra,  const std::vector<bilist>& Ca,  const std::vector<int>& nnzCs, const std::vector<int>& nnzRs, int &i, int &j, bool &colsingleton );
 		void clearBasis();
 		void removeBasisFactorization();
@@ -371,33 +325,6 @@ TOSolver<T>::TOSolver( const std::vector<T> &rows, const std::vector<int> &colin
 
 template <class T>
 TOSolver<T>::~TOSolver(){
-	// Andere Threads stoppen
-
-	pthread_mutex_lock( &this->mulANThelper.mutex );
-	while( !this->mulANThelper.ready ){
-		pthread_cond_wait( &this->mulANThelper.readyCond, &this->mulANThelper.mutex );
-	}
-	this->mulANThelper.exit = true;
-	this->mulANThelper.mainWork = false;
-	this->mulANThelper.helperWork = true;
-	pthread_cond_signal( &this->mulANThelper.helperCond );
-	pthread_mutex_unlock( &this->mulANThelper.mutex );
-
-	pthread_join( this->mulANTthread, NULL );
-
-
-	if( this->DSE.size() || this->DSEhelper.ready ){
-		pthread_mutex_lock( &this->DSEhelper.mutex );
-		while( !this->DSEhelper.ready ){
-			pthread_cond_wait( &this->DSEhelper.readyCond, &this->DSEhelper.mutex );
-		}
-		this->DSEhelper.exit = true;
-		this->DSEhelper.mainWork = false;
-		this->DSEhelper.DSEWork = true;
-		pthread_cond_signal( &this->DSEhelper.DSECond );
-		pthread_mutex_unlock( &this->DSEhelper.mutex );
-		pthread_join( this->DSEthread, NULL );
-	}
 
 }
 
@@ -407,19 +334,6 @@ void TOSolver<T>::init(){
 	#ifndef TO_DISABLE_OUTPUT
 		std::cout << "Simplex initialisiert." << std::endl;
 	#endif
-
-	this->DSEhelper.ready = false;
-
-	pthread_mutex_init( &this->mulANThelper.mutex, NULL );
-	pthread_mutex_init( &this->mulANThelper.nextColMutex, NULL );
-	pthread_cond_init( &this->mulANThelper.mainCond, NULL );
-	pthread_cond_init( &this->mulANThelper.helperCond, NULL );
-	pthread_cond_init( &this->mulANThelper.readyCond, NULL );
-	this->mulANThelper.helperWork = false;
-	this->mulANThelper.ready = false;
-	this->mulANThelper.exit = false;
-	this->mulANThelper.plex = this;
-	pthread_create( &this->mulANTthread, NULL, mulANT_threaded_helper, &this->mulANThelper );
 
 	this->halfNumUpdateLetas = 20;
 
@@ -909,138 +823,22 @@ void TOSolver<T>::copyTransposeA( int orgLen, const std::vector<T>& orgVal, cons
 
 
 template <class T>
-void* TOSolver<T>::mulANT_threaded_helper( void* ptr ){
-	mulANT_thread_helper* helper = ( mulANT_thread_helper* ) ptr;
-
-	while( true ){
-		pthread_mutex_lock( &helper->mutex );
-		helper->ready = true;
-		pthread_cond_signal( &helper->readyCond );
-
-		while( !helper->helperWork ){
-			pthread_cond_wait( &helper->helperCond, &helper->mutex );
-		}
-		pthread_mutex_unlock( &helper->mutex );
-
-		if( helper->exit ){
-			pthread_exit( 0 );
-		}
-
-		const int m = helper->plex->m;
-		int i;
-		while( true ){
-			pthread_mutex_lock( &helper->nextColMutex );
-			i = helper->nextCol++;
-			pthread_mutex_unlock( &helper->nextColMutex );
-			if( i >= m ){
-				break;
+void TOSolver<T>::mulANT( T* result, T* vector ){
+	for( int i = 0; i < m; ++i ){
+		T mult = vector[i];
+		const int kend = this->Arowpointer[i+1];
+		for( int k = this->Arowpointer[i]; k < kend; ++k ){
+			int ind = this->Ninv[this->Arowwiseind[k]];
+			if( ind != -1 ){
+				result[ind] += Arowwise[k] * mult;
 			}
-			helper->plex->mulANTCol( i, helper->result, helper->vector );
 		}
 
-		pthread_mutex_lock( &helper->mutex );
-		helper->helperWork = false;
-		helper->mainWork = true;
-		pthread_cond_signal( &helper->mainCond );
-		pthread_mutex_unlock( &helper->mutex );
-	}
-	return ptr;
-}
-
-
-template <class T>
-void TOSolver<T>::mulANT_threaded( T* result, T* vector ){
-
-	std::vector<T> threadResult( n );	// Warum wird hier  benötigt??
-	this->mulANThelper.result = threadResult.data();
-	this->mulANThelper.vector = vector;
-	this->mulANThelper.nextCol = 0;
-
-	// Anderen Thread starten
-	pthread_mutex_lock( &this->mulANThelper.mutex );
-	while( !this->mulANThelper.ready ){
-		pthread_cond_wait( &this->mulANThelper.readyCond, &this->mulANThelper.mutex );
-	}
-	this->mulANThelper.mainWork = false;
-	this->mulANThelper.helperWork = true;
-	pthread_cond_signal( &this->mulANThelper.helperCond );
-	pthread_mutex_unlock( &this->mulANThelper.mutex );
-
-	// Selbst auch arbeiten
-	int i;
-	while( true ){
-		pthread_mutex_lock( &this->mulANThelper.nextColMutex );
-		i = this->mulANThelper.nextCol++;
-		pthread_mutex_unlock( &this->mulANThelper.nextColMutex );
-		if( i >= m ){
-			break;
-		}
-		this->mulANTCol( i, result, vector );
-	}
-
-	// Auf anderen Thread warten
-	pthread_mutex_lock( &this->mulANThelper.mutex );
-		while( !this->mulANThelper.mainWork ){
-			pthread_cond_wait( &this->mulANThelper.mainCond, &this->mulANThelper.mutex );
-		}
-	pthread_mutex_unlock( &this->mulANThelper.mutex );
-
-	// Ergebnisse des anderen Threads hinzuaddieren
-	for( int i = 0; i < n; ++i ){
-		result[i] += this->mulANThelper.result[i];
-	}
-
-}
-
-
-template <class T>
-void TOSolver<T>::mulANTCol( int &i, T* &result, T* &vector ){
-	T mult = vector[i];
-	const int kend = this->Arowpointer[i+1];
-	for( int k = this->Arowpointer[i]; k < kend; ++k ){
-		int ind = this->Ninv[this->Arowwiseind[k]];
-		if( ind != -1 ){
-			result[ind] += Arowwise[k] * mult;
+		// logische Variablen
+		if( Ninv[n+i] != -1 ){
+			result[Ninv[n+i]] = mult;
 		}
 	}
-
-	// logische Variablen
-	if( Ninv[n+i] != -1 ){
-		result[Ninv[n+i]] = mult;
-	}
-}
-
-
-template <class T>
-void* TOSolver<T>::DSE_threaded_helper( void* ptr ){
-	DSE_thread_helper* infos = (DSE_thread_helper*) ptr;
-	while( true ){
-		pthread_mutex_lock( &infos->mutex );
-
-		infos->ready = true;
-		pthread_cond_signal( &infos->readyCond );
-
-		while( !infos->DSEWork ){
-			pthread_cond_wait( &infos->DSECond, &infos->mutex );
-		}
-		pthread_mutex_unlock( &infos->mutex );
-
-		if( infos->exit ){
-			pthread_exit( 0 );
-		}
-
-		// DSE-FTran
-		infos->plex->FTran( infos->tau );
-
-		pthread_mutex_lock( &infos->mutex );
-		infos->DSEWork = false;
-		infos->mainWork = true;
-		pthread_cond_signal( &infos->mainCond );
-		pthread_mutex_unlock( &infos->mutex );
-
-	}
-
-	return ptr;
 }
 
 
@@ -1158,42 +956,6 @@ void TOSolver<T>::BTran( T* work ){
 
 
 template <class T>
-void* TOSolver<T>::recalcDSE_threaded_helper( void* ptr ){
-	DSE_reinit_helper* helper = (DSE_reinit_helper*) ptr;
-
-	const int m = helper->plex->m;
-
-	int weight;
-
-	while( true ) {
-
-		pthread_mutex_lock( &helper->mutex );
-		weight = helper->nextDSE++;
-		#ifndef TO_DISABLE_OUTPUT
-			if( weight < m ){
-				std::cout << "Reinitialisiere DSE-Gewicht " << weight + 1 << "/" << m << std::endl;
-			}
-		#endif
-		pthread_mutex_unlock( &helper->mutex );
-
-		if( weight >= m ){
-			break;
-		}
-
-		std::vector<T> rhoi(m);
-		rhoi[weight] = 1;
-		helper->plex->BTran( rhoi.data() );
-		for( int j = 0; j < m; ++j ){
-			helper->plex->DSE[weight] += rhoi[j] * rhoi[j];
-		}
-
-	}
-
-	return ptr;
-}
-
-
-template <class T>
 void TOSolver<T>::clearBasis(){
 
 	this->farkasProof.clear();
@@ -1258,35 +1020,6 @@ void TOSolver<T>::removeBasisFactorization(){
 	this->perm.resize( m );
 	this->permback.clear();
 	this->permback.resize( m );
-}
-
-
-template <class T>
-void TOSolver<T>::recalcDSE(){
-
-	this->DSE.clear();
-	this->DSEtmp.clear();
-
-	this->DSE.resize( m );
-	this->DSEtmp.resize( m+n );
-
-	const int numthreads = 4;
-
-	DSE_reinit_helper helper;
-	pthread_mutex_init( &helper.mutex, NULL );
-	helper.nextDSE = 0;
-	helper.plex = this;
-
-	std::vector<pthread_t> threads( numthreads );
-
-	for( int i = 0; i < numthreads; ++i ){
-		pthread_create( &threads[i], NULL, recalcDSE_threaded_helper, &helper );
-	}
-
-	for( int i = 0; i < numthreads; ++i ){
-		pthread_join( threads[i], NULL );
-	}
-
 }
 
 
@@ -2913,7 +2646,7 @@ int TOSolver<T>::opt(){
 
 			std::vector<T> tmp( n, T( 0 ) );
 
-			this->mulANT_threaded( tmp.data(), y.data() );
+			this->mulANT( tmp.data(), y.data() );
 
 			for( int i = 0; i < n; ++i ){
 				if( N[i] < n ){
@@ -3079,7 +2812,7 @@ int TOSolver<T>::opt( bool P1 ){
 
 				std::vector<T> tmp(n);
 
-				this->mulANT_threaded( tmp.data(), y.data() );
+				this->mulANT( tmp.data(), y.data() );
 
 				for( int i = 0; i < n; ++i ){
 					if( N[i] < n ){
@@ -3174,6 +2907,8 @@ int TOSolver<T>::opt( bool P1 ){
 	int nocyclecounter = 0;
 	this->antiCycle = false;
 
+	bool dualUnbounded = false;
+
 	clock_t time1;
 	clock_t time2 = clock();
 
@@ -3185,19 +2920,8 @@ int TOSolver<T>::opt( bool P1 ){
 	unsigned long long time_ftran = 0;
 	unsigned long long time_update = 0;
 
-	while( true ){
 
-		if( this->DSE.size() && !this->DSEhelper.ready ){
-			this->DSEhelper.plex = this;
-			this->DSEhelper.DSEWork = false;
-			this->DSEhelper.mainWork = false;
-			this->DSEhelper.exit = false;
-			pthread_mutex_init( &this->DSEhelper.mutex, NULL );
-			pthread_cond_init( &this->DSEhelper.mainCond, NULL );
-			pthread_cond_init( &this->DSEhelper.DSECond, NULL );
-			pthread_cond_init( &this->DSEhelper.readyCond, NULL );
-			pthread_create( &this->DSEthread, NULL, DSE_threaded_helper, &this->DSEhelper );
-		}
+	while( true ){
 
 		#ifndef TO_DISABLE_OUTPUT
 			clock_t oldtime = itertime;
@@ -3329,285 +3053,270 @@ int TOSolver<T>::opt( bool P1 ){
 
 		time_btran += time2-time1;
 
-
-		// DSE-FTran-Thread starten
-		if( this->DSE.size() ){
-			for( int i = 0; i < m; ++i ){
-				tau[i] = rhor[i];
-			}
-			// Daten an Thread übergeben und ihn aufwecken
-			this->DSEhelper.tau = tau.data();
-
-			pthread_mutex_lock( &this->DSEhelper.mutex );
-			while( !this->DSEhelper.ready ){
-				pthread_cond_wait( &this->DSEhelper.readyCond, &this->DSEhelper.mutex );
-			}
-			this->DSEhelper.mainWork = false;
-			this->DSEhelper.DSEWork = true;
-			pthread_cond_signal( &this->DSEhelper.DSECond );
-			pthread_mutex_unlock( &this->DSEhelper.mutex );
-		}
-
-
-		time1 = time2;
-		time2 = clock();
-
-		time_dse += time2-time1;
-
-
-
-		// Step 4: Pivot row
-//		std::cout << "Pivot row" << std::endl;
-
-		std::vector<T> alphar(n);
-
-		this->mulANT_threaded( alphar.data(), rhor.data() );
-
-		time1 = time2;
-		time2 = clock();
-
-		time_pivot += time2-time1;
-
-
-
-		// Step 5: Ratio Test
-//		std::cout << "Ratio Test" << std::endl;
-
-		if( ratioNeg ){
-			for( int i = 0; i < n; ++i ){
-				alphartilde[i] = - alphar[i];
-				deltatilde = - delta;
-			}
-		} else {
-			for( int i = 0; i < n; ++i ){
-				alphartilde[i] = alphar[i];
-				deltatilde = delta;
-			}
-		}
-
-
-		std::vector<T> atilde(m);
-		bool flip = false;
 		int q = 0;
 		int s = 0;
-		{
-			int Qlen = 0;
-			for( int i = 0; i < n; ++i ){
-				int j = this->N[i];
-				if(
-						( this->l[j].isInf && this->u[j].isInf && alphartilde[i] != 0 )
-						|| ( ( this->u[j].isInf || this->u[j].value != this->x[j] ) && !this->l[j].isInf && this->x[j] == this->l[j].value && alphartilde[i] > 0 )
-						|| ( ( this->l[j].isInf || this->l[j].value != this->x[j] ) && !this->u[j].isInf && this->x[j] == this->u[j].value && alphartilde[i] < 0 )
-				){
-
-					Qind[Qlen] = i;
-					Qord[Qlen] = Qlen;
-					Q[Qlen] = d[i] / alphartilde[i];
-					++Qlen;
-
-				}
-			}
-
-
-
-			// TODO nach unten oder nicht??
-			if( !Qlen ){
-
-				if( this->DSE.size() ){
-					// TODO Wir warten wegen segfaults. Thread evtl. abbrechen? Break?
-					pthread_mutex_lock( &this->DSEhelper.mutex );
-					while( !this->DSEhelper.mainWork ){
-						pthread_cond_wait( &this->DSEhelper.mainCond, &this->DSEhelper.mutex );
-					}
-					pthread_mutex_unlock( &this->DSEhelper.mutex );
-				}
-
-				this->lastLeavingBaseVar = p;
-
-				#ifndef TO_DISABLE_OUTPUT
-					std::cout << "dual unbounded" << std::endl << std::endl;
-					std::cout << iter << " Iterationen" << std::endl;
-				#endif
-				return 1;
-			}
-
-
-			if( this->antiCycle ){	// Bland
-
-				T min = Q[0];
-				s = Qind[0];
-
-				for( int i = 1; i < Qlen; ++i ){
-					if( Q[i] < min ){
-						min = Q[i];
-						s = Qind[i];
-					} else if( Q[i] == min && N[Qind[i]] < N[s] ){
-						s = Qind[i];
-					}
-				}
-
-				q = N[s];
-
-			} else {
-
-				// Q absteigend sortieren
-				{
-					ratsort sorter( Q );
-					std::sort( Qord.data(), Qord.data() + Qlen, sorter );
-				}
-
-
-				// BFRT, inkl. Bound-Flips
-				while( Qlen && deltatilde >= 0 ){
-
-					s = Qind[Qord[--Qlen]];
-					q = N[s];
-					if( this->l[q].isInf || this->u[q].isInf ){
-						break;
-					} else {
-						T tmp = deltatilde - ( this->u[q].value - this->l[q].value ) * abs( alphar[s] );
-						if( tmp < 0 ){
-							break;
-						}
-
-						if( x[q] == l[q].value ){
-							x[q] = u[q].value;
-							flip = true;
-
-
-							T diff = u[q].value - l[q].value;
-							if( q < n ){
-								int kend = Acolpointer[q+1];
-								for( int k = Acolpointer[q]; k < kend; ++k ){
-									atilde[Acolwiseind[k]] += diff * Acolwise[k];
-								}
-							} else {
-								atilde[q-n] += diff;
-							}
-
-
-						} else {
-							x[q] = l[q].value;
-							flip = true;
-
-							T diff = l[q].value - u[q].value;
-							if( q < n ){
-								int kend = Acolpointer[q+1];
-								for( int k = Acolpointer[q]; k < kend; ++k ){
-									atilde[Acolwiseind[k]] += diff * Acolwise[k];
-								}
-							} else {
-								atilde[q-n] += diff;
-							}
-
-						}
-
-						deltatilde = tmp;
-					}
-				}
-
-
-				if( ratioNeg ){
-					delta = -deltatilde;
-				} else {
-					delta = deltatilde;
-				}
-
-
-			}
-
-		}
-
-		time1 = time2;
-		time2 = clock();
-
-		time_ratio += time2-time1;
-
-
-		// TODO in extra Thread auslagern?
-		// Step 6: FTran
-//		std::cout << "FTran" << std::endl;
-
-		std::vector<T> alphaq(m);
-		if( q < n ){
-			const int kend = this->Acolpointer[q+1];
-			for( int k = this->Acolpointer[q]; k < kend; ++k ){
-				alphaq[Acolwiseind[k]] = Acolwise[k];
-			}
-		} else {
-			alphaq[q-n] = 1;
-		}
 		std::vector<T> permSpike( m );	// TODO global, damit Konstruktor nicht immer aufgerufen wird
 		std::vector<int> permSpikeInd( m );
-		int permSpikeLen;
-		this->FTran( alphaq.data(), permSpike.data(), permSpikeInd.data(), &permSpikeLen );
+		int permSpikeLen = 0;
 
-
-		time1 = time2;
-		time2 = clock();
-
-		time_ftran += time2-time1;
-
-
-
-		// Step 7: Basis change and update
-//		std::cout << "Update" << std::endl;
-
-		T thetaD = d[s] / alphar[s];
-
-		for( int i = 0; i < n; ++i ){
-			d[i] -= thetaD * alphar[i];
-		}
-
-		d[s] = -thetaD;
-
-		if( flip )
+		#pragma omp parallel
 		{
-//			std::cout << "FLIP!!!" << std::endl;
-			FTran( atilde.data() );
-			for( int i = 0; i < m; ++i ){
-				x[B[i]] -= atilde[i];
-			}
-		}
+			#pragma omp master
+			{
+
+				// DSE-FTran-Thread starten
+				if( this->DSE.size() ){
+					for( int i = 0; i < m; ++i ){
+						tau[i] = rhor[i];
+					}
+
+					#pragma omp task
+					FTran( tau.data() );	// DSE-FTran
+				}
 
 
-		T thetaP = delta / alphaq[r];
+				time1 = time2;
+				time2 = clock();
 
-		for( int i = 0; i < m; ++i ){
-			x[this->B[i]] -= thetaP * alphaq[i];
-		}
-
-
-		x[q] += thetaP;
-
-		// Update DSE
-		if( this->DSE.size() ){
-			T betar = this->DSE[r];
-			this->DSE[r] = betar / ( alphaq[r] * alphaq[r]);
-
-			time1 = time2;
-			time2 = clock();
-			time_update += time2-time1;
-
-			pthread_mutex_lock( &this->DSEhelper.mutex );
-			while( !this->DSEhelper.mainWork ){
-				pthread_cond_wait( &this->DSEhelper.mainCond, &this->DSEhelper.mutex );
-			}
-			pthread_mutex_unlock( &this->DSEhelper.mutex );
+				time_dse += time2-time1;
 
 
-			time1 = time2;
-			time2 = clock();
-			time_dse += time2-time1;
+
+				// Step 4: Pivot row
+		//		std::cout << "Pivot row" << std::endl;
+
+				std::vector<T> alphar(n);
+
+				this->mulANT( alphar.data(), rhor.data() );
+
+				time1 = time2;
+				time2 = clock();
+
+				time_pivot += time2-time1;
 
 
-			T mult;
-			for( int i = 0; i < m; ++i ){
-				if( i != r ) {
-					mult = alphaq[i] / alphaq[r];
-					this->DSE[i] += - 2 * mult * tau[i] + mult * mult * betar;
+
+				// Step 5: Ratio Test
+		//		std::cout << "Ratio Test" << std::endl;
+
+				if( ratioNeg ){
+					for( int i = 0; i < n; ++i ){
+						alphartilde[i] = - alphar[i];
+						deltatilde = - delta;
+					}
+				} else {
+					for( int i = 0; i < n; ++i ){
+						alphartilde[i] = alphar[i];
+						deltatilde = delta;
+					}
+				}
+
+
+				std::vector<T> atilde(m);
+				bool flip = false;
+				{
+					int Qlen = 0;
+					for( int i = 0; i < n; ++i ){
+						int j = this->N[i];
+						if(
+								( this->l[j].isInf && this->u[j].isInf && alphartilde[i] != 0 )
+								|| ( ( this->u[j].isInf || this->u[j].value != this->x[j] ) && !this->l[j].isInf && this->x[j] == this->l[j].value && alphartilde[i] > 0 )
+								|| ( ( this->l[j].isInf || this->l[j].value != this->x[j] ) && !this->u[j].isInf && this->x[j] == this->u[j].value && alphartilde[i] < 0 )
+						){
+
+							Qind[Qlen] = i;
+							Qord[Qlen] = Qlen;
+							Q[Qlen] = d[i] / alphartilde[i];
+							++Qlen;
+
+						}
+					}
+
+
+					if( !Qlen ){
+						// Aufhören, weil dual unbeschränkt
+						this->lastLeavingBaseVar = p;
+						dualUnbounded = true;
+					} else {
+						if( this->antiCycle ){	// Bland
+
+							T min = Q[0];
+							s = Qind[0];
+
+							for( int i = 1; i < Qlen; ++i ){
+								if( Q[i] < min ){
+									min = Q[i];
+									s = Qind[i];
+								} else if( Q[i] == min && N[Qind[i]] < N[s] ){
+									s = Qind[i];
+								}
+							}
+
+							q = N[s];
+
+						} else {
+
+							// Q absteigend sortieren
+							{
+								ratsort sorter( Q );
+								std::sort( Qord.data(), Qord.data() + Qlen, sorter );
+							}
+
+
+							// BFRT, inkl. Bound-Flips
+							while( Qlen && deltatilde >= 0 ){
+
+								s = Qind[Qord[--Qlen]];
+								q = N[s];
+								if( this->l[q].isInf || this->u[q].isInf ){
+									break;
+								} else {
+									T tmp = deltatilde - ( this->u[q].value - this->l[q].value ) * abs( alphar[s] );
+									if( tmp < 0 ){
+										break;
+									}
+
+									if( x[q] == l[q].value ){
+										x[q] = u[q].value;
+										flip = true;
+
+
+										T diff = u[q].value - l[q].value;
+										if( q < n ){
+											int kend = Acolpointer[q+1];
+											for( int k = Acolpointer[q]; k < kend; ++k ){
+												atilde[Acolwiseind[k]] += diff * Acolwise[k];
+											}
+										} else {
+											atilde[q-n] += diff;
+										}
+
+
+									} else {
+										x[q] = l[q].value;
+										flip = true;
+
+										T diff = l[q].value - u[q].value;
+										if( q < n ){
+											int kend = Acolpointer[q+1];
+											for( int k = Acolpointer[q]; k < kend; ++k ){
+												atilde[Acolwiseind[k]] += diff * Acolwise[k];
+											}
+										} else {
+											atilde[q-n] += diff;
+										}
+
+									}
+
+									deltatilde = tmp;
+								}
+							}
+
+
+							if( ratioNeg ){
+								delta = -deltatilde;
+							} else {
+								delta = deltatilde;
+							}
+
+
+						}
+					}
+				}
+
+				if( !dualUnbounded ){
+
+					time1 = time2;
+					time2 = clock();
+
+					time_ratio += time2-time1;
+
+
+					// TODO in extra Thread auslagern?
+					// Step 6: FTran
+			//		std::cout << "FTran" << std::endl;
+
+					std::vector<T> alphaq(m);
+					if( q < n ){
+						const int kend = this->Acolpointer[q+1];
+						for( int k = this->Acolpointer[q]; k < kend; ++k ){
+							alphaq[Acolwiseind[k]] = Acolwise[k];
+						}
+					} else {
+						alphaq[q-n] = 1;
+					}
+
+					this->FTran( alphaq.data(), permSpike.data(), permSpikeInd.data(), &permSpikeLen );
+
+
+					time1 = time2;
+					time2 = clock();
+
+					time_ftran += time2-time1;
+
+
+
+					// Step 7: Basis change and update
+			//		std::cout << "Update" << std::endl;
+
+					T thetaD = d[s] / alphar[s];
+
+					for( int i = 0; i < n; ++i ){
+						d[i] -= thetaD * alphar[i];
+					}
+
+					d[s] = -thetaD;
+
+					if( flip )
+					{
+			//			std::cout << "FLIP!!!" << std::endl;
+						FTran( atilde.data() );
+						for( int i = 0; i < m; ++i ){
+							x[B[i]] -= atilde[i];
+						}
+					}
+
+
+					T thetaP = delta / alphaq[r];
+
+					for( int i = 0; i < m; ++i ){
+						x[this->B[i]] -= thetaP * alphaq[i];
+					}
+
+
+					x[q] += thetaP;
+
+					// Update DSE
+					if( this->DSE.size() ){
+						T betar = this->DSE[r];
+						this->DSE[r] = betar / ( alphaq[r] * alphaq[r]);
+
+						time1 = time2;
+						time2 = clock();
+						time_update += time2-time1;
+
+						// Auf DSE-FTran warten
+						#pragma omp taskwait
+
+						time1 = time2;
+						time2 = clock();
+						time_dse += time2-time1;
+
+
+						T mult;
+						for( int i = 0; i < m; ++i ){
+							if( i != r ) {
+								mult = alphaq[i] / alphaq[r];
+								this->DSE[i] += - 2 * mult * tau[i] + mult * mult * betar;
+							}
+						}
+					}
 				}
 			}
+		}
+
+		if( dualUnbounded ){
+			break;
 		}
 
 		this->B[r] = q;
@@ -3657,7 +3366,23 @@ int TOSolver<T>::opt( bool P1 ){
 
 
 		if( !this->DSE.size() && 4 * iter > m ){
-			this->recalcDSE();
+			// DSE-Gewichte bestimmen
+			this->DSE.clear();
+			this->DSEtmp.clear();
+
+			this->DSE.resize( m );
+			this->DSEtmp.resize( m+n );
+
+			#pragma omp parallel for
+			for( int weight = 0; weight < m; ++weight )
+			{
+					std::vector<T> rhoi(m);
+					rhoi[weight] = 1;
+					BTran( rhoi.data() );
+					for( int j = 0; j < m; ++j ){
+						DSE[weight] += rhoi[j] * rhoi[j];
+					}
+			}
 		}
 
 
@@ -3670,44 +3395,52 @@ int TOSolver<T>::opt( bool P1 ){
 
 
 	#ifndef TO_DISABLE_OUTPUT
-		T Z;
-		for( int i = 0; i < n; ++i ){
-			Z += c[i] * x[i];
-		}
-		std::cout << "Zielfunktionswert: Double: " << Z.get_d() << std::endl;
-		std::cout << "Zielfunktionswert: GMP-Float: ";
-		mpf_class Zfl( 0, 256 );
-		Zfl = Z;
-
-		std::streamsize oldp = std::cout.precision(75);
-		std::cout << Zfl << std::endl;
-		std::cout.precision( oldp );
-
-		std::cout << "Exakt: " << Z << std::endl;
-
-		// simple Messung der Größe des Ergebnisses
-		std::string base2res = Z.get_str(2);
-//		std::cout << "Base 2: " << base2res << std::endl;
-		int base2size = base2res.size() + 1;	// 1 für Vorzeichen
-
-		// - und / nicht mitzählen
-		if( base2res.find( "-" ) != std::string::npos ){
-			// Ein Bit für ein Vorzeichen rechnen wir sowieso oben.
-			--base2size;
-		}
-		if( base2res.find( "/" ) != std::string::npos ){
-			// Den Bruchstrich nicht mitzählen
-			--base2size;
+		if( dualUnbounded ){
+			std::cout << "dual unbounded" << std::endl;
 		} else {
-			// Ein Bit für den Nenner 1 dazurechnen
-			++base2size;
+			T Z;
+			for( int i = 0; i < n; ++i ){
+				Z += c[i] * x[i];
+			}
+			std::cout << "Zielfunktionswert: Double: " << Z.get_d() << std::endl;
+			std::cout << "Zielfunktionswert: GMP-Float: ";
+			mpf_class Zfl( 0, 256 );
+			Zfl = Z;
+
+			std::streamsize oldp = std::cout.precision(75);
+			std::cout << Zfl << std::endl;
+			std::cout.precision( oldp );
+
+			std::cout << "Exakt: " << Z << std::endl;
+
+			// simple Messung der Größe des Ergebnisses
+			std::string base2res = Z.get_str(2);
+	//		std::cout << "Base 2: " << base2res << std::endl;
+			int base2size = base2res.size() + 1;	// 1 für Vorzeichen
+
+			// - und / nicht mitzählen
+			if( base2res.find( "-" ) != std::string::npos ){
+				// Ein Bit für ein Vorzeichen rechnen wir sowieso oben.
+				--base2size;
+			}
+			if( base2res.find( "/" ) != std::string::npos ){
+				// Den Bruchstrich nicht mitzählen
+				--base2size;
+			} else {
+				// Ein Bit für den Nenner 1 dazurechnen
+				++base2size;
+			}
+			std::cout << "Kodierungslänge: " << base2size << std::endl;
 		}
-		std::cout << "Kodierungslänge: " << base2size << std::endl;
 
 		std::cout << iter << " Iterationen" << std::endl;
 
 		std::cout << "Zeit: " << ( ( clock() - starttime ) / (double) CLOCKS_PER_SEC ) << " Sekunden" << std::endl;
 	#endif
+
+	if( dualUnbounded ){
+		return 1;
+	}
 
 	return 0;
 
@@ -3785,7 +3518,7 @@ inline std::pair<std::vector<mpq_class>, mpq_class> TOSolver<mpq_class>::getGMI(
 	tmp[ Binv[ ind ] ] = 1;
 	BTran( tmp.data() );
 	std::vector<mpq_class> gmicoeff( n );
-	mulANT_threaded( gmicoeff.data(), tmp.data() );
+	mulANT( gmicoeff.data(), tmp.data() );
 
 
 	// Generate GMI

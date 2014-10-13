@@ -10,8 +10,7 @@ http://www.mathematik.uni-osnabrueck.de/normaliz/
 
 Preperation:
 
-Check the configuration in the Makefile.configuration in the Normaliz source directory.
-Compile the normaliz library via a make in the libnormaliz directory. To compile a strictly serial version use "make OPENMP=no". 
+Check the compile instructions in ../INSTALL
 
 To use libnormaliz link libnormaliz.a in. It might be necessary to activate compilation  with OpenMP (in g++ use the -fopenmp flag).
 
@@ -43,7 +42,7 @@ vector< vector <Integer> > Data = ...
 libnormaliz::InputType type = integral_closure; // for all input types see below
 libnormaliz::Cone<Integer> MyCone = libnormaliz::Cone<Integer>(Data, type);
 
-libnormaliz::ConeProperties Wanted();
+libnormaliz::ConeProperties Wanted;
 Wanted.set(libnormaliz::ConeProperty::Triangulation).set(libnormaliz::ConeProperty::HilbertBasis);
 MyCone.compute(Wanted);
 

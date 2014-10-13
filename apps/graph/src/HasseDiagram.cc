@@ -95,6 +95,7 @@ void HasseDiagram::fromObject(const perl::Object& fl)
    fl.give("ADJACENCY") >> G;
    fl.give("FACES") >> F;
    fl.give("DIMS") >> dim_map;
+   built_min_first = (G.in_degree(0) == 0);
 }
 
 bool operator>> (const perl::Value& v, HasseDiagram& HD)

@@ -40,7 +40,7 @@ HasseDiagram hasse_diagram(const Complex& C, const int d, const int end_dim)
 
    // fill the hasse diagram
    HasseDiagram HD;
-   HasseDiagram::_filler HD_filler(HD);
+   HasseDiagram::_filler HD_filler(HD,false);
    HD_filler.add_node(sequence(0,0));           // node #0 is the top node representing the whole complex
    HD_filler.increase_dim();
    int face_end_this_dim=1, face_index=1;
@@ -95,7 +95,7 @@ HasseDiagram pure_hasse_diagram(const Complex& C, const int end_dim)
 {
    // works for pure complexes only
    HasseDiagram HD;
-   HasseDiagram::_filler HD_filler(HD);
+   HasseDiagram::_filler HD_filler(HD,false);
    HD_filler.add_node(sequence(0,0));           // node #0 is the top node representing the whole complex
    HD_filler.increase_dim();
 

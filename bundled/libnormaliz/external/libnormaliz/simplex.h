@@ -40,6 +40,7 @@
 #include "libnormaliz.h"
 #include "cone.h"
 #include "HilbertSeries.h"
+#include "reduction.h"
 
 //---------------------------------------------------------------------------
 
@@ -86,9 +87,10 @@ template<typename Integer>
 class SimplexEvaluator {
     Full_Cone<Integer> * C_ptr;
     size_t dim;
-    //Integer volume;
+    Integer volume;
     Integer det_sum; // sum of the determinants of all evaluated simplices
     mpq_class mult_sum; // sum of the multiplicities of all evaluated simplices
+    vector<key_t> key; 
     size_t candidates_size;
     size_t collected_elements_size;
     Matrix<Integer> Generators;
@@ -107,14 +109,23 @@ class SimplexEvaluator {
     vector< long > level0_gen_degrees; // degrees of the generaors in level 0
     vector< long > gen_levels;
     vector< num_t > hvector;  //h-vector of the current evaluation
-    vector< num_t > inhom_hvector; // separate vector in the inhomogeneous case in case wqe want to compute two h-vectors
+    vector< num_t > inhom_hvector; // separate vector in the inhomogeneous case in case we want to compute two h-vectors
     HilbertSeries Hilbert_Series; //this is the summed Hilbert Series
     list< vector<Integer> > Candidates;
     list< vector<Integer> > Hilbert_Basis;
-    list< vector<Integer> > Collected_Elements;
+    CandidateList<Integer> Collected_HB_Elements;
+    list< vector<Integer> > Collected_Deg1_Elements;
     //temporary objects are kept to prevent repeated alloc and dealloc
     Matrix<Integer> RS; // right hand side to hold order vector
     // Matrix<Integer> RSmult; // for multiple right hand sides
+    
+    Matrix<Integer>* StanleyMat;
+    size_t StanIndex;
+    size_t nr_level0_gens; // counts the number of level 0 vectors among the generators
+    
+    bool full_cone_simplicial;
+    bool is_complete_simplex;
+    SimplexEvaluator<Integer>* mother_simplex; 
     
     struct SIMPLINEXDATA{                    // local data of excluded faces
         boost::dynamic_bitset<> GenInFace;   // indicator for generators of simplex in face 
@@ -138,7 +149,7 @@ class SimplexEvaluator {
 
 	void addMult(const Integer& volume);
 
-    void prepare_inclusion_exclusion_simpl(const vector<key_t>& key,size_t Deg);
+    void prepare_inclusion_exclusion_simpl(size_t Deg);
     void add_to_inex_faces(const vector<Integer> offset, size_t Deg);
     void update_inhom_hvector(long level_offset, size_t Deg);
     void update_mult_inhom(Integer volume);
@@ -153,6 +164,10 @@ public:
     // full evaluation of the simplex, writes data back to the cone,
     // returns volume
     Integer evaluate(SHORTSIMPLEX<Integer>& s);
+    Integer start_evaluation(SHORTSIMPLEX<Integer>& s);
+    void evaluation_loop_sequential();
+    void evaluate_element(const vector<Integer>& element);
+    void conclude_evaluation();
 
     // moves the union of Hilbert basis / deg1 elements to the cone
     // for partial triangulation it merges the sorted list
@@ -163,6 +178,8 @@ public:
     mpq_class getMultiplicitySum() const;
     // returns sum of the Hilbert Series of all evaluated simplices
     const HilbertSeries& getHilbertSeriesSum() const;
+    
+    size_t get_collected_elements_size();
 };
 //class SimplexEvaluater end
 

@@ -17,7 +17,7 @@
 #include <dlfcn.h>
 
 #include <Singular/libsingular.h>
-#include <kernel/GBEngine/stairc.h>
+#include <kernel/combinatorics/stairc.h>
 #include <coeffs/mpr_complex.h>
 
 #include "polymake/ideal/singularIdeal.h"

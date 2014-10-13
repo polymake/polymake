@@ -103,6 +103,11 @@ rule BASES : CIRCUITS, N_ELEMENTS, RANK {
 }
 weight 3.10;
 
+rule MATROID_HYPERPLANES : CIRCUITS, N_ELEMENTS, RANK {
+   $this->MATROID_HYPERPLANES = circuits_to_hyperplanes($this->CIRCUITS, $this->N_ELEMENTS, $this->RANK);
+}
+weight 3.10;
+
 rule BASES : COCIRCUITS, N_ELEMENTS, RANK {
    $this->BASES = cocircuits_to_bases_rank($this->COCIRCUITS, $this->N_ELEMENTS, $this->RANK);
 }
@@ -139,7 +144,7 @@ rule N_COLOOPS : COLOOPS {
 weight 0.10;
 
 rule PAVING : CIRCUITS, RANK {
-    $this->PAVING=$this->RANK==min(map{$_->size()}@{$this->CIRCUITS});
+    $this->PAVING=($this->RANK<=minimum([map{$_->size()}@{$this->CIRCUITS}]));
 }
 weight 1.10;
 
@@ -188,6 +193,8 @@ rule TUTTE_POLYNOMIAL: LOOPS, COLOOPS, BASES, N_ELEMENTS {
     }
     $this->TUTTE_POLYNOMIAL=$tutte;
 }
+weight 5.10;
+
 
 rule BETA_INVARIANT : TUTTE_POLYNOMIAL {
     my $beta=0;
@@ -199,6 +206,7 @@ rule BETA_INVARIANT : TUTTE_POLYNOMIAL {
     $this->BETA_INVARIANT=$beta;
 }
 precondition :  N_ELEMENTS { $this->N_ELEMENTS>1 };
+weight 1.10;
 
 rule SERIES_PARALLEL, CONNECTED : BETA_INVARIANT{ # See [David Speyer:tropical linear spaces prop. 6.3]
     if($this->BETA_INVARIANT==0){
@@ -213,6 +221,32 @@ rule SERIES_PARALLEL, CONNECTED : BETA_INVARIANT{ # See [David Speyer:tropical l
         }
     }
 }
+weight 0.10;
+
+rule LATTICE_OF_FLATS : MATROID_HYPERPLANES {
+   my $hy=new IncidenceMatrix<NonSymmetric>($this->MATROID_HYPERPLANES);
+   $this->LATTICE_OF_FLATS=lattice_of_flats($hy);
+}
+weight 6.20;
+
+rule CONNECTED_COMPONENTS : CIRCUITS, N_ELEMENTS{
+    $this->CONNECTED_COMPONENTS = connected_componets_from_circuits($this->CIRCUITS, $this->N_ELEMENTS);
+}
+weight 1.10;
+
+rule CONNECTED_COMPONENTS : COCIRCUITS, N_ELEMENTS{
+    $this->CONNECTED_COMPONENTS = connected_componets_from_circuits($this->COCIRCUITS, $this->N_ELEMENTS);
+}
+weight 1.10;  
+
+rule CONNECTED : CONNECTED_COMPONENTS{
+    if($this->CONNECTED_COMPONENTS->size>1){
+        $this->CONNECTED=0;
+    }else{
+        $this->CONNECTED=1;
+    }
+}
+weight 0.10;
 
 rule H_VECTOR : BASES, RANK {
    my $bases = $this->BASES;
