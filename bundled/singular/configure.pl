@@ -45,7 +45,7 @@ sub proceed {
    chomp $singularprefix;
    # yes we need it twice ...
 
-   $Libs = join(" ",$LDflags =~ m/(-l\w+)/g) . " -lpolys -lomalloc";
+   $Libs = join(" ",$LDflags =~ m/(-l\w+)/g) . " -lfactory -lresources -lpolys -lomalloc";
    $LDflags =~ s/ -l\w+//g;
    $LDflags =~ s/-L(\S+)/-L$1 -Wl,-rpath,$1/g;
 

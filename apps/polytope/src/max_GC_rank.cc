@@ -52,7 +52,6 @@ perl::Object max_GC_rank(int d)
 
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("INEQUALITIES") << Inequalities;
-   p.take("N_INEQUALITIES") << n_ineqs+1;
    p.take("VALID_POINT") << (1|Vector<Rational>(d,Rational(1,2)));
    p.take("BOUNDED") << true;
 

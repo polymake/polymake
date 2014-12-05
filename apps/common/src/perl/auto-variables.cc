@@ -24,11 +24,11 @@
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( variables_f1, T0 ) {
+   FunctionInterface4perl( variables_L_f1, T0 ) {
       perl::Value arg0(stack[0]);
       WrapperReturnList( arg0.get<T0>().variables() );
    };
 
-   FunctionInstance4perl(variables_f1, perl::Canned< const Ring< Rational, int > >);
+   FunctionInstance4perl(variables_L_f1, perl::Canned< const Ring< Rational, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

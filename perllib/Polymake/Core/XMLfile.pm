@@ -23,9 +23,9 @@ use strict;
 use namespaces;
 
 my $pmns="http://www.math.tu-berlin.de/polymake/#3";
-my ($rngschema, $DOMparser, $XSLT, $XPath);
-
 my $xml_id_attr="{$XML::NamespaceSupport::NS_XML}id";
+
+my ($rngschema, $DOMparser, $XSLT, $XPath, $suppress_auto_save);
 
 #############################################################################################
 #
@@ -282,9 +282,8 @@ sub start_element : method {
       $self->nsprefix=$elem->{Prefix};
       my $object=$self->cur_object->[0];
       my $is_object= $tag eq "start_object";
-      $attrs->{"{}type"}->{Value} =~ /^(?'app_name' $id_re)::(?'type' $type_re)$/xo
-         or die "invalid type of top-level object\n";
-      my $proto=(add Application(downgradeUTF8($+{app_name})))->eval_type(($is_object ? "objects::" : "props::").downgradeUTF8($+{type}));
+      my $proto=eval_qualified_type($self, $attrs->{"{}type"}->{Value}, $is_object)
+                  // die "invalid top-level element type: $@\n";
 
       if (instanceof Object($object)) {
          $is_object or die "top-level element must be `object'\n";
@@ -329,17 +328,31 @@ sub end_element : method {
    $self->$etag();
 }
 
+sub eval_qualified_type {
+   my ($self, $type, $is_object, $in_tree)=@_;
+   if (my ($app_name, $type_expr)=map { downgradeUTF8($_) } $type =~ /^(?:($id_re)::)? ($type_re)$/xo) {
+      my $app= defined($app_name)
+               ? add Application($app_name) :
+               $in_tree
+               ? $self->cur_proto->[-1]->application
+               : die("application name missing in the top-level element type");
+      while ($type_expr =~ /(?<!::)\b(\w+)::/g) {
+         add Application($1);
+      }
+      $app->eval_type(($is_object ? "objects::" : "props::").$type_expr);
+   } else {
+      die "malformed type attribute '$type'";
+   }
+}
+
 sub extract_type {
    my ($self, $attrs, $is_object)=@_;
    if (defined (my $type=$attrs->{"{}type"}->{Value})) {
       if ($type eq "text") {
          $type
       } else {
-         $type =~ /^(?:(?'app_name' $id_re)::)? (?'type' $type_re)$/xo
-            or die "invalid type '$type'";
-         (exists $+{app_name} ? add Application(downgradeUTF8($+{app_name}))
-                              : $self->cur_proto->[-1]->application
-         )->eval_type(($is_object ? "objects::" : "props::").downgradeUTF8($+{type}));
+         eval_qualified_type($self, $type, $is_object, 1)
+           // die "invalid ", ($is_object ? "object" : "property"), " type '$type': $@\n";
       }
    } else {
       undef;
@@ -361,7 +374,7 @@ sub start_object : method {
    } else {
       $type=$expected;
    }
-   my $sub_obj=Object::new($type->pkg, exists $attrs->{"{}name"} ? $attrs->{"{}name"}->{Value} : undef);
+   my $sub_obj=Object::__new($type->pkg, exists $attrs->{"{}name"} ? $attrs->{"{}name"}->{Value} : undef);
    $sub_obj->parent=$self->cur_object->[-1]->value;    # during the subobject construction
    push @{$self->cur_object}, $sub_obj;
    push @{$self->cur_proto}, $type;
@@ -404,7 +417,7 @@ attachments or declare new properties in extension rules.
       skip_subtree_mode($self, 1);
       return;
    }
-   my $type=extract_type($self,$attrs,0);
+   my $type=extract_type($self, $attrs, 0);
    push @{$self->cur_property}, [ $prop->concrete($self->cur_object->[-1]), $type ];
    push @{$self->cur_value},
         [ exists $attrs->{"{}value"} ? downgradeUTF8($attrs->{"{}value"}->{Value}) :
@@ -418,7 +431,7 @@ sub end_property : method {
    my $value_ptr=pop @{$self->cur_value};
    if (defined $type) {
       if (ref($type)) {
-         $self->cur_object->[-1]->_add($prop, PropertyType::new_object($type,$value_ptr->[0]), $self->trusted);
+         $self->cur_object->[-1]->_add($prop, $type->construct->($value_ptr->[0]), $self->trusted);
       } else {
          # $type eq "text"
          # this value may contain any funny Unicode characters, don't downgrade!
@@ -439,7 +452,7 @@ sub start_attachment {
       return;
    }
    my $name=downgradeUTF8($attrs->{"{}name"}->{Value});
-   my $type=extract_type($self,$attrs,0);
+   my $type=extract_type($self, $attrs, 0);
    my $construct= exists $attrs->{"{}construct"} && downgradeUTF8($attrs->{"{}construct"}->{Value});
    push @{$self->cur_property}, [ $name, $type, $construct ];
    push @{$self->cur_value},
@@ -456,7 +469,7 @@ sub end_attachment : method {
          if ($construct) {
             $value=$type->construct->($self->cur_object->[-1]->give($construct), $value);
          } else {
-            $value=PropertyType::new_object($type,$value);
+            $value=$type->construct->($value);
          }
       } elsif ($type eq "text") {
          $value=$self->text;
@@ -469,7 +482,7 @@ sub end_data : method {
    my ($self)=@_;
    my $type=(pop @{$self->cur_property})->[0]->type;
    my ($value)=@{ pop @{$self->cur_value} };
-   $self->cur_value=PropertyType::new_object($type, $value);
+   $self->cur_value=$type->construct->($value);
 }
 
 sub start_description : method {
@@ -631,6 +644,7 @@ sub load {
    unless ($PropertyType::trusted_value) {
       $object->transaction->changed=1;
       $object->transaction->commit($object);
+      $object->dont_save if $suppress_auto_save;
    }
 }
 #############################################################################################
@@ -642,9 +656,8 @@ sub load_data {
    local $PropertyType::trusted_value=1;
    $handler->trusted=$self->is_compressed;
    $handler->parse_file($fh);
-   if (!$handler->trusted && -w $self->filename) {
+   if (!$handler->trusted && !$suppress_auto_save && -w $self->filename) {
       save_data($self, $handler->cur_value, $handler->cur_object->[0]->description);
-      $handler->trusted=1;
    }
    wantarray ? ($handler->cur_value, $handler->cur_object->[0]->description) : $handler->cur_value;
 }
@@ -664,7 +677,15 @@ sub layer_for_compression {
 sub suppress_validation {
    my $scope=shift;
    $scope->begin_locals;
-   local_sub(\&XMLhandler::verify_integrity, sub : method { (shift)->trusted=1 });
+   local_sub(\&XMLhandler::verify_integrity, sub : method { $_[0]->trusted=1 });
+   $scope->end_locals;
+}
+
+sub enforce_validation {
+   my $scope=shift;
+   $scope->begin_locals;
+   local_sub(\&XMLhandler::verify_integrity, sub : method { $_[0]->trusted=0 });
+   local_incr($suppress_auto_save);
    $scope->end_locals;
 }
 #############################################################################################
@@ -800,11 +821,8 @@ sub top_ext_attr {
 }
 
 sub type_attr {
-   my ($writer, $type, $owner)=@_;
-   ( type => ( not(defined($owner) and 
-                   $owner->type->application == $type->application ||
-                   exists $owner->type->application->imported->{$type->application->name}) &&
-               $type->application->name."::" ) . $type->full_name )
+   my ($type, $owner)=@_;
+   ( type => $type->qualified_name(defined($owner) ? $owner->type->application : undef) )
 }
 
 sub write_subobject {
@@ -812,7 +830,7 @@ sub write_subobject {
    my $type=$object->type;
    $writer->startTag( "object",
                       length($object->name) ? (name => $object->name) : (),
-                      $type != $expected_type ? (type_attr($writer, $type->pure_type, $parent),
+                      $type != $expected_type ? (type_attr($type->pure_type, $parent),
                                                  $type->extension ? ext_attr($writer, $type->extension, $_[4]) : ())
                                               : ()
                     );
@@ -848,7 +866,7 @@ sub write_object_contents {
          if (is_object($pv->value)) {
             if (ref($pv->value) ne $type->pkg) {
                $type=$pv->value->type;
-               @show_type=type_attr($writer, $type, $object);
+               @show_type=type_attr($type, $object);
                if (my @type_ext=ext_attr($writer, $type)) {
                   if (@ext) {
                      $ext[1].=" $type_ext[1]";
@@ -857,13 +875,13 @@ sub write_object_contents {
                   }
                }
             }
-         } elsif (!$type->parse) {
-            @show_type=(type => "text");
          }
-         if (defined($type->toXML)) {
+         if ($type->toXML) {
             $writer->startTag( "property", name => $pv->property->qual_name, @show_type, @ext );
             $type->toXML->($pv->value, $writer);
             $writer->endTag("property");
+         } elsif ($type->name eq "Text") {
+            $writer->cdataElement( "property", $pv->value, name => $pv->property->qual_name, type => "text", @ext );
          } else {
             $writer->emptyTag( "property", name => $pv->property->qual_name, @show_type, @ext,
                                value => $type->toString->($pv->value) );
@@ -877,12 +895,12 @@ sub write_object_contents {
       if (ref($value)) {
          my $type=$value->type;
          my @construct= $construct ? (construct => $construct) : ();
-         if (defined($type->toXML)) {
-            $writer->startTag( "attachment", name => $name, type_attr($writer, $type, $object), ext_attr($writer,$type), @construct );
+         if ($type->toXML) {
+            $writer->startTag( "attachment", name => $name, type_attr($type, $object), ext_attr($writer,$type), @construct );
             $type->toXML->($value, $writer);
             $writer->endTag("attachment");
          } else {
-            $writer->emptyTag( "attachment", name => $name, type_attr($writer, $type, $object), ext_attr($writer,$type), @construct, value => $value );
+            $writer->emptyTag( "attachment", name => $name, type_attr($type, $object), ext_attr($writer,$type), @construct, value => $value );
          }
       } elsif (length($value)>100 || $value =~ /\n/) {
          $writer->cdataElement("attachment", $value, name => $name, type => "text");
@@ -909,7 +927,7 @@ sub save {
 
    $writer->startTag( [ $pmns, "object" ],
                       defined($object->name) ? (name => $object->name) : (),
-                      type_attr($writer, $object_type),
+                      type_attr($object_type),
                       top_ext_attr($writer, $object_type),
                       version => $Version,
                     );
@@ -941,15 +959,15 @@ sub save_data {
 
    my $type=$data->type;
    $writer->startTag( [ $pmns, "data" ],
-                      type_attr($writer, $type),
+                      type_attr($type),
                       top_ext_attr($writer, $type),
                       version => $Version,
-                      defined($type->toXML) ? () : (value => $type->toString->($data)),
+                      $type->toXML ? () : (value => $type->toString->($data)),
                     );
    if (length($description)) {
       $writer->cdataElement("description", $description);
    }
-   if (defined($type->toXML)) {
+   if ($type->toXML) {
       $type->toXML->($data, $writer);
    }
    $writer->endTag("data");

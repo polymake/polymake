@@ -25,7 +25,7 @@ namespace pm {
 
 template <typename Set>
 class ListIncidenceMatrix
-   : public GenericIncidenceMatrix< ListIncidenceMatrix<Set>, False> {
+   : public GenericIncidenceMatrix< ListIncidenceMatrix<Set> > {
 protected:
    typedef std::list<Set> row_list;
    shared_object< ListMatrix_data<Set>, AliasHandler<shared_alias_handler> > data;
@@ -153,7 +153,7 @@ public:
    int cols() const { return data->dimc; }
 
    template <typename Matrix2>
-   ListIncidenceMatrix& operator/= (const GenericIncidenceMatrix<Matrix2>& m)
+   ListIncidenceMatrix& operator/= (const GenericIncidenceMatrix<Matrix2>& M)
    {
       const int add_rows=M.rows();
       if (add_rows) {
@@ -322,7 +322,7 @@ namespace polymake {
    using pm::ListIncidenceMatrix;
 }
 
-#endif // POLYMAKE_LIST_MATRIX_H
+#endif // POLYMAKE_LIST_INCIDENCE_MATRIX_H
 
 // Local Variables:
 // mode:C++

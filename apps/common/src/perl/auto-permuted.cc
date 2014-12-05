@@ -31,10 +31,10 @@ namespace polymake { namespace common { namespace {
       WrapperReturn( permuted(arg0.get<T0>(), arg1.get<T1>()) );
    };
 
-   FunctionInstance4perl(permuted_X_X, perl::Canned< const Set< int > >, perl::TryCanned< const Array< int > >);
-   FunctionInstance4perl(permuted_X_X, perl::Canned< const PowerSet< int > >, perl::TryCanned< const Array< int > >);
-   FunctionInstance4perl(permuted_X_X, perl::Canned< const Array< Array< Set< int > > > >, perl::TryCanned< const Array< int > >);
-   FunctionInstance4perl(permuted_X_X, perl::Canned< const Array< Set< int > > >, perl::TryCanned< const Array< int > >);
+   FunctionInstance4perl(permuted_X_X, perl::Canned< const Set< int > >, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(permuted_X_X, perl::Canned< const PowerSet< int > >, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(permuted_X_X, perl::Canned< const Array< Array< Set< int > > > >, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(permuted_X_X, perl::Canned< const Array< Set< int > > >, perl::Canned< const Array< int > >);
    FunctionInstance4perl(permuted_X_X, perl::Canned< const Array< std::string > >, perl::Canned< const Array< int > >);
    FunctionInstance4perl(permuted_X_X, perl::Canned< const Array< int > >, perl::Canned< const Array< int > >);
    FunctionInstance4perl(permuted_X_X, perl::Canned< const Array< IncidenceMatrix< NonSymmetric > > >, perl::Canned< const Array< int > >);

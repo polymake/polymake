@@ -42,15 +42,17 @@ perl::Object tropical_matroid_polytope(perl::Object m,const Rational& value)
    return t;
 }
 
-UserFunction4perl("# @category Producing a tropical polytope\n"
+InsertEmbeddedRule("REQUIRE_APPLICATION matroid\n\n");
+
+UserFunction4perl("# @category Producing a tropical polytope"
 		  "# Produce the tropical matroid polytope from a matroid //m//."
 		  "# Each vertex corresponds to a basis of the matroid,"
-		  "# the non-bases coordinates get value 0, the bases coordinates\n"
-		  "# gets value //v//, default is -1.\n"
+		  "# the non-bases coordinates get value 0, the bases coordinates"
+		  "# get value //v//, default is -1."
 		  "# @param matroid::Matroid m"
 		  "# @param Rational v value for the bases"
 		  "# @return TropicalPolytope",
-		  &tropical_matroid_polytope, "tropical_matroid_polytope(matroid::Matroid;$=-1)");
+		  &tropical_matroid_polytope, "tropical_matroid_polytope(matroid::Matroid; $=-1)");
 } }
 
 // Local Variables:

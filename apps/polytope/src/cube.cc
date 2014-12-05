@@ -38,7 +38,7 @@ perl::Object cube(int d, Scalar x_up, Scalar x_low, perl::OptionSet options)
    } else {
       if (x_up <= x_low)
          throw std::runtime_error("cube: x_up > x_low required");
-      x_low.negate();
+      negate(x_low);
    }
 
    perl::Object p(perl::ObjectType::construct<Scalar>("Polytope"));
@@ -122,7 +122,8 @@ UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
                           "# @param Scalar x_low lower bound in each dimension"
                           "# @option Bool group add a symmetry group description to the resulting polytope"
                           "# @return Polytope<Scalar>",
-                          "cube<_BoundType, Scalar={ typechecks::is_ordered_field(_BoundType) ? _BoundType : Rational }>(Int; _BoundType=1, _BoundType=(-$_[-1]), { group => undef } )");
+                          "cube<Scalar> [ is_ordered_field(type_upgrade<Scalar, Rational>) ]"
+                          "    (Int; type_upgrade<Scalar>=1, type_upgrade<Scalar>=(-$_[-1]), { group => undef } )");
 } }
 
 // Local Variables:

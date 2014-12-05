@@ -116,6 +116,8 @@ perl::Object bs2quotient(perl::Object p, perl::Object bs)
    return q;
 }
 
+InsertEmbeddedRule("REQUIRE_APPLICATION polytope\n\n");
+
 UserFunction4perl("# @category Producing a new simplicial complex from others"
                   "# Create a simplicial complex from a simplicial subdivision of a given complex"
                   "# by identifying vertices on the boundary of the original complex according to a group that acts on vertices." 

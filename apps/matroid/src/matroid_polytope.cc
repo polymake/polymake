@@ -20,6 +20,7 @@
 #include "polymake/Set.h"
 #include "polymake/Matrix.h"
 #include "polymake/Integer.h"
+#include "polymake/graph/HasseDiagram.h"
 
 namespace polymake { namespace matroid {
 
@@ -50,7 +51,7 @@ Set<int> matroid_indices_of_hypersimplex_vertices(perl::Object m)
 
 
 
-void matroid_polytope(perl::Object m)
+void matroid_polytope(perl::Object m,  perl::OptionSet options )
 {
   const Array< Set<int> > bases=m.give("BASES");
   const int n_bases=bases.size();
@@ -66,16 +67,20 @@ void matroid_polytope(perl::Object m)
       V(b,(*i)+1)=1;
   }
 
-  Array< Set<int> > mat_hy;
-   if(m.lookup("MATROID_HYPERPLANES")>>mat_hy){
-      const int size=mat_hy.size();
+  bool ineq_flag = options["inequalities"];
+  if(ineq_flag && m.give("CONNECTED") && n_elements>1){
+      const graph::HasseDiagram lattice=m.give("LATTICE_OF_FLATS");
+      const int size( lattice.nodes()-2 ); //do not use the bottom and top node
       const int rank=m.give("RANK");
       Matrix<Rational> I(size+2*n_elements,n_elements+1);
       Matrix<Rational> E(1,n_elements+1);
-      for (int f=0; f<size; ++f) {
-         I(f,0)=rank-1;
-         for (Entire< Set<int> >::const_iterator i=entire(mat_hy[f]); !i.at_end(); ++i)
-            I(f,(*i)+1)=-1;
+      int f(0);
+      for(int j=1 ; j<rank; ++j){
+         for (Entire<graph::HasseDiagram::nodes_of_dim_set>::iterator fi=entire(lattice.nodes_of_dim(j)); !fi.at_end(); ++fi,++f) {
+            I(f,0)=j;
+            for (Entire< Set<int> >::const_iterator i=entire(lattice.face(*fi)); !i.at_end(); ++i)
+               I(f,(*i)+1)=-1;
+         }
       }
       //hypersimplex
       //0 <= x_i <= 1 + sum x_i = rank :
@@ -86,8 +91,8 @@ void matroid_polytope(perl::Object m)
          I(size+2*i+1,i+1)=-1;
          E(0,i+1)=1;
       }
-     p.take("INEQUALITIES") << I;
-     p.take("EQUATIONS") << E;
+   p.take("INEQUALITIES") << I;
+   p.take("EQUATIONS") << E;
   }
 
   p.take("VERTICES") << V;
@@ -96,7 +101,7 @@ void matroid_polytope(perl::Object m)
   m.take("POLYTOPE") << p;
 }
 
-Function4perl(&matroid_polytope, "matroid_polytope(Matroid)");
+Function4perl(&matroid_polytope, "matroid_polytope(Matroid, { inequalities => undef } )");
 Function4perl(&matroid_indices_of_hypersimplex_vertices, "matroid_indices_of_hypersimplex_vertices(Matroid)");
 
 } }

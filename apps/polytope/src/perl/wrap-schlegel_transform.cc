@@ -19,11 +19,11 @@
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( schlegel_transform_x_x_f16, T0 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]);
-      WrapperReturnVoid( schlegel_transform<T0>(arg0, arg1) );
+   FunctionInterface4perl( schlegel_transform_T_x_x_f16, T0 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      WrapperReturnVoid( (schlegel_transform<T0>(arg0, arg1)) );
    };
 
-   FunctionInstance4perl(schlegel_transform_x_x_f16, Rational);
+   FunctionInstance4perl(schlegel_transform_T_x_x_f16, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

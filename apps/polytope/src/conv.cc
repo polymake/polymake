@@ -55,7 +55,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# given in //P_Array//."
                           "# @param Array<Polytope> P_Array"
                           "# @return PropagatedPolytope",
-                          "conv<Scalar>(Polytope<Scalar> +)");
+                          "conv<Scalar>(Polytope<type_upgrade<Scalar>> +)");
 } }
 
 // Local Variables:

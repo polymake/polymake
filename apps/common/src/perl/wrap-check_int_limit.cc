@@ -22,7 +22,7 @@ namespace polymake { namespace common { namespace {
    template <typename T0>
    FunctionInterface4perl( check_int_limit_X, T0 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturn( check_int_limit(arg0.get<T0>()) );
+      WrapperReturn( (check_int_limit(arg0.get<T0>())) );
    };
 
    FunctionInstance4perl(check_int_limit_X, perl::Canned< const Matrix< Integer > >);

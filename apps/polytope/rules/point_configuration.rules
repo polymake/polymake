@@ -249,7 +249,7 @@ user_function stellar_subdivision(PointConfiguration, Array<Set<Int>>, { no_labe
 # @param PointConfiguration P1
 # @param PointConfiguration P2
 # @return PointConfiguration
-user_function minkowski_sum<Scalar> (PointConfiguration<Scalar>, PointConfiguration<Scalar> ) {
+user_function minkowski_sum<Scalar> (PointConfiguration<type_upgrade<Scalar>>, PointConfiguration<type_upgrade<Scalar>> ) {
     my ($p1,$p2) = @_;
     return minkowski_sum(1,$p1,1,$p2);
 }
@@ -262,7 +262,7 @@ user_function minkowski_sum<Scalar> (PointConfiguration<Scalar>, PointConfigurat
 # @param Scalar mu
 # @param PointConfiguration P2
 # @return PointConfiguration
-user_function minkowski_sum<Scalar> ($, PointConfiguration<Scalar>, $, PointConfiguration<Scalar> ) {
+user_function minkowski_sum<Scalar> (type_upgrade<Scalar>, PointConfiguration<type_upgrade<Scalar>>, type_upgrade<Scalar>, PointConfiguration<type_upgrade<Scalar>> ) {
     my ($l1,$p1,$l2,$p2) = @_;
     my $v1=$p1->give("POINTS");
     my $v2=$p2->give("POINTS");

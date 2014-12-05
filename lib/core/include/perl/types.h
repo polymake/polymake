@@ -55,7 +55,9 @@ inline SV* field_names(bait*, ...) { return pm::perl::Scalar::undef(); }
 
 template <typename T> class Class;
 
-// don't try to create any magic glue for this array
+// don't try to create any magic glue for these guys
+inline bait* recognize(SV**, bait*, pm::perl::Object*, pm::perl::Object*) { return NULL; }
+inline bait* recognize(SV**, bait*, pm::perl::ObjectType*, pm::perl::ObjectType*) { return NULL; }
 inline bait* recognize(SV**, bait*, pm::Array<pm::perl::Object>*, pm::Array<pm::perl::Object>*) { return NULL; }
 
 } }
@@ -71,9 +73,8 @@ struct type_infos {
    type_infos() : descr(NULL), proto(NULL), magic_allowed(false) {}
 
    bool allow_magic_storage() const;
-   void set_proto();
    void set_proto(SV* prescribed_pkg, const std::type_info&, SV* super_proto=NULL);
-   void set_proto(SV*);
+   void set_proto(SV* known_proto=NULL);
    bool set_descr();
    bool set_descr(const std::type_info&);
 };
@@ -101,20 +102,20 @@ protected:
    // primary template: nothing known
    // either a special class with prescribed perl package, or a built-in type, or something really undeclared
 
-   static const bool allow_deferred_descr=false;
+   typedef pm::list prohibited_magic_for(Object, pm::Array<Object>, ObjectType);
 
-   static type_infos get()
+   static type_infos get(SV* known_proto)
    {
       type_infos _infos;
-      if (!list_contains<cons<pm::Array<Object,void>, cons<Object, ObjectType> >, T>::value &&
+      if (!list_contains<prohibited_magic_for, T>::value &&
           _infos.set_descr(typeid(typename remove_unsigned<T>::type))) {
-         _infos.set_proto();
+         _infos.set_proto(known_proto);
          _infos.magic_allowed=_infos.allow_magic_storage();
       }
       return _infos;
    }
 
-   static type_infos get(SV* prescribed_pkg, bool accept_magic)
+   static type_infos get_with_prescribed_pkg(SV* prescribed_pkg, bool accept_magic)
    {
       type_infos _infos;
       _infos.set_proto(prescribed_pkg, typeid(T));
@@ -133,18 +134,26 @@ protected:
 };
 
 template <typename T>
-class type_cache : protected type_cache_base,
-                   protected type_cache_helper<T> {
+class type_cache
+   : protected type_cache_base
+   , protected type_cache_helper<T> {
 protected:
    typedef type_cache_helper<T> super;
-   static type_infos& get(type_infos* ti=NULL)
+
+   static type_infos& get(SV* known_proto=NULL)
    {
-      static type_infos _infos=ti ? *ti : super::get();
+      static type_infos _infos=super::get(known_proto);
+      return _infos;
+   }
+
+   static type_infos& get_with_prescribed_pkg(SV* prescribed_pkg)
+   {
+      static type_infos _infos=super::get_with_prescribed_pkg(prescribed_pkg, !object_traits<T>::is_lazy);
       return _infos;
    }
 public:
-   static SV* get_descr() { return get().descr; }
-   static SV* get_proto() { return get().proto; }
+   static SV* get_descr(SV* known_proto=NULL) { return get(known_proto).descr; }
+   static SV* get_proto(SV* known_proto=NULL) { return get(known_proto).proto; }
    static SV* provide() { return get_proto(); } // for ClassRegistrator
    static bool magic_allowed(int)
    {
@@ -152,17 +161,7 @@ public:
    }
    static bool magic_allowed(SV* prescribed_pkg)
    {
-      static type_infos _infos=super::get(prescribed_pkg, !object_traits<T>::is_lazy);
-      return get(&_infos).magic_allowed;
-   }
-
-   static SV* force_descr()
-   {
-      type_infos& infos=get();
-      if (super::allow_deferred_descr && !infos.descr && !infos.magic_allowed)
-         // this can happen to semi-builtins like Array<int>
-         infos.set_descr();
-      return infos.descr;
+      return get_with_prescribed_pkg(prescribed_pkg).magic_allowed;
    }
 
    static wrapper_type get_assignment_operator(SV* src)
@@ -184,16 +183,15 @@ public:
 template <typename T, typename Representative>
 class type_cache_via {
 protected:
-   static const bool allow_deferred_descr=false;
-
    static SV* _get_descr(SV* proto, False)
    {
       return polymake::perl_bindings::Class<T>::register_it(0,0,proto);
    }
    static SV* _get_descr(SV*, True) { return NULL; }
 
-   static type_infos get()
+   static type_infos get(SV* known_proto)
    {
+      assert(known_proto==NULL);
       type_infos _infos;
       _infos.proto=type_cache<Representative>::get_proto();
       _infos.magic_allowed=type_cache<Representative>::magic_allowed(0);
@@ -201,7 +199,7 @@ protected:
       return _infos;
    }
 
-   static type_infos get(SV* prescribed_pkg, bool accept_magic)
+   static type_infos get_with_prescribed_pkg(SV* prescribed_pkg, bool accept_magic)
    {
       type_infos _infos;
       _infos.set_proto(prescribed_pkg, typeid(T), type_cache<Representative>::get_proto());
@@ -222,13 +220,13 @@ class type_cache_helper<T, false, false, false, true, false>
 template <typename T, bool _has_persistent, bool _has_generic>
 class type_cache_helper<T, true, false, _has_persistent, _has_generic, true> {
 protected:
-   static const bool allow_deferred_descr=false;
-   static type_infos get()
+   static type_infos get(SV* known_proto)
    {
+      assert(known_proto==NULL);
       type_infos _infos;
       _infos.proto=type_cache<typename T::value_type>::get_proto();
       _infos.magic_allowed=true;
-      _infos.descr=polymake::perl_bindings::Class<T>::register_it(0,0,_infos.proto);
+      _infos.descr=polymake::perl_bindings::Class<T>::register_it(0, 0, _infos.proto);
       return _infos;
    }
 };
@@ -236,13 +234,13 @@ protected:
 template <typename T, bool _has_persistent, bool _has_generic>
 class type_cache_helper<T, true, false, _has_persistent, _has_generic, false> {
 protected:
-   static const bool allow_deferred_descr=false;
-   static type_infos get()
+   static type_infos get(SV* known_proto)
    {
+      assert(known_proto==NULL);
       type_infos _infos;
       recognize(&_infos.proto, recognizer_bait(0), (T*)0, (T*)0);
       _infos.magic_allowed=_infos.allow_magic_storage();
-      _infos.descr=polymake::perl_bindings::Class<T>::register_it(0,0,_infos.proto);
+      _infos.descr=polymake::perl_bindings::Class<T>::register_it(0, 0, _infos.proto);
       return _infos;
    }
 };
@@ -250,13 +248,17 @@ protected:
 template <typename T, bool _has_persistent, bool _has_generic>
 class type_cache_helper<T, true, true, _has_persistent, _has_generic, false> {
 protected:
-   static const bool allow_deferred_descr=true;
-   static type_infos get()
+   static type_infos get(SV* known_proto)
    {
       type_infos _infos;
-      recognize(&_infos.proto, recognizer_bait(0), (T*)0, (T*)0);
-      if ((_infos.magic_allowed = _infos.allow_magic_storage()))
-         _infos.set_descr();
+      if (known_proto
+          ? (_infos.set_proto(known_proto),
+             true)
+          : (recognize(&_infos.proto, recognizer_bait(0), (T*)0, (T*)0),
+             _infos.proto != NULL)) {
+         if ((_infos.magic_allowed = _infos.allow_magic_storage()))
+            _infos.set_descr();
+      }
       return _infos;
    }
 };
@@ -363,7 +365,7 @@ public:
       return ret;
    }
 
-   static SV* get_types(int =0)
+   static SV* get_types()
    {
       static SV* types=gather_types();
       return types;

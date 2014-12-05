@@ -20,24 +20,24 @@ object Cone {
 # A Cone defined with an empty [[RAYS]] or [[INPUT_RAYS]] matrix gets trivial [[FACETS]] assigned
 # Note that all convex hull clients need at least one ray.
 rule FACETS, LINEAR_SPAN : {
-	my $ambientdim = $this->lookup("CONE_AMBIENT_DIM");
-	if (!defined($ambientdim)) {
-		foreach (qw(INEQUALITIES EQUATIONS INPUT_LINEALITY LINEALITY_SPACE)) {
-			my $m;
-			last if (defined($m = $this->lookup($_)) && ($ambientdim = $m->cols) > 0);
-		}
-	}
-	$this->FACETS = new Matrix<Scalar>();
-	my $ls = $this->lookup("LINEALITY_SPACE | INPUT_LINEALITY");
-	if (defined($ls) && $ls->rows > 0) {
-		$this->LINEAR_SPAN = null_space($ls);
-	} else {
-		$this->LINEAR_SPAN = unit_matrix<Scalar>($ambientdim);
-	}
+   my $ambientdim = $this->lookup("CONE_AMBIENT_DIM");
+   if (!defined($ambientdim)) {
+      foreach (qw(INEQUALITIES EQUATIONS INPUT_LINEALITY LINEALITY_SPACE)) {
+	 my $m;
+	 last if (defined($m = $this->lookup($_)) && ($ambientdim = $m->cols) > 0);
+      }
+   }
+   $this->FACETS = new Matrix<Scalar>();
+   my $ls = $this->lookup("LINEALITY_SPACE | INPUT_LINEALITY");
+   if (defined($ls) && $ls->rows > 0) {
+      $this->LINEAR_SPAN = null_space($ls);
+   } else {
+      $this->LINEAR_SPAN = unit_matrix<Scalar>($ambientdim);
+   }
 }
 precondition : defined(INPUT_RAYS | RAYS);
 precondition : INPUT_RAYS | RAYS {
-	$this->lookup("INPUT_RAYS | RAYS")->rows == 0;
+   $this->lookup("INPUT_RAYS | RAYS")->rows == 0;
 }
 weight 1.10;
 
@@ -153,7 +153,7 @@ user_function zonotope<Scalar> (Matrix<Scalar>, { rows_are_points => 1, centered
 # @return Cone
 user_function projection<Scalar>(Cone<Scalar>; $=[ ], { revert=>0, nofm=>0 }) {
    my ($P, $indices, $options) = @_;
-   my $first_coord = ($P->isa("Polytope") ? 1 : 0);
+   my $first_coord = $P->isa("Polytope") ? 1 : 0;
    projection_impl($P, "CONE", "LINEAR_SPAN", $first_coord, $indices, $options);
 }
 

@@ -15,7 +15,7 @@
 
 
 # A [[PolyhedralFan]] with a symmetry group acting on the coordinates.
-declare object SymmetricFan<Scalar=Rational> [ typechecks::is_ordered_field(Scalar) ] : PolyhedralFan<Scalar>;
+declare object SymmetricFan<Scalar=Rational> [ is_ordered_field(Scalar) ] : PolyhedralFan<Scalar>;
 
 object SymmetricFan {
 

@@ -37,12 +37,6 @@ file_suffix top
 # An abstract simplicial complex represented by its facets.
 declare object SimplicialComplex;
 
-# forward declaration for some clients connecting the applications
-# FIXME #685
-declare object polytope::Polytope<Scalar>;
-
-declare object polytope::PointConfiguration<Scalar>;
-
 # intrinsic rules
 INCLUDE
    complex_properties.rules
@@ -53,9 +47,6 @@ INCLUDE
 # self-configuring rules
 # INCLUDE
 #   homology.rules -- FIXME: interface to homology not migrated
-
-
-default_object SimplicialComplex;
 
 
 # Local Variables:

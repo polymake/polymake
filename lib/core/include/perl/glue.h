@@ -78,6 +78,9 @@ SV*  call_method_scalar(pTHX_ const char* method);
 int  call_method_list(pTHX_ const char* method);
 void call_method_void(pTHX_ const char* method);
 
+// find the given class in the current application namespace and fetch the GV of its typeof() method
+SV* fetch_typeof_gv(pTHX_ const char* class_name, size_t class_namelen);
+
 inline
 SV* call_func_scalar(pTHX_ cached_cv& cv, SV** dst=NULL)
 {

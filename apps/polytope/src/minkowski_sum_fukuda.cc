@@ -511,9 +511,11 @@ Matrix<E> zonotope_vertices_fukuda(const Matrix<E>& Z, perl::OptionSet options)
    return minkowski_sum_vertices_fukuda<E>(summands);
 }
 
-UserFunctionTemplate4perl("# @category Producing a polytope from polytopes", "minkowski_sum_fukuda<E>(Polytope<E> +)");
+UserFunctionTemplate4perl("# @category Producing a polytope from polytopes",
+                          "minkowski_sum_fukuda<E>(Polytope<type_upgrade<E>> +)");
 
-UserFunctionTemplate4perl("# @category Producing a polytope from scratch", "zonotope_vertices_fukuda<E>(Matrix<E> { centered_zonotope => 1 })");
+UserFunctionTemplate4perl("# @category Producing a polytope from scratch",
+                          "zonotope_vertices_fukuda<E>(Matrix<E> { centered_zonotope => 1 })");
 
 }}
 

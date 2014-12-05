@@ -98,8 +98,8 @@ UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
                           "# @param Scalar scale default value: 1"
                           "# @option Bool group"
                           "# @return Polytope",
-                          "simplex<_BoundType, Scalar={ typechecks::is_ordered_field(_BoundType) ? _BoundType : Rational }>(Int; _BoundType=1, { group => undef } )");
-   } }
+                          "simplex<Scalar> [ is_ordered_field(type_upgrade<Scalar, Rational>) ] (Int; type_upgrade<Scalar>=1, { group => undef } )");
+} }
 
 // Local Variables:
 // mode:C++

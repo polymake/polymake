@@ -14,19 +14,20 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/Rational.h"
 #include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1, typename T2>
-   FunctionInterface4perl( cube_int_X_X_o, T0,T1,T2 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]), arg3(stack[4]);
-      WrapperReturn( (cube<T0>(arg0.get<int>(), arg1.get<T1>(), arg2.get<T2>(), arg3)) );
+   FunctionInterface4perl( cube_T_int_C_C_o, T0,T1,T2 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
+      WrapperReturn( (cube<T0>(arg0.get<int>(), arg1.get<T1, T0>(), arg2.get<T2, T0>(), arg3)) );
    };
 
-   FunctionInstance4perl(cube_int_X_X_o, Rational, int, int);
-   FunctionInstance4perl(cube_int_X_X_o, Rational, perl::Canned< const Rational >, perl::Canned< const Rational >);
-   FunctionInstance4perl(cube_int_X_X_o, QuadraticExtension< Rational >, perl::Canned< const QuadraticExtension< Rational > >, perl::Canned< const QuadraticExtension< Rational > >);
+   FunctionInstance4perl(cube_T_int_C_C_o, Rational, int, int);
+   FunctionInstance4perl(cube_T_int_C_C_o, QuadraticExtension< Rational >, perl::Canned< const QuadraticExtension< Rational > >, perl::Canned< const QuadraticExtension< Rational > >);
+   FunctionInstance4perl(cube_T_int_C_C_o, Rational, perl::Canned< const Rational >, perl::Canned< const Rational >);
+   FunctionInstance4perl(cube_T_int_C_C_o, QuadraticExtension< Rational >, int, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

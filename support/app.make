@@ -132,14 +132,14 @@ endif
 override _remove-orphans :=
 
 ifeq (${CheckOrphans},y)
-  Orphans := $(wildcard *$O)
+  Orphans := $(wildcard *$O) $(filter-out perl/wrap-%, $(wildcard perl/*$O))
   ifdef SharedObjects
     Orphans := $(filter-out ${SharedObjects}, ${Orphans})
     ifeq (${suffix},)
       Orphans := $(filter-out $(patsubst %$O,%-d%$O,${SharedObjects}), ${Orphans})
     endif
   endif
-  ifneq (${Orphans},)
+  ifneq ($(strip ${Orphans}),)
     .PHONY: remove-orphans
     override _remove_orphans := remove-orphans
 

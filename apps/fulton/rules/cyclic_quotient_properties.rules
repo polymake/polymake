@@ -13,17 +13,77 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+
 ###################################################
 ###################################################
 ###
-###  object declarations
+###  VersalComponent properties
 ###
 ###################################################
 ###################################################
 
-object CyclicQuotient {
+# @category Cyclic Quotient
+# A component of the versal deformation of a CQS.
+declare object VersalComponent {
 
-   declare object VersalComponent;
+   # @category Combinatorics
+   # The continued fraction equivalent to zero describing the versal component.
+   #
+   # See
+   #
+   # Jan Arthur Christophersen: On the components and discriminant of the
+   # versal base space of cyclic quotient singularities.
+   # 
+   # and
+   #
+   # Jan Stevens: On the versal deformation of cyclic quotient singularities.
+   property CONTINUED_FRACTION : Vector<Integer>;
+
+   # @category Combinatorics
+   # FIXME
+   property PYRAMID_LATTICE : Map<Vector<Integer>, Vector<Integer>>;
+
+   # @category Combinatorics
+   # Lattice of alphas as in below article.
+   #
+   # Jan Arthur Christophersen: On the components and discriminant of the
+   # versal base space of cyclic quotient singularities.
+   property ALPHA_LATTICE : Map<Vector<Integer>, Vector<Integer>>;
+
+   # @category Algebraic Geometry
+   property TOTAL_SPACE : Ideal;
+
+   # @category Combinatorics
+   # The CQS matrix as described in Def 6.10 of the below article.
+   #
+   # Theo de Jong, Duco van Straten: Deformation theory of sandwiched
+   # singularities.
+   property CQS_MATRIX : Matrix;
+
+   # @category Combinatorics
+   # Triangulation of the N-gon corresponding to this component.
+   # 
+   # See
+   # Jan Stevens: On the versal deformation of cyclic quotient singularities
+   property N_GON_TRIANGULATION : Graph;
+
+   # @category Combinatorics
+   # The triangles in the N-gon triangulation corresponding to this component.
+   # 
+   # See
+   # Jan Stevens: On the versal deformation of cyclic quotient singularities.
+   property TRIANGLES : Matrix<Integer>;
+
+   # @category Combinatorics
+   # The P-resolution fan corresponding to this component.
+   #
+   # See
+   # Klaus Altmann: P-Resolutions of Cyclic Quotients from the Toric Viewpoint.
+   property P_RESOLUTION : PolyhedralFan<Rational>;
+
+   # @category Combinatorics
+   # Dimension of this component, i.e. number of parameters.
+   property DIMENSION : Integer;
 
 }
 
@@ -36,64 +96,47 @@ object CyclicQuotient {
 ###################################################
 object CyclicQuotient {
 
-   # @category Input property
+   # @category Input properties
    # Every cyclic quotient variety corresponds to a cone given by the rays
    # (1,0) and (-q,n).
    property N : Integer;
 
-   # @category Input property
+   # @category Input properties
    # Every cyclic quotient variety corresponds to a cone given by the rays
    # (1,0) and (-q,n).
    property Q : Integer;
-    
-   # @category Input property
+
+   # @category Input properties
    # Representation of the number n/q as a Hirzebruch-Jung continued fraction.
    # Take care that this property agrees with the dual property.
    property CONTINUED_FRACTION : Vector<Integer>;
-   
-   # @category Input property
+
+   # @category Input properties
    # Representation of the number n/(n-q) as a Hirzebruch-Jung continued
    # fraction.  Take care that this property agrees with the dual property.
    property DUAL_CONTINUED_FRACTION : Vector<Integer>;
 
+   # @category Algebraic Geometry
+   # The components of the versal deformation.
    property VERSAL_COMPONENT : VersalComponent : multiple;
-   
+
+   # @category Algebraic Geometry
+   # The continued fractions equivalent to zero that index the components of
+   # the versal deformation.
+   #
+   # See
+   # Jan Arthur Christophersen: On the components and discriminant of the
+   # versal base space of cyclic quotient singularities.
    property VERSAL_COMPONENTS : Matrix;
 
-   property VERSAL_DEFORMATION : Ideal;
+   # FIXME
+   # property VERSAL_DEFORMATION : Ideal;
 
 }
 
-###################################################
-###################################################
-###
-###  VersalComponent properties
-###
-###################################################
-###################################################
-object CyclicQuotient {
 
-   object VersalComponent {
-
-      property CONTINUED_FRACTION : Vector<Integer>;
-
-      property PYRAMID_LATTICE : Map<Vector<Integer>, Vector<Integer>>;
-
-      property ALPHA_LATTICE : Map<Vector<Integer>, Vector<Integer>>;
-
-      property TOTAL_SPACE : Ideal;
-
-      property CQS_MATRIX : Matrix;
-
-      property N_GON_TRIANGULATION : Graph;
-
-      property TRIANGLES : Matrix<Integer>;
-
-      property P_RESOLUTION : PolyhedralFan<Rational>;
-
-      property DIMENSION : Integer;
-
-   }
-
-}
-
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

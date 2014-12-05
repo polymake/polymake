@@ -17,22 +17,23 @@
 #include "polymake/Rational.h"
 #include "polymake/Array.h"
 #include "polymake/Set.h"
+#include "polymake/linalg.h"
 
 namespace polymake { namespace fan { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1, typename T2>
-   FunctionInterface4perl( mixed_subdivision_x_x_X_X, T0,T1,T2 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]), arg3(stack[4]);
+   FunctionInterface4perl( mixed_subdivision_T_x_X_X_o, T0,T1,T2 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
+      WrapperReturn( (mixed_subdivision<T0>(arg0, arg1.get<T1>(), arg2.get<T2>(), arg3)) );
+   };
+
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( mixed_subdivision_T_x_x_X_X, T0,T1,T2 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
       WrapperReturn( (mixed_subdivision<T0>(arg0, arg1, arg2.get<T1>(), arg3.get<T2>())) );
    };
 
-   template <typename T0, typename T1, typename T2, typename T3>
-   FunctionInterface4perl( mixed_subdivision_x_x_X_X_X_o, T0,T1,T2,T3 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]), arg3(stack[4]), arg4(stack[5]), arg5(stack[6]);
-      WrapperReturn( (mixed_subdivision<T0>(arg0, arg1, arg2.get<T1>(), arg3.get<T2>(), arg4.get<T3>(), arg5)) );
-   };
-
-   FunctionInstance4perl(mixed_subdivision_x_x_X_X_X_o, Rational, perl::Canned< const Array< Set< int > > >, int, int);
-   FunctionInstance4perl(mixed_subdivision_x_x_X_X, Rational, perl::Canned< const Array< Set< int > > >, perl::TryCanned< const Array< int > >);
+   FunctionInstance4perl(mixed_subdivision_T_x_x_X_X, Rational, perl::Canned< const Array< Set< int > > >, perl::Canned< const pm::SameElementVector<pm::Rational const&> >);
+   FunctionInstance4perl(mixed_subdivision_T_x_X_X_o, Rational, perl::Canned< const Array< Set< int > > >, perl::Canned< const pm::SameElementVector<pm::Rational const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

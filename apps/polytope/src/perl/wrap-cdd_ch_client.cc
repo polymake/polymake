@@ -19,20 +19,20 @@
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( cdd_ch_primal_x_f16, T0 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturnVoid( cdd_ch_primal<T0>(arg0) );
+   FunctionInterface4perl( cdd_ch_primal_T_x_f16, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturnVoid( (cdd_ch_primal<T0>(arg0)) );
    };
 
    template <typename T0>
-   FunctionInterface4perl( cdd_ch_dual_x_f16, T0 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturnVoid( cdd_ch_dual<T0>(arg0) );
+   FunctionInterface4perl( cdd_ch_dual_T_x_f16, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturnVoid( (cdd_ch_dual<T0>(arg0)) );
    };
 
-   FunctionInstance4perl(cdd_ch_primal_x_f16, Rational);
-   FunctionInstance4perl(cdd_ch_dual_x_f16, Rational);
-   FunctionInstance4perl(cdd_ch_primal_x_f16, double);
-   FunctionInstance4perl(cdd_ch_dual_x_f16, double);
+   FunctionInstance4perl(cdd_ch_primal_T_x_f16, Rational);
+   FunctionInstance4perl(cdd_ch_dual_T_x_f16, Rational);
+   FunctionInstance4perl(cdd_ch_primal_T_x_f16, double);
+   FunctionInstance4perl(cdd_ch_dual_T_x_f16, double);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

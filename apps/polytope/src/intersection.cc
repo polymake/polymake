@@ -91,7 +91,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# If the input contains both cones and polytopes, the output will be a polytope."
                           "# @param Cone C ... polyhedra and cones to be intersected"
                           "# @return Cone",
-                          "intersection<Scalar>(Cone<Scalar> +)");
+                          "intersection<Scalar>(Cone<type_upgrade<Scalar>> +)");
 } }
 
 // Local Variables:

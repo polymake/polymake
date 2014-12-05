@@ -15,7 +15,6 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/Rational.h"
 #include "polymake/Array.h"
 #include "polymake/Vector.h"
 #include "polymake/Matrix.h"
@@ -24,16 +23,18 @@
 namespace polymake { namespace polytope {
 namespace {
 
+template<typename Scalar>
 inline
-bool obtuse_angle(const Vector<Rational>& x, const Vector<Rational>& y, const Vector<Rational>& z)
+bool obtuse_angle(const Vector<Scalar>& x, const Vector<Scalar>& y, const Vector<Scalar>& z)
 {
    return (x-y)*(z-y)<0;
 }
 }
 
+template<typename Scalar>
 void nn_crust(perl::Object p)
 {
-   const Matrix<Rational> S=p.give("SITES");
+   const Matrix<Scalar> S=p.give("SITES");
    const int n=S.rows();
    const Graph<> D=p.give("DELAUNAY_GRAPH.ADJACENCY");
    Graph<> G(n);
@@ -56,10 +57,10 @@ void nn_crust(perl::Object p)
    Array<int> obtuse_near(n,-1);
    for (Entire< Edges< Graph<> > >::const_iterator e=entire(edges(D)); !e.at_end(); ++e) {
       const int x=e.from_node(), y=e.to_node();
-      if (G.degree(x)<2 && y!=near[x] && obtuse_angle(S.row(y),S.row(x),S.row(near[x]))
+      if (G.degree(x)<2 && y!=near[x] && obtuse_angle<Scalar>(S.row(y),S.row(x),S.row(near[x]))
           && (obtuse_near[x]<0 || sqr(S.row(x)-S.row(y))<sqr(S.row(x)-S.row(obtuse_near[x]))))
          obtuse_near[x]=y;
-      if (G.degree(y)<2 && x!=near[y] && obtuse_angle(S.row(x),S.row(y),S.row(near[y]))
+      if (G.degree(y)<2 && x!=near[y] && obtuse_angle<Scalar>(S.row(x),S.row(y),S.row(near[y]))
           && (obtuse_near[y]<0 || sqr(S.row(x)-S.row(y))<sqr(S.row(y)-S.row(obtuse_near[y]))))
          obtuse_near[y]=x;
    }
@@ -69,7 +70,7 @@ void nn_crust(perl::Object p)
    p.take("NN_CRUST_GRAPH.ADJACENCY") << G;
 }
 
-Function4perl(&nn_crust, "nn_crust");
+FunctionTemplate4perl("nn_crust<Scalar>(VoronoiDiagram<Scalar>) : void");
 
 } } 
 

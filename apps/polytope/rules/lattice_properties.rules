@@ -175,26 +175,31 @@ object LatticePolytope {
 # The polytope is __very ample__ if the Hilbert Basis of the cone spanned by the edge-directions of any vertex lies inside the polytope.
     property VERY_AMPLE : Bool;
 
+}
+
 
 # The Groebner basis of the homogeneous toric ideal associated to the polytope,
 # the term order is given in matrix form.
-    declare object GroebnerBasis {
+declare object GroebnerBasis {
 
 # The Groebner basis for a defined term order.
-       property BASIS : Matrix<Integer>;
+    property BASIS : Matrix<Integer>;
 
 # The term order in matrix form;
 # if not square, then a tie breaker is used.
-       property TERM_ORDER_MATRIX : Matrix<Integer>;
+    property TERM_ORDER_MATRIX : Matrix<Integer>;
 
 # A term order by name;
 # allowed acronyms are ''lex'', ''deglex'' and ''degrevlex''.
-       property TERM_ORDER_NAME : String;
+    property TERM_ORDER_NAME : String;
 
-       rule initial : TERM_ORDER_NAME {
-           $this->TERM_ORDER_NAME =~ /^(lex|deglex|degrevlex)$/ or croak ("unknown term order")
-       }
+    rule initial : TERM_ORDER_NAME {
+        $this->TERM_ORDER_NAME =~ /^(lex|deglex|degrevlex)$/ or croak ("unknown term order")
     }
+}
+
+
+object LatticePolytope {
 
 # The Groebner basis for the toric ideal associated to the lattice points in the polytope using any term order.
   property GROEBNER_BASIS : GroebnerBasis : multiple;

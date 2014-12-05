@@ -83,7 +83,7 @@ sub visualize($) {
             @methods=($method);
             $viewer_pkg=method_owner($method);
             foreach $obj (@args[1..$#args]) {
-               if (my $method_next=$viewer_pkg->can("draw", is_object($obj) ? $obj : $obj->[0], undef)) {
+               if (my $method_next=Overload::resolve_method($viewer_pkg, "draw", is_object($obj) ? $obj : $obj->[0], undef)) {
                   push @methods, $method_next;
                } else {
                   @methods=();
@@ -118,11 +118,11 @@ sub visualize($) {
 
 ############################################################################
 
-#  the common part of explicit visualization functions
-#  Visual::Object, { options }, "Package" =>
+#  The common part of explicit visualization functions
+#  [ Visual::Object ... ], { options }, "Package" =>
 
 sub visualize_explicit {
-   my ($opts, $Package)=splice @_, -2;
+   my ($vis_objects, $opts, $Package)=@_;
    my $to_file=$opts->{File};
    my $viewer=do {
       if (defined $to_file) {
@@ -130,7 +130,7 @@ sub visualize_explicit {
          if (!ref($to_file) && $to_file eq "AUTO") {
             Visual::FileWriter::Auto->new($file_package);
          } else {
-            if (@_>1 && ! $file_package->multiple) {
+            if (@$vis_objects > 1 && ! $file_package->multiple) {
                my $caller_sub=(caller(1))[3];
                $caller_sub=~s/.*::([^:]+)$/$1/;
                $caller_sub=~s/^__(\w+)__OV__.*/$1/;
@@ -157,14 +157,14 @@ bundle them with compose() like this:  $caller_sub(compose(VISUAL1, VISUAL2, ...
       }
    };
 
-   foreach my $vis_obj (@_) {
+   foreach my $vis_obj (@$vis_objects) {
       my $drawing=$viewer->new_drawing($vis_obj->Title // $vis_obj->Name, $vis_obj);
       foreach (prepare_visual_objects($vis_obj)) {
          if (is_object($_)) {
             $drawing->draw($_);
          } elsif (@$_) {
-            my $method=$drawing->can("draw", $_->[0], undef)
-            or die "no matching method ", ref($drawing), "::draw(", ref($_->[0]), ")\n";
+            my $method=Overload::resolve_method($drawing, "draw", $_->[0], undef)
+              or die "no matching method ", ref($drawing), "::draw(", ref($_->[0]), ")\n";
             foreach my $elem (@$_) {
                $method->($drawing,$elem);
             }

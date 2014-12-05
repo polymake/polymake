@@ -16,7 +16,7 @@
 
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
-#include "polymake/Array.h"
+#include "polymake/IncidenceMatrix.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/Integer.h"
 #include "polymake/Rational.h"
@@ -39,57 +39,59 @@ namespace polymake { namespace fan {
     // given by b+A_jx-s\ge 0, l+L_jx=0 for all j
     // if this has a feasible solution with s>0 then the fan is polytopal
     //
+    template <typename Scalar>
+    bool regular(perl::Object fan)
+    {
+      perl::ObjectType polytope_type=perl::ObjectType::construct<Scalar>("Polytope");
+      perl::ObjectType linear_program_type=perl::ObjectType::construct<Scalar>("LinearProgram");
 
-    bool regular ( perl::Object fan ) {
+      const Matrix<Scalar> rays = fan.give("RAYS");
+      const IncidenceMatrix<> max_cones = fan.give("MAXIMAL_CONES");
+      const Matrix<Scalar> ker = T(null_space(T(rays)));
 
-      Matrix<Rational> rays = fan.give("RAYS");
-      Array<Set<int> > max_cones = fan.give("MAXIMAL_CONES");
-      Matrix<Rational> ker = T(null_space(T(rays)));
-
-      perl::Object c("Polytope<Rational>");      
-      Matrix<Rational> Pt = ker.minor(~max_cones[0],All);
-      Pt = (ones_vector<Rational>(Pt.rows()))|Pt;
+      perl::Object c(polytope_type);
+      const Matrix<Scalar> Pt = ones_vector<Scalar>() | ker.minor(~max_cones[0], All);
       c.take("INPUT_RAYS") << Pt;
 
-      Matrix<Rational> L = c.give("LINEAR_SPAN");
-      Matrix<Rational> At = c.give("FACETS");
+      Matrix<Scalar> L = c.give("LINEAR_SPAN");
+      Matrix<Scalar> At = c.give("FACETS");
 
-      Matrix<Rational> A = At|-(ones_vector<Rational>(At.rows()));
+      Matrix<Scalar> A = At | -(ones_vector<Scalar>(At.rows()));
 
-      for ( int i = 1; i < max_cones.size(); ++i ) {	
+      for (int i = 1; i < max_cones.rows(); ++i) {	
 
-	perl::Object c2("Polytope<Rational>");
-	Matrix<Rational> Pt = ker.minor(~max_cones[i],All);
-	Pt = (ones_vector<Rational>(Pt.rows()))|Pt;
+	perl::Object c2(polytope_type);
+	Matrix<Scalar> Pt = ker.minor(~max_cones[i], All);
+	Pt = ones_vector<Scalar>() | Pt;
 	c2.take("INPUT_RAYS") << Pt;
-	Matrix<Rational> Lt = c2.give("LINEAR_SPAN");
+	Matrix<Scalar> Lt = c2.give("LINEAR_SPAN");
 	L /= Lt;
 
 	c2.give("FACETS") >> At;
-	A /= At|(-(ones_vector<Rational>(At.rows())));
+	A /= At | -(ones_vector<Scalar>(At.rows()));
       }
 
-      L = L|(zero_vector<Rational>(L.rows()));
+      L = L | zero_vector<Scalar>();
 
-      perl::Object p("polytope::Polytope<Rational>");
+      perl::Object p(polytope_type);
       p.take("INEQUALITIES") << A;
       p.take("EQUATIONS") << L;
-      
+
       bool feasible = p.give("FEASIBLE");
-      if ( feasible ) {
-	perl::Object lp("LinearProgram");
-	lp.take("LINEAR_OBJECTIVE") << unit_vector<Rational>(A.cols(),A.cols()-1);
-	p.add("LP",lp);
-	
-	Rational max = p.give("LP.MAXIMAL_VALUE");
-	
-	if ( max > 0 ) 
+      if (feasible) {
+	perl::Object lp(linear_program_type);
+	lp.take("LINEAR_OBJECTIVE") << unit_vector<Scalar>(A.cols(), A.cols()-1);
+	p.add("LP", lp);
+
+	const Scalar max = p.give("LP.MAXIMAL_VALUE");
+
+	if (max > 0)
 	  return true;
       }
 
       return false;
     }
 
-    Function4perl(&regular, "regular(PolyhedralFan)");
+    FunctionTemplate4perl("regular<Scalar>(PolyhedralFan<Scalar>)");
 
-  }}
+} }

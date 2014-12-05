@@ -181,9 +181,9 @@ sub describe_control_item {
    my $item=shift;
    if (is_code($item)) {
       $item=$item->() if sub_file($item) =~ m|Polymake/Overload\.pm$|;
-      (is_method($item) ? "method " : "sub ").method_owner($item)."::".method_name($item)."(".prototype($item).")"
+      (is_method($item) ? "method " : "sub ").method_owner($item)."::".method_name($item)." [".sub_file($item).":".sub_firstline($item)."]"
    } else {
-      "rule of ".$item->defined_for->full_name." ".$item->header;
+      "rule of ".$item->defined_for->full_name." ".$item->header." [".sub_file($item->code).":".sub_firstline($item->code)."]"
    }
 }
 
@@ -264,7 +264,7 @@ sub add_control {
 }
 ####################################################################################
 sub list_all_rules {
-   my $self=shift;
+   my ($self)=@_;
    my @rules;
    while (my ($list, $cnt)=each %{$self->controls}) {
       for (my ($pos, $last)=(0, $#{$list->items}); $pos < $last; $pos+=2) {

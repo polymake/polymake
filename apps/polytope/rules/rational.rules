@@ -76,7 +76,9 @@ permutation : FacetPerm;
 rule cdd.convex_hull.linear_span : LINEAR_SPAN : INEQUALITIES {     
    cdd_canonicalize_lineality($this,1);
 }
-precondition : N_INEQUALITIES | N_EQUATIONS;
+precondition : INEQUALITIES | EQUATIONS {
+  ($this->INEQUALITIES | EQUATIONS)->rows;
+}
 weight 3.10;
 
 # FIXME potential new rules for symmetry with dual case

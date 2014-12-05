@@ -20,12 +20,12 @@
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( cs_permutation_x_f16, T0 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturnVoid( cs_permutation<T0>(arg0) );
+   FunctionInterface4perl( cs_permutation_T_x_f16, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturnVoid( (cs_permutation<T0>(arg0)) );
    };
 
-   FunctionInstance4perl(cs_permutation_x_f16, Rational);
-   FunctionInstance4perl(cs_permutation_x_f16, QuadraticExtension< Rational >);
+   FunctionInstance4perl(cs_permutation_T_x_f16, Rational);
+   FunctionInstance4perl(cs_permutation_T_x_f16, QuadraticExtension< Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

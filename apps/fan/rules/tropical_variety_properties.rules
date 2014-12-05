@@ -16,7 +16,7 @@
 # @category Tropical varieties
 # The tropical variety defined by a fan.
 # @tparam Scalar default [[Rational]]
-declare object TropicalVariety<Scalar=Rational> [ typechecks::is_ordered_field(Scalar) ] : PolyhedralFan<Scalar> {
+declare object TropicalVariety<Scalar=Rational> [ is_ordered_field(Scalar) ] : PolyhedralFan<Scalar> {
 
 # Multiplicities of the [[MAXIMAL_CONES]].
 

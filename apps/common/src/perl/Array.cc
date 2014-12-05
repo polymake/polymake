@@ -18,10 +18,12 @@
 
 #include "polymake/client.h"
 #include "polymake/Array.h"
-#include "polymake/Polynomial.h"
 #include "polymake/Rational.h"
-#include "polymake/Graph.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Set.h"
+#include "polymake/list"
+#include "polymake/Polynomial.h"
+#include "polymake/Graph.h"
 #include "polymake/Vector.h"
 #include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
@@ -49,7 +51,22 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(assign, Array< Matrix< Rational > >, perl::Canned< const Array< Matrix< Integer > > >);
    FunctionInstance4perl(new, Array< Vector< Rational > >);
    OperatorInstance4perl(convert, Array< int >, perl::Canned< const Set< int > >);
-   OperatorInstance4perl(assign, Array< int >, perl::Canned< const pm::cascaded_iterator<pm::unary_transform_iterator<pm::unary_transform_iterator<pm::graph::valid_node_iterator<pm::iterator_range<pm::graph::node_entry<pm::graph::Undirected, (pm::sparse2d::restriction_kind)0> const*>, pm::BuildUnary<pm::graph::valid_node_selector> >, pm::graph::line_factory<true, pm::graph::incident_edge_list, void> >, pm::operations::masquerade<pm::graph::uniq_edge_list> >, pm::end_sensitive, 2> >);
    FunctionInstance4perl(new_X, Array< Polynomial< Rational, int > >, perl::Canned< const Array< Polynomial< Rational, int > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< int > >, perl::Canned< const Array< int > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< Set< int > > >, perl::Canned< const Array< Set< int > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< std::string > >, perl::Canned< const Array< std::string > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< bool > >, perl::Canned< const Array< bool > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< Polynomial< Rational, int > > >, perl::Canned< const Array< Polynomial< Rational, int > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< Array< int > > >, perl::Canned< const Array< Array< int > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< std::pair< Array< int >, Array< int > > > >, perl::Canned< const Array< std::pair< Array< int >, Array< int > > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< Array< std::list< int > > > >, perl::Canned< const Array< Array< std::list< int > > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< std::pair< Set< int >, Set< int > > > >, perl::Canned< const Array< std::pair< Set< int >, Set< int > > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< std::list< int > > >, perl::Canned< const Array< std::list< int > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< Rational > >, perl::Canned< const Array< Rational > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< QuadraticExtension< Rational > > >, perl::Canned< const Array< QuadraticExtension< Rational > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< Array< Set< int > > > >, perl::Canned< const Array< Array< Set< int > > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< Set< Array< Set< int > > > > >, perl::Canned< const Array< Set< Array< Set< int > > > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< IncidenceMatrix< NonSymmetric > > >, perl::Canned< const Array< IncidenceMatrix< NonSymmetric > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< std::pair< Vector< Rational >, Set< int > > > >, perl::Canned< const Array< std::pair< Vector< Rational >, Set< int > > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

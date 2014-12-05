@@ -22,11 +22,11 @@
 namespace polymake { namespace tropical { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1>
-   FunctionInterface4perl( points2hypersurface_X, T0,T1 ) {
-      perl::Value arg0(stack[1]);
+   FunctionInterface4perl( points2hypersurface_T_X, T0,T1 ) {
+      perl::Value arg0(stack[0]);
       WrapperReturn( (points2hypersurface<T0>(arg0.get<T1>())) );
    };
 
-   FunctionInstance4perl(points2hypersurface_X, Min, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(points2hypersurface_T_X, Min, perl::Canned< const Matrix< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

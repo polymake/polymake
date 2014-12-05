@@ -20,9 +20,9 @@
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1, typename T2>
-   FunctionInterface4perl( transportation_X_X, T0,T1,T2 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]);
-      WrapperReturn( transportation<T0>(arg0.get<T1>(), arg1.get<T2>()) );
+   FunctionInterface4perl( transportation_T_X_X, T0,T1,T2 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      WrapperReturn( (transportation<T0>(arg0.get<T1>(), arg1.get<T2>())) );
    };
 
    FunctionWrapper4perl( perl::Object (pm::Vector<pm::Rational> const&, pm::Vector<pm::Rational> const&) ) {
@@ -31,6 +31,6 @@ namespace polymake { namespace polytope { namespace {
    }
    FunctionWrapperInstance4perl( perl::Object (pm::Vector<pm::Rational> const&, pm::Vector<pm::Rational> const&) );
 
-   FunctionInstance4perl(transportation_X_X, Rational, perl::Canned< const Vector< Rational > >, perl::Canned< const Vector< Rational > >);
+   FunctionInstance4perl(transportation_T_X_X, Rational, perl::Canned< const Vector< Rational > >, perl::Canned< const Vector< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

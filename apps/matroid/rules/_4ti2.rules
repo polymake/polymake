@@ -31,18 +31,10 @@ object Matroid {
 
    rule _4ti2.circuits : CIRCUITS : POINTS {
       my $A = $this->POINTS;
-      my $circuitVectors = _4ti2Circuits($A);
-      my @circuits = map(non_zero_indices($_), @$circuitVectors);
-      $this->CIRCUITS = \@circuits;
+      $this->CIRCUITS = [@{index_matrix(_4ti2Circuits($A))}];
    }
    weight 3.01;
 
-}
-
-sub non_zero_indices{
-   my($v) = @_;
-   my @result = grep($v->[$_] != 0, 0..($v->dim - 1));
-   return new Set<Int>(\@result);
 }
 
 
@@ -52,12 +44,11 @@ sub non_zero_indices{
 # @param Matrix A Matrix containing the points as rows.
 # @return Matrix
 user_function _4ti2Circuits(Matrix){
-   my($B) = @_;
-   my $A = transpose(new Matrix($B));
+   my($A) = @_;
    my $tempname = new Tempfile;
    open(my $filePipe, ">".$tempname.".mat");
-   print $filePipe $A->rows." ".$A->cols."\n";
-   print $filePipe dense($A);
+   print $filePipe $A->cols." ".$A->rows."\n";
+   print $filePipe dense(transpose(primitive($A)));
    close($filePipe);
    
    if ($Verbose::external) {
@@ -78,6 +69,6 @@ user_function _4ti2Circuits(Matrix){
        push @circuits, \@vec;
    }
    close $outfile;
-   return new Matrix(\@circuits);
+   return new SparseMatrix(\@circuits);
 }
 

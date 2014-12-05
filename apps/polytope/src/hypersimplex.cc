@@ -18,7 +18,9 @@
 #include "polymake/polytope/hypersimplex.h"
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
+#include "polymake/Array.h"
 #include "polymake/PowerSet.h"
+#include "polymake/internal/PlainParser.h"
 
 namespace polymake { namespace polytope {
 
@@ -39,13 +41,17 @@ perl::Object hypersimplex(int k, int d)
    const int n=Integer::binom(d,k).to_int();
    p.take("N_VERTICES") << n;
 
+   Array<std::string> labels(n);
+   int i(0);
    Matrix<Rational> Vertices(n,d+1);
    Rows< Matrix<Rational> >::iterator v=rows(Vertices).begin();
-   Subsets_of_k<sequence> enumerator(range(1,d), k);
-   for (Subsets_of_k<sequence>::iterator s=entire(enumerator); !s.at_end(); ++s, ++v) {
+   Subsets_of_k<sequence> enumerator(range(0,d-1), k);
+   for (Subsets_of_k<sequence>::iterator s=entire(enumerator); !s.at_end(); ++s, ++v,++i) {
       (*v)[0]=1;
-      v->slice(*s).fill(1);
+      v->slice(1).slice(*s).fill(1);
+      labels[i] = pm::convToString< Set<int> >()(*s);
    }
+   p.take("VERTEX_LABELS") << labels;
    p.take("VERTICES") << Vertices;
    p.take("LINEALITY_SPACE") << Matrix<Rational>();
 

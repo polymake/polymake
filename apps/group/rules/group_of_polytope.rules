@@ -1,13 +1,13 @@
 # A permutation group which acts on a polytope by permuting
-# (1) its [[polytope::Polytope::VERTICES|VERTICES]], (2) its [[polytope::Polytope::FACETS|FACETS]], or (3) the coordinates. 
+# (1) its [[polytope::Polytope::VERTICES|VERTICES]], (2) its [[polytope::Polytope::FACETS|FACETS]], or (3) the coordinates.
 declare object GroupOfPolytope : GroupOfCone  {
 
 method construct(Group,$$@) { &Core::Object::new_filled_copy }
 
-method construct(GroupOfCone) { &Core::Object::new_filled_copy } 
+method construct(GroupOfCone) { &Core::Object::new_copy }
 
 # @category Symmetric cones
-# An array that contains a set of indices (of vertices) for each orbit of vertices. 
+# An array that contains a set of indices (of vertices) for each orbit of vertices.
 # The indices of the vertices correspond to their indices in the polymake object.
 property VERTICES_IN_ORBITS = override RAYS_IN_ORBITS;
 
@@ -16,7 +16,7 @@ property VERTICES_IN_ORBITS = override RAYS_IN_ORBITS;
 property N_ORBITS_OF_VERTICES = override N_ORBITS_OF_RAYS;
 
 # @category Symmetric cones
-# An array that contains a set of indices (of points) for each orbit of points. 
+# An array that contains a set of indices (of points) for each orbit of points.
 # The indices of the points correspond to their indices in the polymake object.
 property POINTS_IN_ORBITS = override INPUT_RAYS_IN_ORBITS;
 

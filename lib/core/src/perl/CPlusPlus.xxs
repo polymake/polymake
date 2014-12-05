@@ -23,11 +23,9 @@ int FuncDescr_func_ptr_index, FuncDescr_name_index,
     CPP_assoc_helem_index, CPP_assoc_find_index, CPP_assoc_exists_index,
     CPP_assoc_delete_void_index, CPP_assoc_delete_ret_index;
 
-SV *sv_two, *sv_three, *sv_four;
-
 }
 
-/* had to be copied from mg.c */
+// had to be copied from mg.c
 struct magic_state {
     SV* mgs_sv;
     U32 mgs_flags;
@@ -409,7 +407,7 @@ SV* clone_scalar_magic_sv(pTHX_ SV* src)
 static inline
 SV* new_container_magic_sv(pTHX_ const container_vtbl* t, unsigned int flags, unsigned int n_anchors)
 {
-   AV *av=newAV();
+   AV* av=newAV();
    int last_it= t->acc[2].begin ? 2 : 1; // has reverse_iterator?
    av_extend(av, last_it);
    *(int*)(AvARRAY(av))=-1;              // loop context index
@@ -424,7 +422,7 @@ SV* new_container_magic_sv(pTHX_ const container_vtbl* t, unsigned int flags, un
 
 SV* create_container_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int flags, unsigned int n_anchors)
 {
-   SV **descr=PmArray(descr_ref);
+   SV** descr=PmArray(descr_ref);
    return new_magic_ref(aTHX_ dst_ref,
                         new_container_magic_sv(aTHX_ (const container_vtbl*)SvPVX(descr[TypeDescr_vtbl_index]), flags, n_anchors),
                         descr[TypeDescr_pkg_index], flags);
@@ -432,14 +430,14 @@ SV* create_container_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int fla
 
 SV* clone_container_magic_sv(pTHX_ SV* src)
 {
-   MAGIC *mg=pm_perl_get_cpp_magic(src);
+   MAGIC* mg=pm_perl_get_cpp_magic(src);
    return sv_bless(newRV_noinc(new_container_magic_sv(aTHX_ (const container_vtbl*)mg->mg_virtual, value_alloc_magic, 0)), SvSTASH(src));
 }
 
 static inline
 SV* new_composite_magic_sv(pTHX_ const composite_vtbl* t, unsigned int flags, unsigned int n_anchors)
 {
-   AV *av=newAV();
+   AV* av=newAV();
    MAGIC* mg=allocate_magic(aTHX_ (SV*)av, PERL_MAGIC_tied, t, flags, n_anchors);
    mg->mg_flags |= MGf_COPY | ((flags | SvIVX(t->typeid_name_sv)) & value_read_only);
    SvRMAGICAL_on(av);
@@ -448,7 +446,7 @@ SV* new_composite_magic_sv(pTHX_ const composite_vtbl* t, unsigned int flags, un
 
 SV* create_composite_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int flags, unsigned int n_anchors)
 {
-   SV **descr=PmArray(descr_ref);
+   SV** descr=PmArray(descr_ref);
    return new_magic_ref(aTHX_ dst_ref,
                         new_composite_magic_sv(aTHX_ (const composite_vtbl*)SvPVX(descr[TypeDescr_vtbl_index]), flags, n_anchors),
                         descr[TypeDescr_pkg_index], flags);
@@ -456,7 +454,7 @@ SV* create_composite_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int fla
 
 SV* clone_composite_magic_sv(pTHX_ SV* src)
 {
-   MAGIC *mg=pm_perl_get_cpp_magic(src);
+   MAGIC* mg=pm_perl_get_cpp_magic(src);
    return sv_bless(newRV_noinc(new_composite_magic_sv(aTHX_ (const composite_vtbl*)mg->mg_virtual, value_alloc_magic, 0)), SvSTASH(src));
 }
 
@@ -477,7 +475,7 @@ SV* new_assoc_container_magic_sv(pTHX_ const container_vtbl* t, unsigned int fla
 
 SV* create_assoc_container_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int flags, unsigned int n_anchors)
 {
-   SV **descr=PmArray(descr_ref);
+   SV** descr=PmArray(descr_ref);
    return new_magic_ref(aTHX_ dst_ref,
                         new_assoc_container_magic_sv(aTHX_ (const container_vtbl*)SvPVX(descr[TypeDescr_vtbl_index]), flags, n_anchors),
                         descr[TypeDescr_pkg_index], flags);
@@ -485,7 +483,7 @@ SV* create_assoc_container_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned i
 
 SV* clone_assoc_container_magic_sv(pTHX_ SV* src)
 {
-   MAGIC *mg=pm_perl_get_cpp_magic(src);
+   MAGIC* mg=pm_perl_get_cpp_magic(src);
    return sv_bless(newRV_noinc(new_assoc_container_magic_sv(aTHX_ (const container_vtbl*)mg->mg_virtual, value_alloc_magic, 0)), SvSTASH(src));
 }
 
@@ -493,10 +491,10 @@ int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy,
 {
    const OPCODE opc=PL_op ? PL_op->op_type : OP_AELEM;   // assume a plain array access when called directly from the callable library
    const container_vtbl* const t=(const container_vtbl*)mg->mg_virtual;
-   char *obj=mg->mg_ptr, *it;
+   char* obj=mg->mg_ptr, *it;
    const container_access_vtbl *acct=t->acc+(mg->mg_flags & value_read_only);
-   AV *my_av=(AV*)sv;
-   SV *it_sv;
+   AV* my_av=(AV*)sv;
+   SV* it_sv;
    int it_index, it_incr, cix;
    PERL_CONTEXT *cx;
 
@@ -504,7 +502,7 @@ int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy,
       cix=cxstack_ix;
       cx=cxstack+cix;
       if (ForLoopArray(cx)==my_av) {
-         /* direct iterating over a C++ container: each loop requires its own iterator */
+         // direct iterating over a C++ container: each loop requires its own iterator
          if (PL_op->op_private & OPpITER_REVERSED) {
             it_index=2;  it_incr=-1;  acct+=2;
          } else {
@@ -595,7 +593,7 @@ int canned_assoc_container_access(pTHX_ SV* obj_sv, MAGIC* mg, SV *val_sv, const
 {
    const container_vtbl* const t=(const container_vtbl*)mg->mg_virtual;
    const container_access_vtbl* const acct=t->acc+(mg->mg_flags & value_read_only);
-   char *it=(char*)HvARRAY(obj_sv);
+   char* it=(char*)HvARRAY(obj_sv);
    GuardedCallSaveVtbl((acct->deref)(0, it, 1, val_sv, obj_sv, (char*)&it), t);
    return 1;
 }
@@ -604,10 +602,10 @@ int canned_composite_access(pTHX_ SV* sv, MAGIC* mg, SV* nsv, const char *dummy,
 {
    const composite_vtbl* const t=(const composite_vtbl*)mg->mg_virtual;
    const composite_access_vtbl *acct=t->acc+index;
-   char *obj=mg->mg_ptr;
+   char* obj=mg->mg_ptr;
 
    if (SvOK(nsv)) {
-      /* we are called from av_store (during aassign): nsv carries the RHS value */
+      // we are called from av_store (during aassign): nsv carries the RHS value
       if (mg->mg_flags & value_read_only)
          raise_exception(aTHX_ "Attempt to modify a read-only C++ object");
       GuardedCallSaveVtbl((acct->store)(obj, nsv), t);
@@ -621,7 +619,7 @@ static int get_sizeof(pTHX_ HV *stash)
 {
    dSP;
    int s;
-   CV *sizeof_cv=GvCV((GV*)*hv_fetch(stash, "sizeof", 6, FALSE));
+   CV* sizeof_cv=GvCV((GV*)*hv_fetch(stash, "sizeof", 6, FALSE));
    PUSHMARK(SP);
    call_sv((SV*)sizeof_cv, G_SCALAR);
    SPAGAIN;
@@ -633,7 +631,7 @@ static int get_sizeof(pTHX_ HV *stash)
 static inline
 SV** call_function(pTHX_ SV *cur_wrapper, SV *wrap_sv, SV *func_ptr_sv, SV** SP)
 {
-   SV *ret;
+   SV* ret;
    PUTBACK;
    if (SvFLAGS(func_ptr_sv) & SVp_POK) {
       indirect_wrapper_type wrapper=(indirect_wrapper_type)SvPVX(wrap_sv);
@@ -658,7 +656,7 @@ OP* pm_perl_cpp_helem(pTHX_ HV *hv, const MAGIC *mg)
    dSP;
    U8 save_private=PL_op->op_private;
    const container_vtbl *t=(const container_vtbl*)mg->mg_virtual;
-   OP *next;
+   OP* next;
    TOPm1s=sv_2mortal(newRV((SV*)hv));   /* Restore the reference to the map object */
    PUSHMARK(SP-2);
    XPUSHs(AvARRAY(t->assoc_methods)[PL_op->op_flags & OPf_MOD ? CPP_assoc_helem_index : CPP_assoc_find_index]);
@@ -1045,37 +1043,18 @@ PPCODE:
    SV *wrap_sv=AvARRAY(descr)[FuncDescr_wrapper_index];
    SV *func_ptr_sv=AvARRAY(descr)[FuncDescr_func_ptr_index];
    SV **SPbottom=SP;
-   int n_args=SvIVX(func_ptr_sv), n_opt_hashes=n_args>>16;
+   int n_args=SvIVX(func_ptr_sv);
    if (__builtin_expect(n_args<0, 0))
       Perl_croak(aTHX_ "internal error: ellipsis function descriptor lacks the number of fixed arguments");
-   n_args&=(1<<16)-1;
    SP+=n_args;
    if (items <= n_args) {
       /* items == n_args, otherwise would be caught by Overload */
       /* no trailing arguments - make an empty array */
       XPUSHs(sv_2mortal(newRV_noinc((SV*)newAV())));
    } else {
-      int n_trail=items-n_args-n_opt_hashes;
+      int n_trail=items-n_args;
       SV *trailing=sv_2mortal(newRV_noinc((SV*)Perl_av_fake(aTHX_ n_trail, ++SP)));
-      if (n_opt_hashes) {
-         if (n_trail>1) {
-            SETs(trailing);
-            while (n_opt_hashes--) {
-               SP[1]=SP[n_trail];
-               ++SP;
-            }
-         } else {
-            if (!n_trail) {
-               int i;
-               for (i=n_opt_hashes; i>0; --i)
-                  SP[i]=SP[i-1];
-            }
-            SETs(trailing);
-            SP+=n_opt_hashes;
-         }
-      } else {
-         SETs(trailing);
-      }
+      SETs(trailing);
    }
    PUTBACK;
    SP=call_function(aTHX_ (SV*)cv, wrap_sv, func_ptr_sv, SPbottom);
@@ -1102,10 +1081,9 @@ PPCODE:
 }
 
 void
-set_number_of_args(cvref, n_args, n_opt_hashes, is_ellipsis, new_wrapper)
+set_number_of_args(cvref, n_args, is_ellipsis, new_wrapper)
    SV *cvref;
    I32 n_args;
-   I32 n_opt_hashes;
    SV *is_ellipsis;
    SV *new_wrapper;
 PPCODE:
@@ -1119,7 +1097,7 @@ PPCODE:
       Perl_croak(aTHX_ "internal error: set_number_of_args called repeatedly for %.*s", (int)l, name);
    }
    if (SvTRUE(is_ellipsis)) {
-      n_args+=(n_opt_hashes<<16)-(n_opt_hashes+1);  // the last array argument is included in the counting
+      --n_args;  // the last array argument is included in the counting
       CvXSUB(sub)=&XS_Polymake__Core__CPlusPlus_call_ellipsis_function;
    }
    SvIVX(func_ptr_sv)=n_args;
@@ -1160,7 +1138,7 @@ PPCODE:
       MAGIC *mg=pm_perl_get_cpp_magic(obj);
       const base_vtbl* const t=(const base_vtbl*)mg->mg_virtual;
       if (!(mg->mg_flags & value_read_only) && t->copy_constructor) {
-         /* Should clone only if persistent and really mutable */
+         // Should clone only if persistent and really mutable
          SV *copy=(t->sv_cloner)(aTHX_ obj);
          PUTBACK;
          GuardedCall((t->copy_constructor)(SvMAGIC(SvRV(copy))->mg_ptr, mg->mg_ptr));
@@ -1173,19 +1151,25 @@ PPCODE:
 }
 
 void
-convert_to_int(obj)
-   SV *obj;
+convert_to_int(proto, obj)
+   SV* proto;
+   SV* obj;
 PPCODE:
 {
-   PUSHs(sv_2mortal(newSViv(pm::perl::Scalar::convert_to_int(obj))));
+   dTARGET;
+   PUSHi(pm::perl::Scalar::convert_to_int(obj));
+   PERL_UNUSED_ARG(proto);
 }
 
 void
-convert_to_float(obj)
-   SV *obj;
+convert_to_float(proto, obj)
+   SV* proto;
+   SV* obj;
 PPCODE:
 {
-   PUSHs(sv_2mortal(newSVnv(pm::perl::Scalar::convert_to_float(obj))));
+   dTARGET;
+   PUSHn(pm::perl::Scalar::convert_to_float(obj));
+   PERL_UNUSED_ARG(proto);
 }
 
 void
@@ -1194,21 +1178,22 @@ classify_scalar(x,...)
 PROTOTYPE: $
 PPCODE:
 {
-   /* @retval: 0 - string, 1 - float, 2 - long, 3 - int, 4 - boolean, undef - the rest */
+   // @retval: 0 - string, 1 - float, 2 - long, 3 - int, 4 - boolean, undef - the rest
+   dTARGET;
    int require_integral= items==2 && SvTRUE(ST(1));
    if (x==&PL_sv_yes || x==&PL_sv_no) {
-      PUSHs(require_integral ? sv_two : sv_four);
+      PUSHi(require_integral ? 2 : 4);
    } else if (SvIOK(x)) {
-      PUSHs(require_integral || SvIVX(x)<PERL_INT_MIN || SvIVX(x)>PERL_INT_MAX ? sv_two : sv_three);
+      PUSHi(require_integral || SvIVX(x)<PERL_INT_MIN || SvIVX(x)>PERL_INT_MAX ? 2 : 3);
    } else if (SvNOK(x)) {
-      PUSHs(&PL_sv_yes);
+      PUSHi(1);
    } else if (SvPOK(x)) {
       int flags;
       if (SvCUR(x)>0 && (flags=looks_like_number(x))) {
          if ((flags & (IS_NUMBER_NOT_INT|IS_NUMBER_IN_UV))==IS_NUMBER_IN_UV)
-            PUSHs(require_integral || SvCUR(x)>(flags & IS_NUMBER_NEG ? 9 : 8) ? sv_two : sv_three);
+            PUSHi(require_integral || SvCUR(x)>(flags & IS_NUMBER_NEG ? 9 : 8) ? 2 : 3);
          else
-            PUSHs(&PL_sv_yes);
+            PUSHi(1);
       } else {
          PUSHs(require_integral ? &PL_sv_undef : &PL_sv_no);
       }
@@ -1443,6 +1428,8 @@ BOOT:
    Object_attachments_index=CvDEPTH(get_cv("Polymake::Core::Object::attachments", false));
 
    CvLVALUE_on(get_cv("Polymake::Core::CPlusPlus::Iterator::hidden", false));
+   CvMETHOD_on(get_cv("Polymake::Core::CPlusPlus::convert_to_int", false));
+   CvMETHOD_on(get_cv("Polymake::Core::CPlusPlus::convert_to_float", false));
    if (PL_DBgv) {
       CvNODEBUG_on(get_cv("Polymake::Core::CPlusPlus::Iterator::deref", false));
       CvNODEBUG_on(get_cv("Polymake::Core::CPlusPlus::Iterator::deref_to_scalar", false));
@@ -1462,10 +1449,6 @@ BOOT:
    }
 
    negative_indices_key=newSVpvn_share(NEGATIVE_INDICES_VAR,16,0);
-
-   sv_two=newSViv(2);    SvREADONLY_on(sv_two);
-   sv_three=newSViv(3);  SvREADONLY_on(sv_three);
-   sv_four=newSViv(4);   SvREADONLY_on(sv_four);
 }
 
 =pod

@@ -16,14 +16,14 @@
 
 #include "polymake/client.h"
 #include "polymake/vector"
-#include "polymake/Rational.h"
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
 #include "polymake/IncidenceMatrix.h"
 
 namespace polymake { namespace polytope {
 
-perl::Object pyramid(perl::Object p_in, const Rational& z, perl::OptionSet options)
+template<typename Scalar>
+perl::Object pyramid(perl::Object p_in, const Scalar& z, perl::OptionSet options)
 {
    const bool noc = options["noc"],
       relabel = options["relabel"];
@@ -32,7 +32,7 @@ perl::Object pyramid(perl::Object p_in, const Rational& z, perl::OptionSet optio
       throw std::runtime_error("pyramid: z must be non-zero");
 
    int n_vertices=0;
-   perl::Object p_out("Polytope<Rational>");
+   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
    p_out.set_description() << "pyramid over " << p_in.name() << endl;
 
    if (noc || p_in.exists("VERTICES_IN_FACETS")) {
@@ -55,12 +55,12 @@ perl::Object pyramid(perl::Object p_in, const Rational& z, perl::OptionSet optio
       if (!pointed)
          throw std::runtime_error("bipyramid: input polyhedron not pointed");
 
-      const Matrix<Rational> V=p_in.give("VERTICES");
+      const Matrix<Scalar> V=p_in.give("VERTICES");
       n_vertices=V.rows();
-      const Vector<Rational> z0=p_in.give("REL_INT_POINT");
-      p_out.take("VERTICES") << (V | zero_vector<Rational>()) /
+      const Vector<Scalar> z0=p_in.give("REL_INT_POINT");
+      p_out.take("VERTICES") << (V | zero_vector<Scalar>()) /
          (z0 | z);
-      const Matrix<Rational> empty;
+      const Matrix<Scalar> empty;
       p_out.take("LINEALITY_SPACE") << empty;
    }
 
@@ -74,19 +74,19 @@ perl::Object pyramid(perl::Object p_in, const Rational& z, perl::OptionSet optio
    return p_out;
 }
 
-UserFunction4perl("# @category Producing a polytope from polytopes"
-                  "# Make a pyramid over a polyhedron."
-                  "# The pyramid is the convex hull of the input polyhedron //P// and a point //v//"
-                  "# outside the affine span of //P//. For bounded polyhedra, the projection of //v//"
-                  "# to the affine span of //P// coincides with the vertex barycenter of //P//."
-                  "# @param Polytope P"
-                  "# @param Rational z is the distance between the vertex barycenter and //v//,"
-                  "#   default value is 1."
-                  "# @option Bool noc don't compute new coordinates, produce purely combinatorial description."
-                  "# @option Bool relabel copy vertex labels from the original polytope,"
-                  "#   label the new top vertex with \"Apex\"."
-                  "# @return Polytope",
-                  &pyramid, "pyramid(Polytope; $=1, { noc => undef, relabel => undef })");
+UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
+                          "# Make a pyramid over a polyhedron."
+                          "# The pyramid is the convex hull of the input polyhedron //P// and a point //v//"
+                          "# outside the affine span of //P//. For bounded polyhedra, the projection of //v//"
+                          "# to the affine span of //P// coincides with the vertex barycenter of //P//."
+                          "# @param Polytope P"
+                          "# @param Scalar z is the distance between the vertex barycenter and //v//,"
+                          "#   default value is 1."
+                          "# @option Bool noc don't compute new coordinates, produce purely combinatorial description."
+                          "# @option Bool relabel copy vertex labels from the original polytope,"
+                          "#   label the new top vertex with \"Apex\"."
+                          "# @return Polytope",
+                          "pyramid<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=1, { noc => 0, relabel => undef })");
 } }
 
 // Local Variables:

@@ -50,7 +50,7 @@ minkowski_sum_client(const Scalar& lambda1, const Matrix<Scalar>& V1, const Scal
    return P;
 }
 
-FunctionTemplate4perl("minkowski_sum_client<Scalar>($, Matrix<Scalar>, $, Matrix<Scalar>)");
+FunctionTemplate4perl("minkowski_sum_client<Scalar>(type_upgrade<Scalar>, Matrix<type_upgrade<Scalar>>, type_upgrade<Scalar>, Matrix<type_upgrade<Scalar>>)");
 
 } }
 

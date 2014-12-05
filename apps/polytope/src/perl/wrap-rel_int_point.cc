@@ -14,18 +14,17 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
+#include "polymake/QuadraticExtension.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( rel_int_point_x_f16, T0 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturnVoid( rel_int_point<T0>(arg0) );
+   FunctionInterface4perl( rel_int_point_T_x_f16, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturnVoid( (rel_int_point<T0>(arg0)) );
    };
 
-   FunctionInstance4perl(rel_int_point_x_f16, Rational);
-   FunctionInstance4perl(rel_int_point_x_f16, QuadraticExtension< Rational >);
+   FunctionInstance4perl(rel_int_point_T_x_f16, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

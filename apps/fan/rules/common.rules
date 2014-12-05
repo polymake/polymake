@@ -1,4 +1,4 @@
-#  copyright (c) 1997-2011
+#  copyright (c) 1997-2014
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -175,12 +175,10 @@ weight 6.50;
 
 rule CONES : HASSE_DIAGRAM, N_RAYS {
    my $d=$this->HASSE_DIAGRAM->dim;
-   my $cones=new Array<IncidenceMatrix>($d);
-   for (my $i=0; $i<$d; ++$i) {
-      $cones->[$i]=new IncidenceMatrix((new Array<Set<Int>>([ map { $this->HASSE_DIAGRAM->FACES->[$_] } @{$this->HASSE_DIAGRAM->nodes_of_dim($i)} ])),
-                                       $this->N_RAYS);
-   }
-   $this->CONES=$cones;
+   $this->CONES=[ map {
+                     my @rows=map { $this->HASSE_DIAGRAM->FACES->[$_] } @{$this->HASSE_DIAGRAM->nodes_of_dim($_)};
+                     @rows ? new IncidenceMatrix(\@rows, $this->N_RAYS) : new IncidenceMatrix(0, $this->N_RAYS)
+                  } 0..$d-1 ];
 }
 
 rule F_VECTOR : HASSE_DIAGRAM {

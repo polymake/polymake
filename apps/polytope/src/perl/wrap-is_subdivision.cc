@@ -30,6 +30,6 @@ namespace polymake { namespace polytope { namespace {
 
    FunctionInstance4perl(is_subdivision_X_X_o, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< Set< int > > >);
    FunctionInstance4perl(is_subdivision_X_X_o, perl::Canned< const Matrix< Rational > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
-   FunctionInstance4perl(is_subdivision_X_X_o, perl::Canned< const Matrix< Rational > >, perl::TryCanned< const Array< Array< int > > >);
+   FunctionInstance4perl(is_subdivision_X_X_o, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< Array< int > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

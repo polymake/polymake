@@ -158,6 +158,9 @@ property H_VECTOR : Vector<Integer>;
 
 #The f-vector of a matroid
 property F_VECTOR : Vector<Integer>;
+
+#A string listing the bases in revlex order. A '*' means the basis is present, a '0' that it is absent
+property REVLEX_BASIS_ENCODING : String;
 }
 
 # Local Variables:

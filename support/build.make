@@ -25,6 +25,9 @@ include ${BuildDir}/conf.make
 include ${ProjectTop}/support/utils.make
 
 ProjectTop := $(call _abs_path,${ProjectTop})
+ifdef ExtensionTop
+  ExtensionTop := $(call _abs_path,${ExtensionTop})
+endif
 
 Includes :=
 IncludesXX :=

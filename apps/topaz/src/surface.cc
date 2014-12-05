@@ -53,7 +53,7 @@ perl::Object surface(int g)
             C=connected_sum(C,T);
          }
       } else {
-         const Array< Set<int> > PJP = projective_plane_facets();
+         const Array< Set<int> > PJP = real_projective_plane_facets();
          copy(entire(PJP), std::back_inserter(C));
          for(int i=0; i<g-1; ++i) {
             C=connected_sum(C,PJP);

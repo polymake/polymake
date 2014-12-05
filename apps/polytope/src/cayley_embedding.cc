@@ -48,7 +48,8 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# @param Scalar t_1 the extra coordinate for the vertices of //P_1//"
                           "# @option Bool relabel"
                           "# @return Polytope",
-                          "cayley_embedding<_ExtraType, Scalar={ typechecks::is_ordered_field(_ExtraType) ? _ExtraType : Rational }>(Polytope, Polytope; _ExtraType=1, _ExtraType=($_[2]), { relabel => undef })");
+                          "cayley_embedding<Scalar>(Polytope<type_upgrade<Scalar>>, Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=1, type_upgrade<Scalar>=($_[-1]),"
+                          "                         { relabel => undef })");
 
 
 UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
@@ -59,13 +60,11 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# where //t_i// is the //i//-th entry of the optional array //t//. "
                           "# "
                           "# The option //relabel// creates an additional section [[VERTEX_LABELS]]."
-                          "# @param Array<Polytope> A the input polytopes"
-                          "# @option Array<Scalar> t scaling for the Cayley embedding; defaults to the all-1 vector"
+                          "# @param Polytope A the input polytopes"
+                          "# @option Array t array of scaling factors for the Cayley embedding; defaults to the all-1 vector"
                           "# @option Bool relabel"
                           "# @return Polytope",
-                          "cayley_embedding<Scalar>(Array<Polytope<Scalar>>; Array<Scalar>=[], { relabel => undef })");
-
-
+                          "cayley_embedding<Scalar>(Polytope<type_upgrade<Scalar>>+; Array<type_upgrade<Scalar>>=[], { relabel => undef })");
 } }
 
 // Local Variables:

@@ -20,14 +20,14 @@
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( cell_from_subdivision_x_x_o, T0 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]);
+   FunctionInterface4perl( cell_from_subdivision_T_x_x_o, T0 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
       WrapperReturn( (cell_from_subdivision<T0>(arg0, arg1, arg2)) );
    };
 
    template <typename T0>
-   FunctionInterface4perl( cells_from_subdivision_x_x_o, T0 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]);
+   FunctionInterface4perl( cells_from_subdivision_T_x_x_o, T0 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
       WrapperReturn( (cells_from_subdivision<T0>(arg0, arg1, arg2)) );
    };
 
@@ -39,7 +39,7 @@ namespace polymake { namespace polytope { namespace {
 
    OperatorInstance4perl(Binary_diva, perl::Canned< const Wary< pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> > >, perl::Canned< const Vector< Rational > >);
    OperatorInstance4perl(Binary_diva, perl::Canned< const Wary< pm::RowChain<pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> const&, pm::SingleRow<pm::Vector<pm::Rational> const&> > > >, perl::Canned< const Vector< Rational > >);
-   FunctionInstance4perl(cell_from_subdivision_x_x_o, Rational);
-   FunctionInstance4perl(cells_from_subdivision_x_x_o, Rational);
+   FunctionInstance4perl(cell_from_subdivision_T_x_x_o, Rational);
+   FunctionInstance4perl(cells_from_subdivision_T_x_x_o, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

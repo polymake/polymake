@@ -23,7 +23,7 @@ namespace polymake { namespace polytope {
 
 // Compute the h-vector of a simplicial or simple polytope from the f-vector.
 
-void h_vector(perl::Object p, bool simplicial)
+void h_from_f_vector(perl::Object p, bool simplicial)
 {
    Vector<Integer> f=p.give("F_VECTOR");
    if (!simplicial) std::reverse(f.begin(), f.end());
@@ -41,6 +41,23 @@ void h_vector(perl::Object p, bool simplicial)
       p.take("H_VECTOR") << h;
    else
       p.take("DUAL_H_VECTOR") << h;
+}
+
+// Compute the h-vector from the g-vector
+
+void h_from_g_vector(perl::Object p)
+{
+   const Vector<Integer> g=p.give("G_VECTOR");
+   const int d=p.give("COMBINATORIAL_DIM");
+
+   Vector<Integer> h(d+1);
+   Integer s(0);
+   for (int k=0; k<=d/2;  ++k) {
+      s += g[k];
+      h[d-k] = h[k] = s;
+   }
+
+   p.take("H_VECTOR") << h;
 }
 
 // Inverse of the above
@@ -71,8 +88,9 @@ void f_vector(perl::Object p, bool simplicial)
    p.take("F_VECTOR") << f;
 }
 
-Function4perl(&h_vector, "h_vector");
 Function4perl(&f_vector, "f_vector");
+Function4perl(&h_from_f_vector, "h_from_f_vector");
+Function4perl(&h_from_g_vector, "h_from_g_vector");
 
 } }
 

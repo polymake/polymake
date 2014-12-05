@@ -113,20 +113,17 @@ long singular_get_int(const std::string varname){
 
 } // end namespace singular
 
-UserFunction4perl("CREDIT Singular\n\n"
-                  "# @category Algebra"
+UserFunction4perl("# @category Algebra"
                   "# Executes given string with Singular"
                   "# @param String s",
                   &singular::singular_eval, "singular_eval($)");
 
-UserFunction4perl("CREDIT Singular\n\n"
-                  "# @category Algebra"
+UserFunction4perl("# @category Algebra"
                   "# Retrieves an int variable from 'Singular'"
                   "# @param String s",
                   &singular::singular_get_int, "singular_get_int($)");
 
-UserFunction4perl("CREDIT Singular\n\n"
-                  "# @category Algebra"
+UserFunction4perl("# @category Algebra"
                   "# Retrieves a variable from 'Singular'"
                   "# @param String s variable name"
                   "# @return perl::ListReturn",

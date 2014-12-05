@@ -130,7 +130,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "#   the label of a new vertex corresponding to v<sub>1</sub> &oplus; v<sub>2</sub> will" 
                           "#   have the form LABEL_1*LABEL_2."
                           "# @return Polytope",
-                          "wreath<Coord>(Polytope<Coord> Polytope<Coord> { dual => 0, relabel => 0})");
+                          "wreath<Coord>(Polytope<type_upgrade<Coord>> Polytope<type_upgrade<Coord>> { dual => 0, relabel => 0})");
 } }
 
 // Local Variables:

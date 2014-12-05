@@ -24,22 +24,44 @@ sub multiple_func_definition {
 }
 
 sub multiple_type_definition {
-   croak( "Multiple definition of a property type" );
-}
-
-sub check_application_pkg {
-   my $app_expected=$_[0];
-   if (compiling_in(\%application::) != $app_expected) {
-      croak( "This declaration ",
-             $app_expected ? "is only allowed" : "is not allowed",
-             " in the top-level (application) scope" );
+   my ($type_name, $where)=@_;
+   if (defined (my $pkg_entry=$application::{$where})) {
+      if (defined ($pkg_entry=$pkg_entry->{$type_name})) {
+         if (defined (my $type_stash=*{$pkg_entry}{HASH})) {
+            exists $type_stash->{typeof}
+              and croak( "Multiple definition of ", $where eq "props::" ? "a property" : "an object", " type" );
+         }
+      }
    }
 }
 
-declare $warn_options="use strict 'refs'; use warnings 'void', 'syntax'";
+sub multiple_prop_definition { multiple_type_definition(@_, "props::") }
+sub multiple_object_definition { multiple_type_definition(@_, "objects::") }
+
+sub check_proper_app_use {
+   my ($app, $other_app_name)=@_;
+   $app->used->{$other_app_name}
+     or lookup Application($other_app_name)
+        ? croak( "Unknown application $other_app_name" )
+        : croak( "An application can only enhance own object/property types or those defined in an IMPORT'ed or USE'd application" );
+}
+
+sub check_application_pkg {
+   compiling_in(\%application::) == $_[0]
+     or croak( "This declaration ",
+               $_[0] ? "is only allowed" : "is not allowed",
+               " in the top-level (application) scope" );
+}
+
+sub check_object_pkg {
+   $_[0] or croak( "This declaration is only allowed in the top-level (application) scope" );
+}
+
+declare $warn_options="use strict 'refs'; use warnings 'void', 'syntax'; use feature 'state'";
 
 #################################################################################
 package Polymake::Core::ScriptLoader;
+
 use Polymake::Struct (
    [ new => '$$' ],
    [ '$handle' => '#1' ],
@@ -62,6 +84,7 @@ sub get {
 }
 #################################################################################
 package Polymake::Core::ScriptFilter;
+
 use Polymake::Struct (
    [ '@ISA' => 'ScriptLoader' ],
    [ new => '$$@' ],
@@ -96,7 +119,7 @@ my $accurate_linenumbers= exists &DB::DB || namespaces::collecting_coverage();
 
 package Polymake::Core::Application::RuleFilter;
 
-my (%main_init_rule_headers, %rule_headers, %main_init_decl_headers, %decl_headers);
+my (%main_init_rule_headers, %rule_headers, %main_init_decl_headers, %decl_headers, %cross_app_rule_headers, %cross_app_decl_headers);
 
 use Polymake::Struct (
    [ new => '$$$$$$$@' ],
@@ -106,6 +129,8 @@ use Polymake::Struct (
    [ '$rule_key' => '#4' ],
    [ '$from_embedded_rules' => '#5' ],
    '@buffer',
+   [ '$buffer_phase1' => 'undef' ],
+   [ '$buffer_suspended' => 'undef' ],
    [ '$gap' => '1' ],           # 1 - empty line, 2 - comment block
    '$start_comments',
    '$len_comments',
@@ -132,17 +157,24 @@ sub new {
       $self->rule_header_table=\%rule_headers;
       $self->decl_rule_header_table=\%decl_headers;
    }
-   if (@_>1) {
-      @{$self->buffer}=@_;
+   @{$self->buffer}= @_>1 ? @_ : split /(?<=\n)/, shift;
+
+   if ($self->from_embedded_rules) {
+      my $app_pkg=$self->application->pkg;
+      push @{$self->buffer_phase1=[ ]},
+           "use namespaces '$app_pkg';\n",
+           "package $app_pkg;\n";
+      $self->application->cpp->embedded_rules=$self->buffer;
+      (\&get_embedded_rules, $self);
+
    } else {
-      @{$self->buffer}=split /(?<=\n)/, shift;
+      if ($accurate_linenumbers) {
+         $self->injected_lines=@{$self->buffer}+1;
+         $self->application =~ /0x[0-9a-f]+/;
+         $self->injected_source="/loader/$&/rules:".$self->path;
+      }
+      (\&get, $self);
    }
-   if ($accurate_linenumbers) {
-      $self->injected_lines=@{$self->buffer}+1;
-      $self->application =~ /0x[0-9a-f]+/;
-      $self->injected_source="/loader/$&/rules:".$self->path;
-   }
-   (\&get, $self);
 }
 
 sub get {
@@ -154,6 +186,33 @@ sub get {
    print STDERR ">>> ", $self->buffer->[0] if $DebugLevel>3;
    $_ .= shift @{$self->buffer};
    return length;
+}
+
+sub get_embedded_rules {
+   my ($maxlen, $self)=@_;
+   unless (@{$self->buffer_phase1}) {
+      namespaces::temp_disable();
+      do {
+         fill($self);
+         if (defined($self->buffer_suspended) && $self->buffer->[-1] =~ /^\}(?: \{)?$/) {
+            # end of a block suspended because of unsatisfied REQUIRE_APPLICATION
+            push @{$self->buffer_suspended},
+                 "  undef;\n",
+                 splice @{$self->buffer}, -1, 1, "}\n";
+            $self->buffer=$self->buffer_suspended;
+            undef $self->buffer_suspended;
+         }
+      } until (@{$self->buffer_phase1});
+   }
+   print STDERR "++> ", $self->buffer_phase1->[0] if $DebugLevel>3;
+   $_ .= shift @{$self->buffer_phase1};
+   return length;
+}
+#################################################################################
+# Insert "typeof" method calls in front of every type expression
+sub translate_type_expr {
+   $_[0] =~ s{ (?: ^ | [\(\{,?:] )\s* \K (?! typeof | instanceof | undef) ($type_re) (?! \s*(?: [\(\[\{\$\@%<>] | -> | => )) }{(typeof $1)}xog;
+   $_[0] =~ s/^\s*(?=\{)/do /;
 }
 #################################################################################
 # these clauses are recognized at the beginning of main.rules and elsewhere
@@ -251,6 +310,56 @@ sub get {
            "), '" . $self->rule_key . "', $.) || $escape;\n";
    },
 
+   REQUIRE_APPLICATION => sub {
+      my ($self, $header)=@_;
+      $header =~ s/\#.*$//;
+      if (my @app_names= $header =~ /\G\s* ($id_re) \s*/gxoc
+            and
+          pos($header)==length($header)) {
+         my @missing_apps;
+         foreach my $app_name (@app_names) {
+            if (lookup Application($app_name)) {
+               if ($plausibility_checks && exists $self->application->used->{$app_name}) {
+                  push @{$self->buffer},
+                       "BEGIN { die 'superfluous REQUIRE_APPLICATION $app_name: already USE\\'d or IMPORT\\'ed' }\n";
+                  return;
+               }
+            } else {
+               push @missing_apps, $app_name;
+            }
+         }
+         if (@missing_apps) {
+            my $suspended=Application::SuspendedItems::add($self->application, $extension, @missing_apps);
+            if ($self->from_embedded_rules) {
+               # switch temporarily to a separate line buffer; get_embedded_rules will switch back later
+               $self->buffer_suspended //= $self->buffer;
+               $self->buffer=$suspended->embedded_rules;
+               push @{$self->buffer},
+                    "{\n",
+                    "#line $. \"" . tied(*{$self->handle})->lastfile . "\"\n";
+            } else {
+               # stop loading now
+               push @{$suspended->rulefiles}, $self->path;
+               push @{$suspended->rule_keys}, $self->rule_key;
+               push @{$self->buffer},
+                    "1; __END__\n";
+               return;
+            }
+         }
+
+         # C++ functions defined in the sequel must memorize the application list
+         push @{$self->buffer},
+              "local \$Polymake::Core::Application::cross_apps_list=[ map { lookup Polymake::Core::Application(\$_) } qw(@app_names) ];\n";
+
+         $self->rule_header_table=\%cross_app_rule_headers;
+         $self->decl_rule_header_table=\%cross_app_decl_headers;
+
+      } else {
+         push @{$self->buffer},
+              "BEGIN { die 'invalid application list' }\n";
+      }
+   },
+
    CONFIGURE => sub { process_configure(@_[0,1], 0) },
 
    CONFIGURE_OPT => sub { process_configure(@_[0,1], 1) },
@@ -268,15 +377,15 @@ sub get {
       }
    },
 
-   object => sub { reopen_type(@_, "object") },
+   object => sub { reopen_type(@_, "objects") },
 
-   property_type => sub { reopen_type(@_, "property") },
+   property_type => sub { reopen_type(@_, "props") },
 
    default_object => sub {
       my ($self, $header)=@_;
       if ($header =~ /($type_re) \s*;$/xo) {
          push @{$self->buffer},
-              "application::self()->default_type=application::self()->eval_type('$1');\n";
+              "application::self()->default_type=typeof $1;\n";
       } else {
          push @{$self->buffer}, "BEGIN { die 'invalid type name' }\n";
       }
@@ -289,7 +398,6 @@ sub get {
 
          my ($prop_name, $prop_type, $attrs, $default, $open_scope)=@+{qw(prop_name prop_type attrs default open_scope)};
 
-         translate_type($prop_type);
          fill_help($self, "self(1)", "'properties', '$prop_name'") if $Help::gather;
          my @attrs;
          my $flags=0;
@@ -309,7 +417,7 @@ sub get {
          ++$funcnt if defined($default);
          push @{$self->buffer},
               ($open_scope && "{ my \$prop=") .
-              "self(1)->add_property_definition('$prop_name', $prop_type, @attrs); " .
+              "self(1)->add_property_definition('$prop_name', (typeof $prop_type), @attrs); " .
               ( defined($default)
                 ? "application::self()->add_default_value_rule('$prop_name : ', \\&__prod__$funcnt, self(1)); " .
                   "sub __prod__$funcnt : method { \$_[0]->$prop_name$default }"
@@ -406,17 +514,17 @@ sub get {
            "application::self()->prefs->add_preference('$header', 3);\n";
    },
 
-   function => sub { prepare_function(@_, 0, "", 0) },
+   function => sub { prepare_function(@_, 0, "") },
 
-   method => sub { prepare_function(@_, 1, "", 0, "Core::check_application_pkg(0);") },
+   method => sub { prepare_function(@_, 1, "", "Core::check_application_pkg(0);") },
 
-   user_function => sub { prepare_function(@_, 0, "", 1, !$_[0]->from_embedded_rules && "Core::check_application_pkg(1);") },
+   user_function => sub { prepare_function(@_, 0, "u", !$_[0]->from_embedded_rules && "Core::check_application_pkg(1);") },
 
-   user_method => sub { prepare_function(@_, 1, "", 1, "Core::check_application_pkg(0);") },
+   user_method => sub { prepare_function(@_, 1, "u", "Core::check_application_pkg(0);") },
 
-   global_method => sub { prepare_function(@_, 1, "_global", 0, "Core::check_application_pkg(0);") },
+   global_method => sub { prepare_function(@_, 1, "g", "Core::check_application_pkg(0);") },
 
-   typecheck => \&prepare_typecheck,
+   type_method => sub { prepare_function(@_, 1, "t", "") },
 
    rule => sub {
       my ($self, $header)=@_;
@@ -445,11 +553,9 @@ sub get {
    auto_cast => sub {
       my ($self, $header)=@_;
       if ($header =~ /^: \s* ($type_re) \s*;\s* $/xo) {
-         my $type=$1;
-         translate_type($type);
          $self->after_rule=1;
          push @{$self->buffer},
-              "self(1)->add_auto_cast($type);\n";
+              "self(1)->add_auto_cast(typeof $1);\n";
 
       } else {
          push @{$self->buffer}, "BEGIN { die 'invalid auto_cast declaration' }\n";
@@ -457,24 +563,63 @@ sub get {
    },
 );
 
-sub provide_func_prologue {
-   if ($_[1] =~ s/(?: ^ | \bsub \s+ $id_re) \s* \K \{/$_[2]/xo) {
+sub inject_short_prologue {
+   if ($_[1] =~ s/(?: ^ | \bsub \s+ $id_re) \s* \{ \K/$_[2]/xo) {
       undef $_[0]->filter;
    }
 }
 
 sub provide_rule_prologue : method {
-   provide_func_prologue(@_, '{ my $this=shift;');
+   inject_short_prologue(@_, 'my $this=shift;');
 }
 
-sub inject_credit_display : method {
-   provide_func_prologue(@_, '{ $__cur_credit->display if $__cur_credit && $Verbose::credits > $__cur_credit->shown;');
+my $display_credit=q{$__cur_credit->display if $__cur_credit && $Verbose::credits > $__cur_credit->shown;};
+
+sub provide_short_prologue {
+   my ($self, undef, $prologue)=@_;
+   $self->filter=sub : method { inject_short_prologue(@_, $prologue) };
+   inject_short_prologue($self, $_[1], $prologue);
 }
 
-sub provide_credit_display {
-   if ($_[0]->credit_seen) {
-      $_[0]->filter=\&inject_credit_display;
-      &inject_credit_display;
+sub inject_long_prologue {
+   my ($self, $line, $prologue)=@_;
+   if ($line =~ /^(\s*\{) \s*+ (.*) $/x) {
+      if (length($2)) {
+         push @{$self->buffer},
+              "$1\n",
+              @$prologue,
+              "#line $.\n";
+         $_[1]="$2\n";
+      } else {
+         push @{$self->buffer},
+              "$1\n",
+              @$prologue;
+         $_[1]="#line ".($.+1)."\n";
+      }
+      undef $self->filter;
+   }
+}
+
+sub provide_long_prologue {
+   my ($self, $header, $prologue)=@_;
+   if (defined $prologue) {
+      if ($header =~ /^(\s*\{) \s*+ (.*) $/x) {
+         $self->buffer->[-1].="$1\n";
+         if (length($2)) {
+            push @{$self->buffer},
+                 @$prologue,
+                 "#line $.\n",
+                 "$2\n";
+         } else {
+            push @{$self->buffer},
+                 @$prologue,
+                 "#line ".($.+1)."\n";
+         }
+      } else {
+         $self->filter=sub : method { inject_long_prologue(@_, $prologue) };
+      }
+   } else {
+      $self->buffer->[-1].="$header\n";
    }
 }
 
@@ -485,16 +630,6 @@ sub provide_credit_display {
 
    permutation => \&process_permutation_decl,
 );
-
-while (my ($keyword, $code)=each %main_init_rule_headers) {
-   $rule_headers{$keyword} //= $code;
-}
-while (my ($keyword, $code)=each %rule_headers) {
-   $main_init_rule_headers{$keyword} //= sub { &close_main_init_preamble; &$code; };
-}
-while (my ($keyword, $code)=each %decl_headers) {
-   $main_init_decl_headers{$keyword} = sub { &close_main_init_preamble; &$code; };
-}
 
 my $cpp_init=<<'_#_#_#_';
 self()->cpp->start_loading($Polymake::Core::Application::extension);
@@ -509,11 +644,30 @@ sub close_main_init_preamble {
    $self->application->declared |= $main_init_closed;
 }
 
+sub deny_in_cross_app_scope {
+   my $self=$_[0];
+   push @{$self->buffer},
+        "BEGIN { die 'This declaration is not allowed in a scope restricted by REQUIRE_APPLICATION' }\n";
+}
+
+while (my ($keyword, $code)=each %main_init_rule_headers) {
+   $rule_headers{$keyword} //= $code;
+}
+while (my ($keyword, $code)=each %rule_headers) {
+   $main_init_rule_headers{$keyword} //= sub { &close_main_init_preamble; &$code; };
+   $cross_app_rule_headers{$keyword} = $keyword =~ /^(?:object|property_type|options|prefer|(?:user_)?function|(?:user_|global_)?method)$/
+                                       ? $code : \&deny_in_cross_app_scope;
+}
+while (my ($keyword, $code)=each %decl_headers) {
+   $main_init_decl_headers{$keyword} = sub { &close_main_init_preamble; &$code; };
+   $cross_app_decl_headers{$keyword} = \&deny_in_cross_app_scope;
+}
+
 
 my %rule_subheaders=(
    precondition => sub {
       my ($self, $header)=@_;
-      if ($header =~ /^ : (?: \s* (?: !\s*)? (?:exists|defined) \s*\(\s* $hier_id_alt_re \s*\)\s* (?: , | ;\s*$ ) )+/xo) {
+      if ($header =~ /^ : (?: \s* (?: !\s*)? (?:exists|defined) \s*\(\s* $hier_id_alt_re \s*\)\s* (?: , | (?= ;)) )+ ;\s*$ /xo) {
          my $text="";
          while ($header =~ / (?:(!)\s*)? (?:(exists)|defined) \s*\(\s* ($hier_id_alt_re) \s*\)/gxo) {
             my $rule_header=$&;
@@ -584,9 +738,9 @@ my %rule_subheaders=(
          if ($super eq "SUPER") {
             $super="'SUPER'";
          } else {
-            translate_type($super);
+            $super="(typeof $super)";
          }
-         $line.="application::self()->append_overriden_rule(self(1), $super, '$label'); ";
+         $line.="application::self()->append_overridden_rule(self(1), $super, '$label'); ";
       }
       if ($good && $header !~ /\S/) {
          $self->after_rule=1;
@@ -663,82 +817,81 @@ sub start_preamble {
    my $self=$_[0];
    my $start=!$self->preamble_end;
    $self->preamble_end=$.;
-   "application::self()" . ($start && $has_interactive_commands && "->start_preamble('".$self->rule_key."', Polymake::Core::rescue_static_code(0))")
+   "application::self()" . ($start && $has_interactive_commands && !$self->from_embedded_rules &&
+                            "->start_preamble('".$self->rule_key."', Polymake::Core::rescue_static_code(0))")
 }
 #####################################################################################################
 #  helper routines common for object and property type declaration processing
 
-sub process_template_params($$\@\@$\@\@) {
-   my ($text, $super_text, $param_names, $prologue, $typecheck, $super_abstract, $super_instance)=@_;
+sub process_template_params($$\@\@\@\@) {
+   my ($text, $super_text, $param_names, $prologue, $super_abstract, $super_instance)=@_;
 
    my ($i, $defaults_seen)=(0,0);
    while ($text =~ m{\G $type_param_re \s* (?: ,\s* | $ ) }xog) {
-      my ($name, $default)=@+{qw(name default)};
-      push @$param_names, $name;
-      if (defined $default) {
-         if ($default =~ /^\s*\{/) {
-            translate_type_expr($default);
-            $default="do $default";
-         } else {
-            translate_type($default);
-         }
-         for ($i=0; $i<$#$param_names; ++$i) {
-            $default =~ s/\b(?<!:)$param_names->[$i](?:->type)/\$_[$i]/g;
-         }
+      push @$param_names, $+{name};
+      if (defined (my $default=$+{dynamic})) {
+         translate_type_expr($default);
          push @$prologue,
-              "    push \@_, $default if \$#_ < $i;\n";
+              "  \$_[$#$param_names] //= $default;\n";
          ++$defaults_seen;
-
+      } elsif (defined ($default=$+{static})) {
+         push @$prologue,
+              "  \$_[$#$param_names] //= typeof $default;\n";
+         ++$defaults_seen;
       } elsif ($defaults_seen) {
          return "wrong order of parameters with and without default types";
       }
    }
 
-   if (defined $typecheck) {
-      for ($i=0; $i<=$#$param_names; ++$i) {
-         $typecheck =~ s/\b$param_names->[$i]\b/\$_[$i]/g;
-      }
-      $_[4]="$typecheck;";
-   }
-
    if (@$param_names>1) {
       push @$prologue,
-           "    my \$type_inst=\$type_inst;\n",
-           "    foreach my \$arg (\@_[0.." . ($#$param_names-1) ."]) { \$type_inst=( \$type_inst->{\$arg} ||= { } ) }\n",
-           "    \$type_inst->{\$_[$#$param_names]}\n";
+           "  my \$type_inst=\\%type_inst;\n",
+           "  foreach my \$arg (\@_[0.." . ($#$param_names-1) ."]) { \$type_inst=( \$type_inst->{\$arg} //= { } ) }\n",
+           "  \$type_inst->{\$_[$#$param_names]}\n";
    } else {
       push @$prologue,
-           "    \$type_inst->{\$_[0]}\n",
+           "  \$type_inst{\$_[0]}\n",
    }
 
    if ($defaults_seen) {
       unshift @$prologue,
          $#$param_names >= $defaults_seen ?
-         ( "    croak('too few type parameters for ', __PACKAGE__) if \$#_ < " . ($#$param_names - $defaults_seen) . ";\n" ) : (),
-           "    croak('too many type parameters for ', __PACKAGE__) if \$#_ > $#$param_names;\n";
+         ( "  croak('too few type parameters for ', __PACKAGE__, ' : ', \$#_) if \$#_ < " . ($#$param_names - $defaults_seen) . ";\n" ) : (),
+           "  croak('too many type parameters for ', __PACKAGE__, ' : ', \$#_) if \$#_ > $#$param_names;\n";
    } else {
       unshift @$prologue,
-           "    croak('wrong number of type parameters for ', __PACKAGE__) if \$#_ != $#$param_names;\n";
+           "  croak('wrong number of type parameters for ', __PACKAGE__, ' : ', \$#_) if \$#_ != $#$param_names;\n";
    }
 
-   while ($super_text =~ m{\G (?'expr' (?> (?: $id_re \s*=>\s*)?) (?'type' $qual_id_re) (?: \s* (?= <)(?'tparams' $confined_re) )?) \s*(?:,\s*)?}xgo) {
-      my ($super_expr, $super_type, $tparams)=@+{qw(expr type tparams)};
-      if (defined $3) {
-         my $dependent;
-         for ($i=0; $i<=$#$param_names; ++$i) {
-            $dependent += $super_expr =~ s/\b$param_names->[$i]\b/\$_[$i]/g;
-         }
-         translate_type($super_expr);
-         if ($dependent) {
-            push @$super_abstract, "$super_type->self";
-            push @$super_instance, $super_expr;
+   my $needs_use_Params=$defaults_seen;
+
+   while ($super_text =~ m{\G $type_expr_re \s*(?:,\s*)?}xgo) {
+      if (defined (my $super_type=$+{dynamic})) {
+         translate_type_expr($super_type);
+         push @$super_instance, $super_type;
+         $needs_use_Params=1;
+      } else {
+         $super_type=$+{static};
+         my $super_expr="(typeof $super_type)";
+         if (my ($super_abstract_type, $super_params)= $super_type =~ m{^($id_re)\s*<(.*)}o) {
+            my $dependent;
+            foreach (@$param_names) {
+               $dependent= $super_params =~ m{\b$_\b} and last;
+            }
+            if ($dependent) {
+               push @$super_abstract, "typeof_gen $super_abstract_type";
+               push @$super_instance, $super_expr;
+               $needs_use_Params=1;
+            } else {
+               push @$super_abstract, $super_expr;
+            }
          } else {
             push @$super_abstract, $super_expr;
          }
-      } else {
-         push @$super_abstract, "$super_expr->type";
       }
    }
+
+   unshift @$prologue, "  use namespaces::Params \\*_;\n" if $needs_use_Params;
 
    $defaults_seen;
 }
@@ -759,40 +912,49 @@ sub process_enum {
 #####################################################################################################
 
 my @ellipsis_prologue=split /(?<=\n)/, <<'.';
-   my $type_inst=my $root=$type_inst;
-   $type_inst=( $type_inst->{$_} ||= { } ) for @_;
-   $type_inst->{$root}
+  my $type_inst=my $root=\%type_inst;
+  $type_inst=( $type_inst->{$_} //= { } ) for @_;
+  $type_inst->{$root}
 .
 
 sub process_property_type {
    my ($self, $header)=@_;
    my $first_line=@{$self->buffer};
+   my $outer_pkg=compiling_in();
+   my $preamble="";
+   if ($outer_pkg ne $self->application->pkg) {
+      if ($plausibility_checks && index($outer_pkg, $self->application->pkg."::")==0) {
+         push @{$self->buffer},
+              "BEGIN { die 'property types must be declared in the top-level (application) scope' }\n";
+         return;
+      }
+      $preamble="package application; ";
+   }
 
    if ($header =~ /^ ($id_re) \s*=\s* ($type_re) \s*;\s* $/xo) {
-      my ($alias, $type)=@_;
-      my $outer_pkg=compiling_in();
-      translate_type($type);
+      my ($type_name, $alias)=@_;
+      if ($plausibility_checks) {
+         $preamble .= "BEGIN { Core::multiple_prop_definition('$type_name\::') } ";
+      }
       push @{$self->buffer},
-           ($plausibility_checks
-           ? "BEGIN { exists \$$outer_pkg\::{'$alias\::'} and Core::multiple_type_definition() } " : "") .
-             "*$outer_pkg\::$alias\::=get_pkg($type->pkg);\n";
+           $preamble."{ my \$stash=get_pkg((typeof $alias)->pkg); *application::$type_name\::=\$stash; *application::props::$type_name\::=\$stash; }\n";
 
    } elsif ($header =~ /^ (?'type_name' $id_re) (?: $type_params_re | \s*<\s* (?'tparams' \.\.\. | \*) \s*> )?+
-                                                (?: \s*:\s* (?!c\+\+)(?'super' $type_expr_re) )?+
-                                                (?: \s*:\s* (?'cpp_binding' c\+\+) (?: \s*\( (?'cpp_opts' $balanced_re) \) )?+
-                                                            (?: \s*:\s* (?'attr_name' $id_re) \s* \( (?'attr_value' $balanced_re) \) )? )?+
+                                                (?: \s*:\s* (?!c\+\+)(?!upgrades)(?'super' $type_expr_re) )?+
+                                                (?: \s*:\s* upgrades \s*\(\s* (?'upgrades' $types_re) \s*\) )?+
+                                                (?: \s*:\s* (?'cpp_binding' c\+\+) (?: \s*\( (?'cpp_opts' $balanced_re) \) )?+)?+
                           \s* (?: (?'open_scope' \{ ) | ; ) \s*$/xo) {
 
-      my ($type_name, $tparams, $typecheck, $super, $cpp_binding, $cpp_opts, $attr_name, $attr_value, $open_scope)=@+{qw
-         ( type_name   tparams  typecheck    super   cpp_binding   cpp_opts   attr_name   attr_value   open_scope)   };
+      my ($type_name, $tparams, $typecheck, $super, $upgrades, $cpp_binding, $cpp_opts, $attr_name, $attr_value, $open_scope)=@+{qw
+         ( type_name   tparams  typecheck    super   upgrades   cpp_binding   cpp_opts   attr_name   attr_value   open_scope)   };
 
       fill_help($self, "", "'property_types', '$type_name'") if $Help::gather;
 
-      my $type_pkg=$self->application->pkg."::$type_name";
-      push @{$self->buffer},
-           "{ package $type_pkg; " . 
-           ($plausibility_checks ? "BEGIN { exists &type and Core::multiple_type_definition(); } " : "") .
-           "namespaces::memorize_lexical_scope;\n";
+      if ($plausibility_checks) {
+         $preamble .= "BEGIN { Core::multiple_prop_definition('$type_name\::') } ";
+      }
+      $preamble .= "{ package _::$type_name; BEGIN { *application::props::$type_name\::=get_pkg(__PACKAGE__) } namespaces::memorize_lexical_scope;\n";
+      push @{$self->buffer}, $preamble;
 
       my $buffer_size;
       if ($accurate_linenumbers && !$self->from_embedded_rules) {
@@ -801,13 +963,17 @@ sub process_property_type {
               "#line ".$self->injected_lines." \"".$self->injected_source."\"\n";
       }
 
-      my $appendix="";
+      translate_type_expr($upgrades) if defined($upgrades);
 
       if (defined($tparams)) {
          # parameterized type template
 
          my (@param_names, @prologue, @super_abstract, @super_instance, $n_defaults);
          if ($tparams eq "...") {
+            if ($cpp_binding) {
+               $self->buffer->[$first_line]="BEGIN { die 'type with arbitrary many parameters cannot have C++ binding' }\n";
+               return;
+            }
             if (defined($super)) {
                $self->buffer->[$first_line]="BEGIN { die 'type with arbitrary many parameters may not be derived' }\n";
                return;
@@ -816,34 +982,43 @@ sub process_property_type {
             $n_defaults=0;
          } elsif ($tparams eq "*") {
             if (defined($super)) {
-               if ($super =~ /</) {
-                  push @super_abstract, "application::self()->eval_type('$super')->pkg";
+               if ($super =~ /^[{(]/) {
+                  $self->buffer->[$first_line]="BEGIN { die 'pure C++ types may not have a dynamic base class' }\n";
+                  return;
+               } elsif ($super =~ /</) {
+                  push @super_abstract, "(typeof $super)";
                } else {
-                  push @super_abstract, "namespaces::lookup_class(__PACKAGE__,'$super','application')";
+                  push @super_abstract, "typeof_gen $super";
                }
             }
-            push @prologue, "    \$type_inst->{\$_[0]}\n";
-            push @param_names, $tparams;
+            push @prologue, "  \$type_inst{\$_[0]}\n";
          } else {
-            $n_defaults=process_template_params($tparams, $super, @param_names, @prologue, $typecheck, @super_abstract, @super_instance);
+            $n_defaults=process_template_params($tparams, $super, @param_names, @prologue, @super_abstract, @super_instance);
             if (is_string($n_defaults)) {
                $self->buffer->[$first_line]="BEGIN { die 'invalid property type declaration: $n_defaults' }\n";
                return;
             }
-            $_.="->pkg" for @super_abstract;
+            push @{$self->buffer},
+                 "sub __scope_type_params { (is_object(\$_[0]) ? \$_[0] : \$_[0]->[0])->type->descend_to_generic(__PACKAGE__)->params }  use namespaces::Params *__scope_type_params, qw(@param_names);\n";
+
+            translate_type_expr($typecheck) if defined($typecheck);
          }
 
          push @{$self->buffer},
               "using namespaces 'Polymake::Core::PropertyParamedType';\n",
-              "{ my \$type_inst={ };" . ($cpp_binding ? " my \$cpp_opts_sub;\n" : "\n");
+              "sub typeof_gen { state \$abstract_inst=" . ($cpp_binding && "application::self()->cpp->add_type_template(") .
+              ($tparams eq "*"
+               ? "new_generic Polymake::Core::PropertyTypeInstance('$type_name', __PACKAGE__, application::self(), @super_abstract)"
+               : "new_generic Polymake::Core::PropertyParamedType('$type_name', __PACKAGE__, application::self(), [$n_defaults, qw(@param_names)], @super_abstract)") .
+              ($cpp_binding &&
+               ", template_params=>" . ($tparams ne "*" ? scalar(@param_names) : "'*'") . ",$cpp_opts)") .
+              "; }\n";
 
-         if ($cpp_binding) {
-            if (@param_names) {
-               $appendix='$app->cpp->add_template_instance($t,$cpp_opts_sub,$Polymake::Core::PropertyType::nesting_level);';
-            } else {
-               $self->buffer->[$first_line]="BEGIN { die 'type with arbitrary many parameters cannot have C++ binding' }\n";
-               return;
-            }
+         if ($tparams ne "*") {
+            announce_parametrized_class($self, $type_name, "props", @param_names);
+
+            push @{$self->buffer},
+               "sub self { &Core::check_object_pkg; &typeof_gen }\n";
          }
 
          my $super_arg= @super_instance
@@ -851,56 +1026,46 @@ sub process_property_type {
                         : "undef";
 
          push @{$self->buffer},
-              "  sub generic_type { shift unless is_object(\$_[0]);\n",
+              "sub typeof { shift; state %type_inst;\n",
               @prologue,
-              "    ||= do { my \$app=application::self();\n",
-              defined($typecheck)
-              ? "       $typecheck\n" : (),
-              $tparams eq "*"
-              ? "       my \$t=new Polymake::Core::PropertyTypeInstance('$type_name', __PACKAGE__, \$app, $super_arg, \@_);\n"
-              : "       my \$t=new Polymake::Core::PropertyParamedType('$type_name', __PACKAGE__, \$app, $super_arg, \\\@_);\n",
-              "       $appendix \$t } }\n",
-              $tparams ne "*"
-              ? "  new_generic Polymake::Core::PropertyParamedType('$type_name', __PACKAGE__, application::self(), [$n_defaults, qw(@param_names)]);\n" : (),
-              @super_abstract
-              ? "  \@ISA=(@super_abstract);  using namespaces \@ISA;\n" : (),
-              @super_instance
-              ? "  *rebind_type=Polymake::Core::PropertyParamedType::prepare_rebind(__PACKAGE__, \\&generic_type, q{$super}, qw(@param_names));\n"
-              : "  sub rebind_type { undef }\n",
-              $cpp_binding
-              ? '  $cpp_opts_sub=application::self()->cpp->add_type_template(__PACKAGE__, template_params=>' . ($tparams eq "*" ? "'*'" : scalar(@param_names)) . ",$cpp_opts);\n"
-              : (),
-              "  *type=\\&generic_type;\n",
-              (!$open_scope && "} ")."}\n";
+              "    //= do { my \$gen=&typeof_gen; " . (defined($typecheck) && "$typecheck;") . "\n",
+              "         " .
+              ($upgrades &&
+               "(") .
+              ($cpp_binding &&
+               "\$gen->application->cpp->add_template_instance(") .
+              ($tparams eq "*"
+               ? "new Polymake::Core::PropertyTypeInstance(\$gen, $super_arg, \@_)"
+               : "new Polymake::Core::PropertyParamedType(\$gen, $super_arg, \\\@_)" ) .
+              ($cpp_binding &&
+               ", \$gen, \$Polymake::Core::PropertyType::nesting_level)") .
+              ($upgrades &&
+               ")->add_upgrade_relations($upgrades)") .
+              " } }\n",
+              $open_scope
+              ? (@param_names
+                 ? "local_array(*__scope_type_params, &typeof_gen->params);\n" : ())
+              : "typeof_gen() }\n";
 
       } else {
            # non-parameterized type
            if ($cpp_binding) {
               $cpp_opts =~ s/enum\s*(?=[({])($confined_re)/Polymake::Core::Application::RuleFilter::process_enum(q$1)/o;
               $cpp_opts =~ s/\bembedded\b/descr=>'embedded'/;
-              if ($attr_name eq "subst_const_op") {
-                 $attr_value =~ s/^\s*(\S+)\s*$/$1/;
-              } elsif (defined $attr_name) {
-                 $self->buffer->[$first_line]="BEGIN { die 'unknown type attribute \'$attr_name\'' }\n";
-                 return;
-              }
            }
-           translate_type($super) if defined($super);
+           $super &&= "typeof $super";
 
            push @{$self->buffer},
-                "  my \$_type_inst=new Polymake::Core::PropertyType('$type_name', __PACKAGE__, application::self(), $super);\n",
-                defined($super)
-                ? "  \@ISA=( \$_type_inst->super->pkg ); using namespaces \@ISA;\n"
-                : "  using namespaces 'Polymake::Core::PropertyType';\n",
+                "sub typeof { \@==1 or croak('type $type_name is not parameterized');\n",
+                "             state \$type_inst = new Polymake::Core::PropertyType('$type_name', __PACKAGE__, application::self(), $super); }\n",
+                "*typeof_gen=\\&typeof;\n",
+                "sub self { &Core::check_object_pkg; typeof(undef); }\n",
                 $cpp_binding
-                ? "  application::self()->cpp->add_type(\$_type_inst,$cpp_opts);\n"
-                : (),
-                $attr_name
-                ? "  namespaces::subst_const_op(application::self()->pkg, q<$attr_value>, sub { \$_type_inst->parse_string->(\@_) });\n"
-                : (),
-                $open_scope
-                ? "  my \$_analyzer=bless \\\$_type_inst, 'Polymake::Core::PropertyType::Analyzer';\n"
-                : "}\n";
+                ? "application::self()->cpp->add_type(typeof(undef), $cpp_opts);\n" : (),
+                $upgrades
+                ? "typeof(undef)->add_upgrade_relations($upgrades);\n" : (),
+                !$open_scope
+                ? "}\n" : ();
       }
 
       if ($accurate_linenumbers && !$self->from_embedded_rules) {
@@ -916,58 +1081,87 @@ sub process_property_type {
    }
 }
 #####################################################################################################
+sub announce_parametrized_class {
+   my ($self, $name, $subpkg, @param_names)=@_;
+   get_pkg($name, 1);                                  # enforce a top-level package to fool the perl parser
+   get_pkg($self->application->name."::$name", 1);     # and the same for qualifications via application name
+   get_pkg($subpkg."::$name", 1);                      # and the same for qualifications via type family
+   get_pkg($_, 1) for @param_names;                    # type parameter names must also be known as packages
+}
+#####################################################################################################
 sub reopen_type {
-   my ($self, $header, $what)=@_;
+   my ($self, $header, $where)=@_;
    if (my ($type)= $header =~ /^$type_re \s*\{\s*$/xo) {
-      my $pkg=$type;
-      my $check_existence;
-      if ($type =~ /</) {
-         my $main=$`;
-         $pkg=substr($type,$-[0]);
-         translate_type($check_existence=$type);
-         # can't call $proto->mangled_name here, since the XxxType object might not exist yet (declared above in the same rulefile);
-         # but package requires a string literal, so we need to reconstruct the mangled name
-         $pkg =~ s/\s+//g;
-         while ($pkg =~ s/<(\w+)>/__$1/g) { }
-         $pkg =~ s/,/_I_/g;
-         while ($pkg =~ s/<(\w+)>/_A_${1}_Z/g) { }
-         if ($main =~ /::/) {
-            $pkg=namespaces::lookup_class($self->application->pkg, $main)."::$pkg";
-         } else {
-            $pkg=$self->application->pkg . "::$main$pkg";
+      my $outer_pkg=compiling_in();
+      my $preamble="";
+      my $sanity_check="";
+      my $check_app_pkg;
+      if ($outer_pkg ne $self->application->pkg) {
+         if ($plausibility_checks && index($outer_pkg, $self->application->pkg."::")==0) {
+            push @{$self->buffer},
+                 "BEGIN { die 'object and property type scopes must be directly contained in the top-level (application) scope' }\n";
+            return;
          }
-      } else {
-         if ($pkg =~ /::/) {
-            $pkg=namespaces::lookup_class($self->application->pkg, $pkg);
-         } else {
-            $pkg=$self->application->pkg . "::$pkg";
-         }
-         $check_existence="exists &type";
+         $preamble="package application; ";
       }
-      push @{$self->buffer},
-           "{ package $pkg;  $check_existence or die 'unknown $what type'; local *object_type::=get_pkg(__PACKAGE__);\n";
+      if ($type =~ s/^($id_re):://o) {
+         if ($plausibility_checks) {
+            $sanity_check .= "Core::check_proper_app_use(application::self(), '$1');";
+         }
+         $outer_pkg=$check_app_pkg="Polymake::$1";
+      } else {
+         $outer_pkg="_";
+         $check_app_pkg="application";
+      }
+
+      if ($type =~ /</) {
+         # shouldn't create prototype objects in a BEGIN block
+         (my $pkg=$type) =~ s/\s//g;
+         while ($pkg =~ s/($id_re)<($ids_re)>/ PropertyParamedType::mangle_paramed_type_name($1, $2) /goe) {}
+         if ($plausibility_checks) {
+            $type =~ /^$id_re/o;
+            $sanity_check="BEGIN { $sanity_check exists \$${check_app_pkg}::${where}::{'${&}::'} or die 'Unknown type $&' } ";
+         }
+         $preamble .= $sanity_check . "{ package ${outer_pkg}::$pkg; sub self { &Core::check_object_pkg; typeof $type }";
+      } else {
+         if ($plausibility_checks) {
+            $sanity_check="BEGIN { $sanity_check exists \$${check_app_pkg}::${where}::{'${type}::'} or die 'Unknown type $type' } ";
+         }
+         $preamble .= $sanity_check . "{ package ${outer_pkg}::$type;"
+                      . " local_array(*__scope_type_params, typeof_gen(undef)->params) if typeof_gen(undef)->abstract;  use namespaces::Params *__scope_type_params;";
+      }
+      push @{$self->buffer}, "$preamble\n";
    } else {
-      push @{$self->buffer}, "BEGIN { die 'invalid $what type reference' }\n";
+      push @{$self->buffer}, "BEGIN { die 'invalid " . ($where eq "objects" ? "object" : "property") . " type reference' }\n";
    }
 }
 #####################################################################################################
 sub process_object_decl {
    my ($self, $header)=@_;
    my $first_line=@{$self->buffer};
-   if ($header =~ /^ $paramed_decl_re (?: (?: \s*:\s* (?'super' $types_re))?+ \s*(?: ; | (?'open_scope' \{))
+   if ($header =~ /^ $paramed_decl_re (?: (?: \s*:\s* (?'super' $type_exprs_re))?+ \s*(?: ; | (?'open_scope' \{))
                                         | (?('tparams') | \s*=\s* (?'alias' $type_re) (?: \s*;)?)) \s*$/xo) {
 
       my ($type_name, $tparams, $typecheck, $super, $open_scope, $alias)=@+{qw(lead_name tparams typecheck super open_scope alias)};
 
-      my $object_pkg=$self->application->pkg."::$type_name";
+      my $outer_pkg=compiling_in();
+      my $preamble="";
+      if ($outer_pkg ne $self->application->pkg) {
+         if ($plausibility_checks && index($outer_pkg, $self->application->pkg."::")==0) {
+            push @{$self->buffer},
+                 "BEGIN { die 'object types must be declared in the top-level (application) scope' }\n";
+            return;
+         }
+         $preamble="package application; ";
+      }
+
       if ($plausibility_checks) {
-         push @{$self->buffer},
-              "BEGIN { application::self()->multiple_object_definition('$type_name', q{$tparams}) }\n";
+         $preamble .= "BEGIN { Core::multiple_object_definition('$type_name\::') } ";
       }
 
       if (defined($alias)) {
-         translate_type($alias);
-         substr($self->buffer->[-1], -1, 0)=" *$object_pkg\::=get_pkg($alias->pkg);";
+         push @{$self->buffer},
+              $preamble."{ my \$stash=get_pkg((typeof $alias)->pkg); *application::$type_name\::=\$stash; *application::objects::$type_name\::=\$stash; }\n";
 
       } else {
          # defining a new object type
@@ -981,43 +1175,51 @@ sub process_object_decl {
          }
 
          push @{$self->buffer},
-              "{ package $object_pkg; local *object_type::=get_pkg(__PACKAGE__); namespaces::memorize_lexical_scope;\n";
+              $preamble."{ package _::$type_name; BEGIN { *application::objects::$type_name\::=get_pkg(__PACKAGE__); } namespaces::memorize_lexical_scope;\n";
 
          if (defined($tparams)) {
             # parameterized template
 
             my (@param_names, @prologue, @super_abstract, @super_instance, $all_params_have_defaults);
-            my $n_defaults=process_template_params($tparams, $super, @param_names, @prologue, $typecheck, @super_abstract, @super_instance);
+            my $n_defaults=process_template_params($tparams, $super, @param_names, @prologue, @super_abstract, @super_instance);
             if (is_string($n_defaults)) {
                $self->buffer->[$first_line]="BEGIN { die 'invalid object declaration: $n_defaults' }\n";
                last;
             }
+            translate_type_expr($typecheck) if defined($typecheck);
 
             push @{$self->buffer},
-                 "{ my \$type_inst={ };\n",
-                 "  sub generic_type { shift unless is_object(\$_[0]);\n",
+                 "sub __scope_type_params { (is_object(\$_[0]) ? \$_[0] : \$_[0]->[0])->type->descend_to_generic(__PACKAGE__)->params }\n",
+                 "use namespaces::Params *__scope_type_params, qw(@param_names);\n",
+                 "sub typeof_gen { state \$abstract_inst=\n",
+                 "  new Polymake::Core::ObjectType('$type_name', application::self(), [$n_defaults, qw(@param_names)], " . join(",", @super_abstract). "); }\n",
+                 "sub self { &Core::check_object_pkg; &typeof_gen }\n",
+                 "sub typeof { shift; state %type_inst;\n",
                  @prologue,
-                 "    ||= " . (defined($typecheck) && "do { $typecheck ")
-                            . "new Polymake::Core::ObjectType('$type_name', undef, \\\@_, self(1), " . join(",", @super_instance) . ");"
+                 "    //= " . (defined($typecheck) && "do { $typecheck; ")
+                            . "new Polymake::Core::ObjectType('$type_name', undef, \\\@_, &typeof_gen, " . join(",", @super_instance) . ");"
                             . (defined($typecheck) && " } ") . "}\n",
-                 "  new Polymake::Core::ObjectType('$type_name', application::self(), [$n_defaults, qw(@param_names)], " . join(",", @super_abstract) . ");\n",
-                 "  *type=\\&generic_type\n",
-                 "}\n";
+                 $n_defaults == @param_names
+                 ? "application::self()->default_type //= typeof(undef);\n" : (),
+                 $open_scope
+                 ? "local_array(*__scope_type_params, &typeof_gen->params);\n"
+                 : "typeof_gen(); }\n";
 
-            if ($n_defaults == @param_names) {
-               push @{$self->buffer},
-                    "application::self()->default_type ||= generic_type();\n";
-            }
+            announce_parametrized_class($self, $type_name, "objects", @param_names);
+
          } else {
             # non-parameterized type
-            translate_type($super) if defined $super;
+            $super &&= "typeof $super";
 
             push @{$self->buffer},
-                 "new Polymake::Core::ObjectType('$type_name', application::self(), undef, $super);\n",
-                 "application::self()->default_type ||= type();\n";
+                 "sub typeof { \@_==1 or croak('type $type_name is not parameterized');\n",
+                 "             state \$type_inst=new Polymake::Core::ObjectType('$type_name', application::self(), undef, $super); }\n",
+                 "*typeof_gen=\\&typeof;\n",
+                 "sub self { &Core::check_object_pkg; typeof(undef) }\n",
+                 "application::self()->default_type //= typeof(undef);\n",
+                 !$open_scope
+                 ? "typeof(undef); }\n" : ();
          }
-
-         push @{$self->buffer}, "}\n" unless $open_scope;
 
          if ($accurate_linenumbers) {
             $self->injected_lines += @{$self->buffer}-$buffer_size;
@@ -1026,61 +1228,6 @@ sub process_object_decl {
             push @{$self->buffer}, "#line ".($.+1)."\n";
          }
          $self->prolonged=0;
-      }
-   } elsif ($header =~ /^(?'app_name' $id_re):: $paramed_decl_re \s*;$/xo) {
-      # forward declaration
-
-      my ($app_name, $type_name, $tparams)=@+{qw(app_name lead_name tparams)};
-
-      if (defined (my $app=lookup Application($app_name))) {
-         # application already loaded
-         if ($plausibility_checks) {
-            my $proto;
-            if (defined ($proto=UNIVERSAL::can($app->pkg."::$type_name", "self")) &&
-                instanceof ObjectType(($proto=$proto->(1)))) {
-               if (defined (my $diag=$proto->check_consistency($tparams))) {
-                  push @{$self->buffer},
-                       "BEGIN { die '$diag' }\n";
-               }
-            } else {
-               push @{$self->buffer},
-                    "BEGIN { die 'forward declaration does not match any object type in application $app_name' }\n";
-            }
-         }
-
-      } else {
-         $app=forward Application($app_name);
-
-         if ($accurate_linenumbers) {
-            push @{$self->buffer},
-                 "#line ".$self->injected_lines." \"".$self->injected_source."\"\n";
-         }
-
-         push @{$self->buffer},
-              "{\n",
-              $app->forward_decls,
-              "  if (defined (my \$proto=UNIVERSAL::can('".$app->pkg."::$type_name', 'self'))) {\n",
-              $plausibility_checks
-              ? ( "     (\$proto)=\$proto->(1); my \$diag=\$proto->check_consistency(q{$tparams});\n",
-                  "#line $.".($accurate_linenumbers && " \"".$self->path."\"")."\n",
-                  "     \$diag && die \$diag;\n",
-                  ($accurate_linenumbers ? "#line ".($self->injected_lines+10)." \"".$self->injected_source."\"\n" : ())
-                ) : (),
-              "  } else {\n";
-         my $cnt=0;
-         if (defined $tparams) {
-            ++$cnt while $tparams =~ /$type_param_re/go;
-         }
-         push @{$self->buffer},
-              "    new Polymake::Core::ObjectType::ForwardDecl('$type_name', self(), $cnt, $.);\n",
-              "} }\n";
-
-         if ($accurate_linenumbers) {
-            $self->injected_lines += 20;
-            push @{$self->buffer}, "#line ".($.+1)." \"".$self->path."\"\n";
-         } else {
-            push @{$self->buffer}, "#line ".($.+1)."\n";
-         }
       }
    } else {
       push @{$self->buffer}, "BEGIN { die 'invalid object declaration' }\n";
@@ -1097,22 +1244,326 @@ sub process_permutation_decl {
    }
 }
 #####################################################################################################
-sub prepare_function {
-   my ($self, $header, $method, $global, $user, $context_check)=@_;
-   if ($header =~ $labeled_sub_re) {
-      # TODO: process typechecks
-      my ($labels, $name, $template_params, $signature)=@+{qw(labels lead_name tparams signature)};
-      $header=$';
-      my ($kw, $sig);
-      if (defined $signature) {
-         if (($sig=$signature) =~ s/(^|[,;]\s*|\s+) ((?: \\?% | \{ ) .*)/$1%/x) {
-            ($kw=", keywords=>[$2]") =~ s/(?<! \\) \s* %(?=$qual_id_re)/\\%/gxo         # pass hash references, not copies
-            or $kw =~ s/\[\s*%\s*\]/[]/;
-         }
-         $sig="q{$sig}";
+sub prepare_context_check {
+   my ($self, $func_name, $type_params, $context_check)=@_;
+   if (defined $type_params) {
+      if ($self->from_embedded_rules) {
+         push @{$self->buffer_phase1}, "sub $func_name; namespaces::export_sub(undef, \\&$func_name);\n";
       } else {
-         $sig="undef";
+         return "sub $func_name; BEGIN { namespaces::export_sub(undef, \\&$func_name); $context_check }";
       }
+   }
+   $context_check && "BEGIN { $context_check }";
+}
+#####################################################################################################
+sub add_overloaded_instance {
+   my ($self, $header, $context_check, $user, $global,
+       $func_name, $method, $unique_name, $subref, $signature, $type_params,
+       $typecheck_code, $opts, $cxx_func_attrs, $cxx_options)=@_;
+   my (@arg_list, $min, $complex_defaults, $type_deduction);
+   my (@default_types, @process_kw, @type_param_names, @type_param_mandatory, @default_values, @process_default_values, @errors);
+   my (@cxx_arg_attrs);
+   my $cxx=defined($cxx_func_attrs);
+   my $max=0;
+
+   if ($cxx && $method) {
+      substr($cxx_func_attrs, 0, 0).="method=>1,";
+   }
+   if ($signature =~ s/(?: ^ | [,;]\s* | \s+) ((?: \\?% | \{ ) .*)//x) {
+      $max |= $Overload::has_keywords;
+      my $kw_tables=$1;
+      if ($kw_tables =~ /%\s*$/) {
+         push @process_kw, "  Overload::process_kw_args(\\\@_);\n";
+      } else {
+         $kw_tables =~ s/(?<! \\) \s* %(?=$qual_id_re)/\\%/gxo;   # pass hash references, not copies
+         push @process_kw, "  Overload::process_kw_args(\\\@_, $kw_tables);\n";
+      }
+   }
+
+   if (defined $type_params) {
+      $type_params =~ s/^\s+//;
+      while ($type_params =~ m{\G $type_param_re \s* (?: ,\s* | $ ) }xog) {
+         my ($name, $default_type)=@+{qw(name default)};
+         push @type_param_names, $name;
+         if (defined $default_type) {
+            translate_type_expr($default_type);
+            $default_types[$#type_param_names]=$default_type;
+            push @type_param_mandatory, 0;
+         } else {
+            push @type_param_mandatory, 1;
+         }
+      }
+      create FunctionTypeParam(scalar(@type_param_names));
+      if ($cxx) {
+         $cxx_options .= "," if length($cxx_options);
+         $cxx_options .= "explicit_template_params=>" . scalar(@type_param_names);
+      }
+   }
+
+   $signature =~ s/^\s+//;
+   while (pos($signature) < length($signature)) {
+      if ($signature =~ /\G ; \s*/gxc) {
+         if (defined $min) {
+            push @errors, "invalid signature: multiple ';'";
+            last;
+         }
+         $min=@arg_list;
+
+      } elsif ($signature =~ /\G (?: \$ | (?: (?'star' \*) | (?'type' $type_re)) (?'attrs' (?: \s*:\s* $id_re)+ | &)?)
+                                 (?('star') | (?('attrs') | (?: \s*=\s* (?'default' $expression_re) | (?('type') \s*(?'repeated' \+))? ))) \s*(?:,\s*)?/gxco) {
+         my ($star, $type, $attrs, $default_value, $repeated)=@+{qw(star type attrs default repeated)};
+
+         if ($cxx) {
+            if ($attrs eq "&") {
+               if (!$self->from_embedded_rules) {
+                  push @errors, "Reference sign '&' is only allowed in C++ clients; in rule files an attribute ':lvalue' or ':lvalue_opt' must be used instead.";
+                  last;
+               }
+               $attrs=":lvalue";
+            }
+            push @cxx_arg_attrs, "'$star$attrs'";
+         } else {
+            if ($star) {
+               push @errors, "type wildcard '*' is only allowed in C++ function declarations";
+               last;
+            }
+            if ($attrs) {
+               push @errors, "argument attributes are only allowed in C++ function declarations";
+               last;
+            }
+         }
+
+         my $arg_index=@arg_list;
+         if (defined $type) {
+            if (@type_param_names) {
+               while ($type =~ /$qual_id_re/go) {
+                  if ($type eq "_") {
+                     $type_deduction=1;
+                  } else {
+                     my $tp_index=string_list_index(\@type_param_names, $&);
+                     if ($tp_index>=0) {
+                        # If the type parameter is involved in a final typecheck, we can safely assume that
+                        # it will either be set or the typecheck will fail if no optional argument suitable for type deduction has been passed.
+                        $type_param_mandatory[$tp_index] &&= defined($min) && $typecheck_code !~ /\b$type_param_names[$tp_index]\b/;
+                        $type_deduction=1;
+                     }
+                  }
+               }
+            }
+            my $typeof= $type =~ /</ ? "typeof" : "typeof_gen";
+            if ($repeated) {
+               $max |= $Overload::has_repeated;
+               push @arg_list, "[ ($typeof $type), '+' ]";
+            } else {
+               push @arg_list, "($typeof $type)";
+            }
+         } else {
+            push @arg_list, "'\$'";
+         }
+         if (defined $default_value) {
+            unless (defined $min) {
+               push @errors, "only optional arguments may have default values";
+               last;
+            }
+            $complex_defaults += $default_value =~ s/^(?=\s*\{.*\}\s*$)/do /;
+            $complex_defaults ||= $default_value =~ /[()<>]|\$_|\@_/;
+            $default_values[$arg_index-$min]=$default_value;
+         } elsif (defined($min) && $cxx) {
+            push @errors, "optional argument without default value not allowed in a C++ function";
+            last;
+         }
+
+      } elsif ($signature =~ /\G \@ \s*$/gxc) {
+         if ($max & $Overload::has_keywords) {
+            push @errors, "unlimited trailing argument list is not compatible with keyword arguments";
+            last;
+         } else {
+            $max |= $Overload::has_trailing_list;
+         }
+      } else {
+         push @errors, "invalid function signature, parser stopped at `!' : '" . substr($signature, 0, pos($signature)) . "!" . substr($signature, pos($signature)) . "'";
+         last;
+      }
+   }
+
+   $min //= @arg_list;
+   $max += @arg_list;
+
+   if (@type_param_names) {
+      my $tp_min=0;
+      while ($tp_min < @type_param_names && $type_param_mandatory[$tp_min]) { ++$tp_min }
+      my $tp_max=$tp_min;
+      while ($tp_max < @type_param_names) {
+         if ($type_param_mandatory[$tp_max]) {
+            push @errors, "type parameter $type_param_names[$tp_max] lacks a default value and can't be deduced from mandatory arguments",
+                          "but follows others with defaults or deducible ones";
+            last;
+         }
+         ++$tp_max;
+      }
+      $opts .= "," if $opts;
+      $opts .= "tparams=>[$tp_min,$tp_max]";
+   }
+
+   if (@errors) {
+      push @{$self->buffer},
+           'BEGIN { die( join("\\n", ' . join(", ", map { "q{$_}" } @errors) . ") ) }\n";
+      return;
+   }
+
+   if ($complex_defaults) {
+      my $skipped_undef_values;
+      for (my $i=$min; $i<@arg_list; ++$i) {
+         if (defined (my $default_value=$default_values[$i-$min])) {
+            my $arg_index=$i+$method;
+            push @process_default_values,
+                 "  if (\@_ <= $arg_index) { push \@_, " .
+                 ($skipped_undef_values && "(undef)x($arg_index-@_), ") .
+                 "$default_value; }\n";
+            $skipped_undef_values="";
+         } else {
+            $skipped_undef_values=1;
+         }
+      }
+      if ($max & $Overload::has_keywords and $skipped_undef_values) {
+         # keyword tables must be appended at the expected position at the end of the argument list
+         my $last_pos_arg=$#arg_list+$method;
+         push @process_default_values,
+              "  if (\$#_ < $last_pos_arg) { \$#_=$last_pos_arg }\n";
+      }
+
+   } elsif ($min < @arg_list) {
+      my $min_arg_index=$min+$method;
+      if (@default_values) {
+         if ($max & $Overload::has_keywords) {
+            $#default_values=@arg_list-$min-1;
+         }
+         push @process_default_values,
+              "  state \$__default_values=[" . join(", ", map { defined($_) ? $_ : "undef" } @default_values) . "];\n",
+              "  push \@_, \@\$__default_values[\@_-$min_arg_index..$#default_values];\n";
+
+      } elsif ($max & $Overload::has_keywords) {
+         my $last_pos_arg=$#arg_list+$method;
+         push @process_default_values,
+              "  if (\$#_ < $last_pos_arg) { \$#_=$last_pos_arg }\n";
+      }
+   }
+
+   if ($typecheck_code) {
+      my $final_typecheck="${unique_name}_tpck";
+      translate_type_expr($typecheck_code);
+
+      push @{$self->buffer},
+           "sub $final_typecheck {\n",
+           "  my (\$__typelist, \$__explicit_size)=namespaces::fetch_explicit_typelist(\$_[0]);\n",
+           "  use namespaces::Params \$__typelist, qw(@type_param_names);\n";
+
+      if (@default_types || $typecheck_code =~ /type_upgrade/) {
+         push @{$self->buffer},
+              "  my \$__lasttype=\$#\$__typelist;\n",
+              "  push \@{\$_[1]}, \@\$__typelist[\$__explicit_size..\$__lasttype], \$__lasttype, \\&Overload::restore_type_param_list;\n";
+
+         for (my $i=0; $i<=$#default_types; ++$i) {
+            if (defined $default_types[$i]) {
+               push @{$self->buffer},
+                    "  \$__typelist->[$i] //= $default_types[$i];\n";
+            }
+         }
+         $#default_types=-1;
+      }
+
+      push @{$self->buffer},
+           "  $typecheck_code }\n";
+
+      push @arg_list, "\\&$final_typecheck";
+   }
+
+   my @preamble;
+   if (@type_param_names) {
+      push @preamble, "  use namespaces::Params qw(@type_param_names);\n";
+   }
+   if (@default_types) {
+      push @preamble,
+           "  { my \$__typelist=namespaces::fetch_explicit_typelist(\\\@_);\n";
+
+      for (my $i=0; $i<=$#default_types; ++$i) {
+         if (defined $default_types[$i]) {
+            push @preamble,
+                 "  \$__typelist->[$i] //= $default_types[$i];\n";
+         }
+      }
+      push @preamble,
+           "  }\n";
+   }
+   push @preamble, "  $display_credit\n" if ($user || $global) && $self->credit_seen;
+   push @preamble, @process_default_values, @process_kw;
+
+   my $deferred_preamble;
+   my $orig_subref=$subref;
+   if (@preamble) {
+      if (length($subref)) {
+         # the preamble is inserted into the transformed code
+         $deferred_preamble=\@preamble;
+      } else {
+         $subref="\\&${unique_name}_preamble";
+      }
+   } else {
+      $subref ||= "undef";
+   }
+
+   my $ov_line=prepare_context_check($self, $func_name, $type_params, $context_check);
+
+   if ($type_deduction) {
+      $ov_line .= " { use namespaces::Params \\*Polymake::Core::FunctionTypeParam::instances, qw(_ @type_param_names);";
+   }
+
+   if (defined $signature) {
+      $ov_line .= ($func_name eq "construct"
+                   ? " self(1)->add_constructor("
+                   : " add$global Overload(") .
+                  ($cxx && "application::self()->cpp->add_auto_function(") .
+                  "'$func_name', $subref, [ $min, $max, " . join(", ", @arg_list) . " ]," .
+                  ($cxx && "[" . join(", ", @cxx_arg_attrs) . "], { $cxx_func_attrs }, { $cxx_options }),") .
+                  "$opts)";
+   } else {
+      $cxx or croak( "internal error: pure perl function went into a wrong throat" );
+      $cxx="application::self()->cpp->add_auto_function('$func_name', $subref, undef, undef, { $cxx_func_attrs }, { $cxx_options })";
+      if ($opts) {
+         $ov_line .= " add$global Overload($cxx, $opts)";
+      } else {
+         $ov_line .= " $cxx";
+      }
+   }
+
+   if ($type_deduction) {
+      $ov_line .= " }";
+   }
+
+   if (@preamble && !defined($deferred_preamble)) {
+      push @{$self->buffer},
+           "sub ${unique_name}_preamble {\n",
+           @preamble,
+           "}\n",
+           "#line ".$self->header_line."\n";
+   }
+
+   if (length($orig_subref)) {
+      $ov_line .= "; sub $unique_name";
+      if ($method && !$cxx) {
+         $ov_line .= " : method";
+      }
+   }
+   push @{$self->buffer}, $ov_line;
+   provide_long_prologue($self, $header, $deferred_preamble);
+   1
+}
+#####################################################################################################
+sub prepare_function {
+   my ($self, $header, $method, $kind, $context_check)=@_;
+   my ($user, $global, $type_method)=($kind eq "u", $kind eq "g" && "_global", $kind eq "t");
+   if ($header =~ $labeled_sub_re) {
+      my ($labels, $name, $type_params, $signature, $typecheck)=@+{qw(labels lead_name tparams signature typecheck)};
+      $header=$';
 
       if ($user) {
          fill_help($self,
@@ -1121,80 +1572,89 @@ sub prepare_function {
                    "q($signature)") if $Help::gather;
          $self->application->EXPORT->{$name} ||= $method ? "meth" : "user";
       }
-
+      if ($plausibility_checks && $name eq "construct") {
+         if (!defined($signature) || !$method || $kind) {
+            push @{$self->buffer},
+                 "BEGIN { die '\\'construct\\' must be defined as an overloaded method' }\n";
+            return;
+         }
+      }
       my $meth_decl= $method ? " : method" : "";
-      if ($header =~ s/^([^\#]*?) :\s* c\+\+ \s* (?: \(\s* ($balanced_re) \s*\)\s* )? (?=[:;\{])/$1/xo) {
-         my $options=$2;
+      if ($header =~ s/^[^\#]*? \K :\s* c\+\+ \s* (?: \(\s* ($balanced_re) \s*\)\s* )? (?=[:;\{])//xo) {
+         my $options=$1;
          if ($plausibility_checks) {
-            if (!defined $signature) {
+            if ($type_method) {
+               push @{$self->buffer},
+                    "BEGIN { die 'type_method can\'t have a C++ binding' }\n";
+               return;
+            }
+            if (!defined($signature)) {
                $context_check.=" exists &$name and Core::multiple_func_definition();";
             }
          } else {
             $context_check="";
          }
-         my @attrs=("method=>$method");
+         my @attrs;
          while ($header =~ s/^([^\#]*?) :\s* (\w+) \s* (?: \(\s* ($balanced_re) \s*\)\s*)? (?=[:;\{])/$1/x) {
             push @attrs, "$2=>".( defined($3) ? "'$3'" : 1);
          }
          if ($header =~ /^\s* (?: ;\s* (?: \#.*)? $ | (\{))/x) {
-            my $credit='undef';
-            my $hybrid=defined($1);
-            if ($hybrid) {
-               ++$funcnt;
-               my $subname="__${name}__OV__$funcnt";
-               push @attrs, "ext_code=>\\&$subname";
-               $header="; sub $subname $header";
-               if ($user || $global) {
-                  provide_credit_display($self, $header);
-               }
-            } elsif ($user || $global) {
-               $credit='$__cur_credit';
-            }
-            if ($template_params) {
-               $template_params="extra_template_params=>q{$template_params}, ";
-               $context_check="sub $name; BEGIN { export_sub namespaces(\\&$name); $context_check }";
-            } else {
-               $context_check &&= "BEGIN { $context_check }";
-            }
-            $labels &&= ", label=>[ application::self()->add_labels('$labels') ]";
-            push @{$self->buffer},
-                 "$context_check add$global Overload(application::self()->cpp->add_auto_function('$name', $sig, $credit, {".join(",",@attrs)."$kw}, {$template_params$options})$labels)$header\n";
+            ++$funcnt;
+            my $unique_name="__${name}__OV__$funcnt";
+            my $subref=$1 && "\\&$unique_name";
+            $labels &&= "label=>[ application::self()->add_labels('$labels') ]";
+            add_overloaded_instance($self, $header, $context_check, $user, $global,
+                                    $name, $method, $unique_name, $subref, $signature, $type_params,
+                                    $typecheck, $labels, join(",", @attrs), $options)
+              or return;
          } else {
             push @{$self->buffer}, "BEGIN { die 'unknown attributes for C++ " . ($method ? "method" : "function") . "' }\n";
          }
 
       } elsif (defined($signature) || defined($labels)) {
-         $plausibility_checks or $context_check="";
-         my @attrs=("context=>application::self()");
+         if ($plausibility_checks) {
+            if ($type_method) {
+               push @{$self->buffer},
+                    "BEGIN { die 'type_method can\'t be overloaded or labeled' }\n";
+               return;
+            }
+         } else {
+            $context_check="";
+         }
+         my @opts;
          ++$funcnt;
-         my $subref="\\&__${name}__OV__$funcnt";
+         my $unique_name="__${name}__OV__$funcnt";
+         my $subref="\\&$unique_name";
          while ($header =~ s/^([^\#]*?) (?<! :) :\s* (\w+) \s* (?: \(\s* ($balanced_re) \s*\)\s*)/$1/x) {
-            push @attrs, "$2=>'$3'";
+            push @opts, "$2=>'$3'";
          }
          if ($header =~ s/^([^\#]*?) (?<!:) (:\s* $rule_input_re)/$1/xo) {
             if (!$method || !$user || $global) {
                push @{$self->buffer}, "BEGIN { die 'only user_methods can have rule-like input properties' }\n";
                return;
             }
-            $subref="self(1)->add_method_rule('$labels$2', $subref$kw)";
-            $kw &&= ", keywords=>\\\@Polymake::Overload::deferred_keywords";
-            $labels=", label=>[ 'Polymake::Core::ObjectType::MethodAsRule' ]";
+            if ($type_params) {
+               push @{$self->buffer}, "BEGIN { die 'rule-like method can't have explicit type parameters' }\n";
+            }
+            $subref="self(1)->add_method_rule('$labels$2', $subref)";
+            push @opts, "label=>[ 'Polymake::Core::ObjectType::MethodAsRule' ]";
             $self->after_rule=1;
-         } else {
-            $labels &&= ", label=>[ application::self()->add_labels('$labels') ]";
-         }
-         if ($user || $global) {
-            provide_credit_display($self, $header);
-         }
-         if ($template_params) {
-            push @attrs, "extra_template_params=>q{$template_params}";
-            $context_check="sub $name; BEGIN { export_sub namespaces(\\&$name); $context_check }";
-         } else {
-            $context_check &&= "BEGIN { $context_check }";
+         } elsif (defined $labels) {
+            push @opts, "label=>[ application::self()->add_labels('$labels') ]";
          }
 
-         push @{$self->buffer},
-              "$context_check add$global Overload('$name', $sig, $subref,".join(",",@attrs)."$kw$labels); sub __${name}__OV__$funcnt$meth_decl $header\n";
+         if (defined $signature) {
+            add_overloaded_instance($self, $header, $context_check, $user, $global,
+                                    $name, $method, $unique_name, $subref, $signature, $type_params,
+                                    $typecheck, join(", ", @opts))
+              or return;
+         } else {
+            provide_short_prologue($self, $header, $display_credit) if ($user || $global) && $self->credit_seen;
+
+            push @{$self->buffer},
+                 prepare_context_check($self, $name, $tparams, $context_check) .
+                 " add$global Overload('$name', $subref, undef, ".join(", ", @opts)."); sub ${unique_name}${meth_decl}$header\n";
+         }
 
       } elsif ($global) {
          push @{$self->buffer},
@@ -1202,10 +1662,27 @@ sub prepare_function {
          return;
 
       } else {
-         $context_check= $plausibility_checks ? "BEGIN { $context_check exists &$name and Core::multiple_func_definition() }" : "";
-         if (defined $template_params) {
+         if ($plausibility_checks) {
+            if ($name eq "construct") {
+               push @{$self->buffer},
+                   "BEGIN { die '\\'construct\\' must be defined as an overloaded method' }\n";
+               return;
+
+            } elsif ($type_method) {
+               if (string_list_index(\@PropertyType::override_methods, $name) < 0) {
+                  push @{$self->buffer},
+                       "BEGIN { die 'unknown type_method $name' }\n";
+                  return;
+               }
+            } else {
+               $context_check="BEGIN { $context_check exists &$name and Core::multiple_func_definition() }";
+            }
+         } else {
+            $context_check="";
+         }
+         if (defined $type_params) {
             push @{$self->buffer},
-                 "BEGIN { die 'function template must have a signature' }\n";
+                 "BEGIN { die 'parameterized function must have a signature' }\n";
 
          } elsif ($header =~ s/^([^\#]*?) (?<!:) (:\s* $rule_input_re)/$1/xo) {
             unless ($method && $user) {
@@ -1213,8 +1690,8 @@ sub prepare_function {
                     "BEGIN { die 'only user_methods can have rule-like input properties' }\n";
                return;
             }
-            provide_credit_display($self, $header);
             ++$funcnt;
+            provide_short_prologue($self, $header, $display_credit) if $self->credit_seen;
             push @{$self->buffer},
                  "$context_check self(1)->add_method_rule('$2', \\&__meth__$funcnt, '$name'); sub __meth__$funcnt : method $header\n";
             $self->after_rule=1;
@@ -1222,41 +1699,28 @@ sub prepare_function {
          } elsif ($header =~ /^\s* = \s* ($hier_id_re) \s*;\s*$/xo) {
             unless ($method && $user) {
                push @{$self->buffer},
-                    "BEGIN { die 'only user_methods may be defined as short-cuts to other properties' }\n";
+                    "BEGIN { die 'a short-cut to a property must be declared as user_method' }\n";
                return;
             }
             push @{$self->buffer},
                  "$context_check sub $name$meth_decl { \$_[0]->give('$1') }\n";
 
          } else {
-            provide_credit_display($self, $header) if $user;
-            push @{$self->buffer},
-                 "$context_check sub $name$meth_decl $header\n";
+            provide_short_prologue($self, $header, $display_credit) if $user && $self->credit_seen;
+            if ($type_method) {
+               ++$funcnt;
+               my $unique_name="__${name}__TP__$funcnt";
+               push @{$self->buffer},
+                    "self(1)->$name=Struct::pass_original_object(\\&$unique_name); sub $unique_name$meth_decl $header\n";
+            } else {
+               push @{$self->buffer},
+                    "$context_check sub $name$meth_decl $header\n";
+            }
          }
       }
 
    } else {
       push @{$self->buffer}, "BEGIN { die 'invalid function header' }\n";
-   }
-}
-#################################################################################
-sub prepare_typecheck {
-   my ($self, $header)=@_;
-   if ($header =~ $sub_re) {
-      my ($name, $signature)=@+{qw(name signature)};
-      if (defined $signature) {
-         $header=$';
-         my $context_check= $plausibility_checks && "BEGIN { Core::check_application_pkg(1) }";
-         ++$funcnt;
-         my $subref="\\&__${name}__OV__$funcnt";
-         get_pkg("application::typechecks", 1);
-         push @{$self->buffer},
-              "$context_check add Overload(__PACKAGE__.'::typechecks::$name', q{$signature}, $subref, typeofs=>1, context=>application::self()); sub __${name}__OV__$funcnt $header\n";
-      } else {
-         push @{$self->buffer}, "BEGIN { die 'typecheck function must have a signature' }\n";
-      }
-   } else {
-      push @{$self->buffer}, "BEGIN { die 'invalid typecheck function header' }\n";
    }
 }
 #################################################################################
@@ -1353,14 +1817,19 @@ sub fill {
             $self->application->preamble_end->{$self->rule_key}=$self->preamble_end;
          }
          push @{$self->buffer}, "1; __END__\n";
+         if ($self->from_embedded_rules) {
+            push @{$self->buffer_phase1}, "1; __END__\n";
+         }
          $self->header_line=$lastline;
          last;
       }
 
-      if ($line =~ /^(?:(\#line)\s+\d+.*|\s*)?$/) {
+      if ($line =~ /^(?:(\#line)\s+\d+(.*)|\s*)?$/) {
          # empty line
          my $set_line_number=defined($1);
-
+         if (length($2) && $self->from_embedded_rules) {
+            $self->credit_seen= $extension && defined($extension->credit);
+         }
          if ($self->filter) {
             $self->filter->($line);
             if ($self->filter) {
@@ -1597,22 +2066,6 @@ sub add_credit {
    }
 }
 #################################################################################
-sub multiple_object_definition {
-   my ($self, $type_name, $tparams)=@_;
-   no strict 'refs';
-   if (exists ${ $self->pkg."::" }{"$type_name\::"}) {
-      if (exists ${ $self->pkg."::$type_name\::" }{object_type}) {
-         croak( "Multiple definition of an object type" );
-      }
-      if (defined (my $fwd_self=UNIVERSAL::can($self->pkg."::$type_name", "self"))) {
-         ($fwd_self)=$fwd_self->(1);
-         if (defined (my $diag=$fwd_self->check_consistency($tparams))) {
-            croak( $diag );
-         }
-      }
-   }
-}
-#################################################################################
 my $loading_rule_key;
 
 sub has_interactive_commands { $has_interactive_commands=shift; }
@@ -1627,7 +2080,7 @@ sub start_preamble {
 # private
 sub process_included_rule {
    my ($self, $rulefile, $filename, $ext, $rule_key, $rc)=@_;
-   return $rc if defined $rc;
+   return $rc if defined($rc);
    if (defined (my $config_state=$self->configured->{$rule_key})) {
       if ($config_state > 0) {
          if ($config_state < ($ext // $self)->configured_at) {
@@ -1699,7 +2152,7 @@ sub parse_rulefile {
 my $namespace_decls=<<'_#_#_#_';
 self()->eval_expr=sub { eval $_[0] };
 namespaces::memorize_lexical_scope;
-export_sub namespaces(\&Polymake::temporary);
+namespaces::export_sub(undef, \&Polymake::temporary);
 _#_#_#_
 
 # named constant to be used in put(), take(), and add()
@@ -1710,13 +2163,13 @@ sub Polymake::temporary() { $PropertyValue::is_temporary }
 sub Polymake::Core::Application::INC {
    my ($self, $filename)=@_;
    my $handle;
-   if (defined($self->compile_scope) && $filename =~ s/^(?:(rules)|c\+\+)://) {
+   if (defined($self->compile_scope) && $filename =~ s/^(?:(rules)|c\+\+:(\d))://) {
       my ($prologue, $from_embedded_rules, $main_init);
       if ($1) {
          open $handle, $filename or die "can't read rule file $filename: $!\n";
          if (!$self->declared) {
             $prologue=$namespace_decls;
-            $self->declared = $namespace_declared;
+            $self->declared=$namespace_declared;
          }
          if (!($self->declared & $cpp_load_initiated)) {
             $self->declared |= $cpp_load_initiated;
@@ -1729,17 +2182,29 @@ sub Polymake::Core::Application::INC {
          }
       } else {
          $loading_rule_key=$filename;
-         $from_embedded_rules=1;
-         $handle=$self->cpp->embedded_rules_handle;
-         $prologue=<<'_#_#_#_';
-return Polymake::Core::rescue_static_code(1);
-_#_#_#_
+         $from_embedded_rules=$2;
+         if ($from_embedded_rules==1) {
+            $handle=$self->cpp->embedded_rules_handle;
+         }
       }
       my $app_pkg=$self->pkg;
       $self->compile_scope->begin_locals;
       local *application::=get_pkg($app_pkg);
       $self->compile_scope->end_locals;
       my $credit_val= $extension && '=$Polymake::Core::Application::extension->credit';
+      if ($from_embedded_rules>=2) {
+         if ($from_embedded_rules==3) {
+            # renewing the preamble for a suspended fragment
+            unshift @{$self->cpp->embedded_rules},
+                    "$warn_options;\n",
+                    "use namespaces '$app_pkg';\n",
+                    "package $app_pkg;\n",
+                    "my \$__cur_credit$credit_val;\n";
+            push @{$self->cpp->embedded_rules},
+                 "1; __END__\n";
+         }
+         return (\&CPlusPlus::perApplication::get_transformed_embedded, $self->cpp);
+      }
       new RuleFilter($handle, $self, $filename, $loading_rule_key, $from_embedded_rules,
                      length($credit_val)>0 && defined($extension->credit), $main_init,
                      <<"_#_#_#_");
@@ -1768,23 +2233,6 @@ _#_#_#_
       undef
    }
 }
-
-# private:
-sub forward_decls {
-   my $self=shift;
-   my $decls;
-   if (!($self->declared & $namespace_declared)) {
-      $decls=$namespace_decls;
-      $self->declared |= $namespace_declared;
-   }
-   my $app_pkg=$self->pkg;
-   split /(?<=\n)/, <<"_#_#_#_";
-use namespaces '$app_pkg';
-package $app_pkg;
-$decls
-_#_#_#_
-}
-
 ####################################################################################
 
 $INC{"application.pm"}=$INC{"Polymake/Core/Application.pm"};

@@ -103,8 +103,7 @@ idhdl get_singular_function(std::string s) {
 
 } // end namespace singular
 
-UserFunction4perl("CREDIT Singular\n\n"
-                  "# @category Algebra"
+UserFunction4perl("# @category Algebra"
                   "# Loads a SINGULAR library"
                   "# @param String s",
                   &singular::load_library, "load_singular_library($)");

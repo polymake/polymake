@@ -23,6 +23,7 @@ declare $load_time=time;
 declare $plausibility_checks=1;
 
 declare $extension;               # Extension contributing to the application being loaded right now
+declare $cross_apps_list;         # REQUIRE_APPLICATION active in the current compilation scope
 
 # flags for `declared' member
 use Polymake::Enum qw( namespace_declared=1
@@ -32,7 +33,7 @@ use Polymake::Enum qw( namespace_declared=1
                        has_failed_config=16
                      );
 
-my (%repository, %forward, $user_prefs_help);
+my (%repository, $user_prefs_help);
 
 #################################################################################
 #
@@ -66,21 +67,18 @@ use Polymake::Struct (
    '%imported',                   # 'name' => 1
    '@import_sorted',              # 'name', ... : flattened list in DFS order
    '%EXPORT',                     # names and attributes of user functions and methods
-   [ '$compile_scope' => 'undef' ],
+   [ '$compile_scope' => 'undef' ],  # Scope object spanning the load phase of a group of rules
    '$untrusted',                  # TRUE if comes from a writable location, that is, may be under development
    '&eval_expr',                  # eval'uating the given source code in the application-specific lexical context
    [ '$cpp' => 'undef' ],         # CPlusPlus::perAplication
    [ '$declared' => '0' ],        # flags indicating the rule loading progress
    [ '$default_file_suffix' => 'undef' ],
    '@file_suffixes',
-   '@extensions',                 # Extension : extensions contributing to this application
+   [ '$origin_extension' => 'undef' ],  # Extension where this application has been introduced
+   '@extensions',                 # Extension : extensions contributing to this application (without origin_extension)
 );
 
 sub new {
-   init_full(&init_forw);
-}
-#################################################################################
-sub init_forw {
    my $self=&_new;
    if (-d (my $top="$InstallTop/apps/".$self->name)) {
       if (-f "$top/rules/main.rules") {
@@ -99,6 +97,7 @@ sub init_forw {
                $self->top=$top;
                $self->configured_at=$extension->configured_at;
                $self->untrusted=-w _;
+               $self->origin_extension=$extension;
                last;
             } else {
                croak( "Extension ", $extension->dir, " contributes to application ", $self->name,
@@ -130,11 +129,7 @@ sub init_forw {
          }
       },
       1);
-   $self;
-}
-#################################################################################
-sub init_full {
-   my $self=shift;
+
    my $dir;
    if (-d ($dir=$self->top."/perllib")) {
       push @{$self->myINC}, $dir;
@@ -161,11 +156,11 @@ Value 0 denotes configuration failure, which disables the corresponding rulefile
          load_extension($self, $dir);
       }
    }
+
    $self->cpp->load_private_wrapper;
 
    $self->prefs->end_loading;
-   if (length(my $cmds=$self->prefs->user_commands))
-   {
+   if (length(my $cmds=$self->prefs->user_commands)) {
       local $User::application=$self;
       local_unshift(\@INC, $self);
       $self->eval_expr->("package Polymake::User; $cmds");
@@ -201,13 +196,17 @@ sub load_extension {
 }
 #################################################################################
 sub add {
-   $repository{$_[1]} ||= init_full( &forward );
+   $repository{$_[1]} // do {
+      # must access the repository hash twice in order to create the entry before loading the rules:
+      # this helps to detect cyclic dependencies
+      $repository{$_[1]} //= (my $self=&new);
+      SuspendedItems::harvest($self->name);
+      $self
+   };
 }
-sub forward {
-   $forward{$_[1]} ||= &init_forw;
+sub lookup {
+   $repository{$_[1]}
 }
-sub lookup { $repository{$_[1]} }
-#################################################################################
 sub list {
    values %repository;
 }
@@ -215,7 +214,7 @@ sub known {
    keys %repository;
 }
 sub delete {
-   my ($self,$name) = @_;
+   my ($self, $name)=@_;
    delete $repository{$name};
 }
 #################################################################################
@@ -229,7 +228,11 @@ sub lookup_rulefile {
       $rule_key=$rulename.'@'.$extension->URI;
       $filename=$extension->app_dir($self)."/rules/$rulename";
       if (defined ($rc=$self->rulefiles->{$rule_key}) or -f $filename) {
-         return ($filename, $extension, $rule_key, $rc);
+         if ($only_here<0) {
+            push @accumulated, [ $filename, $extension, $rule_key, $rc ];
+         } else {
+            return ($filename, $extension, $rule_key, $rc);
+         }
       }
       unless ($only_here) {
          $filename=$self->top."/rules/$rulename";
@@ -343,9 +346,8 @@ sub include_rules {
       } else {
          # initializing the application or its main part in an extension
          $self->declared &= ~$cpp_load_initiated;
-         $self->cpp->embedded_rules_cnt=-1;
          if ($rc_all=include_rule($self, "main.rules", 1)) {
-            if ($self->cpp->embedded_rules_cnt < 0) {
+            unless ($self->declared & $cpp_load_initiated) {
                # no rulefiles at all; nevertheless, there might be clients
                $self->declared |= $cpp_load_initiated;
                $self->cpp->start_loading($extension);
@@ -391,18 +393,13 @@ sub include_rule_block {
 }
 #################################################################################
 sub eval_type {
-   my ($self, $expr)=@_;
-   translate_type($expr);
-   $self->eval_expr->($expr) || report_type_error($_[1])
+   my ($self, $expr, $allow_generic)=@_;
+   $self->eval_expr->($allow_generic && $expr !~ /[<>]/ ? "typeof_gen $expr" : "typeof $expr")
 }
 
-declare @type_args;
-
-sub eval_cpp_type {     # called from C++ clients
-   (my ($self, $expr), @type_args)=@_;
-   translate_type($expr);
-   $expr =~ s/\Q(*)\E$/(\@Polymake::Core::Application::type_args)/;
-   $self->eval_expr->($expr) || report_type_error($_[1])
+# called from C++ clients
+sub eval_type_throw {
+   &eval_type // croak( $@ =~ /^invalid type expression/ ? "$& $_[1]" : "Error processing type expression $_[1]: $@" );
 }
 #################################################################################
 sub set_file_suffix {
@@ -451,14 +448,14 @@ sub append_rule_permutation {
    $self->rules->[-1]->append_permutation($perm);
 }
 
-sub append_overriden_rule {
+sub append_overridden_rule {
    my ($self, $proto, $super_proto, $label)=@_;
    if ($plausibility_checks && is_object($super_proto)) {
       $proto->isa($super_proto) or croak( "Invalid override: ", $proto->full_name, " is not derived from ", $super_proto->full_name );
    }
    $label=$self->prefs->find_label($label)
           || croak( "Unknown label $label" );
-   push @{$self->rules->[-1]->overriden_in ||= [ ]}, [ $super_proto, $label, $plausibility_checks ? (caller)[1,2] : () ];
+   push @{$self->rules->[-1]->overridden_in ||= [ ]}, [ $super_proto, $label, $plausibility_checks ? (caller)[1,2] : () ];
 }
 #################################################################################
 sub lookup_credit {
@@ -477,8 +474,9 @@ sub add_custom {
 sub use_apps {
    my ($self, $import)=splice @_,0,2;
    my ($i, $app);
-   
-   undef local $extension;
+
+   my $in_ext=$extension;
+   local $extension;
 
    my @apps=map {
       if (my ($appname, $start_rules)= m/^\s* ($id_re) (?: \s*\(\s* (.*?) \s*\) )? \s*$/xo) {
@@ -488,8 +486,8 @@ sub use_apps {
          }
          $app=add Application($appname);
          if (exists $app->used->{$self->name}) {
-            if ($extension) {
-               croak( "Extension ", $extension->URI,
+            if ($in_ext) {
+               croak( "Extension ", $in_ext->URI,
                       " attempts to introduce a cyclic dependence between applications ", $self->name, " and $appname" );
             } else {
                croak( "Cyclic dependence between applications ", $self->name, " and $appname" );
@@ -528,7 +526,6 @@ sub use_apps {
          namespaces::using($self->pkg, $app->pkg);
          namespaces::using($self->pkg."::objects", $app->pkg."::objects");
          namespaces::using($self->pkg."::props", $app->pkg."::props");
-         namespaces::using($self->pkg."::typechecks", $app->pkg."::typechecks");
 
          $self->imported->{$app->name}=$app;
          $order{$app->name}=++$ord;
@@ -562,7 +559,7 @@ sub use_apps {
 
 sub common {
    my ($self, $other)=@_;
-   if ($self==$other || exists $self->used->{$other->name}) {
+   if (!defined($other) || $self==$other || exists $self->used->{$other->name}) {
       $self;
    } elsif (exists $other->used->{$self->name}) {
       $other;
@@ -694,6 +691,94 @@ sub disable_rules {
 
    } else {
       die "usage: disable_rules(\"label\" || \"OUTPUT : INPUT\")\n";
+   }
+}
+
+#################################################################################
+package _::SuspendedItems;
+
+use Polymake::Struct (
+   [ new => '$$@' ],
+   [ '$application' => '#1' ],
+   [ '$extension' => '#2' ],
+   [ '@further_missing_apps' => '@' ],
+   '@rulefiles',
+   '@rule_keys',
+   '@embedded_rules',
+   '@functions',
+);
+
+my %suspended;
+
+sub add {
+   my ($application, $extension, $missing_app_name, @further_missing_apps)=@_;
+   my $list=($suspended{$missing_app_name} //= [ ]);
+   my $self;
+   # Only look at the end of the list and stop by first application or extension mismatch,
+   # because all suspended items are created at the same time, when the owning application is loaded.
+   for (my $i=$#$list; $i>=0; --$i) {
+      $self=$list->[$i];
+      if ($self->application == $application && $self->extension == $extension) {
+         if (equal_lists($self->further_missing_apps, \@further_missing_apps)) {
+            return $self;
+         }
+      } else {
+         last;
+      }
+   }
+   $self=new(__PACKAGE__, $application, $extension, @further_missing_apps);
+   push @$list, $self;
+   $self
+}
+
+sub harvest {
+   my ($app_name)=@_;
+
+   if (defined (my $list=delete $suspended{$app_name})) {
+      foreach my $self (@$list) {
+         if (my @missing_apps=grep { !exists $repository{$_} } @{$self->further_missing_apps}) {
+            # Associate the suspended items with another missing application.
+            my $missing_app_name=shift @missing_apps;
+            my $next_list=($suspended{$missing_app_name} //= [ ]);
+            # Look though the entire list, because anything might have happened since the initial load of the owning application.
+            foreach my $next_suspended (@$next_list) {
+               if ($next_suspended->application == $self->application &&
+                   $next_suspended->extension == $self->extension &&
+                   equal_lists($next_suspended->further_missing_apps, \@missing_apps)) {
+
+                  push @{$next_suspended->rulefiles}, @{$self->rulefiles};
+                  push @{$next_suspended->rule_keys}, @{$self->rule_keys};
+                  push @{$next_suspended->embedded_rules}, @{$self->embedded_rules};
+                  push @{$next_suspended->functions}, @{$self->functions};
+                  undef $self;
+                  last;
+               }
+            }
+            if ($self) {
+               @{$self->further_missing_apps}=@missing_apps;
+               push @$next_list, $self;
+            }
+         } else {
+            # ripe to be loaded
+            my $app=$self->application;
+            local $extension=$self->extension;
+            local_unshift(\@INC, $app);
+            local_scalar($app->compile_scope, new Scope());
+            eval {
+               if (@{$self->rulefiles}) {
+                  delete @{$app->rulefiles}{@{$self->rule_keys}};
+                  delete @INC{ map { "rules:$_" } @{$self->rulefiles} };
+                  foreach my $rulefile (@{$self->rulefiles}) {
+                     include_rule($app, $rulefile);
+                  }
+               }
+               $self->application->cpp->load_suspended($self);
+            };
+            if ($@) {
+               die beautify_error();
+            }
+         }
+      }
    }
 }
 

@@ -219,7 +219,7 @@ Allowed variables are:
 Special option, incompatible with any others:
 
    --repeat ARCH  repeat the configuration with exactly the same options as
-                  has been used last time for the given build archite
+                  has been used last time for the given build architecture
 
 For detailed installation instructions, please refer to the polymake Wiki site:
   $Wiki/howto/install

@@ -550,10 +550,19 @@ template <>
 struct is_printable<perl::Value> : False {};
 template <>
 struct is_parseable<perl::Value> : False {};
+template <>
+struct is_printable<perl::Object> : False {};
+template <>
+struct is_writeable<perl::Object> : True {};
 
 // forward declaration of a specialization
 template <>
 class Array<perl::Object, void>;
+
+template <>
+struct is_printable< Array<perl::Object, void> > : False {};
+template <>
+struct is_writeable< Array<perl::Object, void> > : True {};
 
 namespace perl {
 
@@ -593,9 +602,9 @@ struct numeric_traits< sparse_elem_proxy<Base, E, Params> > : numeric_traits<E> 
    typedef E real_type;
 };
 
-template <typename Target>
+template <typename Given, typename Target=Given>
 class access;
-template <typename Target, bool _try, bool _unwary=Unwary<typename attrib<Target>::minus_const>::value>
+template <typename Given, typename Target, bool _try_conv, bool _unwary=Unwary<typename attrib<Given>::minus_const>::value>
 class access_canned;
 template <typename Target>
 struct check_for_magic_storage;
@@ -657,10 +666,12 @@ protected:
 
    void set_perl_type(SV* proto);
 
-   const std::type_info* get_canned_typeinfo() const;
+   typedef std::pair<const std::type_info*, char*> canned_data_t;
+   static
+   canned_data_t get_canned_data(SV*);
 
-   static char* get_canned_value(SV*);
-   char* get_canned_value() const { return get_canned_value(sv); }
+   const std::type_info* get_canned_typeinfo() const { return get_canned_data(sv).first; }
+   char* get_canned_value() const { return get_canned_data(sv).second; }
 
    int get_canned_dim(bool tell_size_if_dense) const;
 
@@ -818,17 +829,18 @@ protected:
    True* retrieve(Target& x) const
    {
       if (!(options & value_ignore_magic)) {
-         if (const std::type_info* t=get_canned_typeinfo()) {
-            if (*t==typeid(Target)) {
+         const canned_data_t canned=get_canned_data(sv);
+         if (canned.first) {
+            if (*canned.first == typeid(Target)) {
                if (MaybeWary<Target>::value && (options & value_not_trusted))
-                  maybe_wary(x)=*reinterpret_cast<const Target*>(get_canned_value());
+                  maybe_wary(x)=*reinterpret_cast<const Target*>(canned.second);
                else
-                  x=*reinterpret_cast<const Target*>(get_canned_value());
+                  x=*reinterpret_cast<const Target*>(canned.second);
                return NULL;
             }
             typedef void (*ass_f)(Target&, const Value&);
             if (ass_f assignment=reinterpret_cast<ass_f>(type_cache<Target>::get_assignment_operator(sv))) {
-               assignment(x,*this);
+               assignment(x, *this);
                return NULL;
             }
          }
@@ -1115,14 +1127,16 @@ public:
             if (options & value_allow_undef) return Target();
             throw undefined();
          }
-         if (!(options & value_ignore_magic))
-            if (const std::type_info* t=get_canned_typeinfo()) {
-               if (*t==typeid(Target))
-                  return get_canned<Target>();
+         if (!(options & value_ignore_magic)) {
+            const canned_data_t canned=get_canned_data(sv);
+            if (canned.first) {
+               if (*canned.first == typeid(Target))
+                  return reinterpret_cast<const Target&>(*canned.second);
                typedef Target (*conv_f)(const Value&);
                if (conv_f conversion=reinterpret_cast<conv_f>(type_cache<Target>::get_conversion_operator(sv)))
                   return conversion(*this);
             }
+         }
          Target x;
          retrieve_nomagic(x);
          return x;
@@ -1162,9 +1176,9 @@ public:
    }
 
    template <typename Target>
-   void* allocate()
+   void* allocate(SV* proto)
    {
-      return allocate_canned(type_cache<Target>::get_descr());
+      return allocate_canned(type_cache<Target>::get_descr(proto));
    }
 
    template <typename Target>
@@ -1172,14 +1186,13 @@ public:
    {
       return access<Target>::get(*this);
    }
-   using SVHolder::get;
 
-   // CAUTION: only use after having checked for valid canned magic
-   template <typename T>
-   T& get_canned() const
+   template <typename Given, typename Target>
+   typename access<Given, Target>::return_type get() const
    {
-      return *reinterpret_cast<T*>(get_canned_value());
+      return access<Given, Target>::get(*this);
    }
+   using SVHolder::get;
 
    template <typename T>
    int lookup_dim(bool tell_size_if_dense)
@@ -1204,8 +1217,8 @@ public:
       return d;
    }
 
-   template <typename> friend class access;
-   template <typename, bool, bool> friend class access_canned;
+   template <typename, typename> friend class access;
+   template <typename, typename, bool, bool> friend class access_canned;
    template <typename> friend struct check_for_magic_storage;
    friend class ArrayHolder;
    template <typename> friend class Array_access;
@@ -1214,6 +1227,8 @@ public:
    template <typename> friend class ValueOutput;
    template <typename, typename> friend class ListValueInput;
 };
+
+SV* make_string_array(int size, ...);
 
 inline ArrayHolder::ArrayHolder(const Value& v) : SVHolder(v.sv)
 {

@@ -19,18 +19,18 @@
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( ppl_ch_dual_x_f16, T0 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturnVoid( (ppl_ch_dual<T0>(arg0)) );
-   };
-
-   template <typename T0>
-   FunctionInterface4perl( ppl_ch_primal_x_f16, T0 ) {
-      perl::Value arg0(stack[1]);
+   FunctionInterface4perl( ppl_ch_primal_T_x_f16, T0 ) {
+      perl::Value arg0(stack[0]);
       WrapperReturnVoid( (ppl_ch_primal<T0>(arg0)) );
    };
 
-   FunctionInstance4perl(ppl_ch_primal_x_f16, Rational);
-   FunctionInstance4perl(ppl_ch_dual_x_f16, Rational);
+   template <typename T0>
+   FunctionInterface4perl( ppl_ch_dual_T_x_f16, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturnVoid( (ppl_ch_dual<T0>(arg0)) );
+   };
+
+   FunctionInstance4perl(ppl_ch_primal_T_x_f16, Rational);
+   FunctionInstance4perl(ppl_ch_dual_T_x_f16, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

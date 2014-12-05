@@ -14,13 +14,19 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
+
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( perl::Object (perl::Object, pm::Rational const&, perl::OptionSet) ) {
+   template <typename T0, typename T1>
+   FunctionInterface4perl( pyramid_T_x_C_o, T0,T1 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      IndirectWrapperReturn( arg0, arg1.get< perl::TryCanned< const Rational > >(), arg2 );
-   }
-   FunctionWrapperInstance4perl( perl::Object (perl::Object, pm::Rational const&, perl::OptionSet) );
+      WrapperReturn( (pyramid<T0>(arg0, arg1.get<T1, T0>(), arg2)) );
+   };
 
+   FunctionInstance4perl(pyramid_T_x_C_o, Rational, int);
+   FunctionInstance4perl(pyramid_T_x_C_o, QuadraticExtension< Rational >, int);
+   FunctionInstance4perl(pyramid_T_x_C_o, QuadraticExtension< Rational >, perl::Canned< const QuadraticExtension< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

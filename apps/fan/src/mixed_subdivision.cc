@@ -23,24 +23,22 @@
 
 namespace polymake { namespace fan {
 
-template<typename Scalar>
+template <typename Scalar, typename _Vector>
 perl::Object mixed_subdivision(int m, 
                                const perl::Object cayley_embedding,
                                const Array<Set<int> >& vertices_in_cells,
-                               Array<Scalar> t_array)
+                               const GenericVector<_Vector>& t)
 {
    // input sanity checks
    if (!m)
       throw std::runtime_error("mixed_subdivision: empty array given.");
-   if (m != t_array.size())
-      t_array = Array<Scalar>(m, 1);
 
    const Matrix<Scalar> V = cayley_embedding.give("VERTICES|POINTS");
    const int d = V.cols() - m - 1; // common dimension of the input polytopes
 
-   const Matrix<Scalar> slice_eqs = (- Vector<Scalar>(m, entire(t_array)) / accumulate(t_array, operations::add())) 
-      | zero_matrix<Scalar>(m,d) 
-      | unit_matrix<Scalar>(m);
+   const Matrix<Scalar> slice_eqs = (-t) / accumulate(t.top(), operations::add())
+                                  | zero_matrix<Scalar>(m,d) 
+                                  | unit_matrix<Scalar>(m);
 
    hash_map<Vector<Scalar>, int> index_of_point;
    int n_points(0);
@@ -79,19 +77,19 @@ perl::Object mixed_subdivision(int m,
    return p_out;
 }
 
-template<typename Scalar>
+template <typename Scalar, typename _Vector>
 perl::Object mixed_subdivision(const Array<perl::Object>& p_array,
                                const Array<Set<int> >& vertices_in_cells,
-                               const Array<Scalar>& t_array,
+                               const GenericVector<_Vector>& t,
                                perl::OptionSet options)
 {
-   return mixed_subdivision(p_array.size(), 
-                            polytope::cayley_embedding(p_array, Array<Scalar>(p_array.size(), Scalar(1)), options), 
-                            vertices_in_cells, 
-                            t_array);
+   return mixed_subdivision<Scalar>(p_array.size(), 
+                                    polytope::cayley_embedding(p_array, Array<Scalar>(), options), 
+                                    vertices_in_cells,
+                                    t);
 }
 
-template<typename Scalar>
+template <typename Scalar>
 perl::Object mixed_subdivision(const perl::Object& p_in1, const perl::Object& p_in2,
                                const Array<Set<int> >& vertices_in_cells,
                                const Scalar& t, const Scalar& t_prime, 
@@ -100,16 +98,16 @@ perl::Object mixed_subdivision(const perl::Object& p_in1, const perl::Object& p_
    Array<perl::Object> p_array(2);
    p_array[0] = p_in1; p_array[1] = p_in2;
 
-   Array<Scalar> t_array(2);
-   t_array[0] = t; t_array[1] = t_prime;
+   Vector<Scalar> t_vec(2);
+   t_vec[0] = t; t_vec[1] = t_prime;
 
-   return mixed_subdivision(p_array, vertices_in_cells, t_array, options);
+   return mixed_subdivision<Scalar>(p_array, vertices_in_cells, t_vec, options);
 }
 
 
 UserFunctionTemplate4perl("# @category Producing a polyhedral complex"
                           "# Create a weighted mixed subdivision of the Minkowski sum of two polytopes, using the Cayley trick."
-                          "# All polytopes must have the same dimension, at least one of them must be pointed. "
+                          "# The polytopes must have the same dimension, at least one of them must be pointed. "
                           "# The vertices of the first polytope //P_0// are weighted with //t_0//,"
                           "# and the vertices of the second polytope //P_1// with //t_1//."
                           "# "
@@ -123,10 +121,11 @@ UserFunctionTemplate4perl("# @category Producing a polyhedral complex"
                           "# @param Scalar t_1 the weight for the vertices of //P_1//; default 1"
                           "# @option Bool relabel"
                           "# @return PolytopalComplex",
-                          "mixed_subdivision<Scalar,_Extra>(Polytope<Scalar>, Polytope<Scalar>, Array<Set<Int>>; _Extra=1, _Extra=1, { relabel => undef })");
+                          "mixed_subdivision<Scalar>(Polytope<type_upgrade<Scalar>>, Polytope<type_upgrade<Scalar>>, Array<Set>; "
+                          "                          type_upgrade<Scalar>=1, type_upgrade<Scalar>=1, { relabel => undef })");
 
 UserFunctionTemplate4perl("# @category Producing a polyhedral complex"
-                          "# Create a weighted mixed subdivision of a Cayley embedding of an array of polytopes. "
+                          "# Create a weighted mixed subdivision of a Cayley embedding of a sequence of polytopes. "
                           "# Each vertex //v// of the //i//-th polytope is weighted with //t_i//, "
                           "# the //i//-th entry of the optional array //t//. "
                           "# "
@@ -134,26 +133,26 @@ UserFunctionTemplate4perl("# @category Producing a polyhedral complex"
                           "# @param Int m the number of polytopes giving rise to the Cayley embedding"
                           "# @param Polytope C the Cayley embedding of the input polytopes"
                           "# @param Array<Set> a triangulation of C"
-                          "# @option Array<Scalar> t scaling for the Cayley embedding; defaults to the all-1 vector"
+                          "# @option Vector<Scalar> t scaling for the Cayley embedding; defaults to the all-1 vector"
                           "# @option Bool relabel"
                           "# @return PolytopalComplex",
-                          "mixed_subdivision<Scalar,_Extra>($, Polytope<Scalar>, Array<Set>; Array<_Extra>=[])");
+                          "mixed_subdivision<Scalar>($, Polytope<type_upgrade<Scalar>>, Array<Set>; "
+                          "                          Vector<type_upgrade<Scalar>>=(ones_vector<Scalar>($_[0])))");
 
 
 UserFunctionTemplate4perl("# @category Producing a polyhedral complex"
-                          "# Create a weighted mixed subdivision of an array (P1,...,Pm) of polytopes. "
-                          "# All polytopes must have the same dimension, at least one of them must be pointed, "
-                          "# and all must be defined over the same number type. "
+                          "# Create a weighted mixed subdivision of a sequence (P1,...,Pm) of polytopes, using the Cayley trick. "
+                          "# All polytopes must have the same dimension, at least one of them must be pointed. "
                           "# Each vertex //v// of the //i//-th polytope is weighted with //t_i//, "
                           "# the //i//-th entry of the optional array //t//. "
                           "# "
                           "# The option //relabel// creates an additional section [[VERTEX_LABELS]]."
                           "# @param Array<Polytope> A the input polytopes"
-                          "# @option Array<Scalar> t scaling for the Cayley embedding; defaults to the all-1 vector"
+                          "# @option Vector<Scalar> t scaling for the Cayley embedding; defaults to the all-1 vector"
                           "# @option Bool relabel"
                           "# @return PolytopalComplex",
-                          "mixed_subdivision<Scalar>(Array<Polytope<Scalar>>, Array<Set>; Array<Scalar>=[], { relabel => undef })");
-
+                          "mixed_subdivision<Scalar>(Polytope<type_upgrade<Scalar>>+, Array<Set>; "
+                          "                          Vector<type_upgrade<Scalar>>=(ones_vector<Scalar>(scalar(@{$_[0]}))), { relabel => undef })");
 
 } }
 

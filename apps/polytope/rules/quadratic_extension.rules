@@ -25,25 +25,14 @@
 # @return Array<Polytope<QuadraticExtension>>
 
 user_function platonic_solids() {
-    my $PS = new Array<Polytope<QuadraticExtension>>(
-	[(new Polytope<QuadraticExtension>(tetrahedron())),
-	 (new Polytope<QuadraticExtension>(cross(3))),
-	 (new Polytope<QuadraticExtension>(cube(3))),
+    return new Array<Polytope<QuadraticExtension>>(
+	 (tetrahedron<QuadraticExtension>()),
+	 (cross<QuadraticExtension>(3)),
+	 (cube<QuadraticExtension>(3)),
 	 icosahedron(),
 	 dodecahedron()
-	]);
-    return $PS
+	);
 }
-
-
-# intrinsic rules
-#INCLUDE
-#  lp_float.rules
-
-# self-configuring rules
-#INCLUDE
-#  vinci.rules
-#  qhull.rules
 
 
 # Local Variables:

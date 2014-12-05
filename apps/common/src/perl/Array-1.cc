@@ -49,7 +49,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, Array< Set< int > >, int);
    FunctionInstance4perl(new, Array< Set< int > >);
    FunctionInstance4perl(new_X, Array< Set< int > >, perl::Canned< const std::list< Set< int > > >);
-   OperatorInstance4perl(convert, Array< Set< int > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
    Class4perl("Polymake::common::Array__Int", Array< int >);
    FunctionInstance4perl(new_X, Array< Set< int > >, perl::Canned< const FacetList >);
    FunctionInstance4perl(new_X, Array< Set< int > >, perl::Canned< const PowerSet< int > >);
@@ -67,7 +66,6 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::Array__Rational", Array< Rational >);
    FunctionInstance4perl(new, Array< Rational >);
    Class4perl("Polymake::common::Array__Array__Array__Int", Array< Array< Array< int > > >);
-   OperatorInstance4perl(assign, Array< Set< int > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
    Class4perl("Polymake::common::Array__Pair_A_Vector__Rational_I_Set__Int_Z", Array< std::pair< Vector< Rational >, Set< int > > >);
    FunctionInstance4perl(new, Array< std::pair< Vector< Rational >, Set< int > > >);
    Class4perl("Polymake::common::Array__Bool", Array< bool >);

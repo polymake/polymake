@@ -22,22 +22,22 @@
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( secondary_cone_T_X_X_o, T0,T1,T2 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      WrapperReturn( (secondary_cone<T0>(arg0.get<T1>(), arg1.get<T2>(), arg2)) );
+   };
+
    template <typename T0, typename T1>
-   FunctionInterface4perl( regularity_lp_X_x_o, T0,T1 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]);
+   FunctionInterface4perl( regularity_lp_T_X_x_o, T0,T1 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
       WrapperReturn( (regularity_lp<T0>(arg0.get<T1>(), arg1, arg2)) );
    };
 
    template <typename T0, typename T1>
-   FunctionInterface4perl( is_regular_X_x_o, T0,T1 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]);
+   FunctionInterface4perl( is_regular_T_X_x_o, T0,T1 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
       WrapperReturn( (is_regular<T0>(arg0.get<T1>(), arg1, arg2)) );
-   };
-
-   template <typename T0, typename T1, typename T2>
-   FunctionInterface4perl( secondary_cone_X_X_o, T0,T1,T2 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]);
-      WrapperReturn( (secondary_cone<T0>(arg0.get<T1>(), arg1.get<T2>(), arg2)) );
    };
 
    FunctionWrapper4perl( std::pair<bool, pm::Vector<pm::Rational> > (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, perl::OptionSet) ) {
@@ -52,8 +52,8 @@ namespace polymake { namespace polytope { namespace {
    }
    FunctionWrapperInstance4perl( perl::Object (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, perl::OptionSet) );
 
-   FunctionInstance4perl(secondary_cone_X_X_o, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< Set< int > > >);
-   FunctionInstance4perl(is_regular_X_x_o, Rational, perl::Canned< const Matrix< Rational > >);
-   FunctionInstance4perl(regularity_lp_X_x_o, Rational, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(secondary_cone_T_X_X_o, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< Set< int > > >);
+   FunctionInstance4perl(regularity_lp_T_X_x_o, Rational, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(is_regular_T_X_x_o, Rational, perl::Canned< const Matrix< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

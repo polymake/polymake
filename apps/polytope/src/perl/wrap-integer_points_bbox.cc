@@ -19,12 +19,11 @@
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( integer_points_bbox_x, T0 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturn( integer_points_bbox<T0>(arg0) );
+   FunctionInterface4perl( integer_points_bbox_T_x, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturn( (integer_points_bbox<T0>(arg0)) );
    };
 
-   FunctionInstance4perl(integer_points_bbox_x, double);
-   FunctionInstance4perl(integer_points_bbox_x, Rational);
+   FunctionInstance4perl(integer_points_bbox_T_x, double);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

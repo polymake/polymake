@@ -23,8 +23,10 @@
 
 namespace polymake { namespace polytope {
 
-template<typename Scalar>
-perl::Object full_dim_cell(perl::Object p_in, const Set<int>& cell_verts, perl::OptionSet options)
+namespace {
+
+template <typename Scalar, typename _Set>
+perl::Object full_dim_cell(perl::Object p_in, const GenericSet<_Set, int>& cell_verts, perl::OptionSet options)
 {
    perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
 
@@ -34,7 +36,7 @@ perl::Object full_dim_cell(perl::Object p_in, const Set<int>& cell_verts, perl::
    }
    const Matrix<Scalar> V=p_in.give("VERTICES");
    const Matrix<Scalar> L=p_in.give("LINEALITY_SPACE");
-   p_out.take("VERTICES") << V.minor(cell_verts,All);    
+   p_out.take("VERTICES") << V.minor(cell_verts.top(), All);    
    p_out.take("LINEALITY_SPACE") << L;
 
    /* writing AFFINE_HULL without FACETS is not allowed (see #519)
@@ -48,19 +50,20 @@ perl::Object full_dim_cell(perl::Object p_in, const Set<int>& cell_verts, perl::
       const int n_vertices = V.rows();
       Array<std::string> labels(n_vertices);
       read_labels(p_in, "VERTEX_LABELS", labels);
-      const Array<std::string> labels_out(select(labels,cell_verts));
+      const Array<std::string> labels_out(select(labels, cell_verts.top()));
       p_out.take("VERTEX_LABELS") << labels_out;
    }
   
    return p_out;
 }
 
+}
 
-template<typename Scalar>
+template <typename Scalar>
 perl::Object cell_from_subdivision(perl::Object p_in, int cell_number, perl::OptionSet options)
 {
-  const Array< Set<int> > subdivision = p_in.give("POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS");
-  if (cell_number < 0 || cell_number >= subdivision.size())
+  const IncidenceMatrix<> subdivision = p_in.give("POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS");
+  if (cell_number < 0 || cell_number >= subdivision.rows())
     throw std::runtime_error("cell number out of range");
   
   perl::Object p_out = full_dim_cell<Scalar>(p_in, subdivision[cell_number], options);
@@ -71,13 +74,13 @@ perl::Object cell_from_subdivision(perl::Object p_in, int cell_number, perl::Opt
 template<typename Scalar>
 perl::Object cells_from_subdivision(perl::Object p_in, const Set<int>& cells, perl::OptionSet options)
 {
-  const Array< Set<int> > subdivision = p_in.give("POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS");
+  const IncidenceMatrix<> subdivision = p_in.give("POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS");
   Set<int> cell_verts;
   for (Entire< Set<int> >::const_iterator i=entire(cells); !i.at_end(); ++i) {
     int cell_number = *i;
-    if (cell_number < 0 || cell_number >= subdivision.size())
+    if (cell_number < 0 || cell_number >= subdivision.rows())
       throw std::runtime_error("cell number out of range");
-    cell_verts+=subdivision[cell_number];
+    cell_verts += subdivision[cell_number];
   }
   perl::Object p_out = full_dim_cell<Scalar>(p_in, cell_verts, options);
   p_out.set_description() << "cells " << cells << " of subdivision of " << p_in.name() << endl;

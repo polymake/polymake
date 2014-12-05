@@ -25,18 +25,8 @@ rule N_INPUT_LINEALITY : INPUT_LINEALITY {
 }
 weight 0.10;
 
-rule N_EQUATIONS : EQUATIONS{
-    $this->N_EQUATIONS=$this->EQUATIONS->rows;
-}
-weight 0.10;
-
 rule N_RAYS : RAYS {
     $this->N_RAYS=$this->RAYS->rows;
-}
-weight 0.10;
-
-rule N_INEQUALITIES : INEQUALITIES{
-    $this->N_INEQUALITIES=$this->INEQUALITIES->rows;
 }
 weight 0.10;
 
@@ -395,7 +385,7 @@ weight 3.10;
 rule COMBINATORIAL_DIM : HASSE_DIAGRAM {
    $this->COMBINATORIAL_DIM=$this->HASSE_DIAGRAM->dim;
 }
-weight 1.10;
+weight 0.10;
 
 # FIXME DIM : check dependence on dim in client
 rule cone_only : GRAPH.ADJACENCY : HASSE_DIAGRAM {
@@ -570,7 +560,7 @@ user_function iterated_barycentric_subdivision<Scalar>(Cone<Scalar> $ { relabel=
 user_function lawrence<Scalar>(Cone<Scalar>) {
     my $p = shift;
     my $n = $p->N_VERTICES;
-    my $d = $p->COMBINATORIAL_DIM;
+    my $d = $p->AMBIENT_DIM;
     my $v1 = $p->VERTICES | unit_matrix<Scalar>($n);
     my $v2 = ((ones_vector<Scalar>($n)) | (zero_matrix<Scalar>($n,$d))) 
 	| (unit_matrix<Scalar>($n));

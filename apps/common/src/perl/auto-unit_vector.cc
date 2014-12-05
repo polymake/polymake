@@ -25,15 +25,14 @@
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( unit_vector_x_x, T0 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]);
-      WrapperReturn( unit_vector<T0>(arg0, arg1) );
+   FunctionInterface4perl( unit_vector_T_x_x, T0 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      WrapperReturn( (unit_vector<T0>(arg0, arg1)) );
    };
 
-   FunctionInstance4perl(unit_vector_x_x, Rational);
-   FunctionInstance4perl(unit_vector_x_x, Integer);
-   FunctionInstance4perl(unit_vector_x_x, double);
-   FunctionInstance4perl(unit_vector_x_x, int);
-   FunctionInstance4perl(unit_vector_x_x, QuadraticExtension< Rational >);
+   FunctionInstance4perl(unit_vector_T_x_x, QuadraticExtension< Rational >);
+   FunctionInstance4perl(unit_vector_T_x_x, Rational);
+   FunctionInstance4perl(unit_vector_T_x_x, Integer);
+   FunctionInstance4perl(unit_vector_T_x_x, double);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

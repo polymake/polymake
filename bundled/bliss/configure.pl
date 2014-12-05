@@ -44,6 +44,7 @@ sub proceed {
       }
 
    } else {
+      # the gmp libary needs to be here because some ubuntu bliss packages are not linked to gmp
       my $error=Polymake::Configure::build_test_program(<<'---', Libs => "-lbliss -lgmp");
 #include "bliss/graph.hh"
 int main() {

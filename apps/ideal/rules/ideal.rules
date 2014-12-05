@@ -20,9 +20,9 @@ object Ideal {
    }
    precondition : PRIME;
 
-	rule PRIMARY : RADICAL.PRIME {
-		$this->PRIMARY = $this->RADICAL->PRIME;
-	}
+   rule PRIMARY : RADICAL.PRIME {
+      $this->PRIMARY = $this->RADICAL->PRIME;
+   }
 
    rule RING : GENERATORS {
       my $gens = $this->GENERATORS;
@@ -39,17 +39,17 @@ object Ideal {
       }
       $this->ZERO = 1;
    }
-   
-   object Groebner {
-      
-      rule initial :  {
-         if (my $order = $this->lookup("ORDER_NAME")) {
-            $order =~ /^(dp|Dp|lp|Lp|rp|ls|rs|ds|Ds)$/ or croak ("unknown term order");
-         } elsif ( ! (defined $this->lookup("ORDER_VECTOR") || defined $this->lookup("ORDER_MATRIX"))) {
-            croak ("no term order specified");
-         }
-      }
 
+}
+
+object Groebner {
+      
+   rule initial :  {
+      if (my $order = $this->lookup("ORDER_NAME")) {
+         $order =~ /^(dp|Dp|lp|Lp|rp|ls|rs|ds|Ds)$/ or croak ("unknown term order");
+      } elsif ( ! defined($this->lookup("ORDER_VECTOR | ORDER_MATRIX"))) {
+         croak ("no term order specified");
+      }
    }
 
 }

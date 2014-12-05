@@ -18,8 +18,8 @@
 
 #include "polymake/client.h"
 #include "polymake/Array.h"
-#include "polymake/Set.h"
 #include "polymake/common/boost_dynamic_bitset.h"
+#include "polymake/Set.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -43,5 +43,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new, Array< Array< boost_dynamic_bitset > >);
    FunctionInstance4perl(new_X, Array< boost_dynamic_bitset >, int);
    FunctionInstance4perl(new_X, Array< Set< int > >, perl::Canned< const Array< boost_dynamic_bitset > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< boost_dynamic_bitset > >, perl::Canned< const Array< boost_dynamic_bitset > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< Array< boost_dynamic_bitset > > >, perl::Canned< const Array< Array< boost_dynamic_bitset > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

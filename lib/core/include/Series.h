@@ -29,10 +29,18 @@
 namespace pm {
 
 template <typename E, typename Comparator=operations::cmp> class Set;
+template <typename E, typename Comparator=operations::cmp> class PowerSet;
+
+struct is_set;
 
 template <typename E, typename Comparator, typename Etag=typename object_traits<E>::generic_tag>
 struct persistent_set {
-   typedef Set<E,Comparator> type;
+   typedef Set<E, Comparator> type;
+};
+
+template <typename Set, typename Comparator>
+struct persistent_set<Set, Comparator, is_set> {
+   typedef PowerSet<typename Set::element_type, Comparator> type;
 };
 
 
@@ -75,8 +83,6 @@ public:
       typedef typename builder::operation type;
    };
 };
-
-struct is_set;
 
 template <typename Set, typename E, typename Comparator>
 struct spec_object_traits< GenericSet<Set,E,Comparator> >

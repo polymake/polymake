@@ -25,7 +25,7 @@ namespace polymake { namespace polytope { namespace {
    };
 
    FunctionInstance4perl(truncation_x_X_o, int);
-   FunctionInstance4perl(truncation_x_X_o, perl::TryCanned< const Array< int > >);
+   FunctionInstance4perl(truncation_x_X_o, perl::Canned< const Array< int > >);
    FunctionInstance4perl(truncation_x_X_o, perl::Enum<pm::all_selector>);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

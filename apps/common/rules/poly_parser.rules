@@ -18,68 +18,62 @@
 # which is why it is left available.
 
 
-property_type Polynomial{
+property_type Polynomial {
 
-   method construct(Ring, $ ){
-      shift;
-      die "2nd argument has to be a string." unless is_string($_[1]);
-      toPolynomial($_[1],$_[0]->variables);
+   method construct(Ring, String) {
+      toPolynomial($_[2], $_[1]->variables);
    }
-
 }
 
-property_type Term{
+property_type Term {
 
-   method construct(Ring, $ ){
-      shift;
-      die "2nd argument has to be a string." unless is_string($_[1]);
-      parseTerm($_[1],$_[0]->variables);
+   method construct(Ring, String) {
+      parseTerm($_[2], $_[1]->variables);
    }
-
 }
 
 # @category Data Conversion
 # Read a [[Polynomial]] from a String.
 # @param String s
 # @param ARRAY vars
-user_function toPolynomial($ , @ ){
-   my($s, @vars) = @_;
+user_function toPolynomial {
+   my ($s, @vars) = @_;
    # Remove white spaces.
    $s =~ s/\s//g;
    my $stilda = $s;
 
-   foreach my $var (@vars){
-      my $varstring = $var."";
+   foreach my $var (@vars) {
+      my $varstring = "$var";
       my $replacement = "m".("a" x (length($varstring)-1));
       $varstring = quotemeta($varstring);
       $stilda =~ s/$varstring/$replacement/g;
    }
    # Check for correct format of stilda:
-   $stilda =~ m/^[0123456789\/\*\^\-\+a\(\)m]*$/ or die "Input error: ".$stilda.".";
-   return parseSumRecursively($s,$stilda,@vars);
+   $stilda =~ m/^[0123456789\/\*\^\-\+a\(\)m]*$/ or die "Input error: $stilda.";
+   return parseSumRecursively($s, $stilda, @vars);
 }
 
-sub parseSumRecursively{
-   my($s,$stilda,@vars) = @_;
-   my($op) = $stilda =~ m/^([\+\-]?)/x;
+sub parseSumRecursively {
+   my ($s,$stilda,@vars) = @_;
+   my ($op) = $stilda =~ m/^([\+\-]?)/x;
    $s = substr($s,length($op),length($s));
    $stilda = substr($stilda,length($op),length($stilda));
    my @term = ();
    my @termtilda = ();
    my $hasbrackets = 0;
    # Match the first summand. While matching unwrap the product structure.
-   while(($stilda !~ m/^[+-]/) && (length($stilda) > 0)){
-      if($stilda =~ m/^\(/){
+   while (($stilda !~ m/^[+-]/) && (length($stilda) > 0)) {
+      if ($stilda =~ m/^\(/) {
          # If we have beginning brackets:
-         my($factor) = $stilda =~ m/(\( (?: [^\(\)]* | (?0) )* \)) /x;
-         my($hat,$pow) = $' =~ m/^(\^?)(\d*)/;
+         my ($factor) = $stilda =~ m/(\( (?: [^\(\)]* | (?0) )* \)) /x;
+         my ($hat, $pow) = $' =~ m/^(\^?)(\d*)/;
          my $totallength = length($factor)+length($hat)+length($pow);
          $hasbrackets = 1;
          push @termtilda, $factor.$hat.$pow;
          push @term, substr($s,0,$totallength);
          $stilda = substr($stilda,$totallength,length($stilda));
          $s = substr($s,$totallength,length($s));
-      } elsif (my($factor) = $stilda =~ m/^([^\+\-\(\)]*)/x){
+      } elsif (my ($factor) = $stilda =~ m/^([^\+\-\(\)]*)/x) {
          # If we start with a factor in front:
          push @termtilda, $factor;
          push @term, substr($s,0,length($factor));
@@ -88,12 +82,12 @@ sub parseSumRecursively{
       }
    }
    my $result = 1;
-   if($hasbrackets){
-      foreach my $factor (@termtilda){
+   if ($hasbrackets) {
+      foreach my $factor (@termtilda) {
          my $f = shift @term;
-         if(my($inner,$pow) = $factor =~ m/^\((.*)\)\^?(\d*)$/){
-            if($pow) {
-               while($pow>0){
+         if (my ($inner, $pow) = $factor =~ m/^\((.*)\)\^?(\d*)$/) {
+            if ($pow) {
+               while ($pow>0) {
                   $result = $result * parseSumRecursively(substr($f,1,length($inner)),$inner,@vars);
                   $pow--;
                }
@@ -105,7 +99,7 @@ sub parseSumRecursively{
             $factor =~ s/\*?$//;
             $f =~ s/^\*?//;
             $f =~ s/\*?$//;
-            if(length($f)>0){
+            if (length($f)>0) {
                # If there was more than a star.
                $result = $result * parseTerm($f,$factor,@vars);
             }
@@ -115,10 +109,10 @@ sub parseSumRecursively{
       # We must have a monomial!
       $result = parseTerm(pop @term, pop @termtilda,@vars);
    }
-   if($op eq "-"){
-      $result = (-1) * $result;
+   if ($op eq "-") {
+      $result = -$result;
    }
-   if(length($stilda) > 0){
+   if (length($stilda) > 0) {
       $result = parseSumRecursively($s,$stilda,@vars) + $result;
    }
    return $result;
@@ -126,15 +120,15 @@ sub parseSumRecursively{
 
 
 
-sub parseTerm{
-   my($s,$stilda,@vars) = @_;
+sub parseTerm {
+   my ($s, $stilda, @vars) = @_;
    # Sanity check:
    # print "Parsing Monomial.\nS:  ",$s,"\nST: ",$stilda,"\n";
    ($s !~ m/^\*(.*)/) or die "Incorrect monomial form.";
    ($s !~ m/(.*)\*$/) or die "Incorrect monomial form.";
-   if( $stilda !~ m/m/){
-      if(index($stilda,"/")>-1){
-         my($a,$b) = $stilda =~ m/^(\d*)\/(\d*)/;
+   if ($stilda !~ m/m/) {
+      if (index($stilda,"/")>-1) {
+         my ($a,$b) = $stilda =~ m/^(\d*)\/(\d*)/;
          return new Rational($a,$b);
       } else {
          return $stilda;
@@ -150,20 +144,20 @@ sub parseTerm{
    my $nvars = @vars;
    my $exp = new Vector<Int>($nvars);
    my $totalcoef = 1;
-   while(length($s)>0){
-      my($coef,$star1,$varlength,$hat,$pow,$star2) = $stilda =~ m/^(\d*\/?\d*)(\*?)(ma*)(\^?)(\d*)(\*?)/;
-      my $varstring = substr($s,length($coef.$star1),length($varlength));
-      if($pow){
+   while (length($s)>0) {
+      my ($coef,$star1,$varlength,$hat,$pow,$star2) = $stilda =~ m/^(\d*\/?\d*)(\*?)(ma*)(\^?)(\d*)(\*?)/;
+      my $varstring = substr($s, length($coef.$star1), length($varlength));
+      if ($pow) {
          $exp->[$varMap{$varstring}] += $pow;
       } else {
          $exp->[$varMap{$varstring}] ++;
       }
       my $totallength = length($coef.$star1.$varlength.$hat.$pow.$star2);
-      $s = substr($s,$totallength,length($s));
+      $s = substr($s, $totallength, length($s));
       $stilda = substr($stilda,$totallength,length($stilda));
-      if($coef){
-         if(index($coef,"/")>-1){
-            my($a,$b) = $coef =~ m/^(\d*)\/(\d*)/;
+      if ($coef) {
+         if (index($coef,"/")>-1) {
+            my ($a,$b) = $coef =~ m/^(\d*)\/(\d*)/;
             $totalcoef *= new Rational($a,$b);
          } else {
             $totalcoef *= $coef;
@@ -172,9 +166,9 @@ sub parseTerm{
    }
    my $result = 1;
    my $i = 0;
-   foreach my $var (@vars){
+   foreach my $var (@vars) {
       my $pow = $exp->[$i];
-      while($pow>0){
+      while ($pow>0) {
          $result = $result * $var;
          $pow--;
       }
@@ -182,7 +176,7 @@ sub parseTerm{
    }
    
    # print "Result: ",$result," ",$exp," ",%varMap,"\n";
-   if($totalcoef != 1){
+   if ($totalcoef != 1) {
       return $totalcoef*$result;
    } else {
       return $result;

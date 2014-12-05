@@ -24,6 +24,12 @@
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1>
+   FunctionInterface4perl( new_std__string_P, T0,T1 ) {
+      perl::Value arg0(stack[1]);
+      WrapperReturnNew(T0, (arg0.get<T1>()) );
+   };
+
    template <typename T0>
    FunctionInterface4perl( new, T0 ) {
       WrapperReturnNew(T0, () );
@@ -37,12 +43,13 @@ namespace polymake { namespace common { namespace {
 
    ClassTemplate4perl("Polymake::common::Ring");
    Class4perl("Polymake::common::Ring_A_Rational_I_Int_Z", Ring< Rational, int >);
-   FunctionInstance4perl(new_X, Ring< Rational, int >, perl::TryCanned< const Array< std::string > >);
+   FunctionInstance4perl(new_X, Ring< Rational, int >, perl::Canned< const Array< std::string > >);
    Class4perl("Polymake::common::Ring_A_Rational_I_Rational_Z", Ring< Rational, Rational >);
-   FunctionInstance4perl(new_X, Ring< Rational, Rational >, perl::TryCanned< const Array< std::string > >);
+   FunctionInstance4perl(new_X, Ring< Rational, Rational >, perl::Canned< const Array< std::string > >);
    FunctionInstance4perl(new_X, Ring< Rational, int >, int);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Ring< Rational, int > >, perl::Canned< const Ring< Rational, int > >);
    FunctionInstance4perl(new_X, Ring< Rational, int >, perl::Canned< const Ring< Rational, int > >);
    FunctionInstance4perl(new, Ring< Rational, int >);
+   FunctionInstance4perl(new_std__string_P, Ring< Rational, int >, perl::Canned< const Array< std::string > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

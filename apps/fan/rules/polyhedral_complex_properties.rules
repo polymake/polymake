@@ -114,12 +114,9 @@ user_method DIM {
   return $self->FAN_DIM-1;
 }
 
-
 }
 
-
 object polytope::Polytope {
-
 
 # @category Triangulation and volume
 # Polytopal Subdivision of the polytope using only its vertices.
@@ -171,5 +168,6 @@ property POLYTOPAL_SUBDIVISION : PolyhedralComplex<Scalar> : multiple {
 
 # Local Variables:
 # mode: perl
-# c-basic-offset:3
+# cperl-indent-level:3
+# indent-tabs-mode:nil
 # End:

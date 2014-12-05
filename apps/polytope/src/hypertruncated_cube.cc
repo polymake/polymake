@@ -68,7 +68,6 @@ perl::Object hypertruncated_cube(const int d, const Rational k, const Rational l
   
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("INEQUALITIES") << Inequalities;
-   p.take("N_INEQUALITIES") << n_ineqs+1; //+1 for 1 0 0 0  ...
    p.take("BOUNDED") << true;
 
    // symmetric linear objective function

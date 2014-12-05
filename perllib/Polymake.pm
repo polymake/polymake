@@ -38,7 +38,7 @@ use Polymake::Ext;
 # Global variables
 #
 
-declare $Version="2.13.1";
+declare $Version="2.13.2";
 declare $VersionNumber=eval "v$Version";        # for string comparisons with vM.N literals
 
 declare ($Scope,                # Scope object for the current cycle
@@ -80,8 +80,8 @@ require Polymake::Core::XMLfile;
 require Polymake::Core::Object;
 require Polymake::Core::Application;
 require Polymake::Core::Extension;
-require Polymake::Core::RuleFilter;
 require Polymake::Core::CPlusPlus;
+require Polymake::Core::RuleFilter;
 
 declare $Custom=new Core::Customize;
 declare $Prefs=new Core::Preference;

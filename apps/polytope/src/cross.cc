@@ -118,7 +118,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
                           "# @param Scalar scale the absolute value of each non-zero vertex coordinate. Needs to be positive. The default value is 1."
                           "# @option Bool group add a symmetry group description to the resulting polytope"
                           "# @return Polytope<Scalar>",
-                          "cross<_Bounds, Scalar={ typechecks::is_ordered_field(_Bounds) ? _Bounds : Rational }>(Int; _Bounds=1, { group => undef } )");
+                          "cross<Scalar> [ is_ordered_field(type_upgrade<Scalar, Rational>) ] (Int; type_upgrade<Scalar>=1, { group => undef } )");
 
 } }
 

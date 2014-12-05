@@ -16,26 +16,26 @@
 # @topic category property_types/Graph Types
 # This contains all property types that are related to graphs.
 
-# @category Graph Types
-# Labels a [[Graph]] as __directed__.
-declare property_type Directed : c++ (special => 'Directed', include => "polymake/Graph.h");
-
-# @category Graph Types
-# Labels a [[Graph]] as __undirected__.
+# @category Artificial
+# Type tag for an __undirected__ [[Graph]].
 declare property_type Undirected : c++ (special => 'Undirected', include => "polymake/Graph.h");
 
-# @category Graph Types
-# Type tag for __directed multigraphs__.
-declare property_type DirectedMulti : c++ (special => 'DirectedMulti', include => "polymake/Graph.h");
+# @category Artificial
+# Type tag for a __directed__ [[Graph]].
+declare property_type Directed : c++ (special => 'Directed', include => "polymake/Graph.h");
 
-# @category Graph Types
-# Type tag for __undirected multigraphs__.
+# @category Artificial
+# Type tag for an __undirected multigraph__.
 declare property_type UndirectedMulti : c++ (special => 'UndirectedMulti', include => "polymake/Graph.h");
 
-# @category Graph Types
+# @category Artificial
+# Type tag for a __directed multigraph__.
+declare property_type DirectedMulti : c++ (special => 'DirectedMulti', include => "polymake/Graph.h");
+
+# @category Artificial
 declare property_type EdgeList<*> : c++;
 
-# @category Graph Types
+# @category Artificial
 declare property_type EdgeIterator<*> : Iterator : c++ {
 
    method from_node() : c++;
@@ -43,7 +43,7 @@ declare property_type EdgeIterator<*> : Iterator : c++ {
    method to_node() : c++;
 }
 
-function entire(EdgeList:anchor) : c++ : returns(EdgeIterator<*>);
+function entire(EdgeList:anchor) : c++ : returns(EdgeIterator);
 
 ##################################################################################
 
@@ -109,7 +109,7 @@ declare property_type Graph<Dir=Undirected> : c++ (include => "polymake/Graph.h"
    # @param Int tail_node
    # @param Int head_node
    # @return Iterator
-   user_method all_edges($$) : wary : lvalue_opt : c++ : returns(Iterator<*>);
+   user_method all_edges($$) : wary : lvalue_opt : c++ : returns(Iterator);
 
    # Deletes the edge connecting two given nodes, if there was one.
    # In a multigraph, deletes one arbitrary edge from the parallel bundle.
@@ -142,12 +142,12 @@ declare property_type Graph<Dir=Undirected> : c++ (include => "polymake/Graph.h"
    # Returns a sequence of edges heading to (in Directed case) or incident to (in Undirected case) //node//.
    # @param Int node
    # @return EdgeList
-   user_method in_edges($) : wary : anchor : c++ : returns(EdgeList<*>);
+   user_method in_edges($) : wary : anchor : c++ : returns(EdgeList);
 
    # Returns a sequence of edges leaving (in Directed case) or incident to (in Undirected case) //node//.
    # @param Int node
    # @return EdgeList
-   user_method out_edges($) : wary : anchor : c++ : returns(EdgeList<*>);
+   user_method out_edges($) : wary : anchor : c++ : returns(EdgeList);
 
 
    # Returns the set of indices of nodes adjacent to //node//.
@@ -196,8 +196,8 @@ declare property_type Graph<Dir=Undirected> : c++ (include => "polymake/Graph.h"
    # Create a (non-multi) graph with adjacency relation between nodes dictated by the given matrix.
    method construct(IncidenceMatrix) : c++;
 
-   sub toXML {
-      my $g=shift;
+   type_method toXML {
+      my ($proto, $g)=splice @_, 0, 2;
       if ($g->has_gaps) {
          my ($writer, @attr)=@_;
          $writer->startTag("m", @attr, dim => $g->dim);
@@ -210,7 +210,7 @@ declare property_type Graph<Dir=Undirected> : c++ (include => "polymake/Graph.h"
          $writer->endTag("m");
       } else {
          my $am=adjacency_matrix($g);
-         $am->type->toXML->($am,@_);
+         $am->type->toXML->($am, @_);
       }
    }
 
@@ -241,17 +241,17 @@ function renumber_nodes(Graph) : c++;
 # In the Undirected case, the edges will appear once, ordered by the larger index of their incident nodes.
 # @param Graph graph
 # @return EdgeList
-user_function edges(Graph) : c++ : returns(EdgeList<*>);
+user_function edges(Graph) : c++ : returns(EdgeList);
 
-# @category Graph Types
+# @category Artificial
 declare property_type NodeSet<*> : c++;
 
-# @category Graph Types
+# @category Artificial
 declare property_type NodeIterator<*> : Iterator : c++ {
 
-   method out_edges() : c++ : anchor : returns(EdgeList<*>);
+   method out_edges() : c++ : anchor : returns(EdgeList);
 
-   method in_edges() : c++ : anchor : returns(EdgeList<*>);
+   method in_edges() : c++ : anchor : returns(EdgeList);
 
    method adjacent_nodes() : c++ : anchor;
 
@@ -271,100 +271,96 @@ declare property_type NodeIterator<*> : Iterator : c++ {
 # Returns the sequence of all valid nodes of a graph.
 # @param Graph graph
 # @return NodeSet
-user_function nodes(Graph:anchor) : c++ : returns(NodeSet<*>);
+user_function nodes(Graph:anchor) : c++ : returns(NodeSet);
 
-function entire(NodeSet:anchor) : c++ : returns(NodeIterator<*>);
+function entire(NodeSet:anchor) : c++ : returns(NodeIterator);
 
-# the maps may contain gaps, hence got to use iterators
-sub equal_maps {
-   my ($elem_proto, $m1, $m2)=@_;
-   @$m1==@$m2 and do {
-      for (my ($it1,$it2)=(entire($m1), entire($m2)); $it1; ++$it1, ++$it2) {
-         $elem_proto->equal->($$it1, $$it2) or return 0;
+# @category Graph Types
+# The common abstract base class for all kinds of associative containers that can be attached to a [[Graph]].
+# @tparam Dir kind of the host graph: [[Undirected]], [[Directed]], [[UndirectedMulti]], or [[DirectedMulti]]
+# @tparam Element data associated with nodes or edges
+
+declare property_type GraphMap<Dir,Element> {
+
+   method construct(Graph<Dir>) : c++;
+
+   method construct(Graph<Dir>, $@) {
+      my ($proto, $graph)=splice @_,0,2;
+      Core::CPlusPlus::assign_any($proto->construct->($graph), @_);
+   }
+
+   type_method equal {
+      # the maps may contain gaps, hence got to use iterators
+      my ($proto, $m1, $m2)=@_;
+      my $elem_proto=$proto->params->[1];
+      @$m1==@$m2 and do {
+         for (my ($it1, $it2)=(entire($m1), entire($m2)); $it1; ++$it1, ++$it2) {
+            $elem_proto->equal->($$it1, $$it2) or return 0;
+         }
+         1
       }
-      1
    }
 }
 
 # @category Graph Types
-# @tparam Dir one of [[Undirected]], [[Directed]], [[UndirectedMulti]] or [[DirectedMulti]]
-# @tparam Element
-declare property_type NodeMap<Dir,Element> : Array<Element> : \
-   c++ ( include => "polymake/Graph.h", default_constructor => 0 ) {
+# Dense mapping of nodes to data items.
+# @tparam Dir kind of the host graph, [[Undirected]], [[Directed]], [[UndirectedMulti]], or [[DirectedMulti]]
+# @tparam Element data associated with nodes
+declare property_type NodeMap<Dir,Element> : GraphMap<Dir,Element> \
+   : c++ ( include => "polymake/Graph.h" );
 
-   method construct(Graph<Dir>) : c++;
+# @category Graph Types
+# Dense mapping of edges to data items.
+# @tparam Dir kind of the host graph, [[Undirected]], [[Directed]], [[UndirectedMulti]], or [[DirectedMulti]]
+# @tparam Element data associated with edges
+declare property_type EdgeMap<Dir,Element> : GraphMap<Dir,Element> \
+   : c++ ( include => "polymake/Graph.h" ) {
 
-   method construct(Graph<Dir>, $@) {
-      my ($proto, $graph)=splice @_,0,2;
-      CPlusPlus::assign_any($proto->construct->($graph), @_);
-   }
-
-   method equal { equal_maps((shift)->params->[1],@_); }
+   # Access the data associated with an edge between two given nodes.
+   # @param Int from source node
+   # @param Int to target node
+   method operator(Int,Int) : lvalue_opt : wary : c++;
 }
 
 # @category Graph Types
+# Sparse mapping of nodes to data items.
 # @tparam Dir one of [[Undirected]], [[Directed]], [[UndirectedMulti]] or [[DirectedMulti]]
-# @tparam Element
-declare property_type EdgeMap<Dir,Element> : Array<Element> : \
-   c++ ( include => "polymake/Graph.h", default_constructor => 0 ) {
-
-   method construct(Graph<Dir>) : c++;
-
-   method construct(Graph<Dir>, $@) {
-      my ($proto, $graph)=splice @_,0,2;
-      CPlusPlus::assign_any($proto->construct->($graph), @_);
-   }
-
-   method equal { equal_maps((shift)->params->[1],@_); }
-
-   method operator($,$) : lvalue_opt : wary : c++;
-}
+# @tparam Element data associated with nodes
+declare property_type NodeHashMap<Dir,Element> : GraphMap<Dir,Element> \
+   : c++ ( include => "polymake/Graph.h" );
 
 # @category Graph Types
+# Sparse mapping of edges to data items.
 # @tparam Dir one of [[Undirected]], [[Directed]], [[UndirectedMulti]] or [[DirectedMulti]]
-# @tparam Element
-declare property_type NodeHashMap<Dir,Element> : \
-   c++ ( include => "polymake/Graph.h", default_constructor => 0 ) {
+# @tparam Element data associated with edges
+declare property_type EdgeHashMap<Dir,Element> : GraphMap<Dir,Element> \
+   : c++ ( include => "polymake/Graph.h" ) {
 
-   method construct(Graph<Dir>) : c++;
+   # Access the data associated with an edge between two given nodes.
+   # The new data element is created on demand.
+   # @param Int from source node
+   # @param Int to target node
+   method operator(Int,Int) : lvalue : wary : c++;
 
-   method construct(Graph<Dir>, $@) {
-      my ($proto, $graph)=splice @_,0,2;
-      CPlusPlus::assign_any($proto->construct->($graph), @_);
-   }
+   # Access the data associated with an edge between two given nodes.
+   # @param Int from source node
+   # @param Int to target node
+   # @return Iterator pointing to the data element (must be dereferenced as ${...}) or undef if the element does not exist.
+   method find(Int,Int) : wary : c++;
 
-   method equal { equal_maps((shift)->params->[1],@_); }
+   # Delete the data associated with an edge between two given nodes.
+   # @param Int from source node
+   # @param Int to target node
+   method erase(Int,Int) : non_const : void : wary : c++;
 }
 
-# @category Graph Types
-# @tparam Dir one of [[Undirected]], [[Directed]], [[UndirectedMulti]] or [[DirectedMulti]]
-# @tparam Element
-declare property_type EdgeHashMap<Dir,Element> : \
-   c++ ( include => "polymake/Graph.h", default_constructor => 0 ) {
+function createNodeMap<Element,Dir>(Graph<Dir>) { new NodeMap<Dir,Element>(@_) }
 
-   method construct(Graph<Dir>) : c++;
+function createEdgeMap<Element,Dir>(Graph<Dir>) { new EdgeMap<Dir,Element>(@_) }
 
-   method construct(Graph<Dir>, $@) {
-      my ($proto, $graph)=splice @_,0,2;
-      CPlusPlus::assign_any($proto->construct->($graph), @_);
-   }
+function createNodeHashMap<Element,Dir>(Graph<Dir>) { new NodeHashMap<Dir,Element>(@_) }
 
-   method equal { equal_maps((shift)->params->[1],@_); }
-
-   method operator($,$) : lvalue : wary : c++;
-
-   method find($,$) : wary : c++;
-
-   method erase($,$) : non_const : void : wary : c++;
-}
-
-function createNodeMap<Element,Dir>(Graph<Dir>) { new NodeMap<Dir,Element>(shift) }
-
-function createEdgeMap<Element,Dir>(Graph<Dir>) { new EdgeMap<Dir,Element>(shift) }
-
-function createNodeHashMap<Element,Dir>(Graph<Dir>) { new NodeHashMap<Dir,Element>(shift) }
-
-function createEdgeHashMap<Element,Dir>(Graph<Dir>) { new EdgeHashMap<Dir,Element>(shift) }
+function createEdgeHashMap<Element,Dir>(Graph<Dir>) { new EdgeHashMap<Dir,Element>(@_) }
 
 
 # @category Graph Operations

@@ -20,12 +20,5 @@
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0, typename T1>
-   FunctionInterface4perl( edge_lengths_X, T0,T1 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturn( edge_lengths<T0>(arg0.get<T1>()) );
-   };
-
-   FunctionInstance4perl(edge_lengths_X, Rational, perl::Canned< const EdgeMap< Undirected, Vector< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

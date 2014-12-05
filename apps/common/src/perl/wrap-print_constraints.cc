@@ -21,12 +21,12 @@
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1>
-   FunctionInterface4perl( print_constraints_X_x_o_f16, T0,T1 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]);
+   FunctionInterface4perl( print_constraints_T_X_x_o_f16, T0,T1 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
       WrapperReturnVoid( (print_constraints<T0>(arg0.get<T1>(), arg1, arg2)) );
    };
 
-   FunctionInstance4perl(print_constraints_X_x_o_f16, Rational, perl::Canned< const Matrix< Rational > >);
-   FunctionInstance4perl(print_constraints_X_x_o_f16, double, perl::Canned< const Matrix< double > >);
+   FunctionInstance4perl(print_constraints_T_X_x_o_f16, Rational, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(print_constraints_T_X_x_o_f16, double, perl::Canned< const Matrix< double > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

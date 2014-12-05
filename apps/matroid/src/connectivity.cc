@@ -24,6 +24,9 @@ namespace {
 
 Array< Set<int> > connected_componets_from_circuits(const Set< Set<int> > circuits, const int n)//cast Array to Set, sorting the sets
 {
+   if(circuits.empty()){
+      return all_subsets_of_1(range(0,n-1));
+   }
    std::list< Set<int> > list;
    Set<int> element;
    Set<int> component;
@@ -46,7 +49,7 @@ Array< Set<int> > connected_componets_from_circuits(const Set< Set<int> > circui
    list.push_back(component);
    coloops-=component;
 
-   Array< Set<int> > result=Array< Set<int> >(list);
+   Array< Set<int> > result(list);
    result.append(coloops.size(),entire(coloops));
    return result;
 }

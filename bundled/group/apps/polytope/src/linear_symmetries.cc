@@ -5,7 +5,9 @@
 #include "polymake/group/permlib.h"
 
 namespace polymake { namespace polytope {
-  
+
+   // beware: sympol / permlib only work with Rational coordinates
+
    perl::Object linear_symmetries(perl::Object p, bool dual)
    {
       group::PermlibGroup sym_group;
@@ -64,7 +66,7 @@ UserFunction4perl("# CREDIT sympol\n\n"
                   "# @param Cone c the cone (or polytope) whose linear symmetry group is to be computed"
                   "# @param Bool dual true if group action on vertices, false if action on facets" 
                   "# @return GroupOfCone the linear symmetry group of //p// (or a subgroup if //p// is a cone)",
-                  &linear_symmetries,"linear_symmetries(Cone $)");
+                  &linear_symmetries,"linear_symmetries(Cone<Rational> $)");
 
 UserFunction4perl("# CREDIT sympol\n\n"
                   "# @category Symmetry"
@@ -74,7 +76,7 @@ UserFunction4perl("# CREDIT sympol\n\n"
                   "# @param Bool dual true if V to H, false if H to V" 
                   "# @param Bool rayCompMethod specifies sympol's method of ray computation via lrs(0), cdd(1), beneath_and_beyond(2)" 
                   "# @return perl::ListReturn list which contains success as bool, vertices/inequalities and lineality/equations as Matrix<Rational>",
-                  &representation_conversion_up_to_symmetry,"representation_conversion_up_to_symmetry(Cone, group::Group $ $)");
+                  &representation_conversion_up_to_symmetry,"representation_conversion_up_to_symmetry(Cone<Rational>, group::Group $ $)");
 } }
 
 // Local Variables:

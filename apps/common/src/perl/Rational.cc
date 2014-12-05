@@ -45,7 +45,6 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary_sub, perl::Canned< const Rational >, perl::Canned< const QuadraticExtension< Rational > >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Rational >, perl::Canned< const QuadraticExtension< Rational > >);
    OperatorInstance4perl(Binary_div, perl::Canned< const Rational >, perl::Canned< const QuadraticExtension< Rational > >);
-   OperatorInstance4perl(convert, Rational, perl::Canned< const QuadraticExtension< Rational > >);
    OperatorInstance4perl(Binary__le, perl::Canned< const Rational >, perl::Canned< const Rational >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Rational >, perl::Canned< const UniMonomial< Rational, int > >);
    OperatorInstance4perl(Binary_add, perl::Canned< const Rational >, perl::Canned< const UniMonomial< Rational, int > >);
@@ -59,10 +58,8 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary_div, perl::Canned< const Rational >, perl::Canned< const UniMonomial< Rational, int > >);
    OperatorInstance4perl(Binary_div, perl::Canned< const Rational >, perl::Canned< const UniTerm< Rational, int > >);
    OperatorInstance4perl(Binary_div, perl::Canned< const Rational >, perl::Canned< const UniPolynomial< Rational, int > >);
-   OperatorInstance4perl(assign, Rational, perl::Canned< const std::pair< bool, Vector< Rational > > >);
    OperatorInstance4perl(assign, Rational, perl::Canned< const pm::sparse_elem_proxy<pm::sparse_proxy_base<pm::sparse2d::line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::Rational, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > >, pm::unary_transform_iterator<pm::AVL::tree_iterator<pm::sparse2d::it_traits<pm::Rational, true, false>, (pm::AVL::link_index)1>, std::pair<pm::BuildUnary<pm::sparse2d::cell_accessor>, pm::BuildUnaryIt<pm::sparse2d::cell_index_accessor> > > >, pm::Rational, pm::NonSymmetric> >);
    OperatorInstance4perl(Binary__ne, perl::Canned< const Rational >, perl::Canned< const Integer >);
-   OperatorInstance4perl(assign, Rational, perl::Canned< const Vector< Rational > >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Rational >, perl::Canned< const pm::SameElementVector<pm::Rational const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

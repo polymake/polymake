@@ -19,11 +19,11 @@
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( congruent_x_x, T0 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]);
+   FunctionInterface4perl( congruent_T_x_x, T0 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
       WrapperReturn( (congruent<T0>(arg0, arg1)) );
    };
 
-   FunctionInstance4perl(congruent_x_x, Rational);
+   FunctionInstance4perl(congruent_T_x_x, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

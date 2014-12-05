@@ -72,7 +72,6 @@ user_function range(Int,Int) : c++ (include => "polymake/Set.h") {
    if ($_[0] > $_[1]) {
       croak( "invalid range: lower limit > upper limit" );
    }
-   &{pop(@_)};
 }
 
 # @category Set Operations
@@ -84,7 +83,6 @@ user_function sequence(Int,Int) : c++ (include => "polymake/Set.h") {
    if ($_[1] < 0) {
       croak( "invalid sequence: negative size" );
    }
-   &{pop(@_)};
 }
 
 function permuted(Set, *) : c++;
@@ -116,13 +114,16 @@ function permuted_inv(PowerSet, *) : c++;
 
 
 # allow to write ~[0,1,2] in contexts where a Set<Int> is expected
-function _construct_set($) : subst_const_op( ~ ) {
+sub _construct_set {
    if ($#{$_[0]} > 0) {
       new Set($_[0])
    } else {
       scalar2set(@{$_[0]});
    }
 }
+
+namespaces::intercept_const_creation(undef, '~', \&_construct_set);
+
 
 # @category Set Types
 # A FacetList is a collection of sets of integral numbers from a closed contiguous range [0..n-1]. The contained sets usually encode facets and the set elements vertices of a simplicial complex.
@@ -146,23 +147,29 @@ declare property_type FacetList : c++ (include => "polymake/FacetList.h") {
 
 ##################################################################################
 
-# @category Set Types
-# Labels an [[IncidenceMatrix]] as __non-symmetric__.
-declare property_type NonSymmetric : c++ (special => 'NonSymmetric', include => "polymake/IncidenceMatrix.h");
-
-# @category Set Types
+# @category Artificial
 # Labels an [[IncidenceMatrix]] as __symmetric__.
 declare property_type Symmetric : c++ (special => 'Symmetric', include => "polymake/IncidenceMatrix.h");
+
+# @category Artificial
+# Labels an [[IncidenceMatrix]] as __non-symmetric__.
+declare property_type NonSymmetric : upgrades(Symmetric) : c++ (special => 'NonSymmetric', include => "polymake/IncidenceMatrix.h");
 
 # @category Set Types
 # A 0/1 incidence matrix.
 # @tparam Sym one of [[Symmetric]] or [[NonSymmetric]], default: [[NonSymmetric]]
-declare property_type IncidenceMatrix<Sym=NonSymmetric> : c++ \
-   (include => "polymake/IncidenceMatrix.h", operators => '@sets:wary /:wary:anchor |:wary:anchor /=:wary |=:wary @compare:wary') {
+declare property_type IncidenceMatrix<Sym=NonSymmetric> \
+   : c++ (include => "polymake/IncidenceMatrix.h", operators => '@sets:wary /:wary:anchor |:wary:anchor /=:wary |=:wary @compare:wary') {
 
-   method construct(*,Int) : c++;
+   # Construct a matrix from a given sequence of rows.
+   # @param Set sets representing the rows
+   # @param Int c number of columns
+   method construct(Set+, Int) : c++;
 
-   method construct(Int,Int) : c++;
+   # Construct a matrix of given dimensions, all elements implicitly initialized to `false'.
+   # @param Int r number of rows
+   # @param Int c number of columns
+   method construct(Int, Int) : c++;
 
    # Returns the number of rows.
    # @return Int
@@ -245,10 +252,10 @@ user_function transpose(IncidenceMatrix:anchor) : c++ (name => 'T');
 # @tparam Value	type of the mapped value
 declare property_type Map<Key,Value> : c++ (include => "polymake/Map.h", operators => '@string') {
 
-   method equal {
-      my ($self, $m1, $m2)=@_;
+   type_method equal {
+      my ($proto, $m1, $m2)=@_;
       return 0 unless keys(%$m1) == keys(%$m2);
-      my ($pk, $pv)=@{$self->params};
+      my ($pk, $pv)=@{$proto->params};
       while (my ($k1, $v1, $k2, $v2)=(each(%$m1), each(%$m2))) {
          return 0 unless $pk->equal->($k1,$k2) && $pv->equal->($v1,$v2);
       }

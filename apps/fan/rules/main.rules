@@ -32,10 +32,10 @@ file_suffix fan
 #
 # Once non-trivial linealities are allowed the following will apply:
 # The [[RAYS]] always lie in a linear subspace which is complementary to the [[LINEALITY_SPACE]].
-declare object PolyhedralFan<Scalar=Rational> [ typechecks::is_ordered_field(Scalar) ];
+declare object PolyhedralFan<Scalar=Rational> [ is_ordered_field(Scalar) ];
 
 # A polyhedral complex.  The derivation from [[PolyhedralFan]] works like the derivation of [[Polytope]] from [[Cone]].
-declare object PolyhedralComplex<Scalar=Rational> [ typechecks::is_ordered_field(Scalar) ] : PolyhedralFan<Scalar>;
+declare object PolyhedralComplex<Scalar=Rational> [ is_ordered_field(Scalar) ] : PolyhedralFan<Scalar>;
 
 INCLUDE
   fan_properties.rules
@@ -52,7 +52,6 @@ INCLUDE
   symmetric_fan.rules
   gfan.rules
 
-default_object PolyhedralFan;
 
 # Local Variables:
 # mode: perl

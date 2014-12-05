@@ -15,11 +15,19 @@
 
 object NormalToricVariety {
 
+   # @category Producing a normal toric variety
+   # Produce a toric variety from a rational Cone.
+   # @param Cone<Rational> cone Cone
+   # @return NormalToricVariety
    method construct(Cone<Rational>) {
       my $cone = $_[1];
       return new NormalToricVariety(check_fan_objects($cone));
    }
 
+   # @category Producing a normal toric variety
+   # Produce a toric variety from a rational fan.
+   # @param PolyhedralFan<Rational> fan Fan
+   # @return NormalToricVariety
    method construct(PolyhedralFan<Rational>) {
       my $fan = $_[1];
       my $result = new NormalToricVariety();
@@ -30,7 +38,7 @@ object NormalToricVariety {
    rule AFFINE : N_MAXIMAL_CONES{
       $this->AFFINE = ($this->N_MAXIMAL_CONES == 1);
    }
-   
+
    rule DEGENERATE : LINEALITY_DIM {
       $this->DEGENERATE = $this->LINEALITY_DIM > 0;
    }
@@ -39,18 +47,24 @@ object NormalToricVariety {
    rule PROJECTIVE : RAYS, MAXIMAL_CONES {
       $this->PROJECTIVE = regular($this);
    }
-  
-	# the number of maximal torus orbits 
-	# they correspond to the rays of the fan
-	rule N_MAXIMAL_TORUS_ORBITS : N_RAYS {
-  		$this->N_MAXIMAL_TORUS_ORBITS = $this->N_RAYS;
-	}
-	weight 0.10;
-	
-	rule ORBIFOLD : SIMPLICIAL {
-  		$this->ORBIFOLD = $this->SIMPLICIAL; 
-	}
-	weight 0.10;
-    
+
+   # the number of maximal torus orbits
+   # they correspond to the rays of the fan
+   rule N_MAXIMAL_TORUS_ORBITS : N_RAYS {
+      $this->N_MAXIMAL_TORUS_ORBITS = $this->N_RAYS;
+   }
+   weight 0.10;
+
+   rule ORBIFOLD : SIMPLICIAL {
+      $this->ORBIFOLD = $this->SIMPLICIAL;
+   }
+   weight 0.10;
+
 }
 
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

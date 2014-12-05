@@ -335,7 +335,7 @@ sub try_restore_config_command_line {
 
    if (defined $repeat) {
       my $builddir=(shift || ".");
-      $builddir.= $^O eq "darwin" ? "/build.darwin.$repeat" : "/build.$repeat";
+      $builddir.= $^O eq "darwin" && $repeat !~ /^darwin\./ ? "/build.darwin.$repeat" : "/build.$repeat";
       -f "$builddir/conf.make"
         or die "Wrong value of --repeat option: configuration file $builddir/conf.make does not exist\n";
       open my $conf, "$builddir/conf.make"

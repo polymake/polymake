@@ -21,7 +21,7 @@
 # @param Object object  to be modified
 # @return Object  the same //object//, but with modified type
 
-user_function cast<Target>(Core::Object) { (shift)->cast_me(typeof Target); }
+user_function cast<Target>(Core::Object) { $_[0]->cast_me(typeof Target); }
 
 
 # @category Utilities
@@ -70,7 +70,7 @@ user_function histogram {
    my ($data)=@_;
    return unless @$data;
    my $element_type=Core::PropertyType::guess_element_type($data);
-   my $map=Map->type($element_type, Int->type)->new_object;
+   my $map=(typeof Map($element_type, typeof Int))->construct->();
    ++$map->{$_} for @$data;
    $map
 }

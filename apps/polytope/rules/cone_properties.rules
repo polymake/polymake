@@ -137,10 +137,6 @@ property INEQUALITIES : Matrix<Scalar> {
 # To be overloaded in derived classes
 sub canonical_ineq { }
 
-# @category Geometry
-# The number of [[INEQUALITIES]]
-property N_INEQUALITIES : Int;
-
 
 # @category Geometry
 # Dual basis of the linear span of the cone.
@@ -504,8 +500,7 @@ property NEIGHBOR_RAYS_CYCLIC_NORMAL : Array< List<Int> >;
 # @param Cone c the input cone
 # @return Cone<Coord> a new cone object or //C// itself it has the requested type
 user_function convert_to<Coord>(Cone) {
-   my $target_type=typeof Coord;
-   if ($_[0]->type->params->[0] == $target_type) {
+   if ($_[0]->type->params->[0] == typeof Coord) {
       $_[0]
    } else {
       new Cone<Coord>($_[0]);

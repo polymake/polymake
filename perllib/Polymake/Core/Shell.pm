@@ -75,7 +75,7 @@ sub start {
 
       my $F1=InteractiveCommands::Tgetent()->{$User::help_key};
       $Shell->term->bind_keyseq($F1, $Shell->term->add_defun("context_help", \&context_help));
-      
+
    }
    add AtEnd("Shell", sub { undef $Shell });
 }
@@ -110,7 +110,7 @@ my $canceled=sub {
 };
 
 sub interactive_INC {
-   if ($_[1] eq "input:") { 
+   if ($_[1] eq "input:") {
       (\&get_line, $Shell)
    } elsif ($_[1] =~ /^history:/) {
       open my $hf, $';
@@ -122,7 +122,7 @@ sub interactive_INC {
 }
 
 sub pipe_INC {
-   if ($_[1] eq "input:") { 
+   if ($_[1] eq "input:") {
       (\&OverPipe::get_line, $Shell)
    } else {
       $User::application->INC($_[1]);
@@ -145,7 +145,7 @@ sub run {
    sigaction SIGINT, $sa_INT, $sa_INT_save;
 
    $Shell->term->ReadHistory($Shell->histfile) if -f $Shell->histfile;
-   undef $Shell->term->{MinLength};     # don't automatically add to history
+   $Shell->term->{MinLength}=0;     # don't automatically add to history
 
    print "\rPress F1 or enter 'help;' for basic instructions.\n";
    STDOUT->flush();
@@ -447,7 +447,7 @@ sub all_completions : method {
            | \b(?'File' File) \s*=>\s* )
          (?:(?'quote' ['"]) (?'prefix' [^"']*)? )? \G}xogc) {
       my ($simple_cmd, $dir_cmd, $paren, $File, $quote, $prefix)=@+{qw(simple_cmd dir_cmd paren File quote prefix)};
-       
+
       if (defined $quote) {
          try_filename_completion($self, $word, $quote, $prefix, $dir_cmd);
       } else {
@@ -615,9 +615,9 @@ sub all_completions : method {
    # command expecting a script file
    if ($line =~
        m{ $op_re script (?'paren' $args_start_re) (?:(?'quote' ['"]) (?'prefix' [^"']*)? )? \G}xogc) {
-       
+
       my ($paren, $quote, $prefix)=@+{qw(paren quote prefix)};
-      
+
       if (defined $quote) {
          if ($prefix =~ m|^[./~]|) {
             try_filename_completion($self, $word, $quote, $prefix, 0);
@@ -644,10 +644,10 @@ sub all_completions : method {
    # methods expecting a property name
    if ($line =~
        m{ $op_re $var_or_func_re $intermed_chain_re
-          (?: (?'mult_word' give | lookup | (?'mult_arg' provide | get_schedule)) | take | add | remove ) \s*\(\s*
+          (?: (?'mult_word' give | lookup | (?'mult_arg' provide | get_schedule | remove)) | take | add ) \s*\(\s*
           (?('mult_arg') (?: (['"]) $hier_id_alt_re \g{-1} \s*,\s*)* )
           (?:(?'quote' ['"]) (?('mult_word') (?: $hier_id_re \s*\|\s*)* ) (?'prefix' $hier_id_re\.?)?)? \G}xogc) {
-      
+
       if (defined $+{quote}) {
          my ($var, $app_name, $func, $intermed, $mult_word, $mult_arg, $quote, $prefix)=@+{qw(var app_name func intermed mult_word mult_arg quote prefix)};
 
@@ -903,7 +903,7 @@ sub all_completions : method {
 
       my ($type, $prop_name, $quote, $chain)=@+{qw(type prop_name quote chain)};
 
-      if (defined ($type=eval { $User::application->eval_type($type) })
+      if (defined ($type=$User::application->eval_type($type, 1))
             and
           instanceof ObjectType($type)) {
          $self->completion_words=[ try_property_completion($type, $prop_name || $chain) ];
@@ -1101,9 +1101,9 @@ sub find_user_variable {
 }
 
 sub retrieve_return_type {
-   my $name=(shift)->return_type;
+   my $name=$_[0]->return_type;
    if (defined($name) and $name !~ /::/) {
-      eval { $User::application->eval_type($name) }
+      $User::application->eval_type($name, 1)
    } else {
       $name
    }
@@ -1148,7 +1148,7 @@ sub retrieve_method_owner_type {
                }
                # otherwise let's just suppose the method returns the same object
             } else {
-               ref($type) or defined ($type=eval { $User::application->eval_type($type) }) or return;
+               ref($type) or defined ($type=$User::application->eval_type($type, 1)) or return;
                if (instanceof PropertyType($type)) {
                   $type=$type->get_field_type($method_name) or return;
                } else {

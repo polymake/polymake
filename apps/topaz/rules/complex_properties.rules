@@ -13,6 +13,33 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+# @category Topology
+#
+# A group is encoded as a sequence ( { (t<sub>1</sub> m<sub>1</sub>) ...  (t<sub>n</sub>  m<sub>n</sub>) } f) of non-negative integers,
+# with t<sub>1</sub> > t<sub>2</sub> > ... > t<sub>n</sub> > 1, plus an extra non-negative integer f.
+#
+# The group is isomorphic to (Z/t<sub>1</sub>)<sup>m<sub>1</sub></sup> &times; ... &times; (Z/t<sub>n</sub>)<sup>m<sub>n</sub></sup> &times; Z<sup>f</sup>, 
+# where Z<sup>0</sup> is the trivial group.
+#
+# Access methods: //torsion// delivers the list of Z-groups, //betti_number// the number f.
+#
+declare property_type HomologyGroup<Scalar> : c++ (include => "polymake/topaz/ChainComplex.h");
+
+# @category Topology
+#
+# A group is encoded as a pair of an integer matrix and a vector of faces.
+# The elements of the group can be obtained by symbolic multiplication of both.
+#
+# Access methods: //coeff// delivers the integer matrix, //faces// the vector of faces.
+#
+# @tparam Scalar integer type of matrix elements
+
+declare property_type CycleGroup<Scalar> : c++ (include => "polymake/topaz/ChainComplex.h");
+
+# @category Topology
+# TODO: explain the meaning of the fields: parity, positive, negative
+declare property_type IntersectionForm : c++ (include => "polymake/topaz/IntersectionForm.h");
+
 object SimplicialComplex {
 
 declare permutation VertexPerm {
@@ -175,29 +202,6 @@ property EULER_CHARACTERISTIC : Int;
 
 
 # @category Topology
-#
-# A group is encoded as a sequence ( { (t<sub>1</sub> m<sub>1</sub>) ...  (t<sub>n</sub>  m<sub>n</sub>) } f) of non-negative integers,
-# with t<sub>1</sub> > t<sub>2</sub> > ... > t<sub>n</sub> > 1, plus an extra non-negative integer f.
-#
-# The group is isomorphic to (Z/t<sub>1</sub>)<sup>m<sub>1</sub></sup> &times; ... &times; (Z/t<sub>n</sub>)<sup>m<sub>n</sub></sup> &times; Z<sup>f</sup>, 
-# where Z<sup>0</sup> is the trivial group.
-#
-# Access methods: //torsion// delivers the list of Z-groups, //betti_number// the number f.
-#
-declare property_type HomologyGroup<Scalar> : c++ (include => "polymake/topaz/ChainComplex.h");
-
-# @category Topology
-#
-# A group is encoded as a pair of an integer matrix and a vector of faces.
-# The elements of the group can be obtained by symbolic multiplication of both.
-#
-# Access methods: //coeff// delivers the integer matrix, //faces// the vector of faces.
-#
-# @tparam Scalar integer type of matrix elements
-
-declare property_type CycleGroup<Scalar> : c++ (include => "polymake/topaz/ChainComplex.h");
-
-# @category Topology
 # Reduced simplicial homology groups H<sub>0</sub>, ..., H<sub>d</sub> (integer coefficients), listed in increasing dimension order.
 # See [[HomologyGroup]] for explanation of encoding of each group.
 
@@ -230,10 +234,6 @@ property COCYCLES : Array<CycleGroup<Integer>>;
 ### FIXME: needs a client to permute since CycleGroup embedded c++ type
 rule nonexistent : COCYCLES : VertexPerm.COCYCLES, VertexPerm.PERMUTATION;
 
-
-# @category Topology
-# TODO: explain the meaning of the fields: parity, positive, negative
-declare property_type IntersectionForm : c++ (include => "polymake/topaz/IntersectionForm.h");
 
 # @category Topology
 # Parity and signature of the intersection form of a closed oriented 4-manifold.

@@ -16,22 +16,47 @@
 # @topic category property_types/Basic Types
 # This category contains all basic types, in particular those that wrap C++, GMP or perl types such as [[Int]], [[Integer]], [[Rational]], [[Long]], [[Float]], [[Array]], [[String]], ...
 
+# @topic category property_types/Artificial
+# These types are auxiliary artifacts helping to build other classes,
+# primarily representing template parameters or enumeration constants.
+# They should not be used alone as property types or function arguments.
+# In the most cases they won't even have user-accessible constructors.
+
 # @topic category functions/Combinatorics
 # This category contains combinatorial functions.
 
 
-
-use re 'eval';
-
 # @category Basic Types
+# Plain text without any imposed structure.
 declare property_type Text {
 
-   sub equal { $_[0] eq $_[1] }
+   method construct() { undef }
 
-   sub toXML {
-      my ($text, $writer)=@_;
-      $writer->cdata($text);
+   method construct($) { "$_[1]" }
+
+   type_method parse { $_[1] }
+
+   type_method equal { $_[1] eq $_[2] }
+}
+
+##################################################################################
+
+# @category Basic Types
+# Corresponds to the C++ type __std::string__.
+declare property_type String : c++ (builtin => 'std::string') {
+
+   method construct() { "" }
+
+   method construct($) { "$_[1]" }
+
+   type_method parse { $_[1] =~ $quoted_re ? $+{quoted} : $_[1] }
+
+   type_method toString {
+      my ($proto, $value)=@_;
+      !length($value) || $value =~ /\s/ ? "'$value'" : $value
    }
+
+   type_method equal { $_[1] eq $_[2] }
 }
 
 ##################################################################################
@@ -40,18 +65,16 @@ declare property_type Text {
 # Corresponds to the C++ type __int__.
 declare property_type Int : c++ (builtin => 'int') {
 
-   method parse {
-      first(extract_integer(), /\G (??{$_[1]})/xgc || &parse_error);
-   }
+   method construct() { 0 }
 
-   sub isa { is_integer(@_) }
-
-   function construct() { 0 }
-
-   function construct($) {
+   method construct($) {
       use integer;
-      0+$_[0]
+      0+$_[1]
    }
+
+   type_method parse { extract_integer($_[1]) }
+
+   type_method isa { is_integer($_[1]) }
 }
 
 # @category Basic Types
@@ -64,42 +87,40 @@ declare property_type Long : Int : c++ (builtin => 'long');
 # Corresponds to the C++ type __bool__.
 declare property_type Bool : c++ (builtin => 'bool') {
 
-   method parse {
-      if (m{\G\s* (?i: (\d+) | (true) | false) (??{$_[1]})}xgc) {
+   method construct() { 0 }
+
+   method construct($) { !(!$_[1]) }
+
+   type_method parse {
+      if ($_[1] =~ m{^\s* (?i: (\d+) | (true) | false) \s*$ }x) {
 	 (defined($1) ? $1!=0 : defined($2))+0
       } else {
-	 &parse_error;
+	 croak( "parse error: invalid boolean value $_[1]" );
       }
    }
 
-   sub isa { is_boolean(@_) }
+   type_method isa { is_boolean($_[1]) }
 
-   function construct() { 0 }
-
-   function construct($) { $_[0] ? 1 : 0 }
-
-   sub toString { $_[0] ? "true" : "false" }
+   type_method toString { $_[1] ? "true" : "false" }
 }
 
 # @category Basic Types
 # Corresponds to the C++ type __double__.
-declare property_type Float : c++ (builtin => 'double') {
+declare property_type Float : upgrades(Int) : c++ (builtin => 'double') {
 
-   method parse {
-      first(extract_float(), /\G (??{$_[1]})/xgc || &parse_error);
-   }
+   method construct() { 0.0 }
 
-   sub equal {
-      my ($a, $b)=@_;
-      my $max=max(abs($a),abs($b));
+   method construct($) { 0.0+$_[1] }
+
+   type_method parse { extract_float($_[1]) }
+
+   type_method equal {
+      my ($proto, $a, $b)=@_;
+      my $max=max(abs($a), abs($b));
       $max<=1e-7 || abs($a-$b)<=1e-7*$max;
    }
 
-   sub isa { is_float(@_) }
-
-   function construct() { 0.0 }
-
-   function construct($) { 0.0+$_[0] }
+   type_method isa { is_float($_[1]) }
 
    # produce an infinitely large positive value
    user_method inf() : static : c++ (name => 'std::numeric_limits<double>::infinity');
@@ -108,7 +129,7 @@ declare property_type Float : c++ (builtin => 'double') {
    user_method minus_inf() { -&inf }
 }
 
-# @category Basic Types
+# @category Artificial
 declare property_type LocalFloatEpsilon : c++ (special => 'pm::local_epsilon_keeper');
 
 function local_epsilon($) : c++ (include => "polymake/internal/comparators.h");
@@ -119,10 +140,10 @@ sub inhibited_num { croak( "can't use ", $_[0]->type->full_name, " in a context 
 
 # @category Basic Types
 # An integer of arbitrary size.
-declare property_type Integer : c++ \
+declare property_type Integer : upgrades(Int) : c++ \
    (operators => '++ -- bool neg ! +:int -:int *:int /:int +=:int -=:int *=:int /=:int %:int %=:int  \
                   << <<= >> >>= **(Integer::pow(*,*:int)) abs(abs(*)) @compare <=>(compare(*) : method)',     \
-    include => "polymake/Integer.h") : subst_const_op( I ) {
+    include => "polymake/Integer.h") {
 
    # produce an infinitely large positive value
    user_method inf() : static : c++ (name => 'std::numeric_limits<Integer>::max');
@@ -133,6 +154,9 @@ declare property_type Integer : c++ \
    use overload '0+' => \&inhibited_num;
 }
 
+
+# use automatically for all literal long integral constants in perl input
+namespaces::intercept_const_creation(undef, 'I', sub { (typeof Integer)->construct->($_[0]) });
 
 # @category Combinatorics
 # Computes the binomial coefficient __//n// choose //k//__.
@@ -145,12 +169,13 @@ user_function binomial(*,$) : c++ (name => 'Integer::binom', include => "polymak
 # @category Basic Types
 # A class for rational numbers.
 # You can easily create a Rational like that: $x = 1/2;
-declare property_type Rational : c++ \
+declare property_type Rational : upgrades(Integer) : c++ \
    (operators => '++ -- bool neg ! +:int -:int *:int /:int +=:int -=:int *=:int /=:int  \
                   << <<= >> >>= abs(abs(*)) @compare <=>(compare(*) : method)',         \
     include => "polymake/Rational.h") {
 
-   method construct(*,*) : c++ : subst_const_op( / );
+   # Literal fraction constants in the perl input are also built with this constructor.
+   method construct(*,*) : c++ : const_creation( / );
 
    # Produce an infinitely large positive value.
    user_method inf() : static : c++ (name => 'std::numeric_limits<Rational>::max');
@@ -262,16 +287,21 @@ user_function lcm(*:int, *:int) : c++ (include => "polymake/numerical_functions.
 # @return Integer //n//!
 user_function fac(*:int) : c++ (name => 'Integer::fac', include => "polymake/Integer.h");
 
-typecheck is_ordered_field_with_unlimited_precision($) {
+
+# @category Internal
+# type checking
+function is_ordered_field_with_unlimited_precision($) {
    my $type=shift;
-   $type->abstract or defined(wantarray) ? 0 : croak( $type->full_name, " is not a suitable coordinate type" )
+   is_object($type) && $type->abstract or defined(wantarray) ? 0 : croak( $type->full_name, " is not a suitable coordinate type" )
 }
 
-typecheck is_ordered_field_with_unlimited_precision(Rational) { 1 }
+function is_ordered_field_with_unlimited_precision(Rational) { 1 }
 
-typecheck is_ordered_field($) { &typechecks::is_ordered_field_with_unlimited_precision }
+# @category Internal
+# type checking
+function is_ordered_field($) { &is_ordered_field_with_unlimited_precision }
 
-typecheck is_ordered_field(Float) { 1 }
+function is_ordered_field(Float) { 1 }
 
 
 # @category Arithmetic
@@ -307,7 +337,7 @@ user_function convert_to<Element>($) {
 # 
 # You can construct the value a+b\(\sqrt r\) via QuadraticExtension(a, b, r) (where a, b, r are of type //Field//).
 # @tparam Field default: [[Rational]]
-declare property_type QuadraticExtension<Field=Rational> : c++ \
+declare property_type QuadraticExtension<Field=Rational> : upgrades(Field) : c++ \
    (operators => '! @arith @compare', include => "polymake/QuadraticExtension.h") {
 
     # Construct q=a+b*sqrt(r).
@@ -317,249 +347,69 @@ declare property_type QuadraticExtension<Field=Rational> : c++ \
     method construct(*, *, *) : c++;
 
     # construct q=a
-    # @param Rational a
-    # @todo replace the zoo of different constructors with a single one with concept check when implemented
-    method construct(Rational) : c++;
-
-    # construct q=a
-    # @param Integer a
-    method construct(Integer) : c++;
-
-    # construct q=a
-    # @param Int a
-    method construct(Int) : c++;
+    # @param Field a
+    method construct(type_upgrades_to<Field>) : c++;
 }
 
 function conjugate(QuadraticExtension) : c++;
 
-typecheck is_ordered_field_with_unlimited_precision(QuadraticExtension) { 1 }
+function is_ordered_field_with_unlimited_precision(QuadraticExtension) { 1 }
 
 
 ##################################################################################
 
-# @category Basic Types
-# Corresponds to the C++ type __std::string__.
-declare property_type String : c++ (builtin => 'std::string') {
-
-   method parse {
-      if (m{\G\s* (['"])? (?(1) (.*?) (?<! \\) \1 | (.*?) ) (??{$_[1]}) }xgc) {
-         $1 ? "$2" : "$3";
-      } else {
-	 &parse_error;
-      }
-   }
-
-   sub toString {
-      !length($_[0]) || $_[0] =~ /\s/ ? "'$_[0]'" : $_[0]
-   }
-
-   sub equal { $_[0] eq $_[1] }
-}
-
-# @category Basic Types
-# Corresponds to the perl scalar.
+# @category Artificial
+# A perl scalar of whatever contents.
 declare property_type SCALAR : c++ (special => 'perl::Scalar');
 
+# @category Artificial
+# A perl array of whatever contents.
+declare property_type ARRAY : c++ (special => 'perl::Array');
+
 ##################################################################################
 
-function is_container($) { Core::CPlusPlus::is_container($_[0]) }
-
-sub equal_arrays { is_ARRAY($_[1]) && &equal_lists }
+*is_container=\&Core::CPlusPlus::is_container;
 
 # @category Basic Types
 # Corresponds to the C++ type __std::list__.
 # @tparam Element
-declare property_type List<Element> : c++ (name => 'std::list', include => "polymake/list", builtin => \&as_builtin) {
-
-   method as_builtin {
-      my ($self)=@_;
-      my $opts=$self->params->[0]->cppoptions;
-      !$opts || defined($opts->special) || $opts->builtin;
-   }
-
-   my $list_elem_end=qr{ \s*\} (??{ pop @delimiters }) | \s }x;
-
-   method parse {
-      my ($self, $delim)=@_;
-      push @delimiters, $delim;
-      my $end=$#delimiters;
-      /\G\s* \{ (?: $list_elem_end )? /xogc or parse_error(original_object());
-
-      my @list;
-      local_incr($nesting_level);
-      while ($#delimiters>=$end) {
-	 push @list, $self->params->[0]->parse->($list_elem_end);
-      }
-      bless \@list, original_object()->pkg;
-   }
-
-   method canonical {
-      my ($self, $value)=@_;
-      $self->params->[0]->canonical->($_) for @$value;
-   }
-
-   method equal {
-      my ($self, $a, $b)=@_;
-      my $l=$#$a;
-      return 0 if $l != $#$b;
-      for (my $i=0; $i<=$l; ++$i) {
-	 return 0 unless $self->params->[0]->equal->($a->[$i],$b->[$i]);
-      }
-      1
-   }
-
-   method toString {
-      my ($self, $value)=@_;
-      local_incr($nesting_level);
-      "{" . join(" ", map { $self->params->[0]->toString->($_) } @$value) . "}"
-   }
-
-   method construct_trivial {
-      my $self=shift;
-      my ($obj, $arg0);
-      if (@_!=1 || !is_container($arg0=$_[0])) {
-	 $obj=[ @_ ];
-      } elsif (is_object($arg0)) {
-	 $obj=[ @$arg0 ];
-      } else {
-	 $obj=$arg0;
-      }
-      bless $obj, $self->pkg;
-      if (!$trusted_value && defined($self->canonical)) {
-         $self->canonical->($obj);
-      }
-      $obj
-   }
-
-   method construct_nontrivial {
-      my $self=shift;
-      my $obj=bless [ map { new_object($self->params->[0], $_) } @_==1 && is_container($_[0]) ? @{$_[0]} : @_ ], $self->pkg;
-      if (!$trusted_value && defined($self->canonical)) {
-         $self->canonical->($obj);
-      }
-      $obj
-   }
-
-   Struct::pass_original_object($_) for \&construct_trivial, \&construct_nontrivial;
-
-   method param_is_derived {
-      my ($self, $other)=@_;
-      $self->name eq $other->name &&
-      $self->application == $other->application &&
-      UNIVERSAL::isa($other->params->[0]->pkg, $self->params->[0]->pkg)
-   }
-
-   method init {
-      my ($self)=@_;
-
-      # TODO: remove this once everything is handled in a partial specialization for Array<Object>
-      return if $self->params->[0]->cppoptions == Core::ObjectType::cppoptions();
-
-      $self->dimension=1;
-      $self->construct=$self->params->[0]->dimension || defined($self->params->[0]->construct) ? \&construct_nontrivial : \&construct_trivial;
-      unless (defined($self->params->[0]->canonical)) {
-         undef $self->canonical;
-      }
-      unless (defined($self->params->[0]->equal)) {
-         $self->equal=\&equal_arrays;
-      }
-      unless (defined($self->params->[0]->toString)) {
-         $self->toString=sub { "{@{$_[0]}}" };
-      }
-      if (defined($self->params->[0]->construct)) {
-         $self->isa=sub : method {
-            is_object($_[1]) and &PropertyType::isa_fallback || param_is_derived($_[0],$_[1]->type)
-         };
-      }
-      $self->toXML=defined($self->params->[0]->toXML)
-                   ? sub : method { nontrivialArray_toXML((shift)->params->[0], @_) }
-                   : sub : method { trivialArray_toXML((shift)->params->[0], @_) };
-      $self->define_basic_operators;
-   }
-}
-
-function is_container(List) { 1 }
+declare property_type List<Element> : c++ (name => 'std::list', include => "polymake/list", operators => '@compare');
 
 ##################################################################################
 
+# primarily used in test suites
+function compare_float_sequences($$) {
+   my ($seq1, $seq2)=@_;
+   my $l=$#$seq1;
+   if ($l == $#$seq2) {
+      my $fp=typeof Float;
+      my $i=0;
+      foreach my $e1 (@$seq1) {
+         $fp->equal->($e1, $seq2->[$i++]) or return 0;
+      }
+      1
+   }
+}
+
 # @category Basic Types
 # An array with elements of type //Element//.
+# Corresponds to the C++ type [[Array]].
 # @tparam Element
-declare property_type Array<Element> : List<Element> : c++ (include => "polymake/Array.h", builtin => \&as_builtin) {
-
-   my $array_elem_end =qr{ \s*> (??{ pop @delimiters }) | \s }x;
-   my $array1_elem_end=qr{ (?m:\s*\Z) (??{ pop @delimiters }) | (?<=\n) | [ \t]*\n }x;
-   my $array0_elem_end=qr{ (?m:[ \t]*$) (??{ pop @delimiters }) | [ \t] }x;
-
-   method as_builtin {
-      my ($self)=@_;
-      my $opts=$self->params->[0]->cppoptions;
-      !$opts || defined($opts->special);
-   }
-
-   method parse {
-      my ($self, $delim)=@_;
-      push @delimiters, $delim;
-      my $end=$#delimiters;
-      my $nested=$nesting_level;
-      local $nesting_level= $self->dimension==2 ? 0 : $nested+1;
-      my @array;
-      my $elem_end=
-	 $nested
-	 ? (/\G\s*< (?: $array_elem_end )? /xogc || parse_error(original_object()), $array_elem_end) :
-         $self->dimension>1
-	 ? (/\G $array1_elem_end /xogc, $array1_elem_end)
-	 : (/\G $array0_elem_end /xogc, $array0_elem_end);
-      while ($#delimiters >= $end) {
-	 push @array, $self->params->[0]->parse->($elem_end);
-      }
-      bless \@array, original_object()->pkg;
-   }
-
-   method init {
-      my ($self)=@_;
-
-      # TODO: make use of partial specializations once they are implemented
-      if ($self->params->[0]->cppoptions == Core::ObjectType::cppoptions()) {
-         Core::ObjectArrayType::init($self);
-         return;
-      }
-
-      &List::init;
-      $self->dimension= $self->params->[0]->dimension==1 && $self->params->[0]->pkg !~ /^Polymake::common::Array_/ ? 1 : $self->params->[0]->dimension+1;
-      $self->toString=defined($self->params->[0]->toString)
-	              ? ($self->dimension > 2
-	                 ? sub : method {
-		              my ($self, $value)=@_;
-		              local_incr($nesting_level);
-		              ($nesting_level>1 && "<") .
-		              join("", map { $self->params->[0]->toString->($_) } @$value) .
-		              ($nesting_level>1 && ">\n")
-	                   } :
-                         $self->dimension==2
-	                 ? sub : method {
-		              my ($self, $value)=@_;
-                              my $nested=$nesting_level;
-		              local $nesting_level=0;
-		              ($nested>0 && "<") .
-		              join("", map { enforce_nl($self->params->[0]->toString->($_)) } @$value) .
-		              ($nested>0 && ">\n")
-	                   }
-	                 : sub : method {
-	                      my ($self, $value)=@_;
-	                      local_incr($nesting_level);
-	                      ($nesting_level>1 && "<") .
-	                      join(" ", map { $self->params->[0]->toString->($_) } @$value) .
-	                      ($nesting_level>1 && ">")
-	                   })
-                      : sub {
-	                   ($nesting_level>0 && "<") . "@{$_[0]}" . ($nesting_level>0 && ">")
-	                };
-   }
+declare property_type Array<Element> : (instanceof Polymake::Core::ObjectType(Element) ? Polymake::Core::BigObjectArray : undef) \
+   : c++ (include => "polymake/Array.h", operators => '@eq' ) {
 
    # Returns the size.
    # @return Int
    user_method size { scalar @{$_[0]} }
+
+   type_method init {
+      my ($proto)=@_;
+      if ($proto->super == typeof Polymake::Core::BigObjectArray) {
+         $proto->super->init_constructor($proto);
+      } elsif ($proto->params->[0] == typeof Float) {
+         $proto->equal=\&compare_float_sequences;
+      }
+   }
 }
 
 function permuted(Array, *) : c++ (include => "polymake/permutations.h") : builtin_sub {
@@ -592,11 +442,14 @@ user_function find_permutation(*,*) : c++ (include => "polymake/permutations.h")
 
 
 # @category Combinatorics
+# Returns the __cycles__ of a permutation given by //p//.
+# @param Array<Int> p
 # @return Array<List<Int>>
-user_function permutation_cycles(*) : c++ (include => "polymake/permutations.h") : returns(Array<List<Int>>);
+user_function permutation_cycles(*) : c++ (include => "polymake/permutations.h") : returns(@);
 
 # @category Combinatorics
 # Returns the __sign__ of the permutation given by //p//.
+# @param Array<Int> p
 # @return Int +1 or -1
 user_function permutation_sign(*) : c++ (include => "polymake/permutations.h");
 
@@ -606,13 +459,9 @@ user_function permutation_sign(*) : c++ (include => "polymake/permutations.h");
 # Returns a list of all permutations as a perl-array
 user_function all_permutations($) : c++  (include => "polymake/permutations.h") : returns(@);
 
-# @category Basic Types
-# Corresponds to the perl array.
-declare property_type ARRAY : Array<SCALAR> : c++ (special => 'perl::Array');
-
 ##################################################################################
 
-# @category Basic Types
+# @category Artificial
 # An iterator over a container object.
 # @tparam Element
 declare property_type Iterator<*> : c++ {
@@ -622,162 +471,7 @@ declare property_type Iterator<*> : c++ {
 }
 
 # Create an iterator visiting all elements in a container implemented as a C++ object.
-function entire(*:anchor) : c++ : returns(Iterator<*>);
-
-##################################################################################
-
-# @category Basic Types
-declare property_type Tuple<...> {
-
-   my $tuple_elem_end=qr{ \s*\) (??{ pop @delimiters }) | \s }x;
-   my $tuple0_elem_end=qr{ (?m:\s*\Z) (??{ pop @delimiters }) | \s }x;
-
-   method parse {
-      my ($self, $delim)=@_;
-      push @delimiters, $delim;
-      my $end=$#delimiters;
-      my @tuple;
-      local_incr($nesting_level);
-      my $elem_end=
-         $nesting_level>1
-	 ? (/\G\s*\( (?: $tuple_elem_end )?/xogc || parse_error(original_object()), $tuple_elem_end)
-	 : (/\G $tuple0_elem_end /xogc, $tuple0_elem_end);
-      my $l=$#{$self->params};
-      foreach my $elem (@{$self->params}) {
-	 if ($#delimiters < $end) {
-	    $#tuple=$#{$self->params};	# fill the rest with undef
-	    last;
-	 }
-	 push @tuple, $elem->parse->($elem_end);
-      }
-      parse_error(original_object()) if $#delimiters>=$end;
-      bless \@tuple, original_object()->pkg;
-   }
-
-   method canonical {
-      my ($self, $value)=@_;
-      die "too many elements\n" if $#$value > $#{$self->params};
-      for (my $i=0; $i<=$#$value; ++$i) {
-	 if (defined($value->[$i])) {
-	    $self->params->[$i]->canonical->($value->[$i]);
-	 }
-      }
-   }
-
-   method toString {
-      my ($self, $value)=@_;
-      local_incr($nesting_level);
-      my $text=$nesting_level>1 && "(";
-      for (my $i=0; $i<=$#$value; ++$i) {
-	 $text .= ($i>0 && substr($text,-1,1) !~ /\s/ && " ") . $self->params->[$i]->toString->($value->[$i]);
-      }
-      $text.($nesting_level>1 && ")");
-   }
-
-   method construct_trivial {
-      my $self=shift;
-      my ($obj, $arg0);
-      if (@_ != 1 || !is_ARRAY($arg0=$_[0])) {
-	 $obj=[ @_ ];
-      } elsif (is_object($arg0)) {
-	 $obj=[ @$arg0 ];
-      } else {
-	 $obj=$arg0;
-      }
-      if ($#$obj != $#{$self->params}) {
-         if ($#$obj==-1) {
-            # default constructor creates a Tuple full of undef's
-            $#$obj=$#{$self->params};
-         } else {
-            croak( "An object ", $self->full_name , " must be initialized with ", $#{$self->params}+1, " values, one for each field" );
-         }
-      }
-      bless $obj, $self->pkg;
-      if (!$trusted_value && defined($self->canonical)) {
-	 $self->canonical->($obj);
-      }
-      $obj
-   }
-
-   method construct_nontrivial {
-      my $self=shift;
-      my $single_arg= @_ == 1 && is_ARRAY(my $arg0=$_[0]);
-      my $obj;
-      if (($single_arg ? $#$arg0 : $#_) != $#{$self->params}) {
-         if (($single_arg ? $#$arg0 : $#_)==-1) {
-            # default constructor
-            $obj=bless [ map { $_->construct->() } @{$self->params} ], $self->pkg;
-         } else {
-            croak( "An object ", $self->full_name , " must be initialized with ", $#{$self->params}+1, " values, one for each field" );
-         }
-      } else {
-         my $i=0;
-         $obj=bless [ map { new_object($self->params->[$i++],$_) } $single_arg ? @$arg0 : @_ ], $self->pkg;
-      }
-      if (!$trusted_value && defined($self->canonical)) {
-	 $self->canonical->($obj);
-      }
-      $obj
-   }
-
-   Struct::pass_original_object($_) for \&construct_trivial, \&construct_nontrivial;
-
-   method equal {
-      my ($self, $a, $b)=@_;
-      my $l=$#$a;
-      return 0 if $l != $#$b;
-      for (my $i=0; $i<=$l; ++$i) {
-	 return 0 unless $self->params->[$i]->equal->($a->[$i],$b->[$i]);
-      }
-      1
-   }
-
-   method params_are_derived {
-      my ($self, $other)=@_;
-      $self->name eq $other->name &&
-      $self->application == $other->application &&
-      do {
-	 for (my ($i,$l)=(0,$#{$self->params}); $i<=$l; ++$i) {
-	    return 0 unless UNIVERSAL::isa($other->params->[$i]->pkg, $self->params->[$i]->pkg);
-	 }
-	 1
-      }
-   }
-
-   method init {
-      my ($self)=@_;
-      $self->dimension=1;
-      my ($need_canonical, $need_toString, $need_toXML, $need_special_constructor, $need_equal);
-      foreach my $elem (@{$self->params}) {
-	 $need_canonical ||= defined($elem->canonical);
-	 $need_toString ||= defined($elem->toString);
-	 $need_toXML ||= defined($elem->toXML);
-	 $need_special_constructor ||= defined($elem->construct);
-	 $need_equal ||= defined($elem->equal);
-	 assign_max($self->dimension, $elem->dimension);
-      }
-      unless ($need_canonical) {
-	 undef $self->canonical;
-      }
-      unless ($need_toString) {
-	 $self->toString=sub { $nesting_level ? "(@{$_[0]})" : "@{$_[0]}" };
-      }
-      $self->toXML=$need_toXML
-                   ? sub : method { nontrivialComposite_toXML((shift)->params, @_) }
-	           : \&trivialComposite_toXML;
-      $self->construct=$need_special_constructor ? \&construct_nontrivial : \&construct_trivial;
-      if ($need_special_constructor) {
-	 $self->isa=sub : method {
-                       is_object($_[1]) and
-                       &PropertyType::isa_fallback || params_are_derived($_[0],$_[1]->type)
-                    };
-      }
-      unless ($need_equal) {
-	 $self->equal=\&equal_arrays;
-      }
-      $self->define_basic_operators;
-   }
-}
+function entire(*:anchor) : c++ : returns(Iterator);
 
 ##################################################################################
 
@@ -785,22 +479,12 @@ declare property_type Tuple<...> {
 # Corresponds to the C++ type __std::Pair__.
 # @tparam First
 # @tparam Second
-declare property_type Pair<First,Second> : Tuple<First,Second> : \
-        c++ (name => 'std::pair', builtin => \&as_builtin, include => "polymake/client.h", fields => [qw(first second)]) {
-
-   method as_builtin {
-      my ($self)=@_;
-      foreach (@{$self->params}) {
-	 my $opts=$_->cppoptions;
-	 return 0 if $opts && !$opts->builtin;
-      }
-      1
-   }
-}
+declare property_type Pair<First,Second> \
+   : c++ (name => 'std::pair', include => "polymake/client.h", fields => [qw(first second)], operators => '@compare');
 
 ##################################################################################
 
-# @category Basic Types
+# @category Artificial
 # @tparam X
 declare property_type Serialized<X> : c++ (name => "pm::Serialized", include => "polymake/client.h");
 

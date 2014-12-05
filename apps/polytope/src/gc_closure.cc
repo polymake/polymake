@@ -44,6 +44,8 @@ perl::Object gc_and_tdi(perl::Object p_in, bool round)
  
   // For every vertex do   
   for (i=0; i<n; ++i) {
+    if (vertices(i,0) == 0)
+      continue;
     // Compute the Hilbertbasis of its normal cone
     C = CallPolymakeFunction("normal_cone", p_in,i);
     Matrix<Integer> hb=C.CallPolymakeMethod("HILBERT_BASIS");
@@ -103,7 +105,7 @@ bool totally_dual_integral(const Matrix<Rational>& inequalities)
 
   p_in.take("INEQUALITIES") << ineq;
   const Matrix<Rational> vertices = p_in.give("VERTICES");
-  const Array<Set<int> > eq_sets = p_in.give("INEQUALITIES_THRU_VERTICES");
+  const IncidenceMatrix<> eq_sets = p_in.give("INEQUALITIES_THRU_VERTICES");
   
   //FIXME constraint, since polymake cannot compute hilbertbasis of non pointed cones
   const int polytope_dim = p_in.give("CONE_DIM");
@@ -112,6 +114,8 @@ bool totally_dual_integral(const Matrix<Rational>& inequalities)
   
   // for every vertex
   for (int i=0; i<vertices.rows(); ++i) {
+    if (vertices(i,0) == 0)
+      continue;
     // compute the normal_cone and its hilbert basis
     C = CallPolymakeFunction("normal_cone",p_in,i);
     Matrix<Rational> hb = C.CallPolymakeMethod("HILBERT_BASIS");
@@ -125,7 +129,7 @@ bool totally_dual_integral(const Matrix<Rational>& inequalities)
       perl::Object solutions("Polytope<Rational>");
       
       // building the equations and ineq
-      Matrix<Rational> temp_matrix (-hb.row(j) | T(ineq.minor(eq_sets[i],~scalar2set(0))));
+      Matrix<Rational> temp_matrix (-hb.row(j) | T(ineq.minor(eq_sets[i], ~scalar2set(0))));
       Matrix<Rational> unit(unit_matrix<Rational>(temp_matrix.cols()));
 
       solutions.take("INEQUALITIES") << unit;

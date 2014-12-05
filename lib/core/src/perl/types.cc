@@ -24,7 +24,7 @@ SV* get_parameterized_type(const char* pkg, size_t pkgl, bool exact_match)
    PL_stack_base[TOPMARK+1]=sv_2mortal(Scalar::const_string(pkg,pkgl));
    if (!exact_match)
       sv_setiv(save_scalar(glue::PropertyType_nesting_level), 1);
-   return glue::call_method_scalar(aTHX_ "type");
+   return glue::call_method_scalar(aTHX_ "typeof");
 }
 
 bool type_infos::set_descr(const std::type_info& ti)
@@ -61,20 +61,24 @@ bool type_infos::set_descr()
    return descr != NULL;
 }
 
-void type_infos::set_proto()
+void type_infos::set_proto(SV* known_proto)
 {
    dTHX;
-   SV** type_gvp=hv_fetch((HV*)SvRV(PmArray(descr)[glue::TypeDescr_pkg_index]), "type", 4, false);
-   if (type_gvp) {
-      PmStartFuncall;
-      call_sv(*type_gvp, G_SCALAR | G_EVAL);
-      SPAGAIN;
-      if (__builtin_expect(SvTRUE(ERRSV), 0)) {
-         PmFuncallFailed;
+   if (known_proto != NULL) {
+      proto=newSVsv(known_proto);
+   } else {
+      SV** type_gvp=hv_fetch((HV*)SvRV(PmArray(descr)[glue::TypeDescr_pkg_index]), "type", 4, false);
+      if (type_gvp) {
+         PmStartFuncall;
+         call_sv(*type_gvp, G_SCALAR | G_EVAL);
+         SPAGAIN;
+         if (__builtin_expect(SvTRUE(ERRSV), 0)) {
+            PmFuncallFailed;
+         }
+         proto=POPs;
+         assert(SvTEMP(proto));  SvREFCNT_inc_simple_void_NN(proto);       // prevent from being destroyed in FREETMPS
+         PUTBACK; FREETMPS; LEAVE;
       }
-      proto=POPs;
-      assert(SvTEMP(proto));  SvREFCNT_inc_simple_void_NN(proto);       /* prevent from being destroyed in FREETMPS */
-      PUTBACK; FREETMPS; LEAVE;
    }
 }
 
@@ -82,13 +86,12 @@ void type_infos::set_proto(SV* prescribed_pkg, const std::type_info& ti, SV* sup
 {
    dTHX;
    PmStartFuncall;
-   SP=glue::push_current_application(aTHX_ SP);
    XPUSHs(prescribed_pkg);
    const char* const type_name=ti.name();
    mXPUSHp(type_name, strlen(type_name));
    if (super_proto) XPUSHs(super_proto);
    PUTBACK;
-   proto=glue::call_method_scalar(aTHX_ "eval_cpp_type");
+   proto=glue::call_func_scalar(aTHX_ glue::fetch_typeof_gv(aTHX_ SvPVX(prescribed_pkg), SvCUR(prescribed_pkg)));
 }
 
 bool type_infos::allow_magic_storage() const
@@ -100,12 +103,6 @@ bool type_infos::allow_magic_storage() const
       return !SvTRUE(builtin);
    }
    return false;
-}
-
-void type_infos::set_proto(SV* sv)
-{
-   dTHX;
-   proto=newSVsv(sv);
 }
 
 namespace {

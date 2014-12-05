@@ -235,7 +235,7 @@ object LatticePolytope {
     }
     weight 5.8;
     precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM > 0 && $this->CONE_AMBIENT_DIM <= 100 } # upper limits for matrix dimension: 
-    precondition : N_FACETS | N_INEQUALITIES { ($this->N_FACETS | N_INEQUALITIES) <= 50000 }          # default values stored explicitely of cdd used by latte
+    precondition : FACETS | INEQUALITIES { ($this->FACETS | INEQUALITIES)->rows <= 50000 }            # default values stored explicitely of cdd used by latte
     precondition : CONE_DIM { $this->CONE_DIM > 1 }                                                   # latte does not like polytopes that only hav a far facet
     precondition : FEASIBLE;
 

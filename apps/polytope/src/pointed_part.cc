@@ -15,7 +15,6 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/Rational.h"
 #include "polymake/Array.h"
 #include "polymake/Set.h"
 #include "polymake/Matrix.h"

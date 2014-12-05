@@ -18,10 +18,11 @@
 
 #include "polymake/client.h"
 #include "polymake/Set.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/Rational.h"
 #include "polymake/Array.h"
 #include "polymake/Vector.h"
-#include "polymake/IncidenceMatrix.h"
-#include "polymake/Rational.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -38,7 +39,6 @@ namespace polymake { namespace common { namespace {
 
    Class4perl("Polymake::common::Set__Set__Set__Int", Set< Set< Set< int > > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Set< Set< Set< int > > > >, perl::Canned< const Set< Set< Set< int > > > >);
-   OperatorInstance4perl(assign, Set< int >, perl::Canned< const Array< Array< Set< int > > > >);
    OperatorInstance4perl(BinaryAssign_sub, perl::Canned< Set< int > >, int);
    OperatorInstance4perl(Unary_com, perl::Canned< const pm::Series<int, true> >);
    OperatorInstance4perl(assign, Set< int >, perl::Canned< const pm::SingleElementSet<int> >);
@@ -55,5 +55,6 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::Set__String", Set< std::string >);
    FunctionInstance4perl(new, Set< std::string >);
    OperatorInstance4perl(Binary_sub, perl::Canned< const Set< std::string > >, perl::Canned< const Set< std::string > >);
+   OperatorInstance4perl(assign, Set< int >, perl::Canned< const pm::Indices<pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::Rational, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric> > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

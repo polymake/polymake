@@ -24,6 +24,9 @@ template <typename Scalar>
 perl::Object normal_cone(perl::Object p, int v, bool outer)
 {
    perl::Object c(perl::ObjectType::construct<Scalar>("Cone")); 
+   const Set<int> far_face = p.give("FAR_FACE");
+   if (far_face.contains(v))
+      throw std::runtime_error("normal_cone: vertex is contained in the far face");
    const IncidenceMatrix<> vfi=p.give("FACETS_THRU_VERTICES");
    const Matrix<Scalar> m=p.give("FACETS");
    Matrix<Scalar> mm=m.minor(vfi.row(v),~scalar2set(0));
@@ -40,7 +43,7 @@ UserFunctionTemplate4perl("# @category Producing a cone"
                           "# Computes the normal cone of //p// at the vertex //v//."
                           "# By default this is the inner normal cone."
                           "# @param Polytope p"
-                          "# @param Int v vertex number"
+                          "# @param Int v vertex number which is not contained in the far face"
                           "# @param Bool outer asks for outer normal cone.  Default value is 0 (= inner)"
                           "# @return Cone",
                           "normal_cone<Scalar>(polytope::Polytope<Scalar> $; $=0)");

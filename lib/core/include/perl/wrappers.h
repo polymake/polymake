@@ -26,8 +26,21 @@
 
 namespace pm { namespace perl {
 
-template <typename Target>
+template <typename Given, typename Target>
 class access {
+public:
+   typedef Target type;
+   typedef Target return_type;
+   typedef typename attrib<type>::minus_const value_type;
+
+   static return_type get(const Value& v)
+   {
+      return static_cast<Target>(static_cast<Given>(v));
+   }
+};
+
+template <typename Target>
+class access<Target, Target> {
 public:
    typedef Target type;
    typedef Target return_type;
@@ -40,7 +53,7 @@ public:
 };
 
 template <>
-class access<std::string> {
+class access<std::string, std::string> {
 public:
    typedef std::string type;
    typedef std::string return_type;
@@ -55,58 +68,96 @@ public:
 };
 
 template <>
-class access<const std::string>
-   : public access<std::string> {
+class access<const std::string, const std::string>
+   : public access<std::string, std::string> {
 public:
    typedef const std::string type;
 };
 
+template <typename Given>
+class access<Given, std::string>
+   : public access<std::string, std::string> {};
+
+template <typename Given>
+class access<Given, const std::string>
+   : public access<const std::string, const std::string> {};
+
 template <typename Target>
-class access_canned<Target, true, true> {
+struct canned_may_be_missing : False {};
+
+template <typename E, typename SharedParams>
+struct canned_may_be_missing< pm::Array<E, SharedParams> > : True {};
+
+// TODO: add a declaration for representative of HashMaps when CPlusPlus.pm learns to generate them for anonymous hash maps
+
+template <typename Given, typename Target, bool _try_conv>
+class access_canned<Given, Target, _try_conv, true> {
 public:
    typedef Target type;
-   typedef Target& return_type;
+   typedef typename inherit_const<Target&, Given>::type return_type;
    typedef typename attrib<type>::minus_const value_type;
+   typedef typename attrib<Given>::minus_const given_value_type;
 
    static return_type get(const Value& v)
    {
-      if (const std::type_info* t=v.get_canned_typeinfo()) {
-         if (*t==typeid(value_type))
-            return v.get_canned<value_type>();
+      const Value::canned_data_t canned=Value::get_canned_data(v.sv);
+      const bool maybe_missing=_try_conv || canned_may_be_missing<typename attrib<Given>::minus_const>::value;
+
+      if (!maybe_missing || canned.second) {
+         if (identical<value_type, given_value_type>::value) {
+            if (!_try_conv || *canned.first == typeid(value_type))
+               return *reinterpret_cast<type*>(canned.second);
+         } else {
+            if (!_try_conv || *canned.first == typeid(given_value_type))
+               return convert_input(v, canned, identical<value_type, given_value_type>());
+         }
 
          if (wrapper_type conversion=type_cache<value_type>::get_conversion_constructor(v.sv)) {
-            // it is a wrapper for new<T0>(T1), it expects the argument at stack[1]
-            char fup;
-            if (SV* ret=conversion(const_cast<SV**>(&v.sv)-1, &fup))
-               return *reinterpret_cast<value_type*>(v.get_canned_value(ret));
+            // It is a wrapper for new<T0>(T1), it expects the prototype at stack[0] and the argument at stack[1]
+            SV* mini_stack[2]={ NULL, v.sv };
+            if (SV* ret=conversion(mini_stack, reinterpret_cast<char*>(&mini_stack)))
+               return *reinterpret_cast<value_type*>(Value::get_canned_data(ret).second);
             else
                throw exception();
          }
       }
 
+      return parse_input(v, bool2type<maybe_missing>());
+   }
+
+private:
+   static return_type parse_input(const Value& v, True)
+   {
       Value temp_can;
-      value_type* value=new(temp_can.allocate_canned(type_cache<value_type>::force_descr())) value_type;
+      value_type* value=new(temp_can.allocate_canned(type_cache<value_type>::get_descr())) value_type;
       v >> *value;
       const_cast<Value&>(v).sv=temp_can.get_temp();
       return *value;
    }
-};
 
-template <typename Target>
-class access_canned<Target, false, true> {
-public:
-   typedef Target type;
-   typedef Target& return_type;
-   typedef typename attrib<type>::minus_const value_type;
-
-   static return_type get(const Value& v)
+   static return_type convert_input(const Value& v, const Value::canned_data_t& canned, False)
    {
-      return v.get_canned<value_type>();
+      Value temp_can;
+      value_type* value=new(temp_can.allocate_canned(type_cache<value_type>::get_descr())) value_type(*reinterpret_cast<Given*>(canned.second));
+      const_cast<Value&>(v).sv=temp_can.get_temp();
+      return *value;
+   }
+
+   static return_type parse_input(const Value& v, False)
+   {
+      // should never happen
+      return *reinterpret_cast<value_type*>(0);
+   }
+
+   static return_type convert_input(const Value& v, const Value::canned_data_t& canned, True)
+   {
+      // should never happen
+      return *reinterpret_cast<value_type*>(0);
    }
 };
 
-template <typename Target, bool _try>
-class access_canned<Target, _try, false> {
+template <typename Target, bool _try_conv>
+class access_canned<Target, Target, _try_conv, false> {
 public:
    typedef typename inherit_const<typename Unwary<typename attrib<Target>::minus_const>::type, Target>::type type;
    typedef Target& return_type;
@@ -114,18 +165,39 @@ public:
 
    static return_type get(const Value& v)
    {
-      return wary(access_canned<type, _try, true>::get(v));
+      return wary(access_canned<type, type, _try_conv, true>::get(v));
    }
 };
 
-template <typename Target>
-class access< TryCanned<Target> > : public access_canned<Target, true> {};
+template <typename Given, typename Target, bool _try_conv>
+class access_canned<Given, Target, _try_conv, false> {
+public:
+   typedef typename inherit_const<Target, Given>::type type;
+   typedef typename inherit_const<Wary<Target>, Given>::type& return_type;
+   typedef typename Unwary<typename attrib<Given>::minus_const>::type given_value_type;
+   typedef typename inherit_const<given_value_type, Given>::type given_type;
+   typedef typename attrib<type>::minus_const value_type;
+
+   static return_type get(const Value& v)
+   {
+      return wary(access_canned<given_type, Target, _try_conv, true>::get(v));
+   }
+};
+
+template <typename Given, typename Target>
+class access<TryCanned<Given>, Target> : public access_canned<Given, Target, true> {};
+
+template <typename Given, typename Target>
+class access<Canned<Given>, Target> : public access_canned<Given, Target, false> {};
+
+template <typename Given>
+class access<TryCanned<Given>, TryCanned<Given> > : public access_canned<Given, Given, true> {};
+
+template <typename Given>
+class access<Canned<Given>, Canned<Given> > : public access_canned<Given, Given, false> {};
 
 template <typename Target>
-class access< Canned<Target> > : public access_canned<Target, false> {};
-
-template <typename Target>
-class access< Enum<Target> > {
+class access< Enum<Target>, Enum<Target> > {
 public:
    typedef const Target type;
    typedef Target return_type;
@@ -141,10 +213,14 @@ class FunctionBase {
 protected:
    static
    int register_func(wrapper_type wrapper, const char* sig, size_t siglen, const char* file, size_t filelen, int line,
-                     SV* arg_types, void* func_ptr, const char* func_ptr_type);
+                     SV* arg_types, SV* cross_apps, void* func_ptr=NULL, const char* func_ptr_type=NULL);
 
    static
-   void register_disabled(const char* sig, size_t siglen, const char* file, size_t filelen, int line, SV* arg_types);
+   int register_func(wrapper_type wrapper, const char* sig, size_t siglen, const char* file, size_t filelen, int line,
+                     SV* arg_types, int=0)
+   {
+      return register_func(wrapper, sig, siglen, file, filelen, line, arg_types, NULL, NULL, NULL);
+   }
 
    static
    void add_rules(const char* file, int line, const char* text, ...);
@@ -155,29 +231,27 @@ public:
    template <typename Fptr, size_t filelen>
    Function(Fptr* fptr, const char (&file)[filelen], int line, const char* text)
    {
-      const int i=register_func(&TypeListUtils<Fptr>::get_flags, 0, 0, file, filelen-1, line,
-                                TypeListUtils<Fptr>::get_types(), (void*)fptr, typeid(type2type<Fptr>).name());
-      add_rules(file,line,text,i);
+      const int i=register_func(&TypeListUtils<Fptr>::get_flags, NULL, 0, file, filelen-1, line,
+                                TypeListUtils<Fptr>::get_types(), NULL, (void*)fptr, typeid(type2type<Fptr>).name());
+      add_rules(file, line, text, i);
    }
 };
 
 template <typename Wrapper>
 class WrapperBase : protected FunctionBase {
 public:
-   template <size_t namelen, size_t filelen, typename first_arg> static
-   void register_it(const char (&name)[namelen], const char (&file)[filelen], int line, first_arg arg0)
+   template <size_t namelen, size_t filelen> static
+   void register_it(const char (&name)[namelen], const char (&file)[filelen], int line, const char* arg0)
    {
       register_func(&Wrapper::call, name, namelen-1, file, filelen-1, line,
-                    TypeListUtils<typename Wrapper::arg_list>::get_types(arg0), 0, 0);
+                    TypeListUtils<typename Wrapper::arg_list>::get_types(arg0));
    }
-};
 
-template <typename Typelist>
-struct DisabledFunction : protected FunctionBase {
-   template <size_t namelen, size_t filelen>
-   DisabledFunction(const char (&name)[namelen], const char (&file)[filelen], int line)
+   template <size_t namelen, size_t filelen, typename _app_list> static
+   void register_it(const char (&name)[namelen], const char (&file)[filelen], int line, _app_list cross_apps)
    {
-      register_disabled(name, namelen-1, file, filelen-1, line, TypeListUtils<Typelist>::get_types(0));
+      register_func(&Wrapper::call, name, namelen-1, file, filelen-1, line,
+                    TypeListUtils<typename Wrapper::arg_list>::get_types(), cross_apps);
    }
 };
 
@@ -1248,7 +1322,12 @@ template <typename Source, typename Target, typename Tag>
 struct convertible_to<Source, Target, false, true, cons<Tag,Tag> > : True {};
 
 template <typename Target, typename Source, bool _enabled=assignable_to<Source,Target>::value>
-struct Operator_assign : protected FunctionBase {
+struct Operator_assign;
+
+template <typename Target, typename Source>
+struct Operator_assign<Target, Source, true>
+   : protected FunctionBase {
+
    typedef cons<Target,Source> arg_list;
 
    static void call(Target& dst, const Value& src)
@@ -1259,27 +1338,21 @@ struct Operator_assign : protected FunctionBase {
          dst=src.get<Source>();
    }
 
-   template <size_t filelen>
-   Operator_assign(const char (&file)[filelen], int line, int=0)
+   template <size_t filelen, typename _app_list>
+   Operator_assign(const char (&file)[filelen], int line, _app_list cross_apps)
    {
       register_func(reinterpret_cast<wrapper_type>(&call),
-                    "=ass", 4, file, filelen-1, line, TypeListUtils<arg_list>::get_types(), 0, 0);
-   }
-};
-
-template <typename Target, typename Source>
-struct Operator_assign<Target, Source, false> : protected FunctionBase {
-   typedef cons<Target,Source> arg_list;
-
-   template <size_t filelen>
-   Operator_assign(const char (&file)[filelen], int line, int=0)
-   {
-      register_disabled("=ass", 4, file, filelen-1, line, TypeListUtils<arg_list>::get_types());
+                    "=ass", 4, file, filelen-1, line, TypeListUtils<arg_list>::get_types(), cross_apps);
    }
 };
 
 template <typename Target, typename Source, bool _enabled=convertible_to<Source,Target>::value>
-struct Operator_convert : protected FunctionBase {
+struct Operator_convert;
+
+template <typename Target, typename Source>
+struct Operator_convert<Target, Source, true>
+   : protected FunctionBase {
+
    typedef cons<Target,Source> arg_list;
 
    static Target call(const Value& src)
@@ -1287,22 +1360,11 @@ struct Operator_convert : protected FunctionBase {
       return Target(src.get<Source>());
    }
 
-   template <size_t filelen>
-   Operator_convert(const char (&file)[filelen], int line, int=0)
+   template <size_t filelen, typename _app_list>
+   Operator_convert(const char (&file)[filelen], int line, _app_list cross_apps)
    {
       register_func(reinterpret_cast<wrapper_type>(&call),
-                    ".cnv", 4, file, filelen-1, line, TypeListUtils<arg_list>::get_types(), 0, 0);
-   }
-};
-
-template <typename Target, typename Source>
-struct Operator_convert<Target, Source, false> : protected FunctionBase {
-   typedef cons<Target,Source> arg_list;
-
-   template <size_t filelen>
-   Operator_convert(const char (&file)[filelen], int line, int=0)
-   {
-      register_disabled(".cnv", 4, file, filelen-1, line, TypeListUtils<arg_list>::get_types());
+                    ".cnv", 4, file, filelen-1, line, TypeListUtils<arg_list>::get_types(), cross_apps);
    }
 };
 

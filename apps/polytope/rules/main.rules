@@ -34,7 +34,7 @@ HELP help.rules
 
 # A polyhedral cone, not necessarily pointed.
 # Note that in contrast to the vertices of a polytope, the [[RAYS]] are given in affine coordinates.
-declare object Cone<Scalar=Rational> [ typechecks::is_ordered_field(Scalar) ];
+declare object Cone<Scalar=Rational> [ is_ordered_field(Scalar) ];
 
 # Not necessarily bounded or unbounded polyhedron.
 # Nonetheless, the name "Polytope" is used for two reasons:
@@ -43,7 +43,7 @@ declare object Cone<Scalar=Rational> [ typechecks::is_ordered_field(Scalar) ];
 # We use homogeneous coordinates, which is why Polytope is derived from [[Cone]].
 # Note that a pointed polyhedron is projectively equivalent to a polytope.
 # //Scalar// is the numeric data type used for the coordinates.
-declare object Polytope<Scalar=Rational> [ typechecks::is_ordered_field(Scalar) ] : Cone<Scalar>;
+declare object Polytope<Scalar=Rational> [ is_ordered_field(Scalar) ] : Cone<Scalar>;
 
 
 # these rules are intrinsic: they don't depend on any external software to be installed separately

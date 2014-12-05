@@ -659,7 +659,7 @@ public:
    result_type operator() (typename function_argument<T>::type x) const
    {
       std::ostringstream out;
-      out << x;
+      wrap(out) << x;
       return out.str();
    }
 };

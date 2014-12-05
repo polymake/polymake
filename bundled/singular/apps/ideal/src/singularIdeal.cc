@@ -240,6 +240,30 @@ public:
       return convert_poly_to_Polynomial(q,r);
    }
 
+   /*
+    * Returns n+1 Polynomials, where the n+1 Polynomial is equal to the result of reduce and the previous are the coeffients of the division.
+    */
+   Array< Polynomial<> > division(const Polynomial<>& p, const Ring<>& r) const {
+      Array< Polynomial<> > m_generator(1, p);
+      check_ring(singRing);
+      SingularIdeal_impl m( m_generator, singRing );
+      ::ideal R;
+      matrix U;
+      ::ideal t = idLift(singIdeal, m.singIdeal, &R, FALSE, FALSE /*Maybe true if std*/, TRUE, &U);
+      matrix T = id_Module2formatedMatrix(t, IDELEMS(singIdeal), 1, IDRING(singRing));
+      std::vector< Polynomial<> > polys;
+      int rows = MATROWS(T);
+      for(int j = 1; j <= rows; j++) {
+        if(MATELEM(T, j, 1)) {
+          polys.push_back(convert_poly_to_Polynomial(MATELEM(T, j, 1), r));
+        } else {
+          polys.push_back(Polynomial<>(0,r));
+        }
+      }
+      polys.push_back(convert_poly_to_Polynomial(R->m[0],r));
+      return Array< Polynomial<> >(polys);
+   }
+
    // Converting singIdeal generators to an array of Polymake polynomials.
    Array<Polynomial<> > polynomials(const Ring<>& r) const
    {
@@ -317,8 +341,7 @@ SingularIdeal_wrap* SingularIdeal_wrap::create(const Array<Polynomial<> >& gens,
 
 
 
-UserFunction4perl("CREDIT Singular\n\n"
-                  "# @category Algebra"
+UserFunction4perl("# @category Algebra"
                   "# Computes an ideal quotient via SINGULAR"
                   "# @param Ideal I"
                   "# @param Ideal J"

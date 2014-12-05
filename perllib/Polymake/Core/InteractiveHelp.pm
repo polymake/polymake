@@ -406,7 +406,7 @@ sub display_function_text {
 }
 
 sub display_keys_text {
-   my $self=shift;
+   my ($self)=@_;
    my $text="";
    foreach my $topic ($self, @{$self->related}) {
       my $keys=$topic->annex->{keys} or next;
@@ -422,16 +422,16 @@ sub display_keys_text {
 
 # for properties
 sub display_property_text {
-	my $self=shift;
-	my $fp = $self->full_path;
-	$fp =~ m|(?<=/objects/)(\w+)|;
-	my $obj_type_name = $1;
-	my $type_name = Polymake::User::application->eval_type($obj_type_name)->lookup_property($self->name)->type->name;
+   my ($self)=@_;
+   my $obj_topic = $self->parent;
+   if ($obj_topic->category) { $obj_topic = $obj_topic->parent; }
+   my $obj_name = $obj_topic->parent->name;
+   my $type_name = $User::application->eval_type($obj_name, 1)->lookup_property($self->name)->type->full_name;
 
-	my $text = "property ". $self->name. " : ". $type_name ."\n";
-	
-	$text .= $self->text;
-	return $text;
+   my $text = "property ". $self->name. " : ". $type_name ."\n";
+
+   $text .= $self->text;
+   return $text;
 }
 
 sub display_text {
@@ -450,11 +450,11 @@ sub display_text {
          display_function_text($self,$self,$full);
       }
    } else {
-   	my $text;
-   	if ($self->parent->name eq "properties" or ($self->parent->category and $self->parent->parent->name eq "properties")) {
-   		$text = $self->display_property_text();
-   	} else {
-      	$text=$self->text;
+      my $text;
+      if ($self->parent->name eq "properties" or ($self->parent->category and $self->parent->parent->name eq "properties")) {
+         $text=$self->display_property_text();
+      } else {
+         $text=$self->text;
       }
       if (length($text)) {
          clean_text($text);
@@ -463,16 +463,16 @@ sub display_text {
          $text .= "\n" . display_keys_text($self);
       }
       if (defined (my $depends=$self->annex->{depends})) {
-        $text .= "Depends on:\n  ";
-        my $i = @$depends;
-        foreach (@$depends) { 
-          if(@$depends > 1) {$text .= "(";}
-          clean_text($_);
-          $text .= join(", ", split(/\s+/, $_));
-          if($i >= 1 && @$depends > 1) {$text .= ")"};
-          if($i > 1 ) {$text .= "  or  "};
-          --$i
-        }
+         $text .= "Depends on:\n  ";
+         my $i = @$depends;
+         foreach (@$depends) { 
+            if (@$depends > 1) {$text .= "(";}
+            clean_text($_);
+            $text .= join(", ", split(/\s+/, $_));
+            if ($i >= 1 && @$depends > 1) {$text .= ")"};
+            if ($i > 1 ) {$text .= "  or  "};
+            --$i
+         }
       }
       $text
    }

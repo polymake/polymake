@@ -24,25 +24,25 @@
 
 namespace polymake { namespace fan {
 
-namespace{
+namespace {
 
-   template<typename Coord>
-      Array<perl::Object> construct_cones(const Array<Set<int> > & max_cones, const Matrix<Coord> & rays, const Matrix<Coord> & lin_space, const int ambient_dim){
-      perl::ObjectType cone_type=perl::ObjectType::construct<Coord>("Cone");
+template <typename Coord>
+Array<perl::Object> construct_cones(const IncidenceMatrix<>& max_cones, const Matrix<Coord>& rays, const Matrix<Coord>& lin_space, const int ambient_dim)
+{
+   perl::ObjectType cone_type=perl::ObjectType::construct<Coord>("Cone");
 
-      int size = max_cones.size();
+   const int size = max_cones.rows();
 
-      Array<perl::Object> all_cones(size);
-      for (int i=0; i<max_cones.size(); ++i) {
-         all_cones[i].create_new(cone_type);
-         const Matrix<Coord> cone_vert=rays.minor(max_cones[i],All);
-         all_cones[i].take("RAYS")<<cone_vert;
-         all_cones[i].take("LINEALITY_SPACE")<<lin_space;
-         all_cones[i].take("CONE_AMBIENT_DIM")<<ambient_dim;
-      }
-
-      return all_cones;
+   Array<perl::Object> all_cones(size, cone_type);
+   for (int i=0; i<max_cones.rows(); ++i) {
+      const Matrix<Coord> cone_vert=rays.minor(max_cones[i], All);
+      all_cones[i].take("RAYS") << cone_vert;
+      all_cones[i].take("LINEALITY_SPACE") << lin_space;
+      all_cones[i].take("CONE_AMBIENT_DIM") << ambient_dim;
    }
+
+   return all_cones;
+}
 
 }
 
@@ -54,7 +54,7 @@ perl::Object common_refinement(perl::Object f1, perl::Object f2)
       throw std::runtime_error("common_refinement: dimension mismatch.");
 
    const int d=f1.give("FAN_DIM");
-   const Array<Set<int> > max_cones1=f1.give("MAXIMAL_CONES");
+   const IncidenceMatrix<> max_cones1=f1.give("MAXIMAL_CONES");
    Matrix<Coord> rays1=f1.give("RAYS");
    const Matrix<Coord> lineality_space1=f1.give("LINEALITY_SPACE");
    const Matrix<Coord> lineality_space2=f2.give("LINEALITY_SPACE");
@@ -67,7 +67,7 @@ perl::Object common_refinement(perl::Object f1, perl::Object f2)
       lineality_space = null_space(null_space(lineality_space1) / null_space(lineality_space2));
    }
 
-   const Array<Set<int> > max_cones2=f2.give("MAXIMAL_CONES");
+   const IncidenceMatrix<> max_cones2=f2.give("MAXIMAL_CONES");
    Matrix<Coord> rays2=f2.give("RAYS");
    const bool complete = f1.give("COMPLETE") && f2.give("COMPLETE");
    project_to_orthogonal_complement(rays1, lineality_space1);

@@ -22,12 +22,12 @@
 static HV *my_pkg;
 static AV *allowed_pkgs;
 
-static ck_fun_ptr def_ck_PUSH;
-static op_fun_ptr def_pp_CONST, def_pp_HELEM, def_pp_HSLICE, def_pp_EXISTS, def_pp_DELETE, def_pp_EACH, def_pp_KEYS,
-                  def_pp_RV2HV, def_pp_PADHV, def_pp_ANONHASH;
+static Perl_check_t def_ck_PUSH;
+static Perl_ppaddr_t def_pp_CONST, def_pp_HELEM, def_pp_HSLICE, def_pp_EXISTS, def_pp_DELETE, def_pp_EACH, def_pp_KEYS,
+                     def_pp_RV2HV, def_pp_PADHV, def_pp_ANONHASH;
 
 #if PerlVersion >= 5180
-static op_fun_ptr def_pp_PADRANGE;
+static Perl_ppaddr_t def_pp_PADRANGE;
 #endif
 
 typedef struct tmp_keysv {
@@ -91,7 +91,7 @@ SV* ref2key(SV *keysv, tmp_keysv *tmp_key)
 static char err_ref[]="Reference as a key in a normal hash";
 
 static inline
-int ref_key_allowed(HV *class)
+int ref_key_allowed(HV* class)
 {
    if (AvFILLp(allowed_pkgs)>=0) {
       SV **ap, **end;
@@ -101,7 +101,7 @@ int ref_key_allowed(HV *class)
    return FALSE;
 }
 
-#define RefKeyAllowed(hv,class)                                         \
+#define RefKeyAllowed(hv, class)                                         \
    ( class==my_pkg ||                                                   \
     (class==NULL                                                        \
      ? !HvFILL(hv) && !SvRMAGICAL(hv) && (MarkAsRefHash(hv), TRUE)      \
@@ -115,10 +115,10 @@ typedef struct local_hash_ref_elem {
    SV *keyref;
 } local_hash_ref_elem;
 
-static
-void* store_hash_ref_elem(pTHX_ HV *hv, SV *keyref)
+static inline
+void* store_hash_ref_elem(pTHX_ HV* hv, SV* keyref)
 {
-   local_hash_ref_elem *le;
+   local_hash_ref_elem* le;
    New(0, le, 1, local_hash_ref_elem);
    le->hv=(HV*)SvREFCNT_inc_simple_NN(hv);
    le->keyref=SvREFCNT_inc_simple_NN(keyref);
@@ -126,9 +126,9 @@ void* store_hash_ref_elem(pTHX_ HV *hv, SV *keyref)
 }
 
 static
-void delete_hash_elem(pTHX_ void *p)
+void delete_hash_elem(pTHX_ void* p)
 {
-   local_hash_ref_elem *le=(local_hash_ref_elem*)p;
+   local_hash_ref_elem* le=(local_hash_ref_elem*)p;
    tmp_keysv tmp_key;
    HV *hv=le->hv;
    SV *keyref=le->keyref;
@@ -139,22 +139,36 @@ void delete_hash_elem(pTHX_ void *p)
    Safefree(p);
 }
 
+HE* pm_perl_refhash_fetch_ent(pTHX_ HV* hv, SV* keysv, I32 lval)
+{
+   tmp_keysv tmp_key;
+   U32 hash;
+   HV* class=SvSTASH(hv);
+   assert(SvROK(keysv));
+   if (!RefKeyAllowed(hv, class))
+      Perl_croak(aTHX_ err_ref);
+   keysv=ref2key(keysv, &tmp_key);
+   hash=TmpKeyHash(tmp_key);
+   return hv_fetch_ent(hv, keysv, lval, hash);
+}
+
 static
 OP* intercept_pp_helem(pTHX)
 {
    dSP;
-   SV *keysv=TOPs;
-   HV *hv=(HV*)TOPm1s, *class=SvSTASH(hv);
-   MAGIC *mg;
+   SV* keysv=TOPs;
+   HV* hv=(HV*)TOPm1s;
+   HV* class=SvSTASH(hv);
+   tmp_keysv tmp_key;
+   MAGIC* mg;
    if (HashCPPbound(hv))
       return pm_perl_cpp_helem(aTHX_ hv, mg);
    if (SvROK(keysv)) {
-      tmp_keysv tmp_key;
-      if (!RefKeyAllowed(hv,class))
+      if (!RefKeyAllowed(hv, class))
          DIE(aTHX_ err_ref);
       if ((PL_op->op_private & (OPpLVAL_INTRO | OPpLVAL_DEFER)) == OPpLVAL_INTRO &&
           (PL_op->op_flags & OPf_MOD || LVRET)) {
-         HE *he;
+         HE* he;
          SV *elem_sv, *keyref=keysv;
          I32 existed;
          U32 hash;
@@ -331,7 +345,7 @@ OP* intercept_pp_delete(pTHX)
          if (RefKeyAllowed(hv,class)) {
             I32 discard = (GIMME_V == G_VOID) ? G_DISCARD : 0;
             (void)POPs; (void)POPs;
-            keysv=ref2key(keysv,&tmp_key);
+            keysv=ref2key(keysv, &tmp_key);
             sv=hv_delete_ent(hv, keysv, discard, TmpKeyHash(tmp_key));
             if (!discard) {
                if (!sv) sv = &PL_sv_undef;

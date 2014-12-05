@@ -67,7 +67,7 @@ protected:
    template <typename TypeList>
    static SV* construct(const char* type_name, size_t tl)
    {
-      Stack stack(false, TypeListUtils<TypeList>::type_cnt);
+      Stack stack(true, 1+TypeListUtils<TypeList>::type_cnt);
       if (TypeListUtils<TypeList>::push_types(stack)) {
          return construct_parameterized_type(type_name, tl);
       } else {
@@ -105,7 +105,6 @@ public:
    ObjectType& operator= (const ObjectType& o);
 
    std::string name() const;
-   std::string generic_name() const;
  
    bool isa(const ObjectType& o) const;
 

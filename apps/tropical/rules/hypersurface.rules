@@ -30,7 +30,7 @@
 # Example: max-tropical line with apex (-1,-2,-3) in the tropical 2-torus:
 # $H = new Hypersurface<Max>(MONOMIALS=>[[1,0,0],[0,1,0],[0,0,1]],COEFFICIENTS=>[1,2,3]);
 #
-declare object Hypersurface<Addition=Min> [ typechecks::is_tropical_addition(Addition) ] {
+declare object Hypersurface<Addition=Min> [ is_tropical_addition(Addition) ] {
 
 
 # Monomials of the (tropical) polynomial defining the hypersurface. (Laurent polynomials are allowed.)
@@ -58,7 +58,7 @@ weight 1.10;
 
 property N_TERMS : Int;
 
-# Number of variables = homogeneous dimension of ambient space + 1
+# Number of variables.
 
 property N_VARS : Int;
 
@@ -85,16 +85,15 @@ rule REDUNDANT_MONOMIALS : MonomPerm.COEFFICIENTS, MonomPerm.PERMUTATION {
 }
 weight 1.10;
 
-# Homogeneous: must be true (at least for now), since algorithms rely on this.
+# True if all [[MONOMIALS]] share the same total degree.
 
 property HOMOGENEOUS : Bool;
 
-# Since we require our hypersurfaces to be defined by [[HOMOGENEOUS]] polynomials,
-# all (homogeneous) degree concepts lead to the same.
+# Total degree.
 
 property DEGREE : Int;
 
-# True if all monomials have non-neative exponents, this means that the hypersurface is defined by
+# True if all [[MONOMIALS]] have non-negative exponents, this means that the hypersurface is defined by
 # an ordinary polynomial (that is, not a Laurent polynomial).
 
 property NON_NEGATIVE : Bool;
@@ -185,10 +184,6 @@ rule REGIONS : PointsPerm.REGIONS, PointsPerm.PERMUTATION {
 }
 weight 1.10;
 
-# Number of [[MONOMIALS]] and [[COEFFICIENTS]].
-
-property SUPPORT_SIZE : Int;
-
 
 # Dimension of the hypersurface.
 # Depends on whether [[HOMOGENEOUS]] or not.
@@ -224,11 +219,6 @@ rule VERTICES : RAYS, POINTS {
 }
 weight 0.10;
 
-rule SUPPORT_SIZE : MONOMIALS {
-  $this->SUPPORT_SIZE=$this->MONOMIALS->rows;
-}
-weight 0.10;
-
 rule DIM : N_VARS, HOMOGENEOUS {
    $this->DIM=$this->HOMOGENEOUS? $this->N_VARS-2 : $this->N_VARS-1;
 }
@@ -260,25 +250,25 @@ rule DOME, POINTS, RAYS, MAXIMAL_FACES, REDUNDANT_MONOMIALS, REGIONS : MONOMIALS
 permutation : PointsPerm;
 
 
-# List indices of the [[MONOMIALS]] for which the minimum at a given point is attained.
+# List the optimum value and the indices of the [[MONOMIALS]] for which the optimum at a given point is attained.
 # @param Vector x given point
-# @return Set
-
+# @return Pair<Rational,Set>
 user_method opt_attained($) : MONOMIALS, COEFFICIENTS {
   my ($this,$x)=@_;
-  my $n=scalar(@{$this->MONOMIALS});
+  my $x=new Vector($x); # takes care of a perl array etc
+  my $n=$this->MONOMIALS->rows();
   my $val=$this->COEFFICIENTS->[0]+($x*$this->MONOMIALS->[0]);
   my @val_attained=(0);
   foreach my $i (1..$n-1) {
     my $v=$this->COEFFICIENTS->[$i]+($x*$this->MONOMIALS->[$i]);
-    if (orientation<Addition>()*($val-$v)>0) {
+    if (Addition->orientation()*($val-$v)>0) {
       $val=$v;
       @val_attained=($i);
     } elsif ($v==$val) {
       push @val_attained,$i;
     }
   }
-  return new Set(\@val_attained);
+  return new Pair<Rational,Set>($val,new Set(\@val_attained));
 }
 
 

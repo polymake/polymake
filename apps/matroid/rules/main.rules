@@ -39,7 +39,7 @@ INCLUDE
 object Matroid {
 
 rule RANK : BASES {
-  $this->RANK = @{$this->BASES->[0]};
+  $this->RANK = $this->BASES->[0]->size();
 } 
 weight 0.10;
 
@@ -51,12 +51,19 @@ weight 4.50;
 rule POLYTOPE.VERTICES, POLYTOPE.CONE_AMBIENT_DIM : BASES, N_ELEMENTS {
   matroid_polytope($this)
 }
+weight 1.12;
+
+rule POLYTOPE.VERTICES, POLYTOPE.CONE_AMBIENT_DIM, POLYTOPE.INEQUALITIES, POLYTOPE.EQUATIONS : BASES, N_ELEMENTS, RANK, CONNECTED, LATTICE_OF_FLATS {
+  matroid_polytope($this, inequalities=>1)
+}
+precondition : CONNECTED;
+weight 1.10;
 
 rule RANK : NON_BASES {# should be more expensive as the computation from BASES
     if ($this->NON_BASES->size()==0) { # uniform matroid
         die "cannot determine RANK from empty set of NON_BASES";
     }
-  $this->RANK = @{$this->NON_BASES->[0]};
+  $this->RANK = $this->NON_BASES->[0]->size();
 } 
 weight 0.15;
 
@@ -258,10 +265,25 @@ rule H_VECTOR : BASES, RANK {
    $this->H_VECTOR=$h_vector;
 }
 
-# TODO need to adjust this for vector configurations
-#rule F_VECTOR : H_VECTOR {
-#   polytope::f_vector($this,1);
-#}
+rule F_VECTOR : H_VECTOR {
+    my $h = $this->H_VECTOR;
+    my $d = $h->dim() - 1;
+    my $f = new Vector<Integer>($d);
+    for (my $j=1; $j<=$d; $j++) {
+        for (my $i=0; $i<=$j; $i++) {
+            $f->[$j-1] += binomial($d-$i, $j-$i) * $h->[$i];
+        }
+    }
+    $this->F_VECTOR = $f;
+}
+
+rule REVLEX_BASIS_ENCODING : BASES, RANK, N_ELEMENTS {
+    $this->REVLEX_BASIS_ENCODING = bases_to_revlex_encoding($this->BASES, $this->RANK, $this->N_ELEMENTS);
+}
+
+rule BASES : REVLEX_BASIS_ENCODING, RANK, N_ELEMENTS {
+    $this->BASES = bases_from_revlex_encoding($this->REVLEX_BASIS_ENCODING, $this->RANK, $this->N_ELEMENTS);
+}
 
 }
 

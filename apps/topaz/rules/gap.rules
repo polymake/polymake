@@ -24,7 +24,7 @@ object SimplicialComplex {
 #
 # You may use the [[fundamental2gap]] method to produce a ''GAP'' file.
 
-property FUNDAMENTAL_GROUP : Tuple< Int,List< List< Tuple <Int,Int> > > >;
+property FUNDAMENTAL_GROUP : Pair< Int, List< List< Pair<Int,Int> > > >;
 
 
 # @category Topology

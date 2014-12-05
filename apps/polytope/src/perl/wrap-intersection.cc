@@ -20,21 +20,21 @@
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0>
+   FunctionInterface4perl( intersection_T_x, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturn( (intersection<T0>(arg0)) );
+   };
+
    template <typename T0, typename T1>
    FunctionInterface4perl( new_X, T0,T1 ) {
       perl::Value arg0(stack[1]);
       WrapperReturnNew(T0, (arg0.get<T1>()) );
    };
 
-   template <typename T0>
-   FunctionInterface4perl( intersection_x, T0 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturn( intersection<T0>(arg0) );
-   };
-
-   FunctionInstance4perl(intersection_x, Rational);
    OperatorInstance4perl(assign, pm::ListMatrix<pm::Vector<pm::Rational> >, perl::Canned< const Matrix< Rational > >);
    FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::ListMatrix<pm::Vector<pm::Rational> > >);
    OperatorInstance4perl(convert, pm::ListMatrix<pm::Vector<pm::Rational> >, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(intersection_T_x, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

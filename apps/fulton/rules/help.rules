@@ -14,12 +14,49 @@
 #-------------------------------------------------------------------------------
 
 
-# @topic globalcategory Visualization
-# These +++ are for visualization.
+# @topic category functions/Commutative Algebra
+# These methods help with translating combinatorics to commutative algebra.
 
-# @topic globalcategory Internal
-# These +++ are for internal use only. You can safely ignore them.
+# @topic category functions/Producing a normal toric variety
+# With these clients you can create a normal toric variety from various input
+# data.
 
-# @topic globalcategory Input property
-# These properties are for input only. They allow redundant information.
+# @topic category functions/Continued fractions
+# Two simple methods for switching between rational numbers and continued
+# fractions.
+
+# @topic category objects/NormalToricVariety/properties/Basic properties
+# Properties defining a normal toric variety.
+
+# @topic category objects/NormalToricVariety/properties/Combinatorics
+# Combinatorial properties of a normal toric variety, i.e. cones, polyhedra,
+# etc.
+
+# @topic category objects/NormalToricVariety/properties/Algebraic Geometry
+# Properties from algebraic geometry.
+
+# @topic category objects/AffineNormalToricVariety/properties/Combinatorics
+# Combinatorial properties of a normal toric variety, i.e. cones, polyhedra,
+# etc.
+
+# @topic category objects/TDivisor/properties/Combinatorics
+# Combinatorial properties of a //T//-invariant divisor, i.e. cones, polyhedra,
+# etc.
+
+# @topic category objects/TDivisor/properties/Algebraic Geometry
+# Properties from algebraic geometry.
+
+# @topic category objects/CyclicQuotient/properties/Input properties
+# Properties defining a cyclic quotient singularity. Please be careful in
+# checking the consistency if you give multiple input properties.
+
+# @topic category objects/CyclicQuotient/properties/Algebraic Geometry
+# Properties relevant for the algebro-geometric side of CQS.
+
+# @topic category objects/VersalComponent/properties/Combinatorics
+# Combinatorial properties of the components of the versal deformation of CQS.
+
+# @topic category objects/VersalComponent/properties/Algebraic Geometry
+# Properties relevant for the algebro-geometric side of the components of the versal deformation of CQS.
+
 

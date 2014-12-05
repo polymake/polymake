@@ -366,20 +366,7 @@ SV* ObjectType::construct_parameterized_type(const char* type_name, size_t nl)
 {
    dTHX;
    // type arguments are already pushed on the stack
-   HV* const app_stash=glue::current_application_pkg(aTHX);
-   HV* const stash=pm_perl_namespace_lookup_class(aTHX_ app_stash, type_name, nl, 0);
-   if (__builtin_expect(!stash, 0)) {
-      sv_setpvf(ERRSV, "unknown type %s::%.*s", HvNAME(app_stash), int(nl), type_name);
-      PmCancelFuncall;
-      throw exception();
-   }
-   GV** const gvp=(GV**)hv_fetch(stash, "generic_type", 12, false);
-   if (__builtin_expect(!gvp, 0)) {
-      sv_setpvf(ERRSV, "type %s is not parameterized", HvNAME(stash));
-      PmCancelFuncall;
-      throw exception();
-   }
-   return glue::call_func_scalar(aTHX_ (SV*)*gvp);
+   return glue::call_func_scalar(aTHX_ glue::fetch_typeof_gv(aTHX_ type_name, nl));
 }
 
 bool ObjectType::isa(const ObjectType& other) const
@@ -420,7 +407,7 @@ SV* ObjectType::find_type(const char* type_name, size_t tl)
    SP=glue::push_current_application(aTHX_ SP);
    mXPUSHp(type_name, tl);
    PUTBACK;
-   return glue::call_method_scalar(aTHX_ "eval_type");
+   return glue::call_method_scalar(aTHX_ "eval_type_throw");
 }
 
 bool Object::_isa(const char* type_name, size_t nl) const
@@ -609,14 +596,14 @@ Value::NoAnchor* Value::put(const pm::Array<Object>& ar, const char* fup, int)
       // If the read_only flag is set, then this call is part of the preparation for parent_object.take();
       // in this case the children's transactions will be hung into the parent's one.
       if ((options & (value_read_only|value_expect_lval)) != value_read_only) {
-         int last=AvFILLp(ar.get());
+         int last=AvFILLp(SvRV(ar.get()));
          if (last >= 0) {
             for (SV **objp=PmArray(ar.get()), **lastp=objp+last; objp<=lastp; ++objp) {
-               if (SvROK(*objp)) {
-                  SV* obj=SvRV(*objp);
-                  if (SvOK(PmArray(obj)[glue::Object_transaction_index])) {
+               SV* const objref=*objp;
+               if (SvROK(objref)) {
+                  if (SvOK(PmArray(objref)[glue::Object_transaction_index])) {
                      PmStartFuncall;
-                     XPUSHs(obj);
+                     XPUSHs(objref);
                      PUTBACK;
                      glue::call_func_void(aTHX_ commit_cv);
                   }

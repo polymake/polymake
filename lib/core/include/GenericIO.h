@@ -72,6 +72,7 @@ struct structural_helper<T, Property, is_composite>
 template <typename T> struct is_parseable;
 template <typename T> struct is_printable;
 template <typename T> struct is_parseable_or_serializable;
+template <typename T> struct is_writeable;
 template <typename T> struct is_printable_or_serializable;
 
 template <typename Top, typename Options, int subst_pos=0>
@@ -813,7 +814,7 @@ public:
    Output& operator<< (const Data& data)
    {
       typedef typename Concrete<Data>::type data_type;
-      static const bool can_write=is_printable<data_type>::value || structural_helper<data_type, is_printable_or_serializable>::value;
+      static const bool can_write=is_printable<data_type>::value || structural_helper<data_type, is_writeable>::value;
       dispatch_serialized(concrete(data), has_serialized<data_type>(), bool2type<can_write>());
       return this->top();
    }
@@ -1180,6 +1181,9 @@ template <typename T>
 struct is_printable_or_serializable {
    static const bool value=is_printable<T>::value || has_serialized<T>::value;
 };
+
+template <typename T>
+struct is_writeable : is_printable_or_serializable<T> {};
 
 }
 

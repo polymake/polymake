@@ -29,43 +29,24 @@ void unimport_function(pTHX_ SV *gv)
 }
 
 static
-GV* do_can(pTHX_ SV *obj, SV *method, I32 in_super)
+GV* do_can(pTHX_ SV *obj, SV *method)
 {
-   HV* pkg=NULL;
-   GV* glob=NULL;
+   HV* stash=NULL;
    char* method_name=SvPVX(method);
    I32 method_name_len=SvCUR(method);
 
    if (SvGMAGICAL(obj)) mg_get(obj);
 
    if (SvROK(obj)) {
-      obj = (SV*)SvRV(obj);
+      obj = SvRV(obj);
       if (SvOBJECT(obj)) {
-         pkg = SvSTASH(obj);
-#if PerlVersion < 5180
-         if (in_super) {
-            SV *super_pkg=sv_2mortal( newSVpvf("%s::SUPER", HvNAME(pkg)) );
-            pkg=gv_stashsv(super_pkg, TRUE);
-         }
-#endif
+         stash = SvSTASH(obj);
       }
    } else if (SvPOKp(obj) && SvCUR(obj)) {
-#if PerlVersion < 5180
-      if (in_super) {
-         obj=sv_mortalcopy(obj);
-         sv_catpvn(obj, "::SUPER", 7);
-      }
-#endif
-      pkg=gv_stashsv(obj, PerlVersion < 5180 && in_super);
+      stash = gv_stashsv(obj, 0);
    }
 
-   if (pkg)
-#if PerlVersion < 5180
-      glob=gv_fetchmeth(pkg, method_name, method_name_len, 0);
-#else
-      glob=gv_fetchmeth_pvn(pkg, method_name, method_name_len, 0, in_super ? GV_SUPER : 0);
-#endif
-   return glob;
+   return stash ? gv_fetchmeth(stash, method_name, method_name_len, 0) : Nullgv;
 }
 
 int pm_perl_canned_dup(pTHX_ MAGIC* mg, CLONE_PARAMS* param)
@@ -111,7 +92,12 @@ OP* safe_magic_lvalue_return_op(pTHX)
 }
 #endif
 
-MGVTBL pm_perl_array_flags_vtbl={ 0, 0, 0, 0, 0 };
+static const MGVTBL array_flags_vtbl={ 0, 0, 0, 0, 0 };
+
+MAGIC* pm_perl_array_flags_magic(pTHX_ SV* sv)
+{
+   return mg_findext(sv, PERL_MAGIC_ext, &array_flags_vtbl);
+}
 
 static inline
 GV* retrieve_gv(pTHX_ OP *o, OP *const_op, SV **const_sv, PERL_CONTEXT *cx, PERL_CONTEXT *cx_bottom)
@@ -252,12 +238,24 @@ PPCODE:
 
 void
 readwrite(x)
-   SV *x;
+   SV* x;
 PROTOTYPE: $
 PPCODE:
 {
    write_protect_off(aTHX_ x);
    ++SP;
+}
+
+void
+is_readonly(x)
+   SV* x;
+PROTOTYPE: $
+PPCODE:
+{
+   if (SvREADONLY(x))
+      PUSHs(&PL_sv_yes);
+   else
+      PUSHs(&PL_sv_no);
 }
 
 void
@@ -368,7 +366,7 @@ PPCODE:
       }
    } else if (SvPOKp(sub)) {
       for (i=1; i<items; ++i) {
-         GV *method_gv=do_can(aTHX_ ST(i), sub, FALSE);
+         GV *method_gv=do_can(aTHX_ ST(i), sub);
          if (method_gv) {
             SV *cache_here=sub;
             sub=(SV*)GvCV(method_gv);
@@ -539,44 +537,42 @@ PPCODE:
    XSRETURN_NO;
 
 void
-extract_integer()
-PROTOTYPE:
+extract_integer(str)
+   SV* str;
+PROTOTYPE: $
 PPCODE:
 {
-   SV* str=GvSV(PL_defgv);
-   MAGIC* pos_mg=mg_find(str, PERL_MAGIC_regex_global);
-   if (pos_mg != NULL && pos_mg->mg_len>=0) {
-      char* start=SvPVX(str)+pos_mg->mg_len;
-      char* end=NULL;
-      long val=strtol(start,&end,10);
-      pos_mg->mg_len+=end-start;
-      PUSHs(sv_2mortal(newSViv(val)));
-   } else {
-      Perl_croak(aTHX_ "extract_integer: no prior pos() or m//g");
-   }
+   dTARGET;
+   STRLEN l;
+   char* start=SvPV(str, l);
+   char* end=NULL;
+   long val=strtol(start, &end, 10);
+   for (; end < start+l; ++end)
+      if (!isSPACE(*end))
+         Perl_croak(aTHX_ "parse error: invalid integer value %.*s", (int)l, start);
+   PUSHi(val);
 }
 
 void
-extract_float()
-PROTOTYPE:
+extract_float(str)
+   SV* str;
+PROTOTYPE: $
 PPCODE:
 {
-   SV *str=GvSV(PL_defgv);
-   MAGIC *pos_mg=mg_find(str, PERL_MAGIC_regex_global);
-   if (pos_mg && pos_mg->mg_len>=0) {
-      char *start=SvPVX(str)+pos_mg->mg_len;
+   dTARGET;
+   STRLEN l;
+   char* start=SvPV(str, l);
 #ifdef my_atof2
-      NV val=0;
-      char* end=my_atof2(start, &val);
+   NV val=0;
+   char* end=my_atof2(start, &val);
 #else
-      char* end=NULL;
-      NV val=strtod(start, &end);
+   char* end=NULL;
+   NV val=strtod(start, &end);
 #endif
-      pos_mg->mg_len+=end-start;
-      PUSHs(sv_2mortal(newSVnv(val)));
-   } else {
-      Perl_croak(aTHX_ "extract_float: no prior pos() or m//g");
-   }
+   for (; end < start+l; ++end)
+      if (!isSPACE(*end))
+         Perl_croak(aTHX_ "parse error: invalid floating-point value %.*s", (int)l, start);
+   PUSHn(val);
 }
 
 void
@@ -795,9 +791,13 @@ method_name(sub)
 PROTOTYPE: $
 PPCODE:
 {
+   dTARGET;
+   GV* subgv;
    if (!SvROK(sub) || (sub=SvRV(sub), SvTYPE(sub) != SVt_PVCV))
       croak_xs_usage(cv, "\\&sub");
-   PUSHs(sv_2mortal(newSVpvn(GvNAME(CvGV(sub)), GvNAMELEN(CvGV(sub)))));
+   subgv=CvGV(sub);
+   sv_setpvn(TARG, GvNAME(subgv), GvNAMELEN(subgv));
+   PUSHs(TARG);
 }
 
 void
@@ -807,10 +807,12 @@ PROTOTYPE: $
 PPCODE:
 {
    if (SvROK(sub)) {
+      dTARGET;
       sub=SvRV(sub);
       if (SvTYPE(sub) != SVt_PVCV)
          croak_xs_usage(cv, "\\&sub");
-      PUSHs(sv_2mortal(newSVpv(HvNAME(CvSTASH(sub)), 0)));
+      sv_setpv(TARG, HvNAME(CvSTASH(sub)));
+      PUSHs(TARG);
    } else {
       PUSHs(&PL_sv_undef);
    }
@@ -824,10 +826,13 @@ PPCODE:
 {
    if (!SvROK(sub) || (sub=SvRV(sub), SvTYPE(sub) != SVt_PVCV))
       croak_xs_usage(cv, "\\&sub");
-   if (CvSTART(sub))
-      PUSHs(sv_2mortal(newSVpv(CopFILE((COP*)CvSTART(sub)), 0)));
-   else
+   if (CvSTART(sub)) {
+      dTARGET;
+      sv_setpv(TARG, CopFILE((COP*)CvSTART(sub)));
+      PUSHs(TARG);
+   } else {
       PUSHs(&PL_sv_undef);
+   }
 }
 
 void
@@ -861,10 +866,12 @@ PPCODE:
 {
    if (!SvROK(sub) || (sub=SvRV(sub), SvTYPE(sub) != SVt_PVCV))
       croak_xs_usage(cv, "\\&sub");
-   if (CvSTART(sub))
-      PUSHs(sv_2mortal(newSViv(CopLINE((COP*)CvSTART(sub)))));
-   else
+   if (CvSTART(sub)) {
+      dTARGET;
+      PUSHi(CopLINE((COP*)CvSTART(sub)));
+   } else {
       PUSHs(&PL_sv_undef);
+   }
 }
 
 void
@@ -873,9 +880,11 @@ method_owner(sub)
 PROTOTYPE: $
 PPCODE:
 {
+   dTARGET;
    if (!SvROK(sub) || (sub=SvRV(sub), SvTYPE(sub) != SVt_PVCV))
       croak_xs_usage(cv, "\\&sub");
-   PUSHs(sv_2mortal( newSVpv( HvNAME(GvSTASH(CvGV(sub))), 0) ));
+   sv_setpv(TARG, HvNAME(GvSTASH(CvGV(sub))));
+   PUSHs(TARG);
 }
 
 void
@@ -895,7 +904,7 @@ if (!SvROK(sub) ||
    GV *glob;
    CV *was_here;
    STRLEN namelen;
-   const char *name=SvPV(name_sv,namelen);
+   const char *name=SvPV(name_sv, namelen);
    if (!pkg_stash)
       Perl_croak(aTHX_ "unknown package %.*s", (int)SvCUR(pkg), SvPVX(pkg));
    glob=(GV*)*hv_fetch(pkg_stash, name, namelen, TRUE);
@@ -918,6 +927,10 @@ if (!SvROK(sub) ||
          }
       }
       PUSHs(ST(2));
+      if (CvMETHOD(sub)) {
+         PUTBACK;
+         Perl_mro_method_changed_in(aTHX_ pkg_stash);
+      }
    }
 }
 
@@ -947,21 +960,7 @@ can(obj,method,...)
    SV *method;
 PPCODE:
 {
-   GV *glob=do_can(aTHX_ obj, method, FALSE);
-   if (glob)
-      PUSHs( sv_2mortal(newRV((SV*)GvCV(glob))) );
-   else
-      PUSHs( &PL_sv_undef );
-}
-
-
-void
-super_can(obj,method)
-   SV *obj;
-   SV *method;
-PPCODE:
-{
-   GV *glob=do_can(aTHX_ obj, method, TRUE);
+   GV *glob=do_can(aTHX_ obj, method);
    if (glob)
       PUSHs( sv_2mortal(newRV((SV*)GvCV(glob))) );
    else
@@ -1022,7 +1021,7 @@ PPCODE:
 }
 
 void
-swap_ARRAYs(avref1, avref2)
+swap_arrays(avref1, avref2)
    SV *avref1;
    SV *avref2;
 PPCODE:
@@ -1240,26 +1239,14 @@ PPCODE:
 }
 
 void
-unshift_undef_args(num)
-   I32 num;
-PPCODE:
-{
-   AV *args=GvAV(PL_defgv);
-   U32 save_flags=AvREIFY(args);
-   AvREIFY_off(args);
-   av_unshift(args,num);
-   if (save_flags) AvREIFY_on(args);
-}
-
-void
 get_array_flags(avref)
    SV *avref;
 PPCODE:
 {
    SV* av;
    if (SvROK(avref) && (av=SvRV(avref), SvTYPE(av)==SVt_PVAV)) {
-      MAGIC* mg=mg_find(av, PERL_MAGIC_ext);
-      if (mg && mg->mg_virtual==&pm_perl_array_flags_vtbl) {
+      MAGIC* mg=pm_perl_array_flags_magic(aTHX_ av);
+      if (mg) {
          dTARGET;
          PUSHi(mg->mg_len);
       } else {
@@ -1278,9 +1265,9 @@ PPCODE:
 {
    SV* av;
    if (SvROK(avref) && (av=SvRV(avref), SvTYPE(av)==SVt_PVAV)) {
-      MAGIC* mg=mg_find(av, PERL_MAGIC_ext);
-      if (mg==NULL || mg->mg_virtual != &pm_perl_array_flags_vtbl)
-         mg=sv_magicext(av, 0, PERL_MAGIC_ext, &pm_perl_array_flags_vtbl, 0, 0);
+      MAGIC* mg=pm_perl_array_flags_magic(aTHX_ av);
+      if (!mg)
+         mg=sv_magicext(av, Nullsv, PERL_MAGIC_ext, &array_flags_vtbl, Nullch, 0);
       mg->mg_len=flags;
    } else {
       croak_xs_usage(cv, "\\@array, flags");
@@ -1297,7 +1284,7 @@ PPCODE:
       MAGIC* prev_mg=NULL;
       MAGIC* mg;
       for (mg=SvMAGIC(av); mg != NULL; prev_mg=mg, mg=mg->mg_moremagic) {
-         if (mg->mg_virtual == &pm_perl_array_flags_vtbl) {
+         if (mg->mg_virtual == &array_flags_vtbl) {
             if (prev_mg != NULL) {
                prev_mg->mg_moremagic=mg->mg_moremagic;
             } else {
@@ -1406,7 +1393,6 @@ if (PL_DBgv) {
    CvNODEBUG_on(get_cv("Polymake::Core::name_of_ret_var", FALSE));
    CvNODEBUG_on(get_cv("Polymake::Core::name_of_custom_var", FALSE));
    CvNODEBUG_on(get_cv("Polymake::Core::passed_to", FALSE));
-   CvNODEBUG_on(get_cv("Polymake::Core::unshift_undef_args", FALSE));
    CvNODEBUG_on(get_cv("Polymake::Core::rescue_static_code", FALSE));
 }
 CvFLAGS(get_cv("Polymake::readonly", FALSE)) |= CVf_NODEBUG | CVf_LVALUE;

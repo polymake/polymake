@@ -14,13 +14,18 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
+#include "polymake/Rational.h"
+
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::graph::Graph<pm::graph::Undirected> (pm::Matrix<pm::Rational> const&, perl::Object) ) {
+   template <typename T0, typename T1>
+   FunctionInterface4perl( split_compatibility_graph_T_X_x, T0,T1 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturn(arg0.get< perl::TryCanned< const Matrix< Rational > > >(), arg1);
-   }
-   FunctionWrapperInstance4perl( pm::graph::Graph<pm::graph::Undirected> (pm::Matrix<pm::Rational> const&, perl::Object) );
+      WrapperReturn( (split_compatibility_graph<T0>(arg0.get<T1>(), arg1)) );
+   };
 
+   FunctionInstance4perl(split_compatibility_graph_T_X_x, Rational, perl::Canned< const Matrix< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

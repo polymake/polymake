@@ -366,53 +366,53 @@ user_method cone($) : MAXIMAL_CONES {
    my $c=new Cone<Scalar>;
 
    my $a_dim=$c->CONE_AMBIENT_DIM=$self->FAN_AMBIENT_DIM;
-   if( defined(my $ls=$self->lookup("LINEALITY_SPACE"))) {
+   if (defined(my $ls=$self->lookup("LINEALITY_SPACE"))) {
       $c->LINEALITY_SPACE=$ls;
    }
-   if( defined(my $ld=$self->lookup("LINEALITY_DIM"))) {
+   if (defined(my $ld=$self->lookup("LINEALITY_DIM"))) {
       $c->LINEALITY_DIM=$ld;
    }
-   if( defined(my $r=$self->lookup("RAYS")) and defined(my $mc=$self->lookup("MAXIMAL_CONES"))) {
+   if (defined(my $r=$self->lookup("RAYS")) and defined(my $mc=$self->lookup("MAXIMAL_CONES"))) {
       $c->RAYS=$r->minor($mc->[$i],All);
    }
-   if( defined(my $mcf=$self->lookup("MAXIMAL_CONES_FACETS")) and defined(my $fn=$self->lookup("FACET_NORMALS"))) {
+   if (defined(my $mcf=$self->lookup("MAXIMAL_CONES_FACETS")) and defined(my $fn=$self->lookup("FACET_NORMALS"))) {
       my @facets;
       my $a=0;
       foreach (@{$mcf->row($i)}) {
-        if($_!=0) {push(@facets,$_*$fn->row($a)); }
-        ++$a;
+         if($_!=0) {push(@facets,$_*$fn->row($a)); }
+         ++$a;
       }
       $c->FACETS=\@facets;
    }
-   if( defined(my $mclsn=$self->lookup("MAXIMAL_CONES_LINEAR_SPAN_NORMALS")) and defined(my $lsn=$self->lookup("LINEAR_SPAN_NORMALS"))) {
+   if (defined(my $mclsn=$self->lookup("MAXIMAL_CONES_LINEAR_SPAN_NORMALS")) and defined(my $lsn=$self->lookup("LINEAR_SPAN_NORMALS"))) {
       if ($mclsn->rows==0) {
-        $c->LINEAR_SPAN=new Matrix<Scalar>(0,$a_dim);
+         $c->LINEAR_SPAN=new Matrix<Scalar>(0,$a_dim);
       }
       else {
-        $c->LINEAR_SPAN=$lsn->minor($mclsn->[$i],All);
+         $c->LINEAR_SPAN=$lsn->minor($mclsn->[$i],All);
       }
    }
-   if( defined(my $mci=$self->lookup("MAXIMAL_CONES_INCIDENCES"))) {
+   if (defined(my $mci=$self->lookup("MAXIMAL_CONES_INCIDENCES"))) {
       $c->RAYS_IN_FACETS=$mci->[$i];
    }
-   if( defined(my $mccd=$self->lookup("MAXIMAL_CONES_COMBINATORIAL_DIMS"))) {
+   if (defined(my $mccd=$self->lookup("MAXIMAL_CONES_COMBINATORIAL_DIMS"))) {
       $c->COMBINATORIAL_DIM=$mccd->[$i];
    }
-   if( defined(my $simp=$self->lookup("SIMPLICIAL"))) {
+   if (defined(my $simp=$self->lookup("SIMPLICIAL"))) {
       if ($simp) {
-        $c->SIMPLICIAL=$simp;
-   }
+         $c->SIMPLICIAL=$simp;
+      }
    
-   if( defined(my $pure=$self->lookup("PURE"))) {
-      if ($pure) {
-        if( defined(my $fd=$self->lookup("FAN_DIM"))) {
-          $c->CONE_DIM=$fd;
-        }
-        if( defined(my $cd=$self->lookup("COMBINATORIAL_DIM"))) {
-          $c->COMBINATORIAL_DIM=$cd;
-        }
-   }
-   }
+      if (defined(my $pure=$self->lookup("PURE"))) {
+         if ($pure) {
+            if (defined(my $fd=$self->lookup("FAN_DIM"))) {
+               $c->CONE_DIM=$fd;
+            }
+            if (defined(my $cd=$self->lookup("COMBINATORIAL_DIM"))) {
+               $c->COMBINATORIAL_DIM=$cd;
+            }
+         }
+      }
    }
    return $c;
 }

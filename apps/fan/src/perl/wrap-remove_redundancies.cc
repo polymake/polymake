@@ -23,11 +23,11 @@
 namespace polymake { namespace fan { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( remove_redundancies_x_f16, T0 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturnVoid( remove_redundancies<T0>(arg0) );
+   FunctionInterface4perl( remove_redundancies_T_x_f16, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturnVoid( (remove_redundancies<T0>(arg0)) );
    };
 
-   FunctionInstance4perl(remove_redundancies_x_f16, Rational);
+   FunctionInstance4perl(remove_redundancies_T_x_f16, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

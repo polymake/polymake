@@ -52,6 +52,7 @@ void compute_lattice_of_flats(const GenericIncidenceMatrix<MatrixTop>& VIF, Diag
          n=HD.add_node(loops);
          Q.push_back(loops);
          end_this_dim=1;
+         HD.increase_dim();
       }else{
       // The first level: rank-1 (hyperplanes)
          copy(entire(all_subsets_of_1(sequence(0,C))), std::back_inserter(Q));
@@ -66,7 +67,6 @@ void compute_lattice_of_flats(const GenericIncidenceMatrix<MatrixTop>& VIF, Diag
 
       if (__builtin_expect(C>2 && dim_upper_bound, 1)) {
          int old_n=n;
-         bool facets_reached=false;
          for (;;) {
             Set<int> H = Q.front(); Q.pop_front();
             for (faces_one_above_iterator<Set<int>, MatrixTop> faces(H, VIF);  !faces.at_end();  ++faces) {
@@ -79,7 +79,6 @@ void compute_lattice_of_flats(const GenericIncidenceMatrix<MatrixTop>& VIF, Diag
                   add_edge(HD,n,node_ref,Dual);
             }
             if (++n == end_this_dim) {
-               HD.increase_dim();
                if (__builtin_expect(Q.empty() || d == dim_upper_bound, 0)) {
                   // The top node: whole matroid (or dual: empty set)
                   if (end_this_dim == end_next_dim) {
@@ -88,7 +87,10 @@ void compute_lattice_of_flats(const GenericIncidenceMatrix<MatrixTop>& VIF, Diag
                      for (int i=old_n ; i<n; ++i)
                         add_edge(HD,i,n,Dual);
                   }
+                  HD.increase_dim();
                   break;
+               }else{
+                  HD.increase_dim();
                }
                old_n=end_this_dim;
                ++d;  end_this_dim=end_next_dim;

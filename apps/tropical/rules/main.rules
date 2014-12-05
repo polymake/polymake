@@ -30,29 +30,31 @@ file_suffix trop
 # types for tropical addition
 
 # Type tag for tropical addition using the minimum.
-declare property_type Min : c++ (special => 'Min', include => "polymake/tropical/arithmetic.h");
+declare property_type Min : c++ (special => 'Min', include => "polymake/tropical/arithmetic.h") {
+
+   method apply($,$) { shift; &min }
+
+   method orientation() { 1 };
+}
 
 # Type tag for tropical addition using the maximum.
-declare property_type Max : c++ (special => 'Max', include => "polymake/tropical/arithmetic.h");
+declare property_type Max : c++ (special => 'Max', include => "polymake/tropical/arithmetic.h") {
 
-typecheck is_tropical_addition($) {
+   method apply($,$) { shift; &max }
+
+   method orientation() { -1 };
+}
+
+# @category Internal
+# type checking
+function is_tropical_addition($) {
    my $type=shift;
    $type->abstract or defined(wantarray) ? 0 : croak( $type->full_name, " is not suitable for tropical addition" )
 }
 
-typecheck is_tropical_addition(Min) { 1 }
+function is_tropical_addition(Min) { 1 }
 
-typecheck is_tropical_addition(Max) { 1 }
-
-function apply<Min>($$) { return min($_[0],$_[1]); }
-
-#function apply<Max>($$) { return max($_[0],$_[1]); }
-
-function orientation<Min>() { return 1; }
-
-#function orientation<Max>() { return -1; }
-
-
+function is_tropical_addition(Max) { 1 }
 
     
 # @category Basic functions
@@ -60,8 +62,9 @@ function orientation<Min>() { return 1; }
 # 
 # FIXME: Made redundant by semiring code??
 user_function scalar_product<Addition>($$) {
-  my ($x,$y)=@_; my $z=$x->[0]+$y->[0];
-  map { $z=apply<Addition>($x->[$_]+$y->[$_],$z) } 1..$#$x;
+  my ($x,$y)=@_;
+  my $z=$x->[0]+$y->[0];
+  $z=Addition->apply($x->[$_]+$y->[$_], $z) for 1..$#$x;
   return $z;
 }
 
@@ -72,11 +75,7 @@ user_function scalar_product<Addition>($$) {
 # 
 # Currently only works for Min as tropical addition (subject to change in future versions of polymake).
 #
-declare object TropicalPolytope<Scalar=Rational> [ typechecks::is_ordered_field_with_unlimited_precision(Scalar) ];
-
-
-# forward declaration for client tropical_matroid_polytope
-declare object matroid::Matroid;
+declare object TropicalPolytope<Scalar=Rational> [ is_ordered_field_with_unlimited_precision(Scalar) ];
 
 
 INCLUDE

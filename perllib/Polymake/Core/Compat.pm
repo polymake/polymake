@@ -81,7 +81,7 @@ sub printable {
 
    my $thing=shift;
    if (is_object($thing)) {
-      if (my $proto=UNIVERSAL::can($thing,'prototype')) {
+      if (my $proto=UNIVERSAL::can($thing, "typeof")) {
 	 # it is one of declared complex types
 	 (&$proto)->toString->($thing);
 

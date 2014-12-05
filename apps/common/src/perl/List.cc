@@ -28,5 +28,8 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::List__Set__Int", std::list< Set< int > >);
    Class4perl("Polymake::common::List__Integer", std::list< Integer >);
    Builtin4perl("Polymake::common::List__String", std::list< std::string >);
+   Class4perl("Polymake::common::List__List__Pair_A_Int_I_Int_Z", std::list< std::list< std::pair< int, int > > >);
+   Class4perl("Polymake::common::List__Pair_A_Int_I_Int_Z", std::list< std::pair< int, int > >);
+   Class4perl("Polymake::common::List__Int", std::list< int >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

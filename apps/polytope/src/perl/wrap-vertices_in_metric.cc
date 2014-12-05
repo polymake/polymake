@@ -14,13 +14,18 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
+#include "polymake/Rational.h"
+
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::Array<int, void> (pm::Matrix<Rational> const&, pm::Matrix<Rational> const&) ) {
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( vertices_in_metric_T_X_X, T0,T1,T2 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturn(arg0.get< perl::TryCanned< const Matrix< Rational > > >(), arg1.get< perl::TryCanned< const Matrix< Rational > > >());
-   }
-   FunctionWrapperInstance4perl( pm::Array<int, void> (pm::Matrix<Rational> const&, pm::Matrix<Rational> const&) );
+      WrapperReturn( (vertices_in_metric<T0>(arg0.get<T1>(), arg1.get<T2>())) );
+   };
 
+   FunctionInstance4perl(vertices_in_metric_T_X_X, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Matrix< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

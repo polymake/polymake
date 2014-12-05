@@ -499,7 +499,7 @@ sub _add {
    if (!$trusted && exists $self->dictionary->{$prop->key}) {
       croak( "multiple values for property ", $prop->name );
    }
-   push @{$self->contents}, $prop->accept->($value,$self,$trusted);
+   push @{$self->contents}, $prop->accept->($value, $self, $trusted);
    $self->dictionary->{$prop->key}=$#{$self->contents};
 }
 ####################################################################################
@@ -1054,7 +1054,7 @@ sub put {
    if ($temp) {
       assign_max($#{$self->transaction->temporaries}, 0);
       push @{$self->transaction->temporaries}, ($prop->flags & $Property::is_multiple ? [ $prop, $pv->values->[0] ] : $prop);
-   } else {
+   } elsif (not $prop->flags & $Property::is_non_storable) {
       $self->transaction->changed=1;
    }
    $self->transaction->commit($self) if $need_commit;
@@ -1099,7 +1099,7 @@ sub add {
    my ($self, $prop_name)=splice @_, 0, 2;
    my $need_commit;
    my $prop=$self->type->lookup_property($prop_name) ||
-            try_auto_cast($self,$prop_name,0) || 
+            try_auto_cast($self,$prop_name,0) ||
             croak( "unknown property ", $self->type->full_name, "::$prop_name" );
    if ($prop->flags & $Property::is_multiple) {
       my $temp= is_integer($_[0]) && $_[0] == $PropertyValue::is_temporary && shift;
@@ -1162,30 +1162,37 @@ sub take {
 sub take_temp { take(@_,1) }
 ####################################################################################
 sub remove {
-   my ($self, $prop_name)=@_;
+   my $self=shift;
+   @_ or return;
    my $need_commit;
-   if (ref($prop_name)) {
-      my $sub_obj=$prop_name;
-      if (!($sub_obj->property->flags & $Property::is_multiple)) {
-         croak( "only multiple sub-objects can be removed by reference" );
+   if (is_object($_[0])) {
+      # some sanity checks up front
+      foreach my $sub_obj (@_) {
+         is_object($sub_obj)
+           or croak( "can't mix subobjects and property names in the same call to remove()" );
+         $sub_obj->property->flags & $Property::is_multiple
+           or croak( "only multiple sub-objects can be removed by reference" );
+         $sub_obj->parent==$self
+           or croak( "only own sub-objects can be removed" );
       }
-      if ($sub_obj->parent==$self) {
+      if (defined($self->transaction)) {
+         if (defined($self->transaction->rule)) {
+            croak( "attempt to remove a sub-object in a rule" );
+         }
+      } else {
+         $need_commit=1;
+         begin_transaction($self);
+      }
+
+      foreach my $sub_obj (@_) {
          my $content_index=$self->dictionary->{$sub_obj->property->key};
          my $sub_index=$sub_obj->parent_index;
          my $pv;
          if (defined($content_index)  and
              ($pv=$self->contents->[$content_index], $pv->values->[$sub_index]==$sub_obj)) {
-            if (defined($self->transaction)) {
-               if (defined($self->transaction->rule)) {
-                  croak( "attempt to remove a sub-object in a rule" );
-               }
-               if (defined($sub_obj->transaction)) {
-                  $sub_obj->transaction->rollback($sub_obj);
-                  delete $self->transaction->subobjects->{$sub_obj};
-               }
-            } else {
-               $need_commit=1;
-               begin_transaction($self);
+            if (defined($sub_obj->transaction) && !$need_commit) {
+               $sub_obj->transaction->rollback($sub_obj);
+               delete $self->transaction->subobjects->{$sub_obj};
             }
             if ($sub_index == $#{$pv->values}) {
                pop @{$pv->values};
@@ -1202,46 +1209,78 @@ sub remove {
                   push @{$self->transaction->temporaries}, [ $sub_obj->property, undef ];
                }
             }
-            $self->transaction->changed=1;
-            $self->transaction->commit($self) if $need_commit;
             undef $sub_obj->parent;
             undef $sub_obj->property;
             undef $sub_obj->parent_index;
             undef $sub_obj->is_temporary;
          } else {
+            $self->rollback;
             croak( "internal inconsistency: sub-object list for property ", $subobj->property->name, " is corrupted" );
          }
-      } else {
-         croak( "only own sub-objects can be removed" );
       }
+      $self->transaction->changed=1;
+      $self->transaction->commit($self) if $need_commit;
 
    } else {
-      my ($obj, $prop);
-      my $allowed=1;
-      my @req=$self->type->encode_request_element($prop_name, $self);
+      my $from_production_rule=defined($self->transaction) && defined($self->transaction->rule);
+      my @to_remove=map {
+         ref($_)
+           and croak( "can't mix property names and subobjects in the same call to remove()" );
+         my @req=$self->type->encode_request_element($_, $self);
+         if ($Application::plausibility_checks && $from_production_rule) {
+            defined($self->transaction->rule->matching_input(\@req))
+              or croak( "a production rule can only remove its own source properties" );
+         }
+         @req==1 ? @req : \@req
+      } @_;
+
       if (!defined($self->transaction)) {
-         $allowed= $req[-1]->flags & ($Property::is_multiple | $Property::is_mutable);
          $need_commit=1;
          begin_transaction($self);
       }
-      if (($obj, $prop)=descend_with_transaction($self,@req) and
-          defined (my $content_index=delete $obj->dictionary->{$prop->key})) {
-         $obj->transaction->backup->{$content_index} ||= $obj->contents->[$content_index];
-         undef $obj->contents->[$content_index];
-         assign_min($obj->transaction->temporaries->[0], $content_index);
-         $obj->transaction->changed=1;
-         if ($allowed || can_reconstruct($self, @req)) {
-            $self->transaction->commit($self) if $need_commit;
-         } else {
-            $self->rollback;
-            croak( "can't remove the property $prop_name: it is neither multiple nor mutable, nor can be computed from the rest properties" );
-         }
-      } elsif (defined($self->transaction->rule)) {
-         croak( "attempt to remove the property $prop_name which is not declared as a rule source" );
-      } else {
-         $self->rollback if $need_commit;
-         croak( "property $prop_name does not exist in the given object" );
+      my (@reconstruct_request, $obj, $prop);
+      unless ($from_production_rule) {
+         # Scheduler must know the truth even when some properties are removed
+         has_sensitive_to($self, $_) for $self->type->list_permutations;
       }
+      foreach my $req (@to_remove) {
+         if (($obj, $prop)=descend_with_transaction($self, $req) and
+             defined (my $content_index=delete $obj->dictionary->{$prop->key})) {
+
+            my $pv=$obj->contents->[$content_index];
+            if (defined($pv) and not($from_production_rule or $prop->flags & ($Property::is_multiple | $Property::is_mutable))) {
+               if (instanceof Object($pv) && !($prop->flags & $Property::is_produced_as_whole)) {
+                  push @reconstruct_request, enumerate_atomic_properties($pv, is_object($req) ? [ $req ] : $req);
+               } else {
+                  push @reconstruct_request, [ $req ];
+               }
+            }
+            $obj->transaction->backup->{$content_index} ||= $pv;
+            undef $obj->contents->[$content_index];
+            assign_min($obj->transaction->temporaries->[0], $content_index);
+            $obj->transaction->changed=1 unless $prop->flags & $Property::is_non_storable;
+         } else {
+            $self->rollback if $need_commit;
+            local $_=$req;
+            croak( "property ", &Rule::print_path, " does not exist in the given object" );
+         }
+      }
+      if (@reconstruct_request) {
+         # create a nested transaction isolating all possible Scheduler feats
+         $need_commit or $self->begin_transaction;
+         $self->transaction->entirely_temp=1;
+         my $sched=new Scheduler::InitRuleChain($self, create Rule('request', \@reconstruct_request, 1));
+         my $allow= $sched->gather_rules && defined($sched->resolve($self, 1));
+         $need_commit or $self->transaction->commit($self);
+         unless ($allow) {
+            $self->rollback;
+            croak( "can't remove the ",
+                   @reconstruct_request>1 ? "properties " : "property ",
+                   join(", ", map { &Rule::print_path } @reconstruct_request),
+                   ": neither multiple, nor mutable, nor unambiguously reconstructible from the remaining properties" );
+         }
+      }
+      $self->transaction->commit($self) if $need_commit;
    }
 }
 ####################################################################################
@@ -1495,7 +1534,7 @@ sub provide_request {
    return 1 if $success>0;
    my @lacking;
    foreach my $input_list (@$request) {
-      eval_input_list($self,$input_list,1)
+      eval_input_list($self, $input_list, 1)
          or push @lacking, $input_list;
    }
    if ($success==0) {
@@ -1529,7 +1568,7 @@ sub provide {
          commit($self);
       }
    }
-   provide_request($self, [ map { $self->type->encode_read_request($_,$self) } @_ ]);
+   provide_request($self, [ map { $self->type->encode_read_request($_, $self) } @_ ]);
 }
 ####################################################################################
 sub get_schedule {
@@ -1579,16 +1618,6 @@ sub apply_rule {
                " due to insufficient source data and/or unsatisfied preconditions" );
 }
 ####################################################################################
-# protected:
-sub can_reconstruct {
-   my ($self, @path)=@_;
-   # if the Scheduler creates new properties for precondition evaluation, they shouldn't remain
-   $self->transaction->entirely_temp=1;
-   my $sched=new Scheduler::InitRuleChain($self, create Rule('request', [ [ @path>1 ? \@path : @path ] ], 1));
-   $sched->gather_rules &&
-   defined($sched->resolve($self,1));
-}
-####################################################################################
 sub list_names {
    my $self=shift;
    if (defined(my $prop=$self->property)) {
@@ -1620,14 +1649,29 @@ sub list_properties {
    } @{$self->contents};
 }
 ####################################################################################
+sub enumerate_atomic_properties {
+   my ($self, $descent_path)=@_;
+   map {
+      if (defined($_) && !($_->property->flags & ($Property::is_multiple | $Property::is_mutable))) {
+         if (instanceof PropertyValue($_)) {
+            [ @$descent_path, $_->property->declared ]
+         } else {
+            enumerate_atomic_properties($_, local_push($descent_path, $_->property->declared));
+         }
+      } else {
+         ()
+      }
+   } @{$self->contents};
+}
+####################################################################################
 sub properties {
-    my ($self,$rec)=@_;
+    my ($self)=@_;
     print $self->name, "\n", $self->description, "\n";
     map { print $_, "\n", $self->$_,"\n\n" } $self->list_properties;
 }
 ####################################################################################
 sub schedule {
-    my ($self,$property)=@_;
+    my ($self, $property)=@_;
     print map { "$_\n" } $self->get_schedule($property)->list;
 }
 ####################################################################################
@@ -2000,12 +2044,12 @@ sub search_for_sensitive {
                 defined ($pv->value)) {
                if ($pv->property->flags & $Property::is_multiple) {
                   foreach (@{$pv->values}) {
-                     if ($_ != $taboo && search_for_sensitive($_,$sub_hash,$in_props)) {
+                     if ($_ != $taboo && search_for_sensitive($_, $sub_hash, $in_props)) {
                         keys %$down; keys %$prop_hash;   # reset iterators
                         return 1;
                      }
                   }
-               } elsif ($pv->value != $taboo && search_for_sensitive($pv->value,$sub_hash,$in_props)) {
+               } elsif ($pv->value != $taboo && search_for_sensitive($pv->value, $sub_hash, $in_props)) {
                   keys %$down; keys %$prop_hash;   # reset iterators
                   return 1;
                }

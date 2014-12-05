@@ -20,13 +20,18 @@ IMPORT fan graph ideal
 
 HELP help.rules
 
+# A normal toric variety given by a fan.
 declare object NormalToricVariety : PolyhedralFan<Rational>; 
 
+# A normal toric variety that is affine, i.e. given by a cone.
 declare object AffineNormalToricVariety : NormalToricVariety;
 
+# An affine normal toric variety given by a two-dimensional cone in
+# two-dimensional space.
 declare object CyclicQuotient : AffineNormalToricVariety;
 
 INCLUDE
+   help.rules
    toric_divisor_properties.rules
    toric_divisor.rules
    toric_variety_properties.rules
@@ -38,3 +43,8 @@ INCLUDE
 
 
 
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

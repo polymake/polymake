@@ -128,7 +128,7 @@ sub is_temporary { 0 }
 sub copy {
    my $self=shift;
    my $i=-1;
-   if (my @subobjs=map { 
+   if (my @subobjs=map {
          if (defined($_) && !$_->is_temporary && defined (my $subcopy=$_->copy(@_))) {
             $subcopy->parent_index=++$i;
             $subcopy

@@ -97,7 +97,7 @@ SV* ArrayHolder::init_me(int size)
 {
    dTHX;
    AV* av=newAV();
-   if (size) av_extend(av, size);
+   if (size>0) av_extend(av, size-1);
    return newRV_noinc((SV*)av);
 }
 
@@ -105,7 +105,7 @@ void ArrayHolder::upgrade(int size)
 {
    dTHX;
    AV* av=newAV();
-   if (size) av_extend(av, size);
+   if (size>0) av_extend(av, size-1);
    (void)SvUPGRADE(sv, SVt_RV);
    SvRV(sv)=(SV*)av;
    SvROK_on(sv);
@@ -137,8 +137,8 @@ SV* ArrayHolder::operator[] (int i) const
 int ArrayHolder::dim(bool& has_sparse_representation) const
 {
    dTHX;
-   MAGIC* mg=mg_find(SvRV(sv), PERL_MAGIC_ext);
-   if (mg && mg->mg_virtual==&pm_perl_array_flags_vtbl && mg->mg_len>=0) {
+   MAGIC* mg=pm_perl_array_flags_magic(aTHX_ SvRV(sv));
+   if (mg && mg->mg_len>=0) {
       has_sparse_representation=true;
       return mg->mg_len;
    } else {
@@ -151,8 +151,8 @@ bool SVHolder::is_tuple() const
 {
    dTHX;
    if (SvROK(sv)) {
-      MAGIC* mg=mg_find(SvRV(sv), PERL_MAGIC_ext);
-      return mg && mg->mg_virtual==&pm_perl_array_flags_vtbl && mg->mg_len<0;
+      MAGIC* mg=pm_perl_array_flags_magic(aTHX_ SvRV(sv));
+      return mg && mg->mg_len<0;
    } else {
       return false;
    }
@@ -188,6 +188,21 @@ void ArrayHolder::resize(int size)
 {
    dTHX;
    av_fill((AV*)SvRV(sv), size-1);
+}
+
+SV* make_string_array(int size, ...)
+{
+   dTHX;
+   AV* const ary=newAV();
+   av_extend(ary, size-1);
+   va_list args;
+   va_start(args, size);
+   while (--size >= 0) {
+      const char* str=va_arg(args, const char*);
+      av_push(ary, Scalar::const_string(str, strlen(str)));
+   }
+   va_end(args);
+   return newRV_noinc((SV*)ary);
 }
 
 SV* HashHolder::init_me()
@@ -234,7 +249,7 @@ Stack::Stack(bool room_for_object, int reserve)
    pi=getTHX;
    PmStartFuncall;
    EXTEND(SP,reserve);
-   if (room_for_object) ++SP;
+   if (room_for_object) PUSHs(&PL_sv_undef);
    PUTBACK;
 }
 
@@ -477,20 +492,15 @@ bool Value::is_plain_text(bool expect_numeric_scalar) const
    }
 }
 
-const std::type_info* Value::get_canned_typeinfo() const
+Value::canned_data_t Value::get_canned_data(SV* sv_arg)
 {
-   if (SvROK(sv)) {
+   if (SvROK(sv_arg)) {
       MAGIC* mg;
-      SV* obj=SvRV(sv);
+      SV* obj=SvRV(sv_arg);
       if (SvOBJECT(obj) && (mg=pm_perl_get_cpp_magic(obj)))
-         return ((glue::base_vtbl*)mg->mg_virtual)->type;
+         return canned_data_t(((glue::base_vtbl*)mg->mg_virtual)->type, mg->mg_ptr);
    }
-   return NULL;
-}
-
-char* Value::get_canned_value(SV* sv_arg)
-{
-   return pm_perl_get_cpp_magic(SvRV(sv_arg))->mg_ptr;
+   return canned_data_t(NULL, NULL);
 }
 
 int Value::get_canned_dim(bool tell_size_if_dense) const

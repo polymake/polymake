@@ -17,7 +17,10 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/client.h"
+#include "polymake/Graph.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/linalg.h"
+#include "polymake/Rational.h"
 #include "polymake/Array.h"
 #include "polymake/list"
 #include "polymake/Set.h"
@@ -72,5 +75,7 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary__ne, perl::Canned< const Wary< IncidenceMatrix< NonSymmetric > > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
    FunctionInstance4perl(new_X, IncidenceMatrix< NonSymmetric >, perl::Canned< const pm::MatrixMinor<pm::Transposed<pm::IncidenceMatrix<pm::NonSymmetric> >&, pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> const&, pm::all_selector const&> >);
    FunctionInstance4perl(new_X, IncidenceMatrix< NonSymmetric >, perl::Canned< const Array< Array< int > > >);
+   OperatorInstance4perl(Unary_com, perl::Canned< const Wary< pm::AdjacencyMatrix<pm::graph::Graph<pm::graph::Undirected>, false> > >);
+   OperatorInstance4perl(Binary_sub, perl::Canned< const Wary< pm::ComplementIncidenceMatrix<pm::AdjacencyMatrix<pm::graph::Graph<pm::graph::Undirected>, false> > > >, perl::Canned< const pm::IndexMatrix<pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true> const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

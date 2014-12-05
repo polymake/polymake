@@ -19,9 +19,9 @@
 namespace polymake { namespace fan { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( check_fan_objects_x_o, T0 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]);
-      WrapperReturn( check_fan_objects<T0>(arg0, arg1) );
+   FunctionInterface4perl( check_fan_objects_T_x_o, T0 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      WrapperReturn( (check_fan_objects<T0>(arg0, arg1)) );
    };
 
    FunctionWrapper4perl( perl::Object (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, perl::OptionSet) ) {
@@ -30,6 +30,6 @@ namespace polymake { namespace fan { namespace {
    }
    FunctionWrapperInstance4perl( perl::Object (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, perl::OptionSet) );
 
-   FunctionInstance4perl(check_fan_objects_x_o, Rational);
+   FunctionInstance4perl(check_fan_objects_T_x_o, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

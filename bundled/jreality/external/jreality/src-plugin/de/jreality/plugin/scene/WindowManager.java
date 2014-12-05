@@ -15,7 +15,6 @@ import de.jreality.math.MatrixBuilder;
 import de.jreality.plugin.basic.RunningEnvironment;
 import de.jreality.plugin.basic.Scene;
 import de.jreality.plugin.basic.View;
-import de.jreality.portal.PortalCoordinateSystem;
 import de.jreality.scene.Appearance;
 import de.jreality.scene.SceneGraphComponent;
 import de.jreality.shader.DefaultGeometryShader;
@@ -38,7 +37,6 @@ public class WindowManager extends Plugin implements ChangeListener {
 	}
 
 	private int
-		screenResolutionXPortal=1600,//1600 for CAVE
 		screenResolutionX=1920, 
 		screenResolutionY=1200;
 	
@@ -64,7 +62,6 @@ public class WindowManager extends Plugin implements ChangeListener {
 	
 	private boolean showDesktopBorder=false;
 	SceneGraphComponent desktopBorder=new SceneGraphComponent("desktop bounds");
-	ActionListener portalScaleListener;
 	
 	List<WeakReference<JFakeFrameWithGeometry>> frameRefs = new LinkedList<WeakReference<JFakeFrameWithGeometry>>();
 	
@@ -73,9 +70,6 @@ public class WindowManager extends Plugin implements ChangeListener {
 		DefaultGeometryShader dgs = ShaderUtility.createDefaultGeometryShader(desktopBorder.getAppearance(), false);
 		DefaultLineShader dls = (DefaultLineShader) dgs.getLineShader();
 		dls.setTubeRadius(1.0);
-		if (env != RunningEnvironment.DESKTOP){
-			screenResolutionX=screenResolutionXPortal;//setting portal conditions
-		}
 		desktopBorder.setGeometry(IndexedLineSetUtility.createCurveFromPoints(new double[][]{{0,0,0},{screenResolutionX,0,0},{screenResolutionX,screenResolutionY,0},{0,screenResolutionY,0}}, true));
 	}
 	
@@ -83,7 +77,6 @@ public class WindowManager extends Plugin implements ChangeListener {
 		if (env != RunningEnvironment.DESKTOP) {
 			double yTranslation = 0;
 			double ps = 1.0;
-			ps = PortalCoordinateSystem.getPortalScale();
 			yTranslation = ps*(screenHeight/2+ screenHeightOffset);
 			MatrixBuilder.euclidean().translate(0,yTranslation,-ps*screenWidth/2.0).scale(ps*screenWidth/screenResolutionX).rotateX(Math.PI).translate(-screenResolutionX/2, -screenResolutionY/2, 0).assignTo(windowRoot);
 		} else {
@@ -106,21 +99,11 @@ public class WindowManager extends Plugin implements ChangeListener {
 		updateParent(c.getPlugin(Scene.class));
 		c.getPlugin(Scene.class).addChangeListener(this);
 		setShowDesktopBorder(getShowDesktopBorder());
-		if (env != RunningEnvironment.DESKTOP)
-			PortalCoordinateSystem.addChangeListener(portalScaleListener = new ActionListener() {
-			
-			public void actionPerformed(ActionEvent arg0) {
-				updateWindowRootTransformation(-1);
-				System.err.println("WM: Updating portal scale");
-			}
-		});
 	}
 	
 	@Override
 	public void uninstall(Controller c) throws Exception {
 		c.getPlugin(Scene.class).removeChangeListener(this);
-		if (env != RunningEnvironment.DESKTOP && portalScaleListener != null)
-			PortalCoordinateSystem.removeChangeListener(portalScaleListener);
 		frameRefs.clear();
 		setParent(null);
 	}

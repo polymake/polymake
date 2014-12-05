@@ -14,11 +14,8 @@
         <target name="io"/>
         <target name="jogl"/>
         <target name="soft"/>
-        <target name="renderman"/>
-        <target name="gpgpu"/>
         <target name="sunflow"/>
         <target name="plugin"/>
-        <target name="vr"/>
       </ant>
       <copy todir="${jar.dir}"
             preservelastmodified="yes">

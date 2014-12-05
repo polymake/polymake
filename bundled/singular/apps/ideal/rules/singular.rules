@@ -14,37 +14,35 @@
 #-------------------------------------------------------------------------------
 
 
-CREDIT Singular
-  Singular is a computer algebra system for polynomial computations, with special emphasis on commutative and non-commutative algebra, algebraic geometry, and singularity theory. It is free and open-source under the GNU General Public Licence.
-  http://www.singular.uni-kl.de/
+declare property_type SingularIdeal : c++ (include => ["polymake/ideal/singularIdeal.h"]) {
+
+   method construct(Array<Polynomial>, Matrix<Int>) : c++;
+
+   method construct(Array<Polynomial>, Vector<Int>) : c++;
+
+   method construct(Array<Polynomial>, String) : c++;
+
+   method groebner() : void : c++ ;
+
+   method dim() : c++ ;
+
+   method initial_ideal() : c++;
+
+   method radical() : c++ ;
+
+   method division(Polynomial, Ring) : c++;
+
+   method solve() : c++;
+
+   method reduce(Polynomial, Ring) : c++;
+
+   method polynomials(Ring) : c++;
+
+   method primary_decomposition() : c++;
+
+}
 
 object Groebner {
-
-   declare property_type SingularIdeal : c++ (include => ["polymake/ideal/singularIdeal.h"]) {
-
-      method construct(Array<Polynomial>, Matrix<Int>) : c++;
-      
-      method construct(Array<Polynomial>, Vector<Int>) : c++;
-      
-      method construct(Array<Polynomial>, String) : c++;
-      
-      method groebner() : void : c++ ;
-      
-      method dim() : c++ ;
-
-      method initial_ideal() : c++;
-
-      method radical() : c++ ;
-      
-      method solve() : c++;
-
-      method reduce(Polynomial, Ring) : c++;
-
-      method polynomials(Ring) : c++;
-
-      method primary_decomposition() : c++;
-
-   }
 
    property SINGULAR_IDEAL : SingularIdeal : non_storable;
 
@@ -54,10 +52,16 @@ object Groebner {
       return $self->SINGULAR_IDEAL->reduce($p, $p->get_ring());
    }
 
+   user_method division(Polynomial) {
+      my ($self, $p) = @_;
+      # TODO: Take care if ring is correct.
+      return $self->SINGULAR_IDEAL->division($p, $p->get_ring());
+   }
+
 }
 
 object Ideal {
-   
+
    rule GROEBNER.INITIAL_IDEAL : GROEBNER.SINGULAR_IDEAL, RING {
       my $i = $this->GROEBNER->SINGULAR_IDEAL->initial_ideal();
       $this->GROEBNER->INITIAL_IDEAL = new Ideal(GENERATORS=>$i->polynomials($this->RING), RING=>$this->RING);
@@ -68,23 +72,23 @@ object Ideal {
       $this->GROEBNER->SINGULAR_IDEAL->groebner();
    }
    precondition : !ZERO;
-   
+
    rule GROEBNER.SINGULAR_IDEAL : GENERATORS, GROEBNER.ORDER_VECTOR {
       $this->GROEBNER->SINGULAR_IDEAL = new SingularIdeal($this->GENERATORS, $this->GROEBNER->ORDER_VECTOR);
       $this->GROEBNER->SINGULAR_IDEAL->groebner();
    }
    precondition : !ZERO;
-   
+
    rule GROEBNER.SINGULAR_IDEAL : GENERATORS, GROEBNER.ORDER_NAME {
       $this->GROEBNER->SINGULAR_IDEAL = new SingularIdeal($this->GENERATORS, $this->GROEBNER->ORDER_NAME);
       $this->GROEBNER->SINGULAR_IDEAL->groebner();
    }
    precondition : !ZERO;
-   
+
    rule GROEBNER.BASIS : GROEBNER.SINGULAR_IDEAL, RING {
       $this->GROEBNER->BASIS = $this->GROEBNER->SINGULAR_IDEAL->polynomials($this->RING);
    }
-   
+
    rule GROEBNER.INITIAL_IDEAL, GROEBNER.BASIS, GROEBNER.SINGULAR_IDEAL : GENERATORS, GROEBNER.ORDER_MATRIX , RING {
       $this->GROEBNER->SINGULAR_IDEAL = new SingularIdeal($this->GENERATORS, $this->GROEBNER->ORDER_MATRIX);
       $this->GROEBNER->SINGULAR_IDEAL->groebner();
@@ -94,7 +98,7 @@ object Ideal {
    }
    precondition : !ZERO;
 
-   
+
    rule GROEBNER.SINGULAR_IDEAL : GROEBNER.BASIS , GROEBNER.ORDER_MATRIX {
       $this->GROEBNER->SINGULAR_IDEAL = new SingularIdeal($this->GROEBNER->BASIS, $this->GROEBNER->ORDER_MATRIX);
       $this->GROEBNER->SINGULAR_IDEAL->groebner();
@@ -113,7 +117,7 @@ object Ideal {
       }
       $this->MONOMIAL = $result;
    }
-   
+
    rule DIM : RING , GENERATORS {
       my $si;
       unless (defined($si = $this->lookup("GROEBNER.SINGULAR_IDEAL"))) {
@@ -129,7 +133,7 @@ object Ideal {
      unless (defined($si = $this->lookup("GROEBNER.SINGULAR_IDEAL"))) {
          $si = $this->GROEBNER(ORDER_NAME=>"dp",temporary)->SINGULAR_IDEAL;
      }
-     $si->solve();     
+     $si->solve();
    }
 
    rule PRIMARY_DECOMPOSITION : RING, GENERATORS {
@@ -155,3 +159,10 @@ object Ideal {
       $this->RADICAL = new Ideal(GENERATORS=>$radical->polynomials($this->RING),RING=>$this->RING);
    }
 }
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

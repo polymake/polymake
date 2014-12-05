@@ -113,6 +113,16 @@ PPCODE:
 }
 
 
+void
+toZero(wt)
+   SV* wt=SvRV(ST(0));
+PPCODE:
+{
+   I32 len=SvCUR(wt)/sizeof(I32);
+   Zero(SvPVX(wt), len, I32);
+}
+
+
 BOOT:
 {
    my_stash=gv_stashpv("Polymake::Core::Rule::Weight", FALSE);

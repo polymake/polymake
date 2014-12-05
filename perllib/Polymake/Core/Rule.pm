@@ -38,19 +38,19 @@ use Polymake::Enum qw( exec: OK retry failed infeasible );
 
 use Polymake::Struct (
    [ 'new' => '$;$$$' ],
-   [ '$header' => '#1' ],       # 'ORIGINAL HEADER'  for diagnostic and debug output
-   '@input',                    # ( [ prop_ref ] )  each inner list encodes a group of alternatives
-                                #     prop_ref ::= SimpleProperty | [ SubobjProperty, ...,  SimpleProperty ]
-   '@output | keywords',        # production rule: ( prop_ref )   method-as-rule: keyword tables
-   [ '$flags' => '0' ],         # is_*
-   [ '$code' => '#2' ],         # sub { ... }  compiled perl code of the rule body
-   [ '$defined_for' => '#3' ],  # ObjectType
-   [ '$overriden_in' => 'undef' ],      # [ ObjectType ... ]
-   '@labels',                   # rule labels
-   '$weight',                   # [ weight_category, weight_value ]
-   '@preconditions',            # ( Rule )
+   [ '$header' => '#1' ],               # 'ORIGINAL HEADER'  for diagnostic and debug output
+   '@input',                            # ( [ prop_ref ] )  each inner list encodes a group of alternatives
+                                        #     prop_ref ::= SimpleProperty | [ SubobjProperty, ...,  SimpleProperty ]
+   '@output',                           # ( prop_ref )
+   [ '$flags' => '0' ],                 # is_*
+   [ '$code' => '#2' ],                 # sub { ... }  compiled perl code of the rule body
+   [ '$defined_for' => '#3' ],          # ObjectType
+   [ '$overridden_in' => 'undef' ],     # [ ObjectType ... ]
+   '@labels',                           # rule labels
+   '$weight',                           # [ weight_category, weight_value ]
+   '@preconditions',                    # ( Rule )
    [ '$dyn_weight' => 'undef' ],        # Rule  also inserted in preconditions
-   [ '$credit' => '#4' ],       # optional Credit from the rule file
+   [ '$credit' => '#4' ],               # optional Credit from the rule file
    [ '$with_permutation' => 'undef' ],  # CreatingPermutation
 );
 
@@ -62,6 +62,8 @@ declare $zero_weight=[0, 0];
 
 declare $max_major=$std_weight->[0]+1;
 declare $timeout;
+
+sub without_permutation { $_[0] }
 
 ####################################################################################
 # private:
@@ -246,7 +248,28 @@ sub append_permutation {
          croak( "Sorry, multiple permutations per production rule are not implemented" );
       }
    }
-   $self->with_permutation=new CreatingPermutation($self,$perm);
+   $self->with_permutation=new CreatingPermutation($self, $perm);
+}
+####################################################################################
+sub matching_input {
+   my ($self, $path)=@_;
+   my $l=@$path;
+   foreach my $input_list (@{$self->input}) {
+      foreach my $input (@$input_list) {
+         if (is_object($input)) {
+            if ($l==1 && $path->[0]->key == $input->key) {
+               return $input_list;
+            }
+         } elsif (@$input==$l) {
+            my $i;
+            for ($i=0; $i<$l && $input->[$i]->key == $path->[$i]->key; ++$i) { }
+            if ($i==$l) {
+               return $input_list;
+            }
+         }
+      }
+   }
+   undef
 }
 ####################################################################################
 # private:
@@ -261,7 +284,7 @@ sub match_length {
          assign_min($l, $input->key == $ancestors->[$path_length]->key);
       } else {
          for ($i=0; $i<=$path_length && $input->[$i]->key == $ancestors->[$path_length-$i]->key; ++$i) { }
-         assign_min($l,$i);
+         assign_min($l, $i);
       }
    }
    $l;
@@ -288,7 +311,7 @@ sub needs_finalization {
 
    if (defined $input_perm) {
       if ($self->flags==$is_initial) {
-         croak( "initial rules can't involve permutations" );
+         croak( "initial rules can't trigger permutations" );
       }
       return $input_perm->analyze_rule($self) ? () : ($self);
    }
@@ -337,7 +360,7 @@ sub finalize {
          $created_prop=$output;
          if (defined($perm_deputy)) {
             if (defined (my $prod_list=$permutation->sensitive_props->{$created_prop->key})) {
-               my $action=new PermAction($self,$i,$prod_list);
+               my $action=new PermAction($self, $i, $prod_list);
                push @{$perm_deputy->actions}, $action;
                push @prod, $action;
             } else {
@@ -372,7 +395,7 @@ sub finalize {
             }
             if ($store_full_path) {
                if (defined (my $prod_list=$permutation->find_sensitive_sub_property(@$output))) {
-                  my $action=new PermAction($self,$i,$prod_list);
+                  my $action=new PermAction($self, $i, $prod_list);
                   push @{$perm_deputy->actions}, $action;
                   push @prod, $action;
                } else {
@@ -406,14 +429,15 @@ sub finalize {
       $proto->add_rule_labels($perm_deputy, $self->labels) if defined $perm_deputy;
    }
 
-   if (defined $self->overriden_in) {
-      $proto->override_rule(@$_) for @{$self->overriden_in};
-      undef $self->overriden_in;
+   if (defined $self->overridden_in) {
+      $proto->override_rule(@$_) for @{$self->overridden_in};
+      undef $self->overridden_in;
    }
 }
 
 sub checking_precondition {
-   my $permutation=(shift)->with_permutation->permutation;
+   my ($self)=@_;
+   my $permutation=$self->with_permutation->permutation;
    $permutation->sensitivity_check ||= new SensitivityCheck($permutation);
 }
 ####################################################################################
@@ -506,7 +530,7 @@ sub break_rule {
    if ($break_reason eq 'ALRM') {
       $SIG{INT}='IGNORE';
       $SIG{ALRM}='IGNORE';
-      kill -(SIGINT), $$;       # kill the subprocesses 
+      kill -(SIGINT), $$;       # kill the subprocesses
    }
    die "\n" if waitpid(-$$,WNOHANG)==-1;        # there were no subprocesses - leave eval{} in execute().
 }
@@ -620,7 +644,7 @@ sub new { &_new; }
 sub execute {
    my ($self, $object)=@_;
    dbg_print("applying ", $self->header) if $Verbose::rules>2;
-   $object->cast_to_type($self->output->abstract ? $self->concrete_type($object->type) : $self->output);
+   $object->cast_to_type($self->output->abstract ? $self->output->concrete_type($object->type) : $self->output);
    $exec_OK;
 }
 
@@ -700,9 +724,10 @@ sub labels { $_[0]->rule->labels }
 sub flags { $_[0]->rule->flags }
 sub preconditions { $_[0]->rule->preconditions }
 sub dyn_weight { $_[0]->rule->dyn_weight }
-sub overriden_in { $_[0]->rule->overriden_in }
+sub overridden_in { $_[0]->rule->overridden_in }
 sub with_permutation { $_[0]->rule->with_permutation }
 sub defined_for { $_[0]->rule->defined_for }
+sub matching_input { $_[0]->rule->matching_input($_[1]) }
 
 ####################################################################################
 package __::CreatingPermutation;
@@ -716,16 +741,17 @@ use Polymake::Struct (
 );
 
 sub header {
-   my $self=shift;
+   my ($self)=@_;
    $self->rule->header . " ( creating " . $self->permutation->name . " )";
 }
 
 sub with_permutation { undef }
+sub without_permutation { $_[0]->rule }
 
 sub execute {
    my $self=shift;
    my $object=$_[0];
-   new RuleTransactionWithPerm($object,$self);
+   new RuleTransactionWithPerm($object, $self);
    dbg_print("applying rule ", $self->header) if $Verbose::rules>2;
    _execute($self->rule, @_);
 }
@@ -769,10 +795,10 @@ sub header {
    . " extracted from " . $self->permutation->name . " after " . $self->perm_trigger->header;
 }
 sub list_results { () }
-sub permutation { (shift)->perm_trigger->with_permutation->permutation }
+sub permutation { $_[0]->perm_trigger->with_permutation->permutation }
 sub flags { $is_perm_action }
 
-sub enabled { @{(shift)->producers}!=0 }
+sub enabled { @{$_[0]->producers}!=0 }
 
 sub preconditions { [ ] }
 sub labels { [ ] }
@@ -780,7 +806,7 @@ sub dyn_weight { undef }
 sub with_permutation { undef }
 sub weight { $zero_weight }
 sub execute { $exec_OK }
-sub overriden_in { undef }
+sub overridden_in { undef }
 
 ####################################################################################
 package __::Weight;

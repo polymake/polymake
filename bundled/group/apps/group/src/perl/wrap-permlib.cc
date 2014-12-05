@@ -14,10 +14,11 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/Vector.h"
-#include "polymake/Rational.h"
 #include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/Vector.h"
 #include "polymake/Integer.h"
 
 namespace polymake { namespace group { namespace {
@@ -95,5 +96,7 @@ namespace polymake { namespace group { namespace {
    FunctionInstance4perl(are_in_same_orbit_x_X_X, perl::Canned< const Vector< int > >, perl::Canned< const Vector< int > >);
    FunctionInstance4perl(stabilizer_of_vector_x_X, perl::Canned< const Vector< Rational > >);
    FunctionInstance4perl(stabilizer_of_vector_x_X, perl::Canned< const Vector< int > >);
+   FunctionInstance4perl(orbits_coord_action_complete_x_X, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
+   FunctionInstance4perl(cols_f1, perl::Canned< const pm::ListMatrix<pm::Vector<pm::QuadraticExtension<pm::Rational> > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

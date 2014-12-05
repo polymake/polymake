@@ -231,15 +231,21 @@ precondition : SIMPLE_POLYHEDRON;
 
 
 rule H_VECTOR : F_VECTOR {
-  h_vector($this,1);
+  h_from_f_vector($this,1);
 }
 precondition : SIMPLICIAL;
 weight 1.10;
 
 rule DUAL_H_VECTOR : F_VECTOR {
-  h_vector($this,0);
+  h_from_f_vector($this,0);
 }
 precondition : SIMPLE;
+weight 1.10;
+
+rule H_VECTOR : G_VECTOR, COMBINATORIAL_DIM {
+  h_from_g_vector($this);
+}
+precondition : SIMPLICIAL;
 weight 1.10;
 
 rule F_VECTOR : H_VECTOR {

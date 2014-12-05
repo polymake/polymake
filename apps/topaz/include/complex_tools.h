@@ -247,8 +247,11 @@ bool is_pure(const HasseDiagram& HD);
 // The torus.
 Array< Set<int> > torus_facets();
 
-// The projective plane.
-Array< Set<int> > projective_plane_facets();
+// The real projective plane.
+Array< Set<int> > real_projective_plane_facets();
+
+// The complex projective plane.
+Array< Set<int> > complex_projective_plane_facets();
 
 } }
 

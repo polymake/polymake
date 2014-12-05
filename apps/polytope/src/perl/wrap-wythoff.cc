@@ -14,14 +14,17 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
+
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( void (std::string, pm::Set<int, pm::operations::cmp>) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturnVoid( arg0, arg1.get< perl::TryCanned< const Set< int > > >() );
-   }
-   FunctionWrapperInstance4perl( void (std::string, pm::Set<int, pm::operations::cmp>) );
+   template <typename T0>
+   FunctionInterface4perl( tetrahedron_T, T0 ) {
+      WrapperReturn( (tetrahedron<T0>()) );
+   };
 
+   FunctionInstance4perl(tetrahedron_T, QuadraticExtension< Rational >);
    FunctionWrapper4perl( perl::Object (std::string, pm::Set<int, pm::operations::cmp>) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
       IndirectWrapperReturn( arg0, arg1.get< perl::TryCanned< const Set< int > > >() );
