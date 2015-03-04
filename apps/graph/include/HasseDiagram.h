@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -78,7 +78,6 @@ public:
 
    int dim() const { return dim_map.size()-(built_dually() || !proper_top_node() ? 1 : 2); }
 
-protected:
    struct node_exists_pred {
       const graph_type *G;
 
@@ -89,7 +88,7 @@ protected:
       typedef bool result_type;
       result_type operator() (int n) const { return G->node_exists(n); }
    };
-public:
+
    typedef SelectedSubset<sequence, node_exists_pred> range_with_gaps;
    typedef ContainerUnion< pm::cons<sequence, range_with_gaps> > nodes_of_dim_set;
 

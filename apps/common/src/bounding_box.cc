@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -52,9 +52,9 @@ void extend_bounding_box(Matrix<Coord>& BB, const Matrix<Coord>& BB2)
 }
 
 UserFunctionTemplate4perl("# @category Utilities"
-                          "# Compute a column-wise bounding box for the give matrix"
+                          "# Compute a column-wise bounding box for the given Matrix //m//."
                           "# @param Matrix m"
-                          "# @return Matrix : row(0) contains lower bounds, row(1) contains upper bounds",
+                          "# @return Matrix a Matrix with two rows and //m//->[[Matrix::cols|cols]] columns; [[Matrix::row|row]](0) contains lower bounds, [[Matrix::row|row]](1) contains upper bounds.",
                           "bounding_box(Matrix)");
 
 FunctionTemplate4perl("extend_bounding_box(Matrix& Matrix) : void");

@@ -298,6 +298,7 @@ public class AppearanceInspector extends JPanel implements ActionListener, Chang
 	}
 
 	
+	@Override
 	public void actionPerformed(ActionEvent e) {
 		Object s = e.getSource();
 		// lines
@@ -365,6 +366,7 @@ public class AppearanceInspector extends JPanel implements ActionListener, Chang
 			updateTransparencyEnabled();
 	}
 	
+	@Override
 	public void stateChanged(ChangeEvent e) {
 		Object s = e.getSource();
 		// lines
@@ -442,6 +444,7 @@ public class AppearanceInspector extends JPanel implements ActionListener, Chang
 		this.appearance = appearance;
 		Scene.executeWriter(appearance, new Runnable() {
 			
+			@Override
 			public void run() {
 				textureInspector.setAppearance(appearance);
 				pointFontInspector.setAppearance(appearance);

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -73,6 +73,24 @@ endif
 O := ${suffix}.o
 S := ${suffix}.${SO}
 A := ${suffix}.a
+
+### include conf.make of required extensions and update if necessary
+
+ifdef ExtensionTop
+  ifdef InSourceTree
+    ifneq ($(filter ${ProjectTop}/bundled/%,${ExtensionTop}),)
+      ${BuildDir}/conf.make : ${ExtensionTop}/polymake.ext
+	@${PERL} ${ProjectTop}/perl/polymake --mscript ${ProjectTop}/support/update_extension_make_conf ${ExtensionTop}
+    endif
+  endif
+
+  ifdef RequireExtensions
+    ImportedIntoExtension := ${ExtensionTop}
+    include $(foreach ext,${RequireExtensions},$(call _ext_conf_file,${ext}))
+    ExtensionTop := ${ImportedIntoExtension}
+    ImportedIntoExtension :=
+  endif
+endif
 
 ### include the task-specific settings
 

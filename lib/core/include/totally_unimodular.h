@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -30,8 +30,7 @@ namespace pm {
 // Schrijver: Theory of Linear and Integer Programming, section 20.3.
 
 template <typename Matrix, typename E>
-typename enable_if<bool, std::numeric_limits<E>::is_integer>::type
-totally_unimodular(const GenericMatrix<Matrix, E>& M)
+bool totally_unimodular(const GenericMatrix<Matrix, E>& M)
 {
    const int m=M.rows();
    const int n=M.cols();
@@ -41,7 +40,7 @@ totally_unimodular(const GenericMatrix<Matrix, E>& M)
       for (Entire< Subsets_of_k<const sequence &> >::const_iterator ri = entire(all_subsets_of_k(sequence(0,m),k)); !ri.at_end(); ++ri)
          for (Entire< Subsets_of_k<const sequence &> >::const_iterator ci = entire(all_subsets_of_k(sequence(0,n),k)); !ci.at_end(); ++ci) {
             const E d=det(M.minor(*ri,*ci));
-            if (!is_zero(d) && !abs_equal(d,1)) return false;
+            if (!is_zero(d) && !abs_equal(d,one_value<E>())) return false;
          }
 
    return true;

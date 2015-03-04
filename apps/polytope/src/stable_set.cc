@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -58,6 +58,8 @@ perl::Object stable_set(const perl::Object& G_in)
     p_out.set_description() << "stable set polytope of a Graph" << endl;   
     p_out.take("INEQUALITIES") << ineqs;
     p_out.take("BOUNDED") << true;
+    p_out.take("ONE_VERTEX") << unit_vector<Rational>(G.nodes()+1,0);
+    p_out.take("FEASIBLE") << true;
 
     return p_out;
 }

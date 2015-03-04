@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -55,5 +55,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X_X_X, QuadraticExtension< Rational >, perl::Canned< const Rational >, perl::Canned< const Rational >, perl::Canned< const Rational >);
    FunctionInstance4perl(new_C, QuadraticExtension< Rational >, int);
    FunctionInstance4perl(new_C, QuadraticExtension< Rational >, perl::Canned< const Rational >);
+   OperatorInstance4perl(assign, QuadraticExtension< Rational >, perl::Canned< const Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -33,8 +33,8 @@ perl::Object simplex(const int n)
 }
 
 UserFunction4perl("# @category Producing from scratch"
-                  "# A simplex of dimension //d//."
-                  "# @param int d dimension"
+                  "# A __simplex__ of dimension //d//."
+                  "# @param Int d dimension"
                   "# @return SimplicialComplex",
                   &simplex, "simplex");
 } }

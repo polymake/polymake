@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,30 +13,13 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-
-# @topic globalcategory Visualization
-# These +++ are for visualization.
-
-# @topic globalcategory Internal
-# These +++ are for internal use only. You can safely ignore them.
-
-# @topic globalcategory Input property
-# These properties are for input only. They allow redundant information.
-
-
-# @topic category functions/Basic functions
-# These are functions for basic algebraic computations.
-
-# @topic category functions/Producing another object
-# These functions construct some (non-tropical) object from another application.
-
 # @topic category functions/Producing a tropical hypersurface
-# These functions construct an object of type [[Hypersurface]].
+# These functions produce a [[Hypersurface|tropical hypersurface]] from other objects.
 
 # @topic category functions/Producing a tropical polytope
-# These functions construct an object of type [[TropicalPolytope]].
+# These functions produce an object of type [[TropicalPolytope]] from other objects.
 
-# @topic functions/Other
-# Everything that did not go into one of the other categories. 
+# @topic category functions/Producing another object
+# These functions produce an object of another type not contained in application tropical.
 
 

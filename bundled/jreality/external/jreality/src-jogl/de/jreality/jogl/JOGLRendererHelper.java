@@ -498,13 +498,13 @@ public class JOGLRendererHelper {
 			nFiber = GeometryUtility.getVectorLength(faceNormals);
 		} else
 			normalBind = PER_PART;
-		// System.err.println("Geom = "+sg.getName()+" normal length = "+nFiber);
+//		 System.err.println("Geom = "+sg.getName()+" normal length = "+nFiber);
 		jr.renderingState.normals4d = (nFiber == 4);
 		// HACK!!! make sure the vertex shader knows whether the normals are 4d
 		// or 3d
 		gl.glFogf(GL2.GL_FOG_START, nFiber == 4 ? 0.01f : 0f);
-		// if (nFiber == 4)
-		// System.err.println("Rendering 4d normals for "+sg.getName());
+//		if (nFiber == 4)
+//		 System.err.println("Rendering 4d normals for "+sg.getName());
 		DoubleArray da = null;
 		boolean isQuadMesh = false;
 		boolean isRegularDomainQuadMesh = false;

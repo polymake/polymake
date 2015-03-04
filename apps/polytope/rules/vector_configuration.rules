@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -14,9 +14,10 @@
 #-------------------------------------------------------------------------------
 
 # An object of type VectorConfiguration deals with properties of row vectors,
-# assembled into an n x d matrix called VECTORS. 
+# assembled into an n x d matrix called [[VECTORS]]. 
 # The entries of these row vectors are interpreted as non-homogeneous coordinates. 
 # In particular, the coordinates of a VECTOR will *NOT* be normalized to have a leading 1.
+# @tparam Scalar default: [[Rational]]
 declare object VectorConfiguration<Scalar=Rational>;
 
 INCLUDE
@@ -86,7 +87,7 @@ weight 1.10;
 }
 
 # @category Combinatorics
-# Convert CIRCUITS or COCIRCUITS to a 0/+1/-1 matrix, with one row for each circuit/cocircuit, 
+# Convert [[CIRCUITS]] or [[COCIRCUITS]] to a 0/+1/-1 matrix, with one row for each circuit/cocircuit, 
 # and as many columns as there are VECTORs/POINTS.
 # @param Set<Pair<Set<Int>,Set<Int>>> co/circuits a set of circuits or cocircuits
 # @return SparseMatrix<Rational>
@@ -116,9 +117,9 @@ user_function circuits2matrix(Set<Pair<Set<Int>,Set<Int>>>) {
 
 
 # @category Combinatorics
-# contract a vector configuration along a specified vector
-# @param VectorConfiguration an input configuration
-# @param Int index which vector to contract
+# Contract a vector configuration //C// along a specified vector //v//.
+# @param VectorConfiguration C
+# @param Int v index of the vector to contract
 user_function contraction(VectorConfiguration $) {
    my ($vc, $index) = @_;
    my $vcc = new Matrix($vc->VECTORS);
@@ -130,9 +131,9 @@ user_function contraction(VectorConfiguration $) {
 }
 
 # @category Combinatorics
-# delete a specified vector from a vector configuration
-# @param VectorConfiguration an input configuration
-# @param Int index which vector to delete
+# Delete a specified vector //v// from a vector configuration //C//.
+# @param VectorConfiguration C
+# @param Int v index of the vector to delete
 user_function deletion(VectorConfiguration $) {
    my ($vc, $index) = @_;
    my @labels = @{$vc->LABELS};

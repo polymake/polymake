@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -65,7 +65,7 @@ void compute_lattice_of_flats(const GenericIncidenceMatrix<MatrixTop>& VIF, Diag
       }
       int end_next_dim=end_this_dim;
 
-      if (__builtin_expect(C>2 && dim_upper_bound, 1)) {
+      if (__builtin_expect(C>1 && dim_upper_bound, 1)) {
          int old_n=n;
          for (;;) {
             Set<int> H = Q.front(); Q.pop_front();

@@ -49,6 +49,7 @@ using std::list;
 using std::vector;
 
 template<typename Integer> class Full_Cone;
+template<typename Integer> class Collector;
 
 template<typename Integer>
 class Simplex {
@@ -86,13 +87,16 @@ public:
 template<typename Integer>
 class SimplexEvaluator {
     Full_Cone<Integer> * C_ptr;
+    int tn; //number of associated thread in parallelization of evaluators
+            // to be set by Full_Cone
     size_t dim;
     Integer volume;
-    Integer det_sum; // sum of the determinants of all evaluated simplices
-    mpq_class mult_sum; // sum of the multiplicities of all evaluated simplices
+    size_t Deg0_offset; // the degree of 0+offset
+    // Integer det_sum; // sum of the determinants of all evaluated simplices --> Collector
+    // mpq_class mult_sum; // sum of the multiplicities of all evaluated simplices --> Collector
     vector<key_t> key; 
-    size_t candidates_size;
-    size_t collected_elements_size;
+    // size_t candidates_size;
+    // size_t collected_elements_size;
     Matrix<Integer> Generators;
     Matrix<Integer> TGenerators;
     Matrix<Integer> GenCopy;
@@ -108,13 +112,13 @@ class SimplexEvaluator {
     vector< long > gen_degrees;
     vector< long > level0_gen_degrees; // degrees of the generaors in level 0
     vector< long > gen_levels;
-    vector< num_t > hvector;  //h-vector of the current evaluation
-    vector< num_t > inhom_hvector; // separate vector in the inhomogeneous case in case we want to compute two h-vectors
-    HilbertSeries Hilbert_Series; //this is the summed Hilbert Series
-    list< vector<Integer> > Candidates;
+    // vector< num_t > hvector;  //h-vector of the current evaluation
+    // vector< num_t > inhom_hvector; // separate vector in the inhomogeneous case in case we want to compute two h-vectors
+    // HilbertSeries Hilbert_Series; //this is the summed Hilbert Series
+    // list< vector<Integer> > Candidates;
     list< vector<Integer> > Hilbert_Basis;
-    CandidateList<Integer> Collected_HB_Elements;
-    list< vector<Integer> > Collected_Deg1_Elements;
+    // CandidateList<Integer> Collected_HB_Elements;
+    // list< vector<Integer> > Collected_Deg1_Elements;
     //temporary objects are kept to prevent repeated alloc and dealloc
     Matrix<Integer> RS; // right hand side to hold order vector
     // Matrix<Integer> RSmult; // for multiple right hand sides
@@ -124,12 +128,11 @@ class SimplexEvaluator {
     size_t nr_level0_gens; // counts the number of level 0 vectors among the generators
     
     bool full_cone_simplicial;
-    bool is_complete_simplex;
-    SimplexEvaluator<Integer>* mother_simplex; 
+    bool sequential_evaluation; // indicates whether the simplex is evaluated by a single thread
     
     struct SIMPLINEXDATA{                    // local data of excluded faces
         boost::dynamic_bitset<> GenInFace;   // indicator for generators of simplex in face 
-        vector< num_t > hvector;             // accumulates the h-vector of this face
+        // vector< num_t > hvector;             // accumulates the h-vector of this face
         long mult;                           // the multiplicity of this face 
         // bool touched;                        // indicates whether hvector != 0 // ALWAYS true, hence superfluous
         vector< long > gen_degrees;          // degrees of generators in this face
@@ -138,50 +141,92 @@ class SimplexEvaluator {
     size_t nrInExSimplData;
     // bool InExTouched;                        // indicates whether any hvector!=0 // see above
 
-    void local_reduction();
+    void local_reduction(Collector<Integer>& Coll);
 
     //checks whether new_element is reducible by the Reducers list
     bool is_reducible(const vector< Integer >& new_element, list< vector<Integer> >& Reducers);
     // removes elements from Candi which are reducible by Reducers, Reducers must be sorted by compare_last!
-    void reduce(list< vector<Integer> >& Candi, list< vector<Integer> >& Reducers);
+    void reduce(list< vector<Integer> >& Candi, list< vector<Integer> >& Reducers, size_t& Candi_size);
+    void count_and_reduce(list< vector<Integer> >& Candi, list< vector<Integer> >& Reducers);
 
     bool isDuplicate(const vector<Integer>& cand) const;
 
-	void addMult(const Integer& volume);
+	void addMult( Integer multiplicity, Collector<Integer>& Coll);
 
-    void prepare_inclusion_exclusion_simpl(size_t Deg);
-    void add_to_inex_faces(const vector<Integer> offset, size_t Deg);
-    void update_inhom_hvector(long level_offset, size_t Deg);
-    void update_mult_inhom(Integer volume);
-    void addMult_inner(const Integer& volume);
+    void prepare_inclusion_exclusion_simpl(size_t Deg, Collector<Integer>& Coll);
+    void add_to_inex_faces(const vector<Integer> offset, size_t Deg, Collector<Integer>& Coll);
+    void update_inhom_hvector(long level_offset, size_t Deg, Collector<Integer>& Coll);
+    void update_mult_inhom(Integer& multiplicity);
+    
+    Integer start_evaluation(SHORTSIMPLEX<Integer>& s, Collector<Integer>& Coll);
+    void take_care_of_0vector(Collector<Integer>& Coll);
+    // void evaluation_loop_sequential(Collector<Integer>& Coll);
+    void evaluate_element(const vector<Integer>& element, Collector<Integer>& Coll);
+    void conclude_evaluation(Collector<Integer>& Coll);
+    void evaluation_loop_parallel();
+    void evaluate_block(long block_start, long block_end, Collector<Integer>& Coll);
+    void collect_vectors();
+
 
 //---------------------------------------------------------------------------
 
 public:
 
-    SimplexEvaluator(Full_Cone<Integer>& fc);
+    SimplexEvaluator(Full_Cone<Integer>& fc); 
+    
+        // sets the thread number of the evaluator (needed to associate a collector)
+    void set_evaluator_tn(int threadnum);
 
-    // full evaluation of the simplex, writes data back to the cone,
-    // returns volume
-    Integer evaluate(SHORTSIMPLEX<Integer>& s);
-    Integer start_evaluation(SHORTSIMPLEX<Integer>& s);
-    void evaluation_loop_sequential();
-    void evaluate_element(const vector<Integer>& element);
-    void conclude_evaluation();
+    // full evaluation of the simplex in a single thread, delivers results to to a collector
+    bool evaluate(SHORTSIMPLEX<Integer>& s);
+    
+    // evaluation in parallel threads
+    void Simplex_parallel_evaluation(); 
+    
+};
+//class SimplexEvaluator end
 
-    // moves the union of Hilbert basis / deg1 elements to the cone
-    // for partial triangulation it merges the sorted list
-    void transfer_candidates();
+template<typename Integer>
+class Collector {
+    
+    friend class SimplexEvaluator<Integer>;
+    
+    Full_Cone<Integer> * C_ptr;
+    size_t dim;
+
+    Integer det_sum; // sum of the determinants of all evaluated simplices
+    mpq_class mult_sum; // sum of the multiplicities of all evaluated simplices
+    size_t candidates_size;
+    size_t collected_elements_size;
+    vector< num_t > hvector;  //h-vector of the current evaluation
+    vector< num_t > inhom_hvector; // separate vector in the inhomogeneous case in case we want to compute two h-vectors
+    HilbertSeries Hilbert_Series; //this is the summed Hilbert Series
+    list< vector<Integer> > Candidates;
+    CandidateList<Integer> HB_Elements;
+    list< vector<Integer> > Deg1_Elements;
+    vector<vector< num_t> > InEx_hvector;
+    
+    public:
+
+    Collector(Full_Cone<Integer>& fc);
+    
     // returns sum of the determinants of all evaluated simplices
     Integer getDetSum() const;
+    
     // returns sum of the multiplicities of all evaluated simplices
     mpq_class getMultiplicitySum() const;
+    
     // returns sum of the Hilbert Series of all evaluated simplices
     const HilbertSeries& getHilbertSeriesSum() const;
     
+    // moves the union of Hilbert basis / deg1 elements to the cone
+    // for partial triangulation it merges the sorted list
+    void transfer_candidates();
+    
     size_t get_collected_elements_size();
+
 };
-//class SimplexEvaluater end
+// class end Collector
 
 }
 

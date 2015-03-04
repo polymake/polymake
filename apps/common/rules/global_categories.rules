@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -14,9 +14,44 @@
 #-------------------------------------------------------------------------------
 
 
-# @topic globalcategory Visualization
+# @topic category any/Visualization
 # These +++ are for visualization.
 
-# @topic globalcategory Internal
+# @topic category any/Internal
 # These +++ are for internal use only. You can safely ignore them.
+
+# @topic category properties/any/Input property
+# These properties are for input only. They allow redundant information.
+
+# @topic category any/Backward compatibility
+# These +++ are provided for backward compatibility with older versions of polymake only. They should not be used in new code.
+
+# @topic category any/Utilities
+# Miscellaneous +++.
+
+# @topic category any/Other
+# Special purpose +++.
+
+
+# @topic category any/Combinatorics
+# These +++ capture combinatorial information of the object. 
+# Combinatorial properties only depend on combinatorial data of the object like, e.g., the face lattice.
+
+# @topic category any/Symmetry
+# These +++ capture information of the object that is concerned with the action of permutation groups.
+
+# @topic category methods/any/Topology
+# The following methods compute topological invariants.
+
+# @topic category functions/any/Topology
+# The following functions compute topological invariants.
+
+# @topic category any/Topology
+# The following +++ are topological invariants.
+
+# @topic category any/Geometry
+# These +++ capture geometric information of the object. 
+# Geometric properties depend on geometric information of the object, like, e.g., vertices or facets.
+
+
 

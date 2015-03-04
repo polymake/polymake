@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -19,6 +19,8 @@
 
 declare object TightSpan<Scalar=Rational> : Polytope<Scalar> {
 
+# @topic category properties/Phylogenetic Analysis
+# Properties of a [[TightSpan]]
 
 # @category Phylogenetic Analysis
 # Finite metric space encoded as a (symmetric) distance matrix.

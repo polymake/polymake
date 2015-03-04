@@ -195,6 +195,7 @@ public class JobMonitorPlugin extends ShrinkPanelPlugin {
 		@Override
 		public boolean isCellEditable(int rowIndex, int columnIndex) {
 			if (columnIndex != 1) return false;
+			if (rowIndex >= Q.Q.size()) return false;
 			Job job = Q.Q.get(rowIndex);
 			if (rowIndex == 0) {
 				return job instanceof CancelableJob;
@@ -217,6 +218,7 @@ public class JobMonitorPlugin extends ShrinkPanelPlugin {
 		
 		@Override
 		public Object getValueAt(int row, int col) {
+			if (row >= Q.Q.size()) return "-";
 			Job job = Q.Q.get(row);
 			switch (col) {
 			case 0:

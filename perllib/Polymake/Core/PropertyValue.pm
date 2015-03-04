@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -224,7 +224,7 @@ sub find_or_create {
       push @{$self->values}, $obj;
       if ($temp) {
 	 assign_max($#{$parent->transaction->temporaries},0);
-	 push @{$parent->transaction->temporaries}, [ $self->property, $obj->parent_index ];
+	 push @{$parent->transaction->temporaries}, [ $self->property, $obj ];
       } else {
 	 $parent->transaction->changed=1;
       }

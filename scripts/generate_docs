@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -16,11 +16,11 @@
 #  Complete production cycle for automatic part of documentation
 #
 
-my ($noHTML, $snapshot);
+my ($noHTML, $noExt, $snapshot);
 
-if ( !GetOptions( noHTML => \$noHTML, snapshot => \$snapshot ) or
+if ( !GetOptions( noHTML => \$noHTML, noExt => \$noExt, snapshot => \$snapshot ) or
      !@ARGV ) {
-   die "usage: polymake --script generate_docs [--noHTML] OutDir AppName ... \n",
+   die "usage: polymake --script generate_docs [--noHTML] [--noExt] [--snapshot] OutDir AppName ... \n",
        "from the polymake shell: script(\"generate_docs\", \"OutDir\");\n";
 }
 
@@ -54,23 +54,30 @@ if ($DeveloperMode && $snapshot) {
 } else {
    $writer->dataElement("release", $Version);
 }
-if ($#Core::Extension::active >= $Core::Extension::num_bundled) {
-   $writer->startTag("extensions");
-   my @e = @Core::Extension::active[$Core::Extension::num_bundled .. $#Core::Extension::active];
-   for (@Core::Extension::active[$Core::Extension::num_bundled .. $#Core::Extension::active]) {
-   	  $writer->startTag("extension");
-   	  $writer->dataElement("URI", $_->URI);
-   	  $writer->dataElement("name", $_->short_name) if ($_->short_name);
-   	  $writer->dataElement("text", $_->credit->text) if ($_->credit);
-      my $ext_file = $_->URI;
+
+$writer->startTag("extensions");
+my $i=0;
+for (@Core::Extension::active) {
+  $writer->startTag("extension");
+  if ($i>= $Core::Extension::num_bundled) {
+		$writer->dataElement("non_bundled",1);
+  }
+  ++$i;
+  $writer->dataElement("URI", $_->URI);
+  unless ($noExt) {
+	  $writer->dataElement("name", $_->short_name) if ($_->short_name);
+	  $writer->dataElement("text", $_->credit->text) if ($_->credit);
+	  my $ext_file = $_->URI;
 	  $ext_file =~ s|http://||og;
 	  $ext_file =~ s|[/:.]|_|og;
-   	  $writer->dataElement("file", $ext_file);
-   	  $writer->endTag;
-   }
-   $writer->endTag;
+	  $writer->dataElement("file", $ext_file);
+  }
+  $writer->endTag;
 }
 $writer->endTag;
+
+$writer->endTag;
+
 close_doc_file($writer);
 
 sub run_xsltproc {
@@ -98,14 +105,18 @@ run_xsltproc("$outdir/inc/index.inc",     "index",     "applications.xml");
 run_xsltproc("$tmpdir/all.xml",           "all",       "applications.xml");
 run_xsltproc("$outdir/inc/doc_index.inc", "doc_index", "all.xml");
 
-foreach (@Core::Extension::active) {
-   my $ext_name = $_->URI;
-   my $ext_file = $_->URI;
-   $ext_file =~ s|http://||og;
-   $ext_file =~ s|[/:.]|_|og;
-   run_xsltproc("$tmpdir/$ext_file.xml",		"extension", 	"all.xml", $ext_name);
-   run_xsltproc("$outdir/inc/$ext_file.inc",	"doc", 	   		"$ext_file.xml", $ext_name);
-   run_xsltproc("$outdir/$ext_file.html", 		"export", "$outdir/inc/$ext_file.inc") unless ($noHTML);
+unless ($noExt) {
+	foreach (@Core::Extension::active) {
+		my $ext_name = $_->URI;
+		my $ext_file = $_->URI;
+		$ext_file =~ s|http://||og;
+		$ext_file =~ s|[/:.]|_|og;
+		run_xsltproc("$tmpdir/$ext_file.xml",		"extension", 	"all.xml", $ext_name);
+		run_xsltproc("$outdir/inc/$ext_file.inc",	"doc", 	   		"$ext_file.xml", $ext_name);
+		 run_xsltproc("$outdir/$ext_file.html", 		"export", "$outdir/inc/$ext_file.inc");
+	}
+	run_xsltproc("$outdir/inc/extensions.inc",     "ext_list",     "applications.xml");
+	run_xsltproc("$outdir/extensions.html",     "export",     "$outdir/inc/extensions.inc") unless ($noHTML);
 }
 
 unless ($noHTML) {

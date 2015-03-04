@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -70,7 +70,7 @@ perl::Object random_graph(const int n, perl::OptionSet options)
    return G;
 }
 
-UserFunction4perl("# @category Producing from scratch\n"
+UserFunction4perl("# @category Producing a graph\n"
                   "# Constructs a random graph with //n// nodes according to the Erdos-Renyi model."
                   "# Each edge is chosen uniformly with probability //p//."
                   "# @param Int n"

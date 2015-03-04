@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -59,13 +59,13 @@ perl::Object path_graph(const int n)
 }
 
 
-UserFunction4perl("# @category Producing from scratch\n"
+UserFunction4perl("# @category Producing a graph\n"
                   "# Constructs a __cycle graph__ on //n// nodes."
                   "# @param Int n &ge; 3"
                   "# @return Graph",
                   &cycle_graph, "cycle_graph");
 
-UserFunction4perl("# @category Producing from scratch\n"
+UserFunction4perl("# @category Producing a graph\n"
                   "# Constructs a __path graph__ on //n// nodes."
                   "# @param Int n &ge;2"
                   "# @return Graph",

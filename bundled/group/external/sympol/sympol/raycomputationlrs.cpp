@@ -66,8 +66,6 @@ bool RayComputationLRS::finish() {
         return true;
     }
 
-    lrs_mp_close();
-    
     if (RayComputationLRS::ms_fIn != NULL) {
         if (std::fclose(RayComputationLRS::ms_fIn)) {
             return false;

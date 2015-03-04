@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -156,6 +156,16 @@ bool SVHolder::is_tuple() const
    } else {
       return false;
    }
+}
+
+SV* Value::store_instance_in() const
+{
+   dTHX;
+   if (SvROK(sv)) {
+      if (MAGIC* mg=pm_perl_array_flags_magic(aTHX_ SvRV(sv)))
+         return mg->mg_obj;
+   }
+   return NULL;
 }
 
 SV* ArrayHolder::shift()

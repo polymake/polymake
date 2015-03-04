@@ -336,7 +336,7 @@ permutation : RaysPerm;
 }
 
 
-# @category Producing a fan from fans
+# @category Producing a fan
 # Orthogonally project a pointed fan to a coordinate subspace.
 # 
 # The subspace the fan //P// is projected on is given by indices in the set //indices//.
@@ -352,7 +352,7 @@ user_function projection<Scalar>(PolyhedralFan<Scalar>; $=[ ], { revert=>0 }) {
 }
 
 
-# @category Producing a fan from fans
+# @category Producing a fan
 # Orthogonally project a fan to a coordinate subspace such that redundant columns are omitted,
 # i.e., the projection becomes full-dimensional without changing the combinatorial type.
 # @param PolyhedralFan P

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -265,9 +265,9 @@ sub apply_bounding_box($;$) {
     # mark artificial facets
     my $original_facets=new Map< Vector<Scalar>, Bool>;
     $original_facets->{$_}=1 for @{$this->FACETS};
-    my $bbox_facets=new Map<Vector<Scalar>, Bool>;
-    foreach (@$bbox) {
-        $bbox_facets->{$_}=1 unless exists $original_facets->{$_}
+    my $bbox_facets=new Set();
+    for (my $i=0; $i<$bounded->N_FACETS; ++$i) {
+        $bbox_facets+=$i unless exists $original_facets->{$bounded->FACETS->[$i]};
     }
 
     my $vertex_map=new Map<Vector<Scalar>, String>;
@@ -278,8 +278,8 @@ sub apply_bounding_box($;$) {
         $vertex_map->{$_}=$f++ for @{$this->VERTICES};
     }
     
-    return [ $bounded, $bbox_facets,             $vertex_map ];
-    #        Polytope  Map<Vector<Scalar>, Bool> Map<Vector<Scalar>, String>
+    return [ $bounded, $bbox_facets, $vertex_map ];
+    #        Polytope  Set<Int>      Map<Vector<Scalar>, String>
 }
 
 # @category Visualization
@@ -377,9 +377,11 @@ user_method VISUAL(%Visual::Polygons::decorations, %geometric_options) : CONE_DI
 
    # now call VISUAL for bounded polyhedra
    if ($bounded->CONE_DIM==4)  {
-      visualize($bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " },
-                                 FacetColor=>[ map { exists $bbox_facets->{$_} ? $Visual::Color::cutoff : $Visual::Color::facets } @{$bounded->FACETS} ],
-                                 $decor));
+      my %to_merge=();
+      map { $to_merge{FacetColor}->{$_}=$Visual::Color::cutoff } @$bbox_facets;
+      my $bv=$bounded->VISUAL($decor,VertexThickness => sub { $vertex_labels[$_[0]] ne " " });
+      $bv->basis_solid->merge(%to_merge);
+      visualize($bv);
    }
    else {
       visualize($bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " },
@@ -395,6 +397,12 @@ user_method VISUAL(%geometric_options) : FEASIBLE {
    croak("Cannot visualize an empty polytope\n");
 }
 precondition : !FEASIBLE;
+
+# @hide
+user_method VISUAL(%geometric_options) : CONE_AMBIENT_DIM {
+   croak("Cannot visualize polytope with ambient dimension >= 5\n");
+}
+precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM >= 6 }
 
 
 # @category Visualization

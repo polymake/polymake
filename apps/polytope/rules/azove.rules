@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -27,7 +27,7 @@ CONFIGURE {
 
 object Polytope<Rational> {
 
-# @category 0/1-polytopes
+# @category Geometry
 # Use the [[wiki:external_software#azove|azove]] program for counting 0/1-points in a polytope.
 label azove
 

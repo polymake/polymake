@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -14,16 +14,16 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/client.h"
-#include "polymake/SparseMatrix.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/Vector.h"
-#include "polymake/Rational.h"
-#include "polymake/SparseVector.h"
 #include "polymake/Integer.h"
-#include "polymake/linalg.h"
 #include "polymake/Matrix.h"
 #include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/SparseVector.h"
+#include "polymake/Vector.h"
+#include "polymake/client.h"
+#include "polymake/linalg.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -89,5 +89,7 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< SparseVector< Integer > > >, perl::Canned< const SparseVector< Integer > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<int, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> >&, pm::NonSymmetric> > >, perl::Canned< const Vector< Rational > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< SparseVector< QuadraticExtension< Rational > > > >, perl::Canned< const SparseVector< QuadraticExtension< Rational > > >);
+   FunctionInstance4perl(new_X, SparseVector< Rational >, perl::Canned< const SparseVector< Rational > >);
+   FunctionInstance4perl(new_X, SparseVector< QuadraticExtension< Rational > >, perl::Canned< const SparseVector< QuadraticExtension< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

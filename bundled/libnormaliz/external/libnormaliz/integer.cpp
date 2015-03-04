@@ -155,19 +155,26 @@ mpz_class int_max_value_half<mpz_class>(){
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void check_size(const list<vector<Integer> >& ll){
+void check_range(CandidateList<Integer>& ll){
+    check_range(ll.Candidates);
+}
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+void check_range(const std::list<Candidate<Integer> >& ll){
 
     if (!test_arithmetic_overflow)
         return;
         
-    typename list<vector<Integer> >::const_iterator v=ll.begin();
+    typename list<Candidate<Integer> >::const_iterator v=ll.begin();
     
     Integer test=int_max_value_half<Integer>();
     // cout << "test " << test << endl;
     
     for(;v!=ll.end();++v){
-        for(size_t i=0;i<v->size();++i)
-            if(Iabs((*v)[i])>= test){
+        for(size_t i=0;i<v->values.size();++i)
+            if(Iabs(v->values[i])>= test){
             // cout << *v;
             // cout << "i " << i << " " << Iabs((*v)[i]) << endl;
                 errorOutput()<<"Vector out of range. Imminent danger of arithmetic overflow.\n";

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -91,7 +91,7 @@ void quotient_space_faces(perl::Object p)
 }
 
 UserFunction4perl("# @category Quotient spaces"
-                  "# Find the faces of the Quotient space represented by P and its @see IDENTIFICATION_GROUP"
+                  "# Find the faces of the quotient space represented by //P// and its [[IDENTIFICATION_GROUP]]."
                   "# @param Polytope P",
                   &quotient_space_faces,
                   "quotient_space_faces(Polytope)");

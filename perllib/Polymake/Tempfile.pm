@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -23,7 +23,7 @@ use POSIX ':errno_h';
 
 my $dir;
 
-sub dir { $dir ||= find_writable_dir($PrivateDir); }
+sub dir { defined($ {$_[0]}) and &dirname or $dir ||= find_writable_dir($PrivateDir); }
 
 sub new {
    dir();
@@ -39,6 +39,7 @@ sub unique_name { "poly".$$."T".(++$cnt) }
 use overload '""' => sub { $ {$_[0]} ||= "$dir/".unique_name; };
 
 sub basename { $ {$_[0]} =~ m|/(poly[^/]+)$|; $1 }
+sub dirname { $ {$_[0]} =~ m|(.*)/poly[^/]+$|; $1 }
 sub rename { my $name="$_[0]"; ++$rename_cnt; $name=~s/T(?=\w+$)/N${rename_cnt}_/; $name }
 
 sub DESTROY {
@@ -52,6 +53,13 @@ sub DESTROY {
          }
       }
    }
+}
+
+sub descend_dir {
+   my ($self) = @_;
+   die "Can't use subdirectory if Tempfile has already been used!" if defined($$self);
+   $$self = &new_dir;
+   $$self = $$self . "/" . $self->basename;
 }
 
 sub new_dir {

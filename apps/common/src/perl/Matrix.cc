@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,12 +16,13 @@
 
 ///==== this line controls the automatic file splitting: max.instances=20
 
+#include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
+#include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
-#include "polymake/Vector.h"
 #include "polymake/client.h"
 #include "polymake/linalg.h"
 
@@ -33,15 +34,11 @@ namespace polymake { namespace common { namespace {
       WrapperReturnNew(T0, (arg0.get<T1>()) );
    };
 
-   OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< Matrix< QuadraticExtension< Rational > > > >, perl::Canned< const pm::Transposed<pm::Matrix<pm::QuadraticExtension<pm::Rational> > > >);
-   FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<double const&> const&>, pm::Matrix<double> const&> >);
-   FunctionInstance4perl(new_X, Matrix< double >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<double const&> const&>, pm::Matrix<double> const&> >);
-   OperatorInstance4perl(Binary_diva, perl::Canned< const Wary< pm::ColChain<pm::SingleCol<pm::SameElementVector<double const&> const&>, pm::Matrix<double> const&> > >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<double const&> const&>, pm::Matrix<double> const&> >);
-   OperatorInstance4perl(Binary_diva, perl::Canned< const Wary< Matrix< double > > >, int);
-   OperatorInstance4perl(Unary_neg, perl::Canned< const Wary< Matrix< QuadraticExtension< Rational > > > >);
-   OperatorInstance4perl(assign, Matrix< Rational >, perl::Canned< const Matrix< int > >);
-   OperatorInstance4perl(convert, Matrix< Rational >, perl::Canned< const SparseMatrix< int, NonSymmetric > >);
-   OperatorInstance4perl(Binary_diva, perl::Canned< const Wary< Matrix< QuadraticExtension< Rational > > > >, perl::Canned< const Vector< QuadraticExtension< Rational > > >);
-   OperatorInstance4perl(convert, Matrix< QuadraticExtension< Rational > >, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
+   FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::RowChain<pm::ColChain<pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true> const&, pm::SingleCol<pm::SameElementVector<pm::Rational const&> const&> > const&, pm::Matrix<pm::Rational> const&> >);
+   FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::Rational> const&>, pm::RowChain<pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true> const&, pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Array<int, void> const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> const&> const&> >);
+   FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::Rational> const&>, pm::RowChain<pm::Matrix<pm::Rational> const&, pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true> const&> const&> >);
+   FunctionInstance4perl(new_X, Matrix< double >, perl::Canned< const pm::DiagMatrix<pm::SameElementVector<double const&>, true> >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< Matrix< QuadraticExtension< Rational > > > >, perl::Canned< const SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >);
+   FunctionInstance4perl(new_X, Matrix< QuadraticExtension< Rational > >, perl::Canned< const pm::DiagMatrix<pm::SameElementVector<pm::QuadraticExtension<pm::Rational> const&>, true> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

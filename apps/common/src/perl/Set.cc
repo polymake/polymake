@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,6 +18,7 @@
 
 #include "polymake/client.h"
 #include "polymake/Set.h"
+#include "polymake/PowerSet.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/Rational.h"

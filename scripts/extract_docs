@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -265,20 +265,7 @@ sub write_descr {
       writeHTML($writer, $help, $help->text, "p");
       $writer->endTag("description");
    } elsif (!$optional) {
-      if (defined $application->help->topics->{"global_categories"} && defined $application->help->topics->{"global_categories"}->topics->{$help->name}) {
-         my $text = $application->help->topics->{"global_categories"}->topics->{$help->name}->text;
-         my $replace_text = $help->parent->name;
-         $text =~ s/\+\+\+/$replace_text/;
-         $writer->startTag("description");
-         writeHTML($writer, $help, $text, "p");
-         $writer->endTag("description");
-      } else {
-         if ($help->category) {
-            warn_print( "Category without description: ", $application->name, "::", $help->full_path, "\n",
-                        "Referred from item(s): ", join(", ", keys %{$help->topics}) );
-         }
-         $writer->dataElement("description", "UNDOCUMENTED");
-      }
+      $writer->dataElement("description", "UNDOCUMENTED");
    }
 }
 
@@ -733,6 +720,7 @@ sub write_categories {
       $writer->endTag("category");
    }
    foreach (@{$help->toc}) {
+      next if $_ eq "any";
       my $topic=$help->topics->{$_};
       unless ($topic->category) {
          if ($has_categories) {

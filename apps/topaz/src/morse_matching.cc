@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -186,7 +186,7 @@ HasseEdgeMap morse_matching(perl::Object p, perl::OptionSet options)
    return EM;
 }
 
-UserFunction4perl("# @category Computing properties "
+UserFunction4perl("# @category Other"
                   "#  Compute a Morse matching. Two heuristics are implemented: "
                   "# "
                   "# \t (1) A simple greedy algorithm: "
@@ -217,7 +217,7 @@ UserFunction4perl("# @category Computing properties "
                   "#  levels => 0, both levels can be computed by spanning trees. "
                   "#  For 2-dim pseudo-manifolds this computes an optimal Morse matching. "
                   "# "
-                  "# @param SimplicialComplex p given by its Hasse diagram "
+                  "# @param SimplicialComplex complex given by its Hasse diagram "
                   "# @option Int heuristic (1=greedy, 2=cancel, 0=both (default)) "
                   "# @option Int levels    (1=bottom, 2=top, 0=both (default)) "
                   "# @return EdgeMap matching a labelling of the edges of the Hasse diagram with integer values, where 1 means that the edge is in the matching",

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -22,8 +22,9 @@ declare object LatticePolytope : Polytope<Rational>;
 INCLUDE
   lattice_properties.rules
   lattice_visual.rules
-  _4ti2.rules + normaliz2.rules | lattice_missing_hilbert.rules
-  latte.rules + normaliz2.rules | lattice_missing_ehrhart.rules
+  _4ti2.rules + normaliz2.rules + require_libnormaliz.rules | lattice_missing_hilbert.rules
+  _4ti2.rules | lattice_missing_hilbert_nonpointed.rules
+  latte.rules + normaliz2.rules + require_libnormaliz.rules | lattice_missing_ehrhart.rules
 
 
 object Polytope<Rational> {
@@ -121,6 +122,7 @@ object Polytope<Rational> {
     }
     precondition : CONE_DIM { $this->CONE_DIM > 2; }
     
+    # @category Lattice points in polytopes
     # Returns the lattice points in bounded Polytopes.
     # @return Matrix<Integer>
     user_method LATTICE_POINTS {
@@ -129,6 +131,7 @@ object Polytope<Rational> {
       return $p->LATTICE_POINTS_GENERATORS->[0];
     }
     
+    # @category Geometry
     # returns the Minkowski summand of a polytope P given by 
     # a coefficient vector to the rays of the [[MINKOWSKI_CONE]].
     # @param Vector<Rational> coeff coefficient vector to the rays of the Minkowski summand cone
@@ -139,6 +142,7 @@ object Polytope<Rational> {
         return minkowski_cone_coeff($coeff, $p->MINKOWSKI_CONE, $p->GRAPH, $p->FAR_FACE, new Matrix(grep($_->[0]==0, @{$p->VERTICES})));
     }
     
+    # @category Geometry
     # returns the Minkowski summand of a polytope P given by 
     # a point in the [[MINKOWSKI_CONE]].
     # @param Vector<Rational> point point in the Minkowski summand cone
@@ -189,6 +193,10 @@ object LatticePolytope {
     }
     weight 0.10;
 
+    # @category Lattice points in cones
+    # returns a polytope in the integer lattice basis if a [[LATTICE_BASIS]] is given
+    # @param Polytope<Rational> P polytope
+    # @return Polytope<Rational> Pnew polytope
     user_method POLYTOPE_IN_STD_BASIS {
         my $this=shift;
         my $p=new Polytope<Rational>;
@@ -218,7 +226,7 @@ object LatticePolytope {
         for (my $i = 0; $i <= $dim; $i++) {
             $num += $e->[$i];
         }
-        $this->N_LATTICE_POINTS=new Int($num);
+        $this->N_LATTICE_POINTS=$num;
     }
     weight 0.10;
     
@@ -229,7 +237,7 @@ object LatticePolytope {
     weight 0.10;
     
     
-    # @category Lattice polytopes
+    # @category Lattice points in cones
     # The number of [[LATTICE_POINTS]] in the //n//-th dilation of the polytope
     # @param Int n dilation factor
     user_method N_LATTICE_POINTS_IN_DILATION {
@@ -242,9 +250,9 @@ object LatticePolytope {
             $n_lp += $ev->[$i];
         }
         if ($dim % 2 && $n < 0) {
-            return new Int(-$n_lp);
+            return -$n_lp;
         } else {
-            return new Int($n_lp); 
+            return $n_lp;
         }
     }
         
@@ -259,7 +267,7 @@ object LatticePolytope {
                 $num -= $e->[$i];
             }
         }
-        $this->N_INTERIOR_LATTICE_POINTS=new Int(abs($num));
+        $this->N_INTERIOR_LATTICE_POINTS=abs($num);
     }
     weight 0.10;
     
@@ -501,7 +509,7 @@ object LatticePolytope {
     precondition : FULL_DIM;
 
 
-    # @category Lattice polytopes
+    # @category Lattice points in cones
     # Vector containing the distances of a given point //v// from all facets
     # @param Vector<Rational> v point in the ambient space of the polytope
     # @return Vector<Integer>
@@ -646,6 +654,7 @@ object LatticePolytope {
 
 object Cone<Rational> {
 
+    # @category Lattice points in cones
     # for a cone this method returns a Hilbert basis of the cone
     # for a polytope this method returns a Hilbert basis of the homogenization cone of the polytope
     # note: if the cone is not pointed (the polytope is not bounded) then the returned basis is not unique and usually not minimal

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -126,7 +126,7 @@ perl::Object common_refinement(perl::Object f1, perl::Object f2)
    return f_out;
 }
 
-UserFunctionTemplate4perl("# @category Producing a fan from fans"
+UserFunctionTemplate4perl("# @category Producing a fan"
 								  "# Computes the common refinement of two fans."
                           "# @param PolyhedralFan f1"
                           "# @param PolyhedralFan f2"

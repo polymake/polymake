@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -202,6 +202,28 @@ sub add {
       my $h;
       if ($cat) {
          $self->category=1;
+
+         if (length($self->text)==0) {
+            # the category has not been introduced so far, let's look in the global items...
+            $top ||= $self->top;
+            my ($specific_cat_group, $any_node, $matching_cat);
+            foreach my $app_top_help ($top, @{$top->related}) {
+               if ($specific_cat_group=$app_top_help->topics->{$self->parent->name} and
+                   $any_node=$specific_cat_group->topics->{any} and
+                   $matching_cat=$any_node->topics->{$self->name}) {
+                  $self->text=$matching_cat->text;
+                  last;
+               } elsif ($any_node=$app_top_help->topics->{any} and
+                        $matching_cat=$any_node->topics->{$self->name}) {
+                  $self->text=$matching_cat->text;
+                  $self->text =~ s/\Q+++\E/$self->parent->name/e;
+                  last;
+               }
+            }
+            if (length($self->text)==0) {
+               warn_print("undocumented category ", $self->full_path, " at ", join(", line ", (caller)[1,2]));
+            }
+         }
 
          if (defined ($h=delete $self->parent->topics->{$topic})) {
             my $old_toc=$self->parent->toc;

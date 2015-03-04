@@ -63,6 +63,9 @@ public class IndexedLineSetUtility {
 	}
 
 	public static IndexedLineSet refine(IndexedLineSet ils, int n)	{
+		return refineFactory(ils, n).getIndexedLineSet();
+	}
+	public static IndexedLineSetFactory refineFactory(IndexedLineSet ils, int n)	{
 		int[][] indices = ils.getEdgeAttributes(Attribute.INDICES).toIntArrayArray(null);
 		int totalSegments = 0;
 		for (int i=0; i<indices.length; ++i)	{
@@ -98,7 +101,136 @@ public class IndexedLineSetUtility {
 		ifsf.setEdgeCount(newIndices.length);
 		ifsf.setEdgeIndices(newIndices);
 		ifsf.update();
+		return ifsf;
+	}
+
+	public static IndexedLineSet refine2(IndexedLineSet ils, int[] which)	{
+		int[][] indices = ils.getEdgeAttributes(Attribute.INDICES).toIntArrayArray(null);
+		int totalSegments = 0, totalVerts = 0;
+		for (int i=0; i<indices.length; ++i)	{
+			int n = which[i];
+			totalSegments += indices[i].length-1;
+			totalVerts += (indices[i].length - 1)*(n-1)+1;
+//			if (indices[i].length != 2) {
+//				throw new IllegalArgumentException("Edge array can have only 2 points per curve");
+//			}
+		}
+		double[][] verts = ils.getVertexAttributes(Attribute.COORDINATES).toDoubleArrayArray(null);
+		int numEdges = ils.getNumEdges();
+		int veclength = verts[0].length;
+		double[][] newVerts = new double[totalVerts][veclength];
+		int[][] newIndices = new int[indices.length][];
+		int runningCount = 0;
+		for (int i = 0; i<numEdges; ++i)	{
+			int length = indices[i].length;
+			int n = which[i];
+			newIndices[i] = new int[(length-1)*(n-1)+1];
+			int segmentCount = 0;
+			for (int k = 0; k<length; ++k)	{
+				int i0 = indices[i][k];
+				int i1 = indices[i][(k == length - 1)? k : k+1];
+				double[] p0 = verts[i0];
+				double[] p1 = verts[i1];
+				int lim = (k < length-1) ? n-1 : 1;
+				for (int j = 0; j<lim; ++j)	{
+					double t = (j)/(n-1.0);
+					double s = 1.0 - t;
+					newVerts[runningCount] = Rn.linearCombination(null, s, p0, t, p1);
+					newIndices[i][segmentCount*(n-1)+j] = runningCount;
+					runningCount++;
+				}	
+				segmentCount++;
+			}
+
+		}
+		IndexedLineSetFactory ifsf = new IndexedLineSetFactory();
+		ifsf.setVertexCount(newVerts.length);
+		ifsf.setVertexCoordinates(newVerts);
+		ifsf.setEdgeCount(newIndices.length);
+		ifsf.setEdgeIndices(newIndices);
+		ifsf.update();
 		return ifsf.getIndexedLineSet();
+	}
+
+	public static void removeVertex(final IndexedLineSetFactory ilsf, int vertexIndex)	{
+		final double[][] verts = ilsf.getIndexedLineSet().getVertexAttributes(Attribute.COORDINATES).toDoubleArrayArray(null);
+		final double[][] nverts = new double[verts.length-1][];
+		for (int i = 0; i<ilsf.getEdgeCount(); ++i)	{
+			removeVertex( ilsf, vertexIndex, i);	
+		}
+		// now remove the index from the vertex list: have to renumber all indices in the edge indices!
+		final int[][] edges = ilsf.getIndexedLineSet().getEdgeAttributes(Attribute.INDICES).toIntArrayArray(null);
+		for (int[] edgeList : edges)	{
+			for (int i = 0; i<edgeList.length; ++i)	{
+				int index = edgeList[i];
+				if (index > vertexIndex) edgeList[i] = index-1;
+			}
+		}
+		for (int i = 0, outcount = 0; i<verts.length; ++i)	{
+			if (i == vertexIndex) continue;
+			nverts[outcount++] = verts[i];
+		}
+		ilsf.setVertexCount(nverts.length);
+		ilsf.setVertexCoordinates(nverts);
+		ilsf.setEdgeIndices(edges);
+		ilsf.update();
+	}
+	
+	public static void removeVertex(final IndexedLineSetFactory ilsf, int vertexIndex, int edgeIndex)	{
+		// this leaves the vertex in the vertex list but removes it from the given edge
+		final int[][] edges = ilsf.getIndexedLineSet().getEdgeAttributes(Attribute.INDICES).toIntArrayArray(null);
+		int occurrences = 0;
+		for (int i = 0; i<edges[edgeIndex].length; ++i)	
+			if (edges[edgeIndex][i] == vertexIndex) occurrences++;
+		if (occurrences == 0) return;
+		System.err.println("removing # "+occurrences);
+		int[] newedge = new int[edges[edgeIndex].length-occurrences];
+		int outcount = 0;
+		for (int i = 0; i<edges[edgeIndex].length; ++i)	{
+			if (edges[edgeIndex][i] != vertexIndex) newedge[outcount++] = edges[edgeIndex][i];
+		}
+		edges[edgeIndex] = newedge;
+		ilsf.setEdgeIndices(edges);
+		ilsf.update();
+	}
+	
+	//assume each edge is a closed loop
+	public static double[][] calculateAngles(double[][] angles, IndexedLineSet ils)	{
+		double[][] verts = ils.getVertexAttributes(Attribute.COORDINATES).toDoubleArrayArray(null);
+		int[][] indices = ils.getEdgeAttributes(Attribute.INDICES).toIntArrayArray(null);
+		int numEdges = ils.getNumEdges();
+		if (angles == null ||  angles.length != indices.length)
+		angles = new double[numEdges][];
+		for (int j = 0; j<numEdges; ++j)	{
+			int length = indices[j].length-1;
+			double total = 0;
+			angles[j] = new double[length];
+			for (int i = 0; i< length; ++i)	{
+				int prev = indices[j][(i+length-1)%length], 
+						hier = indices[j][i],
+						next = indices[j][(i+1)%length];
+//				double euclideanAngle = calculateAngle(boundaryPts[prev], boundaryPts[i], boundaryPts[next]);
+				double[] v0 = Rn.subtract(null, verts[next], verts[hier]);
+				double[] v1 = Rn.subtract(null, verts[hier], verts[prev]);
+				double euclideanAngle = Rn.euclideanAngle(v0, v1);
+				double[] xpro = Rn.crossProduct(null, v0, v1);
+				if (xpro[2] > 0) euclideanAngle *= -1.0;
+//				angles[i] = euclideanAngle;
+//				euclideanAngle = Math.PI - Math.abs(euclideanAngle);
+//				total = total + euclideanAngle;
+				total = total + euclideanAngle;
+				euclideanAngle = Math.PI - euclideanAngle;
+				angles[j][i] = euclideanAngle;
+			}
+			System.err.println("total = "+total);
+			for (int k = 0; k<angles[j].length; ++k)	{
+				if (total < 0.0)  angles[j][k] = Math.PI*2.0 - angles[j][k];
+				System.err.println("angle = "+angles[j][k]);
+			}
+
+		}
+		
+		return angles;
 	}
 
 

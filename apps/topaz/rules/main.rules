@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -29,10 +29,10 @@ IMPORT graph
 
 USE ideal
 
-HELP help.rules
-
 file_suffix top
 
+HELP
+	help.rules
 
 # An abstract simplicial complex represented by its facets.
 declare object SimplicialComplex;

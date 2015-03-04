@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -270,12 +270,13 @@ perl::Object unknot(const int m, const int n, perl::OptionSet options)
 }
 
 UserFunction4perl("# @category Producing from scratch\n"
-                  "# Produces a triangulated 3-sphere with the particular NASTY embedding\n"
+                  "# Produces a triangulated 3-sphere with the particularly NASTY embedding\n"
                   "# of the unknot in its 1-skeleton. The parameters //m// >= 2 and //n// >= 1\n"
                   "# determine how entangled the unknot is. //eps// determines the [[COORDINATES]].\n"
-                  "# @param int m"
-                  "# @param int n"
-                  "# @option Rational eps",
+                  "# @param Int m"
+                  "# @param Int n"
+                  "# @option Rational eps"
+                  "# @return GeometricSimplicialComplex",
                   &unknot, "unknot($$ { eps => undef })");
 } }
 

@@ -157,6 +157,10 @@ bool compare_last (const vector<Integer>& a, const vector<Integer>& b)
 template<typename Integer>
 vector<key_t> v_non_zero_pos(const vector<Integer>& v);
 
+// check whether the vector only contains 0
+template<typename Integer>
+bool v_is_zero(const vector<Integer>& v);
+
 //---------------------------------------------------------------------------
 //							   bool vector operations
 //---------------------------------------------------------------------------

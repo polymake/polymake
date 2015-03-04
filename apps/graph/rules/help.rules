@@ -13,10 +13,10 @@
 #-------------------------------------------------------------------------------
 
 
-# @topic globalcategory Visualization
-# These +++ are for visualization.
+# @topic category functions/Producing a graph
+# With these clients you can create special examples of graphs, graphs belonging to parameterized families and random graphs.
 
-# @topic globalcategory Internal
-# These +++ are for internal use only. You can safely ignore them.
+# @topic category functions/Comparing
+# These clients are concerned with automorphisms of graphs and determining whether graphs are isomorphic.
 
 

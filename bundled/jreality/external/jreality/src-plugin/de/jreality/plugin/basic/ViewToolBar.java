@@ -16,6 +16,7 @@ public class ViewToolBar extends ToolBarAggregator {
 		return new PluginInfo("View Tool Bar", "Stefan Sechelmann");
 	}
 
+	@Override
 	public Class<? extends PerspectiveFlavor> getPerspective() {
 		return View.class;
 	}

@@ -2,7 +2,7 @@
 
   <rawdevices>
   
-    <rawdevice id="Trackd" type="de.jreality.toolsystem.raw.DevicePortalTrackd">
+    <rawdevice id="Trackd" type="de.jreality.toolsystem.raw.DeviceTrackd">
       <prop name="tracker_shmkey">
         <int>4126</int>
       </prop>
@@ -27,6 +27,7 @@
     
     <mapping device="Trackd" src="valuator_0" target="PrimaryNavigationNDC_X"/>
     <mapping device="Trackd" src="valuator_1" target="PrimaryNavigationNDC_Y"/>
+    
     <mapping device="Trackd" src="sensor_0" target="RawPointerShipTransformation"/>
     <mapping device="Trackd" src="sensor_1" target="RawShipHeadTransformation"/>
     

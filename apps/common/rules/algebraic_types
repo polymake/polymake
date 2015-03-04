@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,9 +15,6 @@
 
 # @topic category property_types/Algebraic Types
 # This category contains all "algebraic" types, such as matrices, vectors, polynomials, rings, ...
-
-# @topic category functions/Arithmetic
-# These are function that perform arithmetic computations.
 
 # @category Algebraic Types
 # A type for vectors with entries of type //Element//.
@@ -181,8 +178,8 @@ declare property_type Matrix<Element=Rational, Sym=NonSymmetric> : \
    user_method div_exact(*) : lvalue : c++;
 }
 
-# @category Algebraic Types
-# Projects points into the orthogonal_complement of a given subspace. 
+# @category Linear Algebra
+# Projects points into the [[null_space|orthogonal complement]] of a given subspace. 
 # The given points will be overwitten. 
 # @param Matrix points will be changed to orthogonal ones 
 # @param Matrix subspace
@@ -458,8 +455,9 @@ user_function lin_solve(Matrix:wary, Vector:wary) : c++ (include => "polymake/li
 # @category Linear Algebra
 # The matrix //A// is totally unimodular if the determinant of each square submatrix equals 0, 1, or -1.
 # This is the naive test (exponential in the size of the matrix).
-# [For a better implementation try Matthias Walter's polymake extension at
-#  https://github.com/xammy/unimodularity-test/wiki/Polymake-Extension .]
+# 
+# For a better implementation try Matthias Walter's polymake extension at
+#  [[https://github.com/xammy/unimodularity-test/wiki/Polymake-Extension]].
 # @param Matrix A
 # @return Bool
 user_function totally_unimodular(Matrix) : c++ (include => "polymake/totally_unimodular.h");
@@ -492,7 +490,7 @@ user_function dense(Matrix) { $_[0] }
 
 # @category Combinatorics
 # Returns the __permuation matrix__ of the permutation given by //p//.
-# @tparam Scalar default: Int
+# @tparam Scalar default: [[Int]]
 # @param Array<Int> p
 # @return Matrix<Scalar>
 user_function permutation_matrix<Scalar=Int>(*:anchor) : c++ (include => [ "polymake/permutations.h", "polymake/SparseMatrix.h" ]);
@@ -636,19 +634,48 @@ user_function index_matrix(SparseMatrix:anchor) : c++ (include => "polymake/Inci
 
 ##################################################################################
 
-##declare property_type MaxPlusRational : c++ (operators => ' bool @arith @compare') {
+# types for tropical addition
 
-##   function ONE() : c++ (name => 'MaxPlusRational::ONE', include => ["MaxPlusRational.h"]);
+# @category Arithmetic
+# tropical addition: min
+declare property_type Min : c++ (special => 'Min', include => "polymake/TropicalNumber.h") {
 
-##   function ZERO() : c++ (name => 'MaxPlusRational::ZERO', include => ["MaxPlusRational.h"]);
-   
-##   user_method get_value() : c++;
-##}
+    user_method orientation() { return 1; }
+    
+    user_method apply {my ($o,$x,$y) = @_; return min($x,$y);}
+}
 
-##user_function isfinite(MaxPlusRational) : c++ (include => ["MaxPlusRational.h"]);
+# @category Arithmetic
+# tropical addition: max
+declare property_type Max : c++ (special => 'Max', include => "polymake/TropicalNumber.h") {
 
-##user_function isinf(MaxPlusRational) : c++ (include => ["MaxPlusRational.h"]);
+    user_method orientation() { return -1; }
+    
+    user_method apply {my ($o,$x,$y) = @_; return max($x,$y);}
+}
 
+# @category Arithmetic
+# @tparam Addition
+# @tparam Scalar default: [[Rational]]
+declare property_type TropicalNumber<Addition, Scalar=Rational> : c++ \
+  (operators => '++ + += * *= / /= neg - @compare', include => "polymake/TropicalNumber.h") {
+  
+    # @return The orientation of the associated addition, i.e. 
+    # +1 if the corresponding 0 is +inf
+    # -1 if the corresponding 0 is -inf
+    user_method orientation() {
+      return Addition->orientation();
+    }
+    
+    # @return The zero element of the tropical semiring of this element.
+    user_method zero() : static : c++ (include => "polymake/TropicalNumber.h");
+    
+  }; 
+  
+# function is_tropical_addition(Min) {1}
+# function is_tropical_addition(Max) {1}
+# function is_tropical_addition() {0}
+  
 ##################################################################################
 
 # @category Algebraic Types
@@ -677,6 +704,8 @@ declare property_type Ring<Coefficient=Rational, Exponent=Int> \
    user_method names() : c++;
 
    method id() : c++;
+
+   type_method toXML { &Core::CPlusPlus::serialized_with_id_toXML }
 }
 
 # @category Algebraic Types
@@ -819,6 +848,10 @@ user_function numerator(RationalFunction) : c++;
 # @return Polynomial
 # @param RationalFunction f
 user_function denominator(RationalFunction) : c++;
+
+
+# @topic category property_types/Linear Algebra
+# These types are needed as return types of algebraic computations.
 
 # @category Linear Algebra
 # Complete result of the __Smith normal form__ computation.

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -13,8 +13,6 @@
    GNU General Public License for more details.
 --------------------------------------------------------------------------------
 */
-
-#include <dlfcn.h>
 
 #include "polymake/ideal/internal/singularRingManager.h"
 #include "polymake/ideal/internal/singularTermOrderMap.h"

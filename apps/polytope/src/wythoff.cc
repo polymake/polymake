@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -113,13 +113,16 @@ perl::Object wythoff_dispatcher(std::string type, Set<int> rings)
    std::istringstream is (type.substr(1));
    is >> n;
 
-   perl::Object p;
    Array<Array<int> > generators;
 
    typedef QuadraticExtension<Rational> QE;
 
+   SparseMatrix<Rational> RM;
+   SparseMatrix<QE> EM;
+
+   bool needs_QE = false;
+
    if ((t >= 'A' && t <= 'G') || (t >= 'a' && t <= 'g')) {
-      SparseMatrix<Rational> RM;
       if (t == 'A' || t == 'a') {
          if (n >= 1)
             wythoff<Rational>(type, rings, simple_roots_type_A(n), RM, generators);
@@ -141,9 +144,15 @@ perl::Object wythoff_dispatcher(std::string type, Set<int> rings)
          else 
             throw std::runtime_error("Coxeter group of type D requires rank >= 3.");
       } else if (t == 'E' || t == 'e') {
-         if (n==8)
+         if (n==6) {
+            needs_QE = true;
+            wythoff<QE>(type, rings, simple_roots_type_E6(), EM, generators);
+          } else if (n==7){
+            needs_QE = true;
+            wythoff<QE>(type, rings, simple_roots_type_E7(), EM, generators);
+          } else if (n==8)
             wythoff<Rational>(type, rings, simple_roots_type_E8(), RM, generators);
-         else throw std::runtime_error("Coxeter groups E6 and E7 not implemented.");
+         else throw std::runtime_error("Coxeter group of type E requires rank 6, 7 or 8.");
       }
       else if (t == 'F' || t == 'f') {
          if (n == 4)
@@ -156,12 +165,8 @@ perl::Object wythoff_dispatcher(std::string type, Set<int> rings)
       } else
          throw std::runtime_error("Did not recognize crystallographic Coxeter group.");
 
-      p = perl::Object("Polytope<Rational>");
-      p.take("VERTICES") << RM;
-      p.take("N_VERTICES") << RM.rows();
-      p.take("LINEALITY_SPACE") << Matrix<Rational>();
    } else if (t == 'H' || t == 'h') {
-      SparseMatrix<QE> EM;
+      needs_QE = true;
       switch(n) {
       case 3: {
          wythoff<QE>(type, rings, simple_roots_type_H3(), EM, generators);
@@ -175,12 +180,22 @@ perl::Object wythoff_dispatcher(std::string type, Set<int> rings)
          throw std::runtime_error("Coxeter group of type H requires rank 3 or 4.");
       }
 
+   } else
+      throw std::runtime_error("Did not recognize the Coxeter group.");
+
+   perl::Object p;
+
+   if (needs_QE) {
       p = perl::Object("Polytope<QuadraticExtension>");
       p.take("VERTICES") << EM;
       p.take("N_VERTICES") << EM.rows();
-      p.take("LINEALITY_SPACE") << Matrix<QE>();
-   } else
-      throw std::runtime_error("Did not recognize the Coxeter group.");
+   } else {
+      p = perl::Object("Polytope<Rational>");
+      p.take("VERTICES") << RM;
+      p.take("N_VERTICES") << RM.rows();
+   }
+
+   p.take("LINEALITY_SPACE") << Matrix<Rational>();
 
    p.take("CONE_AMBIENT_DIM") << ((t == 'A' || t == 'a') ? n+2 : n+1);
    p.take("CONE_DIM") << n+1;
@@ -264,7 +279,7 @@ perl::Object truncated_dodecahedron() {
 
 perl::Object rhombicosidodecahedron() {
    Set<int> rings;
-   rings.push_back(0); rings.push_back(2);
+   rings+=0; rings+=2;
    return wythoff_dispatcher("H3", rings);
 }
 

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,37 +13,60 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-
+# An intermediate object wrapping the ideal on the Singular side and providing its methods.
 declare property_type SingularIdeal : c++ (include => ["polymake/ideal/singularIdeal.h"]) {
 
+   # @category Constructors
+   # Construct a Singular ideal with monomial ordering given by a matrix.
    method construct(Array<Polynomial>, Matrix<Int>) : c++;
 
+   # @category Constructors
+   # Construct a Singular ideal with monomial ordering given by a vector.
    method construct(Array<Polynomial>, Vector<Int>) : c++;
 
+   # @category Constructors
+   # Construct a Singular ideal with monomial ordering given by its name (in the Singular notation).
    method construct(Array<Polynomial>, String) : c++;
 
+   # @category Singular interface
+   # Compute the Groebner basis.
    method groebner() : void : c++ ;
 
+   # @category Singular interface
+   # Compute the dimension of the ideal.
    method dim() : c++ ;
 
+   # @category Singular interface
+   # Compute the initial ideal. Depends on monomial ordering.
    method initial_ideal() : c++;
 
+   # @category Singular interface
+   # Compute the radical of the ideal.
    method radical() : c++ ;
 
+   # @category Singular interface
    method division(Polynomial, Ring) : c++;
 
+   # @category Singular interface
    method solve() : c++;
 
+   # @category Singular interface
+   # Reduce a polynomial modulo the ideal, i.e. check ideal membership.
    method reduce(Polynomial, Ring) : c++;
 
+   # @category Singular interface
    method polynomials(Ring) : c++;
 
+   # @category Singular interface
+   # Compute the primary decomposition of the ideal.
    method primary_decomposition() : c++;
 
 }
 
 object Groebner {
 
+   # @category Singular interface
+   # Intermediate object wrapping the Singular objects, i.e. the ring with the monomial ordering and the ideal.
    property SINGULAR_IDEAL : SingularIdeal : non_storable;
 
    user_method reduce(Polynomial) {
@@ -89,12 +112,16 @@ object Ideal {
       $this->GROEBNER->BASIS = $this->GROEBNER->SINGULAR_IDEAL->polynomials($this->RING);
    }
 
-   rule GROEBNER.INITIAL_IDEAL, GROEBNER.BASIS, GROEBNER.SINGULAR_IDEAL : GENERATORS, GROEBNER.ORDER_MATRIX , RING {
-      $this->GROEBNER->SINGULAR_IDEAL = new SingularIdeal($this->GENERATORS, $this->GROEBNER->ORDER_MATRIX);
-      $this->GROEBNER->SINGULAR_IDEAL->groebner();
-      $this->GROEBNER->BASIS = $this->GROEBNER->SINGULAR_IDEAL->polynomials($this->RING);
-      my $i = $this->GROEBNER->SINGULAR_IDEAL->initial_ideal();
-      $this->GROEBNER->INITIAL_IDEAL = new Ideal(GENERATORS=>$i->polynomials($this->RING), RING=>$this->RING);
+   rule GROEBNER.INITIAL_IDEAL.GENERATORS, GROEBNER.INITIAL_IDEAL.RING, GROEBNER.BASIS : GENERATORS, GROEBNER.ORDER_MATRIX , RING {
+      my $si;
+      unless ( defined($si = $this->lookup("GROEBNER.SINGULAR_IDEAL"))) {
+         $si = new SingularIdeal($this->GENERATORS, $this->GROEBNER->ORDER_MATRIX);
+         $si->groebner();
+      }
+      $this->GROEBNER->BASIS = $si->polynomials($this->RING);
+      my $i = $si->initial_ideal();
+      $this->GROEBNER->INITIAL_IDEAL->GENERATORS = $i->polynomials($this->RING);
+      $this->GROEBNER->INITIAL_IDEAL->RING = $this->RING;
    }
    precondition : !ZERO;
 

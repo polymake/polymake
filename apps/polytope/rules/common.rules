@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -40,7 +40,7 @@ method construct(Cone) {
   if ( $already_homogeneous ) {
       Polymake::Core::Object::new_copy($proto, $cone);
   } else {
-      Polymake::Core::Object::new_filled($proto, $cone->name, INEQUALITIES=>$cone->FACETS, EQUATIONS=>$cone->LINEAR_SPAN);
+      Polymake::Core::Object::new_filled($proto, $cone->name, CONE_AMBIENT_DIM=>$cone->CONE_AMBIENT_DIM, INEQUALITIES=>$cone->FACETS, EQUATIONS=>$cone->LINEAR_SPAN);
   }
 }
 
@@ -275,12 +275,12 @@ rule SIMPLE : SIMPLICITY, COMBINATORIAL_DIM {
 weight 0.10;
 
 rule NEIGHBORLY : NEIGHBORLINESS, COMBINATORIAL_DIM {
-   $this->NEIGHBORLY= $this->NEIGHBORLINESS >= $this->COMBINATORIAL_DIM/2;
+   $this->NEIGHBORLY= $this->NEIGHBORLINESS >= floor($this->COMBINATORIAL_DIM/2);
 }
 weight 0.10;
 
 rule BALANCED : BALANCE, COMBINATORIAL_DIM {
-   $this->BALANCED= $this->BALANCE >= $this->COMBINATORIAL_DIM/2;
+   $this->BALANCED= $this->BALANCE >= floor($this->COMBINATORIAL_DIM/2);
 }
 weight 0.10;
 
@@ -611,12 +611,15 @@ weight 0.10;
 #    $this->TRIANGULATION->BOUNDARY->G_DIM=CONE_AMBIENT_DIM-1;
 #}
 
-
+# @category Geometry
+# returns the dimension of the ambient space of the polytope
 user_method AMBIENT_DIM {
   my ($self)=@_;
   return ($self->CONE_AMBIENT_DIM-1);
 }
 
+# @category Geometry
+# returns the dimension of the polytope
 user_method DIM {
   my ($self)=@_;
   if (!defined ($self->lookup("LINEALITY_SPACE | INPUT_LINEALITY | INPUT_RAYS | RAYS | INEQUALITIES | EQUATIONS | FACETS | LINEAR_SPAN"))) {
@@ -625,6 +628,11 @@ user_method DIM {
   return $self->CONE_DIM-1;
 }
 
+# @category Geometry
+# checks whether a given point is contained in a polytope
+# @param Polytope<Scalar> P polytope
+# @param Vector<Scalar> v point
+# @return Boolean
 user_method contains {
   my ($self,$v)=@_;
   my $zero=0;
@@ -647,6 +655,12 @@ user_method contains {
 # the implementation of the following  user_method is *not* efficient,
 # if the polytope is given via vertices it
 # should be done in the same way as the one above
+
+# @category Geometry
+# checks whether a given point is contained in the strict interior of a polytope
+# @param Polytope<Scalar> P polytope
+# @param Vector<Scalar> v point
+# @return Boolean
 user_method contains_in_interior {
   my ($self,$v)=@_;
   my $f = $self->give("FACETS | INEQUALITIES");
@@ -678,7 +692,7 @@ user_function recession_cone<Scalar>(Polytope<Scalar>) {
 }
 
 
-# @category Geometric properties
+# @category Geometry
 # Compute the dihedral angle between two (oriented) affine or linear hyperplanes.
 # @param Vector<Scalar> H1 : first hyperplane
 # @param Vector<Scalar> H2 : second hyperplane

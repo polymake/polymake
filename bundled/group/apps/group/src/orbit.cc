@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -27,18 +27,18 @@ Set<Container> orbit (perl::Object G, const Container& c)
    return sym_group.orbit(c);
 }
 
-UserFunction4perl("# @category Producing from scratch\n"
-                  "# The orbit of a set under a group"
-                  "# @param Group G the group"
-                  "# @param Set S the set"
-                  "# @return Set the orbit of S under G",
+UserFunction4perl("# @category Orbits\n"
+                  "# The orbit of a set //S// under a group //G//."
+                  "# @param Group G"
+                  "# @param Set S"
+                  "# @return Set",
                   &orbit<Set<int> >, "orbit(Group, Set)");
 
-UserFunction4perl("# @category Producing from scratch\n"
-                  "# The orbit of a set of sets under a group"
-                  "# @param Group G the group"
-                  "# @param Set<Set> S the set of sets"
-                  "# @return Set the orbit of S under G",
+UserFunction4perl("# @category Orbits\n"
+                  "# The orbit of a set //S// of sets under a group //G//."
+                  "# @param Group G"
+                  "# @param Set<Set> S"
+                  "# @return Set",
                   &orbit<Set<Set<int> > >, "orbit(Group, Set<Set>)");
 
 } } // end namespaces

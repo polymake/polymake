@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -23,9 +23,11 @@ file_suffix pcom
 # @category Input property
 property POINTS = override INPUT_RAYS;
 
+# @category Geometry
 # Number of [[POINTS]].
 property N_POINTS = override N_INPUT_RAYS;
 
+# @category Visualization
 property POINT_LABELS = override INPUT_RAY_LABELS;
 
 # @category Geometry
@@ -35,6 +37,7 @@ property VERTICES = override RAYS;
 # Number of [[VERTICES]].
 property N_VERTICES = override N_RAYS;
 
+# @category Visualization
 property VERTEX_LABELS = override RAY_LABELS;
 
 # @category Geometry

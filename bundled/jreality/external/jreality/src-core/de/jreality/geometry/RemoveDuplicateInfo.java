@@ -364,6 +364,8 @@ public class RemoveDuplicateInfo {
 
 	private void postCalulation(){
 		newTables();
+//		System.err.println("old verts = "+points.length);
+//		System.err.println("new verts = "+numNewVerts);
 		geo.setNumPoints(numNewVerts);
 		if (geo instanceof IndexedFaceSet) {
 			IndexedFaceSet ifs = (IndexedFaceSet) geo;

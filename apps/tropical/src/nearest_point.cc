@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -44,7 +44,7 @@ namespace polymake { namespace tropical {
       return n_point;   
    }
    
-	UserFunctionTemplate4perl("# @category Basic functions"
+	UserFunctionTemplate4perl("# @category Tropical operations"
                              "# Compute the projection of a point //x// in  tropical projective space onto a tropical polytope //P//."
                              "# Cf."
                              "# \t Develin & Sturmfels math.MG/0308254v2, Proposition 9."

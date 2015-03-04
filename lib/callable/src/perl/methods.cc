@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -26,7 +26,8 @@ glue::cached_cv application_cv={ "Polymake::User::application", 0 },
                   new_scope_cv={ "Polymake::Main::createNewScope", 0 },
                  set_custom_cv={ "Polymake::Main::set_custom", 0 },
                reset_custom_cv={ "Polymake::Main::reset_custom", 0 },
-               local_custom_cv={ "Polymake::Main::local_custom", 0 };
+               local_custom_cv={ "Polymake::Main::local_custom", 0 },
+                   greeting_cv={ "Polymake::Main::greeting", 0 };
 
 const char Extension[]="Polymake::Core::Extension";
 }
@@ -117,6 +118,18 @@ void Scope::_set_custom(const char* name, size_t ll, const char* key, size_t kl,
    XPUSHs(x.get_temp());
    PUTBACK;
    glue::call_func_void(aTHX_ local_custom_cv);
+}
+
+std::string Main::greeting(int verbose)
+{
+   dTHX;
+   PmStartFuncall;
+   mXPUSHi(verbose);
+   PUTBACK;
+   size_t l=0;
+   SV* greeting_sv = glue::call_func_scalar(aTHX_ greeting_cv);
+   const char* greeting=SvPV(greeting_sv, l);
+   return std::string(greeting,l);
 }
 
 } }

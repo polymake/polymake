@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -32,6 +32,8 @@ perl::Object matching_polytope(const graph_type& G)
    perl::Object p("Polytope<Rational>");
    p.take("INEQUALITIES") << M;
    p.take("BOUNDED") << true;
+   p.take("FEASIBLE") << true;
+   p.take("ONE_VERTEX") << unit_vector<Rational>(G.edges()+1,0);
    return p;
 }
       

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -45,7 +45,7 @@ precondition : GRAPH.CONNECTED;
 # @category Topology
 # Writes the [[FUNDAMENTAL_GROUP]] using [[FUNDAMENTAL_GROUP_GEN_LABELS]] to
 # the given file in [[wiki:external_software#GAP|GAP]] input format.
-
+# @param String filename
 user_method fundamental2gap(;$) {
    my ($this, $gap_file)=@_;
    $gap_file ||= $this->name . ".gap";

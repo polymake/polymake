@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -14,13 +14,13 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/SparseMatrix.h"
+#include "polymake/Array.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
-#include "polymake/IncidenceMatrix.h"
-#include "polymake/Array.h"
 #include "polymake/Set.h"
-#include "polymake/Matrix.h"
+#include "polymake/SparseMatrix.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -33,5 +33,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(centroid_volume_x_X_X_f16, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< Set< int > > >);
    FunctionInstance4perl(centroid_volume_x_X_X_f16, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >, perl::Canned< const Array< Set< int > > >);
    FunctionInstance4perl(centroid_volume_x_X_X_f16, perl::Canned< const SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >, perl::Canned< const Array< Set< int > > >);
+   FunctionInstance4perl(centroid_volume_x_X_X_f16, perl::Canned< const Matrix< QuadraticExtension< Rational > > >, perl::Canned< const Array< Set< int > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

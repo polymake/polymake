@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -13,8 +13,6 @@
    GNU General Public License for more details.
 --------------------------------------------------------------------------------
 */
-
-#include <dlfcn.h>
 
 #include <Singular/libsingular.h>
 
@@ -84,7 +82,8 @@ perl::ListReturn singular_get_var(const std::string varname){
 void singular_eval(const std::string cmd){
    init_singular();
    int nest = myynest;
-   currentVoice=feInitStdin(NULL);
+   if (currentVoice == NULL)
+      currentVoice=feInitStdin(NULL);
    myynest = 1;
    // the return is needed to stop the interpreter
    int err=iiAllStart(NULL,omStrDup((cmd+";return();").c_str()),BT_proc,0);
@@ -113,17 +112,17 @@ long singular_get_int(const std::string varname){
 
 } // end namespace singular
 
-UserFunction4perl("# @category Algebra"
+UserFunction4perl("# @category Singular interface"
                   "# Executes given string with Singular"
                   "# @param String s",
                   &singular::singular_eval, "singular_eval($)");
 
-UserFunction4perl("# @category Algebra"
+UserFunction4perl("# @category Singular interface"
                   "# Retrieves an int variable from 'Singular'"
                   "# @param String s",
                   &singular::singular_get_int, "singular_get_int($)");
 
-UserFunction4perl("# @category Algebra"
+UserFunction4perl("# @category Singular interface"
                   "# Retrieves a variable from 'Singular'"
                   "# @param String s variable name"
                   "# @return perl::ListReturn",

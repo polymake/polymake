@@ -68,7 +68,15 @@ template<typename Integer>
 Integer int_max_value_half();
 
 template<typename Integer>
-void check_size(const std::list<std::vector<Integer> >& ll);
+void check_range(const std::list<std::vector<Integer> >& ll);
+
+template<typename Integer> class CandidateList;
+template<typename Integer> class Candidate;
+
+template<typename Integer>
+void check_range(const CandidateList<Integer>& ll);
+template<typename Integer>
+void check_range(const std::list<Candidate<Integer> >& ll);
 
 //---------------------------------------------------------------------------
 //                     Basic functions

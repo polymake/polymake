@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -54,6 +54,7 @@ perl::Object goldfarb(int d, const Rational& e, const Rational& g)
   
    p.take("INEQUALITIES") << IE;
    p.take("LP.LINEAR_OBJECTIVE") << unit_vector<Rational>(d+1,d);
+   p.take("FEASIBLE") << 1;
    return p;
 }
 

@@ -430,6 +430,16 @@ vector<key_t> v_non_zero_pos(const vector<Integer>& v){
 //---------------------------------------------------------------------------
 
 template<typename Integer>
+bool v_is_zero(const vector<Integer>& v) {
+    for (size_t i = 0; i < v.size(); ++i) {
+        if (v[i] != 0) return false;
+    }
+    return true;
+}
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
 void v_el_trans(const vector<Integer>& av,vector<Integer>& bv, const Integer& F, const size_t& start){
 
     size_t i,n=av.size();

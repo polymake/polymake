@@ -50,6 +50,7 @@ template<typename Integer> class SimplexEvaluator;
 template<typename Integer> class CandidateList;
 template<typename Integer> class Candidate;
 template<typename Integer> class Simplex;
+template<typename Integer> class Collector;
 
 template<typename Integer>
 class Full_Cone {
@@ -58,6 +59,7 @@ class Full_Cone {
     friend class SimplexEvaluator<Integer>;
     friend class CandidateList<Integer>;
     friend class Candidate<Integer>;
+    friend class Collector<Integer>;
     
     size_t dim;
     size_t level0_dim; // dim of cone in level 0 of the inhomogeneous case
@@ -70,7 +72,6 @@ class Full_Cone {
     bool deg1_extreme_rays;
     bool deg1_triangulation;
     bool deg1_hilbert_basis;
-    bool integrally_closed;
     bool inhomogeneous; 
     
     // control of what to compute
@@ -158,8 +159,8 @@ class Full_Cone {
    
     // storage for subpyramids
     size_t store_level; // the level on which daughters will be stored  
-    vector< list<vector<key_t> > > Pyramids;  //storage for pyramids
-    vector<size_t> nrPyramids; // number of pyramids on the various levels
+    deque< list<vector<key_t> > > Pyramids;  //storage for pyramids
+    deque<size_t> nrPyramids; // number of pyramids on the various levels
 
     // data that can be used to go out of build_cone and return later (not done at present)
     // but also useful at other places
@@ -176,6 +177,7 @@ class Full_Cone {
     
     // helpers for evaluation
     vector< SimplexEvaluator<Integer> > SimplexEval; // one per thread
+    vector< Collector<Integer> > Results; // one per thread
     vector<Integer> Order_Vector;  // vector for the disjoint decomposition of the cone
     
     // defining semiopen cones
@@ -189,6 +191,8 @@ class Full_Cone {
     
     bool use_existing_facets;  // in order to avoid duplicate computation of already computed facets
     size_t start_from;
+    
+    size_t AdjustedReductionBound;
 
 /* ---------------------------------------------------------------------------
  *              Private routines, used in the public routines
@@ -266,7 +270,6 @@ class Full_Cone {
     void deg1_check();
     void check_deg1_extreme_rays();
     void check_deg1_hilbert_basis();
-    void check_integrally_closed();
 
     void compute_multiplicity();
     
@@ -295,7 +298,6 @@ class Full_Cone {
     bool isPointed() const;
     bool isDeg1ExtremeRays() const;
     bool isDeg1HilbertBasis() const;
-    bool isIntegrallyClosed() const;
     vector<Integer> getGrading() const; 
     mpq_class getMultiplicity() const;
     Integer getShift()const;

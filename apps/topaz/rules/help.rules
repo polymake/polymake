@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -14,31 +14,21 @@
 #-------------------------------------------------------------------------------
 
 
-# @topic globalcategory Visualization
-# These +++ are for visualization.
+# @topic category functions/Producing a new simplicial complex from others
+# These functions construct a new [[SimplicialComplex]] from other objects of the same type.
 
-# @topic globalcategory Internal
-# These +++ are for internal use only. You can safely ignore them.
+# @topic category functions/Producing from scratch
+# With these clients you can create special examples of simplicial complexes and complexes belonging to parameterized families.
 
-# @topic globalcategory Input property
-# These properties are for input only. They allow redundant information.
+# @topic category functions/Producing a simplicial complex from other objects
+# These functions construct a new [[SimplicialComplex]] from other objects.
 
-
-
-# @topic clients/Producing from scratch
-# With these clients you can create simplicial complexes belonging to various parameterized families.
-
-# @topic clients/Producing a new simplicial complex from others
-# Another important way of constructing simplicial complexes is to modify an already existing one.
-# Actually, these clients don't alter the input file, but create a copy and modify it.
-#
-# The clients try to preserve existing vertex labels or choose the new labels according to the old ones
-# to help you keep track of special vertices throughout a series of constructions.
-# You may suppress the labeling of the vertices of the new complex by using the **FIXME:** ''-nol'' flag
-# if it is of no interest to you.
+# @topic category functions/Comparing
+# These functions compare two [[SimplicialComplex]]
 
 
 # Local Variables:
 # mode: perl
-# c-basic-offset:3
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
 # End:

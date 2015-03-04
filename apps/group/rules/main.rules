@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,15 +15,18 @@
 
 # @topic application
 # The application group provides basic functionality for working with permutation
-# groups. An object 'Group' is defined by a list of generators describing the 
+# groups. An object of type [[Group]] is defined by a list of [[Group::GENERATORS|GENERATORS]] describing the 
 # permutation of some indices. 
-# The object 'GroupOfCone' encapsulates symmetry information of a cone.
-# It can act on the indices of rays (DOMAIN=>1), of facets(2), or on coordinates(3).
+# The object [[GroupOfCone]] encapsulates symmetry information of a [[polytope::Cone|Cone]].
+# It can act on the indices of rays ([[GroupOfCone::DOMAIN|DOMAIN]]=>1), of facets ([[GroupOfCone::DOMAIN|DOMAIN]]=>2), or on coordinates ([[GroupOfCone::DOMAIN|DOMAIN]]=>3).
 
 IMPORT
   common
 
 file_suffix grp
+
+HELP
+	help.rules
 
 # A finite permutation group.
 # 

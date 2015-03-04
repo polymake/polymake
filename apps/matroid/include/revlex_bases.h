@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -74,24 +74,27 @@ template<typename Container>
 Array<Set<int> > bases_from_revlex_encoding_impl(const Container& revlex_encoding,
                                                  int rank,
                                                  int n_elements,
-                                                 bool check=false)
+                                                 bool dual  = false,
+                                                 bool check = false)
 {
    const Array<Set<int> > revlex_bases = make_revlex_bases(n_elements, rank);
-   Array<Set<int> > matroid_bases(std::count(revlex_encoding.begin(), revlex_encoding.end(), '*'));
+   Array<Set<int> > matroid_bases(std::count(revlex_encoding.begin(), revlex_encoding.end(), '*') +
+                                  std::count(revlex_encoding.begin(), revlex_encoding.end(), '1'));
 
    Entire<Array<Set<int> > >::iterator mbit = entire(matroid_bases);
    Entire<Array<Set<int> > >::const_iterator rbit = entire(revlex_bases);
 
    for (typename Entire<Container>::const_iterator sit = entire(revlex_encoding); !sit.at_end(); ++sit, ++rbit) {
-      if (*sit == '*') {
-         *mbit = *rbit;
+      if (*sit == '*' || *sit == '1') {
+         *mbit = (dual 
+                  ? Set<int>(sequence(0,n_elements) - *rbit)
+                  : *rbit);
          ++mbit;
       }
    }
 
-   if (check)
-      if (!check_basis_exchange_axiom_impl(matroid_bases, true))
-         throw std::runtime_error("The given revlex string did not correspond to a matroid.");
+   if (check && !check_basis_exchange_axiom_impl(matroid_bases, true))
+      throw std::runtime_error("The given revlex string did not correspond to a matroid.");
 
    return matroid_bases;
 }

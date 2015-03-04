@@ -14,7 +14,6 @@
         <target name="io"/>
         <target name="jogl"/>
         <target name="soft"/>
-        <target name="sunflow"/>
         <target name="plugin"/>
       </ant>
       <copy todir="${jar.dir}"
@@ -64,7 +63,7 @@
             preservelastmodified="yes">
         <fileset
                 dir="src"
-                includes="**/*.txt"
+                includes="**/*.html,**/*.txt"
                 excludes="**/*.java" />
       </copy>
     </sequential>

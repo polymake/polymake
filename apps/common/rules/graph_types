@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,9 @@
 
 # @topic category property_types/Graph Types
 # This contains all property types that are related to graphs.
+
+# @topic category functions/Graph Operations
+# Operations on graphs.
 
 # @category Artificial
 # Type tag for an __undirected__ [[Graph]].

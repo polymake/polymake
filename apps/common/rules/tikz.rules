@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -67,7 +67,9 @@ requires PDFLaTeX and a PDF viewer;
 please specify the output File option or call reconfigure("common::tikz.rules");
 .
    }
-   &_new;
+   my $self = &_new;
+   $self->tempfile->descend_dir();
+   $self;
 }
 
 sub command {
@@ -96,14 +98,14 @@ sub append {
    $self->graphics->append(@_);
 }
 
-sub write_latextemplate {
+sub write_latextemplate_old {
 my $tikzfilename=shift;
 my $text = <<'|';
 %
 %---------------------------------------------------------------------------------
 %
 % Polymake LaTeX template for TikZ-Output
-% Copyright (c) 1997-2014
+% Copyright (c) 1997-2015
 % Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 % http://www.polymake.org
 \documentclass[12pt]{article}
@@ -144,6 +146,34 @@ $text .=<<'|';
 }{
   \resizebox{500pt}{!}{\usebox{\tikzoutput}}
 }
+\end{document}
+|
+return $text;
+}
+
+sub write_latextemplate {
+
+my $tikzfilename=shift;
+my $text = <<'|';
+%
+%---------------------------------------------------------------------------------
+%
+% Polymake LaTeX template for TikZ-Output
+% Copyright (c) 1997-2015
+% Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+% http://www.polymake.org
+\documentclass[tikz,x11names,border=10pt]{standalone}
+
+\usetikzlibrary{3d}
+\usetikzlibrary{snakes}
+\usetikzlibrary{arrows}
+\usetikzlibrary{shapes}
+\usetikzlibrary{backgrounds}
+
+\begin{document}
+|
+    $text .= "\\input{$tikzfilename}\n";
+    $text .= <<'|';
 \end{document}
 |
 return $text;

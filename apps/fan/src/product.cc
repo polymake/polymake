@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -61,8 +61,8 @@ namespace polymake { namespace fan {
       return f_out;
     }
 
-    UserFunction4perl("# @category Producing a polyhedral fan from polyhedral fans"
-		      "# Construct a new polyhedral fan as the product of two given polyhedral fans //F1// and //F2//."
+    UserFunction4perl("# @category Producing a fan"
+		      "# Construct a new polyhedral fan as the __product__ of two given polyhedral fans //F1// and //F2//."
 		      "# @param PolyhedralFan F1"
 		      "# @param PolyhedralFan F2"
 		      "# @option Bool noc only combinatorial information is handled"

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -606,6 +606,7 @@ sub belongs_to {
 sub visible_from {
    my ($self, $app)=@_;
    foreach my $label (@{$self->labels}) {
+      next unless defined($label->application);
       return 0 unless $label->application==$app || $app->imported->{$label->application->name};
    }
    1
@@ -684,7 +685,7 @@ sub parse_label_expr {
       }
    } elsif (my ($sublevel, $list)= $expr =~ /^ \*\.($hier_id_re) \s+ ($hier_ids_re) $/xo) {
       @l=map { find_label($self, "$_.$sublevel", $mode & 1) or
-               push @err, "$_.$sublevel"
+               push @err, "$_.$sublevel" and ()
          } split /\s*,\s*/, $list;
    } else {
       croak( "syntax error in preference list" );

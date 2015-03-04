@@ -69,7 +69,7 @@ public class ImplodePolygonShader extends DefaultPolygonShader {
 		super.setFromEffectiveAppearance(eap, name);
 		implodeFactor = eap.getAttribute(
 				ShaderUtility.nameSpace(name, "implodeFactor"), implodeFactor);
-		System.err.println("implode factor = " + implodeFactor);
+//		System.err.println("implode factor = " + implodeFactor);
 	}
 
 	public double getImplodeFactor() {

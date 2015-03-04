@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -28,22 +28,7 @@
 # @topic category objects/NormalToricVariety/properties/Basic properties
 # Properties defining a normal toric variety.
 
-# @topic category objects/NormalToricVariety/properties/Combinatorics
-# Combinatorial properties of a normal toric variety, i.e. cones, polyhedra,
-# etc.
-
-# @topic category objects/NormalToricVariety/properties/Algebraic Geometry
-# Properties from algebraic geometry.
-
-# @topic category objects/AffineNormalToricVariety/properties/Combinatorics
-# Combinatorial properties of a normal toric variety, i.e. cones, polyhedra,
-# etc.
-
-# @topic category objects/TDivisor/properties/Combinatorics
-# Combinatorial properties of a //T//-invariant divisor, i.e. cones, polyhedra,
-# etc.
-
-# @topic category objects/TDivisor/properties/Algebraic Geometry
+# @topic category properties/any/Algebraic Geometry
 # Properties from algebraic geometry.
 
 # @topic category objects/CyclicQuotient/properties/Input properties
@@ -53,10 +38,12 @@
 # @topic category objects/CyclicQuotient/properties/Algebraic Geometry
 # Properties relevant for the algebro-geometric side of CQS.
 
-# @topic category objects/VersalComponent/properties/Combinatorics
-# Combinatorial properties of the components of the versal deformation of CQS.
-
 # @topic category objects/VersalComponent/properties/Algebraic Geometry
-# Properties relevant for the algebro-geometric side of the components of the versal deformation of CQS.
+# Properties relevant for the algebro-geometric side of the components of 
+# the versal deformation of CQS.
 
-
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

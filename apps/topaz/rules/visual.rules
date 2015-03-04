@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -148,8 +148,11 @@ user_method VISUAL(%Visual::Polygon::decorations, %Visual::Graph::decorations, {
    my $coord=do {
       if ( $options->{mixed_graph} ) {
          spring_embedding_3d($this->MIXED_GRAPH->ADJACENCY,'edge-weights' => $this->MIXED_GRAPH->EDGE_WEIGHTS, $seed)->compute->minor(sequence(0,$this->N_VERTICES),All);
-      } elsif ($this->isa("GeometricSimplicialComplex") && defined($this->lookup("COORDINATES")) &&
-               $this->G_DIM<=3) {
+      } elsif ($this->isa("GeometricSimplicialComplex") && (
+                     defined($this->lookup("COORDINATES")) ||
+                     # the following check is needed because of our object / property semantics
+                     defined($this->parent) && $this->parent->isa("Cone") && defined($this->parent->give("RAYS"))
+                  ) && $this->G_DIM <= 3) {
          convert_to<Float>($this->COORDINATES);
       } else {
          spring_embedding_3d($this->GRAPH->ADJACENCY, $seed)->compute;
@@ -165,9 +168,8 @@ user_method VISUAL(%Visual::Polygon::decorations, %Visual::Graph::decorations, {
                                  $graph_decor
                                );
    visualize(new Visual::SimplicialComplex(Name => $this->name,
-                                           SimplicialComplex=>$this,
-                                           vis_facets($this->FACETS, $coord, $labels, $face_decor,$face_decor,$face_decor),
-                                           $graph));
+                                           SimplicialComplex=>$this, $graph,
+                                           vis_facets($this->FACETS, $coord, $labels, $face_decor,$face_decor,$face_decor)));
 }
 
 
@@ -256,7 +258,7 @@ user_method SUBCOMPLEX($ %Visual::Polygon::decorations, %Visual::Graph::decorati
 
    my $labels=$self->SimplicialComplex->lookup("VERTEX_LABELS");
 
-   compose($self, vis_facets($subcomplex, $self->elements->[-1]->Coord, $labels, $facet_decor, $edge_decor, $point_decor));
+   compose($self, vis_facets($subcomplex, $self->elements->[0]->Coord, $labels, $facet_decor, $edge_decor, $point_decor));
 }
 
 # Add faces with optional different graphical attributes.
@@ -284,7 +286,7 @@ user_method FACES($ %Visual::Polygon::decorations) {
 
    my $labels=$self->SimplicialComplex->lookup("VERTEX_LABELS");
 
-   compose($self, vis_facets($faces, $self->elements->[-1]->Coord, $labels, $facet_decor, \%edge_decor, \%point_decor));
+   compose($self, vis_facets($faces, $self->elements->[0]->Coord, $labels, $facet_decor, \%edge_decor, \%point_decor));
 }
 
 # Add the [[SimplicialComplex.MORSE_MATCHING|MORSE_MATCHING]] to the visualization of the [[SimplicialComplex]].

@@ -98,6 +98,7 @@ public class ColorChooseJButton extends JButton implements ActionListener{
 	}
 
 
+	@Override
 	public void actionPerformed(ActionEvent e) {
 		Window w = SwingUtilities.getWindowAncestor(this); 
 		Color newColor = JColorChooser.showDialog(w, title, color);

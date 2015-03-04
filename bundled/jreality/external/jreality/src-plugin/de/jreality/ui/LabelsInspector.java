@@ -137,18 +137,21 @@ public class LabelsInspector extends JPanel implements ActionListener, ChangeLis
 		app.setAttribute(shaderPrefix + ".textShader.offset", Appearance.INHERITED);
 	}
 
+	@Override
 	public void actionPerformed(ActionEvent e) {
 		if (visibleChecker == e.getSource()) {
 			updateShowLabels();
 		}
 	}
 	
+	@Override
 	public void stateChanged(ChangeEvent e) {
 		updateLabelResolution();
 		updateLabelSize();
 		updateLabelOffset();
 	}
 	
+	@Override
 	public void colorChanged(ColorChangedEvent cce) {
 		updateLabelColor();
 	}

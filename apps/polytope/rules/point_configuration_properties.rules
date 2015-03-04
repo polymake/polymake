@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -85,25 +85,30 @@ property BARYCENTER : Vector<Scalar>;
 # Some triangulation of the point configuration.
 property TRIANGULATION : topaz::GeometricSimplicialComplex<Scalar> : multiple {
 
+   # @category Triangulation and volume
    # The splits that are coarsenings of the current [[TRIANGULATION]].
    # If the triangulation is regular these form the unique split decomposition of
    # the corresponding weight function.
    property REFINED_SPLITS : Set<Int>;
    
+   # @category Triangulation and volume
    # GKZ-vector
    # 	See Chapter 7 in Gelfand, Kapranov, and Zelevinsky:
    # 	Discriminants, Resultants and Multidimensional Determinants, Birkhäuser 1994
    property GKZ_VECTOR : Vector<Scalar>;
 
-
+   # @category Triangulation and volume
    # Weight vector to construct a regular [[TRIANGULATION]].
    # Must be generic.
    property WEIGHTS : Vector<Scalar>;
 
 }
 
+# @category Triangulation and volume
+# boundary complex of the triangulation
 property TRIANGULATION.BOUNDARY {
 
+   # @category Triangulation and volume
    # DOC_FIXME: Incomprehensible description!
    # For each facet the set of simplex indices of BOUNDARY that triangulate it.
    property FACET_TRIANGULATIONS : Array<Set>;
@@ -118,10 +123,12 @@ user_method TRIANGULATION_SIGNS : TRIANGULATION.FACETS, POINTS {
    triang_sign($this->TRIANGULATION->FACETS, $this->POINTS);
 }
 
+# @category Combinatorics
 # The splits of the point configuration, i.e., hyperplanes cutting the configuration in
 # two parts such that we have a regular subdivision.
 property SPLITS : Matrix<Scalar>;
 
+# @category Combinatorics
 # Two [[SPLITS]] are compatible if the defining hyperplanes do not intersect in the
 # interior of the point configuration.  This defines a graph.
 property SPLIT_COMPATIBILITY_GRAPH : objects::Graph;

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -39,6 +39,12 @@ namespace polymake { namespace polytope { namespace {
       IndirectWrapperReturn( arg0.get< perl::TryCanned< Matrix< Rational > > >() );
    }
    FunctionWrapperInstance4perl( bool (pm::Matrix<pm::Rational>&) );
+
+   FunctionWrapper4perl( perl::Object (perl::Object) ) {
+      perl::Value arg0(stack[0]);
+      IndirectWrapperReturn( arg0 );
+   }
+   FunctionWrapperInstance4perl( perl::Object (perl::Object) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

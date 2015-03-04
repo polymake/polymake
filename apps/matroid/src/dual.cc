@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -56,8 +56,8 @@ perl::Object dual(perl::Object m)
   if (m.lookup("CIRCUITS")>>circuits) m_new.take("COCIRCUITS")<<circuits;
 
   Matrix<Rational> points;
-  if (m.lookup("POINTS")>>points)
-    m_new.take("POINTS")<<T(null_space(T(points)));
+  if (m.lookup("VECTORS")>>points)
+    m_new.take("VECTORS")<<T(null_space(T(points)));
   return m_new;
 }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -25,8 +25,8 @@ namespace polymake { namespace graph {
     }
     
 
-UserFunctionTemplate4perl("#@category Producing perfect matching for weight matrix"
-                  "# vector representation of permutation corresponding to perfect matching in bipartite weighted graph."
+UserFunctionTemplate4perl("#@category Other"
+                  "# Vector representation of the permutation corresponding to a perfect matching in a weighted bipartite graph."
                   "# @param Matrix weights"
                   "# @return Array",
                   "hungarian_perfect_matching(Matrix)");

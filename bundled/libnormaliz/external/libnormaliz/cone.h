@@ -168,6 +168,8 @@ public:
     Integer getShift() const;
     Matrix<Integer> getGeneratorsOfToricRingMatrix() const;
     vector< vector<Integer> > getGeneratorsOfToricRing() const;
+    Matrix<Integer> getOriginalMonoidGeneratorsMatrix() const;
+    vector< vector<Integer> > getOriginalMonoidGenerators() const;
     Sublattice_Representation<Integer> getBasisChange() const;
     // the following methods return const refs to avoid copying of big data objects
     const HilbertSeries& getHilbertSeries() const; //general purpose object
@@ -186,6 +188,7 @@ private:
     bool BC_set;
     ConeProperties is_Computed;
     Matrix<Integer> GeneratorsOfToricRing;
+    Matrix<Integer> OriginalMonoidGenerators;
     Matrix<Integer> Generators;
     vector<bool> ExtremeRays;
     vector<bool> VerticesOfPolyhedron;
@@ -247,6 +250,14 @@ private:
 
     /* extract the data from Full_Cone, this may remove data from Full_Cone!*/
     void extract_data(Full_Cone<Integer>& FC);
+
+    /* set OriginalMonoidGenerators and Generators */
+    void set_original_monoid_generators(const Matrix<Integer>&);
+
+    /* set ExtremeRays, in inhomogeneous case also VerticesOfPolyhedron */
+    void set_extreme_rays(const vector<bool>&);
+
+    void check_integrally_closed();
 
     /* set this object to the zero cone */
     void set_zero_cone();

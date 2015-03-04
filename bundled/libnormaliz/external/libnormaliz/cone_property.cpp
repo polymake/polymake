@@ -105,13 +105,24 @@ void ConeProperties::set_preconditions() {
         CPs.set(ConeProperty::Grading);
     }
     if (CPs.test(ConeProperty::Grading))
-        CPs.set(ConeProperty::ExtremeRays);
+        CPs.set(ConeProperty::Generators);
 
     if (CPs.test(ConeProperty::IsPointed))
         CPs.set(ConeProperty::ExtremeRays);
 
     if (CPs.test(ConeProperty::ExtremeRays))
         CPs.set(ConeProperty::SupportHyperplanes);
+
+    if (CPs.test(ConeProperty::HilbertFunction))
+        CPs.set(ConeProperty::HilbertSeries);
+
+    // inhomogenous preconditions
+    if (CPs.test(ConeProperty::VerticesOfPolyhedron))
+        CPs.set(ConeProperty::ExtremeRays);
+
+    if (CPs.test(ConeProperty::ModuleGenerators))
+        CPs.set(ConeProperty::HilbertBasis);
+
 }
 
 /* removes ignored compute options and sets implications */
@@ -166,14 +177,14 @@ namespace {
     // only to initialize the CPN in ConePropertyNames
     vector<string> initializeCPN() {
         vector<string> CPN(ConeProperty::EnumSize);
-        if (ConeProperty::EnumSize != 32) { //to detect changes in size of Enum
+        if (ConeProperty::EnumSize != 34) { //to detect changes in size of Enum
             errorOutput() << "Fatal Error: ConeProperties Enum size does not fit!" << std::endl;
             errorOutput() << "Fatal Error: Update cone_property.cpp!" << std::endl;
             throw FatalException();
         }
         CPN.at(ConeProperty::Generators) = "Generators";
         CPN.at(ConeProperty::ExtremeRays) = "ExtremeRays";
-        CPN.at(ConeProperty::VerticesOfPolyhedron) = "ModuleGenerators";
+        CPN.at(ConeProperty::VerticesOfPolyhedron) = "VerticesOfPolyhedron";
         CPN.at(ConeProperty::SupportHyperplanes) = "SupportHyperplanes";
         CPN.at(ConeProperty::TriangulationSize) = "TriangulationSize";
         CPN.at(ConeProperty::TriangulationDetSum) = "TriangulationDetSum";
@@ -187,12 +198,14 @@ namespace {
         CPN.at(ConeProperty::ModuleGenerators) = "ModuleGenerators";
         CPN.at(ConeProperty::Deg1Elements) = "Deg1Elements";
         CPN.at(ConeProperty::HilbertSeries) = "HilbertSeries";
+        CPN.at(ConeProperty::HilbertFunction) = "HilbertFunction";
         CPN.at(ConeProperty::Grading) = "Grading";
         CPN.at(ConeProperty::IsPointed) = "IsPointed";
         CPN.at(ConeProperty::IsDeg1Generated) = "IsDeg1Generated";
         CPN.at(ConeProperty::IsDeg1ExtremeRays) = "IsDeg1ExtremeRays";
         CPN.at(ConeProperty::IsDeg1HilbertBasis) = "IsDeg1HilbertBasis";
         CPN.at(ConeProperty::IsIntegrallyClosed) = "IsIntegrallyClosed";
+        CPN.at(ConeProperty::OriginalMonoidGenerators) = "OriginalMonoidGenerators";
         CPN.at(ConeProperty::GeneratorsOfToricRing) = "GeneratorsOfToricRing";
         CPN.at(ConeProperty::ReesPrimary) = "ReesPrimary";
         CPN.at(ConeProperty::ReesPrimaryMultiplicity) = "ReesPrimaryMultiplicity";

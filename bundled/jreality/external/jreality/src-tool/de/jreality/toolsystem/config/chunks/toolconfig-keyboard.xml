@@ -18,22 +18,22 @@
 		<mapping device="Keyboard" src="VK_3" target="key3" />
 		<mapping device="Keyboard" src="VK_4" target="key4" />
 		<mapping device="Keyboard" src="VK_5" target="key5" />
-		<mapping device="Keyboard" src="VK_W" target="forward" />
+		<!-- mapping device="Keyboard" src="VK_W" target="forward" />
 		<mapping device="Keyboard" src="VK_A" target="left" />
 		<mapping device="Keyboard" src="VK_S" target="backward" />
-		<mapping device="Keyboard" src="VK_D" target="right" />
+		<mapping device="Keyboard" src="VK_D" target="right" /-->
 		<mapping device="Keyboard" src="VK_UP" target="forward" />
 		<mapping device="Keyboard" src="VK_LEFT" target="left" />
 		<mapping device="Keyboard" src="VK_DOWN" target="backward" />
 		<mapping device="Keyboard" src="VK_RIGHT" target="right" />
-		<mapping device="Keyboard" src="VK_G" target="GravityToggle" />
-		<mapping device="Keyboard" src="VK_F" target="GroundToggle" />
 		<mapping device="Keyboard" src="VK_E" target="EncompassActivation" />
+		<!-- mapping device="Keyboard" src="VK_G" target="GravityToggle" />
+		<mapping device="Keyboard" src="VK_F" target="GroundToggle" />
 		<mapping device="Keyboard" src="VK_L" target="LookSwitch" />
 		<mapping device="Keyboard" src="VK_R" target="DrawPickActivation" />
 		<mapping device="Keyboard" src="VK_P" target="ShowPick" />
 		<mapping device="Keyboard" src="VK_0" target="IncreaseSpeed" />
-		<mapping device="Keyboard" src="VK_9" target="DecreaseSpeed" />
+		<mapping device="Keyboard" src="VK_9" target="DecreaseSpeed" /-->
 		<mapping device="Keyboard" src="VK_PAGE_DOWN" target="pageDown" />
 		<mapping device="Keyboard" src="VK_PAGE_UP" target="pageUp" />
 	</rawslots>

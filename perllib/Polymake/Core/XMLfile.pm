@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -48,6 +48,8 @@ use Polymake::Struct (
    '@cur_value',
    [ '$cols' => 'undef' ],
    '$text',
+   '@instance_by_id',
+   [ '$last_id' => 'undef' ],
    [ '$transforms' => 'undef' ],
    [ '$doc_tree' => 'undef' ],
    [ '$chk' => 'undef' ],
@@ -205,8 +207,10 @@ sub provide_ext {
          @{$self->cur_proto}=();
          @{$self->cur_property}=();
          @{$self->cur_value}=();
+         @{$self->instance_by_id}=();
          undef $self->nsprefix;
          undef $self->cols;
+         undef $self->last_id;
          undef $self->chk;
          initiate_transform;
       } elsif (!$self->cur_object->[0]->changed) {
@@ -575,13 +579,37 @@ sub end_e : method {
 }
 
 sub start_t : method {
-   &start_e;
+   my ($self, $elem)=@_;
    my $value=[ ];
-   set_array_flags($value, -1);
-   push @{$_[0]->cur_value}, $value;
+   my $attrs=$elem->{Attributes};
+   if (exists $attrs->{"{}id"}) {
+      my $id=$attrs->{"{}id"}->{Value}-1;
+      set_array_flags($value, -1, $self->instance_by_id->[$id]=undef);
+      $self->last_id=$id;
+   } else {
+      set_array_flags($value, -1);
+   }
+   if (exists $attrs->{"{}i"}) {
+      push @{$self->cur_value->[-1]}, $attrs->{"{}i"}->{Value}+0;
+   }
+   $self->text="";
+   push @{$self->cur_value}, $value;
 }
 
 *end_t=\&end_v;
+
+sub start_r : method {
+   my ($self, $elem)=@_;
+   my $attrs=$elem->{Attributes};
+   if (exists $attrs->{"{}id"}) {
+      $self->last_id=$attrs->{"{}id"}->{Value}-1;
+   } elsif (!defined($self->last_id)) {
+      die "default instance reference without preceding named instances\n";
+   }
+   push_scalar($self->cur_value->[-1], $self->instance_by_id->[$self->last_id]);
+}
+
+sub end_r {}
 
 sub characters : method {
    my ($self, $elem)=@_;
@@ -922,6 +950,8 @@ sub save {
    }
    $writer->{':suppress_ext'}={};
    $writer->{':ext'}={};
+   $writer->{':ids'}={};
+   $writer->{':global_id'}=0;
 
    my $object_type=$object->type;
 
@@ -956,6 +986,8 @@ sub save_data {
       $pi=new PIbody($data_pi, $output);
       $writer->pi($pi->template->name, $pi);
    }
+   $writer->{':ids'}={};
+   $writer->{':global_id'}=0;
 
    my $type=$data->type;
    $writer->startTag( [ $pmns, "data" ],

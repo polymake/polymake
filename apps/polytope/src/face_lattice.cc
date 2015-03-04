@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -77,7 +77,7 @@ void print_face_lattice(const IncidenceMatrix<>& VIF, bool dual)
    }
 }
 
-UserFunction4perl("# @category Geometric properties"
+UserFunction4perl("# @category Geometry"
                   "# Write the face lattice of a vertex-facet incidence matrix //VIF// to stdout."
                   "# If //dual// is set true the face lattice of the dual is printed."
                   "# @param IncidenceMatrix VIF"

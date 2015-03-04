@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -56,7 +56,7 @@ Set<int> violations(const perl::Object P, const Vector<Scalar>& q, perl::OptionS
          : violated_rows(A, q, pm::operations::positive<Scalar>()));
 }
 
-UserFunctionTemplate4perl("# @category Calculations"
+UserFunctionTemplate4perl("# @category Other"
                           "# Check which relations, if any, are violated by a point."
                           "# @param Polytope P"
                           "# @param Vector q"

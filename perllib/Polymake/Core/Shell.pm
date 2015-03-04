@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -367,11 +367,11 @@ sub try_type_completion {
    my $app= $has_app_prefix ? eval { User::application($1) } || return ($User::application, $char) : $User::application;
    if ($maybe_object_type) {
       push @list, grep { /^$prefix/ } map { $_->name } map { @{$_->object_types} }
-                  ($app, $has_app_prefix ? () : values %{$app->used});
+                  ($app, $has_app_prefix ? () : values %{$app->imported});
    }
    if ($maybe_prop_type) {
       push @list, map { /^(.*)::$/ } map { complete_variable_name_in_pkg(get_pkg($_->pkg."::props"), " ", $prefix) }
-                  ($app, $has_app_prefix ? () : values %{$app->used});
+                  ($app, $has_app_prefix ? () : values %{$app->imported});
    }
    @list=sorted_uniq(sort(@list));
 

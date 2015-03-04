@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -156,7 +156,7 @@ user_function graph_from_edges($) {
 }
 
 # @category Combinatorics
-# creates the Laplacian matrix of a graph
+# Creates the __Laplacian matrix__ of a graph.
 # @param Graph G
 # @return Matrix
 user_function laplacian($) {
@@ -166,13 +166,13 @@ user_function laplacian($) {
 }
 
 # @category Combinatorics
-# creates the line graph of a graph
+# Creates the __line graph__ of a graph.
 # @param Graph G
 # @return Graph
 user_function line_graph(props::Graph) : c++ (include=>["polymake/graph/line_graph.h"]);
 
 # @category Combinatorics
-# creates the complement graph of a graph
+# Creates the __complement graph__ of a graph.
 # @param Graph G
 # @return Graph
 user_function complement_graph($){

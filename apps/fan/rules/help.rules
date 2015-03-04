@@ -1,3 +1,4 @@
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,13 +14,20 @@
 #-------------------------------------------------------------------------------
 
 
-# @topic globalcategory Visualization
-# These +++ are for visualization.
+# @topic category functions/Producing a fan
+# These clients provide standard constructions for [[PolyhedralFan]] objects, e.g. from polytopes ([[face_fan]] or [[normal_fan]]) or from other fans (via projection, refinement or product).
 
-# @topic globalcategory Internal
-# These +++ are for internal use only. You can safely ignore them.
+# @topic category functions/Producing a polyhedral complex
+# These clients provide constructions for [[PolyhedralComplex]] objects.
 
-# @topic globalcategory Input property
-# These properties are for input only. They allow redundant information.
+# @topic category functions/Consistency check
+# These clients provide consistency checks, e.g. whether a given list of rays and cones defines a polyhedral fan.
 
+# @topic category properties/any/Toric Varieties
+# Properties coming from associated toric varieties
 
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

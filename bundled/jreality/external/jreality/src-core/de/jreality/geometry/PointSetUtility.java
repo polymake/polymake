@@ -52,7 +52,7 @@ public class PointSetUtility {
     		}
     		if (fiberlength == 4) {
     			if (metric == Pn.EUCLIDEAN) nvectors[i+n][3] = 1.0;
-    			else Pn.dehomogenize(nvectors[i+n], nvectors[i+n]);
+//    			else Pn.dehomogenize(nvectors[i+n], nvectors[i+n]);
     		}
      		edges[i][0] = i;
     		edges[i][1] = i+n;

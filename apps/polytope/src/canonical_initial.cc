@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -31,14 +31,17 @@ namespace polymake { namespace polytope {
 template <typename Matrix> inline
 void canonicalize_polytope_generators(GenericMatrix<Matrix>& M)
 {
+   typedef typename Matrix::element_type E;
    // collect the rays with non-zero first entry
    Set<int> pos, neg;
+   Set< Vector<E> > zvecs;
    for (int i = 0; i < M.top().rows(); ++i) {
-      if ( M.top()(i,0) > 0 ) 
+      if ( M.top()(i,0) > 0 ) {
          pos.push_back(i);
-      else {
-         if ( M.top()(i,0) < 0 ) 
-            neg.push_back(i);
+      } else if ( M.top()(i,0) < 0 ) {
+         neg.push_back(i);
+      } else {
+         zvecs.insert(M.top().row(i));
       }
    }
    if ( pos.size() == 0 ) 
@@ -51,11 +54,17 @@ void canonicalize_polytope_generators(GenericMatrix<Matrix>& M)
       // Fourier-Motzkin elimination: 
       // we add all pairs of a ray with a positive and negative first coordinate
       // note that this requires that the first coordinates are all 0/+1/-1
-      // FIXME a more clever implementation would avoid duplicates, either only among the added inequalities, or among all.
+      // taking also care of duplicates
       for ( Entire<Set<int> >::const_iterator nit = entire(neg); !nit.at_end(); ++nit )
-         for ( Entire<Set<int> >::const_iterator pit = entire(pos); !pit.at_end(); ++pit )
-            M.top() /= M.top()[*nit] + M.top()[*pit];
-      
+         for ( Entire<Set<int> >::const_iterator pit = entire(pos); !pit.at_end(); ++pit ){
+            Vector<E> vec = M.top()[*nit] + M.top()[*pit];
+            canonicalize_oriented(find_if(entire(vec.top()), operations::non_zero()));
+            // only add it if it does not already exist and is not the zero vector
+            if(!zvecs.exists(vec) && vec != zero_vector<E>(vec.dim())){
+               M.top() /= vec;
+               zvecs.insert(vec);
+            }
+         }
       // now remove the inequalities with negative first coordinates
       // we want to keep the order of the rays otherwise
       M.top() = M.top().minor(~neg,All);
@@ -63,20 +72,11 @@ void canonicalize_polytope_generators(GenericMatrix<Matrix>& M)
 }
 
 template <typename MatrixTop> inline
-void add_extra_polytope_ineq(perl::Object p, GenericMatrix<MatrixTop>& M)
+void add_extra_polytope_ineq(perl::Object p, GenericMatrix<MatrixTop>& M, const int d)
 {
    typedef typename MatrixTop::element_type E;
-   int d=M.cols();
-   if (d==0) {
-      // empty inequalities matrix: try to deduce the ambient dimension from other properties
-      Matrix<E> M2;
-      if (p.lookup("EQUATIONS | AFFINE_HULL") >> M2) {
-         d=M2.cols();
-         if (d==0 && p.lookup("LINEALITY_SPACE") >> M2) {
-            d=M2.cols();
-         }
-         if (d) M /= unit_vector<E>(d,0);
-      }
+   if (M.rows()==0) {
+      M /= unit_vector<E>(d,0);
    } else {
       const Vector<E> extra_ineq(unit_vector<E>(d,0));
       for (typename Entire< Rows<MatrixTop> >::iterator r=entire(rows(M)); !r.at_end();  ++r)
@@ -87,7 +87,7 @@ void add_extra_polytope_ineq(perl::Object p, GenericMatrix<MatrixTop>& M)
 
 
 FunctionTemplate4perl("canonicalize_polytope_generators(Matrix&) : void");
-FunctionTemplate4perl("add_extra_polytope_ineq(Polytope,Matrix&) : void");
+FunctionTemplate4perl("add_extra_polytope_ineq(Polytope,Matrix&,$) : void");
 
 
 } }

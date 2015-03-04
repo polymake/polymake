@@ -361,6 +361,7 @@ public class GlslPolygonShader extends AbstractPrimitiveShader implements
 			normalBind = PER_FACE;
 		} else
 			normalBind = PER_PART;
+		System.err.println("in GlslPolygonShader: donormals4 = "+doNormals4);
 		renderFaces(sg, alpha, gl, false, colorBind, normalBind, colorLength,
 				vertices, vertexNormals, faceNormals, vertexColors, faceColors,
 				texCoords0, texCoords1, texCoords2, lightMapCoords,

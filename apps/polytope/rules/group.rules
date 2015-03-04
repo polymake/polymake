@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,10 +15,9 @@
 
 use Polymake::Enum qw( domain: OnRays=1 OnFacets=2 OnCoords=3 );
 
-
 object Cone {
 
-# @category Symmetric cones
+# @category Symmetry
 # A group acting on the cone via permutation of its 
 # rays ([[group::GroupOfCone::DOMAIN|DOMAIN]]=1), facets ([[group::GroupOfCone::DOMAIN|DOMAIN]]=2), or
 # coordinates ([[group::GroupOfCone::DOMAIN|DOMAIN]]=3). 
@@ -29,7 +28,7 @@ property GROUP : group::GroupOfCone : multiple;
 
 object VectorConfiguration {
 
-# @category Symmetric cones
+# @category Symmetry
 # A group acting on the cone via permutation of its 
 # rays ([[group::GroupOfCone::DOMAIN|DOMAIN]]=1), facets ([[group::GroupOfCone::DOMAIN|DOMAIN]]=2), or
 # coordinates ([[group::GroupOfCone::DOMAIN|DOMAIN]]=3). 

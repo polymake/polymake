@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -450,8 +450,7 @@ method cols { $_[0]->source->cols }
 
 object SchlegelDiagram {
 
-# @category Visualization
-# Draw the Schlegel diagram
+# Draw the Schlegel diagram.
 # @option pm::perl::Hash proj_facet decoration for the edges of the projection face
 # @options %Visual::Graph::decorations
 # @return Visual::SchlegelDiagram
@@ -475,7 +474,7 @@ user_method VISUAL({ proj_facet => undef }, %Visual::Graph::decorations) {
       if ($decor_key =~ /^Edge/) {
          $basis_graph->merge($decor_key, sub {
                                 my $e=shift;
-                                exists $proj_facet->{$e->from_node} && exists $proj_facet->{$e->to_node} ? $value : undef;
+                                $e && exists $proj_facet->{$e->from_node} && exists $proj_facet->{$e->to_node} ? $value : undef;
                              });
       } else {
          die "only edge attributes (EdgeColor, EdgeThickness, EdgeStyle) can be specified for the projection face\n";

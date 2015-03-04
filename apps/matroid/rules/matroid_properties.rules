@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -100,7 +100,7 @@ property POLYTOPE : polytope::Polytope;
 # coordinates for some realization. Specifying coordinates is one way
 # to define a matroid.
 
-property POINTS : Matrix;
+property VECTORS : Matrix;
 
 
 # Whether the matroid is paving
@@ -111,7 +111,7 @@ property BINARY : Bool;
 
 # If the matroid is realizable over the field GF(2) with two elements, this property contains
 # coordinates for some realization.
-property BINARY_POINTS : Matrix<Int>;
+property BINARY_VECTORS : Matrix<Int>;
 
 # Whether the matroid is representable over GF(3)
 # NOTE: the property is 'undef' when its hard to decide. 
@@ -119,7 +119,7 @@ property TERNARY : Bool;
 
 # If the matroid is realizable over the field GF(3) with three elements, this property contains
 # coordinates for some realization.
-property TERNARY_POINTS : Matrix<Int>;
+property TERNARY_VECTORS : Matrix<Int>;
 
 # Whether the matroid is representable over every field, that is the repesentation is unimodular.
 # NOTE: the property is 'undef' when its hard to decide, whether the matroid is ternary. 

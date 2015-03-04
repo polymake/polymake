@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -155,6 +155,10 @@ struct square_impl : mul_impl<OpRef,OpRef> {
 
 template <typename Char, typename Traits, typename Alloc>
 struct add_impl<const std::basic_string<Char, Traits, Alloc>&, const std::basic_string<Char, Traits, Alloc>&, cons<is_opaque, is_opaque> > :
+   add_scalar<std::basic_string<Char, Traits, Alloc>, std::basic_string<Char, Traits, Alloc>, std::basic_string<Char, Traits, Alloc> > {};
+
+template <typename Char, typename Traits, typename Alloc>
+struct add_impl<std::basic_string<Char, Traits, Alloc>&, const std::basic_string<Char, Traits, Alloc>&, cons<is_opaque, is_opaque> > :
    add_scalar<std::basic_string<Char, Traits, Alloc>, std::basic_string<Char, Traits, Alloc>, std::basic_string<Char, Traits, Alloc> > {};
 
 template <typename Char, typename Traits, typename Alloc>

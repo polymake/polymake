@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -44,16 +44,16 @@ rule initial : GENERATORS {
 # Strong generating set with respect to [[BASE]].
 property STRONG_GENERATORS : Array< Array<Int> >;
 
-# The number of strong generators.
+# The number of [[STRONG_GENERATORS]].
 property N_STRONG_GENERATORS : Int;
 
 # A base for [[STRONG_GENERATORS]].
 property BASE : Array<Int>;
 
-# The degree of the permutation representation.
+# The __degree__ of the permutation representation.
 property DEGREE : Int;
 
-# The order of the group.
+# The __order__ of the group.
 property ORDER : Integer;
 
 # Transversals along the stabilizer chain. 

@@ -1,0 +1,113 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# A rational cone in Q^d.
+object Cone<Rational> {
+
+#lrs conversion primal <-> dual
+rule lrs.convex_hull.primal: FACETS, LINEAR_SPAN : RAYS | INPUT_RAYS {
+   lrs_ch_primal($this);
+}
+weight 4.10;
+precondition : N_RAYS | N_INPUT_RAYS;
+permutation : FacetPerm;
+
+rule lrs.convex_hull.dual: RAYS, POINTED, LINEALITY_SPACE, LINEALITY_DIM : FACETS | INEQUALITIES {
+    lrs_ch_dual($this);
+}
+weight 4.10;
+permutation : VertexPerm;
+
+rule lrs.convex_hull.cone.count: N_RAYS, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
+  lrs_count_vertices($this);
+}
+weight 4.50;
+
+
+# lrs redundancy checks
+# lrs cannot detect generators of the lineality space in INPUT_RAYS
+# hence LINEALITY_SPACE must be known in advance
+rule lrs.convex_hull.redund: POINTED, RAYS, LINEAR_SPAN : INPUT_RAYS, LINEALITY_SPACE  {
+   lrs_eliminate_redundant_points($this);
+}
+weight 3.20;
+permutation : VertexPerm;
+
+# lrs cannot detect implicit equalities among INEQUALITIES
+# hence LINEAR_SPAN must be known in advance
+rule lrs.convex_hull.redund: FACETS, LINEALITY_SPACE : INEQUALITIES, LINEAR_SPAN {
+   lrs_eliminate_redundant_ineqs($this);
+}
+weight 3.20;
+permutation : FacetPerm;
+
+
+# FIXME does this rule work for unbounded polyhedra?
+# facet count unique for cones and polytopes
+# corresponding polytope rule below
+rule lrs.convex_hull.cone.count: N_FACETS : RAYS | INPUT_RAYS {
+   lrs_count_facets($this);
+}
+weight 4.5;
+
+}
+
+
+# A pointed polyhedron realized in Q^d.
+object Polytope<Rational> {
+
+# the precondition BOUNDED is necessary as the corresponding clients
+# requires bounded polyhedra, see comment in lrs_interface.cc
+rule lrs.convex_hull.count: N_FACETS : RAYS | INPUT_RAYS {
+   lrs_count_facets($this);
+}
+precondition : BOUNDED;
+weight 4.5;
+override : SUPER::lrs.convex_hull.cone.count;
+
+rule lrs.convex_hull.count: N_VERTICES, N_BOUNDED_VERTICES, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
+   lrs_count_vertices($this);
+}
+precondition : FEASIBLE;
+weight 4.5;
+override : SUPER::lrs.convex_hull.cone.count;
+
+rule lrs.convex_hull.count: N_BOUNDED_VERTICES, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
+   lrs_count_vertices($this, 1);
+}
+precondition : FEASIBLE;
+weight 4.3;
+
+rule lrs.valid_point: VALID_POINT : FACETS | INEQUALITIES {
+  lrs_valid_point($this);
+}
+weight 3.10;
+
+
+label graph_from_vertices
+
+rule graph_from_vertices : GRAPH.ADJACENCY : RAYS {
+   $this->GRAPH->ADJACENCY=graph_from_vertices($this->VERTICES);
+}
+precondition : BOUNDED;
+weight 6.99;
+
+}
+
+
+# Local Variables:
+# cperl-indent-level:3
+# mode: perl
+# End:

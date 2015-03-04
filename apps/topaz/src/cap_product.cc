@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -115,8 +115,9 @@ void cap_product(perl::Object p)
    }
 }
 
-UserFunction4perl("#Compute and print all cap products of cohomology and homology cycles."
-                  "#@param SimplicialComplex c",
+UserFunction4perl("# @category Topology"
+                  "#Compute and print all cap products of cohomology and homology cycles."
+                  "#@param SimplicialComplex complex",
                   &cap_product,"cap_product(SimplicialComplex)");
 } }
 

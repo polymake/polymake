@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -122,7 +122,8 @@ UserFunction4perl("# @category Producing a new simplicial complex from others"
                   "# Create a simplicial complex from a simplicial subdivision of a given complex"
                   "# by identifying vertices on the boundary of the original complex according to a group that acts on vertices." 
                   "# @param Polytope P the underlying polytope"
-                  "# @param SimplicialComplex S a sufficiently fine subdivision of P, for example the second barycentric subdivision",
+                  "# @param SimplicialComplex complex a sufficiently fine subdivision of P, for example the second barycentric subdivision"
+                  "# @return SimplicialComplex",
                   &bs2quotient,
                   "bs2quotient(polytope::Polytope SimplicialComplex)");
 

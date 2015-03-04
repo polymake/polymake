@@ -31,8 +31,10 @@ public abstract class AbstractJob implements Job {
 			fireJobFinished();
 		} catch (Exception e) {
 			fireJobFailed(e);
+			throw e;
 		} catch (Throwable t) {
 			fireJobFailed(new Exception("Error in job execution", t));
+			throw new Exception(t);
 		}
 	}
 	

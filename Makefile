@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -42,16 +42,24 @@ all : compile
 # core applications to build
 Apps := $(notdir $(wildcard apps/*))
 
-# enabled bundled extensions
-BundledExts := $(notdir $(wildcard ${BuildDir}/bundled/*))
+# list of BundledExts comes from conf.make, already sorted by dependencies
+# thus both the java make targets and the extensions are build in the correct order
+#
+# append those not in the list to make sure that newly created extensions are also built
+BundledExts += $(filter-out ${BundledExts},$(notdir $(wildcard ${BuildDir}/bundled/*)))
 
 BundledExtsWithMakefile := $(patsubst %/Makefile,${ProjectTop}/%,$(wildcard $(patsubst %,bundled/%/Makefile,${BundledExts})))
-FirstBundledExtWithMakefile := $(firstword ${BundledExtsWithMakefile})
 
 define _MakeApp
 	$(MAKE) -C $(firstword $(3) ${BuildDir})/apps/$(1) AppName=$(1) $(2)
 
 endef
+
+define _MakeInBundledExt
+	$(MAKE) -C $(1) -f Makefile $(2) ProjectTop=${ProjectTop} BuildDir=$(CURDIR)/${BuildDir}/bundled/$(notdir $(1))
+
+endef
+
 define _MakeAppsInExt
 	$(foreach a, $(notdir $(wildcard bundled/$(1)/apps/*)), $(call _MakeApp,$a,$(2),${BuildDir}/bundled/$(1)))
 endef
@@ -60,11 +68,9 @@ define _MakeApps
 	$(foreach a, ${Apps}, $(call _MakeApp,$a,$(1)))
 	$(foreach e, ${BundledExts}, $(call _MakeAppsInExt,$e,$(1)))
 endef
-ifdef FirstBundledExtWithMakefile
+ifdef BundledExtsWithMakefile
   define _MakeInBundledExtensions
-	$(MAKE) --no-print-directory -C ${FirstBundledExtWithMakefile} -f ${ProjectTop}/support/bundled.make $(1) \
-		ProjectTop=${ProjectTop} TopBuildDir=$(CURDIR)/${BuildDir} \
-		OtherExtensions='$(filter-out ${FirstBundledExtWithMakefile},${BundledExtsWithMakefile})'
+    $(foreach e, ${BundledExtsWithMakefile},$(call _MakeInBundledExt,$e,$(1)))
   endef
 else
   _MakeInBundledExtensions :=
@@ -134,6 +140,7 @@ install-shared:
 	$(call _InstallShared)
 	@+$(call _MakeApps, install-src)
 	$(call _InstallSubdir,povray)
+	$(call _InstallSubdir,resources)
 	$(call _InstallSubdir,scripts)
 	$(call _InstallSubdir,xml)
 	$(call _InstallSubdir,support,$(foreach f, ${InstHelpers}, -X $f))

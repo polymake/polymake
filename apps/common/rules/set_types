@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -17,7 +17,7 @@
 # In this category you find all property types related to sets, such as Set, Map, HashMap, IncidenceMatrix, ...
 
 # @topic category functions/Set Operations
-# This category contains functions performing operations on Sets.
+# This category contains functions performing operations on [[Set|Sets]].
 
 # @category Set Types
 # A type for sets containing elements of type //Element//.
@@ -30,7 +30,7 @@
 #	$s1 * $s2  intersection
 # 	$s1 - $s2  difference
 #	$s1 ^ $s2  symmetric difference 
-# @tparam Element default: Int
+# @tparam Element default: [[Int]]
 declare property_type Set<Element=Int> : c++ (include => "polymake/Set.h", operators => '@sets @compare') {
 
    method contains {
@@ -104,7 +104,7 @@ user_function scalar2set(*) : c++ (name => 'pm::scalarcopy2set', include => "pol
 
 # @category Set Types
 # A [[Set]] whose elements are of type Set<//Element//>.
-# @tparam Element default: Int
+# @tparam Element default: [[Int]]
 declare property_type PowerSet<Element=Int> : Set<Set<Element>> : c++ (include => "polymake/PowerSet.h");
 
 function permuted(PowerSet, *) : c++;

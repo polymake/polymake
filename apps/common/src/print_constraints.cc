@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -24,33 +24,20 @@
 namespace polymake { namespace common {
 
 template <typename Scalar>
-void print_constraints(const Matrix<Scalar>& M, const bool are_eqs, perl::OptionSet options)
+void print_constraints(const Matrix<Scalar>& M, perl::OptionSet options)
 {
-   Array<std::string> coord_labels;
-   std::string var="x";
-   if (options["coord_labels"] >> coord_labels) {
-      if (M.cols() > 1 && coord_labels.size()!=M.cols()-1)
-	 throw std::runtime_error("print_constraints - Wrong number of variables!");
-   } else if ( M.cols() > 1 ) {
-      coord_labels.resize(M.cols()-1);
-      for (int i=1; i<M.cols(); ++i) {
-	 std::ostringstream var_name;
-	 var_name << var << i;
-	 coord_labels[i-1]=var_name.str();
-      }
-   }
-   print_constraints_sub(M, are_eqs, coord_labels);
+   print_constraints_sub(M, options["coord_labels"],options["row_labels"],options["equations"],options["homogeneous"]);
 }
 
 UserFunctionTemplate4perl("# @category Formatting"
-			  "# Write the rows of a matrix //M// as inequalities (//are_eqs=0//)"
-			  "# or equations (//are_eqs=1//) in a readable way."
+			  "# Write the rows of a matrix //M// as inequalities (//equations=0//)"
+			  "# or equations (//equations=1//) in a readable way."
 			  "# It is possible to specify labels for the coordinates via"
 			  "# an optional array //coord_labels//."
 			  "# @param Matrix<Scalar> M the matrix whose rows are to be written"
-			  "# @param Bool are_eqs optional; true if the rows"
-			  "#    represent equations instead of inequalities"
 			  "# @option Array<String> coord_labels changes the labels of the coordinates"
-			  "#    from 'x<sub>1</sub>,...,x<sub>n</sub>' to the specified names",
-			  "print_constraints<Scalar>(Matrix<Scalar>; $=0, { coord_labels => undef }) : void");
+			  "# @option Array<String> row_labels changes the labels of the rows"
+			  "# @option Bool homogeneous false if the first coordinate should be interpreted as right hand side"
+			  "# @option Bool equations true if the rows represent equations instead of inequalities",
+			  "print_constraints<Scalar>(Matrix<Scalar>; { equations => 0, homogeneous => 0, coord_labels => undef, row_labels => undef }) : void");
 } }

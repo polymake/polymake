@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -201,9 +201,15 @@ sub get_embedded_rules {
                  splice @{$self->buffer}, -1, 1, "}\n";
             $self->buffer=$self->buffer_suspended;
             undef $self->buffer_suspended;
+
+            # reset the (decl) rule header table
+            # it was set to cross_app_* at the beginning of the REQUIRE_APPLICATION block
+            $self->rule_header_table=\%rule_headers;
+            $self->decl_rule_header_table=\%decl_headers;
          }
       } until (@{$self->buffer_phase1});
    }
+
    print STDERR "++> ", $self->buffer_phase1->[0] if $DebugLevel>3;
    $_ .= shift @{$self->buffer_phase1};
    return length;
@@ -306,6 +312,7 @@ sub translate_type_expr {
       my $escape= $self->from_embedded_rules ? "last" : "return 1";
       push @{$self->buffer},
            &start_preamble . "->require_ext(q($header\n";
+
       push @{$self->trailer},
            "), '" . $self->rule_key . "', $.) || $escape;\n";
    },
@@ -1858,18 +1865,16 @@ sub fill {
          if ($self->gap==2) {
             my $digest_comment;
             if ($self->buffer->[$self->start_comments] =~ m{^\s*\#\s* \@topic \s+ (?: (?'cat' category) \s+ (?'path' (?'lead' \w+) (?:/.*(?<!\s))?+ )
-                                                                                    | (?'global' globalcategory) \s+ (?'global_name' .+ ) \s*
                                                                                     | (?'path' (?'lead' \w+) (?:/\S+)?) (?:\s* (?'sig' \($balanced_re\)) )? ) \s*$}xi) {
                if ($+{path} eq "custom") {
                   $digest_comment="application::self()->custom->pkg_help->{__PACKAGE__}=<<'_#_#_#_';\n";
                } elsif ($Help::gather) {
-                  my $signature= defined($+{sig}) ? ", q$+{sig}" : defined($+{cat}) && ", '$+{cat}'";
-                  if ($+{lead} eq "properties" || $+{lead} eq "methods") {
-                     $digest_comment="self(1)->help_topic(1)->add('$+{path}', <<'_#_#_#_'$signature);\n";
-                  } elsif (defined $+{global}) {
-                     $digest_comment="application::self()->help->add('global_categories/$+{global_name}', <<'_#_#_#_', 'category');\n";
+                  my ($path, $lead, $cat, $sig)=@+{qw(path lead cat sig)};
+                  my $signature= defined($sig) ? ", q$sig" : defined($cat) && ", '$cat'";
+                  if ($path !~ m{/any/} and $lead eq "properties" || $lead eq "methods") {
+                     $digest_comment="self(1)->help_topic(1)->add('$path', <<'_#_#_#_'$signature);\n";
                   } else {
-                     $digest_comment="application::self()->help->add('" . ($+{path} ne "application" && $+{path}) . "', <<'_#_#_#_'$signature);\n";
+                     $digest_comment="application::self()->help->add('" . ($path ne "application" && $path) . "', <<'_#_#_#_'$signature);\n";
                   }
                }
             }

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -44,8 +44,8 @@ perl::Object sphere(const int d)
 }
 
 UserFunction4perl("# @category Producing from scratch\n"
-                  "# The //d//-dimensional sphere, realized as the boundary of the (//d//+1)-simplex.\n"
-                  "# @param int d dimension"
+                  "# The //d//-dimensional __sphere__, realized as the boundary of the (//d//+1)-simplex.\n"
+                  "# @param Int d dimension"
                   "# @return GeometricSimplicialComplex",
                   &sphere, "sphere($)");
 } }

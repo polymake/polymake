@@ -51,6 +51,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -74,6 +75,7 @@ import de.jreality.scene.data.IntArray;
 import de.jreality.scene.data.IntArrayArray;
 import de.jreality.scene.data.StorageModel;
 import de.jreality.scene.data.StringArray;
+import de.jreality.shader.CommonAttributes;
 import de.jreality.util.LoggingSystem;
 import de.jreality.util.Rectangle3D;
 import de.jreality.util.SceneGraphUtility;
@@ -273,7 +275,7 @@ public class IndexedFaceSetUtility {
 	 */
 	public static IntArrayArray edgesFromFaces( IntArrayArray faces )
 	{
-	    HashSet set =new HashSet();
+	    LinkedHashSet<Pair> set = new LinkedHashSet<Pair>();
 	   
 	    for (int i= 0; i < faces.getLength(); i++)
 	    {
@@ -288,8 +290,8 @@ public class IndexedFaceSetUtility {
 	    final int num= set.size();
 	    int[] edge=new int[num*2];
 	    int count=0;
-	    for (Iterator iter = set.iterator(); iter.hasNext(); count+=2) {
-	      Pair p = (Pair) iter.next();
+	    for (Iterator<Pair> iter = set.iterator(); iter.hasNext(); count+=2) {
+	      Pair p = iter.next();
 	      edge[count]=p.l;
 	      edge[count+1]=p.h;
 	    }
@@ -337,6 +339,12 @@ public class IndexedFaceSetUtility {
 			newc[0] = cc[which];
 			ifs2.setFaceAttributes(Attribute.COLORS, StorageModel.DOUBLE_ARRAY.array().createReadOnly(newc));
 		}
+		// avoid rendering the vertices not contained in the selected face
+		int[] pointindices = new int[ifs.getNumPoints()];
+		for (int i = 0; i<indices[which].length; ++i)	{
+			pointindices[indices[which][i]] = 1;
+		}
+		ifs2.setVertexAttributes(Attribute.INDICES, StorageModel.INT_ARRAY.createReadOnly(pointindices));
 		IndexedFaceSetUtility.calculateAndSetFaceNormals(ifs2);
 		IndexedFaceSetUtility.calculateAndSetEdgesFromFaces(ifs2);
 		return ifs2;
@@ -377,10 +385,14 @@ public class IndexedFaceSetUtility {
 	 * @param factor
 	 * @return
 	 */public static IndexedFaceSet implode(IndexedFaceSet ifs, double factor)	{
-		 
+		 int metric = Pn.EUCLIDEAN;
+		 Object foo = ifs.getGeometryAttributes(CommonAttributes.METRIC);
+		 if (foo != null && foo instanceof Integer)	{
+			 metric = (Integer) foo;
+		 }
 		 	// steffen: changed so that edges are only created when the
 			// given isf had edges
-			boolean makeEdges = ifs.getEdgeAttributes().containsAttribute(Attribute.INDICES);
+		boolean makeEdges = ifs.getEdgeAttributes().containsAttribute(Attribute.INDICES);
 			
 		int vertcount = 0;
 		int[][] ind = ifs.getFaceAttributes(Attribute.INDICES).toIntArrayArray(null);
@@ -392,6 +404,7 @@ public class IndexedFaceSetUtility {
 		double[][] oldverts = ifs.getVertexAttributes(Attribute.COORDINATES).toDoubleArrayArray(null);
 		//double[][] oldverts = ifs.getVertices().getData();
 		int vectorLength = oldverts[0].length; //ifs.getVertices().getVectorLength();
+		int fiber = vectorLength;
 		if (vectorLength != 3)	{
 			double[][] oldverts2 = new double[oldverts.length][3];
 			Pn.dehomogenize(oldverts2, oldverts);
@@ -433,8 +446,12 @@ public class IndexedFaceSetUtility {
 			IndexedFaceSetFactory ifsf = new IndexedFaceSetFactory();
 			ifsf.setVertexCount(vertcount);
 			ifsf.setFaceCount(ind.length);
+			if (fiber == 4) {
+				newverts = Pn.homogenize(new double[newverts.length][4], newverts);
+			}
 			ifsf.setVertexCoordinates(newverts);
 			ifsf.setFaceIndices(newind);
+			ifsf.setMetric(metric);
 			if (fn != null)   ifsf.setFaceNormals(fn);
 			else ifsf.setGenerateFaceNormals(true);
 			if (fc != null)   ifsf.setFaceColors(fc);
@@ -469,9 +486,14 @@ public class IndexedFaceSetUtility {
 				}
 				count += thisf.length;
 			}
+			
 			IndexedFaceSetFactory ifsf = new IndexedFaceSetFactory();
+			ifsf.setMetric(metric);
 			ifsf.setVertexCount(vertcount+oldcount);
 			ifsf.setFaceCount(vertcount);
+			if (fiber == 4) {
+				newverts = Pn.homogenize(new double[newverts.length][4], newverts);
+			}
 			ifsf.setVertexCoordinates(newverts);
 			ifsf.setFaceIndices(newind);
 			ifsf.setGenerateFaceNormals(true);
@@ -491,6 +513,10 @@ public class IndexedFaceSetUtility {
 	 * @return
 	 */
 	public static IndexedFaceSet removeTextureCoordinateJumps(IndexedFaceSet src, double jumpSize)	{
+		return removeTextureCoordinateJumps(src, jumpSize, jumpSize);
+	}
+	
+	public static IndexedFaceSet removeTextureCoordinateJumps(IndexedFaceSet src, double ujumpSize, double vjumpSize)	{
 		int np = src.getNumPoints();
 		int nf = src.getNumFaces();
 		double[][] textureCoords = src.getVertexAttributes(Attribute.TEXTURE_COORDINATES).toDoubleArrayArray(null);
@@ -501,8 +527,8 @@ public class IndexedFaceSetUtility {
 		// mark the faces in which texture coordinates have large jumps
 		for (int i = 0; i<nf; ++i)		{
 			minmax[i] = getMinMax(indices[i], textureCoords );
-			for (int k = 0; k<2; ++k)	
-				if ( minmax[i][1][k] - minmax[i][0][k] > jumpSize) textureJumps[i][k] = true;
+			if ( minmax[i][1][0] - minmax[i][0][0] > ujumpSize) textureJumps[i][0] = true;
+			if ( minmax[i][1][1] - minmax[i][0][1] > vjumpSize) textureJumps[i][1] = true;
 			if (textureJumps[i][0] || textureJumps[i][1]) {
 				newVerts += indices[i].length;
 			}
@@ -1564,7 +1590,7 @@ public class IndexedFaceSetUtility {
     		nvectors = new double[2*n][fiberlength];
     	if (ifs.getFaceAttributes(Attribute.NORMALS) != null)
     		normals = ifs.getFaceAttributes(Attribute.NORMALS).toDoubleArrayArray(null);
-     	else normals = IndexedFaceSetUtility.calculateFaceNormals(ifs);
+     	else normals = IndexedFaceSetUtility.calculateFaceNormals(ifs, metric);
 //    	System.err.println("Vertex fiber is "+fiberlength);
 //    	System.err.println("Normal fiber is "+normals[0].length);
      	for (int i = 0; i<n; ++i)	{
@@ -1583,7 +1609,7 @@ public class IndexedFaceSetUtility {
     		}
     		if (fiberlength == 4) {
     			if (metric == Pn.EUCLIDEAN) nvectors[i+n][3] = 1.0;
-    			else Pn.dehomogenize(nvectors[i+n], nvectors[i+n]);
+//    			else Pn.dehomogenize(nvectors[i+n], nvectors[i+n]);
     		}
  //   		System.err.println("Normal length is "+Rn.euclideanNorm(normals[i]));
     		edges[i][0] = i;
@@ -1655,7 +1681,7 @@ public class IndexedFaceSetUtility {
 	public static double[][] calculateFaceNormals(int[][] indices, double[][] verts, int metric)	{
 		if (indices == null) return null;
 		int normalLength = 4;
-		//System.err.println("Sig is "+metric);
+//		System.err.println("Sig is "+metric);
 		if (metric == Pn.EUCLIDEAN)	normalLength = 3;
 		double[][] fn = new double[indices.length][normalLength];
 		if (metric == Pn.EUCLIDEAN && verts[0].length == 4) Pn.dehomogenize(verts,verts);
@@ -1816,5 +1842,4 @@ public class IndexedFaceSetUtility {
 	                StorageModel.DOUBLE_ARRAY.array(nLength).createWritableDataList(n));
 	    }
 	}
-
 }

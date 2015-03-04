@@ -42,9 +42,6 @@ package de.jreality.math;
 
 import de.jreality.util.LoggingSystem;
 
-
-
-
 /**
  * 	A set of static methods related to real n-dimensional real projective space RP<sup>n</sup>.
  *  In general, points and vectors are represented in homogeneous coordinates by arrays of length <i>n+1</i>.  
@@ -290,13 +287,18 @@ public class Pn {
 				uu = innerProduct(u, u, metric);
 				vv = innerProduct(v, v, metric);
 				uv = innerProduct(u, v, metric);
-				if (uu == 0 || vv == 0) 	// error: infinite distance
-//					throw new IllegalArgumentException("Points cannot lie on the hyperbolic absolute");
-					return (Double.MAX_VALUE);
-				double k =  (uv)/Math.sqrt(Math.abs(uu*vv));
-				if (uu < 0 && vv < 0) d = acosh(k);
-				else if ((uu < 0 && vv > 0) || (uu > 0 && vv < 0)) d = asinh(k);
-				else if (uu > 0 && vv > 0) d = Math.acos(k);
+				if (uu >= 0 || vv >= 0) 	{// error: infinite distance
+					throw new IllegalArgumentException("Points cannot lie on or outside the hyperbolic absolute");
+//					return (Double.MAX_VALUE);
+				}
+				double k =  -(uv)/Math.sqrt((uu*vv));
+				if (k < 1.0) k = 1.0;
+				d = Math.abs(acosh(k));
+//				else  //d = Math.abs(asinh(k));
+//					throw new IllegalArgumentException("Points cannot lie on or outside the hyperbolic absolute");
+//				if (uu < 0 && vv < 0) d = acosh(k);
+//				else if ((uu < 0 && vv > 0) || (uu > 0 && vv < 0)) d = asinh(k);
+//				else if (uu > 0 && vv > 0) d = Math.acos(k);
 				break;
 			case ELLIPTIC:
 				uu = innerProduct(u, u, metric);
@@ -515,6 +517,15 @@ public class Pn {
 		return innerProduct(dst, src, metric);
 	}
 	 
+	public static boolean isEquivalentPoints(double[] p1, double[] p2)	{
+		for (int j = 0; j<p1.length; ++j)	{
+			for (int i = j+1; i<p1.length; ++i)	{
+				double det = p1[i]*p2[j] - p1[j]*p2[i];
+				if (Math.abs(det) > 1E-10) return false;
+			}			
+		}
+		return true;
+	}
 	public static boolean isValidCoordinate(double[] transVec, int dim, int metric) {
 		boolean ret = true;
 		if (transVec.length < dim) return false;
@@ -865,6 +876,40 @@ public class Pn {
 		return polarize(dst, point, metric);
 	}
 	
+	/**
+	 * Calculate the projectivity that takes the standard basis to the basis given by dm and the unit point to the last entry of dm
+	 * @param dst
+	 * @param domainPts
+	 * @param imagePts
+	 * @return
+	 */
+	public static double[] projectivityFromCanonical(double[] dst, double[][] dm)	{
+		int n = dm.length-1;
+		if (dst == null ||  Rn.mysqrt(dst.length) != n)
+			dst = new double[n*n];
+		double[] std2dm = new double[n*n];
+		// copy the first n rows of dm into the columns of std2dm
+		for (int i = 0; i<n; ++i)	{
+			for (int j = 0; j<n; ++j)	{
+				std2dm[i+n*j] = dm[i][j];
+			}
+		}
+		double[] dm2std = Rn.inverse(null, std2dm);
+		double[] un = Rn.matrixTimesVector(null, dm2std, dm[n]);
+		// calculate the matrix which sends the unit point to (11...111)
+		for (int i = 0; i<n; ++i)	{
+			for (int j = 0; j<n; ++j)	{
+				dst[i+n*j] = un[i] * dm[i][j];
+			}
+		}
+		return dst;
+	}
+	
+	public static double[] projectivity(double[] dst, double[][] dm, double[][] im)	{
+		double[] A = projectivityFromCanonical(null, dm);
+		double[] B = projectivityFromCanonical(null, im);
+		return Rn.times(dst, B, Rn.inverse(null, A));
+	}
 	/**
 	 * Determine the projection of the point <i>victim</i> onto the point <i>master</i>.  
 	 * This is orthogonal projection with respect to the metric associated to <i>metric</i>.

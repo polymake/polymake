@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -22,21 +22,16 @@
 ###################################################
 ###################################################
 
-# @category Cyclic Quotient
-# A component of the versal deformation of a CQS.
+# A component of the versal deformation of a [[CyclicQuotient]] singularity.
 declare object VersalComponent {
 
    # @category Combinatorics
    # The continued fraction equivalent to zero describing the versal component.
    #
    # See
-   #
-   # Jan Arthur Christophersen: On the components and discriminant of the
-   # versal base space of cyclic quotient singularities.
-   # 
+   #	Jan Arthur Christophersen: On the components and discriminant of the versal base space of cyclic quotient singularities.
    # and
-   #
-   # Jan Stevens: On the versal deformation of cyclic quotient singularities.
+   #	Jan Stevens: On the versal deformation of cyclic quotient singularities.
    property CONTINUED_FRACTION : Vector<Integer>;
 
    # @category Combinatorics
@@ -46,8 +41,7 @@ declare object VersalComponent {
    # @category Combinatorics
    # Lattice of alphas as in below article.
    #
-   # Jan Arthur Christophersen: On the components and discriminant of the
-   # versal base space of cyclic quotient singularities.
+   #	Jan Arthur Christophersen: On the components and discriminant of the versal base space of cyclic quotient singularities.
    property ALPHA_LATTICE : Map<Vector<Integer>, Vector<Integer>>;
 
    # @category Algebraic Geometry
@@ -56,33 +50,32 @@ declare object VersalComponent {
    # @category Combinatorics
    # The CQS matrix as described in Def 6.10 of the below article.
    #
-   # Theo de Jong, Duco van Straten: Deformation theory of sandwiched
-   # singularities.
+   #	Theo de Jong, Duco van Straten: Deformation theory of sandwiched singularities.
    property CQS_MATRIX : Matrix;
 
    # @category Combinatorics
    # Triangulation of the N-gon corresponding to this component.
    # 
    # See
-   # Jan Stevens: On the versal deformation of cyclic quotient singularities
+   #	Jan Stevens: On the versal deformation of cyclic quotient singularities.
    property N_GON_TRIANGULATION : Graph;
 
    # @category Combinatorics
    # The triangles in the N-gon triangulation corresponding to this component.
    # 
    # See
-   # Jan Stevens: On the versal deformation of cyclic quotient singularities.
+   #	Jan Stevens: On the versal deformation of cyclic quotient singularities.
    property TRIANGLES : Matrix<Integer>;
 
    # @category Combinatorics
    # The P-resolution fan corresponding to this component.
    #
    # See
-   # Klaus Altmann: P-Resolutions of Cyclic Quotients from the Toric Viewpoint.
+   #	Klaus Altmann: P-Resolutions of Cyclic Quotients from the Toric Viewpoint.
    property P_RESOLUTION : PolyhedralFan<Rational>;
 
    # @category Combinatorics
-   # Dimension of this component, i.e. number of parameters.
+   # Dimension of this component, i.e., number of parameters.
    property DIMENSION : Integer;
 
 }
@@ -125,8 +118,7 @@ object CyclicQuotient {
    # the versal deformation.
    #
    # See
-   # Jan Arthur Christophersen: On the components and discriminant of the
-   # versal base space of cyclic quotient singularities.
+   #	Jan Arthur Christophersen: On the components and discriminant of the versal base space of cyclic quotient singularities.
    property VERSAL_COMPONENTS : Matrix;
 
    # FIXME

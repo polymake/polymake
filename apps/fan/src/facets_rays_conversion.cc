@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -75,7 +75,7 @@ void facetsToRays(perl::Object f)
       if (ls_exists) cone.take("EQUATIONS")<<linearSpan.minor(linearSpanIndices.row(i),All);
       // wrinting INPUT_LINEALITY without INPUT_RAYS is not allowed after #519
       // cone.take("INPUT_LINEALITY")<<lin;
-      const Matrix<Coord> c_rays=cone.give("RAYS");
+      Matrix<Coord> c_rays=cone.give("RAYS");
       if (!lin_given) {
         const Matrix<Coord> lin_space=cone.give("LINEALITY_SPACE");
         if (i==0) lineality_space=lin_space;
@@ -84,6 +84,10 @@ void facetsToRays(perl::Object f)
           if (rank(lineality_space/lin_space)!=lineality_space.rows()) throw std::runtime_error("facetsToRays: Cones have different lineality");
         }
       }
+      // we need to normalize the rays wrt the lineality
+      // otherwise we might get the combinatorics wrong (via different representatives for the same face)
+      if (lineality_space.rows() > 0)
+         project_to_orthogonal_complement(c_rays,lineality_space);
       //cerr<<"rays:"<<c_rays<<endl;
       Set<int> ray_indices;
       for(typename Entire<Rows<Matrix<Coord> > >::const_iterator r=entire(rows(c_rays)); !r.at_end(); ++r) {

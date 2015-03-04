@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -166,7 +166,7 @@ perl::Object convert_group_domain(const perl::Object g_in, const IncidenceMatrix
 UserFunctionTemplate4perl("# @category Symmetry"
                           "# Converts the generators of the input group from the domain onRays "
                           "# to generators on the domain onFacets, and vice versa. "
-                          "# @param group::Group group input group "
+                          "# @param group::Group group"
                           "# @param IncidenceMatrix VIF the vertex-facet incidence matrix of the cone or polytope"
                           "# @option String name an optional name for the output group"
                           "# @return group::Group a new group object with the generators induced on the new domain",
@@ -178,7 +178,7 @@ UserFunctionTemplate4perl("# @category Symmetry"
                           "# The parameter //dom_out// specifies whether //mat// describes vertices or facets."
                           "# @param group::Group group input group acting on coordinates"
                           "# @param Matrix mat vertices or facets of a polytope"
-                          "# @param int dom_out OnRays(1) or OnFacets(2)"
+                          "# @param Int dom_out OnRays(1) or OnFacets(2)"
                           "# @option String name an optional name for the output group"
                           "# @return group::Group a new group object with the generators induced on the new domain",
                           "convert_coord_action(group::Group, Matrix, $, {name=>''})");

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -50,7 +50,7 @@ perl::Object uniform_matroid(const int r, const int n)
   return m; 
 }
 
-UserFunction4perl("# @category Producing from scratch\n"
+UserFunction4perl("# @category Producing a matroid from scratch\n"
                   "# Creates the uniform matroid of rank //r// with //n// elements."
                   "# @param Int r"
                   "# @param Int n"

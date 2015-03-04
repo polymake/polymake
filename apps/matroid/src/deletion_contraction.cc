@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -228,8 +228,8 @@ perl::Object deletion(perl::Object m, int element)
   }
 
   Matrix<Rational> points;
-  if (m.lookup("POINTS")>>points)
-    m_new.take("POINTS")<<points.minor(~scalar2set(element),All);
+  if (m.lookup("VECTORS")>>points)
+    m_new.take("VECTORS")<<points.minor(~scalar2set(element),All);
 
   return m_new;
 }
@@ -286,15 +286,15 @@ perl::Object contraction(perl::Object m, int element)
   }
 
   Matrix<Rational> points;
-  if (m.lookup("POINTS")>>points) {
+  if (m.lookup("VECTORS")>>points) {
     const Matrix<Rational> ns1=null_space(T(points));
     if (ns1.rows())  {
       const Matrix<Rational> ns2=null_space(ns1.minor(All,~scalar2set(element)));
-      if (ns2.rows()) m_new.take("POINTS")<< T(ns2);
-      else m_new.take("POINTS")<<vector2col(zero_vector<Rational>(n-1));
+      if (ns2.rows()) m_new.take("VECTORS")<< T(ns2);
+      else m_new.take("VECTORS")<<vector2col(zero_vector<Rational>(n-1));
     }
     else {
-      m_new.take("POINTS")<< unit_matrix<Rational>(n-1);
+      m_new.take("VECTORS")<< unit_matrix<Rational>(n-1);
     } 
   }
 

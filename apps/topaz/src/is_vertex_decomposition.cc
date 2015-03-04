@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -100,8 +100,13 @@ bool is_vertex_decomposition(perl::Object p, const Array<int>& ShedVert, perl::O
    return false;
 }
 
-UserFunction4perl("# Check whether a given ordered subset of the vertex set is a vertex decomposition.\n"
-                  "# Works for 1-, 2- and 3-manifolds only!\n",
+UserFunction4perl("# @category Other"
+                  "# Check whether a given ordered subset of the vertex set is a __vertex decomposition__.\n"
+                  "# Works for 1-, 2- and 3-manifolds only!\n"
+                  "# @param SimplicialComplex complex"
+                  "# @param Array<Int> vertices shedding vertices"
+                  "# @option Bool verbose"
+                  "# @return Bool",
                   &is_vertex_decomposition, "is_vertex_decomposition(SimplicialComplex $ { verbose=>0 })");
 } }
 

@@ -103,7 +103,7 @@ public class SceneGraphVisitor {
   }
   
   public void visit(Cylinder c) {
-      Cylinder.superAccept(c, this);
+    Cylinder.superAccept(c, this);
   }
 
   public void visit(PointSet p) {

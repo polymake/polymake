@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,16 +16,16 @@
 
 ///==== this line controls the automatic file splitting: max.instances=20
 
-#include "polymake/client.h"
-#include "polymake/Matrix.h"
-#include "polymake/Rational.h"
+#include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/Integer.h"
+#include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
-#include "polymake/QuadraticExtension.h"
-#include "polymake/Array.h"
+#include "polymake/client.h"
 #include "polymake/linalg.h"
-#include "polymake/Integer.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -47,5 +47,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(minor_X8_X8_f5, perl::Canned< Wary< pm::MatrixMinor<pm::Matrix<double>&, pm::Series<int, true> const&, pm::all_selector const&> > >, perl::Canned< const Set< int > >, perl::Enum<pm::all_selector>);
    FunctionInstance4perl(minor_X8_X8_f5, perl::Canned< const Wary< SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > > >, perl::Canned< const Array< int > >, perl::Enum<pm::all_selector>);
    FunctionInstance4perl(minor_X8_X8_f5, perl::Canned< const Wary< Matrix< Rational > > >, perl::Canned< const pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> >, perl::Enum<pm::all_selector>);
+   FunctionInstance4perl(minor_X8_X8_f5, perl::Canned< const Wary< Matrix< QuadraticExtension< Rational > > > >, perl::Enum<pm::all_selector>, perl::Canned< const pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

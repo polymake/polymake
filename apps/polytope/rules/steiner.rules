@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -20,6 +20,7 @@ object Polytope {
 
 property STEINER_POINTS : Matrix<Scalar>;
 
+# @category Geometry
 # Steiner point of the whole polytope.
 property STEINER_POINT : Vector<Scalar>;
 

@@ -127,7 +127,7 @@ void Sublattice_Representation<Integer>::initialize(const Lineare_Transformation
             Diagonal.write(i,i,D.read(i,i));
         }
         A = Diagonal.multiplication(A);
-        vector<Integer> c_vector = Diagonal.diagonale();
+        vector<Integer> c_vector = Diagonal.diagonal();
         
         c = v_lcm(c_vector);
         //invert Diagonal, multiply c to maintain integer coefficients

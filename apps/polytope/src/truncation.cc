@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,7 +18,7 @@
 #include "polymake/vector"
 #include "polymake/list"
 #include "polymake/linalg.h"
-#include "polymake/polytope/lrs_interface.h"
+#include "polymake/polytope/to_interface.h"
 #include "polymake/Map.h"
 #include "polymake/Graph.h"
 #include "polymake/Set.h"
@@ -38,7 +38,7 @@ void assign_facet_through_points(const GenericMatrix<Matrix,E>& M,
 }
 }
 
-template <typename SetTop>
+template <typename Scalar, typename SetTop>
 perl::Object truncation(perl::Object p_in, const GenericSet<SetTop>& trunc_vertices, perl::OptionSet options)
 {
    if (options.exists("cutoff") && options.exists("noc")) 
@@ -57,6 +57,10 @@ perl::Object truncation(perl::Object p_in, const GenericSet<SetTop>& trunc_verti
    bool inequalities;
 
    const int n_vertices=VIF.cols(), n_facets=VIF.rows();
+
+   if (n_vertices < 2)
+      throw std::runtime_error("truncation: cannot truncate polytopes with dimension < 1");
+
    typedef Map<int,int> vertex_map_type;
    vertex_map_type vertex_map;          // truncated vertex => the first of the new vertices
 
@@ -66,7 +70,7 @@ perl::Object truncation(perl::Object p_in, const GenericSet<SetTop>& trunc_verti
    if (trunc_vertices.top().front() < 0 || trunc_vertices.top().back() >= n_vertices)
       throw std::runtime_error("vertex numbers out of range");
 
-   perl::Object p_out("Polytope<Rational>");
+   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
    if (pm::identical<SetTop, Set<int> >::value)
       p_out.set_description() << p_in.name() << " with vertices " << trunc_vertices << " truncated" << endl;
 
@@ -121,7 +125,7 @@ perl::Object truncation(perl::Object p_in, const GenericSet<SetTop>& trunc_verti
          inequalities = true;
       }
    } else {
-      Rational cutoff_factor(1,2);
+      Scalar cutoff_factor = Scalar(1)/Scalar(2);
       if (options["cutoff"] >> cutoff_factor && (cutoff_factor<=0 || cutoff_factor>1))
          throw std::runtime_error("cutoff factor must be within (0,1]");
 
@@ -133,22 +137,22 @@ perl::Object truncation(perl::Object p_in, const GenericSet<SetTop>& trunc_verti
       const int dim = p_in.give("CONE_DIM");
       inequalities = (cutoff_factor == 1 || dim == 2);
       
-      const Matrix<Rational> V=p_in.give("VERTICES"),
+      const Matrix<Scalar> V=p_in.give("VERTICES"),
          F=p_in.give("FACETS"),
          AH=p_in.give("AFFINE_HULL");
 
-      Matrix<Rational> F_out=F / zero_matrix<Rational>(n_trunc_vertices, F.cols());
-      lrs_interface::solver S;
-      Matrix<Rational> orth(AH);
+      Matrix<Scalar> F_out=F / zero_matrix<Scalar>(n_trunc_vertices, F.cols());
+      to_interface::solver<Scalar> S;
+      Matrix<Scalar> orth(AH);
       if (orth.cols()) orth.col(0).fill(0);
 
-      Rows< Matrix<Rational> >::iterator new_facet = rows(F_out).begin()+n_facets;
+      typename Rows< Matrix<Scalar> >::iterator new_facet = rows(F_out).begin()+n_facets;
       for (vertex_map_type::iterator tv=vertex_map.begin();  !tv.at_end();  ++tv, ++new_facet) {
          const int v_cut_off=tv->first;
-         Matrix<Rational> basis(G.out_degree(v_cut_off), V.cols());
+         Matrix<Scalar> basis(G.out_degree(v_cut_off), V.cols());
          const bool simple_vertex=basis.rows()+AH.rows()==V.cols()-1;
 
-         Rows< Matrix<Rational> >::iterator b=rows(basis).begin();
+         typename Rows< Matrix<Scalar> >::iterator b=rows(basis).begin();
          for (Entire< Graph<>::adjacent_node_list >::const_iterator nb_v=entire(G.adjacent_nodes(v_cut_off)); !nb_v.at_end(); ++nb_v, ++b) {
             if (vertex_map.exists(*nb_v))
                *b = (1-cutoff_factor/2) * V[v_cut_off] + cutoff_factor/2 * V[*nb_v];
@@ -195,7 +199,7 @@ perl::Object truncation(perl::Object p_in, const GenericSet<SetTop>& trunc_verti
       // if cutoff is 1 some old facets might not be facets anymore
       // if dim is 1 then vertices are facets. So we truncate facets
       if (inequalities){
-        F_out /= unit_vector<Rational>(F_out.cols(), 0);
+        F_out /= unit_vector<Scalar>(F_out.cols(), 0);
         p_out.take("INEQUALITIES")  << F_out;
         p_out.take("EQUATIONS") << AH;
       } else {
@@ -214,6 +218,7 @@ perl::Object truncation(perl::Object p_in, const GenericSet<SetTop>& trunc_verti
    }
 
    p_out.take("N_VERTICES") << VIF_out.cols();
+   p_out.take("FEASIBLE") << true;
    
    // if cutoff is 1 some old facets might not be facets anymore
    if (!inequalities){
@@ -226,21 +231,24 @@ perl::Object truncation(perl::Object p_in, const GenericSet<SetTop>& trunc_verti
    return p_out;
 }
 
+template<typename Scalar>
 perl::Object truncation(perl::Object p_in, const pm::all_selector&, perl::OptionSet options)
 {
    const int n_verts = p_in.give("N_VERTICES");
-   perl::Object p_out=truncation(p_in,sequence(0,n_verts),options);
+   perl::Object p_out=truncation<Scalar>(p_in,sequence(0,n_verts),options);
    p_out.set_description() << p_in.name() << " with all vertices truncated" << endl;
    return p_out;
 }
 
+template<typename Scalar>
 perl::Object truncation(perl::Object p_in, int vertex, perl::OptionSet options)
 {
-   perl::Object p_out=truncation(p_in,scalar2set(vertex),options);
+   perl::Object p_out=truncation<Scalar>(p_in,scalar2set(vertex),options);
    p_out.set_description() << p_in.name() << " with vertex " << vertex << " truncated" << endl;
    return p_out;
 }
 
+template<typename Scalar>
 perl::Object truncation(perl::Object p_in, const Array<int>& verts, perl::OptionSet options)
 {
    Set<int> trunc_vertices;
@@ -250,7 +258,7 @@ perl::Object truncation(perl::Object p_in, const Array<int>& verts, perl::Option
    if (verts.size() != trunc_vertices.size())
       throw std::runtime_error("truncation: repeating vertex numbers in the list");
    
-   return truncation(p_in,trunc_vertices,options);
+   return truncation<Scalar>(p_in,trunc_vertices,options);
 }
 
 UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
@@ -270,7 +278,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "#   A single vertex to be cut off is specified by its number."
                           "#   Several vertices can be passed in a Set or in an anonymous array of indices: [n1,n2,...]"
                           "#   Special keyword __All__ means that all vertices are to be cut off."
-                          "# @option Rational cutoff controls the exact location of the cutting hyperplane(s);"
+                          "# @option Scalar cutoff controls the exact location of the cutting hyperplane(s);"
                           "#   rational number between 0 and 1; default value: 1/2"
                           "# @option Bool noc produces a pure combinatorial description (in contrast to //cutoff//)"
                           "# @option Bool relabel creates an additional section [[VERTEX_LABELS]];"
@@ -278,7 +286,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "#   of the truncated vertex, and LABEL2 is the original label of its neighbor."
                           "# @return Polytope"
                           "# @author Kerstin Fritzsche (initial version)",
-                          "truncation(Polytope * {cutoff=>undef, noc=>undef, relabel=>undef})");
+                          "truncation<Scalar>(Polytope<Scalar> * {cutoff=>undef, noc=>undef, relabel=>undef})");
 } }
 
 // Local Variables:

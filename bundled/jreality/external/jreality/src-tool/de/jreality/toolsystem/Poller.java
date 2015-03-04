@@ -1,6 +1,8 @@
 package de.jreality.toolsystem;
 
+import java.util.Collections;
 import java.util.LinkedList;
+import java.util.List;
 
 import de.jreality.toolsystem.raw.PollingDevice;
 
@@ -16,7 +18,7 @@ import de.jreality.toolsystem.raw.PollingDevice;
  */
 class Poller implements Runnable {
 	
-	private final LinkedList<PollingDevice> pollingDevices=new LinkedList<PollingDevice>();
+	private final List<PollingDevice> pollingDevices= Collections.synchronizedList(new LinkedList<PollingDevice>());
 	
 	private static Poller pollerInstance=new Poller();
 	
@@ -31,14 +33,10 @@ class Poller implements Runnable {
 	}
 
 	void addPollingDevice(final PollingDevice pd) {
-		synchronized (pollingDevices) {
-			pollingDevices.add(pd);
-		}
+		pollingDevices.add(pd);
 	}
 	void removePollingDevice(final PollingDevice pd) {
-		synchronized (pollingDevices) {
-			pollingDevices.remove(pd);
-		}
+		pollingDevices.remove(pd);
 	}
 	
 	public void run() {

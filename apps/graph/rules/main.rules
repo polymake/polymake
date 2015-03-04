@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -21,9 +21,12 @@
 
 IMPORT common
 
-HELP help.rules
 
 file_suffix poly
+
+
+HELP
+	help.rules
 
 
 # these rules are intrinsic: they don't depend on any external software to be installed separately
@@ -42,6 +45,7 @@ INCLUDE
   metapost.rules
   graphviz.rules
   sketch.rules
+  threejs.rules
   tikz.rules
 
 # Local Variables:

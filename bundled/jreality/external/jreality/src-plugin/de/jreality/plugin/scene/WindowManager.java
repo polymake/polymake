@@ -158,6 +158,7 @@ public class WindowManager extends Plugin implements ChangeListener {
 		return showDesktopBorder;
 	}
 
+	@Override
 	public void stateChanged(ChangeEvent e) {
 		if (e.getSource() instanceof Scene) {
 			Scene scene = (Scene) e.getSource();

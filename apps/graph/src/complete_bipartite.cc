@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -40,7 +40,7 @@ perl::Object complete_bipartite(const int k, const int l)
    return G;
 
 }
-UserFunction4perl("# @category Producing from scratch\n"
+UserFunction4perl("# @category Producing a graph\n"
                   "# Constructs a __complete bipartite graph__ on //k// + //l// nodes."
                   "# @param Int k"
                   "# @param Int l"

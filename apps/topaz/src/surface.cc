@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -70,10 +70,10 @@ perl::Object surface(int g)
 }
 
 UserFunction4perl("# @category Producing from scratch\n"
-                  "# Produce a surface of genus //g//. For //g// >= 0\n"
+                  "# Produce a __surface of genus //g//__. For //g// >= 0\n"
                   "# the client produces an orientable surface, otherwise\n"
                   "# it produces a non-orientable one.\n"
-                  "# @param int g genus"
+                  "# @param Int g genus"
                   "# @return SimplicialComplex",
                   &surface, "surface($)");
 } }

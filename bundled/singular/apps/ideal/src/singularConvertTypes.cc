@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -14,13 +14,13 @@
 --------------------------------------------------------------------------------
 */
 
-#include <dlfcn.h>
-
 #include "polymake/ideal/internal/singularConvertTypes.h"
 
 namespace polymake {
 namespace ideal {
 namespace singular{
+
+static coeffs singular_rational = NULL;
 
 
 // Convert a Singular number to a GMP rational.
@@ -48,12 +48,15 @@ Rational convert_number_to_Rational(number n, ring ring)
 // Convert a GMP rational to a Singular number.
 number convert_Rational_to_number(const Rational& r)
 {
-   mpz_t num, denom;
-   mpz_init(num);
-   mpz_set(num,numerator(r).get_rep());
-   mpz_init(denom);
-   mpz_set(denom,denominator(r).get_rep());
-   return nlInit2gmp(num,denom,NULL);
+   if (singular_rational == NULL)
+      singular_rational = nInitChar(n_Q, NULL);
+   // cast removes the const as singular just uses it to initialize its own mpz
+   number num = n_InitMPZ((mpz_ptr) numerator(r).get_rep(),singular_rational);
+   number denom = n_InitMPZ((mpz_ptr) denominator(r).get_rep(),singular_rational);
+   number res = n_Div(num,denom,singular_rational);
+   n_Delete(&num,singular_rational);
+   n_Delete(&denom,singular_rational);
+   return res;
 }
 
 

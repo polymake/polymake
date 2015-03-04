@@ -91,8 +91,9 @@ public class Scene extends Plugin {
 		avatarPath.push(avatar);
 		defaultScene.addPath("avatarPath", avatarPath);
 		
+//		MatrixBuilder.euclidean().translate(0,0,SystemProperties.isPortal ? 0 : defaultZTranslation).assignTo(avatar);
 		MatrixBuilder.euclidean().translate(0,0,defaultZTranslation).assignTo(avatar);
-		
+
 		//emptyPickPath/content
 		SceneGraphPath emptyPickPath = new SceneGraphPath();
 		emptyPickPath.push(sceneRoot);
@@ -264,3 +265,4 @@ public class Scene extends Plugin {
 		Scene.defaultZTranslation = defaultZTranslation;
 	}
 }
+

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -29,8 +29,8 @@ label _4ti2
 
 object Matroid {
 
-   rule _4ti2.circuits : CIRCUITS : POINTS {
-      my $A = $this->POINTS;
+   rule _4ti2.circuits : CIRCUITS : VECTORS {
+      my $A = $this->VECTORS;
       $this->CIRCUITS = [@{index_matrix(_4ti2Circuits($A))}];
    }
    weight 3.01;

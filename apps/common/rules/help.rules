@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -536,6 +536,25 @@ INCLUDE
 # @topic objects/Core::RuleChain/methods/apply($)
 # Apply the rule chain to an object.
 # @param Core::Object o
+
+# @topic exit
+# use this command only if you want to restart polymake.
+
+# @topic polymake
+#       MM                            ,,
+#      MM M                         `7MM                                    `7MM
+#     M M  M                          MM                                      MM
+#    M M    M    `7MMpdMAo.  ,pW"Wq.  MM `7M'   `MF`7MMpMMMb.pMMMb.  ,6"Yb.   MM  ,MP .gP"Ya
+#   ,  M   M M     MM   `Wb 6W'   `Wb MM   VA   ,V   MM    MM    MM 8)   MM   MM ;Y  ,M'   Yb
+#  MM  M  M   M    MM    M8 8M     M8 MM    VA ,V    MM    MM    MM  ,pm9MM   MM;Mm  8M""""""
+# M M MMN      M   MM   ,AP YA.   ,A9 MM     VVV     MM    MM    MM 8M   MM   MM `Mb YM.    ,
+#M   MM M       M  MMbmmd'   `Ybmd9'.JMML.   ,V    .JMML  JMML  JMML`Moo9^Yo.JMML. YA `Mbmmd'
+#M  M M  M M  MM   MM                       ,V
+# MMM M   M M    .JMML.                  OOb"
+#  M     MM
+#   MM MM
+#    MM
+#
 
 
 

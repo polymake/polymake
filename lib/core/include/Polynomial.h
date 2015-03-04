@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -269,7 +269,7 @@ public:
    void pretty_print(GenericOutput<Output>& out, const value_type& m, const ring_type& r)
    {
       if (m.empty()) {
-         out.top() << '1';  // constant monomial
+         out.top() << one_value<Coefficient>(); // constant monomial
          return;
       }
 
@@ -434,7 +434,7 @@ public:
    void pretty_print(GenericOutput<Output>& out, const value_type& m, const ring_type& r)
    {
       if (equals_to_default(m)) {
-         out.top() << '1';  // constant monomial
+         out.top() << one_value<Coefficient>();  // constant monomial
          return;
       }
       out.top() << r.names().front();
@@ -740,7 +740,7 @@ public:
    bool operator== (const monomial_type& x2) const
    {
       if (ring != x2.get_ring()) throw std::runtime_error("Terms of different rings");
-      return the_term.first==x2.get_value() && the_term.second==1;
+      return the_term.first==x2.get_value() && is_one(the_term.second);
    }
 
    bool operator!= (const monomial_type& x2)
@@ -844,17 +844,17 @@ public:
                      const ring_type& r)
    {
       if (!is_one(c)) {
-      if (!is_one(-c)){
-         if (!identical<typename object_traits<coefficient_type>::model, is_scalar>::value)
-            out.top() << '(';
-         out.top() << c;
-         if (!identical<typename object_traits<coefficient_type>::model, is_scalar>::value)
-            out.top() << ')';
-         if (monomial_type::equals_to_default(m)) return;
-         out.top() << '*';
-      } else {
-         out.top() << "- ";
-      }
+         if (!(is_field<coefficient_type>::value && is_one(-c))){
+            if (!identical<typename object_traits<coefficient_type>::model, is_scalar>::value)
+               out.top() << '(';
+            out.top() << c;
+            if (!identical<typename object_traits<coefficient_type>::model, is_scalar>::value)
+               out.top() << ')';
+            if (monomial_type::equals_to_default(m)) return;
+            out.top() << '*';
+         } else {
+            out.top() << "- ";
+         }
       }
       monomial_type::pretty_print(out, m, r);
    }
@@ -868,11 +868,12 @@ public:
 
    static bool needs_plus(const coefficient_type& c)
    {
-      return needs_plus(c, bool2type<identical<typename object_traits<coefficient_type>::model, is_scalar>::value>());
+      // in particular gives false for Polynomial and TropicalNumber
+      return needs_plus(c, is_field<coefficient_type>() );
    }
 
 protected:
-   static bool needs_plus(const coefficient_type& c, True) { return c>0; }
+   static bool needs_plus(const coefficient_type& c, True) { return c>=zero_value<coefficient_type>(); }
    static bool needs_plus(const coefficient_type&, False) { return true; }
 
    value_type the_term;
@@ -1574,7 +1575,7 @@ public:
 
          term_type::pretty_print(out, (*tp_it)->first, (*tp_it)->second, get_ring());
       }
-      if (first) out.top() << '0';
+      if (first) out.top() << zero_value<coefficient_type>();
    }
 
 protected:
@@ -2390,7 +2391,7 @@ struct choose_generic_object_traits< UniPolynomial<Coefficient, Exponent>, false
    static
    const persistent_type& one()
    {
-      static const persistent_type x(1);
+      static const persistent_type x(one_value<Coefficient>());
       return x;
    }
 };
@@ -2439,38 +2440,44 @@ struct compatible_with_unipolynomial {
 };
 
 template <typename Coefficient, typename Exponent, typename T, typename TModel>
-struct isomorphic_types<Polynomial<Coefficient,Exponent>, T,
-                        typename enable_if<is_polynomial, compatible_with_polynomial<Coefficient,Exponent,T>::value>::type,
-                        TModel> : False {
+struct isomorphic_types_impl<Polynomial<Coefficient,Exponent>, T,
+                             typename enable_if<is_polynomial, compatible_with_polynomial<Coefficient,Exponent,T>::value>::type,
+                             TModel>
+   : False {
    typedef cons<is_polynomial, is_scalar> discriminant;
 };
 
 template <typename Coefficient, typename Exponent, typename T, typename TModel>
-struct isomorphic_types<T, Polynomial<Coefficient,Exponent>, TModel,
-                        typename enable_if<is_polynomial, compatible_with_polynomial<Coefficient,Exponent,T>::value>::type> : False {
+struct isomorphic_types_impl<T, Polynomial<Coefficient,Exponent>, TModel,
+                             typename enable_if<is_polynomial, compatible_with_polynomial<Coefficient,Exponent,T>::value>::type>
+   : False {
    typedef cons<is_scalar, is_polynomial> discriminant;
 };
 
 template <typename Coefficient, typename Exponent>
-struct isomorphic_types<Polynomial<Coefficient,Exponent>, Polynomial<Coefficient,Exponent>, is_polynomial, is_polynomial> : True {
+struct isomorphic_types_impl<Polynomial<Coefficient,Exponent>, Polynomial<Coefficient,Exponent>, is_polynomial, is_polynomial>
+   : True {
    typedef cons<is_polynomial, is_polynomial> discriminant;
 };
 
 template <typename Coefficient, typename Exponent, typename T, typename TModel>
-struct isomorphic_types<UniPolynomial<Coefficient,Exponent>, T,
-                        typename enable_if<is_polynomial, compatible_with_unipolynomial<Coefficient,Exponent,T>::value>::type,
-                        TModel> : False {
+struct isomorphic_types_impl<UniPolynomial<Coefficient,Exponent>, T,
+                             typename enable_if<is_polynomial, compatible_with_unipolynomial<Coefficient,Exponent,T>::value>::type,
+                             TModel>
+   : False {
    typedef cons<is_polynomial, is_scalar> discriminant;
 };
 
 template <typename Coefficient, typename Exponent, typename T, typename TModel>
-struct isomorphic_types<T, UniPolynomial<Coefficient,Exponent>, TModel,
-                        typename enable_if<is_polynomial, compatible_with_unipolynomial<Coefficient,Exponent,T>::value>::type> : False {
+struct isomorphic_types_impl<T, UniPolynomial<Coefficient,Exponent>, TModel,
+                             typename enable_if<is_polynomial, compatible_with_unipolynomial<Coefficient,Exponent,T>::value>::type>
+   : False {
    typedef cons<is_scalar, is_polynomial> discriminant;
 };
 
 template <typename Coefficient, typename Exponent>
-struct isomorphic_types<UniPolynomial<Coefficient,Exponent>, UniPolynomial<Coefficient,Exponent>, is_polynomial, is_polynomial> : True {
+struct isomorphic_types_impl<UniPolynomial<Coefficient,Exponent>, UniPolynomial<Coefficient,Exponent>, is_polynomial, is_polynomial>
+   : True {
    typedef cons<is_polynomial, is_polynomial> discriminant;
 };
 

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -2950,6 +2950,29 @@ sub serialized_toXML : method {
    $proto->toXML= sub {
       my $serialized=convert_to_serialized(shift);
       $serialized_proto->toXML->($serialized, @_)
+   };
+   $proto->toXML->(@_);
+}
+
+sub serialized_with_id_toXML : method {
+   my $proto=shift;
+   my $descr=$proto->cppoptions->descr;
+   my $serialized_proto=get_type_proto($descr->vtbl, 4);
+   $proto->toXML= sub {
+      my ($obj, $writer, @attrs)=@_;
+      my $new_id;
+      my $id=(($writer->{':ids'}->{$proto} //= { })->{$obj->id} //= ($new_id=++$writer->{':global_id'}));
+      if (defined $new_id) {
+         $writer->{':last_id'}=$id;
+         my $serialized=convert_to_serialized($obj);
+         $serialized_proto->toXML->($serialized, $writer, @attrs, id=>$id);
+      } else {
+         if ($id != $writer->{':last_id'}) {
+            push @attrs, id => $id;
+            $writer->{':last_id'}=$id;
+         }
+         $writer->emptyTag("r", @attrs);
+      }
    };
    $proto->toXML->(@_);
 }

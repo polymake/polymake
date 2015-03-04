@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -91,7 +91,7 @@ UserFunction4perl("# @category Producing a matroid from other objects\n"
                   "# @return Matroid",
                   &matroid_from_characteristic_vector, "matroid_from_characteristic_vector");
 
-UserFunction4perl("# @category Producing plueckervectors\n"
+UserFunction4perl("# @category Other\n"
                   "# Creates the characteristic- and the rank-plueckervector of a matroid."
                   "# @param Matroid m"
                   "# @return ListReturn (Vector<Integer>, Vector<Integer>)",

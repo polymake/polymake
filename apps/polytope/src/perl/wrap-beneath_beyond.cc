@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -14,10 +14,10 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/Rational.h"
-#include "polymake/QuadraticExtension.h"
-#include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
 #include "polymake/SparseMatrix.h"
 
 namespace polymake { namespace polytope { namespace {
@@ -39,5 +39,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(placing_triangulation_X_x, perl::Canned< const SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >);
    FunctionInstance4perl(beneath_beyond_T_x_x_x_f16, Rational);
    FunctionInstance4perl(beneath_beyond_T_x_x_x_f16, QuadraticExtension< Rational >);
+   FunctionInstance4perl(placing_triangulation_X_x, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

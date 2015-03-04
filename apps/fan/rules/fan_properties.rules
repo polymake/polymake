@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -45,7 +45,7 @@ property FULL_DIM : Bool;
 property POINTED : Bool;
 
 # @category Input property
-# Rays from which the cones are formed.  May be redundant.
+# Rays from which the cones are formed.  May be redundant. All vectors in the input must be non-zero.
 # You also need to provide [[INPUT_CONES]] to define a fan completely.
 #
 # Input section only. Ask for [[RAYS]] if you want a list of non-redundant rays.
@@ -138,7 +138,7 @@ weight 1.10;
 # List of all cones of the fan of each dimension.  Indices refer to [[RAYS]].
 property CONES : Array<IncidenceMatrix>;
 
-# @category 
+# @category Combinatorics
 # Number of [[MAXIMAL_CONES]].
 
 property N_MAXIMAL_CONES : Int;

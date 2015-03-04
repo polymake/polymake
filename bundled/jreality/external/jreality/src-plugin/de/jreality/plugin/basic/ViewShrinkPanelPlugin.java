@@ -21,6 +21,7 @@ abstract public class ViewShrinkPanelPlugin extends ShrinkPanelPlugin {
 	}
 	
 	
+	@Override
 	public Class<? extends SideContainerPerspective> getPerspectivePluginClass() {
 		return View.class;
 	}

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,10 +16,11 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
 #include "polymake/Polynomial.h"
-#include "polymake/Ring.h"
 #include "polymake/Rational.h"
+#include "polymake/Ring.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -30,5 +31,6 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(variables_L_f1, perl::Canned< const Ring< Rational, int > >);
+   FunctionInstance4perl(variables_L_f1, perl::Canned< const Ring< TropicalNumber< Min, Rational >, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -65,7 +65,7 @@ public class DraggingTool extends AbstractTool {
     private boolean moveChildren;
     transient protected boolean dragInViewDirection;
     
-    static InputSlot activationSlot = InputSlot.getDevice("DragActivation");
+    static InputSlot activationSlot = InputSlot.getDevice("DragActivation2");
     static InputSlot alongPointerSlot = InputSlot.getDevice("DragAlongViewDirection");
     static InputSlot evolutionSlot = InputSlot.getDevice("PointerEvolution");
     

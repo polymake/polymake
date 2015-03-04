@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -116,12 +116,12 @@ perl::Object direct_sum(perl::Object m1, perl::Object m2)
    m_new.take("RANK") << rank1+rank2;
 
    Matrix<Rational> points1,points2;
-   if (m1.lookup("POINTS")>>points1 && m2.lookup("POINTS")>>points2){
-      m_new.take("POINTS") << ( points1|Matrix<Rational>(n1,points2.cols()) ) / ( (Matrix<Rational>(n2,points1.cols()))|points2 );
+   if (m1.lookup("VECTORS")>>points1 && m2.lookup("VECTORS")>>points2){
+      m_new.take("VECTORS") << ( points1|Matrix<Rational>(n1,points2.cols()) ) / ( (Matrix<Rational>(n2,points1.cols()))|points2 );
    }
-   if (m1.lookup("BINARY_POINTS")>>points1 && m2.lookup("BINARY_POINTS")>>points2){
+   if (m1.lookup("BINARY_VECTORS")>>points1 && m2.lookup("BINARY_VECTORS")>>points2){
       if(m1.give("BINARY") && m2.give("BINARY")){
-         m_new.take("BINARY_POINTS") << ( points1|Matrix<Rational>(n1,rank2) ) / ( (Matrix<Rational>(n2,rank1))|points2 );
+         m_new.take("BINARY_VECTORS") << ( points1|Matrix<Rational>(n1,rank2) ) / ( (Matrix<Rational>(n2,rank1))|points2 );
          m_new.take("BINARY") << 1;
       }else{
          m_new.take("BINARY") << 0;

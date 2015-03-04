@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -70,7 +70,7 @@ perl::Object johnson_graph(const int n, const int k){
    return generalized_johnson_graph(n,k,k-1);
 }
 
-UserFunction4perl("# @category Producing from scratch"
+UserFunction4perl("# @category Producing a graph"
                   "# Create the __generalized Johnson graph__ on parameters (n,k,i)."
                   "#   It has one node for each set in \\({[n]}\\choose{k}\\),"
                   "#   and an edge between two nodes iff the intersection of the corresponding subsets is of size i."
@@ -80,7 +80,7 @@ UserFunction4perl("# @category Producing from scratch"
                   "# @return Graph",
                   &generalized_johnson_graph, "generalized_johnson_graph($$$)");
 
-UserFunction4perl("# @category Producing from scratch"
+UserFunction4perl("# @category Producing a graph"
                   "# Create the __Kneser graph__ on parameters (n,k)."
                   "#   It has one node for each set in \\({[n]}\\choose{k}\\),"
                   "#   and an edge between two nodes iff the corresponding subsets are disjoint."
@@ -90,7 +90,7 @@ UserFunction4perl("# @category Producing from scratch"
                   &kneser_graph, "kneser_graph($$)");
 
 
-UserFunction4perl("# @category Producing from scratch"
+UserFunction4perl("# @category Producing a graph"
                   "# Create the __Johnson graph__ on parameters (n,k)."
                   "#   It has one node for each set in \\({[n]}\\choose{k}\\),"
                   "#   and an edge between two nodes iff the intersection of the corresponding subsets is of size k-1."

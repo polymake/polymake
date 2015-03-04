@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -132,6 +132,10 @@ user_function topcom_all_triangulations {
     return new Array<Array<Set<Int>>>(call_topcom_alltriangs($self->CHIROTOPE));
 }
 
+# @category Triangulations, subdivisions and volume
+# Compute all fine triangulations of a point configuration via its chirotope.
+# @param PointConfiguration pc input point configuration
+# @return Array<Array<Set<Int>>>
 user_function topcom_all_fine_triangulations {
     my $self=shift;
     return new Array<Array<Set<Int>>>(call_topcom_finetriangs($self->CHIROTOPE));

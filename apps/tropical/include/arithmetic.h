@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -23,32 +23,13 @@
 
 #include "polymake/Polynomial.h"
 #include "polymake/Rational.h"
+#include "polymake/TropicalNumber.h"
 #include "polymake/Array.h"
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
 #include "polymake/graph/hungarian_method.h"
 
 namespace polymake { namespace tropical {
-
-struct Max;
-
-struct Min {
-   template <typename T>
-   static const T& apply(const T& x, const T& y) { return std::min(x,y); }
-
-   static const int orientation() { return 1; }
-
-   typedef Max dual;
-};
-
-struct Max {
-   template <typename T>
-   static const T& apply(const T& x, const T& y) { return std::max(x,y); }
-
-   static int orientation() { return -1; }
-
-   typedef Min dual;
-};
 
 
 typedef std::pair<Matrix<int>, Vector<Rational> > TropicalPolynomial;
@@ -57,8 +38,8 @@ typedef Ring<UniPolynomial<Rational,Rational>,int> PuiseuxRing;
 
 typedef Polynomial<UniPolynomial<Rational,Rational>,int> PuiseuxPolynomial;
 
-      template <typename Dir, typename Scalar>
-      Scalar tdet(const Matrix<Scalar >& matrix)
+template <typename Dir, typename Scalar>
+Scalar tdet(const Matrix<Scalar >& matrix)
 {
   Scalar value(0); // empty matrix has tropical determinant zero
   const int d(matrix.rows());

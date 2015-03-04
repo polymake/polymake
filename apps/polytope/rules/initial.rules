@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -61,69 +61,6 @@ object Cone {
 
 }
 
-
-object Polytope<Rational> {
-
-  # A Polytope defined in terms of [[INEQUALITIES]] and/or [[EQUATIONS]] is checked for [[FEASIBLE]] right away.
-  # If infeasible it is replaced by the unique representation of the empty polytope.
-  rule initial : FEASIBLE : {
-    my $feasible = cdd_input_feasible($this);
-    if ($feasible) {
-      $this->FEASIBLE = 1;
-    } else {
-      my $empty=new Matrix<Rational>();
-      my $cone_ambient_dim=$this->lookup("CONE_AMBIENT_DIM") // 0;
-      my $M;
-      if (defined ($M=$this->lookup("INEQUALITIES")) && $M->cols()>0) {
-          $cone_ambient_dim = $M->cols();
-      } elsif ($this->lookup("EQUATIONS")->cols() > 0) { # due to precondition EQUATIONS must be defined
-          $cone_ambient_dim = $this->lookup("EQUATIONS")->cols();
-      }
-      my $repl=new Core::Object::Replacement(VERTICES => $empty, FACETS => $empty, AFFINE_HULL => $empty, LINEALITY_SPACE => $empty, CONE_DIM=>0, CONE_AMBIENT_DIM=>$cone_ambient_dim, FEASIBLE => 0);
-      foreach my $prop (qw(INEQUALITIES EQUATIONS INPUT_LINEALITY)) {
-        if (defined (my $val=$this->lookup($prop))) {
-	  $repl->attach($prop, $val);
-        }
-      }
-      die $repl;
-    }
-  }
-  precondition : exists(INEQUALITIES | EQUATIONS);
-
-}
-
-# FIXME #534
-# once we have template specialization it should not be necessary to copy the rule above
-
-object Polytope<Float> {
-
-  # A Polytope defined in terms of [[INEQUALITIES]] and/or [[EQUATIONS]] is checked for [[FEASIBLE]] right away.
-  # If infeasible it is replaced by the unique represnetation of the empty polytope.
-  rule initial : FEASIBLE : {
-    my $feasible = cdd_input_feasible($this);
-    if ($feasible) {
-      $this->FEASIBLE = 1;
-    } else {
-      my $empty=new Matrix<Float>();
-      my $cone_ambient_dim=$this->lookup("CONE_AMBIENT_DIM") // 0;
-      my $M;
-      if (defined ($M=$this->lookup("INEQUALITIES")) && $M->cols()>0) {
-          $cone_ambient_dim = $M->cols();
-      } elsif ($this->lookup("EQUATIONS")->cols() > 0) { # due to precondition EQUATIONS must be defined
-          $cone_ambient_dim = $this->lookup("EQUATIONS")->cols();
-      }
-      my $repl=new Core::Object::Replacement(VERTICES => $empty, FACETS => $empty, AFFINE_HULL => $empty, LINEALITY_SPACE => $empty, CONE_DIM => 0, CONE_AMBIENT_DIM=>$cone_ambient_dim, FEASIBLE => 0);
-      foreach my $prop (qw(INEQUALITIES EQUATIONS INPUT_LINEALITY)) {
-        if (defined (my $val=$this->lookup($prop))) {
-	  $repl->attach($prop, $val);
-        }
-      }
-      die $repl;
-    }
-  }
-  precondition : exists(INEQUALITIES | EQUATIONS);
-
-}
 
 object Polytope<QuadraticExtension<Rational>> {
 

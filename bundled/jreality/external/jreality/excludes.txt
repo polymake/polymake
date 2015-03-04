@@ -13,6 +13,7 @@
 **/RemoteExecutor.java
 **/MasterApplication.java
 **/ODEExample.java
+**/**VRPN**
 
 **/JLink*.java
 **/SwtExample.java
@@ -23,3 +24,4 @@
 **/DeviceSpacenav.java
 **/WiiMoteOSC.java
 **/OSCPool.java
+**/blender/test/**

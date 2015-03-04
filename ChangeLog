@@ -1,0 +1,81 @@
+Changelog
+
+
+=== Polymake 2.14 ===
+
+-- General --
+ * support for perl 5.20
+ * support for MacOS 10.10 (Bundle)
+ * utf-8 encoding for java build recipes (merges github pull request #1)
+ * libpolymake improvements
+ * fixed equal_bases (thanks to ChoF @polymake-forum)
+ * new client for hadamard product of matrices
+ * many minor bugfixes and improvements
+ * documentation improvements
+ * substantial further modularization of configuration and installation
+
+-- fan --
+ * new client for product of fans
+ * new client for mixed subidivions
+ * proper handling of empty and trivial fans
+
+-- graph --
+ * new client for Johnson graphs
+ * new client for the complement of graphs
+
+-- group --
+ * new client for converting action on columns to action on rows
+
+-- matroid --
+ * new properties for matroids
+ * renaming of some properties (e.g. POINTS is now called VECTORS)
+ * lattice of flats
+ * improvements on basis exchange test
+ * new client for direct and 2-sum
+ * new client for parallel and series extensions
+ * new client for lexicographic extensions
+ * new client for modular cut check
+ * computation of circuits via 4ti2
+
+-- polytope --
+ * added vector configurations
+ * lp2poly returns a polytope with rational coordinates by default instead of float coordinates
+ * new client for cayley embeddings
+ * new client for regular simplex and fano simplex
+ * new client for weighted digraph polyhedron
+ * new client for archimedian solids
+ * new client for quotient of triangulations
+ * new client for del Pezzo and pseudo del Pezzo polytopes
+ * corrected handling of COORDINATE_LABELS in print_constraints
+ * added flag for computing the outer normal cone
+ * added combinatorial versions of product and join
+ * added E6 and E7 to wythoff client
+ * new script for converting boolean circuits to polytopes
+ * new script 'analyze_this'. Creates a .tex file with basic information about a polytope
+
+-- topaz --
+ * new client for calculating a P-Sum-Triangulation
+ * new client for independence complex of a matroid
+
+-- tropical --
+ * new coordinate type TropicalNumber
+
+-- visualization --
+ * new visualization backend: ThreeJS (view in browser)
+ * improvements in TikZ and Sketch interfaces
+ * TikZ supports face lattices (it is the new default)
+ * visualization for unbounded polyhedra
+ * fixes in fan visualization
+
+-- interfaces --
+ * singular interface:
+     - compatibility
+     - support for more term orders
+ * libnormaliz interface updated to v2.12.2
+ * TOSimplex: OpenMP support and other improvements
+ * interfaces of cdd and lrs:
+     - moved to bundled extensions
+     - support for external cdd and lrs installations
+
+=== older versions ===
+see http://polymake.org/doku.php/news

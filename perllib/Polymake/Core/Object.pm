@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -1332,7 +1332,7 @@ sub cleanup {
                   do {
                      $sub_index>=0
                        or croak( "internal inconsistency: multiple subobject instance recorded in temporary list does not occur in the parent property" );
-                  } while ($pv->values->[$sub_index] != $sub_obj);
+                  } while ($pv->values->[--$sub_index] != $sub_obj);
                   undef $pv->values->[$sub_index];
                   $squeeze_multi{$pv}=$content_index;
                   next;

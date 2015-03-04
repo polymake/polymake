@@ -57,34 +57,42 @@ public class PropertyPreferences extends Plugin implements PreferencesFlavor, Pr
 		return info;
 	}
 
+	@Override
 	public void setPropertiesListener(PropertiesListener l) {
 		propertiesListener = l;
 	}
 
+	@Override
 	public Icon getMainIcon() {
 		return ImageHook.getIcon("plugin.png");
 	}
 
+	@Override
 	public String getMainName() {
 		return "Properties Saving";
 	}
 
+	@Override
 	public JPanel getMainPage() {
 		return mainPage;
 	}
 
+	@Override
 	public int getNumSubPages() {
 		return 0;
 	}
 
+	@Override
 	public JPanel getSubPage(int i) {
 		return null;
 	}
 
+	@Override
 	public Icon getSubPageIcon(int i) {
 		return null;
 	}
 
+	@Override
 	public String getSubPageName(int i) {
 		return null;
 	}
@@ -113,6 +121,7 @@ public class PropertyPreferences extends Plugin implements PreferencesFlavor, Pr
 		askBeforeSaveOnExitCheckBox.setToolTipText("<html>Apply the three preferences below at program exit<br>" +
 				" instead of showing a dialog which allows to change these preferences.</html>");
 		askBeforeSaveOnExitCheckBox.addChangeListener(new ChangeListener() {
+			@Override
 			public void stateChanged(ChangeEvent e) {
 				propertiesListener.setAskBeforeSaveOnExit(! ((JCheckBox) e.getSource()).isSelected());
 			}
@@ -123,6 +132,7 @@ public class PropertyPreferences extends Plugin implements PreferencesFlavor, Pr
 		saveOnExitCheckBox.setToolTipText("<html>Plugin properties are saved to the file specified below.<br>" +
 				" This setting has no effect if \"Quiet exit\" is turned off.</html>");
 		saveOnExitCheckBox.addChangeListener(new ChangeListener() {
+			@Override
 			public void stateChanged(ChangeEvent e) {
 				propertiesListener.setSaveOnExit(((JCheckBox) e.getSource()).isSelected());
 			}
@@ -132,6 +142,7 @@ public class PropertyPreferences extends Plugin implements PreferencesFlavor, Pr
 		final JCheckBox loadFromUserPropertyFileCheckBox = new JCheckBox("Load At Startup", propertiesListener.isLoadFromUserPropertyFile());
 		loadFromUserPropertyFileCheckBox.setToolTipText("At next startup plugin properties will be loaded from the file specified below.");
 		loadFromUserPropertyFileCheckBox.addChangeListener(new ChangeListener() {
+			@Override
 			public void stateChanged(ChangeEvent e) {
 				propertiesListener.setLoadFromUserPropertyFile(((JCheckBox) e.getSource()).isSelected());
 			}
@@ -148,8 +159,10 @@ public class PropertyPreferences extends Plugin implements PreferencesFlavor, Pr
 		fileChooser.setToolTipText("Choose a file to save the plugin properties to and load them from.");
 
 		mainPage.addAncestorListener(new AncestorListener() {
+			@Override
 			public void ancestorAdded(AncestorEvent event) {
 				SwingUtilities.invokeLater(new Runnable() {
+					@Override
 					public void run() {
 						askBeforeSaveOnExitCheckBox.setSelected(! propertiesListener.isAskBeforeSaveOnExit());
 						saveOnExitCheckBox.setSelected(propertiesListener.isSaveOnExit());
@@ -158,8 +171,10 @@ public class PropertyPreferences extends Plugin implements PreferencesFlavor, Pr
 					}
 				});
 			}
+			@Override
 			public void ancestorMoved(AncestorEvent event) {
 			}
+			@Override
 			public void ancestorRemoved(AncestorEvent event) {
 			}
 		});
@@ -201,6 +216,7 @@ public class PropertyPreferences extends Plugin implements PreferencesFlavor, Pr
 			textField = new StringEditor();
 			updateTextField();
 			textField.addPropertyChangeListener(new PropertyChangeListener() {
+				@Override
 				public void propertyChange(PropertyChangeEvent evt) {
 					propertiesListener.setUserPropertyFile(textField.getAsText());
 				}
@@ -210,6 +226,7 @@ public class PropertyPreferences extends Plugin implements PreferencesFlavor, Pr
 			fileChooserButton = new JButton("...");
 			fileChooserButton.setMargin(new Insets(0, 5, 0, 5));
 			fileChooserButton.addActionListener(new ActionListener() {
+				@Override
 				public void actionPerformed(ActionEvent e) {
 					if (propertiesListener.getUserPropertyFile()!=null) {
 						userPropertiesFileChooser.setSelectedFile(new File(textField.getAsText()));

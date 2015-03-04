@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -53,11 +53,11 @@ perl::Object pyramid(perl::Object p_in, const Scalar& z, perl::OptionSet options
    } else {
       const bool pointed=p_in.give("POINTED");
       if (!pointed)
-         throw std::runtime_error("bipyramid: input polyhedron not pointed");
+         throw std::runtime_error("pyramid: input polyhedron not pointed");
 
       const Matrix<Scalar> V=p_in.give("VERTICES");
       n_vertices=V.rows();
-      const Vector<Scalar> z0=p_in.give("REL_INT_POINT");
+      const Vector<Scalar> z0= p_in.give("BOUNDED") ? p_in.give("VERTEX_BARYCENTER") : p_in.give("REL_INT_POINT");
       p_out.take("VERTICES") << (V | zero_vector<Scalar>()) /
          (z0 | z);
       const Matrix<Scalar> empty;

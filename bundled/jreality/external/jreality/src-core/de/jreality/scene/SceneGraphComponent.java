@@ -111,7 +111,7 @@ public class SceneGraphComponent extends SceneGraphNode {
       if(geometry!=null) list.add(geometry);
       if(audioSource!=null) list.add(audioSource);
       list.addAll(children);
-      return list.isEmpty() ? Collections.EMPTY_LIST : list;
+      return list.isEmpty() ? Collections.<SceneGraphNode>emptyList(): list;
     } finally {
       finishReader();
     }
@@ -164,7 +164,7 @@ public class SceneGraphComponent extends SceneGraphNode {
   public SceneGraphComponent getChildComponent(int index) {
     startReader();
     try {
-      return (SceneGraphComponent) children.get(index);
+      return children.get(index);
     } finally {
       finishReader();
     }
@@ -209,6 +209,20 @@ public class SceneGraphComponent extends SceneGraphNode {
 		finishWriter();
 		return true;
 	}
+	
+	  /**
+	   * Use varargs in Java 5 to add multiple children at once
+	   * @param sgcList
+	   */
+	  public void removeChildren(SceneGraphComponent ... sgcList)	{
+		  startWriter();
+		  try {
+			  for (SceneGraphComponent sgc : sgcList)
+				  removeChild(sgc);
+		  } finally {
+			  finishWriter();
+		  }
+	  }
   
 	
 	public void removeAllChildren() {

@@ -41,6 +41,7 @@ public class PropertiesMenu extends Plugin implements PropertiesFlavor {
 		}
 		
 		
+		@Override
 		public void actionPerformed(ActionEvent e) {
 			Component parent = SwingUtilities.getWindowAncestor(view.getCenterComponent());
 			int result = fileChooser.showSaveDialog(parent);
@@ -75,6 +76,7 @@ public class PropertiesMenu extends Plugin implements PropertiesFlavor {
 		}
 		
 		
+		@Override
 		public void actionPerformed(ActionEvent e) {
 			Component parent = SwingUtilities.getWindowAncestor(view.getCenterComponent());
 			int result = fileChooser.showOpenDialog(parent);
@@ -104,6 +106,7 @@ public class PropertiesMenu extends Plugin implements PropertiesFlavor {
 		}
 		
 		
+		@Override
 		public void actionPerformed(ActionEvent e) {
 			Component parent = SwingUtilities.getWindowAncestor(view.getCenterComponent());
 			int result = JOptionPane.showConfirmDialog(parent, "Do you really want to load the default properties?", "Confirm", YES_NO_OPTION);
@@ -177,6 +180,7 @@ public class PropertiesMenu extends Plugin implements PropertiesFlavor {
 		return new PluginInfo("Property Menu Items", "jReality Group");
 	}
 
+	@Override
 	public void setPropertiesListener(PropertiesListener l) {
 		propertiesListener = l;
 	}

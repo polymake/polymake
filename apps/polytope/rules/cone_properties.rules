@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -19,12 +19,36 @@ function equal_up_to_row_permutation(Matrix, Matrix) {
     $M1==$M2 || defined(eval { find_matrix_row_permutation($M1,$M2) })
 }
 
+# @topic objects/Cone<Rational>
+# An affine rational cone realized in R<sup>d</sup>.
+
+# @topic objects/Cone<Float>
+# An affine cone with float coordinates realized in R<sup>d</sup>.
+
+# @topic objects/Cone<QuadraticExtension>
+# An affine cone with coordinates in a [[QuadraticExtension]] field realized in R<sup>d</sup>.
+
+
 object Cone {
 
 file_suffix cone
 
 # rules only intended for cones and not for polytopes should have this label
 label cone_only
+
+method lookup_ambient_dim($) {
+   my ($self, $d) = @_;
+   if (!defined($d)) {
+      foreach (qw(RAYS INPUT_RAYS LINEALITY_SPACE INPUT_LINEALITY INEQUALITIES FACETS EQUATIONS LINEAR_SPAN COORDINATE_LABELS)) {
+         my $M;
+         if (defined ($M = $self->lookup($_)) && $M->cols() > 0) {
+            $d = $M->cols();
+            last;
+         }
+      }
+   }
+   $d;
+}
 
 # @category Input property
 # (Non-homogenous) vectors whose linear span defines a subset of the lineality space of the cone; 
@@ -50,7 +74,6 @@ property INPUT_RAYS : Matrix<Scalar> {
       canonicalize_rays($M); 
       if ($this->isa("Polytope")) {
           canonicalize_polytope_generators($M);
-          canonicalize_rays($M); # FIXME here we have to canonicalize again, this should be included in the above function!
       }
   }
 }
@@ -384,24 +407,27 @@ property ESSENTIALLY_GENERIC : Bool;
 # Some triangulation of the cone using only its [[RAYS]].
 property TRIANGULATION : topaz::GeometricSimplicialComplex<Scalar> : multiple {
 
+   # @category Combinatorics
    # The splits that are coarsenings of the current [[TRIANGULATION]].
    # If the triangulation is regular these form the unique split decomposition of
    # the corresponding weight function.
    property REFINED_SPLITS : Set<Int>;
 
+   # @category Combinatorics
    # GKZ-vector 
-   #    See Chapter 7 in Gelfand, Kapranov, and Zelevinsky:
-   #    Discriminants, Resultants and Multidimensional Determinants, Birkhäuser 1994
+   # 	See Chapter 7 in Gelfand, Kapranov, and Zelevinsky:
+   #	Discriminants, Resultants and Multidimensional Determinants, Birkhäuser 1994
    property GKZ_VECTOR : Vector<Scalar>;
 
   
+   # @category Geometry
    # Weight vector to construct a regular [[TRIANGULATION]].
    # Must be generic.
    property WEIGHTS : Vector<Scalar>;
 
    property BOUNDARY {
 
-       # For each facet the set of simplex indices of BOUNDARY that triangulate it.
+       # For each facet the set of simplex indices of [[BOUNDARY]] that triangulate it.
        property FACET_TRIANGULATIONS : Array<Set>;
    }
 
@@ -464,7 +490,26 @@ weight 1.10;
 
 # @category Visualization
 # Unique names assigned to the coordinate directions, analogous to [[RAY_LABELS]].
-property COORDINATE_LABELS : Array<String> : mutable;
+# For Polytopes this should contain "inhomog_var" for the homogenization coordinate and this will
+# be added automatically if necessary and [[CONE_AMBIENT_DIM]] can be computed.
+property COORDINATE_LABELS : Array<String> : mutable {
+
+   method canonical {
+      my ($this,$A)=@_;
+      my $d = $this->lookup_ambient_dim($this->lookup("CONE_AMBIENT_DIM"));
+      # only do the check if we were able to determine the ambient dimension
+      if (defined($d) && $d != $A->size) {
+         if ($this->isa("Polytope") and $A->size+1 == $d) {
+            warn "automatically prepending inhomog_var to COORDINATE_LABELS" if ($DebugLevel);
+            # we need to rewrite the reference in @_ here to modify the property
+            $_[1] = new Array<String>(["inhomog_var",@$A]);
+         } else {
+            die "COORDINATE_LABLES: Wrong number of variables!";
+         }
+      }
+   }
+
+}
 
 
 # @category Visualization

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -9,7 +9,7 @@
 #
 #  This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPSE.  See the
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
@@ -24,7 +24,7 @@ IMPORT
   graph
 
 USE
-  polytope common
+  common polytope
 
 file_suffix mat
 
@@ -33,7 +33,9 @@ file_suffix mat
 declare object Matroid;
 
 INCLUDE
+  help.rules
   matroid_properties.rules
+  matroid_examples.rules
   _4ti2.rules
 
 object Matroid {
@@ -43,8 +45,13 @@ rule RANK : BASES {
 } 
 weight 0.10;
 
-rule BASES, N_BASES, RANK, N_ELEMENTS : POINTS {
+rule BASES, N_BASES, RANK, N_ELEMENTS : VECTORS {
   bases_from_points($this)
+}
+weight 4.50;
+
+rule BASES, N_BASES, RANK : LATTICE_OF_FLATS, N_ELEMENTS {
+  bases_from_lof($this)
 }
 weight 4.50;
 
@@ -155,7 +162,7 @@ rule PAVING : CIRCUITS, RANK {
 }
 weight 1.10;
 
-rule BINARY, BINARY_POINTS, TERNARY, TERNARY_POINTS : BASES, NON_BASES, N_ELEMENTS, RANK {
+rule BINARY, BINARY_VECTORS, TERNARY, TERNARY_VECTORS : BASES, NON_BASES, N_ELEMENTS, RANK {
     finite_representation($this);
 }
 weight 2.10;
@@ -167,8 +174,8 @@ rule REGULAR : BINARY, TERNARY {
 }
 weight 0.10;
 
-rule POINTS : BINARY_POINTS, TERNARY_POINTS {
-    $this->POINTS=3*($this->BINARY_POINTS)-2*($this->TERNARY_POINTS); #this rule is baesd on the specific computation in finite_representation
+rule VECTORS : BINARY_VECTORS, TERNARY_VECTORS {
+    $this->VECTORS=3*($this->BINARY_VECTORS)-2*($this->TERNARY_VECTORS); #this rule is baesd on the specific computation in finite_representation
 }
 precondition : REGULAR;
 weight 0.10;
@@ -237,12 +244,12 @@ rule LATTICE_OF_FLATS : MATROID_HYPERPLANES {
 weight 6.20;
 
 rule CONNECTED_COMPONENTS : CIRCUITS, N_ELEMENTS{
-    $this->CONNECTED_COMPONENTS = connected_componets_from_circuits($this->CIRCUITS, $this->N_ELEMENTS);
+    $this->CONNECTED_COMPONENTS = connected_components_from_circuits($this->CIRCUITS, $this->N_ELEMENTS);
 }
 weight 1.10;
 
 rule CONNECTED_COMPONENTS : COCIRCUITS, N_ELEMENTS{
-    $this->CONNECTED_COMPONENTS = connected_componets_from_circuits($this->COCIRCUITS, $this->N_ELEMENTS);
+    $this->CONNECTED_COMPONENTS = connected_components_from_circuits($this->COCIRCUITS, $this->N_ELEMENTS);
 }
 weight 1.10;  
 
@@ -275,6 +282,27 @@ rule F_VECTOR : H_VECTOR {
         }
     }
     $this->F_VECTOR = $f;
+}
+
+rule H_VECTOR : F_VECTOR {
+    my $f = $this->F_VECTOR;
+    my $d = $f->dim();
+    my $h = new Vector<Integer>($d+1);
+    $h->[0] = 1;
+    for (my $j=1; $j<=$d; $j++) {
+        for (my $i=0; $i<=$j; $i++) {
+            my $c = binomial($d-$i, $j-$i);
+            if ($i>0) {
+                $c *= $f->[$i-1];
+            }
+            if (($j-$i)%2 == 0) {
+                $h->[$j] += $c;
+            } else {
+                $h->[$j] -= $c;
+            }
+        }
+    }
+    $this->H_VECTOR = $h;
 }
 
 rule REVLEX_BASIS_ENCODING : BASES, RANK, N_ELEMENTS {

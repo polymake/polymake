@@ -1,0 +1,46 @@
+<toolconfig>
+	<rawdevices>
+		<rawdevice 
+			id="3DConnexionDevice"
+			type="de.jreality.toolsystem.raw.Device3DConnexionHID">
+		</rawdevice>
+	</rawdevices>
+
+	<rawslots>
+		<mapping device="3DConnexionDevice" src="x" target="X" />
+		<mapping device="3DConnexionDevice" src="y" target="Y" />
+		<mapping device="3DConnexionDevice" src="z" target="Z" />
+		<mapping device="3DConnexionDevice" src="rx" target="RX" />
+		<mapping device="3DConnexionDevice" src="ry" target="RY" />
+		<mapping device="3DConnexionDevice" src="rz" target="RZ" />
+		<mapping device="3DConnexionDevice" src="button_fit" target="EncompassActivation"/>
+	</rawslots>
+
+	<virtualdevices>
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualRotationFromRxRyRz">
+			<inputslot>RX</inputslot>
+			<inputslot>RY</inputslot>
+			<inputslot>RZ</inputslot>
+			<outputslot>SimpleRotateTransformation</outputslot>
+			<prop name="gain">
+ 				<double>0.05</double>
+			</prop>
+		</virtualdevice>
+		<mapping src="RX" target="SimpleRotateActivation"/>
+		<mapping src="RY" target="SimpleRotateActivation"/>
+		<mapping src="RZ" target="SimpleRotateActivation"/>
+		
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualTranslationFromXYZ">
+			<inputslot>X</inputslot>
+			<inputslot>Z</inputslot>
+			<inputslot>Y</inputslot>
+			<outputslot>SimpleTranslateTransformation</outputslot>
+			<prop name="gain">
+ 				<double>0.2</double>
+			</prop>
+		</virtualdevice>
+		<mapping src="X" target="SimpleDragActivation"/>
+		<mapping src="Y" target="SimpleDragActivation"/>
+		<mapping src="Z" target="SimpleDragActivation"/>
+	</virtualdevices>
+</toolconfig>

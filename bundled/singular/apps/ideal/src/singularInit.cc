@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -103,7 +103,7 @@ idhdl get_singular_function(std::string s) {
 
 } // end namespace singular
 
-UserFunction4perl("# @category Algebra"
+UserFunction4perl("# @category Singular interface"
                   "# Loads a SINGULAR library"
                   "# @param String s",
                   &singular::load_library, "load_singular_library($)");

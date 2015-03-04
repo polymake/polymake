@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -24,7 +24,6 @@
 #include "polymake/Array.h"
 #include "polymake/Graph.h"
 #include "polymake/hash_set"
-#include "polymake/polytope/cdd_interface.h"
 #include "polymake/polytope/to_interface.h"
 #include <list>
 #include <stdlib.h>
@@ -35,16 +34,6 @@ namespace polymake { namespace polytope {
 template <typename E>
 struct choose_solver {
    typedef typename to_interface::solver<E> solver;
-};
-
-template<>
-struct choose_solver<Rational> {
-   typedef cdd_interface::solver<Rational> solver;
-};
-
-template<>
-struct choose_solver<Integer> {
-   typedef cdd_interface::solver<Integer> solver;
 };
 
 template <typename E>

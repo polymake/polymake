@@ -28,6 +28,7 @@
 #include <string>
 #include <iostream>
 #include <set>
+#include <deque>
 
 #include "integer.h"
 #include "vector_operations.h"
@@ -48,7 +49,7 @@ using namespace std;
 template<typename Integer>
 Simplex<Integer>::Simplex(const Matrix<Integer>& Map){
     dim=Map.nr_of_columns();
-    key=Map.max_rank_submatrix_lex(dim);
+    key=Map.max_rank_submatrix_lex();
     Generators=Map.submatrix(key);
     diagonal = vector< Integer >(dim);
     Support_Hyperplanes=invert(Generators, diagonal, volume); //test for arithmetic
@@ -138,11 +139,11 @@ template<typename Integer>
 SimplexEvaluator<Integer>::SimplexEvaluator(Full_Cone<Integer>& fc)
 : C_ptr(&fc),
   dim(fc.dim),
-  det_sum(0),
-  mult_sum(0),
+  // det_sum(0),
+  // mult_sum(0),
   key(dim),
-  candidates_size(0),
-  collected_elements_size(0),
+  // candidates_size(0),
+  // collected_elements_size(0),
   Generators(dim,dim),
   TGenerators(dim,dim),
   GenCopy(dim,dim),
@@ -165,8 +166,12 @@ SimplexEvaluator<Integer>::SimplexEvaluator(Full_Cone<Integer>& fc)
         // we need the generators to be sorted by degree
         for (size_t i=C_ptr->nr_gen-dim; i<C_ptr->nr_gen; i++)
             hv_max += C_ptr->gen_degrees[i];
-        hvector.resize(hv_max);
-        inhom_hvector.resize(hv_max);
+        if (hv_max > 1000000) {
+            errorOutput() << "Error: generator degrees are to huge, h-vector would contain more than 10^6 entires." << endl;
+            throw BadInputException();
+        }
+        // hvector.resize(hv_max);
+        // inhom_hvector.resize(hv_max);
     }
     
     if(fc.inhomogeneous)
@@ -176,19 +181,23 @@ SimplexEvaluator<Integer>::SimplexEvaluator(Full_Cone<Integer>& fc)
     
     for(size_t i=0;i<fc.InExCollect.size();++i){
         InExSimplData[i].GenInFace.resize(fc.dim);
-        InExSimplData[i].hvector.resize(hv_max);
+        // InExSimplData[i].hvector.resize(hv_max);
         InExSimplData[i].gen_degrees.reserve(fc.dim);
     }
     
     full_cone_simplicial=(C_ptr->nr_gen==C_ptr->dim);
-    is_complete_simplex=true; // to be changed later if necessrary
-    mother_simplex=this; // to be changed later if necessrary
+    sequential_evaluation=true; // to be changed later if necessrary
+}
+
+template<typename Integer>
+void SimplexEvaluator<Integer>::set_evaluator_tn(int threadnum){
+    tn=threadnum;   
 }
 
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void SimplexEvaluator<Integer>::add_to_inex_faces(const vector<Integer> offset, size_t Deg){
+void SimplexEvaluator<Integer>::add_to_inex_faces(const vector<Integer> offset, size_t Deg, Collector<Integer>& Coll){
 
     for(size_t i=0;i<nrInExSimplData;++i){
         bool in_face=true;
@@ -199,7 +208,7 @@ void SimplexEvaluator<Integer>::add_to_inex_faces(const vector<Integer> offset, 
             }
         if(!in_face)
             continue;
-        InExSimplData[i].hvector[Deg]+=InExSimplData[i].mult;            
+        Coll.InEx_hvector[i][Deg]+=InExSimplData[i].mult;            
     }
     
 }
@@ -207,7 +216,7 @@ void SimplexEvaluator<Integer>::add_to_inex_faces(const vector<Integer> offset, 
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void SimplexEvaluator<Integer>::prepare_inclusion_exclusion_simpl(size_t Deg) {
+void SimplexEvaluator<Integer>::prepare_inclusion_exclusion_simpl(size_t Deg, Collector<Integer>& Coll) {
      
      Full_Cone<Integer>& C = *C_ptr;
      // map<boost::dynamic_bitset<>, long> InExSimpl;      // local version of nExCollect   
@@ -229,18 +238,16 @@ void SimplexEvaluator<Integer>::prepare_inclusion_exclusion_simpl(size_t Deg) {
             if(F->first.test(key[i]))
                 InExSimplData[nrInExSimplData].GenInFace.set(i);
         InExSimplData[nrInExSimplData].gen_degrees.clear();
-            for(size_t i=0;i<dim;++i)
-                if(InExSimplData[nrInExSimplData].GenInFace.test(i))
-                    InExSimplData[nrInExSimplData].gen_degrees.push_back(gen_degrees[i]);
-        for(size_t i=0;i<InExSimplData[nrInExSimplData].hvector.size();++i)
-          InExSimplData[nrInExSimplData].hvector[i]=0;
+        for(size_t i=0;i<dim;++i)
+            if(InExSimplData[nrInExSimplData].GenInFace.test(i))
+                InExSimplData[nrInExSimplData].gen_degrees.push_back(gen_degrees[i]);
         InExSimplData[nrInExSimplData].mult=F->second;
         nrInExSimplData++;  
      }
      
      if(C_ptr->do_h_vector){
-        vector<Integer> ZeroV(dim,0);
-        add_to_inex_faces(ZeroV,Deg);
+        vector<Integer> ZeroV(dim,0);               // allowed since we have only kept faces that contain 0+offset
+        add_to_inex_faces(ZeroV,Deg,Coll);          // nothing would change if we took 0+offset here
      }
      
 }
@@ -248,12 +255,12 @@ void SimplexEvaluator<Integer>::prepare_inclusion_exclusion_simpl(size_t Deg) {
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void SimplexEvaluator<Integer>::update_inhom_hvector(long level_offset, size_t Deg){
+void SimplexEvaluator<Integer>::update_inhom_hvector(long level_offset, size_t Deg, Collector<Integer>& Coll){
 
     // cout << "*** " << level_offset << " " << Deg << endl;
 
     if(level_offset==1){
-        inhom_hvector[Deg-1]++;
+        Coll.inhom_hvector[Deg-1]++;
         return;
     }
     
@@ -265,10 +272,10 @@ void SimplexEvaluator<Integer>::update_inhom_hvector(long level_offset, size_t D
         // cout << "+++ " << gen_levels[i] << " " << gen_degrees[i] << endl;
         if(gen_levels[i]==1){
             Deg_i=Deg+gen_degrees[i];
-            inhom_hvector[Deg_i-1]++;
+            Coll.inhom_hvector[Deg_i-1]++;
         }
     }
-    // cout << "------ " << inhom_hvector << endl;
+    // cout << "------ " << Coll.inhom_hvector << endl;
     // cout << level0_gen_degrees;
 }
 
@@ -280,7 +287,7 @@ size_t TotDet=0;
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s) {
+Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s, Collector<Integer>& Coll) {
 
     volume = s.vol;
     key = s.key;
@@ -320,7 +327,7 @@ Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s) {
             #pragma omp atomic
             TotDet++;
         }
-        addMult(volume);
+        addMult(volume,Coll);
         return volume;
     }  // done if only mult is asked for
     
@@ -354,6 +361,7 @@ Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s) {
             Unimod++;
             for(i=0;i<dim;i++)
                 GDiag[i]=1;
+            GDiag_computed=true;
         }
         else
             #pragma omp atomic
@@ -398,7 +406,7 @@ Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s) {
     // Can't be done earlier since volume is not always known earlier
 
 
-    addMult(volume);
+    addMult(volume,Coll);
         
     if (unimodular && !C.do_h_vector && !C.do_Stanley_dec) { // in this case done
         return volume;
@@ -467,9 +475,20 @@ Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s) {
         for(j=0;j<dim;j++){
             InvGenSelCols[j][Ind0_key[i]]=InvSol[j][i];
         }
+   
+    
+    return(volume);
+    
+}
 
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+void SimplexEvaluator<Integer>::take_care_of_0vector(Collector<Integer>& Coll){
+
+    size_t i,j;
     Integer Test;
-    size_t Deg=0;
+    size_t Deg0_offset=0;
     long level_offset=0; // level_offset is the level of the lement in par + its offset in the Stanley dec
     for(i=0;i<dim;i++)
         Excluded[i]=false;
@@ -478,9 +497,9 @@ Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s) {
         if(Test<0)
         {
             Excluded[i]=true; // the facet opposite to vertex i is excluded
-            if(C.do_h_vector){
-                Deg += gen_degrees[i];
-                if(C.inhomogeneous)
+            if(C_ptr->do_h_vector){
+                Deg0_offset += gen_degrees[i];
+                if(C_ptr->inhomogeneous)
                     level_offset+=gen_levels[i];                    
             }
         }
@@ -488,9 +507,9 @@ Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s) {
             for(j=0;j<dim;j++){
                 if(InvGenSelCols[j][i]<0){ // COLUMNS of InvGen give supp hyps
                     Excluded[i]=true;
-                    if(C.do_h_vector){
-                        Deg += gen_degrees[i];
-                        if(C.inhomogeneous)
+                    if(C_ptr->do_h_vector){
+                        Deg0_offset += gen_degrees[i];
+                        if(C_ptr->inhomogeneous)
                             level_offset+=gen_levels[i];
                     }
                     break;
@@ -500,37 +519,31 @@ Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s) {
             }
         }
     }
-    
 
-    // prepare h-vector and inclusion/exclusion scheme if necessary, insert 0+offset
-    if (C.do_h_vector) {
-        if(C.inhomogeneous){
-            for (i=0; i<inhom_hvector.size(); i++)
-                inhom_hvector[i]=0;
+    if (C_ptr->do_h_vector) {
+        if(C_ptr->inhomogeneous){
             if(level_offset<=1)
-                update_inhom_hvector(level_offset,Deg); // here we count 0+offset
+                update_inhom_hvector(level_offset,Deg0_offset, Coll); // here we count 0+offset
         }
         else{
-            for (i=0; i<hvector.size(); i++)
-                hvector[i]=0;
-            hvector[Deg]++; // here we count 0+offset
+            Coll.hvector[Deg0_offset]++; // here we count 0+offset
         }
     }
     
-    // cout << "--- " << inhom_hvector;
+    // cout << "--- " << Coll.inhom_hvector;
     
-    if(C.do_excluded_faces)
-        prepare_inclusion_exclusion_simpl(Deg);
+    if(C_ptr->do_excluded_faces)
+        prepare_inclusion_exclusion_simpl(Deg0_offset, Coll);
 
-    if(C.do_Stanley_dec){                          // prepare space for Stanley dec
+    if(C_ptr->do_Stanley_dec){                          // prepare space for Stanley dec
         STANLEYDATA<Integer> SimplStanley;         // key + matrix of offsets
         SimplStanley.key=key;
         Matrix<Integer> offsets(explicit_cast_to_long(volume),dim);  // volume rows, dim columns
         SimplStanley.offsets=offsets;
         #pragma omp critical(STANLEY)
         {
-        C.StanleyDec.push_back(SimplStanley);      // extend the Stanley dec by a new matrix
-        StanleyMat= &C.StanleyDec.back().offsets;  // and use this matrix for storage
+        C_ptr->StanleyDec.push_back(SimplStanley);      // extend the Stanley dec by a new matrix
+        StanleyMat= &C_ptr->StanleyDec.back().offsets;  // and use this matrix for storage
         }
         for(i=0;i<dim;++i)                   // the first vector is 0+offset
             if(Excluded[i])
@@ -539,71 +552,13 @@ Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s) {
 
     StanIndex=1;  // counts the number of components in the Stanley dec. Vector at 0 already filled if necessary
 
-    if (unimodular) {    // conclusion in the unimodular case
-        if(C.do_h_vector){
-            if(C.inhomogeneous)
-                Hilbert_Series.add(inhom_hvector,level0_gen_degrees);    
-            else{
-                Hilbert_Series.add(hvector,gen_degrees);
-                if(C.do_excluded_faces)
-                    for(size_t i=0;i<nrInExSimplData;++i){
-                        Hilbert_Series.add(InExSimplData[i].hvector,InExSimplData[i].gen_degrees);
-                }
-            }
-        }
-        return volume;
-    } // the unimodular case has been taken care of
-    
-    Candidates.clear();
-    candidates_size = 0;
-    
-    return(volume);
-    
 }
 
 
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void SimplexEvaluator<Integer>::evaluation_loop_sequential() {
-
-    size_t last;
-    vector<Integer> point(dim,0);
-
-    Matrix<Integer> elements(dim,dim); //all 0 matrix
-    // vector<Integer> help;
-
-
-    //now we need to create the candidates
-    while (true) {
-        last = dim;
-        for (int k = dim-1; k >= 0; k--) {
-            if (point[k] < GDiag[k]-1) {
-                last = k;
-                break;
-            }
-        }
-        if (last >= dim) {
-            break;
-        }
-
-        point[last]++;
-        v_add_to_mod(elements[last], InvGenSelRows[last], volume);
-
-        for (size_t i = last+1; i <dim; i++) {
-            point[i]=0;
-            elements[i] = elements[last];
-        }
-        
-        evaluate_element(elements[last]);
-    }
-
-}
-
-//---------------------------------------------------------------------------
-
-template<typename Integer>
-void SimplexEvaluator<Integer>::evaluate_element(const vector<Integer>& element){
+void SimplexEvaluator<Integer>::evaluate_element(const vector<Integer>& element, Collector<Integer>& Coll){
 
     // now we create and evaluate the points in par
     Integer norm;
@@ -663,12 +618,12 @@ void SimplexEvaluator<Integer>::evaluate_element(const vector<Integer>& element)
 
             //count point in the h-vector
             if(C.inhomogeneous && level_offset<=1)
-                update_inhom_hvector(level_offset,Deg);          
+                update_inhom_hvector(level_offset,Deg, Coll);          
             else
-                hvector[Deg]++;
+                Coll.hvector[Deg]++;
             
             if(C.do_excluded_faces)
-                add_to_inex_faces(element,Deg);
+                add_to_inex_faces(element,Deg,Coll);
         }
 
         if(C.do_Stanley_dec){
@@ -682,10 +637,10 @@ void SimplexEvaluator<Integer>::evaluate_element(const vector<Integer>& element)
             if (C.do_Hilbert_basis) {
                 vector<Integer> candi = v_merge(element,norm);
                 if (!is_reducible(candi, Hilbert_Basis)) {
-                    Candidates.push_back(candi);
-                    candidates_size++;
-                    if (candidates_size >= 1000 && is_complete_simplex) {
-                        local_reduction();
+                    Coll.Candidates.push_back(candi);
+                    Coll.candidates_size++;
+                    if (Coll.candidates_size >= 1000 && sequential_evaluation) {
+                        local_reduction(Coll);
                     }
                 }
                 return;
@@ -693,8 +648,8 @@ void SimplexEvaluator<Integer>::evaluate_element(const vector<Integer>& element)
             if(C.do_deg1_elements && normG==volume && !isDuplicate(element)) {
                 vector<Integer> help=GenCopy.VxM(element);
                 v_scalar_division(help,volume);
-                Collected_Deg1_Elements.push_back(help);
-                collected_elements_size++;
+                Coll.Deg1_Elements.push_back(help);
+                Coll.collected_elements_size++;
             }
 }
 
@@ -702,31 +657,43 @@ void SimplexEvaluator<Integer>::evaluate_element(const vector<Integer>& element)
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void SimplexEvaluator<Integer>::conclude_evaluation() {
+void SimplexEvaluator<Integer>::conclude_evaluation(Collector<Integer>& Coll) {
 
     Full_Cone<Integer>& C = *C_ptr;
 
     if(C.do_h_vector) {
         if(C.inhomogeneous){
-            Hilbert_Series.add(inhom_hvector,level0_gen_degrees);
+            Coll.Hilbert_Series.add(Coll.inhom_hvector,level0_gen_degrees);
+            for (size_t i=0; i<Coll.inhom_hvector.size(); i++)
+                Coll.inhom_hvector[i]=0;
             // cout << "WAU " << endl;
             }
         else{
-            Hilbert_Series.add(hvector,gen_degrees);
+            Coll.Hilbert_Series.add(Coll.hvector,gen_degrees);
+            for (size_t i=0; i<Coll.hvector.size(); i++)
+                Coll.hvector[i]=0;
             if(C.do_excluded_faces)
-                for(size_t i=0;i<nrInExSimplData;++i)
-                    Hilbert_Series.add(InExSimplData[i].hvector,InExSimplData[i].gen_degrees);
+                for(size_t i=0;i<nrInExSimplData;++i){
+                    Coll.Hilbert_Series.add(Coll.InEx_hvector[i],InExSimplData[i].gen_degrees);
+                    for(size_t j=0;j<Coll.InEx_hvector[i].size();++j)
+                        Coll.InEx_hvector[i][j]=0;
+                    
+                }
         }
     }
     
-    // cout << Hilbert_Series << endl;
+    // cout << Coll.Hilbert_Series << endl;
 
 
-    if(!C.do_Hilbert_basis || !is_complete_simplex)
-        return;  // no further reduction in this case
+    if(volume==1 || !C.do_Hilbert_basis || !sequential_evaluation)
+        return;  // no further action in this case
 
-    local_reduction();
+    // cout << "Starting local reduction" << endl;
+        
+    local_reduction(Coll);
 
+    // cout << "local HB " << Hilbert_Basis.size() << endl;
+    
     //inverse transformation and reduction against global reducers
     //some test for arithmetic overflow may be implemented here
     bool inserted;
@@ -739,38 +706,265 @@ void SimplexEvaluator<Integer>::conclude_evaluation() {
             *jj = GenCopy.VxM(*jj);
             v_scalar_division(*jj,volume);
             
-            // reduce against global reducers in C.OldCandidates and insert into Collected_HB_Elements
+            // reduce against global reducers in C.OldCandidates and insert into HB_Elements
             if(full_cone_simplicial){ // no global reduction necessary
-                Collected_HB_Elements.Candidates.push_back(Candidate<Integer>(*jj,C));
+                Coll.HB_Elements.Candidates.push_back(Candidate<Integer>(*jj,C));
                 inserted=true;
             }
             else         
-                inserted=Collected_HB_Elements.reduce_by_and_insert(*jj,C,C.OldCandidates);
+                inserted=Coll.HB_Elements.reduce_by_and_insert(*jj,C,C.OldCandidates);
             if(inserted)
-                collected_elements_size++;
+                Coll.collected_elements_size++;
         }
     }
+	// cout << "local reduction finished " << Coll.collected_elements_size << endl;
     
-    Hilbert_Basis.clear(); // this is not a local variable !!
-    
+
+    Hilbert_Basis.clear(); // this is not a local variable !!    
 }
+
+//---------------------------------------------------------------------------
+
+
+const long SimplexParallelEvaluationBound=10000000; // larger simplices are evaluated by parallel threads
+
+//---------------------------------------------------------------------------
+
+
+/* evaluates a simplex in regard to all data in a single thread*/
+template<typename Integer>
+bool SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
+
+    start_evaluation(s,C_ptr->Results[tn]);
+    s.vol=volume;
+    if(C_ptr->do_only_multiplicity)
+        return true;
+    if(volume>SimplexParallelEvaluationBound && !C_ptr->do_Stanley_dec && omp_get_max_threads()>1) // to be postponed for parallel evaluation
+        return false;
+    take_care_of_0vector(C_ptr->Results[tn]);
+    if(volume!=1)
+        evaluate_block(1,explicit_cast_to_long(volume)-1,C_ptr->Results[tn]);
+    conclude_evaluation(C_ptr->Results[tn]);
+
+    return true;
+}
+
+//---------------------------------------------------------------------------
+
+const size_t ParallelBlockLength=10000; // the length of the block of elements to be processed by a thread
+// const size_t MaxNrBlocks=20000; // maximum number of blocks
+const size_t LocalReductionBound= 10000; // number of candidates in a thread starting local reduction
+const size_t SuperBlockLength=1000000; // number of blocks in a super block
 
 
 //---------------------------------------------------------------------------
 
 
-/* evaluates a simplex in regard to all data */
 template<typename Integer>
-Integer SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
+void SimplexEvaluator<Integer>::evaluation_loop_parallel() {
 
-    start_evaluation(s);
-    s.vol=volume;
-    if(volume==1 || C_ptr->do_only_multiplicity)
-        return volume;
-    evaluation_loop_sequential();
-    conclude_evaluation();
+    size_t block_length=ParallelBlockLength;
+    size_t nr_elements=explicit_cast_to_long(volume)-1; // 0-vector already taken care of
+    size_t nr_blocks=nr_elements/ParallelBlockLength;
+    if(nr_elements%ParallelBlockLength != 0)
+        ++nr_blocks;
+        
+    size_t nr_superblocks=nr_blocks/SuperBlockLength;
+    if(nr_blocks%SuperBlockLength != 0)
+        nr_superblocks++;
 
-    return volume;
+    /*if(nr_blocks>MaxNrBlocks){
+        block_length=nr_elements/MaxNrBlocks;
+        if(nr_elements%MaxNrBlocks != 0)
+            ++block_length;
+        nr_blocks=MaxNrBlocks;
+    }*/
+    // cout << "nr super " << nr_superblocks;
+    
+    for(size_t sbi=0;sbi < nr_superblocks;sbi++){
+    
+    if(verbose && nr_superblocks>1){
+        if(sbi >0)
+            verboseOutput() << endl;
+        verboseOutput() << "Superblock " << sbi+1 << " ";
+    }
+    
+    size_t actual_nr_blocks;
+    
+    if(sbi==nr_superblocks-1 && nr_blocks%SuperBlockLength!=0) // the last round of smaller length
+        actual_nr_blocks=nr_blocks%SuperBlockLength;
+    else
+        actual_nr_blocks=SuperBlockLength;
+        
+    // cout << "actual " << actual_nr_blocks << endl;
+    
+    size_t progess_report=actual_nr_blocks/50;
+    if(progess_report==0)
+        progess_report=1;
+    
+    bool skip_remaining;
+    deque<bool> done(actual_nr_blocks,false);
+    
+    do{
+    skip_remaining=false;
+
+    #pragma omp parallel
+    {
+    int tn = omp_get_thread_num();  // chooses the associated collector Results[tn]
+
+    #pragma omp for schedule(dynamic)
+    for(size_t i=0; i<actual_nr_blocks;++i){
+    
+        // cout << "i " << i << endl;
+    
+        if(skip_remaining || done[i])
+            continue;
+        if(verbose){
+            if(i>0 && i%progess_report==0)
+                verboseOutput() <<"." << flush;        
+        }
+        done[i]=true;
+        long block_start=(sbi*SuperBlockLength+i)*block_length+1;  // we start at 1
+        long block_end=block_start+block_length-1;
+        if(block_end>(long) nr_elements)
+            block_end=nr_elements;
+        evaluate_block(block_start, block_end,C_ptr->Results[tn]);
+        if(C_ptr->Results[tn].candidates_size>= LocalReductionBound) // >= (not > !! ) if 
+            skip_remaining=true;                            // LocalReductionBound==ParallelBlockLength
+    } // for
+    
+    } // parallel
+    
+    if(skip_remaining){
+    
+        /* #pragma omp parallel for schedule(dynamic)
+        for(size_t i=0;i<C_ptr->Results.size();++i)
+            reduce(C_ptr->Results[i].Candidates,C_ptr->Results[i].Candidates); 
+        */
+            
+        if(verbose){
+                verboseOutput() << "r" << flush;
+            }
+        collect_vectors();   
+        local_reduction(C_ptr->Results[0]);
+    }
+
+    }while(skip_remaining);
+    
+    } // superblock loop
+    
+    
+}
+
+//---------------------------------------------------------------------------
+
+
+template<typename Integer>
+void SimplexEvaluator<Integer>::evaluate_block(long block_start, long block_end, Collector<Integer>& Coll) {
+
+
+    size_t last;
+    vector<Integer> point(dim,0); // represents the lattice element whose residue class is to be processed
+
+    Matrix<Integer> elements(dim,dim); //all 0 matrix
+
+    size_t one_back=block_start-1;
+    long counter=one_back;
+    
+    if(one_back>0){                           // define the last point processed before if it isn't 0
+        for(size_t i=1;i<=dim;++i){               
+            point[dim-i]=one_back % GDiag[dim-i];
+            one_back/= explicit_cast_to_long(GDiag[dim-i]);
+        }
+        
+        for(size_t i=0;i<dim;++i){  // put elements into the state at the end of the previous block
+            if(point[i]!=0){
+                elements[i]=v_add(elements[i],v_scalar_multiplication_two(InvGenSelRows[i],point[i]));
+                v_reduction_modulo(elements[i],volume);
+                for(size_t j=i+1;j<dim;++j)
+                    elements[j]=elements[i];
+            }
+        }
+    }
+    
+    // cout << "VOl " << volume << " " << counter << " " << block_end << endl;
+    // cout << point;
+    // cout << GDiag;
+    
+
+    //now we  create the elements in par
+    while (true) {
+        last = dim;
+        for (int k = dim-1; k >= 0; k--) {
+            if (point[k] < GDiag[k]-1) {
+                last = k;
+                break;
+            }
+        }
+        if (counter >= block_end) {
+            break;
+        }
+        
+        counter++;
+        
+        // cout << "COUNTER " << counter << " LAST " << last << endl;
+
+        point[last]++;
+        v_add_to_mod(elements[last], InvGenSelRows[last], volume);
+
+        for (size_t i = last+1; i <dim; i++) {
+            point[i]=0;
+            elements[i] = elements[last];
+        }
+        
+        // cout << "COUNTER " << counter << " LAST " << elements[last];
+
+        
+        evaluate_element(elements[last],Coll);
+    }
+
+}
+
+//---------------------------------------------------------------------------
+
+/* transfer the vector lists in the collectors to  C_ptr->Results[0] */
+template<typename Integer>
+void SimplexEvaluator<Integer>::collect_vectors(){
+
+    if(C_ptr->do_Hilbert_basis){
+        for(size_t i=1;i<C_ptr->Results.size();++i){
+            C_ptr->Results[0].Candidates.splice(C_ptr->Results[0].Candidates.end(),C_ptr->Results[i].Candidates);
+            C_ptr->Results[0].candidates_size+=C_ptr->Results[i].candidates_size;
+            C_ptr->Results[i].candidates_size = 0;
+        }
+            
+    }
+}
+
+//---------------------------------------------------------------------------
+
+/* evaluates a simplex in parallel threads */
+template<typename Integer>
+void SimplexEvaluator<Integer>::Simplex_parallel_evaluation(){
+
+    if(verbose){
+        verboseOutput() << "simplex volume " << volume << endl;
+    }
+
+    take_care_of_0vector(C_ptr->Results[0]);
+    sequential_evaluation=false;
+
+    evaluation_loop_parallel();
+    
+    collect_vectors();   // --> Results[0]
+    for(size_t i=1;i<C_ptr->Results.size();++i)  // takes care of h-vectors
+        conclude_evaluation(C_ptr->Results[i]);
+    sequential_evaluation=true;   
+    conclude_evaluation(C_ptr->Results[0]);  // h-vector in Results[0] and collected elements
+    
+    if(verbose){
+        verboseOutput() << endl;
+    }    
 }
 
 //---------------------------------------------------------------------------
@@ -786,7 +980,7 @@ bool SimplexEvaluator<Integer>::isDuplicate(const vector<Integer>& cand) const {
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void SimplexEvaluator<Integer>::update_mult_inhom(Integer volume){
+void SimplexEvaluator<Integer>::update_mult_inhom(Integer& multiplicity){
 
     if (!C_ptr->isComputed(ConeProperty::Grading) || !C_ptr->do_triangulation)
             return;
@@ -796,93 +990,102 @@ void SimplexEvaluator<Integer>::update_mult_inhom(Integer volume){
             if(gen_levels[i]>0){
                 break;
             }
-        assert(i<dim);
-        volume*=gen_degrees[i];  // to correct division in addMult_inner
-        volume/=gen_levels[i];
-        addMult_inner(volume);
+        assert(i<dim);        
+        multiplicity*=gen_degrees[i];  // to correct division in addMult_inner
+        multiplicity/=gen_levels[i];
     } 
     else{ 
         size_t i,j=0;
         Integer corr_fact=1;
         for(i=0;i<dim;++i)
             if(gen_levels[i]>0){
-                // cout << "i " << i << " j " << j << " level " << gen_levels[i] << endl;
                 ProjGen[j]=C_ptr->ProjToLevel0Quot.MxV(C_ptr->Generators[key[i]]); // Generators of evaluator may be destroyed
                 corr_fact*=gen_degrees[i];
                 j++;
             }
-        volume*=corr_fact;
-        volume/=ProjGen.vol_destructive();
-        // cout << "After corr "  << volume << endl;      
-        addMult_inner(volume);
+        multiplicity*=corr_fact;
+        multiplicity/=ProjGen.vol_destructive();
+        // cout << "After corr "  << multiplicity << endl;      
     }
 }
 
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void SimplexEvaluator<Integer>::addMult(const Integer& volume) {
+void SimplexEvaluator<Integer>::addMult(Integer multiplicity, Collector<Integer>& Coll) {
 
-    assert(volume != 0);
-    det_sum += volume;
-    if (!C_ptr->isComputed(ConeProperty::Grading) || !C_ptr->do_triangulation)
+    assert(multiplicity != 0);
+    Coll.det_sum += multiplicity;
+    if (!C_ptr->isComputed(ConeProperty::Grading) || !C_ptr->do_triangulation ||
+                    (C_ptr->inhomogeneous && nr_level0_gens!=C_ptr->level0_dim))
         return;
-        
-    // the homogeneous case
-    if(!C_ptr->inhomogeneous){
-        addMult_inner(volume);
-        return;
+    
+    if(C_ptr->inhomogeneous){
+        update_mult_inhom(multiplicity);
     }
     
-    // Now we are in the inhomogeneous case
-    if(nr_level0_gens==C_ptr->level0_dim){
-        update_mult_inhom(volume);
-    }     
-}
-
-//---------------------------------------------------------------------------
-
-template<typename Integer>
-void SimplexEvaluator<Integer>::addMult_inner(const Integer& volume) {
-
     if (C_ptr->deg1_triangulation) {
-        mult_sum += to_mpz(volume);
+        Coll.mult_sum += to_mpz(multiplicity);
     } else {
         mpz_class deg_prod=gen_degrees[0];
         for (size_t i=1; i<dim; i++) {
             deg_prod *= gen_degrees[i];
         }
-        mpq_class mult = to_mpz(volume);
+        mpq_class mult = to_mpz(multiplicity);
         mult /= deg_prod;
-        mult_sum += mult;
-    }
+        Coll.mult_sum += mult;
+    }  
 }
 
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void SimplexEvaluator<Integer>::local_reduction() {
+void SimplexEvaluator<Integer>::local_reduction(Collector<Integer>& Coll) {
     // reduce new against old elements
-    //now done directly    reduce(Candidates, Hilbert_Basis);
+    //now done directly    reduce(Coll.Candidates, Hilbert_Basis);
 
     // interreduce
-    Candidates.sort(compare_last<Integer>);
-    reduce(Candidates, Candidates);
-    //cout << Candidates.size() << endl;
+    Coll.Candidates.sort(compare_last<Integer>);
+    reduce(Coll.Candidates, Coll.Candidates,Coll.candidates_size);
 
-    // reduce old elements
-    reduce(Hilbert_Basis, Candidates);
-    Hilbert_Basis.merge(Candidates,compare_last<Integer>);
-    candidates_size = 0;
+    // reduce old elements by new ones
+    count_and_reduce(Hilbert_Basis, Coll.Candidates);
+    Hilbert_Basis.merge(Coll.Candidates,compare_last<Integer>);
+    Coll.candidates_size = 0;
 }
 
 template<typename Integer>
-void SimplexEvaluator<Integer>::reduce(list< vector< Integer > >& Candi, list< vector<Integer> >& Reducers){
+void SimplexEvaluator<Integer>::count_and_reduce(list< vector< Integer > >& Candi, list< vector<Integer> >& Reducers){
+    size_t dummy=Candi.size();
+    reduce(Candi,Reducers,dummy);
+}
+
+template<typename Integer>
+void SimplexEvaluator<Integer>::reduce(list< vector< Integer > >& Candi, list< vector<Integer> >& Reducers, size_t& Candi_size){
+
+    #pragma omp parallel
+    {
     typename list <vector <Integer> >::iterator cand=Candi.begin();
-    while (cand != Candi.end()) {
-        if (is_reducible(*cand, Reducers)) // erase the candidate
-            cand = Candi.erase(cand);
-        else // continue
+    size_t jjpos=0;
+    
+    #pragma omp for schedule(dynamic)
+    for (size_t j=0; j<Candi_size; ++j) {  // remove negative subfacets shared
+        for(;j > jjpos; ++jjpos, ++cand) ;       // by non-simpl neg or neutral facets 
+        for(;j < jjpos; --jjpos, --cand) ;
+        
+        if (is_reducible(*cand, Reducers)) 
+            (*cand)[dim]=0;                 // mark the candidate
+    }
+    
+    } // parallel
+    
+    typename list <vector <Integer> >::iterator cand=Candi.begin(); // remove reducibles
+    while(cand!=Candi.end()){
+        if((*cand)[dim]==0){
+            cand=Candi.erase(cand);
+            --Candi_size;
+        }
+        else
             ++cand;
     }
 }
@@ -891,14 +1094,11 @@ void SimplexEvaluator<Integer>::reduce(list< vector< Integer > >& Candi, list< v
 template<typename Integer>
 bool SimplexEvaluator<Integer>::is_reducible(const vector< Integer >& new_element, list< vector<Integer> >& Reducers){
     // the norm is at position dim
-    if (new_element[dim]==0) {
-        return true; // new_element=0
-    }
-    else {
+
         size_t i,c=0;
         typename list< vector<Integer> >::iterator j;
         for (j = Reducers.begin(); j != Reducers.end(); ++j) {
-            if (new_element[dim]<2*(*j)[dim]) {
+            if (new_element[dim]< 2*(*j)[dim]) {
                 break; //new_element is not reducible;
             }
             else {
@@ -919,25 +1119,65 @@ bool SimplexEvaluator<Integer>::is_reducible(const vector< Integer >& new_elemen
             }
         }
         return false;
-    }
+
 }
 
 //---------------------------------------------------------------------------
 
 
+// Collector
+
 template<typename Integer>
-void SimplexEvaluator<Integer>::transfer_candidates() {
+Collector<Integer>::Collector(Full_Cone<Integer>& fc):
+  C_ptr(&fc),
+  dim(fc.dim),
+  det_sum(0),
+  mult_sum(0),
+  candidates_size(0),
+  collected_elements_size(0),
+  InEx_hvector(C_ptr->InExCollect.size())
+{
+
+    size_t hv_max=0;
+    if (C_ptr->do_h_vector) {
+        // we need the generators to be sorted by degree
+        for (size_t i=C_ptr->nr_gen-dim; i<C_ptr->nr_gen; i++)
+            hv_max += C_ptr->gen_degrees[i];
+        hvector.resize(hv_max,0);
+        inhom_hvector.resize(hv_max,0);
+    }
+    for(size_t i=0;i<InEx_hvector.size();++i)
+        InEx_hvector[i].resize(hv_max,0);
+}
+
+template<typename Integer>
+Integer Collector<Integer>::getDetSum() const {
+    return det_sum;
+}
+
+template<typename Integer>
+mpq_class Collector<Integer>::getMultiplicitySum() const {
+    return mult_sum;
+}
+
+template<typename Integer>
+const HilbertSeries& Collector<Integer>::getHilbertSeriesSum() const {
+    return Hilbert_Series;
+}
+
+template<typename Integer>
+void Collector<Integer>::transfer_candidates() {
     if(collected_elements_size==0)
         return;
     if (C_ptr->do_Hilbert_basis) {
         #pragma omp critical(CANDIDATES)
-        C_ptr->NewCandidates.splice(Collected_HB_Elements);
+        C_ptr->NewCandidates.splice(HB_Elements);
         #pragma omp atomic
         C_ptr->CandidatesSize += collected_elements_size;
     }
     if (C_ptr->do_deg1_elements){
         #pragma omp critical(CANDIDATES)
-        C_ptr->Deg1_Elements.splice(C_ptr->Deg1_Elements.begin(), Collected_Deg1_Elements);
+        C_ptr->Deg1_Elements.splice(C_ptr->Deg1_Elements.begin(),Deg1_Elements);
         #pragma omp atomic
         C_ptr->CandidatesSize += collected_elements_size;
     }
@@ -945,24 +1185,12 @@ void SimplexEvaluator<Integer>::transfer_candidates() {
     collected_elements_size = 0;
 }
 
-template<typename Integer>
-Integer SimplexEvaluator<Integer>::getDetSum() const {
-    return det_sum;
-}
 
 template<typename Integer>
-size_t SimplexEvaluator<Integer>::get_collected_elements_size(){
+size_t Collector<Integer>::get_collected_elements_size(){
      return collected_elements_size;
 }
 
-template<typename Integer>
-mpq_class SimplexEvaluator<Integer>::getMultiplicitySum() const {
-    return mult_sum;
-}
 
-template<typename Integer>
-const HilbertSeries& SimplexEvaluator<Integer>::getHilbertSeriesSum() const {
-    return Hilbert_Series;
-}
 
 } /* end namespace */

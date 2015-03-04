@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -19,17 +19,17 @@ CREDIT graph_compare
 
 
 # @category Symmetry
-# Compute the combinatorial symmetries (i.e. automorphisms of the face lattice) of
+# Compute the combinatorial symmetries (i.e., automorphisms of the face lattice) of
 # a given polytope //poly//. If //on_vertices// is set to 1, the function
 # returns a [[group::GroupOfPolytope|GroupOfPolytope]] which acts on the vertices. If //on_vertices// is set
 # to any other number, the function returns a [[group::GroupOfPolytope|GroupOfPolytope]] 
 # which acts on the facets of the polytope. If //on_vertices// is unspecified, both 
 # groups are returned.
-# @param Polytope poly the given polytope
-# @param Int on_vertices specifies whether the returned group should act on vertices (1) or on facets
+# @param Polytope poly
+# @param Int on_vertices specifies whether the returned group should act on vertices (1) or on facets (2)
 # @return group::GroupOfPolytope the combinatorial symmetry group acting on the vertices
 #                                or the facets depending on //on_vertices//
-#     or (group::GroupOfPolytope,group::GroupOfPolytope) group on vertices, group on facets
+#     or (group::GroupOfPolytope, group::GroupOfPolytope) = (group on vertices, group on facets) if //on_vertices is undefined
 user_function combinatorial_symmetries(polytope::Polytope;$) {
     my $poly = $_[0];
     my $pairs_of_gens = automorphisms($poly->VERTICES_IN_FACETS);

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -216,25 +216,17 @@ sub new {
    }
 
    # don't permute the 0-th, homogeneous coordinate
-   my @xorder = sort { $self->X->[$a] cmp $self->X->[$b] } 1..$#{$self->X}; 
+   my @xorder = sort {
+         # do some clever sorting in case we have prefixed but not padded numbers
+         my ($x,$y) = ($self->X->[$a], $self->X->[$b]);
+         if (my ($xprefix,$xnumbers) = $x =~ /(\D*)(\d+)/) {
+            if ($y =~ /(\D*)(\d+)/) {
+               return $xprefix cmp $1 || $xnumbers <=> $2;
+            }
+         }
+         $x cmp $y;
+      } 1..$#{$self->X};
    unshift @xorder, 0;
-
-   foreach my $line (@{$self->A}, @{$self->P}) {
-      my %permline = ();
-      foreach (keys %{$line}) {
-         $permline{$xorder[$_]} = $line->{$_}; 
-      }
-      %{$line} = %permline;
-   }
-
-   # more perl-fu could integrate this loop into the previous one
-   my %permC = ();
-   while (my ($k,$v) = each %{$self->C}) {
-      $permC{$xorder[$k]} = $v;
-   }
-   $self->C = \%permC;
-   keys %{$self->C};  # reset the iterator, just in case
-   $self->C->{0} = 0;
 
    my @invxorder = (0);
    my $n = scalar @xorder - 1;
@@ -243,8 +235,25 @@ sub new {
        $invxorder[$xorder[$_]] = $_;
    }
 
-   @{$self->X}=@{$self->X}[@invxorder];
-   @{$self->Int}=@{$self->Int}[@invxorder] if @{$self->Int};
+   foreach my $line (@{$self->A}, @{$self->P}) {
+      my %permline = ();
+      foreach (keys %{$line}) {
+         $permline{$invxorder[$_]} = $line->{$_};
+      }
+      %{$line} = %permline;
+   }
+
+   # more perl-fu could integrate this loop into the previous one
+   my %permC = ();
+   while (my ($k,$v) = each %{$self->C}) {
+      $permC{$invxorder[$k]} = $v;
+   }
+   $self->C = \%permC;
+   keys %{$self->C};  # reset the iterator, just in case
+   $self->C->{0} = 0;
+
+   @{$self->X}=@{$self->X}[@xorder];
+   @{$self->Int}=@{$self->Int}[@xorder] if @{$self->Int};
    $self;
 }
 
@@ -338,8 +347,8 @@ sub make_vector($$$;$$) {   # "linear expression", positive_sign => (coefficient
 # @param $label the label of the relation
 sub livecheck($$$) {
     my ($self, $vec, $rel, $label) = @_;
-    if ($self->ct % 10000 == 0) {
-        print $self->ct, "\n";
+    if ($self->ct % 10000 == 0 && $self->ct > 0) {
+        print "checked " , $self->ct, " relations\n";
     }
     $self->ct++;
     my $relvec = new SparseVector<Rational>($self->testvec->dim());

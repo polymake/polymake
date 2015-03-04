@@ -58,7 +58,8 @@ public class ParserUtil {
 	    if (st.ttype == StreamTokenizer.TT_NUMBER || 
     		st.ttype == StreamTokenizer.TT_EOL  || 
     		st.ttype == StreamTokenizer.TT_EOF ||
-    		st.ttype == '\\') 
+    		st.ttype == '\\' || 
+    		st.sval.startsWith("+")) 
 	    {
 	      st.pushBack();
 	      return number;

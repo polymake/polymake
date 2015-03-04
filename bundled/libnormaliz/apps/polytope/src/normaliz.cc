@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -30,6 +30,9 @@
 namespace libnormaliz {
    mpz_class to_mpz(const pm::Integer& a) {
       return mpz_class(a.get_rep());
+   }
+   pm::Integer operator%(size_t a, const pm::Integer& b) {
+      return pm::Integer((unsigned long int) a) % b;
    }
 }
 
@@ -139,11 +142,11 @@ namespace polymake { namespace polytope {
             if (options["hilbert_series"])
                result << nmz_convert_HS(nmzCone.getHilbertSeries());
             if (options["facets"]) {
-               result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getSupportHyperplanes()));
-               result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getEquations()));
+               result << Matrix<Rational>(stdvectorvector_to_pmListMatrix(nmzCone.getSupportHyperplanes()));
+               result << Matrix<Rational>(stdvectorvector_to_pmListMatrix(nmzCone.getEquations()));
             }
             if (options["rays"])
-               result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getExtremeRays()));
+               result << Matrix<Rational>(stdvectorvector_to_pmListMatrix(nmzCone.getExtremeRays()));
             return result;
          } 
          catch(const pm::GMP::error& ex)
@@ -157,6 +160,7 @@ namespace polymake { namespace polytope {
                cerr << "libnormaliz: arithmetic error detected, retrying with pm::Integer" << endl;
          }
       }
+      libnormaliz::test_arithmetic_overflow=false;
       libnormaliz::Cone<Integer> nmzCone = libnormaliz_create_cone<Integer>(
              options["from_facets"] ? c.give("FACETS | INEQUALITIES") : c.give("RAYS | INPUT_RAYS"),
              options["from_facets"] );
@@ -172,15 +176,15 @@ namespace polymake { namespace polytope {
       if (options["hilbert_series"])
          result << nmz_convert_HS(nmzCone.getHilbertSeries());
       if (options["facets"]) {
-         result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getSupportHyperplanes()));
-         result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getEquations()));
+         result << Matrix<Rational>(stdvectorvector_to_pmListMatrix(nmzCone.getSupportHyperplanes()));
+         result << Matrix<Rational>(stdvectorvector_to_pmListMatrix(nmzCone.getEquations()));
       }
       if (options["rays"])
-         result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getExtremeRays()));
+         result << Matrix<Rational>(stdvectorvector_to_pmListMatrix(nmzCone.getExtremeRays()));
       return result;
    }
 
-UserFunction4perl("# @category Geometric properties"
+UserFunction4perl("# @category Geometry"
 		  "# Compute degree one elements, Hilbert basis or Hilbert series of a cone C with libnormaliz"
                   "# Hilbert series and Hilbert h-vector depend on the given grading"
                   "# and will not work unless C is [[HOMOGENEOUS]] or a [[MONOID_GRADING]] is set"

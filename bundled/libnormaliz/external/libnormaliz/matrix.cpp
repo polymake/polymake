@@ -42,24 +42,29 @@ using namespace std;
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void Matrix<Integer>::max_rank_submatrix_lex(vector<key_t>& v, const size_t& rank) const{
-    size_t level=v.size();
-    if (level==rank) {
-        return;
-    }
-    if (level==0) {
-        v.push_back(0);
-    }
-    else{
-        v.push_back(v[level-1]);
-    }
-    for (; v[level] < nr; v[level]++) {
-        Matrix<Integer> S=submatrix(v);
-        if (S.rank_destructive()==S.nr_of_rows()) {
-            max_rank_submatrix_lex(v,rank);
-            return;
+vector<key_t>  Matrix<Integer>::max_rank_submatrix_lex() const{
+
+    vector<key_t> v;
+    size_t max_rank=min(nr,nc);
+    size_t rk;
+    Matrix<Integer> Test(max_rank,nc);
+    Matrix<Integer> TestCopy(max_rank,nc);
+    Test.nr=1;
+   
+    for(size_t i=0;i<nr;++i){
+   
+        Test[Test.nr-1]=elements[i];
+        TestCopy=Test;
+        rk=TestCopy.row_echelon(); //false fehlt!
+        if(rk==Test.nr){
+            v.push_back(i);
+            Test.nr++;
         }
+        if(rk==max_rank)
+            return v;
     }
+       
+    return v;
 }
 
 //---------------------------------------------------------------------------
@@ -376,7 +381,24 @@ Matrix<Integer> Matrix<Integer>::submatrix(const vector<bool>& rows) const{
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-vector<Integer> Matrix<Integer>::diagonale() const{
+Matrix<Integer>& Matrix<Integer>::remove_zero_rows() {
+    size_t from = 0, to = 0; // maintain to <= from
+    while (from < nr && v_is_zero(elements[from])) from++; //skip zero rows
+    while (from < nr) {  // go over matrix
+        // now from is a non-zero row
+        if (to != from) swap(elements[to],elements[from]);
+        ++to; ++from;
+        while (from < nr && v_is_zero(elements[from])) from++; //skip zero rows
+    }
+    nr = to;
+    elements.resize(nr);
+    return *this;
+}
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+vector<Integer> Matrix<Integer>::diagonal() const{
     assert(nr == nc); 
     vector<Integer> diag(nr);
     for(size_t i=0; i<nr;i++){
@@ -704,20 +726,67 @@ void Matrix<Integer>::exchange_columns(const size_t& col1, const size_t& col2){
 
 template<typename Integer>
 void Matrix<Integer>::reduce_row (size_t corner) {
-    assert(corner >= 0);
-    assert(corner < nc);
-    assert(corner < nr);
+    reduce_row(corner,corner);
+}
+
+//---------------------------------------------------------------------------
+ 
+template<typename Integer>
+void Matrix<Integer>::reduce_row (size_t row, size_t col) {
+    assert(col >= 0);
+    assert(col < nc);
+    assert(row < nr);
+    assert(row >= 0);
     size_t i,j;
     Integer help;
-    for (i = corner+1; i < nr; i++) {
-        if (elements[i][corner]!=0) {
-            help=elements[i][corner] / elements[corner][corner];
-            for (j = corner; j < nc; j++) {
-                elements[i][j] -= help*elements[corner][j];
+    const Integer max_half = test_arithmetic_overflow ? int_max_value_half<Integer>() : 0;
+    for (i =row+1; i < nr; i++) {
+        if (elements[i][col]!=0) {
+            help=elements[i][col] / elements[row][col];
+            for (j = col; j < nc; j++) {
+                elements[i][j] -= help*elements[row][j];
+                if (test_arithmetic_overflow && Iabs(elements[i][j]) >= max_half) {
+                    errorOutput()<<"Arithmetic failure in reduce_row. Most likely overflow.\n";
+                    throw ArithmeticException();
+                }
             }
         }
     }
 }
+
+//---------------------------------------------------------------------------
+/* 
+template<typename Integer>
+void Matrix<Integer>::reduce_row (size_t row, size_t col) {
+    assert(col >= 0);
+    assert(col < nc);
+    assert(row < nr);
+    assert(row >= 0);
+    size_t i,j;
+    Integer div, quot, rem;
+    for (i =row+1; i < nr; i++) {
+        if (elements[i][col]!=0) {
+            div=elements[row][col];
+            quot=elements[i][col] / div;
+            rem=elements[i][col]-quot*div;
+            if(2*Iabs(rem)>Iabs(elements[row][col])){
+                if((rem<0 && div>0) || (rem >0 && div <0)){                
+                    rem+=elements[row][col];
+                    quot--;
+                }
+                else{
+                    rem-=elements[row][col];
+                    quot++;                
+                }
+            }
+            elements[i][col]=rem;            
+            for (j = col+1; j < nc; j++) {
+                elements[i][j] -= quot*elements[row][j];
+            }
+        }
+    }
+}
+*/
 
 //---------------------------------------------------------------------------
 
@@ -729,14 +798,23 @@ void Matrix<Integer>::reduce_row (size_t corner, Matrix<Integer>& Left) {
     assert(Left.nr == nr);
     size_t i,j;
     Integer help1, help2=elements[corner][corner];
+    const Integer max_half = test_arithmetic_overflow ? int_max_value_half<Integer>() : 0;
     for ( i = corner+1; i < nr; i++) {
         help1=elements[i][corner] / help2;
         if (help1!=0) {
             for (j = corner; j < nc; j++) {
                 elements[i][j] -= help1*elements[corner][j];
+                if (test_arithmetic_overflow && Iabs(elements[i][j]) >= max_half) {
+                    errorOutput()<<"Arithmetic failure in reduce_row. Most likely overflow.\n";
+                    throw ArithmeticException();
+                }
             }
             for (j = 0; j < Left.nc; j++) {
                 Left.elements[i][j] -= help1*Left.elements[corner][j];
+                if (test_arithmetic_overflow && Iabs(Left.elements[i][j]) >= max_half) {
+                    errorOutput()<<"Arithmetic failure in reduce_row. Most likely overflow.\n";
+                    throw ArithmeticException();
+                }
             }
         }
     }
@@ -819,13 +897,22 @@ vector<long> Matrix<Integer>::pivot(size_t corner){
 
 template<typename Integer>
 long Matrix<Integer>::pivot_column(size_t col){
+    return pivot_column(col,col);
+}
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+long Matrix<Integer>::pivot_column(size_t row,size_t col){
     assert(col >= 0);
     assert(col < nc);
-    assert(col < nr);
-    size_t i,j=-1;
+    assert(row < nr);
+    assert(row >= 0);
+    size_t i;
+    long j=-1;
     Integer help=0;
 
-    for (i = col; i < nr; i++) {
+    for (i = row; i < nr; i++) {
         if (elements[i][col]!=0) {
             if ((help==0)||(Iabs(elements[i][col])<help)) {
                 help=Iabs(elements[i][col]);
@@ -841,30 +928,6 @@ long Matrix<Integer>::pivot_column(size_t col){
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-size_t Matrix<Integer>::diagonalize(){
-    long rk;
-    long rk_max=min(nr,nc);
-    vector<long> piv(2,-1);
-    for (rk = 0; rk < rk_max; rk++) {
-        piv=pivot(rk);
-        if (piv[0]>=0) {
-            do {
-                exchange_rows (rk,piv[0]);
-                exchange_columns (rk,piv[1]);
-                reduce_row (rk);
-                reduce_column (rk);
-                piv=pivot(rk);
-            } while ((piv[0]>rk)||(piv[1]>rk));
-        }
-        else
-            break;
-    }
-    return rk;
-}
-
-//---------------------------------------------------------------------------
-
-template<typename Integer>
 size_t Matrix<Integer>::rank() const{
     Matrix<Integer> N(*this);
     return N.rank_destructive();
@@ -873,117 +936,88 @@ size_t Matrix<Integer>::rank() const{
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-size_t Matrix<Integer>::rank_destructive(){
-    size_t rk,i,j,Min_Row, rk_max=min(nr,nc);
-    bool empty;
-    Integer Test, Min;
-    for (rk = 0; rk < rk_max; rk++) {
-        for (i = rk; i < nr; i++) {   //TODO exchange i,j loops?
-            for (j = rk; j < nc; j++)
-                if (elements[i][j]!=0)
-                    break;
-            if (j < nc)
+size_t Matrix<Integer>::row_echelon(){
+
+    size_t pc=0;
+    long piv=0, rk=0;
+    
+    for (rk = 0; rk < (long) nr; rk++){
+        for(;pc<nc;pc++){
+            piv=pivot_column(rk,pc);
+            if(piv>=0)
                 break;
         }
-        if (i >= nr)
-            break;   //no element != 0 left
-        if (rk!=i)
-            exchange_rows (rk,i);
-        if (rk!=j)
-            exchange_columns (rk,j);
-        do {
-            Min=Iabs(elements[rk][rk]);
-            Min_Row=rk;
-            empty=true;
-            for (i = rk+1; i < nr; i++) {
-                Test=Iabs(elements[i][rk]);
-                empty = empty && (Test==0);
-                if (Test!=0 && (Test<Min)) {
-                    Min=Test;
-                    Min_Row=i;
-                }
-            }
-            if (Min_Row!=rk) {
-                exchange_rows (rk,Min_Row);    
-            }
-            reduce_row (rk);
-        } while (!empty);
+        if(pc==nc)
+            break;
+        do{
+            exchange_rows (rk,piv);
+            /* print(cout);
+                cout << "++++++++++++++++++++++++" << endl; */
+            reduce_row(rk,pc);
+                /* print(cout);
+                 cout << "**********************" << endl; */
+            piv=pivot_column(rk,pc);
+        }while (piv>rk);
     }
+    
+    return rk;
+}
 
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+size_t Matrix<Integer>::rank_destructive(){
+    
+    
     if(!test_arithmetic_overflow)
-        return rk;
-            
-    Integer det = 1;
-    for (i=0; i<rk; i++){
-        det*=elements[i][i];
-    }
+        return row_echelon();
         
-    Integer test_det = 1;
-    for (i=0; i<rk; i++) {
-        test_det=(test_det*elements[i][i]%overflow_test_modulus)%overflow_test_modulus;
+    size_t rk=row_echelon();
+    Integer det=1, test_det=1;
+    for(size_t i=0;i<rk;++i){
+        size_t j=i;
+        for(;j<nc;j++)
+            if(elements[i][j]!=0)
+                break;
+        det*=elements[i][j];
+        test_det=(test_det *(elements[i][j]%overflow_test_modulus))%overflow_test_modulus;
     }
+    
     if(test_det!=det%overflow_test_modulus){
         errorOutput()<<"Arithmetic failure in computing rank. Most likely overflow.\n";
         throw ArithmeticException();
-    } 
+    }
     
-    return rk;         
+    return rk; 
 }
 
 //---------------------------------------------------------------------------
 
 template<typename Integer>
 Integer Matrix<Integer>::vol_destructive(){
-    size_t rk,i,j,Min_Row, rk_max=nr; // we assume nr==nc
-    bool empty;
 
-    Integer Test, Min;
-    for (rk = 0; rk < rk_max; rk++) {
-        for (i = rk; i < nr; i++) {
-            for (j = rk; j < nc; j++)
-                if (elements[i][j]!=0)
-                    break;
-            if (j<nc)
-                break;
-        }
-        if (i>=nr)
-            break;
-        if (rk!=i)
-            exchange_rows (rk,i);
-        if (rk!=j)
-            exchange_columns (rk,j);
-        do {
-            Min=Iabs(elements[rk][rk]);
-            Min_Row=rk;
-            empty=true;
-            for (i = rk+1; i < nr; i++) {
-                Test=Iabs(elements[i][rk]);
-                empty=empty && (Test==0);
-                if (Test!=0&& (Test<Min)) {
-                    Min=Test;
-                    Min_Row=i;
-                }
-            }
-            if (Min_Row!=rk) {
-                exchange_rows (rk,Min_Row);    
-            }
-            reduce_row (rk);
-        } while (!empty);
-    }
-    if(rk<nr)
-        return 0;
-    
-    
-    Integer det = 1;
-    for (i=0; i<nr; i++){
+    //cout << "--------vol_destructive start------------" << endl;
+    //pretty_print(cout);
+
+    row_echelon();
+    //cout << "-------- row_echolon done ------------" << endl;
+    //pretty_print(cout);
+
+	Integer det = 1;
+    for (size_t i=0; i<nr; i++){
         det*=elements[i][i];
+        #ifdef _WIN32 //for 32 and 64 bit windows to workaround a bug in intel compiler
+            if (nr != nc) cout << flush;
+        #endif
     }
-
+    
+    //cout << "==========vol_destructive end=========" << endl;
+    
     if(!test_arithmetic_overflow)
         return Iabs(det);
         
     Integer test_det = 1;
-    for (i=0; i<nr; i++){
+    for (size_t i=0; i<nr; i++){
         test_det=(test_det*elements[i][i]%overflow_test_modulus)%overflow_test_modulus;
     }
     if(test_det!=det%overflow_test_modulus){
@@ -992,69 +1026,34 @@ Integer Matrix<Integer>::vol_destructive(){
     }
     
     return Iabs(det);
-        
 }
 
 //---------------------------------------------------------------------------
 
-template<typename Integer>
-vector<key_t> Matrix<Integer>::max_rank_submatrix() const{
-    //may be optimized in two ways
-    //first only a triangular matrix is realy needed, no full diagonalization is necesary
-    //second the matrix Rows_Exchanges may be computed by Lineare_transformation::transformation
-    size_t i,j,k;
-    long rk, rk_max=min(nr,nc);
-    vector<long> piv(2);
-    Matrix<Integer> M(*this);
-    Matrix<Integer> Rows_Exchanges(nr);
-    for (rk = 0; rk < rk_max; rk++) {
-        piv=M.pivot(rk);
-        if (piv[0]>=0) {
-            do {
-                M.exchange_rows (rk,piv[0]);
-                Rows_Exchanges.exchange_columns(rk,piv[0]);
-                M.exchange_columns (rk,piv[1]);
-                M.reduce_row (rk);
-                M.reduce_column (rk);  //optimization posible here
-                piv=M.pivot(rk);
-            } while ((piv[0]>rk)||(piv[1]>rk));
-        }
-        else
-            break;
-    }
-    M=Rows_Exchanges.multiplication(M);
-    vector<key_t> simplex(rk);
-    k=0;
-    for (i = 0; i < nr; i++) {
-        for (j = 0; j < nc; j++) {
-            if (M.elements[i][j]!=0) {
-                simplex[k]=i;
-                k++;
-                //TODO break
-            }
-        }
-    }
-    return simplex;
-}
-
-//---------------------------------------------------------------------------
-
-template<typename Integer>
+/*template<typename Integer>
 vector<key_t>  Matrix<Integer>::max_rank_submatrix_lex() const{
-    size_t rk=rank();
-    vector<key_t> v(0);
-    max_rank_submatrix_lex(v,rk);
-    return v;
-}
 
-//---------------------------------------------------------------------------
-
-template<typename Integer>
-vector<key_t>  Matrix<Integer>::max_rank_submatrix_lex(const size_t& rank) const {
-    vector<key_t> v(0);
-    max_rank_submatrix_lex(v,rank);
+    vector<key_t> v;
+    size_t max_rank=min(nr,nc);
+    size_t rk;
+    Matrix<Integer> Test(max_rank,nc);
+    Test.nr=1;
+    
+    for(size_t i=0;i<nr;++i){
+    
+        Test[Test.nr-1]=elements[i];
+        rk=Test.row_echelon();
+        if(rk==Test.nr){
+            v.push_back(i);
+            Test.nr++;
+        }
+        if(rk==max_rank)
+            return v;
+    }
+        
     return v;
-}
+}*/
+
 
 //---------------------------------------------------------------------------
 
@@ -1092,7 +1091,8 @@ void Matrix<Integer>::solve_destructive_Sol_inner(Matrix<Integer>& Right_side, v
     }
 
     if (denom==0) { 
-        throw BadInputException(); //TODO welche Exception?
+        errorOutput() << "Cannot solve system (denom=0)!" << endl;
+        throw ArithmeticException(); //TODO welche Exception?
     }
 
     denom=Iabs(denom);

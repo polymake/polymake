@@ -80,10 +80,10 @@ public class BruteForcePicking {
 		p1[3] = p2[3] = p3[3] = 1;
 		IntArrayArray faces = getFaces(ifs);
 		DoubleArrayArray points = getPoints(ifs);
+//		System.err.println("picking faces");
 		if (faces == null || points == null || faces.getLength() == 0
 				|| points.getLength() == 0)
 			return;
-
 		for (int i = 0, n = faces.getLength(); i < n; i++) {
 			IntArray face = faces.getValueAt(i);
 			// simple triangulation:
@@ -93,7 +93,7 @@ public class BruteForcePicking {
 						.toDoubleArray(p2);
 				p3 = points.getValueAt(face.getValueAt(2 + j))
 						.toDoubleArray(p3);
-
+//				System.err.println("p1 p2 p3 = "+Rn.toString(new double[][]{p1, p2, p3}));
 				if (intersects(pobj, fromLocal, toLocal, p1, p2, p3, bary)) {
 					double[] pw = m.multiplyVector(pobj);
 					double d = Pn.distanceBetween(from, pw, metric);
@@ -256,7 +256,6 @@ public class BruteForcePicking {
 			double[] to, double pointRadius, ArrayList<Hit> localHits) {
 		// path.getMatrix(m.getArray());
 		// path.getInverseMatrix(mInv.getArray());
-
 		double[] fromOb = mInv.multiplyVector(from);
 		double[] toOb = mInv.multiplyVector(to);
 

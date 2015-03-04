@@ -92,6 +92,7 @@ class NodeWriter extends SceneGraphVisitor {
   }
 
   public void visit(Cylinder c) {
+	writer.addAttribute("type", mapper.serializedClass(Cylinder.class));
     copyAttr(c);
   }
 
@@ -123,9 +124,9 @@ class NodeWriter extends SceneGraphVisitor {
     writer.addAttribute("type", mapper.serializedClass(Sphere.class));
     copyAttr(s);
   }
-
+  
   public void visit(SpotLight l) {
-    writer.addAttribute("type", mapper.serializedClass(DirectionalLight.class));
+    writer.addAttribute("type", mapper.serializedClass(SpotLight.class));
     copyAttr(l);
   }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -81,14 +81,16 @@ perl::ListReturn homology_and_cycles(const Array< Set<int> >& F, bool co, int di
    return results;
 }
 
-UserFunction4perl("# Calculate the (co-)homology groups of a simplicial complex.\n"
+UserFunction4perl("# @category Topology\n"
+                  "# Calculate the __(co-)homology groups__ of a simplicial complex.\n"
                   "# @param Array<Set<int>> complex"
                   "# @param Bool co set to true for __co__homology"
                   "# @option Int dim_low narrows the dimension range of interest, with negative values being treated as co-dimensions"
                   "# @option Int dim_high see //dim_low//",
                   &homology, "homology($$; $=0, $=-1)");
 
-UserFunction4perl("# Calculate the (co-)homology groups and cycle representatives of a simplicial complex.\n"
+UserFunction4perl("# @category Topology\n"
+                  "# Calculate the __(co-)homology groups__ and __cycle representatives__ of a simplicial complex.\n"
                   "# @param Array<Set<int>> complex"
                   "# @param Bool co set to true for __co__homology"
                   "# @option Int dim_low narrows the dimension range of interest, with negative values being treated as co-dimensions"

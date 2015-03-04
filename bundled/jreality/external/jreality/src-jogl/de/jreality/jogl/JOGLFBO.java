@@ -12,7 +12,6 @@ import javax.media.opengl.GL2;
 import com.jogamp.opengl.util.awt.ImageUtil;
 
 //import com.sun.opengl.util.ImageUtil;
-
 import de.jreality.shader.ImageData;
 import de.jreality.shader.Texture2D;
 import de.jreality.util.ImageUtility;
@@ -129,7 +128,7 @@ public class JOGLFBO {
 		else
 			gl.glRenderbufferStorage(GL2.GL_RENDERBUFFER,
 					GL2.GL_DEPTH_COMPONENT, width, height);
-		gl.glFramebufferRenderbuffer(GL2.GL_FRAMEBUFFER,
+			gl.glFramebufferRenderbuffer(GL2.GL_FRAMEBUFFER,
 				GL2.GL_DEPTH_ATTACHMENT, GL2.GL_RENDERBUFFER, rbuffer[0]);
 
 		if (!asTexture) {
@@ -140,13 +139,16 @@ public class JOGLFBO {
 					GL2.GL_COLOR_ATTACHMENT0, GL2.GL_RENDERBUFFER, cbuffer[0]);
 		} else {
 			gl.glBindTexture(GL.GL_TEXTURE_2D, txt[0]);
-			gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA8, width, height, 0,
-					GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, null);
+			gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA8, 
+					width, height, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, null);
+//			gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_DEPTH_COMPONENT16, //GL.GL_RGBA8, width, height, 0,
+//					width, height, 0, GL.GL_DEPTH_COMPONENT16, GL.GL_FLOAT, null);
 			gl.glFramebufferTexture2D(GL2.GL_FRAMEBUFFER,
 					GL2.GL_COLOR_ATTACHMENT0, GL.GL_TEXTURE_2D, txt[0], 0);
 			// gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_GENERATE_MIPMAP,
 			// GL.GL_TRUE);
 			gl.glGenerateMipmap(GL.GL_TEXTURE_2D);
+//			System.err.println("rendering joglfbo");
 		}
 		int status = gl.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER);
 		if (status != GL2.GL_FRAMEBUFFER_COMPLETE) {

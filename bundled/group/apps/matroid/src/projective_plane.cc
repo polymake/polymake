@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -134,13 +134,13 @@ perl::Object fano_matroid(){
    return projective_plane(2);
 }
 
-UserFunction4perl("# @category Producing from scratch\n"
+UserFunction4perl("# @category Producing a matroid from scratch\n"
                   "# Creates the projective plane matroid of rank 3 with //p**2+p+1// elements, where p is a prime."
                   "# @param Integer p"
                   "# @return Matroid",
                   &projective_plane, "projective_plane");
 
-UserFunction4perl("# @category Producing from scratch\n"
+UserFunction4perl("# @category Producing a matroid from scratch\n"
                   "# Creates the Fano plane matroid of rank 3 with 7 elements."
                   "# @return Matroid",
                   &fano_matroid, "fano_matroid");

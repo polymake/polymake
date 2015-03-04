@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013
+/* Copyright (c) 2011-2014
    Thomas Opfer (Technische Universitaet Darmstadt, Germany)
 
    This program is free software; you can redistribute it and/or modify it
@@ -197,6 +197,8 @@ class TOSolver
 		std::vector<T> DSEtmp;
 		bool antiCycle;
 
+		bool hasPerturbated;
+
 		std::vector<double> rayGuess;
 		std::vector<T> farkasProof;
 
@@ -215,7 +217,7 @@ class TOSolver
 
 		void init();
 
-		bool phase1();
+		int phase1();
 		int opt( bool P1 );
 
 		bool checkDualFarkas();
@@ -342,6 +344,8 @@ void TOSolver<T>::init(){
 	this->baseIter = 0;
 
 	this->lastLeavingBaseVar = -1;
+
+	this->hasPerturbated = false;
 }
 
 
@@ -825,18 +829,20 @@ void TOSolver<T>::copyTransposeA( int orgLen, const std::vector<T>& orgVal, cons
 template <class T>
 void TOSolver<T>::mulANT( T* result, T* vector ){
 	for( int i = 0; i < m; ++i ){
-		T mult = vector[i];
+		if( vector[i] == 0 ){
+			continue;
+		}
 		const int kend = this->Arowpointer[i+1];
 		for( int k = this->Arowpointer[i]; k < kend; ++k ){
 			int ind = this->Ninv[this->Arowwiseind[k]];
 			if( ind != -1 ){
-				result[ind] += Arowwise[k] * mult;
+				result[ind] += Arowwise[k] * vector[i];
 			}
 		}
 
 		// logische Variablen
 		if( Ninv[n+i] != -1 ){
-			result[Ninv[n+i]] = mult;
+			result[Ninv[n+i]] = vector[i];
 		}
 	}
 }
@@ -1792,7 +1798,7 @@ void TOSolver<T>::updateB( int r, T* permSpike, int* permSpikeInd, int* permSpik
 
 
 template <class T>
-bool TOSolver<T>::phase1(){
+int TOSolver<T>::phase1(){
 
 	#ifndef TO_DISABLE_OUTPUT
 		std::cout << "Duale Phase 1 gestartet." << std::endl;
@@ -1830,16 +1836,17 @@ bool TOSolver<T>::phase1(){
 	}
 
 
+	int retval = -1;
+
 	// Phase 1 - Problem lösen
-	this->opt( true );
-
-	// Zielfunktionswert bestimmen	// TODO später auslesen, falls wir den Wert zwischenspeichern/zurückgeben?
-	T Z( 0 );
-	for( int i = 0; i < n; ++i ){
-		Z += c[i] * x[i];
+	if( this->opt( true ) >= 0 ){
+		// Zielfunktionswert bestimmen	// TODO später auslesen, falls wir den Wert zwischenspeichern/zurückgeben?
+		T Z( 0 );
+		for( int i = 0; i < n; ++i ){
+			Z += c[i] * x[i];
+		}
+		retval = Z == 0 ? 0 : 1;
 	}
-	bool retval = ( Z == 0 );
-
 
 	// Schranken wiederherstellen
 	this->u = uvec.data();
@@ -2690,30 +2697,48 @@ int TOSolver<T>::opt(){
 		this->refactor();
 	}
 
-	// Perturbation (Block entfernen um Pertubation zu verhindern)
-//	T cmin( 1 );
-//
-//	for( int i = 0; i < n; ++i ){
-//		if( this->c[i] != 0 ){
-//			if( c[i] < cmin && -c[i] < cmin ){
-//				cmin = c[i] >= 0 ? c[i] : -c[i];
-//			}
-//		}
-//	}
-//
-//	std::vector<T> cold = this->c;
-//	this->c.clear();
-//
-//	for( int i = 0; i < n; ++i ){
-//		this->c.push_back( cold[i] + cmin / T( 10000 + n + i ) );
-//	}
-//
-//	this->opt( false );
-//
-//	this->c = cold;
-	// Perturbation Ende
+	int retval = -1;
 
-	int retval = this->opt( false );
+	do{
+		retval = this->opt( false );
+
+		// Perturbation
+		if( retval == -1 ){
+
+			#ifndef TO_DISABLE_OUTPUT
+				std::cout << "Perturbiere." << std::endl;
+			#endif
+
+			T cmin( 1 );
+
+			for( int i = 0; i < n; ++i ){
+				if( this->c[i] != 0 ){
+					if( c[i] < cmin && -c[i] < cmin ){
+						cmin = c[i] >= 0 ? c[i] : -c[i];
+					}
+				}
+			}
+
+			std::vector<T> cold = this->c;
+			this->c.clear();
+			this->c.reserve( n );
+
+			for( int i = 0; i < n; ++i ){
+				this->c.push_back( cold[i] + cmin / T( 10000 + n + i ) );
+			}
+
+			this->hasPerturbated = true;
+
+			this->opt( false );
+
+			#ifndef TO_DISABLE_OUTPUT
+				std::cout << "Ende Perturbierung." << std::endl;
+			#endif
+
+			this->c = cold;
+		}
+	} while( retval == -1 );
+
 
 	#ifndef TO_DISABLE_OUTPUT
 		#ifdef TO_WITH_CPLEX
@@ -2810,7 +2835,7 @@ int TOSolver<T>::opt( bool P1 ){
 				this->BTran( y.data() );
 
 
-				std::vector<T> tmp(n);
+				std::vector<T> tmp( n, T( 0 ) );
 
 				this->mulANT( tmp.data(), y.data() );
 
@@ -2872,11 +2897,15 @@ int TOSolver<T>::opt( bool P1 ){
 					// Should not happen
 					throw std::runtime_error( "Phase 1 rekursiv aufgerufen!" );
 				}
-				if( !this->phase1() ){
+				int p1retval = this->phase1();
+				if( p1retval > 0 ){
 					#ifndef TO_DISABLE_OUTPUT
 						std::cout << "Phase 1: LP dual infeasible!" << std::endl << std::endl;
 					#endif
 					return 2;
+				}
+				if( p1retval == -1 ){
+					return -1;
 				}
 
 				#ifndef TO_DISABLE_OUTPUT
@@ -2952,6 +2981,11 @@ int TOSolver<T>::opt( bool P1 ){
 					nocyclecounter = 0;
 				}
 			}
+		}
+
+		// Perturbieren
+		if( !this->hasPerturbated && cyclecounter > 25 ){
+			return -1;
 		}
 
 		Zold = Z;
@@ -3085,7 +3119,7 @@ int TOSolver<T>::opt( bool P1 ){
 				// Step 4: Pivot row
 		//		std::cout << "Pivot row" << std::endl;
 
-				std::vector<T> alphar(n);
+				std::vector<T> alphar( n, T( 0 ) );
 
 				this->mulANT( alphar.data(), rhor.data() );
 
@@ -3171,7 +3205,7 @@ int TOSolver<T>::opt( bool P1 ){
 								if( this->l[q].isInf || this->u[q].isInf ){
 									break;
 								} else {
-									T tmp = deltatilde - ( this->u[q].value - this->l[q].value ) * abs( alphar[s] );
+									T tmp = deltatilde - ( this->u[q].value - this->l[q].value ) * ( alphar[s] >= 0 ? alphar[s] : - alphar[s] );
 									if( tmp < 0 ){
 										break;
 									}
@@ -3514,10 +3548,10 @@ inline std::pair<std::vector<mpq_class>, mpq_class> TOSolver<mpq_class>::getGMI(
 		throw std::runtime_error( "Invalid k." );
 	}
 
-	std::vector<mpq_class> tmp( m );
+	std::vector<mpq_class> tmp( m, 0 );
 	tmp[ Binv[ ind ] ] = 1;
 	BTran( tmp.data() );
-	std::vector<mpq_class> gmicoeff( n );
+	std::vector<mpq_class> gmicoeff( n, 0 );
 	mulANT( gmicoeff.data(), tmp.data() );
 
 

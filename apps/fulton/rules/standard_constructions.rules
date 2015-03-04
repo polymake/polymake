@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -16,7 +16,7 @@
 
 # @category Producing a normal toric variety
 # Takes one parameter //r// and returns the polyhedral fan corresponding the the
-# Hirzebruch surface //H_r//.
+# Hirzebruch surface //H<sub>r</sub>//.
 # @param Integer r Parameter
 # @return NormalToricVariety
 user_function hirzebruch_surface( $ ) {

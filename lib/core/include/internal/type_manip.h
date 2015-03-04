@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -332,7 +332,7 @@ struct list_head {
    typedef T type;
 };
 template <typename Head, typename Tail>
-struct list_head< cons<Head,Tail> > {
+struct list_head< cons<Head, Tail> > {
    typedef Head type;
 };
 
@@ -341,8 +341,18 @@ struct list_tail {
    typedef void type;
 };
 template <typename Head, typename Tail>
-struct list_tail< cons<Head,Tail> > {
+struct list_tail< cons<Head, Tail> > {
    typedef Tail type;
+};
+
+template <typename T>
+struct reverse_cons {
+   typedef T type;
+};
+
+template <typename Head, typename Tail>
+struct reverse_cons< cons<Head, Tail> > {
+   typedef cons<Tail, Head> type;
 };
 
 template <typename> struct same {};
@@ -1761,48 +1771,52 @@ struct is_masquerade<T, void> : False {
 // common case: everything is bad
 template <typename T1, typename T2,
           typename Model1=typename object_traits<T1>::model, typename Model2=typename object_traits<T2>::model>
-struct isomorphic_types : False {
+struct isomorphic_types_impl : False {
    typedef void discriminant;
 };
 
 template <typename T1, typename T2, typename Model>
-struct isomorphic_types<T1, T2, Model, Model> : True {
+struct isomorphic_types_impl<T1, T2, Model, Model> : True {
    typedef cons<typename object_traits<T1>::generic_tag, typename object_traits<T2>::generic_tag> discriminant;
 };
 
 template <typename T1, typename T2>
-struct isomorphic_types<T1, T2, is_container, is_container> {
+struct isomorphic_types
+   : isomorphic_types_impl<T1, T2> {};
+
+template <typename T1, typename T2>
+struct isomorphic_types_impl<T1, T2, is_container, is_container> {
    typedef typename T1::value_type V1;
    typedef typename T2::value_type V2;
    static const bool value=isomorphic_types<V1,V2>::value;
    typedef typename choice< if_else< value, cons<typename object_traits<T1>::generic_tag, typename object_traits<T2>::generic_tag>,
-                            if_else< isomorphic_types<T1,V2>::value, cons<is_scalar, typename object_traits<T2>::generic_tag>,
-                            if_else< isomorphic_types<V1,T2>::value, cons<typename object_traits<T1>::generic_tag, is_scalar>,
+                            if_else< isomorphic_types<T1, V2>::value, cons<is_scalar, typename object_traits<T2>::generic_tag>,
+                            if_else< isomorphic_types<V1, T2>::value, cons<typename object_traits<T1>::generic_tag, is_scalar>,
                                      void > > > >::type
       discriminant;
 };
 
 template <typename T1, typename T2, typename Model1>
-struct isomorphic_types<T1, T2, Model1, is_container> : False {
+struct isomorphic_types_impl<T1, T2, Model1, is_container> : False {
    typedef typename if_else< isomorphic_types<T1, typename T2::value_type>::value,
                              cons<is_scalar, typename object_traits<T2>::generic_tag>, void>::type
       discriminant;
 };
 
 template <typename T1, typename T2, typename Model2>
-struct isomorphic_types<T1, T2, is_container, Model2> : False {
+struct isomorphic_types_impl<T1, T2, is_container, Model2> : False {
    typedef typename if_else< isomorphic_types<typename T1::value_type, T2>::value,
                              cons<typename object_traits<T1>::generic_tag, is_scalar>, void>::type
       discriminant;
 };
 
 template <typename T1, typename T2>
-struct isomorphic_types_helper : isomorphic_types<typename deref<T1>::type, typename deref<T2>::type> {};
+struct isomorphic_types_deref : isomorphic_types<typename deref<T1>::type, typename deref<T2>::type> {};
 
 template <typename T1, typename T2>
-struct isomorphic_types<T1, T2, is_composite, is_composite> {
+struct isomorphic_types_impl<T1, T2, is_composite, is_composite> {
    static const bool value=
-      list_accumulate_binary<list_and, isomorphic_types_helper, typename object_traits<T1>::elements, typename object_traits<T2>::elements>::value;
+      list_accumulate_binary<list_and, isomorphic_types_deref, typename object_traits<T1>::elements, typename object_traits<T2>::elements>::value;
    typedef typename if_else<value, cons<typename object_traits<T1>::generic_tag, typename object_traits<T2>::generic_tag>, void>::type
       discriminant;
 };

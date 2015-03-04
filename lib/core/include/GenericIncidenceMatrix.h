@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -450,16 +450,16 @@ public:
 
    SameElementIncidenceMatrix(int r_arg, int c_arg) : r(r_arg), c(c_arg) {}
 protected:
-   void stretch_rows(int new_r)
+   void stretch_rows(int new_r) const
    {
       r=new_r;
    }
-   void stretch_cols(int new_c)
+   void stretch_cols(int new_c) const
    {
       c=new_c;
    }
 
-   int r,c;
+   mutable int r, c;
 
    friend class Rows<SameElementIncidenceMatrix>;
    friend class Cols<SameElementIncidenceMatrix>;

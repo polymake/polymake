@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -14,13 +14,18 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
+#include "polymake/Rational.h"
+
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( bool (pm::Matrix<Rational> const&, pm::Matrix<Rational> const&, char const*, bool) ) {
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( check_inc_T_X_X_x_x, T0,T1,T2 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
-      IndirectWrapperReturn(arg0.get< perl::TryCanned< const Matrix< Rational > > >(), arg1.get< perl::TryCanned< const Matrix< Rational > > >(), arg2, arg3);
-   }
-   FunctionWrapperInstance4perl( bool (pm::Matrix<Rational> const&, pm::Matrix<Rational> const&, char const*, bool) );
+      WrapperReturn( (check_inc<T0>(arg0.get<T1>(), arg1.get<T2>(), arg2, arg3)) );
+   };
 
+   FunctionInstance4perl(check_inc_T_X_X_x_x, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Matrix< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

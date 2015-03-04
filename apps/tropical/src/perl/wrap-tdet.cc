@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -13,7 +13,7 @@
    GNU General Public License for more details.
 */
 
-#include "polymake/tropical/arithmetic.h"
+#include "polymake/TropicalNumber.h"
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"

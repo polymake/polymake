@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -266,6 +266,10 @@ namespace {
            }
         }
      }
+     // If P is just a point then it has one facet which is the empty set
+     // and we need to add a corresponding inequality.
+     if (!isCone && num_columns == affine_hull_list.rows() + 1)
+        facet_list /= triv_ineq;
 
      Matrix<Coord> facets(facet_list);
      Matrix<Coord> affine_hull(affine_hull_list);

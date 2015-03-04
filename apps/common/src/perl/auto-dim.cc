@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,17 +16,17 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
-#include "polymake/linalg.h"
+#include "polymake/Graph.h"
+#include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
+#include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
+#include "polymake/SparseMatrix.h"
 #include "polymake/SparseVector.h"
 #include "polymake/Vector.h"
-#include "polymake/Rational.h"
-#include "polymake/Graph.h"
-#include "polymake/Matrix.h"
-#include "polymake/SparseMatrix.h"
-#include "polymake/IncidenceMatrix.h"
-#include "polymake/QuadraticExtension.h"
+#include "polymake/client.h"
+#include "polymake/linalg.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -67,5 +67,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(dim_f1, perl::Canned< const pm::VectorChain<pm::VectorChain<pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>&, pm::Series<int, true>, void> const&, pm::SparseVector<pm::Rational> const&> const&, pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>&, pm::Series<int, true>, void> const&> >);
    FunctionInstance4perl(dim_f1, perl::Canned< const pm::VectorChain<pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>&, pm::Series<int, true>, void> const&, pm::SparseVector<pm::Rational> const&> >);
    FunctionInstance4perl(dim_f1, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const pm::SameElementVector<pm::Rational const&> >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const pm::VectorChain<pm::SingleElementVector<pm::Rational>, pm::SameElementVector<pm::Rational const&> const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

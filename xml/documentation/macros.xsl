@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <!--
-  Copyright (c) 1997-2014
+  Copyright (c) 1997-2015
   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
   http://www.polymake.org
 
@@ -37,6 +37,7 @@
 				<li> <a href="index.html#apps">applications</a> </li>
 				<li> <a href="core.html">core functionality</a></li>
 				<li> <a href="doc_index.html">index</a> </li>
+				<xsl:if test="document('version.xml')//pm:file"><li> <a href="extensions.html">extensions</a> </li></xsl:if>
           <!-- FIXME: remove the condition as soon as the doxygen documentation ripens enough to be published without disgrace -->
            		 <xsl:if test="contains($version_text,'snapshot')">
 					<li> <a href="PTL/index.html">PTL</a></li>
@@ -60,7 +61,7 @@
 </xsl:template>
 
 <xsl:template mode="version" match="/pm:version">
-  <xsl:apply-templates mode="version" select="*" /><xsl:if test="not(pm:extensions)">.</xsl:if>
+  <xsl:apply-templates mode="version" select="*" /><xsl:if test="not(pm:non_bundled)">.</xsl:if>
 </xsl:template>
 
 <xsl:template mode="version" match="pm:commit">
@@ -76,16 +77,20 @@
 </xsl:template>
 
 <xsl:template mode="version" match="pm:extensions">
+	<xsl:if test="descendant::pm:non_bundled">
   <xsl:text> with the following individual extensions:</xsl:text>
   <ul class="ext">
-    <xsl:for-each select="pm:extension">
+    <xsl:for-each select="pm:extension[./pm:non_bundled]">
       <li> <a>
-      	<xsl:attribute name = "href">
-      		<xsl:value-of select="pm:file"/>.html
-      	</xsl:attribute>
+      	<xsl:if test="pm:file">
+				<xsl:attribute name = "href">
+					<xsl:value-of select="pm:file"/>.html
+				</xsl:attribute>
+      	</xsl:if>
         <xsl:value-of select="pm:URI" /></a> </li>
     </xsl:for-each>
   </ul>
+  </xsl:if>
 </xsl:template>
   
   

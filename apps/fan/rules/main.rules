@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -21,10 +21,11 @@ IMPORT polytope
 
 USE ideal
 
-HELP help.rules
-
 file_suffix fan
 
+
+HELP
+	help.rules
 
 # A polyhedral fan.
 # The current restriction is that each cone in the fan has to be pointed.  This will be relaxed later.

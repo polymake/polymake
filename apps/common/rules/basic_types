@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -24,6 +24,15 @@
 
 # @topic category functions/Combinatorics
 # This category contains combinatorial functions.
+
+# @topic category functions/Arithmetic
+# These are functions that perform arithmetic computations.
+
+# @topic category functions/Linear Algebra
+# These functions are for algebraic computations and constructions of special matrices.
+
+# @topic category functions/Data Conversion
+# This contains functions for data conversions and type casts.
 
 
 # @category Basic Types
@@ -237,10 +246,21 @@ user_function isinf(*) : c++ (include => "polymake/Integer.h");
 user_function div_exact(*:int, *:int) : c++ (include => "polymake/numerical_functions.h");
 
 
+# @topic category property_types/Arithmetic
+# These types are needed as return types of arithmetic computations.
+
 # @category Arithmetic
-# Complete result of an integral division, quotient and remainder
+# The complete result of an integral division, [[quot|quotient]] and [[rem|remainder]].
+# @tparam Scalar
 declare property_type Div<Scalar> : c++ (include => "polymake/numerical_functions.h");
 
+# @topic property_types/Arithmetic/Div/methods/quot
+# The __quotient__.
+# @return Scalar
+
+# @topic property_types/Arithmetic/Div/methods/rem
+# The __remainder__.
+# @return Scalar
 
 # @category Arithmetic
 # Compute the quotient and remainder of //a// and //b// in one operation.
@@ -258,12 +278,33 @@ user_function div(*,*) : c++ (include => "polymake/numerical_functions.h");
 user_function gcd(*:int, *:int) : c++ (include => "polymake/numerical_functions.h");
 
 # @category Arithmetic
-# Complete result of calculation of the greatest common divisor of two numbers (a,b):
-#   g=gcd(a,b)
-#   g==a*p+b*q
-#   a==g*k1
-#   b==g*k2
+# The complete result of the calculation of the __greatest common divisor__ of two numbers //a// and //b//:
+#	[[g]]=gcd(a,b)
+#	[[g]]=a*[[p]]+b*[[q]]
+#	a=[[g]]*[[k1]]
+#	b=[[g]]*[[k2]]
 declare property_type ExtGCD<Scalar> : c++ (include => "polymake/numerical_functions.h");
+
+# @topic property_types/Arithmetic/ExtGCD/methods/g
+# The __greatest common divisor__ of //a// and //b//.
+# @return Int
+
+# @topic property_types/Arithmetic/ExtGCD/methods/p
+# The __co-factor__ of //a//.
+# @return Int
+
+# @topic property_types/Arithmetic/ExtGCD/methods/q
+# The __co-factor__ of //b//.
+# @return Int
+
+# @topic property_types/Arithmetic/ExtGCD/methods/k1
+# The __factor__ of //a//.
+# @return Int
+
+# @topic property_types/Arithmetic/ExtGCD/methods/k2
+# The __factor__ of //b//.
+# @return Int
+
 
 # @category Arithmetic
 # Compute the greatest common divisor of two numbers (a,b) and accompanying co-factors.

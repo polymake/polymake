@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,26 +13,25 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-# @category Normal Toric Varieties
 # A //T//-invariant divisor on a normal toric variety.
 declare object TDivisor {
 
    # @category Algebraic Geometry
-   # true if the divisor is ample
+   # True if the divisor is __ample__.
    property AMPLE : Bool;
 
    # @category Algebraic Geometry
-   # true if the divisor is basepoint-free
+   # True if the divisor is __basepoint-free__.
    property BASEPOINT_FREE : Bool;
 
    # @category Algebraic Geometry
-   # true if the divisor is Cartier
+   # True if the divisor is __Cartier__.
    property CARTIER : Bool;
 
    # @category Combinatorics
-   # contains the Cartier data of the divisor, if it is Cartier
-   # i.e. contains a list of vertices of the lattice polytope P defined by the divisor and the variety
-   # the vertices appear in the same order as the maximal cones of the fan
+   # Contains the __Cartier data__ of the divisor if it is [[CARTIER]],
+   # i.e., contains a list of vertices of the lattice polytope defined by the divisor and the variety.
+   # The vertices appear in the same order as the maximal cones of the fan.
    property CARTIER_DATA : Map<Set<Int>,Vector>;
 
    # @category Combinatorics
@@ -42,23 +41,23 @@ declare object TDivisor {
    property COEFFICIENTS : Vector<Rational>;
 
    # @category Algebraic Geometry
-   # true if the divisor is effective
+   # True if the divisor is __effective__.
    property EFFECTIVE : Bool;
 
    # @category Algebraic Geometry
-   # true if the divisor is integral  		
+   # True if the divisor is __integral__.
    property INTEGRAL : Bool;
 
    # @category Algebraic Geometry
-   # true if the divisor is nef
+   # True if the divisor is __nef__.
    property NEF : Bool;
 
    # @category Algebraic Geometry
-   # true if the divisor is principal
+   # True if the divisor is __principal__.
    property PRINCIPAL : Bool;
 
    # @category Algebraic Geometry
-   # true if the divisor is Q-Cartier, i.e. some multiple of it is Cartier
+   # A divisor is __Q-Cartier__ if some multiple of it is [[CARTIER]].
    property Q_CARTIER : Bool;
 
    # @category Combinatorics
@@ -66,7 +65,7 @@ declare object TDivisor {
    property SECTION_POLYTOPE : Polytope<Rational>;
 
    # @category Algebraic Geometry
-   # true if the divisor is semiample
+   # True if the divisor is __semiample__.
    property SEMIAMPLE : Bool;
 
 }
@@ -74,9 +73,9 @@ declare object TDivisor {
 object NormalToricVariety {
 
    # @category Algebraic Geometry
-   # a toric invariant divisor on the variety given by the fan
-   # it is represented by n integer vector with entries corresponding to the rays of the fan
-   # the actual divisor is stored in the property [[COEFFICIENTS]]
+   # A toric invariant divisor on the variety given by the fan.
+   # It is represented by an integer vector with entries corresponding to the rays of the fan.
+   # The actual divisor is stored in the property [[COEFFICIENTS]].
    property DIVISOR : TDivisor : multiple;
 
 }

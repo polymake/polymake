@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -21,7 +21,6 @@ declare object FaceLattice : Graph<Directed> {
    # Incident edges lead to the containing faces of the next (higher) dimension.
    property FACES : NodeMap<Directed,Set> : construct(ADJACENCY);
 
-	# @category Internal
    # Indices of the first nodes in each level.
    # Intended for internal use only; please use [[nodes_of_dim]] instead.
    property DIMS : Array<Int>;

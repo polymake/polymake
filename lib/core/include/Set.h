@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -724,7 +724,7 @@ public:
    Set copy_permuted_inv(const Permutation& perm) const
    {
       Set result;
-      result._fill(pm::select(perm,*this));
+      result._fill(entire(pm::select(perm,*this)));
       return result;
    }
 
@@ -746,7 +746,7 @@ protected:
    template <typename Iterator>
    void _fill(Iterator src)
    {
-      while (!src.at_end()) insert(*src);
+      while (!src.at_end()) this->insert(*src++);
    }
 };
 

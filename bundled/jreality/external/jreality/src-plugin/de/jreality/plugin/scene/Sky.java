@@ -83,6 +83,7 @@ public class Sky extends Plugin implements UIFlavor {
 		this.skyBoxes = skyBoxes;
 		makePanel();
 		Secure.doPrivileged(new PrivilegedAction<Object>() {
+			@Override
 			public Object run() {
 				makeFileChooser();
 				return null;
@@ -109,6 +110,7 @@ public class Sky extends Plugin implements UIFlavor {
 		buttonGroup.setSelected(model, true);
 		if (scene != null) {
 			Secure.doPrivileged(new PrivilegedAction<Object>() {
+				@Override
 				public Object run() {
 					selectionIndex = ((Integer)envToIndex.get(environment)).intValue();
 					try {
@@ -169,6 +171,7 @@ public class Sky extends Plugin implements UIFlavor {
 			envToButton.put(skyBoxes[i][0], button.getModel());
 			button.getModel().addActionListener(new ActionListener() {
 
+				@Override
 				public void actionPerformed(ActionEvent e) {
 					setEnvironment(name);
 				}
@@ -183,6 +186,7 @@ public class Sky extends Plugin implements UIFlavor {
 		loadButton = new JButton("load");
 		loadButton.setMargin(new Insets(0,0,0,0));
 		loadButton.addActionListener(new ActionListener() {
+			@Override
 			public void actionPerformed(ActionEvent e) {
 				loadSkyBox();
 			}
@@ -194,6 +198,7 @@ public class Sky extends Plugin implements UIFlavor {
 		panel.add(loadButton, gbc);
 		showSkyCheckBox = new JCheckBox("show  sky");
 		showSkyCheckBox.addActionListener(new ActionListener() {
+			@Override
 			public void actionPerformed(ActionEvent e) {
 				setShowSky(showSkyCheckBox.isSelected());
 			}
@@ -293,6 +298,7 @@ public class Sky extends Plugin implements UIFlavor {
 		vp.removeAll(getClass());
 	}
 	
+	@Override
 	public void mainUIChanged(String arg0) {
 		SwingUtilities.updateComponentTreeUI(fileChooser);
 	}

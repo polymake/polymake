@@ -134,6 +134,7 @@ public  class TubeFactory {
 		public boolean framesDirty = true;
 		protected FrameInfo[] frames = null, userFrames = null;
 		protected double[] radiiField = null;
+		protected double[] initialBinormal = null;
 		
 		public boolean closedCurve = false,
 			vertexColorsEnabled = false;
@@ -318,6 +319,14 @@ public  class TubeFactory {
 
 		public void setMatchClosedTwist(boolean matchClosedTwist) {
 			this.matchClosedTwist = matchClosedTwist;
+		}
+
+		public double[] getInitialBinormal() {
+			return initialBinormal;
+		}
+
+		public void setInitialBinormal(double[] initialBinormal) {
+			this.initialBinormal = initialBinormal;
 		}
 
 		public SceneGraphComponent getFramesSceneGraphRepresentation()	{
@@ -636,7 +645,7 @@ public  class TubeFactory {
 		 * @param metric
 		 * @return
 		 */
-		 protected static double[] getInitialBinormal(double[][] polygon, int metric)	{
+		 protected  double[] getInitialBinormal(double[][] polygon, int metric)	{
 			int n = polygon.length;
 			for (int i = 1; i<n-1; ++i)	{
 				double[] bloop = 
@@ -652,7 +661,7 @@ public  class TubeFactory {
 				}
 			}
 			// all points are collinear, choose a random plane through the first two points and polarize it to get a point
-			return Pn.polarizePlane(null, P3.planeFromPoints(null, B, polygon[1], polygon[2]),metric);
+			return Pn.polarizePlane(null,  initialBinormal != null ?  initialBinormal : P3.planeFromPoints(null, B, polygon[1], polygon[2]),metric);
 		}
 
 		 static double[][] axes = {{0,0,0},{1,0,0},{0,1,0},{0,0,1}};

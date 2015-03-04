@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -68,6 +68,7 @@ namespace singular {
            idhdl newRingHdl=enterid(ringid,0,RING_CMD,&IDROOT,FALSE);
            IDRING(newRingHdl)=singularRing;
            stom_new[pair_to] = newRingHdl;
+           free(ringid);
       }
       rSetHdl(stom_new[pair_to]);
       return stom_new[pair_to];

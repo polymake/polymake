@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -26,7 +26,8 @@ int check_basis_exchange_axiom(const Array<Set<int> >& bases, perl::OptionSet op
    return check_basis_exchange_axiom_impl(bases, verbose);
 }
 
-UserFunction4perl("# Check if a given list of sets satisfies the axioms to be the bases of a matroid."
+UserFunction4perl("# @category Other"
+                  "# Check if a given list of sets satisfies the axioms to be the bases of a matroid."
                   "# @param Array<Set> a list of would-be bases of a matroid"
                   "# @option Bool verbose print a proof if the given sets do not form the set of bases of a matroid"
                   "# @return Int is_matroid are the given sets the bases of a matroid?",

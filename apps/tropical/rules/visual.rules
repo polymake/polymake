@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -119,7 +119,7 @@ user_method VISUAL_HYPERPLANE_ARRANGEMENT : VERTICES, AMBIENT_DIM {
 	my $unit=dense(unit_matrix<Int>($d+1));
 	foreach my $curr (@$h) {
 		my $fc = $s->($count++,$nrows);
-		my $hp = new Hypersurface(MONOMIALS=>$unit, COEFFICIENTS=>-$curr);
+		my $hp = new Hypersurface<Addition>(MONOMIALS=>$unit, COEFFICIENTS=>-$curr);
 		push(@cells_visual, $hp->VISUAL($bbox, FacetColor=>$fc, VertexStyle=>'hidden'));
 	}
 

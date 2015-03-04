@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -22,7 +22,7 @@
 namespace polymake { namespace matroid {
 namespace {
 
-Array< Set<int> > connected_componets_from_circuits(const Set< Set<int> > circuits, const int n)//cast Array to Set, sorting the sets
+Array< Set<int> > connected_components_from_circuits(const Set< Set<int> > circuits, const int n)//cast Array to Set, sorting the sets
 {
    if(circuits.empty()){
       return all_subsets_of_1(range(0,n-1));
@@ -56,7 +56,7 @@ Array< Set<int> > connected_componets_from_circuits(const Set< Set<int> > circui
 
 }//end anonymous namespace
 
-Function4perl(&connected_componets_from_circuits, "connected_componets_from_circuits");
+Function4perl(&connected_components_from_circuits, "connected_components_from_circuits");
 
 } }
 

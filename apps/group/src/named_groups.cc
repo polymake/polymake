@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -93,22 +93,22 @@ perl::Object cyclic_group(int n){
 user functions
 ****************************************************************/
 
-UserFunction4perl("# @category Symmetry"
-		  "# Constructs a symmetric group of given //degree//."
-		  "# @param int degree of the symmetric group"
+UserFunction4perl("# @category Producing a group"
+		  "# Constructs a __symmetric group__ of given //degree//."
+		  "# @param Int degree of the symmetric group"
                   "# @return Group",
                   &symmetric_group,"symmetric_group($)");
 
-UserFunction4perl("# @category Symmetry"
-		  "# Constructs an alternating group of given //degree//."
-		  "# @param int degree of the alternating group"
+UserFunction4perl("# @category Producing a group"
+		  "# Constructs an __alternating group__ of given //degree//."
+		  "# @param Int degree of the alternating group"
                   "# @return Group",
                   &alternating_group,"alternating_group($)");
 
 
-UserFunction4perl("# @category Symmetry"
-		  "# Constructs a cyclic group of given //degree//."
-		  "# @param int degree of the cyclic group"
+UserFunction4perl("# @category Producing a group"
+		  "# Constructs a __cyclic group__ of given //degree//."
+		  "# @param Int degree of the cyclic group"
                   "# @return Group",
                   &cyclic_group,"cyclic_group($)");
 

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -49,20 +49,8 @@ INCLUDE
 # The following functions allow for the conversion of the coordinate type of cones and polytopes.
 
 
-# @topic category functions/Other
-# Functions for special purpose.
-
-
 # @topic category functions/Comparing
 # Functions based on graph isomorphisms.
-
-
-# @topic category functions/Geometric properties
-# Properties depending on the coordinates of the polytopes.
-
-
-# @topic category functions/Optimization
-# Functions related to linear and integer linear programming.
 
 
 # @topic category functions/Producing a cone
@@ -71,7 +59,6 @@ INCLUDE
 
 # @topic category functions/Producing a polytope from graphs
 # Polytope constructions which take graphs as input.
-
 
 # @topic category functions/Producing a point configuration
 # Constructing a point configuration, either from scratch or from existing objects.
@@ -84,24 +71,8 @@ INCLUDE
 # @topic category functions/Quotient spaces
 # Topologic cell complexes defined as quotients over polytopes modulo a discrete group.
 
-
-# @topic category functions/Symmetry
-# Functions related to actions of permutation groups on polytopes.
-
-
-# @topic category functions/Triangulations, subdivisions and volume
-# Metric properties of polytopes related to measure and volume.
-
-
-# @topic category functions/Visualization
-# Functions for visualizing polytopes.
-
-
-# @topic category functions/Consistency check
-# Functions for checking the consistency of some properties of polytopes.
-
-
-
+# @topic category preferences/Convex hull computation
+# descriptions of various convex hull algorithms available in polymake
 
 # Local Variables:
 # mode: perl

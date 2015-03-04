@@ -24,7 +24,6 @@
 	<!-- backends (dependencies from top to bottom) -->
 	<property name="soft" location="src-soft" />
 	<property name="soft-new" location="src-soft-new" />
-	<property name="sunflow" location="src-sunflow" />
 	<property name="jogl" location="src-jogl" />
 	<property name="proxies" location="src-proxies" />
 
@@ -43,6 +42,10 @@
 	<property name="jni-linux64" location="jni/linux64" />
 	<property name="jni-macosx" location="jni/macosx" />
 
+	<path id="jre6.libraryclasspath">
+		<pathelement location="jre6/rt.jar"/>
+	</path>	
+	
 	<path id="backends-share.classpath">
 		<fileset dir="dist">
 			<include name="jReality-core.jar"/>
@@ -56,6 +59,7 @@
 		<fileset dir="lib">
 			<include name="jinput.jar"/>
 			<include name="netutil.jar" />
+			<include name="hidapi-1.1.jar" />
 		</fileset>
 	</path>
 
@@ -76,25 +80,15 @@
 
 	<path id="io.classpath">
 		<path refid="backend.classpath"/>
-      <fileset dir="lib">
-         <include name="itextpdf-5.3.2.jar"/>
-			<include name="xstream-1.4.2.jar"/>
-			<include name="xpp3-1.1.4c.jar"/>
+		<fileset dir="lib">
+			<include name="antlr-3.4-complete.jar"/>
+			<include name="xstream-1.4.7.jar"/>
+			<include name="xpp3_min-1.1.4c.jar"/>
+			<include name="xmlpull-1.1.3.1.jar"/>
+			<include name="itextpdf-5.3.2.jar"/>
 		</fileset>
 		<fileset dir="dist">
 			<include name="jReality-tools.jar"/>
-		</fileset>
-	</path>
-
-	<path id="sunflow.classpath">
-		<path refid="backend.classpath"/>
-		<fileset dir="dist">
-			<include name="jReality-soft.jar"/>
-			<include name="jReality-io.jar"/>
-		</fileset>
-		<fileset dir="lib">
-			<include name="sunflow.jar"/>
-			<include name="smrj-app.jar"/>
 		</fileset>
 	</path>
 
@@ -146,8 +140,10 @@
 			<include name="jjack_min.jar"/>
 			<include name="colorpicker.jar"/>
 			<include name="beans.jar"/>
-			<include name="xstream-1.4.2.jar"/>
+			<include name="xstream-1.4.7.jar"/>
 			<include name="jrworkspace.jar"/>
+			<include name="jython-standalone-2.5.4-rc1.jar"/>
+			<include name="jython-console.jar"/>
 		</fileset>
 		<fileset dir="dist">
 			<include name="jReality-io.jar"/>
@@ -172,7 +168,7 @@
 		<mkdir dir="${build}/core" />
 		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
 			srcdir="${core}" destdir="${build}/core" 
-			debug="true" includeantruntime="false">
+			debug="true" includeantruntime="false" bootclasspathref="jre6.libraryclasspath">
 		</javac>
 		<copy todir="${build}/core">
 			<fileset dir="${core}">
@@ -187,7 +183,7 @@
 		<mkdir dir="${build}/tools" />
 		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
 			srcdir="${tools}" destdir="${build}/tools" 
-			debug="true" includeantruntime="false">
+			debug="true" includeantruntime="false" bootclasspathref="jre6.libraryclasspath">
 			<classpath refid="tools.classpath"/>
 		</javac>
 		<copy todir="${build}/tools">
@@ -203,7 +199,7 @@
 		<mkdir dir="${build}/backends-share" />
 		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
 			srcdir="${backends-share}" destdir="${build}/backends-share" 
-			debug="true" includeantruntime="false">
+			debug="true" includeantruntime="false" bootclasspathref="jre6.libraryclasspath">
 			<classpath refid="backends-share.classpath"/>
 		</javac>
 		<jar jarfile="${dist}/jReality-backends-share.jar" basedir="${build}/backends-share" />
@@ -216,7 +212,7 @@
         <mkdir dir="${build}/swing" />
         <javac source="${source}" target="${target}" excludesfile="excludes.txt" 
         	srcdir="${swing}" destdir="${build}/swing" 
-        	debug="true" includeantruntime="false">
+        	debug="true" includeantruntime="false" bootclasspathref="jre6.libraryclasspath">
         	<exclude name="**/Fake*5.java" if="java6"/>
         	<exclude name="**/Fake*6.java" if="java5"/>
         	<classpath refid="swing.classpath"/>
@@ -247,7 +243,7 @@
 		<mkdir dir="${build}/ui" />
 		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
 			srcdir="${ui}" destdir="${build}/ui" 
-			debug="true" includeantruntime="false">
+			debug="true" includeantruntime="false" bootclasspathref="jre6.libraryclasspath">
 			<classpath refid="ui.classpath"/>
 		</javac>
 		<copy todir="${build}/ui">
@@ -262,7 +258,7 @@
 		<mkdir dir="${build}/proxies" />
 		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
 			srcdir="${proxies}" destdir="${build}/proxies" 
-			debug="true" includeantruntime="false">
+			debug="true" includeantruntime="false" bootclasspathref="jre6.libraryclasspath">
 			<classpath refid="proxies.classpath"/>
 		</javac>
 		<jar jarfile="${dist}/jReality-proxies.jar" basedir="${build}/proxies" />
@@ -272,7 +268,7 @@
 		<mkdir dir="${build}/soft" />
 		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
 			srcdir="${soft}:${soft-new}" destdir="${build}/soft" 
-			debug="true" includeantruntime="false">
+			debug="true" includeantruntime="false" bootclasspathref="jre6.libraryclasspath">
 			<classpath refid="backend.classpath"/>
 		</javac>
 		<jar jarfile="${dist}/jReality-soft.jar" basedir="${build}/soft" />
@@ -282,7 +278,7 @@
 		<mkdir dir="${build}/jogl" />
 		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
 			srcdir="${jogl}"  destdir="${build}/jogl" 
-			debug="true" includeantruntime="false">
+			debug="true" includeantruntime="false" bootclasspathref="jre6.libraryclasspath">
 			<classpath refid="jogl.classpath"/>
 		</javac>
 		<copy todir="build/jogl">
@@ -295,21 +291,11 @@
 		<jar jarfile="${dist}/jReality-jogl.jar" basedir="${build}/jogl" />
 	</target>
 	
-	<target name="sunflow" depends="core,backends-share" description="build sunflow backend">
-		<mkdir dir="${build}/sunflow" />
-		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
-			srcdir="${sunflow}" destdir="${build}/sunflow" 
-			debug="true" includeantruntime="false">
-			<classpath refid="sunflow.classpath"/>
-		</javac>
-		<jar jarfile="${dist}/jReality-sunflow.jar" basedir="${build}/sunflow" />
-	</target>
-
 	<target name="plugin" depends="ui,jogl,soft,proxies,swing" description="build the jrworkspace plugins">
 		<mkdir dir="${build}/plugin" />
 		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
 			srcdir="${plugin}" destdir="${build}/plugin" 
-			debug="true" includeantruntime="false">
+			debug="true" includeantruntime="false" bootclasspathref="jre6.libraryclasspath">
 			<classpath refid="plugin.classpath"/>
 		</javac>
 		<copy todir="${build}/plugin">
@@ -406,7 +392,6 @@
 			<fileset dir="${build}/ui" />
 
 			<fileset dir="${build}/soft" />
-			<fileset dir="${build}/sunflow" />
 			<fileset dir="${build}/jogl" />
 			<fileset dir="${build}/plugin" />
 
@@ -444,17 +429,19 @@
 	<target name="release-3rdparty" depends="dist" description="zip all jars">
 		<mkdir dir="${release_dir}" />
 		<mkdir dir="${release_dir}/tmp/lib" />
-      <copy file="${lib}/itextpdf-5.3.2.jar" todir="${release_dir}/tmp/lib" />
-      <copy file="${lib}/beans.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/itextpdf-5.3.2.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/jython-standalone-2.5.4-rc1.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/jython_console.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/beans.jar" todir="${release_dir}/tmp/lib" />
 		<copy file="${lib}/bsh.jar" todir="${release_dir}/tmp/lib" />
 		<copy file="${lib}/colorpicker.jar" todir="${release_dir}/tmp/lib" />
 		<copy file="${lib}/janino.jar" todir="${release_dir}/tmp/lib" />
 		<copy file="${lib}/jterm.jar" todir="${release_dir}/tmp/lib" />
 		<copy file="${lib}/jrworkspace.jar" todir="${release_dir}/tmp/lib" />
 		<copy file="${lib}/NetUtil.jar" todir="${release_dir}/tmp/lib" />
-		<copy file="${lib}/sunflow.jar" todir="${release_dir}/tmp/lib" />
-		<copy file="${lib}/xstream-1.4.2.jar" todir="${release_dir}/tmp/lib" />
-		<copy file="${lib}/xpp3-1.1.4c.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/xstream-1.4.7.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/xpp3_min-1.1.4c.jar" todir="${release_dir}/tmp/lib" />
+		<copy file="${lib}/xmlpull-1.1.3.1.jar" todir="${release_dir}/tmp/lib" />
 		<copy todir="${release_dir}/tmp/lib">
 			<fileset dir="3rd-party" />
 		</copy>
@@ -502,5 +489,12 @@
 	</target>
 
 	<target name="release-jni" depends="release-jni-linux32,release-jni-linux64,release-jni-macosx" />
+
+	<target name="clean" description="clean up">
+		<delete dir="${release_dir}" />
+		<delete dir="${build}" />
+		<delete dir="${dist}" />
+		<delete dir="${javadoc}"/>
+	</target>
 
 </project>

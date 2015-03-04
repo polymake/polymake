@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -1193,6 +1193,9 @@ template <typename Operation, typename Iterator, typename Reference=typename ite
 struct unary_op_builder {
    typedef Operation operation;
    static const operation& create(const Operation& op) { return op; }
+
+   template <typename IndexOperation>
+   static const operation& create(const pair<Operation, IndexOperation>& p) { return p.first; }
 };
 
 template <typename Operation>
@@ -1216,6 +1219,9 @@ template <typename Operation, typename Iterator1, typename Iterator2,
 struct binary_op_builder {
    typedef Operation operation;
    static const operation& create(const Operation& op) { return op; }
+
+   template <typename IndexOperation>
+   static const operation& create(const pair<Operation, IndexOperation>& p) { return p.first; }
 };
 
 template <template <typename,typename> class Operation, typename Iterator1, typename Iterator2, typename LeftRef, typename RightRef>
@@ -1279,20 +1285,20 @@ struct binary_helper
 };
 
 template <typename Operation, typename IndexOperation, typename Iterator, typename Reference>
-struct unary_op_builder<pair<Operation,IndexOperation>, Iterator, Reference>
+struct unary_op_builder<pair<Operation, IndexOperation>, Iterator, Reference>
    : unary_op_builder<Operation, Iterator, Reference> {};
 
 template <typename Iterator, typename Operation, typename IndexOperation>
-struct unary_helper<Iterator, pair<Operation,IndexOperation> >
-   : unary_helper<Iterator,Operation> {};
+struct unary_helper<Iterator, pair<Operation, IndexOperation> >
+   : unary_helper<Iterator, Operation> {};
 
 template <typename Operation, typename IndexOperation, typename Iterator1, typename Iterator2, 
           typename Reference1, typename Reference2>
-struct binary_op_builder<pair<Operation,IndexOperation>, Iterator1, Iterator2, Reference1, Reference2>
+struct binary_op_builder<pair<Operation, IndexOperation>, Iterator1, Iterator2, Reference1, Reference2>
    : binary_op_builder<Operation, Iterator1, Iterator2, Reference1, Reference2> {};
 
 template <typename IteratorPair, typename Operation, typename IndexOperation>
-struct binary_helper<IteratorPair, pair<Operation,IndexOperation> >
+struct binary_helper<IteratorPair, pair<Operation, IndexOperation> >
    : binary_helper<IteratorPair, Operation> {};
 
 template <typename> class Container;

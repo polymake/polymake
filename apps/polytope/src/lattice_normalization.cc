@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -135,7 +135,7 @@ UserFunction4perl("# @category Transformations"
                   "#  Facets are only written if available in //p//.",
                   &vertex_lattice_normalization, "vertex_lattice_normalization(Polytope<Rational> {store_transform => 0})");
 
-UserFunction4perl("# @category Geometric properties"
+UserFunction4perl("# @category Geometry"
                   "# Returns a basis of the affine lattice spanned by the vertices"
                   "# @param Polytope p the input polytope"
                   "# @return Matrix<Integer> - the lattice basis.",

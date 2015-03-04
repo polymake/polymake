@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -91,7 +91,7 @@ perl::Object connected_sum_complex(perl::Object p_in1, perl::Object p_in2, const
 }
 
 UserFunction4perl("# @category Producing a new simplicial complex from others\n"
-                  "# Compute the connected sum of two complexes.\n"
+                  "# Compute the __connected sum__ of two complexes.\n"
                   "# "
                   "# Parameters //f_1 and //f_2// specify which facet of the first and second complex correspondingly are glued together.\n"
                   "# Default is the 0-th facet of both.\n"
@@ -104,10 +104,11 @@ UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "#  they came from.  If you set the //no_labels// flag, the label generation will be omitted.\n"
                   "# @param SimplicialComplex complex1"
                   "# @param SimplicialComplex complex2"
-                  "# @param int f_1 default is 0"
-                  "# @param int f_2 default is 0"
+                  "# @param int f1 default: 0"
+                  "# @param int f2 default: 0"
                   "# @option Array<int> permutation"
-                  "# @option Bool no_lables",
+                  "# @option Bool no_lables"
+                  "# @return SimplicialComplex",
                   &connected_sum_complex,"connected_sum(SimplicialComplex SimplicialComplex; $=0,$=0, { permutation => undef, no_labels => 0 })");
 } }
 

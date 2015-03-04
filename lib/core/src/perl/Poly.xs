@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -738,6 +738,18 @@ PPCODE:
 }
 
 void
+push_scalar(avref, sv)
+   SV* avref;
+   SV* sv;
+PPCODE:
+{
+   AV* av;
+   if (!SvROK(avref) || (av=(AV*)SvRV(avref), SvTYPE(av) != SVt_PVAV))
+      croak_xs_usage(cv, "\\@array, scalar");
+   av_push(av, SvREFCNT_inc_simple_NN(sv));
+}
+
+void
 unimport_function(...)
 CODE:
 {
@@ -1258,19 +1270,39 @@ PPCODE:
 }
 
 void
-set_array_flags(avref,flags)
+get_array_annex(avref)
    SV *avref;
-   I32 flags;
 PPCODE:
 {
    SV* av;
    if (SvROK(avref) && (av=SvRV(avref), SvTYPE(av)==SVt_PVAV)) {
       MAGIC* mg=pm_perl_array_flags_magic(aTHX_ av);
+      if (mg && mg->mg_obj) {
+         PUSHs(mg->mg_obj);
+      } else {
+         PUSHs(&PL_sv_undef);
+      }
+   } else {
+      croak_xs_usage(cv, "\\@array");
+   }
+}
+
+void
+set_array_flags(avref, flags, ...)
+   SV *avref;
+   I32 flags;
+PPCODE:
+{
+   SV* av;
+   if (items <= 3 && SvROK(avref) && (av=SvRV(avref), SvTYPE(av)==SVt_PVAV)) {
+      MAGIC* mg=pm_perl_array_flags_magic(aTHX_ av);
       if (!mg)
          mg=sv_magicext(av, Nullsv, PERL_MAGIC_ext, &array_flags_vtbl, Nullch, 0);
       mg->mg_len=flags;
+      if (items==3)
+         mg->mg_obj=ST(2);
    } else {
-      croak_xs_usage(cv, "\\@array, flags");
+      croak_xs_usage(cv, "\\@array, flags [, annex]");
    }
 }
 

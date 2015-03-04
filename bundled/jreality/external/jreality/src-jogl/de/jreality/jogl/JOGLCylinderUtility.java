@@ -62,12 +62,6 @@ public class JOGLCylinderUtility {
 	private static int numCyls = 6;
 	private static IndexedFaceSet[] cylinderList = new IndexedFaceSet[numCyls];
 
-	private static IndexedFaceSet getCylinder(int i) {
-		if (cylinderList[i] == null)
-			cylinderList[i] = Primitives.cylinder(2 ^ i);
-		return cylinderList[i];
-	}
-
 	static boolean sharedDisplayLists = JOGLConfiguration.sharedContexts;
 	static WeakHashMap<GL, int[]> cylinderDListsTable = new WeakHashMap<GL, int[]>();
 	static int[] globalSharedCylinderDisplayLists = null;

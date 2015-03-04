@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -12,13 +12,6 @@
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
-
-# @topic objects/Polytope<QuadraticExtension>
-# A pointed polyhedron realized in R<sup>d</sup>.
-#
-# Convex hull and related algorithms use exact quadratic extension fields for arithmetics.
-#
-
 
 # @category Producing a polytope from scratch
 # Produce the list of all five Platonic solids with ascending number of vertices.

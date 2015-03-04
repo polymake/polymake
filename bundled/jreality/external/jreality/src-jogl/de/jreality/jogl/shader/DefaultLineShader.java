@@ -58,7 +58,6 @@ import de.jreality.jogl.JOGLRenderer;
 import de.jreality.jogl.JOGLRendererHelper;
 import de.jreality.jogl.JOGLRenderingState;
 import de.jreality.math.Rn;
-import de.jreality.scene.Appearance;
 import de.jreality.scene.Geometry;
 import de.jreality.scene.IndexedFaceSet;
 import de.jreality.scene.IndexedLineSet;
@@ -79,27 +78,39 @@ import de.jreality.util.LoggingSystem;
  * @author Charles Gunn
  * 
  */
-public class DefaultLineShader extends AbstractPrimitiveShader implements
-		LineShader {
-	protected de.jreality.shader.DefaultLineShader templateShader = null;
-	FrameFieldType tubeStyle = FrameFieldType.PARALLEL;
-	double tubeRadius = 0.05, lineWidth = 1.0;
-
-	boolean lineStipple = false;
-	int lineFactor = 1;
-	int lineStipplePattern = 0x1c47;
-	boolean tubeDraw = false, lineLighting = false, opaqueTubes = false,
-			vertexColors = false, radiiWorldCoords = false;
-	Color diffuseColor = java.awt.Color.BLACK;
-	double[][] crossSection,
-			defaultCrossSection = TubeUtility.octagonalCrossSection;
+public class DefaultLineShader extends AbstractPrimitiveShader implements LineShader {
+	
+	protected de.jreality.shader.DefaultLineShader 
+		templateShader = null;
+	
+	private FrameFieldType 
+		tubeStyle = FrameFieldType.PARALLEL;
+	private double 
+		tubeRadius = 0.05,
+		lineWidth = 1.0;
+	private boolean 
+		lineStipple = false;
+	private int 
+		lineFactor = 1,
+		lineStipplePattern = 0x1c47;
+	private boolean 
+		tubeDraw = false,
+		lineLighting = false, 
+		opaqueTubes = false,
+		vertexColors = false, 
+		radiiWorldCoords = false;
+	private Color 
+		diffuseColor = java.awt.Color.BLACK;
+	private double[][] 
+		crossSection,
+		defaultCrossSection = TubeUtility.octagonalCrossSection;
 
 	private PolygonShader polygonShader;
 	transient boolean changedTransp, changedLighting;
 	transient float[] diffuseColorAsFloat;
 	transient int faceCount = 0;
 
-	StandardGLSLShader noneuc = new EuclideanGLSLShader();
+	StandardGLSLShader noneuc = new NoneuclideanGLSLShader();
 	boolean useGLSL, hasNoneuc = false;
 	GlslProgram glslProgram;
 
@@ -171,19 +182,20 @@ public class DefaultLineShader extends AbstractPrimitiveShader implements
 			// polygonShader = (PolygonShader) ShaderLookup.getShaderAttr(eap,
 			// name, "polygonShader");
 			throw new IllegalStateException("Not from a template!");
-		if (useGLSL) {
-			if (GlslProgram.hasGlslProgram(eap, name)) {
-				// dummy to write glsl values like "lightingEnabled"
-				Appearance app = new Appearance();
-				glslProgram = new GlslProgram(app, eap, name);
-				hasNoneuc = false;
-			} else {
-				noneuc.setFromEffectiveAppearance(eap, name);
-				glslProgram = noneuc.getStandardShader();
-				hasNoneuc = true;
-			}
-		} else
-			hasNoneuc = false;
+//		if (useGLSL) {
+//			if (GlslProgram.hasGlslProgram(eap, name)) {
+//				// dummy to write glsl values like "lightingEnabled"
+//				Appearance app = new Appearance();
+//				glslProgram = new GlslProgram(app, eap, name);
+//				hasNoneuc = false;
+//			} else {
+//				System.err.println("rendering noneuc line");
+//				noneuc.setFromEffectiveAppearance(eap, name);
+//				glslProgram = noneuc.getStandardShader();
+//				hasNoneuc = true;
+//			}
+//		} else
+//			hasNoneuc = false;
 	}
 
 	public void preRender(JOGLRenderingState jrs) {
@@ -241,12 +253,12 @@ public class DefaultLineShader extends AbstractPrimitiveShader implements
 
 		if (!tubeDraw)
 			gl.glDepthRange(0.0d, jrs.depthFudgeFactor);
-		if (useGLSL) {
-			if (hasNoneuc) {
-				noneuc.render(jr);
-			}
-			GlslLoader.render(glslProgram, jr);
-		}
+//		if (useGLSL) {
+//			if (hasNoneuc) {
+//				noneuc.render(jr);
+//			}
+//			GlslLoader.render(glslProgram, jr);
+//		}
 	}
 
 	public void postRender(JOGLRenderingState jrs) {
@@ -254,8 +266,8 @@ public class DefaultLineShader extends AbstractPrimitiveShader implements
 			return;
 		JOGLRenderer jr = jrs.renderer;
 		GL2 gl = jr.globalGL;
-		if (useGLSL)
-			GlslLoader.postRender(glslProgram, gl);
+//		if (useGLSL)
+//			GlslLoader.postRender(glslProgram, gl);
 		if (!tubeDraw) {
 			jr.globalGL.glDepthRange(0.0d, 1d);
 		} else
@@ -424,6 +436,7 @@ public class DefaultLineShader extends AbstractPrimitiveShader implements
 				}
 				ptf.setCrossSection(crossSection);
 				ptf.setFrameFieldType(tubeStyle);
+				ptf.setGenerateTextureCoordinates(false);
 				ptf.setMetric(sig);
 				ptf.setRadius(effectiveRadius);
 				if (dl != null) {
@@ -435,9 +448,8 @@ public class DefaultLineShader extends AbstractPrimitiveShader implements
 				ptf.update();
 				IndexedFaceSet tube = ptf.getTube();
 				if (tube != null) {
-					JOGLRendererHelper.drawFaces(jr, tube,
-							jr.renderingState.smoothShading,
-							jr.renderingState.diffuseColor[3]);
+					jr.renderingState.currentAlpha = jr.renderingState.diffuseColor[3];
+					JOGLRendererHelper.drawFaces(jr, tube);
 					faceCount += tube.getNumFaces();
 				}
 			}

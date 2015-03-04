@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -314,7 +314,7 @@ int main() {
 # if defined(__APPLE__)
    std::cout << "apple";
 # endif
-   std::cout << "gcc " << __GNUC__ << '.' << __GNUC_MINOR__ << std::endl;
+   std::cout << "gcc " << __GNUC__ << '.' << __GNUC_MINOR__ << '.' << __GNUC_PATCHLEVEL__ << std::endl;
    return 0;
 #else
    return 1;
@@ -647,21 +647,87 @@ The complete error log follows:
       # check if libperl is there
       print "checking shared perl library ... ";
       my $libperl=$Config::Config{libperl};
+
+      my $error = "";
       if (length($libperl)==0) {
-         die <<".";
+         $error = <<".";
 Your perl installation seems to lack the libperl.$Config::Config{dlext} shared library.
 On some systems it is contained in a separate package named like
 perl-devel or libperl-dev.  Please look for such a package and install it.
 
 If your perl installation has been configured by hand, please make sure that
 you have answered with "yes" to the question about the libperl shared library
-(it is not the default choice!) Otherwise, reconfigure and reinstall your perl.
-
-As a last resort, if you can't help it and don't know where to get this library,
-you can configure polymake with the option --without-callable .  You won't be
-able to build the callable library any more, but at least you get polymake compiled.
+(it is not the default choice!), or that you have passed '-Duseshrplib=true'
+to the ./Configure script.
+Otherwise, reconfigure and reinstall your perl.
 .
       }
+
+      # We also build a test program for libperl since e.g. on Debian based systems the
+      # check for Config::Config{libperl} will not detect a missing libperl-dev package
+      chomp(my $perlldflags = `$PERL -MExtUtils::Embed -e ldopts`);
+      my $build_error=build_test_program(<<'---', CXXflags => `$PERL -MExtUtils::Embed -e ccopts`, LDflags => "$ARCHFLAGS $perlldflags" );
+#include <EXTERN.h>
+#include <perl.h>
+
+static PerlInterpreter *my_perl;
+
+int main(int argc, char **argv, char **env)
+{
+   char *embedding[] = { "", "-e", "0" };
+   PERL_SYS_INIT3(&argc,&argv,&env);
+   my_perl = perl_alloc();
+   perl_construct(my_perl);
+   PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
+   perl_parse(my_perl, NULL, 3, embedding, (char **)NULL);
+   perl_run(my_perl);
+   eval_pv("print $]",TRUE);
+   perl_destruct(my_perl);
+   perl_free(my_perl);
+   PERL_SYS_TERM();
+}
+---
+      if ($?==0) {
+         chomp(my $version = run_test_program());
+         if ($? == 0) {
+            if ($version ne $]) {
+               $error = <<".";
+The shared perl library claims to be of a different version ($version) than
+your perl interpreter ($]). Please choose a different perl installation with
+PERL=/some/path/to/bin/perl or try to reinstall perl (including libperl).
+.
+            }
+         } else {
+            $error = <<".";
+Could not run a test program checking for libperl.$Config::Config{dlext}.
+The error is as follows:
+$!
+
+On some systems the library is contained in a separate package named like
+perl-devel or libperl-dev.  Please look for such a package and install it.
+.
+         }
+      } else {
+         $error = <<".";
+Could not compile a test program for the libperl.$Config::Config{dlext} shared library.
+The build error is as follows:
+$build_error
+
+On some systems the library is contained in a separate package named like
+perl-devel or libperl-dev.  Please look for such a package and install it.
+.
+      }
+
+      if ($error) {
+         print "failed\n\n";
+         die <<".";
+$error
+As a last resort, you can configure polymake with the option --without-callable .
+You won't be able to build the callable library any more, but at least you get
+polymake compiled.
+.
+      }
+
       print "ok\n";
    }
 
@@ -856,10 +922,30 @@ foreach my $ext (@ext_ordered) {
       $ext_survived{$ext}=1;
    } else {
       $ext_failed{$ext}=1;
+      if (exists($options{$ext}) and $options{$ext} ne ".none.") {
+         die << "EOF";
+
+
+ERROR:
+The bundled extension $ext was explicitly requested but failed to configure.
+Please recheck your argument (--with-$ext=$options{$ext}) and build.${Arch}/bundled.log.
+You can also disable it by specifying --without-$ext instead.
+EOF
+      }
       $options{$ext}=".none.";
    }
    print "\n";
 }
+
+# save the list of enabled bundled extensions in proper order for the make process
+$BundledExts = join(" ",grep { $ext_survived{$_} } @ext_ordered);
+
+$warning .= <<"EOF" unless exists $ext_survived{"cdd"};
+
+WARNING: The bundled extension for cdd was either disabled or failed to configure.
+         Running polymake without cdd is discouraged and unsupported!
+         Please recheck your configuration (and build.${Arch}/bundled.log).
+EOF
 
 print "* If you want to change the configuration of bundled extensions please ",
       defined($LOG) && "see $BuildDir/bundled.log and ",

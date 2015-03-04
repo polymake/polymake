@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -25,12 +25,13 @@
 # Throughout a tropical hypersurface is seen as a rational polyhedral complex in R<sup>d</sup>
 # (if inhomogeneous) or in R<sup>d-1</sup> (if homogeneous). 
 #
-# Our default tropical addition is Min.  If you prefer Max use that as an optional template parameter.
+# Our default tropical addition is [[Min]].  If you prefer [[Max]] use that as an optional template parameter.
 #
 # Example: max-tropical line with apex (-1,-2,-3) in the tropical 2-torus:
-# $H = new Hypersurface<Max>(MONOMIALS=>[[1,0,0],[0,1,0],[0,0,1]],COEFFICIENTS=>[1,2,3]);
+# $H = new [[Hypersurface]]<Max>([[MONOMIALS]]=>[ [1,0,0],[0,1,0],[0,0,1] ], [[COEFFICIENTS]]=>[1,2,3]);
 #
-declare object Hypersurface<Addition=Min> [ is_tropical_addition(Addition) ] {
+
+object Hypersurface { 
 
 
 # Monomials of the (tropical) polynomial defining the hypersurface. (Laurent polynomials are allowed.)
@@ -295,7 +296,7 @@ user_method privileged_subdivision : MONOMIALS, REDUNDANT_MONOMIALS, REGIONS, RA
 
 user_method VISUAL(; $=undef, %Visual::Polygons::decorations) \
    : POINTS, HOMOGENEOUS, MAXIMAL_FACES {
-# FIXME: The following would be much nicer as it avoids code duplication.  It dows work.
+# FIXME: The following would be much nicer as it avoids code duplication.  It does work.
 #        Yet, the visualization of fan::PolyhedralComplex should be modified to consider infinite rays
 #        (for more suitable pictures).
 #   my $this=shift;
@@ -356,7 +357,7 @@ precondition : DIM { $this->DIM<=2 }
 # @param Vector<Rational> coeffs coefficients of the tropical linear form
 # @return Hypersurface<Addition> default [[Min]]
 
-user_function hyperplane<Addition=Min> (Vector<Rational>) {
+user_function hyperplane<Addition> (Vector<Rational>) {
     my ($coefs) = @_;
     my $d=$coefs->dim();
     return new Hypersurface<Addition>(MONOMIALS=>unit_matrix($d),COEFFICIENTS=>$coefs);

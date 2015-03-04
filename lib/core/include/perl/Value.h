@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -718,7 +718,7 @@ protected:
    {
       switch (classify_number()) {
       case number_is_zero:
-         x=0;
+         x= 0;
          break;
       case number_is_int:
          assign_int(x, int_value(), bool2type<numeric_traits<Numtype>::check_range>(),
@@ -760,6 +760,20 @@ protected:
    False* retrieve(ObjectType& x) const;
    False* retrieve(pm::Array<Object>& x) const;
 
+   SV* store_instance_in() const;
+
+   template <typename Target>
+   void cache_instance(const Target& x, False) const {}
+
+   template <typename Target>
+   void cache_instance(const Target& x, True) const
+   {
+      if (SV* store_in_sv=store_instance_in()) {
+         Value store_in(store_in_sv);
+         store_in << x;
+      }
+   }
+
    template <typename Options, typename Target>
    void do_parse(Target& x) const
    {
@@ -781,6 +795,8 @@ protected:
          ValueInput< TrustedValue<False> >(sv) >> x;
       else
          ValueInput<>(sv) >> x;
+
+      cache_instance(x, Serializable());
    }
 
    // numeric scalar type, non-serializable
@@ -973,7 +989,7 @@ public:
       if (x)
          set_string_value(x);
       else
-         put(undefined(),0,0);
+         put(undefined(), NULL, 0);
       return NULL;
    }
 
@@ -1061,7 +1077,7 @@ public:
       if (x.top().defined())
          put(*x.top(), fup, prescribed_pkg);
       else
-         put(undefined(),0,0);
+         put(undefined(), NULL, 0);
       return NULL;
    }
 
@@ -1074,7 +1090,7 @@ public:
          store< sparse_elem_proxy<Base,E,Params> >(x);
          return first_anchor_slot();
       } else {
-         return put(x.get(), 0, prescribed_pkg);
+         return put(x.get(), NULL, prescribed_pkg);
       }
    }
 
@@ -1166,13 +1182,13 @@ public:
    template <typename Source> friend
    void operator<< (const Value& me, const Source& x)
    {
-      const_cast<Value&>(me).put(x,0,0);
+      const_cast<Value&>(me).put(x, NULL, 0);
    }
 
    template <size_t ll> friend
    void operator<< (const Value& me, const char (&x)[ll])
    {
-      const_cast<Value&>(me).set_string_value(x,ll-1);
+      const_cast<Value&>(me).set_string_value(x, ll-1);
    }
 
    template <typename Target>
@@ -1360,6 +1376,8 @@ public:
 
 class OptionSet : public HashHolder {
 public:
+   OptionSet() : HashHolder() { this->get_temp(); }
+   
    OptionSet(const Value& v)
       : HashHolder(v.sv) { verify(); }
 public:

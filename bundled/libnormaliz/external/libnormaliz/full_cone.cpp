@@ -62,8 +62,7 @@ const int largePyramidFactor=20;  // pyramid is large if largePyramidFactor*Comp
 
 const int SuppHypRecursionFactor=100; // pyramids for supphyps formed if Pos*Neg > this factor*dim^4
 
-const size_t UpdateReducersBound=10000; // reducers updated if one thread has collected more candidates
-
+const size_t UpdateReducersBound=200000; // reducers updated if one thread has collected more candidates
 
 //---------------------------------------------------------------------------
 
@@ -271,7 +270,7 @@ void Full_Cone<Integer>::find_new_facets(const size_t& new_generator){
         if(nr_zero_i==subfacet_dim) // NEW This case treated separately
             Neg_Subfacet_Multi[omp_get_thread_num()].push_back(pair <boost::dynamic_bitset<>, int> (zero_i,i));
             
-        else {
+        if(nr_zero_i==facet_dim){
             for (k =0; k<nr_gen; k++) {  
                 if(zero_i.test(k)) {              
                     subfacet=zero_i;
@@ -329,7 +328,7 @@ void Full_Cone<Integer>::find_new_facets(const size_t& new_generator){
 //=====================================================================
 // parallel from here
 
-    #pragma omp parallel private(jj) if(nr_NegNonSimp+nr_NegSimp>1000)
+    #pragma omp parallel private(jj)
     {
     size_t i,j,k,nr_zero_i;
     boost::dynamic_bitset<> subfacet(dim-2);
@@ -678,7 +677,7 @@ void Full_Cone<Integer>::extend_triangulation(const size_t& new_generator){
 
 
     typename list< SHORTSIMPLEX<Integer> >::iterator oldTriBack = --Triangulation.end();
-    #pragma omp parallel private(i)  if(TriangulationSize>100)
+    #pragma omp parallel private(i)
     {
     size_t k,l;
     bool one_not_in_i, not_in_facet;
@@ -1143,7 +1142,7 @@ void Full_Cone<Integer>::find_and_evaluate_start_simplex(){
         in_triang[key[i]]=true;
         GensInCone.push_back(key[i]);
         if (deg1_triangulation && isComputed(ConeProperty::Grading))
-            deg1_triangulation = (gen_degrees[i] == 1);
+            deg1_triangulation = (gen_degrees[key[i]] == 1);
     }
     
     nrGensInCone=dim;
@@ -1421,8 +1420,8 @@ void Full_Cone<Integer>::evaluate_large_rec_pyramids(size_t new_generator){
     
     #pragma omp for schedule(dynamic) 
     for(size_t i=0; i<nrLargeRecPyrs; i++){
-    for(; i > ppos; ++ppos, ++p) ;
-    for(; i < ppos; --ppos, --p) ;
+        for(; i > ppos; ++ppos, ++p) ;
+        for(; i < ppos; --ppos, --p) ;
         match_neg_hyp_with_pos_hyps(*p,new_generator,PosHyps,Zero_P);
     }
     } // parallel
@@ -1456,9 +1455,10 @@ void Full_Cone<Integer>::evaluate_stored_pyramids(const size_t level){
 
     if(Pyramids[level].empty())
         return;
-    Pyramids.resize(level+2); // provide space for a new generation
-    nrPyramids.resize(level+2);
-    nrPyramids[level+1]=0;
+    if (Pyramids.size() < level+2) {
+        Pyramids.resize(level+2);      // provide space for a new generation
+        nrPyramids.resize(level+2, 0);
+    }
 
     size_t nr_done=0;
     size_t nr_pyramids=nrPyramids[level];
@@ -1668,8 +1668,7 @@ void Full_Cone<Integer>::build_cone() {
         // in_triang[i]=true; // now at end of loop
         if (deg1_triangulation && isComputed(ConeProperty::Grading))
             deg1_triangulation = (gen_degrees[i] == 1);
-        
-            
+
         // First we test whether to go to recursive pyramids because of too many supphyps
         if (recursion_allowed && nr_neg*nr_pos > RecBoundSuppHyp) {  // use pyramids because of supphyps
             if (do_triangulation)
@@ -1911,9 +1910,10 @@ void Full_Cone<Integer>::update_reducers(){
     if(NewCandidates.Candidates.empty())
         return;
 
-    NewCandidates.sort_it(); 
+    if(nr_gen==dim)  // no global reduction in the simplicial case
+        NewCandidates.sort_by_deg(); 
     // cout << "Nach sort" << endl;
-    if(nr_gen!=dim){
+    if(nr_gen!=dim){  // global reduction in the nonsimplicial case
         NewCandidates.auto_reduce();
         // cout << "Nach auto" << endl; 
         if(verbose){
@@ -1952,12 +1952,14 @@ void Full_Cone<Integer>::evaluate_triangulation(){
                 OldCandidates.Candidates.back().original_generator=true;
             }
         }
-        OldCandidates.sort_it();
+        // OldCandidates.sort_by_deg(); // now in auto_reduce
         OldCandidates.auto_reduce();
     }
     
     if(TriangulationSize==0)
         return;
+        
+    list<SimplexEvaluator<Integer> > LargeSimplices; // Simplices for internal parallelization
 
     const long VERBOSE_STEPS = 50;
     long step_x_size = TriangulationSize-VERBOSE_STEPS;
@@ -1978,6 +1980,7 @@ void Full_Cone<Integer>::evaluate_triangulation(){
     
     skip_remaining=false;
     step_x_size = TriangulationSize-VERBOSE_STEPS;
+
     
     #pragma omp parallel 
     {
@@ -1999,7 +2002,10 @@ void Full_Cone<Integer>::evaluate_triangulation(){
 
             if(keep_triangulation || do_Stanley_dec)
                 sort(s->key.begin(),s->key.end());
-            SimplexEval[tn].evaluate(*s);
+            if(!SimplexEval[tn].evaluate(*s)){
+                #pragma omp critical(LARGESIMPLEX)
+                LargeSimplices.push_back(SimplexEval[tn]);
+            }
             if (verbose) {
                 #pragma omp critical(VERBOSE)
                 while ((long)(i*VERBOSE_STEPS) >= step_x_size) {
@@ -2008,11 +2014,11 @@ void Full_Cone<Integer>::evaluate_triangulation(){
                 }
             }
             
-            if(do_Hilbert_basis && SimplexEval[tn].get_collected_elements_size() > UpdateReducersBound)
+            if(do_Hilbert_basis && Results[tn].get_collected_elements_size() > AdjustedReductionBound)
                 skip_remaining=true;
             
         }
-        SimplexEval[tn].transfer_candidates();
+        Results[tn].transfer_candidates();
     } // end parallel
     if (verbose)
         verboseOutput()  << endl;
@@ -2024,8 +2030,8 @@ void Full_Cone<Integer>::evaluate_triangulation(){
         
     } // do_evaluation
     
-    if(do_Hilbert_basis)
-        update_reducers();
+    /* if(do_Hilbert_basis)  // moved further down
+        update_reducers(); */
             
     if (verbose)
     {
@@ -2036,6 +2042,28 @@ void Full_Cone<Integer>::evaluate_triangulation(){
             verboseOutput() << ", " << CandidatesSize << " deg1 vectors";
         verboseOutput() << " accumulated." << endl;
     }
+    
+    // cout << "************* " << LargeSimplices.size() << endl;
+    
+    if(verbose){
+        size_t lss=LargeSimplices.size();
+        if(lss>0)
+            verboseOutput() << "Evaluating " << lss << " large simplices" << endl;
+    }
+
+    typename list< SimplexEvaluator<Integer> >::iterator LS = LargeSimplices.begin();
+    for(;LS!=LargeSimplices.end();++LS){
+        LS->Simplex_parallel_evaluation();
+        if(do_Hilbert_basis && Results[0].get_collected_elements_size() > UpdateReducersBound){       
+            Results[0].transfer_candidates();
+            update_reducers();
+        }
+    }
+    
+    for(size_t i=0;i<Results.size();++i)
+        Results[i].transfer_candidates(); // any remaining ones
+    if(do_Hilbert_basis)
+        update_reducers();
     
     if(!keep_triangulation){
         // Triangulation.clear();
@@ -2088,6 +2116,9 @@ template<typename Integer>
 void Full_Cone<Integer>::primal_algorithm(){
 
     SimplexEval = vector< SimplexEvaluator<Integer> >(omp_get_max_threads(),SimplexEvaluator<Integer>(*this));
+    for(size_t i=0;i<SimplexEval.size();++i)
+        SimplexEval[i].set_evaluator_tn(i);
+    Results = vector< Collector<Integer> >(omp_get_max_threads(),Collector<Integer>(*this));
 
     /***** Main Work is done in build_top_cone() *****/
     build_top_cone();  // evaluates if keep_triangulation==false
@@ -2097,11 +2128,10 @@ void Full_Cone<Integer>::primal_algorithm(){
     extreme_rays_and_deg1_check();
     if(!pointed) return;
 
+    if (isComputed(ConeProperty::Grading) && !deg1_generated) {
+        deg1_triangulation = false;
+    }
     if (keep_triangulation) {
-        if (isComputed(ConeProperty::Grading) && !deg1_generated) {
-            deg1_triangulation = false;
-        }
-
         is_Computed.set(ConeProperty::Triangulation);
     }
     
@@ -2111,10 +2141,10 @@ void Full_Cone<Integer>::primal_algorithm(){
     // collect accumulated data from the SimplexEvaluators
     if(!is_pyramid) {
         for (int zi=0; zi<omp_get_max_threads(); zi++) {
-            detSum += SimplexEval[zi].getDetSum();
-            multiplicity += SimplexEval[zi].getMultiplicitySum(); 
+            detSum += Results[zi].getDetSum();
+            multiplicity += Results[zi].getMultiplicitySum(); 
             if (do_h_vector) {
-                Hilbert_Series += SimplexEval[zi].getHilbertSeriesSum();
+                Hilbert_Series += Results[zi].getHilbertSeriesSum();
             }
         }
     }
@@ -2134,7 +2164,6 @@ void Full_Cone<Integer>::primal_algorithm(){
         OldCandidates.extract(Hilbert_Basis);
         OldCandidates.Candidates.clear();
         is_Computed.set(ConeProperty::HilbertBasis,true);
-        check_integrally_closed();
         if (isComputed(ConeProperty::Grading)) {
             select_deg1_elements();
             check_deg1_hilbert_basis();
@@ -2281,7 +2310,8 @@ void Full_Cone<Integer>::compute_deg1_elements_via_approx() {
     Full_Cone C_approx(latt_approx()); // latt_approx computes a matrix of generators
     C_approx.do_deg1_elements=true;    // for supercone C_approx that is generated in degree 1
     if(verbose)
-        verboseOutput() << "Computing deg 1 elements in approximating cone" << endl;
+        verboseOutput() << "Computing deg 1 elements in approximating cone with "
+                        << C_approx.Generators.nr_of_rows() << " generators." << endl;
     C_approx.compute();
     if(!C_approx.contains(*this) || Grading!=C_approx.Grading){
         errorOutput() << "Wrong approximating cone. Fatal error. PLEASE CONTACT THE AUTHORS" << endl;
@@ -2313,6 +2343,11 @@ void Full_Cone<Integer>::support_hyperplanes() {  // if called when the support 
     }
     extreme_rays_and_deg1_check();
     // reset_tasks();
+    if(inhomogeneous){
+       set_levels();
+       find_level0_dim();
+       find_module_rank();
+    }
 }
 
 //---------------------------------------------------------------------------
@@ -2645,7 +2680,7 @@ Simplex<Integer> Full_Cone<Integer>::find_start_simplex() const {
             if (Extreme_Rays[i])
                 marked_extreme_rays.push_back(i);
         }
-        vector<key_t> key_extreme = Generators.submatrix(Extreme_Rays).max_rank_submatrix_lex(dim);
+        vector<key_t> key_extreme = Generators.submatrix(Extreme_Rays).max_rank_submatrix_lex();
         assert(key_extreme.size() == dim);
         vector<key_t> key(dim);
         for (key_t i=0; i<dim; i++) {
@@ -2715,10 +2750,11 @@ void Full_Cone<Integer>::compute_extreme_rays(){
         return;
     assert(isComputed(ConeProperty::SupportHyperplanes));
 
-    if(dim*Support_Hyperplanes.size() < nr_gen)
+    if(dim*Support_Hyperplanes.size() < nr_gen) {
          compute_extreme_rays_rank();
-    else
+    } else {
          compute_extreme_rays_compare();
+    }
 }
 
 //---------------------------------------------------------------------------
@@ -2726,7 +2762,9 @@ void Full_Cone<Integer>::compute_extreme_rays(){
 template<typename Integer>
 void Full_Cone<Integer>::compute_extreme_rays_rank(){
 
-        size_t i,j;
+    if (verbose) verboseOutput() << "Select extreme rays via rank ... " << flush;
+
+    size_t i,j;
     typename list<vector<Integer> >::iterator s;
     vector<size_t> gen_in_hyperplanes;
     gen_in_hyperplanes.reserve(Support_Hyperplanes.size());
@@ -2751,12 +2789,15 @@ void Full_Cone<Integer>::compute_extreme_rays_rank(){
     }
 
     is_Computed.set(ConeProperty::ExtremeRays);
+    if (verbose) verboseOutput() << "done." << endl;
 }
 
 //---------------------------------------------------------------------------
 
 template<typename Integer>
 void Full_Cone<Integer>::compute_extreme_rays_compare(){
+
+    if (verbose) verboseOutput() << "Select extreme rays via comparison ... " << flush;
 
     size_t i,j,k,l,t;
     // Matrix<Integer> SH=getSupportHyperplanes().transpose();
@@ -2824,6 +2865,7 @@ void Full_Cone<Integer>::compute_extreme_rays_compare(){
     }
 
     is_Computed.set(ConeProperty::ExtremeRays);
+    if (verbose) verboseOutput() << "done." << endl;
 }
 
 //---------------------------------------------------------------------------
@@ -2883,9 +2925,11 @@ void Full_Cone<Integer>::check_pointed() {
     assert(isComputed(ConeProperty::SupportHyperplanes));
     if (isComputed(ConeProperty::IsPointed))
         return;
+    if (verbose) verboseOutput() << "Checking for pointed ... " << flush;
     Matrix<Integer> SH = getSupportHyperplanes();
     pointed = (SH.rank_destructive() == dim);
     is_Computed.set(ConeProperty::IsPointed);
+    if (verbose) verboseOutput() << "done." << endl;
 }
 
 
@@ -3007,37 +3051,6 @@ void Full_Cone<Integer>::check_deg1_hilbert_basis() {
         }
     }
     is_Computed.set(ConeProperty::IsDeg1HilbertBasis);
-}
-
-//---------------------------------------------------------------------------
-
-template<typename Integer>
-void Full_Cone<Integer>::check_integrally_closed() {
-    if (isComputed(ConeProperty::IsIntegrallyClosed))
-        return;
-
-    if ( !isComputed(ConeProperty::HilbertBasis)) {
-        errorOutput() << "WARNING: unsatisfied preconditions in check_integrally_closed()!" <<endl;
-        return;
-    }
-    integrally_closed = false;
-    if (Hilbert_Basis.size() <= nr_gen) {
-        integrally_closed = true;
-        typename list< vector<Integer> >::iterator h;
-        for (h = Hilbert_Basis.begin(); h != Hilbert_Basis.end(); ++h) {
-            integrally_closed = false;
-            for (size_t i=0; i< nr_gen; i++) {
-                if ((*h) == Generators[i]) {
-                    integrally_closed = true;
-                    break;
-                }
-            }
-            if (!integrally_closed) {
-                break;
-            }
-        }
-    }
-    is_Computed.set(ConeProperty::IsIntegrallyClosed);
 }
 
 //---------------------------------------------------------------------------
@@ -3341,7 +3354,6 @@ Full_Cone<Integer>::Full_Cone(Matrix<Integer> M){ // constructor of the top cone
     deg1_extreme_rays = false;
     deg1_generated = false;
     deg1_hilbert_basis = false;
-    integrally_closed = false;
     
     reset_tasks();
     
@@ -3366,9 +3378,8 @@ Full_Cone<Integer>::Full_Cone(Matrix<Integer> M){ // constructor of the top cone
     
     FS.resize(omp_get_max_threads());
     
-    Pyramids.resize(1);  // prepare storage for pyramids
-    nrPyramids.resize(1);
-    nrPyramids[0]=0;
+    Pyramids.resize(20);  // prepare storage for pyramids
+    nrPyramids.resize(20,0);
       
     recursion_allowed=true;
     
@@ -3389,6 +3400,12 @@ Full_Cone<Integer>::Full_Cone(Matrix<Integer> M){ // constructor of the top cone
     use_existing_facets=false;
     start_from=0;
     old_nr_supp_hyps=0;
+    OldCandidates.dual=false;
+    NewCandidates.dual=false;
+    
+    AdjustedReductionBound=UpdateReducersBound/omp_get_max_threads();
+    if(AdjustedReductionBound < 10000)
+        AdjustedReductionBound=10000;
 }
 
 //---------------------------------------------------------------------------
@@ -3414,7 +3431,6 @@ Full_Cone<Integer>::Full_Cone(const Cone_Dual_Mode<Integer> &C) {
     deg1_generated = false;
     deg1_triangulation = false;
     deg1_hilbert_basis = false;
-    integrally_closed = false;
     
     reset_tasks();
     
@@ -3459,6 +3475,8 @@ Full_Cone<Integer>::Full_Cone(const Cone_Dual_Mode<Integer> &C) {
     use_existing_facets=false;
     start_from=0;
     old_nr_supp_hyps=0;
+    OldCandidates.dual=false;
+    NewCandidates.dual=false;
 }
 
 template<typename Integer>
@@ -3490,7 +3508,6 @@ void Full_Cone<Integer>::dual_mode() {
     }
     if(!inhomogeneous && isComputed(ConeProperty::HilbertBasis)){
         if (isComputed(ConeProperty::Grading)) check_deg1_hilbert_basis();
-        check_integrally_closed();
     }
 
     if(inhomogeneous){
@@ -3580,6 +3597,8 @@ Full_Cone<Integer>::Full_Cone(Full_Cone<Integer>& C, const vector<key_t>& Key) {
     use_existing_facets=false;
     start_from=0;
     old_nr_supp_hyps=0;
+    OldCandidates.dual=false;
+    NewCandidates.dual=false;
 }
 
 //---------------------------------------------------------------------------
@@ -3622,11 +3641,6 @@ bool Full_Cone<Integer>::isDeg1ExtremeRays() const{
 template<typename Integer>
 bool Full_Cone<Integer>::isDeg1HilbertBasis() const{
     return deg1_hilbert_basis;
-}
-
-template<typename Integer>
-bool Full_Cone<Integer>::isIntegrallyClosed() const{
-    return integrally_closed;
 }
 
 //---------------------------------------------------------------------------

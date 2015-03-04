@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -83,7 +83,7 @@ namespace polymake { namespace fan {
 	lp.take("LINEAR_OBJECTIVE") << unit_vector<Scalar>(A.cols(), A.cols()-1);
 	p.add("LP", lp);
 
-	const Scalar max = p.give("LP.MAXIMAL_VALUE");
+	const Scalar max = lp.give("MAXIMAL_VALUE");
 
 	if (max > 0)
 	  return true;

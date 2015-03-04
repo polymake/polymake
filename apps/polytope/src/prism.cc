@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,17 +16,17 @@
 
 #include "polymake/client.h"
 #include "polymake/vector"
-#include "polymake/Rational.h"
 #include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
 
 namespace polymake { namespace polytope {
 
-Matrix<Rational>
-prism_coord(const Matrix<Rational>& V,
+template<typename Scalar>
+Matrix<Scalar>
+prism_coord(const Matrix<Scalar>& V,
             int& n_vertices, int& n_vertices_out,
             const Set<int>& rays,
-            const Rational& z, const Rational& z_prime)
+            const Scalar& z, const Scalar& z_prime)
 {
 
    if (n_vertices==0) {
@@ -34,14 +34,14 @@ prism_coord(const Matrix<Rational>& V,
       n_vertices_out=2*n_vertices-rays.size();
    }
    return rays.empty()
-          ? Matrix<Rational>( ( V | same_element_vector(z, n_vertices) ) /
+          ? Matrix<Scalar>( ( V | same_element_vector(z, n_vertices) ) /
                               ( V | same_element_vector(z_prime, n_vertices)) )
-          : Matrix<Rational>( ( V | same_element_sparse_vector(~rays, z, n_vertices) ) /
+          : Matrix<Scalar>( ( V | same_element_sparse_vector(~rays, z, n_vertices) ) /
                               ( V.minor(~rays,All) | same_element_vector(z_prime, n_vertices-rays.size()) ) );
 }
 
-
-perl::Object prism(perl::Object p_in, const Rational& z, const Rational& z_prime, perl::OptionSet options)
+template<typename Scalar>
+perl::Object prism(perl::Object p_in, const Scalar& z, const Scalar& z_prime, perl::OptionSet options)
 {
 
    if(z==z_prime)
@@ -52,7 +52,7 @@ perl::Object prism(perl::Object p_in, const Rational& z, const Rational& z_prime
    if (!options["noc"])
       p_in.give("FAR_FACE") >> rays;
 
-   perl::Object p_out("Polytope<Rational>");
+   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
    p_out.set_description() << "prism over " << p_in.name() << endl;
 
    if (options["noc"] || p_in.exists("VERTICES_IN_FACETS")) {
@@ -88,10 +88,10 @@ perl::Object prism(perl::Object p_in, const Rational& z, const Rational& z_prime
       if (!pointed)
          throw std::runtime_error("prism: input polyhedron not pointed");
 
-      const Matrix<Rational> V=p_in.give("VERTICES");
-      const Matrix<Rational> V_out=prism_coord(V, n_vertices, n_vertices_out, rays, z, z_prime);
+      const Matrix<Scalar> V=p_in.give("VERTICES");
+      const Matrix<Scalar> V_out=prism_coord(V, n_vertices, n_vertices_out, rays, z, z_prime);
       p_out.take("VERTICES") << V_out;
-      const Matrix<Rational> empty;
+      const Matrix<Scalar> empty;
       p_out.take("LINEALITY_SPACE") << empty;
    }
 
@@ -108,18 +108,18 @@ perl::Object prism(perl::Object p_in, const Rational& z, const Rational& z_prime
    return p_out;
 }
 
-UserFunction4perl("# @category  Producing a polytope from polytopes"
-                  "# Make a prism over a pointed polyhedron."
-                  "# The prism is the product of the input polytope //P// and the interval [//z1//, //z2//]."
-                  "# @param Polytope P the input polytope"
-                  "# @param Rational z1 the left endpoint of the interval; default value: -1"
-                  "# @param Rational z2 the right endpoint of the interval; default value: -//z1//"
-                  "# @option Bool noc only combinatorial information is handled"
-                  "# @option Bool relabel creates an additional section [[VERTEX_LABELS]];"
-                  "#   the bottom facet vertices get the labels from the original polytope;"
-                  "#   the labels of their clones in the top facet get a tick (') appended."
-                  "# @return Polytope",
-                  &prism, "prism(Polytope; $=-1, $=-$_[1], { noc => undef, relabel => undef})");
+UserFunctionTemplate4perl("# @category  Producing a polytope from polytopes"
+                          "# Make a prism over a pointed polyhedron."
+                          "# The prism is the product of the input polytope //P// and the interval [//z1//, //z2//]."
+                          "# @param Polytope P the input polytope"
+                          "# @param Scalar z1 the left endpoint of the interval; default value: -1"
+                          "# @param Scalar z2 the right endpoint of the interval; default value: -//z1//"
+                          "# @option Bool noc only combinatorial information is handled"
+                          "# @option Bool relabel creates an additional section [[VERTEX_LABELS]];"
+                          "#   the bottom facet vertices get the labels from the original polytope;"
+                          "#   the labels of their clones in the top facet get a tick (') appended."
+                          "# @return Polytope",
+                          "prism<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=-1, type_upgrade<Scalar>=-$_[1], { noc => undef, relabel => undef})");
 } }
 
 // Local Variables:

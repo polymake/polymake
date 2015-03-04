@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -120,7 +120,7 @@ UserFunctionTemplate4perl("# @category Producing a polyhedral complex"
                           "# @param Scalar t_0 the weight for the vertices of //P_0//; default 1"
                           "# @param Scalar t_1 the weight for the vertices of //P_1//; default 1"
                           "# @option Bool relabel"
-                          "# @return PolytopalComplex",
+                          "# @return PolyhedralComplex",
                           "mixed_subdivision<Scalar>(Polytope<type_upgrade<Scalar>>, Polytope<type_upgrade<Scalar>>, Array<Set>; "
                           "                          type_upgrade<Scalar>=1, type_upgrade<Scalar>=1, { relabel => undef })");
 
@@ -135,7 +135,7 @@ UserFunctionTemplate4perl("# @category Producing a polyhedral complex"
                           "# @param Array<Set> a triangulation of C"
                           "# @option Vector<Scalar> t scaling for the Cayley embedding; defaults to the all-1 vector"
                           "# @option Bool relabel"
-                          "# @return PolytopalComplex",
+                          "# @return PolyhedralComplex",
                           "mixed_subdivision<Scalar>($, Polytope<type_upgrade<Scalar>>, Array<Set>; "
                           "                          Vector<type_upgrade<Scalar>>=(ones_vector<Scalar>($_[0])))");
 
@@ -150,7 +150,7 @@ UserFunctionTemplate4perl("# @category Producing a polyhedral complex"
                           "# @param Array<Polytope> A the input polytopes"
                           "# @option Vector<Scalar> t scaling for the Cayley embedding; defaults to the all-1 vector"
                           "# @option Bool relabel"
-                          "# @return PolytopalComplex",
+                          "# @return PolyhedralComplex",
                           "mixed_subdivision<Scalar>(Polytope<type_upgrade<Scalar>>+, Array<Set>; "
                           "                          Vector<type_upgrade<Scalar>>=(ones_vector<Scalar>(scalar(@{$_[0]}))), { relabel => undef })");
 

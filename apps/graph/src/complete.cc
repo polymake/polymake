@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -39,7 +39,7 @@ perl::Object complete(const int n)
    return G;
 
 }
-UserFunction4perl("# @category Producing from scratch\n"
+UserFunction4perl("# @category Producing a graph\n"
                   "# Constructs a __complete graph__ on //n// nodes."
                   "# @param Int n"
                   "# @return Graph",

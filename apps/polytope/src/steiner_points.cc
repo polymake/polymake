@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -146,7 +146,7 @@ Vector<Coord> steiner_point(perl::Object p, perl::OptionSet options)
    return weights*V;
 }
 
-UserFunctionTemplate4perl("# @category Geometric properties"
+UserFunctionTemplate4perl("# @category Geometry"
                           "# Compute the Steiner points of all faces of a polyhedron //P// using a"
                           "# randomized approximation of the angles."
                           "# //P// must be [[BOUNDED]]."
@@ -158,7 +158,7 @@ UserFunctionTemplate4perl("# @category Geometric properties"
                           "# @author Thilo Rörig",
                           "all_steiner_points<Coord>(Polytope<Coord> { seed => undef, eps => 0.1 })");
 
-UserFunctionTemplate4perl("# @category Geometric properties"
+UserFunctionTemplate4perl("# @category Geometry"
                           "# Compute the Steiner point of a polyhedron //P// using a randomized"
                           "# approximation of the angles."
                           "# @param Polytope P"

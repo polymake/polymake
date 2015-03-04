@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,9 +13,10 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-# The POINTS of an object of type PointConfiguration encode a not necessarily convex finite point set.
-# The difference to a parent VectorConfiguration is that the POINTS have homogeneous coordinates, i.e.
+# The [[POINTS]] of an object of type PointConfiguration encode a not necessarily convex finite point set.
+# The difference to a parent [[VectorConfiguration]] is that the points have homogeneous coordinates, i.e.
 # they will be normalized to have first coordinate 1 without warning.
+# @tparam Scalar default: [[Rational]]
 declare object PointConfiguration<Scalar=Rational> : VectorConfiguration<Scalar>;
 
 INCLUDE

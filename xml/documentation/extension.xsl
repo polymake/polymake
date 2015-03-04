@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <!--
-  Copyright (c) 1997-2014
+  Copyright (c) 1997-2015
   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
   http://www.polymake.org
 
@@ -129,6 +129,16 @@
 </xsl:template>
 
 
+<xsl:template match="pm:specialization">
+	<xsl:if test="parent::*//pm:only[@name=current()/@name][ancestor::*/@ext=$ext_name]">
+		<xsl:copy>
+			<xsl:apply-templates select="@*|node()"/>
+		</xsl:copy>
+	</xsl:if>
+</xsl:template>
+
+
+
 <xsl:template match="@id">
 	<xsl:attribute name="xml:id"><xsl:value-of select = "ancestor::pm:application/@name"/>__<xsl:value-of select="."/></xsl:attribute>
 </xsl:template>
@@ -137,11 +147,9 @@
 <xsl:template match="@href">
 	<xsl:attribute name="href">
 		<xsl:choose>	
-<!-- 
-		<xsl:when test="//*[./@id=substring-after(.,'#')][./@ext=$ext_name]">
-			#<xsl:value-of select="substring-after(.,'#')"/>
+		<xsl:when test="//*[@id=substring-after(current(),'#')][@ext=$ext_name]">
+			#<xsl:value-of select="ancestor-or-self::pm:application/@name"/>__<xsl:value-of select="substring-after(current(),'#')"/>
 		</xsl:when>
- -->
 		<xsl:when test="substring-before(.,'#')!=''">
 			<xsl:value-of select="."/>
 		</xsl:when>

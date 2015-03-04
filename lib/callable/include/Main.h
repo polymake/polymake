@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -48,6 +48,8 @@ public:
    explicit Main(const std::string& user_opts="user",
                  const std::string& install_top="",
                  const std::string& install_arch="");
+
+   std::string greeting(int verbose=2);
 
    void set_application(const std::string& appname)
    {

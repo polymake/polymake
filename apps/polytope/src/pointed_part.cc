@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -108,6 +108,8 @@ perl::Object pointed_part(perl::Object p_in)
 
     p_out.take("INEQUALITIES") << Inequalities;
     p_out.take("EQUATIONS") << (Equations / LinealitySpace);
+
+    p_out.take("FEASIBLE") << p_in.give("FEASIBLE");
   }
 
   return p_out;	

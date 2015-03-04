@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -31,7 +31,7 @@ BEGIN {
                   GCCversion ICCversion CLANGversion CCache
                   LDflags LDsharedFlags LDcallableFlags LDsonameFlag Libs
                   LIBXML2_CFLAGS LIBXML2_LIBS
-                  Arch FinkBase );
+                  Arch FinkBase BundledExts );
 
    @make_export_vars=qw( PERL InstallTop InstallArch InstallBin InstallInc InstallLib InstallDoc DirMask ARCHFLAGS );
 }
@@ -106,7 +106,7 @@ sub find_program {
    } elsif ($Polymake::Shell->interactive) {
       if (defined $error) {
          my ($location)= $full_path =~ $Polymake::directory_of_cmd_re;
-         print "$prompt found at location $location, but did not met the requirements: $error\n",
+         print "$prompt found at location $location, but did not meet the requirements: $error\n",
                "Please enter an alternative location or an empty string to abort.\n";
       } else {
          print "Could not find $prompt anywhere along your PATH.\n",
@@ -370,7 +370,7 @@ Please run the configure command specifying all desired options on the command l
 # Try to guess the name of a directory containing the appropriate version of a (shared) library.
 sub get_libdir {
    my ($prefix, $name, $suffix)=@_;
-   $suffix ||= $Config::Config{dlext};
+   $suffix ||= $Config::Config{so};
    if ($Config::Config{longsize}==8 && $CXXflags !~ /-m32/ && $Arch =~ /i?86/ && -f "$prefix/lib64/lib$name.$suffix") {
       "$prefix/lib64"
    } elsif (($Config::Config{longsize}==4 || $CXXflags =~ /-m32/) && -f "$prefix/lib32/lib$name.$suffix") {

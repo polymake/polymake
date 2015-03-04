@@ -259,7 +259,7 @@ final public class Rn {
 			ddst = dst;
 		int n = Math.min(corners[0].length, ddst.length);
 		double[] tmp = new double[n];
-		Arrays.fill(dst, 0);
+		Arrays.fill(ddst, 0);
 		for (int i = 0; i < 3; ++i) {
 			add(ddst, ddst, times(tmp, weights[i], corners[i]));
 		}
@@ -1540,6 +1540,19 @@ final public class Rn {
 		return dst;
 	}
 
+	public static double[][] subtract(double[][] dst, double[][] src1, double[][] src2)	{
+		if (dst == null)
+			dst = new double[src1.length][src1[0].length];
+		if (dst.length != src1.length) {
+			throw new IllegalArgumentException("Vectors must be same length");
+		}
+		int n = src1.length;
+		for (int i = 0; i < n; ++i) {
+			subtract(dst[i], src1[i], src2[i]);
+		}
+		return dst;
+
+	}
 	/**
 	 * Swap the contents of the two vectors.
 	 * 
@@ -1688,7 +1701,11 @@ final public class Rn {
 	 * @return
 	 */
 	public static String toString(double[][] v) {
-		int n = v.length;
+		return toString(v, -1);
+	}
+
+	public static String toString(double[][] v, int n) {
+		if (n < 0) n = v.length;
 		StringBuffer strb = new StringBuffer();
 		for (int i = 0; i < n; ++i) {
 			strb.append(toString(v[i]) + "\t");
@@ -1958,5 +1975,16 @@ final public class Rn {
 			System.arraycopy(out, 0, dst, 0, dst.length);
 		return out;
 	}
+
+//	public static double[][] transpose(double[][] dst, double[][] dm) {
+//		if (dst == null || dst.length != dm[0].length || dst[0].length != dm.length) 
+//			dst = new double[dm[0].length][dm.length];
+//		for (int i = 0; i<dm.length; ++i)	{
+//			for (int j = 0; j<dm[0].length; ++j)	{
+//				dst[j][i] = dm[i][j];
+//			}
+//		}
+//		return dst;
+//	}
 
 }

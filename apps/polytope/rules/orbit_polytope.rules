@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,8 +13,10 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+# @category Symmetry
 # A symmetric polytope defined as the convex hull of the orbit of a single point
 # under a permutation group acting on coordinates.
+# @tparam Scalar default: [[Rational]]
 declare object OrbitPolytope<Scalar=Rational> : SymmetricPolytope<Scalar> {
 
 #------------------------------------------------------

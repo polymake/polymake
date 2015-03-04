@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -14,8 +14,8 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/Rational.h"
 #include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -26,5 +26,6 @@ namespace polymake { namespace polytope { namespace {
    };
 
    FunctionInstance4perl(rel_int_point_T_x_f16, Rational);
+   FunctionInstance4perl(rel_int_point_T_x_f16, QuadraticExtension< Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

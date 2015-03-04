@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -30,7 +30,7 @@ object AffineNormalToricVariety {
    
    # @category Combinatorics
    # The weight cone of the algebra yielding the affine normal toric variety.
-   # I.e. intersect this cone with the lattice, take the semigroup algebra over
+   # I.e., intersect this cone with the lattice, take the semigroup algebra over
    # it and take the spectrum.
    property WEIGHT_CONE : Cone;
 

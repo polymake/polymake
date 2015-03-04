@@ -285,8 +285,8 @@ public class JOGLRenderer {
 		rhStack.clear();
 		rhStack.push(RenderingHintsInfo.defaultRHInfo);
 		RenderingHintsInfo.defaultRHInfo.render(renderingState, null);
-		renderingState.flipped = (Rn.determinant(renderingState.worldToCamera) < 0.0);
-		globalGL.glFrontFace(renderingState.flipped ? GL.GL_CW : GL.GL_CCW);
+		renderingState.flipNormals = (Rn.determinant(renderingState.worldToCamera) < 0.0);
+		globalGL.glFrontFace(renderingState.flipNormals ? GL.GL_CW : GL.GL_CCW);
 
 		texResident = true;
 		renderPeerRoot();
