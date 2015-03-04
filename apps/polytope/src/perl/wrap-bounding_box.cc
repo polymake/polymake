@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,33 +18,21 @@
 #include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Set.h"
+#include "polymake/linalg.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/SparseMatrix.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1>
-   FunctionInterface4perl( bounding_box_X_x_x, T0,T1 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]);
-      WrapperReturn( bounding_box<T0>(arg0.get<T1>(), arg1, arg2) );
+   FunctionInterface4perl( bounding_box_T_X_x_x, T0,T1 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      WrapperReturn( (bounding_box<T0>(arg0.get<T1>(), arg1, arg2)) );
    };
 
-   FunctionWrapper4perl( pm::Matrix<Rational> (pm::Matrix<Rational> const&, Rational const&, bool) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      IndirectWrapperReturn(arg0.get< perl::TryCanned< const Matrix< Rational > > >(), arg1.get< perl::TryCanned< const Rational > >(), arg2);
-   }
-   FunctionWrapperInstance4perl( pm::Matrix<Rational> (pm::Matrix<Rational> const&, Rational const&, bool) );
-
-   FunctionWrapper4perl( pm::Matrix<Rational> (pm::Matrix<Rational> const&, Rational const&) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturn(arg0.get< perl::TryCanned< const Matrix< Rational > > >(), arg1.get< perl::TryCanned< const Rational > >());
-   }
-   FunctionWrapperInstance4perl( pm::Matrix<Rational> (pm::Matrix<Rational> const&, Rational const&) );
-
-   FunctionInstance4perl(bounding_box_X_x_x, Rational, perl::Canned< const Matrix< Rational > >);
-   FunctionInstance4perl(bounding_box_X_x_x, Rational, perl::Canned< const pm::RowChain<pm::Matrix<pm::Rational> const&, pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Set<int, pm::operations::cmp> const&, pm::Series<int, true> const&> const&> >);
-   FunctionInstance4perl(bounding_box_X_x_x, QuadraticExtension< Rational >, perl::Canned< const pm::RowChain<pm::SparseMatrix<pm::QuadraticExtension<pm::Rational>, pm::NonSymmetric> const&, pm::MatrixMinor<pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&, pm::Set<int, pm::operations::cmp> const&, pm::Series<int, true> const&> const&> >);
-   FunctionInstance4perl(bounding_box_X_x_x, Rational, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
-   FunctionInstance4perl(bounding_box_X_x_x, double, perl::Canned< const Matrix< double > >);
+   FunctionInstance4perl(bounding_box_T_X_x_x, Rational, perl::Canned< const pm::RowChain<pm::Matrix<pm::Rational> const&, pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Set<int, pm::operations::cmp> const&, pm::Series<int, true> const&> const&> >);
+   FunctionInstance4perl(bounding_box_T_X_x_x, Rational, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(bounding_box_T_X_x_x, double, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<double const&> const&>, pm::Matrix<double> const&> >);
+   FunctionInstance4perl(bounding_box_T_X_x_x, Rational, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -45,16 +45,16 @@ perl::Object trop2poly(perl::Object t_in)
    return p_out;
 }
 
-UserFunctionTemplate4perl("# @category Other"
-                          "# Given points in the tropical projective space, compute an ordinary unbounded polyhedron such that"
+UserFunctionTemplate4perl("# @category Producing another object"
+                          "# Given points in tropical projective space, compute an ordinary unbounded polyhedron such that"
                           "# the tropical convex hull of the input is the bounded subcomplex of the latter."
                           "# Cf."
-                          "#    Develin & Sturmfels math.MG/0308254v2, Lemma 22."
-                          "# "
+                          "# \t Develin & Sturmfels math.MG/0308254v2, Lemma 22."
                           "# Warning: This client does not implement the reverse transformation to [[poly2trop]]."
                           "# @param TropicalPolytope T"
-                          "# @return Polytope",
-                          "trop2poly<Scalar>(TropicalPolytope<Scalar>)");
+                          "# @tparam Coord"
+                          "# @return polytope::Polytope",
+                          "trop2poly<Coord>(TropicalPolytope<Coord>)");
 } }
 
 // Local Variables:

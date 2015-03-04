@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -55,7 +55,8 @@ UserFunction4perl("# @category  Producing a new simplicial complex from others"
                   "#  Produce the __link__ of a //face// of the //complex//"
                   "# @param SimplicialComplex complex"
                   "# @param Set<int> face"
-                  "# @option Bool no_labels  tells the client not to create any labels.",
+                  "# @option Bool no_labels  tells the client not to create any labels."
+                  "# @return SimplicialComplex",
                   &link_complex,"link_complex(SimplicialComplex, $ { no_labels => 0 })");
 } }
 

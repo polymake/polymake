@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,9 +17,9 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/client.h"
+#include "polymake/Set.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/SparseMatrix.h"
-#include "polymake/Set.h"
 #include "polymake/PowerSet.h"
 #include "polymake/list"
 #include "polymake/Polynomial.h"
@@ -43,5 +43,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(size_f1, perl::Canned< const Set< Vector< Rational > > >);
    FunctionInstance4perl(size_f1, perl::Canned< const Set< Vector< QuadraticExtension< Rational > > > >);
    FunctionInstance4perl(size_f1, perl::Canned< const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, false, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> >&> >);
+   FunctionInstance4perl(size_f1, perl::Canned< const Set< std::pair< Set< int >, Set< int > > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

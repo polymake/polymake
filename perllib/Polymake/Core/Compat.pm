@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -81,7 +81,7 @@ sub printable {
 
    my $thing=shift;
    if (is_object($thing)) {
-      if (my $proto=UNIVERSAL::can($thing,'prototype')) {
+      if (my $proto=UNIVERSAL::can($thing, "typeof")) {
 	 # it is one of declared complex types
 	 (&$proto)->toString->($thing);
 

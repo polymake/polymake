@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -83,6 +83,92 @@ rule RANDOM_EDGE_EPL : DIRECTED_GRAPH.ADJACENCY {
 }
 
 }
+
+
+# @category Optimization
+# Read a linear programming problem given in LP-Format (as used by cplex & Co.)
+# and convert it to a [[Polytope<Scalar=Rational>]] object. By default [[Rational]] is used as coordinate type,
+# but [[lp2poly<Float>("filename.lp")]] can be used to create a [[Polytope]] with [[Float]] coordinates.
+#
+# **WARNING** The property FEASIBLE is **NOT** computed upon creation.
+# This is done to avoid possibly long computation times before the object becomes available to the caller.
+# This is **NOT** in keeping with standard practice in polymake, but after, all, these are linear programs
+# and not polytopes.
+#
+# @param String file filename of a linear programming problem in LP-Format
+# @param Vector testvec If present, after reading in each line of the LP it is checked whether testvec fulfills it
+# @param String prefix If testvec is present, all variables in the LP file are assumed to have the form $prefix$i
+# @option Int nocheck Do not automatically compute [[FEASIBLE]] for the polytope (recommended for very large LPs)
+# @return Polytope<Scalar=Rational>
+
+user_function lp2poly<Scalar=Rational>(String; Vector, String, {nocheck => 0}) {
+   require LPparser;
+   my ($filename, $testvec, $prefix, $options) = @_;
+
+   my $parser = defined($testvec) 
+                         ? new LPparser($filename, $testvec, $prefix) 
+                         : new LPparser($filename);
+
+   my $P=new Polytope<Scalar>($parser->name);
+   $P->description = "Linear problem converted from file " . $parser->LPfile . "\n";
+
+   my $labels = new Array<String>($parser->X);
+   my $d = $labels->size();
+
+   # Specifying the dimension first is required for empty inequalities and coordinate labels
+   $P->CONE_AMBIENT_DIM = $d;
+
+   $P->COORDINATE_LABELS = $labels;
+
+   # FIXME #702: change the following kludge to 
+   # $P->INEQUALITIES = new SparseMatrix<Scalar>($parser->Ineq)
+   my @AoH = $parser->Ineq;
+   my $Mineq = new SparseMatrix<Scalar>(scalar @AoH, $d);
+   my $i=0;
+   foreach my $ineq (@AoH) {
+      keys %{$ineq};
+      while (my ($k,$v) = each %{$ineq}) {
+         $Mineq->[$i]->[$k] = $v;
+      }
+      $i++;
+   }
+   $P->INEQUALITIES = $Mineq;
+
+   # FIXME #702: change the following kludge to 
+   # $P->EQUATIONS = new SparseMatrix<Scalar>($parser->Eq)
+   @AoH = $parser->Eq;
+   my $MEq = new SparseMatrix<Scalar>(scalar @AoH, $d);
+   $i=0;
+   foreach my $eq (@AoH) {
+      keys %{$eq};
+      while (my ($k,$v) = each %{$eq}) {
+         $MEq->[$i]->[$k] = $v;
+      }
+      $i++;
+   }
+   $P->EQUATIONS = $MEq;
+
+   my $lp=new LinearProgram<Scalar>;
+   $lp->description="Objective sense was ".($parser->objsense eq "+" ? "MAXIMIZE" : "MINIMIZE")."\n";
+
+   # FIXME #702: change the following kludge to 
+   # $P->LINEAR_OBJECTIVE = new SparseVector<Scalar>($parser->Obj)
+   my $ObjHash = $parser->Obj;
+   my $ObjVect = new SparseVector<Scalar>($d);
+   keys %{$ObjHash};
+   while (my ($k,$v) = each %{$ObjHash}) {
+      $ObjVect->[$k] = $v;
+   }
+   $lp->LINEAR_OBJECTIVE=$ObjVect;
+
+   if (@{$parser->Int}) {
+      $lp->attach("INTEGER_VARIABLES", new Array<Bool>($parser->Int));
+   }
+   $P->commit unless($options->{nocheck});
+   $P->add("LP",$lp);
+   $P;
+}
+
 
 # Local Variables:
 # mode: perl

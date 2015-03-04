@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -167,14 +167,14 @@ void finite_representation(perl::Object matroid){
          }
       }
       if(bases_for_bpoints==bases){
-         matroid.take("BINARY_POINTS") << bpoints;
+         matroid.take("BINARY_VECTORS") << bpoints;
          matroid.take("BINARY") << 1;
       }else{
          matroid.take("BINARY") << 0;
       }
 
       if(bases_for_tpoints==bases){
-         matroid.take("TERNARY_POINTS") << tpoints;
+         matroid.take("TERNARY_VECTORS") << tpoints;
          matroid.take("TERNARY") << 1;
       }else{
          //matroid.take("TERNARY") << 0; //FIXME #742
@@ -182,9 +182,9 @@ void finite_representation(perl::Object matroid){
    }else{
       Matrix<int> bpoints(n,1);
       Matrix<int> tpoints(n,1);
-      matroid.take("BINARY_POINTS") << bpoints;
+      matroid.take("BINARY_VECTORS") << bpoints;
       matroid.take("BINARY") << 1;
-      matroid.take("TERNARY_POINTS") << tpoints;
+      matroid.take("TERNARY_VECTORS") << tpoints;
       matroid.take("TERNARY") << 1;
    }
 }

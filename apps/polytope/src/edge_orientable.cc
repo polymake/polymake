@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -308,7 +308,7 @@ void edge_orientable(perl::Object p)
       p.take("MOEBIUS_STRIP_EDGES") << alg.get_moebius_strip();
 }
 
-UserFunction4perl("# @category Combinatorial properties"
+UserFunction4perl("# @category Other"
                   "# Checks whether a 2-cubical polytope //P// is __edge-orientable__ "
                   "# (in the sense of Hetyei), that means that there exits an orientation "
                   "# of the edges such that for each 2-face the opposite edges point "
@@ -317,7 +317,7 @@ UserFunction4perl("# @category Combinatorial properties"
                   "# edge-orientable, or [[MOEBIUS_STRIP_EDGES]] otherwise."
                   "# In the latter case, "
                   "# the output can be checked with the client [[validate_moebius_strip]]."
-                  "# @param Polytope P"
+                  "# @param Polytope P the given 2-cubical polytope"
                   "# @author Alexander Schwartz",
                   &edge_orientable,"edge_orientable");
 } }

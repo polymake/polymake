@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -48,9 +48,9 @@ Vector<Scalar> pluecker(const Matrix<Scalar>& V)
    return pi;
 }
 
-UserFunctionTemplate4perl("# @category Other"
-                          "# Compute vector of maximal minors of a matrix."
-                          "# WARNING: interpretation different in tropical::lifted_pluecker"
+UserFunctionTemplate4perl("# @category Linear Algebra"
+                          "# Compute the vector of maximal minors of a matrix."
+                          "# WARNING: interpretation different in [[tropical::lifted_pluecker]]"
                           "# @param Matrix V"
                           "# @return Vector",
                           "pluecker(Matrix)");

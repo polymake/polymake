@@ -1,11 +1,6 @@
-/* Copyright (c) 2012
-   by authors as mentioned on:
-   https://github.com/lkastner/polymake_algebra/wiki/Authors
-
-   Project home:
-   https://github.com/lkastner/polymake_algebra
-
-   For licensing we cite the original Polymake code:
+/* Copyright (c) 1997-2015
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+   http://www.polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -16,11 +11,17 @@
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
+--------------------------------------------------------------------------------
 */
 
-#include <dlfcn.h>
+#include <Singular/libsingular.h>
+#include <kernel/combinatorics/stairc.h>
+#include <coeffs/mpr_complex.h>
 
 #include "polymake/ideal/singularIdeal.h"
+#include "polymake/ideal/internal/singularTermOrderData.h"
+#include "polymake/ideal/internal/singularRingManager.h"
+#include "polymake/ideal/internal/singularUtils.h"
 
 namespace polymake {
 namespace ideal {
@@ -47,10 +48,11 @@ private:
 public:
   
    // Constructing singIdeal from the generators:
-   SingularIdeal_impl(const Array<Polynomial<> >& gens, const Matrix<int>& order)
+   template<typename OrderType>
+   SingularIdeal_impl(const Array<Polynomial<> >& gens, const OrderType& order)
    {
       pm::Ring<> polymakeRing = gens[0].get_ring();
-      SingularTermOrderData<Matrix<int> > TO = SingularTermOrderData<Matrix<int> >(polymakeRing, order);
+      SingularTermOrderData<OrderType > TO = SingularTermOrderData<OrderType >(polymakeRing, order);
       singRing = check_ring(polymakeRing, TO);
       if(!gens.size())
          throw std::runtime_error("Ideal has no generators.");
@@ -236,6 +238,30 @@ public:
       return convert_poly_to_Polynomial(q,r);
    }
 
+   /*
+    * Returns n+1 Polynomials, where the n+1 Polynomial is equal to the result of reduce and the previous are the coeffients of the division.
+    */
+   Array< Polynomial<> > division(const Polynomial<>& p, const Ring<>& r) const {
+      Array< Polynomial<> > m_generator(1, p);
+      check_ring(singRing);
+      SingularIdeal_impl m( m_generator, singRing );
+      ::ideal R;
+      matrix U;
+      ::ideal t = idLift(singIdeal, m.singIdeal, &R, FALSE, FALSE /*Maybe true if std*/, TRUE, &U);
+      matrix T = id_Module2formatedMatrix(t, IDELEMS(singIdeal), 1, IDRING(singRing));
+      std::vector< Polynomial<> > polys;
+      int rows = MATROWS(T);
+      for(int j = 1; j <= rows; j++) {
+        if(MATELEM(T, j, 1)) {
+          polys.push_back(convert_poly_to_Polynomial(MATELEM(T, j, 1), r));
+        } else {
+          polys.push_back(Polynomial<>(0,r));
+        }
+      }
+      polys.push_back(convert_poly_to_Polynomial(R->m[0],r));
+      return Array< Polynomial<> >(polys);
+   }
+
    // Converting singIdeal generators to an array of Polymake polynomials.
    Array<Polynomial<> > polynomials(const Ring<>& r) const
    {
@@ -296,15 +322,24 @@ perl::Object quotient(perl::Object I, perl::Object J)
 
 } // end namespace singular
 
+SingularIdeal_wrap* SingularIdeal_wrap::create(const Array<Polynomial<> >& gens, const Vector<int>& ord) 
+{
+   return new singular::SingularIdeal_impl(gens,ord);
+}
+
 SingularIdeal_wrap* SingularIdeal_wrap::create(const Array<Polynomial<> >& gens, const Matrix<int>& ord) 
+{
+   return new singular::SingularIdeal_impl(gens,ord);
+}
+
+SingularIdeal_wrap* SingularIdeal_wrap::create(const Array<Polynomial<> >& gens, const std::string& ord) 
 {
    return new singular::SingularIdeal_impl(gens,ord);
 }
 
 
 
-UserFunction4perl("CREDIT Singular\n\n"
-                  "# @category Algebra"
+UserFunction4perl("# @category Singular interface"
                   "# Computes an ideal quotient via SINGULAR"
                   "# @param Ideal I"
                   "# @param Ideal J"

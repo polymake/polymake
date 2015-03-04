@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -16,10 +16,17 @@
 object Cone<Rational> {
 
 rule HILBERT_BASIS_GENERATORS , N_HILBERT_BASIS : {
-   die "\n*** Missing external software:\n",
-       "*** You need to have either normaliz2 or 4ti2 installed and configured to compute Hilbert bases.\n";
+   die <<"---";
+
+*** Missing external software:
+*** To compute Hilbert bases you need to have one of the following:
+***    - bundled:libnormaliz enabled (requires boost, rerun configure)
+***    - normaliz2 installed and configured (check 'show_unconfigured;')
+***    - 4ti2 installed and configured (check 'show_unconfigured;')
+---
 }
-weight 10.1;
+precondition : POINTED;
+weight 10.2;
 
 }
 

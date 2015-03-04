@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -15,17 +15,17 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/Rational.h"
 #include "polymake/Array.h"
 #include "polymake/Map.h"
 #include "polymake/Matrix.h"
 
 namespace polymake { namespace polytope {
 
-Array<int> vertices_in_metric(const Matrix<Rational> &verts, const Matrix<Rational>& metric)
+template<typename Scalar>
+Array<int> vertices_in_metric(const Matrix<Scalar> &verts, const Matrix<Scalar>& metric)
 {
 
-  Map<Vector<Rational>,int> elems;
+  Map<Vector<Scalar>,int> elems;
   const int n=metric.rows();
   const int n_verts=verts.rows();
   for (int i=0; i<n;++i)
@@ -35,7 +35,7 @@ Array<int> vertices_in_metric(const Matrix<Rational> &verts, const Matrix<Ration
 
   for (int i=0; i<n_verts; ++i)
     if (verts(i,0) == 1) {
-      const Map<Vector<Rational>, int>::const_iterator value = elems.find(verts.row(i).slice(1));
+      const typename Map<Vector<Scalar>, int>::const_iterator value = elems.find(verts.row(i).slice(1));
       if (value != elems.end())
         vim[i] = value->second;
     }
@@ -43,7 +43,7 @@ Array<int> vertices_in_metric(const Matrix<Rational> &verts, const Matrix<Ration
   return vim;
 }
 
-Function4perl(&vertices_in_metric,"vertices_in_metric");
+FunctionTemplate4perl("vertices_in_metric<Scalar>(Matrix<type_upgrade<Scalar>> Matrix<type_upgrade<Scalar>>)");
 
 } }
 

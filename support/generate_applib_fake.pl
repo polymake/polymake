@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -35,7 +35,7 @@ for my $shlib (splice @ARGV, 2) {
    my $prefix="8polymake".length($appname).$appname;
 
    while (<SYMS>) {
-      if (/ T ([_ZNK]+$prefix\w+)$/) {
+      if (/ [TW] ([_ZNK]+$prefix\w+)$/) {
 	  if ( $^O eq "darwin" ) {    # aliases don't seem to work on MacOS, so we actually define the functions with emtpy body
 	      my $functionname = $1;
 	      $functionname =~ s/^__/_/;

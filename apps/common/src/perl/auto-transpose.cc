@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,6 +18,7 @@
 
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
@@ -30,7 +31,7 @@ namespace polymake { namespace common { namespace {
    template <typename T0>
    FunctionInterface4perl( transpose_X8, T0 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturnAnch( (1)(arg0), T(arg0.get<T0>()) );
+      WrapperReturnAnch( 1, (arg0), T(arg0.get<T0>()) );
    };
 
    FunctionInstance4perl(transpose_X8, perl::Canned< const Matrix< Rational > >);
@@ -38,5 +39,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(transpose_X8, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
    FunctionInstance4perl(transpose_X8, perl::Canned< const Matrix< Integer > >);
    FunctionInstance4perl(transpose_X8, perl::Canned< const SparseMatrix< int, NonSymmetric > >);
+   FunctionInstance4perl(transpose_X8, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

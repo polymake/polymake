@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -40,15 +40,15 @@ namespace pm { namespace perl {
 
 class SVHolder {
 protected:
-   SV *sv;
+   SV* sv;
 
    SVHolder();
 
-   explicit SVHolder(SV *sv_arg)
+   explicit SVHolder(SV* sv_arg)
       : sv(sv_arg) {}
 
-   SVHolder(SV *sv_arg, True);
-   void set_copy(SV *sv_arg);
+   SVHolder(SV* sv_arg, True);
+   void set_copy(SV* sv_arg);
    void forget();
    bool is_tuple() const;
 public:
@@ -74,20 +74,20 @@ public:
 
    static SV* undef();
 
-   static SV* const_string(const char *s, size_t l);
-   static SV* const_string(const char *s)
+   static SV* const_string(const char* s, size_t l);
+   static SV* const_string(const char* s)
    {
       return const_string(s,strlen(s));
    }
 
-   static SV* const_string_with_int(const char *s, size_t l, int i);
-   static SV* const_string_with_int(const char *s, int i)
+   static SV* const_string_with_int(const char* s, size_t l, int i);
+   static SV* const_string_with_int(const char* s, int i)
    {
       return const_string_with_int(s,strlen(s),i);
    }
 
-   static int convert_to_int(SV *sv);
-   static double convert_to_float(SV *sv);
+   static int convert_to_int(SV* sv);
+   static double convert_to_float(SV* sv);
 };
 
 // forward declarations of mutual friends
@@ -104,12 +104,12 @@ template <typename T> class type_cache;
 class ArrayHolder : public SVHolder {
    static SV* init_me(int size);
 protected:
-   ArrayHolder(SV *sv_arg, True) : SVHolder(sv_arg, True()) {}
+   ArrayHolder(SV* sv_arg, True) : SVHolder(sv_arg, True()) {}
 public:
    explicit ArrayHolder(int reserve=0)
       : SVHolder(init_me(reserve)) {}
 
-   explicit ArrayHolder(SV *sv_arg)
+   explicit ArrayHolder(SV* sv_arg)
       : SVHolder(sv_arg) {}
 
    explicit ArrayHolder(const Value&);
@@ -120,7 +120,7 @@ public:
       upgrade(reserve);
    }
 
-   ArrayHolder(SV *sv_arg, value_flags flags)
+   ArrayHolder(SV* sv_arg, value_flags flags)
       : SVHolder(sv_arg)
    {
       if (flags & value_not_trusted) verify();
@@ -137,8 +137,8 @@ public:
 
    SV* shift();
    SV* pop();
-   void unshift(SV *x);
-   void push(SV *x);
+   void unshift(SV* x);
+   void push(SV* x);
 
    void unshift(const SVHolder& x) { unshift(x.get()); }
    void push(const SVHolder& x) { push(x.get()); }
@@ -148,13 +148,13 @@ class HashHolder : public SVHolder {
 protected:
    HashHolder() : SVHolder(init_me()) {}
 
-   HashHolder(SV *sv_arg, True) : SVHolder(sv_arg, True()) {}
+   HashHolder(SV* sv_arg, True) : SVHolder(sv_arg, True()) {}
 
-   bool exists(const char *key, size_t klen) const;
+   bool exists(const char* key, size_t klen) const;
    static SV* init_me();
    Value _access(const char* key, size_t klen, bool create) const;
 public:
-   explicit HashHolder(SV *sv_arg)
+   explicit HashHolder(SV* sv_arg)
       : SVHolder(sv_arg) {}
 
    void verify();
@@ -173,7 +173,7 @@ public:
 
 class istreambuf : public streambuf_with_input_width {
 public:
-   istreambuf(SV *sv);
+   istreambuf(SV* sv);
 
    int lines()
    {
@@ -183,10 +183,10 @@ public:
 
 class ostreambuf : public std::streambuf {
 public:
-   ostreambuf(SV *sv);
+   ostreambuf(SV* sv);
    ~ostreambuf();
 protected:
-   SV *val;
+   SV* val;
    int_type overflow(int_type c=traits_type::eof());
 };
 
@@ -195,14 +195,14 @@ class BufferHolder {
 protected:
    StreamBuffer my_buf;
 
-   explicit BufferHolder(SV *sv) : my_buf(sv) {}
+   explicit BufferHolder(SV* sv) : my_buf(sv) {}
 };
 
 class istream : public BufferHolder<istreambuf>,
                 public std::istream {
    friend class Value;
 public:
-   explicit istream(SV *sv);
+   explicit istream(SV* sv);
 
    void finish()
    {
@@ -256,7 +256,7 @@ class ListValueInput
 public:
    typedef ElementType value_type;
 
-   ListValueInput(SV *sv_arg)
+   ListValueInput(SV* sv_arg)
       : ArrayHolder(sv_arg, _opts::template get_option< TrustedValue<True> >::value ? value_trusted : value_not_trusted)
       , i(0)
       , _size(ArrayHolder::size())
@@ -317,7 +317,7 @@ class ValueInput
    , public GenericIOoptions< ValueInput<Options>, Options > {
    template <typename, typename> friend class ListValueInput;
 public:
-   ValueInput(SV *sv_arg)
+   ValueInput(SV* sv_arg)
       : SVHolder(sv_arg) {}
 
    template <typename Data>
@@ -484,9 +484,9 @@ public:
 
 class Stack {
 protected:
-   PerlInterpreter *pi;
+   PerlInterpreter* pi;
    Stack();
-   Stack(SV **start);
+   Stack(SV** start);
 private:
    // inhibited
    void operator= (const Stack&);
@@ -512,7 +512,7 @@ private:
    void operator= (const ListReturn&);
 public:
    ListReturn() {}
-   ListReturn(SV **stack_arg) : Stack(stack_arg) {}
+   ListReturn(SV** stack_arg) : Stack(stack_arg) {}
 
    template <typename T>
    ListReturn& operator<< (const T& x);
@@ -550,10 +550,19 @@ template <>
 struct is_printable<perl::Value> : False {};
 template <>
 struct is_parseable<perl::Value> : False {};
+template <>
+struct is_printable<perl::Object> : False {};
+template <>
+struct is_writeable<perl::Object> : True {};
 
 // forward declaration of a specialization
 template <>
 class Array<perl::Object, void>;
+
+template <>
+struct is_printable< Array<perl::Object, void> > : False {};
+template <>
+struct is_writeable< Array<perl::Object, void> > : True {};
 
 namespace perl {
 
@@ -593,46 +602,58 @@ struct numeric_traits< sparse_elem_proxy<Base, E, Params> > : numeric_traits<E> 
    typedef E real_type;
 };
 
-template <typename Target>
+template <typename Given, typename Target=Given>
 class access;
-template <typename Target, bool _try, bool _unwary=Unwary<typename attrib<Target>::minus_const>::value>
+template <typename Given, typename Target, bool _try_conv, bool _unwary=Unwary<typename attrib<Given>::minus_const>::value>
 class access_canned;
 template <typename Target>
 struct check_for_magic_storage;
 
 class Value : public SVHolder {
 public:
-   explicit Value(value_flags opt_arg=value_trusted)
-      : options(opt_arg) {}
+   struct Anchor {
+      Anchor& store_anchor(SV*);
+      Anchor& store_anchors(const Value& v) { return store_anchor(v.get()); }
+      Anchor& operator()(const Value& v) { return store_anchor(v.get()); }
+
+      SV* stored;
+   };
+   struct NoAnchor : Anchor {
+      NoAnchor& store_anchor(SV*)           { return *this; }
+      NoAnchor& store_anchors(const Value&) { return *this; }
+      NoAnchor& operator()(const Value&) { return *this; }
+   };
+
+   explicit Value(value_flags opt_arg=value_trusted, unsigned int n_achors_arg=0)
+      : n_anchors(n_achors_arg)
+      , options(opt_arg)
+   {}
 
    explicit Value(SV* sv_arg)
-      : SVHolder(sv_arg), options(value_trusted) {}
+      : SVHolder(sv_arg)
+      , n_anchors(0)
+      , options(value_trusted)
+   {}
 
-   Value(SV* sv_arg, value_flags opt_arg)
-      : SVHolder(sv_arg), options(opt_arg) {}
+   Value(SV* sv_arg, value_flags opt_arg, unsigned int n_achors_arg=0)
+      : SVHolder(sv_arg)
+      , n_anchors(n_achors_arg)
+      , options(opt_arg)
+   {}
 
    value_flags get_flags() const { return options; }
-
+   unsigned int get_num_anchors() const { return n_anchors; }
 protected:
    enum number_flags { not_a_number, number_is_zero, number_is_int, number_is_float, number_is_object };
 
-   class AnchorChain {
-      friend class Value;
-
-      explicit AnchorChain(Value* val=0)
-         : cur((SV**)val) {}
-   public:
-      void operator() () const {}
-      AnchorChain& operator() (int n_anchors);
-      AnchorChain& operator() (const Value& anchor);
-   private:
-      SV** cur;
-   };
-
-   value_flags options;
+   unsigned int n_anchors : 8;
+   value_flags options : 8;
 
    Value(SV* sv_arg, const Array_access<Value>&)
-      : SVHolder(sv_arg), options(value_not_trusted) {}
+      : SVHolder(sv_arg)
+      , n_anchors(0)
+      , options(value_not_trusted)
+   {}
 
    static const char* frame_lower_bound();
 
@@ -645,16 +666,18 @@ protected:
 
    void set_perl_type(SV* proto);
 
-   const std::type_info* get_canned_typeinfo() const;
+   typedef std::pair<const std::type_info*, char*> canned_data_t;
+   static
+   canned_data_t get_canned_data(SV*);
 
-   static char* get_canned_value(SV*);
-   char* get_canned_value() const { return get_canned_value(sv); }
+   const std::type_info* get_canned_typeinfo() const { return get_canned_data(sv).first; }
+   char* get_canned_value() const { return get_canned_data(sv).second; }
 
    int get_canned_dim(bool tell_size_if_dense) const;
 
    void* allocate_canned(SV* proto) const;
-
-   void store_canned_ref(SV* descr, void* obj, value_flags flags) const;
+   Anchor* first_anchor_slot() const;
+   Anchor* store_canned_ref(SV* descr, void* obj, value_flags flags) const;
 
    template <typename Numtype> static
    void assign_int(Numtype& x, long i, False, True) { x=i; }
@@ -695,7 +718,7 @@ protected:
    {
       switch (classify_number()) {
       case number_is_zero:
-         x=0;
+         x= 0;
          break;
       case number_is_int:
          assign_int(x, int_value(), bool2type<numeric_traits<Numtype>::check_range>(),
@@ -737,6 +760,20 @@ protected:
    False* retrieve(ObjectType& x) const;
    False* retrieve(pm::Array<Object>& x) const;
 
+   SV* store_instance_in() const;
+
+   template <typename Target>
+   void cache_instance(const Target& x, False) const {}
+
+   template <typename Target>
+   void cache_instance(const Target& x, True) const
+   {
+      if (SV* store_in_sv=store_instance_in()) {
+         Value store_in(store_in_sv);
+         store_in << x;
+      }
+   }
+
    template <typename Options, typename Target>
    void do_parse(Target& x) const
    {
@@ -758,6 +795,8 @@ protected:
          ValueInput< TrustedValue<False> >(sv) >> x;
       else
          ValueInput<>(sv) >> x;
+
+      cache_instance(x, Serializable());
    }
 
    // numeric scalar type, non-serializable
@@ -806,17 +845,18 @@ protected:
    True* retrieve(Target& x) const
    {
       if (!(options & value_ignore_magic)) {
-         if (const std::type_info *t=get_canned_typeinfo()) {
-            if (*t==typeid(Target)) {
+         const canned_data_t canned=get_canned_data(sv);
+         if (canned.first) {
+            if (*canned.first == typeid(Target)) {
                if (MaybeWary<Target>::value && (options & value_not_trusted))
-                  maybe_wary(x)=*reinterpret_cast<const Target*>(get_canned_value());
+                  maybe_wary(x)=*reinterpret_cast<const Target*>(canned.second);
                else
-                  x=*reinterpret_cast<const Target*>(get_canned_value());
+                  x=*reinterpret_cast<const Target*>(canned.second);
                return NULL;
             }
             typedef void (*ass_f)(Target&, const Value&);
             if (ass_f assignment=reinterpret_cast<ass_f>(type_cache<Target>::get_assignment_operator(sv))) {
-               assignment(x,*this);
+               assignment(x, *this);
                return NULL;
             }
          }
@@ -839,253 +879,251 @@ protected:
    }
 
    template <typename Source>
-   void store_ref(const Source& x)
+   Anchor* store_ref(const Source& x)
    {
-      store_canned_ref(type_cache<Source>::get_descr(), (void*)&x, options);
+      return store_canned_ref(type_cache<Source>::get_descr(), (void*)&x, options);
    }
 
    template <typename Source>
-   Value* store_magic(const Source& x, False, False, False)  // non-persistent regular type
+   Anchor* store_magic(const Source& x, False, False, False)  // non-persistent regular type
    {
       typedef typename object_traits<Source>::persistent_type Persistent;
       if (options & value_allow_non_persistent) {
          store<Source>(x);
-         return this;
+         return n_anchors ? first_anchor_slot() : NULL;
       } else {
          store<Persistent>(x);
-         return 0;
+         return NULL;
       }
    }
 
    template <typename Source, typename IsMasquerade, typename IsPersistent>
-   Value* store_magic(const Source& x, IsMasquerade, True, IsPersistent)          // lazy type
+   Anchor* store_magic(const Source& x, IsMasquerade, True, IsPersistent)          // lazy type
    {
       typedef typename object_traits<Source>::persistent_type Persistent;
       store<Persistent>(x);
-      return 0;
+      return NULL;
    }
 
    template <typename Source, typename IsMasquerade>
-   Value* store_magic_ref(const Source& x, IsMasquerade, False, False)          // non-persistent regular type
+   Anchor* store_magic_ref(const Source& x, IsMasquerade, False, False)          // non-persistent regular type
    {
       typedef typename object_traits<Source>::persistent_type Persistent;
       if (options & value_allow_non_persistent) {
-         store_ref(x);
-         return this;
+         return store_ref(x);
       } else {
          store<Persistent>(x);
-         return 0;
+         return NULL;
       }
    }
 
    template <typename Source, typename IsMasquerade, typename IsPersistent>
-   Value* store_magic_ref(const Source& x, IsMasquerade, True, IsPersistent)      // lazy type
+   Anchor* store_magic_ref(const Source& x, IsMasquerade, True, IsPersistent)      // lazy type
    {
       typedef typename object_traits<Source>::persistent_type Persistent;
       store<Persistent>(x);
-      return 0;
+      return NULL;
    }
 
    template <typename Source>
-   Value* store_magic(const Source& x, False, False, True)                    // persistent regular type
+   Anchor* store_magic(const Source& x, False, False, True)          // persistent regular type
    {
       store<Source>(x);
-      return 0;
+      return NULL;
    }
 
    template <typename Source>
-   Value* store_magic_ref(const Source& x, False, False, True)
+   Anchor* store_magic_ref(const Source& x, False, False, True)
    {
-      store_ref(x);
-      return this;
+      return store_ref(x);
    }
 
    template <typename Source>
-   Value* store_magic(const Source& x, True, False, False)                 // masquerade type belonging to a generic family
+   Anchor* store_magic(const Source& x, True, False, False)         // masquerade type belonging to a generic family
    {
       typedef typename object_traits<Source>::persistent_type Persistent;
       store<Persistent>(x);
-      return 0;
+      return NULL;
    }
 
    template <typename Source>
-   Value* store_magic(const Source& x, True, False, True)         // masquerade type without persistent substitute
+   Anchor* store_magic(const Source& x, True, False, True)         // masquerade type without persistent substitute
    {
       store_as_perl(x);
-      return 0;
+      return NULL;
    }
 
    template <typename Source>
-   Value* store_magic_ref(const Source& x, True, False, True)
+   Anchor* store_magic_ref(const Source& x, True, False, True)
    {
       if (options & value_allow_non_persistent) {
-         store_ref(x);
-         return this;
+         return store_ref(x);
       } else {
          store_as_perl(x);
-         return 0;
+         return NULL;
       }
    }
 
-   void store_primitive_ref(const bool& x,          SV *descr, bool take_ref);
-   void store_primitive_ref(const int& x,           SV *descr, bool take_ref);
-   void store_primitive_ref(const unsigned int& x,  SV *descr, bool take_ref);
-   void store_primitive_ref(const long& x,          SV *descr, bool take_ref);
-   void store_primitive_ref(const unsigned long& x, SV *descr, bool take_ref);
-   void store_primitive_ref(const double& x,        SV *descr, bool take_ref);
-   void store_primitive_ref(const std::string& x,   SV *descr, bool take_ref);
+   Anchor* store_primitive_ref(const bool& x,          SV* descr, bool take_ref);
+   Anchor* store_primitive_ref(const int& x,           SV* descr, bool take_ref);
+   Anchor* store_primitive_ref(const unsigned int& x,  SV* descr, bool take_ref);
+   Anchor* store_primitive_ref(const long& x,          SV* descr, bool take_ref);
+   Anchor* store_primitive_ref(const unsigned long& x, SV* descr, bool take_ref);
+   Anchor* store_primitive_ref(const double& x,        SV* descr, bool take_ref);
+   Anchor* store_primitive_ref(const std::string& x,   SV* descr, bool take_ref);
 
    void set_string_value(const char* x);
    void set_string_value(const char* x, size_t l);
    void set_copy(const SVHolder& x);
 public:
-   AnchorChain put(int x,            const char* =NULL, int=0) { put(long(x));            return AnchorChain(); }
-   AnchorChain put(unsigned int x,   const char* =NULL, int=0) { put((unsigned long)(x)); return AnchorChain(); }
-   AnchorChain put(long x,           const char* =NULL, int=0);
-   AnchorChain put(unsigned long x,  const char* =NULL, int=0);
-   AnchorChain put(bool x,           const char* =NULL, int=0);
-   AnchorChain put(double x,         const char* =NULL, int=0);
-   AnchorChain put(const undefined&, const char* =NULL, int=0);
+   NoAnchor* put(int x,            const char* =NULL, int=0) { put(long(x));            return NULL; }
+   NoAnchor* put(unsigned int x,   const char* =NULL, int=0) { put((unsigned long)(x)); return NULL; }
+   NoAnchor* put(long x,           const char* =NULL, int=0);
+   NoAnchor* put(unsigned long x,  const char* =NULL, int=0);
+   NoAnchor* put(bool x,           const char* =NULL, int=0);
+   NoAnchor* put(double x,         const char* =NULL, int=0);
+   NoAnchor* put(const undefined&, const char* =NULL, int=0);
 
-   AnchorChain put(const char* x,    const char* =NULL, int=0)
+   NoAnchor* put(const char* x,    const char* =NULL, int=0)
    {
       if (x)
          set_string_value(x);
       else
-         put(undefined(),0,0);
-      return AnchorChain();
+         put(undefined(), NULL, 0);
+      return NULL;
    }
 
    template <size_t ll>
-   AnchorChain put(const char (&x)[ll], const char* =NULL, int=0)
+   NoAnchor* put(const char (&x)[ll], const char* =NULL, int=0)
    {
       set_string_value(x, ll-1);
-      return AnchorChain();
+      return NULL;
    }
 
-   AnchorChain put(const std::string& x, const char* =NULL, int=0)
+   NoAnchor* put(const std::string& x, const char* =NULL, int=0)
    {
       set_string_value(x.c_str(), x.size());
-      return AnchorChain();
+      return NULL;
    }
 
-   AnchorChain put(char x, const char* =NULL, int=0)
+   NoAnchor* put(char x, const char* =NULL, int=0)
    {
       set_string_value(&x, 1);
-      return AnchorChain();
+      return NULL;
    }
 
-   AnchorChain put(const Object& x,            const char* =NULL, int=0);
-   AnchorChain put(const ObjectType& x,        const char* =NULL, int=0);
-   AnchorChain put(const PropertyValue& x,     const char* =NULL, int=0);
-   AnchorChain put(const Scalar& x,            const char* =NULL, int=0);
-   AnchorChain put(const Array& x,             const char* =NULL, int=0);
-   AnchorChain put(const Hash& x,              const char* =NULL, int=0);
-   AnchorChain put(const ListReturn& x,        const char* =NULL, int=0);
-   AnchorChain put(const pm::Array<Object>& x, const char* =NULL, int=0);
+   NoAnchor* put(const Object& x,            const char* =NULL, int=0);
+   NoAnchor* put(const ObjectType& x,        const char* =NULL, int=0);
+   NoAnchor* put(const PropertyValue& x,     const char* =NULL, int=0);
+   NoAnchor* put(const Scalar& x,            const char* =NULL, int=0);
+   NoAnchor* put(const Array& x,             const char* =NULL, int=0);
+   NoAnchor* put(const Hash& x,              const char* =NULL, int=0);
+   NoAnchor* put(const ListReturn& x,        const char* =NULL, int=0);
+   NoAnchor* put(const pm::Array<Object>& x, const char* =NULL, int=0);
 
    template <typename Source, typename PerlPkg>
-   typename enable_if<AnchorChain, obscure_type<Source>::value>::type
-   put(const Source& x, const char *fup, PerlPkg prescribed_pkg)
+   typename enable_if<Anchor*, obscure_type<Source>::value>::type
+   put(const Source& x, const char* fup, PerlPkg prescribed_pkg)
    {
       // obscure type (something weird, like a set complement)
       if (fup && (options & value_allow_non_persistent) &&
           type_cache<Source>::magic_allowed(prescribed_pkg)) {
-         store_canned_ref(type_cache<Source>::get_descr(), (void*)&x, value_flags(options | value_read_only));
-         return AnchorChain(this);
+         return store_canned_ref(type_cache<Source>::get_descr(), (void*)&x, value_flags(options | value_read_only));
       } else {
          throw std::invalid_argument("can't store an obscure C++ type without perl binding");
       }
    }
 
    template <typename Source, typename PerlPkg>
-   typename disable_if<AnchorChain, (obscure_type<Source>::value ||
-                                     derived_from_instance<Source, MaybeUndefined>::value ||
-                                     is_instance3_of<Source,sparse_elem_proxy>::value ||
-                                     is_pointer<Source>::value)>::type
-   put(const Source& x, const char *fup, PerlPkg prescribed_pkg)
+   typename disable_if<Anchor*, (obscure_type<Source>::value ||
+                                 derived_from_instance<Source, MaybeUndefined>::value ||
+                                 is_instance3_of<Source,sparse_elem_proxy>::value ||
+                                 is_pointer<Source>::value)>::type
+   put(const Source& x, const char* fup, PerlPkg prescribed_pkg)
    {
       typedef typename object_traits<Source>::persistent_type Persistent;
       if (type_cache<Source>::magic_allowed(prescribed_pkg)) {
          if (fup && !object_traits<Source>::is_lazy) {
-            const char *flo=frame_lower_bound(), *val=reinterpret_cast<const char*>(&x);
+            const char* const flo=frame_lower_bound();
+            const char* const val=reinterpret_cast<const char*>(&x);
             if ((val<flo)==(val<fup)) {
                // the wrapped function has returned a reference to an object stored elsewhere
-               return AnchorChain(store_magic_ref(x, is_masquerade<Source>(), bool2type<object_traits<Source>::is_lazy>(), identical<Source,Persistent>()));
+               return store_magic_ref(x, is_masquerade<Source>(), bool2type<object_traits<Source>::is_lazy>(), identical<Source,Persistent>());
             }
          }
          // taking reference not allowed or just temporary object
-         return AnchorChain(store_magic(x, is_masquerade<Source>(), bool2type<object_traits<Source>::is_lazy>(), identical<Source,Persistent>()));
+         return store_magic(x, is_masquerade<Source>(), bool2type<object_traits<Source>::is_lazy>(), identical<Source,Persistent>());
       } else {
          store_as_perl(x);
-         return AnchorChain();
+         return NULL;
       }
    }
 
    template <typename Source>
-   typename enable_if<AnchorChain, identical<typename object_traits<typename deref<Source>::type>::model, is_opaque>::value>::type
+   typename enable_if<Anchor*, identical<typename object_traits<typename deref<Source>::type>::model, is_opaque>::value>::type
    put(Source* ptr, const char* =NULL, int=0)
    {
       if ((options & value_allow_non_persistent) &&
           type_cache<Source>::magic_allowed(0)) {
-         store_ref(*ptr);
-         return AnchorChain(this);
+         return store_ref(*ptr);
       } else {
          throw std::invalid_argument("can't store an opaque C++ type without perl binding");
       }
    }
 
    template <typename Source, typename PerlPkg>
-   AnchorChain put(const MaybeUndefined<Source>& x, const char *fup, PerlPkg prescribed_pkg)
+   NoAnchor* put(const MaybeUndefined<Source>& x, const char* fup, PerlPkg prescribed_pkg)
    {
       if (x.top().defined())
-         return put(*x.top(), fup, prescribed_pkg);
+         put(*x.top(), fup, prescribed_pkg);
       else
-         return put(undefined(),0,0);
+         put(undefined(), NULL, 0);
+      return NULL;
    }
 
    template <typename Base, typename E, typename Params, typename PerlPkg>
-   AnchorChain put(const sparse_elem_proxy<Base,E,Params>& x, const char*, PerlPkg prescribed_pkg)
+   Anchor* put(const sparse_elem_proxy<Base,E,Params>& x, const char*, PerlPkg prescribed_pkg)
    {
       if ((options & (value_allow_non_persistent | value_expect_lval | value_read_only)) == 
                      (value_allow_non_persistent | value_expect_lval) &&
           type_cache< sparse_elem_proxy<Base,E,Params> >::magic_allowed(prescribed_pkg)) {
          store< sparse_elem_proxy<Base,E,Params> >(x);
-         return AnchorChain(this);
+         return first_anchor_slot();
       } else {
-         return put(x.get(), 0, prescribed_pkg);
+         return put(x.get(), NULL, prescribed_pkg);
       }
    }
 
    template <typename Source, typename PerlPkg, typename OwnerType>
-   typename disable_if<AnchorChain, list_contains<primitive_lvalues,Source>::value>::type
-   put_lval(const Source& x, const char *fup, PerlPkg prescribed_pkg, const Value* owner, OwnerType*)
+   typename disable_if<Anchor*, list_contains<primitive_lvalues,Source>::value>::type
+   put_lval(const Source& x, const char* fup, PerlPkg prescribed_pkg, const Value* owner, OwnerType*)
    {
       if (identical<Source, typename access<OwnerType>::value_type>::value &&
           reinterpret_cast<const Source*>(owner->get_canned_value()) == &x) {
          forget();
          sv=owner->sv;
-         return AnchorChain();
+         return NULL;
       } else {
-         AnchorChain ret=put(x, fup, prescribed_pkg);
+         Anchor* anchor=put(x, fup, prescribed_pkg);
          if (owner) get_temp();
-         return ret;
+         return anchor;
       }
    }
 
    template <typename Source, typename OwnerType>
-   typename enable_if<AnchorChain, list_contains<primitive_lvalues,Source>::value>::type
-   put_lval(const Source& x, const char *fup, int, const Value* owner, OwnerType*)
+   typename enable_if<Anchor*, list_contains<primitive_lvalues, Source>::value>::type
+   put_lval(const Source& x, const char* fup, int, const Value* owner, OwnerType*)
    {
-      const char *flo=frame_lower_bound(), *val=reinterpret_cast<const char*>(&x);
-      store_primitive_ref(x, type_cache<Source>::get_descr(), (val<flo)==(val<fup));
+      const char* const flo=frame_lower_bound();
+      const char* const val=reinterpret_cast<const char*>(&x);
+      Anchor* anchor=store_primitive_ref(x, type_cache<Source>::get_descr(), (val<flo)==(val<fup));
       if (owner) get_temp();
-      return AnchorChain();
+      return anchor;
    }
 
-   AnchorChain put_lval(const Scalar& x, const char*, int, const Value*, void*);
-   AnchorChain put_lval(const Array& x,  const char*, int, const Value*, void*);
-   AnchorChain put_lval(const Hash& x,   const char*, int, const Value*, void*);
+   NoAnchor* put_lval(const Scalar& x, const char*, int, const Value*, void*);
+   NoAnchor* put_lval(const Array& x,  const char*, int, const Value*, void*);
+   NoAnchor* put_lval(const Hash& x,   const char*, int, const Value*, void*);
 
    template <typename Target>
    void parse(Target& x) const
@@ -1105,14 +1143,16 @@ public:
             if (options & value_allow_undef) return Target();
             throw undefined();
          }
-         if (!(options & value_ignore_magic))
-            if (const std::type_info *t=get_canned_typeinfo()) {
-               if (*t==typeid(Target))
-                  return get_canned<Target>();
+         if (!(options & value_ignore_magic)) {
+            const canned_data_t canned=get_canned_data(sv);
+            if (canned.first) {
+               if (*canned.first == typeid(Target))
+                  return reinterpret_cast<const Target&>(*canned.second);
                typedef Target (*conv_f)(const Value&);
                if (conv_f conversion=reinterpret_cast<conv_f>(type_cache<Target>::get_conversion_operator(sv)))
                   return conversion(*this);
             }
+         }
          Target x;
          retrieve_nomagic(x);
          return x;
@@ -1142,19 +1182,19 @@ public:
    template <typename Source> friend
    void operator<< (const Value& me, const Source& x)
    {
-      const_cast<Value&>(me).put(x,0,0);
+      const_cast<Value&>(me).put(x, NULL, 0);
    }
 
    template <size_t ll> friend
    void operator<< (const Value& me, const char (&x)[ll])
    {
-      const_cast<Value&>(me).set_string_value(x,ll-1);
+      const_cast<Value&>(me).set_string_value(x, ll-1);
    }
 
    template <typename Target>
-   void* allocate()
+   void* allocate(SV* proto)
    {
-      return allocate_canned(type_cache<Target>::get_descr());
+      return allocate_canned(type_cache<Target>::get_descr(proto));
    }
 
    template <typename Target>
@@ -1162,14 +1202,13 @@ public:
    {
       return access<Target>::get(*this);
    }
-   using SVHolder::get;
 
-   // CAUTION: only use after having checked for valid canned magic
-   template <typename T>
-   T& get_canned() const
+   template <typename Given, typename Target>
+   typename access<Given, Target>::return_type get() const
    {
-      return *reinterpret_cast<T*>(get_canned_value());
+      return access<Given, Target>::get(*this);
    }
+   using SVHolder::get;
 
    template <typename T>
    int lookup_dim(bool tell_size_if_dense)
@@ -1194,8 +1233,8 @@ public:
       return d;
    }
 
-   template <typename> friend class access;
-   template <typename, bool, bool> friend class access_canned;
+   template <typename, typename> friend class access;
+   template <typename, typename, bool, bool> friend class access_canned;
    template <typename> friend struct check_for_magic_storage;
    friend class ArrayHolder;
    template <typename> friend class Array_access;
@@ -1204,6 +1243,8 @@ public:
    template <typename> friend class ValueOutput;
    template <typename, typename> friend class ListValueInput;
 };
+
+SV* make_string_array(int size, ...);
 
 inline ArrayHolder::ArrayHolder(const Value& v) : SVHolder(v.sv)
 {
@@ -1306,7 +1347,7 @@ class ArrayOwner : public ArrayHolder,
                                                           Operation< Array_access<Element> > ) > {
    friend class Value;
 protected:
-   explicit ArrayOwner(SV *sv_arg) : ArrayHolder(sv_arg) {}
+   explicit ArrayOwner(SV* sv_arg) : ArrayHolder(sv_arg) {}
    explicit ArrayOwner(const Value& v) : ArrayHolder(v) {}
 public:
    ArrayOwner() {}
@@ -1335,6 +1376,8 @@ public:
 
 class OptionSet : public HashHolder {
 public:
+   OptionSet() : HashHolder() { this->get_temp(); }
+   
    OptionSet(const Value& v)
       : HashHolder(v.sv) { verify(); }
 public:
@@ -1385,13 +1428,13 @@ public:
    }
 };
 
-inline Value::AnchorChain Value::put(const Scalar& x,      const char*, int) { set_copy(x); return AnchorChain(); }
-inline Value::AnchorChain Value::put(const Array& x,       const char*, int) { set_copy(x); return AnchorChain(); }
-inline Value::AnchorChain Value::put(const Hash& x,        const char*, int) { set_copy(x); return AnchorChain(); }
-inline Value::AnchorChain Value::put(const ListReturn& x,  const char*, int) { forget(); sv=NULL; return AnchorChain(); }
-inline Value::AnchorChain Value::put_lval(const Scalar& x, const char*, int, const Value*, void*) { forget(); sv=x.get(); return AnchorChain(); }
-inline Value::AnchorChain Value::put_lval(const Array& x,  const char*, int, const Value*, void*) { forget(); sv=x.get(); return AnchorChain(); }
-inline Value::AnchorChain Value::put_lval(const Hash& x,   const char*, int, const Value*, void*) { forget(); sv=x.get(); return AnchorChain(); }
+inline Value::NoAnchor* Value::put(const Scalar& x,      const char*, int) { set_copy(x); return NULL; }
+inline Value::NoAnchor* Value::put(const Array& x,       const char*, int) { set_copy(x); return NULL; }
+inline Value::NoAnchor* Value::put(const Hash& x,        const char*, int) { set_copy(x); return NULL; }
+inline Value::NoAnchor* Value::put(const ListReturn& x,  const char*, int) { forget(); sv=NULL; return NULL; }
+inline Value::NoAnchor* Value::put_lval(const Scalar& x, const char*, int, const Value*, void*) { forget(); sv=x.get(); return NULL; }
+inline Value::NoAnchor* Value::put_lval(const Array& x,  const char*, int, const Value*, void*) { forget(); sv=x.get(); return NULL; }
+inline Value::NoAnchor* Value::put_lval(const Hash& x,   const char*, int, const Value*, void*) { forget(); sv=x.get(); return NULL; }
 
 } }
 

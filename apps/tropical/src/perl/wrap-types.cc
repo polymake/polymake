@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,19 +16,20 @@
 
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
+#include "polymake/IncidenceMatrix.h"
 
 namespace polymake { namespace tropical { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1, typename T2>
-   FunctionInterface4perl( types_X_X, T0,T1,T2 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]);
-      WrapperReturn( types<T0>(arg0.get<T1>(), arg1.get<T2>()) );
+   FunctionInterface4perl( types_T_X_X, T0,T1,T2 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      WrapperReturn( (types<T0>(arg0.get<T1>(), arg1.get<T2>())) );
    };
 
    template <typename T0, typename T1, typename T2>
-   FunctionInterface4perl( coarse_types_X_X, T0,T1,T2 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]);
-      WrapperReturn( coarse_types<T0>(arg0.get<T1>(), arg1.get<T2>()) );
+   FunctionInterface4perl( coarse_types_T_X_X, T0,T1,T2 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      WrapperReturn( (coarse_types<T0>(arg0.get<T1>(), arg1.get<T2>())) );
    };
 
    FunctionWrapper4perl( bool (pm::Array<pm::Set<int, pm::operations::cmp>, void>, pm::Set<int, pm::operations::cmp>, int, pm::Set<int, pm::operations::cmp>&) ) {
@@ -49,7 +50,7 @@ namespace polymake { namespace tropical { namespace {
    }
    FunctionWrapperInstance4perl( pm::Set<int, pm::operations::cmp> (pm::Array<pm::Set<int, pm::operations::cmp>, void>, pm::Set<int, pm::operations::cmp>, int) );
 
-   FunctionInstance4perl(coarse_types_X_X, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Matrix< Rational > >);
-   FunctionInstance4perl(types_X_X, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(types_T_X_X, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(coarse_types_T_X_X, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Matrix< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

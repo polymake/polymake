@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -63,19 +63,23 @@ perl::Object face_fan(perl::Object p)
    return face_fan(p,v);
 }
 
-UserFunctionTemplate4perl("# @category Constructing a fan"
+UserFunctionTemplate4perl("# @category Producing a fan"
                           "# Computes the face fan of //p//."
                           "# @param Polytope p"
                           "# @param Vector v a relative interior point of the polytope"
-                          "# @author Andreas Paffenholz",
+                          "# @tparam Coord"
+                          "# @author Andreas Paffenholz"
+                          "# @return PolyhedralFan",
                           "face_fan<Coord>(polytope::Polytope<Coord>, Vector<Coord>)");
 
 
-UserFunctionTemplate4perl("# @category Constructing a fan"
+UserFunctionTemplate4perl("# @category Producing a fan"
                           "# Computes the face fan of //p//."
                           "# the polytope has to be //CENTERED//"
                           "# @param Polytope p"
-                          "# @author Andreas Paffenholz",
+                          "# @tparam Coord"
+                          "# @author Andreas Paffenholz"
+                          "# @return PolyhedralFan",
                           "face_fan<Coord>(polytope::Polytope<Coord>)");
 
 } }

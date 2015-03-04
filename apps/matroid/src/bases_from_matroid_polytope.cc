@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -66,7 +66,7 @@ perl::Object matroid_from_matroid_polytope(perl::Object p)
 
 Function4perl(&bases_from_matroid_polytope, "bases_from_matroid_polytope");
 Function4perl(&bases_from_matroid_polytope_as_set, "bases_from_matroid_polytope_as_set");
-UserFunction4perl("# @category Producing from scratch\n"
+UserFunction4perl("# @category Producing a matroid from other objects\n"
                   "# Creates a matroid from the corresponding matroid\n"
                   "# polytope //p//.\n"
                   "# @param polytope::Polytope p"

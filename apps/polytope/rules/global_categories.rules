@@ -1,0 +1,44 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# @topic category any/Lattice points in polytopes
+# These +++ capture information that depends on the lattice structure of the polytope.
+# polymake always works with the integer lattice.
+
+# @topic category any/Lattice points in cones
+# These +++ capture information that depends on the lattice structure of the cone.
+# polymake always works with the integer lattice. 
+
+# @topic category any/Unbounded polyhedra
+# These +++ collect geometric information of a polytope only relevant if it is unbounded, e. g. the far face or the complex of bounded faces.
+
+# @topic category any/Optimization
+# These +++ provide tools from linear, integer and dicrete optimization. In particular, linear programs are defined here.
+
+# @topic category any/Triangulation and volume
+# These +++ collect information about triangulations of the object and properties usually computed from such, as the volume.
+
+# @topic category any/Triangulations, subdivisions and volume
+# These +++ collect information about triangulations and other subdivisions of the object and properties usually computed from such, as the volume.
+
+# @topic category any/Consistency check
+# These +++ are for checking the consistency of some properties.
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

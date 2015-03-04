@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -16,8 +16,8 @@
 
 package Visual::Polytope;
 
-# @category Visualization
 # Visualize the [[LATTICE_POINTS]] of a polytope
+# @options %Visual::PointSet::decorations
 # @return Visual::Polytope
 
 user_method LATTICE(%Visual::PointSet::decorations) {
@@ -57,8 +57,8 @@ user_method LATTICE(%Visual::PointSet::decorations) {
     visualize($self);
 }
 
-# @category Visualization
 # Visualize the [[LATTICE_POINTS]] of a polytope in different colors (interior / boundary / vertices)
+# @options %Visual::PointSet::decorations
 # @return Visual::Polytope
 
 user_method LATTICE_COLORED(%Visual::PointSet::decorations) {

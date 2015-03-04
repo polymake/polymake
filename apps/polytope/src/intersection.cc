@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -91,7 +91,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# If the input contains both cones and polytopes, the output will be a polytope."
                           "# @param Cone C ... polyhedra and cones to be intersected"
                           "# @return Cone",
-                          "intersection<Scalar>(Cone<Scalar> +)");
+                          "intersection<Scalar>(Cone<type_upgrade<Scalar>> +)");
 } }
 
 // Local Variables:

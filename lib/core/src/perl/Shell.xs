@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -30,7 +30,7 @@ void
 line_continued()
 PPCODE:
 {
-   if (PL_lex_brackets==0 && PL_lex_state==LEX_NORMAL && PL_expect==XSTATE)
+   if (PL_parser->lex_brackets==0 && PL_parser->lex_state==LEX_NORMAL && PL_parser->expect==XSTATE)
       XPUSHs(&PL_sv_undef);
    else
       XPUSHs(sv_2mortal(newSViv(CopLINE(&PL_compiling) LineNumCorr)));

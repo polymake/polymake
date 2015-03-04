@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <!--
-  Copyright (c) 1997-2014
+  Copyright (c) 1997-2015
   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
   http://www.polymake.org
 
@@ -188,6 +188,42 @@ polymake application.
 </xsl:template>
 
 
+<xsl:template name="specializations">
+	<xsl:if test="pm:specialization">
+	<h4>Specializations of <xsl:value-of select="@name"/></h4>
+
+		<ul>
+			<xsl:apply-templates select="pm:specialization"/>
+		</ul>
+	</xsl:if>
+</xsl:template>
+
+<xsl:template match="pm:specialization">
+<li><div class="li">
+
+	<xsl:call-template name="inserticon"/>	
+	
+	<div class="unfoldable">
+		<a>
+			<xsl:call-template name="unfoldattributes"/>
+			<b><xsl:value-of select="@name"/></b>
+		</a>
+		
+		 <xsl:call-template name="typelinks"/><br />
+		 
+		<div>
+			<xsl:call-template name="unfoldspan"/>
+
+			<xsl:apply-templates select="pm:description"/>
+			<xsl:apply-templates select="@ext"/>
+		</div>
+	</div>
+</div></li>
+</xsl:template>
+
+<xsl:template match="pm:only">
+		<div class="descr"><b>Only defined for <a><xsl:attribute name="href"><xsl:value-of select="@href" /></xsl:attribute><xsl:value-of select="@name"/></a></b></div>
+</xsl:template>
 
 
 
@@ -314,6 +350,7 @@ polymake application.
 			</xsl:if>
 			</div>
 
+			<xsl:call-template name="specializations"/>
 				
 			<xsl:apply-templates select="pm:properties"/>			
 			<xsl:apply-templates select="pm:user-methods"/>
@@ -361,6 +398,8 @@ polymake application.
 		 
 		<div>
 			<xsl:call-template name="unfoldspan"/>
+
+			<xsl:apply-templates select="pm:only"/>
 
 			<xsl:apply-templates select="pm:description"/>
 			<xsl:apply-templates select="@ext"/>

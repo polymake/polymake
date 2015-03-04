@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -45,7 +45,7 @@ use Polymake::Struct (
 sub representative { $_[0]->Graph; }
 
 sub is_directed {
-   (shift)->Graph->ADJACENCY->type->param == Directed->type
+   (shift)->Graph->ADJACENCY->type->params->[0] == Directed->type
 }
 
 sub n_nodes { (shift)->Graph->ADJACENCY->nodes }
@@ -57,12 +57,12 @@ sub needs_renumbering {
    my $self=shift;
    unless (defined($self->renumber_nodes)) {
       if ($self->Graph->ADJACENCY->has_gaps) {
-	 $self->renumber_nodes=[ @{nodes($self->Graph->ADJACENCY)} ];
-	 my $n=0;
-	 $self->inv_renumber_nodes=[ ];
-	 $self->inv_renumber_nodes->[$_]=$n++ for @{$self->renumber_nodes};
+         $self->renumber_nodes=[ @{nodes($self->Graph->ADJACENCY)} ];
+         my $n=0;
+         $self->inv_renumber_nodes=[ ];
+         $self->inv_renumber_nodes->[$_]=$n++ for @{$self->renumber_nodes};
       } else {
-	 $self->renumber_nodes=0;
+         $self->renumber_nodes=0;
       }
    }
    $self->renumber_nodes
@@ -139,13 +139,13 @@ sub add_decor_filters {
    my @decor_filters;
    while (my ($name, $value)=each %$decor) {
       if ($name =~ /^(?:Node|Vertex)/) {
-	 push @decor_filters, $name, sub { $marked_nodes->{$_[0]} && $value };
+         push @decor_filters, $name, sub { $marked_nodes->{$_[0]} && $value };
       } elsif ($name =~ /^(?:Edge|Arrow)/) {
-	 push @decor_filters, $name, sub { $marked_edges->{${$_[0]}} && $value };
+         push @decor_filters, $name, sub { $marked_edges->{${$_[0]}} && $value };
       } else {
-	 no strict 'refs';
-	 croak( "unknown decoration keyword '$name'; the following are allowed:\n", 
-	        join(", ", keys %{ref($self)."::decorations"}) );
+         no strict 'refs';
+         croak( "unknown decoration keyword '$name'; the following are allowed:\n", 
+                join(", ", keys %{ref($self)."::decorations"}) );
       }
    }
 
@@ -167,12 +167,12 @@ sub add_node_subset {
    }
    if (defined($marked_edges)) {
       foreach (@$subset) {
-	 if ($edges>=0) {
-	    for (my $e=$self->Graph->ADJACENCY->out_edges->($_); $e; ++$e) { $marked_edges->{$$e}=1 }
-	 }
-	 if ($edges<=0) {
-	    for (my $e=$self->Graph->ADJACENCY->in_edges->($_); $e; ++$e) { $marked_edges->{$$e}=1 }
-	 }
+         if ($edges>=0) {
+            for (my $e=$self->Graph->ADJACENCY->out_edges->($_); $e; ++$e) { $marked_edges->{$$e}=1 }
+         }
+         if ($edges<=0) {
+            for (my $e=$self->Graph->ADJACENCY->in_edges->($_); $e; ++$e) { $marked_edges->{$$e}=1 }
+         }
       }
    }
 }
@@ -180,5 +180,7 @@ sub add_node_subset {
 1
 
 # Local Variables:
-# c-basic-offset:3
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
 # End:

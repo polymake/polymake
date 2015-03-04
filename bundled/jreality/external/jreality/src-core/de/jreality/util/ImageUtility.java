@@ -109,7 +109,6 @@ public class ImageUtility {
 	          for (int x = 0; x < imageWidth; x++, ptr += 4) {
 	            dst[3] =  byteArray[ptr+3];  //(byte) (px & 255); //
 	            if (dst[3] < 0) dst[3] += 256;
-	            double d = dst[3]/255.0;
 	            for (int j = 0; j<3; ++j)	{
 		            dst[j] = (int) (byteArray[ptr+j]); //(byte) ((px >> 8) & 255); //
 	            	if (dst[j] < 0) dst[j] += 256;

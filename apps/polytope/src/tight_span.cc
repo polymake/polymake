@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,14 +16,14 @@
 
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
-#include "polymake/Rational.h"
 #include "polymake/Vector.h"
 
 namespace polymake { namespace polytope {
 
-perl::Object tight_span(const Matrix<Rational>& vertices, const Vector<Rational>& weight, bool dim)
+template<typename Scalar>
+perl::Object tight_span(const Matrix<Scalar>& vertices, const Vector<Scalar>& weight, bool dim)
 {
-   Matrix<Rational> ineq;
+   Matrix<Scalar> ineq;
 
    if (vertices.rows()!=weight.size())
       throw std::runtime_error("Weight vector has the wrong dimension.");
@@ -31,39 +31,40 @@ perl::Object tight_span(const Matrix<Rational>& vertices, const Vector<Rational>
    if (!dim) ineq = weight|vertices.minor(All,range(1,vertices.cols()-1));
    else ineq =  weight|vertices;
 
-   perl::Object p("Polytope<Rational>");
+   perl::Object p(perl::ObjectType::construct<Scalar>("Polytope"));
    p.take("INEQUALITIES") << ineq;
    p.take("BOUNDED") << false;
    return p;
 }
 
-perl::Object tight_span2(perl::Object p_in)
+template<typename Scalar>
+perl::Object tight_span(perl::Object p_in)
 {
-   const Matrix<Rational> verts=p_in.give("VERTICES");
-   const Vector<Rational> w = p_in.give("POLYTOPAL_SUBDIVISION.WEIGHTS");
+   const Matrix<Scalar> verts=p_in.give("VERTICES");
+   const Vector<Scalar> w = p_in.give("POLYTOPAL_SUBDIVISION.WEIGHTS");
    const int dim = p_in.CallPolymakeMethod("DIM");
-   return tight_span(verts, w, dim==verts.cols()-1);
+   return tight_span<Scalar>(verts, w, dim==verts.cols()-1);
 }
 
-UserFunction4perl("#@category Triangulations, subdivisions and volume"
-                  "# Compute the tight span dual to the regular subdivision"
-                  "# obtained by lifting //points// to //weight//"
-                  "# and taking the lower complex of the resulting polytope."
-                  "# @param Matrix points"
-                  "# @param Vector weight"
-                  "# @param Bool full true if the polytope is full-dimensional."
-                  "#        Default value is 1."
-                  "# @return Polytope (The polymake object [[TightSpan]] is only used for tight spans of finite metric spaces, not for tight spans of subdivisions in general.)"
-                  "# @author Sven Herrmann",
-                  &tight_span,"tight_span(Matrix Vector; $=1)");
+UserFunctionTemplate4perl("#@category Triangulations, subdivisions and volume"
+                          "# Compute the tight span dual to the regular subdivision"
+                          "# obtained by lifting //points// to //weight//"
+                          "# and taking the lower complex of the resulting polytope."
+                          "# @param Matrix points"
+                          "# @param Vector weight"
+                          "# @param Bool full true if the polytope is full-dimensional."
+                          "#        Default value is 1."
+                          "# @return Polytope (The polymake object [[TightSpan]] is only used for tight spans of finite metric spaces, not for tight spans of subdivisions in general.)"
+                          "# @author Sven Herrmann",
+                          "tight_span<Scalar>(Matrix<type_upgrade<Scalar>> Vector<type_upgrade<Scalar>>; $=1)");
 
-UserFunction4perl("#@category Triangulations, subdivisions and volume"
-                  "# Compute the tight span dual to the regular subdivision of a polytope //P//"
-                  "# obtained by the [[Polytope::WEIGHTS|WEIGHTS]] and taking the lower complex of the resulting polytope."
-                  "# @param Polytope P"
-                  "# @return Polytope(The polymake object [[TightSpan]] is only used for tight spans of finite metric spaces, not for tight spans of subdivisions in general.)"
-                  "# @author Sven Herrmann",
-                  &tight_span2,"tight_span(Polytope)");
+UserFunctionTemplate4perl("#@category Triangulations, subdivisions and volume"
+                          "# Compute the tight span dual to the regular subdivision of a polytope //P//"
+                          "# obtained by the [[Polytope::WEIGHTS|WEIGHTS]] and taking the lower complex of the resulting polytope."
+                          "# @param Polytope P"
+                          "# @return Polytope(The polymake object [[TightSpan]] is only used for tight spans of finite metric spaces, not for tight spans of subdivisions in general.)"
+                          "# @author Sven Herrmann",
+                          "tight_span<Scalar>(Polytope<Scalar>)");
 } }
 
 // Local Variables:

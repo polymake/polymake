@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -107,8 +107,8 @@ int connectivity(const GenericGraph<AnyGraph,Undirected>& G_in)
    return minmaxflow;
 }
 
-UserFunctionTemplate4perl("# @category Other"
-                          "# Compute the connectivity of a given //graph// using the Ford-Fulkerson flow algorithm."
+UserFunctionTemplate4perl("# @category Combinatorics"
+                          "# Compute the [[CONNECTIVITY]] of a given //graph// using the Ford-Fulkerson flow algorithm."
                           "# @param props::Graph<Undirected> graph"
                           "# @return Int"
                           "# @author Nikolaus Witte",

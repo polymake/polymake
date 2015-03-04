@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -53,26 +53,22 @@ property HASSE_DIAGRAM {
 property MORSE_MATCHING : EdgeMap<Directed, Int> : construct(ADJACENCY);
 
 
-# @category Topology
 # Size of the computed Morse matching.
 # FIXME: temporary
 property MORSE_MATCHING_SIZE : Int;
 
 
-# @category Topology
 # The critical faces of the computed Morse matching, i.e., the faces not
 # incident to any reoriented arc (not matched).
 # FIXME: temporary
 property MORSE_MATCHING_CRITICAL_FACES : Array<Set>;
 
 
-# @category Topology
 # The vector of critical faces in each dimension.
 # FIXME: temporary
 property MORSE_MATCHING_CRITICAL_FACE_VECTOR : Array<Int>;
 
 
-# @category Topology
 # Number of critical faces of the computed Morse matching.
 # FIXME: temporary
 property MORSE_MATCHING_N_CRITICAL_FACES : Int;

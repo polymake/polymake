@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -62,8 +62,8 @@
 namespace pm { namespace perl { namespace glue {
 
 struct cached_cv {
-   const char *name;
-   SV *addr;
+   const char* name;
+   SV* addr;
 };
 
 SV** push_current_application(pTHX_ SV **sp);
@@ -77,6 +77,9 @@ void call_func_void(pTHX_ SV* cv);
 SV*  call_method_scalar(pTHX_ const char* method);
 int  call_method_list(pTHX_ const char* method);
 void call_method_void(pTHX_ const char* method);
+
+// find the given class in the current application namespace and fetch the GV of its typeof() method
+SV* fetch_typeof_gv(pTHX_ const char* class_name, size_t class_namelen);
 
 inline
 SV* call_func_scalar(pTHX_ cached_cv& cv, SV** dst=NULL)
@@ -114,7 +117,7 @@ struct base_vtbl {
    size_t obj_size;
    int flags;
    int obj_dimension;
-   SV* (*sv_maker)(pTHX_ SV* dst_ref, SV* descr_ref, int flags);
+   SV* (*sv_maker)(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int flags, unsigned int n_anchors);
    SV* (*sv_cloner)(pTHX_ SV* src);
    copy_constructor_type copy_constructor;
    assignment_type assignment;
@@ -165,6 +168,18 @@ struct composite_vtbl : common_vtbl {
    composite_access_vtbl acc[1];
 };
 
+// anchors are stored immediately behind the standard MAGIC structure in a common chunk of memory
+struct MagicAnchors {
+   MAGIC magic;
+   Value::Anchor anchors[1];
+
+   static
+   Value::Anchor* first(MAGIC* mg)
+   {
+      return reverse_cast(mg, &MagicAnchors::magic)->anchors;
+   }
+};
+
 int destroy_canned(pTHX_ SV *sv, MAGIC* mg);
 int destroy_canned_container(pTHX_ SV *sv, MAGIC* mg);
 int destroy_canned_assoc_container(pTHX_ SV *sv, MAGIC* mg);
@@ -176,12 +191,12 @@ int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy,
 int canned_assoc_container_access(pTHX_ SV *sv, MAGIC* mg, SV *val_sv, const char *key, PM_svt_copy_klen_arg klen);
 U32 canned_composite_size(pTHX_ SV *sv, MAGIC* mg);
 int canned_composite_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy, PM_svt_copy_klen_arg index);
-MAGIC* upgrade_to_builtin_magic_sv(pTHX_ SV* sv, SV* descr_ref);
-SV* create_builtin_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, int flags);
-SV* create_scalar_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, int flags);
-SV* create_container_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, int flags);
-SV* create_assoc_container_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, int flags);
-SV* create_composite_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, int flags);
+MAGIC* upgrade_to_builtin_magic_sv(pTHX_ SV* sv, SV* descr_ref, unsigned int n_anchors);
+SV* create_builtin_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int flags, unsigned int n_anchors);
+SV* create_scalar_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int flags, unsigned int n_anchors);
+SV* create_container_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int flags, unsigned int n_anchors);
+SV* create_assoc_container_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int flags, unsigned int n_anchors);
+SV* create_composite_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int flags, unsigned int n_anchors);
 SV* clone_builtin_magic_sv(pTHX_ SV *src);
 SV* clone_scalar_magic_sv(pTHX_ SV *src);
 SV* clone_container_magic_sv(pTHX_ SV *src);

@@ -42,6 +42,7 @@ public class MirrorAppearance extends Appearance implements Runnable {
 	    mirrorTex.setRunnable(this);
 	}
 	
+	@Override
 	public void run() {
 		Graphics2D g = (Graphics2D)image.createGraphics();
 		g.setBackground(Color.WHITE);

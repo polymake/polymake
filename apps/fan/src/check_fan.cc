@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -198,8 +198,9 @@ UserFunction4perl("# @category Consistency check"
 UserFunctionTemplate4perl("# @category Consistency check"
                           "# Checks whether the [[polytope::Cone]] objects form a polyhedral fan."
                           "# If this is the case, returns that [[PolyhedralFan]]."
-                          "# @param Cone C ..."
+                          "# @param Array<Cone> cones"
                           "# @option Bool verbose prints information about the check."
+                          "# @tparam Coord"
                           "# @return PolyhedralFan",
                           "check_fan_objects<Coord>(Cone<Coord> +;{verbose=>0})");
 

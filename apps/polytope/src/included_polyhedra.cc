@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -27,8 +27,10 @@ bool included_polyhedra(perl::Object p1, perl::Object p2, perl::OptionSet option
    std::string generator_type = p1.isa("Polytope") ? "point" : "ray";
    const bool verbose=options["verbose"];
    const Matrix<Coord> vert=p1.give("RAYS|INPUT_RAYS"), lin=p1.lookup("LINEALITY_SPACE"), ineq=p2.give("FACETS|INEQUALITIES"), eq=p2.lookup("LINEAR_SPAN|EQUATIONS");
-      
-   if (vert.cols()!=ineq.cols()) {
+
+   const int dim1 = p1.give("CONE_AMBIENT_DIM");
+   const int dim2 = p2.give("CONE_AMBIENT_DIM");
+   if (dim1!=dim2) {
       if (verbose) cout << "Cones/Polytopes do no live in the same ambient space."<<endl;
       return false;
    }

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -14,18 +14,21 @@
 --------------------------------------------------------------------------------
 */
 
+#include <string>
 #include "polymake/client.h"
 #include "polymake/Array.h"
 #include "polymake/PowerSet.h"
+#include "polymake/vector"
 
 namespace polymake { namespace topaz {
 
-perl::Object clique_complex(perl::Object graph,const bool no_labels)
+perl::Object clique_complex(perl::Object graph, perl::OptionSet options)
 {
    const PowerSet<int> maxCliques = graph.give("MAX_CLIQUES");
+   const bool no_labels = options["no_labels"];
    
    perl::Object complex("topaz::SimplicialComplex");
-   complex.set_description() << "Clique complex of graph "<<graph.name()<<"."<<endl;
+   complex.set_description() << "Clique complex of graph " << graph.name() << "." << endl;
    complex.take("FACETS") << as_array(maxCliques);
    
    if (!no_labels) {
@@ -43,7 +46,7 @@ UserFunction4perl("# @category Producing a simplicial complex from other objects
                   "# @param Graph graph"
                   "# @option Bool no_labels\n"
                   "# @return SimplicialComplex",
-                  &clique_complex,"clique_complex(Graph;$=0)");
+                  &clique_complex,"clique_complex(Graph; { no_labels => 0 })");
 } }
 
 // Local Variables:

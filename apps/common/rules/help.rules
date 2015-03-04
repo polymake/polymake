@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -12,6 +12,9 @@
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
+
+INCLUDE
+  global_categories.rules
 
 # @topic top
 # You are in the interactive mode of polymake.
@@ -185,6 +188,9 @@
 # @topic functions/show_preferences
 # @category Interactive
 # Prints the currently active preference lists.
+# Please be aware that the output only reflects the persistent preferences;
+# temporary changes made by [[prefer_now]] are not displayed even if they might be in effect
+# when this command is executed.
 
 
 # @topic functions/set_custom
@@ -508,9 +514,16 @@
 # @topic objects/Core::Object/methods/list_properties
 # List all known properties.
 
-# @topic objects/Core::Object/methods/remove($)
-# Remove the property //prop// from the object (if this operation is feasible, i.e., if //prop// is can be recomputed from the remaining properties).
-# @param String prop
+# @topic objects/Core::Object/methods/remove (String+)
+# Remove the property //prop// from the object.  The property must be //mutable//, //multiple//,
+# or unambiguously reconstructible from the remaining properties.
+# @param String prop : property name or a path to a property in a subobject in dotted notation,
+#                      Several properties may be removed at once.
+
+# @topic objects/Core::Object/methods/remove (Object+)
+# Remove the multiple subobject instance(s) from the object.
+# @param Object subobj : multiple subobject instance.
+#                        Several subobjects may be removed at once.
 
 
 # @topic objects/Core::RuleChain
@@ -523,6 +536,25 @@
 # @topic objects/Core::RuleChain/methods/apply($)
 # Apply the rule chain to an object.
 # @param Core::Object o
+
+# @topic exit
+# use this command only if you want to restart polymake.
+
+# @topic polymake
+#       MM                            ,,
+#      MM M                         `7MM                                    `7MM
+#     M M  M                          MM                                      MM
+#    M M    M    `7MMpdMAo.  ,pW"Wq.  MM `7M'   `MF`7MMpMMMb.pMMMb.  ,6"Yb.   MM  ,MP .gP"Ya
+#   ,  M   M M     MM   `Wb 6W'   `Wb MM   VA   ,V   MM    MM    MM 8)   MM   MM ;Y  ,M'   Yb
+#  MM  M  M   M    MM    M8 8M     M8 MM    VA ,V    MM    MM    MM  ,pm9MM   MM;Mm  8M""""""
+# M M MMN      M   MM   ,AP YA.   ,A9 MM     VVV     MM    MM    MM 8M   MM   MM `Mb YM.    ,
+#M   MM M       M  MMbmmd'   `Ybmd9'.JMML.   ,V    .JMML  JMML  JMML`Moo9^Yo.JMML. YA `Mbmmd'
+#M  M M  M M  MM   MM                       ,V
+# MMM M   M M    .JMML.                  OOb"
+#  M     MM
+#   MM MM
+#    MM
+#
 
 
 

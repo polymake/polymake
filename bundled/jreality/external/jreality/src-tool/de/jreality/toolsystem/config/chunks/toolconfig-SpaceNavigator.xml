@@ -1,92 +1,48 @@
 <toolconfig>
-
-    <!-- better use toolconfig-Spacenav.xml !!! -->
-
 	<rawdevices>
 		<rawdevice id="SpaceNavigator"
-			type="de.jreality.toolsystem.raw.DeviceJinputController">
+			type="de.jreality.toolsystem.raw.DeviceJinputJoystick">
 			<prop name="id_string">
-				<string>.*SpaceNavigator.*</string>
+				<string>.*SpaceExplorer.*</string>
 			</prop>
 		</rawdevice>
 	</rawdevices>
 
 	<rawslots>
-		<mapping device="SpaceNavigator" src="axis_2" target="X" />
-		<mapping device="SpaceNavigator" src="axis_3" target="Y" />
-		<mapping device="SpaceNavigator" src="axis_4" target="Z" />
-		<mapping device="SpaceNavigator" src="axis_5" target="RXRaw" />
-		<mapping device="SpaceNavigator" src="axis_6" target="RYRaw" />
-		<mapping device="SpaceNavigator" src="axis_7" target="RZRaw" />
-		<!--DragActivation == 'Shoot-Imputslot' -->
-		<mapping device="SpaceNavigator" src="button_1" target="DragActivation" />
-		<!--
-			mapping device="SpaceNavigator" src="button_0"
-			target="PrimaryAction"/
-		-->
+		<mapping device="SpaceNavigator" src="x_4_0" target="X" />
+		<mapping device="SpaceNavigator" src="y_4_1" target="Y" />
+		<mapping device="SpaceNavigator" src="z_4_2" target="Z" />
+		<mapping device="SpaceNavigator" src="rx_4_3" target="RX" />
+		<mapping device="SpaceNavigator" src="ry_4_4" target="RY" />
+		<mapping device="SpaceNavigator" src="rz_4_5" target="RZ" />
+		<mapping device="SpaceNavigator" src="button_4_16" target="EncompassActivation"/>
 	</rawslots>
 
 	<virtualdevices>
-
-		<mapping src="X" target="LeftRightAxis" />
-		<mapping src="RZ" target="HorizontalShipRotationAngleSpeed" />
-		<mapping src="Y" target="ForwardBackwardAxis" />
-		<mapping src="RX" target="VerticalHeadRotationAngleSpeed" />
-		<!--mapping src="Z" target="JumpActivation" /-->
-
-		<virtualdevice
-			type="de.jreality.toolsystem.virtual.VirtualSpaceNavigatorFixAxis">
-			<inputslot>RXRaw</inputslot>
-			<outputslot>RX</outputslot>
-		</virtualdevice>
-
-		<virtualdevice
-			type="de.jreality.toolsystem.virtual.VirtualSpaceNavigatorFixAxis">
-			<inputslot>RYRaw</inputslot>
-			<outputslot>RY</outputslot>
-		</virtualdevice>
-
-		<virtualdevice
-			type="de.jreality.toolsystem.virtual.VirtualSpaceNavigatorFixAxis">
-			<inputslot>RZRaw</inputslot>
-			<outputslot>RZ</outputslot>
-		</virtualdevice>
- <!--
-		<virtualdevice
-			type="de.jreality.toolsystem.virtual.VirtualSpaceNavigatorFixAxis">
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualRotationFromRxRyRz">
 			<inputslot>RX</inputslot>
-			<outputslot>VerticalHeadRotationAngleSpeed</outputslot>
-		</virtualdevice>
- --> 
-		<virtualdevice
-					type="de.jreality.toolsystem.virtual.VirtualTimestepEvolution">
-			<inputslot>VerticalHeadRotationAngleSpeed</inputslot>
-			<inputslot>SystemTime</inputslot>
-			<outputslot>VerticalHeadRotationAngleEvolution</outputslot>
+			<inputslot>RY</inputslot>
+			<inputslot>RZ</inputslot>
+			<outputslot>SimpleRotateTransformation</outputslot>
 			<prop name="gain">
-				<double>3</double>
+ 				<double>0.05</double>
 			</prop>
 		</virtualdevice>
-
-		<virtualdevice
-					type="de.jreality.toolsystem.virtual.VirtualTimestepEvolution">
-			<inputslot>HorizontalShipRotationAngleSpeed</inputslot>
-			<inputslot>SystemTime</inputslot>
-			<outputslot>HorizontalShipRotationAngleEvolution</outputslot>
-			<prop name="gain">
-				<double>3</double>
-			</prop>
-		</virtualdevice>
-
-		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualExtractPositive">
+		<mapping src="RX" target="SimpleRotateActivation"/>
+		<mapping src="RY" target="SimpleRotateActivation"/>
+		<mapping src="RZ" target="SimpleRotateActivation"/>
+		
+		<virtualdevice type="de.jreality.toolsystem.virtual.VirtualTranslationFromXYZ">
+			<inputslot>X</inputslot>
 			<inputslot>Z</inputslot>
-			<outputslot>JumpActivation</outputslot>
-			<prop name="threshold">
-				<double>0.75</double>
+			<inputslot>Y</inputslot>
+			<outputslot>SimpleTranslateTransformation</outputslot>
+			<prop name="gain">
+ 				<double>0.2</double>
 			</prop>
 		</virtualdevice>
-
+		<mapping src="X" target="SimpleDragActivation"/>
+		<mapping src="Y" target="SimpleDragActivation"/>
+		<mapping src="Z" target="SimpleDragActivation"/>
 	</virtualdevices>
-
-
 </toolconfig>

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -69,9 +69,10 @@ perl::Object hyperplane_arrangement(const Matrix<Coord> & hyperplanes)
 
 }
 
-UserFunction4perl("# @category Constructing a fan"
+UserFunction4perl("# @category Producing a fan"
                   "# Compute the fan given by a bunch of hyperplanes //H//."
                   "# @param Matrix H"
+                  "# @return PolyhedralFan"
                   "# @author Sven Herrmann",
                   &hyperplane_arrangement, "hyperplane_arrangement");
 } }

@@ -1,0 +1,12 @@
+# This is a bundled extension for cddlib.
+
+CREDIT cddlib
+  Implementation of the double description method of Motzkin et al.
+  Copyright by Komei Fukuda.
+  http://www.ifor.math.ethz.ch/~fukuda/cdd_home/cdd.html
+
+# REQUIRE
+# Names of other bundled extensions which are prerequisite for this one
+
+# CONFLICT
+# Names of other bundled extensions which are incompatible with this one.

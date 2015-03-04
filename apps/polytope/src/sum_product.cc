@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,7 +16,6 @@
 
 #include "polymake/client.h"
 #include "polymake/list"
-#include "polymake/Rational.h"
 #include "polymake/Graph.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Array.h"
@@ -44,21 +43,23 @@ void add_next_generation(std::list<int>& next_nodes, const int v, const graph& G
 }
 
 // Returns translation matrix (to be applied to row vectors from the right) for given vector.
-Matrix<Rational> translation_by(const Vector<Rational>& vec)
+template<typename Scalar>
+Matrix<Scalar> translation_by(const Vector<Scalar>& vec)
 {
    const int d=vec.dim();
-   return unit_vector<Rational>(d+1,0) | (vec / unit_matrix<Rational>(d));
+   return unit_vector<Scalar>(d+1,0) | (vec / unit_matrix<Scalar>(d));
 }
 
 // Sum-product algorithm for polytopes.
 // Operates on one Poly object from which the SUM_PRODUCT_GRAPH is read.
 // Writes the VERTICES and VERTEX_NORMALS of the polytope corresponding to
 // the unique sink in the graph.
+template<typename Scalar>
 void sum_product(perl::Object p)
 {
    // Read the graph.
    const graph G=p.give("SUM_PRODUCT_GRAPH.ADJACENCY");
-   const EdgeMap<Directed, Vector<Rational> > Trans=p.give("SUM_PRODUCT_GRAPH.TRANSLATIONS");
+   const EdgeMap<Directed, Vector<Scalar> > Trans=p.give("SUM_PRODUCT_GRAPH.TRANSLATIONS");
    const int n(G.nodes());
    if (n==0)
       throw std::runtime_error("SUM_PRODUCT_GRAPH must be non-empty");
@@ -68,7 +69,7 @@ void sum_product(perl::Object p)
 
    // This is the description of the origin as a 0-dimensional polytope (living in d-space).
    // Used to initialize the computation at the sources of the graph.
-   const Matrix<Rational> single_point_vertices(vector2row(unit_vector<Rational>(d+1,0)));
+   const Matrix<Scalar> single_point_vertices(vector2row(unit_vector<Scalar>(d+1,0)));
    const IncidenceMatrix<> single_point_vif;
 
    // This is where all the intermediate polytopes are stored.
@@ -78,7 +79,7 @@ void sum_product(perl::Object p)
    NodeMap<Directed,perl::Object> pa(G);
    std::list<int> next_nodes;
    // will need this now and again
-   perl::ObjectType Polytope("Polytope<Rational>");
+   perl::ObjectType Polytope(perl::ObjectType::construct<Scalar>("Polytope"));
 
    // Initialize by assigning a single point (origin) to each source in the graph.
    for (int v=0; v<n; ++v) {
@@ -107,17 +108,17 @@ void sum_product(perl::Object p)
       // (which correspond to points); not efficient in terms of matrix operations
       // (although all operations are defined), but this is ok, since we do not compute
       // anything in this step. 
-      ListMatrix< Vector<Rational> > points(0,d+1);
+      ListMatrix< Vector<Scalar> > points(0,d+1);
       for (Entire<graph::in_edge_list>::const_iterator e=entire(G.in_edges(w)); !e.at_end(); ++e) {
          // Node v is the current predecessor to process.
          const int v=e.from_node();
          // Translation vector in the edge from v to w.
-         const Vector<Rational> vec=Trans[*e];
+         const Vector<Scalar> vec=Trans[*e];
          // We read the vertices of the predecessor polytope.  polymake's rule basis by
          // default uses cdd' implementation to check for redundant (= non-vertex) points
          // among the input by solving linear programs.
          // No convex hull computation necessary.
-         const Matrix<Rational> these_vertices=pa[v].give("VERTICES");
+         const Matrix<Scalar> these_vertices=pa[v].give("VERTICES");
          // Concatenates the translated matrix (where the rows correspond to the vertices
          // of the predecessor) to what we already have.
          points /= these_vertices*translation_by(vec);
@@ -134,17 +135,17 @@ void sum_product(perl::Object p)
    if (sink<0)
       throw std::runtime_error("no sink found in digraph");
 
-   const Matrix<Rational> sink_vertices = pa[sink].give("VERTICES");
-   const Matrix<Rational> sink_normals = pa[sink].give("VERTEX_NORMALS");
+   const Matrix<Scalar> sink_vertices = pa[sink].give("VERTICES");
+   const Matrix<Scalar> sink_normals = pa[sink].give("VERTEX_NORMALS");
 
    // The sink defines the polytope we are after.
    p.take("VERTICES") << sink_vertices;
    p.take("VERTEX_NORMALS") << sink_normals;
-   Matrix<Rational> empty_lin_space(0,sink_vertices.cols());
+   Matrix<Scalar> empty_lin_space(0,sink_vertices.cols());
    p.take("LINEALITY_SPACE") << empty_lin_space;
 }
 
-Function4perl(&sum_product, "sum_product");
+FunctionTemplate4perl("sum_product<Scalar>(Polytope<Scalar>) : void");
 
 } }
 

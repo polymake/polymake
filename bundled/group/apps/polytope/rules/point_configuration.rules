@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -57,8 +57,6 @@ rule SIMPLEXITY_LOWER_BOUND : CONVEX_HULL.VOLUME, MAX_INTERIOR_SIMPLICES, POINTS
 }  # /PointConfiguration
 
 
-sub max_interior_simplices_impl; #FIXME #586
-
 # @category Triangulations, subdivisions and volume
 # find the maximal interior simplices of a point configuration 
 # that DO NOT contain any point in their closure, except for the vertices.
@@ -69,8 +67,6 @@ user_function max_interior_simplices<Scalar>(PointConfiguration<Scalar>) {
 }
 
 
-sub cocircuit_equations_impl; # FIXME #586
-
 # @category Triangulations, subdivisions and volume
 # Find the cocircuit equations of a polytope P.
 # There is one of these for each interior cocircuit of P, and they come as 
@@ -78,13 +74,14 @@ sub cocircuit_equations_impl; # FIXME #586
 # @param Polytope P the input polytope
 # @option filename the name of a file to store the equations
 # @return ListMatrix
-user_function cocircuit_equations<Scalar>(PointConfiguration<Scalar> { filename=>'' }) {
-    cocircuit_equations_impl<Scalar>(@_);
-}
+# user_function cocircuit_equations<Scalar>(PointConfiguration<Scalar> { filename=>'' }) {
+#    cocircuit_equations_impl<Scalar>(@_);
+# }
 
 
 
 # Local Variables:
-# cperl-indent-level:3
 # mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
 # End:

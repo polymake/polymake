@@ -99,10 +99,12 @@ public class ToolSystemPlugin extends Plugin implements ChangeListener {
 	
 	private ToolSystem createToolSystem(final ViewerSwitch viewerSwitch, final RenderTrigger synchRenderTrigger) {
 		return Secure.doPrivileged(new PrivilegedAction<ToolSystem>() {
+			@Override
 			public ToolSystem run() {
 				
 				// load tool system configuration
 				toolSystemConfiguration = Secure.doPrivileged(new PrivilegedAction<ToolSystemConfiguration>() {
+					@Override
 					public ToolSystemConfiguration run() {
 						
 						ToolSystemConfiguration cfg=null;
@@ -153,6 +155,7 @@ public class ToolSystemPlugin extends Plugin implements ChangeListener {
 		});
 	}
 	
+	@Override
 	public void stateChanged(ChangeEvent e) {
 		if (e.getSource() instanceof Scene) {
 			Scene scene = (Scene) e.getSource();

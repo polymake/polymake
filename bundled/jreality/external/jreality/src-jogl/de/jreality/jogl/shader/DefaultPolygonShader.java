@@ -101,10 +101,13 @@ public class DefaultPolygonShader extends AbstractPrimitiveShader implements
 			noneuclideanInitialized = false;
 
 	transient de.jreality.shader.DefaultPolygonShader templateShader;
-	StandardGLSLShader standard;
+	static StandardGLSLShader standard, eucStandard, neStandard;
 	static StandardGLSLShader oneStandard;
 	boolean hasStandardGLSL = false;
-
+	static {
+			eucStandard = new EuclideanGLSLShader();
+			neStandard = new NoneuclideanGLSLShader();
+	}
 	public DefaultPolygonShader() {
 
 	}
@@ -172,21 +175,17 @@ public class DefaultPolygonShader extends AbstractPrimitiveShader implements
 			hasTextures = true;
 		}
 
-		hasStandardGLSL = false;
+//		hasStandardGLSL = false;
 		if (useGLSL) {
 			int metric = eap.getAttribute(
 					ShaderUtility.nameSpace(name, CommonAttributes.METRIC),
 					Pn.EUCLIDEAN);
+			standard = metric == Pn.EUCLIDEAN ? eucStandard : neStandard;
 			if (GlslProgram.hasGlslProgram(eap, name)) {
 				Appearance app = new Appearance();
 				glslProgram = new GlslProgram(app, eap, name);
 			} else {
 				hasStandardGLSL = true;
-				if (metric == Pn.EUCLIDEAN) {
-					standard = new EuclideanGLSLShader();
-				} else {
-					standard = new NoneuclideanGLSLShader();
-				}
 				if (!oneGLSL || oneGlslProgram == null) {
 					oneStandard = standard;
 					standard.setFromEffectiveAppearance(eap, name);
@@ -194,11 +193,13 @@ public class DefaultPolygonShader extends AbstractPrimitiveShader implements
 					if (oneGLSL)
 						oneGlslProgram = glslProgram;
 				}
+//				 System.err.println("using oneGLSL shader = "+oneGLSL);
 				if (oneGLSL) {
 					standard = oneStandard;
 					glslProgram = oneGlslProgram;
+					// this is unfortunate, but if I don't do this the shader doesn't get updated
+					standard.setFromEffectiveAppearance(eap, name);
 				}
-				// System.err.println("using non euc shader");
 			}
 		}
 		vertexShader.setFromEffectiveAppearance(eap, name);

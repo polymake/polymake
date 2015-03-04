@@ -126,6 +126,7 @@ public abstract class ShrinkPanelAggregator extends SceneShrinkPanel {
 	
 	protected class ContentPriorityComparator implements Comparator<MainPanelContent> {
 
+		@Override
 		public int compare(MainPanelContent o1, MainPanelContent o2) {
 			return o1.priority < o2.priority ? -1 : 1;
 		}

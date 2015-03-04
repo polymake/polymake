@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -137,7 +137,7 @@ sub save {
 
 #################################################################################
 sub load_data {
-   my $filename=shift;
+   my ($filename)=@_;
    replace_special_paths($filename);
    my $xf=new Core::XMLfile($filename);
    scalar($xf->load_data);
@@ -151,7 +151,7 @@ sub save_data {
    if (instanceof Core::Object($data)) {
       croak( "an object of type ", $data->type->full_name, " can't be saved with save_data: please use save() instead" );
    }
-   if (defined (my $type=UNIVERSAL::can($data,"type"))) {
+   if (defined (my $type=UNIVERSAL::can($data, ".type"))) {
       $type=$type->();
       if (instanceof Core::PropertyType($type)) {
          replace_special_paths($filename);
@@ -165,9 +165,9 @@ sub save_data {
 #################################################################################
 use subs qw(rename unlink mkdir chdir rmdir);
 
-sub rename { my ($from,$to)=@_; replace_special_paths($from,$to); CORE::rename($from,$to) or die "rename failed: $!\n"; }
+sub rename { my ($from, $to)=@_; replace_special_paths($from, $to); CORE::rename($from, $to) or die "rename failed: $!\n"; }
 sub unlink { my @list=@_; replace_special_paths(@list); CORE::unlink(@list) or die "unlink failed: $!\n"; }
-sub mkdir { my ($path,$mask)=@_; replace_special_paths($path); CORE::mkdir($path,$mask || 0755) or die "mkdir failed: $!\n"; }
+sub mkdir { my ($path, $mask)=@_; replace_special_paths($path); CORE::mkdir($path, $mask || 0755) or die "mkdir failed: $!\n"; }
 sub rmdir { my ($path)=@_; replace_special_paths($path); CORE::rmdir($path) or die "rmdir failed: $!\n"; }
 
 sub chdir {

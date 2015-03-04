@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -14,6 +14,7 @@
 #-------------------------------------------------------------------------------
 
 use strict;
+use mro;
 use namespaces;
 
 package Polymake::Struct;
@@ -54,10 +55,13 @@ sub import {
    shift;                       # drop the own package name
    my $cnt=0;
    my ($pkg, $file, $line)=caller(0);
-   if (my $def=UNIVERSAL::can($pkg,".defined")) {
+   my $def=UNIVERSAL::can($pkg, ".defined");
+   if ($def) {
       my $other_pkg=method_owner($def);
       if ($pkg eq $other_pkg) {
-         croak "package $pkg already declared as Struct at ".&$def.", conflicting declaration";
+         unless (ref($_[0]) && $_[0]->[0] eq "alt.constructor") {
+            croak "package $pkg already declared as Struct at ".&$def.", conflicting declaration";
+         }
       } else {
          croak "inheritance from package $other_pkg declared as Struct at ".&$def.
                "\n seems to be established via plain \@ISA assignment and conflicts with Struct declaration";
@@ -66,6 +70,7 @@ sub import {
    my $symtab=get_pkg($pkg);
    my $constructor="";
    my $constructor_deferred="";
+   my $alt_constructor_name;
    my ($signature, $own_signature, $check_arg, $min_arg, $max_arg, $keyed_args, %keys, $keys_changed,
        $trailing_list, $trailing_arg, $super, $super_symtab, $super_trailing_arg, $redefine, $merger, $merger_changed);
    my $with_namespaces=namespaces::caller_scope();
@@ -74,17 +79,18 @@ sub import {
       if ($_[0]->[0] eq '@ISA') {
          my $isa=shift;
          shift @$isa;
-         if (substr($with_namespaces,0,3) eq "use") {
+         if (substr($with_namespaces, 0, 3) eq "use") {
             $_=namespaces::lookup_class_in_caller_scope($symtab,$_) for @$isa;
          }
-         { no strict 'refs';
-           @{"$pkg\::ISA"}=@$isa; }
+         no strict 'refs';
+         @{"$pkg\::ISA"}=@$isa;
+         mro::set_mro($pkg, "c3");
 
          foreach my $s (@$isa) {
             if (defined (my $super_constructor=UNIVERSAL::can($s, ".constructor"))) {
                $super=$s;
                ($cnt, $constructor, $constructor_deferred, $merger)=$super_constructor->();
-               if (!$own_signature && defined (my $super_signature=UNIVERSAL::can($super, ".signature"))) {
+               if (!defined($own_signature) && defined (my $super_signature=UNIVERSAL::can($super, ".signature"))) {
                   ($signature, $min_arg, $max_arg, $trailing_arg)=$super_signature->();
                   $trailing_list=defined($trailing_arg);
                   $super_trailing_arg=$trailing_arg;
@@ -100,6 +106,21 @@ sub import {
                last;
             }
          }
+
+      } elsif ($_[0]->[0] eq 'alt.constructor') {
+         $def or croak( "package $pkg has not yet been declared as Struct, too early to define alternative constructors" );
+         my $alt=shift;
+         @$alt==2 or croak( "alternative constructor name must be single" );
+         $alt_constructor_name=$alt->[1];
+         my $main_constructor=UNIVERSAL::can($pkg, ".constructor");
+         ($cnt, $constructor, $constructor_deferred, $merger)=$main_constructor->();
+         ($signature, $min_arg, $max_arg, $trailing_arg)=UNIVERSAL::can($pkg, ".signature")->();
+         $trailing_list=defined($trailing_arg);
+         if (my $k=UNIVERSAL::can($pkg, ".keys")) {
+            $keyed_args=1;
+            %keys=%{$k->()};
+         }
+         $redefine=1;
 
       } elsif ($_[0]->[0] eq 'new') {
          $signature=(shift)->[1];
@@ -120,12 +141,13 @@ sub import {
          }
 
       } elsif ($_[0]->[0] eq 'aliases') {
-         $redefine or croak "a Struct-based super class is required to define aliases";
+         $redefine && !$alt_constructor_name
+           or croak "a Struct-based super class is required to define aliases";
          my $list=shift;
          for (my ($i, $n)=(1, $#$list); $i<$n; $i+=2) {
             my @aliases=split /\s*\|\s*/, $list->[$i];
             my $ref=$list->[$i+1];
-            my $accessor=UNIVERSAL::can($super,$ref) or croak "alias declaration refers to an unknown field $ref";
+            my $accessor=UNIVERSAL::can($super, $ref) or croak "alias declaration refers to an unknown field $ref";
             my $index=get_field_index($accessor);
             $index>=0 or croak "alias declaration refers to a method $ref instead of a field";
             define_function($symtab, $_, $accessor) for @aliases;
@@ -141,7 +163,7 @@ sub import {
    }
 
    foreach my $field (@_) {
-      my ($code, $name)=split //, (ref($field) ? $field->[0] : (undef($redefine), $field)), 2;
+      my ($code, $name)=split //, (ref($field) ? $field->[0] : ($alt_constructor_name ? croak( "lacking initializer for $field" ) : undef($redefine), $field)), 2;
       if ($code !~ m'[$=@%&]') {
          croak "unknown field type '$code'$name";
       }
@@ -150,6 +172,8 @@ sub import {
       my $index;
       if (defined($redefine)) {
          if (!defined($accessor) || ($redefine=get_field_index($accessor))<0) {
+            $alt_constructor_name
+              and croak( "unknown field name $name" );
             undef $redefine;    # new field or an occasionaly overwritten non-field method
             $index=$cnt;
          } else {
@@ -185,15 +209,17 @@ sub import {
                    croak "no trailing list declared in the signature"
                 }
              } :
-           $code eq '&' && $field->[1] =~ /^->\s*(\w+)(?:\s*\|\|\s*(.+))?$/
+           $code eq '&' && $field->[1] =~ /^(?:undef|->\s*(\w+))(?:\s*\|\|\s*(.+))?$/
            ? do {
                 croak "unexpected options for the method field $name" if $#$field>1;
                 $add_to_keys=-1;
-                if ((my $super_index=get_field_index(UNIVERSAL::can($pkg,"$1"))) >= 0) {
-                   if ($2) {
-                      $set_filter=eval "$prologue; $2";
-                      croak "syntax error compiling method fallback for the field $name: $@" if $@;
-                   }
+                if ($2) {
+                   $set_filter=eval "$prologue; $2";
+                   croak "syntax error compiling method fallback for the field $name: $@" if $@;
+                }
+                if (!defined($1)) {
+                   "undef"
+                } elsif ((my $super_index=get_field_index(UNIVERSAL::can($pkg, "$1"))) >= 0) {
                    unless (exists &{$symtab->{original_object}}) {
                       define_function($symtab, "original_object", \&original_object);
                    }
@@ -210,7 +236,7 @@ sub import {
                 }
                 my %options=splice @$field, 2;
                 $init_deferred=$set_filter_is_method= $expr =~ /(?<!\\)\$this\b/;
-                if ($expr =~ s{(?: (?<=^) | (?<=[\s,(])) \#(?:([\d+]) | (%)) (?= $ | [\s,)])}
+                if ($expr =~ s{(?: ^ | [\s,(]) \K \#(?:([\d+]) | (%)) (?= $ | [\s,)])}
                               { $2 ? $keyed_args
                                      ? ($add_to_keys=1, '#%')
                                      : croak("constructor has no keyword arguments")
@@ -242,6 +268,11 @@ sub import {
                       } else {
                          $expr = "$get_kname ? $val : Polymake::Struct::mark_as_default($deflt)";
                       }
+                   }
+                }
+                if ($add_to_keys <= 0 && defined($set_filter=delete $options{set_filter})) {
+                   unless (is_string($set_filter) || ref($set_filter) eq "CODE") {
+                      croak "set_filter option for the field $name must refer to a sub or a method name";
                    }
                 }
                 if (keys %options) {
@@ -305,7 +336,10 @@ sub import {
          } elsif ($constructor_deferred) {
             delete_expr($constructor_deferred, $redefine);
          }
-         if ($set_filter || defined_scalar($super_symtab->{$aliases[0]})) {
+         if ($alt_constructor_name) {
+            $set_filter
+              and croak( "can't redefine the set filter for field $name" );
+         } elsif ($set_filter || defined_scalar($super_symtab->{$aliases[0]})) {
             $accessor=create_accessor($redefine, $code eq '&' ? \&method_call : \&access_field);
             define_function($symtab, $_, $accessor) for @aliases;
             ${$symtab->{$aliases[0]}}=$set_filter;
@@ -334,7 +368,7 @@ sub import {
       }
    }
 
-   if (@_ || $own_signature) {
+   if (@_ || defined($own_signature)) {
       if (defined($super_trailing_arg) and !$trailing_list || $trailing_arg!=$super_trailing_arg) {
          if ($super_trailing_arg) {
             my $prev=$super_trailing_arg-1;
@@ -346,12 +380,15 @@ sub import {
          $constructor =~ s/\G (Polymake::Struct::merge_options\()? .*? (?= ,\s*\#\#\#<$super_trailing_arg>\n)/ $1 ? "{ }" : "[ ]" /xse;
       }
       my ($proc_keys, $post_merge_proc);
+      my $constr_name= $alt_constructor_name // "__new";
+      my $proc_kw_name= ".process_keywords" . ($alt_constructor_name && ".$alt_constructor_name");
+      my $msg_constr_name= $alt_constructor_name // "new";
       my $new_text= <<"_#_0_#_";
 $prologue;
-sub __new {
+sub $constr_name {
 _#_0_#_
       if ($keyed_args) {
-         $proc_keys=define_function($pkg, ".process_keywords",
+         $proc_keys=define_function($pkg, $proc_kw_name,
             sub {
                my ($args, $kw, $post_merge, $trailing_list)=@_;
                $#$kw=$cnt-1;
@@ -371,9 +408,9 @@ _#_0_#_
                            local $Carp::CarpLevel=1;
                            my $accessor=UNIVERSAL::can($pkg,$kn);
                            if (defined($accessor) && get_field_index($accessor)>=0) {
-                              croak "$pkg\::new - member $kn can't be initialized with a keyword argument";
+                              croak "$pkg\::$msg_constr_name - member $kn can't be initialized with a keyword argument";
                            } else {
-                              croak "$pkg\::new - unknown keyword $kn";
+                              croak "$pkg\::$msg_constr_name - unknown keyword $kn";
                            }
                         }
                      }
@@ -383,7 +420,7 @@ _#_0_#_
                   } else {
                      local $Carp::CarpLevel=1;
                      my $accessor;
-                     croak( "$pkg\::new - ", 
+                     croak( "$pkg\::$msg_constr_name - ", 
                             $i==$#$args
                             ? "keyword $field without value" :
                             is_string($field)
@@ -423,7 +460,7 @@ _#_2_#_
       if ($check_arg) {
          $new_text .= <<"_#_3_#_";
    if ($check_arg) {
-      Polymake::croak( "usage: new ", ref(\$_[0]) || \$_[0], '($signature)' );
+      Polymake::croak( "usage: $msg_constr_name ", ref(\$_[0]) || \$_[0], '($signature)' );
    }
 _#_3_#_
       }
@@ -483,24 +520,31 @@ _#_6_#_
       croak "no own fields and no Struct-based super class specified";
    }
 
-   define_function($symtab, ".defined", sub { "$file line $line" });
-   define_function($symtab, ".constructor", sub { ($cnt, $constructor, $constructor_deferred, $merger) });
-   define_function($symtab, "sizeof", sub { $cnt });
-   define_function($symtab, ".signature", sub { ($signature, $min_arg, $max_arg, $trailing_arg) }) if $own_signature;
-   if ($keys_changed) {
-      define_function($symtab, ".keys", sub { \%keys });
-   }
-   define_function($symtab, "_new", \&_new);
-   if (!$super || UNIVERSAL::can($super, "new")==UNIVERSAL::can($super, "_new")) {
-      define_function($symtab, "new", \&_new);
-   } elsif ($with_namespaces !~ /^no/) {
-      # predeclare for the sake of cleaner syntax in the package's code
-      no strict 'refs';
-      *{"$pkg\::new"}=UNIVERSAL::can($super, "new");
+   unless ($alt_constructor_name) {
+      define_function($symtab, ".defined", sub { "$file line $line" });
+      define_function($symtab, ".constructor", sub { ($cnt, $constructor, $constructor_deferred, $merger) });
+      define_function($symtab, "sizeof", sub { $cnt });
+      define_function($symtab, ".signature", sub { ($signature, $min_arg, $max_arg, $trailing_arg) }) if $own_signature;
+      if ($keys_changed) {
+         define_function($symtab, ".keys", sub { \%keys });
+      }
+      define_function($symtab, "_new", \&_new);
+      if (!$super || UNIVERSAL::can($super, "new")==UNIVERSAL::can($super, "_new")) {
+         define_function($symtab, "new", \&_new);
+      } elsif ($with_namespaces !~ /^no/) {
+         # predeclare for the sake of cleaner syntax in the package's code
+         no strict 'refs';
+         *{"$pkg\::new"}=UNIVERSAL::can($super, "new");
+      }
    }
 }
 
-sub _new { &{UNIVERSAL::can($_[0],"__new")} }
+sub complain {
+   my ($pkg)=@_;
+   Carp::confess( "no constructor for $pkg" );
+}
+
+sub _new { &{UNIVERSAL::can($_[0], "__new") // &complain } }
 
 sub merge_options {
    my $hash=shift;

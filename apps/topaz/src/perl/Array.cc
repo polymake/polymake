@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,6 +20,7 @@
 #include "polymake/Array.h"
 #include "polymake/topaz/ChainComplex.h"
 #include "polymake/Integer.h"
+
 namespace polymake { namespace topaz { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
@@ -31,5 +32,7 @@ namespace polymake { namespace topaz { namespace {
    Class4perl("Polymake::common::Array__HomologyGroup__Integer", Array< HomologyGroup< Integer > >);
    FunctionInstance4perl(new, Array< HomologyGroup< Integer > >);
    FunctionInstance4perl(new, Array< CycleGroup< Integer > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< HomologyGroup< Integer > > >, perl::Canned< const Array< HomologyGroup< Integer > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< CycleGroup< Integer > > >, perl::Canned< const Array< CycleGroup< Integer > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

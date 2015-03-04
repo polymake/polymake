@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -39,13 +39,14 @@ Matrix<Coord> dualize(const Matrix<Coord>& points, const Matrix<Coord>& generato
   return multiply(-points,generators);
 }
 
-UserFunctionTemplate4perl("# @category Producing a new tropical polytope from another"
+UserFunctionTemplate4perl("# @category Producing a tropical polytope"
                           "# Dualizes a point set with respect to the generators of a tropical polytope."
                           "# The points are dualized with respect to the (rows of the) matrix of the generators."
                           "# Cf."
-                          "#    Develin & Sturmfels, Tropical Convexity, Lemma 22."
+                          "# \t Develin & Sturmfels, Tropical Convexity, Lemma 22."
                           "# @param Matrix points"
                           "# @param Matrix generators"
+                          "# @tparam Coord"
                           "# @return Matrix",
                           "dualize<Coord>(Matrix<Coord> Matrix<Coord>)");
 } }

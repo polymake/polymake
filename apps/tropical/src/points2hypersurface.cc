@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -60,12 +60,13 @@ perl::Object points2hypersurface(const Matrix<Rational>& points)
   return h;
 }
     
-UserFunctionTemplate4perl("# @category Other"
+UserFunctionTemplate4perl("# @category Producing a tropical hypersurface"
                           "# Constructs a tropical hypersurface defined by the linear"
                           "# hypersurfaces associated to the points."
                           "# If the points are part of a min-tropical polytope then the output is a"
                           "# max-tropical hypersurface, and conversely."
                           "# @param Matrix<Rational> points"
+                          "# @tparam Addition [[Min]] or [[Max]], default [[Min]]"
                           "# @return Hypersurface",
                           "points2hypersurface<Addition=Min>(Matrix)");
 } }

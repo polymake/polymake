@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -58,7 +58,7 @@ struct IndirectFunctionWrapper : protected pm::perl::FunctionBase {
    IndirectFunctionWrapper(const char (&file)[fl], int line)
    {
       register_func(reinterpret_cast<pm::perl::wrapper_type>(&call), ".wrp", 4, file, fl-1, line,
-                    pm::perl::TypeListUtils<Fptr>::get_types(), 0, 0);
+                    pm::perl::TypeListUtils<Fptr>::get_types());
    }
 
    typedef Fptr *fptr_type;

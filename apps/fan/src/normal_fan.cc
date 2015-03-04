@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -63,10 +63,11 @@ perl::Object normal_fan(perl::Object p)
    return f;
 }
 
-UserFunctionTemplate4perl("# @category Constructing a fan"
+UserFunctionTemplate4perl("# @category Producing a fan"
                           "# Computes the normal fan of //p//."
                           "# @param Polytope p"
-                          "# @author Sven Herrmann (initial version)",
+                          "# @tparam Coord"
+                          "# @return PolyhedralFan",
                           "normal_fan<Coord>(polytope::Polytope<Coord>)");
 } }
 

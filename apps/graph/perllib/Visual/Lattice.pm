@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -17,7 +17,7 @@ package Visual::Lattice;
 
 use Polymake::Struct (
    [ '@ISA' => 'Graph' ],
-   [ '$NodeLabels' => '$this->create_node_labels' ],
+   [ '$NodeLabels' => '$this->create_node_labels(#%)', default =>'undef' ],
    [ '$NodeColor' => 'unify_decor(#%)', default => 'undef' ],
    [ '$NodeBorderColor' => 'unify_decor(#%)', default => '"0 0 0"' ],
 
@@ -29,8 +29,9 @@ use Polymake::Struct (
 );
 
 sub create_node_labels {
-   my $self=shift;
-   my $labels=[ " ",		# top node
+   my ($self, undef, $labels) = @_;
+   if(!defined($labels)){
+   $labels =[ " ",		# top node
 		do {
 		   if (defined($self->AtomLabels)) {
 		      my @atom_labels=@{$self->AtomLabels};
@@ -43,6 +44,7 @@ sub create_node_labels {
 		},
 		" "		# bottom node
 	      ];
+   }
    sub { $labels->[shift] }
 }
 

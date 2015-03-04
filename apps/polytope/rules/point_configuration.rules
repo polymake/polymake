@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,8 +13,11 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-# The object point configuration also deals with non-convex finite point sets.
-declare object PointConfiguration<Scalar=Rational>;
+# The [[POINTS]] of an object of type PointConfiguration encode a not necessarily convex finite point set.
+# The difference to a parent [[VectorConfiguration]] is that the points have homogeneous coordinates, i.e.
+# they will be normalized to have first coordinate 1 without warning.
+# @tparam Scalar default: [[Rational]]
+declare object PointConfiguration<Scalar=Rational> : VectorConfiguration<Scalar>;
 
 INCLUDE
   point_configuration_properties.rules
@@ -37,6 +40,14 @@ weight 0.10;
 rule AMBIENT_DIM : CONVEX_HULL.CONE_AMBIENT_DIM {
     $this->AMBIENT_DIM=$this->CONVEX_HULL->CONE_AMBIENT_DIM-1;
 }
+
+# The purpose of the following rule is to have simpler preconditions in subsequent rules.
+# The scheduler efficiently handles preconditions which amount to checking a boolean.
+rule FULL_DIM : AMBIENT_DIM, DIM {
+  $this->FULL_DIM=($this->AMBIENT_DIM==$this->DIM);
+}
+weight 0.10;
+
 
 rule N_POINTS : POINTS {
    $this->N_POINTS=$this->POINTS->rows;
@@ -219,7 +230,7 @@ weight 1.10;
 #  compute the coordinates of the new vertices and store them as
 #  [[POINTS]] of the produced complex; default false
 # @return PointConfiguration
-user_function barycentric_subdivision<Scalar>(PointConfiguration<Scalar>  { relabel => 1, geometric_realization => 1, pin_hasse_section => 'TRIANGULATION.HASSE_DIAGRAM', label_section => 'LABELS', coord_section => 'POINTS' }) {
+user_function barycentric_subdivision(PointConfiguration { relabel => 1, geometric_realization => 1, pin_hasse_section => 'TRIANGULATION.HASSE_DIAGRAM', label_section => 'LABELS', coord_section => 'POINTS' }) {
    topaz::barycentric_subdivision_impl(@_);
 }
 
@@ -234,13 +245,25 @@ user_function stellar_subdivision(PointConfiguration, Array<Set<Int>>, { no_labe
 }
 
 
-
-user_function minkowski_sum<Scalar> (PointConfiguration<Scalar>, PointConfiguration<Scalar> ) {
+# @category Producing a point configuration
+# Produces the Minkowski sum of //P1// and //P2//.
+# @param PointConfiguration P1
+# @param PointConfiguration P2
+# @return PointConfiguration
+user_function minkowski_sum<Scalar> (PointConfiguration<type_upgrade<Scalar>>, PointConfiguration<type_upgrade<Scalar>> ) {
     my ($p1,$p2) = @_;
     return minkowski_sum(1,$p1,1,$p2);
 }
 
-user_function minkowski_sum<Scalar> ($, PointConfiguration<Scalar>, $, PointConfiguration<Scalar> ) {
+# @category Producing a point configuration
+# Produces the polytope //lambda//*//P1//+//mu//*//P2//, where * and + are scalar multiplication
+# and Minkowski addition, respectively.
+# @param Scalar lambda
+# @param PointConfiguration P1
+# @param Scalar mu
+# @param PointConfiguration P2
+# @return PointConfiguration
+user_function minkowski_sum<Scalar> (type_upgrade<Scalar>, PointConfiguration<type_upgrade<Scalar>>, type_upgrade<Scalar>, PointConfiguration<type_upgrade<Scalar>> ) {
     my ($l1,$p1,$l2,$p2) = @_;
     my $v1=$p1->give("POINTS");
     my $v2=$p2->give("POINTS");

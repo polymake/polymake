@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -27,6 +27,7 @@ use Polymake::Ext;
 
 sub DESTROY {
    my ($self)=@_;
+   unwind($self->local_marker);
    while (my ($key, $action)=each %{$self->cleanup}) {
       local $@;
       eval {
@@ -38,7 +39,6 @@ sub DESTROY {
       };
       err_print($@) if $@;
    }
-   unwind($self->local_marker);
 }
 
 package Polymake::AtEnd;

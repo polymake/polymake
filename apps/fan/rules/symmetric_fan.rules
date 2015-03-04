@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,127 +15,129 @@
 
 
 # A [[PolyhedralFan]] with a symmetry group acting on the coordinates.
-declare object SymmetricFan<Scalar=Rational> [ typechecks::is_ordered_field(Scalar) ] : PolyhedralFan<Scalar>;
+declare object SymmetricFan<Scalar=Rational> [ is_ordered_field(Scalar) ] : PolyhedralFan<Scalar>;
 
 object SymmetricFan {
 
 
-# @category Symmetric fans
+# @category Symmetry
 # Each element of the array is a generator of the subgroup of the symmetric group
 # acting on the coordintates. Each generator is represented by an Array whose ith
 # entry is the image of ith coordinate.
 property SYMMETRY_GENERATORS : Array<Array<Int> >;
 
-# @category Symmetric fans
+# @category Symmetry
 # Each element of the array is an element of the symmetry group.
 property SYMMETRY_GROUP : Array<Array<Int> >;
 
 
-# @category Symmetric fans
+# @category Symmetry
 # Number of elements of the symmetry group.
 property N_SYMMETRIES : Int;
 
 
-# @category Symmetric fans
+# @category Input property
 # One Ray from each orbit.  May be redundant.
 #
 #property INPUT_RAYS_REPS : Matrix<Scalar>;
 
 
-# @category Symmetric fans
-# Maybe redundant list of not necessarily maximal cones, one from each orbit. 
+# @category Input property
+# Maybe redundant list of not necessarily maximal cones, one from each orbit.  
+# All vectors in the input must be non-zero.
 # Indices refer to [[INPUT_RAYS]].
 property INPUT_CONES_REPS : Array<Set<Int> >;
 
 
-# @category Symmetric fans
+# @category Symmetry
 # One ray from each orbit. Non-redundant.
 property RAYS_REPS : Matrix<Scalar>;
 
-# @category Symmetric fans
+# @category Symmetry
 # Tells which ray is in the orbit of which representative, indices refers to rows of [[RAYS]].
 property RAYS_IN_ORBITS : Array<Set<Int> >;
 
-# @category Symmetric fans
+# @category Symmetry
 # Number of orbits of [[RAYS]].
 property N_RAY_ORBITS : Int;
 
 
-# @category Symmetric fans 
+# @category Symmetry 
 # Each row contains the image of all [[RAYS]] under one element of the symmetry group.
 property RAYS_IMAGES : Array<Array<Int> >;
 
-# @category Symmetric fans 
+# @category Symmetry 
 # Number of elements of each orbit of [[RAYS]].
 property RAYS_ORBIT_SIZES : Array<Int>;
 
 
 
-# @category Symmetric fans
+# @category Symmetry
 # Non redundant list of maximal cones, one from each orbit.  Indices refer to [[RAYS]].
 property MAXIMAL_CONES_REPS : Array<Set<Int> >;
 
-# @category Symmetric fans
+# @category Symmetry
 # Tells which maximal cone is in the orbit of which representative, indices refers to rows of [[MAXIMAL_CONES]].
 property MAXIMAL_CONES_IN_ORBITS : Array<Set<Int> >;
 
-# @category Symmetric fans
+# @category Symmetry
 # Number of orbits of [[MAXIMAL_CONES]].
 property N_MAXIMAL_CONE_ORBITS : Int;
 
-# @category Symmetric fans
+# @category Symmetry
 # Number of [[MAXIMAL_CONES_REPS]] in each orbit.
 property MAXIMAL_CONES_ORBIT_SIZES : Array<Int>;
 
-# @category Symmetric fans
+# @category Symmetry
 # The dimensions of [[MAXIMAL_CONES_REPS]].
 property MAXIMAL_CONES_REPS_DIMS : Array<Int>;
 
 
 
-# @category Symmetric fans
+# @category Symmetry
 # List of all cones of all dimensions of the fan, one from each orbit.  Indices refer to [[RAYS]].
 property CONES_REPS : Array<Array<Set<Int> > >;
 
-# @category Combinatorics
-# f_k is the number of k-dimensional cones up to symmetry.
+# @category Symmetry
+# f<sub>k</sub> is the number of k-dimensional cones up to symmetry.
 property ORBITS_F_VECTOR  : Vector<Integer>;
 
-# @category Symmetric fans
+# @category Symmetry
 # Number of [[CONES_REPS]] in each orbit.
 property CONES_ORBIT_SIZES : Array<Array<Int> >;
 
 
 
-# @category Symmetric fans
+# @category Symmetry
 # Unique names assigned to the [[RAYS_REPS]].
 property RAYS_REPS_LABELS : Array<String> : mutable;
 
 
 
-# @category Symmetric fans
+# @category Symmetry
 # The possible facet normals of all maximal cone representatives.
 property REPS_FACET_NORMALS : Matrix<Scalar>;
 
-# @category Symmetric fans
+# @category Symmetry
 # Tells for each maximal cone representative what are its facets.
 # A negative number means that the corresponding row of
 # [[REPS_FACET_NORMALS]] has to be negated.
 property MAXIMAL_CONES_REPS_FACETS : SparseMatrix<Int>;
 
-# @category Symmetric fans
+# @category Symmetry
 # The possible linear span normals of all maximal cone representatives.
 property REPS_LINEAR_SPAN_NORMALS : Matrix<Scalar>;
 
-# @category Symmetric fans
+# @category Symmetry
 # Tells for each maximal cone representative what is its linear span.
 # Indices refer to [[REPS_LINEAR_SPAN_NORMALS]].
 # Rows correspond to [[MAXIMAL_CONES_REPS_FACETS]]
 property MAXIMAL_CONES_REPS_LINEAR_SPAN_NORMALS : IncidenceMatrix;
 
 
-# Gives the ith maximal cone representative.
-#
+# Returns the //i//-th maximal cone representative.
+# @param Int i
+# @return Cone
 user_method cone_representative($)  {
    my $p=new Cone<Scalar>(RAYS=>$_[0]->RAYS->minor($_[0]->MAXIMAL_CONES_REPS->[$_[1]],All));
    return $p;

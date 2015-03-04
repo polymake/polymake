@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -204,7 +204,7 @@ perl::Object simplicial_product (perl::Object p_in1, perl::Object p_in2, perl::O
 } // end anonymous namespace
 
 UserFunction4perl("# @category Producing a new simplicial complex from others\n"
-                  "# Computes the simplicial product of two complexes.\n"
+                  "# Computes the __simplicial product__ of two complexes.\n"
                   "# Vertex orderings may be given as options.\n"
                   "# @param SimplicialComplex complex1"
                   "# @param SimplicialComplex complex2"
@@ -212,11 +212,12 @@ UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# @option Array<Int> vertex_order2"
                   "# @option Bool geometric_realization default 0"
                   "# @option Bool color_cons"
-                  "# @option Bool no_labels",
+                  "# @option Bool no_labels"
+                  "# @return SimplicialComplex",
                   &combinatorial_simplicial_product, "simplicial_product(SimplicialComplex, SimplicialComplex, {vertex_order1 => undef, vertex_order2 => undef, geometric_realization => 0, color_cons => 0, no_labels => 0})");
 
 UserFunctionTemplate4perl("# @category Producing a new simplicial complex from others\n"
-                  "# Computes the simplicial product of two complexes.\n"
+                  "# Computes the __simplicial product__ of two complexes.\n"
                   "# Vertex orderings may be given as options.\n"
                   "# @param GeometricSimplicialComplex complex1"
                   "# @param GeometricSimplicialComplex complex2"
@@ -225,7 +226,8 @@ UserFunctionTemplate4perl("# @category Producing a new simplicial complex from o
                   "# @option Array<Int> vertex_order2"
                   "# @option Bool geometric_realization default 1"
                   "# @option Bool color_cons"
-                  "# @option Bool no_labels",
+                  "# @option Bool no_labels"
+                  "# @return GeometricSimplicialComplex<Scalar>",
                   "simplicial_product<Scalar>(GeometricSimplicialComplex<Scalar>, GeometricSimplicialComplex<Scalar>, {vertex_order1 => undef, vertex_order2 => undef, geometric_realization => 1, color_cons => 0, no_labels => 0})");
 
    

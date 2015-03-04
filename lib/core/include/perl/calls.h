@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -67,10 +67,10 @@ public:
 };
 
 inline
-Value::AnchorChain Value::put(const PropertyValue& x, const char*, int)
+Value::NoAnchor* Value::put(const PropertyValue& x, const char*, int)
 {
    set_copy(x);
-   return AnchorChain();
+   return NULL;
 }
 
 inline

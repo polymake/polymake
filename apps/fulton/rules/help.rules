@@ -1,0 +1,49 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# @topic category functions/Commutative Algebra
+# These methods help with translating combinatorics to commutative algebra.
+
+# @topic category functions/Producing a normal toric variety
+# With these clients you can create a normal toric variety from various input
+# data.
+
+# @topic category functions/Continued fractions
+# Two simple methods for switching between rational numbers and continued
+# fractions.
+
+# @topic category objects/NormalToricVariety/properties/Basic properties
+# Properties defining a normal toric variety.
+
+# @topic category properties/any/Algebraic Geometry
+# Properties from algebraic geometry.
+
+# @topic category objects/CyclicQuotient/properties/Input properties
+# Properties defining a cyclic quotient singularity. Please be careful in
+# checking the consistency if you give multiple input properties.
+
+# @topic category objects/CyclicQuotient/properties/Algebraic Geometry
+# Properties relevant for the algebro-geometric side of CQS.
+
+# @topic category objects/VersalComponent/properties/Algebraic Geometry
+# Properties relevant for the algebro-geometric side of the components of 
+# the versal deformation of CQS.
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

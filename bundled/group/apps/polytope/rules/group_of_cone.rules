@@ -1,25 +1,40 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
 object group::GroupOfCone {
 
 #*******************************************************
 #* representatives of simplices
 #*******************************************************
 
-# @category Symmetric cones
-# An array of size [[COMBINATORIAL_DIM]] whose //k//-th entry stores one representative for each 
+# @category Symmetry
+# An array of size [[polytope::Cone::COMBINATORIAL_DIM|COMBINATORIAL_DIM]] whose //k//-th entry stores one representative for each 
 # symmetry class of //k//-dimensional simplices in the cone.
 property REPRESENTATIVE_SIMPLICES : Array<Array<boost_dynamic_bitset>>;
 
-# @category Symmetric cones
-# An array of size [[COMBINATORIAL_DIM]] whose //k//-th entry stores the number of
+# @category Symmetry
+# An array of size [[polytope::Cone::COMBINATORIAL_DIM|COMBINATORIAL_DIM]] whose //k//-th entry stores the number of
 # symmetry classes of //k//-dimensional simplices in the cone.
 property N_REPRESENTATIVE_SIMPLICES : Array<Int>;
 
 # @category Combinatorics
-# The interior //d//-dimensional simplices of a cone of combinatorial dimension //d//
+# The interior //d//-dimensional simplices of a cone of combinatorial dimension //d//.
 property REPRESENTATIVE_MAX_INTERIOR_SIMPLICES : Array<boost_dynamic_bitset>;
 
 # @category Combinatorics
-# The boundary (//d//-1)-dimensional simplices of a cone of combinatorial dimension //d//
+# The boundary (//d//-1)-dimensional simplices of a cone of combinatorial dimension //d//.
 property REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES : Array<boost_dynamic_bitset>;
 
 # @category Combinatorics
@@ -32,17 +47,18 @@ property REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES : Array<boost_dynamic_bitset>;
 #* properties related to triangulations
 #*******************************************************
 
-# @category Symmetric cones
-# a SparseMatrix whose rows are the sum of all cocircuit equations corresponding to a fixed symmetry class of interior ridge
+# @category Symmetry
+# A SparseMatrix whose rows are the sum of all cocircuit equations corresponding to a fixed symmetry class of interior ridge.
 property SYMMETRIZED_COCIRCUIT_EQUATIONS : SparseMatrix;
 
 # @category Combinatorics
-# The symmetrized version of SIMPLEXITY_LOWER_BOUND
+# The symmetrized version of [[SIMPLEXITY_LOWER_BOUND]].
 property SIMPLEXITY_LOWER_BOUND : Int;
 
 }
 
 # Local Variables:
 # mode: perl
-# c-basic-offset:3
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
 # End:

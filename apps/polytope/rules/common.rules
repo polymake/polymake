@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -27,7 +27,7 @@ object Polytope {
 # for this, we just run over the first column of  RAYS and LINEALITY_SPACE and check whether we only have zeros and ones
 # if true, we make a true copy, otherwise we use FACETS to construct the polytope
 method construct(Cone) {
-  my $cone=$_[1];
+  my ($proto, $cone)=@_;
   my $already_homogeneous=0;
   if ( defined(my $verts=$cone->lookup("RAYS") ) ) {
       $already_homogeneous=1;
@@ -38,10 +38,9 @@ method construct(Cone) {
       }
   }
   if ( $already_homogeneous ) {
-      my $p = new Polytope();
-      Polymake::Core::Object::new_filled_copy($p->type,$cone);
+      Polymake::Core::Object::new_copy($proto, $cone);
   } else {
-      new Polytope(INEQUALITIES=>$cone->FACETS,EQUATIONS=>$cone->LINEAR_SPAN);
+      Polymake::Core::Object::new_filled($proto, $cone->name, CONE_AMBIENT_DIM=>$cone->CONE_AMBIENT_DIM, INEQUALITIES=>$cone->FACETS, EQUATIONS=>$cone->LINEAR_SPAN);
   }
 }
 
@@ -276,12 +275,12 @@ rule SIMPLE : SIMPLICITY, COMBINATORIAL_DIM {
 weight 0.10;
 
 rule NEIGHBORLY : NEIGHBORLINESS, COMBINATORIAL_DIM {
-   $this->NEIGHBORLY= $this->NEIGHBORLINESS >= $this->COMBINATORIAL_DIM/2;
+   $this->NEIGHBORLY= $this->NEIGHBORLINESS >= floor($this->COMBINATORIAL_DIM/2);
 }
 weight 0.10;
 
 rule BALANCED : BALANCE, COMBINATORIAL_DIM {
-   $this->BALANCED= $this->BALANCE >= $this->COMBINATORIAL_DIM/2;
+   $this->BALANCED= $this->BALANCE >= floor($this->COMBINATORIAL_DIM/2);
 }
 weight 0.10;
 
@@ -357,7 +356,7 @@ rule BOUNDED : VERTICES | POINTS, POINTED {
 }
 weight 1.10;
 
-# FIXME #195 #473
+# FIXME #195
 # the rule below would save a lot of computation time,
 # e.g., in the sequence "$r=rand_sphere(3,200); $r->FACETS;"
 # but it confuses the scheduler (to take even more time).
@@ -612,12 +611,15 @@ weight 0.10;
 #    $this->TRIANGULATION->BOUNDARY->G_DIM=CONE_AMBIENT_DIM-1;
 #}
 
-
+# @category Geometry
+# returns the dimension of the ambient space of the polytope
 user_method AMBIENT_DIM {
   my ($self)=@_;
   return ($self->CONE_AMBIENT_DIM-1);
 }
 
+# @category Geometry
+# returns the dimension of the polytope
 user_method DIM {
   my ($self)=@_;
   if (!defined ($self->lookup("LINEALITY_SPACE | INPUT_LINEALITY | INPUT_RAYS | RAYS | INEQUALITIES | EQUATIONS | FACETS | LINEAR_SPAN"))) {
@@ -626,9 +628,13 @@ user_method DIM {
   return $self->CONE_DIM-1;
 }
 
+# @category Geometry
+# checks whether a given point is contained in a polytope
+# @param Polytope<Scalar> P polytope
+# @param Vector<Scalar> v point
+# @return Boolean
 user_method contains {
   my ($self,$v)=@_;
-#   my $zero=new_Scalar($self,0); # FIXME replaced this line with $zero=0. What was the purpose of this? new_Scalar is nowhere defined, and $zero=0 seems to work with all coord types
   my $zero=0;
   if (defined (my $f=$self->lookup("FACETS | INEQUALITIES"))) {
     if (defined (my $ah=$self->lookup("AFFINE_HULL | EQUATIONS")) ) {
@@ -649,6 +655,12 @@ user_method contains {
 # the implementation of the following  user_method is *not* efficient,
 # if the polytope is given via vertices it
 # should be done in the same way as the one above
+
+# @category Geometry
+# checks whether a given point is contained in the strict interior of a polytope
+# @param Polytope<Scalar> P polytope
+# @param Vector<Scalar> v point
+# @return Boolean
 user_method contains_in_interior {
   my ($self,$v)=@_;
   my $f = $self->give("FACETS | INEQUALITIES");
@@ -680,12 +692,12 @@ user_function recession_cone<Scalar>(Polytope<Scalar>) {
 }
 
 
-# @category Geometric properties
+# @category Geometry
 # Compute the dihedral angle between two (oriented) affine or linear hyperplanes.
 # @param Vector<Scalar> H1 : first hyperplane
 # @param Vector<Scalar> H2 : second hyperplane
-# @options deg=>0  : output in degrees rather than radians
-# @options cone=>0 : hyperplanes seen as linear hyperplanes
+# @option deg output in degrees rather than radians, default 0
+# @option cone hyperplanes seen as linear hyperplanes, default 0
 # @return Float
 
 user_function dihedral_angle<Scalar> (Vector<Scalar>, Vector<Scalar>; { deg=>0, cone=>0 }) {
@@ -704,13 +716,25 @@ user_function dihedral_angle<Scalar> (Vector<Scalar>, Vector<Scalar>; { deg=>0, 
   return $angle;
 }
 
-
-user_function minkowski_sum<Scalar> (Polytope<Scalar>, Polytope<Scalar> ) {
+# @category Producing a polytope from polytopes
+# Produces the Minkowski sum of //P1// and //P2//.
+# @param Polytope P1
+# @param Polytope P2
+# @return Polytope
+user_function minkowski_sum<Scalar> (Polytope<type_upgrade<Scalar>>, Polytope<type_upgrade<Scalar>> ) {
     my ($p1,$p2) = @_;
     return minkowski_sum(1,$p1,1,$p2);
 }
 
-user_function minkowski_sum<Scalar> ($, Polytope<Scalar>, $, Polytope<Scalar> ) {
+# @category Producing a polytope from polytopes
+# Produces the polytope //lambda//*//P1//+//mu//*//P2//, where * and + are scalar multiplication
+# and Minkowski addition, respectively.
+# @param Scalar lambda
+# @param Polytope P1
+# @param Scalar mu
+# @param Polytope P2
+# @return Polytope
+user_function minkowski_sum<Scalar> (type_upgrade<Scalar>, Polytope<type_upgrade<Scalar>>, type_upgrade<Scalar>, Polytope<type_upgrade<Scalar>> ) {
     my ($l1,$p1,$l2,$p2) = @_;
     my $v1=$p1->give("VERTICES | POINTS");
     my $v2=$p2->give("VERTICES | POINTS");

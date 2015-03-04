@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -12,6 +12,28 @@
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
+
+
+# @topic objects/Polytope<Rational>
+# A rational polyhedron realized in Q^d
+
+# @topic objects/Polytope<Float>
+# A pointed polyhedron with float coordinates realized in R<sup>d</sup>.
+#
+# It mainly exists for visualization.
+#
+# Convex hull and related algorithms use floating-point arithmetics.
+# Due to numerical errors inherent to this kind of computations, the resulting
+# combinatorial description can be arbitrarily far away from the truth, or even
+# not correspond to any valid polytope.  You have been warned.
+#
+# None of the standard construction clients produces objects of this type.
+# If you want to get one, create it with the explicit constructor or [[convert_to]].
+
+# @topic objects/Polytope<QuadraticExtension>
+# A pointed polyhedron with coordinates in a [[QuadraticExtension]] field realized in R<sup>d</sup>.
+#
+# Convex hull and related algorithms use exact quadratic extension fields for arithmetics.
 
 
 object Polytope {
@@ -76,7 +98,10 @@ property AFFINE_HULL = override LINEAR_SPAN;
 
 
 method canonical_ineq {
-   add_extra_polytope_ineq(@_);
+   my ($self) = @_;
+   my $dim = $_[1]->cols() > 0 ? $_[1]->cols() : $self->lookup_ambient_dim($self->lookup("CONE_AMBIENT_DIM"));
+   die "Could not deduce CONE_AMBIENT_DIM. Giving an empty INEQUALITIES section requires setting CONE_AMBIENT_DIM first." unless defined($dim);
+   add_extra_polytope_ineq(@_,$dim);
 }
 
 
@@ -395,6 +420,9 @@ property CENTERED_ZONOTOPE : Bool;
 
 } # /Polytope
 
+# @category Geometry
+# a lattice that is displaced from the origin, i.e.,
+# a set of the form x + L, where x is a non-zero vector and L a (linear) lattice
 declare object AffineLattice<Scalar=Rational> {
 
 # an affine point, ie first coordinate non-zero
@@ -505,6 +533,7 @@ property NEIGHBOR_VERTICES_CYCLIC_NORMAL = override NEIGHBOR_RAYS_CYCLIC_NORMAL;
 
 property VERTEX_LABELS = override RAY_LABELS;
 
+# @category Geometry
 # Find the vertices by given labels.
 # @param String label ... vertex labels
 # @return Set<Int> vertex indices
@@ -533,7 +562,10 @@ property SPLITS : Matrix<Scalar>;
 
 property SPLIT_COMPATIBILITY_GRAPH : objects::Graph;
 
-# @category Oriented matroids
+# @topic category properties/Matroid properties
+# Properties which belong to the corresponding (oriented) matroid
+
+# @category Matroid properties
 # Chirotope corresponding to the [[VERTICES]]. TOPCOM format.
 
 property CHIROTOPE : Text;
@@ -568,7 +600,7 @@ user_method OUTER_DESCRIPTION : FACETS, AFFINE_HULL {
 
 user_function convert_to<Coord>(Polytope) {
    my $target_type=typeof Coord;
-   if ($_[0]->type->param==$target_type) {
+   if ($_[0]->type->params->[0] == $target_type) {
       $_[0]
    } else {
       new Polytope<Coord>($_[0]);

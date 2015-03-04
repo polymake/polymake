@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,146 +13,7 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-# A rational cone in Q^d.
 object Cone<Rational> {
-
-CREDIT cddlib
-  Implementation of the double description method of Motzkin et al.
-  Copyright by Komei Fukuda.
-  http://www.ifor.math.ethz.ch/~fukuda/cdd_home/cdd.html
-
-# @category Convex hull computation
-# Use the //double description// method as implemented in [[wiki:external_software#cddlib]].
-# It is the default algorithm for computation of facets from points or dually.
-# It operates with arbitrary precision arithmetic ([[wiki:external_software#GMP]]).
-label cdd
-
-# cdd conversion primal <-> dual
-# FIXME maybe combine into one client
-rule cdd.convex_hull.primal: FACETS, LINEAR_SPAN : RAYS | INPUT_RAYS {
-   cdd_ch_primal($this);
-}
-weight 4.10;
-precondition : N_RAYS | N_INPUT_RAYS;
-permutation : FacetPerm;
-
-rule cdd.convex_hull.dual: RAYS, LINEALITY_SPACE, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
-    cdd_ch_dual($this);
-}
-weight 4.10;
-permutation : VertexPerm;
-
-# cdd redundancy checks
-rule cdd.convex_hull.canon: POINTED, RAYS, LINEALITY_SPACE : INPUT_RAYS {
-   cdd_canonicalize($this,0);
-}
-weight 3.10;
-permutation : VertexPerm;
-
-rule cdd.convex_hull.lineality: LINEALITY_SPACE, POINTED : INPUT_RAYS {
-   cdd_canonicalize_lineality($this,0);
-}
-weight 3.10;
-
-rule cdd.convex_hull.redund: RAYS, RAY_SEPARATORS, LINEALITY_SPACE : INPUT_RAYS {
-   cdd_eliminate_redundant_points($this);
-}
-weight 3.20;
-precondition : POINTED;
-permutation : VertexPerm;
-
-rule cdd.convex_hull.separators: RAY_SEPARATORS : RAYS {
-   cdd_vertex_normals($this);
-}
-weight 3.20;
-permutation : VertexPerm;
-
-rule cdd.convex_hull.canon : FACETS, LINEAR_SPAN : INEQUALITIES { 
-  cdd_canonicalize($this,1)
-}
-weight 3.20;
-permutation : FacetPerm;
-
-rule cdd.convex_hull.linear_span : LINEAR_SPAN : INEQUALITIES {     
-   cdd_canonicalize_lineality($this,1);
-}
-weight 3.10;
-
-# FIXME potential new rules for symmetry with dual case
-# clients would need bool primal as parameter
-#
-# rule cdd.convex_hull.redund: FACETS, FACET_CERTIFICATES : INEQUALITIES {   # lookup EQUATIONS
-#   cdd_eliminate_redundant_points($this);
-#}
-#weight 3.20;
-#precondition : FULL_DIM;
-#permutation : FacetPerm;
-
-# rule cdd.convex_hull.facet_certificates: FACET_CERTIFICATES : FACETS { 
-#   cdd_vertex_normals($this);
-#}
-#weight 3.20;
-
-
-CREDIT lrslib
-  Implementation of the reverse search algorithm of Avis and Fukuda.
-  Copyright by David Avis.
-  http://cgm.cs.mcgill.ca/~avis/lrs.html
-
-# @category Convex hull computation
-# Use the //reverse search// method, as implemented in [[wiki:external_software#lrslib]].
-label lrs
-
-#lrs conversion primal <-> dual
-rule lrs.convex_hull.primal: FACETS, LINEAR_SPAN : RAYS | INPUT_RAYS {
-   lrs_ch_primal($this);
-}
-weight 4.10;
-precondition : N_RAYS | N_INPUT_RAYS;
-permutation : FacetPerm;
-
-rule lrs.convex_hull.dual: RAYS, POINTED, LINEALITY_SPACE, LINEALITY_DIM : FACETS | INEQUALITIES {
-    lrs_ch_dual($this);
-}
-weight 4.10;
-permutation : VertexPerm;
-
-rule lrs.convex_hull.cone.count: N_RAYS, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
-  lrs_count_vertices($this);
-}
-weight 4.50;
-
-
-# lrs redundancy checks
-# lrs cannot detect generators of the lineality space in INPUT_RAYS
-# hence LINEALITY_SPACE must be known in advance
-rule lrs.convex_hull.redund: POINTED, RAYS, LINEAR_SPAN : INPUT_RAYS, LINEALITY_SPACE  {
-   lrs_eliminate_redundant_points($this);
-}
-weight 3.20;
-permutation : VertexPerm;
-
-# lrs cannot detect implicit equalities among INEQUALITIES
-# hence LINEAR_SPAN must be known in advance
-rule lrs.convex_hull.redund: FACETS, LINEALITY_SPACE : INEQUALITIES, LINEAR_SPAN {
-   lrs_eliminate_redundant_ineqs($this);
-}
-weight 3.20;
-permutation : FacetPerm;
-
-
-# FIXME does this rule work for unbounded polyhedra?
-# facet count unique for cones and polytopes
-# corresponding polytope rule below
-rule lrs.convex_hull.cone.count: N_FACETS : RAYS | INPUT_RAYS {
-   lrs_count_facets($this);
-}
-weight 4.5;
-
-CREDIT off
-
-
-
 
 rule TRIANGULATION.FACETS : RAYS, TRIANGULATION.WEIGHTS {
    $this->TRIANGULATION->FACETS=regular_subdivision($this->RAYS, $this->TRIANGULATION->WEIGHTS);
@@ -178,62 +39,9 @@ precondition : POINTED;
 
 }
 
-
-# A pointed polyhedron realized in Q^d.
 object Polytope<Rational> {
 
-CREDIT cddlib
-
-# FIXME #195 #473
-# see also corresponding rule in float.rules
-# caution: rule weight set to 1.20 to allow immediate execution of rule
-# independent of actual complexity of the computation
-rule BOUNDED : FACETS | INEQUALITIES, LINEALITY_SPACE {
-    $this->BOUNDED = cdd_input_bounded($this);
-}
-weight 1.20;
-
-
-CREDIT lrslib
-
-# the precondition BOUNDED is necessary as the corresponding clients
-# requires bounded polyhedra, see comment in lrs_interface.cc
-rule lrs.convex_hull.count: N_FACETS : RAYS | INPUT_RAYS {
-   lrs_count_facets($this);
-}
-precondition : BOUNDED;
-weight 4.5;
-override : SUPER::lrs.convex_hull.cone.count;
-
-rule lrs.convex_hull.count: N_VERTICES, N_BOUNDED_VERTICES, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
-   lrs_count_vertices($this);
-}
-precondition : FEASIBLE;
-weight 4.5;
-override : SUPER::lrs.convex_hull.cone.count;
-
-rule lrs.convex_hull.count: N_BOUNDED_VERTICES, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
-   lrs_count_vertices($this, 1);
-}
-precondition : FEASIBLE;
-weight 4.3;
-
-rule lrs.valid_point: VALID_POINT : FACETS | INEQUALITIES {
-  lrs_valid_point($this);
-}
-weight 3.10;
-
-
-label graph_from_vertices
-
-rule graph_from_vertices : GRAPH.ADJACENCY : RAYS {
-   $this->GRAPH->ADJACENCY=graph_from_vertices($this->VERTICES);
-}
-precondition : BOUNDED;
-weight 6.99;
-
-
-# @category Lattice polytopes
+# @category Geometry
 # This is the defining property: A polytope is lattice if each vertex has integer coordinates.
 
 property LATTICE : Bool;
@@ -243,13 +51,13 @@ rule LATTICE : VERTICES {
 }
 
 
-# @category 0/1-polytopes
+# @category Geometry
 # Number of points with 0/1-coordinates in a polytope.
 
 property N_01POINTS : Int;
 
 
-
+# @category Triangulation and volume
 # The //k//-dimensional Euclidean volume of a //k//-dimensional rational polytope 
 # embedded in R^n.
 # This value is obtained by summing the square roots of the entries in SQUARED_RELATIVE_VOLUMES
@@ -269,11 +77,6 @@ rule RELATIVE_VOLUME : SQUARED_RELATIVE_VOLUMES {
 
 
 }
-
-
-# intrinsic rules
-INCLUDE
-   lp_rational.rules
 
 # self-configuring rules interfacing external software
 INCLUDE

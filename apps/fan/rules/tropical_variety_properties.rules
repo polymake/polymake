@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,11 +13,10 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-# @category Tropical varieties
-# the tropical variety defined by a fan
-declare object TropicalVariety<Scalar=Rational> [ typechecks::is_ordered_field(Scalar) ] : PolyhedralFan<Scalar> {
+# The tropical variety defined by a fan.
+# @tparam Scalar default: [[Rational]]
+declare object TropicalVariety<Scalar=Rational> [ is_ordered_field(Scalar) ] : PolyhedralFan<Scalar> {
 
-# @category Tropical varieties
 # Multiplicities of the [[MAXIMAL_CONES]].
 
 property MULTIPLICITIES : Vector<Scalar>;

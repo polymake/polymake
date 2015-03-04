@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -196,10 +196,11 @@ namespace polymake { namespace tropical {
                      "# @return Set",// the set of violating indices",
                      &check_minimality,"check_minimality");
 
-   UserFunctionTemplate4perl("# @category Tropical convex hulls"
+   UserFunctionTemplate4perl("# @category Other"
                              "# Computes the minimal tropical halfspaces of a"
                              "# tropical polytope //T//."
                              "# @param TropicalPolytope T"
+                             "# @tparam Coord"
                              "# @return hash_set< Pair<Vector<Coord>,Set<Int> > >"
                              "# @author Katja Kulas",
                              "minimal_tropical_halfspaces<Coord>(TropicalPolytope<Coord>)");

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -32,9 +32,9 @@ namespace polymake { namespace common { namespace {
       WrapperReturn( permuted_rows(arg0.get<T0>(), arg1.get<T1>()) );
    };
 
-   FunctionInstance4perl(permuted_rows_X_X, perl::Canned< const IncidenceMatrix< NonSymmetric > >, perl::TryCanned< const Array< int > >);
-   FunctionInstance4perl(permuted_rows_X_X, perl::Canned< const Matrix< Rational > >, perl::TryCanned< const Array< int > >);
-   FunctionInstance4perl(permuted_rows_X_X, perl::Canned< const Matrix< double > >, perl::TryCanned< const Array< int > >);
+   FunctionInstance4perl(permuted_rows_X_X, perl::Canned< const IncidenceMatrix< NonSymmetric > >, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(permuted_rows_X_X, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(permuted_rows_X_X, perl::Canned< const Matrix< double > >, perl::Canned< const Array< int > >);
    FunctionInstance4perl(permuted_rows_X_X, perl::Canned< const SparseMatrix< int, NonSymmetric > >, perl::Canned< const Array< int > >);
    FunctionInstance4perl(permuted_rows_X_X, perl::Canned< const Matrix< QuadraticExtension< Rational > > >, perl::Canned< const Array< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====

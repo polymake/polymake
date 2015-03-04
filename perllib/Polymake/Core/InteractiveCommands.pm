@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -690,7 +690,7 @@ sub add {
                               "is not configured for the current architecture $Arch.\n",
                               "To activate it, you must reconfigure and rebuild the polymake installation.\n",
                               "Then enable the new extension with a polymake shell command\n",
-                              "  reconfigure_extension(\"$ext->dir\");\n",
+                              "  reconfigure_extension(\"$self->dir\");\n",
                             );
                } else {
                   warn_print( "Prerequisite extension ", $prereq->URI, " installed at ", $prereq->dir, "\n",
@@ -698,13 +698,13 @@ sub add {
                               "It can be activated with a polymake shell command\n",
                               "  reconfigure_extension(\"", $prereq->URI, "\", options...);\n",
                               "Then enable the new extension:\n",
-                              "  reconfigure_extension(\"$ext->dir\");\n",
+                              "  reconfigure_extension(\"$self->dir\");\n",
                             );
                }
             }
 
 	 } else {
-            die "Extension ", $ext->URI, "\n",
+            die "Extension ", $self->URI, "\n",
                 "requires an unknown extension $_, therefore can't be imported now.\n",
                 "If you need it, please first investigate where to get the prerequisite, download, and import it.\n";
 	 }

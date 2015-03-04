@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,7 +19,8 @@
 #include "polymake/Array.h"
 #include "polymake/Matrix.h"
 #include "polymake/ListMatrix.h"
-#include "polymake/polytope/lrs_interface.h"
+#include "polymake/Integer.h"
+#include "polymake/polytope/to_interface.h"
 #include <sstream>
 
 namespace polymake {
@@ -29,12 +30,12 @@ namespace polytope {
 template <typename Scalar>
 Matrix<Integer> integer_points_bbox(perl::Object p_in)
 {
-   typedef polytope::lrs_interface::solver Solver;
-   typedef Solver::coord_type coord_type; // coord_type is always "Rational"
+   typedef polytope::to_interface::solver<Scalar> Solver;
+   //typedef Solver::coord_type coord_type;
 
    // get specification of polytope
-   const Matrix<coord_type> H = p_in.give("FACETS | INEQUALITIES");
-   const Matrix<coord_type> E = p_in.lookup("AFFINE_HULL | EQUATIONS");
+   const Matrix<Scalar> H = p_in.give("FACETS | INEQUALITIES");
+   const Matrix<Scalar> E = p_in.lookup("AFFINE_HULL | EQUATIONS");
    const int d = H.cols() - 1;
 
    // First find lower and upper bounds on each component by solving LPs in each +/- unit
@@ -44,7 +45,7 @@ Matrix<Integer> integer_points_bbox(perl::Object p_in)
    // initialize LP solver
    Solver LPsolver;
 
-   Vector<coord_type> obj(d+1);    // objective
+   Vector<Scalar> obj(d+1);    // objective
    Vector<Integer> L(d+1);        // lower bounds
    Vector<Integer> U(d+1);        // upper bounds
 
@@ -66,7 +67,7 @@ Matrix<Integer> integer_points_bbox(perl::Object p_in)
       }
 
       // maximize along unit vector
-      Solver::lp_solution solution;
+      typename Solver::lp_solution solution;
       try
       {
          solution = LPsolver.solve_lp(H, E, obj, true);
@@ -110,7 +111,7 @@ Matrix<Integer> integer_points_bbox(perl::Object p_in)
       // check whether current point satisfies all equations
       for (int i = 0; i < E.rows(); ++i)
       {
-         if ( cur * E.row(i) != 0 )
+         if ( convert_to<Scalar>(cur) * E.row(i) != 0 )
          {
             valid = false;
             break;
@@ -122,7 +123,7 @@ Matrix<Integer> integer_points_bbox(perl::Object p_in)
       {
          for (int i = 0; i < H.rows(); ++i)
          {
-            if ( cur * H.row(i) < 0 )
+            if ( convert_to<Scalar>(cur) * H.row(i) < 0 )
             {
                valid = false;
                break;
@@ -154,7 +155,7 @@ Matrix<Integer> integer_points_bbox(perl::Object p_in)
 }
 
 
-UserFunctionTemplate4perl("# @category Geometric properties\n"
+UserFunctionTemplate4perl("# @category Geometry\n"
    "# Enumerate all integer points in the given polytope by searching a bounding box.\n"
    "# @author Marc Pfetsch\n"
    "# @param  Polytope<Scalar> P\n"

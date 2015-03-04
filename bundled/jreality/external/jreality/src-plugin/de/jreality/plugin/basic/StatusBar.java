@@ -24,6 +24,7 @@ public class StatusBar extends Plugin implements StatusFlavor {
 		return info;
 	}
 
+	@Override
 	public void setStatusListener(StatusChangedListener scl) {
 		statusChangedListener = scl;
 	}

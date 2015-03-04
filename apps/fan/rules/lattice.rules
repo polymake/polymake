@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -16,19 +16,19 @@
 object PolyhedralFan<Rational> {
 
 # @category Toric Varieties
-# A fan is [[Q_GORENSTEIN]] if each maximal cone is a [[polytope::Cone<Rational>::Q_GORENSTEIN_CONE]]
+# A fan is __Q-GORENSTEIN__ if each maximal cone is [[polytope::Cone<Rational>::Q_GORENSTEIN_CONE|Q_Gorenstein]].
   property Q_GORENSTEIN : Bool;
 
 # @category Toric Varieties
-# If a fan is [[Q_GORENSTEIN]], then its [[Q_GORENSTEIN_INDEX]] is the least common multiple of the Q-Gorenstein indices of its maximal cones. Otherwise [[Q_GORENSTEIN_INDEX]] is undefined.
+# If a fan is [[Q_GORENSTEIN]], then its __Q-Gorenstein index__ is the least common multiple of the [[Cone<Rational>::Q_GORENSTEIN_CONE_INDEX|Q-Gorenstein indices]] of its maximal cones. Otherwise Q_GORENSTEIN_INDEX is undefined.
   property Q_GORENSTEIN_INDEX : Int;
 
 # @category Toric Varieties
-# A fan is [[GORENSTEIN]] if it is [[Q_GORENSTEIN]] with [[Q_GORENSTEIN_INDEX]] equal to one
+# A fan is __Gorenstein__ if it is [[Q_GORENSTEIN]] with [[Q_GORENSTEIN_INDEX]] equal to one.
   property GORENSTEIN : Bool;
 
 # @category Toric Varieties
-# A fan is smooth if all cones of the fan are smooth.
+# A fan is __smooth__ if all cones of the fan are [[Cone<Rational>::SMOOTH_CONE|smooth]].
   property SMOOTH_FAN : Bool;
 
   rule Q_GORENSTEIN, Q_GORENSTEIN_INDEX : RAYS, MAXIMAL_CONES, FAN_DIM {

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -46,7 +46,7 @@ UserFunctionTemplate4perl("# @category Transformations"
                           "# @param Bool store stores the reverse transformation as an attachment (REVERSE_TRANSFORMATION);"
                           "#   default value: 1."
                           "# @return Polytope",
-                          "transform<Scalar>(Polytope<Scalar> *;$=1)");
+                          "transform<Scalar>(Polytope<type_upgrade<Scalar>> Matrix<type_upgrade<Scalar>>; $=1)");
 
 UserFunctionTemplate4perl("# @category Transformations"
                           "# Scale a polyhedron //P// by a given scaling parameter //factor//."
@@ -55,7 +55,7 @@ UserFunctionTemplate4perl("# @category Transformations"
                           "# @param Bool store stores the reverse transformation as an attachment (REVERSE_TRANSFORMATION);"
                           "#   default value: 1."
                           "# @return Polytope",
-                          "scale<Scalar>(Polytope<Scalar> $;$=1)");
+                          "scale<Scalar>(Polytope<type_upgrade<Scalar>> type_upgrade<Scalar>; $=1)");
 
 UserFunctionTemplate4perl("# @category Transformations"
                           "# Translate a polyhedron //P// by a given translation vector //trans//."
@@ -64,7 +64,7 @@ UserFunctionTemplate4perl("# @category Transformations"
                           "# @param Bool store stores the reverse transformation as an attachment (REVERSE_TRANSFORMATION);"
                           "#   default value: 1."
                           "# @return Polytope",
-                          "translate<Scalar>(Polytope<Scalar> Vector<Scalar>;$=1)");
+                          "translate<Scalar>(Polytope<type_upgrade<Scalar>> Vector<type_upgrade<Scalar>>; $=1)");
 } }
 
 // Local Variables:

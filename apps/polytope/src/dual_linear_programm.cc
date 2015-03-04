@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -86,9 +86,11 @@ perl::Object dual_linear_program(perl::Object p_in, bool maximize)
 
 
 UserFunction4perl("# @category Producing a polytope from polytopes"
-                  "# Produces a polyhedron with an totally dual integral inequality formulation of a full dimensional polyhedron"
-                  "# @param Polytope P"
-                  "# @param bool maximize weather we maximize our primal problem or not. Default value is 0 (= minimize)"
+                  "# Produces the dual linear program for a given linear program of the form min {cx | Ax >= b, Bx = d}."
+                  "# Here (A,b) are given by the FACETS (or the INEQAULITIES), and (B,d) are given by the AFFINE_HULL"
+                  "# (or by the EQUATIONS) of the polytope P, while the objective function c comes from an LP subobject."
+                  "# @param Polytope P = {x | Ax >= b, Bx = d}"
+                  "# @param Bool maximize tells if the primal lp is a maximization problem. Default value is 0 (= minimize)"
                   "# @return Polytope", 
                   &dual_linear_program, "dual_linear_program(Polytope; $=0)");
 } }

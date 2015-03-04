@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,6 +13,7 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+# @category Set Types
 declare property_type boost_dynamic_bitset : Set<Int> : c++ ( include => [ "polymake/common/boost_dynamic_bitset.h" ], operators => '+= -= ^=') {
 
    method contains {
@@ -20,6 +21,8 @@ declare property_type boost_dynamic_bitset : Set<Int> : c++ ( include => [ "poly
       exists $self->{$key};
    }
 
+   # The cardinality of the set.
+   # @return Int
    user_method size() : c++;
 }
 

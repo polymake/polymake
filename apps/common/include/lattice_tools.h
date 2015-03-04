@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -14,8 +14,8 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_LATTICE_TOOLS_H
-#define POLYMAKE_POLYTOPE_LATTICE_TOOLS_H
+#ifndef POLYMAKE_COMMON_LATTICE_TOOLS_H
+#define POLYMAKE_COMMON_LATTICE_TOOLS_H
 
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
@@ -228,7 +228,7 @@ lattice_basis(const GenericMatrix<MatrixTop, Integer>& gens)
 
 } }
 
-#endif // POLYMAKE_POLYTOPE_LATTICE_TOOLS_H
+#endif // POLYMAKE_COMMON_LATTICE_TOOLS_H
 
 // Local Variables:
 // mode:C++

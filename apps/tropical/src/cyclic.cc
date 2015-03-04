@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -36,10 +36,10 @@ perl::Object cyclic(const int d, const int n)
    return p;
 }
 
-UserFunction4perl("# @category Producing from scratch"
+UserFunction4perl("# @category Producing a tropical polytope"
                   "# Produces a tropical cyclic //d//-polytope with //n// vertices."
                   "# Cf."
-                  "#    Josephine Yu & Florian Block, arXiv: math.MG/0503279."
+                  "# \t Josephine Yu & Florian Block, arXiv: math.MG/0503279."
                   "# @param int d the dimension"
                   "# @param int n the number of generators"
                   "# @return TropicalPolytope",

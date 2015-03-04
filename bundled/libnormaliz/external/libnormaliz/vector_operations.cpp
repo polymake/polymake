@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2013  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2014  Winfried Bruns, Bogdan Ichim, Christof Soeger
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -14,6 +14,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * As an exception, when this program is distributed through (i) the App Store
+ * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
+ * by Google Inc., then that store may impose any digital rights management,
+ * device limits and/or redistribution restrictions that are required by its
+ * terms of service.
  */
 
 //---------------------------------------------------------------------------
@@ -21,6 +26,7 @@
 #include <iostream>
 #include <string>
 #include <algorithm>
+#include<list>
 
 #include "integer.h"
 #include "vector_operations.h"
@@ -124,14 +130,52 @@ Integer v_scalar_product_unequal_vectors_end(const vector<Integer>& a,const vect
 //---------------------------------------------------------------------------
 
 template<typename Integer>
+vector<Integer> v_add_overflow_check(const vector<Integer>& a,const vector<Integer>& b){
+    size_t i,s=a.size();
+    Integer test;
+    vector<Integer> d(s);
+    for (i = 0; i <s; i++) {
+        d[i]=a[i]+b[i];
+        test=(a[i]%overflow_test_modulus + b[i]%overflow_test_modulus); // %overflow_test_modulus;
+        if((d[i]-test) % overflow_test_modulus !=0){
+            errorOutput()<<"Arithmetic failure in vector addition. Moat likely arithmetic overflow.\n";
+            throw ArithmeticException();
+        }
+    }
+    return d;
+}
+
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
 vector<Integer> v_add(const vector<Integer>& a,const vector<Integer>& b){
    assert(a.size() == b.size());
+   /* if (test_arithmetic_overflow) {  // does arithmetic tests
+       return(v_add_overflow_check(a,b));
+   } */
     size_t i,s=a.size();
     vector<Integer> d(s);
     for (i = 0; i <s; i++) {
         d[i]=a[i]+b[i];
     }
     return d;
+}
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+void v_add_result(vector<Integer>& result, const vector<Integer>& a,const vector<Integer>& b){
+   assert(a.size() == b.size() && a.size() == result.size());
+   /* if (test_arithmetic_overflow) {  // does arithmetic tests
+       return(v_add_overflow_check(a,b));
+   } */
+    size_t i,s=a.size();
+    // vector<Integer> d(s);
+    for (i = 0; i <s; i++) {
+        result[i]=a[i]+b[i];
+    }
+    // return d;
 }
 
 //---------------------------------------------------------------------------
@@ -371,7 +415,7 @@ vector<T> v_cut_front(const vector<T>& v, size_t size){
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-vector<key_t> v_non_zero_pos(vector<Integer> v){
+vector<key_t> v_non_zero_pos(const vector<Integer>& v){
     vector<key_t> key;
     size_t size=v.size();
     key.reserve(size);
@@ -381,6 +425,16 @@ vector<key_t> v_non_zero_pos(vector<Integer> v){
         }
     }
     return key;
+}
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+bool v_is_zero(const vector<Integer>& v) {
+    for (size_t i = 0; i < v.size(); ++i) {
+        if (v[i] != 0) return false;
+    }
+    return true;
 }
 
 //---------------------------------------------------------------------------
@@ -437,6 +491,64 @@ void v_el_trans(const vector<Integer>& av,vector<Integer>& bv, const Integer& F,
 
     if(n>0)
         b[0] += F*a[0];
+}
+
+//---------------------------------------------------------------
+
+vector<bool> v_bool_andnot(const vector<bool>& a, const vector<bool>& b) {
+    assert(a.size() == b.size());
+    vector<bool> result(a);
+    for (size_t i=0; i<b.size(); ++i) {
+        if (b[i])
+            result[i]=false;
+    }
+    return result;
+}
+
+
+//---------------------------------------------------------------
+
+// computes approximating lattice simplex using the A_n dissection of the unit cube
+// q is a rational vector with the denominator in the FIRST component q[0]
+
+template<typename Integer>
+void approx_simplex(const vector<Integer>& q, std::list<vector<Integer> >& approx){
+
+    long dim=q.size();
+    vector<Integer> quot(dim);
+    vector<pair<Integer,size_t> > remain(dim);
+    for(long i=0;i<dim;++i){
+        quot[i]=q[i]/q[0];          // write q[i]=quot*q[0]+remain
+        remain[i].first=q[i]%q[0];  // with 0 <= remain < q[0]
+        if(remain[i].first<0){
+            remain[i].first+=q[0];
+            quot[i]--;
+        }
+        remain[i].second=i;  // after sorting we must know where elements come from
+    }
+    
+
+    remain[0].first=q[0];  // helps to avoid special treatment of i=0
+    sort(remain.begin(),remain.end()); 
+    reverse(remain.begin(),remain.end()); // we sort remain into descending order
+    
+    /*for(long i=0;i<dim;++i){
+        cout << remain[i].first << " " << remain[i].second << endl;
+    } */
+    
+    for(long i=1;i<dim;++i){
+        if(remain[i].first<remain[i-1].first)
+        {
+            approx.push_back(quot);
+            // cout << i << " + " << remain[i].first << " + " << quot << endl;
+        }
+        quot[remain[i].second]++;    
+    }
+    if(remain[dim-1].first > 0){
+        // cout << "E " << quot << endl;
+        approx.push_back(quot);
+    }
+
 }
 
 } // end namespace libnormaliz

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -20,32 +20,50 @@ file_suffix pcom
 # overrides of derived [[PolyhedralFan]] properties;
 # similar to overrides for [[Polytope]] objects derived from [[Cone]]
 
+# @category Input property
 property POINTS = override INPUT_RAYS;
 
+# @category Geometry
+# Number of [[POINTS]].
 property N_POINTS = override N_INPUT_RAYS;
 
+# @category Visualization
 property POINT_LABELS = override INPUT_RAY_LABELS;
 
+# @category Geometry
 property VERTICES = override RAYS;
 
+# @category Geometry
+# Number of [[VERTICES]].
 property N_VERTICES = override N_RAYS;
 
+# @category Visualization
 property VERTEX_LABELS = override RAY_LABELS;
 
+# @category Geometry
 property AFFINE_HULL = override LINEAR_SPAN_NORMALS;
 
+# @category Input property
 property INPUT_POLYTOPES = override INPUT_CONES;
 
+# @category Combinatorics
 property MAXIMAL_POLYTOPES = override MAXIMAL_CONES;
 
+# @category Combinatorics
+# Number of [[MAXIMAL_POLYTOPES]].
 property N_MAXIMAL_POLYTOPES = override N_MAXIMAL_CONES;
 
+# @category Combinatorics
+# Array of incidence matrices of all [[MAXIMAL_POLYTOPES|maximal polytopes]].
 property MAXIMAL_POLYTOPES_INCIDENCES = override MAXIMAL_CONES_INCIDENCES;
 
+# @category Combinatorics
 property MAXIMAL_POLYTOPES_COMBINATORIAL_DIMS = override MAXIMAL_CONES_COMBINATORIAL_DIMS;
 
+# @category Geometry
 property MAXIMAL_POLYTOPES_AFFINE_HULL_NORMALS = override MAXIMAL_CONES_LINEAR_SPAN_NORMALS;
 
+# @category Geometry
 property MAXIMAL_POLYTOPES_FACETS = override MAXIMAL_CONES_FACETS;
 
 # @category Combinatorics
@@ -53,11 +71,11 @@ property MAXIMAL_POLYTOPES_FACETS = override MAXIMAL_CONES_FACETS;
 # Indices refer to [[POINTS]]. Points do not have to be vertices of the cells.
 property MAXIMAL_CELLS : IncidenceMatrix;
 
-# @category Combinatorics
-# True if each object in [[MAXIMAL_POLYTOPES]] is bounded.
+# @category Geometry
+# True if each object in [[MAXIMAL_POLYTOPES]] is [[Polytope::BOUNDED|bounded]].
 property BOUNDED : Bool;
 
-# @category Combinatorics
+# @category Geometry
 # Indices of vertices that are rays.
 
 property FAR_VERTICES : Set;
@@ -71,7 +89,7 @@ property CONVEX : Bool;
 
 
 # @category Geometry
-# returns the //i//-th facet of the complex as a polytope
+# Returns the //i//-th facet of the complex as a [[Polytope]].
 # @param Int i 
 # @return Polytope
 # warning: might be unbounded
@@ -80,11 +98,17 @@ user_method polytope($) : MAXIMAL_POLYTOPES {
    return $p;
 }
 
+# @category Geometry
+# Returns the dimension of the ambient space.
+# @return Int
 user_method AMBIENT_DIM {
   my ($self)=@_;
   return $self->FAN_AMBIENT_DIM-1;
 }
 
+# @category Geometry
+# Returns the dimension of the linear space spanned by the complex.
+# @return Int
 user_method DIM {
   my ($self)=@_;
   if (!defined ($self->lookup("LINEALITY_SPACE | INPUT_LINEALITY | INPUT_RAYS | RAYS | FACET_NORMALS | LINEAR_SPAN_NORMALS"))) {
@@ -93,12 +117,9 @@ user_method DIM {
   return $self->FAN_DIM-1;
 }
 
-
 }
 
-
 object polytope::Polytope {
-
 
 # @category Triangulation and volume
 # Polytopal Subdivision of the polytope using only its vertices.
@@ -150,5 +171,6 @@ property POLYTOPAL_SUBDIVISION : PolyhedralComplex<Scalar> : multiple {
 
 # Local Variables:
 # mode: perl
-# c-basic-offset:3
+# cperl-indent-level:3
+# indent-tabs-mode:nil
 # End:

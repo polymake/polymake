@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,7 +18,7 @@
 
 static HV *secret_pkg;
 
-static ck_fun_ptr def_ck_AASSIGN;
+static Perl_check_t def_ck_AASSIGN;
 
 typedef struct method_info {
    OP* next_op;
@@ -38,7 +38,7 @@ OP* pp_hide_orig_object(pTHX)
 {
    OP *next=(PL_ppaddr[OP_ENTERSUB])(aTHX);
    AV *args=GvAV(PL_defgv);
-   /* imitate shift(@_) without cleaning out the 0-th slot */
+   // imitate shift(@_) without cleaning out the 0-th slot
    ++AvARRAY(args);
    AvMAX(args)--;
    AvFILLp(args)--;
@@ -54,7 +54,7 @@ OP* pp_hide_orig_object_first(pTHX)
 }
 
 static
-SV* find_method(pTHX_ I32 index, method_info *info)
+SV* find_method(pTHX_ I32 index, method_info* info)
 {
    dSP; dTOPss;
    SV *obj=SvRV(sv),
@@ -135,8 +135,8 @@ OP* pp_access(pTHX)
 {
    dSP; dTOPss;
    SV *obj, *method_name;
-   HV *class;
-   MAGIC *mg;
+   HV* class;
+   MAGIC* mg;
    if (!SvROK(sv) || (obj=SvRV(sv), !SvOBJECT(obj))) return Perl_pp_method_named(aTHX);
 
    class=SvSTASH(obj);
@@ -144,13 +144,13 @@ OP* pp_access(pTHX)
    mg=SvMAGIC(method_name);
    do {
       if (class == (HV*)mg->mg_obj) {
-         method_info *info=(method_info*)mg->mg_ptr;
-         SV *field=*av_fetch((AV*)obj, info->field_index, 1);
+         method_info* info=(method_info*)mg->mg_ptr;
+         SV* field=*av_fetch((AV*)obj, info->field_index, 1);
          if (info->filter) {
-            SV *rhs=SP[-1];     /* rhs value */
-            SP[-1]=field;       /* preserve it below the mark */
+            SV* rhs=SP[-1];     // rhs value
+            SP[-1]=field;       // preserve it below the mark
             if (info->filter_is_method)
-               XPUSHs(method_name);     /* preserve ref(obj) on the stack */
+               XPUSHs(method_name);     // preserve ref(obj) on the stack
             else 
                SP[0]=method_name;
             XPUSHs(rhs);
@@ -158,8 +158,8 @@ OP* pp_access(pTHX)
             PUTBACK;
             return info->next_op;
          } else {
-            SETs(field);        /* replace ref(obj) on the stack top by the requested field */
-            (void)POPMARK;      /* skip pp_entersub */
+            SETs(field);        // replace ref(obj) on the stack top by the requested field
+            (void)POPMARK;      // skip pp_entersub
             return info->next_op->op_next;
          }
       }
@@ -168,14 +168,14 @@ OP* pp_access(pTHX)
    return Perl_pp_method_named(aTHX);
 }
 
-/* better to repeat some code than to put extra tests in the heavily used pp_access */
+// better to repeat some code than to put extra tests in the heavily used pp_access
 static
 OP* pp_method_access(pTHX)
 {
    dSP; dTOPss;
    SV *obj, *method_name;
-   HV *class;
-   MAGIC *mg;
+   HV* class;
+   MAGIC* mg;
    if (!SvROK(sv) || (obj=SvRV(sv), !SvOBJECT(obj))) return Perl_pp_method_named(aTHX);
 
    class=SvSTASH(obj);
@@ -183,10 +183,43 @@ OP* pp_method_access(pTHX)
    mg=SvMAGIC(method_name);
    do {
       if (class == (HV*)mg->mg_obj) {
-         method_info *info=(method_info*)mg->mg_ptr;
-         SV *method=find_method(aTHX_ info->field_index, 0);
+         method_info* info=(method_info*)mg->mg_ptr;
+         SV* method=find_method(aTHX_ info->field_index, 0);
          SETs(method);
          (void)POPMARK;
+         return info->next_op->op_next;
+      }
+   } while ((mg=mg->mg_moremagic));
+
+   return Perl_pp_method_named(aTHX);
+}
+
+static
+OP* pp_method_defined(pTHX)
+{
+   dSP; dTOPss;
+   SV *obj, *method_name;
+   HV* class;
+   MAGIC* mg;
+   if (!SvROK(sv) || (obj=SvRV(sv), !SvOBJECT(obj))) return Perl_pp_method_named(aTHX);
+
+   class=SvSTASH(obj);
+   method_name=cSVOP_sv;
+   mg=SvMAGIC(method_name);
+   do {
+      if (class == (HV*)mg->mg_obj) {
+         method_info* info=(method_info*)mg->mg_ptr;
+         I32 is_assignment= info->next_op->op_next->op_type == OP_DORASSIGN;
+         SV* field=*av_fetch((AV*)obj, info->field_index, is_assignment);
+         SETs(field);        // replace ref(obj) on the stack top by the requested field
+         if (SvROK(field) ? SvTYPE(SvRV(field)) != SVt_PVCV : SvIOK(field)) {
+            // if it's a reference to another object to follow, pretend it's undefined
+            if (is_assignment)
+               SvOK_off(field);
+            else
+               SETs(&PL_sv_undef);
+         }
+         (void)POPMARK;      // skip pp_entersub
          return info->next_op->op_next;
       }
    } while ((mg=mg->mg_moremagic));
@@ -259,7 +292,7 @@ PPCODE:
 {
    I32 index=CvDEPTH(cv);
    OP *o=method_named_op(PL_op);
-   if (o) {
+   if (o != NULL) {
       OP* next_op=PL_op->op_next;
       SV* filter=NULL;
       SV* method_name=cSVOPo_sv;
@@ -271,12 +304,12 @@ PPCODE:
          mg=SvMAGIC(method_name);
          do {
             if (((method_info*)mg->mg_ptr)->accessor == cv) break;
-         } while ((mg=mg->mg_moremagic));
+         } while ((mg=mg->mg_moremagic) != NULL);
       }
 
       if (mg == NULL) {
          method_info info;
-         if (next_op->op_type == OP_SASSIGN) {
+         if (next_op->op_type == OP_SASSIGN && !(next_op->op_private & OPpASSIGN_BACKWARDS)) {
             filter=GvSV(CvGV(cv));
             if (filter && (SvROK(filter) || (SvPOK(filter) && SvCUR(filter)))) {
                OP *sub_op;
@@ -312,7 +345,7 @@ PPCODE:
          info.accessor=cv;
 
          if (SvTYPE(method_name) < SVt_PVMG) {
-            /* first use of this operation */
+            // first use of this operation
             U32 flags=SvFLAGS(method_name) & (SVf_FAKE | SVf_READONLY);
             SvFLAGS(method_name) &= ~(SVf_FAKE | SVf_READONLY);
             sv_magicext(method_name, (SV*)class, PERL_MAGIC_ext, 0, (char*)&info, sizeof(info));
@@ -323,7 +356,7 @@ PPCODE:
          }
 
       } else {
-         /* first object of some derived class */
+         // first object of some derived class
          sv_magicext(method_name, (SV*)class, PERL_MAGIC_ext, 0, mg->mg_ptr, 0);
          filter=((method_info*)mg->mg_ptr)->filter;
       }
@@ -332,8 +365,8 @@ PPCODE:
          OP *prev=cUNOP->op_first->op_sibling;
          while (prev->op_next != o) prev=prev->op_next;
          PL_op=prev;
-         PUSHMARK(SP);  /* restore the mark */
-         return;        /* avoid PUTBACK */
+         PUSHMARK(SP);  // restore the mark
+         return;        // avoid PUTBACK
       }
    }
    PUSHs(*av_fetch((AV*)obj, index, 1));
@@ -361,7 +394,7 @@ PPCODE:
       MAGIC* mg=NULL;
 
       if (SvTYPE(method_name) == SVt_PVMG) {
-         /* maybe the first object of some derived class? */
+         // maybe the first object of some derived class?
          mg=SvMAGIC(method_name);
          do {
             if (((method_info*)mg->mg_ptr)->accessor == cv) break;
@@ -376,7 +409,7 @@ PPCODE:
          info.accessor=cv;
 
          if (SvTYPE(method_name) < SVt_PVMG) {
-            /* first use of this operation */
+            // first use of this operation
             U32 flags=SvFLAGS(method_name) & (SVf_FAKE | SVf_READONLY);
             SvFLAGS(method_name) &= ~(SVf_FAKE | SVf_READONLY);
             sv_magicext(method_name, (SV*)class, PERL_MAGIC_ext, 0, (char*)&info, sizeof(info));
@@ -385,6 +418,11 @@ PPCODE:
             case OP_SASSIGN:
             case OP_UNDEF:
                o->op_ppaddr=&pp_access;
+               break;
+            case OP_DEFINED:
+            case OP_DOR:
+            case OP_DORASSIGN:
+               o->op_ppaddr=&pp_method_defined;
                break;
             case OP_ENTERSUB:
                o->op_ppaddr=&pp_method_call;
@@ -398,7 +436,7 @@ PPCODE:
          }
 
       } else {
-         /* first object of some derived class */
+         // first object of some derived class
          sv_magicext(method_name, (SV*)class, PERL_MAGIC_ext, 0, mg->mg_ptr, 0);
          infop=(method_info*)mg->mg_ptr;
       }
@@ -409,10 +447,22 @@ PPCODE:
          PUSHs(find_method(aTHX_ index, 0));
          break;
       }
-      /* FALLTHRU */
+      // FALLTHRU
    case OP_SASSIGN:
    case OP_UNDEF:
       PUSHs(*av_fetch((AV*)obj, index, 1));
+      break;
+   case OP_DEFINED:
+   case OP_DOR:
+   case OP_DORASSIGN:
+      PUSHs(*av_fetch((AV*)obj, index, next_op->op_type == OP_DORASSIGN));
+      // if it's an index to another field to follow, pretend it's undefined
+      if (SvROK(TOPs) ? SvTYPE(SvRV(TOPs)) != SVt_PVCV : SvIOK(TOPs)) {
+         if (next_op->op_type == OP_DORASSIGN)
+            SvOK_off(TOPs);
+         else
+            SETs(&PL_sv_undef);
+      }
       break;
    case OP_ENTERSUB:
       if (!o) {
@@ -491,12 +541,12 @@ PPCODE:
    AV *av=newAV();
    HV *stash;
    SV **ary, **src=SP+1, **src_end=SP+items, *pkg_from=*src_end, *rv;
-   New(0,ary,items-1,SV*);
+   New(0, ary, items-1, SV*);
    AvALLOC(av) = ary;
-   AvARRAY_set(av,ary);
+   AvARRAY(av) = ary;
    AvFILLp(av) = items-2;
    AvMAX(av) = items-2;
-   for (; src<src_end; ++src, ++ary) {
+   for (; src < src_end; ++src, ++ary) {
       SV *sv=*src;
       if ((SvFLAGS(sv) & (SVs_TEMP|SVs_GMG|SVs_SMG))==SVs_TEMP) {
          SvTEMP_off(sv);
@@ -525,7 +575,7 @@ PPCODE:
 }
 
 void
-make_alias(body,index)
+make_alias(body, index)
   SV *body;
   I32 index;
 PROTOTYPE: $$
@@ -564,7 +614,7 @@ PPCODE:
    if (!SvTEMP(sv))
       sv=sv_mortalcopy(sv);
    PUSHs(sv);
-   sv_magicext(sv, 0, PERL_MAGIC_ext, 0, (const char*)&secret_pkg, 0);
+   sv_magicext(sv, Nullsv, PERL_MAGIC_ext, 0, (const char*)&secret_pkg, 0);
 }
 
 void

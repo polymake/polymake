@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <!--
-  Copyright (c) 1997-2014
+  Copyright (c) 1997-2015
   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
   http://www.polymake.org
 
@@ -52,16 +52,16 @@
 
           <!-- FIXME: remove the condition as soon as the doxygen documentation ripens enough to be published without disgrace -->
           <xsl:choose>
-            <xsl:when test="contains($version_text,'snapshot')">
+            <xsl:when test="contains($version_text,'commit')">
           <h2><a href="PTL">PTL</a></h2>
           The automatically built <a href="PTL">documentation of the PTL</a> (polymake C++ template library) can be found <a href="PTL">here</a>.
             </xsl:when>
           </xsl:choose>
 
           <xsl:choose>
-            <xsl:when test="contains($version_text,'snapshot')">
-		<h2><a href="http://polymake.mathematik.tu-darmstadt.de/release_docs/">release documentations</a></h2>
-		The documentation of the current release can be found <a href="http://polymake.mathematik.tu-darmstadt.de/release_docs/">here</a>.
+            <xsl:when test="contains($version_text,'commit')">
+		<h2><a href="/release_docs/">release documentations</a></h2>
+		The documentation of the current release can be found <a href="/release_docs/">here</a>.
             </xsl:when>
           </xsl:choose>
 

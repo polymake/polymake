@@ -72,7 +72,7 @@ public class ReaderJRS extends AbstractReader {
         	stuff = xstr.fromXML(input.copy().getReader());
         	System.out.println("JRS v0.1 success.");
         } catch (Exception e2) {
-        	throw new IOException("illegal JRS file");
+        	throw new IOException("illegal JRS file", e2);
         }
     }
     if (stuff instanceof JrScene) {

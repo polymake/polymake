@@ -1,5 +1,4 @@
-
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -17,7 +16,7 @@
 # @topic application
 #
 # This artificial application gathers functionality shared by many "real"
-# applications.  While most users can probably do without looking into this
+# applications.  While most users can probably do without looking into this,
 # you may find some useful functions here.
 
 CREDIT _team
@@ -26,7 +25,9 @@ CREDIT _team
   Silke Horn, Michael Joswig, Lars Kastner, Benjamin Lorenz, 
   Andreas Paffenholz, Julian Pfeifle, Thomas Rehn, Thilo Rörig,
   Benjamin Schröter.
-  
+
+HELP help.rules
+
 INCLUDE
   basic_types
   misc_functions
@@ -36,6 +37,7 @@ INCLUDE
   postscript.rules
   povray.rules
   sketch.rules
+  threejs.rules
   tikz.rules
   lattice.rules
   property_viewer.rules

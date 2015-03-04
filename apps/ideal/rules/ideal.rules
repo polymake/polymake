@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -20,9 +20,9 @@ object Ideal {
    }
    precondition : PRIME;
 
-	rule PRIMARY : RADICAL.PRIME {
-		$this->PRIMARY = $this->RADICAL->PRIME;
-	}
+   rule PRIMARY : RADICAL.PRIME {
+      $this->PRIMARY = $this->RADICAL->PRIME;
+   }
 
    rule RING : GENERATORS {
       my $gens = $this->GENERATORS;
@@ -39,26 +39,19 @@ object Ideal {
       }
       $this->ZERO = 1;
    }
-   
-   object Groebner {
+
+}
+
+object Groebner {
       
-      rule initial : ORDER {
-         $this->ORDER =~ /^(lex|dp)$/ or croak ("unknown term order")
+   rule initial :  {
+      if (my $order = $this->lookup("ORDER_NAME")) {
+         $order =~ /^(dp|Dp|lp|Lp|rp|ls|rs|ds|Ds)$/ or croak ("unknown term order");
+      } elsif ( ! defined($this->lookup("ORDER_VECTOR | ORDER_MATRIX"))) {
+         croak ("no term order specified");
       }
-      
    }
 
-   rule GROEBNER.ORDER_MATRIX : GROEBNER.ORDER, RING {
-      my $size = $this->RING->names->size;
-      my $name = $this->GROEBNER->ORDER;
-      if($name eq "lex"){
-         $this->GROEBNER->ORDER_MATRIX = unit_matrix<Int>($size);
-      }
-      elsif ($name eq "dp"){
-         my $M = (ones_vector<Int>()) / (-1 * anti_diag(ones_vector<Int>($size)));
-         $this->GROEBNER->ORDER_MATRIX = $M->minor(~[$size],All);
-      }
-   }   
 }
 
 # Local Variables:

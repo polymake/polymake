@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,7 +15,7 @@
 
 object Polytope {
 
-# @category Combinatorics
+# @category Optimization
 # A lower bound for the number of simplices needed to triangulate the convex hull
 # Symmetries are NOT taken into account
 #rule SIMPLEXITY_LOWER_BOUND : VOLUME, MAX_INTERIOR_SIMPLICES, VERTICES, COMBINATORIAL_DIM, COCIRCUIT_EQUATIONS {
@@ -37,6 +37,11 @@ rule GROUP.SIMPLEXITY_LOWER_BOUND : VOLUME, GROUP.REPRESENTATIVE_MAX_INTERIOR_SI
 
 sub write_simplexity_ilp;
 
+# @category Optimization
+# construct a linear program whose optimal value is a lower bound for the minimal number of simplices
+# in a triangulation of P.
+# @param Polytope P
+# @param String outfile_name 
 user_function write_simplexity_ilp<Scalar>(Polytope<Scalar> $) {
     my $p = shift;
     my $outfilename = shift;
@@ -47,6 +52,11 @@ user_function write_simplexity_ilp<Scalar>(Polytope<Scalar> $) {
 
 sub write_foldable_max_signature_ilp;
 
+# @category Optimization
+# construct a linear program whose optimal value is an upper bound for the algebraic signature of 
+# a triangulation of P.
+# @param Polytope P
+# @param String outfile_name 
 user_function write_foldable_max_signature_ilp<Scalar>(Polytope<Scalar> $) {
     my $p = shift;
     my $outfilename = shift;

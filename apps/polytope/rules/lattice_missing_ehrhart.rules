@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -16,8 +16,14 @@
 object LatticePolytope {
 
 rule H_STAR_VECTOR , EHRHART_POLYNOMIAL_COEFF : {
-   die "\n*** Missing external software:\n",
-       "*** You need to have either normaliz2 or latte installed and configured to compute Ehrhart polynomials or h^*-vectors.\n";
+   die <<"---";
+
+*** Missing external software:
+*** To compute Ehrhart polynomials or h^*-vectors you need to have one of the following:
+***    - bundled:libnormaliz enabled (requires boost, rerun configure)
+***    - normaliz2 installed and configured (check 'show_unconfigured;')
+***    - latte installed and configured (check 'show_unconfigured;')
+---
 }
 weight 10.1;
 

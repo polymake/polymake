@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -61,6 +61,7 @@ sub clone {
 }
 
 package Polymake::Core::Scheduler::Debug;
+
 use Polymake::Struct (
    [ '$id' => 'undef' ],        # unique identifier
    [ '$children' => '0' ],      # number of variants derived from this chain
@@ -84,6 +85,7 @@ use Polymake::Struct (
    [ '$dyn_weight' => 'undef', ],
    '@preconditions',
    [ '$with_permutation' => 'undef' ],
+   [ '$_without_permutation' => 'undef' ],
    [ '$perm_trigger | actions' => 'weak( #4 )' ],
 );
 
@@ -99,6 +101,7 @@ sub new {
       $self->with_permutation = _new($self, $self->rule->with_permutation, @_[1..2]);
       $self->with_permutation->actions=[ map { $cache->{$_}=_new($self, $_, @_[1..2], $self) }
                                              @{$self->rule->with_permutation->actions} ];
+      weak($self->with_permutation->_without_permutation = $self);
    }
    $self;
 }
@@ -109,23 +112,28 @@ sub copy4schedule {
    $_[0]=_new($self, $rule, $self->up, $self->down);
 }
 
-sub permutation { (shift)->rule->permutation }
-sub enabled { (shift)->rule->enabled }
+sub permutation { $_[0]->rule->permutation }
+sub enabled { $_[0]->rule->enabled }
+
+sub without_permutation {
+   my ($self)=@_;
+   $self->_without_permutation // $self
+}
 
 sub checking_precondition {
-   my $self=shift;
+   my ($self)=@_;
    _new($self, $self->rule->checking_precondition, $self->up, $self->down);
 }
 
 sub path_prefix {
-   my $self=$_[0];
+   my ($self)=@_;
    defined($self->down)
    ? join(".", ("parent") x $self->up, map { $_->name } @{$self->down})
    : join(".", ("parent") x $self->up)
 }
 
 sub header {
-   my $self=$_[0];
+   my ($self)=@_;
    my $prefix=&path_prefix;
    $self->rule->header . ($prefix && " ( applied to $prefix )") .
    ( is_object($self->perm_trigger) && !($self->flags & $Rule::is_perm_action) && " after " . $self->perm_trigger->header )
@@ -189,7 +197,8 @@ sub dyn_weight { undef }
 sub weight { $Rule::zero_weight }
 sub flags { $is_mult_chooser }
 sub with_permutation { undef }
-sub rule { shift }      # for uniform interface with Rule::Deputy
+sub without_permutation { $_[0] }
+sub rule { $_[0] }      # for uniform interface with Rule::Deputy
 
 # the entire argument list looks like: (self, object, force_flag, tentative_chain, scope)
 sub execute {
@@ -374,7 +383,7 @@ sub CoWsupplier($) {
 sub CoWpending_perms($) {
    if (refcnt($_[0])>1) {
       my %copy;
-      while (my ($perm,$list)=each %{$_[0]}) {
+      while (my ($perm, $list)=each %{$_[0]}) {
          @{$copy{$perm}}{keys %$list}=();
       }
       $_[0]=\%copy;
@@ -509,6 +518,9 @@ sub add_rule {          # Rule =>
    do {
       foreach my $cons_rule (keys %{$self->consumer->{$rule}}) {
          my $supp_list=CoWsupplier($self->supplier->{$cons_rule});
+         if ($Application::plausibility_checks && !ref($supp_list)) {
+           die "internal error: ready or failed rule ", $cons_rule->header, " spuriously re-appeared as consumer of ", $rule->header, "\n";
+        }
          my %supplier;
          for (($i,$last)=(0,$#$supp_list); $i<=$last; ) {
             my $supp_group=$supp_list->[$i];
@@ -610,9 +622,11 @@ sub filter_cheap_suppliers {
 
    # visit in reverse order, since the consumer are always executed later than their supplier
    foreach my $rule (reverse @{$self->rules}) {
-      if ($rule->flags & $Rule::is_any_precondition || $rule->weight->[0] >= $expensive ||
+      if ($rule->flags & $Rule::is_any_precondition ||
+          (!exists $self->run->{$rule} && $rule->weight->[0] >= $expensive) ||
           grep { !exists $self->run->{$_} } @{$rule->preconditions}) {
-         # the supplier rule is too expensive to be executed speculatively or itself depends on unchecked preconditions
+         # the supplier rule is too expensive to be executed speculatively
+         # or depends itself on unchecked preconditions
          foreach (keys %{$self->consumer->{$rule}}) {
             if (defined (my $deps=$depends{$_})) {
                delete @depends{ @$deps };
@@ -642,7 +656,7 @@ sub filter_cheap_suppliers {
             ++$i;
          }
       }
-      @$suppliers=grep { exists $depends{$_} } @{$self->rules};
+      @$suppliers=grep { exists $depends{$_} && !exists $self->run->{$_} } @{$self->rules};
    }
    @result;
 }
@@ -1335,7 +1349,7 @@ sub add_ready_rule_with_permutation {
    if (exists $self->supplier->{$rule->with_permutation}) {
       if ($subobj->has_sensitive_to($rule->with_permutation->permutation)
           || creating_related_permutation($self, $rule, grep { defined $_->with_permutation } @{$var->rules})) {
- 
+
          # must create permutation subobject: check whether its further processing is still possible
          exists $var->supplier->{$rule->with_permutation} or return;
 
@@ -1354,7 +1368,7 @@ sub add_ready_rule_with_permutation {
                delete $cons->{$rule->with_permutation};
                $cons->{$self->final}=1;
             }
-            return add_ready_rule($var,$rule->with_permutation,0,@actions_alive);
+            return add_ready_rule($var, $rule->with_permutation, 0, @actions_alive);
          } else {
             eliminate_rules($var, $rule->with_permutation) or return;
          }
@@ -1366,7 +1380,7 @@ sub add_ready_rule_with_permutation {
       }
    }
    # "variant with permutation" not needed
-   add_ready_rule($var,$rule);
+   add_ready_rule($var, $rule);
 }
 ####################################################################################
 # private:
@@ -1374,36 +1388,33 @@ sub add_ready_rule_with_permutation {
 # FinalVar->rules contains at return only pending preconditions and their suppliers
 
 sub prepare_schedule {
-   my ($self, $var)=splice @_,0,2;
-   my ($rule, %keep4precond, %keep4prod);
+   my ($self)=@_;
+   my ($rule, @result, %keep4precond);
 
    # mark preconditions and their suppliers
-   foreach $rule (@{$var->rules}) {
-      @keep4precond{ @{$rule->preconditions} }=();
-      $keep4prod{$rule}=1;
+   foreach $rule (@{$self->rules}) {
+      unless ($rule->flags & $Rule::is_perm_action) {
+         @keep4precond{ @{$rule->preconditions} }=();
+      }
    }
 
-   foreach $rule (reverse @{$var->rules}) {
-      foreach (keys %{$var->consumer->{$rule}}) {
+   foreach $rule (reverse @{$self->rules}) {
+      foreach (keys %{$self->consumer->{$rule}}) {
          $keep4precond{$rule}=1, last if exists $keep4precond{$_};
       }
    }
-   foreach $rule (reverse @_) {
-      foreach (keys %{$self->consumer->{$rule}}) {
-         $keep4prod{$rule}=1 if exists $keep4prod{$_};
-         $keep4precond{$rule}=1 if exists $keep4precond{$_};
+
+   for (my $i=0; $i<=$#{$self->rules}; ) {
+      $rule=$self->rules->[$i];
+      if ($rule->flags & $Rule::is_perm_action) {
+         splice @{$self->rules}, $i, 1;
+      } else {
+         push @result, @{$rule->preconditions}, $rule;
+         my @pending=grep { !exists $self->run->{$_} } @{$rule->preconditions};
+         my $keep=exists $keep4precond{$rule};
+         splice @{$self->rules}, $i, !$keep, @pending;
+         $i+=@pending+$keep;
       }
-   }
-
-   my @result=map { @{$_->preconditions}, $_ } grep { exists $keep4precond{$_} || exists $keep4prod{$_} } @_;
-
-   for (my $i=0; $i<=$#{$var->rules}; ) {
-      $rule=$var->rules->[$i];
-      push @result, @{$rule->preconditions}, $rule;
-      my @pending=grep { !exists $self->run->{$_} } @{$rule->preconditions};
-      my $keep=exists $keep4precond{$rule};
-      splice @{$var->rules}, $i, !$keep, @pending;
-      $i+=@pending+$keep;
    }
 
    @result;
@@ -1426,15 +1437,15 @@ sub resolve {
          return 1;
       }
    }
-   my ($rule, $i, $last, @run_suppliers);
+   my ($rule, $i, $last, @replay_rules);
    my $tries=0;
    if (@{$self->ready}) {
       dbg_print( "composing a minimum weight rule chain" ) if $Verbose::scheduler;
-      my ($maxheap, $popcnt)=(1,0);
+      my ($maxheap, $popcnt)=(1, 0);
       my $heap=new Heap(clone($self));
     HEAP_LOOP:
       while (defined (my $top=$heap->pop)) {
-         ++$popcnt;
+         $popcnt += $top != $self;
          my @blocked;
 
          if (keys %{$top->pending_perms}) {
@@ -1442,8 +1453,7 @@ sub resolve {
             for (($i,$last)=(0,$#{$top->ready}); $i<=$last; ) {
                $rule=$top->ready->[$i];
                if ($rule->flags & $Rule::is_perm_action) {
-                  $top->supplier->{$rule}=0;
-                  add_rule($top,$rule) or next HEAP_LOOP;
+                  add_ready_rule($top, $rule) or next HEAP_LOOP;
                   $pending_perms ||= CoWpending_perms($top->pending_perms);
                   my $perm=$rule->permutation;
                   my $list=$pending_perms->{$perm};
@@ -1475,23 +1485,26 @@ sub resolve {
             my (@pending, @satisfied, @initial);
             for (($i,$last)=(0,$#{$top->ready}); $i<=$last; ) {
                $rule=$top->ready->[$i];
-               if (($rule->flags & $Rule::is_any_precondition)==$Rule::is_precondition) {
+               if (($rule->flags & $Rule::is_any_precondition) == $Rule::is_precondition) {
                   if (exists $self->run->{$rule}) {
-                     if (defined($give_schedule)) {
-                        if ($Application::plausibility_checks && $self->run->{$rule} != $Rule::exec_OK) {
-                           die "internal error: rule ", $rule->header, " occurs in the 'ready' list although known to have failed\n";
-                        }
-                        push @satisfied, $rule;
-                     } else {
-                        die "internal error: rule ", $rule->header, " occurs in the 'ready' list although already run\n";
+                     if ($Application::plausibility_checks && $self->run->{$rule} != $Rule::exec_OK) {
+                        die "internal error: rule ", $rule->header, " occurs in the 'ready' list although known to have failed\n";
                      }
+                     push @satisfied, $rule;
+                  } elsif (@replay_rules) {
+                     # don't process new preconditions until the replaying is complete
+                     push @blocked, $rule;
                   } else {
                      push @pending, $rule;
                   }
                   splice @{$top->ready}, $i, 1;  --$last;
 
                } elsif ($rule->flags & $Rule::is_initial) {
-                  push @initial, $rule;
+                  if (@replay_rules) {
+                     push @blocked, $rule;
+                  } else {
+                     push @initial, $rule;
+                  }
                   splice @{$top->ready}, $i, 1;  --$last;
 
                } else {
@@ -1501,11 +1514,16 @@ sub resolve {
             if (@pending) {
                my @suppliers;
                if (my @cheap=filter_cheap_suppliers($top, \@pending, \@suppliers, $Rule::std_weight->[0])) {
+                  if (@replay_rules && @suppliers) {
+                     die "internal error: found unexecuted cheap suppliers: ", (map { "\n  ".$_->header } @suppliers ),
+                         "\n while still replaying the rules from the previous run:",
+                         (map { "\n  ".$_->header } @replay_rules), "\n";
+                  }
                   dbg_print( "checking pending preconditions:", map { "\n".$_->header } @cheap ) if $Verbose::scheduler>=2;
-                  my (@succeeded, @succeeded_suppliers, @failed);
+                  my (@succeeded_suppliers, @failed);
 
                   foreach $rule (@suppliers) {
-                     if (($self->run->{$rule} //= $rule->execute($object,0)) == $Rule::exec_OK) {
+                     if (($self->run->{$rule}=$rule->execute($object,0)) == $Rule::exec_OK) {
                         push @succeeded_suppliers, $rule;
                      } else {
                         if ($@) {
@@ -1523,7 +1541,6 @@ sub resolve {
                         my ($rc, $retval)=$rule->execute($object,1);
                         $self->run->{$rule}=$rc;
                         if ($rc==$Rule::exec_OK) {
-                           push @succeeded, $rule;
                            $self->dyn_weight->{$rule}=$retval if $rule->flags & $Rule::is_dyn_weight;
                         } else {
                            dbg_print( $rule->header, " failed" ) if $Verbose::scheduler>=2;
@@ -1531,68 +1548,98 @@ sub resolve {
                         }
                      }
                   }
-
-                  foreach $rule (@succeeded_suppliers, @succeeded) {
-                     $self->supplier->{$rule}=0;
-                     add_rule($self,$rule,1) or last HEAP_LOOP;
-                  }
                   if (@failed) {
+                     undef $top; $heap->reset();   # kill all other variants as to reduce refcounts in the supplier/consumer net
                      eliminate_rules($self, @failed) or last;
+                     squeeze_prefs($self);
+                     @{$self->ready}=grep { $self->run->{$_} <= $Rule::exec_retry && exists $self->consumer->{$_} } @{$self->ready};
                   }
-                  if ($give_schedule) {
-                     # effective relations will be evaluated by prepare_schedule
-                     $self->consumer->{$_}=$top->consumer->{$_} for @succeeded_suppliers;
-                     push @run_suppliers, @succeeded_suppliers;
+                  unless ($give_schedule) {
+                     @replay_rules=grep { exists $self->consumer->{$_} } @succeeded_suppliers;
                   }
-                  squeeze_prefs($self);
-                  @{$self->ready}=grep { !exists $self->run->{$_} } @{$self->ready};
-                  $heap->reset(clone($self));
+                  $heap->reset(@replay_rules ? $self : clone($self));
                   next;
                }
             }
 
             foreach $rule (@pending, @satisfied) {
                $top->supplier->{$rule}=0;
-               add_rule($top,$rule) or next HEAP_LOOP;
+               add_rule($top, $rule) or next HEAP_LOOP;
             }
             foreach $rule (@initial) {
-               $top->supplier->{$rule}=0;
-               add_ready_rule($top,$rule) or next HEAP_LOOP;
+               add_ready_rule($top, $rule) or next HEAP_LOOP;
             }
             if (!@initial || @{$top->supplier->{$self->final}}) {
                # Still something to resolve.
-               # Split off feasible variants for each ready production rule.
-               # Process the heavier rules first: the lighter variants which will swim on the heap's top
-               # should have as few chances for further branching as possible.
-               # The minor weight component is not of importance here.
-               my @ready=sort { exists($top->consumer->{$b}->{$self->final}) <=> exists($top->consumer->{$a}->{$self->final})
-                                  || $b->weight->[0] <=> $a->weight->[0]
-                              } @{$top->ready};
-
-               @{$top->ready}=();
-               while (defined ($rule=shift @ready)) {
-                  my $var= @ready ? clone($top) : $top;
+               if (@replay_rules) {
+                  $top==$self or die "internal error: tentative chain cloned while replaying rules from the previous run\n";
+                  $rule=shift @replay_rules;
+                  my $i=list_index($self->ready, $rule);
+                  $i>=0 or die "internal error: rule ", $rule->header, "\nhas to be replayed but missing in the ready list\n";
+                  splice @{$self->ready}, $i, 1;
                   if (defined($rule->with_permutation)
-                      ? add_ready_rule_with_permutation($self,$var,$rule,$give_schedule)
-                      : add_ready_rule($var,$rule)) {
-                     # revise remaining ready rules - some of them might become useless
-                     push @{$var->ready}, grep { defined($var->consumer->{$_}) } @ready, @blocked;
-                     $heap->push($var) if @{$var->ready};
-                  }
+                      ? add_ready_rule_with_permutation($self, $self, $rule, $give_schedule)
+                      : add_ready_rule($self, $rule)) {
 
-                  # eliminate the skipped rule in the stem variant
-                  @ready &&
-                    ( ($rule->flags & $is_mult_chooser and defined($rule->rule->bag))
-                      ? eliminate_mult_chooser($top, $rule)
-                      : eliminate_rules($top, $rule) )
-                    or last;
+                     # revise remaining ready rules - some of them might become useless
+                     if (@{$self->ready}=grep { exists $self->consumer->{$_} } @{$self->ready}, @blocked) {
+                        if (@replay_rules=grep { exists $self->consumer->{$_} } @replay_rules) {
+                           $heap->push($self);
+                        } else {
+                           # replaying of the previuos run finished: forget the already run rules, start producing variants
+                           $self->weight->toZero();
+                           if ($Application::plausibility_checks &&
+                               (my @wrong=grep { !exists $self->run->{$_} || $self->run->{$_} != $Rule::exec_OK } @{$self->rules})) {
+                              die "internal error: unexecuted or failed rules included during replaying phase:",
+                                  (map { "\n  ".$_->header." => ".($self->run->{$_} // "NOT RUN") } @wrong), "\n";
+                           }
+                           @{$self->rules}=();
+                           $heap->push(clone($self));
+                        }
+                        next;
+                     }
+                  }
+                  die "internal error: progress stopped while replaying rules from the previous run; pending rules are:",
+                      (map { "\n  ".$_->header } $rule, @replay_rules), "\n";
+
+               } else {
+                  # Split off feasible variants for each ready production rule.
+                  # Process the heavier rules first: the lighter variants which will swim on the heap's top
+                  # should have as few chances for further branching as possible.
+                  # The minor weight component is not of importance here.
+                  my @ready=sort { exists($top->consumer->{$b}->{$self->final}) <=> exists($top->consumer->{$a}->{$self->final})
+                                    || $b->weight->[0] <=> $a->weight->[0]
+                                 } @{$top->ready};
+
+                  @{$top->ready}=();
+                  while (defined ($rule=shift @ready)) {
+                     my $var= @ready ? clone($top) : $top;
+                     if (defined($rule->with_permutation)
+                         ? add_ready_rule_with_permutation($self, $var, $rule, $give_schedule)
+                         : add_ready_rule($var, $rule)) {
+                        # revise remaining ready rules - some of them might become useless
+                        push @{$var->ready}, grep { defined($var->consumer->{$_}) } @ready, @blocked;
+                        $heap->push($var) if @{$var->ready};
+                     }
+
+                     # eliminate the skipped rule in the stem variant
+                     @ready &&
+                       ( ($rule->flags & $is_mult_chooser and defined($rule->rule->bag))
+                         ? eliminate_mult_chooser($top, $rule)
+                         : eliminate_rules($top, $rule) )
+                       or last;
+                  }
+                  assign_max($maxheap, scalar(@$heap)) if $Verbose::scheduler;
                }
-               assign_max($maxheap, scalar(@$heap)) if $Verbose::scheduler;
                next;
             }
          }
 
          # ready
+         if (@replay_rules) {
+            die "internal error: schedule allegedly resolved while still replaying rules from the previous run:",
+                ( map { "\n  ".$_->header } @replay_rules ), "\n";
+         }
          if ($Verbose::scheduler) {
             dbg_print( sprintf("minimum weight rule chain constructed in %.3f sec.\n", tv_interval($self->Tstart)),
                        "      |heap|: cur=", scalar(@$heap)+1, ", max=$maxheap, #pop=$popcnt" );
@@ -1601,8 +1648,8 @@ sub resolve {
          if (defined $give_schedule) {
             return $top unless $give_schedule;
             # pick out pending preconditions and check them now
-            my @chain=prepare_schedule($self, $top, @run_suppliers);
-            unless (@{$top->rules} and defined( $last_failed=execute($top,$object) )) {
+            my @chain=prepare_schedule($top);
+            unless (@{$top->rules} and defined( $last_failed=execute($top, $object) )) {
                return new RuleChain($object, $top, @chain);
             }
          } else {
@@ -1614,7 +1661,7 @@ sub resolve {
             }
          }
 
-         my $failed_rule=$top->rules->[$last_failed];
+         my ($failed_rule, @skipped_rules)=splice @{$top->rules}, $last_failed;
          return if $failed_rule->flags == $Rule::is_initial;
          if ($Verbose::scheduler) {
             dbg_print( "trying to find an alternative way" );
@@ -1622,22 +1669,29 @@ sub resolve {
          }
          # if it was a precondition, let the object create the undef properties afterwards
          ++$tries unless $failed_rule->flags & $Rule::is_any_precondition;
-         $#{$top->rules}=$last_failed-1;
-         unless (defined $give_schedule) {
-            my $infeasible;
-            foreach $rule (@{$top->rules}) {
-               $self->supplier->{$rule}=0;
-               add_rule($self,$rule) or $infeasible=1, last;
-            }
-            last if $infeasible;
-         }
+         my @succeeded=@{$top->rules};
+         undef $top; $heap->reset();  # kill all other variants as to reduce refcounts in the supplier/consumer net
          eliminate_rules($self, $failed_rule) or last;
-         squeeze_prefs($self);
-         @{$self->ready}= defined($give_schedule) ? grep { $self->run->{$_} <= $Rule::exec_retry } @{$self->ready}
-                                                  : grep { !exists $self->run->{$_} }              @{$self->ready};
-         $heap->reset(clone($self));
-         $maxheap=1; $popcnt=0;
 
+         unless (defined $give_schedule) {
+            # Only replay production rules.  Preconditions and PermActions are added automatically.
+            @replay_rules=map { $_->without_permutation } grep { $_->flags == 0 && exists $self->consumer->{$_} } @succeeded;
+
+            foreach my $action (grep { $_->flags & $Rule::is_perm_action } @skipped_rules) {
+               unless (exists $self->supplier->{$action}) {
+                  # it's not possible to finalize the permutation: bury the triggering rule if it's already run
+                  if (delete_from_list(\@replay_rules, $action->perm_trigger)) {
+                     eliminate_rules($self, $action->perm_trigger, $action->perm_trigger->with_permutation)
+                       or last HEAP_LOOP;
+                  }
+               }
+            }
+         }
+         squeeze_prefs($self);
+         if (@{$self->ready}= grep { $self->run->{$_} <= $Rule::exec_retry && exists $self->consumer->{$_} } @{$self->ready}) {
+            $heap->reset(@replay_rules ? $self : clone($self));
+            $maxheap=1; $popcnt=0;
+         }
       } # end while (heap)
    }
    return defined($give_schedule) ? undef : -$tries;
@@ -1701,11 +1755,7 @@ sub resolve_rules {
 # [ rule_methods ], [ method args ] => code
 sub resolve_method {
    my ($rules, $args)=@_;
-   my $object=$args->[0];
-   if (is_object( my $method=InitRuleChain->create_and_resolve($object, $rules) )) {
-      if (defined $method->keywords) {
-         push @$args, Overload::process_keywords($method->keywords, @{pop @$args});
-      }
+   if (is_object( my $method=InitRuleChain->create_and_resolve($args->[0], $rules) )) {
       $method->code;
    } else {
       undef
@@ -1840,8 +1890,8 @@ sub temp_disable_rules {
    }
 }
 ####################################################################################
-
 package Polymake::Core::Scheduler::RuleChain;
+
 use Polymake::Struct (
    [ new => '$$@' ],
    [ '$genesis' => 'weak( #1 )' ],
@@ -1857,7 +1907,7 @@ sub new {
    $self
 }
 
-sub list { map { $_->header } @{(shift)->rules} }
+sub list { map { $_->header } @{$_[0]->rules} }
 
 sub apply {
    my ($self, $object)=@_;
@@ -1890,7 +1940,7 @@ sub perm_trigger { undef }
 
 package Polymake::Core::Rule::CreatingPermutation;
 sub copy4schedule { }
-sub perm_trigger { (shift)->rule };
+sub perm_trigger { $_[0]->rule };
 
 package Polymake::Core::Rule::PermAction;
 sub up { 0 }

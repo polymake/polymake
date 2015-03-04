@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,20 +19,20 @@
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( compress_incidence_primal_x_f16, T0 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturnVoid( compress_incidence_primal<T0>(arg0) );
+   FunctionInterface4perl( compress_incidence_primal_T_x_f16, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturnVoid( (compress_incidence_primal<T0>(arg0)) );
    };
 
    template <typename T0>
-   FunctionInterface4perl( compress_incidence_dual_x_f16, T0 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturnVoid( compress_incidence_dual<T0>(arg0) );
+   FunctionInterface4perl( compress_incidence_dual_T_x_f16, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturnVoid( (compress_incidence_dual<T0>(arg0)) );
    };
 
-   FunctionInstance4perl(compress_incidence_dual_x_f16, Rational);
-   FunctionInstance4perl(compress_incidence_primal_x_f16, Rational);
-   FunctionInstance4perl(compress_incidence_primal_x_f16, double);
-   FunctionInstance4perl(compress_incidence_dual_x_f16, double);
+   FunctionInstance4perl(compress_incidence_primal_T_x_f16, Rational);
+   FunctionInstance4perl(compress_incidence_primal_T_x_f16, double);
+   FunctionInstance4perl(compress_incidence_dual_T_x_f16, Rational);
+   FunctionInstance4perl(compress_incidence_dual_T_x_f16, double);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

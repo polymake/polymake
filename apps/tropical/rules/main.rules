@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -14,67 +14,64 @@
 #-------------------------------------------------------------------------------
 
 # @topic application
-# This application concentrates on tropical hypersurfaces and tropical polytopes.
+# This application concentrates on [[Hypersurface|tropical hypersurfaces]] and [[TropicalPolytope|tropical polytopes]].
 # It provides the functionality for the computation of basic properties. Visualization and various constructions are possible.
 
-IMPORT
-  common
-  graph
+IMPORT common graph
 
 USE polytope fan
 
 file_suffix trop
 
+
+HELP
+	help.rules
+
 ##################################################################################
+# 
+# typecheck is_tropical_addition($ ) {
+#    my $type=shift;
+#    $type->abstract or defined(wantarray) ? 0 : croak( $type->full_name, " is not suitable for tropical addition" );
+# }
+# 
+# typecheck is_tropical_addition(Min) { 1 }
+# 
+# typecheck is_tropical_addition(Max) { 1 }
 
-# types for tropical addition
-
-declare property_type Min : c++ (special => 'Min', include => "polymake/tropical/arithmetic.h");
-
-declare property_type Max : c++ (special => 'Max', include => "polymake/tropical/arithmetic.h");
-
-typecheck is_tropical_addition($) {
-   my $type=shift;
-   $type->abstract or defined(wantarray) ? 0 : croak( $type->full_name, " is not suitable for tropical addition" )
-}
-
-typecheck is_tropical_addition(Min) { 1 }
-
-typecheck is_tropical_addition(Max) { 1 }
-
-function apply<Min>($$) { return min($_[0],$_[1]); }
+# function apply<Min>($$) { return min($_[0],$_[1]); }
 
 #function apply<Max>($$) { return max($_[0],$_[1]); }
 
-function orientation<Min>() { return 1; }
+# function orientation<Min>() { return 1; }
 
-#function orientation<Max>() { return -1; }
-
-
+#    method apply($,$) { shift; &min }
+# 
+#    method orientation() { 1 };
+# }
 
    # @topic category functions/Tropical operations 
    # Functions for tropical arithmetic
     
 # @category Tropical operations
-user_function scalar_product<Addition>($$) {
-  my ($x,$y)=@_; my $z=$x->[0]+$y->[0];
-  map { $z=apply<Addition>($x->[$_]+$y->[$_],$z) } 1..$#$x;
-  return $z;
-}
+# user_function scalar_product<Addition>($$) {
+#   my ($x,$y)=@_; my $z=$x->[0]+$y->[0];
+#   map { $z=apply<Addition>($x->[$_]+$y->[$_],$z) } 1..$#$x;
+#   return $z;
+# }
 
 ##################################################################################
 
-# Tropical convex hull of finitely many points in the tropical (d-1)-torus, as introduced by Develin and Sturmfels.
+# A __tropical polytope__ is the tropical convex hull of finitely many points in the tropical (d-1)-torus, as introduced by Develin and Sturmfels.
 # One construction is via the bounded subcomplex of an unbounded ordinary convex polyhedron.
 # 
 # Currently only works for Min as tropical addition (subject to change in future versions of polymake).
 #
-declare object TropicalPolytope<Scalar=Rational> [ typechecks::is_ordered_field_with_unlimited_precision(Scalar) ];
 
+# FIXME: Include typecheck for Addition?/ Include addition!
+declare object TropicalPolytope<Scalar=Rational> [ is_ordered_field_with_unlimited_precision(Scalar) ];
 
-# forward declaration for client tropical_matroid_polytope
-declare object matroid::Matroid;
-
+# FIXME: Include typecheck?
+declare object Hypersurface<Addition>;
 
 INCLUDE
   tropical_properties.rules

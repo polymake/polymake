@@ -27,6 +27,7 @@ import javax.swing.event.ChangeListener;
 
 import com.bric.swing.ColorPicker;
 
+import de.jreality.geometry.GeometryUtility;
 import de.jreality.geometry.QuadMeshFactory;
 import de.jreality.math.MatrixBuilder;
 import de.jreality.plugin.basic.Scene;
@@ -41,6 +42,7 @@ import de.jreality.ui.ColorChooseJButton;
 import de.jreality.ui.JSliderVR;
 import de.jreality.ui.TextureInspector;
 import de.jreality.util.PickUtility;
+import de.jreality.util.Rectangle3D;
 import de.jtem.jrworkspace.plugin.Controller;
 import de.jtem.jrworkspace.plugin.Plugin;
 import de.jtem.jrworkspace.plugin.PluginInfo;
@@ -110,6 +112,7 @@ public class Terrain extends Plugin implements ActionListener, ChangeListener, C
 	public Terrain() {
 		appearance.setAttribute(CommonAttributes.EDGE_DRAW, false);
 		appearance.setAttribute(CommonAttributes.VERTEX_DRAW, false);
+		appearance.setAttribute(GeometryUtility.BOUNDING_BOX, Rectangle3D.EMPTY_BOX);
 		terrain.setAppearance(appearance);
 
 		MatrixBuilder.euclidean().rotateX(Math.PI/2).assignTo(plane);
@@ -199,6 +202,7 @@ public class Terrain extends Plugin implements ActionListener, ChangeListener, C
 		faceColorChooser.getColorPanel().addChangeListener(this);
 	}
 	
+	@Override
 	public void actionPerformed(ActionEvent e) {
 		Object s = e.getSource();
 		if (closeButton == s) {
@@ -221,6 +225,7 @@ public class Terrain extends Plugin implements ActionListener, ChangeListener, C
 		}
 	}
 	
+	@Override
 	public void stateChanged(ChangeEvent e) {
 		Object s = e.getSource();
 		if (faceReflectionSlider == s) {
@@ -244,6 +249,7 @@ public class Terrain extends Plugin implements ActionListener, ChangeListener, C
 		updateFaceColor();
 	}
 
+	@Override
 	public void colorPickerModeChanged(int mode) {
 		faceColorChooser.setMode(mode);		
 	}

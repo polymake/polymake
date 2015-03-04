@@ -126,11 +126,6 @@ public class XStreamFactory {
     
     knownClasses.add(HashMap.class);
     
-    try {
-		knownClasses.add(Class.forName("de.jreality.tools.PortalHeadMoveTool"));
-	} catch (ClassNotFoundException e) {
-		System.out.println("portal head move tool not found");
-	}
   }
   
   public static XStream forVersion(double version) {
@@ -157,6 +152,7 @@ public class XStreamFactory {
     ret.alias("Sphere", Sphere.class);
     ret.alias("SpotLight", SpotLight.class);    
     ret.alias("Transformation", Transformation.class);
+    ret.alias("color", Color.class);
 
     // data package
     ret.alias("Attribute", Attribute.class);

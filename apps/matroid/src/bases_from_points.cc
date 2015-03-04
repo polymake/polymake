@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -25,7 +25,7 @@ namespace polymake { namespace matroid {
 
 void bases_from_points(perl::Object m)
 {
-   const Matrix<Rational> points=m.give("POINTS");
+   const Matrix<Rational> points=m.give("VECTORS");
    const int n_elements=points.rows();
    const int r=rank(points);
   

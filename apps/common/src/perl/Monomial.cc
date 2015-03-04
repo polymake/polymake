@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,14 +16,15 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Integer.h"
 #include "polymake/Polynomial.h"
 #include "polymake/Rational.h"
-#include "polymake/Integer.h"
-#include "polymake/SparseMatrix.h"
-#include "polymake/IncidenceMatrix.h"
-#include "polymake/Vector.h"
 #include "polymake/Ring.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/Vector.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -42,5 +43,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X_X, Monomial< Rational, int >, perl::Canned< const pm::VectorChain<pm::VectorChain<pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<int, false, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> >&, pm::NonSymmetric> const&, pm::Vector<int> const&> const&, pm::Vector<int> const&> >, perl::Canned< const Ring< Rational, int > >);
    FunctionInstance4perl(new_X_X, Monomial< Rational, int >, perl::Canned< const Vector< int > >, perl::Canned< const Ring< Rational, int > >);
    OperatorInstance4perl(Binary_mul, int, perl::Canned< const Monomial< Rational, int > >);
+   Class4perl("Polymake::common::Monomial_A_TropicalNumber_A_Min_I_Rational_Z_I_Int_Z", Monomial< TropicalNumber< Min, Rational >, int >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

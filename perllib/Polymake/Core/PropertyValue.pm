@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -25,7 +25,7 @@ use Polymake::Struct (
    [ '$flags' => '#3' ],	# *ref flags
 );
 
-use Polymake::Enum qw( is: temporary=1 strong_ref=2 weak_ref=4 ref=6 );
+use Polymake::Enum qw( is: temporary=1024 strong_ref=1 weak_ref=2 ref=3 );
 
 ######################################################################
 #
@@ -128,7 +128,7 @@ sub is_temporary { 0 }
 sub copy {
    my $self=shift;
    my $i=-1;
-   if (my @subobjs=map { 
+   if (my @subobjs=map {
          if (defined($_) && !$_->is_temporary && defined (my $subcopy=$_->copy(@_))) {
             $subcopy->parent_index=++$i;
             $subcopy
@@ -224,7 +224,7 @@ sub find_or_create {
       push @{$self->values}, $obj;
       if ($temp) {
 	 assign_max($#{$parent->transaction->temporaries},0);
-	 push @{$parent->transaction->temporaries}, [ $self->property, $obj->parent_index ];
+	 push @{$parent->transaction->temporaries}, [ $self->property, $obj ];
       } else {
 	 $parent->transaction->changed=1;
       }

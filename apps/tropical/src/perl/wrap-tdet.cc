@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -13,7 +13,7 @@
    GNU General Public License for more details.
 */
 
-#include "polymake/tropical/arithmetic.h"
+#include "polymake/TropicalNumber.h"
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
@@ -21,11 +21,11 @@
 namespace polymake { namespace tropical { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1, typename T2>
-   FunctionInterface4perl( tdet_X, T0,T1,T2 ) {
-      perl::Value arg0(stack[1]);
+   FunctionInterface4perl( tdet_T_X, T0,T1,T2 ) {
+      perl::Value arg0(stack[0]);
       WrapperReturn( (tdet<T0,T1>(arg0.get<T2>())) );
    };
 
-   FunctionInstance4perl(tdet_X, Min, Rational, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(tdet_T_X, Min, Rational, perl::Canned< const Matrix< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

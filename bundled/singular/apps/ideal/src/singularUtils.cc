@@ -1,11 +1,6 @@
-/* Copyright (c) 2012
-   by authors as mentioned on:
-   https://github.com/lkastner/polymake_algebra/wiki/Authors
-
-   Project home:
-   https://github.com/lkastner/polymake_algebra
-
-   For licensing we cite the original Polymake code:
+/* Copyright (c) 1997-2015
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+   http://www.polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -16,11 +11,16 @@
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
+--------------------------------------------------------------------------------
 */
 
-#include <dlfcn.h>
+#include <Singular/libsingular.h>
 
-#include "polymake/ideal/singularFull.h"
+#include "polymake/client.h"
+#include "polymake/Matrix.h"
+
+#include "polymake/ideal/singularInit.h"
+#include "polymake/ideal/internal/singularUtils.h"
 
 namespace polymake {
 namespace ideal {
@@ -82,7 +82,8 @@ perl::ListReturn singular_get_var(const std::string varname){
 void singular_eval(const std::string cmd){
    init_singular();
    int nest = myynest;
-   currentVoice=feInitStdin(NULL);
+   if (currentVoice == NULL)
+      currentVoice=feInitStdin(NULL);
    myynest = 1;
    // the return is needed to stop the interpreter
    int err=iiAllStart(NULL,omStrDup((cmd+";return();").c_str()),BT_proc,0);
@@ -111,20 +112,17 @@ long singular_get_int(const std::string varname){
 
 } // end namespace singular
 
-UserFunction4perl("CREDIT Singular\n\n"
-                  "# @category Algebra"
+UserFunction4perl("# @category Singular interface"
                   "# Executes given string with Singular"
                   "# @param String s",
                   &singular::singular_eval, "singular_eval($)");
 
-UserFunction4perl("CREDIT Singular\n\n"
-                  "# @category Algebra"
+UserFunction4perl("# @category Singular interface"
                   "# Retrieves an int variable from 'Singular'"
                   "# @param String s",
                   &singular::singular_get_int, "singular_get_int($)");
 
-UserFunction4perl("CREDIT Singular\n\n"
-                  "# @category Algebra"
+UserFunction4perl("# @category Singular interface"
                   "# Retrieves a variable from 'Singular'"
                   "# @param String s variable name"
                   "# @return perl::ListReturn",

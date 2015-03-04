@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -101,7 +101,7 @@ perl::Object matroid_from_graph(perl::Object g)
   return m;
 }
 
-UserFunction4perl("# @category Producing from scratch"
+UserFunction4perl("# @category Producing a matroid from other objects"
                   "# Creates a graphical matroid from a graph //g//."
                   "# @param  graph::Graph g"
                   "# @return Matroid",

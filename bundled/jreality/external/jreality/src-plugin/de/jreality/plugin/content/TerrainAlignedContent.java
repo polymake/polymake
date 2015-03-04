@@ -167,11 +167,13 @@ public class TerrainAlignedContent extends Content {
 	private void createGUI() {
 		panel.setBorder(BorderFactory.createTitledBorder("Terrain Content"));
 		sizeSlider.addChangeListener(new ChangeListener() {
+			@Override
 			public void stateChanged(ChangeEvent e) {
 				setContentSize(sizeSlider.getValue() / 100.);
 			}
 		});
 		offsetSlider.addChangeListener(new ChangeListener() {
+			@Override
 			public void stateChanged(ChangeEvent e) {
 				setVerticalOffset(offsetSlider.getValue() / 100.);
 			}

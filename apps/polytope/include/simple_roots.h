@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -27,7 +27,9 @@ SparseMatrix<Rational> simple_roots_type_A (const int n);
 SparseMatrix<Rational> simple_roots_type_B (const int n);
 SparseMatrix<Rational> simple_roots_type_C (const int n);
 SparseMatrix<Rational> simple_roots_type_D (const int n);
-SparseMatrix<Rational> simple_roots_type_E8();
+SparseMatrix< QuadraticExtension<Rational> > simple_roots_type_E6 ();
+SparseMatrix< QuadraticExtension<Rational> > simple_roots_type_E7 ();
+SparseMatrix<Rational> simple_roots_type_E8 ();
 SparseMatrix<Rational> simple_roots_type_F4 ();
 SparseMatrix<Rational> simple_roots_type_G2 ();
 SparseMatrix<QuadraticExtension<Rational> > simple_roots_type_H3 ();

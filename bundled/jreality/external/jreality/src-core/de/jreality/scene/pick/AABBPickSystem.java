@@ -87,7 +87,8 @@ public class AABBPickSystem implements PickSystem {
   private Comparator<Hit> cmp = new Hit.HitComparator();
   private double[] from;
   private double[] to;
-  private double radiusFactor = 1;		// in case we have to adjust radii by radii in world coordinates bit
+  private double pointRadiusFactor = 1.0;		// in case we have to adjust radii by radii in world coordinates bit
+  private double tubeRadiusFactor = 1.0;		// in case we have to adjust radii by radii in world coordinates bit
   private int metric;
   
   public void setSceneRoot(SceneGraphComponent root) {
@@ -143,7 +144,8 @@ public class AABBPickSystem implements PickSystem {
         private boolean pickPoints=true, drawVertices = true;
         private boolean pickEdges=true, drawEdges = true;
         private boolean pickFaces=true, drawFaces = true;
-        private boolean radiiWorldCoords = false;
+        private boolean pointRadiiWorldCoords = false;
+        private boolean tubeRadiiWorldCoords = false;
         private boolean hasNewPickInfo = false;
         private double tubeRadius=CommonAttributes.TUBE_RADIUS_DEFAULT;
         private double pointRadius=CommonAttributes.POINT_RADIUS_DEFAULT;
@@ -157,7 +159,9 @@ public class AABBPickSystem implements PickSystem {
             	pickEdges = old.pickEdges;
             	pickFaces = old.pickFaces;
             	tubeRadius = old.tubeRadius;
-            	pointRadius = old.pointRadius;    
+            	pointRadius = old.pointRadius;
+            	pointRadiiWorldCoords = old.pointRadiiWorldCoords;
+            	tubeRadiiWorldCoords = old.tubeRadiiWorldCoords;
             	metric = old.metric;
         	}
         	if (ap == null) return;
@@ -194,9 +198,19 @@ public class AABBPickSystem implements PickSystem {
           foo = ap.getAttribute(CommonAttributes.METRIC, Integer.class);
           if (foo != Appearance.INHERITED)  { hasNewPickInfo = true; metric = (Integer) foo; }
           
-          foo = ap.getAttribute(CommonAttributes.RADII_WORLD_COORDINATES, Boolean.class);
-          if (foo != Appearance.INHERITED)  { hasNewPickInfo = true;  radiiWorldCoords = (Boolean) foo; }
+          foo = ap.getAttribute(CommonAttributes.POINT_SHADER + "." + CommonAttributes.RADII_WORLD_COORDINATES, Boolean.class);
+          if (foo != Appearance.INHERITED)  { hasNewPickInfo = true;  pointRadiiWorldCoords = (Boolean) foo; }
           
+          foo = ap.getAttribute(CommonAttributes.LINE_SHADER + "." + CommonAttributes.RADII_WORLD_COORDINATES, Boolean.class);
+          if (foo != Appearance.INHERITED)  { hasNewPickInfo = true;  tubeRadiiWorldCoords = (Boolean) foo; }
+
+          foo = ap.getAttribute(CommonAttributes.RADII_WORLD_COORDINATES, Boolean.class);
+          if (foo != Appearance.INHERITED)  { 
+        	  hasNewPickInfo = true;  
+        	  pointRadiiWorldCoords = (Boolean) foo;
+        	  tubeRadiiWorldCoords = (Boolean) foo; 
+          }
+
          }
         public String toString()	{
         	return "Pick vef = "+pickPoints+" "+pickEdges+" "+pickFaces+" "+pointRadius+" "+tubeRadius;
@@ -234,20 +248,33 @@ public class AABBPickSystem implements PickSystem {
 			if (pickInfo.hasNewPickInfo) {
 				appStack.push(currentPI = pickInfo);
 			}
-			if (pickInfo.radiiWorldCoords) {
+			if (pickInfo.pointRadiiWorldCoords) {
 				double[] o2w = path.getMatrix(null);
-				radiusFactor = CameraUtility.getScalingFactor(o2w, pickInfo.metric);
-				radiusFactor = 1.0 / radiusFactor;
+				pointRadiusFactor = CameraUtility.getScalingFactor(o2w, pickInfo.metric);
+				pointRadiusFactor = 1.0 / pointRadiusFactor;
+			}
+			if (pickInfo.tubeRadiiWorldCoords) {
+				double[] o2w = path.getMatrix(null);
+				tubeRadiusFactor = CameraUtility.getScalingFactor(o2w, pickInfo.metric);
+				tubeRadiusFactor = 1.0 / tubeRadiusFactor;
 			}
 		}
 		
-		if (currentPI.radiiWorldCoords) {
+		if (currentPI.pointRadiiWorldCoords) {
 			double[] o2w = path.getMatrix(null);
-			radiusFactor = CameraUtility.getScalingFactor(o2w, currentPI.metric);
-			radiusFactor = 1.0 / radiusFactor;
+			pointRadiusFactor = CameraUtility.getScalingFactor(o2w, currentPI.metric);
+			pointRadiusFactor = 1.0 / pointRadiusFactor;
 		} else {
-			radiusFactor = 1.0;
+			pointRadiusFactor = 1.0;
 		}
+		if (currentPI.tubeRadiiWorldCoords) {
+			double[] o2w = path.getMatrix(null);
+			tubeRadiusFactor = CameraUtility.getScalingFactor(o2w, currentPI.metric);
+			tubeRadiusFactor = 1.0 / tubeRadiusFactor;
+		} else {
+			tubeRadiusFactor = 1.0;
+		}
+		
 		
 		c.childrenAccept(this);
 		if (c.getAppearance() != null && pickInfo.hasNewPickInfo) {
@@ -334,7 +361,7 @@ public class AABBPickSystem implements PickSystem {
       localHits.clear();
 
  //     System.err.println("Picking indexed line set "+ils.getName());
-       BruteForcePicking.intersectEdges(ils, metric, path, m, mInv, from, to, currentPI.tubeRadius*radiusFactor, localHits);
+       BruteForcePicking.intersectEdges(ils, metric, path, m, mInv, from, to, currentPI.tubeRadius*tubeRadiusFactor, localHits);
        extractHits(localHits);
     }
 
@@ -344,7 +371,7 @@ public class AABBPickSystem implements PickSystem {
 
       localHits.clear();
 
-      BruteForcePicking.intersectPoints(ps, metric, path, m, mInv, from, to, currentPI.pointRadius*radiusFactor, localHits);
+      BruteForcePicking.intersectPoints(ps, metric, path, m, mInv, from, to, currentPI.pointRadius*pointRadiusFactor, localHits);
       extractHits(localHits);        
     }
 

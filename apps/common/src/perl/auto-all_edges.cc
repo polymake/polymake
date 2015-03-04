@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,12 +18,13 @@
 
 #include "polymake/client.h"
 #include "polymake/Graph.h"
+
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
    FunctionInterface4perl( all_edges_R_x_x_f5, T0 ) {
       perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]);
-      WrapperReturnLvaluePkg( T0, arg0.get<T0>().all_edges(arg1, arg2) );
+      WrapperReturnLvalueAnchPkg( 1, (arg0), T0, arg0.get<T0>().all_edges(arg1, arg2) );
    };
 
    FunctionInstance4perl(all_edges_R_x_x_f5, perl::Canned< Wary< Graph< DirectedMulti > > >);

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -102,7 +102,7 @@ sub load {
          my $type=$1;
          $self->line=$.;
 
-         unless ($proto=eval { $app->eval_type($type) }) {
+         unless ($proto=$app->eval_type($type)) {
             if ($type =~ "(Rational|Float)Polytope") {
                $proto=$app->eval_type("Polytope<$1>");
             } else {
@@ -161,14 +161,14 @@ sub load {
             $boolean_value= $attr eq "(false)" ? 0 : 1;
          }
 
-         if (defined (my $cast_sub=UNIVERSAL::can($object,"cast_if_seen_$prop_name"))) {
+         if (defined (my $cast_sub=UNIVERSAL::can($object, "cast_if_seen_$prop_name"))) {
             if (defined (my $ret=$cast_sub->($object))) {
                if (is_ARRAY($ret)) {
                   # created a new parent object, the current object must become its property
                   ($subobject, my $sub_prop)=@$ret;
                   # this is necessary since we can't simply exchange the object references
                   # all the stack down
-                  swap_ARRAYs($object, $subobject);
+                  swap_arrays($object, $subobject);
                   $object->name=$subobject->name;
                   undef $subobject->name;
                   $object->persistent=$subobject->persistent;
@@ -257,7 +257,7 @@ sub consume_unknown_property {
                 if ($text =~ m{^\s* (?: (?'type' $type_qual_re) ::)? (?'prefix' $hier_id_re\.?)? $}xo) {
                    my ($object_type, $prefix)=@+{qw(type prefix)};
                    if (defined $object_type) {
-                      if (defined (my $proto=eval { $User::application->eval_type($object_type) })) {
+                      if (defined (my $proto=$User::application->eval_type($object_type, 1))) {
                          push @{$self->completion_words},
                               map { "$obj_type\::$_" } Shell::try_property_completion($proto, $prefix);
                       }
@@ -294,7 +294,7 @@ To discard the data completely, just leave the input field empty.
          my $proto;
          if (defined($object_type)
                and
-             defined ($proto=eval { $User::application->eval_type($object_type) })
+             defined ($proto=$User::application->eval_type($object_type))
                and
              instanceof ObjectType($proto)) {
             # don't check auto-cast rules here, let's allow the user to do whatever she wants
@@ -320,7 +320,8 @@ Please choose another property or discard the section giving empty input:
          }
       }
 
-      my $x=eval { PropertyType::new_object($User::application->eval_type($choice), $value) };
+      my $x=$User::application->eval_type($choice);
+      $x &&= eval { $x->construct->($value) };
       if ($@) {
          print <<".";
 Conversion to an attachment of type $choice failed: $@

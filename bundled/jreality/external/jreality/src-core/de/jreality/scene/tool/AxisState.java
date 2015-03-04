@@ -45,7 +45,7 @@ import java.io.Serializable;
 /**
  * Represents a button or a double value for tools.
  */
-public final class AxisState implements Serializable
+public class AxisState implements Serializable
 {
     public static final AxisState PRESSED = new AxisState(Integer.MAX_VALUE);
     public static final AxisState ORIGIN  = new AxisState(0);

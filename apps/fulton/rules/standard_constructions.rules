@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -14,12 +14,12 @@
 #-------------------------------------------------------------------------------
 
 
-# @category Normal Toric Varieties
-# takes one parameter r
-# and returns the polyhedral fan corresponding the the 
-# Hirzebruch surface H_r
-user_function hirzebruch_surface {
-
+# @category Producing a normal toric variety
+# Takes one parameter //r// and returns the polyhedral fan corresponding the the
+# Hirzebruch surface //H<sub>r</sub>//.
+# @param Integer r Parameter
+# @return NormalToricVariety
+user_function hirzebruch_surface( $ ) {
   my $r=shift;
   $r >= 0 or die "hirzebruch_surface: index must be non-negative\n";
   my $m=new Matrix<Rational>((unit_matrix<Rational>(2))/(-(unit_matrix<Rational>(2))));
@@ -28,17 +28,17 @@ user_function hirzebruch_surface {
   return $f;
 }
 
-# @category NormalToric Varieties
-# takes one parameter r
-# and returns the fan corresponding to the r-dimensional projective space
-user_function projective_space {
-
-  my $r=shift;
-  $r > 0 or die "projective_space: dimension must be positive\n";
-
-  my $m=new Matrix<Rational>((unit_matrix<Rational>($r))/(-(ones_vector<Rational>($r))));
+# @category Producing a normal toric variety
+# Takes one parameter //d// and returns the fan corresponding to the //d//-dimensional
+# projective space.
+# @param Int d Dimension
+# @return NormalToricVariety
+user_function projective_space( $ ) {
+  my $d=shift;
+  $d > 0 or die "projective_space: dimension must be positive\n";
+  my $m=new Matrix<Rational>((unit_matrix<Rational>($d))/(-(ones_vector<Rational>($d))));
   my @a=();
-  foreach (all_subsets_of_k($r,0..$r)) { push @a, $_; }
+  foreach (all_subsets_of_k($d,0..$d)) { push @a, $_; }
   my $f=new NormalToricVariety(RAYS=>$m, MAXIMAL_CONES=>\@a,COMPLETE=>1,PROJECTIVE=>1,SIMPLICIAL=>1,DEGENERATE=>0);
   return $f;
 }

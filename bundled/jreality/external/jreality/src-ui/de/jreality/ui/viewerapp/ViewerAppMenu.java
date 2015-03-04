@@ -244,12 +244,6 @@ private JMenu createFileMenu() {
 
 		JMenu export = new JMenu(EXPORT);
 		fileMenu.add(export);
-		try {
-			export.add(new SunflowMenu(viewerApp));
-		} catch (Exception e) {
-			e.printStackTrace();
-			LoggingSystem.getLogger(this).log(Level.CONFIG, "no sunflow", e);
-		}
 		export.add(new JMenuItem(new ExportSVG("SVG", viewer, parentComp)));
 		export.add(new JMenuItem(new ExportPS("PS", viewer, parentComp)));
 		export.add(new JMenuItem(new ExportSTL("STL", viewer, parentComp)));

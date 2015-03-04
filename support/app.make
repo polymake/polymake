@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -19,22 +19,6 @@ AppName ?= $(notdir ${CURDIR})
 SourceTop := $(firstword ${ExtensionTop} ${ProjectTop})
 SourceDir := ${SourceTop}/apps/${AppName}/src
 
-ifdef ExtensionTop
-  ifdef InSourceTree
-    ifneq ($(filter ${ProjectTop}/bundled/%,${ExtensionTop}),)
-      ${BuildDir}/conf.make : ${ExtensionTop}/polymake.ext
-	@${PERL} ${ProjectTop}/perl/polymake --mscript ${ProjectTop}/support/update_extension_make_conf ${ExtensionTop}
-    endif
-  endif
-
-  ifdef RequireExtensions
-    ImportedIntoExtension := ${ExtensionTop}
-    include $(foreach ext,${RequireExtensions},$(call _ext_conf_file,${ext}))
-    ExtensionTop := ${ImportedIntoExtension}
-    ImportedIntoExtension :=
-  endif
-endif
-
 -include ${SourceDir}/Makefile.inc
 ifdef ExtensionTop
   -include ${ProjectTop}/apps/${AppName}/src/Makefile.inc
@@ -50,6 +34,7 @@ ifeq (${SharedModules},ALL)
 endif
 ifeq (${SharedModules},)
   SharedModules := $(basename $(call _list_CXX_sources,${SourceDir}))
+  CheckOrphans := y
 else
   SharedModules := $(basename $(notdir $(wildcard $(foreach s,${CXX_suffixes}, $(patsubst %, ${SourceDir}/%.$s, ${SharedModules})))))
 endif
@@ -128,6 +113,27 @@ ifdef WrappersOnly
   SharedObjects := ${SharedObjects} ${WrappersOnly}
 endif
 
+override _remove-orphans :=
+
+ifeq (${CheckOrphans},y)
+  Orphans := $(wildcard *$O) $(filter-out perl/wrap-%, $(wildcard perl/*$O))
+  ifdef SharedObjects
+    Orphans := $(filter-out ${SharedObjects}, ${Orphans})
+    ifeq (${suffix},)
+      Orphans := $(filter-out $(patsubst %$O,%-d%$O,${SharedObjects}), ${Orphans})
+    endif
+  endif
+  ifneq ($(strip ${Orphans}),)
+    .PHONY: remove-orphans
+    override _remove_orphans := remove-orphans
+
+    remove-orphans:
+	@echo removing obsolete object files without corresponding sources:
+	rm -f ${Orphans}
+
+  endif
+endif
+
 ${WithWrappers.cc}  : %$O : ${SourceDir}/perl/wrap-%.cc
 ${WithWrappers.C}   : %$O : ${SourceDir}/perl/wrap-%.C
 ${WithWrappers.cpp} : %$O : ${SourceDir}/perl/wrap-%.cpp
@@ -144,13 +150,14 @@ ifdef SharedObjects
     ${SharedObjects} : includeSource = ${IncludeSources} $(call addinclude,src/${TempWrapperFor}) $<
   endif
 
-  ${OwnShared} : $(if ${OnlyModules}, $(filter $(addsuffix $O,${OnlyModules}), ${SharedObjects}), ${SharedObjects})
+  ${OwnShared} : $(if ${OnlyModules}, $(filter $(addsuffix $O,${OnlyModules}), ${SharedObjects}), ${SharedObjects}) ${_remove_orphans}
 	${CXX} ${LDsharedFlags} -o $@ ${SharedObjects} ${LDFLAGS} ${LIBS}
 
 else
   # no C++ clients in this application/extension: create an empty file
 
-  ${OwnShared} :
+  ${OwnShared} : ${_remove_orphans}
+	@[ ! -s $@ ] || { echo removing obsolete shared library $@ - no source files found;  rm -f $@; }
 	@touch $@
 
 endif

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -25,15 +25,9 @@
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1, typename T2, typename T3>
-   FunctionInterface4perl( cocircuit_equations_x_X_X_X_o, T0,T1,T2,T3 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]), arg3(stack[4]), arg4(stack[5]);
+   FunctionInterface4perl( cocircuit_equations_T_x_X_X_X_o, T0,T1,T2,T3 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]), arg4(stack[4]);
       WrapperReturn( (cocircuit_equations<T0>(arg0, arg1.get<T1>(), arg2.get<T2>(), arg3.get<T3>(), arg4)) );
-   };
-
-   template <typename T0, typename T1, typename T2, typename T3, typename T4>
-   FunctionInterface4perl( foldable_cocircuit_equations_x_X_X_X_X_o, T0,T1,T2,T3,T4 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]), arg3(stack[4]), arg4(stack[5]), arg5(stack[6]);
-      WrapperReturn( (foldable_cocircuit_equations<T0>(arg0, arg1.get<T1>(), arg2.get<T2>(), arg3.get<T3>(), arg4.get<T4>(), arg5)) );
    };
 
    template <typename T0, typename T1>
@@ -42,8 +36,7 @@ namespace polymake { namespace polytope { namespace {
       WrapperReturnNew(T0, (arg0.get<T1>()) );
    };
 
-   FunctionInstance4perl(foldable_cocircuit_equations_x_X_X_X_X_o, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >, perl::Canned< const Array< Set< int > > >, perl::Canned< const Array< Set< int > > >);
    FunctionInstance4perl(new_X, SparseMatrix< Rational, NonSymmetric >, perl::Canned< const pm::ListMatrix<pm::SparseVector<int> > >);
-   FunctionInstance4perl(cocircuit_equations_x_X_X_X_o, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >, perl::Canned< const Array< Set< int > > >);
+   FunctionInstance4perl(cocircuit_equations_T_x_X_X_X_o, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >, perl::Canned< const Array< Set< int > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -18,6 +18,7 @@ public class NoneuclideanGLSLShader extends StandardGLSLShader {
 		poincareModel = eap.getAttribute(
 				ShaderUtility.nameSpace(name, POINCARE_MODEL), false);
 		if (poincareModel) {
+			
 			poincarePath = (SceneGraphPath) eap.getAttribute(
 					ShaderUtility.nameSpace(name, POINCARE_PATH),
 					new SceneGraphPath());
@@ -40,8 +41,12 @@ public class NoneuclideanGLSLShader extends StandardGLSLShader {
 		// System.err.println("writing glsl shader");
 		if (true || needsRendered) { // return;
 			JOGLRenderingState jrs = jr.renderingState;
+//			System.err.println("current metric is "+jrs.currentMetric);
 			glslProgram.setUniform("hyperbolic",
 					jrs.currentMetric == Pn.HYPERBOLIC);
+			glslProgram.setUniform("metric",
+					(float) (jrs.currentMetric == Pn.HYPERBOLIC ? -1 : 1));
+//			glslProgram.setUniform("Nw", 1.0);
 			glslProgram.setUniform("useNormals4", jrs.normals4d);
 			glslProgram.setUniform("poincareModel", poincareModel);
 			if (poincarePath != null) {
@@ -49,13 +54,12 @@ public class NoneuclideanGLSLShader extends StandardGLSLShader {
 						poincarePath.getMatrix(null)), cam2H = Rn.inverse(null,
 						H2Cam);
 				double[] H2NDC = Rn.times(null, jrs.cameraToNDC, H2Cam);
-				// System.err.println("c2p = "+Rn.matrixToString(c2p));
+//				 System.err.println("c2p = "+Rn.matrixToString(H2NDC));
 				glslProgram
 						.setUniform("cam2H", Rn.convertDoubleToFloatArray(Rn
 								.transpose(null, cam2H)));
-				glslProgram
-						.setUniform("H2NDC", Rn.convertDoubleToFloatArray(Rn
-								.transpose(null, H2NDC)));
+				glslProgram.setUniform("H2Cam", Rn.convertDoubleToFloatArray(Rn
+						.transpose(null,  Rn.inverse(null, cam2H))));
 			}
 		}
 		super.render(jr);

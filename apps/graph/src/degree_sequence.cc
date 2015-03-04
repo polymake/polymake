@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -34,7 +34,7 @@ void degree_sequence(perl::Object G)
    G.take("AVERAGE_DEGREE") << Rational(sum_degree, g.nodes());
 }
 
-UserFunction4perl("# @category Calculating data"
+UserFunction4perl("# @category Combinatorics"
                   "# Calculate the degree sequence and the average degree."
                   "# The degree sequence is encoded as a map with entries (degree, multiplicity)"
                   "# @param Graph G",

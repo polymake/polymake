@@ -107,7 +107,6 @@ public class JOGLOffscreenRenderer {
 			jr.setFboMode(true);
 			jr.setAlternateCameraPath(cp);
 			jr.theViewer.render();
-			// canvas.display();
 			dst = joglFBOSlow.getImage();
 			jr.setAlternateCameraPath(null);
 			jr.setFboMode(false);
@@ -117,7 +116,7 @@ public class JOGLOffscreenRenderer {
 					.canCreateGLPbuffer(
 							canvas.getNativeSurface()
 									.getGraphicsConfiguration().getScreen()
-									.getDevice(), canvas.getGLProfile())) {
+									.getDevice())) {
 				JOGLConfiguration.getLogger().log(Level.WARNING,
 						"PBuffers not supported");
 				return null;

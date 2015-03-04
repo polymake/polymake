@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -25,23 +25,23 @@
 # Throughout a tropical hypersurface is seen as a rational polyhedral complex in R<sup>d</sup>
 # (if inhomogeneous) or in R<sup>d-1</sup> (if homogeneous). 
 #
-# Our default tropical addition is Min.  If you prefer Max use that as an optional template parameter.
+# Our default tropical addition is [[Min]].  If you prefer [[Max]] use that as an optional template parameter.
 #
 # Example: max-tropical line with apex (-1,-2,-3) in the tropical 2-torus:
-# $H = new Hypersurface<Max>(MONOMIALS=>[[1,0,0],[0,1,0],[0,0,1]],COEFFICIENTS=>[1,2,3]);
+# $H = new [[Hypersurface]]<Max>([[MONOMIALS]]=>[ [1,0,0],[0,1,0],[0,0,1] ], [[COEFFICIENTS]]=>[1,2,3]);
 #
-declare object Hypersurface<Addition=Min> [ typechecks::is_tropical_addition(Addition) ] {
+
+object Hypersurface { 
 
 
-# @category Basic properties
-# Monomials of the (tropical) polynomial defining the hypersurface (Laurent polynomials are allowed.)
+# Monomials of the (tropical) polynomial defining the hypersurface. (Laurent polynomials are allowed.)
 # The rows stands for the monomials, the columns for the variables. I.e., the entry in position (i,j) is the exponent of x<sub>j</sub> in the i-th monomial. 
 
 property MONOMIALS : Matrix<Int>;
 
 declare permutation MonomPerm {
 
-  # Transforming [[MONOMIALS]] from this into basic object
+  # Transforming [[MONOMIALS]] from this into basic object.
   property PERMUTATION : Array<Int>;
 }
 
@@ -55,13 +55,11 @@ rule MONOMIALS : MonomPerm.MONOMIALS, MonomPerm.PERMUTATION {
 }
 weight 1.10;
 
-# @category Basic properties
 # Number of terms.
 
 property N_TERMS : Int;
 
-# @category Basic properties
-# Number of variables = homogeneous dimension of ambient space + 1
+# Number of variables.
 
 property N_VARS : Int;
 
@@ -70,7 +68,6 @@ rule N_TERMS, N_VARS : MONOMIALS {
     $this->N_VARS=$this->MONOMIALS->cols();
 }
 
-# @category Basic properties
 # Coefficients of the (tropical) polynomial defining the hypersurface.
 
 property COEFFICIENTS : Vector<Rational>;
@@ -80,7 +77,6 @@ rule COEFFICIENTS : MonomPerm.COEFFICIENTS, MonomPerm.PERMUTATION {
 }
 weight 1.10;
 
-# @category Basic properties
 # Indices of [[MONOMIALS]] which do not define facets of the [[DOME]].
 
 property REDUNDANT_MONOMIALS : Set;
@@ -90,19 +86,15 @@ rule REDUNDANT_MONOMIALS : MonomPerm.COEFFICIENTS, MonomPerm.PERMUTATION {
 }
 weight 1.10;
 
-# @category Basic properties
-# Homogeneous: must be true (at least for now), since algorithms rely on this.
+# True if all [[MONOMIALS]] share the same total degree.
 
 property HOMOGENEOUS : Bool;
 
-# @category Basic properties
-# Since we require our hypersurfaces to be defined by [[HOMOGENEOUS]] polynomials,
-# all (homogeneous) degree concepts lead to the same.
+# Total degree.
 
 property DEGREE : Int;
 
-# @category Basic properties
-# True if all monomials have non-neative exponents, this means that the hypersurface is defined by
+# True if all [[MONOMIALS]] have non-negative exponents, this means that the hypersurface is defined by
 # an ordinary polynomial (that is, not a Laurent polynomial).
 
 property NON_NEGATIVE : Bool;
@@ -132,12 +124,14 @@ rule HOMOGENEOUS, DEGREE, NON_NEGATIVE : MONOMIALS {
     $this->NON_NEGATIVE = $non_negative;
 }
 
-# @category Basic properties
-# Dome of the tropical hypersurface.
+# The __dome__ of a tropical polynomial \(F:\mathbb R^d\to\mathbb R\) (and the corresponding tropical hypersurface) is the set 
+# \[D(F)=\left\{(p,s)\in\mathbb R^{d+1}\mid p\in\mathbb R^d, s\in\mathbb R, s\leq F(p)\right\}.\]
+# It is an unbounded convex polyhedron, c.f.
+# 
+# 	Michael Joswig, [[http://page.math.tu-berlin.de/~joswig/etc/ETC-130412.pdf|Essentials of Tropical Combinatorics]], Chapter 1.
 
 property DOME : polytope::Polytope<Rational>;
 
-# @category Basic properties
 # Points and rays of the hypersurface, vertices of the complex.
 # No canonicalization enforced.  Note that a tropical hypersurface may be [[HOMOGENEOUS]] or not.
 
@@ -158,7 +152,6 @@ rule POINTS : PointsPerm.POINTS, PointsPerm.PERMUTATION {
 }
 weight 1.10;
 
-# @category Basic properties
 # Indices of the points that are rays.
 
 property RAYS : Set;
@@ -168,7 +161,6 @@ rule RAYS : PointsPerm.RAYS, PointsPerm.PERMUTATION {
 }
 weight 1.10;
 
-# @category Basic properties
 # Maximal faces of the hypersurface as a polyhedral complex.
 # Each such face is encoded as a set of [[POINTS]] indices.
 
@@ -183,9 +175,8 @@ rule MAXIMAL_FACES : PointsPerm.MAXIMAL_FACES, PointsPerm.PERMUTATION {
 }
 weight 1.10;
 
-# @category Basic properties
 # Connected components of the complement.
-# rows correspond to [[DOME.FACETS]], i.e. non-redundant [[MONOMIALS]] , columns correspond to [[POINTS]]
+# Rows correspond to facets of the [[DOME]], i.e. non-redundant [[MONOMIALS]] , columns correspond to [[POINTS]].
 
 property REGIONS : IncidenceMatrix;
 
@@ -194,45 +185,38 @@ rule REGIONS : PointsPerm.REGIONS, PointsPerm.PERMUTATION {
 }
 weight 1.10;
 
-# @category Basic properties
-# Number of [[MONOMIALS]] and [[COEFFICIENTS]].
 
-property SUPPORT_SIZE : Int;
-
-
-# @category Basic properties
 # Dimension of the hypersurface.
 # Depends on whether [[HOMOGENEOUS]] or not.
 
 property DIM : Int;
 
 
-# @category Basic properties
 # Number of [[VERTICES]].
 
 property N_VERTICES : Int;
 
 
-# @category Basic properties
 # Number of maximal faces.
 
 property N_MAXIMAL_FACES : Int;
 
 
-# @category Basic properties
 # Number of [[POINTS]] (vertices plus rays).
 
 property N_POINTS : Int;
 
 
-# @category Basic properties
 # Number of [[RAYS]].
 
 property N_RAYS : Int;
 
 
-rule SUPPORT_SIZE : MONOMIALS {
-  $this->SUPPORT_SIZE=$this->MONOMIALS->rows;
+# Vertices of the hypersurface.
+property VERTICES : Matrix<Rational>;
+
+rule VERTICES : RAYS, POINTS {
+   $this->VERTICES = $this->POINTS->minor(~$this->RAYS, ~[0]);
 }
 weight 0.10;
 
@@ -267,40 +251,31 @@ rule DOME, POINTS, RAYS, MAXIMAL_FACES, REDUNDANT_MONOMIALS, REGIONS : MONOMIALS
 permutation : PointsPerm;
 
 
-# @category Basic properties
-# List indices of the [[MONOMIALS]] for which the minimum at a given point is attained.
+# List the optimum value and the indices of the [[MONOMIALS]] for which the optimum at a given point is attained.
 # @param Vector x given point
-# @return Set
-
+# @return Pair<Rational,Set>
 user_method opt_attained($) : MONOMIALS, COEFFICIENTS {
   my ($this,$x)=@_;
-  my $n=scalar(@{$this->MONOMIALS});
+  my $x=new Vector($x); # takes care of a perl array etc
+  my $n=$this->MONOMIALS->rows();
   my $val=$this->COEFFICIENTS->[0]+($x*$this->MONOMIALS->[0]);
   my @val_attained=(0);
   foreach my $i (1..$n-1) {
     my $v=$this->COEFFICIENTS->[$i]+($x*$this->MONOMIALS->[$i]);
-    if (orientation<Addition>()*($val-$v)>0) {
+    if (Addition->orientation()*($val-$v)>0) {
       $val=$v;
       @val_attained=($i);
     } elsif ($v==$val) {
       push @val_attained,$i;
     }
   }
-  return new Set(\@val_attained);
+  return new Pair<Rational,Set>($val,new Set(\@val_attained));
 }
 
-# @category Basic properties
-# Vertices of the hypersurface.
 
-user_method VERTICES : RAYS, POINTS {
-   my $this=shift;
-   $this->POINTS->minor(~$this->RAYS, ~[0]);
-}
-
-# @category Basic properties
 # Privileged subdivision dual to the tropical hypersurface.
 # The vertices of this PolyhedralComplex are the non-redundant [[MONOMIALS]].
-
+# @return fan::PolyhedralComplex<Rational>
 user_method privileged_subdivision : MONOMIALS, REDUNDANT_MONOMIALS, REGIONS, RAYS {
    my $this=shift;
    my $red=$this->REDUNDANT_MONOMIALS;
@@ -316,11 +291,12 @@ user_method privileged_subdivision : MONOMIALS, REDUNDANT_MONOMIALS, REGIONS, RA
 
 # @category Visualization
 # Visualizes the tropical hypersurface.
-# @return Visual::TropicalHypersurface
+# @options %Visual::Polygons::decorations
+# @return Visual::Hypersurface
 
 user_method VISUAL(; $=undef, %Visual::Polygons::decorations) \
    : POINTS, HOMOGENEOUS, MAXIMAL_FACES {
-# FIXME: The following would be much nicer as it avoids code duplication.  It dows work.
+# FIXME: The following would be much nicer as it avoids code duplication.  It does work.
 #        Yet, the visualization of fan::PolyhedralComplex should be modified to consider infinite rays
 #        (for more suitable pictures).
 #   my $this=shift;
@@ -351,7 +327,7 @@ user_method VISUAL(; $=undef, %Visual::Polygons::decorations) \
       if ($p->BOUNDED) {
          my @vertex_labels=map { $vertex_map->{$_} // " " } @{$p->VERTICES};
          $p->VERTEX_LABELS=\@vertex_labels;
-         $p->VISUAL;
+         $p->VISUAL($decor);
       }
       else {
          my $p_bounded=new polytope::Polytope<Rational>($p->name."_bounded",INEQUALITIES => $p->FACETS / $bbox, EQUATIONS=>$p->AFFINE_HULL);
@@ -361,11 +337,11 @@ user_method VISUAL(; $=undef, %Visual::Polygons::decorations) \
          #   $p_bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " },FacetColor=>[ map { exists $bbox_facets->{$_} ? "red" : $Visual::Color::facets } @{$p_bounded->FACETS} ]);
          #}
          #else {
-            $p_bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " });
+            $p_bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " }, $decor);
          #}
       }
    } (@{$this->MAXIMAL_FACES});
-   visualize( new Visual::TropicalHypersurface( Name => $this->name,
+   visualize( new Visual::Hypersurface( Name => $this->name,
                                                 Hypersurface => $this,
                                                 @cells_visual));
 
@@ -375,20 +351,20 @@ precondition : DIM { $this->DIM<=2 }
 
 } # object Hypersurface
 
-# @category Producing a tropical hypersurface from scratch
+# @category Producing a tropical hypersurface
 # Create a tropical hyperplane as object of type Hypersurface.
-# @tparam Addition
-# @param Vector<Rational> coefs coefficients of tropical linear form
-# @return Hypersurface<Addition>
+# @tparam Addition [[Min]] or [[Max]], default [[Min]]
+# @param Vector<Rational> coeffs coefficients of the tropical linear form
+# @return Hypersurface<Addition> default [[Min]]
 
-user_function hyperplane<Addition=Min> (Vector<Rational>) {
+user_function hyperplane<Addition> (Vector<Rational>) {
     my ($coefs) = @_;
     my $d=$coefs->dim();
     return new Hypersurface<Addition>(MONOMIALS=>unit_matrix($d),COEFFICIENTS=>$coefs);
 }
 
 
-package Visual::TropicalHypersurface;
+package Visual::Hypersurface;
 use Polymake::Struct (
    [ '@ISA' => 'Container' ],
    [ '$Hypersurface' => '#%' ],

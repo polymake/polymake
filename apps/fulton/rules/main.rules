@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,23 +13,25 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-IMPORT
-   fan
-   graph
-   ideal
+IMPORT fan graph ideal
 
-#######################################
-#######################################
-###
-### Toric Variety
-###
-#######################################
-#######################################
+# @topic application
+# This application deals with normal toric varieties as discussed in the famous
+# book
+#
+# William Fulton: Introduction to toric varieties.
 
+
+HELP help.rules
+
+# A normal toric variety given by a fan.
 declare object NormalToricVariety : PolyhedralFan<Rational>; 
 
+# A normal toric variety that is affine, i.e., given by a cone.
 declare object AffineNormalToricVariety : NormalToricVariety;
 
+# An affine normal toric variety given by a two-dimensional cone in
+# two-dimensional space.
 declare object CyclicQuotient : AffineNormalToricVariety;
 
 INCLUDE
@@ -44,3 +46,8 @@ INCLUDE
 
 
 
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

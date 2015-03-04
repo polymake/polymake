@@ -102,6 +102,17 @@ public final class MatrixBuilder {
 	    return new MatrixBuilder(m, Pn.EUCLIDEAN);
 	  }
 	  
+  public static MatrixBuilder projective(int metric) {
+	  switch (metric)	{
+	  case Pn.EUCLIDEAN:
+		  return euclidean();
+	  case Pn.ELLIPTIC:
+		  return elliptic();
+	  case Pn.HYPERBOLIC:
+		  return hyperbolic();
+	  }
+	  return euclidean();
+  }
   /**
    * Create a matrix builder which generates isometries with respect to euclidean metric.
    * @param m

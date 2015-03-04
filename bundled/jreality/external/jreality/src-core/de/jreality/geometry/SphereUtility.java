@@ -42,6 +42,8 @@ package de.jreality.geometry;
 
 import java.awt.Color;
 
+import de.jreality.math.P3;
+import de.jreality.math.Pn;
 import de.jreality.math.Rn;
 import de.jreality.scene.IndexedFaceSet;
 import de.jreality.scene.PointSet;
@@ -128,6 +130,7 @@ public class SphereUtility {
 				int vlength = GeometryUtility.getVectorLength(tessellatedIcosahedra[i]);
 				Rn.normalize(verts, verts);
 				tessellatedIcosahedra[i].setVertexAttributes(Attribute.COORDINATES, StorageModel.DOUBLE_ARRAY.array(vlength).createReadOnly(verts));
+				tessellatedIcosahedra[i].setVertexAttributes(Attribute.TEXTURE_COORDINATES, StorageModel.DOUBLE_ARRAY.array(4).createReadOnly(getTC(verts)));
 			}
 			tessellatedIcosahedra[i].setVertexAttributes(Attribute.NORMALS, tessellatedIcosahedra[i].getVertexAttributes(Attribute.COORDINATES)); 
 			IndexedFaceSetUtility.calculateAndSetFaceNormals(tessellatedIcosahedra[i]);
@@ -141,13 +144,31 @@ public class SphereUtility {
 		ifsf.setFaceIndices(ifs.getFaceAttributes(Attribute.INDICES).toIntArrayArray(null));
 		ifsf.setVertexCount(ifs.getNumPoints());
 		ifsf.setVertexCoordinates(ifs.getVertexAttributes(Attribute.COORDINATES).toDoubleArrayArray(null));
+		ifsf.setVertexTextureCoordinates(ifs.getVertexAttributes(Attribute.TEXTURE_COORDINATES).toDoubleArrayArray(null));
 		ifsf.setVertexNormals(ifs.getVertexAttributes(Attribute.NORMALS).toDoubleArrayArray(null));
 		ifsf.setGenerateEdgesFromFaces(true);
 		ifsf.setGenerateFaceNormals(true);
 		ifsf.update();
 		return ifsf.getIndexedFaceSet();
 	}
+	public static double[][] getTC(double[][] sphere)	{
+		return getTC(sphere, new int[]{0,1,2});
+	}
 	
+	public static double[][] getTC(double[][] sphere, int[] channels)	{
+		double[][] tc = new double[sphere.length][4];
+		for (int i = 0; i<sphere.length; ++i)	{
+			// normalize the point on the sphere
+			int i0 = channels[0], i1 = channels[1], i2 = channels[2];
+			double r = Math.sqrt(sphere[i][i0]*sphere[i][i0] + sphere[i][i1]*sphere[i][i1]);
+			tc[i][0] = (Math.atan2(sphere[i][i0], sphere[i][i1]) + Math.PI)/ (2*Math.PI);
+			tc[i][1] = Math.atan2(sphere[i][i2], r)/Math.PI; 
+			tc[i][2] = 0;
+			tc[i][3] = 1.0;
+		}
+		return tc;
+
+	}
 	/**
 	 * Return a tessellated cube of order <i>i</i>. That is, the square faces of an
 	 * cube are evenly subdivided into <i>i<sup>2</sup></i> smaller squares, and the vertices are

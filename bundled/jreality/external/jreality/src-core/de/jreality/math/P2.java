@@ -69,7 +69,7 @@ final public class P2 {
 		}
 		if (dst == null) dst = new double[3];
 		double[] avg = new double[3];
-		Rn.add(avg,p1,p2);
+		Rn.add(avg,Pn.dehomogenize(null, p1),Pn.dehomogenize(null, p2));
 		Rn.times(avg, .5, avg);
 		double[] line = new double[3];
 		lineFromPoints(line, p1, p2);
@@ -182,7 +182,7 @@ final public class P2 {
 		if (point.length != 3)	{
 			throw new IllegalArgumentException("Input point must be homogeneous vector");
 		}
-		double metricn = 0.0;
+//		double metricn = 0.0;
 		int n = polygon.length, j;
 		double[] p1 = new double[3];
 		double[] p2 = new double[3];

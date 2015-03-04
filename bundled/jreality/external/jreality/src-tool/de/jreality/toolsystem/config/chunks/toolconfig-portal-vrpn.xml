@@ -1,0 +1,41 @@
+<toolconfig>
+
+ 	<rawdevices>
+		<rawdevice id="VRPN"
+			type="de.jreality.toolsystem.raw.DeviceVRPNARTrack">
+			<prop name="num_trackers">
+				<int>2</int>
+			</prop>
+			<prop name="num_buttons">
+				<int>6</int>
+			</prop>
+			<prop name="num_analogs">
+				<int>2</int>
+			</prop>
+			<prop name="id_string">
+				<string>DTrack@n01</string>
+			</prop>
+		</rawdevice>
+	</rawdevices>
+
+	<rawslots>
+	    <mapping device="VRPN" src="button_0" target="PrimaryAction"/>
+	    <mapping device="VRPN" src="button_1" target="PrimaryMenu"/>
+	    <mapping device="VRPN" src="button_2" target="PrimarySelection"/>
+	    <mapping device="VRPN" src="button_3" target="PanelActivation"/>
+	    <mapping device="VRPN" src="button_4" target="JumpActivation"/>
+	    <mapping device="VRPN" src="button_5" target="GravityToggle"/>
+	    
+	    <mapping device="VRPN" src="analog_0" target="PrimaryNavigationNDC_X"/>
+	    <mapping device="VRPN" src="analog_1" target="PrimaryNavigationNDC_Y"/>
+	    
+	    <mapping device="VRPN" src="tracker_0" target="RawShipHeadTransformation"/>
+	    <mapping device="VRPN" src="tracker_1" target="RawPointerShipTransformation"/>
+	    
+	</rawslots>
+
+	<virtualdevices>
+
+	</virtualdevices>
+  
+</toolconfig>

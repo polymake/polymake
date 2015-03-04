@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -22,23 +22,27 @@ declare object FaceLattice : Graph<Directed> {
    property FACES : NodeMap<Directed,Set> : construct(ADJACENCY);
 
    # Indices of the first nodes in each level.
-   # Intended for internal use only; please use [[nodes_of_dim]] instead
+   # Intended for internal use only; please use [[nodes_of_dim]] instead.
    property DIMS : Array<Int>;
 
    my @attrs=(via_object => 'HasseDiagram', include => "polymake/graph/HasseDiagram.h");
 
-   # Index of the node representing __the whole thing__
+   # Index of the node representing __the whole thing__.
+   # @return Int
    user_method top_node() : c++ (@attrs);
 
-   # Index of the node representing the empty face
+   # Index of the node representing the empty face.
+   # @return Int
    user_method bottom_node() : c++ (@attrs);
 
-   # Dimension of the lattice = number of levels - 1
+   # Dimension of the lattice = number of levels - 1.
+   # @return Int
    user_method dim() : c++ (@attrs);
 
    method dual_faces() : c++ (@attrs);
 
-   # Indices of nodes representing faces of the given dimension
+   # Indices of nodes representing faces of the given dimension.
+   # @param Int dim
    # @return Set<Int>
    user_method nodes_of_dim($) : c++ (@attrs);
 }

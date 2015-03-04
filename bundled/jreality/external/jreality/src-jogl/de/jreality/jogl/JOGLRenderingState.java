@@ -65,7 +65,8 @@ public class JOGLRenderingState {
 	public boolean lighting = true;
 	public boolean backFaceCullingEnabled = false;
 	public boolean zbufferEnabled = true;
-	public boolean flipped = false;
+	public boolean flipNormals = false;
+	public boolean negativeDet = false;
 	public boolean transparencyEnabled = false;
 	public boolean fogEnabled;
 	public boolean localLightModel = false;
@@ -97,6 +98,7 @@ public class JOGLRenderingState {
 	public int texUnitCount = 0;
 	public int polygonCount = 0;
 	public int stereoType = JOGLViewer.CROSS_EYED_STEREO;
+	public int maxNumLights = 8;
 	protected int[] sphereDisplayLists = null;
 	protected int[] cylinderDisplayLists = null;
 
@@ -135,6 +137,9 @@ public class JOGLRenderingState {
 		// and make sure everything is here.
 		// set drawing color and point size
 		GL2 gl = renderer.globalGL;
+		int[] foo = new int[1];
+		gl.glGetIntegerv(GL2.GL_MAX_LIGHTS, foo, 0);
+		maxNumLights = foo[0];
 		gl.glDepthMask(true);
 		gl.glDisable(GL.GL_BLEND);
 		gl.glColor3f(0.0f, 0.0f, 0.0f);
@@ -164,7 +169,7 @@ public class JOGLRenderingState {
 		else
 			gl.glShadeModel(GL2.GL_FLAT);
 
-		if (flipped)
+		if (flipNormals)
 			gl.glFrontFace(GL.GL_CW);
 		else
 			gl.glFrontFace(GL.GL_CCW);

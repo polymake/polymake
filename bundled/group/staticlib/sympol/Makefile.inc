@@ -4,7 +4,8 @@ src := $(ExtensionTop)/external/sympol/sympol $(ExtensionTop)/external/sympol/sy
 
 vpath %.cpp $(src)
 
-libsympol : ExtraCXXFLAGS := -I$(ExtensionTop)/external/permlib/include -I$(ExtensionTop)/external/sympol/sympol -I$(ProjectTop)/external/lrs -DGMP -DLRS_QUIET -DGMPRATIONAL -I$(ProjectTop)/external/cdd/lib-src-gmp $(call addinclude, $(ProjectTop)/staticlib/cdd/globals_gmp.h)
+
+libsympol : ExtraCXXFLAGS := -I$(ExtensionTop)/external/permlib/include -I$(ExtensionTop)/external/sympol/sympol $(LrsCflags) -DGMP -DLRS_QUIET $(CddCflags) -DGMPRATIONAL 
 
 # Local Variables:
 # mode: Makefile

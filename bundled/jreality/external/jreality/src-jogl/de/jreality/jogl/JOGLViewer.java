@@ -102,7 +102,7 @@ public class JOGLViewer extends AbstractViewer {
 	}
 
 	public void dispose(GLAutoDrawable drawable) {
-		System.out.println("calling JOGLViewer.dispose()");
+//		System.out.println("calling JOGLViewer.dispose()");
 		//super.dispose();
 		//if (drawable != null)
 		//	drawable.removeGLEventListener(this);

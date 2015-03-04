@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -186,27 +186,26 @@ HasseEdgeMap morse_matching(perl::Object p, perl::OptionSet options)
    return EM;
 }
 
-UserFunction4perl("# @category Computing properties "
+UserFunction4perl("# @category Other"
                   "#  Compute a Morse matching. Two heuristics are implemented: "
                   "# "
-                  "#  - A simple greedy algorithm: "
-                  "#    The arcs are visited in lexicographical order, i.e.: "
+                  "# \t (1) A simple greedy algorithm: "
+                  "# \t The arcs are visited in lexicographical order, i.e.: "
+                  "# \t we proceed by levels from top to bottom, "
+                  "# \t visit the faces in each dimension in lexicographical order, "
+                  "# \t and visited the faces covered by these faces in lexicographical order. "
                   "# "
-                  "#    we proceed by levels from top to bottom, "
-                  "#    visit the faces in each dimension in lexicographical order, "
-                  "#    and visited the faces covered by these faces in lexicographical order. "
+                  "# \t This heuristic is used by default and with heuristic => 1. "
                   "# "
-                  "#    This heuristic is used by default and with heuristic => 1. "
+                  "# \t (2) A Morse matching can be improved by canceling critical cells "
+                  "# \t along unique alternating paths, see function "
+                  "# \t processAlternatingPaths() in file morse_matching_tools.h . "
+                  "# \t This idea is due to Robin Forman: "
                   "# "
-                  "#  - A Morse matching can be improved by canceling critical cells "
-                  "#    along unique alternating paths, see function "
-                  "#    processAlternatingPaths() in file morse_matching_tools.h . "
-                  "#    This idea is due to Robin Forman: "
+                  "# \t\t Morse Theory for Cell-Complexes, "
+                  "# \t\t Advances in Math., 134 (1998), pp. 90-145. "
                   "# "
-                  "#        Morse Theory for Cell-Complexes, "
-                  "#        Advances in Math., 134 (1998), pp. 90-145. "
-                  "# "
-                  "#    This heuristic is used by default and with heuristic => 2. "
+                  "# \t This heuristic is used by default and with heuristic => 2. "
                   "# "
                   "#  The default setting is to use both, i.e., to run the greedy algorithm "
                   "#  and then improve the result by the canceling algorithm. "
@@ -218,7 +217,7 @@ UserFunction4perl("# @category Computing properties "
                   "#  levels => 0, both levels can be computed by spanning trees. "
                   "#  For 2-dim pseudo-manifolds this computes an optimal Morse matching. "
                   "# "
-                  "# @param p SimplicialComplex given by its Hasse diagram "
+                  "# @param SimplicialComplex complex given by its Hasse diagram "
                   "# @option Int heuristic (1=greedy, 2=cancel, 0=both (default)) "
                   "# @option Int levels    (1=bottom, 2=top, 0=both (default)) "
                   "# @return EdgeMap matching a labelling of the edges of the Hasse diagram with integer values, where 1 means that the edge is in the matching",

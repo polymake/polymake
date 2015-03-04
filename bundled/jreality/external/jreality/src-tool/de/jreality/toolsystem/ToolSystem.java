@@ -493,7 +493,9 @@ public class ToolSystem implements ToolEventReceiver {
 		while (!compQueue.isEmpty()) {
 			ToolEvent event = (ToolEvent) compQueue.removeFirst();
 			deviceManager.evaluateEvent(event, compQueue);
-			if (isTrigger(event) && !event.isConsumed()) triggerQueue.add(event);
+			if (isTrigger(event) && !event.isConsumed()) {
+				triggerQueue.add(event);
+			}
 		}
 	}
 

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -38,7 +38,7 @@ CONFIGURE {
 
 package application;
 
-# @category Secondary Fans
+# @category Producing a fan
 # Call [[wiki:external_software#gfan]] to compute the secondary cone of a vector configuration.
 #
 # @param Matrix M whose rows are the vectors in the configuration
@@ -76,7 +76,7 @@ sub gfan_print_matrix {
   close $infile;
 }
 
-# @category Groebner Fans
+# @category Producing a fan
 # Call [[wiki:external_software#gfan]] to compute the greobner fan of an ideal.
 #
 # @param Ideal I

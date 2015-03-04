@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -38,7 +38,7 @@ void extract_pseudovertices(perl::Object t, perl::Object p)
 UserFunction4perl("# @category Other"
                   "# Get the pseudovertices of a tropical polytope //T// from the bounded subcomplex of the corresponding unbounded polyhedron //P//.\n"
                   "# @param TropicalPolytope T"
-                  "# @param Polytope P",
+                  "# @param polytope::Polytope P",
                   &extract_pseudovertices, "extract_pseudovertices(TropicalPolytope<Rational> polytope::Polytope<Rational>)");
 } }
 

@@ -1,12 +1,5 @@
 ifeq (${ExtensionTop},)
-  StaticLibs := cdd lrs
-
-  lrs_interface$O : ExtraCXXFLAGS = -I$(ProjectTop)/external/lrs
-  cdd_interface$O : ExtraCXXFLAGS = -I$(ProjectTop)/external/cdd/lib-src-gmp $(call addinclude, $(ProjectTop)/staticlib/cdd/globals_gmp.h)
-  cdd_float_interface$O : ExtraCXXFLAGS = -I$(ProjectTop)/external/cdd/lib-src
   to_interface$O : ExtraCXXFLAGS = -I$(ProjectTop)/external/TOSimplex
-
-  LIBS += $(BuildDir)/staticlib/lrs/liblrsgmp$A $(BuildDir)/staticlib/cdd/libcddgmp$A $(BuildDir)/staticlib/cdd/libcdd$A
 endif
 
 ifneq ($(filter 4.4% 4.5%,${GCCversion}),)

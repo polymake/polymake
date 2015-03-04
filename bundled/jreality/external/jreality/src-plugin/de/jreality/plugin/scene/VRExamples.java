@@ -55,6 +55,7 @@ public class VRExamples extends SceneShrinkPanel {
 	private void makePanel() {
 		if (examples != null) {
 			ActionListener examplesListener = new ActionListener() {
+				@Override
 				public void actionPerformed(ActionEvent e) {
 					String selectedBox = e.getActionCommand();
 					int selectionIndex = ((Integer) exampleIndices.get(selectedBox)).intValue();

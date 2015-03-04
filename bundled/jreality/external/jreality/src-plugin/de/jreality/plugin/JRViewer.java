@@ -48,6 +48,10 @@ import de.jreality.plugin.scene.SceneShrinkPanel;
 import de.jreality.plugin.scene.Sky;
 import de.jreality.plugin.scene.Terrain;
 import de.jreality.plugin.scene.VRExamples;
+import de.jreality.plugin.scripting.PythonConsole;
+import de.jreality.plugin.scripting.PythonConsole.MyJTextPane;
+import de.jreality.plugin.scripting.PythonToolsManager;
+import de.jreality.plugin.scripting.gui.NumberSpinnerGUI;
 import de.jreality.scene.Geometry;
 import de.jreality.scene.SceneGraphComponent;
 import de.jreality.scene.SceneGraphNode;
@@ -167,6 +171,9 @@ public class JRViewer {
 		viewPreferences = new ViewPreferences();
 	private static WeakReference<JRViewer>
 		lastViewer = new WeakReference<JRViewer>(null);
+	public static MyJTextPane // this has to be instanced before any LNF code runs
+		scriptingTextPane = new MyJTextPane();
+	
 	
 	static {
 		NativePathUtility.set("jni");
@@ -537,6 +544,16 @@ public class JRViewer {
 	
 	
 	/**
+	 * Adds a python console to the lower slot
+	 * Warning: this plug-in is incompatible with the Shell plug-in
+	 */
+	public void addPythonSupport() {
+		c.registerPlugin(PythonConsole.class);
+		c.registerPlugin(PythonToolsManager.class);
+		c.registerPlugin(NumberSpinnerGUI.class);
+	}
+	
+	/**
 	 * Adds a java bean shell to the lower slot
 	 * Warning: this plug-in is incompatible with the python console plug-in
 	 */
@@ -707,6 +724,7 @@ public class JRViewer {
 		v.setPropertiesFile("JRViewer.xml");
 		v.setPropertiesResource(JRViewer.class, "JRViewer.xml");
 		v.addBasicUI();
+		v.addPythonSupport();
 //		v.registerPlugin(InfoOverlayPlugin.class);
 		if (params.contains("-vr")) {
 			v.addContentUI();
@@ -755,6 +773,4 @@ public class JRViewer {
 		return p;
 
 	}
-
-
 }

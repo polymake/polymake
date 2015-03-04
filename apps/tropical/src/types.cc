@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -122,21 +122,23 @@ namespace polymake { namespace tropical {
    
    UserFunctionTemplate4perl("# @category Other"
                              "# Compute the fine types of the //points// set relative to a set of //generators//."
-                             "#  The following are two typical cases:"
-                             "#    (1) //points// = [[TropicalPolytope::VERTICES|VERTICES]] and //generators// = [[TropicalPolytope::VERTICES|VERTICES]]"
-                             "#    (2) //points// = [[TropicalPolytope::POINTS|POINTS]]  and //generators// = [[TropicalPolytope::PSEUDOVERTICES|PSEUDOVERTICES]]"
-                             "# @param Matrix points"
-                             "# @param Matrix generators"
+                             "# The following are two typical cases:"
+                             "# \t (1) //points// = [[TropicalPolytope::VERTICES|VERTICES]] and //generators// = [[TropicalPolytope::VERTICES|VERTICES]]"
+                             "# \t (2) //points// = [[TropicalPolytope::POINTS|POINTS]]  and //generators// = [[TropicalPolytope::PSEUDOVERTICES|PSEUDOVERTICES]]"
+                             "# @param Matrix<Coord> points"
+                             "# @param Matrix<Coord> generators"
+                             "# @tparam Coord"
                              "# @return Array<Array<Set>>",
                              "types<Coord>(Matrix<Coord> Matrix<Coord>)");
    
    UserFunctionTemplate4perl("# @category Other"
                              "# Compute the coarse types of the //points// set relative to a set of //generators//."
-                             "#  The following are two typical cases:"
-                             "#    (1) //points// = [[TropicalPolytope::VERTICES|VERTICES]] and //generators// = [[TropicalPolytope::VERTICES|VERTICES]]"
-                             "#    (2) //points// = [[TropicalPolytope::POINTS|POINTS]]  and //generators// = [[TropicalPolytope::PSEUDOVERTICES|PSEUDOVERTICES]]"
-                             "# @param Matrix points"
-                             "# @param Matrix generators"
+                             "# The following are two typical cases:"
+                             "# \t (1) //points// = [[TropicalPolytope::VERTICES|VERTICES]] and //generators// = [[TropicalPolytope::VERTICES|VERTICES]]"
+                             "# \t (2) //points// = [[TropicalPolytope::POINTS|POINTS]]  and //generators// = [[TropicalPolytope::PSEUDOVERTICES|PSEUDOVERTICES]]"
+                             "# @param Matrix<Coord> points"
+                             "# @param Matrix<Coord> generators"
+                             "# @tparam Coord"
                              "# @return Array< Array<int>>",
                              "coarse_types<Coord>(Matrix<Coord> Matrix<Coord>)");
 } }

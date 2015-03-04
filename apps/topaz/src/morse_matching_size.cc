@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -25,9 +25,9 @@ int morse_matching_size(perl::Object p)
    return EdgeMapSize(EM);
 }
 
-UserFunction4perl("# @category Computing properties "
-                  "#  Compute the number of edges in a Morse matching. "
-                  "# @param SimplicialComplex a complex with a Morse matching "
+UserFunction4perl("# @category Other"
+                  "# Compute the number of edges in a Morse matching. "
+                  "# @param SimplicialComplex complex a complex with a Morse matching "
                   "# @return Int the number of edges in the matching.",
                   &morse_matching_size, "morse_matching_size($)");
                   

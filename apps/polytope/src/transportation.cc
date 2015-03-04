@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -31,7 +31,15 @@ perl::Object transportation(const Vector<Scalar>& r, const Vector<Scalar>& c)
      
    if (ones_vector<Scalar>(m)*r != ones_vector<Scalar>(n)*c)
       throw std::runtime_error("transportation polytope: sum of entries of r and c must be equal");
+
+   for (typename Entire<Vector<Scalar> >::const_iterator x = entire(r); !x.at_end(); ++x)
+      if (*x < 0)
+         throw std::runtime_error("transportation polytope: r and c must have nonnegative entries");
    
+   for (typename Entire<Vector<Scalar> >::const_iterator x = entire(c); !x.at_end(); ++x)
+      if (*x < 0)
+         throw std::runtime_error("transportation polytope: r and c must have nonnegative entries");
+
    perl::Object p(perl::ObjectType::construct<Scalar>("Polytope"));
    p.set_description() << "transportation polytope for r=(" << r << ") and c=(" << c << ")" << endl;
 
@@ -50,6 +58,7 @@ perl::Object transportation(const Vector<Scalar>& r, const Vector<Scalar>& c)
    p.take("EQUATIONS") << eq;
    p.take("BOUNDED") << true;
    p.take("POSITIVE") << true;
+   p.take("FEASIBLE") << true;
 
    return p;
 }

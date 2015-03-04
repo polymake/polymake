@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -105,14 +105,15 @@ perl::Object suspension(perl::Object p_in, int k, perl::OptionSet options)
 }
 
 UserFunction4perl("# @category Producing a new simplicial complex from others"
-                  "# Produce the //k//-suspension over a given simplicial complex."
+                  "# Produce the __//k//-suspension__ over a given simplicial complex."
                   "# @param SimplicialComplex complex"
                   "# @param Int k default value is 1"
                   "# @option Array<String> labels for the apices."
                   "#  By default apices are labeled with ''apex_0+'', ''apex_0-'', ''apex_1+'', etc."
                   "#  If one of the specified labels already exists, a unique one is made"
                   "#  by appending ''_i'' where //i// is some small number."
-                  "# @option Bool nol do not produce any labels.",
+                  "# @option Bool nol do not produce any labels."
+                  "# @return SimplicialComplex",
                   &suspension, "suspension(SimplicialComplex; $=0, { apex_labels => undef, nol => 0 })");
 } }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -54,8 +54,8 @@ Array<int> ch2d_3phases(const int n, const Array< Array< Set<int> > >& Types, co
    return Array<int>(cyclic);
 }
 
-UserFunction4perl("# @category Tropical convex hulls"
-                  "# List the pseudovertices of a 2d tropical polytope on the boundary"
+UserFunction4perl("# @category Other"
+                  "# List the pseudovertices of a 2-dimensional tropical polytope on the boundary"
                   "# in counter-clockwise cyclic order."
                   "# @param Int n the number of generators"
                   "# @param Array<Array<Set>> Types the types of the generators"

@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2013  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2014  Winfried Bruns, Bogdan Ichim, Christof Soeger
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -14,6 +14,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * As an exception, when this program is distributed through (i) the App Store
+ * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
+ * by Google Inc., then that store may impose any digital rights management,
+ * device limits and/or redistribution restrictions that are required by its
+ * terms of service.
  */
 
 #ifndef CONE_PROPERTY_H_
@@ -32,25 +37,38 @@ namespace ConeProperty {
     enum Enum {
         Generators,
         ExtremeRays,
+        VerticesOfPolyhedron,
         SupportHyperplanes,
         TriangulationSize,
         TriangulationDetSum,
         Triangulation,
         Multiplicity,
+        Shift,
+        RecessionRank,
+        AffineDim,
+        ModuleRank,
         HilbertBasis,
+        ModuleGenerators,
         Deg1Elements,
         HilbertSeries,
+        HilbertFunction,
         Grading,
         IsPointed,
         IsDeg1Generated,
         IsDeg1ExtremeRays,
         IsDeg1HilbertBasis,
         IsIntegrallyClosed,
+        OriginalMonoidGenerators,
         GeneratorsOfToricRing,
         ReesPrimary,
         ReesPrimaryMultiplicity,
         StanleyDec,
+        ExcludedFaces,
+        Dehomogenization,
+        InclusionExclusionData,
         DualMode,
+        ApproximateRatPolytope,
+        DefaultMode,
         EnumSize // this has to be the last entry, to get the number of entries in the enum
     }; // remember to change also the string conversion function if you change this enum
 }
@@ -67,7 +85,6 @@ public:
     ConeProperties& set(ConeProperty::Enum, bool value=true);
     ConeProperties& set(ConeProperty::Enum, ConeProperty::Enum);
     ConeProperties& set(const ConeProperties&);
-    ConeProperties& set(Mode::ComputationMode mode);
 
     /* reset (=unset) properties */
     ConeProperties& reset(ConeProperty::Enum Property);
@@ -79,6 +96,10 @@ public:
     bool none() const;
     size_t count () const;
 
+    /* the following methods are used internally */
+    void set_preconditions();    // activate properties which are needed implicitily
+    void prepare_compute_options();
+    void check_sanity(bool inhomogeneous);
 
     /* print it in a nice way */
     friend std::ostream& operator<<(std::ostream&, const ConeProperties&);

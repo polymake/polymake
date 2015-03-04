@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,11 +16,11 @@
 
 #include "polymake/client.h"
 #include "polymake/Rational.h"
+#include "polymake/TropicalNumber.h"
 #include "polymake/Vector.h"
 #include "polymake/Matrix.h"
 #include "polymake/ListMatrix.h"
 #include "polymake/Map.h"
-#include "polymake/tropical/arithmetic.h"
 
 namespace polymake { namespace tropical {
 
@@ -85,7 +85,7 @@ perl::Object hypersurface_union(perl::Object H1, perl::Object H2, bool internal)
   return H12;
 }
 
-UserFunctionTemplate4perl("# @category Producing tropical hypersurface from others"
+UserFunctionTemplate4perl("# @category Producing a tropical hypersurface"
                           "# @param Hypersurface H1"
                           "# @param Hypersurface H2"
                           "# @param Bool internal default 1: both input hyperplanes lie in the same space"

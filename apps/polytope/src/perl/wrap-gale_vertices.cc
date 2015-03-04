@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -14,18 +14,18 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
-#include "polymake/Matrix.h"
-#include "polymake/IncidenceMatrix.h"
 #include "polymake/SparseMatrix.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1>
-   FunctionInterface4perl( gale_vertices_X, T0,T1 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturn( gale_vertices<T0>(arg0.get<T1>()) );
+   FunctionInterface4perl( gale_vertices_T_X, T0,T1 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturn( (gale_vertices<T0>(arg0.get<T1>())) );
    };
 
    FunctionWrapper4perl( pm::Matrix<double> (pm::Matrix<Rational> const&) ) {
@@ -34,8 +34,7 @@ namespace polymake { namespace polytope { namespace {
    }
    FunctionWrapperInstance4perl( pm::Matrix<double> (pm::Matrix<Rational> const&) );
 
-   FunctionInstance4perl(gale_vertices_X, QuadraticExtension< Rational >, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
-   FunctionInstance4perl(gale_vertices_X, Rational, perl::Canned< const Matrix< Rational > >);
-   FunctionInstance4perl(gale_vertices_X, Rational, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
+   FunctionInstance4perl(gale_vertices_T_X, Rational, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(gale_vertices_T_X, QuadraticExtension< Rational >, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

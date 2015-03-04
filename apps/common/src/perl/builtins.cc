@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,6 +17,7 @@
 ///==== this line controls the automatic file splitting: max.instances=60
 
 #include "polymake/client.h"
+#include "polymake/TropicalNumber.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Graph.h"
 
@@ -37,5 +38,7 @@ namespace polymake { namespace common { namespace {
    Builtin4perl("Polymake::common::Long", long);
    Builtin4perl("Polymake::common::UndirectedMulti", UndirectedMulti);
    Builtin4perl("Polymake::common::DirectedMulti", DirectedMulti);
+   Builtin4perl("Polymake::common::Min", Min);
+   Builtin4perl("Polymake::common::Max", Max);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

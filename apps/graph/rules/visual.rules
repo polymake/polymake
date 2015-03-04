@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -148,9 +148,9 @@ function enforce_static(Visual::Graph) {
 
 object Graph {
 
-# @category Visualization
 # Visualizes the graph.
 # Decorations may include ''Coord'', disabling the default spring embedder.
+# @options %Visual::Graph::decorations
 # @option Int seed random seed value for the spring embedder
 # @return Visual::Graph
 
@@ -180,8 +180,8 @@ user_method VISUAL(%Visual::Graph::decorations, { seed => undef }) : ADJACENCY {
 
 object FaceLattice {
 
-# @category Visualization
 # Visualize the FaceLattice.
+# @options %Visual::Lattice::decorations
 # @option Int seed random seed value for the node placement
 # @return Visual::Lattice
 
@@ -193,7 +193,7 @@ user_method VISUAL(%Visual::Lattice::decorations, { seed => undef }) {
                                Faces => $this->FACES,
                                top_node => $top_node,
                                ArrowStyle => 0,
-                               NodeBorderColor => "black",
+                               NodeBorderColor => "0 0 0",
                                Coord => hd_embedding($this,$seed),
                                $decor
                              );
@@ -203,8 +203,8 @@ user_method VISUAL(%Visual::Lattice::decorations, { seed => undef }) {
    visualize($VL);
 }
 
-# @category Visualization
 # Visualize the dual FaceLattice.
+# @options %Visual::Lattice::decorations
 # @option Int seed random seed value for the node placement
 # @return Visual::Lattice
 user_method VISUAL_DUAL(%Visual::Lattice::decorations, { seed => undef }) {
@@ -216,7 +216,7 @@ user_method VISUAL_DUAL(%Visual::Lattice::decorations, { seed => undef }) {
                                Mode => "dual",
                                top_node => $top_node,
                                ArrowStyle => 0,
-                               NodeBorderColor => "black",
+                               NodeBorderColor => "0 0 0",
                                Coord => hd_embedding($this,$seed),
                                $decor
                              );
@@ -230,6 +230,7 @@ user_method VISUAL_DUAL(%Visual::Lattice::decorations, { seed => undef }) {
 
 # @category Visualization
 # Write a graph in LEDA input format.
+# @param props::Graph G
 user_function LEDA_graph(props::Graph $) {
    my ($G, $out)=@_;
    my $n=$G->nodes;

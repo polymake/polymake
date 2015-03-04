@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -147,8 +147,6 @@ sub group_acting_on_vertices {
 }
 
 
-#sub representative_simplices_impl; # FIXME #586
-
 # @category Triangulations, subdivisions and volume
 # Find a set of representative simplices of the cone or polytope, up to its symmetry group in GROUP.
 # The return value is an array whose //k//-th entry is the set of //k//-dimensional representatives.
@@ -159,8 +157,6 @@ sub group_acting_on_vertices {
 #    representative_simplices_impl<Scalar>(@_);
 #}
 
-
-# sub symmetrized_cocircuit_equations_impl; # FIXME #586
 
 # # @category Matroid properties
 # # Find projections of the representatives for the cocircuit equations of a Cone, up to symmetry

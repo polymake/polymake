@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -14,6 +14,7 @@
 --------------------------------------------------------------------------------
 */
 
+#include <cstddef> // needed for gcc 4.9, see http://gcc.gnu.org/gcc-4.9/porting_to.html
 #include <gmpxx.h>
 
 #include "polymake/client.h"
@@ -27,19 +28,26 @@
 
 
 namespace libnormaliz {
-   template<typename Integer> inline long explicit_cast_to_long(const Integer& a);
+   mpz_class to_mpz(const pm::Integer& a) {
+      return mpz_class(a.get_rep());
+   }
+   pm::Integer operator%(size_t a, const pm::Integer& b) {
+      return pm::Integer((unsigned long int) a) % b;
+   }
+}
 
+#include "libnormaliz-all.cpp"
+
+namespace libnormaliz {
    template<> inline long explicit_cast_to_long(const pm::Integer& a) {
       return a.to_long();
    }
 
-   mpz_class to_mpz(const pm::Integer& a) {
-      return mpz_class(a.get_rep());
+   template<> pm::Integer int_max_value_half<pm::Integer>(){
+      assert(false);
+      return 0;
    }
-
 }
-
-#include "libnormaliz-all.cpp"
 
 namespace polymake { namespace polytope {
 
@@ -72,7 +80,7 @@ namespace polymake { namespace polytope {
          std::transform(rows(pmdata).begin(),rows(pmdata).end(),
                std::back_inserter(data),&pmVector_to_stdvector<Scalar>);
          return libnormaliz::Cone<Scalar>( data, 
-               from_ineq ? libnormaliz::Type::hyperplanes
+               from_ineq ? libnormaliz::Type::inequalities
                : libnormaliz::Type::integral_closure );
       }
 
@@ -134,11 +142,11 @@ namespace polymake { namespace polytope {
             if (options["hilbert_series"])
                result << nmz_convert_HS(nmzCone.getHilbertSeries());
             if (options["facets"]) {
-	       result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getSupportHyperplanes()));
-	       result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getEquations()));
-	    }
+               result << Matrix<Rational>(stdvectorvector_to_pmListMatrix(nmzCone.getSupportHyperplanes()));
+               result << Matrix<Rational>(stdvectorvector_to_pmListMatrix(nmzCone.getEquations()));
+            }
             if (options["rays"])
-	       result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getExtremeRays()));
+               result << Matrix<Rational>(stdvectorvector_to_pmListMatrix(nmzCone.getExtremeRays()));
             return result;
          } 
          catch(const pm::GMP::error& ex)
@@ -152,6 +160,7 @@ namespace polymake { namespace polytope {
                cerr << "libnormaliz: arithmetic error detected, retrying with pm::Integer" << endl;
          }
       }
+      libnormaliz::test_arithmetic_overflow=false;
       libnormaliz::Cone<Integer> nmzCone = libnormaliz_create_cone<Integer>(
              options["from_facets"] ? c.give("FACETS | INEQUALITIES") : c.give("RAYS | INPUT_RAYS"),
              options["from_facets"] );
@@ -167,15 +176,15 @@ namespace polymake { namespace polytope {
       if (options["hilbert_series"])
          result << nmz_convert_HS(nmzCone.getHilbertSeries());
       if (options["facets"]) {
-         result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getSupportHyperplanes()));
-         result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getEquations()));
+         result << Matrix<Rational>(stdvectorvector_to_pmListMatrix(nmzCone.getSupportHyperplanes()));
+         result << Matrix<Rational>(stdvectorvector_to_pmListMatrix(nmzCone.getEquations()));
       }
       if (options["rays"])
-         result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getExtremeRays()));
+         result << Matrix<Rational>(stdvectorvector_to_pmListMatrix(nmzCone.getExtremeRays()));
       return result;
    }
 
-UserFunction4perl("# @category Geometric properties"
+UserFunction4perl("# @category Geometry"
 		  "# Compute degree one elements, Hilbert basis or Hilbert series of a cone C with libnormaliz"
                   "# Hilbert series and Hilbert h-vector depend on the given grading"
                   "# and will not work unless C is [[HOMOGENEOUS]] or a [[MONOID_GRADING]] is set"

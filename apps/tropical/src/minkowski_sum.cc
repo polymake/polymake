@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -39,13 +39,14 @@ perl::Object minkowski_sum(const Scalar& lambda, perl::Object P, const Scalar& m
    return PQ;
 }
   
-UserFunctionTemplate4perl("# @category Producing a new tropical polytope from another"
-                          "# Produces the tropical polytope //lambda//*//P//+//mu//*//Q//, where * and + are tropical scalar multiplication"
+UserFunctionTemplate4perl("# @category Producing a tropical polytope"
+                          "# Produces the tropical polytope (//lambda// \\( \\otimes \\) //P//) \\( \\oplus \\) (//mu// \\( \\otimes \\) //Q//), where \\( \\otimes \\) and \\( \\oplus \\) are tropical scalar multiplication"
                           "# and tropical addition, respectively."
                           "# @param Scalar lambda"
                           "# @param TropicalPolytope P"
-                          "# @param Scalar mu" 
+                          "# @param Scalar mu"
                           "# @param TropicalPolytope Q"
+                          "# @tparam Coord"
                           "# @return TropicalPolytope" ,
                           "minkowski_sum<Scalar>($ TropicalPolytope<Scalar> $ TropicalPolytope<Scalar>)");
 } }

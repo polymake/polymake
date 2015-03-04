@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -25,9 +25,9 @@ namespace polymake { namespace polytope {
 template <typename Scalar>
 perl::Object polarize(perl::Object p_in, perl::OptionSet options)
 {
-   bool 
-      RIF_property_read = false, 
-      rays_property_read = false, 
+   bool
+      RIF_property_read = false,
+      rays_property_read = false,
       facets_property_read = false;
    const bool no_coordinates = options["noc"];
    const bool isCone = !p_in.isa("Polytope");
@@ -55,18 +55,18 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
       }
 
       Matrix<Scalar> ineq, eq, pts, lin;
-      std::string 
-         rays_property, 
+      std::string
+         rays_property,
          facets_property,
          eq_property;
 
-      // We first read the input properties that are present, 
+      // We first read the input properties that are present,
       // and convert RAYS|INPUT_RAYS to FACETS|INEQUALITIES.
 
       if (p_in.lookup_with_property_name("RAYS | INPUT_RAYS", rays_property) >> ineq) {
          p_out.take( rays_property == "RAYS" || rays_property == "VERTICES"
-                     ? "FACETS" 
-                     : "INEQUALITIES" ) << ineq; 
+                     ? "FACETS"
+                     : "INEQUALITIES" ) << ineq;
          rays_property_read = true;
       }
 
@@ -75,7 +75,7 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
       // we have to project any FACETS|INEQUALITIES to the AFFINE_SPAN before
       // writing them out as RAYS|INPUT_RAYS.
 
-      if (p_in.lookup_with_property_name("FACETS | INEQUALITIES", facets_property) >> pts) 
+      if (p_in.lookup_with_property_name("FACETS | INEQUALITIES", facets_property) >> pts)
          facets_property_read = true;
 
 
@@ -91,9 +91,9 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
          p_out.take( eq_property=="LINEALITY_SPACE" ? "LINEAR_SPAN" : "EQUATIONS") << eq;
 
 
-      // now we write out the affine span
-      if (p_in.lookup_with_property_name("LINEAR_SPAN | EQUATIONS", eq_property) >> lin) 
-         p_out.take( eq_property=="LINEAR_SPAN" || eq_property=="AFFINE_HULL" ? "LINEAR_SPAN" : "INPUT_LINEALITY") << lin;
+      // now we write out the lineality
+      if (p_in.lookup_with_property_name("LINEAR_SPAN | EQUATIONS", eq_property) >> lin)
+         p_out.take( eq_property=="LINEAR_SPAN" || eq_property=="AFFINE_HULL" ? "LINEALITY_SPACE" : "INPUT_LINEALITY") << lin;
 
       // ... and the facet property
       if (facets_property_read) {
@@ -135,10 +135,12 @@ UserFunctionTemplate4perl("# @category Transformations"
                           "# standard Euclidean scalar product."
                           "# Note that the definition of the polar has changed after version 2.10: "
                           "# the polar is reflected in the origin to conform with cone polarization"
-                          "# If //P// is not full-dimensional, the output is the intersection of "
-                          "# the cone polar to //P// with the affine span of //P//. "
-                          "# In particular, polarize() of a not full dimensional polytope is "
-                          "# a polytope of the same dimension. "
+                          "# If //P// is not full-dimensional, the output will contain lineality "
+                          "# orthogonal to the affine span of //P//. "
+                          "# In particular, polarize() of a pointed polytope will always produce "
+                          "# a full-dimensional polytope. "
+                          "# If you want to compute the polar inside the affine hull you may "
+                          "# use the [[pointed_part]] client afterwards."
                           "# @param Cone C"
                           "# @option Bool noc only combinatorial information is handled"
                           "# @return Cone",

@@ -14,6 +14,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * As an exception, when this program is distributed through (i) the App Store
+ * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
+ * by Google Inc., then that store may impose any digital rights management,
+ * device limits and/or redistribution restrictions that are required by its
+ * terms of service.
  */
 
 /* 
@@ -27,6 +32,10 @@
 #ifdef _OPENMP
 #include <omp.h>
 #else
+
+inline int omp_in_parallel() {
+    return false;
+}
 
 inline int omp_get_level(){
     return 0;

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -31,10 +31,10 @@ perl::Object pseudovertices2poly(perl::Object t_in)
    return p_out;
 }
 
-UserFunction4perl("# @category Other"
-                  "# Takes a tropical polytope //T// and interprets it in ordinary Euclidean space."
+UserFunction4perl("# @category Producing another object"
+                  "# Takes a tropical polytope //T// and interprets it in Euclidean space."
                   "# @param TropicalPolytope T"
-                  "# @return Polytope",
+                  "# @return polytope::Polytope",
                   &pseudovertices2poly,"pseudovertices2poly(TropicalPolytope)");
 } }
 

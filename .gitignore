@@ -1,3 +1,5 @@
+*~
+*.swp
 build
 build.*
 doc_build*
@@ -25,4 +27,5 @@ testscenarios/extensions/installed
 testscenarios/extensions/private*
 testscenarios/extensions/polymake-pico
 testscenarios/extensions/userdir/*
-
+testscenarios/big_objects_within_data/polymake-pico
+testscenarios/big_objects_within_data/userdir/*

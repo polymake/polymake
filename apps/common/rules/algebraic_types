@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -16,9 +16,6 @@
 # @topic category property_types/Algebraic Types
 # This category contains all "algebraic" types, such as matrices, vectors, polynomials, rings, ...
 
-# @topic category functions/Arithmetic
-# These are function that perform arithmetic computations.
-
 # @category Algebraic Types
 # A type for vectors with entries of type //Element//.
 # 
@@ -33,32 +30,32 @@ declare property_type Vector<Element=Rational> : c++ (include => ["polymake/Vect
 
    method construct(Int) : c++;
 
+   type_method init {
+      my ($proto)=@_;
+      if ($proto->params->[0] == typeof Float) {
+         $proto->equal=\&compare_float_sequences;
+      }
+   }
+
    # The length of the vector
    # @return Int
    user_method dim() : c++;
 
-	# Returns a [[Vector]] containing only the entries after //i//.
-	# @param Int i
-	# @return Vector
+   # Returns a [[Vector]] containing only the entries after //i//.
+   # @param Int i
+   # @return Vector
    user_method slice(*:anchor) : lvalue_opt : wary : c++;
 
-	# Returns a [[Vector]] containing only the entries from //i// to //j//-1.
-	# @param Int i
-	# @param Int j
-	# @return Vector
+   # Returns a [[Vector]] containing only the entries from //i// to //j//-1.
+   # @param Int i
+   # @param Int j
+   # @return Vector
    user_method slice($$) : lvalue_opt : wary : c++;
 
    # Divides every entry by //a// (assuming that every entry is divisible by //a//).
    # @param Int a
    # @return Vector
    user_method div_exact(*) : lvalue : c++;
-}
-
-# @category Algebraic Types
-# A vector with [[Float]] entries.
-property_type Vector<Float> {
-   
-   type()->equal=sub { (typeof Array<Float>)->equal->(@_) };
 }
 
 function permuted(Vector, *) : c++;
@@ -109,11 +106,28 @@ declare property_type Matrix<Element=Rational, Sym=NonSymmetric> : \
    method construct(Int,Int) : c++;
 
    method construct(Vector+) {
-      my $proto=shift;
-      my $M=$proto->construct->(scalar(@_), $_[0]->dim);
+      my ($proto, $vectors)=@_;
+      my $M=$proto->construct->(scalar(@$vectors), $vectors->[0]->dim);
       my $i=0;
-      $M->[$i++]=$_ for @_;
+      $M->[$i++]=$_ for @$vectors;
       $M;
+   }
+
+   type_method init {
+      my ($proto)=@_;
+      if ($proto->params->[0] == typeof Float) {
+         $proto->equal=sub : method {
+            (undef, my $m1, my $m2)=@_;
+            my $vec_proto=typeof Vector<Float>;
+            if ($m1->rows==$m2->rows) {
+               my $i=0;
+               foreach my $v1 (@$m1) {
+                  $vec_proto->equal->($v1, $m2->row($i++)) or return 0;
+               }
+               1
+            }
+         };
+      }
    }
 
    # Returns the number of rows.
@@ -124,38 +138,38 @@ declare property_type Matrix<Element=Rational, Sym=NonSymmetric> : \
    # @return Int
    user_method cols() : c++;
 
-	# Returns the //i//-th row.
-	# @param Int i
-	# @return Vector<Element>
+   # Returns the //i//-th row.
+   # @param Int i
+   # @return Vector<Element>
    user_method row($) : lvalue_opt : wary : c++;
 
-	# Returns the //i//-th column.
-	# @param Int i
-	# @return Vector<Element>
+   # Returns the //i//-th column.
+   # @param Int i
+   # @return Vector<Element>
    user_method col($) : lvalue_opt : wary : c++;
 
-	# Returns a __minor__ of the matrix containing the rows in //r// and the columns in //c//. You can pass [[all_rows_or_cols|All]] if you want all rows or columns and ~ for the complement of a set. E.g. 
-	#	$A->minor(All, ~[0]);
-	# will give you the minor of a matrix containing all rows and all but the 0-th column.
-	# @param Set r the rows
-	# @param Set c the columns
-	# @return Matrix
+   # Returns a __minor__ of the matrix containing the rows in //r// and the columns in //c//. You can pass [[all_rows_or_cols|All]] if you want all rows or columns and ~ for the complement of a set. E.g. 
+   #	$A->minor(All, ~[0]);
+   # will give you the minor of a matrix containing all rows and all but the 0-th column.
+   # @param Set r the rows
+   # @param Set c the columns
+   # @return Matrix
    user_method minor(*:anchor,*:anchor) : lvalue_opt : wary : c++;
 
    method operator($,$) : lvalue_opt : wary : c++;
 
-   	# Returns the __diagonal__ of the matrix.
-   	# @param Int i //i//=0: the main diagonal (optional)
-	#				//i//>0: the //i//-th diagonal __below__ the main diagonal
-	#				//i//<0: the //i//-th diagonal __above__ the main diagonal
-   	# @return Vector<Element>
+   # Returns the __diagonal__ of the matrix.
+   # @param Int i //i//=0: the main diagonal (optional)
+   #				//i//>0: the //i//-th diagonal __below__ the main diagonal
+   #				//i//<0: the //i//-th diagonal __above__ the main diagonal
+   # @return Vector<Element>
    user_method diagonal(;$=0) : lvalue_opt : wary : c++;
 
- 	# Returns the __anti-diagonal__ of the matrix.
-   	# @param Int i //i//=0: the main anti_diagonal (optional)
-	#				//i//>0: the //i//-th anti_diagonal __below__ the main anti_diagonal
-	#				//i//<0: the //i//-th anti_diagonal __above__ the main anti_diagonal
-   	# @return Vector<Element>
+   # Returns the __anti-diagonal__ of the matrix.
+   # @param Int i //i//=0: the main anti_diagonal (optional)
+   #				//i//>0: the //i//-th anti_diagonal __below__ the main anti_diagonal
+   #				//i//<0: the //i//-th anti_diagonal __above__ the main anti_diagonal
+   # @return Vector<Element>
    user_method anti_diagonal(;$=0) : lvalue_opt : wary : c++;
 
    # Divides every entry by //a// (assuming that every entry is divisible by //a//).
@@ -164,19 +178,13 @@ declare property_type Matrix<Element=Rational, Sym=NonSymmetric> : \
    user_method div_exact(*) : lvalue : c++;
 }
 
-# @category Algebraic Types
-# Projects points into the orthogonal_complement of a given subspace. 
+# @category Linear Algebra
+# Projects points into the [[null_space|orthogonal complement]] of a given subspace. 
 # The given points will be overwitten. 
 # @param Matrix points will be changed to orthogonal ones 
 # @param Matrix subspace
 user_function project_to_orthogonal_complement(Matrix:lvalue,Matrix) : void : c++ (include => "polymake/linalg.h");
 
-# @category Algebraic Types
-# A non-symmetric matrix with [[Float]] entries.
-property_type Matrix<Float, NonSymmetric> {
-
-   type()->equal=sub { (typeof Array<Array<Float>>)->equal->(@_) };
-}
 
 # @category Algebraic Types
 # Use the keyword "All" for all rows or columns, e.g. when constructing a [[minor]].
@@ -189,12 +197,8 @@ declare property_type all_rows_or_cols : c++ (name => 'pm::all_selector', includ
 # @tparam Target
 # @return Vector<Target>
 user_function convert_to<Element>(Vector) : c++ {
-   my $target_type=typeof Element;
-   if ($_[0]->type->param==$target_type) {
-      $_[0]
-   } else {
-      # call the C++ converting function
-      &{pop(@_)};
+   if ($_[0]->type->params->[0]==typeof Element) {
+      return $_[0];
    }
 }
 
@@ -204,12 +208,8 @@ user_function convert_to<Element>(Vector) : c++ {
 # @tparam Target
 # @return Matrix<Target>
 user_function convert_to<Element>(Matrix) : c++ {
-   my $target_type=typeof Element;
-   if ($_[0]->type->param->[0]==$target_type) {
-      $_[0]
-   } else {
-      # call the C++ converting function
-      &{pop(@_)};
+   if ($_[0]->type->params->[0]==typeof Element) {
+      return $_[0];
    }
 }
 
@@ -360,7 +360,6 @@ user_function basis_rows(Matrix) : c++ (include => "polymake/linalg.h");
 # @return Set<Int>
 user_function basis_cols(Matrix) : c++ (include => "polymake/linalg.h");
 
-
 function numerators(Vector<Rational>) : c++ (include => "polymake/linalg.h");
 
 function numerators(Matrix<Rational>) : c++ (include => "polymake/linalg.h");
@@ -376,10 +375,9 @@ function denominators(Matrix<Rational>) : c++ (include => "polymake/linalg.h");
 # @param Int d dimension of the matrix
 # @return SparseMatrix<Element>
 user_function unit_matrix<Element=Rational>($) : c++ (include => "polymake/linalg.h") {
-   if ($_[1] < 0) {
-      croak( "unit_matrix - invalid dimension");
+   if ($_[0] < 0) {
+      croak( "unit_matrix - invalid dimension" );
    }
-   &{pop(@_)}
 }
 
 # @category Linear Algebra
@@ -390,9 +388,8 @@ user_function unit_matrix<Element=Rational>($) : c++ (include => "polymake/linal
 # @return SparseMatrix<Element>
 user_function zero_matrix<Element=Rational>($$) : c++ (include => "polymake/linalg.h") {
    if ($_[0] < 0 || $_[1] < 0) {
-      croak( "zero_matrix - invalid dimension");
+      croak( "zero_matrix - invalid dimension" );
    }
-   &{pop(@_)}
 }
 
 # @category Linear Algebra
@@ -405,7 +402,6 @@ user_function unit_vector<Element=Rational>($$) : c++ (include => "polymake/lina
    if ($_[1] < 0 || $_[1] >= $_[0]) {
       croak( "unit_vector - invalid dimension or index out of range" );
    }
-   &{pop(@_)}
 }
 
 # @category Linear Algebra
@@ -415,10 +411,9 @@ user_function unit_vector<Element=Rational>($$) : c++ (include => "polymake/lina
 # @tparam Element default: [[Rational]]
 # @return Vector<Element>
 user_function zero_vector<Element=Rational>(;$=0) : c++ (include => "polymake/linalg.h") {
-   if ($_[1] < 0) {
+   if ($_[0] < 0) {
       croak( "zero_vector - invalid dimension");
    }
-   &{pop(@_)}
 }
 
 # @category Linear Algebra
@@ -427,12 +422,10 @@ user_function zero_vector<Element=Rational>(;$=0) : c++ (include => "polymake/li
 # @tparam Element default: [[Rational]].
 # @return Vector<Element>
 user_function ones_vector<Element=Rational>(;$=0) : c++ (include => "polymake/linalg.h") {
-   if ($_[1] < 0) {
+   if ($_[0] < 0) {
       croak( "ones_vector - invalid dimension");
    }
-   &{pop(@_)}
 }
-
 
 # @category Linear Algebra
 # Compute the __null space__ of a matrix //A//.
@@ -440,20 +433,17 @@ user_function ones_vector<Element=Rational>(;$=0) : c++ (include => "polymake/li
 # @return Matrix
 user_function null_space(Matrix) : c++ (include => "polymake/linalg.h");
 
-
 # @category Linear Algebra
 # Compute the __null space__ of a vector //b//.
 # @param Vector b
 # @return Matrix
 user_function null_space(Vector) : c++ (include => "polymake/linalg.h");
 
-
 # @category Linear Algebra
 # Compute the __lineality space__ of a matrix //A//.
 # @param Matrix A
 # @return Matrix
 user_function lineality_space(Matrix) : c++ (include => "polymake/linalg.h");
-
 
 # @category Linear Algebra
 # Computes the solution of the system //A//x = //b//
@@ -462,68 +452,89 @@ user_function lineality_space(Matrix) : c++ (include => "polymake/linalg.h");
 # @return Vector
 user_function lin_solve(Matrix:wary, Vector:wary) : c++ (include => "polymake/linalg.h");
 
-
 # @category Linear Algebra
 # The matrix //A// is totally unimodular if the determinant of each square submatrix equals 0, 1, or -1.
 # This is the naive test (exponential in the size of the matrix).
+# 
+# For a better implementation try Matthias Walter's polymake extension at
+#  [[https://github.com/xammy/unimodularity-test/wiki/Polymake-Extension]].
 # @param Matrix A
 # @return Bool
 user_function totally_unimodular(Matrix) : c++ (include => "polymake/totally_unimodular.h");
 
 # @category Linear Algebra
-# Check whether both matrices are bases of the same linear subspace.
-# @param Matrix A1
-# @param Matrix A2
+# Check whether both matrices are bases of the same linear subspace. 
+# Note: It is assumed that they are *bases* of the row space.
+# @param Matrix M1
+# @param Matrix M2
 # @return Bool
 user_function equal_bases(Matrix, Matrix) {
    my ($M1, $M2)=@_;
-   return $M1->rows==$M2->rows && is_zero(null_space($M1) * transpose($M2));
+   # we first need to check for full rank matrices as null_space gives an empty matrix in that case
+   return $M1 == $M2 || $M1->rows==$M2->rows && 
+          ($M1->rows == $M1->cols || is_zero(null_space($M1) * transpose($M2)));
 }
 
 # @category Data Conversion
 # Return the input vector (which is already in dense form).
 # @param Vector v
 # @return Vector
-user_function dense(Vector) { shift }
+user_function dense(Vector) { $_[0] }
 
 # @category Data Conversion
 # Return the input matrix (which is already in dense form).
 # @param Matrix m
 # @return Matrix
-user_function dense(Matrix) { shift }
+user_function dense(Matrix) { $_[0] }
 
 
 # @category Combinatorics
-
-user_function permutation_matrix(*:anchor) : c++ (include => "polymake/permutations.h");
+# Returns the __permuation matrix__ of the permutation given by //p//.
+# @tparam Scalar default: [[Int]]
+# @param Array<Int> p
+# @return Matrix<Scalar>
+user_function permutation_matrix<Scalar=Int>(*:anchor) : c++ (include => [ "polymake/permutations.h", "polymake/SparseMatrix.h" ]);
 
 ##################################################################################
 
-# @category Algebraic Types
+# @category Artificial
+# Iterator over non-zero elements of a [[SparseVector]] or of a row/column of a [[SparseMatrix]].
 declare property_type SparseIterator<*> : Iterator : c++ {
 
+   # The current position in the vector.
+   # @return Int
    method index() : c++;
 }
 
 # @category Algebraic Types
 # A SparseVector is an associative container with element indices (coordinates) as keys; elements equal to the default value (ElementType(), which is 0 for most numerical types) are not stored, but implicitly encoded by the gaps in the key set. It is based on an AVL tree.
 # 
-# A SparseVector is encoded as a sequence (l) (p<sub>1</sub> v<sub>1</sub>) ... (p<sub>k</sub> v<sub>k</sub>),
-# where l is the length of the vector and each pair (p<sub>i</sub> v<sub>i</sub>) denotes an entry with value
+# The printable representation of a SparseVector looks like a sequence (l) (p<sub>1</sub> v<sub>1</sub>) ... (p<sub>k</sub> v<sub>k</sub>),
+# where l is the dimension of the vector and each pair (p<sub>i</sub> v<sub>i</sub>) denotes an entry with value
 # v<sub>i</sub> at position p<sub>i</sub>. All other entries are zero.
 #
 # Use [[dense]] to convert this into its dense form.
 #
-# You can create a new SparseVector by entering its encoding as described above, e.g.:
+# You can create a new SparseVector by entering its printable encoding as described above, e.g.:
 #	$v = new SparseVector<Int>(<< '.');
 #	(6) (1 1) (2 2)
 #	.
 # @tparam Element
 declare property_type SparseVector<Element=Rational> : Vector<Element> : c++ (include => ["polymake/SparseVector.h"]) {
 
-        # The number of non-zero entries.
-        # @return Int
+   # The number of non-zero entries.
+   # @return Int
    user_method size() : c++;
+}
+
+
+property_type Vector {
+
+   # accept a SparseVector of a different type as a value of Vector property but substitute the desired element type
+   type_method coherent_type {
+      my ($self, $value)=@_;
+      instanceof SparseVector($value) ? typeof SparseVector($self->params->[0]) : undef;
+   }
 }
 
 # @category Algebraic Types
@@ -542,20 +553,34 @@ declare property_type SparseVector<Element=Rational> : Vector<Element> : c++ (in
 # @tparam Sym one of [[Symmetric]] or [[NonSymmetric]], default: [[NonSymmetric]]]
 declare property_type SparseMatrix<Element=Rational, Sym=NonSymmetric> : Matrix<Element,Sym> : c++ (include => ["polymake/SparseMatrix.h"]) {
 
-    # Removes empty rows and columns.
-	# The remaining rows and columns are renumbered without gaps.
+   # Removes empty rows and columns.
+   # The remaining rows and columns are renumbered without gaps.
    user_method squeeze() : non_const : void : c++;
 
    # Removes empty rows.
    # The remaining rows are renumbered without gaps.
    user_method squeeze_rows() : non_const : void : c++;
 
-	# Removes empty columns.
-	# The remaining columns are renumbered without gaps.
+   # Removes empty columns.
+   # The remaining columns are renumbered without gaps.
    user_method squeeze_cols() : non_const : void : c++;
+
+   # Resize the matrix
+   user_method resize($$) : non_const : void : c++;
 }
 
-function entire(SparseVector) : c++ : returns(SparseIterator<*>);
+
+property_type Matrix {
+
+   # accept a SparseMatrix of a different type as a value of Matrix property but substitute the desired element type
+   type_method coherent_type {
+      my ($self, $value)=@_;
+      instanceof SparseMatrix($value) ? typeof SparseMatrix(@{$self->params}) : undef;
+   }
+}
+
+
+function entire(SparseVector:anchor) : c++ : returns(SparseIterator);
 
 # @category Data Conversion
 # Convert to an equivalent dense vector of the same element type.
@@ -569,14 +594,12 @@ user_function dense<Element>(SparseVector<Element>) { new Vector<Element>(shift)
 # @tparam Element
 # @param SparseMatrix<Element> m
 # @return Matrix<Element>
-user_function dense<Element>(SparseMatrix<Element>) { new Matrix<Element>(shift) }
-
+user_function dense<Element>(SparseMatrix<Element,_>) { new Matrix<Element>(shift) }
 
 # @category Data Conversion
 # @param Set S
 # @tparam Scalar
 user_function toVector<Scalar>(Set:wary:anchor $) : c++ (name => 'same_element_sparse_vector', include => "polymake/SparseVector.h");
-
 
 # @category Data Conversion
 # @param IncidenceMatrix A
@@ -602,7 +625,6 @@ user_function dense(Set $) { dense(toVector<Int>(@_)); }
 # @return Set<Int>
 user_function indices(SparseVector:anchor) : c++ (include => "polymake/Set.h");
 
-
 # @category Data Conversion
 # Get the positions of non-zero entries of a sparse matrix.
 # @param SparseMatrix m
@@ -612,45 +634,66 @@ user_function index_matrix(SparseMatrix:anchor) : c++ (include => "polymake/Inci
 
 ##################################################################################
 
-##declare property_type MaxPlusRational : c++ (operators => ' bool @arith @compare') {
+# types for tropical addition
 
-##   function ONE() : c++ (name => 'MaxPlusRational::ONE', include => ["MaxPlusRational.h"]);
+# @category Arithmetic
+# tropical addition: min
+declare property_type Min : c++ (special => 'Min', include => "polymake/TropicalNumber.h") {
 
-##   function ZERO() : c++ (name => 'MaxPlusRational::ZERO', include => ["MaxPlusRational.h"]);
-   
-##   user_method get_value() : c++;
-##}
+    user_method orientation() { return 1; }
+    
+    user_method apply {my ($o,$x,$y) = @_; return min($x,$y);}
+}
 
-##user_function isfinite(MaxPlusRational) : c++ (include => ["MaxPlusRational.h"]);
+# @category Arithmetic
+# tropical addition: max
+declare property_type Max : c++ (special => 'Max', include => "polymake/TropicalNumber.h") {
 
-##user_function isinf(MaxPlusRational) : c++ (include => ["MaxPlusRational.h"]);
+    user_method orientation() { return -1; }
+    
+    user_method apply {my ($o,$x,$y) = @_; return max($x,$y);}
+}
 
+# @category Arithmetic
+# @tparam Addition
+# @tparam Scalar default: [[Rational]]
+declare property_type TropicalNumber<Addition, Scalar=Rational> : c++ \
+  (operators => '++ + += * *= / /= neg - @compare', include => "polymake/TropicalNumber.h") {
+  
+    # @return The orientation of the associated addition, i.e. 
+    # +1 if the corresponding 0 is +inf
+    # -1 if the corresponding 0 is -inf
+    user_method orientation() {
+      return Addition->orientation();
+    }
+    
+    # @return The zero element of the tropical semiring of this element.
+    user_method zero() : static : c++ (include => "polymake/TropicalNumber.h");
+    
+  }; 
+  
+# function is_tropical_addition(Min) {1}
+# function is_tropical_addition(Max) {1}
+# function is_tropical_addition() {0}
+  
 ##################################################################################
 
 # @category Algebraic Types
 # @tparam Coefficient default: [[Rational]]
 # @tparam Exponent default: [[Int]]
-declare property_type Ring<Coefficient=Rational, Exponent=Int> : c++ \
-   (include => "polymake/Ring.h", operators => '== !=', default_constructor => "deserialize") {
+declare property_type Ring<Coefficient=Rational, Exponent=Int> \
+   : c++ (include => "polymake/Ring.h", operators => '@eq', default_constructor => 'Deserializing') {
 
    # number of variables and the name stem
-   method construct(Int,$) : c++;
+   method construct(Int, String) : c++;
 
    # list of names
-   method construct($$@) {
-      my $proto=shift;
-      $proto->construct->(\@_);
-   }
+   method construct(String+) : c++;
 
    # ring with polynomial coefficients
-   method construct (Ring,*) : c++;
+   method construct(Ring, Int, String) : c++;
 
-   method construct(Ring,Int,$) : c++;
-
-   method construct(Ring,$$@) {
-      my ($proto, $coeff_ring)=splice @_, 0, 2;
-      $proto->construct($coeff_ring, \@_);
-   }
+   method construct(Ring, String+) : c++;
 
    user_method variables() : returns(@) : c++ (include => "polymake/Polynomial.h");
 
@@ -661,13 +704,15 @@ declare property_type Ring<Coefficient=Rational, Exponent=Int> : c++ \
    user_method names() : c++;
 
    method id() : c++;
+
+   type_method toXML { &Core::CPlusPlus::serialized_with_id_toXML }
 }
 
 # @category Algebraic Types
 # @tparam Coefficient default: [[Rational]]
 # @tparam Exponent default: [[Int]]
-declare property_type Monomial<Coefficient=Rational, Exponent=Int> : c++ \
-   (operators => '@arith_nodiv / ^ ^= @compare', include => "polymake/Polynomial.h") {
+declare property_type Monomial<Coefficient=Rational, Exponent=Int> \
+   : c++ (operators => '@arith_nodiv / ^ ^= @compare', include => "polymake/Polynomial.h") {
 
    method construct(Ring) : c++;
 
@@ -678,8 +723,8 @@ declare property_type Monomial<Coefficient=Rational, Exponent=Int> : c++ \
 # A class for __univariate__ monomials.
 # @tparam Coefficient default: [[Rational]]
 # @tparam Exponent default: [[Int]]
-declare property_type UniMonomial<Coefficient=Rational, Exponent=Int> : c++ \
-   (operators => '@arith_nodiv / ^ ^= @compare', include => "polymake/RationalFunction.h") {
+declare property_type UniMonomial<Coefficient=Rational, Exponent=Int> \
+   : c++ (operators => '@arith_nodiv / ^ ^= @compare', include => "polymake/RationalFunction.h") {
 
    method construct(Ring) : c++;
 
@@ -689,8 +734,9 @@ declare property_type UniMonomial<Coefficient=Rational, Exponent=Int> : c++ \
 # @category Algebraic Types
 # @tparam Coefficient default: [[Rational]]
 # @tparam Exponent default: [[Int]]
-declare property_type Term<Coefficient=Rational, Exponent=Int> : c++ \
-   (operators => '@arith @compare', include => "polymake/Polynomial.h") {
+declare property_type Term<Coefficient=Rational, Exponent=Int> \
+   : upgrades( Coefficient, Monomial<Coefficient, Exponent> ) \
+   : c++ (operators => '@arith @compare', include => "polymake/Polynomial.h") {
 
    method construct(Ring) : c++;
 
@@ -701,8 +747,9 @@ declare property_type Term<Coefficient=Rational, Exponent=Int> : c++ \
 # A class for __univariate__ terms.
 # @tparam Coefficient default: [[Rational]]
 # @tparam Exponent default: [[Int]]
-declare property_type UniTerm<Coefficient=Rational, Exponent=Int> : c++ \
-   (operators => '@arith @compare', include => "polymake/RationalFunction.h") {
+declare property_type UniTerm<Coefficient=Rational, Exponent=Int> \
+   : upgrades( Coefficient, UniMonomial<Coefficient, Exponent> ) \
+   : c++ (operators => '@arith @compare', include => "polymake/RationalFunction.h") {
 
    method construct(Ring) : c++;
 
@@ -712,8 +759,9 @@ declare property_type UniTerm<Coefficient=Rational, Exponent=Int> : c++ \
 # @category Algebraic Types
 # @tparam Coefficient default: [[Rational]]
 # @tparam Exponent default: [[Int]]
-declare property_type Polynomial<Coefficient=Rational, Exponent=Int> : c++ \
-   (operators => '@arith @compare', include => "polymake/Polynomial.h") {
+declare property_type Polynomial<Coefficient=Rational, Exponent=Int> \
+   : upgrades( Term<Coefficient, Exponent> ) \
+   : c++ (operators => '@arith @compare', include => "polymake/Polynomial.h") {
 
    method construct(Ring) : c++;
 
@@ -745,8 +793,9 @@ declare property_type Polynomial<Coefficient=Rational, Exponent=Int> : c++ \
 # A class for __univariate__ polynomials.
 # @tparam Coefficient default: [[Rational]]
 # @tparam Exponent default: [[Int]]
-declare property_type UniPolynomial<Coefficient=Rational, Exponent=Int> : c++ \
-   (operators => '@arith % %= @compare', include => "polymake/RationalFunction.h") {
+declare property_type UniPolynomial<Coefficient=Rational, Exponent=Int> \
+   : upgrades( UniTerm<Coefficient, Exponent> ) \
+   : c++ (operators => '@arith % %= @compare', include => "polymake/RationalFunction.h") {
 
    method construct(Ring) : c++;
 
@@ -772,11 +821,13 @@ declare property_type UniPolynomial<Coefficient=Rational, Exponent=Int> : c++ \
 # @return UniPolynomial
 user_function gcd(UniPolynomial, UniPolynomial) : c++;
 
+
 # @category Algebraic Types
 # @tparam Coefficient default: [[Rational]]
 # @tparam Exponent default: [[Int]]
-declare property_type RationalFunction<Coefficient=Rational, Exponent=Int> : c++ \
-  (operators => '@arith @eq', include => "polymake/RationalFunction.h") {
+declare property_type RationalFunction<Coefficient=Rational, Exponent=Int> \
+   : upgrades( UniPolynomial<Coefficient, Exponent> ) \
+   : c++ (operators => '@arith @eq', include => "polymake/RationalFunction.h") {
 
    method construct(Ring) : c++;
 
@@ -798,6 +849,10 @@ user_function numerator(RationalFunction) : c++;
 # @param RationalFunction f
 user_function denominator(RationalFunction) : c++;
 
+
+# @topic category property_types/Linear Algebra
+# These types are needed as return types of algebraic computations.
+
 # @category Linear Algebra
 # Complete result of the __Smith normal form__ computation.
 # Contains the following fields:
@@ -813,9 +868,6 @@ declare property_type SmithNormalForm<Scalar> : c++ (include => "polymake/Smith_
 # @param Matrix M must be of integer type
 # @param Bool inv optional, if true, compute the inverse of the companion matrices
 user_function smith_normal_form(Matrix; $=0) : c++ (include => "polymake/Smith_normal_form.h");
-
-
-
 
 
 # Local Variables:

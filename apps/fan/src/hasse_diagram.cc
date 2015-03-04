@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -45,7 +45,7 @@ perl::Object hasse_diagram(const IncidenceMatrix<> &MaximalCones,
       
    // fill the hasse diagram
    graph::HasseDiagram HD;
-   graph::HasseDiagram::_filler HD_filler(HD);
+   graph::HasseDiagram::_filler HD_filler(HD,false);
 
    // the number of the next node added in the Hasse diagram
    int i=0;
@@ -147,9 +147,10 @@ perl::Object hasse_diagram(const IncidenceMatrix<> &MaximalCones,
    // collect isolated rays
    // we have to add an edge to the top node for those
    Set<int> isolated_rays;
-   for (Entire< Set<int> >::const_iterator f_it=entire(facets_of_dim[1]); !f_it.at_end(); ++f_it) 
-      if ( MaximalCones[*f_it].size() == 1 )
-         isolated_rays += *(MaximalCones[*f_it].begin());
+   if (dim >-1)
+      for (Entire< Set<int> >::const_iterator f_it=entire(facets_of_dim[1]); !f_it.at_end(); ++f_it) 
+         if ( MaximalCones[*f_it].size() == 1 )
+            isolated_rays += *(MaximalCones[*f_it].begin());
 
    // record the first node in the ray level
    int node_in_ray_level = i;
@@ -175,6 +176,11 @@ perl::Object hasse_diagram(const IncidenceMatrix<> &MaximalCones,
       HD_filler.add_edge(i, node_in_ray_level);
       ++node_in_ray_level;
    }
+   
+   // add an edge between the origin and the artificial node for fans
+   // without rays
+   if (dim == -1)
+      HD_filler.add_edge(i,0);
       
    return HD.makeObject();
 }

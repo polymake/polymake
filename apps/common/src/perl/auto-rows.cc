@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,24 +16,24 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/Graph.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Integer.h"
+#include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
+#include "polymake/Set.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/Vector.h"
 #include "polymake/client.h"
 #include "polymake/linalg.h"
-#include "polymake/Rational.h"
-#include "polymake/Matrix.h"
-#include "polymake/IncidenceMatrix.h"
-#include "polymake/Set.h"
-#include "polymake/Integer.h"
-#include "polymake/SparseMatrix.h"
-#include "polymake/Graph.h"
-#include "polymake/Vector.h"
-#include "polymake/QuadraticExtension.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
    FunctionInterface4perl( rows_X8, T0 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturnAnch( (1)(arg0), rows(arg0.get<T0>()) );
+      WrapperReturnAnch( 1, (arg0), rows(arg0.get<T0>()) );
    };
 
    template <typename T0>
@@ -78,5 +78,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::RowChain<pm::RowChain<pm::Matrix<pm::Integer> const&, pm::Matrix<pm::Integer> const&> const&, pm::Matrix<pm::Integer> const&> >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational>&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<pm::Rational const&> const&>, pm::Matrix<pm::Rational> const&> >);
+   FunctionInstance4perl(rows_f1, perl::Canned< const pm::Transposed<pm::Matrix<pm::Rational> > >);
+   FunctionInstance4perl(rows_X, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

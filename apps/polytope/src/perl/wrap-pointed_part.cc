@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,11 +19,11 @@
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( pointed_part_x, T0 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturn( pointed_part<T0>(arg0) );
+   FunctionInterface4perl( pointed_part_T_x, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturn( (pointed_part<T0>(arg0)) );
    };
 
-   FunctionInstance4perl(pointed_part_x, Rational);
+   FunctionInstance4perl(pointed_part_T_x, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -43,6 +43,7 @@ public class JRViewerUtility {
 	 */
 	private static class ContentPriorityComparator implements Comparator<Content> {
 
+		@Override
 		public int compare(Content o1, Content o2) {
 			return getContentPriority(o1) < getContentPriority(o2) ? 1 : -1;
 		}

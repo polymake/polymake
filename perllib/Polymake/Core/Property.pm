@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -45,8 +45,8 @@ use Polymake::Struct (
                                   # for abstract types only:
    [ '$inst_cache' => 'undef' ],  #  concrete ObjectType => cloned Property
    [ '$cloned_from' => 'undef' ], #  back reference from a concrete clone to an abstract Property
-                                  # for aliases defined in derived objects: 
-   [ '$overrides' => 'undef' ],   #  [ Property, ObjectType ] original property overriden by this one and the object type the overriding belongs to
+                                  # for aliases defined in derived objects:
+   [ '$overrides' => 'undef' ],   #  [ Property, ObjectType ] original property overridden by this one and the object type the overriding belongs to
                                   # for atomic properties of abstract locally derived subobjects:
    [ '$up' => '0' ],              #  how many parent objects to travel upwards in order to get a proper type context
 
@@ -68,8 +68,13 @@ use Polymake::Enum qw( is: mutable=1 locally_derived=2 multiple=4 produced_as_wh
 
 sub new {
    my $self=&_new;
-   if ($Application::plausibility_checks && $self->flags & $is_multiple && !instanceof ObjectType($self->type)) {
-      croak( "an atomic property may not be declared as multiple" );
+   if ($Application::plausibility_checks) {
+      if ($self->flags & $is_multiple && !instanceof ObjectType($self->type)) {
+         croak( "an atomic property may not be declared multiple" );
+      }
+      if ($self->flags & $is_non_storable && instanceof ObjectType($self->type)) {
+         croak( "only atomic properties can be declared non-storable" );
+      }
    }
    if (is_object($INC[0]) && $INC[0] != $self->belongs_to->application) {
       $self->application=$INC[0];
@@ -123,7 +128,12 @@ sub analyze {
       create_local_derivation_mixin($self, $self->belongs_to);
    } else {
       namespaces::using($pkg, $self->type->pkg);
-      PropertyType::store_methods(@_, qw(canonical equal));
+      my $symtab=get_pkg($pkg);
+      foreach (qw(canonical equal)) {
+         if (exists &{$symtab->{$_}}) {
+            $self->$_=\&{$symtab->{$_}};
+         }
+      }
    }
 }
 ####################################################################################
@@ -243,7 +253,7 @@ sub concrete {
 ####################################################################################
 sub declared {
    my $self=shift;
-   $self->cloned_from || $self
+   $self->cloned_from // $self
 }
 ####################################################################################
 sub specialization {
@@ -268,16 +278,16 @@ sub choose_methods {
    my ($self)=@_;
    $self->flags & $is_locally_derived || instanceof ObjectType($self->type)
    ? (\&accept_subobject, undef) :
-   instanceof ObjectArrayType($self->type)
+   ($self->type->super == typeof BigObjectArray)
    ? do {
       $self->flags |= $is_subobject_array;
       (\&accept_subobject_array, \&copy_subobject_array)
    } :
    defined($self->construct)
    ? (\&accept_special_constructed, \&copy_special_constructed) :
-   $self->type->construct
+   $self->type->cppoptions && !$self->type->cppoptions->builtin
    ? (\&accept_composite, \&copy_composite)
-   : (\&accept_atomic, \&copy_atomic);
+   : (\&accept_builtin, \&copy_builtin);
 }
 ####################################################################################
 sub accept_subobject : method {
@@ -325,6 +335,7 @@ sub accept_subobject : method {
       }
    } elsif (defined($obj->transaction)) {
       unless ($temp && defined($obj->transaction->rule)) {
+         ## FIXME: suspicious logical expression
          if (not($self->flags & $is_subobject_array) || $value->has_cleanup) {
             $obj->transaction->descend($value, !($self->flags & $is_permutation));
             if ($value->has_cleanup) {
@@ -345,7 +356,7 @@ sub create_subobject : method {
 
 sub subobject_type {
    my $self=shift;
-   $self->flags & $is_subobject_array ? $self->type->param : $self->type;
+   $self->flags & $is_subobject_array ? $self->type->params->[0] : $self->type;
 }
 ####################################################################################
 sub accept_subobject_array : method {
@@ -378,23 +389,18 @@ sub accept_composite : method {
    if (defined $value) {
       my $needs_canonicalization=!$trusted && defined($self->canonical);
       my ($is_object, $type_mismatch);
-      if (is_string($value)) {
-         local $PropertyType::trusted_value=$trusted;
-         $value=$self->type->parse_string->($value);
-      } elsif (!($is_object=is_object($value)) or
-               $type_mismatch=!$self->type->isa->($value) or
-               $self->type->cppoptions && !$self->type->cppoptions->builtin &&
-               CPlusPlus::must_be_copied($value,$temp,$needs_canonicalization)) {
+      if (!($is_object=is_object($value)) or
+          $type_mismatch=!$self->type->isa->($value) or
+          $self->type->cppoptions && !$self->type->cppoptions->builtin &&
+          CPlusPlus::must_be_copied($value, $temp, $needs_canonicalization)) {
          my $target_type= $type_mismatch
-                          ? $self->cloned_from &&
-                            eval { $value->rebind_type($self->cloned_from->type)->concrete_type($obj->type) }
-                          : $is_object &&
-                            $value->type;
+                          ? $self->type->coherent_type->($value)
+                          : $is_object && $value->type;
          local $PropertyType::trusted_value=$trusted;
          $value=($target_type || $self->type)->construct->($value);
       }
       if ($needs_canonicalization) {
-         select_method($self->canonical,$obj,1)->($value);
+         select_method($self->canonical, $obj, 1)->($value);
       }
    }
    new PropertyValue($self, $value, $temp);
@@ -436,20 +442,19 @@ sub copy_special_constructed : method {
    }
 }
 ####################################################################################
-sub accept_atomic : method {
+sub accept_builtin : method {
    my ($self, $value, $obj, $trusted, $temp)=@_;
    if (defined $value) {
-      if (is_string($value)) {
-         $value=$self->type->parse_whole($value, $trusted);
-      }
+      local $PropertyType::trusted_value=$trusted;
+      $value=$self->type->construct->($value);
       if (!$trusted && defined($self->canonical)) {
-         select_method($self->canonical,$obj,1)->($value);
+         select_method($self->canonical, $obj, 1)->($value);
       }
    }
    new PropertyValue($self, $value, $temp);
 }
 
-sub copy_atomic : method {
+sub copy_builtin : method {
    my ($self, $value)=@_;
    new PropertyValue($self, $value);
 }
@@ -486,12 +491,12 @@ sub new {
    $self;
 }
 
-sub key { shift }
-sub property { (shift)->{$prop_key} }
-sub subobject_property { (shift)->{$subobj_key} }
+sub key { $_[0] }
+sub property { $_[0]->{$prop_key} }
+sub subobject_property { $_[0]->{$subobj_key} }
 sub property_key { (&property)->key }
 sub belongs_to { (&subobject_property)->belongs_to }
-sub on_permutation_path { (shift)->{$perm_key} }
+sub on_permutation_path { $_[0]->{$perm_key} }
 
 1
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -175,7 +175,7 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                           "# @author Kerstin Fritzsche (initial version)",
                   &wedge,
                           "wedge(Polytope, $; $=0, $=($_[2]==0 ? 1 : -$_[2]), { noc => undef, relabel => undef})");
-//                          "wedge<Scalar>(Polytope<Scalar>, Int; Scalar=0, Scalar=(Scalar($_[2])==Scalar(0) ? Scalar(1) : -Scalar($_[2])), { noc => undef, relabel => undef})");
+//                          "wedge<Scalar>(Polytope<type_upgrade<Scalar>>, Int; type_upgrade<Scalar>=0, type_upgrade<Scalar>=($_[2]==0 ? 1 : -$_[2]), { noc => undef, relabel => undef})");
 } }
 
 // Local Variables:

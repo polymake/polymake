@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -17,7 +17,7 @@
 # In this category you find all property types related to sets, such as Set, Map, HashMap, IncidenceMatrix, ...
 
 # @topic category functions/Set Operations
-# This category contains functions performing operations on Sets.
+# This category contains functions performing operations on [[Set|Sets]].
 
 # @category Set Types
 # A type for sets containing elements of type //Element//.
@@ -30,7 +30,7 @@
 #	$s1 * $s2  intersection
 # 	$s1 - $s2  difference
 #	$s1 ^ $s2  symmetric difference 
-# @tparam Element default: Int
+# @tparam Element default: [[Int]]
 declare property_type Set<Element=Int> : c++ (include => "polymake/Set.h", operators => '@sets @compare') {
 
    method contains {
@@ -38,9 +38,17 @@ declare property_type Set<Element=Int> : c++ (include => "polymake/Set.h", opera
       exists $self->{$key};
    }
 
-	# The cardinality of the set.
-	# @return Int
+   # The cardinality of the set.
+   # @return Int
    user_method size() : c++;
+
+   # The first element of the (implicitly sorted) set
+   # @return Int
+   user_method front() : c++;
+
+   # The last element of the (implicitly sorted) set
+   # @return Int
+   user_method back() : c++;
 }
 
 # @category Set Operations
@@ -64,7 +72,6 @@ user_function range(Int,Int) : c++ (include => "polymake/Set.h") {
    if ($_[0] > $_[1]) {
       croak( "invalid range: lower limit > upper limit" );
    }
-   &{pop(@_)};
 }
 
 # @category Set Operations
@@ -76,7 +83,6 @@ user_function sequence(Int,Int) : c++ (include => "polymake/Set.h") {
    if ($_[1] < 0) {
       croak( "invalid sequence: negative size" );
    }
-   &{pop(@_)};
 }
 
 function permuted(Set, *) : c++;
@@ -98,7 +104,7 @@ user_function scalar2set(*) : c++ (name => 'pm::scalarcopy2set', include => "pol
 
 # @category Set Types
 # A [[Set]] whose elements are of type Set<//Element//>.
-# @tparam Element default: Int
+# @tparam Element default: [[Int]]
 declare property_type PowerSet<Element=Int> : Set<Set<Element>> : c++ (include => "polymake/PowerSet.h");
 
 function permuted(PowerSet, *) : c++;
@@ -108,13 +114,16 @@ function permuted_inv(PowerSet, *) : c++;
 
 
 # allow to write ~[0,1,2] in contexts where a Set<Int> is expected
-function _construct_set($) : subst_const_op( ~ ) {
+sub _construct_set {
    if ($#{$_[0]} > 0) {
       new Set($_[0])
    } else {
       scalar2set(@{$_[0]});
    }
 }
+
+namespaces::intercept_const_creation(undef, '~', \&_construct_set);
+
 
 # @category Set Types
 # A FacetList is a collection of sets of integral numbers from a closed contiguous range [0..n-1]. The contained sets usually encode facets and the set elements vertices of a simplicial complex.
@@ -125,43 +134,49 @@ declare property_type FacetList : c++ (include => "polymake/FacetList.h") {
    # @return Bool
    user_method insertMax(Set) : non_const : c++;
 
-	# The opposite of [[insertMax]]: add a new facet if and only if there are no facets included in it, remove all facets including the new facet.
-	# @param Set facet
-	# @return Bool
+   # The opposite of [[insertMax]]: add a new facet if and only if there are no facets included in it, remove all facets including the new facet.
+   # @param Set facet
+   # @return Bool
    user_method insertMin(Set) : non_const : c++;
 
-	# The number of facets in the list.
-	# @return Int
+   # The number of facets in the list.
+   # @return Int
    user_method size() : c++;
 
 }
 
 ##################################################################################
 
-# @category Set Types
-# Labels an [[IncidenceMatrix]] as __non-symmetric__.
-declare property_type NonSymmetric : c++ (special => 'NonSymmetric', include => "polymake/IncidenceMatrix.h");
-
-# @category Set Types
+# @category Artificial
 # Labels an [[IncidenceMatrix]] as __symmetric__.
 declare property_type Symmetric : c++ (special => 'Symmetric', include => "polymake/IncidenceMatrix.h");
+
+# @category Artificial
+# Labels an [[IncidenceMatrix]] as __non-symmetric__.
+declare property_type NonSymmetric : upgrades(Symmetric) : c++ (special => 'NonSymmetric', include => "polymake/IncidenceMatrix.h");
 
 # @category Set Types
 # A 0/1 incidence matrix.
 # @tparam Sym one of [[Symmetric]] or [[NonSymmetric]], default: [[NonSymmetric]]
-declare property_type IncidenceMatrix<Sym=NonSymmetric> : c++ \
-   (include => "polymake/IncidenceMatrix.h", operators => '@sets:wary /:wary:anchor |:wary:anchor /=:wary |=:wary @compare:wary') {
+declare property_type IncidenceMatrix<Sym=NonSymmetric> \
+   : c++ (include => "polymake/IncidenceMatrix.h", operators => '@sets:wary /:wary:anchor |:wary:anchor /=:wary |=:wary @compare:wary') {
 
-   method construct(*,Int) : c++;
+   # Construct a matrix from a given sequence of rows.
+   # @param Set sets representing the rows
+   # @param Int c number of columns
+   method construct(Set+, Int) : c++;
 
-   method construct(Int,Int) : c++;
+   # Construct a matrix of given dimensions, all elements implicitly initialized to `false'.
+   # @param Int r number of rows
+   # @param Int c number of columns
+   method construct(Int, Int) : c++;
 
-	# Returns the number of rows.
-	# @return Int
+   # Returns the number of rows.
+   # @return Int
    user_method rows() : c++;
 
-	# Returns the number of columns.
-	# @return Int
+   # Returns the number of columns.
+   # @return Int
    user_method cols() : c++;
 
    # Returns the //i//-th row.
@@ -174,26 +189,26 @@ declare property_type IncidenceMatrix<Sym=NonSymmetric> : c++ \
    # @return SparseVector<Int>
    user_method col($) : lvalue_opt : wary : c++;
 
- 	# Returns a __minor__ of the matrix containing the rows in //r// and the columns in //c//. You can pass [[all_rows_or_cols|All]] if you want all rows or columns and ~ for the complement of a set. E.g. 
-	#	$A->minor(All, ~[0]);
-	# will give you the minor of a matrix containing all rows and all but the 0-th column.
-	# @param Set r the rows
-	# @param Set c the columns
-	# @return IncidenceMatrix
+   # Returns a __minor__ of the matrix containing the rows in //r// and the columns in //c//. You can pass [[all_rows_or_cols|All]] if you want all rows or columns and ~ for the complement of a set. E.g. 
+   #	$A->minor(All, ~[0]);
+   # will give you the minor of a matrix containing all rows and all but the 0-th column.
+   # @param Set r the rows
+   # @param Set c the columns
+   # @return IncidenceMatrix
    user_method minor(*:anchor,*:anchor) : lvalue_opt : wary : c++;
 
    method operator($,$) : lvalue_opt : wary : c++;
 
- 	# Removes empty rows and columns.
-	# The remaining rows and columns are renumbered without gaps.
+   # Removes empty rows and columns.
+   # The remaining rows and columns are renumbered without gaps.
    user_method squeeze() : non_const : void : c++;
 
-	# Removes empty rows.
-	# The remaining rows are renumbered without gaps.
+   # Removes empty rows.
+   # The remaining rows are renumbered without gaps.
    user_method squeeze_rows() : non_const : void : c++;
 
-	# Removes empty columns.
-	# The remaining columns are renumbered without gaps.
+   # Removes empty columns.
+   # The remaining columns are renumbered without gaps.
    user_method squeeze_cols() : non_const : void : c++;
 }
 
@@ -237,10 +252,10 @@ user_function transpose(IncidenceMatrix:anchor) : c++ (name => 'T');
 # @tparam Value	type of the mapped value
 declare property_type Map<Key,Value> : c++ (include => "polymake/Map.h", operators => '@string') {
 
-   method equal {
-      my ($self, $m1, $m2)=@_;
+   type_method equal {
+      my ($proto, $m1, $m2)=@_;
       return 0 unless keys(%$m1) == keys(%$m2);
-      my ($pk, $pv)=@{$self->param};
+      my ($pk, $pv)=@{$proto->params};
       while (my ($k1, $v1, $k2, $v2)=(each(%$m1), each(%$m2))) {
          return 0 unless $pk->equal->($k1,$k2) && $pv->equal->($v1,$v2);
       }

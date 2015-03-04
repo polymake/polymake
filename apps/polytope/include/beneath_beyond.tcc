@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -31,6 +31,10 @@ void beneath_beyond_algo<E>::compute(Iterator perm)
          // the special case: a single point
          triang_size=1;
          triangulation.push_back(scalar2set(p1));
+         // There is one empty facet in this case and the point is also a facet normal
+         int f0=dual_graph.add_node();
+         facets[f0].vertices = Set<int>();
+         facets[f0].normal = points[p1];
          return;
       }
       int p2=*perm;  ++perm;

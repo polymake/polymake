@@ -234,6 +234,7 @@ public class View extends SideContainerPerspective implements ChangeListener {
 		return runningEnvironment;
 	}
 
+	@Override
 	public void stateChanged(ChangeEvent e) {
 		if (e.getSource() instanceof Scene) {
 			Scene scene = (Scene) e.getSource();
@@ -281,6 +282,7 @@ public class View extends SideContainerPerspective implements ChangeListener {
 		}
 	}
 
+	@Override
 	public Icon getIcon() {
 		return getPluginInfo().icon;
 	}
@@ -295,6 +297,7 @@ public class View extends SideContainerPerspective implements ChangeListener {
 		View.mainIconList = iconList;
 	}
 
+	@Override
 	public String getTitle() {
 		return title;
 	}
@@ -306,6 +309,7 @@ public class View extends SideContainerPerspective implements ChangeListener {
 		View.title = title;
 	}
 	
+	@Override
 	public void setVisible(boolean visible) {
 	}
 
@@ -330,6 +334,7 @@ public class View extends SideContainerPerspective implements ChangeListener {
 			JRadioButtonMenuItem item = new JRadioButtonMenuItem(
 			new AbstractAction(name) {
 				private static final long serialVersionUID = 1L;
+				@Override
 				public void actionPerformed(ActionEvent e) {
 					viewerSwitch.selectViewer(index);
 					viewerSwitch.getCurrentViewer().renderAsync();

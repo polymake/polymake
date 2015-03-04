@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -24,8 +24,6 @@
 #include "polymake/Bitset.h"
 #include "polymake/permutations.h"
 #include "polymake/polytope/linsolver.h"
-
-#include "ppl.hh"
 
 namespace polymake { namespace polytope { namespace ppl_interface {
 

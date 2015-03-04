@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -24,7 +24,6 @@ method representative { $_[0]->PointConfiguration }
 
 method basis_solid { $_[0]->elements->[0] }
 
-# @category Visualization
 # Visualize the [[TRIANGULATION]] of a point configuration
 # @options %Visual::Polygons::decorations
 # @return Visual::PointConfiguration
@@ -56,8 +55,7 @@ user_method TRIANGULATION(;%Visual::Polygons::decorations) {
    visualize($self);
 }
 
-# @category Visualization
-# Draw the edges of the [[PointConfiguration::TRIANGULATION_BOUNDARY|TRIANGULATION_BOUNDARY]].
+# Draw the edges of the [[Visual::PointConfiguration::TRIANGULATION_BOUNDARY|TRIANGULATION_BOUNDARY]].
 # The facets are made transparent.
 # @options %Visual::Graph::decorations
 # @return Visual::PointConfiguration
@@ -78,7 +76,6 @@ user_method TRIANGULATION_BOUNDARY(%Visual::Graph::decorations) {
    visualize($self);
 }
 
-# @category Visualization
 # Visualize the [[POLYTOPAL_SUBDIVISION]] of a point configuration.
 # @options %Visual::Polygons::decorations
 # @return Visual::PointConfiguration

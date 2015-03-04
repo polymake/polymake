@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -54,7 +54,6 @@ sub LP_influence_on_embedding {
    }
 }
 
-# @category Visualization
 # Illustrate the behavior of a linear objective function on the polytope.
 # Color the nodes according to the value the objective function takes
 # on the vertices.
@@ -82,7 +81,6 @@ user_method VERTEX_COLORS(; LinearProgram { min => $Visual::Color::min, max => $
    visualize($self);
 }
 
-# @category Visualization
 # Illustrate the behavior of a linear objective function on the polytope.
 # The vertices belonging to [[MINIMAL_FACE]] and [[MAXIMAL_FACE]] are drawn in distinct colors
 # 
@@ -120,7 +118,6 @@ user_method MIN_MAX_FACE(; LinearProgram { min => $Visual::Color::min, max => $V
    visualize($self);
 }
 
-# @category Visualization
 # Show the growth direction of a linear objective function via arrowed edges.
 # @param LinearProgram lp a LinearProgram object attached to the polytope
 # @return Visual::PolytopeGraph
@@ -134,7 +131,7 @@ user_method DIRECTED_GRAPH(; LinearProgram) {
    } else {
       $lp=$self->Polytope->LP;
    }
-   $self->Name.=" DIRECTED with LP " . $lp->subobj_name;
+   $self->Name.=" DIRECTED with LP " . $lp->name;
    my $G=$self->basis_graph;
    if ($G->Graph->ADJACENCY->has_gaps) {
       $G->Graph = new graph::Graph(ADJACENCY => induced_subgraph($lp->DIRECTED_GRAPH->ADJACENCY, nodes($G->Graph->ADJACENCY)));

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -121,7 +121,6 @@ user_method BOUNDED_FACETS : UNBOUNDED_FACETS, N_FACETS {
 
 object LinearProgram {
 
-# @category Unbounded polyhedra
 # Subgraph of [[BOUNDED_GRAPH]]. Consists only of directed arcs along which the value of the objective function increases.
 
 property DIRECTED_BOUNDED_GRAPH : Graph<Directed>;

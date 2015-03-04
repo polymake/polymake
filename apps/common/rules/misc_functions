@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -21,7 +21,7 @@
 # @param Object object  to be modified
 # @return Object  the same //object//, but with modified type
 
-user_function cast<Target>(Core::Object) { (shift)->cast_me(typeof Target); }
+user_function cast<Target>(Core::Object) { $_[0]->cast_me(typeof Target); }
 
 
 # @category Utilities
@@ -70,7 +70,7 @@ user_function histogram {
    my ($data)=@_;
    return unless @$data;
    my $element_type=Core::PropertyType::guess_element_type($data);
-   my $map=Map->type($element_type, Int->type)->new_object;
+   my $map=(typeof Map($element_type, typeof Int))->construct->();
    ++$map->{$_} for @$data;
    $map
 }
@@ -86,10 +86,10 @@ user_function fibonacci {
    if ($m>=1) {
       push @numbers, 1;
       if ($m>=2) {
-	 push @numbers, 1;
-	 for (my $i=2; $i<$m; ++$i) {
-	    push @numbers, $numbers[$i-1]+$numbers[$i-2];
-	 }
+         push @numbers, 1;
+         for (my $i=2; $i<$m; ++$i) {
+            push @numbers, $numbers[$i-1]+$numbers[$i-2];
+         }
       }
    }
    return @numbers;
@@ -110,11 +110,11 @@ function all_subsets_of_k {
       push @result, [ @_[@index] ];
       next if ++$index[$ptr] < $n;
       do {
-	 return @result if --$ptr<0;
+         return @result if --$ptr<0;
       } while ((++$index[$ptr])+$k-$ptr > $n);
       while ($ptr<$k-1) {
-	 ++$ptr;
-	 $index[$ptr]=$index[$ptr-1]+1;
+         ++$ptr;
+         $index[$ptr]=$index[$ptr-1]+1;
       }
    }
 }
@@ -160,5 +160,6 @@ function find_labels {
 
 # Local Variables:
 # mode: perl
-# c-basic-offset:3
+# cperl-indent-level:3
+# indent-tabs-mode:nil
 # End:

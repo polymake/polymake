@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -45,10 +45,10 @@ perl::Object hypersimplex(int k, int d)
    return p;
 }
     
-UserFunction4perl("# @category Producing from scratch"
+UserFunction4perl("# @category Producing a tropical polytope"
                   "# Produce the tropical hypersimplex &Delta;(//k//,//d//)."
                   "# Cf." 
-                  "#    M. Joswig math/0312068v3, Ex. 2.10."
+                  "# \t M. Joswig math/0312068v3, Ex. 2.10."
                   "# The value of //k// defaults to 1, yielding a tropical standard simplex."
                   "# @param int k the number of -1 entries"
                   "# @param int d the dimension"

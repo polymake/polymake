@@ -65,6 +65,7 @@ public class Avatar extends Plugin implements ChangeListener {
 		speedSlider = new JSliderVR(0, 3000, (int) (100 * DEFAULT_SPEED));
 		speedSlider.setPreferredSize(new Dimension(200,26));
 		speedSlider.addChangeListener(new ChangeListener() {
+			@Override
 			public void stateChanged(ChangeEvent arg0) {
 				setNavigationSpeed(getNavigationSpeed());
 			}
@@ -81,6 +82,7 @@ public class Avatar extends Plugin implements ChangeListener {
 		jumpSpeedSlider = new JSliderVR(0, 3000, (int) (100 * DEFAULT_JUMP_SPEED));
 		jumpSpeedSlider.setPreferredSize(new Dimension(200,26));
 		jumpSpeedSlider.addChangeListener(new ChangeListener() {
+			@Override
 			public void stateChanged(ChangeEvent arg0) {
 				setJumpSpeed(getJumpSpeed());
 			}
@@ -220,6 +222,7 @@ public class Avatar extends Plugin implements ChangeListener {
 		shipNavigationTool.setPickDelegate(pickDelegate);
 	}
 
+	@Override
 	public void stateChanged(ChangeEvent e) {
 		if (e.getSource() instanceof Scene) {
 			Scene scene = (Scene) e.getSource();

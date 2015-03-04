@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -306,7 +306,7 @@ public:
    }
    bool contains(elem_arg_type x) const
    {
-      return get_container(x).contains(x);
+      return get_container().contains(x);
    }
    const typename deref<SetRef>::type::element_comparator& get_comparator() const
    {

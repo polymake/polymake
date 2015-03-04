@@ -1,0 +1,50 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object PolyhedralFan {
+
+   # A Polytope defined by a non-empty set of [[VERTICES]] or [[POINTS]] is always [[FEASIBLE]].
+   rule initial : {
+      if (defined (my $ic=$this->INPUT_CONES)) {
+         if($ic->size == 0){
+            my $emptySet = new Array<Set<Int>>();
+            my $empty = new Matrix<Scalar>();
+            my $ambient_dim= $this->lookup("FAN_AMBIENT_DIM")//0 ; 
+            my $M;
+            if ((defined ($M=$this->lookup("INPUT_RAYS")) && $M->cols()>0)
+                || (defined ($M=$this->lookup("INPUT_LINEALITY")) && $M->cols()>0))
+            {
+               $ambient_dim = $M->cols();
+            }
+            my $repl=new Core::Object::Replacement(RAYS => $empty, LINEALITY_SPACE => $empty, MAXIMAL_CONES => $emptySet, FAN_DIM=>-1, FAN_AMBIENT_DIM=>$ambient_dim); 
+            foreach my $prop (qw(INPUT_LINEALITY)) {
+               if (defined (my $val=$this->lookup($prop))) {
+                  $repl->attach($prop, $val);
+               }
+            }
+            die $repl;
+         }
+      }
+   }
+   precondition : exists(INPUT_CONES);
+
+}
+
+
+# Local Variables:
+# mode: perl
+# perl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

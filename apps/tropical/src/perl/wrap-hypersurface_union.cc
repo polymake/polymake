@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -14,16 +14,17 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/tropical/arithmetic.h"
 #include "polymake/Rational.h"
+#include "polymake/TropicalNumber.h"
 #include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/tropical/arithmetic.h"
 
 namespace polymake { namespace tropical { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( hypersurface_union_x_x_x, T0 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]);
+   FunctionInterface4perl( hypersurface_union_T_x_x_x, T0 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
       WrapperReturn( (hypersurface_union<T0>(arg0, arg1, arg2)) );
    };
 
@@ -33,7 +34,7 @@ namespace polymake { namespace tropical { namespace {
       WrapperReturnNew(T0, (arg0.get<T1>()) );
    };
 
-   FunctionInstance4perl(hypersurface_union_x_x_x, Min);
    FunctionInstance4perl(new_X, Matrix< int >, perl::Canned< const pm::ListMatrix<pm::Vector<int> > >);
+   FunctionInstance4perl(hypersurface_union_T_x_x_x, Min);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

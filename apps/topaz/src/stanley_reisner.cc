@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -53,10 +53,10 @@ perl::Object stanley_reisner(perl::Object C, perl::OptionSet options) {
   return I;
 }
 
-UserFunction4perl("# @category Producing from other"
-                  "# Creates the Stanley-Reisner ideal of a simplicial complex //C//."
+UserFunction4perl("# @category Other"
+                  "# Creates the __Stanley-Reisner ideal__ of a simplicial complex."
                   "# Optional //ring// parameter is required to have precisely as many variables as //C// has vertices."
-                  "# @param  SimplicialComplex C"
+                  "# @param  SimplicialComplex complex"
                   "# @option Ring<Rational,int> ring"
                   "# @return ideal::Ideal",
                   &stanley_reisner, "stanley_reisner(SimplicialComplex { ring => undef })");

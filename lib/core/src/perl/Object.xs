@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -121,7 +121,7 @@ PPCODE:
    PERL_CONTEXT *cx_bottom=cxstack, *cx=cx_bottom+cxstack_ix;
    while (cx >= cx_bottom) {
       if (CxTYPE(cx)==CXt_SUB && !SkipDebugFrame(cx,0)) {
-         OP* o=ReturnsToOp(cx);
+         OP* o=cx->blk_sub.retop;
          if (o == NULL) break;         /* called from call_sv due to some magic: assume no alternatives */
          if (o->op_type != OP_LEAVESUB && o->op_type != OP_LEAVESUBLV) {
             I32 skip=FALSE, push= GIMME_V == G_ARRAY;
@@ -133,7 +133,7 @@ PPCODE:
             AV* path_av=NULL;
             if (descend_path) {
                while (nop->op_type == OP_METHOD_NAMED && nop->op_next->op_type == OP_ENTERSUB) {
-                  if (!path_av) {
+                  if (path_av == NULL) {
                      path_av=newAV();
                      AvREAL_off(path_av);
                      sv_upgrade(descend_path, SVt_RV);
@@ -170,7 +170,7 @@ PPCODE:
                skip=TRUE;
                o=nop=nop->op_next;
             }
-            if (skip && !path_av) ReturnsToOp(cx)=o;
+            if (skip && path_av == NULL) cx->blk_sub.retop=o;
 #ifdef USE_ITHREADS
             if (saved_curpad) PL_curpad=saved_curpad;
 #endif
@@ -190,7 +190,7 @@ PPCODE:
    while (cx >= cx_bottom) {
       if (CxTYPE(cx)==CXt_SUB) {
          if (!SkipDebugFrame(cx,0)) {
-            o=ReturnsToOp(cx);
+            o=cx->blk_sub.retop;
             for (;;) {
                if (!o) {
                   if (cx->blk_gimme==G_ARRAY) XSRETURN_YES;

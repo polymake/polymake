@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -26,7 +26,7 @@ namespace polymake { namespace common { namespace {
    template <typename T0>
    FunctionInterface4perl( indices_X8, T0 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturnAnch( (1)(arg0), indices(arg0.get<T0>()) );
+      WrapperReturnAnch( 1, (arg0), indices(arg0.get<T0>()) );
    };
 
    FunctionInstance4perl(indices_X8, perl::Canned< const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<int, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric> >);

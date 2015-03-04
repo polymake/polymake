@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -82,46 +82,74 @@ rule GRAPH.NODE_LABELS = VERTEX_LABELS;
 
 # methods for backward compatibility
 
-# Degrees of vertices in the [[GRAPH]].
+# @category Combinatorics
+# Degrees of the vertices in the [[GRAPH]].
+# @return Array<Int>
 user_method VERTEX_DEGREES = GRAPH.NODE_DEGREES;
 
+# @category Topology
 # True if the [[GRAPH]] is a connected graph.
+# @return Bool
 user_method CONNECTED = GRAPH.CONNECTED;
 
+# @category Topology
 # True if the [[DUAL_GRAPH]] is a connected graph.
+# @return Bool
 user_method DUAL_CONNECTED = DUAL_GRAPH.CONNECTED;
 
+# @category Combinatorics
 # The connected components of the [[GRAPH]], encoded as node sets. 
+# @return PowerSet<Int>
 user_method CONNECTED_COMPONENTS = GRAPH.CONNECTED_COMPONENTS;
 
+# @category Combinatorics
 # The connected components of the [[DUAL_GRAPH]], encoded as node sets. 
+# @return PowerSet<Int>
 user_method DUAL_CONNECTED_COMPONENTS = DUAL_GRAPH.DUAL_CONNECTED_COMPONENTS;
 
+# @category Topology
 # Number of connected components of the [[GRAPH]].
+# @return Int
 user_method N_CONNECTED_COMPONENTS = GRAPH.N_CONNECTED_COMPONENTS;
 
+# @category Combinatorics
 # The maximal cliques of the [[GRAPH]], encoded as node sets.
+# @return PowerSet<Int>
 user_method MAX_CLIQUES = GRAPH.MAX_CLIQUES;
 
+# @category Combinatorics
 # The maximal cliques of the [[DUAL_GRAPH]], encoded as node sets.
+# @return PowerSet<Int>
 user_method DUAL_MAX_CLIQUES = DUAL_GRAPH.MAX_CLIQUES;
 
+# @category Combinatorics
 # Node connectivity of the [[GRAPH]], that is, the minimal number of nodes to be removed from the graph such that the result is disconnected.
+# @return Int
 user_method CONNECTIVITY = GRAPH.CONNECTIVITY;
 
+# @category Combinatorics
 # Node connectivity of the [[DUAL_GRAPH]]. Dual to [[CONNECTIVITY]].
+# @return PowerSet<Int>
 user_method DUAL_CONNECTIVITY = DUAL_GRAPH.CONNECTIVITY;
 
+# @category Combinatorics
 # True if [[GRAPH]] is a __bipartite__. 
+# @return Bool
 user_method BIPARTITE = GRAPH.BIPARTITE;
 
+# @category Combinatorics
 # True if [[DUAL_GRAPH]] is a __bipartite__.
+# @return Bool
 user_method DUAL_BIPARTITE = DUAL_GRAPH.BIPARTITE;
 
+# @category Combinatorics
 # Difference of the black and white nodes if the [[GRAPH]] is [[BIPARTITE]]. Otherwise -1.
+# @return Int
 user_method GRAPH_SIGNATURE = GRAPH.SIGNATURE;
 
+# @category Combinatorics
 # Difference of the black and white nodes if the [[DUAL_GRAPH]] is [[BIPARTITE]]. Otherwise -1. 
+# @return Int
 user_method DUAL_GRAPH_SIGNATURE = DUAL_GRAPH.SIGNATURE;
 
 
@@ -379,10 +407,27 @@ weight 1.10;
 
 }
 
+# @category Producing a new simplicial complex from others
+# Computes the __barycentric subdivision__ of //complex//.
+# @param SimplicialComplex complex
+# @option String pin_hasse_section default: HASSE_DIAGRAM
+# @option String label_section default: VERTEX_LABELS
+# @option String coord_section default: VERTICES
+# @option Bool geometric_realization set to 1 to obtain a [[GeometricSimplicialComplex]], default: 0
+# @return SimplicialComplex (or [[GeometricSimplicialComplex]])
 user_function barycentric_subdivision($ { relabel => 1, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", geometric_realization=>0, coord_section=>"VERTICES" }) {
     barycentric_subdivision_impl(@_);
 }
 
+# @category Producing a new simplicial complex from others
+# Computes the //k//-th __barycentric subdivision__ of //complex// by iteratively calling [[barycentric_subdivision]].
+# @param SimplicialComplex complex
+# @param Int k
+# @option String pin_hasse_section default: HASSE_DIAGRAM
+# @option String label_section default: VERTEX_LABELS
+# @option String coord_section default: VERTICES
+# @option Bool geometric_realization set to 1 to obtain a [[GeometricSimplicialComplex]], default: 0
+# @return SimplicialComplex (or [[GeometricSimplicialComplex]])
 user_function iterated_barycentric_subdivision($ $ { relabel => 1, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", geometric_realization=>0, coord_section=>"VERTICES" }) {
   iterated_barycentric_subdivision_impl(@_);
 }

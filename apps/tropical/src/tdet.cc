@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -21,9 +21,11 @@
 
 namespace polymake { namespace tropical {
   
-UserFunctionTemplate4perl("# @category Other"
-                          "# tropical determinant of a matrix with respect to MIN"
+UserFunctionTemplate4perl("# @category Tropical operations"
+                          "# The __tropical determinant__ of a matrix."
                           "# @param Matrix<Scalar> matrix"
+                          "# @tparam Addition [[Min]] or [[Max]], default [[Min]]"
+                          "# @tparam Scalar"
                           "# @return Scalar" ,
                           "tdet<Dir=Min,Scalar>(Matrix<Scalar>)");
 } }

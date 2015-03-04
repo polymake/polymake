@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -15,7 +15,6 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/Rational.h"
 #include "polymake/Array.h"
 #include "polymake/Set.h"
 #include "polymake/Matrix.h"
@@ -24,16 +23,27 @@
 
 namespace polymake { namespace polytope {
 
-template <typename Matrix2, typename E>
-void orthogonalize_facets(Matrix<E>& F, const GenericMatrix<Matrix2,E>& AH)
+/*
+ * affine projection of the points to the orthogonal
+ * complement of the lineality space
+ */
+template <typename E>
+void orthogonalize(Matrix<E>& Points, const Matrix<E>& LS)
 {
-   for (typename Entire< Rows<Matrix2> >::const_iterator a=entire(rows(AH)); !a.at_end(); ++a) {
-      const E s=sqr(a->slice(1));
-      for (typename Entire< Rows< Matrix<E> > >::iterator f=entire(rows(F)); !f.at_end(); ++f) {
-         const E x= f->slice(1) * a->slice(1);
-         if (!is_zero(x)) *f -= (x/s) * (*a);
-      }
-   }
+    Set<int> noRays;
+    for (int i=0; i< Points.rows(); ++i){
+       if (Points(i,0) != 0)
+          noRays += i;
+    }
+
+    // moving one point to the origin (watch out for rays)
+    Vector<E> a = (0|Points.row(*noRays.begin()).slice(1));
+    Matrix<E> m = repeat_row(a, noRays.size());
+    Points.minor(noRays,All) -= m;
+    
+    project_to_orthogonal_complement(Points,LS);
+
+    Points.minor(noRays,All) += m;
 }
 
 /*
@@ -52,16 +62,7 @@ perl::Object pointed_part(perl::Object p_in)
   {
     p_in.give("LINEALITY_SPACE") >> LinealitySpace;
 
-    Set<int> b=scalar2set(0);
-
-    Vector<Scalar> a = (0|Points.row(0).slice(1));
-    Matrix<Scalar> m = repeat_row(a, Points.rows());
-
-    Points -= m;
-
-    orthogonalize_facets(Points, LinealitySpace);
-
-    Points += m;
+    orthogonalize(Points, LinealitySpace);
 
     p_out.take("VERTICES") << Points;
     const Matrix<Scalar> empty;
@@ -76,27 +77,24 @@ perl::Object pointed_part(perl::Object p_in)
   // which lie in LINEALITY_SPACE are the pointed part.
   else if(p_in.lookup("POINTS") >> Points)
   {    
-    Matrix<Scalar> M = Points * T(null_space(LinealitySpace));
-    Set<int> PointsInLinSpace;
-    Vector<Scalar> zeros = zero_vector<Scalar>(M.cols());
-
     p_in.give("LINEALITY_SPACE") >> LinealitySpace;
-
-    for (int i=0; i < M.rows(); ++i)
-    {
-      if (M.row(i) == zeros) PointsInLinSpace += i;
+     
+    if(LinealitySpace.rows() != 0){
+       Matrix<Scalar> M = Points * T(null_space(LinealitySpace));
+       Set<int> PointsInLinSpace;
+       Vector<Scalar> zeros = zero_vector<Scalar>(M.cols());
+       
+       for (int i=0; i < M.rows(); ++i)
+          {
+             if (M.row(i) == zeros) PointsInLinSpace += i;
+          }
+       
+       Points = Points.minor(~PointsInLinSpace,All);
     }
+    
+    orthogonalize(Points, LinealitySpace);
 
-    Vector<Scalar> a = (0|Points.row(0).slice(1));
-    Matrix<Scalar> m = repeat_row(a, Points.rows());
-
-    Points -= m;
-
-    orthogonalize_facets(Points, LinealitySpace);
-
-    Points += m;
-
-    p_out.take("POINTS") << Points.minor(~PointsInLinSpace,All);
+    p_out.take("POINTS") << Points;
   }
   // If neither VERTICES nor POINTS are defined, we check for FACETS and INEQUALITIES.
   // the pointed part consists of all the inequalities and equations fromt the old polyhedron together
@@ -110,6 +108,8 @@ perl::Object pointed_part(perl::Object p_in)
 
     p_out.take("INEQUALITIES") << Inequalities;
     p_out.take("EQUATIONS") << (Equations / LinealitySpace);
+
+    p_out.take("FEASIBLE") << p_in.give("FEASIBLE");
   }
 
   return p_out;	

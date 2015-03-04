@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2013  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2014  Winfried Bruns, Bogdan Ichim, Christof Soeger
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -14,6 +14,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * As an exception, when this program is distributed through (i) the App Store
+ * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
+ * by Google Inc., then that store may impose any digital rights management,
+ * device limits and/or redistribution restrictions that are required by its
+ * terms of service.
  */
 
 //---------------------------------------------------------------------------
@@ -44,11 +49,6 @@ template<typename Integer> class Matrix {
 //---------------------------------------------------------------------------
 //              Private routines, used in the public routines
 //---------------------------------------------------------------------------
-
-    void max_rank_submatrix_lex(vector<key_t>& v, const size_t& rank) const;
-    //v will be a vector with entries the indices of the first rows in lexicographic
-    //order of this forming a submatrix of maximal rank.
-    //v shoud be a vector of size 0 by call!!!
     
     // Does the computation for the solution of linear systems
     void solve_destructive_Sol_inner(Matrix<Integer>& Right_side, vector< Integer >& diagonal, 
@@ -93,12 +93,15 @@ public:
     Matrix submatrix(const vector<int>& rows) const;
     Matrix submatrix(const vector<bool>& rows) const;
 
-    vector<Integer> diagonale() const;     //returns the diagonale of this
+    Matrix& remove_zero_rows(); // remove zero rows, modifies this
+
+    vector<Integer> diagonal() const;     //returns the diagonale of this
                                   //this should be a quadratic matrix
     size_t maximal_decimal_length() const;    //return the maximal number of decimals
                                       //needed to write an entry
 
     void append(const Matrix& M); // appends the rows of M to this
+    void append(const vector<vector<Integer> >& M); // the same, but for another type of matrix
     void append(const vector<Integer>& v); // append the row v to this
     void cut_columns(size_t c); // remove columns, only the first c columns will survive
 
@@ -164,6 +167,7 @@ public:
 //---------------------------------------------------------------------------
 
     void reduce_row(size_t corner);      //reduction by the corner-th row
+    void reduce_row (size_t row, size_t col); // corner at position (row,col)
     void reduce_row(size_t corner, Matrix& Left);//row reduction, Left used
     //for saving or copying the linear transformations
     void reduce_column(size_t corner);  //reduction by the corner-th column
@@ -181,13 +185,15 @@ public:
     long pivot_column(size_t col);  //Find the position of an element x with
     //0<abs(x)<=abs(y) for all y!=0 in the lower half of the column of this
     //described by an int col
+    
+    long pivot_column(size_t row,size_t col); //in column col starting from row
 
 //---------------------------------------------------------------------------
 //                          Matrices operations
 //           --- this are more complicated algorithms ---
 //---------------------------------------------------------------------------
 
-    size_t diagonalize(); //computes rank and diagonalizes this, destructive
+    size_t row_echelon(); // transforms this into row echelon form and returns rank
 
     size_t rank() const; //returns rank, nondestructive
     
@@ -195,25 +201,17 @@ public:
 
     size_t rank_destructive(); //returns rank, destructive
 
-    vector<key_t> max_rank_submatrix() const; //returns a vector with entries the
-    //indices of the rows of this forming a submatrix of maximal rank
-
     vector<key_t>  max_rank_submatrix_lex() const; //returns a vector with entries
     //the indices of the first rows in lexicographic order of this forming
     //a submatrix of maximal rank.
-
-    vector<key_t>  max_rank_submatrix_lex(const size_t& rank) const;
-    //returns a vector with entries the indices of the first rows in lexicographic
-    //order of this forming a submatrix of maximal rank, assuming that
-    //the rank of this is known.
   
     // In the following routines denom is the absolute value of the determinant of the
     // left side matrix ( =this).
 
-    Matrix solve(Matrix Right_side, Integer& denom) const;// solves the system
+    Matrix solve(const Matrix& Right_side, Integer& denom) const;// solves the system
     //this*Solution=denom*Right_side. this should be a quadratic matrix with nonzero determinant.
 
-    Matrix solve(Matrix Right_side, vector< Integer >& diagonal, Integer& denom) const;// solves the system
+    Matrix solve(const Matrix& Right_side, vector< Integer >& diagonal, Integer& denom) const;// solves the system
     //this*Solution=denom*Right_side. this should be a quadratic /matrix with nonzero determinant.
     //The diagonal of this after transformation into an upper triangular matrix
     //is saved in diagonal
@@ -239,8 +237,21 @@ public:
     //same as find_linear_form but also works with not maximal rank
     //uses a linear transformation to get a full rank matrix
 
-    vector<Integer> solve(vector<Integer> v) const;
-    // like find_linear_form, but for right side v
+    // The next two solve routines do not require the matrix to be square.
+    // However, we want rank = number of columns, ensuring unique solvability
+    
+    vector<Integer> solve(const vector<Integer>& v, Integer& denom) const;
+    // computes solution vector for right side v, solution over the rationals
+    // with denominator denom. 
+    // gcd of denom and solution is extracted !!!!!
+    
+    vector<Integer> solve(const vector<Integer>& v) const;
+    // computes solution vector for right side v
+    // insists on integrality of the solution
+    
+    Matrix<Integer> kernel () const;
+    // computes a ZZ-basis of the solutions of (*this)x=0
+    // the basis is formed by the ROWS of the returned matrix
 
 };
 //class end *****************************************************************

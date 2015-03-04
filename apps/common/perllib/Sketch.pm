@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -133,7 +133,8 @@ sub pointsToString {
     if ($color_flag eq "show"){
     my $i = 0;
     foreach my $e(@{$self->source->Vertices}){
-      my @own_color_array = split(/ /, $color->($i)->toFloat);
+      my @pcolor = $color->($i);
+      my @own_color_array = split(/ /, ($color->($i) // new RGB("0 0 0"))->toFloat);
       my $ocstring = join ",", @own_color_array;
       $text .= "\nspecial|\\definecolor{pointcolor_$id"."_$i}{rgb}{ $ocstring }\n|[lay=under]";
       ++$i;
@@ -163,12 +164,11 @@ sub pointsToString {
         $text .= 'special|\node at #1 [inner sep=0.5pt, above right] {\tiny{$'.$labels->($i).'$}};'."\n|[lay=in] (v$i)";
       }
     
-       my $option_string = "dotsize=$thickness pt, style=pointstyle_$id";
+       my $pthick = ($thickness_flag eq "show") ? $thickness->($i) : $thickness;      
+       my $option_string = "dotsize=$pthick pt, style=pointstyle_$id";
        $option_string .= ($color_flag eq "show") ? ", color=pointcolor_$id"."_$i" : "";
 
-      $text .= <<".";
-  dots [$option_string] (v$i)
-.
+      $text .= "  dots [$option_string] (v$i)\n" if ($pthick ne "");
    }      
  }
 

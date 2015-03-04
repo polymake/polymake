@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -60,10 +60,10 @@ perl::Object zonotope_tiling_lattice(perl::Object P, perl::OptionSet options)
    return L;
 }
 
-UserFunctionTemplate4perl("# @category Geometric properties"
+UserFunctionTemplate4perl("# @category Geometry"
 			  "# Calculates a generating set for a tiling lattice for P, "
-                          "# i.e. a lattice L such that P + L tiles the affine span of P. "
-			  "# @param Polytope P the zonotope. "
+                          "# i.e., a lattice L such that P + L tiles the affine span of P. "
+			  "# @param Polytope P the zonotope"
                           "# @option lattice_origin_is_vertex Bool true if the origin of the tiling lattice should be a vertex of P; default false, ie, the origin will be the barycenter of P"
 			  "# @return AffineLattice",
 			  "zonotope_tiling_lattice<E>(Polytope<E> { lattice_origin_is_vertex => 0  } )");

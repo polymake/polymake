@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,6 +16,7 @@
 
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
+#include "polymake/IncidenceMatrix.h"
 #include "polymake/Vector.h"
 #include "polymake/Set.h"
 #include "polymake/QuadraticExtension.h"
@@ -23,27 +24,26 @@
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1>
-   FunctionInterface4perl( transform_x_X_x, T0,T1 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]);
-      WrapperReturn( transform<T0>(arg0, arg1.get<T1>(), arg2) );
-   };
-
-   template <typename T0>
-   FunctionInterface4perl( scale_x_x_x, T0 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]);
-      WrapperReturn( scale<T0>(arg0, arg1, arg2) );
+   FunctionInterface4perl( scale_T_x_C_x, T0,T1 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      WrapperReturn( (scale<T0>(arg0, arg1.get<T1, T0>(), arg2)) );
    };
 
    template <typename T0, typename T1>
-   FunctionInterface4perl( translate_x_X_x, T0,T1 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]);
-      WrapperReturn( translate<T0>(arg0, arg1.get<T1>(), arg2) );
+   FunctionInterface4perl( transform_T_x_X_x, T0,T1 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      WrapperReturn( (transform<T0>(arg0, arg1.get<T1>(), arg2)) );
    };
 
-   FunctionInstance4perl(transform_x_X_x, Rational, perl::Canned< const Matrix< Rational > >);
-   FunctionInstance4perl(scale_x_x_x, Rational);
-   FunctionInstance4perl(translate_x_X_x, Rational, perl::Canned< const Vector< Rational > >);
-   FunctionInstance4perl(translate_x_X_x, QuadraticExtension< Rational >, perl::Canned< const Vector< QuadraticExtension< Rational > > >);
-   FunctionInstance4perl(translate_x_X_x, QuadraticExtension< Rational >, perl::Canned< const pm::IndexedSlice<pm::Vector<pm::QuadraticExtension<pm::Rational> > const&, pm::Series<int, true>, void> >);
+   template <typename T0, typename T1>
+   FunctionInterface4perl( translate_T_x_X_x, T0,T1 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      WrapperReturn( (translate<T0>(arg0, arg1.get<T1>(), arg2)) );
+   };
+
+   FunctionInstance4perl(transform_T_x_X_x, Rational, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(translate_T_x_X_x, Rational, perl::Canned< const Vector< Rational > >);
+   FunctionInstance4perl(scale_T_x_C_x, Rational, perl::Canned< const Rational >);
+   FunctionInstance4perl(scale_T_x_C_x, Rational, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

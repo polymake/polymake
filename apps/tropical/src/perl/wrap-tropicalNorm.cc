@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,11 +20,11 @@
 namespace polymake { namespace tropical { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1>
-   FunctionInterface4perl( norm_X, T0,T1 ) {
-      perl::Value arg0(stack[1]);
+   FunctionInterface4perl( norm_T_X, T0,T1 ) {
+      perl::Value arg0(stack[0]);
       WrapperReturn( (norm<T0>(arg0.get<T1>())) );
    };
 
-   FunctionInstance4perl(norm_X, Rational, perl::Canned< const Vector< Rational > >);
+   FunctionInstance4perl(norm_T_X, Rational, perl::Canned< const Vector< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

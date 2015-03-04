@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,6 +16,7 @@
 
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
+#include "polymake/ListMatrix.h"
 #include "polymake/Vector.h"
 #include "polymake/Graph.h"
 #include "polymake/Rational.h"
@@ -51,18 +52,19 @@ Coord calc_weight(const Matrix<Coord>& Vd, const GenericMatrix<AdjVert>& adjVert
       //reinitialize some values
       step_dist = 0;
       countwhile++;
-      Matrix<Coord> rand_points((countwhile == 1)?50*nop:nop, dim+1);
-      rand_points.col(0).fill(1);
-      copy(random_source.begin(), entire(rows(rand_points.minor(All, range(1,dim)).top())));
 
       // check how many points are in- and outside the cone
       old_out = out;
-      for (typename Entire< Rows< Matrix<Coord> > >::const_iterator ri1=entire(rows(rand_points)); !ri1.at_end(); ++ri1 )
+
+      RandomSpherePoints<>::const_iterator rand_point_it(random_source.begin());
+      for (int i = 0; i < ((countwhile == 1)?50*nop:nop); ++i) {
+         const Vector<Coord> point(Coord(1) | *rand_point_it);
          for (typename Entire< Rows< Matrix<Coord> > >::const_iterator ri2= entire(rows(adjVert)); !ri2.at_end(); ++ri2 )
-            if ( (*ri1)*(*ri2) < 0) {
+            if ( point*(*ri2) < 0) {
                out++;
                break;
             }
+      }
 
       step_dist = (countwhile!=1)?(double(out)/countwhile)/(double(old_out)/(countwhile-1)):2;
 
@@ -144,7 +146,7 @@ Vector<Coord> steiner_point(perl::Object p, perl::OptionSet options)
    return weights*V;
 }
 
-UserFunctionTemplate4perl("# @category Geometric properties"
+UserFunctionTemplate4perl("# @category Geometry"
                           "# Compute the Steiner points of all faces of a polyhedron //P// using a"
                           "# randomized approximation of the angles."
                           "# //P// must be [[BOUNDED]]."
@@ -156,7 +158,7 @@ UserFunctionTemplate4perl("# @category Geometric properties"
                           "# @author Thilo Rörig",
                           "all_steiner_points<Coord>(Polytope<Coord> { seed => undef, eps => 0.1 })");
 
-UserFunctionTemplate4perl("# @category Geometric properties"
+UserFunctionTemplate4perl("# @category Geometry"
                           "# Compute the Steiner point of a polyhedron //P// using a randomized"
                           "# approximation of the angles."
                           "# @param Polytope P"

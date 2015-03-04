@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -75,8 +75,10 @@ void mixed_graph_complex(perl::Object p, perl::OptionSet options)
    p.take("MIXED_GRAPH",perl::temporary)<< mixed_graph(C,PG,DG,weight);
 }
 
-UserFunction4perl("# Produces the mixed graph of a simplicial @a complex.\n"
-                  "#args: complex [ edge_weight => VALUE ]",
+UserFunction4perl("# @category Other"
+                  "# Produces the mixed graph of a //complex//.\n"
+                  "# @param SimplicialComplex complex"
+                  "# @option Float edge_weight",
                   &mixed_graph_complex,"mixed_graph(SimplicialComplex { edge_weight=>undef })");
    
 } }

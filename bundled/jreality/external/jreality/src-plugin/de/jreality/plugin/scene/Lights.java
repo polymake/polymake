@@ -123,6 +123,7 @@ public class Lights extends Plugin implements ChangeListener  {
 		}
 	}
 
+	@Override
 	public void stateChanged(ChangeEvent e) {
 		if (e.getSource() instanceof Scene) {
 			Scene scene = (Scene) e.getSource();

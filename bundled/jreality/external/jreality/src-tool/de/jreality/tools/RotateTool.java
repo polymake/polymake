@@ -66,22 +66,27 @@ import de.jreality.util.Rectangle3D;
  */
 public class RotateTool extends AbstractTool {
 
-  static InputSlot activationSlot = InputSlot.getDevice("RotateActivation");
-  static InputSlot evolutionSlot = InputSlot.getDevice("TrackballTransformation");
+  private static InputSlot 
+  	activationSlot = InputSlot.getDevice("RotateActivation"),
+  	evolutionSlot = InputSlot.getDevice("TrackballTransformation");
 
-  boolean fixOrigin=false;
-  private boolean rotateOnPick=false;
+  private boolean 
+  	fixOrigin = false,
+  	rotateOnPick = false,
+  	animationEnabled = true;
+
+  protected transient SceneGraphComponent 
+	comp = null;
+  protected transient Matrix 
+	center = new Matrix();
+  protected transient EffectiveAppearance 
+	eap = null;
   
   public RotateTool() {
     super(activationSlot);
     addCurrentSlot(evolutionSlot);
   }
-
-  transient protected SceneGraphComponent comp;
-
-  transient Matrix center=new Matrix();
   
-  transient EffectiveAppearance eap;
   public void activate(ToolContext tc) {
     startTime = tc.getTime();
     comp = (moveChildren ? tc.getRootToLocal():tc.getRootToToolComponent()).getLastComponent();
@@ -195,7 +200,9 @@ public class RotateTool extends AbstractTool {
           return true;
         }
       };
-      AnimatorTool.getInstance(tc).schedule(comp, task);
+      if (animationEnabled) {
+    	  AnimatorTool.getInstance(tc).schedule(comp, task);
+      }
     }
   }
   
@@ -245,4 +252,11 @@ public class RotateTool extends AbstractTool {
   public void setRotateOnPick(boolean rotateOnPick) {
 	  this.rotateOnPick = rotateOnPick;
   }
+  public boolean isAnimationEnabled() {
+	return animationEnabled;
+  }
+  public void setAnimationEnabled(boolean animationEnabled) {
+	this.animationEnabled = animationEnabled;
+  }
+  
 }

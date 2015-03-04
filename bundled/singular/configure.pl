@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -26,36 +26,46 @@ sub usage {
 
 sub proceed {
    my ($options)=@_;
-   my $lib_ext=$Config::Config{dlext};
-   if ($^O eq "darwin") {
-      $lib_ext="dylib";  # on Mac dlext points to bundle, but we need a shared lib, not a module
-   }
+   my $lib_ext=$Config::Config{so};
+
    my $singular_config;
+   my $singular_version;
    if (defined (my $singular_path=$options->{singular})) {
       $singular_config = "$singular_path/bin/libsingular-config";
    } else {
-      $singular_config = Polymake::Configure::find_program_in_path("libsingular-config");
+      $singular_config = Polymake::Configure::find_program_in_path("libsingular-config") or
+         die "Could not find 'libsingular-config' in path";
    }
 
    chomp ($CXXflags=`$singular_config --cflags`);
    die "$singular_config failed: $!" if ($?);
+
    chomp ($LDflags=`$singular_config --libs`);
 
-   chomp (my $singularprefix = `$singular_config --prefix`);
-   chomp $singularprefix;
+   chomp (my $singular_prefix = `$singular_config --prefix`);
+   chomp $singular_prefix;
    # yes we need it twice ...
 
-   $Libs = join(" ",$LDflags =~ m/(-l\w+)/g) . " -lpolys -lomalloc";
+   $Libs = join(" ",$LDflags =~ m/(-l\w+)/g) . " -lfactory -lresources -lpolys -lomalloc";
    $LDflags =~ s/ -l\w+//g;
    $LDflags =~ s/-L(\S+)/-L$1 -Wl,-rpath,$1/g;
+   my $libdir = $1;
 
    my $error=Polymake::Configure::build_test_program(<<"---", CXXflags => $CXXflags, LDflags => $LDflags, Libs => $Libs);
 #include "Singular/libsingular.h"
 #include <string>
+#include <iostream>
 int main() {
-   char* cpath = omStrDup("$singularprefix/lib/libSingular.$lib_ext");
+   char* cpath = omStrDup("$libdir/libSingular.$lib_ext");
    siInit(cpath);
+#ifdef HAVE_NTL
+   std::cout << VERSION << std::endl;
    return 0;
+#else
+   std::cout << "Your singular installation was not build with NTL support." << std::endl;
+   std::cout << "Please reconfigure and rebuild singular with --with-ntl=PATH." << std::endl;
+   return 1;
+#endif
 }
 ---
    if ($?==0) {
@@ -64,6 +74,12 @@ int main() {
          die "Could not run a test program checking for libsingular.\n",
              "The complete error log follows:\n\n$error\n",
              "Please investigate the reasons and fix the installation.\n";
+      } else {
+         chomp $error;
+         $singular_version = $error;
+         if (Polymake::Configure::v_cmp($singular_version,"4.0.1") < 0) {
+            die "Your libsingular version $singular_version is too old, at least 4.0.1 is required.\n";
+         }
       }
    } else {
       die "Could not compile a test program checking for libsingular.\n",
@@ -74,5 +90,5 @@ int main() {
           "Please remember to enable shared modules when configuring the libsingular!\n";
    }
 
-   return $singular_config ? "libsingular-config=$singular_config" : "";
+   return "$singular_version @ $singular_prefix";
 }

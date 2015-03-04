@@ -24,6 +24,7 @@ import de.jtem.jrworkspace.plugin.PluginInfo;
 import de.jtem.jrworkspace.plugin.flavor.FrontendFlavor;
 import de.jtem.jrworkspace.plugin.flavor.PreferencesFlavor;
 
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class ViewPreferences extends Plugin implements PreferencesFlavor, ActionListener, FrontendFlavor {
 
 	private static final boolean DEFAULT_SHOW_MENU = true;
@@ -112,6 +113,7 @@ public class ViewPreferences extends Plugin implements PreferencesFlavor, Action
 		return info;
 	}
 	
+	@Override
 	public void actionPerformed(ActionEvent e) {
 		Object s = e.getSource();
 		if (threadSafeChecker == s) {
@@ -170,30 +172,37 @@ public class ViewPreferences extends Plugin implements PreferencesFlavor, Action
 	}
 	
 
+	@Override
 	public Icon getMainIcon() {
 		return null;
 	}
 
+	@Override
 	public String getMainName() {
 		return "jReality Properties";
 	}
 
+	@Override
 	public JPanel getMainPage() {
 		return mainPage;
 	}
 
+	@Override
 	public int getNumSubPages() {
 		return 0;
 	}
 
+	@Override
 	public JPanel getSubPage(int i) {
 		return null;
 	}
 
+	@Override
 	public Icon getSubPageIcon(int i) {
 		return null;
 	}
 
+	@Override
 	public String getSubPageName(int i) {
 		return null;
 	}
@@ -230,6 +239,7 @@ public class ViewPreferences extends Plugin implements PreferencesFlavor, Action
 		viewMenuBar.removeAll(getClass());
 	}
 
+	@Override
 	public void setFrontendListener(FrontendListener l) {
 		frontendListener = l;
 	}

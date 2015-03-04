@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -42,6 +42,7 @@ object TropicalPolytope {
 
 # @category Visualization
 # Visualize the [[PSEUDOVERTEX_GRAPH]] of a tropical polytope.
+# @options %Visual::Graph::decorations
 # @option Int seed random seed value for the string embedder
 # @return Visual::TropicalPolytope
 
@@ -63,6 +64,7 @@ user_method VISUAL_PSEUDOVERTEX_GRAPH (%Visual::Graph::decorations, { seed => un
 
 # @category Visualization
 # Visualize the tropical polytope projected onto the plane.
+# @options %Visual::Graph::decorations
 # @option Matrix Directions directions to project onto
 # @return Visual::TropicalPolytope
 
@@ -73,6 +75,7 @@ user_method VISUAL_PLANAR (%Visual::Graph::decorations, { Directions => undef })
 
 # @category Visualization
 # Visualize the tropical polytope.
+# @options %Visual::Polygons::decorations
 # @return Visual::TropicalPolytope
 
 user_method VISUAL(%Visual::Polygons::decorations) : POINTS, PSEUDOVERTICES, AMBIENT_DIM, ENVELOPE.BOUNDED_COMPLEX.MAXIMAL_POLYTOPES {
@@ -93,6 +96,36 @@ user_method VISUAL(%Visual::Polygons::decorations) : POINTS, PSEUDOVERTICES, AMB
                                            TropicalPolytope => $this,
                                            @cells_visual ));
 }
+
+
+# @category Visualization
+# Visualize the arrangement of hyperplanes with apices in the [[VERTICES]] of the tropical polytope.
+# @return Visual::Hypersurface
+user_method VISUAL_HYPERPLANE_ARRANGEMENT : VERTICES, AMBIENT_DIM {
+	my $this=shift;
+	my $decor = shift;
+	my $h=$this->VERTICES;
+	my $d=$this->AMBIENT_DIM;
+
+	my $nrows=@$h;
+	my $count=0;
+
+	my $vs=new Matrix<Rational>((ones_vector<Rational>($nrows)) | ($h->minor(All,~[0])));
+
+	my $bbox=polytope::bounding_box($vs, 3/4, 0);
+
+	my $s = sub {new HSV(360/$nrows * shift, 1, 1)};
+	my @cells_visual=();
+	my $unit=dense(unit_matrix<Int>($d+1));
+	foreach my $curr (@$h) {
+		my $fc = $s->($count++,$nrows);
+		my $hp = new Hypersurface<Addition>(MONOMIALS=>$unit, COEFFICIENTS=>-$curr);
+		push(@cells_visual, $hp->VISUAL($bbox, FacetColor=>$fc, VertexStyle=>'hidden'));
+	}
+
+	compose(@cells_visual);
+ }
+precondition : AMBIENT_DIM { $this->AMBIENT_DIM<=3 }
 
 }
 

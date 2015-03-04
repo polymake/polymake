@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -120,14 +120,16 @@ Array<PowerSet<int> > stiefel_whitney(const Array<Set<int> >& facets, perl::Opti
    return omega_cycle;
 }
 
-UserFunction4perl("# Computes Stiefel-Whitney classes of mod 2 Euler space (in particular, closed manifold).\n"
-                  "# Use option @c overbose to show regular pairs and cycles.\n\n"
+UserFunction4perl("# @category Other"
+                  "# Computes __Stiefel-Whitney classes__ of mod 2 Euler space (in particular, closed manifold).\n"
+                  "# Use option //verbose// to show regular pairs and cycles.\n"
                   "# A narrower dimension range of interest can be specified.\n"
-                  "#  Negative values are treated as co-dimension - 1\n"
-                  "# @param Array<Set<int>> facets the facets of the simplicial complex"
-                  "# @option high_dim  int "
-                  "# @option low_dim int "
-                  "# @option verbose Bool",
+                  "# Negative values are treated as co-dimension - 1\n"
+                  "# @param Array<Set<Int>> facets the facets of the simplicial complex"
+                  "# @option Int high_dim"
+                  "# @option Int low_dim"
+                  "# @option Bool verbose"
+                  "# @return Array<PowerSet<Int>>",
                   &stiefel_whitney,"stiefel_whitney(Array<Set<Int>> { high_dim => undef, low_dim => undef, verbose => 0})");
    
 } }

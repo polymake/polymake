@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -37,8 +37,8 @@ perl::Object petersen()
    return G;
 
 }
-UserFunction4perl("# @category Producing from scratch\n"
-                  "# Constructs the Petersen graph."
+UserFunction4perl("# @category Producing a graph\n"
+                  "# Constructs the __Petersen graph__."
                   "# @return Graph",
                   &petersen, "petersen");
 

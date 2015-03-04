@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -15,13 +15,13 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/Rational.h"
 #include "polymake/Matrix.h"
 #include <sstream>
 
 namespace polymake { namespace polytope {
 
-bool check_inc(const Matrix<Rational>& P, const Matrix<Rational>& H, const char* sign_arg, bool verbose)
+template<typename Scalar>
+bool check_inc(const Matrix<Scalar>& P, const Matrix<Scalar>& H, const char* sign_arg, bool verbose)
 {
    bool ok=true,
      minus=false, equal=false, plus=false;  // what is allowed
@@ -53,7 +53,7 @@ bool check_inc(const Matrix<Rational>& P, const Matrix<Rational>& H, const char*
    }
 
    // check all pairs
-   Rational scp;
+   Scalar scp;
    for (int i=0; i<P.rows(); ++i) {
       for (int j=0; j<H.rows(); ++j) {
          scp = P[i] * H[j];
@@ -94,7 +94,7 @@ bool check_inc(const Matrix<Rational>& P, const Matrix<Rational>& H, const char*
    return ok;
 }
 
-UserFunction4perl("# @category Consistency check"
+UserFunctionTemplate4perl("# @category Consistency check"
                   "# Check coordinate data. For each pair of vectors from two given matrices"
                   "# their inner product must satisfy the given relation."
                   "# @param Matrix points"
@@ -103,7 +103,7 @@ UserFunction4perl("# @category Consistency check"
                   "#  allowed domain of the vector inner products."
                   "# @param Bool verbose print all products violating the required relation"
                   "# @return Bool 'true' if all relations are satisfied, 'false' otherwise",
-                  &check_inc,"check_inc(Matrix Matrix $; $=0)");
+                  "check_inc<Scalar>(Matrix<type_upgrade<Scalar>> Matrix<type_upgrade<Scalar>> $; $=0)");
 } }
 
 // Local Variables:

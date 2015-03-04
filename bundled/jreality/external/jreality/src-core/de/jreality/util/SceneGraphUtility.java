@@ -46,7 +46,6 @@ import java.util.List;
 import java.util.logging.Level;
 
 import de.jreality.geometry.GeometryUtility;
-import de.jreality.geometry.IndexedFaceSetUtility;
 import de.jreality.math.Matrix;
 import de.jreality.math.MatrixBuilder;
 import de.jreality.math.P3;
@@ -64,7 +63,6 @@ import de.jreality.scene.SceneGraphNode;
 import de.jreality.scene.SceneGraphPath;
 import de.jreality.scene.SceneGraphVisitor;
 import de.jreality.scene.Sphere;
-import de.jreality.scene.SpotLight;
 import de.jreality.scene.Transformation;
 import de.jreality.scene.Viewer;
 import de.jreality.scene.data.Attribute;

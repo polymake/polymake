@@ -1,7 +1,8 @@
 <toolconfig>
 
-  <import href="chunks/toolconfig-portal-trackd.xml" />
-
+  <import href="chunks/toolconfig-portal-vrpn.xml" />
+  <!--import href="chunks/toolconfig-portal-trackd.xml" /-->
+   
   <rawdevices>
    
     <rawdevice id="SystemTimer" type="de.jreality.toolsystem.raw.DeviceSystemTimer"/>
@@ -19,3 +20,4 @@
   </virtualdevices>
   
 </toolconfig>
+

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -25,18 +25,8 @@ rule N_INPUT_LINEALITY : INPUT_LINEALITY {
 }
 weight 0.10;
 
-rule N_EQUATIONS : EQUATIONS{
-    $this->N_EQUATIONS=$this->EQUATIONS->rows;
-}
-weight 0.10;
-
 rule N_RAYS : RAYS {
     $this->N_RAYS=$this->RAYS->rows;
-}
-weight 0.10;
-
-rule N_INEQUALITIES : INEQUALITIES{
-    $this->N_INEQUALITIES=$this->INEQUALITIES->rows;
 }
 weight 0.10;
 
@@ -69,15 +59,7 @@ rule FULL_DIM : CONE_AMBIENT_DIM, CONE_DIM {
 weight 0.10;
 
 rule CONE_AMBIENT_DIM : {
-  my $d=0;
-  foreach ("RAYS", "INPUT_RAYS", "LINEALITY_SPACE", "INPUT_LINEALITY", "INEQUALITIES", "FACETS", "EQUATIONS", "LINEAR_SPAN") {
-    my $M;
-    if (defined ($M=$this->lookup($_)) && $M->cols()>0) {
-      $d=$M->cols();
-      last;
-    }
-  } 
-  $this->CONE_AMBIENT_DIM=$d;
+  $this->CONE_AMBIENT_DIM=$this->lookup_ambient_dim(undef) // 0;
 }
 precondition : defined(RAYS | INPUT_RAYS | LINEALITY_SPACE | INPUT_LINEALITY | INEQUALITIES | FACETS | EQUATIONS | LINEAR_SPAN);
 weight 0.10;
@@ -395,7 +377,7 @@ weight 3.10;
 rule COMBINATORIAL_DIM : HASSE_DIAGRAM {
    $this->COMBINATORIAL_DIM=$this->HASSE_DIAGRAM->dim;
 }
-weight 1.10;
+weight 0.10;
 
 # FIXME DIM : check dependence on dim in client
 rule cone_only : GRAPH.ADJACENCY : HASSE_DIAGRAM {
@@ -509,11 +491,17 @@ rule FTR_CYCLIC_NORMAL, NEIGHBOR_RAYS_CYCLIC_NORMAL : CONE_DIM, FACETS, RAYS_IN_
    neighbors_cyclic_normal_dual($this);
 }
 
+# @category Geometry
+# returns the dimension of the ambient space of the cone
 user_method AMBIENT_DIM {
   my ($self)=@_;
   return $self->CONE_AMBIENT_DIM;
 }
 
+
+# @category Geometry
+# returns the geometric dimension of the cone (including the lineality space)
+# for the dimension of the pointed part ask for [[COMBINATORIAL_DIM]]
 user_method DIM {
   my ($self)=@_;
   if (!defined ($self->lookup("LINEALITY_SPACE | INPUT_LINEALITY | INPUT_RAYS | RAYS | INEQUALITIES | EQUATIONS | FACETS | LINEAR_SPAN"))) {
@@ -570,7 +558,7 @@ user_function iterated_barycentric_subdivision<Scalar>(Cone<Scalar> $ { relabel=
 user_function lawrence<Scalar>(Cone<Scalar>) {
     my $p = shift;
     my $n = $p->N_VERTICES;
-    my $d = $p->COMBINATORIAL_DIM;
+    my $d = $p->AMBIENT_DIM;
     my $v1 = $p->VERTICES | unit_matrix<Scalar>($n);
     my $v2 = ((ones_vector<Scalar>($n)) | (zero_matrix<Scalar>($n,$d))) 
 	| (unit_matrix<Scalar>($n));

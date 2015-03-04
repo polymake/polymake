@@ -182,7 +182,8 @@ public class ContentLoader extends Plugin implements UIFlavor {
 		}
 	}
  	
- 	public void mainUIChanged(String uiClass) {
+ 	@Override
+	public void mainUIChanged(String uiClass) {
  		SwingUtilities.updateComponentTreeUI(chooser);
  	}
  	

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -659,7 +659,7 @@ public:
    result_type operator() (typename function_argument<T>::type x) const
    {
       std::ostringstream out;
-      out << x;
+      wrap(out) << x;
       return out.str();
    }
 };

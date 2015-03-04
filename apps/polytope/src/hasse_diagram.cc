@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -25,9 +25,9 @@ perl::Object hasse_diagram(const GenericIncidenceMatrix<Matrix>& VIF, int dim_up
 {
    graph::HasseDiagram HD;
    if (dim_upper_bound>=0 || VIF.cols() <= VIF.rows())
-      face_lattice::compute(VIF, filler(HD), face_lattice::Primal(), dim_upper_bound);
+      face_lattice::compute(VIF, filler(HD,true), face_lattice::Primal(), dim_upper_bound);
    else
-      face_lattice::compute(T(VIF), filler(HD), face_lattice::Dual());
+      face_lattice::compute(T(VIF), filler(HD,false), face_lattice::Dual());
    return HD.makeObject();
 }
 
@@ -35,7 +35,7 @@ template <typename Matrix, typename Set>
 perl::Object bounded_hasse_diagram(const GenericIncidenceMatrix<Matrix>& VIF, const GenericSet<Set>& far_face, int dim_upper_bound=-1)
 {
    graph::HasseDiagram HD;
-   face_lattice::compute_bounded(VIF, far_face, filler(HD), dim_upper_bound);
+   face_lattice::compute_bounded(VIF, far_face, filler(HD,true), dim_upper_bound);
    return HD.makeObject();
 }
 

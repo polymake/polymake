@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,6 +20,8 @@
 #include "polymake/polytope/simple_roots.h"
 
 namespace polymake { namespace polytope {
+
+typedef QuadraticExtension<Rational> QE;
 
 SparseMatrix<Rational> simple_roots_type_A (const int n)
 {
@@ -107,6 +109,61 @@ SparseMatrix<Rational> simple_roots_type_D (const int n)
    return simple_roots_type_A(n-1) / v;
 }
 
+SparseMatrix<QE> simple_roots_type_E6()
+{
+   /*
+     Read rowwise, these simple root vectors are
+     0  1 -1  0  0  0  0
+     0  0  1 -1  0  0  0
+     0  0  0  1 -1  0  0
+     0  0  0  0  1 -1  0
+     0  0  0  0  1  1  0
+-1/2(0  1  1  1  1  1 -sqrt(3))  
+ 
+     The indexing of the Dynkin diagram is
+
+
+                   3
+                   |
+                   |
+     0 ---- 1 ---- 2 ---- 4 ---- 5
+     
+   */
+   SparseVector<QE> v(ones_vector<QE>(7));
+   v[0] = 0;
+   v[6] = QE(0,-1,3);
+   v *= QE(-Rational(1,2),0,3);
+   return (convert_to<QE>(simple_roots_type_D(5)) | zero_vector< QE >(5)) / v;
+}
+
+SparseMatrix<QE> simple_roots_type_E7()
+{
+   /*
+     Read rowwise, these simple root vectors are
+     0  1 -1  0  0  0  0  0
+     0  0  1 -1  0  0  0  0
+     0  0  0  1 -1  0  0  0
+     0  0  0  0  1 -1  0  0
+     0  0  0  0  0  1 -1  0
+     0  0  0  0  0  1  1  0
+-1/2(0  1  1  1  1  1  1 -sqrt(2))  
+ 
+     The indexing of the Dynkin diagram is
+
+
+                          4
+                          |
+                          |
+     0 ---- 1 ---- 2 ---- 3 ---- 5 ---- 6
+     
+   */
+   SparseVector<QE> v(ones_vector<QE>(8));
+   v[0] = 0;
+   v[7] = QE(0,-1,2);
+   v *= QE(-Rational(1,2),0,2);
+   return (convert_to<QE>(simple_roots_type_D(6)) | zero_vector< QE >(6)) / v;
+}
+
 SparseMatrix<Rational> simple_roots_type_E8()
 {
    /*
@@ -116,21 +173,21 @@ SparseMatrix<Rational> simple_roots_type_E8()
      ...
      0 0  0  0 0 0 1 -1 0
      0 0  0  0 0 0 1  1 0
- 1/2(0 1  1  1 1 1 1  1 1)  
+-1/2(0 1  1  1 1 1 1  1 1)  
  
      These are the coordinates in the even coordinate system.
      In particular, they lie at infinity. The indexing of the Dynkin diagram is
 
 
-                   7
-                   |
-                   |
-     0 ---- 1 ---- 2 ---- 3 ---- 4 ---- 5 ---- 6 
+                                 5
+                                 |
+                                 |
+     0 ---- 1 ---- 2 ---- 3 ---- 4 ---- 6 ---- 7 
      
    */
    SparseVector<Rational> v(ones_vector<Rational>(9));
    v[0] = 0;
-   v *= Rational(1,2);
+   v *= -Rational(1,2);
    return (simple_roots_type_D(7) | zero_vector<Rational>(7)) / v;
 }
 
@@ -173,8 +230,6 @@ SparseMatrix<Rational> simple_roots_type_G2()
    R(1,2) = 2;
    return R;
 }
-
-typedef QuadraticExtension<Rational> QE;
 
 SparseMatrix<QE> simple_roots_type_H3()
 {
@@ -276,12 +331,34 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   &simple_roots_type_D, "simple_roots_type_D($)");
  
 UserFunction4perl("# @category Producing a polytope from scratch"
+                  "# Produce the simple roots of the Coxeter arrangement of type E6"
+                  "# Indices are taken w.r.t. the Dynkin diagram "
+                  "#                   3"
+                  "#                   |"
+                  "#                   |"
+                  "#     0 ---- 1 ---- 2 ---- 4 ---- 5 "
+                  "# Note that the roots lie at infinity to facilitate reflecting in them." 
+                  "# @return SparseMatrix",
+                  &simple_roots_type_E6, "simple_roots_type_E6()");
+
+UserFunction4perl("# @category Producing a polytope from scratch"
+                  "# Produce the simple roots of the Coxeter arrangement of type E7"
+                  "# Indices are taken w.r.t. the Dynkin diagram "
+                  "#                          4"
+                  "#                          |"
+                  "#                          |"
+                  "#     0 ---- 1 ---- 2 ---- 3 ---- 5 ---- 6 "
+                  "# Note that the roots lie at infinity to facilitate reflecting in them." 
+                  "# @return SparseMatrix",
+                  &simple_roots_type_E7, "simple_roots_type_E7()");
+
+UserFunction4perl("# @category Producing a polytope from scratch"
                   "# Produce the simple roots of the Coxeter arrangement of type E8"
                   "# Indices are taken w.r.t. the Dynkin diagram "
-                  "#                                 7"
+                  "#                                 5"
                   "#                                 |"
                   "#                                 |"
-                  "#     0 ---- 1 ---- 2 ---- 3 ---- 4 ---- 5 ---- 6 "
+                  "#     0 ---- 1 ---- 2 ---- 3 ---- 4 ---- 6 ---- 7 "
                   "# Note that the roots lie at infinity to facilitate reflecting in them." 
                   "# @return SparseMatrix",
                   &simple_roots_type_E8, "simple_roots_type_E8()");

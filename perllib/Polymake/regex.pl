@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -56,6 +56,12 @@ my $non_delims=qr{(?: [^()\[\]{}<>'"\#]++
 declare $single_quoted_re=qr{(?: [^']+ | (?<=\\)(?<!\\\\) ' )*+}x;
 declare $double_quoted_re=qr{(?: [^"]+ | (?<=\\)(?<!\\\\) " )*+}x;
 
+# a sequence in quoted, capturing the contents
+declare $quoted_re=qr{(?: ' (?'quoted' $single_quoted_re) ' |
+                          " (?'quoted' $double_quoted_re) " )}xo;
+
+# an expression in parentheses, braces, brackets, or quotes
+# 1 capturing group
 declare $confined_re=qr{ ( \( $non_delims (?: (?-1) $non_delims )* \) |
                            \[ $non_delims (?: (?-1) $non_delims )* \] |
                            \{ $non_delims (?: (?-1) $non_delims )* \} |
@@ -63,9 +69,12 @@ declare $confined_re=qr{ ( \( $non_delims (?: (?-1) $non_delims )* \) |
                             ' $single_quoted_re '                     |
                             " $double_quoted_re "                      ) }xo;
 
+# a piece of code with proper nested embraced and quoted subexpressions
+# 1 capturing group
 declare $balanced_re=qr{ $non_delims (?: $confined_re $non_delims )* }xo;
 
-# allow some unmatched open braces
+# as above, but allowing some unmatched open braces
+# used in TAB completion
 declare $open_balanced_re=qr{ (?: $non_delims (?: \( (?: $balanced_re \) )?+ |
                                                   \[ (?: $balanced_re \] )?+ |
                                                   \{ (?: $balanced_re \} )?+ |
@@ -75,6 +84,7 @@ declare $open_balanced_re=qr{ (?: $non_delims (?: \( (?: $balanced_re \) )?+ |
                                                    $ ) )* }xo;
 
 # an expression in a list; < > are treated as comparison ops, therefore not trying to match them pairwise
+# 1 capturing group
 declare $expression_re=qr{ (?: (?! <) $confined_re | [^,'"()\[\]{}]*+ )+ }xo;
 
 # parameter list in angle brackets, recursively referring to the outer group
@@ -82,26 +92,33 @@ declare $expression_re=qr{ (?: (?! <) $confined_re | [^,'"()\[\]{}]*+ )+ }xo;
 my $param_list='(?: \s*<\s* (?-1) (?: \s*,\s* (?-1) )* \s*> )?+';
 
 # property type, possibly parameterized
+# 1 capturing group
 declare $type_re=qr{($qual_id_re $param_list)}xo;
 
 # a list of types (separated by commas)
-declare $types_re=qr{ $type_re (?: \s*,\s* (?-1) )*+ }xo;   # type_re contains one capturing group
-
-# a list of alternative types (separated by bars)
-declare $type_alt_re=qr{ $type_re (?: \s*\|\s* (?-1))*+ }xo;
+# 1 capturing group
+declare $types_re=qr{ $type_re (?: \s*,\s* (?-1) )*+ }xo;
 
 # a type expression qualifying some following name
 # (can't simply write $type_re :: $hier_id_re here because of the greedy nature of the former)
+# 1 capturing group
 declare $type_qual_re=qr{ $id_re (?: :: $id_re)* (?: \s*<\s* $types_re \s*>\s* )? (?= ::) }xo;
 
 # an expression constructing a type: either a type name, optionally qualified and parameterized, or a piece of code
-declare $type_expr_re=qr{ (?: $type_re | \{ $balanced_re \} ) }xo;
+# 4 capturing groups
+declare $type_expr_re=qr{ (?: (?= [\(\{]) (?'dynamic' $confined_re) | (?'static' $type_re)) }xo;
+
+# a list of expressions constructing types (separated by commas)
+# 5 capturing groups
+declare $type_exprs_re=qr{ ($type_expr_re (?: \s*,\s* (?-5))*+) }xo;
 
 # a type parameter in a declaration of a complex type or a function
+# 6 capturing groups
 declare $type_param_re=qr{ (?'name' $id_re) (?: \s*=\s* (?'default' $type_expr_re) )?+ }xo;
 
 # a list of type parameters, enclosed in angle brackets, with optional typecheck expression
-declare $type_params_re=qr{ \s*<\s* (?'tparams' ($type_param_re (?: \s*,\s* (?-5) )*+ )) \s*>    # type_param_re contains 4 capturing groups
+# 10 capturing groups
+declare $type_params_re=qr{ \s*<\s* (?'tparams' ($type_param_re (?: \s*,\s* (?-7) )*+ )) \s*>
                             (?: \s*\[ (?'typecheck' $balanced_re) \] )?+ }xo;
 
 # beginning of a declaration of a type or function, optionally parameterized
@@ -139,41 +156,6 @@ declare $nonsignificant_line_re=qr{^ [ \t]* (?:\#.*)? \n}xm;
 
 # a line with some contents (like perl code)
 declare $significant_line_re=qr{^ [ \t]* (?! $ | \#) }xm;
-
-# Transform a parameterized type into a valid perl expression:
-# "NAME<PARAM1,PARAM2>" => "NAME->type(PARAM1->type,PARAM2->type)"
-# References to arguments $_[NN] are preserved.
-sub translate_type {
-   $_[0] =~ tr/<>/()/;
-   substr($_[0], rindex($_[0],";")+1) =~ s{($id_re) (?! \s*(?: [-:[] | => ))}{$1->type}xog;
-}
-
-# Transform a complex expression involving parameterized types into a valid perl expression.
-sub translate_type_expr {
-   $_[0] =~ s{ $type_re (?! \s*(?: [([] | -> | => )) }{ my $tt=$1; translate_type($tt); $tt }xoge;
-}
-
-sub report_type_error {
-   if ($@ =~ /^Undefined subroutine &?(?:$id_re\::)*($id_re) called/o ||
-       $@ =~ /^Bareword "($id_re)" not allowed/o ||
-       $@ =~ /Package "($id_re)" does not exist/o) {
-      croak( "Unknown type '$1'" );
-   } elsif ($@ =~ s/ at \(eval \d+\).*\n//) {
-      croak( "Invalid type expression '$_[0]': $@" );
-   } else {
-      die $@;
-   }
-}
-
-sub eval_type_expr {
-   my $expr=shift;
-   if (is_string($$expr)) {
-      translate_type($$expr);
-      $$expr=eval($$expr) || report_type_error($$expr);
-   } else {
-      $$expr;
-   }
-}
 
 1;
 

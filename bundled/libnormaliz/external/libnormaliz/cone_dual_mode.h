@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2013  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2014  Winfried Bruns, Bogdan Ichim, Christof Soeger
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -14,6 +14,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * As an exception, when this program is distributed through (i) the App Store
+ * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
+ * by Google Inc., then that store may impose any digital rights management,
+ * device limits and/or redistribution restrictions that are required by its
+ * terms of service.
  */
 
 #ifndef CONE_DUAL_MODE_H
@@ -25,32 +30,41 @@
 #include "libnormaliz.h"
 #include "matrix.h"
 #include "sublattice_representation.h"
+#include "reduction.h"
 
 namespace libnormaliz {
 using std::list;
 using std::vector;
+
+template<typename Integer> class CandidateList;
+template<typename Integer> class Candidate;
 
 template<typename Integer>
 class Cone_Dual_Mode {
 public:
     size_t dim;
     size_t nr_sh;
-    size_t hyp_size;
+    // size_t hyp_size;
+    
+    bool inhomogeneous;
+    bool do_only_Deg1_Elements;
+    bool truncate;  // = inhomogeneous || do_only_Deg1_Elements
+    bool first_pointed; // indicates in the course of the algorithm the first ppointed cone
     
     Matrix<Integer> SupportHyperplanes;
     Matrix<Integer> Generators;
-    list<vector<Integer> > GeneratorList; //only temporarily used
-    list<vector<Integer> > Hilbert_Basis;
+    vector<bool> ExtremeRays;
+    list<Candidate<Integer>* > ExtremeRayList; //only temporarily used
+    CandidateList<Integer> Intermediate_HB; // intermediate Hilbert basis
+    list<vector<Integer> > Hilbert_Basis; //the final result
 
 /* ---------------------------------------------------------------------------
  *              Private routines, used in the public routines
  * ---------------------------------------------------------------------------
  */
     /* splices a vector of lists into a total list*/
-    void splice_them(list< vector< Integer > >& Total, vector<list< vector< Integer > > >& Parts);
-
-    /* records the order of Elements in pointer list Order */
-    void record_order(list< vector< Integer > >& Elements, list< vector< Integer >* >& Order);
+    void splice_them_sort(CandidateList< Integer>& Total, vector<CandidateList< Integer> >& Parts);
+    void set_generation_0(CandidateList< Integer>& L);
 
     /* Returns true if new_element is reducible versus the elements in Irred used for dual algorithm
      *  ATTENTION: this is "random access" for new_element if ordered==false. 
@@ -73,11 +87,12 @@ public:
     /* reduces a list against itself
      * the list must be sorted  sorted by total degree as used for dual algorithm
      * The irreducible elements are reurned in ascendingorder */
-    void auto_reduce(list< vector< Integer> >& To_Reduce, const size_t& size);
+    void auto_reduce(list< vector< Integer> >& To_Reduce, const size_t& size,bool no_pos_in_deg0);
 
 
     /* computes the Hilbert basis after adding a support hyperplane with the dual algorithm */
-    void cut_with_halfspace_hilbert_basis(const size_t & hyp_counter, const bool & lifting, vector<Integer> & halfspace);
+    void cut_with_halfspace_hilbert_basis(const size_t & hyp_counter, const bool  lifting, 
+            vector<Integer> & halfspace, bool pointed);
     
     /* computes the Hilbert basis after adding a support hyperplane with the dual algorithm , general case */
     Matrix<Integer> cut_with_halfspace(const size_t & hyp_counter, const Matrix<Integer>& Basis_Max_Subspace);
@@ -89,17 +104,23 @@ public:
     void extreme_rays_rank();
 
     void relevant_support_hyperplanes();
+    
+    void unique_vectors(list< vector< Integer > >& HB);
+    
+    // move canmdidates of old_tot_deg <= guaranteed_HB_deg to Irred
+    void select_HB(CandidateList<Integer>& Cand, size_t guaranteed_HB_deg, 
+                                CandidateList<Integer>& Irred, bool all_irreducible);
 
-    Cone_Dual_Mode(Matrix<Integer> M);            //main constructor
+    Cone_Dual_Mode(const Matrix<Integer>& M);            //main constructor
 
 /*---------------------------------------------------------------------------
  *                      Data access
  *---------------------------------------------------------------------------
  */
-    void print() const;                //to be modified, just for tests
+ 
     Matrix<Integer> get_support_hyperplanes() const;
     Matrix<Integer> get_generators() const;
-    Matrix<Integer> read_hilbert_basis() const;
+    vector<bool> get_extreme_rays() const;
 
 
 
@@ -110,7 +131,7 @@ public:
     void hilbert_basis_dual();
 
     /* transforms all data to the sublattice */
-    void to_sublattice(Sublattice_Representation<Integer> SR);
+    void to_sublattice(const Sublattice_Representation<Integer>& SR);
 
 };
 //class end *****************************************************************

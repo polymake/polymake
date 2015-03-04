@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -318,7 +318,7 @@ permuted(const GenericVector<Vector,E>& v, const Permutation& perm)
          throw std::runtime_error("permuted - dimension mismatch");
    }
    SparseVector<E> result(v.dim());
-   for (typename ensure_features<Permutation, cons<end_sensitive,indexed> >::const_iterator p=ensure(perm, (cons<end_sensitive,indexed>*)0);
+   for (typename ensure_features<Permutation, cons<end_sensitive,indexed> >::const_iterator p=ensure(perm, (cons<end_sensitive,indexed>*)0).begin();
         !p.at_end();  ++p) {
       typename Vector::const_iterator e=v.top().find(*p);
       if (!e.at_end()) result.push_back(p.index(), *e);

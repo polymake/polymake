@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -55,11 +55,12 @@ perl::Object disjoint_union(perl::Object p1, perl::Object p2,perl::OptionSet opt
 }
 
 UserFunction4perl("# @category Producing a new simplicial complex from others\n"
-                  "# Produce the disjoint union of the two given complexes.\n"
+                  "# Produce the __disjoint union__ of the two given complexes.\n"
                   "# @option labels creates [[VERTEX_LABELS]].\n"
                   "# The vertex labels are built from the original labels with a suffix ''_1'' or ''_2'' appended.\n"
                   "# @param SimplicialComplex complex1"
-                  "# @param SimplicialComplex complex2",
+                  "# @param SimplicialComplex complex2"
+                  "# @return SimplicialComplex",
                   &disjoint_union, "disjoint_union(SimplicialComplex SimplicialComplex { labels => 0 })");
 
 

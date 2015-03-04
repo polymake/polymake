@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -115,7 +115,7 @@ sub getArrayNumberFromArrayOfSets {
 # @param Matrix lattice_points the lattice points of the orbit polytope
 # @param group::GroupOfPolytope group the generating group
 # @param Bool verbose print out additional information
-# @return PerlArray ($Graph, $lp_reps, $minInStartOrbit, \@core_point_reps, $CPindices)
+# @return ARRAY ($Graph, $lp_reps, $minInStartOrbit, \@core_point_reps, $CPindices)
 
 user_function nestedOPGraph (Vector, Matrix, Matrix, group::GroupOfPolytope, $){
     my ($gen_point, $points, $lattice_points, $group, $verbose) = @_;
@@ -209,10 +209,10 @@ user_function nestedOPGraph (Vector, Matrix, Matrix, group::GroupOfPolytope, $){
 
 
 # @category Symmetry
-# Projects a symmetric polytope in R4 cap H<sub>1,k</sub> to R3.
+# Projects a symmetric polytope in R<sup>4</sup> cap H<sub>1,k</sub> to R<sup>3</sup>.
 # (See also the polymake extension 'tropmat' by S. Horn.)
 # @param Polytope p the symmetric polytope to be projected
-# @return Polytope the image of //p// in R3
+# @return Polytope the image of //p// in R<sup>3</sup>
 
 user_function ortho_project (Polytope) {
 	my $poly = $_[0];

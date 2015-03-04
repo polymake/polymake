@@ -1,0 +1,1053 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scene>
+  <sceneRoot>
+    <name>root</name>
+    <visible>true</visible>
+    <transformation/>
+    <appearance>
+      <name>root appearance</name>
+      <attribute name="&lt;de.jreality.shader.RootAppearance&gt;">
+        <java-class>de.jreality.shader.RootAppearance</java-class>
+      </attribute>
+    </appearance>
+    <camera/>
+    <light/>
+    <geometry/>
+    <children>
+      <child>
+        <name>backdrop</name>
+        <visible>true</visible>
+        <transformation/>
+        <appearance/>
+        <camera/>
+        <light/>
+        <geometry/>
+        <children/>
+        <tools/>
+      </child>
+      <child>
+        <name>content</name>
+        <visible>true</visible>
+        <transformation>
+          <name>content trafo</name>
+          <matrix>0.6134111327481749 0.6286880532405729 0.47799384298668723 -0.5579929664338832 -0.5754445535522341 -0.05874003810173879 0.8157286152335687 -0.8305826697427171 0.5409162116332559 -0.7754359674637147 0.32574332281098484 0.7807453009887309 0.0 0.0 0.0 1.0</matrix>
+        </transformation>
+        <appearance>
+          <name>content app</name>
+          <attribute name="lineShader.textShader.offset">
+            <double-array>0.0 0.0 0.0</double-array>
+          </attribute>
+          <attribute name="polygonShader.textShader.diffuseColor">
+            <awt-color>
+              <red>0</red>
+              <green>0</green>
+              <blue>0</blue>
+              <alpha>255</alpha>
+            </awt-color>
+          </attribute>
+          <attribute name="showPoints">
+            <boolean>true</boolean>
+          </attribute>
+          <attribute name="pointShader.diffuseColor">
+            <awt-color>
+              <red>220</red>
+              <green>224</green>
+              <blue>224</blue>
+              <alpha>255</alpha>
+            </awt-color>
+          </attribute>
+          <attribute name="lineShader.textShader.font">
+            <awt-font size="48" family="Arial" name="arial" bold="false" italic="false"/>
+          </attribute>
+          <attribute name="pointShader.textShader.font">
+            <awt-font size="48" family="Arial" name="arial" bold="false" italic="false"/>
+          </attribute>
+          <attribute name="transparencyEnabled">
+            <boolean>false</boolean>
+          </attribute>
+          <attribute name="lineShader.depthFudgeFactor">
+            <double>1.0</double>
+          </attribute>
+          <attribute name="lineShader.textShader.scale">
+            <double>0.004583333333333333</double>
+          </attribute>
+          <attribute name="polygonShader.reflectionMap:blendColor">
+            <awt-color>
+              <red>255</red>
+              <green>255</green>
+              <blue>255</blue>
+              <alpha>128</alpha>
+            </awt-color>
+          </attribute>
+          <attribute name="lineShader.tubeDraw">
+            <boolean>true</boolean>
+          </attribute>
+          <attribute name="polygonShader.pickable">
+            <boolean>true</boolean>
+          </attribute>
+          <attribute name="polygonShader.transparency">
+            <double>0.0</double>
+          </attribute>
+          <attribute name="opaqueTubesAndSpheres">
+            <boolean>true</boolean>
+          </attribute>
+          <attribute name="lineShader.textShader.showLabels">
+            <boolean>true</boolean>
+          </attribute>
+          <attribute name="showFaces">
+            <boolean>true</boolean>
+          </attribute>
+          <attribute name="zBufferEnabled">
+            <boolean>true</boolean>
+          </attribute>
+          <attribute name="polygonShader.textShader.font">
+            <awt-font size="48" family="Arial" name="arial" bold="false" italic="false"/>
+          </attribute>
+          <attribute name="pointShader.pointRadius">
+            <double>0.20030872227949909</double>
+          </attribute>
+          <attribute name="polygonShader.textShader.showLabels">
+            <boolean>true</boolean>
+          </attribute>
+          <attribute name="pointShader.spheresDraw">
+            <boolean>true</boolean>
+          </attribute>
+          <attribute name="polygonShader.diffuseColor">
+            <awt-color>
+              <red>235</red>
+              <green>235</green>
+              <blue>237</blue>
+              <alpha>255</alpha>
+            </awt-color>
+          </attribute>
+          <attribute name="pointShader.textShader.showLabels">
+            <boolean>true</boolean>
+          </attribute>
+          <attribute name="pointShader.textShader.offset">
+            <double-array>0.0 0.0 0.51</double-array>
+          </attribute>
+          <attribute name="lineShader.lineWidth">
+            <double>2.5</double>
+          </attribute>
+          <attribute name="lineShader.pickable">
+            <boolean>true</boolean>
+          </attribute>
+          <attribute name="polygonShader.textShader.scale">
+            <double>0.010416666666666668</double>
+          </attribute>
+          <attribute name="pointShader.textShader.diffuseColor">
+            <awt-color reference="../../attribute[2]/awt-color"/>
+          </attribute>
+          <attribute name="lineShader.diffuseColor">
+            <awt-color>
+              <red>54</red>
+              <green>169</green>
+              <blue>214</blue>
+              <alpha>255</alpha>
+            </awt-color>
+          </attribute>
+          <attribute name="lineShader.reflectionMap:blendColor">
+            <awt-color>
+              <red>255</red>
+              <green>255</green>
+              <blue>255</blue>
+              <alpha>77</alpha>
+            </awt-color>
+          </attribute>
+          <attribute name="polygonShader.smoothShading">
+            <boolean>false</boolean>
+          </attribute>
+          <attribute name="pointShader.textShader.scale">
+            <double>0.004791666666666667</double>
+          </attribute>
+          <attribute name="polygonShader.textShader.offset">
+            <double-array>0.0 0.0 0.0</double-array>
+          </attribute>
+          <attribute name="pointShader.reflectionMap:blendColor">
+            <awt-color>
+              <red>255</red>
+              <green>255</green>
+              <blue>255</blue>
+              <alpha>77</alpha>
+            </awt-color>
+          </attribute>
+          <attribute name="pointShader.pickable">
+            <boolean>true</boolean>
+          </attribute>
+          <attribute name="lineShader.tubeRadius">
+            <double>0.02820452319814795</double>
+          </attribute>
+          <attribute name="lineShader.textShader.diffuseColor">
+            <awt-color reference="../../attribute[2]/awt-color"/>
+          </attribute>
+          <attribute name="showLines">
+            <boolean>true</boolean>
+          </attribute>
+          <attribute name="radiiWorldCoordinates">
+            <boolean>true</boolean>
+          </attribute>
+          <attribute name="pointShader.pointSize">
+            <double>39.68</double>
+          </attribute>
+        </appearance>
+        <camera/>
+        <light/>
+        <geometry/>
+        <children>
+          <child>
+            <name>Halfedge Root</name>
+            <visible>true</visible>
+            <transformation>
+              <name>Normalization</name>
+              <matrix>4.257791418224461 0.0 0.0 0.0 0.0 4.257791418224461 0.0 0.0 0.0 0.0 4.257791418224461 0.0 0.0 0.0 0.0 1.0</matrix>
+            </transformation>
+            <appearance>
+              <name>Halfedge Apprearance</name>
+              <attribute name="pointShader.radiiWorldCoordinates">
+                <boolean>true</boolean>
+              </attribute>
+              <attribute name="transparency">
+                <double>0.0</double>
+              </attribute>
+              <attribute name="lineShader.radiiWorldCoordinates">
+                <boolean>true</boolean>
+              </attribute>
+            </appearance>
+            <camera/>
+            <light/>
+            <geometry/>
+            <children>
+              <child>
+                <name>Default Layer</name>
+                <visible>true</visible>
+                <transformation>
+                  <name>Layer Transform</name>
+                  <matrix>1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0</matrix>
+                </transformation>
+                <appearance>
+                  <name>Layer Appearance</name>
+                </appearance>
+                <camera/>
+                <light/>
+                <geometry/>
+                <children>
+                  <child>
+                    <name>Geometry</name>
+                    <visible>true</visible>
+                    <transformation/>
+                    <appearance>
+                      <name>Geometry Appearance</name>
+                    </appearance>
+                    <camera/>
+                    <light/>
+                    <geometry type="IndexedFaceSet">
+                      <name>face-set 313</name>
+                      <attributes/>
+                      <vertexAttributes size="8">
+                        <DataList attribute="normals" data="double[][]">
+                          <double-array>0.3166812691811754 0.32313951068129604 0.33616447815191675</double-array>
+                          <double-array>0.33302449268959355 0.3394827341897142 -0.3298092320801064</double-array>
+                          <double-array>0.3370621063286532 -0.3424424502773243 0.35654531529939454</double-array>
+                          <double-array>0.3534053298370713 -0.3260992267689061 -0.30942839493262864</double-array>
+                          <double-array>-0.34770695003994934 0.34524888296695866 0.35827385043757937</double-array>
+                          <double-array>-0.3313637265315312 0.3615921064753769 -0.30769985979444375</double-array>
+                          <double-array>-0.3273261128924716 -0.32033307799166166 0.37865468758505716</double-array>
+                          <double-array>-0.31098288938405344 -0.3039898544832435 -0.287319022646966</double-array>
+                        </DataList>
+                        <DataList attribute="coordinates" data="double[][]">
+                          <double-array>0.9375827225423434 1.0177327732835406 1.1800568905783912 1.0</double-array>
+                          <double-array>1.0 1.0 -1.0 1.0</double-array>
+                          <double-array>1.0 -1.0 1.0 1.0</double-array>
+                          <double-array>1.0 -1.0 -1.0 1.0</double-array>
+                          <double-array>-1.0 1.0 1.0 1.0</double-array>
+                          <double-array>-1.0 1.0 -1.0 1.0</double-array>
+                          <double-array>-1.0 -1.0 1.0 1.0</double-array>
+                          <double-array>-1.3486354820476607 -1.2489055910927676 -1.0165557437178665 1.0</double-array>
+                        </DataList>
+                        <DataList attribute="texture coordinates" data="double[][]">
+                          <double-array>0.0 0.0 0.0 1.0</double-array>
+                          <double-array>0.0 0.0 0.0 1.0</double-array>
+                          <double-array>0.0 0.0 0.0 1.0</double-array>
+                          <double-array>0.0 0.0 0.0 1.0</double-array>
+                          <double-array>0.0 0.0 0.0 1.0</double-array>
+                          <double-array>0.0 0.0 0.0 1.0</double-array>
+                          <double-array>0.0 0.0 0.0 1.0</double-array>
+                          <double-array>0.0 0.0 0.0 1.0</double-array>
+                        </DataList>
+                      </vertexAttributes>
+                      <edgeAttributes size="12">
+                        <DataList attribute="normals" data="double[][]">
+                          <double-array>0.4977362625647891 0.50742362481497 0.005279668406769817</double-array>
+                          <double-array>-0.02486758807993649 0.47727636832826376 0.49681381953419484</double-array>
+                          <double-array>0.47717513305867365 -0.015281461099345642 0.5063999465147857</double-array>
+                          <double-array>-0.5194071957730135 0.017882597329148278 0.5395640049432796</double-array>
+                          <double-array>-0.4988460662668981 0.540587683243464 0.03844372683526374</double-array>
+                          <double-array>0.005703667641280139 -0.5210965731096668 0.5273850752554115</double-array>
+                          <double-array>-0.46827481054568143 -0.4577852581944666 0.06901498255648036</double-array>
+                          <double-array>0.5283075182860058 -0.4909493166229605 0.03585092412798645</double-array>
+                          <double-array>0.03021850290390738 -0.4965817378470396 -0.4715754900926233</double-array>
+                          <double-array>-0.4948923605103863 0.042397432591775516 -0.4593965604047552</double-array>
+                          <double-array>-3.527528173092507E-4 0.501791203590891 -0.5021467458138399</double-array>
+                          <double-array>0.5016899683213009 0.009233374163281599 -0.4925606188332491</double-array>
+                        </DataList>
+                        <DataList attribute="indices" data="int[][]">
+                          <int-array>0 1</int-array>
+                          <int-array>0 4</int-array>
+                          <int-array>2 0</int-array>
+                          <int-array>6 4</int-array>
+                          <int-array>4 5</int-array>
+                          <int-array>2 6</int-array>
+                          <int-array>6 7</int-array>
+                          <int-array>3 2</int-array>
+                          <int-array>3 7</int-array>
+                          <int-array>7 5</int-array>
+                          <int-array>5 1</int-array>
+                          <int-array>1 3</int-array>
+                        </DataList>
+                      </edgeAttributes>
+                      <faceAttributes size="6">
+                        <DataList attribute="normals" data="double[][]">
+                          <double-array>0.9997789837033992 0.014865795387360665 0.014865795387360665</double-array>
+                          <double-array>-0.004306458573821032 0.9999814542425794 -0.004306458573821032</double-array>
+                          <double-array>-0.04542871758605195 -0.04542871758605195 0.9979340976422107</double-array>
+                          <double-array>-0.9933856739599751 0.0811939122443485 0.0811939122443485</double-array>
+                          <double-array>0.05683605286861223 -0.9967644286332816 0.05683605286861223</double-array>
+                          <double-array>0.003600952939202531 0.003600952939202531 -0.9999870330538588</double-array>
+                        </DataList>
+                        <DataList attribute="indices" data="int[][]">
+                          <int-array>0 2 3 1</int-array>
+                          <int-array>1 5 4 0</int-array>
+                          <int-array>0 4 6 2</int-array>
+                          <int-array>5 7 6 4</int-array>
+                          <int-array>2 6 7 3</int-array>
+                          <int-array>3 7 5 1</int-array>
+                        </DataList>
+                        <DataList attribute="coordinates" data="double[][]">
+                          <double-array>0.0 0.0 0.0 1.0</double-array>
+                          <double-array>0.0 0.0 0.0 1.0</double-array>
+                          <double-array>0.0 0.0 0.0 1.0</double-array>
+                          <double-array>0.0 0.0 0.0 1.0</double-array>
+                          <double-array>0.0 0.0 0.0 1.0</double-array>
+                          <double-array>0.0 0.0 0.0 1.0</double-array>
+                        </DataList>
+                      </faceAttributes>
+                    </geometry>
+                    <children/>
+                    <tools/>
+                  </child>
+                  <child>
+                    <name>Display Faces</name>
+                    <visible>true</visible>
+                    <transformation/>
+                    <appearance>
+                      <name>Faces Appearance</name>
+                      <attribute name="showPoints">
+                        <boolean>false</boolean>
+                      </attribute>
+                      <attribute name="pickable">
+                        <boolean>false</boolean>
+                      </attribute>
+                      <attribute name="showLines">
+                        <boolean>false</boolean>
+                      </attribute>
+                    </appearance>
+                    <camera/>
+                    <light/>
+                    <geometry/>
+                    <children/>
+                    <tools/>
+                  </child>
+                  <child>
+                    <name>Bounding Box</name>
+                    <visible>false</visible>
+                    <transformation/>
+                    <appearance>
+                      <name>Bounding Box Appearance</name>
+                      <attribute name="lineShader.tubeDraw">
+                        <boolean>false</boolean>
+                      </attribute>
+                      <attribute name="lineShader.lineWidth">
+                        <double>0.5</double>
+                      </attribute>
+                      <attribute name="showPoints">
+                        <boolean>false</boolean>
+                      </attribute>
+                      <attribute name="lineShader.zBufferEnabled">
+                        <boolean>true</boolean>
+                      </attribute>
+                      <attribute name="pickable">
+                        <boolean>false</boolean>
+                      </attribute>
+                      <attribute name="lineShader.diffuseColor">
+                        <awt-color>
+                          <red>255</red>
+                          <green>0</green>
+                          <blue>0</blue>
+                          <alpha>255</alpha>
+                        </awt-color>
+                      </attribute>
+                      <attribute name="showFaces">
+                        <boolean>false</boolean>
+                      </attribute>
+                      <attribute name="lineShader.lineStipple">
+                        <boolean>true</boolean>
+                      </attribute>
+                      <attribute name="lineShader.depthFudgeFactor">
+                        <float>1.5</float>
+                      </attribute>
+                      <attribute name="showLines">
+                        <boolean>true</boolean>
+                      </attribute>
+                    </appearance>
+                    <camera/>
+                    <light/>
+                    <geometry type="IndexedFaceSet">
+                      <name>Bounding Box</name>
+                      <attributes>
+                        <attribute name="metric">
+                          <int>0</int>
+                        </attribute>
+                      </attributes>
+                      <vertexAttributes size="8">
+                        <DataList attribute="coordinates" data="double[][3]">-1.3486354820476607 -1.2489055910927676 -1.0165557437178665 -1.3486354820476607 -1.2489055910927676 1.1800568905783912 -1.3486354820476607 1.0177327732835406 -1.0165557437178665 -1.3486354820476607 1.0177327732835406 1.1800568905783912 1.0 -1.2489055910927676 -1.0165557437178665 1.0 -1.2489055910927676 1.1800568905783912 1.0 1.0177327732835406 -1.0165557437178665 1.0 1.0177327732835406 1.1800568905783912</DataList>
+                      </vertexAttributes>
+                      <edgeAttributes size="12">
+                        <DataList attribute="indices" data="int[][]">
+                          <int-array>0 1</int-array>
+                          <int-array>2 3</int-array>
+                          <int-array>4 5</int-array>
+                          <int-array>6 7</int-array>
+                          <int-array>1 3</int-array>
+                          <int-array>0 2</int-array>
+                          <int-array>5 7</int-array>
+                          <int-array>4 6</int-array>
+                          <int-array>0 4</int-array>
+                          <int-array>1 5</int-array>
+                          <int-array>3 7</int-array>
+                          <int-array>2 6</int-array>
+                        </DataList>
+                      </edgeAttributes>
+                      <faceAttributes size="6">
+                        <DataList attribute="indices" data="int[][]">
+                          <int-array>0 1 3 2</int-array>
+                          <int-array>1 0 4 5</int-array>
+                          <int-array>3 1 5 7</int-array>
+                          <int-array>5 4 6 7</int-array>
+                          <int-array>2 3 7 6</int-array>
+                          <int-array>0 2 6 4</int-array>
+                        </DataList>
+                      </faceAttributes>
+                    </geometry>
+                    <children>
+                      <child>
+                        <name>sgc 6</name>
+                        <visible>true</visible>
+                        <transformation>
+                          <name>trafo 47</name>
+                          <matrix>0.11743177410238304 0.0 0.0 -1.3486354820476607 0.0 0.11743177410238304 0.0 -1.2489055910927676 0.0 0.0 0.11743177410238304 1.1800568905783912 0.0 0.0 0.0 1.0</matrix>
+                        </transformation>
+                        <appearance>
+                          <name>Pivot Appearance</name>
+                          <attribute name="lineShader.tubeDraw">
+                            <boolean>true</boolean>
+                          </attribute>
+                          <attribute name="showPoints">
+                            <boolean>true</boolean>
+                          </attribute>
+                          <attribute name="lineShader.tubeRadius">
+                            <double>0.02</double>
+                          </attribute>
+                          <attribute name="showLines">
+                            <boolean>true</boolean>
+                          </attribute>
+                          <attribute name="pointShader.pointRadius">
+                            <double>0.02</double>
+                          </attribute>
+                          <attribute name="pointShader.spheresDraw">
+                            <boolean>true</boolean>
+                          </attribute>
+                        </appearance>
+                        <camera/>
+                        <light/>
+                        <geometry/>
+                        <children>
+                          <child>
+                            <name>xArrow</name>
+                            <visible>true</visible>
+                            <transformation/>
+                            <appearance>
+                              <name>X Appearance</name>
+                              <attribute name="pointShader.diffuseColor">
+                                <awt-color reference="../../../../../../../appearance/attribute[6]/awt-color"/>
+                              </attribute>
+                              <attribute name="lineShader.diffuseColor">
+                                <awt-color reference="../../../../../../../appearance/attribute[6]/awt-color"/>
+                              </attribute>
+                            </appearance>
+                            <camera/>
+                            <light/>
+                            <geometry type="IndexedLineSet">
+                              <name>line-set 0</name>
+                              <attributes/>
+                              <vertexAttributes size="4">
+                                <DataList attribute="coordinates" data="double[][3]">0.0 0.0 0.0 1.0 0.0 0.0 0.8 -0.2 0.0 0.8 0.2 0.0</DataList>
+                              </vertexAttributes>
+                              <edgeAttributes size="3">
+                                <DataList attribute="indices" data="int[][]">
+                                  <int-array>0 1</int-array>
+                                  <int-array>1 2</int-array>
+                                  <int-array>1 3</int-array>
+                                </DataList>
+                              </edgeAttributes>
+                            </geometry>
+                            <children/>
+                            <tools/>
+                          </child>
+                          <child>
+                            <name>yArrow</name>
+                            <visible>true</visible>
+                            <transformation>
+                              <name>trafo 7</name>
+                              <matrix>6.123233995736766E-17 -1.0 0.0 0.0 1.0 6.123233995736766E-17 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0</matrix>
+                            </transformation>
+                            <appearance>
+                              <name>Y Appearance</name>
+                              <attribute name="pointShader.diffuseColor">
+                                <awt-color>
+                                  <red>0</red>
+                                  <green>255</green>
+                                  <blue>0</blue>
+                                  <alpha>255</alpha>
+                                </awt-color>
+                              </attribute>
+                              <attribute name="lineShader.diffuseColor">
+                                <awt-color reference="../../attribute/awt-color"/>
+                              </attribute>
+                            </appearance>
+                            <camera/>
+                            <light/>
+                            <geometry reference="../../child/geometry"/>
+                            <children/>
+                            <tools/>
+                          </child>
+                          <child>
+                            <name>zArrow</name>
+                            <visible>true</visible>
+                            <transformation>
+                              <name>trafo 8</name>
+                              <matrix>3.749399456654644E-33 -1.0 6.123233995736766E-17 0.0 6.123233995736766E-17 6.123233995736766E-17 1.0 0.0 -1.0 0.0 6.123233995736766E-17 0.0 0.0 0.0 0.0 1.0</matrix>
+                            </transformation>
+                            <appearance>
+                              <name>Z Appearance</name>
+                              <attribute name="pointShader.diffuseColor">
+                                <awt-color>
+                                  <red>0</red>
+                                  <green>0</green>
+                                  <blue>255</blue>
+                                  <alpha>255</alpha>
+                                </awt-color>
+                              </attribute>
+                              <attribute name="lineShader.diffuseColor">
+                                <awt-color reference="../../attribute/awt-color"/>
+                              </attribute>
+                            </appearance>
+                            <camera/>
+                            <light/>
+                            <geometry reference="../../child/geometry"/>
+                            <children/>
+                            <tools/>
+                          </child>
+                          <child>
+                            <name>Box</name>
+                            <visible>true</visible>
+                            <transformation>
+                              <name>trafo 9</name>
+                              <matrix>3.749399456654644E-34 -0.1 6.123233995736766E-18 0.0 6.123233995736766E-18 6.123233995736766E-18 0.1 0.0 -0.1 0.0 6.123233995736766E-18 0.0 0.0 0.0 0.0 1.0</matrix>
+                            </transformation>
+                            <appearance>
+                              <name>Box Appearance</name>
+                              <attribute name="polygonShader.diffuseColor">
+                                <awt-color>
+                                  <red>255</red>
+                                  <green>255</green>
+                                  <blue>0</blue>
+                                  <alpha>255</alpha>
+                                </awt-color>
+                              </attribute>
+                              <attribute name="showPoints">
+                                <boolean>false</boolean>
+                              </attribute>
+                              <attribute name="showFaces">
+                                <boolean>true</boolean>
+                              </attribute>
+                              <attribute name="showLines">
+                                <boolean>false</boolean>
+                              </attribute>
+                            </appearance>
+                            <camera/>
+                            <light/>
+                            <geometry type="IndexedFaceSet">
+                              <name>face-set 8</name>
+                              <attributes/>
+                              <vertexAttributes size="8">
+                                <DataList attribute="coordinates" data="double[][3]">1.0 1.0 1.0 1.0 1.0 -1.0 1.0 -1.0 1.0 1.0 -1.0 -1.0 -1.0 1.0 1.0 -1.0 1.0 -1.0 -1.0 -1.0 1.0 -1.0 -1.0 -1.0</DataList>
+                              </vertexAttributes>
+                              <edgeAttributes size="12">
+                                <DataList attribute="indices" data="int[][2]">2 3 0 1 4 5 6 7 0 2 1 3 4 6 5 7 1 5 0 4 2 6 3 7</DataList>
+                              </edgeAttributes>
+                              <faceAttributes size="6">
+                                <DataList attribute="normals" data="double[][3]">1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 -1.0 0.0 0.0 -0.0 -1.0 0.0 0.0 0.0 -1.0</DataList>
+                                <DataList attribute="indices" data="int[][]">
+                                  <int-array>0 2 3 1</int-array>
+                                  <int-array>1 5 4 0</int-array>
+                                  <int-array>0 4 6 2</int-array>
+                                  <int-array>5 7 6 4</int-array>
+                                  <int-array>2 6 7 3</int-array>
+                                  <int-array>3 7 5 1</int-array>
+                                </DataList>
+                              </faceAttributes>
+                            </geometry>
+                            <children/>
+                            <tools/>
+                          </child>
+                        </children>
+                        <tools/>
+                      </child>
+                    </children>
+                    <tools/>
+                  </child>
+                  <child>
+                    <name>Visualizers</name>
+                    <visible>true</visible>
+                    <transformation/>
+                    <appearance/>
+                    <camera/>
+                    <light/>
+                    <geometry/>
+                    <children/>
+                    <tools/>
+                  </child>
+                  <child>
+                    <name>Temporary Geometry</name>
+                    <visible>true</visible>
+                    <transformation/>
+                    <appearance/>
+                    <camera/>
+                    <light/>
+                    <geometry/>
+                    <children>
+                      <child>
+                        <name>Integral curves root</name>
+                        <visible>true</visible>
+                        <transformation/>
+                        <appearance>
+                          <name>app 23</name>
+                          <attribute name="showPoints">
+                            <boolean>true</boolean>
+                          </attribute>
+                          <attribute name="showLines">
+                            <boolean>true</boolean>
+                          </attribute>
+                        </appearance>
+                        <camera/>
+                        <light/>
+                        <geometry/>
+                        <children/>
+                        <tools/>
+                      </child>
+                      <child>
+                        <name>Selected Nurbs Points</name>
+                        <visible>true</visible>
+                        <transformation/>
+                        <appearance>
+                          <name>app 67</name>
+                          <attribute name="polygonShader.diffuseColor">
+                            <awt-color>
+                              <red>255</red>
+                              <green>200</green>
+                              <blue>0</blue>
+                              <alpha>255</alpha>
+                            </awt-color>
+                          </attribute>
+                          <attribute name="showPoints">
+                            <boolean>true</boolean>
+                          </attribute>
+                          <attribute name="pointShader.diffuseColor">
+                            <awt-color reference="../../attribute/awt-color"/>
+                          </attribute>
+                        </appearance>
+                        <camera/>
+                        <light/>
+                        <geometry/>
+                        <children/>
+                        <tools/>
+                      </child>
+                      <child>
+                        <name>Colored Beads</name>
+                        <visible>true</visible>
+                        <transformation/>
+                        <appearance>
+                          <name>Beads Appearance</name>
+                          <attribute name="pointShader.polygonShader.smoothShading">
+                            <boolean>true</boolean>
+                          </attribute>
+                          <attribute name="showPoints">
+                            <boolean>true</boolean>
+                          </attribute>
+                          <attribute name="pointShader.pointRadius">
+                            <double>1.0</double>
+                          </attribute>
+                          <attribute name="pointShader.spheresDraw">
+                            <boolean>true</boolean>
+                          </attribute>
+                        </appearance>
+                        <camera/>
+                        <light/>
+                        <geometry type="PointSet">
+                          <name>point-set 0</name>
+                          <attributes>
+                            <attribute name="metric">
+                              <int>0</int>
+                            </attribute>
+                          </attributes>
+                          <vertexAttributes size="6">
+                            <DataList attribute="colors" data="double[][4]">0.0 0.5686274766921997 1.0 1.0 0.0 0.03529411926865578 1.0 1.0 0.13333334028720856 1.0 0.0 1.0 1.0 0.0 0.0 1.0 0.7686274647712708 1.0 0.0 1.0 0.0 0.0 1.0 1.0</DataList>
+                            <DataList attribute="relativeRadii" data="double[]">0.044287705522879105 0.002611900474941896 0.16580588448014844 0.31066216736088237 0.21515210647353222 0.0</DataList>
+                            <DataList attribute="coordinates" data="double[][3]">0.9843956806355858 0.004433193320885154 0.04501422264459776 -0.015604319364414143 1.0044331933208852 0.04501422264459781 -0.015604319364414143 0.004433193320885209 1.0450142226445978 -1.087158870511915 -0.06222639777319189 -0.0041389359294665695 -0.08715887051191518 -1.0622263977731918 -0.004138935929466625 -0.08715887051191518 -0.06222639777319183 -1.0041389359294666</DataList>
+                            <DataList attribute="pointSize" data="double[][1]">0.044287705522879105 0.002611900474941896 0.16580588448014844 0.31066216736088237 0.21515210647353222 0.0</DataList>
+                          </vertexAttributes>
+                        </geometry>
+                        <children/>
+                        <tools/>
+                      </child>
+                    </children>
+                    <tools/>
+                  </child>
+                  <child>
+                    <name>Selection</name>
+                    <visible>true</visible>
+                    <transformation/>
+                    <appearance>
+                      <name>Selection Appearance</name>
+                      <attribute name="pointShader.radiiWorldCoordinates">
+                        <boolean>true</boolean>
+                      </attribute>
+                      <attribute name="showPoints">
+                        <boolean>true</boolean>
+                      </attribute>
+                      <attribute name="polygonShader.transparency">
+                        <double>0.1</double>
+                      </attribute>
+                      <attribute name="lineShader.radiiWorldCoordinates">
+                        <boolean>true</boolean>
+                      </attribute>
+                      <attribute name="lineShader.tubeRadius">
+                        <double>0.03102497551796275</double>
+                      </attribute>
+                      <attribute name="showFaces">
+                        <boolean>true</boolean>
+                      </attribute>
+                      <attribute name="showLines">
+                        <boolean>true</boolean>
+                      </attribute>
+                      <attribute name="pointShader.pointRadius">
+                        <double>0.220339594507449</double>
+                      </attribute>
+                    </appearance>
+                    <camera/>
+                    <light/>
+                    <geometry/>
+                    <children>
+                      <child>
+                        <name>Point Selection</name>
+                        <visible>true</visible>
+                        <transformation/>
+                        <appearance/>
+                        <camera/>
+                        <light/>
+                        <geometry type="PointSet">
+                          <name>point-set 0</name>
+                          <attributes>
+                            <attribute name="metric">
+                              <int>0</int>
+                            </attribute>
+                          </attributes>
+                          <vertexAttributes size="1">
+                            <DataList attribute="colors" data="double[][3]">1.0 0.4000000059604645 0.20000000298023224</DataList>
+                            <DataList attribute="coordinates" data="double[][3]">0.9375827225423434 1.0177327732835406 1.1800568905783912</DataList>
+                          </vertexAttributes>
+                        </geometry>
+                        <children/>
+                        <tools/>
+                      </child>
+                    </children>
+                    <tools/>
+                  </child>
+                </children>
+                <tools/>
+              </child>
+            </children>
+            <tools/>
+          </child>
+        </children>
+        <tools>
+          <de.jreality.tools.EncompassTool>
+            <margin>1.75</margin>
+            <automaticClippingPlanes>true</automaticClippingPlanes>
+            <encompassFactory>
+              <avatarPath>
+                <node reference="../../../../../../.."/>
+                <node>
+                  <name>avatar</name>
+                  <visible>true</visible>
+                  <transformation>
+                    <name>avatar trafo</name>
+                    <matrix>1.0 0.0 0.0 -0.5579929664338827 0.0 1.0 0.0 -0.8305826697427174 0.0 0.0 1.0 49.52208124184685 0.0 0.0 0.0 1.0</matrix>
+                  </transformation>
+                  <appearance/>
+                  <camera/>
+                  <light/>
+                  <geometry/>
+                  <children>
+                    <child>
+                      <name>cameraNode</name>
+                      <visible>true</visible>
+                      <transformation>
+                        <name>camera trafo</name>
+                        <matrix>1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0</matrix>
+                      </transformation>
+                      <appearance/>
+                      <camera>
+                        <name>camera</name>
+                        <eyeSeparation>4.126840103487237</eyeSeparation>
+                        <far>146.22400782257435</far>
+                        <fieldOfView>20.305180860860606</fieldOfView>
+                        <focus>49.52208124184685</focus>
+                        <near>8.35565758986139</near>
+                        <onAxis>true</onAxis>
+                        <orientationMatrix/>
+                        <perspective>true</perspective>
+                        <stereo>false</stereo>
+                      </camera>
+                      <light/>
+                      <geometry/>
+                      <children>
+                        <child>
+                          <name>camera light</name>
+                          <visible>true</visible>
+                          <transformation/>
+                          <appearance/>
+                          <camera/>
+                          <light type="PointLight">
+                            <name>camera light</name>
+                            <color>
+                              <red>255</red>
+                              <green>255</green>
+                              <blue>255</blue>
+                              <alpha>255</alpha>
+                            </color>
+                            <intensity>0.3</intensity>
+                            <falloffA0>1.0</falloffA0>
+                            <falloffA1>0.0</falloffA1>
+                            <falloffA2>0.0</falloffA2>
+                            <useShadowMap>false</useShadowMap>
+                            <shadowMapX>512</shadowMapX>
+                            <shadowMapY>512</shadowMapY>
+                            <shadowMap></shadowMap>
+                          </light>
+                          <geometry/>
+                          <children/>
+                          <tools/>
+                        </child>
+                        <child>
+                          <name>window root</name>
+                          <visible>true</visible>
+                          <transformation>
+                            <name>trafo 21</name>
+                            <matrix>1.058475493514314E-4 0.0 0.0 -0.08467803948114512 0.0 -1.058475493514314E-4 -1.2962586251082196E-20 0.06350852961085884 0.0 1.2962586251082196E-20 -1.058475493514314E-4 -0.11000000000000003 0.0 0.0 0.0 1.0</matrix>
+                          </transformation>
+                          <appearance/>
+                          <camera/>
+                          <light/>
+                          <geometry/>
+                          <children>
+                            <child>
+                              <name>sgc 17</name>
+                              <visible>false</visible>
+                              <transformation>
+                                <name>trafo 22</name>
+                                <matrix>1.0 0.0 0.0 800.0 0.0 1.0 0.0 600.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0</matrix>
+                              </transformation>
+                              <appearance>
+                                <name>app 42</name>
+                                <attribute name="lightingEnabled">
+                                  <boolean>false</boolean>
+                                </attribute>
+                                <attribute name="polygonShader.reflectionMap:blendColor">
+                                  <awt-color>
+                                    <red>255</red>
+                                    <green>255</green>
+                                    <blue>255</blue>
+                                    <alpha>65</alpha>
+                                  </awt-color>
+                                </attribute>
+                                <attribute name="showPoints">
+                                  <boolean>false</boolean>
+                                </attribute>
+                                <attribute name="tubeDraw">
+                                  <boolean>false</boolean>
+                                </attribute>
+                                <attribute name="diffuseColor">
+                                  <awt-color>
+                                    <red>255</red>
+                                    <green>255</green>
+                                    <blue>255</blue>
+                                    <alpha>255</alpha>
+                                  </awt-color>
+                                </attribute>
+                                <attribute name="showLines">
+                                  <boolean>false</boolean>
+                                </attribute>
+                              </appearance>
+                              <camera/>
+                              <light/>
+                              <geometry type="IndexedFaceSet">
+                                <name>face-set 17</name>
+                                <attributes>
+                                  <attribute name="metric">
+                                    <int>0</int>
+                                  </attribute>
+                                </attributes>
+                                <vertexAttributes size="4">
+                                  <DataList attribute="coordinates" data="double[][3]">0.0 0.0 0.0 350.0 0.0 0.0 350.0 350.0 0.0 0.0 350.0 0.0</DataList>
+                                  <DataList attribute="texture coordinates" data="double[][2]">0.0 0.0 1.0 0.0 1.0 1.0 0.0 1.0</DataList>
+                                </vertexAttributes>
+                                <edgeAttributes size="0"/>
+                                <faceAttributes size="1">
+                                  <DataList attribute="normals" data="double[][]">
+                                    <double-array>0.0 0.0 0.9999999999999999</double-array>
+                                  </DataList>
+                                  <DataList attribute="indices" data="int[][]">
+                                    <int-array>0 1 2 3</int-array>
+                                  </DataList>
+                                </faceAttributes>
+                              </geometry>
+                              <children/>
+                              <tools/>
+                            </child>
+                          </children>
+                          <tools/>
+                        </child>
+                      </children>
+                      <tools/>
+                    </child>
+                  </children>
+                  <tools/>
+                </node>
+              </avatarPath>
+              <scenePath>
+                <node reference="../../../../../../.."/>
+                <node reference="../../../../.."/>
+              </scenePath>
+              <cameraPath>
+                <node reference="../../../../../../.."/>
+                <node reference="../../avatarPath/node[2]"/>
+                <node reference="../../avatarPath/node[2]/children/child"/>
+                <node reference="../../avatarPath/node[2]/children/child/camera"/>
+              </cameraPath>
+              <margin>1.75</margin>
+              <metric>0</metric>
+              <clippingPlanes>true</clippingPlanes>
+              <stereoParameters>true</stereoParameters>
+            </encompassFactory>
+            <hash>33</hash>
+          </de.jreality.tools.EncompassTool>
+          <de.jreality.tools.RotateTool>
+            <fixOrigin>false</fixOrigin>
+            <rotateOnPick>false</rotateOnPick>
+            <animationEnabled>false</animationEnabled>
+            <moveChildren>false</moveChildren>
+            <animTimeMin>250.0</animTimeMin>
+            <animTimeMax>750.0</animTimeMax>
+            <updateCenter>false</updateCenter>
+            <success>true</success>
+            <hash>34</hash>
+          </de.jreality.tools.RotateTool>
+          <de.jreality.tools.DraggingTool>
+            <moveChildren>false</moveChildren>
+            <hash>36</hash>
+          </de.jreality.tools.DraggingTool>
+        </tools>
+      </child>
+      <child reference="../child[2]/tools/de.jreality.tools.EncompassTool/encompassFactory/avatarPath/node[2]"/>
+      <child>
+        <name>lights</name>
+        <visible>true</visible>
+        <transformation/>
+        <appearance/>
+        <camera/>
+        <light/>
+        <geometry/>
+        <children>
+          <child>
+            <name>sun</name>
+            <visible>true</visible>
+            <transformation>
+              <name>trafo 0</name>
+              <matrix>1.0 0.0 0.0 0.0 0.0 0.7071067811865475 0.7071067811865476 0.0 0.0 -0.7071067811865476 0.7071067811865475 0.0 0.0 0.0 0.0 1.0</matrix>
+            </transformation>
+            <appearance/>
+            <camera/>
+            <light type="DirectionalLight">
+              <name>sun light</name>
+              <color>
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
+                <alpha>255</alpha>
+              </color>
+              <intensity>0.75</intensity>
+            </light>
+            <geometry/>
+            <children/>
+            <tools/>
+          </child>
+          <child>
+            <name>sky</name>
+            <visible>true</visible>
+            <transformation>
+              <name>trafo 1</name>
+              <matrix>1.0 0.0 0.0 0.0 0.0 6.123233995736766E-17 1.0 0.0 0.0 -1.0 6.123233995736766E-17 0.0 0.0 0.0 0.0 1.0</matrix>
+            </transformation>
+            <appearance/>
+            <camera/>
+            <light type="DirectionalLight">
+              <name>sky light</name>
+              <color>
+                <red>255</red>
+                <green>255</green>
+                <blue>255</blue>
+                <alpha>255</alpha>
+              </color>
+              <intensity>0.25</intensity>
+            </light>
+            <geometry/>
+            <children/>
+            <tools/>
+          </child>
+        </children>
+        <tools/>
+      </child>
+    </children>
+    <tools/>
+  </sceneRoot>
+  <scenePaths>
+    <path name="cameraPath" reference="../../sceneRoot/children/child[2]/tools/de.jreality.tools.EncompassTool/encompassFactory/cameraPath"/>
+    <path name="avatarPath" reference="../../sceneRoot/children/child[2]/tools/de.jreality.tools.EncompassTool/encompassFactory/avatarPath"/>
+    <path name="emptyPickPath">
+      <node reference="../../../sceneRoot"/>
+      <node reference="../../../sceneRoot/children/child[2]"/>
+    </path>
+  </scenePaths>
+  <sceneAttributes/>
+</scene>

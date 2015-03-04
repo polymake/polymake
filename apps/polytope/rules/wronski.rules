@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -14,7 +14,7 @@
 #-------------------------------------------------------------------------------
 
 
-# @category Producing a polynomial
+# @category Other
 # Returns a Wronski polynomial of a [[topaz::FOLDABLE]] triangulation of a lattice polytope
 # @param Matrix<Int> M points (in homogeneous coordinates); affinely span the space
 # @param Vector<Int> lambda height function on lattice points
@@ -22,7 +22,7 @@
 # @param Scalar<Rational> s additional Parameter in the polynomial
 # @option topaz::SimplicialComplex triangulation The triangulation of the pointset corresponding to the lifting function
 # @option Ring ring the ring in which the polynomial should be
-user_function wronski_polynomial(Matrix<Int>, Vector<Int>, Array<Rational>, $; {triangulation => undef,  ring => undef }) {
+user_function wronski_polynomial(Matrix, Vector, Array<Rational>, $; {triangulation => undef,  ring => undef }) {
     my ($M, $lambda, $coeffs, $s, $options) = @_;
     my ($n, $d) = ($M->rows(), $M->cols()-1);
 
@@ -43,12 +43,12 @@ user_function wronski_polynomial(Matrix<Int>, Vector<Int>, Array<Rational>, $; {
     my $m = new Map<Int, Int>;
     map { $m->{$_}= $i++ } @{$T->FACETS->[0]};
 
-    my $full_coeffs = new Vector<Rational>(map { $s**($lambda->[$_])*$coeffs->[$m->{$T->PROJ_DICTIONARY->[$_]}] } 0..($n-1));
-    return (new Polynomial($M->minor(All,~[0]),$full_coeffs,$Q_x0d_));
+    my $full_coeffs = new Vector<Rational>(map { $s**(convert_to<Int>($lambda->[$_]))*$coeffs->[$m->{$T->PROJ_DICTIONARY->[$_]}] } 0..($n-1));
+    return (new Polynomial((convert_to<Int>($M->minor(All,~[0]))),$full_coeffs,$Q_x0d_));
 }
 
 
-# @category Producing a polynomial
+# @category Other
 # Returns a Wronski system of a [[topaz::FOLDABLE]] triangulation of a lattice polytope
 # @param Matrix<Int> M points (in homogeneous coordinates); affinely span the space
 # @param Vector<Int> lambda height function on lattice points
@@ -56,7 +56,7 @@ user_function wronski_polynomial(Matrix<Int>, Vector<Int>, Array<Rational>, $; {
 # @param Scalar<Rational> s additional Parameter in the polynomial
 # @option topaz::SimplicialComplex triangulation The triangulation of the pointset corresponding to the lifting function
 # @option Ring ring the ring in which the polynomial should be
-user_function wronski_system(Matrix<Int>, Vector<Int>, Array<Array<Rational> >, $; {triangulation => undef, ring => undef }) {
+user_function wronski_system(Matrix, Vector, Array<Array<Rational> >, $; {triangulation => undef, ring => undef }) {
     my ($M, $lambda, $coeffs_array,$s, $options) = @_;
     my ($n, $d) = ($M->rows(), $M->cols()-1);
 
@@ -79,13 +79,13 @@ user_function wronski_system(Matrix<Int>, Vector<Int>, Array<Array<Rational> >, 
 }
 
 
-# @category Producing a polynomial
+# @category Other
 # Returns a system of polynomials which is
 # necessary to check if degeneration avoids center of projection:
 # compute eliminant e(s); this must not have a zero in (0,1)
 # @param Matrix<Int> L lattice points
 # @param Vector<Int> lambda height function on lattice points
-user_function wronski_center_ideal(Matrix<Int>, Vector<Int>; {ring => undef, triangulation => undef}) {
+user_function wronski_center_ideal(Matrix, Vector; {ring => undef, triangulation => undef}) {
   my ($L,$lambda, $options) = @_;
 
   my $d=$L->cols()-1; # ambient dimension

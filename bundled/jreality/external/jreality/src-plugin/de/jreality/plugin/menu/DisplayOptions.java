@@ -165,6 +165,7 @@ public class DisplayOptions extends Plugin implements FrontendFlavor {
 		return View.class;
 	}
 	
+	@Override
 	public void setFrontendListener(FrontendListener l) {
 		frontendListener = l;
 	}

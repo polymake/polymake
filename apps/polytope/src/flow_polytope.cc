@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -96,6 +96,8 @@ perl::Object flow_polytope(const Graph<Directed> G, const EdgeMap<Directed,Scala
    p_out.set_description() << "flow polytope of a Graph" << endl;   
    p_out.take("INEQUALITIES") << ineqs;
    p_out.take("EQUATIONS") << eqs;
+   p_out.take("FEASIBLE") << 1;
+   p_out.take("VALID_POINT") << unit_vector<Scalar>(G.edges()+1,0);
    return p_out;
 }
 

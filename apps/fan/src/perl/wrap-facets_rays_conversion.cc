@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,11 +19,11 @@
 namespace polymake { namespace fan { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( facetsToRays_x_f16, T0 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturnVoid( facetsToRays<T0>(arg0) );
+   FunctionInterface4perl( facetsToRays_T_x_f16, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturnVoid( (facetsToRays<T0>(arg0)) );
    };
 
-   FunctionInstance4perl(facetsToRays_x_f16, Rational);
+   FunctionInstance4perl(facetsToRays_T_x_f16, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

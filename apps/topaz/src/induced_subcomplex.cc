@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -70,7 +70,8 @@ UserFunction4perl("# @category Producing a new simplicial complex from others"
                   "# @option Bool no_label tells the client not to create any labels."
                   "# @option Bool geom_real  tells the client to inherit the [[COORDINATES]]."
                   "# @param SimplicialComplex complex"
-                  "# @param Set<Int> vertices",
+                  "# @param Set<Int> vertices"
+                  "# @return SimplicialComplex",
                   &induced_subcomplex,"induced_subcomplex(SimplicialComplex,$;{ no_labels => 0, geom_real => 0})");
 } }
 

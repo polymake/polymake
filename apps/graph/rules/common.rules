@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -56,10 +56,9 @@ weight 0.10;
 
 
 # Explore the graph as a sequence of its edges.
-# @param Graph G
 # @return Array<Set<Int>>
 user_method EDGES {
-  my $g=shift;
+  my $g = shift;
   my $a = new Array<Set<Int> >($g->N_EDGES);
   my $i = 0;
   for ( my $e=entire(edges($g->ADJACENCY)); $e; ++$e, ++$i ) { 
@@ -157,7 +156,7 @@ user_function graph_from_edges($) {
 }
 
 # @category Combinatorics
-# creates the Laplacian matrix of a graph
+# Creates the __Laplacian matrix__ of a graph.
 # @param Graph G
 # @return Matrix
 user_function laplacian($) {
@@ -167,10 +166,20 @@ user_function laplacian($) {
 }
 
 # @category Combinatorics
-# creates the line graph of a graph
+# Creates the __line graph__ of a graph.
 # @param Graph G
 # @return Graph
 user_function line_graph(props::Graph) : c++ (include=>["polymake/graph/line_graph.h"]);
+
+# @category Combinatorics
+# Creates the __complement graph__ of a graph.
+# @param Graph G
+# @return Graph
+user_function complement_graph($){
+    my $g = shift;
+    my $inv_adj = ~( adjacency_matrix($g->ADJACENCY) )- index_matrix( unit_matrix($g->N_NODES) );
+    return new Graph(ADJACENCY=>$inv_adj, N_NODES=>$g->N_NODES, NODE_LABELS=>$g->NODE_LABELS);
+}
 
 ############################################################################
 

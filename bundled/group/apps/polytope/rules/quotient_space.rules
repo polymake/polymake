@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,8 +13,13 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-# A topological quotient space obtained from a polytope by identifying faces.
-# This object will sit inside a Polytope.
+# @topic category objects/QuotientSpace/properties/Basic properties
+# Properties defining a quotient space.
+
+
+# A topological quotient space obtained from a [[Polytope]] by identifying faces.
+# This object will sit inside the polytope.
+# @category Symmetry
 declare object QuotientSpace {
 
 # @category Basic properties
@@ -39,7 +44,7 @@ property FACES : Array<Array<Set<Int>>>;
 property FACE_ORBITS : Array<Set<Array<Set<Int>>>>;
 
 # @category Combinatorics
-# The symmetry group induced by the symmetry group of the polytope on the @see FACES of the quotient space
+# The symmetry group induced by the symmetry group of the polytope on the [[FACES]] of the quotient space
 property SYMMETRY_GROUP : group::Group;
 
 # @category Combinatorics
@@ -78,6 +83,9 @@ property SIMPLEXITY_LOWER_BOUND: Int;
 
 object Polytope {
 
+
+# @category Geometry
+# A topological quotient space obtained from a polytope by identifying faces.
 property QUOTIENT_SPACE : QuotientSpace : multiple;
 
 rule QUOTIENT_SPACE.DIM : COMBINATORIAL_DIM {
@@ -87,7 +95,8 @@ rule QUOTIENT_SPACE.DIM : COMBINATORIAL_DIM {
 }
 
 # @category Quotient spaces
-# Return a 2-dimensional cylinder obtained by identifying two opposite sides of a square
+# Return a 2-dimensional __cylinder__ obtained by identifying two opposite sides of a square.
+# @return Polytope
 user_function cylinder_2 {
     my $p = cube(2);
     my $g = new group::Group(GENERATORS=>[[2,3,0,1]]);
@@ -101,6 +110,7 @@ user_function cylinder_2 {
 # Return the 3-dimensional Euclidean manifold obtained by identifying opposite faces
 # of a 3-dimensional cube by a quarter turn. After identification, two classes 
 # of vertices remain.
+# @return Polytope
 user_function quarter_turn_manifold {
     my $p = cube(3);
     $p->GROUP = linear_symmetries($p,1); # this will disappear with ticket #553
@@ -113,8 +123,9 @@ user_function quarter_turn_manifold {
 }
 
 # @category Quotient spaces
-# For a centrally symmetric polytope, return the quotient space obtained by dividing
-# out the central symmetry, i.e, identifying diametrically opposite faces
+# For a centrally symmetric polytope, divide
+# out the central symmetry, i.e, identify diametrically opposite faces.
+# @param Polytope P, centrally symmetric
 user_function cs_quotient {
     my $this = shift;
     die "cs_quotient: input not centrally symmetric" unless $this->CENTRALLY_SYMMETRIC;
@@ -201,6 +212,10 @@ rule QUOTIENT_SPACE.SIMPLEXITY_LOWER_BOUND : COMBINATORIAL_DIM, RAYS, RAYS_IN_FA
 
 sub write_quotient_space_simplexity_ilp;
 
+# @category Quotient spaces
+# outputs a linear program whose optimal value is a lower bound for the number of simplices 
+# necessary to triangulate the polytope in such a way that its symmetries respect the triangulation
+# of the boundary.
 user_function write_quotient_space_simplexity_ilp<Scalar>(Polytope<Scalar> $) {
     my $q = shift;
     my $outfilename = shift;

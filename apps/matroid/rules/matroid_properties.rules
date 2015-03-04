@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -56,6 +56,9 @@ property RANK : Int;
 
 property CIRCUITS : Array<Set>;
 
+# Hyperplanes, i.e. flats of rank RANK-1.
+
+property MATROID_HYPERPLANES : Array<Set>;
 
 # The number of [[CIRCUITS]].
 
@@ -97,7 +100,7 @@ property POLYTOPE : polytope::Polytope;
 # coordinates for some realization. Specifying coordinates is one way
 # to define a matroid.
 
-property POINTS : Matrix;
+property VECTORS : Matrix;
 
 
 # Whether the matroid is paving
@@ -108,7 +111,7 @@ property BINARY : Bool;
 
 # If the matroid is realizable over the field GF(2) with two elements, this property contains
 # coordinates for some realization.
-property BINARY_POINTS : Matrix<Int>;
+property BINARY_VECTORS : Matrix<Int>;
 
 # Whether the matroid is representable over GF(3)
 # NOTE: the property is 'undef' when its hard to decide. 
@@ -116,12 +119,48 @@ property TERNARY : Bool;
 
 # If the matroid is realizable over the field GF(3) with three elements, this property contains
 # coordinates for some realization.
-property TERNARY_POINTS : Matrix<Int>;
+property TERNARY_VECTORS : Matrix<Int>;
 
 # Whether the matroid is representable over every field, that is the repesentation is unimodular.
 # NOTE: the property is 'undef' when its hard to decide, whether the matroid is ternary. 
 property REGULAR : Bool;
 
+#The tutte polynomial of a matroid
+property TUTTE_POLYNOMIAL : common::Polynomial;
+
+#The linear coefficient of the tutte polynomial
+property BETA_INVARIANT : Integer;
+
+#Whether the matroid is connected
+property CONNECTED : Bool;
+
+#The connected componets
+property CONNECTED_COMPONENTS : Array<Set>{
+    sub equal {
+        my ($M1,$M2)=@_;
+        eval {
+            find_permutation($M1,$M2);
+            1;
+        } or do {
+            0;
+        }
+    }
+}
+
+#Whether the matroid is series-parallel
+property SERIES_PARALLEL : Bool;
+
+#The lattice of flats, this is a graph with all closed sets as nodes
+property LATTICE_OF_FLATS : FaceLattice;
+
+#The h-vector of a matroid
+property H_VECTOR : Vector<Integer>;
+
+#The f-vector of a matroid
+property F_VECTOR : Vector<Integer>;
+
+#A string listing the bases in revlex order. A '*' means the basis is present, a '0' that it is absent
+property REVLEX_BASIS_ENCODING : String;
 }
 
 # Local Variables:

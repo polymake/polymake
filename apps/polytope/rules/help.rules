@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -12,6 +12,9 @@
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
+
+INCLUDE
+  global_categories.rules
 
 # @topic category functions/Producing a polytope from scratch
 # With these clients you can create polytopes belonging to various parameterized
@@ -46,7 +49,30 @@
 # The following functions allow for the conversion of the coordinate type of cones and polytopes.
 
 
+# @topic category functions/Comparing
+# Functions based on graph isomorphisms.
 
+
+# @topic category functions/Producing a cone
+# Various constructions of cones.
+
+
+# @topic category functions/Producing a polytope from graphs
+# Polytope constructions which take graphs as input.
+
+# @topic category functions/Producing a point configuration
+# Constructing a point configuration, either from scratch or from existing objects.
+
+
+# @topic category functions/Producing other objects
+# Functions producing big objects which are not contained in application polytope.
+
+
+# @topic category functions/Quotient spaces
+# Topologic cell complexes defined as quotients over polytopes modulo a discrete group.
+
+# @topic category preferences/Convex hull computation
+# descriptions of various convex hull algorithms available in polymake
 
 # Local Variables:
 # mode: perl

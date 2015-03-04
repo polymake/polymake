@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -27,11 +27,12 @@ Scalar norm(const Vector<Scalar>& vec)
    return max-min;
 }
   
-UserFunctionTemplate4perl("# @category Other"
-                          "# Calculates the tropical norm of a vector in the tropical torus"
-                          "# which is the difference between the maximal and minimal coordinate "
+UserFunctionTemplate4perl("# @category Tropical operations"
+                          "# The __tropical norm__ of a vector //v// in the tropical torus"
+                          "# is the difference between the maximal and minimal coordinate "
                           "# in any coordinate representation of the vector."
-                          "# @param Vector<Scalar> vector"
+                          "# @param Vector<Scalar> v"
+                          "# @tparam Scalar"
                           "# @return Scalar" ,
                           "norm<Scalar>(Vector<Scalar>)");
 } }

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -14,7 +14,8 @@
 #-------------------------------------------------------------------------------
 
 
-# A Schlegel diagram of a polytope
+# A Schlegel diagram of a polytope.
+# @tparam Scalar default [[Rational]]
 # @relates Polytope
 declare object SchlegelDiagram<Scalar=Rational> {
 
@@ -128,7 +129,6 @@ custom $solid_color="0 0 255";
 #
 # LP-related supplements
 
-# @category Visualization
 # Illustrate the behavior of a linear objective function on the polytope.
 # Superpose the drawing with the directed graph induced by the objective function.
 # @param LinearProgram lp a LinearProgram object attached to the polytope.
@@ -144,7 +144,7 @@ user_method DIRECTED_GRAPH(; LinearProgram) {
       $lp=$self->SchlegelObject->parent->LP;
    }
 
-   $self->Name.=" DIRECTED with LP " . $lp->subobj_name;
+   $self->Name.=" DIRECTED with LP " . $lp->name;
    my $bg = $self->basis_graph;
    $bg->Graph = $lp->DIRECTED_GRAPH;
    $bg->ArrowStyle=1;
@@ -172,7 +172,6 @@ user_method DIRECTED_GRAPH(; LinearProgram) {
 }
 
 
-# @category Visualization
 # Illustrate the behavior of a linear objective function on the polytope.
 # Color the vertices according to the values of the objective function.
 # @param LinearProgram lp a LinearProgram object attached to the polytope.
@@ -194,7 +193,6 @@ user_method VERTEX_COLORS(; LinearProgram { min => $Visual::Color::min, max => $
    visualize($self);
 }
 
-# @category Visualization
 # Illustrate the behavior of a linear objective function on the polytope.
 # The vertices belonging to [[MINIMAL_FACE]] and [[MAXIMAL_FACE]] are drawn in distinct colors
 # @param LinearProgram lp a LinearProgram object attached to the polytope.
@@ -226,8 +224,8 @@ user_method MIN_MAX_FACE(; LinearProgram { min => $Visual::Color::min, max => $V
 #
 #  Triangulations and other complex-like drawings
 
-# @category Visualization
-# Draw the edges of the [[Polytope::TRIANGULATION_BOUNDARY|TRIANGULATION_BOUNDARY]]
+# Draw the edges of the [[Visual::Polytope::TRIANGULATION_BOUNDARY|TRIANGULATION_BOUNDARY]]
+# @options %Visual::Graph::decorations
 # @return Visual::SchlegelDiagram
 
 user_method TRIANGULATION_BOUNDARY(%Visual::Graph::decorations) {
@@ -255,8 +253,8 @@ user_method TRIANGULATION_BOUNDARY(%Visual::Graph::decorations) {
    visualize($self);
 }
 
-# @category Visualization
-# Draw the boundary simplices of the triangulation as solid tetrahedra
+# Draw the boundary simplices of the triangulation as solid tetrahedra.
+# @options %Visual::Polygons::decorations
 # @return Visual::SchlegelDiagram
 
 user_method TRIANGULATION_BOUNDARY_SOLID(%Visual::Polygons::decorations) {
@@ -282,8 +280,8 @@ user_method TRIANGULATION_BOUNDARY_SOLID(%Visual::Polygons::decorations) {
    visualize($self);
 }
 
-# @category Visualization
 # Draw the facets of the Schlegel diagram as polytopes.
+# @options %Visual::Polygons::decorations
 # @return Visual::SchlegelDiagram
 
 user_method SOLID(%Visual::Polygons::decorations) {
@@ -311,9 +309,9 @@ user_method SOLID(%Visual::Polygons::decorations) {
    visualize($self);
 }
 
-# @category Visualization
 # Visualize the construction of a 3D Schlegel diagram, that is, the Viewpoint, the 3-polytope and
-# the projection onto one facet
+# the projection onto one facet.
+# @options %Visual::Polygons::decorations
 # @return Visual::SchlegelDiagram
 
 user_method CONSTRUCTION(%Visual::Polygons::decorations) {
@@ -452,8 +450,9 @@ method cols { $_[0]->source->cols }
 
 object SchlegelDiagram {
 
-# Draw the Schlegel diagram
+# Draw the Schlegel diagram.
 # @option pm::perl::Hash proj_facet decoration for the edges of the projection face
+# @options %Visual::Graph::decorations
 # @return Visual::SchlegelDiagram
 
 user_method VISUAL({ proj_facet => undef }, %Visual::Graph::decorations) {
@@ -475,7 +474,7 @@ user_method VISUAL({ proj_facet => undef }, %Visual::Graph::decorations) {
       if ($decor_key =~ /^Edge/) {
          $basis_graph->merge($decor_key, sub {
                                 my $e=shift;
-                                exists $proj_facet->{$e->from_node} && exists $proj_facet->{$e->to_node} ? $value : undef;
+                                $e && exists $proj_facet->{$e->from_node} && exists $proj_facet->{$e->to_node} ? $value : undef;
                              });
       } else {
          die "only edge attributes (EdgeColor, EdgeThickness, EdgeStyle) can be specified for the projection face\n";
@@ -495,19 +494,21 @@ object Polytope {
 # @category Visualization
 # Initial properties of the Schlegel diagram to be displayed.
 options %schlegel_init=(
-  # Int  index of the projection facet, see [[SchlegelDiagram::FACET]]
+  # Int  index of the projection facet, see [[Visual::SchlegelDiagram::FACET]]
   FACET => undef,
-  # Rational  zoom factor, see [[SchlegelDiagram::ZOOM]]
+  # Rational  zoom factor, see [[Visual::SchlegelDiagram::ZOOM]]
   ZOOM => undef,
-  # Vector  see [[SchlegelDiagram::FACET_POINT]]
+  # Vector  see [[Visual::SchlegelDiagram::FACET_POINT]]
   FACET_POINT => undef,
-  # Vector  see [[SchlegelDiagram::INNER_POINT]]
+  # Vector  see [[Visual::SchlegelDiagram::INNER_POINT]]
   INNER_POINT => undef,
 );
 
 # @category Visualization
 # Create a Schlegel diagram and draw it.
+# @options %schlegel_init
 # @option FIXME proj_facet decorations for the Edges of the projection face 
+# @options %Visual::Wire::decorations
 # @return Visual::SchlegelDiagram
 
 user_method SCHLEGEL(%schlegel_init,  { proj_facet => undef },  %Visual::Wire::decorations) : VERTICES, VERTICES_IN_FACETS, N_FACETS, GRAPH {

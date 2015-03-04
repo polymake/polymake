@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,6 +20,8 @@
 #include "polymake/GenericGraph.h"
 #include "polymake/vector"
 #include "polymake/list"
+#include "polymake/Set.h"
+#include "polymake/Vector.h"
 
 namespace polymake { namespace graph {
 
@@ -33,6 +35,33 @@ namespace polymake { namespace graph {
 
 template <typename Graph>
 int bipartite_sign(const GenericGraph<Graph,Undirected>& G);
+
+
+// given a bipartite graph, color it with two colors, 0 and 1
+template <typename Graph>
+Vector<int> bipartite_coloring(const GenericGraph<Graph,Undirected>& G)
+{
+   assert(G.nodes() > 0);
+
+   Vector<int> color_of(G.nodes(), 2); // initialize to dummy color 2
+   std::list<int> queue;
+   queue.push_back(0);
+   color_of[0] = 1;
+   Set<int> new_nodes(sequence(0, G.nodes()));
+   while (queue.size()) {
+      const int n = queue.front(); queue.pop_front();
+      new_nodes -= n;
+      const Set<int> neighbors = G.top().adjacent_nodes(n) * new_nodes;
+      const bool color = color_of[n];
+      for (Entire<Set<int> >::const_iterator sit = entire(neighbors); !sit.at_end(); ++sit) {
+         queue.push_back(*sit);
+         if (color_of[*sit] != 2 && color_of[*sit] != !color)
+            throw std::runtime_error("Graph is not bipartite");
+         color_of[*sit] = !color;
+      }
+   }
+   return color_of;
+}
 
 } }
 

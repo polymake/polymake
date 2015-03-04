@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -26,8 +26,21 @@
 
 namespace pm { namespace perl {
 
-template <typename Target>
+template <typename Given, typename Target>
 class access {
+public:
+   typedef Target type;
+   typedef Target return_type;
+   typedef typename attrib<type>::minus_const value_type;
+
+   static return_type get(const Value& v)
+   {
+      return static_cast<Target>(static_cast<Given>(v));
+   }
+};
+
+template <typename Target>
+class access<Target, Target> {
 public:
    typedef Target type;
    typedef Target return_type;
@@ -40,7 +53,7 @@ public:
 };
 
 template <>
-class access<std::string> {
+class access<std::string, std::string> {
 public:
    typedef std::string type;
    typedef std::string return_type;
@@ -55,58 +68,96 @@ public:
 };
 
 template <>
-class access<const std::string>
-   : public access<std::string> {
+class access<const std::string, const std::string>
+   : public access<std::string, std::string> {
 public:
    typedef const std::string type;
 };
 
+template <typename Given>
+class access<Given, std::string>
+   : public access<std::string, std::string> {};
+
+template <typename Given>
+class access<Given, const std::string>
+   : public access<const std::string, const std::string> {};
+
 template <typename Target>
-class access_canned<Target, true, true> {
+struct canned_may_be_missing : False {};
+
+template <typename E, typename SharedParams>
+struct canned_may_be_missing< pm::Array<E, SharedParams> > : True {};
+
+// TODO: add a declaration for representative of HashMaps when CPlusPlus.pm learns to generate them for anonymous hash maps
+
+template <typename Given, typename Target, bool _try_conv>
+class access_canned<Given, Target, _try_conv, true> {
 public:
    typedef Target type;
-   typedef Target& return_type;
+   typedef typename inherit_const<Target&, Given>::type return_type;
    typedef typename attrib<type>::minus_const value_type;
+   typedef typename attrib<Given>::minus_const given_value_type;
 
    static return_type get(const Value& v)
    {
-      if (const std::type_info *t=v.get_canned_typeinfo()) {
-         if (*t==typeid(value_type))
-            return v.get_canned<value_type>();
+      const Value::canned_data_t canned=Value::get_canned_data(v.sv);
+      const bool maybe_missing=_try_conv || canned_may_be_missing<typename attrib<Given>::minus_const>::value;
+
+      if (!maybe_missing || canned.second) {
+         if (identical<value_type, given_value_type>::value) {
+            if (!_try_conv || *canned.first == typeid(value_type))
+               return *reinterpret_cast<type*>(canned.second);
+         } else {
+            if (!_try_conv || *canned.first == typeid(given_value_type))
+               return convert_input(v, canned, identical<value_type, given_value_type>());
+         }
 
          if (wrapper_type conversion=type_cache<value_type>::get_conversion_constructor(v.sv)) {
-            // it is a wrapper for new<T0>(T1), it expects the argument at stack[1]
-            char fup;
-            if (SV *ret=conversion(const_cast<SV**>(&v.sv)-1, &fup))
-               return *reinterpret_cast<value_type*>(v.get_canned_value(ret));
+            // It is a wrapper for new<T0>(T1), it expects the prototype at stack[0] and the argument at stack[1]
+            SV* mini_stack[2]={ NULL, v.sv };
+            if (SV* ret=conversion(mini_stack, reinterpret_cast<char*>(&mini_stack)))
+               return *reinterpret_cast<value_type*>(Value::get_canned_data(ret).second);
             else
                throw exception();
          }
       }
 
+      return parse_input(v, bool2type<maybe_missing>());
+   }
+
+private:
+   static return_type parse_input(const Value& v, True)
+   {
       Value temp_can;
-      value_type *value=new(temp_can.allocate_canned(type_cache<value_type>::force_descr())) value_type;
+      value_type* value=new(temp_can.allocate_canned(type_cache<value_type>::get_descr())) value_type;
       v >> *value;
       const_cast<Value&>(v).sv=temp_can.get_temp();
       return *value;
    }
-};
 
-template <typename Target>
-class access_canned<Target, false, true> {
-public:
-   typedef Target type;
-   typedef Target& return_type;
-   typedef typename attrib<type>::minus_const value_type;
-
-   static return_type get(const Value& v)
+   static return_type convert_input(const Value& v, const Value::canned_data_t& canned, False)
    {
-      return v.get_canned<value_type>();
+      Value temp_can;
+      value_type* value=new(temp_can.allocate_canned(type_cache<value_type>::get_descr())) value_type(*reinterpret_cast<Given*>(canned.second));
+      const_cast<Value&>(v).sv=temp_can.get_temp();
+      return *value;
+   }
+
+   static return_type parse_input(const Value& v, False)
+   {
+      // should never happen
+      return *reinterpret_cast<value_type*>(0);
+   }
+
+   static return_type convert_input(const Value& v, const Value::canned_data_t& canned, True)
+   {
+      // should never happen
+      return *reinterpret_cast<value_type*>(0);
    }
 };
 
-template <typename Target, bool _try>
-class access_canned<Target, _try, false> {
+template <typename Target, bool _try_conv>
+class access_canned<Target, Target, _try_conv, false> {
 public:
    typedef typename inherit_const<typename Unwary<typename attrib<Target>::minus_const>::type, Target>::type type;
    typedef Target& return_type;
@@ -114,18 +165,39 @@ public:
 
    static return_type get(const Value& v)
    {
-      return wary(access_canned<type, _try, true>::get(v));
+      return wary(access_canned<type, type, _try_conv, true>::get(v));
    }
 };
 
-template <typename Target>
-class access< TryCanned<Target> > : public access_canned<Target, true> {};
+template <typename Given, typename Target, bool _try_conv>
+class access_canned<Given, Target, _try_conv, false> {
+public:
+   typedef typename inherit_const<Target, Given>::type type;
+   typedef typename inherit_const<Wary<Target>, Given>::type& return_type;
+   typedef typename Unwary<typename attrib<Given>::minus_const>::type given_value_type;
+   typedef typename inherit_const<given_value_type, Given>::type given_type;
+   typedef typename attrib<type>::minus_const value_type;
+
+   static return_type get(const Value& v)
+   {
+      return wary(access_canned<given_type, Target, _try_conv, true>::get(v));
+   }
+};
+
+template <typename Given, typename Target>
+class access<TryCanned<Given>, Target> : public access_canned<Given, Target, true> {};
+
+template <typename Given, typename Target>
+class access<Canned<Given>, Target> : public access_canned<Given, Target, false> {};
+
+template <typename Given>
+class access<TryCanned<Given>, TryCanned<Given> > : public access_canned<Given, Given, true> {};
+
+template <typename Given>
+class access<Canned<Given>, Canned<Given> > : public access_canned<Given, Given, false> {};
 
 template <typename Target>
-class access< Canned<Target> > : public access_canned<Target, false> {};
-
-template <typename Target>
-class access< Enum<Target> > {
+class access< Enum<Target>, Enum<Target> > {
 public:
    typedef const Target type;
    typedef Target return_type;
@@ -140,50 +212,52 @@ public:
 class FunctionBase {
 protected:
    static
-   int register_func(wrapper_type wrapper, const char *sig, size_t siglen, const char *file, size_t filelen, int line,
-                     SV *arg_types, void *func_ptr, const char *func_ptr_type);
+   int register_func(wrapper_type wrapper, const char* sig, size_t siglen, const char* file, size_t filelen, int line,
+                     SV* arg_types, SV* cross_apps, void* func_ptr=NULL, const char* func_ptr_type=NULL);
 
    static
-   void register_disabled(const char *sig, size_t siglen, const char *file, size_t filelen, int line, SV *arg_types);
+   int register_func(wrapper_type wrapper, const char* sig, size_t siglen, const char* file, size_t filelen, int line,
+                     SV* arg_types, int=0)
+   {
+      return register_func(wrapper, sig, siglen, file, filelen, line, arg_types, NULL, NULL, NULL);
+   }
 
    static
-   void add_rules(const char *file, int line, const char *text, ...);
+   void add_rules(const char* file, int line, const char* text, ...);
 };
 
 class Function : protected FunctionBase {
 public:
    template <typename Fptr, size_t filelen>
-   Function(Fptr *fptr, const char (&file)[filelen], int line, const char* text)
+   Function(Fptr* fptr, const char (&file)[filelen], int line, const char* text)
    {
-      const int i=register_func(&TypeListUtils<Fptr>::get_flags, 0, 0, file, filelen-1, line,
-                                TypeListUtils<Fptr>::get_types(), (void*)fptr, typeid(type2type<Fptr>).name());
-      add_rules(file,line,text,i);
+      const int i=register_func(&TypeListUtils<Fptr>::get_flags, NULL, 0, file, filelen-1, line,
+                                TypeListUtils<Fptr>::get_types(), NULL, (void*)fptr, typeid(type2type<Fptr>).name());
+      add_rules(file, line, text, i);
    }
 };
 
 template <typename Wrapper>
 class WrapperBase : protected FunctionBase {
 public:
-   template <size_t namelen, size_t filelen, typename first_arg> static
-   void register_it(const char (&name)[namelen], const char (&file)[filelen], int line, first_arg arg0)
+   template <size_t namelen, size_t filelen> static
+   void register_it(const char (&name)[namelen], const char (&file)[filelen], int line, const char* arg0)
    {
       register_func(&Wrapper::call, name, namelen-1, file, filelen-1, line,
-                    TypeListUtils<typename Wrapper::arg_list>::get_types(arg0), 0, 0);
+                    TypeListUtils<typename Wrapper::arg_list>::get_types(arg0));
    }
-};
 
-template <typename Typelist>
-struct DisabledFunction : protected FunctionBase {
-   template <size_t namelen, size_t filelen>
-   DisabledFunction(const char (&name)[namelen], const char (&file)[filelen], int line)
+   template <size_t namelen, size_t filelen, typename _app_list> static
+   void register_it(const char (&name)[namelen], const char (&file)[filelen], int line, _app_list cross_apps)
    {
-      register_disabled(name, namelen-1, file, filelen-1, line, TypeListUtils<Typelist>::get_types(0));
+      register_func(&Wrapper::call, name, namelen-1, file, filelen-1, line,
+                    TypeListUtils<typename Wrapper::arg_list>::get_types(), cross_apps);
    }
 };
 
 template <typename T, bool _enable=!(has_trivial_destructor<T>::value || is_masquerade<T>::value)>
 class Destroy {
-   static void _do(T *dst)
+   static void _do(T* dst)
    {
       dst->~T();
    }
@@ -361,11 +435,11 @@ public:
 class ClassRegistratorBase {
 protected:
    static
-   SV* register_class(const char *name, size_t namelen, const char *file, size_t filelen, int line,
-                      SV *someref,
-                      const char *typeid_name, const char *const_typeid_name,
+   SV* register_class(const char* name, size_t namelen, const char* file, size_t filelen, int line,
+                      SV* someref,
+                      const char* typeid_name, const char* const_typeid_name,
                       bool is_mutable, class_kind kind,
-                      SV *vtbl_sv);
+                      SV* vtbl_sv);
 
    static
    SV* create_builtin_vtbl(
@@ -433,7 +507,7 @@ protected:
 
    static
    void fill_iterator_access_vtbl(
-      SV *vtbl, int i,
+      SV* vtbl, int i,
       size_t it_size, size_t cit_size,
       destructor_type it_destructor,
       destructor_type cit_destructor,
@@ -445,7 +519,7 @@ protected:
 
    static
    void fill_random_access_vtbl(
-      SV *vtbl,
+      SV* vtbl,
       container_access_type random,
       container_access_type crandom
    );
@@ -471,7 +545,7 @@ template <typename T>
 class Builtin : protected ClassRegistratorBase {
 public:
    static
-   SV* register_it(const char *name, size_t namelen, const char* file=NULL, size_t filelen=0, int line=0)
+   SV* register_it(const char* name, size_t namelen, const char* file=NULL, size_t filelen=0, int line=0)
    {
       const char* const typeid_name=typeid(T).name();
       return register_class(
@@ -516,7 +590,7 @@ protected:
    };
 
 public:
-   static SV* register_it(const char* name, size_t namelen, SV *someref, const char* file=NULL, size_t filelen=0, int line=0)
+   static SV* register_it(const char* name, size_t namelen, SV* someref, const char* file=NULL, size_t filelen=0, int line=0)
    {
       return register_class(
          name, namelen, file, filelen, line, someref,
@@ -541,7 +615,7 @@ public:
 template <typename T, bool _is_iterator=check_iterator_feature<T,end_sensitive>::value>
 class OpaqueClassRegistrator : protected ClassRegistratorBase {
 public:
-   static SV* register_it(const char* name, size_t namelen, SV *someref, const char* file=NULL, size_t filelen=0, int line=0)
+   static SV* register_it(const char* name, size_t namelen, SV* someref, const char* file=NULL, size_t filelen=0, int line=0)
    {
       return register_class(
          name, namelen, file, filelen, line, someref,
@@ -566,7 +640,7 @@ class OpaqueClassRegistrator<T, true> : protected ClassRegistratorBase {
 protected:
    static const bool read_only=attrib<typename iterator_traits<T>::reference>::is_const;
 
-   static SV* deref(const T* it, const char *frame_upper_bound)
+   static SV* deref(const T* it, const char* frame_upper_bound)
    {
       Value ret(value_flags(read_only ? value_expect_lval | value_allow_non_persistent | value_read_only
                                       : value_expect_lval | value_allow_non_persistent));
@@ -584,7 +658,7 @@ protected:
       return it->at_end();
    }
 public:
-   static SV* register_it(const char* name, size_t namelen, SV *someref, const char* file=NULL, size_t filelen=0, int line=0)
+   static SV* register_it(const char* name, size_t namelen, SV* someref, const char* file=NULL, size_t filelen=0, int line=0)
    {
       return register_class(
          name, namelen, file, filelen, line, someref,
@@ -695,7 +769,7 @@ protected:
          throw std::runtime_error("element out of range");
    }
 
-   static void push_back(T *obj, iterator *it, int, SV *src)
+   static void push_back(T* obj, iterator* it, int, SV* src)
    {
       typename Obj::value_type x;
       Value v(src);
@@ -705,7 +779,7 @@ protected:
       helper::streamline(*obj).insert(*it, x);
    }
 
-   static void insert(T *obj, iterator*, int, SV *src)
+   static void insert(T* obj, iterator*, int, SV* src)
    {
       typedef typename item4insertion<typename Obj::value_type>::type item_type;
       item_type x=item_type();
@@ -716,14 +790,14 @@ protected:
       helper::streamline(*obj).insert(x);
    }
 
-   static void store_dense(T*, iterator *it, int, SV *src)
+   static void store_dense(T*, iterator* it, int, SV* src)
    {
       Value v(src, value_not_trusted);
       v >> non_const(**it);
       ++(*it);
    }
 
-   static void store_sparse(T *obj, iterator *it, int index, SV *src)
+   static void store_sparse(T* obj, iterator* it, int index, SV* src)
    {
       Value v(src, value_not_trusted);
       typename Obj::value_type x;
@@ -744,62 +818,62 @@ protected:
    struct do_it {
       typedef typename assign_const<T, !non_const>::type* ObjPtr;
 
-      static void begin(void *it_place, ObjPtr obj)
+      static void begin(void* it_place, ObjPtr obj)
       {
          new(it_place) Iterator(ensure(helper::streamline(*obj), (iterator_feature*)0).begin());
       }
 
-      static void rbegin(void *it_place, ObjPtr obj)
+      static void rbegin(void* it_place, ObjPtr obj)
       {
          new(it_place) Iterator(ensure(helper::streamline(*obj), (iterator_feature*)0).rbegin());
       }
 
-      static void deref(ObjPtr, Iterator *it, int, SV *dst, const char *frame_upper_bound)
+      static void deref(ObjPtr, Iterator* it, int, SV* dst, SV* container_sv, const char* frame_upper_bound)
       {
-         Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent | (non_const ? 0 : value_read_only)));
-         pv.put_lval(**it, frame_upper_bound, 0, 0, (char*)0);
+         Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent | (non_const ? 0 : value_read_only)), 1);
+         pv.put_lval(**it, frame_upper_bound, 0, 0, (nothing*)0)->store_anchor(container_sv);
          ++(*it);
       }
 
-      static void deref_pair(ObjPtr, Iterator *it, int i, SV *dst, const char *frame_upper_bound)
+      static void deref_pair(ObjPtr, Iterator* it, int i, SV* dst, SV* container_sv, const char* frame_upper_bound)
       {
          if (i<=0) {
             // i==-1: FIRSTKEY;  i==0: NEXTKEY
             if (i==0) ++(*it);
             if (!it->at_end()) {
-               Value pv(dst, value_flags(value_read_only | value_allow_non_persistent));
-               pv.put((*it)->first, frame_upper_bound, 0);
+               Value pv(dst, value_flags(value_read_only | value_allow_non_persistent), 1);
+               pv.put((*it)->first, frame_upper_bound, 0)->store_anchor(container_sv);
             }
          } else {
             // i==1: fetch value
-            Value pv(dst, value_flags(value_allow_non_persistent | (non_const ? 0 : value_read_only)));
-            pv.put((*it)->second, frame_upper_bound, 0);
+            Value pv(dst, value_flags(value_allow_non_persistent | (non_const ? 0 : value_read_only)), 1);
+            pv.put((*it)->second, frame_upper_bound, 0)->store_anchor(container_sv);
          }
       }
    };
 
    template <typename Iterator>
    struct do_sparse {
-      static void deref(T *obj, Iterator *it, int index, SV *dst, const char*)
+      static void deref(T* obj, Iterator* it, int index, SV* dst, SV* container_sv, const char*)
       {
-         Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent));
+         Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent), 1);
          sparse_elem_proxy< sparse_proxy_it_base<Obj,Iterator>, typename Obj::value_type, typename Obj::reference::parameters >
             x(sparse_proxy_it_base<Obj,Iterator>(helper::streamline(*obj), *it, index));
          if (x.exists()) ++(*it);
-         pv.put(x,0,0);
+         pv.put(x, 0, 0)->store_anchor(container_sv);
       }
    };
 
    template <typename Iterator>
    struct do_const_sparse {
-      static void deref(const T*, Iterator *it, int index, SV *dst, const char* frame_upper_bound)
+      static void deref(const T*, Iterator* it, int index, SV* dst, SV* container_sv, const char* frame_upper_bound)
       {
-         Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent | value_read_only));
+         Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent | value_read_only), 1);
          if (!it->at_end() && index==it->index()) {
-            pv.put_lval(**it, frame_upper_bound, 0, 0, (char*)0);
+            pv.put_lval(**it, frame_upper_bound, 0, 0, (nothing*)0)->store_anchor(container_sv);
             ++(*it);
          } else {
-            pv.put_lval(zero_value<typename Obj::value_type>(), frame_upper_bound, 0, 0, (char*)0);
+            pv.put_lval(zero_value<typename Obj::value_type>(), frame_upper_bound, 0, 0, (nothing*)0);
          }
       }
    };
@@ -904,7 +978,7 @@ protected:
 
    static SV* create_vtbl()
    {
-      SV *vtbl=create_container_vtbl(
+      SV* vtbl=create_container_vtbl(
          typeid(T), sizeof(T),
          object_traits<T>::total_dimension, object_traits<T>::dimension,
          Copy<T>::func(),
@@ -932,7 +1006,7 @@ protected:
       return vtbl;
    }
 
-   static SV* register_me(const char* name, size_t namelen, const char* file, size_t filelen, int line, SV *someref, SV *vtbl)
+   static SV* register_me(const char* name, size_t namelen, const char* file, size_t filelen, int line, SV* someref, SV* vtbl)
    {
       return register_class(
          name, namelen, file, filelen, line, someref,
@@ -946,7 +1020,7 @@ protected:
    }
 
 public:
-   static SV* register_it(const char* name, size_t namelen, SV *someref, const char* file=NULL, size_t filelen=0, int line=0)
+   static SV* register_it(const char* name, size_t namelen, SV* someref, const char* file=NULL, size_t filelen=0, int line=0)
    {
       return register_me(name, namelen, file, filelen, line, someref, create_vtbl());
    }
@@ -991,7 +1065,7 @@ protected:
 public:
    static SV* create_vtbl(False)
    {
-      SV *vtbl=super::create_vtbl();
+      SV* vtbl=super::create_vtbl();
       super::fill_iterator_access_vtbl(
          vtbl, 2,
          sizeof(reverse_iterator), sizeof(const_reverse_iterator),
@@ -1014,7 +1088,7 @@ public:
       return create_vtbl(bool2type<super::is_associative>());
    }
 public:
-   static SV* register_it(const char* name, size_t namelen, SV *someref, const char* file=NULL, size_t filelen=0, int line=0)
+   static SV* register_it(const char* name, size_t namelen, SV* someref, const char* file=NULL, size_t filelen=0, int line=0)
    {
       return super::register_me(name, namelen, file, filelen, line, someref, create_vtbl());
    }
@@ -1025,25 +1099,25 @@ class ContainerClassRegistrator<T, random_access_iterator_tag, false>
    : public ContainerClassRegistrator<T, bidirectional_iterator_tag, false> {
    typedef ContainerClassRegistrator<T, bidirectional_iterator_tag, false> super;
 protected:
-   static void _random(T *obj, char*, int index, SV *dst, const char *frame_upper_bound)
+   static void _random(T* obj, char*, int index, SV* dst, SV* container_sv, const char* frame_upper_bound)
    {
       index=index_within_range(super::helper::streamline(*obj), index);
-      Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent));
-      pv.put_lval(super::helper::streamline(*obj)[index], frame_upper_bound, 0, 0, (char*)0);
+      Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent), 1);
+      pv.put_lval(super::helper::streamline(*obj)[index], frame_upper_bound, 0, 0, (nothing*)0)->store_anchor(container_sv);
    }
 
-   static void crandom(const T *obj, char*, int index, SV *dst, const char *frame_upper_bound)
+   static void crandom(const T* obj, char*, int index, SV* dst, SV* container_sv, const char* frame_upper_bound)
    {
       index=index_within_range(super::helper::streamline(*obj), index);
-      Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent | value_read_only));
-      pv.put_lval(super::helper::streamline(*obj)[index], frame_upper_bound, 0, 0, (char*)0);
+      Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent | value_read_only), 1);
+      pv.put_lval(super::helper::streamline(*obj)[index], frame_upper_bound, 0, 0, (nothing*)0)->store_anchor(container_sv);
    }
 
-   static void random_sparse(T *obj, char*, int index, SV *dst, const char*)
+   static void random_sparse(T* obj, char*, int index, SV* dst, SV* container_sv, const char*)
    {
       index=index_within_range(super::helper::streamline(*obj), index);
-      Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent));
-      pv.put(super::helper::streamline(*obj)[index],0,0);
+      Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent), 1);
+      pv.put(super::helper::streamline(*obj)[index], 0, 0)->store_anchor(container_sv);
    }
 
    static container_access_type random(False, True)
@@ -1060,9 +1134,9 @@ protected:
       return reinterpret_cast<container_access_type>(&crandom);
    }
 public:
-   static SV* register_it(const char* name, size_t namelen, SV *someref, const char* file=NULL, size_t filelen=0, int line=0)
+   static SV* register_it(const char* name, size_t namelen, SV* someref, const char* file=NULL, size_t filelen=0, int line=0)
    {
-      SV *vtbl=super::create_vtbl();
+      SV* vtbl=super::create_vtbl();
       super::fill_random_access_vtbl(
          vtbl,
          random(bool2type<super::is_sparse>(), typename super::non_const_access()),
@@ -1075,7 +1149,7 @@ public:
 template <typename T, typename Category>
 class ContainerClassRegistrator<T, Category, true> : protected ClassRegistratorBase {
 public:
-   static SV* register_it(const char* name, size_t namelen, SV *someref, const char* file=NULL, size_t filelen=0, int line=0)
+   static SV* register_it(const char* name, size_t namelen, SV* someref, const char* file=NULL, size_t filelen=0, int line=0)
    {
       return register_class(
          name, namelen, file, filelen, line, someref,
@@ -1099,19 +1173,19 @@ struct CompositeClassRegistrator {
    static const bool allow_non_const_access = !attrib<member_type>::is_const &&
                                               !object_traits<typename deref<member_type>::type>::is_always_const;
 
-   static void _get(T *obj, SV *dst, const char *frame_upper_bound)
+   static void _get(T* obj, SV* dst, SV* container_sv, const char* frame_upper_bound)
    {
-      Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent));
-      pv.put_lval(visit_n_th(*obj, int2type<n>()), frame_upper_bound, 0, 0, (char*)0);
+      Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent), 1);
+      pv.put_lval(visit_n_th(*obj, int2type<n>()), frame_upper_bound, 0, 0, (nothing*)0)->store_anchor(container_sv);
    }
 
-   static void cget(const T *obj, SV *dst, const char *frame_upper_bound)
+   static void cget(const T* obj, SV* dst, SV* container_sv, const char* frame_upper_bound)
    {
-      Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent | value_read_only));
-      pv.put_lval(visit_n_th(*obj, int2type<n>()), frame_upper_bound, 0, 0, (char*)0);
+      Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent | value_read_only), 1);
+      pv.put_lval(visit_n_th(*obj, int2type<n>()), frame_upper_bound, 0, 0, (nothing*)0)->store_anchor(container_sv);
    }
 
-   static void _store(T *obj, SV *src)
+   static void _store(T* obj, SV* src)
    {
       Value v(src, value_not_trusted);
       v >> visit_n_th(*obj, int2type<n>());
@@ -1122,7 +1196,7 @@ struct CompositeClassRegistrator {
    static composite_store_type store(True)  { return reinterpret_cast<composite_store_type>(&_store); }
    static composite_store_type store(False) { return NULL; }
 
-   static void init(composite_access_vtbl *acct)
+   static void init(composite_access_vtbl* acct)
    {
       acct->get[0]=get(bool2type<allow_non_const_access>());
       acct->get[1]=get(False());
@@ -1190,9 +1264,9 @@ namespace pm { namespace perl {
 
 class ClassTemplate {
 private:
-   static void register_class(const char *name, size_t l);
+   static void register_class(const char* name, size_t l);
 public:
-   ClassTemplate(const char *name, size_t l)
+   ClassTemplate(const char* name, size_t l)
    {
       register_class(name,l);
    }
@@ -1204,7 +1278,7 @@ public:
    }
 };
 
-SV* get_parameterized_type(const char *pkg, size_t pkgl, bool exact_match);
+SV* get_parameterized_type(const char* pkg, size_t pkgl, bool exact_match);
 
 template <typename TypeList, size_t pkgl, bool exact_match> inline
 SV* get_parameterized_type(const char (&pkg)[pkgl], bool2type<exact_match>)
@@ -1223,10 +1297,10 @@ protected:
    EmbeddedRule() {}
 
    static
-   void add(const char *file, int line, const char *text, size_t l);
+   void add(const char* file, int line, const char* text, size_t l);
 public:
    template <size_t l>
-   EmbeddedRule(const char *file, int line, const char (&text)[l])
+   EmbeddedRule(const char* file, int line, const char (&text)[l])
    {
       add(file,line,text,l-1);
    }
@@ -1248,7 +1322,12 @@ template <typename Source, typename Target, typename Tag>
 struct convertible_to<Source, Target, false, true, cons<Tag,Tag> > : True {};
 
 template <typename Target, typename Source, bool _enabled=assignable_to<Source,Target>::value>
-struct Operator_assign : protected FunctionBase {
+struct Operator_assign;
+
+template <typename Target, typename Source>
+struct Operator_assign<Target, Source, true>
+   : protected FunctionBase {
+
    typedef cons<Target,Source> arg_list;
 
    static void call(Target& dst, const Value& src)
@@ -1259,27 +1338,21 @@ struct Operator_assign : protected FunctionBase {
          dst=src.get<Source>();
    }
 
-   template <size_t filelen>
-   Operator_assign(const char (&file)[filelen], int line, int=0)
+   template <size_t filelen, typename _app_list>
+   Operator_assign(const char (&file)[filelen], int line, _app_list cross_apps)
    {
       register_func(reinterpret_cast<wrapper_type>(&call),
-                    "=ass", 4, file, filelen-1, line, TypeListUtils<arg_list>::get_types(), 0, 0);
-   }
-};
-
-template <typename Target, typename Source>
-struct Operator_assign<Target, Source, false> : protected FunctionBase {
-   typedef cons<Target,Source> arg_list;
-
-   template <size_t filelen>
-   Operator_assign(const char (&file)[filelen], int line, int=0)
-   {
-      register_disabled("=ass", 4, file, filelen-1, line, TypeListUtils<arg_list>::get_types());
+                    "=ass", 4, file, filelen-1, line, TypeListUtils<arg_list>::get_types(), cross_apps);
    }
 };
 
 template <typename Target, typename Source, bool _enabled=convertible_to<Source,Target>::value>
-struct Operator_convert : protected FunctionBase {
+struct Operator_convert;
+
+template <typename Target, typename Source>
+struct Operator_convert<Target, Source, true>
+   : protected FunctionBase {
+
    typedef cons<Target,Source> arg_list;
 
    static Target call(const Value& src)
@@ -1287,22 +1360,11 @@ struct Operator_convert : protected FunctionBase {
       return Target(src.get<Source>());
    }
 
-   template <size_t filelen>
-   Operator_convert(const char (&file)[filelen], int line, int=0)
+   template <size_t filelen, typename _app_list>
+   Operator_convert(const char (&file)[filelen], int line, _app_list cross_apps)
    {
       register_func(reinterpret_cast<wrapper_type>(&call),
-                    ".cnv", 4, file, filelen-1, line, TypeListUtils<arg_list>::get_types(), 0, 0);
-   }
-};
-
-template <typename Target, typename Source>
-struct Operator_convert<Target, Source, false> : protected FunctionBase {
-   typedef cons<Target,Source> arg_list;
-
-   template <size_t filelen>
-   Operator_convert(const char (&file)[filelen], int line, int=0)
-   {
-      register_disabled(".cnv", 4, file, filelen-1, line, TypeListUtils<arg_list>::get_types());
+                    ".cnv", 4, file, filelen-1, line, TypeListUtils<arg_list>::get_types(), cross_apps);
    }
 };
 

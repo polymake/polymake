@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -14,10 +14,12 @@
 --------------------------------------------------------------------------------
 */
 
+#include <limits>
 #include "polymake/client.h"
 #include "polymake/RandomGenerators.h"
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
+#include "polymake/Set.h"
 
 namespace polymake { namespace polytope {
 
@@ -28,21 +30,35 @@ perl::Object rand_inner_points(perl::Object p_in, int n, perl::OptionSet options
       throw std::runtime_error("rand_inner_points: unbounded input polyhedron");
 
    const RandomSeed seed(options["seed"]);
-   UniformlyRandom<Rational> rg(seed);
+   const long M=std::numeric_limits<int>::max();
+   UniformlyRandomRanged<long> rg(M,seed);
 
    perl::Object p_out("Polytope<Rational>");
    p_out.set_description() << "Random inner points of " << p_in.name() << "; seed=" << seed.get() << endl;
 
    const Matrix<Rational> V=p_in.give("VERTICES");
    const int d=V.cols(), n_vertices=V.rows();
-   
-   Vector<Rational> lambda(n_vertices);
+
+   Vector<Rational> mu(n_vertices);
    Matrix<Rational> Points_out(n,d);
    for (Entire< Rows< Matrix<Rational> > >::iterator p_i=entire(rows(Points_out)); !p_i.at_end(); ++p_i) {
       // get random partition of 1
-      copy(rg.begin(), entire(lambda));
-      lambda /= accumulate(lambda, operations::add());
-      *p_i = lambda*V;
+      rg.begin();
+      Set<int> partition;
+      for (int i=1; i<n_vertices; ++i)
+         partition+=abs(rg.get());  // FIXME: check if already contained
+      Rational previous(0);
+      int idx=0;
+      for ( Entire< Set<int> >::iterator pit=entire(partition); !pit.at_end(); ++pit, ++idx ) {
+         const Rational current(*pit);
+         mu[idx]=(current-previous)/M;
+         previous=current;
+      }
+      mu[idx]=1-(previous/M);
+      // crude fix for FIXME above; make sure that the vector always has the proper length
+      for ( ++idx; idx<n_vertices; ++idx ) mu[idx]=0;
+
+      *p_i = mu*V;
    }
    
    p_out.take("POINTS") << Points_out;

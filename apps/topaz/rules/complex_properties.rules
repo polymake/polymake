@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitae Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -12,6 +12,33 @@
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
+
+# @category Topology
+#
+# A group is encoded as a sequence ( { (t<sub>1</sub> m<sub>1</sub>) ...  (t<sub>n</sub>  m<sub>n</sub>) } f) of non-negative integers,
+# with t<sub>1</sub> > t<sub>2</sub> > ... > t<sub>n</sub> > 1, plus an extra non-negative integer f.
+#
+# The group is isomorphic to (Z/t<sub>1</sub>)<sup>m<sub>1</sub></sup> &times; ... &times; (Z/t<sub>n</sub>)<sup>m<sub>n</sub></sup> &times; Z<sup>f</sup>, 
+# where Z<sup>0</sup> is the trivial group.
+#
+# Access methods: //torsion// delivers the list of Z-groups, //betti_number// the number f.
+#
+declare property_type HomologyGroup<Scalar> : c++ (include => "polymake/topaz/ChainComplex.h");
+
+# @category Topology
+#
+# A group is encoded as a pair of an integer matrix and a vector of faces.
+# The elements of the group can be obtained by symbolic multiplication of both.
+#
+# Access methods: //coeff// delivers the integer matrix, //faces// the vector of faces.
+#
+# @tparam Scalar integer type of matrix elements
+
+declare property_type CycleGroup<Scalar> : c++ (include => "polymake/topaz/ChainComplex.h");
+
+# @category Topology
+# TODO: explain the meaning of the fields: parity, positive, negative
+declare property_type IntersectionForm : c++ (include => "polymake/topaz/IntersectionForm.h");
 
 object SimplicialComplex {
 
@@ -41,6 +68,7 @@ rule VERTEX_LABELS : VertexPerm.VERTEX_LABELS, VertexPerm.PERMUTATION {
 }
 weight 1.10;
 
+# @category Combinatorics
 # Find the vertices by given labels.
 # @param String label ... vertex labels
 # @return Set<Int> vertex indices
@@ -164,38 +192,11 @@ property FOLDABLE : Bool;
 
 
 
-# @topic category properties/Topology
-# The following properties are topological invariants.
-
-
 # @category Topology
 # Reduced Euler characteristic.  Alternating sum of the [[F_VECTOR]] minus 1.
 
 property EULER_CHARACTERISTIC : Int;
 
-
-# @category Topology
-#
-# A group is encoded as a sequence ( { (t<sub>1</sub> m<sub>1</sub>) ...  (t<sub>n</sub>  m<sub>n</sub>) } f) of non-negative integers,
-# with t<sub>1</sub> > t<sub>2</sub> > ... > t<sub>n</sub> > 1, plus an extra non-negative integer f.
-#
-# The group is isomorphic to (Z/t<sub>1</sub>)<sup>m<sub>1</sub></sup> &times; ... &times; (Z/t<sub>n</sub>)<sup>m<sub>n</sub></sup> &times; Z<sup>f</sup>, 
-# where Z<sup>0</sup> is the trivial group.
-#
-# Access methods: //torsion// delivers the list of Z-groups, //betti_number// the number f.
-#
-declare property_type HomologyGroup<Scalar> : c++ (include => "polymake/topaz/ChainComplex.h");
-
-# @category Topology
-#
-# A group is encoded as a pair of an integer matrix and a vector of faces.
-# The elements of the group can be obtained by symbolic multiplication of both.
-#
-# Access methods: //coeff// delivers the integer matrix, //faces// the vector of faces.
-#
-# @tparam Scalar integer type of matrix elements
-
-declare property_type CycleGroup<Scalar> : c++ (include => "polymake/topaz/ChainComplex.h");
 
 # @category Topology
 # Reduced simplicial homology groups H<sub>0</sub>, ..., H<sub>d</sub> (integer coefficients), listed in increasing dimension order.
@@ -230,10 +231,6 @@ property COCYCLES : Array<CycleGroup<Integer>>;
 ### FIXME: needs a client to permute since CycleGroup embedded c++ type
 rule nonexistent : COCYCLES : VertexPerm.COCYCLES, VertexPerm.PERMUTATION;
 
-
-# @category Topology
-# TODO: explain the meaning of the fields: parity, positive, negative
-declare property_type IntersectionForm : c++ (include => "polymake/topaz/IntersectionForm.h");
 
 # @category Topology
 # Parity and signature of the intersection form of a closed oriented 4-manifold.
@@ -412,27 +409,26 @@ rule nonexistent : PROJ_DICTIONARY : VertexPerm.PROJ_DICTIONARY, VertexPerm.PERM
 
 }
 
+# A geometric simplicial complex, i.e., a simplicial complex with a geometric realization.
+# //Scalar// is the numeric data type used for the coordinates.
+# @tparam Scalar default: [[Rational]]
 declare object GeometricSimplicialComplex<Scalar=Rational> : SimplicialComplex;
 
 object GeometricSimplicialComplex {
 
-# @category Visualization
 # Coordinates for the vertices of the simplicial complex, such that the complex is
 # embedded without crossings in some R<sup>e</sup>.  Vector (x<sub>1</sub>, .... x<sub>e</sub>) represents a point
 # in Euclidean e-space.
 property COORDINATES : Matrix<Scalar>;
 
 
-# @category Visualization
 # Dimension e of the space in which the [[COORDINATES]] of the complex is embedded.
 property G_DIM : Int;
 
 
-# @category Geometric Complexes
 # Volume of a geometric simplicial complex.
 property VOLUME : Scalar;
 
-# @category Geometric Complexes
 # Signature of a geometric simplicial complex embedded in the integer lattice.
 # Like [[DUAL_GRAPH_SIGNATURE]], but only simplices with odd normalized volume are counted.
 property SIGNATURE : Int;

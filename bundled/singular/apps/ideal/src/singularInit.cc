@@ -1,11 +1,6 @@
-/* Copyright (c) 2012
-   by authors as mentioned on:
-   https://github.com/lkastner/polymake_algebra/wiki/Authors
-
-   Project home:
-   https://github.com/lkastner/polymake_algebra
-
-   For licensing we cite the original Polymake code:
+/* Copyright (c) 1997-2015
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+   http://www.polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -16,12 +11,13 @@
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
+--------------------------------------------------------------------------------
 */
 
 #include <dlfcn.h>
 
 #include "polymake/ideal/singularInit.h"
-// #include "polymake/ideal/singularTermOrderMap.h"
+#include "polymake/ideal/internal/singularUtils.h"
 
 namespace polymake {
 namespace ideal {
@@ -107,8 +103,7 @@ idhdl get_singular_function(std::string s) {
 
 } // end namespace singular
 
-UserFunction4perl("CREDIT Singular\n\n"
-                  "# @category Algebra"
+UserFunction4perl("# @category Singular interface"
                   "# Loads a SINGULAR library"
                   "# @param String s",
                   &singular::load_library, "load_singular_library($)");

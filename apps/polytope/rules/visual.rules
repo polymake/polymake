@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -129,7 +129,7 @@ user_method DIRECTED_GRAPH(; LinearProgram) {
    }
    $self->basis_solid->EdgeStyle="hidden";
    push @{$self->elements},
-        new Visual::Graph( Name => "GRAPH directed with LP " . $lp->subobj_name,
+        new Visual::Graph( Name => "GRAPH directed with LP " . $lp->name,
                            Graph => $lp->DIRECTED_GRAPH,
                            Coord => $self->basis_solid->Vertices,
                            NodeStyle => "hidden",
@@ -141,16 +141,17 @@ user_method DIRECTED_GRAPH(; LinearProgram) {
 #
 #  Triangulation as supplement
 
-# @category Visualization
+
 # Add the triangulation to the drawing.  The facets of the whole polytope become transparent.
 #
 # You may specify any triangulation of the current polytope.
-# Per default, the [[Polytope::TRIANGULATION|TRIANGULATION]] property is taken.
-# (Currently there is only one possible alternative triangulation: [[Polytope::TRIANGULATION_INT|TRIANGULATION_INT]]).
+# Per default, the [[Cone::TRIANGULATION|TRIANGULATION]] property is taken.
+# (Currently there is only one possible alternative triangulation: [[Cone::TRIANGULATION_INT|TRIANGULATION_INT]]).
 #
 # **Hint:** Use the method __Method -> Effect -> Explode Group of Geometries__
 # of [[wiki:external_software#JavaView|JavaView]] for better insight in the internal structure.
-# @param Array<Set<Int>> TR facets of the triangulation
+# @param Array<Set<Int>> t facets of the triangulation
+# @options %Visual::Polygons::decorations
 # @return Visual::Polytope
 
 user_method TRIANGULATION(; $=$_[0]->Polytope->TRIANGULATION->FACETS, %Visual::Polygons::decorations) {
@@ -189,9 +190,9 @@ user_method TRIANGULATION(; $=$_[0]->Polytope->TRIANGULATION->FACETS, %Visual::P
    visualize($self);
 }
 
-# @category Visualization
-# Draw the edges of the [[Polytope::TRIANGULATION_BOUNDARY]].
+# Draw the edges of the [[Visual::Polytope::TRIANGULATION_BOUNDARY|TRIANGULATION_BOUNDARY]].
 # The facets are made transparent.
+# @options %Visual::Graph::decorations
 # @return Visual::Polytope
 
 user_method TRIANGULATION_BOUNDARY(%Visual::Graph::decorations) {
@@ -264,9 +265,9 @@ sub apply_bounding_box($;$) {
     # mark artificial facets
     my $original_facets=new Map< Vector<Scalar>, Bool>;
     $original_facets->{$_}=1 for @{$this->FACETS};
-    my $bbox_facets=new Map<Vector<Scalar>, Bool>;
-    foreach (@$bbox) {
-        $bbox_facets->{$_}=1 unless exists $original_facets->{$_}
+    my $bbox_facets=new Set();
+    for (my $i=0; $i<$bounded->N_FACETS; ++$i) {
+        $bbox_facets+=$i unless exists $original_facets->{$bounded->FACETS->[$i]};
     }
 
     my $vertex_map=new Map<Vector<Scalar>, String>;
@@ -277,14 +278,16 @@ sub apply_bounding_box($;$) {
         $vertex_map->{$_}=$f++ for @{$this->VERTICES};
     }
     
-    return [ $bounded, $bbox_facets,             $vertex_map ];
-    #        Polytope  Map<Vector<Scalar>, Bool> Map<Vector<Scalar>, String>
+    return [ $bounded, $bbox_facets, $vertex_map ];
+    #        Polytope  Set<Int>      Map<Vector<Scalar>, String>
 }
 
 # @category Visualization
 # Visualize a polytope as a graph (if 1d), or as a solid object (if 2d or 3d),
 # or as a Schlegel diagram (4d).
 # @options %Visual::Polygons::decorations
+# @options %Visual::Wire::decorations
+# @options %Visual::PointSet::decorations
 # @options %geometric_options
 # @return Visual::Polytope
 
@@ -374,9 +377,11 @@ user_method VISUAL(%Visual::Polygons::decorations, %geometric_options) : CONE_DI
 
    # now call VISUAL for bounded polyhedra
    if ($bounded->CONE_DIM==4)  {
-      visualize($bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " },
-                                 FacetColor=>[ map { exists $bbox_facets->{$_} ? $Visual::Color::cutoff : $Visual::Color::facets } @{$bounded->FACETS} ],
-                                 $decor));
+      my %to_merge=();
+      map { $to_merge{FacetColor}->{$_}=$Visual::Color::cutoff } @$bbox_facets;
+      my $bv=$bounded->VISUAL($decor,VertexThickness => sub { $vertex_labels[$_[0]] ne " " });
+      $bv->basis_solid->merge(%to_merge);
+      visualize($bv);
    }
    else {
       visualize($bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " },
@@ -389,13 +394,20 @@ precondition : !BOUNDED;
 
 # @hide
 user_method VISUAL(%geometric_options) : FEASIBLE {
-	croak("Cannot visualize an empty polytope\n");
+   croak("Cannot visualize an empty polytope\n");
 }
-precondition : FEASIBLE { $this->FEASIBLE==0 }
+precondition : !FEASIBLE;
+
+# @hide
+user_method VISUAL(%geometric_options) : CONE_AMBIENT_DIM {
+   croak("Cannot visualize polytope with ambient dimension >= 5\n");
+}
+precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM >= 6 }
 
 
 # @category Visualization
 # Visualize the dual polytope as a solid 3-d object. The polytope must be [[BOUNDED]] and [[CENTERED]].
+# @options %Visual::Polygons::decorations
 # @return Visual::Polygons
 user_method VISUAL_DUAL(%Visual::Polygons::decorations) : FACETS, FTV_CYCLIC_NORMAL {
    my ($this, $decor)=@_;
@@ -441,11 +453,13 @@ precondition : CENTERED;
 #}
 
 # @category Visualization
-# Visualize the [[Polytope::TRIANGULATION_BOUNDARY|TRIANGULATION_BOUNDARY]] of the polytope.
+# Visualize the [[Visual::Polytope::TRIANGULATION_BOUNDARY|TRIANGULATION_BOUNDARY]] of the polytope.
 # **Obsolete:** the preferred procedure is to create a [[topaz::SimplicialComplex|SimplicialComplex]] using
 # the [[boundary_complex]] client of the application 
-# <a target="_top" href="../../topaz/model.html">topaz</a>
+# topaz
 # and call its [[topaz::SimplicialComplex::VISUAL|VISUAL]] method.
+# FIXME: There is no boundary_complex in topaz.
+# @options %Visual::Polygon::decorations
 # @return Visual::Polygons
 # @notest
 

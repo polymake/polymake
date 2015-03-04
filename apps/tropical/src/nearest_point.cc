@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -30,7 +30,7 @@ namespace polymake { namespace tropical {
       Vector<Scalar> lambdas(n);
       Vector<Scalar> n_point(d);
       
-      for (int i=0; i<n;++i)
+      for (int i=0; i<n; ++i)
       {
          lambdas[i]=accumulate(point-V[i], operations::max());
          V[i]=V[i]+same_element_vector(lambdas[i],d);
@@ -44,12 +44,13 @@ namespace polymake { namespace tropical {
       return n_point;   
    }
    
-   UserFunctionTemplate4perl("# @category Other"
-                             "# Compute the nearest point of a point //x// in the tropical projective space onto a tropical polytope //P//."
+	UserFunctionTemplate4perl("# @category Tropical operations"
+                             "# Compute the projection of a point //x// in  tropical projective space onto a tropical polytope //P//."
                              "# Cf."
-                             "#	Develin & Sturmfels math.MG/0308254v2, Proposition 9."
+                             "# \t Develin & Sturmfels math.MG/0308254v2, Proposition 9."
                              "# @param TropicalPolytope P"
-                             "# @param Vector point"
+                             "# @param Vector<Coord> x"
+                             "# @tparam Coord"
                              "# @return Vector"
                              "# @author Katja Kulas",
                              "nearest_point<Scalar>(TropicalPolytope<Scalar> Vector<Scalar>)");

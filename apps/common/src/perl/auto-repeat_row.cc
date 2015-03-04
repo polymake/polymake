@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -28,7 +28,7 @@ namespace polymake { namespace common { namespace {
    template <typename T0>
    FunctionInterface4perl( repeat_row_X8_x, T0 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturnAnch( (1)(arg0), repeat_row(arg0.get<T0>(), arg1) );
+      WrapperReturnAnch( 1, (arg0), repeat_row(arg0.get<T0>(), arg1) );
    };
 
    FunctionInstance4perl(repeat_row_X8_x, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void> >);

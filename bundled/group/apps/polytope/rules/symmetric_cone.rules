@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -75,7 +75,7 @@ rule INPUT_LINEALITY, INPUT_RAYS, GENERATING_GROUP.INPUT_RAYS_IN_ORBITS : GENERA
         my @lin_result=group::orbits_coord_action_complete($this->GENERATING_GROUP,$gen_lin);
         $this->INPUT_LINEALITY=$lin_result[0];
     } else {
-        $this->INPUT_LINEALITY=new Matrix<Rational>(0,$ray_result[0]->cols);
+        $this->INPUT_LINEALITY=new Matrix<Scalar>(0,$ray_result[0]->cols);
     }
 }
 
@@ -88,7 +88,7 @@ rule EQUATIONS, INEQUALITIES, GENERATING_GROUP.INEQUALITIES_IN_ORBITS : GENERATI
         my @eq_result=group::orbits_coord_action_complete($this->GENERATING_GROUP,$gen_eqs);
         $this->EQUATIONS=$eq_result[0];
     } else {
-        $this->EQUATIONS=new Matrix<Rational>(0,$ineq_result[0]->cols);
+        $this->EQUATIONS=new Matrix<Scalar>(0,$ineq_result[0]->cols);
     }
 
 }

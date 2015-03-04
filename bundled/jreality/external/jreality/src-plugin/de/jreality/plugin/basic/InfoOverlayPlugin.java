@@ -1,6 +1,5 @@
 package de.jreality.plugin.basic;
 
-import de.jreality.jogl.DomeViewer;
 import de.jreality.jogl.InstrumentedViewer;
 import de.jreality.jogl.JOGLViewer;
 import de.jreality.jogl.plugin.InfoOverlay;
@@ -44,7 +43,7 @@ public class InfoOverlayPlugin extends Plugin {
 		}
 		
 		for (Viewer v : vlist)	{
-			if (v instanceof JOGLViewer && !(v instanceof DomeViewer)) {
+			if (v instanceof JOGLViewer) {
 				joglViewer = (InstrumentedViewer) v;
 			}
 		}

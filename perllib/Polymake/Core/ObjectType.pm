@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,9 +15,12 @@
 
 use strict;
 use namespaces;
+use feature 'state';
 
 package Polymake::Core::ObjectType;
-@ISA=( 'Polymake::Core::HasType4Deduction' );
+
+my $construct_node;
+sub construct_node : lvalue { $construct_node }
 
 ##############################################################################
 #  Collection of information common to all Objects of the same type
@@ -28,21 +31,21 @@ use Polymake::Struct (
 #
 #  Environmental data
 #
-   [ '$name | generic_name' => '#1' ],  # own name
-   [ '$application' => '#2' ],  # -> Application
+   [ '$name' => '#1' ],                 # own name
+   [ '$application' => '#2' ],          # -> Application
    [ '$extension' => '$Application::extension' ],
-   '$pkg',                      # perl object type
-   [ '$context_pkg' => 'undef' ],       # for abstract parameterized object types
-   [ '$param' => 'undef' ],     # for type templates
+   '$pkg',                              # perl class
+   [ '$context_pkg' => 'undef' ],       # for abstract parameterized object types: class of other ObjectType in whose scope the abstract typeholders are defined
+   [ '$params' => 'undef' ],            # for type templates
    '&abstract',
-   '&construct',
-   [ '&parse_string' => '\&Object::new_named' ],
+   [ '&perform_typecheck' => '\&PropertyType::concrete_typecheck' ],
+   [ '&construct' => '\&PropertyType::construct_object' ],
+   [ '&parse' => '\&Object::new_named' ],
    [ '&toString' => '\&Object::print_me' ],
 #
 #  Derivation relations
 #
-   '@super',                    # ( ObjectType )  super classes: transitive closure in DSF order
-   '@derived',                  # ( ObjectType )  derived classes
+   '@super',                    # ( ObjectType )  super classes: transitive closure in MRO C3 order
    '%auto_casts',               # derived ObjectType => Rule::AutoCast
 #
 #  Own components
@@ -67,34 +70,39 @@ use Polymake::Struct (
 #
 sub new {
    my $self=&_new;
+   Overload::learn_package_retrieval($self, \&pkg);
    my $tparams=splice @_, 0, 3;
-   my $proto_sub=sub { $self };
+   my $self_sub=sub { $self };
+
+   unless ($construct_node) {
+      $construct_node=new Overload::Node(undef, undef, 0);
+      Overload::add_instance("Polymake::Core::Object", ".construct",
+                             \&Object::new_empty, undef,
+                             [0, 0], undef, $construct_node);
+      Overload::add_fallback_to_node($construct_node, \&Object::new_filled);
+   }
 
    if (defined($self->application)) {
       $self->pkg=$self->application->pkg."::".$self->name;
-      my $symtab=get_pkg($self->pkg,1);
+      my $symtab=get_pkg($self->pkg, 1);
       if ($tparams) {
-         $self->abstract=sub { 1 };
-         $self->param=$#$tparams;       # the first element is n_defaults
-         new_generic PropertyParamedType($self->name, $self->pkg, $self->application, $tparams, "objects");
-      } else {
-         define_function($symtab, "new", sub { shift; PropertyType::new_object($self,@_) }, 1);
-         no strict 'refs';
-         *{$self->application->pkg."::objects::".$self->name."::"}=$symtab;
+         $self->abstract=\&type;
+         undef $self->perform_typecheck;
+         $self->params=new_generic PropertyParamedType($self->name, $self->pkg, $self->application, $tparams, undef, "objects");
       }
-      Overload::_add($self->pkg, "construct", "", \&Object::new_empty);
-      Overload::_add($self->pkg, "construct", $self->pkg, \&Object::new_copy);
-      Overload::_add($self->pkg, "construct", $self->pkg.',$$;@', \&Object::new_filled_copy);
-      Overload::add_fallback($self->pkg, "construct", \&Object::new_filled);
-      $self->construct=\&{*{$symtab->{construct}}};
+      PropertyType::create_method_new($self);
+      Overload::add_instance($self->pkg, ".construct", \&Object::new_copy,        undef,
+                             [1, 1, $self->pkg ], undef, $construct_node);
+      Overload::add_instance($self->pkg, ".construct", \&Object::new_filled_copy, undef,
+                             [3, 3+$Overload::has_trailing_list, $self->pkg, '$', '$'], undef, $construct_node);
    } else {
       # it is an instance of an abstract Object type
       # the first super-Object is always the own abstract type
       $self->application=$_[0]->application;
       $self->extension=$_[0]->extension;
       $self->pkg=$_[0]->pkg;
-      $self->construct=$_[0]->construct;
-      PropertyParamedType::init_params($self,$tparams);
+      $self->params=$tparams;
+      PropertyParamedType::scan_params($self);
       if ($self->abstract) {
          if (defined($self->context_pkg)) {
             push @{$self->super}, $_[0], @{$_[0]->super};
@@ -102,38 +110,24 @@ sub new {
          return $self;
       }
    }
-   define_function($self->pkg, "self",  # for the rule parser
-                   sub {
-                      # complain if called not from my own scope
-                      shift or croak( "This declaration is only allowed in the top-level (application) scope" );
-                      $self
-                   }, 1);
 
+   define_function($self->pkg, "type", $self_sub, 1);
    if (!$self->abstract) {
-      # abstract object types get never instantiated, therefore don't deserve a prototype() method
-      define_function($self->pkg, "type", $proto_sub);
-      define_function($self->pkg, "prototype", $proto_sub);
-      define_function($self->pkg, "typeof", $proto_sub);
+      define_function($self->pkg, ".type", $self_sub);
    }
 
    # proceed with parent classes
    if (@_) {
-      my (%super_seen, @isa);
+      my @isa;
       foreach my $super_proto (@_) {
-         if (! $super_seen{$super_proto}++) {
-            push @{$self->super}, $super_proto, grep { !$super_seen{$_}++ } @{$super_proto->super};
-            push @{$super_proto->derived}, $self;
-            push @isa, $super_proto->pkg;
-         }
+         push @isa, $super_proto->pkg;
          PropertyParamedType::set_extension($self->extension, $super_proto->extension);
       }
-      namespaces::using($self->pkg, @isa);
-      no strict 'refs';
-      push @{$self->pkg."::ISA"}, @isa;
+      establish_inheritance($self, @isa);
    } else {
-      define_function($self->pkg, "top_type", $proto_sub);
       no strict 'refs';
       push @{$self->pkg."::ISA"}, "Polymake::Core::Object";
+      mro::set_mro($self->pkg, "c3");
    }
 
    push @{$self->application->object_types}, $self;
@@ -141,19 +135,39 @@ sub new {
 }
 
 ####################################################################################
+sub establish_inheritance {
+   my $self=shift;
+   namespaces::using($self->pkg, @_);
+   {  no strict 'refs';  push @{$self->pkg."::ISA"}, @_;  }
+   mro::set_mro($self->pkg, "c3");
+   my $linear_isa=mro::get_linear_isa($self->pkg);
+   # ignore the type itself and ubiquitous Object/Object_4test
+   @{$self->super}=map { $_->type } grep { !/^Polymake::Core::/ } @$linear_isa[1..$#$linear_isa];
+}
+####################################################################################
+sub derived {
+   my ($self)=@_;
+   map { $_->type } @{mro::get_isarev($self->pkg)}
+}
+####################################################################################
 # for compatibility with PropertyType:
 
+*type=\&PropertyType::type;
 *mangled_name=\&PropertyParamedType::mangled_name;
 *full_name=\&PropertyParamedType::full_name;
-*match_type=\&PropertyParamedType::match_type;
-*complain_source_conflict=\&PropertyParamedType::complain_source_conflict;
+*typecheck=\&PropertyType::typecheck;
+*add_constructor=\&PropertyType::add_constructor;
+*performs_deduction=\&PropertyType::performs_deduction;
+*type_param_index=\&PropertyType::type_param_index;
+
+sub qualified_name {
+   defined($_[0]->params) ? &PropertyParamedType::qualified_name : &PropertyType::qualified_name
+}
 
 sub concrete_type {
    # undef context_pkg means we are in a generic parameterized object class, hence nothing to deduce
    defined($_[0]->context_pkg) ? &PropertyParamedType::concrete_type : pop
 }
-
-*resolve_abstract=\&PropertyParamedType::resolve_abstract;
 
 sub descend_to_generic {
    my ($self, $pkg)=@_;
@@ -169,13 +183,7 @@ sub descend_to_generic {
 sub isa {
    my ($self, $other)=@_;
    if (is_string($other)) {
-      if ($other =~ /^$qual_id_re$/o) {
-         my $pkg=namespaces::lookup_class($self->pkg, $other, $self->application->pkg)
-         or croak( "Unknown type $other" );
-         $other=$pkg->self;
-      } else {
-         $other=$self->application->eval_type($other);
-      }
+      $other=$self->application->eval_type($other, 1) or return;
    }
    return $self==$other || list_index($self->super, $other)>=0;
 }
@@ -345,7 +353,7 @@ sub add_property_alias {        # "new name", "old name", override => Property
       if ($Application::plausibility_checks and
           $old_prop->belongs_to == $self ||
           @{$self->super} && $self->super->[0]->abstract && $self->super->[0]->name eq $self->name) {
-         croak( "only properties inherited from other object types can be overriden" );
+         croak( "only properties inherited from other object types can be overridden" );
       }
       $self->properties->{$old_prop_name}=$new_prop;
       define_function($self->pkg, $old_prop_name, UNIVERSAL::can($self->pkg, $prop_name));
@@ -378,7 +386,7 @@ sub fill_prod_cache {
          if (!defined($prop->belongs_to) || $super_proto->isa($prop->belongs_to)) {
             get_producers_of($super_proto, $prop);
             if (defined (my $own_prod=$super_proto->producers->{$prop->key})) {
-               push @$list, grep { !defined($_->overriden_in) || !is_one_of($self,$_->overriden_in) } @$own_prod;
+               push @$list, grep { !defined($_->overridden_in) || !is_one_of($self, $_->overridden_in) } @$own_prod;
             }
          }
       }
@@ -391,7 +399,7 @@ sub invalidate_prod_cache {
    my ($self, $key)=@_;
    if (defined (delete $self->all_producers->{$key})) {
       delete $self->shortcuts->{$key};
-      invalidate_prod_cache($_,$key) for @{$self->derived};
+      invalidate_prod_cache($_, $key) for $self->derived;
    }
 }
 
@@ -416,37 +424,16 @@ sub get_shortcuts_for {
 sub invalidate_label_cache {
    my ($self, $wildcard)=@_;
    if (defined (delete $self->all_rules_by_label->{$wildcard})) {
-      invalidate_label_cache($_,$wildcard) for @{$self->derived};
+      invalidate_label_cache($_,$wildcard) for $self->derived;
    }
 }
 
 sub get_rules_by_label {
    my ($self, $wildcard)=@_;
    $self->all_rules_by_label->{$wildcard} ||= do {
-      my $list=$self->rules_by_label->{$wildcard};
-      my $copied=0;
-      foreach my $super_proto (@{$self->super}) {
-         get_rules_by_label($super_proto, $wildcard);
-         if (defined (my $list2=$super_proto->rules_by_label->{$wildcard})) {
-            if ($copied) {
-               $list->merge($list2);
-            } elsif (defined $list) {
-               $list=$list->dup;
-               $list->merge($list2);
-               $copied=1;
-            } else {
-               $list=$list2;
-            }
-         }
-      }
-      if ($copied && $self->application->temp_prefs) {
-         $Scope->begin_locals;
-         local $self->all_rules_by_label->{$wildcard}=$list;
-         $Scope->end_locals;
-         return $list;
-      } else {
-         $list || 1;
-      }
+      # signal for invalidate_label_cache should it happen later
+      $_->all_rules_by_label->{$wildcard} //= 0 for @{$self->super};
+      Preference::merge_controls(grep { defined($_) } map { $_->rules_by_label->{$wildcard} } $self, @{$self->super})
    };
 }
 
@@ -474,7 +461,7 @@ sub encode_request_element {
    map {
       croak( "invalid property name '$_'\n" ) if $Application::plausibility_checks && /\W/;
       if (defined($prop)) {
-         $self=$prop->specialization($self, !defined($_[2]))->type;
+         $self=$prop->specialization($self, !defined($_[2]) && $self->abstract)->type;
          undef $obj;
       }
       $prop=$self->lookup_property($_) ||
@@ -522,39 +509,9 @@ sub encode_read_request {
    $result;
 }
 ####################################################################################
-sub type : method { shift }
-*prototype=\&type;
-
 # for compatibility with LocallyDerived types, e.g. when only derived owner types define some additional properties
 *pure_type=\&type;
 sub local_type { pop }
-####################################################################################
-sub check_consistency {
-   my ($self, $tparams)=@_;
-   my $conflict;
-   if (length($tparams)) {
-      if ($self->abstract) {
-         my $cnt=0;
-         ++$cnt while $tparams =~ m/$type_param_re/go;
-         if ($cnt != $self->param) {
-            $conflict="different number of template parameters";
-         }
-      } else {
-         $conflict="unexpected template parameters";
-      }
-   } else {
-      if ($self->abstract) {
-         $conflict="lacking template parameters";
-      }
-   }
-   $conflict && do {
-      if (instanceof ForwardDecl($self)) {
-         "Conflict with forward declaration at ".$self->location.": $conflict";
-      } else {
-         "Conflict with main declaration:  $conflict";
-      }
-   }
-}
 ####################################################################################
 sub override_rule {
    my ($self, $super, $label)=@_;
@@ -563,13 +520,13 @@ sub override_rule {
       if (is_object($super)) {
          next if $super!=$rule->defined_for;
       } else {
-         next if $self==$rule->defined_for || list_index($self->super,$rule->defined_for)<0;
+         next if $self==$rule->defined_for || list_index($self->super, $rule->defined_for)<0;
       }
       $matched=1;
-      if (defined($rule->overriden_in)) {
-         push @{$rule->overriden_in}, $self if list_index($rule->overriden_in,$self)<0;
+      if (defined($rule->overridden_in)) {
+         push @{$rule->overridden_in}, $self if list_index($rule->overridden_in, $self)<0;
       } else {
-         $rule->overriden_in=[ $self ];
+         $rule->overridden_in=[ $self ];
       }
    }
    if ($Application::plausibility_checks && !$matched) {
@@ -577,11 +534,16 @@ sub override_rule {
    }
 }
 ####################################################################################
+sub find_rule_label {
+   my ($self, $pattern)=@_;
+   $self->application->prefs->find_label($pattern)
+}
+
 sub find_rules_by_pattern {
    my ($self, $pattern)=@_;
    if ($pattern =~ /^ $hier_id_re $/xo) {
       # specified by label
-      my $label=$self->application->prefs->find_label($pattern)
+      my $label=$self->find_rule_label($pattern)
         or die "unknown label \"$pattern\"\n";
       grep { $self->isa($_->defined_for) } $label->list_all_rules
 
@@ -604,37 +566,32 @@ sub disable_rules {
 sub add_auto_cast {
    my ($self, $proto)=@_;
    if ($Application::plausibility_checks) {
-      isa($proto,$self) or croak( "Invalid cast declaration: ", $proto->full_name, " is not derived from ", $self->full_name );
+      isa($proto, $self) or croak( "Invalid cast declaration: ", $proto->full_name, " is not derived from ", $self->full_name );
       exists $self->auto_casts->{$proto} and croak( "duplicate auto_cast declaration" );
    }
    $self->auto_casts->{$proto}=my $rule=new Rule::AutoCast("auto_cast ".$self->full_name." => ".$proto->full_name, $proto, $self);
    push @{$self->application->rules}, $rule;
-   Overload::_add($proto->pkg, "construct", $self->pkg, sub : method { Object::new_with_auto_cast($rule, @_) });
-   Overload::_add($proto->pkg, "construct", $self->pkg.',$$;@', sub : method { Object::new_filled_with_auto_cast($rule, @_) });
+   Overload::add_instance($proto->pkg, ".construct", sub : method { Object::new_with_auto_cast($rule, @_) }, undef,
+                          [1, 1, $self->pkg], undef, $construct_node);
+   Overload::add_instance($proto->pkg, ".construct", sub : method { Object::new_filled_with_auto_cast($rule, @_) }, undef,
+                          [3, 3+$Overload::has_trailing_list, $self->pkg, '$', '$'], undef, $construct_node);
 }
 ####################################################################################
 sub add_method_rule {
-   my ($self, $header, $code, $name, $keywords)=@_;
+   my ($self, $header, $code, $name)=@_;
    my $rule=special Rule($header, $code, $self);
    $rule->flags=$Rule::is_function;
    push @{$self->application->rules}, $rule;
    substr($rule->header,0,0)="user_method ";
    if (defined($name)) {
-      if (defined($keywords)) {
-         die "unknown option $name" if $name ne "keywords";
-         # an instance of a polymorphic method with keyword arguments
-         $rule->keywords=$keywords;
-         $rule;
-      } else {
-         # usual (non-polymorphic) method, no call redirection via overload resolution
-         define_function($self->pkg, $name,
-                         sub : method {
-                            &{ Scheduler::resolve_method([ $rule ], \@_)
-                                 or croak("failed providing input properties") };
-                         });
-      }
+      # non-polymorphic method, no call redirection via overload resolution
+      define_function($self->pkg, $name,
+                      sub : method {
+                         &{ Scheduler::resolve_method([ $rule ], \@_)
+                            or croak("failed providing input properties") };
+                      });
    } else {
-      # an instance of a polymorphic method without keyword arguments
+      # an instance of a polymorphic method
       $rule;
    }
 }
@@ -677,7 +634,6 @@ sub dup {
 }
 
 sub resolve {
-   my ($self, $args)=@_;
    &Scheduler::resolve_method
      or croak( "could not provide all required input properties" );
 }
@@ -687,7 +643,7 @@ package Polymake::Core::ObjectType::LocalDerivationMixin;
 
 use Polymake::Struct (
    [ '@ISA' => 'ObjectType' ],
-   [ aliases => (belongs_to => 'param') ],
+   [ aliases => (belongs_to => 'params') ],
    [ '$name' => '#2 ->name ."__". #1 ->name ."__mix_in"' ],
    [ '$belongs_to' => '#2' ],
    [ '$application' => '#2 ->application' ],
@@ -703,31 +659,59 @@ sub new {
 
    define_function($self->pkg, "type", sub { $self }, 1);
    define_function($self->pkg, "self",  # for the rule parser
-                   sub {
-                      # complain if called not from my own scope
-                      shift or croak( "This declaration is only allowed in the top-level (application) scope" );
-                      $self
-                   });
+                   sub { &check_object_pkg; $self });
 
    # establish inheritance relations with mixins generated for ascendants and descendants of $parent
 
    unless ($self->parent_property->flags & $Property::is_permutation) {
+      my ($closest_super_mixin, $closest_derived_mixin);
+
       if ($self->belongs_to != $forefather) {
          foreach my $super_proto (@{$self->belongs_to->super}) {
-            if (my $last=$super_proto==$forefather  or
+            if ($super_proto==$forefather  or
                 list_index($super_proto->super, $forefather)>=0) {
-               if (defined (my $super_mixin=$self->parent_property->mixin->{$super_proto})) {
-                  push @{$self->super}, $super_mixin;
-                  last if $last;
+               if (defined ($closest_super_mixin=$self->parent_property->mixin->{$super_proto})) {
+                  establish_inheritance($self, $closest_super_mixin->pkg);
+                  last;
                }
             }
          }
       }
-      foreach my $derived_proto (@{$self->belongs_to->derived}) {
-         if (defined (my $derived_mixin=$self->parent_property->mixin->{$derived_proto})) {
-            my $i=$#{$derived_mixin->super};
-            for (; $i>=0 && list_index($self->super, $derived_mixin->super->[$i])>=0; --$i) { }
-            splice @{$derived_mixin->super}, ++$i, 0, $self;
+      if (defined $closest_super_mixin) {
+         # prepend that one with the new mixin in all descendants
+         foreach my $derived_proto ($closest_super_mixin->derived) {
+            if ($derived_proto != $self &&
+                $derived_proto->super->[0]==$closest_super_mixin &&
+                instanceof LocalDerivationMixin($derived_proto)) {
+               # this is the closest descendant, it must directly inherit from the new mixin now
+               $closest_derived_mixin=$derived_proto;
+               unshift @{$closest_derived_mixin->super}, $self;
+               no strict 'refs';
+               @{$closest_derived_mixin->pkg."::ISA"}=$self->pkg;
+               last;
+            }
+         }
+      } else {
+         # maybe there are more derived mixins downstream
+
+         foreach my $derived_proto ($self->belongs_to->derived) {
+            if (defined (my $derived_mixin=$self->parent_property->mixin->{$derived_proto})) {
+               if (@{$derived_mixin->super}==0) {
+                  $closest_derived_mixin=$derived_mixin;
+                  establish_inheritance($closest_derived_mixin, $self->pkg);
+                  last;
+               }
+            }
+         }
+      }
+
+      if (defined $closest_derived_mixin) {
+         foreach my $derived_proto ($closest_derived_mixin->derived) {
+            my $pos=list_index($derived_proto->super, $closest_derived_mixin);
+            splice @{$derived_proto->super}, $pos+1, 0, $self;
+            if (instanceof LocallyDerived($derived_proto)) {
+               ++$derived_proto->pure_type_at;
+            }
          }
       }
    }
@@ -798,10 +782,9 @@ use Polymake::Struct (
    [ '@ISA' => 'ObjectType' ],
    [ new => '$$' ],
    [ '$name' => '#1 ->name' ],
-   [ '$application' => '#2 ->application' ],
-   [ '$extension' => '#2 ->extension' ],
-   [ '$super' => '[ #2, @{ #2 ->super }, #1, @{ #1 ->super } ]' ],
-   [ '$pure_type_at' => '$#{ #2 ->super } + 2' ],
+   [ '$application' => '#1 ->application' ],
+   [ '$extension' => '#1 ->extension' ],
+   '$pure_type_at',
 );
 
 sub new {
@@ -810,32 +793,25 @@ sub new {
    $self->pkg=$autonomous_type->pkg."::__as__".$mix_in->pkg;
    if ($autonomous_type->abstract) {
       $self->context_pkg=$autonomous_type->context_pkg;
-      $self->abstract=sub : method { (&pure_type)->abstract->(@_) };
+      $self->abstract=sub : method { (&pure_type)->abstract->($_[1]) };
+      @{$self->super}=($mix_in, @{$mix_in->super}, $autonomous_type, @{$autonomous_type->super});
+      $self->pure_type_at=@{$mix_in->super}+1;
    } else {
-      my $proto_sub=sub { $self };
-      define_function($self->pkg, "type", $proto_sub, 1);
-      define_function($self->pkg, "prototype", $proto_sub);
-      define_function($self->pkg, "typeof", $proto_sub);
-      my @isa;
-      foreach my $super_proto (@{$self->super}) {
-         push @{$super_proto->derived}, $self;
-         push @isa, $super_proto->pkg;
-         PropertyParamedType::set_extension($self->extension, $super_proto->extension);
-      }
-      namespaces::using($self->pkg, @isa);
-      no strict 'refs';
-      push @{$self->pkg."::ISA"}, @isa;
+      define_function($self->pkg, "type", sub { $self }, 1);
+      establish_inheritance($self, $mix_in->pkg, $autonomous_type->pkg);
+      $self->pure_type_at=list_index($self->super, $autonomous_type);
    }
+   PropertyParamedType::set_extension($self->extension, $mix_in->extension);
    $self;
 }
 
 sub pure_type {
-   my $self=shift;
+   my ($self)=@_;
    $self->super->[$self->pure_type_at]
 }
 
 sub full_name {
-   my $self=shift;
+   my ($self)=@_;
    $self->pure_type->full_name . " as " . $self->super->[0]->full_name;
 }
 
@@ -849,10 +825,23 @@ sub local_type {
    }
 }
 
+sub find_rule_label {
+   &ObjectType::find_rule_label // do {
+      my $mix_in_app=$_[0]->super->[0]->application;
+      if ($mix_in_app != $_[0]->application) {
+         $mix_in_app->prefs->find_label($_[1])
+      } else {
+         undef
+      }
+   }
+}
+
 ####################################################################################
 package Polymake::Core::ObjectType::Permuted;
 
-@ISA=('Polymake::Core::ObjectType::LocallyDerived');
+use Polymake::Struct (
+   [ '@ISA' => 'LocallyDerived' ],
+);
 
 sub get_producers_of {
    my ($self, $prop)=@_;
@@ -861,119 +850,37 @@ sub get_producers_of {
 }
 
 ####################################################################################
-package Polymake::Core::ObjectType::ForwardDecl;
-use Polymake::Struct (
-   [ new => '$$$$' ],
-   [ '$name' => '#1' ],
-   [ '$application' => '#2' ],
-   '$pkg',
-   [ '$context_pkg' => 'undef' ],
-   [ '$param' => '#3' ],
-   '&abstract',
-   [ '$location' => '#4' ],
-);
-
-@ISA=qw( Polymake::Core::ObjectType );  # must appear as a real ObjectType during signature parsing of C++ functions
-
-# ... but the rest members of the ObjectType must be hidden
-sub super { return [ ] }
-*derived=\&super;
-sub empty_properties { return { } }
-*producers=\&empty_properties;
-*all_producers=\&empty_properties;
-*rules_by_label=\&empty_properties;
-*all_rules_by_label=\&empty_properties;
-
-sub construct { croak( "Can't create an object of an incomplete type ".$_[0]->application->name."::".$_[0]->name ) }
-*parse_string=\&construct;
-sub toString { "incomplete object type ".$_[0]->application->name."::".$_[0]->name }
-
-sub new {
-   my $self=&_new;
-   if (defined($self->application)) {
-      $self->pkg=$self->application->pkg."::".$self->name;
-      if ($self->param) {
-         $self->abstract=sub { 1 };
-         define_function($self->pkg, "generic_type",
-                         sub {
-                            shift unless is_object($_[0]);
-                            croak( "wrong number of type parameters for ", $self->pkg ) if @_ != $self->param;
-                            new ForwardDecl($self->name, undef, \@_, $self);
-                         }, 1);
-      }
-      $self->location=(caller)[1].", line ".$self->location;
-   } else {
-      my $super=$self->location;
-      $self->location=$super->location;
-      $self->application=$super->application;
-      $self->pkg=$super->pkg;
-      PropertyParamedType::init_params($self,$self->param);
-   }
-   define_function($self->pkg, "self",  # for the rule parser
-                   sub {
-                      if (shift) {
-                         if (wantarray) {
-                            $self
-                         } else {
-                            croak( "Properties, methods, etc. can't be declared for an incomplete object type" );
-                         }
-                      } else {
-                         croak( "This declaration is only allowed in the top-level (application) scope" );
-                      }
-                   }, 1);
-   $self;
-}
-
-####################################################################################
 # special prototype objects for Array<BigObject>
 
-package Polymake::Core::ObjectArrayType;
+package Polymake::Core::BigObjectArray;
+
 use Polymake::Struct (
-   [ '@ISA' => 'PropertyParamedType' ],
+   [ '@ISA' => 'PropertyType' ],
+   [ new => '' ],
+   [ '$name' => '"BigObjectArray"' ],
+   [ '$pkg' => '__PACKAGE__' ],
+   [ '$application' => 'undef' ],
+   [ '$extension' => 'undef' ],
+   [ '$dimension' => '1' ],
+   [ '&toXML' => '\&toXML_meth' ],
+   [ '&equal' => '\&equal_sub' ],
+   [ '&isa' => '\&isa_meth' ],
 );
-
-sub construct_from_list : method {
-   my $self=shift;
-   # the contained Objects have already been checked during overload resolution
-   bless [ @_ ], $self->pkg;
-}
-
-sub construct_with_size : method {
-   my ($self, $n)=@_;
-   bless [ map { Object::new_named($self->param) } 1..$n ], $self->pkg;
-}
-
-sub construct_fallback : method {
-   my ($self, $arr)=@_;
-   if (ref($arr) ne "ARRAY") {
-      die( "can't construct ", $self->full_name, " from ", ref($arr) || "'$arr'", "; allowed is either a size or a list of Objects\n" );
-   }
-   if (!$trusted_value) {
-      foreach my $obj (@$arr) {
-         unless (instanceof Object($obj) && $obj->isa($self->param)) {
-            if (is_object($obj) && defined (my $proto=UNIVERSAL::can($obj, "prototype"))) {
-               die( "Wrong object type: ", $proto->()->full_name, " passed as an element of ", $self->full_name, "\n" );
-            } else {
-               die( ref($obj) || "'$obj'", " passed as an element of ", $self->full_name, "\n" );
-            }
-         }
-      }
-   }
-   bless $arr, $self->pkg;
-}
 
 sub toXML_meth : method {
    my ($self, $arr, $writer, @attr)=@_;
    if (@$arr) {
       $writer->startTag("m", @attr);
       foreach my $obj (@$arr) {
-         XMLwriter::write_subobject($writer, $obj, $obj->parent, $self->param);
+         XMLwriter::write_subobject($writer, $obj, $obj->parent, $self->params->[0]);
       }
       $writer->endTag("m");
    } else {
       $writer->emptyTag("m", @attr);
    }
 }
+
+Struct::pass_original_object(\&toXML_meth);
 
 sub equal_sub {
    my ($arr1, $arr2)=@_;
@@ -986,29 +893,54 @@ sub equal_sub {
 }
 
 sub isa_meth : method {
-   &isa_fallback || do {
-      my ($self, $arr)=@_;
-      $self->pkg =~ /^(.*?)_/;
-      index(ref($arr), $1)==0 and $self->param->isa($arr->param);
-   };
+   my ($self, $arr)=@_;
+   UNIVERSAL::isa($arr, __PACKAGE__) && $arr->type->params->[0]->isa($self->params->[0]);
 }
 
-# prototype objects are created as Array<BigObject>, no special constructor needed here
-sub init {
-   my $self=shift;
-   bless $self;
-   $self->dimension=1;
-   $self->parse=sub : method { croak( $_[0]->full_name, " can't be initialized from a string value, please load it from an XML data file" ) };
-   $self->toString=sub { "$_[0]" };
-   $self->toXML=\&toXML_meth;
-   $self->equal=\&equal_sub;
-   $self->isa=\&isa_method;
+Struct::pass_original_object(\&isa_meth);
 
-   my $symtab=get_pkg($self->pkg, 1);
-   Overload::_add($self->pkg, "construct", $self->param->pkg."+", \&construct_from_list);
-   Overload::_add($self->pkg, "construct", "Polymake::Overload::integer", \&construct_with_size);
-   Overload::_add($self->pkg, "construct", '$', \&construct_fallback);
-   $self->construct=Struct::pass_original_object(\&{$symtab->{construct}});
+sub construct_from_list : method {
+   my ($self, $list)=@_;
+   # the contained Objects have already been checked during overload resolution
+   bless $list, $self->pkg;
+}
+
+sub construct_with_size : method {
+   my ($self, $n)=@_;
+   bless [ map { Object::new_named($self->params->[0]) } 1..$n ], $self->pkg;
+}
+
+# For the exotic case of size passed in string form.
+# Everything else will lead to an exception.
+sub construct_with_size_str : method {
+   construct_with_size($_[0], extract_integer($_[1]));
+}
+
+sub new_generic {
+   my $self=&_new;
+   $self->construct_node=new Overload::Node(undef, undef, 0);
+   Overload::add_instance(__PACKAGE__, ".construct",
+                          \&construct_with_size, undef,
+                          [1, 1, Overload::integer_package()], undef, $self->construct_node);
+   $self;
+}
+
+sub typeof { state $me=&new_generic; }
+
+sub init_constructor : method {
+   my ($super, $self)=@_;
+   $self->construct_node=$super->construct_node;
+   Overload::add_instance($self->pkg, ".construct",
+                          \&construct_from_list, undef,
+                          [1, 1+$Overload::has_repeated, [$self->params->[0]->pkg, "+"]], undef, $self->construct_node);
+
+   $self->parse=\&construct_with_size_str;
+   overload::OVERLOAD($self->pkg, '""' => ($self->toString = sub { "BigObjectArray" }));
+
+   # put BigObjectArray in front of generic Array as to inherit the correct constructors
+   # TODO: find a more elegant/generic way of achieving this, e.g. by specializing the generic types in the rules.
+   no strict 'refs';
+   @{$self->pkg."::ISA"}=(__PACKAGE__, $self->generic->pkg);
 }
 
 1

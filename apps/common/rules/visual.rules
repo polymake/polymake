@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -70,13 +70,12 @@ require Visual::Polygons;
 
 declare property_type RGB : c++ (include=>["polymake/color.h"]) {
 
-   method parse_string {
-      my ($proto, $value)=@_;
-      if ($value =~ /[^\s\d.]/) {
+   type_method parse {
+      if ($_[1] =~ /[^\s\d.]/) {
          # symbolic color name?
-         Visual::get_sym_color($value) // croak("unknown color name '$value'");
+         Visual::get_sym_color($_[1]) // croak("unknown color name '$_[1]'");
       } else {
-         &CPlusPlus::construct_parsed;
+         &Core::CPlusPlus::construct_parsed;
       }
    }
 
@@ -279,9 +278,11 @@ options %Visual::Polygons::decorations=(
 # @return Visual::Container if called in void context, immediately starts the preferred rendering program.
 
 user_function compose(Visual::Object+, %) {
-   my $decor=pop;
-   visualize(new Visual::Container(Title => delete $decor->{Title} // $_[0]->Title // $_[0]->Name,
-                                   defaults => $decor, @_));
+   my ($obj_list, $decor)=@_;
+   my $vc=new Visual::Container(Title => delete $decor->{Title} // $obj_list->[0]->Title // $obj_list->[0]->Name,
+                                defaults => $decor);
+   $vc->elements=$obj_list;
+   visualize($vc);
 }
 
 # @category Visualization
@@ -293,13 +294,12 @@ user_function compose(Visual::Object+, %) {
 # @return Visual::Container if called in void context, immediately starts the preferred rendering program.
 
 user_function compose(Visual::Container, Visual::Object+, %) {
-   my $container=shift;
-   my $decor=pop;
+   my ($container, $obj_list, $decor)=@_;
    if (defined (my $title=delete $decor->{Title})) {
       $container->Title=$title;
    }
    push %{$container->defaults}, %$decor if keys %$decor;
-   push @{$container->elements}, @_;
+   push @{$container->elements}, @$obj_list;
    visualize($container);
 }
 

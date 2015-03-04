@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -46,7 +46,8 @@ sub visual_random_transformation {
    my @transformed=($Poly);
    $#transformed=$n_iter+1;
 
-   my @colors=("red","blue","yellow","green","orange");
+   #my @colors=("red",   "blue",   "yellow",   "green",  "orange");
+   my @colors=("255 0 0","0 0 255","255 255 0","0 255 0","255 165 0");
 
    my @vis=($Poly->VISUAL(VertexThickness=>0.1, VertexLabels=>"hidden"));
    for (my $i=1; $i<$n_iter; ++$i) {

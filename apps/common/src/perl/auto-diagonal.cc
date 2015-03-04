@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,16 +16,17 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
-#include "polymake/Matrix.h"
+#include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
+#include "polymake/Matrix.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
    FunctionInterface4perl( diagonal_x_f5, T0 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturnLvalue( T0, arg0.get<T0>().diagonal(arg1) );
+      WrapperReturnLvalueAnch( 1, (arg0), T0, arg0.get<T0>().diagonal(arg1) );
    };
 
    FunctionInstance4perl(diagonal_x_f5, perl::Canned< const Wary< Matrix< Integer > > >);

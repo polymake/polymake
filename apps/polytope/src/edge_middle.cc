@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -15,27 +15,27 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/Rational.h"
 #include "polymake/Vector.h"
 #include "polymake/Matrix.h"
 #include "polymake/Graph.h"
 
 namespace polymake { namespace polytope {
 
+template <typename Scalar>
 perl::Object edge_middle(perl::Object p_in)
 {
    const bool bounded=p_in.give("BOUNDED");
    if (!bounded)
       throw std::runtime_error("edge_middle: unbounded polyhedron");
 
-   perl::Object p_out("Polytope<Rational>");
+   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
    p_out.set_description() << "Convex hull of all edge middle points of " << p_in.name() << endl;
 
-   const Matrix<Rational> V=p_in.give("VERTICES");
+   const Matrix<Scalar> V=p_in.give("VERTICES");
    const Graph<> G=p_in.give("GRAPH.ADJACENCY");
 
-   Matrix<Rational> V_out(G.edges(), V.cols());
-   Rows< Matrix<Rational> >::iterator v_out=rows(V_out).begin();
+   Matrix<Scalar> V_out(G.edges(), V.cols());
+   typename Rows< Matrix<Scalar> >::iterator v_out=rows(V_out).begin();
    for (Entire< Edges< Graph<> > >::const_iterator e=entire(edges(G));  !e.at_end();  ++e, ++v_out)
       *v_out = (V[e.from_node()] + V[e.to_node()]) / 2;
             
@@ -44,12 +44,12 @@ perl::Object edge_middle(perl::Object p_in)
    return p_out;
 }
 
-UserFunction4perl("# @category Producing a polytope from polytopes"
-                  "# Produce the convex hull of all edge middle points of some polytope //P//."
-                  "# The polytope must be [[BOUNDED]]."
-                  "# @param Polytope P"
-                  "# @return Polytope",
-                  &edge_middle, "edge_middle(Polytope)");
+UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
+                          "# Produce the convex hull of all edge middle points of some polytope //P//."
+                          "# The polytope must be [[BOUNDED]]."
+                          "# @param Polytope P"
+                          "# @return Polytope",
+                          "edge_middle<Scalar>(Polytope<Scalar>)");
 } }
 
 // Local Variables:

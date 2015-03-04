@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -621,6 +621,28 @@ bool is_permutation(const Permutation& perm){
       return 0;
    }
    return 1;
+}
+
+template <typename Scalar>
+Array<Array<int> > rows_induced_from_cols(const Matrix<Scalar>& M, const Array<Array<int> > G)
+{
+   Map<Vector<Scalar>,int> RevPerm;
+   int index = 0;
+   for (typename Entire<Rows<Matrix<Scalar > > >::const_iterator v = entire(rows(M)); !v.at_end(); ++v, ++index){
+      RevPerm[*v] = index;
+   }
+   Array<Array<int> > RowPerm(G.size());
+   Entire<Array<Array<int > > >::const_iterator old_perm = entire(G);
+       
+       
+   for (Entire<Array<Array<int > > >::iterator new_perm = entire(RowPerm); !new_perm.at_end(); ++new_perm, ++old_perm){
+      new_perm->resize(M.rows());
+      Entire<Array<int > >::iterator new_perm_entry = entire(*new_perm);
+      for (typename Entire<Rows<Matrix<Scalar > > >::const_iterator v = entire(rows(M)); !v.at_end(); ++v, ++new_perm_entry){
+         *new_perm_entry = RevPerm[permuted(*v,*old_perm)];
+      }
+   }
+   return RowPerm;
 }
 
 } // end namespace pm

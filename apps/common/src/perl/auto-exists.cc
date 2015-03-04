@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,13 +17,13 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/client.h"
-#include "polymake/Set.h"
 #include "polymake/Map.h"
 #include "polymake/Vector.h"
-#include "polymake/hash_set"
-#include "polymake/Rational.h"
 #include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/Set.h"
+#include "polymake/hash_set"
+#include "polymake/Rational.h"
 #include "polymake/Array.h"
 #include "polymake/Integer.h"
 #include "polymake/Graph.h"
@@ -43,7 +43,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< int > >, int);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Map< Vector< double >, int > >, perl::Canned< const pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>, void> const&, pm::Series<int, true>, void> >);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&> >, int);
-   FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< Array< int > > >, perl::TryCanned< const Array< int > >);
+   FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< Array< int > > >, perl::Canned< const Array< int > >);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< Set< int > > >, perl::Canned< const Set< int > >);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< Vector< Rational > > >, perl::Canned< const Vector< Integer > >);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::graph::traits_base<pm::graph::Undirected, false, (pm::sparse2d::restriction_kind)0>, true, (pm::sparse2d::restriction_kind)0> > > >, int);
@@ -56,5 +56,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Map< Vector< double >, bool > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double>&>, pm::Series<int, true>, void> >);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< Vector< Rational > > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, void> >);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< std::string > >, std::string);
+   FunctionInstance4perl(exists_X_f1, perl::Canned< const Map< Vector< double >, bool > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>, void> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

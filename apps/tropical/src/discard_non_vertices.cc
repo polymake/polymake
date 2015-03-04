@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -58,10 +58,10 @@ Matrix<Rational> discard_non_vertices(const Matrix<Rational>& points)
    return V.minor(vertex_indices,sequence(0,d));
 }
 
-UserFunction4perl("# @category Other"
+UserFunction4perl("# @category Producing a tropical polytope"
                   "# Given points in the tropical projective space, discard all the non-vertices of the tropical convex hull."
                   "# @param Matrix points"
-		  "# @return Matrix",
+		  		  "# @return Matrix",
                   &discard_non_vertices, "discard_non_vertices");
 } }
 

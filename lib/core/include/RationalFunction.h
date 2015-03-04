@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -671,22 +671,25 @@ struct algebraic_traits< RationalFunction<Coefficient, Exponent> > {
 };
 
 template <typename Coefficient, typename Exponent, typename T, typename TModel>
-struct isomorphic_types<RationalFunction<Coefficient, Exponent>, T,
-                        typename enable_if<is_polynomial, (fits_as_coefficient<T, UniPolynomial<Coefficient, Exponent> >::value ||
-                                                           is_unipolynomial_type<T, Coefficient, Exponent>::value)>::type,
-                        TModel> : False {
+struct isomorphic_types_impl<RationalFunction<Coefficient, Exponent>, T,
+                             typename enable_if<is_polynomial, (fits_as_coefficient<T, UniPolynomial<Coefficient, Exponent> >::value ||
+                                                                is_unipolynomial_type<T, Coefficient, Exponent>::value)>::type,
+                             TModel>
+   : False {
    typedef cons<is_polynomial, is_scalar> discriminant;
 };
 
 template <typename Coefficient, typename Exponent, typename T, typename TModel>
-struct isomorphic_types<T, RationalFunction<Coefficient, Exponent>, TModel,
-                        typename enable_if<is_polynomial, (fits_as_coefficient<T, UniPolynomial<Coefficient, Exponent> >::value ||
-                                                           is_unipolynomial_type<T, Coefficient, Exponent>::value)>::type> : False {
+struct isomorphic_types_impl<T, RationalFunction<Coefficient, Exponent>, TModel,
+                             typename enable_if<is_polynomial, (fits_as_coefficient<T, UniPolynomial<Coefficient, Exponent> >::value ||
+                                                                is_unipolynomial_type<T, Coefficient, Exponent>::value)>::type>
+   : False {
    typedef cons<is_scalar, is_polynomial> discriminant;
 };
 
 template <typename Coefficient, typename Exponent>
-struct isomorphic_types<RationalFunction<Coefficient, Exponent>, RationalFunction<Coefficient, Exponent>, is_polynomial, is_polynomial> : True {
+struct isomorphic_types_impl<RationalFunction<Coefficient, Exponent>, RationalFunction<Coefficient, Exponent>, is_polynomial, is_polynomial>
+   : True {
    typedef cons<is_polynomial, is_polynomial> discriminant;
 };
 

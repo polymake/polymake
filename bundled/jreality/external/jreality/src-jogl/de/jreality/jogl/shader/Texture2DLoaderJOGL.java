@@ -59,6 +59,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Vector;
 import java.util.WeakHashMap;
+import java.util.logging.Logger;
 
 import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
@@ -79,6 +80,10 @@ import de.jreality.util.LoggingSystem;
  * @author Charles Gunn, Steffen Weissmann
  */
 public class Texture2DLoaderJOGL {
+	
+	private static Logger
+		log = Logger.getLogger(Texture2DLoaderJOGL.class.getName());
+	
 	private static WeakHashMap<GL, WeakHashMap<ImageData, Integer>> lookupTextures = new WeakHashMap<GL, WeakHashMap<ImageData, Integer>>();
 	private static WeakHashMap<GL, WeakHashMap<ImageData, Integer>> lookupCubemaps = new WeakHashMap<GL, WeakHashMap<ImageData, Integer>>();
 	private static WeakHashMap<GL, List<ImageData>> animatedTextures = new WeakHashMap<GL, List<ImageData>>();
@@ -200,10 +205,14 @@ public class Texture2DLoaderJOGL {
 						texid = id;
 						replace = true;
 						first = false;
-					} else {
+					} else if (g != null) {
 						LoggingSystem.getLogger(Texture2DLoaderJOGL.class)
 								.fine("deleted texture...");
-						g.glDeleteTextures(1, new int[] { id.intValue() }, 0);
+						try {
+							g.glDeleteTextures(1, new int[] { id.intValue() }, 0);
+						} catch (NullPointerException e) {
+							LoggingSystem.getLogger(Texture2DLoaderJOGL.class).warning("NullPointerException in glDeleteTextures()");
+						}
 					}
 				}
 				LoggingSystem.getLogger(Texture2DLoaderJOGL.class).fine(
@@ -519,13 +528,12 @@ public class Texture2DLoaderJOGL {
 		}
 		if (!haveCheckedAutoMipmapGeneration) {
 			String vendor = gl.glGetString(GL.GL_VENDOR);
-			System.err.println("Vendor = " + vendor);
+			log.info("Vendor = " + vendor);
 			haveAutoMipmapGeneration = ((gl
 					.isExtensionAvailable("GL_VERSION_1_4") || gl
 					.isExtensionAvailable("GL_SGIS_generate_mipmap")));
 			haveCheckedAutoMipmapGeneration = true;
-			System.err.println("Have automipmap generation = "
-					+ haveAutoMipmapGeneration);
+			log.info("Have automipmap generation = " + haveAutoMipmapGeneration);
 		}
 	}
 

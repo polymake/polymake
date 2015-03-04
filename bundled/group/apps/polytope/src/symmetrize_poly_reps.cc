@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -59,11 +59,11 @@ namespace {
 	cur_facet_orbit+=i;
 	std::pair< ListMatrix< Vector<Rational> >,Array < Set<int> > > orbit = orbits_coord_action_complete_sub(group,vector2row(facets.row(i)));
 	for(Entire< Rows< ListMatrix< Vector<Rational> > > >::const_iterator row=entire(rows(orbit.first)); !row.at_end(); ++row) {
-	  for(Entire< Set <int> >::const_iterator index=entire(not_checked);!index.at_end(); ++index) {
+	  for(Entire< Set <int> >::iterator index=entire(not_checked);!index.at_end(); ++index) {
 	    if(are_equiv(*row,facets.row(*index),nullspace)) {
-	      not_checked-=*index;
 	      cur_facet_orbit+=*index;
 	      symmetric_facets.row(*index)=*row;
+	      not_checked.erase(index);
 	      break;
 	    }	      
 	  }

@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2013  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2014  Winfried Bruns, Bogdan Ichim, Christof Soeger
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -14,6 +14,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * As an exception, when this program is distributed through (i) the App Store
+ * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
+ * by Google Inc., then that store may impose any digital rights management,
+ * device limits and/or redistribution restrictions that are required by its
+ * terms of service.
  */
 
 #include "libnormaliz.h"
@@ -51,6 +56,9 @@ InputType to_type(const std::string& type_string) {
     if (type_string=="0"||type_string=="integral_closure") {
         return Type::integral_closure;
     }
+    if (type_string=="polyhedron") {
+        return Type::polyhedron;
+    }
     if (type_string=="1"||type_string=="normalization") {
         return Type::normalization;
     }
@@ -60,14 +68,32 @@ InputType to_type(const std::string& type_string) {
     if (type_string=="3"||type_string=="rees_algebra") {
         return Type::rees_algebra;
     }
-    if (type_string=="4"||type_string=="hyperplanes") {
-        return Type::hyperplanes;
+    if (type_string=="4"||type_string=="hyperplanes" ||type_string=="inequalities") {
+        return Type::inequalities;
+    }
+    if (type_string=="strict_inequalities") {
+         return Type::strict_inequalities;
+    }
+    if (type_string=="strict_signs") {
+        return Type::strict_signs;
+    }
+    if (type_string=="inhom_inequalities") {
+        return Type::inhom_inequalities;
+    }
+    if (type_string=="dehomogenization") {
+         return Type::dehomogenization;
     }
     if (type_string=="5"||type_string=="equations") {
         return Type::equations;
     }
+    if (type_string=="inhom_equations") {
+        return Type::inhom_equations;
+    }
     if (type_string=="6"||type_string=="congruences") {
         return Type::congruences;
+    }
+    if (type_string=="inhom_congruences") {
+        return Type::inhom_congruences;
     }
     if (type_string=="signs") {
         return Type::signs;
@@ -77,6 +103,9 @@ InputType to_type(const std::string& type_string) {
     }
     if (type_string=="grading") {
         return Type::grading;
+    }
+    if (type_string=="excluded_faces") {
+        return Type::excluded_faces;
     }
     
     std::cerr<<"ERROR: Unknown type \""<<type_string<<"\"!"<<std::endl;

@@ -64,7 +64,7 @@ public class GlslLoader {
 	}
 
 	public static void render(GlslProgram prog, GL2 gl) {
-		// System.err.println("in glslLoader render()");
+//		 System.err.println("in glslLoader render()");
 		ProgramContext context = getContext(gl, prog);
 		context.linkProgram(gl);
 		context.activateProgram(gl);
@@ -192,7 +192,7 @@ public class GlslLoader {
 				return;
 
 			progID = new Integer(gl.glCreateProgramObjectARB());
-
+			System.err.println("progid = "+progID);
 			if (source.getVertexProgram() != null) {
 				int vertexProgID = gl
 						.glCreateShaderObjectARB(GL2.GL_VERTEX_SHADER);
@@ -219,7 +219,7 @@ public class GlslLoader {
 			printInfoLog("prog attatch", progID.intValue(), gl);
 			gl.glLinkProgramARB(progID.intValue());
 			printInfoLog("prog link", progID.intValue(), gl);
-			// System.out.println("loaded program ["+progID+"]");
+			 System.out.println("loaded program ["+progID+"]");
 			isLinked = true;
 		}
 

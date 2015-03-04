@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -24,21 +24,37 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object convert_group_domain(const perl::Object g_in, const IncidenceMatrix<>& VIF)
+      namespace{
+         std::string determine_group_name (const std::string& g_in_name, const std::string& out_dom_string, const std::string& opt_name)
+         {
+            if ( opt_name.empty() ) {
+               std::ostringstream oss;
+               oss << g_in_name << out_dom_string;
+               return oss.str();
+            } else {
+               return opt_name;
+            }
+         }
+      }
+
+perl::Object convert_group_domain(const perl::Object g_in, const IncidenceMatrix<>& VIF, perl::OptionSet options)
 {
    perl::Object g_out(g_in.type());
-   g_out.set_description() << "domain conversion of " << g_in.name() << " (" << g_in.description() << ")";
-
+   std::string name = options["name"];
    const int in_domain = g_in.give("DOMAIN");
+
+   g_out.set_description() << "domain conversion of " << g_in.name() << " (" << g_in.description() << ")";
+   g_out.set_name( determine_group_name(g_in.name(), 
+                                        polymake::group::OnRays == in_domain ? "_f" : "_v", 
+                                        name).c_str() );
+
    IncidenceMatrix<> I;
    switch (in_domain) {
    case polymake::group::OnFacets:
-      g_out.set_name("fullCombinatorialGroupOnRays");
       g_out.take("DOMAIN") << polymake::group::OnRays;
       I = T(VIF);
       break;
    case polymake::group::OnRays:
-      g_out.set_name("fullCombinatorialGroupOnFacets");
       g_out.take("DOMAIN") << polymake::group::OnFacets;
       I = VIF;
       break;
@@ -46,6 +62,7 @@ perl::Object convert_group_domain(const perl::Object g_in, const IncidenceMatrix
       cerr << "The domain of the input group is " << in_domain << endl;
       throw std::runtime_error("Cannot handle this type of input domain.");
    }
+
 
    // initialize auxiliary data structures
    const int n_rows = I.rows();
@@ -82,14 +99,19 @@ perl::Object convert_group_domain(const perl::Object g_in, const IncidenceMatrix
 
     /* convert action on coords to action on rows of a matrix */
    template <typename MatrixTop, typename Scalar>
-   perl::Object convert_coord_action(perl::Object group, const GenericMatrix<MatrixTop, Scalar>& mat, const int out_dom ){
+   perl::Object convert_coord_action(perl::Object g_in, const GenericMatrix<MatrixTop, Scalar>& mat, const int out_dom, perl::OptionSet options){
       using namespace group;
-      const int dom_in = group.give("DOMAIN");
-      if (dom_in != polymake::group::OnCoords)
+
+      std::string name = options["name"];
+      const int in_domain = g_in.give("DOMAIN");
+      if (in_domain != polymake::group::OnCoords)
         throw std::runtime_error("convert_coord_action: group does not act on coordinates!");
       
-      perl::Object g_out(group.type());
-      g_out.set_description() << "domain conversion of " << group.name() << " (" << group.description() << ")";
+      perl::Object g_out(g_in.type());
+      g_out.set_description() << "domain conversion of " << g_in.name() << " (" << g_in.description() << ")";
+      g_out.set_name( determine_group_name(g_in.name(), 
+                                           polymake::group::OnRays == out_dom ? "_v" : "_f", 
+                                           name).c_str() );
 
       if (out_dom == 1) {
          g_out.take("DOMAIN") << group::OnRays;
@@ -103,7 +125,7 @@ perl::Object convert_group_domain(const perl::Object g_in, const IncidenceMatrix
       }
 
 
-      PermlibGroup group_of_cone = group_from_perlgroup(group);      
+      PermlibGroup group_of_cone = group_from_perlgroup(g_in);      
       int deg = group_of_cone.degree();
       if (mat.cols() <= deg)
          throw std::runtime_error("convert_coord_action: group/matrix dimension mismatch: group degree greater than #(number of matrix columns)-1");
@@ -119,7 +141,7 @@ perl::Object convert_group_domain(const perl::Object g_in, const IncidenceMatrix
       }
 
 
-      const Array<Array<int> > gens_in = group.give("GENERATORS");
+      const Array<Array<int> > gens_in = g_in.give("GENERATORS");
       Array<Array<int> > gens_out(gens_in.size());
       
       for (int k = 0; k < gens_in.size(); ++k) {
@@ -142,22 +164,24 @@ perl::Object convert_group_domain(const perl::Object g_in, const IncidenceMatrix
 
 
 UserFunctionTemplate4perl("# @category Symmetry"
-                  "# Converts the generators of the input group from the domain onRays "
-                  "# to generators on the domain onFacets, and vice versa. "
-                  "# @param group::Group group input group "
-                  "# @param IncidenceMatrix VIF the vertex-facet incidence matrix of the cone or polytope"
-                  "# @return group::Group a new group object with the generators induced on the new domain",
-                  "convert_group_domain(group::Group, IncidenceMatrix)");
+                          "# Converts the generators of the input group from the domain onRays "
+                          "# to generators on the domain onFacets, and vice versa. "
+                          "# @param group::Group group"
+                          "# @param IncidenceMatrix VIF the vertex-facet incidence matrix of the cone or polytope"
+                          "# @option String name an optional name for the output group"
+                          "# @return group::Group a new group object with the generators induced on the new domain",
+                          "convert_group_domain(group::Group, IncidenceMatrix, {name=>''})");
 
 UserFunctionTemplate4perl("# @category Symmetry"
-                  "# Converts the generators of a group acting on coordinates to generators "
-                  "# of the corresponding group which acts on the rows of the given matrix //mat//. "
-                  "# The parameter //dom_out// specifies whether //mat// describes vertices or facets."
-                  "# @param group::Group group input group acting on coordinates"
-                  "# @param Matrix mat vertices or facets of a polytope"
-                  "# @param int dom_out OnRays(1) or OnFacets(2)"
-                  "# @return group::Group a new group object with the generators induced on the new domain",
-                  "convert_coord_action(group::Group, Matrix, $)");
+                          "# Converts the generators of a group acting on coordinates to generators "
+                          "# of the corresponding group which acts on the rows of the given matrix //mat//. "
+                          "# The parameter //dom_out// specifies whether //mat// describes vertices or facets."
+                          "# @param group::Group group input group acting on coordinates"
+                          "# @param Matrix mat vertices or facets of a polytope"
+                          "# @param Int dom_out OnRays(1) or OnFacets(2)"
+                          "# @option String name an optional name for the output group"
+                          "# @return group::Group a new group object with the generators induced on the new domain",
+                          "convert_coord_action(group::Group, Matrix, $, {name=>''})");
 
 } }
 

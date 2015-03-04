@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -24,7 +24,9 @@ namespace polymake { namespace polytope {
 
 perl::Object rand01(int d, int n, perl::OptionSet options)
 {
-   if (d<2 || n<=d || (n-1>>d)>=1)
+   // The behaviour of the shift operator is undefined if the second argument is larger (or equal) than the bitsize of the first,
+   // in that case the test is not necessary.
+   if (d<2 || n<=d || (d <= std::numeric_limits<int>::digits && (n-1>>d)>=1))
       throw std::runtime_error("rand01 : 2 <= dim < #vertices <= 2^dim required");
 
    const RandomSeed seed(options["seed"]);

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -112,7 +112,6 @@ sub visualizeNOPGraph_sub {
 # by the Postscript viewer.
 # @param OrbitPolytope orb the orbit polytope
 # @param String filename the filename for the 'dot' file
-# @return void
 
 user_function visualizeNOPGraph (OrbitPolytope,$) {
     my ($orb, $filename) = @_;
@@ -128,7 +127,6 @@ user_function visualizeNOPGraph (OrbitPolytope,$) {
 # @param OrbitPolytope orb the orbit polytope
 # @param Scalar colors_ref the reference to an array of colors
 # @param Scalar trans_ref the reference to an array of transparency values
-# @return void 
 
 user_function visualizeNOP (OrbitPolytope,$,$) {
     my ($orb, $colors_ref, $trans_ref) = @_;

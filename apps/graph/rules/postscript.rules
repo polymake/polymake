@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -42,8 +42,6 @@ global_method postscript.lattice: draw(Visual::Lattice) {
    my ($self, $Lattice)=@_;
    $self->current_page->addLattice($Lattice);
 }
-
-prefer postscript.lattice
 
 
 # Local Variables:

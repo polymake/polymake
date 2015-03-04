@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,14 +13,35 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+object TDivisor {
+
+   # @category Combinatorics
+   # Exponents of the fractional ideal of global sections. This property only
+   # makes sense for affine toric varieties.
+   property MODULE_GENERATORS : Matrix<Integer> {
+
+      sub equal { &equal_up_to_row_permutation; }
+
+   }
+
+}
+
 object AffineNormalToricVariety {
-
-   property WEIGHT_CONE : Cone;
    
-   object TDivisor {
-      
-      property MODULE_GENERATORS : Matrix<Integer>;
+   # @category Combinatorics
+   # The weight cone of the algebra yielding the affine normal toric variety.
+   # I.e., intersect this cone with the lattice, take the semigroup algebra over
+   # it and take the spectrum.
+   property WEIGHT_CONE : Cone;
 
+   rule WEIGHT_CONE.INEQUALITIES : RAYS {
+      $this->WEIGHT_CONE->INEQUALITIES = $this->RAYS;
+   }
+
+   rule DIVISOR.MODULE_GENERATORS : DIVISOR.SECTION_POLYTOPE{
+      my $section_polytope = $this->DIVISOR->SECTION_POLYTOPE;
+      my $result = lower_lattice_points($section_polytope);
+      $this->DIVISOR->MODULE_GENERATORS = $result->minor(All, ~[0]);
    }
 
 }
@@ -31,3 +52,20 @@ object NormalToricVariety {
    precondition : AFFINE;
 
 }
+
+# @category Commutative Algebra
+# Find all lattice points of a polytope P that are not reachable
+# from some other lattice point via the tail cone.
+user_function lower_lattice_points(Polytope){
+   my ($P) = @_;
+   my $C = new Cone($P);
+   my $H = $C->HILBERT_BASIS_GENERATORS->[0];
+   return new Matrix(grep($_->[0]==1,@$H));
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

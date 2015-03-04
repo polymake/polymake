@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -41,10 +41,17 @@ print <<".";
 
    This header collects all the package bootstrap functions which must be called
    during the initial loading of the callable library.
+   
+   argv:
+   @ARGV
 */
 
 #ifndef POLYMAKE_XS_EXT_BOOTSTRAP_H
 #define POLYMAKE_XS_EXT_BOOTSTRAP_H
+
+#ifndef XS_EXTERNAL
+#define XS_EXTERNAL(name) XS(name)
+#endif
 
 $proto
 static void xs_init(pTHX)

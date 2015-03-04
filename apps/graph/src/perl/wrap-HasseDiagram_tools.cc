@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -30,7 +30,7 @@ namespace polymake { namespace graph { namespace {
       WrapperReturn( permuted_coatoms(arg0, arg1.get<T0>()) );
    };
 
-   FunctionInstance4perl(permuted_coatoms_x_X, perl::TryCanned< const Array< int > >);
-   FunctionInstance4perl(permuted_atoms_x_X, perl::TryCanned< const Array< int > >);
+   FunctionInstance4perl(permuted_coatoms_x_X, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(permuted_atoms_x_X, perl::Canned< const Array< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

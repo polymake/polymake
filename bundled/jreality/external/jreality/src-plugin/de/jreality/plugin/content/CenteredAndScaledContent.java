@@ -49,11 +49,13 @@ public class CenteredAndScaledContent extends Content implements ChangeListener,
 	}
 	
 	
+	@Override
 	public synchronized void stateChanged(ChangeEvent e) {
 		size = sizeSlider.getValue() / 100.0;
 		updateMatrix();
 	}
 	
+	@Override
 	public void transformationMatrixChanged(TransformationEvent ev) {
 		FactoredMatrix fm = new FactoredMatrix(ev.getTransformation());
 		double[] stretch = fm.getStretch();

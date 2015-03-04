@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -113,9 +113,10 @@ property NODE_IN_DEGREES : Array<Int>;
 }
 
 
+# A graph with edge weights.
 declare object EdgeWeightedGraph : Graph<Undirected> {
 
-   # Associated edge weights
+   # Associated edge weights.
 
    property EDGE_WEIGHTS : EdgeMap<Undirected,Float> : construct(ADJACENCY);
 }

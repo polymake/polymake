@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,7 +16,6 @@
 
 #include "polymake/client.h"
 #include "polymake/vector"
-#include "polymake/Rational.h"
 #include "polymake/Matrix.h"
 #include "polymake/Set.h"
 #include "polymake/IncidenceMatrix.h"
@@ -35,8 +34,9 @@ struct product_label {
    }
 };
 
-Matrix<Rational>
-product_coord(const Matrix<Rational>& V1, const Matrix<Rational>& V2,
+template<typename Scalar>
+Matrix<Scalar>
+product_coord(const Matrix<Scalar>& V1, const Matrix<Scalar>& V2,
               int& n_vertices1, int& n_vertices2, int& n_vertices_out, int n_rays,
               const Set<int>& rays1, const Set<int>& rays2)
 {
@@ -45,7 +45,7 @@ product_coord(const Matrix<Rational>& V1, const Matrix<Rational>& V2,
          n_vertices_out=(n_vertices1 - rays1.size()) * (n_vertices2 - rays2.size()) + n_rays;
    const int dim=V1.cols()+V2.cols()-1;
   
-   Matrix<Rational> V_out(n_vertices_out, dim);
+   Matrix<Scalar> V_out(n_vertices_out, dim);
    if (n_rays==0) {
       copy(entire(product(rows(V1), rows(V2.minor(All,range(1,V2.cols()-1))), operations::concat())),
            rows(V_out).begin());
@@ -65,6 +65,7 @@ product_coord(const Matrix<Rational>& V1, const Matrix<Rational>& V2,
   
 } // end unnamed namespace
 
+template<typename Scalar>
 perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet options)
 {
    int n_vertices1=0, n_vertices2=0, n_vertices_out=0, n_rays=0;
@@ -79,7 +80,7 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
       n_rays=rays1.size()+rays2.size();
    }
 
-   perl::Object p_out("Polytope<Rational>");
+   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
    p_out.set_description() << "Product of " << p_in1.name() << " and " << p_in2.name() << endl;
 
    if (noc || p_in1.exists("VERTICES_IN_FACETS") && p_in2.exists("VERTICES_IN_FACETS")) {
@@ -129,15 +130,15 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
          throw std::runtime_error("product: input polyhedron not pointed");
 
       std::string given1, given2;
-      const Matrix<Rational> V1=p_in1.give_with_property_name("VERTICES | POINTS", given1),
+      const Matrix<Scalar> V1=p_in1.give_with_property_name("VERTICES | POINTS", given1),
          V2=p_in2.give_with_property_name("VERTICES | POINTS", given2);
       const bool VERTICES_out= given1=="VERTICES" && given2=="VERTICES";
 
-      const Matrix<Rational> V_out=product_coord(V1, V2, n_vertices1, n_vertices2, n_vertices_out, n_rays, rays1, rays2);
+      const Matrix<Scalar> V_out=product_coord(V1, V2, n_vertices1, n_vertices2, n_vertices_out, n_rays, rays1, rays2);
 
       p_out.take(VERTICES_out ? "VERTICES" : "POINTS") << V_out;
       if ( VERTICES_out ) {
-         const Matrix<Rational> empty;
+         const Matrix<Scalar> empty;
          p_out.take("LINEALITY_SPACE") << empty;
       }
    }
@@ -161,16 +162,17 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
    return p_out;
 }
 
-UserFunction4perl("# @category Producing a polytope from polytopes"
-                  "# Construct a new polytope as the product of two given polytopes //P1// and //P2//."
-                  "# @param Polytope P1"
-                  "# @param Polytope P2"
-                  "# @option Bool noc only combinatorial information is handled"
-                  "# @option Bool relabel creates an additional section [[VERTEX_LABELS]];"
-                  "#   the label of a new vertex corresponding to v<sub>1</sub> &oplus; v<sub>2</sub> will"
-                  "#   have the form LABEL_1*LABEL_2."
-                  "# @return Polytope",
-                  &product, "product(Polytope Polytope { noc => 0, relabel => 0 })");
+UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
+                          "# Construct a new polytope as the product of two given polytopes //P1// and //P2//."
+                          "# @param Polytope P1"
+                          "# @param Polytope P2"
+                          "# @option Bool noc only combinatorial information is handled"
+                          "# @option Bool relabel creates an additional section [[VERTEX_LABELS]];"
+                          "#   the label of a new vertex corresponding to v<sub>1</sub> &oplus; v<sub>2</sub> will"
+                          "#   have the form LABEL_1*LABEL_2."
+                          "# @return Polytope",
+                          "product<Scalar>(Polytope<type_upgrade<Scalar>>, Polytope<type_upgrade<Scalar>>; { noc => 0, relabel => undef })");
+
 } }
 
 // Local Variables:

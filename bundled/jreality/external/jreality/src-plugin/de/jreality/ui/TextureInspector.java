@@ -125,6 +125,7 @@ public class TextureInspector extends JPanel implements ChangeListener {
 		texScroller = new JScrollPane(texPanel);
 	private ActionListener 
 		texturesListener = new ActionListener() {
+		@Override
 		public void actionPerformed(ActionEvent e) {
 			updateTexture();
 		}
@@ -165,6 +166,7 @@ public class TextureInspector extends JPanel implements ChangeListener {
 		textureLoadButton.setToolTipText("Add a new texture");
 		textureLoadButton.setMargin(new Insets(0,5,0,5));
 		textureLoadButton.addActionListener(new ActionListener() {
+			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				loadTexture();
 			}
@@ -177,6 +179,7 @@ public class TextureInspector extends JPanel implements ChangeListener {
 		c.gridwidth = GridBagConstraints.REMAINDER;
 		removeButton.setToolTipText("Remove the current texture");
 		removeButton.addActionListener(new ActionListener() {
+			@Override
 			public void actionPerformed(ActionEvent e) {
 				removeActiveTexture();
 			}
@@ -318,6 +321,7 @@ public class TextureInspector extends JPanel implements ChangeListener {
 	}
 	
 	
+	@Override
 	public void stateChanged(ChangeEvent e) {
 		if (blockListeners) return;
 		blockListeners = true;

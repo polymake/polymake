@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,7 +19,7 @@
 
 I32 pm_perl_skip_debug_cx=FALSE;
 
-SV** pm_perl_get_cx_curpad(pTHX_ PERL_CONTEXT *cx, PERL_CONTEXT *cx_bottom)
+SV** pm_perl_get_cx_curpad(pTHX_ PERL_CONTEXT* cx, PERL_CONTEXT* cx_bottom)
 {
    CV* cv;
    I32 d;
@@ -27,9 +27,11 @@ SV** pm_perl_get_cx_curpad(pTHX_ PERL_CONTEXT *cx, PERL_CONTEXT *cx_bottom)
       switch (CxTYPE(cx)) {
       case CXt_SUB:
          cv=cx->blk_sub.cv;
-         if (SkipDebugSub(cv)) break;
-         d=cx->blk_sub.olddepth;
-         goto FOUND;
+         if (!SkipDebugSub(cv)) {
+            d=cx->blk_sub.olddepth;
+            goto FOUND;
+         }
+         break;
       case CXt_EVAL:
          if (!CxTRYBLOCK(cx)) {
 #if PerlVersion >= 5120
@@ -40,6 +42,7 @@ SV** pm_perl_get_cx_curpad(pTHX_ PERL_CONTEXT *cx, PERL_CONTEXT *cx_bottom)
             d=0;
             goto FOUND;
          }
+         break;
       }
    }
    cv=PL_main_cv;
@@ -61,7 +64,7 @@ CV* pm_perl_get_cur_cv(pTHX)
       }
       case CXt_EVAL: {
          CV *cv=cx->blk_eval.cv;
-         if (cv && CvEVAL(cv)) return cv;
+         if (cv && !CxTRYBLOCK(cx)) return cv;
          break;
       }
       }
@@ -115,6 +118,25 @@ AV* Perl_av_fake(pTHX_ I32 size, SV **strp)
    }
    return av;
 }
+#endif
+
+#if PerlVersion < 5140
+
+MAGIC* pm_perl_mg_findext(const SV *sv, int type, const MGVTBL *vtbl)
+{
+   if (sv) {
+      MAGIC *mg;
+
+      for (mg = SvMAGIC(sv); mg; mg = mg->mg_moremagic) {
+         if (mg->mg_type == type && mg->mg_virtual == vtbl) {
+            return mg;
+         }
+      }
+   }
+
+   return NULL;
+}
+
 #endif
 
 MODULE = Polymake::Ext          PACKAGE = Polymake::Ext

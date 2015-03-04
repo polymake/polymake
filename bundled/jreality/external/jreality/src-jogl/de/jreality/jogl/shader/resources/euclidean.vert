@@ -134,8 +134,8 @@ void main(void)
     doLighting(normal, surfaceToCameraVector, surfaceCameraCoordinates, true, gl_FrontColor, gl_FrontSecondaryColor);
     normal = -normal;
     doLighting(normal, surfaceToCameraVector, surfaceCameraCoordinates, false, gl_BackColor, gl_BackSecondaryColor);
-    if ((-surfaceToCameraVector.z) < .7170)  {
-        gl_FrontColor = vec4(0.0, 0.0, 0.0, 1.0); //vec4(surfaceToCameraVector.x, surfaceToCameraVector.y, 0.0, 1.0);
-    }
+//    if ((-surfaceToCameraVector.z) < .7170)  {
+        gl_FrontColor = vec4(surfaceToCameraVector.x, surfaceToCameraVector.y, 0.0, 1.0); //vec4(0.0, 0.0, 0.0, 1.0); //
+//    }
 
 }

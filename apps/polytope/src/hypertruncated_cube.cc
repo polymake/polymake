@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -15,13 +15,14 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/Rational.h"
 #include "polymake/Matrix.h"
 #include "polymake/Array.h"
+#include "polymake/SparseVector.h"
 
 namespace polymake { namespace polytope {
 
-perl::Object hypertruncated_cube(const int d, const Rational k, const Rational lambda)
+template<typename Scalar>
+perl::Object hypertruncated_cube(const int d, const Scalar k, const Scalar lambda)
 {
    if (d < 2)
       throw std::runtime_error("hypertruncated_cube: dimension d >= 2 required");
@@ -30,11 +31,11 @@ perl::Object hypertruncated_cube(const int d, const Rational k, const Rational l
    if (lambda*d <= k)
       throw std::runtime_error("hypertruncated_cube: lambda > k/d required");
 
-   perl::Object p("Polytope<Rational>");
+   perl::Object p(perl::ObjectType::construct<Scalar>("Polytope"));
    p.set_description() << "hypertruncated_cube(" << d << "," << k << "," << lambda << ")" << endl;
 
    const int n_ineqs=4*d;
-   Matrix<Rational> Inequalities(n_ineqs,d+1);
+   Matrix<Scalar> Inequalities(n_ineqs,d+1);
    int i=0;
   
    // facets through origin (= non-negativity constraints)
@@ -68,27 +69,30 @@ perl::Object hypertruncated_cube(const int d, const Rational k, const Rational l
   
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("INEQUALITIES") << Inequalities;
-   p.take("N_INEQUALITIES") << n_ineqs+1; //+1 for 1 0 0 0  ...
    p.take("BOUNDED") << true;
+   p.take("FEASIBLE") << true;
+   p.take("ONE_VERTEX") << unit_vector<Scalar>(d+1,0);
 
    // symmetric linear objective function
-   perl::Object LP("LinearProgram<Rational>");
-   LP.take("LINEAR_OBJECTIVE") << Vector<Rational>(0|ones_vector<Rational>(d));
+   perl::Object LP(perl::ObjectType::construct<Scalar>("LinearProgram"));
+   LP.take("LINEAR_OBJECTIVE") << Vector<Scalar>(0|ones_vector<Scalar>(d));
    LP.attach("INTEGER_VARIABLES") << Array<bool>(d,true);
    p.take("LP") << LP;
   
    return p;
 }
 
-UserFunction4perl("# @category Producing a polytope from scratch"
-                  "# Produce a //d//-dimensional hypertruncated cube."
-                  "# With symmetric linear objective function (0,1,1,...,1)."
-                  "# "
-                  "# @param Int d the dimension"
-                  "# @param Rational k cutoff parameter"
-                  "# @param Rational lambda scaling of extra vertex"
-                  "# @return Polytope",
-                  &hypertruncated_cube, "hypertruncated_cube");
+UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
+                          "# Produce a //d//-dimensional hypertruncated cube."
+                          "# With symmetric linear objective function (0,1,1,...,1)."
+                          "# "
+                          "# @tparam Scalar Coordinate type of the resulting polytope.  Unless specified explicitly, deduced from the type of bound values, defaults to Rational."
+                          "# @param Int d the dimension"
+                          "# @param Scalar k cutoff parameter"
+                          "# @param Scalar lambda scaling of extra vertex"
+                          "# @return Polytope<Scalar>",
+                          "hypertruncated_cube<Scalar> [ is_ordered_field(type_upgrade<Scalar, Rational>) ]"
+                          "    (Int, type_upgrade<Scalar>, type_upgrade<Scalar>)");
 } }
 
 // Local Variables:

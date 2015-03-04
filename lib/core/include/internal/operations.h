@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -155,6 +155,10 @@ struct square_impl : mul_impl<OpRef,OpRef> {
 
 template <typename Char, typename Traits, typename Alloc>
 struct add_impl<const std::basic_string<Char, Traits, Alloc>&, const std::basic_string<Char, Traits, Alloc>&, cons<is_opaque, is_opaque> > :
+   add_scalar<std::basic_string<Char, Traits, Alloc>, std::basic_string<Char, Traits, Alloc>, std::basic_string<Char, Traits, Alloc> > {};
+
+template <typename Char, typename Traits, typename Alloc>
+struct add_impl<std::basic_string<Char, Traits, Alloc>&, const std::basic_string<Char, Traits, Alloc>&, cons<is_opaque, is_opaque> > :
    add_scalar<std::basic_string<Char, Traits, Alloc>, std::basic_string<Char, Traits, Alloc>, std::basic_string<Char, Traits, Alloc> > {};
 
 template <typename Char, typename Traits, typename Alloc>
@@ -374,19 +378,32 @@ class clear {
 public:
    typedef OpRef argument_type;
    typedef typename deref<OpRef>::type value_type;
-   typedef typename attrib<OpRef>::plus_const_ref result_type;
+   typedef typename if_else<object_traits<value_type>::allow_static, typename attrib<OpRef>::plus_const_ref, value_type>::type result_type;
 
    result_type operator() () const
    {
-      static const value_type dflt = value_type();
-      return dflt;
+      return default_instance(bool2type<object_traits<value_type>::allow_static>());
    }
 
    void operator() (typename lvalue_arg<OpRef>::type x) const
    {
       do_clear(x, typename object_traits<value_type>::model());
    }
+
 private:
+   static
+   result_type default_instance(True)
+   {
+      static const value_type dflt = value_type();
+      return dflt;
+   }
+
+   static
+   result_type default_instance(False)
+   {
+      return value_type();
+   }
+
    template <typename Model>
    void do_clear(typename lvalue_arg<OpRef>::type x, Model) const
    {

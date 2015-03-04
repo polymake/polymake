@@ -4,7 +4,7 @@ ifeq (${ImportedIntoExtension},)
   sympol_interface$O : ExtraCXXFLAGS += -I${ExtensionTop}/external/sympol
   sympol_raycomputation_beneathbeyond$O : ExtraCXXFLAGS += -I${ExtensionTop}/external/sympol
 
-  LIBS += ${BuildDir}/staticlib/sympol/libsympol$A ${BuildDir}/../../staticlib/cdd/libcddgmp$A
+  LIBS += ${BuildDir}/staticlib/sympol/libsympol$A $(subst %A,${A},${CddLib} ${LrsLib})
 endif
 
 ifneq ($(filter 4.4%,${GCCversion}),)

@@ -42,6 +42,7 @@ public class ViewMenuBar extends MenuAggregator implements ShutdownFlavor {
 		addMenuSeparator(getClass(), 99, "File");
 		Quit quitMenuAction = new Quit("Quit");
 		quitMenuAction.setActionListener(new ActionListener() {
+			@Override
 			public void actionPerformed(ActionEvent e) {
 				shutdownListener.shutdown();
 			}
@@ -74,10 +75,12 @@ public class ViewMenuBar extends MenuAggregator implements ShutdownFlavor {
 
 	}
 	
+	@Override
 	public Class<? extends PerspectiveFlavor> getPerspective() {
 		return View.class;
 	}
 
+	@Override
 	public void setShutdownListener(ShutdownListener shutdownListener) {
 		this.shutdownListener = shutdownListener;
 	}

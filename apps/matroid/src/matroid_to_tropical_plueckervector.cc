@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -83,15 +83,15 @@ perl::Object matroid_from_characteristic_vector(const Vector<Integer> vec,const 
    return m;
 }
 
-UserFunction4perl("# @category Producing from scratch\n"
-                  "# Creates the matroid with a given characteristic-plueckervector of rank r and a ground set of n elements."
+UserFunction4perl("# @category Producing a matroid from other objects\n"
+                  "# Creates the matroid with a given characteristic plueckervector of rank //r// and a ground set of //n// elements."
                   "# @param Vector<Integer> v"
-                  "# @param int r"
-                  "# @param int n"
+                  "# @param Int r"
+                  "# @param Int n"
                   "# @return Matroid",
                   &matroid_from_characteristic_vector, "matroid_from_characteristic_vector");
 
-UserFunction4perl("# @category Producing plueckervectors\n"
+UserFunction4perl("# @category Other\n"
                   "# Creates the characteristic- and the rank-plueckervector of a matroid."
                   "# @param Matroid m"
                   "# @return ListReturn (Vector<Integer>, Vector<Integer>)",

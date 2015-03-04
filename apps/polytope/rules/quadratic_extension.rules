@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,37 +13,19 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-# @topic objects/Polytope<QuadraticExtension>
-# A pointed polyhedron realized in R<sup>d</sup>.
-#
-# Convex hull and related algorithms use exact quadratic extension fields for arithmetics.
-#
-
-
 # @category Producing a polytope from scratch
 # Produce the list of all five Platonic solids with ascending number of vertices.
 # @return Array<Polytope<QuadraticExtension>>
 
 user_function platonic_solids() {
-    my $PS = new Array<Polytope<QuadraticExtension>>(
-	[(new Polytope<QuadraticExtension>(tetrahedron())),
-	 (new Polytope<QuadraticExtension>(cross(3))),
-	 (new Polytope<QuadraticExtension>(cube(3))),
+    return new Array<Polytope<QuadraticExtension>>(
+	 (tetrahedron<QuadraticExtension>()),
+	 (cross<QuadraticExtension>(3)),
+	 (cube<QuadraticExtension>(3)),
 	 icosahedron(),
 	 dodecahedron()
-	]);
-    return $PS
+	);
 }
-
-
-# intrinsic rules
-#INCLUDE
-#  lp_float.rules
-
-# self-configuring rules
-#INCLUDE
-#  vinci.rules
-#  qhull.rules
 
 
 # Local Variables:

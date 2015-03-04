@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -24,17 +24,17 @@ namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
    FunctionInterface4perl( Integer__inf_f1, T0 ) {
-      WrapperReturn( std::numeric_limits<Integer>::max() );
+      WrapperReturn( (std::numeric_limits<Integer>::max()) );
    };
 
    template <typename T0>
    FunctionInterface4perl( Rational__inf_f1, T0 ) {
-      WrapperReturn( std::numeric_limits<Rational>::max() );
+      WrapperReturn( (std::numeric_limits<Rational>::max()) );
    };
 
    template <typename T0>
    FunctionInterface4perl( Float__inf_f1, T0 ) {
-      WrapperReturn( std::numeric_limits<double>::infinity() );
+      WrapperReturn( (std::numeric_limits<double>::infinity()) );
    };
 
    FunctionInstance4perl(Integer__inf_f1, Integer);

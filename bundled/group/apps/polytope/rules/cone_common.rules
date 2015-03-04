@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -47,8 +47,6 @@ rule FOLDABLE_COCIRCUIT_EQUATIONS : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, INT
 
 } # /Cone
 
-sub max_interior_simplices_impl; # FIXME #586
-
 # @category Triangulations, subdivisions and volume
 # Find the maximal interior simplices of a polytope P.
 # Symmetries of P are NOT taken into account.
@@ -61,6 +59,7 @@ user_function max_interior_simplices<Scalar>(Cone<Scalar>) {
 
 
 # Local Variables:
-# c-basic-offset:3
 # mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
 # End:

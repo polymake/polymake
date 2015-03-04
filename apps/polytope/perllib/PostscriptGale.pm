@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -220,7 +220,7 @@ left_edge y1 moveto  right_edge y1 lineto  stroke
    }
 
    # draw the points as bunches of black and/or white circles
-   while (my ($v,$pts)=each %{$G->different_x_y}) {
+   while (my ($v, $pts)=each %{$G->different_x_y}) {
       my ($x,$y)=$page->transform(@$v);
       my $xy= $dim==1 ? sprintf("%.3f y1",$x) : sprintf("%.3f %.3f",$x,$y);
       $code .= "[ " . join(" ", @{$G->colors}[@$pts]) . " ] $xy Points\n";

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,12 +16,18 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1>
+   FunctionInterface4perl( new_C, T0,T1 ) {
+      perl::Value arg0(stack[1]);
+      WrapperReturnNew(T0, (arg0.get<T1, T0>()) );
+   };
+
    template <typename T0, typename T1>
    FunctionInterface4perl( new_X, T0,T1 ) {
       perl::Value arg0(stack[1]);
@@ -47,5 +53,8 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, QuadraticExtension< Rational >, perl::Canned< const Rational >);
    FunctionInstance4perl(new_X_X_X, QuadraticExtension< Rational >, int, int, int);
    FunctionInstance4perl(new_X_X_X, QuadraticExtension< Rational >, perl::Canned< const Rational >, perl::Canned< const Rational >, perl::Canned< const Rational >);
+   FunctionInstance4perl(new_C, QuadraticExtension< Rational >, int);
+   FunctionInstance4perl(new_C, QuadraticExtension< Rational >, perl::Canned< const Rational >);
+   OperatorInstance4perl(assign, QuadraticExtension< Rational >, perl::Canned< const Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

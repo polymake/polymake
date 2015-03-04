@@ -36,6 +36,7 @@ public abstract class SceneShrinkPanel extends ViewShrinkPanelPlugin {
 	
 	public SceneShrinkPanel() {
 		actionTool.addActionListener(new ActionListener() {
+			@Override
 			public void actionPerformed(ActionEvent e) {
 				toggle();
 			}

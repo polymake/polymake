@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -59,17 +59,19 @@ Vector<Rational> evaluate(perl::Object H, const Matrix<Rational>& X) {
 FunctionTemplate4perl("evaluate<Addition> (Matrix<Int> Vector<Rational> Vector<Rational>)");
 FunctionTemplate4perl("evaluate<Addition> (Matrix<Int> Vector<Rational> Matrix<Rational>)");
 
-UserFunctionTemplate4perl("# @category Basic properties"
-			  "# Return value of a tropical polynomial at a given point."
+UserFunctionTemplate4perl("# @category Tropical operations"
+			  "# Evaluate a tropical polynomial at a given point."
                           "# @param Hypersurface H"
-                          "# @param Vector x"
+                          "# @param Vector<Rational> x"
+                          "# @tparam Addition [[Min]] or [[Max]]"
                           "# @return Rational",
                           "evaluate<Addition>(Hypersurface<Addition> Vector<Rational>)");
 
-UserFunctionTemplate4perl("# @category Basic properties"
-			  "# Return values of a tropical polynomial at a collection of points."
+UserFunctionTemplate4perl("# @category Tropical operations"
+			  "# Evaluate a tropical polynomial at a collection of points."
                           "# @param Hypersurface H"
-                          "# @param Matrix X"
+                          "# @param Matrix<Rational> X"
+                          "# @tparam Addition [[Min]] or [[Max]]"
                           "# @return Vector<Rational>",
                           "evaluate<Addition>(Hypersurface<Addition> Matrix<Rational>)");
 

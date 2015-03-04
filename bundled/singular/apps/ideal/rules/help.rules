@@ -1,0 +1,36 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @topic category property_types/SingularIdeal/Constructors
+# Constructing a Singular ideal from a polymake ideal with a monomial ordering, i.e. from a Groebner subobject of a polymake ideal.
+
+# @topic category property_types/SingularIdeal/Singular interface
+# Methods attached from Singular.
+
+# @topic category functions/Singular interface
+# functions attached from/to Singular.
+
+# @topic category objects/Groebner/Singular interface
+# Intermediate objects for interfacing with Singular.
+
+# @topic category objects/Groebner/properties/Singular interface
+# Intermediate objects for interfacing with Singular.
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

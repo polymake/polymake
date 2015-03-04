@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -16,13 +16,11 @@
 
 object TropicalPolytope {
 
-# @category Basic properties
 # Dimension of the tropical projective space which contains the tropical polytope.
 
 property AMBIENT_DIM : Int;
 
 
-# @category Basic properties
 # Input points in homogeneous coordinates.  This is the fixed system of generators with respect
 # to which many combinatorial properties are expressed.
 
@@ -32,7 +30,6 @@ property POINTS : Matrix<Scalar> {
 #   sub canonical { &canonicalize_to_nonnegative; }
 }
 
-# @category Basic properties
 # Vertices of the tropical convex hull in homogeneous coordinates:
 # We normalize by setting the first homogeneous coordinate to zero.
 
@@ -42,7 +39,6 @@ property VERTICES : Matrix<Scalar> {
 #   sub canonical { &canonicalize_to_nonnegative; }
 }
 
-# @category Basic properties
 # Pseudovertices are the vertices of the [[ENVELOPE]] (with respect to [[POINTS]]).
 # original: property PSEUDOVERTICES : Matrix<Scalar>;
 property PSEUDOVERTICES : Matrix<Scalar>{
@@ -68,21 +64,18 @@ rule PSEUDOVERTICES : PseudoVertexPerm.PSEUDOVERTICES, PseudoVertexPerm.PERMUTAT
 weight 1.10;
 
 
-# @category Basic properties
 # Unique names assigned to the [[VERTICES]].
 # If specified, they are shown by visualization tools instead of vertex indices.
 
 property VERTEX_LABELS : Array<String>;
 
 
-# @category Basic properties
 # Tropical polytopes have a natural description as the complex of bounded faces of their envelopes.
 # This envelope depends on the choice of the [[POINTS]] that generate the tropical polytope.
 
 property ENVELOPE : polytope::Polytope<Scalar>;
 
 
-# @category Combinatorics
 # Tropical polytopes have a natural description as ordinary polytopal complexes. This is the 1-skeleton of such a
 # complex.
 
@@ -91,19 +84,16 @@ property PSEUDOVERTEX_GRAPH : objects::Graph;
 rule PSEUDOVERTEX_GRAPH.NodePerm.PERMUTATION = PseudoVertexPerm.PERMUTATION;
 
 
-# @category Basic properties
 # Cyclic order of the [[PSEUDOVERTICES]] in the boundary (for dimension 2 only).
 
 property CONVEX_HULL_2D_CYCLIC : Array<Int>;
 
 
-# @category Basic properties
 # Types of [[VERTICES]] relative to [[VERTICES]].
 
 property VERTEX_TYPES : Array<Array<Set>>;
 
 
-# @category Basic properties
 # Types of [[PSEUDOVERTICES]] relative to [[POINTS]].
 
 property PSEUDOVERTEX_TYPES : Array<Array<Set>>;
@@ -117,7 +107,6 @@ rule PseudoVertexPerm.PERMUTATION : PseudoVertexPerm.PSEUDOVERTEX_TYPES, PSEUDOV
    $this->PseudoVertexPerm->PERMUTATION=find_permutation($this->PseudoVertexPerm->PSEUDOVERTEX_TYPES, $this->PSEUDOVERTEX_TYPES);
 }
 
-# @category Basic properties
 # Coarse types of [[PSEUDOVERTICES]] relative to [[POINTS]].
 
 property PSEUDOVERTEX_COARSE_TYPES : Array<Array<Int>>;
@@ -131,7 +120,6 @@ rule PseudoVertexPerm.PERMUTATION : PseudoVertexPerm.PSEUDOVERTEX_COARSE_TYPES, 
    $this->PseudoVertexPerm->PERMUTATION=find_permutation($this->PseudoVertexPerm->PSEUDOVERTEX_COARSE_TYPES, $this->PSEUDOVERTEX_COARSE_TYPES);
 }
 
-# @category Basic properties
 # Unique names assigned to the [[PSEUDOVERTICES]].
 # Can be used as "NodeLabels" in [[VISUAL_PLANAR]].
 
@@ -147,18 +135,17 @@ rule PSEUDOVERTEX_LABELS : PSEUDOVERTEX_TYPES {
    $this->PSEUDOVERTEX_LABELS(temporary)=[ map { join("", @$_) } @{$this->PSEUDOVERTEX_TYPES} ];
 }
 
-# @category Basic properties
 # Tropical halfspaces encoded as pairs of apices and sets of sectors.
 # Maybe redundant (for now; subject to change in the future).
 property HALF_SPACES : Array< Pair<Vector<Scalar>,Set<Int> > >;
 
 }
 
-
+# @hide
 # @category Other
 # Return the pseudovertex coordinates dehomogenized and converted to Matrix<Float>;
 # to be used as "Coord" for visualization.
-# @param TropicalPolytope P source object
+# @param TropicalPolytope P
 # @return Matrix<Float>
 user_function pseudovertices_float_coords(TropicalPolytope) {
   my $P=shift;

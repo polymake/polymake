@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -23,19 +23,24 @@ USE ideal
 
 file_suffix fan
 
+
+HELP
+	help.rules
+
 # A polyhedral fan.
 # The current restriction is that each cone in the fan has to be pointed.  This will be relaxed later.
 # If a fan is specified via [[INPUT_RAYS]] and [[INPUT_CONES]] each input cone must list all the input rays incident.
 #
 # Once non-trivial linealities are allowed the following will apply:
 # The [[RAYS]] always lie in a linear subspace which is complementary to the [[LINEALITY_SPACE]].
-declare object PolyhedralFan<Scalar=Rational> [ typechecks::is_ordered_field(Scalar) ];
+declare object PolyhedralFan<Scalar=Rational> [ is_ordered_field(Scalar) ];
 
 # A polyhedral complex.  The derivation from [[PolyhedralFan]] works like the derivation of [[Polytope]] from [[Cone]].
-declare object PolyhedralComplex<Scalar=Rational> [ typechecks::is_ordered_field(Scalar) ] : PolyhedralFan<Scalar>;
+declare object PolyhedralComplex<Scalar=Rational> [ is_ordered_field(Scalar) ] : PolyhedralFan<Scalar>;
 
 INCLUDE
   fan_properties.rules
+  initial.rules
   tropical_variety_properties.rules
   polyhedral_complex_properties.rules
   common.rules
@@ -48,7 +53,6 @@ INCLUDE
   symmetric_fan.rules
   gfan.rules
 
-default_object PolyhedralFan;
 
 # Local Variables:
 # mode: perl

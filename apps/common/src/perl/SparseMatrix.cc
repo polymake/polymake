@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,18 +16,26 @@
 
 ///==== this line controls the automatic file splitting: max.instances=20
 
-#include "polymake/client.h"
-#include "polymake/SparseMatrix.h"
+#include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/Matrix.h"
-#include "polymake/Rational.h"
-#include "polymake/QuadraticExtension.h"
-#include "polymake/linalg.h"
-#include "polymake/Vector.h"
 #include "polymake/Integer.h"
+#include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/Vector.h"
+#include "polymake/client.h"
+#include "polymake/linalg.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1>
+   FunctionInterface4perl( new_X, T0,T1 ) {
+      perl::Value arg0(stack[1]);
+      WrapperReturnNew(T0, (arg0.get<T1>()) );
+   };
+
    template <typename T0>
    FunctionInterface4perl( new_int_int, T0 ) {
       perl::Value arg0(stack[1]), arg1(stack[2]);
@@ -46,5 +54,9 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_int_int, SparseMatrix< QuadraticExtension< Rational >, NonSymmetric >);
    Class4perl("Polymake::common::SparseMatrix_A_Float_I_Symmetric_Z", SparseMatrix< double, Symmetric >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< SparseMatrix< double, NonSymmetric > > >, perl::Canned< const Matrix< double > >);
+   FunctionInstance4perl(new_X, SparseMatrix< Rational, NonSymmetric >, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<pm::QuadraticExtension<pm::Rational>, pm::NonSymmetric> const&, pm::Array<int, void> const&, pm::all_selector const&> >);
+   FunctionInstance4perl(new_X, SparseMatrix< Rational, NonSymmetric >, perl::Canned< const pm::RowChain<pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, pm::Matrix<pm::Rational> const&> >);
+   FunctionInstance4perl(new_X, SparseMatrix< int, NonSymmetric >, perl::Canned< const pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true> >);
+   Class4perl("Polymake::common::SparseMatrix_A_TropicalNumber_A_Min_I_Rational_Z_I_Symmetric_Z", SparseMatrix< TropicalNumber< Min, Rational >, Symmetric >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

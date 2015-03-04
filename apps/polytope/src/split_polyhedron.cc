@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,55 +17,55 @@
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
 #include "polymake/SparseMatrix.h"
-#include "polymake/Rational.h"
 #include "polymake/Set.h"
 
 namespace polymake { namespace polytope {
 
+template<typename Scalar>
 perl::Object split_polyhedron(perl::Object p_in)
 {
-   const Matrix<Rational> vert=p_in.give("VERTICES");
+   const Matrix<Scalar> vert=p_in.give("VERTICES");
    const int n=vert.rows();  
    const int d=vert.cols();
   
-   const Matrix<Rational> splits=p_in.give("SPLITS");
+   const Matrix<Scalar> splits=p_in.give("SPLITS");
    int n_splits=splits.rows();
 
-   SparseMatrix<Rational> facets(n_splits,n+1);
+   SparseMatrix<Scalar> facets(n_splits,n+1);
    for (int j=0; j<n_splits; ++j) {
-      const Vector<Rational> a=splits.row(j);
+      const Vector<Scalar> a=splits.row(j);
       Set<int> left; //vertices of the left (>=) polytope
       for (int k=0; k<n; ++k) {
-         const Rational val=a*vert.row(k);
+         const Scalar val=a*vert.row(k);
          if (val>=0) {
             left.insert(k);
             if (val>0) facets(j,k+1)=val;
          }
       }
-      perl::Object p_left("Polytope<Rational>");
+      perl::Object p_left(perl::ObjectType::construct<Scalar>("Polytope"));
       p_left.take("VERTICES")<<vert.minor(left,All);
-      const Vector<Rational> left_centroid=p_left.give("CENTROID");
-      const Rational left_volume=p_left.give("VOLUME");
+      const Vector<Scalar> left_centroid=p_left.give("CENTROID");
+      const Scalar left_volume=p_left.give("VOLUME");
       facets(j,0)=-d*left_volume*(a*left_centroid);
    }
-   perl::Object p_out("Polytope<Rational>");
+   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
    p_out.take("FACETS")<<facets;
 
-   const Vector<Rational> centroid=p_in.give("CENTROID");
-   const Rational volume=p_in.give("VOLUME");
-   const Vector<Rational> c=-d*volume*centroid;
+   const Vector<Scalar> centroid=p_in.give("CENTROID");
+   const Scalar volume=p_in.give("VOLUME");
+   const Vector<Scalar> c=-d*volume*centroid;
    p_out.take("AFFINE_HULL")<<(c|T(vert));
    p_out.take("CONE_DIM")<<(n-d)+1;
 
    return p_out;
 }
 
-UserFunction4perl("# @category Triangulations, subdivisions and volume"
-                  "# Computes the split polyhedron of a full-dimensional"
-                  "# polyhdron //P//."
-                  "# @param Polytope P"
-                  "# @return Polytope",
-                  &split_polyhedron,"split_polyhedron(Polytope)");
+UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
+                          "# Computes the split polyhedron of a full-dimensional"
+                          "# polyhdron //P//."
+                          "# @param Polytope P"
+                          "# @return Polytope",
+                          "split_polyhedron<Scalar>(Polytope<Scalar>)");
 } }
 
 // Local Variables:

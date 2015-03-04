@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -171,12 +171,35 @@ SArray circuits_to_bases_rank(const SArray& circuits,const int n,const int rank)
   return SArray(n_bases,entire(bases));
 }
 
+SArray circuits_to_hyperplanes(const SArray& circuits,const int n,const int rank)
+{
+   if(rank==0){
+      return SArray(0);
+   }
+   Set<Set<int> > hyp;
+   for(Entire< Subsets_of_k<const sequence&> >::const_iterator j=entire(all_subsets_of_k(sequence(0,n),rank-1));!j.at_end();++j) {
+      bool is_ind=true;
+      Set<int> h=*j;
+      for (Entire<SArray>::const_iterator c = entire(circuits); is_ind&&!c.at_end(); ++c){
+         if (incl(*c,*j)<=0) is_ind=false;
+         if((*c-*j).size()==1){
+            h+=*c;
+         }
+      }
+      if(is_ind){
+         hyp+=h;
+      }
+   }
+   return SArray(hyp);
+}
+
 Function4perl(&bases_to_circuits, "bases_to_circuits");
 Function4perl(&bases_to_cocircuits, "bases_to_cocircuits");
 Function4perl(&cocircuits_to_bases, "cocircuits_to_bases");
 Function4perl(&circuits_to_bases, "circuits_to_bases");
 Function4perl(&cocircuits_to_bases_rank, "cocircuits_to_bases_rank");
 Function4perl(&circuits_to_bases_rank, "circuits_to_bases_rank");
+Function4perl(&circuits_to_hyperplanes, "circuits_to_hyperplanes");
 
 } }
 

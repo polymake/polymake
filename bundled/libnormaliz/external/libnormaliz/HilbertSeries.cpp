@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2013  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2014  Winfried Bruns, Bogdan Ichim, Christof Soeger
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -14,7 +14,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * As an exception, when this program is distributed through (i) the App Store
+ * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
+ * by Google Inc., then that store may impose any digital rights management,
+ * device limits and/or redistribution restrictions that are required by its
+ * terms of service.
  */
+
 #include <cassert>
 #include <iostream>
 #include <map>
@@ -144,13 +150,14 @@ void HilbertSeries::performAdd(vector<mpz_class>& other_num, const map<long, den
 }
 
 void HilbertSeries::collectData() const {
-	 if (verbose) verboseOutput() << "Adding " << denom_classes.size() << " denominator classes..." << flush;
+    if (denom_classes.empty()) return;
+	if (verbose) verboseOutput() << "Adding " << denom_classes.size() << " denominator classes..." << flush;
     map< vector<denom_t>, vector<num_t> >::iterator it;
     for (it = denom_classes.begin(); it != denom_classes.end(); ++it) {
         performAdd(it->second, it->first);
     }
     denom_classes.clear();
-	 if (verbose) verboseOutput() << " done." << endl;
+	if (verbose) verboseOutput() << " done." << endl;
 }
 
 // simplify, see class description
@@ -159,7 +166,7 @@ void HilbertSeries::simplify() const {
         return;
     collectData();
 /*    if (verbose) {
-        cout << "Hilbert series before simplification: "<< endl << *this;
+        verboseOutput() << "Hilbert series before simplification: "<< endl << *this;
     }*/
     vector<mpz_class> q, r, poly; //polynomials
     // In denom_cyclo we collect cyclotomic polynomials in the denominator.
@@ -236,7 +243,7 @@ void HilbertSeries::simplify() const {
     period = lcm_of_keys(cdenom);
     i = period;
     if (period > 2000) {
-        errorOutput() << "WARNING: Period is to big, the representation of the Hilbert series may have more than dimensional many factors in the denominator!" << endl;
+        errorOutput() << "WARNING: Period is too big, the representation of the Hilbert series may have more than dimensional many factors in the denominator!" << endl;
         i = cdenom.rbegin()->first;
     }
     while (!cdenom.empty()) {
@@ -262,7 +269,7 @@ void HilbertSeries::simplify() const {
     }
 
 /*    if (verbose) {
-        cout << "Simplified Hilbert series: " << endl << *this;
+        verboseOutput() << "Simplified Hilbert series: " << endl << *this;
     }*/
     is_simplified = true;
 }
@@ -289,7 +296,7 @@ mpz_class HilbertSeries::getHilbertQuasiPolynomialDenom() const {
 void HilbertSeries::computeHilbertQuasiPolynomial() const {
     simplify();
     if (period > 2000) {
-        errorOutput()<<"WARNING: We skip the computation of the Hilbert-quasi-polynomial because the period "<< period <<" is to big!" <<endl;
+        errorOutput()<<"WARNING: We skip the computation of the Hilbert-quasi-polynomial because the period "<< period <<" is too big!" <<endl;
         return;
     }
     long i,j;
@@ -311,7 +318,6 @@ void HilbertSeries::computeHilbertQuasiPolynomial() const {
             poly_div(factor, r, coeff_vector<mpz_class>(period), coeff_vector<mpz_class>(d));
             assert(r.size()==0); //assert remainder r is 0
             //TODO more efficient method *=
-            //TODO Exponentiation by squaring of factor, then *=
             for (i=0; i < rit->second; ++i) {
                 norm_num = poly_mult(norm_num, factor);
             }
@@ -357,10 +363,12 @@ void HilbertSeries::computeHilbertQuasiPolynomial() const {
 
 // returns the numerator, repr. as vector of coefficients, the h-vector
 const vector<mpz_class>& HilbertSeries::getNum() const {
+    simplify();
     return num;
 }
 // returns the denominator, repr. as a map of the exponents of (1-t^i)^e
 const map<long, denom_t>& HilbertSeries::getDenom() const {
+    simplify();
     return denom;
 }
 
@@ -549,17 +557,26 @@ vector<Integer> cyclotomicPoly(long n) {
 // computing the Hilbert polynomial from h-vector
 //---------------------------------------------------------------------------
 
+// The algorithm follows "Cohen-Macaulay rings", 4.1.5 and 4.1.9.
+// The E_vector is the vector of higher multiplicities.
+// It is assumed that (d-1)! is used as a common denominator in the calling routine.
+
 template<typename Integer>
 vector<Integer> compute_e_vector(vector<Integer> Q, int dim){
-    int i,j;
-    vector <Integer> E_Vector(dim,0);
-    Q.resize(dim+1);
-    for (i = 0; i <dim; i++) {
-        for (j = 0; j <dim; j++) {
+    size_t j;
+    int i;
+    vector <Integer> E_Vector(dim,0); 
+    // cout << "QQQ " << Q;  
+    // Q.resize(dim+1);
+    int bound=Q.size();
+    if(bound>dim)
+        bound=dim;  
+    for (i = 0; i <bound; i++) {
+        for (j = 0; j < Q.size()-i; j++) {  
             E_Vector[i] += Q[j];
         }
         E_Vector[i]/=permutations<Integer>(1,i);
-        for (j = 1; j <=dim; j++) {
+        for (j = 1; j <Q.size()-i; j++) {
             Q[j-1]=j*Q[j];
         }
     }

@@ -80,13 +80,14 @@ sub grassmannian($$){
 		    }else{
 			$vec->[$i/4]=1;
 		    }
-		    my @first=split ",", @list->[$i+1];
-		    my @last=split ",", @list->[$i+3];
+		    my @first=split ",", $list[$i+1];
+		    my @last=split ",", $list[$i+3];
 		    my $m_vec=unit_vector<Int>(binomial($n,$d),parse($d,$n,\@first));
 		       $m_vec=new Vector($m_vec+unit_vector<Int>(binomial($n,$d),parse($d,$n,\@last)));
 		       $mat->row($i/4)=$m_vec;
 		}
-		push @polys, new Polynomial($mat, $vec, $ring);#<Integer ?
+		#push @polys, new Polynomial($mat, $vec, $ring);#<Integer ?
+		push @polys, new Polynomial($ring,$g);
 	}
     }
     close $P;

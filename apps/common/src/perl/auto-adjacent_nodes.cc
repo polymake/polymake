@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -24,7 +24,7 @@ namespace polymake { namespace common { namespace {
    template <typename T0>
    FunctionInterface4perl( adjacent_nodes_x_f5, T0 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturnLvalue( T0, arg0.get<T0>().adjacent_nodes(arg1) );
+      WrapperReturnLvalueAnch( 1, (arg0), T0, arg0.get<T0>().adjacent_nodes(arg1) );
    };
 
    FunctionInstance4perl(adjacent_nodes_x_f5, perl::Canned< const Wary< Graph< Undirected > > >);

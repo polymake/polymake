@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,9 +20,9 @@
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1>
-   FunctionInterface4perl( cross_int_X_o, T0,T1 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]);
-      WrapperReturn( (cross<T0>(arg0.get<int>(), arg1.get<T1>(), arg2)) );
+   FunctionInterface4perl( cross_T_int_C_o, T0,T1 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      WrapperReturn( (cross<T0>(arg0.get<int>(), arg1.get<T1, T0>(), arg2)) );
    };
 
    FunctionWrapper4perl( perl::Object (int, Rational const&) ) {
@@ -37,8 +37,9 @@ namespace polymake { namespace polytope { namespace {
    }
    FunctionWrapperInstance4perl( perl::Object (int, pm::Rational const&, perl::OptionSet) );
 
-   FunctionInstance4perl(cross_int_X_o, Rational, perl::Canned< const Rational >);
-   FunctionInstance4perl(cross_int_X_o, Rational, int);
-   FunctionInstance4perl(cross_int_X_o, QuadraticExtension< Rational >, perl::Canned< const QuadraticExtension< Rational > >);
+   FunctionInstance4perl(cross_T_int_C_o, QuadraticExtension< Rational >, perl::Canned< const QuadraticExtension< Rational > >);
+   FunctionInstance4perl(cross_T_int_C_o, Rational, perl::Canned< const Rational >);
+   FunctionInstance4perl(cross_T_int_C_o, Rational, int);
+   FunctionInstance4perl(cross_T_int_C_o, QuadraticExtension< Rational >, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

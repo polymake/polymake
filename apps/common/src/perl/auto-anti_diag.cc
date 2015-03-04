@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -27,7 +27,7 @@ namespace polymake { namespace common { namespace {
    template <typename T0>
    FunctionInterface4perl( anti_diag_X8, T0 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturnAnch( (1)(arg0), (anti_diag(arg0.get<T0>())) );
+      WrapperReturnAnch( 1, (arg0), (anti_diag(arg0.get<T0>())) );
    };
 
    FunctionInstance4perl(anti_diag_X8, perl::Canned< const pm::SameElementVector<int const&> >);

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -231,26 +231,38 @@ precondition : SIMPLE_POLYHEDRON;
 
 
 rule H_VECTOR : F_VECTOR {
-  h_vector($this,1);
+  h_from_f_vector($this,1);
 }
 precondition : SIMPLICIAL;
 weight 1.10;
 
 rule DUAL_H_VECTOR : F_VECTOR {
-  h_vector($this,0);
+  h_from_f_vector($this,0);
 }
 precondition : SIMPLE;
 weight 1.10;
 
+rule H_VECTOR : G_VECTOR, COMBINATORIAL_DIM {
+  h_from_g_vector($this);
+}
+precondition : SIMPLICIAL;
+weight 1.10;
+
+rule G_VECTOR : H_VECTOR {
+  g_from_h_vector($this);
+}
+precondition : SIMPLICIAL;
+weight 1.10;
+
 rule F_VECTOR : H_VECTOR {
-   f_vector($this,1);
+   f_from_h_vector($this,1);
 }
 precondition : SIMPLICIAL;
 precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM >= 0 }
 weight 1.10;
 
 rule F_VECTOR : DUAL_H_VECTOR {
-   f_vector($this,0);
+   f_from_h_vector($this,0);
 }
 precondition : SIMPLE;
 precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM >= 0 }
@@ -304,7 +316,7 @@ sub monomial_string {
    return $monstr;
 }
 
-# @category Formatting
+# @category Combinatorics
 # Prettily print the cd-index given in [[CD_INDEX_COEFFICIENTS]]
 
 user_method CD_INDEX() {

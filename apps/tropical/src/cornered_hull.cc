@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -96,26 +96,26 @@ namespace polymake { namespace tropical {
    }
     
    
-   UserFunctionTemplate4perl("# @category Others"
+   UserFunctionTemplate4perl("# @category Other"
                              "# Compute the corners of a tropical polytope given by its vertices."
                              "# Cf."
-                             "#    M. Joswig, arXiv:0809.4694v2, Lemma 17."
+                             "# \t M. Joswig, arXiv:0809.4694v2, Lemma 17."
                              "# @param Matrix input points"
                              "# @return Matrix",
                              "get_corners(Matrix)");
    
-   UserFunctionTemplate4perl("# @category Producing a new tropical polytope from another" //Other
+   UserFunctionTemplate4perl("# @category Producing another object"
                              "# Compute the cornered hull of a tropical polytope."
                              "# Cf."
-                             "#    M. Joswig, arXiv:0809.4694v2, Lemma 17."
+                             "# \t M. Joswig, arXiv:0809.4694v2, Lemma 17."
                              "# @param TropicalPolytope T"
-                             "# @return Polytope",
+                             "# @return polytope::Polytope",
                              "cornered_hull_poly<Scalar>(TropicalPolytope<Scalar>)");
    
-   UserFunctionTemplate4perl("# @category Producing a new tropical polytope from another"
+   UserFunctionTemplate4perl("# @category Producing a tropical polytope"
                              "# Compute the cornered hull of a tropical polytope."
                              "# Cf."
-                             "#    M. Joswig, arXiv:0809.4694v2, Lemma 17."
+                             "# \t M. Joswig, arXiv:0809.4694v2, Lemma 17."
                              "# @param TropicalPolytope T"
                              "# @return TropicalPolytope",
                              "cornered_hull<Scalar>(TropicalPolytope<Scalar>)");

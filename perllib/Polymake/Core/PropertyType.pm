@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -14,6 +14,7 @@
 #-------------------------------------------------------------------------------
 
 use strict;
+use feature 'state';
 use namespaces;
 
 package Polymake::Core::PropertyType;
@@ -22,58 +23,50 @@ declare @delimiters;
 declare $nesting_level;
 declare $trusted_value;
 
-sub parse_fallback : method {
-   my $p=pos;
-   if (substr($_,$p) =~ $_[1]) {
-      pos=$p+$+[0];
-      substr($_,$p,$-[0]);
-   } else {
-      &parse_error;
-   }
-}
-sub construct_complain : method {
-   shift;
-   croak( "Don't know how to construct an object of type ", original_object()->full_name,
-          " from given arguments (", join(", ", map { ref($_) || "'$_'" } @_), ")" );
-}
-
 sub canonical_fallback { }
 sub equal_fallback { $_[0] == $_[1] }
 sub isa_fallback : method { UNIVERSAL::isa($_[1], $_[0]->pkg) }
+sub coherent_type_fallback { undef }
+sub parse_fallback : method { croak( "no string parsing routine defined for class ", $_[0]->full_name ) }
 sub toString_fallback { "$_[0]" }
 sub toXML_fallback {
    my ($value, $writer, @attrs)=@_;
    $writer->dataElement("e", "$value", @attrs);
 }
 sub init_fallback { }
-sub type : method { shift }
-*prototype=\&type;
-*resolve_abstract=\&type;
+sub performs_deduction { 0 }
+sub type_param_index { undef }
+
+sub type : method { $_[0] }
+define_function(__PACKAGE__, ".type", \&type);
 
 use Polymake::Struct (
-   [ new => '$$$;$@' ],
-   [ '$name | full_name | generic_name | mangled_name' => '#1' ],
+   [ new => '$$$;$' ],
+   [ '$name | full_name | mangled_name' => '#1' ],
    [ '$pkg' => '#2' ],
    [ '$application' => '#3' ],
    [ '$extension' => '$Application::extension' ],
    [ '$super' => '#4' ],
    [ '$dimension' => '0' ],
-   [ '&parse'    => '->super || \&parse_fallback' ],            # delimiter_re => object; text in $_
-   [ '&canonical' => '->super || \&canonical_fallback' ],       # object => void
-   [ '&equal'  => '->super || \&equal_fallback' ],              # object1, object2 => bool
-   [ '&isa' => '->super || \&isa_fallback' ],                   # object => bool
-   [ '&toString' => '->super || \&toString_fallback' ],         # object => "string"
-   [ '&toXML' => '->super || \&toXML_fallback' ],               # object, writer =>
-   [ '&construct' => '->super || \&construct_complain' ],       # args ... => object
-   [ '&parse_string' => '\&parse_whole' ],
-   '&abstract',
+   [ '&canonical' => '->super || \&canonical_fallback' ],          # object => void
+   [ '&equal'  => '->super || \&equal_fallback' ],                 # object1, object2 => bool
+   [ '&isa' => '->super || \&isa_fallback' ],                      # object => bool
+   [ '$upgrades' => 'undef' ],                                     # optional hash PropertyType => 1/0/-1
+   [ '&coherent_type' => '->super || \&coherent_type_fallback' ],  # object of a different type => PropertyType of this or a derived type or undef
+   [ '&toString' => '->super || \&toString_fallback' ],            # object => "string"
+   [ '&toXML' => '->super || \&toXML_fallback' ],                  # object, writer =>
+   [ '$construct_node' => 'undef' ],                               # Overload::Node
+   [ '&construct' => '\&construct_object' ],                       # args ... => object
+   [ '&parse' => '->super || \&parse_fallback' ],                  # "string" => object
+   [ '&abstract' => 'undef || \&type' ],
+   [ '&perform_typecheck' => '\&concrete_typecheck' ],             # cf. Overload resolution
+   [ '&init' => '->super || \&init_fallback' ],
    [ '$context_pkg' => 'undef' ],
    [ '$cppoptions' => 'undef' ],
-   [ '&init' => '\&init_fallback' ],
-   [ '$help' => 'undef' ],      # InteractiveHelp (in interactive mode, when comments are supplied for user methods)
+   [ '$help' => 'undef' ],              # InteractiveHelp (in interactive mode, when comments are supplied for user methods)
 );
 
-my @override_methods=qw( init parse parse_string canonical equal isa toString toXML construct );
+declare @override_methods=qw( canonical equal isa coherent_type parse toString toXML init );
 
 declare @string_ops=map { $_ => eval <<"." } qw( . cmp eq ne lt le gt ge );
 sub { \$_[2] ? "\$_[1]" $_ "\$_[0]" : "\$_[0]" $_ "\$_[1]" }
@@ -83,108 +76,76 @@ sub { \$_[2] ? "\$_[1]" $_ "\$_[0]" : "\$_[0]" $_ "\$_[1]" }
 #
 #  Constructor
 #
-#  new PropertyType('name', 'package', Application, super PropertyType, [ template params ])
+#  new PropertyType('name', 'package', Application, super PropertyType)
 #
 sub new {
    my $self=&_new;
    my $pkg=$self->pkg;
+   Overload::learn_package_retrieval($self, \&pkg);
+   my $self_sub=sub { $self };
+   define_function($pkg, "type", $self_sub, 1);
+   define_function($pkg, ".type", $self_sub);
    if ($self->super) {
       $self->dimension=$self->super->dimension;
-   }
-   my $proto_sub=sub { $self };
-
-   if (ref($_[4]) eq "ARRAY") {
-      $self->extension=$pkg->self->extension;
-      PropertyParamedType::init_params($self,$_[4]);
-      return $self if $self->abstract;
-      my $set=store_methods($self, $pkg, @override_methods);
-      if ($self->init != \&init_fallback) {
-         $self->init->();
-      } else {
-         define_basic_operators($self) if $set->{equal} || $set->{toString};
+      if ($self->construct_node=$self->super->construct_node) {
+         create_method_new($self);
       }
-   } else {
-      no strict 'refs';
-      *{$self->application->pkg."::props::".$self->name."::"}=get_pkg($pkg,1);
-      define_function($self->pkg, "typeof", $proto_sub, 1);
+      establish_inheritance($self, $self->super);
    }
-   define_function($self->pkg, "type", $proto_sub, 1);
-   define_function($self->pkg, "prototype", $proto_sub);
-   define_function($self->pkg, "self",  # for the rule parser
-                   sub {
-                      shift or croak( "This declaration is only allowed in the top-level (application) scope" );
-                      $self
-                   }, 1);
-
-   if ($self->pkg eq $pkg) {
-      # usual (not parameterized) type
-      define_function($self->pkg, "new", sub { shift; new_object($self,@_) });
-   } else {
-      # non-abstract template instance
-      my @isa=($pkg);
-      if ($self->super) {
-         push @isa, $self->super->pkg;
-      }
-      namespaces::using($self->pkg, @isa);
-      no strict 'refs';
-      @{$self->pkg."::ISA"}=@isa;
-   }
-
    $self;
 }
 
-# for types with partially deferred declarations (e.g. embedded in clients)
-sub add_super {
-   my ($self, $super)=@_;
-   $self->super=$super;
-   $self->dimension=$self->super->dimension;
-   namespaces::using($self->pkg, $super->pkg);
+##################################################################################
+sub establish_inheritance {
+   my ($self, $super1, $super2)=@_;
+   my @isa=($super1->pkg);
+   if ($super2 && $super2 != $super1) {
+      push @isa, $super2->pkg;
+   }
+   namespaces::using($self->pkg, @isa);
    no strict 'refs';
-   push @{$self->pkg."::ISA"}, $super->pkg;
-}
-
-sub covering_app { $_[0]->application }
-
-##################################################################################
-sub store_methods {
-   my $self=shift;
-   my $symtab=get_pkg(shift);
-   my $set= defined(wantarray) ? { } : undef;
-   foreach (@_) {
-      if (exists &{$symtab->{$_}}) {
-         $self->$_=my $method=\&{$symtab->{$_}};
-         Struct::pass_original_object($method) if $_ eq "construct";
-         $set->{$_}=1 if defined($set);
-      }
-   }
-   $set
+   @{$self->pkg."::ISA"}=@isa;
+   mro::set_mro($self->pkg, "c3");
 }
 ##################################################################################
-sub parse_whole : method {
-   (my $self, local $_)=@_;
-   my $obj;
-   if ($self->cppoptions && !$self->cppoptions->builtin) {
-      $obj=eval { $self->parse->($_, $trusted_value) };
-      if (!defined($obj)) {
-         if ($@ =~ /^(\d+)\t/) {
-            pos($_)=$1;
-            &parse_error;
-         } else {
-            die $@;
-         }
-      }
+
+sub add_constructor {
+   my ($self, $name, $code, $arg_types)=@_;
+   $self->construct_node //= do {
+      create_method_new($self);
+      new Overload::Node(undef, undef, 0);
+   };
+   Overload::add_instance($self->pkg, ".$name", $code, undef, $arg_types, undef, $self->construct_node);
+}
+
+sub create_method_new : method {
+   my ($self)=@_;
+   define_function($self->pkg, "new",
+                   $self->abstract
+                   ? sub {
+                        if (@_>1 && instanceof namespaces::TypeExpression($_[1])) {
+                           # full parameterized type: ready to use
+                           splice @_, 0, 2, @{$_[1]};
+                        } else {
+                           # bare generic name: try to create the type instance with default parameters
+                           splice @_, 0, 1, $self->pkg->typeof();
+                        }
+                        &construct_object
+                     }
+                   : sub {
+                        splice @_, 0, 1, $self;
+                        &construct_object
+                     });
+}
+
+sub construct_object : method {
+   if (@_ == 2 && is_string($_[1])) {
+      $_[0]->parse->($_[1])
    } else {
-      pos($_)=0;
-      $obj=$self->parse->(qr/\Z/m);
-      if (!$trusted_value && defined($self->canonical)) {
-         $self->canonical->($obj);
-      }
+      &{ $_[0]->construct_node->resolve(\@_) // Overload::complain(undef, "new", 1, \@_) }
    }
-   $obj;
 }
-
-Struct::pass_original_object(\&parse_whole);
-
+##################################################################################
 sub parse_error {
    my $start=pos;
    die "invalid ", $_[0]->full_name, " value starting at \"",
@@ -192,24 +153,64 @@ sub parse_error {
        "\"\n";
 }
 ##################################################################################
-sub define_basic_operators {
-   my ($self)=@_;
-   overload::OVERLOAD($self->pkg, fallback => 0,
-                      '""' => sub { $self->toString->(@_) },
-                      '==' => sub { $self->equal->(@_) },
-                      '!=' => sub { !$self->equal->(@_) },
-                      @string_ops,
-                     );
+# used in overload resolution
+sub deduce_least_derived {
+   my ($self, $other)=@_;
+   $self==$other || UNIVERSAL::isa($other->pkg, $self->pkg)
+   ? $self :
+   UNIVERSAL::isa($self->pkg, $other->pkg)
+   ? $other : undef
+}
+
+sub deduce_most_enhanced {
+   my ($self, $other)=@_;
+   if ($self==$other) {
+      $self
+   } elsif (defined (my $upgrades=$self->upgrades)) {
+      my $rel=$upgrades->{$other};
+      $rel ? ($rel>0 ? $self : $other) : undef
+   } else {
+      undef
+   }
+}
+
+sub concrete_typecheck : method {
+   my ($self, undef, $given)=@_;
+   $self==$given || UNIVERSAL::isa($given->pkg, $self->pkg)
+   ? $self : undef
+}
+
+sub descend_to_generic {
+   my ($self, $pkg)=@_;
+   do {
+      return $self if $self->context_pkg eq $pkg || $self->pkg eq $pkg;
+   } while ($self=$self->super);
+   undef
+}
+
+##################################################################################
+# used in overload resolution
+sub typecheck : method {
+   my ($self, $arg_list, $arg, $backtrack)=@_;
+   if (defined (my $obj_proto=Overload::fetch_type($arg))) {
+      $self->perform_typecheck->($arg_list, $obj_proto, $backtrack);
+   }
 }
 ##################################################################################
-# PropertyType, arg, ... =>
-sub new_object {
+sub add_upgrade_relations {
    my $self=shift;
-   if (@_==1 && is_string($_[0])) {
-      $self->parse_string->(@_);
-   } else {
-      $self->construct->(@_);
+   foreach my $other (@_) {
+      my $upgrades=($self->upgrades //= { });
+      $upgrades->{$other}=1;
+      while (my ($third, $rel3)=each %{$other->upgrades //= { } }) {
+         if ($rel3>0) {
+            $upgrades->{$third}=1;
+            $third->upgrades->{$self}=-1;
+         }
+      }
+      $other->upgrades->{$self}=-1;
    }
+   $self
 }
 ##################################################################################
 sub trivialArray_toXML {
@@ -291,6 +292,12 @@ sub assocContainer_toXML {
    }
 }
 #################################################################################
+# produce a name sufficient for reconstruction from a data file
+sub qualified_name {
+   my ($self, $in_app)=@_;
+   (not(defined($in_app) and $in_app==$self->application || $in_app->imported->{$self->application->name}) && $self->application->name . "::") . $self->name
+}
+#################################################################################
 sub locate_own_help_topic {
    my ($self, $whence, $force)=@_;
    my $full_name=$self->full_name;
@@ -319,230 +326,180 @@ sub help_topic {
    $self->help || locate_own_help_topic($self, "property_types", @_);
 }
 #################################################################################
-package _::Analyzer;
-
-sub DESTROY {
-   my $proto=${(shift)};
-   store_methods($proto, $proto->pkg, @override_methods)
-}
-#################################################################################
-package Polymake::Core::HasType4Deduction;
-
-sub type4deduction { shift }
-
 package Polymake::Core::PropertyParamedType;
 
 use Polymake::Struct (
-   [ '@ISA' => 'PropertyType', 'HasType4Deduction' ],
-   [ '$param' => 'undef' ],
+   [ '@ISA' => 'PropertyType' ],
+   [ new => '$$$' ],
+   [ '$name' => '#1 ->name' ],
+   [ '$pkg' => '#1 ->pkg' ],
+   [ '$application' => '#1 ->application' ],
+   [ '$extension' => '#1 ->extension' ],
+   [ '$super' => '#2 // #1' ],
+   [ '$generic' => '#1' ],
+   [ '$params' => '#3' ],
 );
 
-sub descend_to_generic {
-   my ($self, $pkg)=@_;
-   do {
-      return $self if $self->context_pkg eq $pkg || $self->pkg eq $pkg;
-   } while ($self=$self->super);
-   undef
-}
+use Polymake::Struct (
+   [ 'alt.constructor' => '_new_generic' ],
+   [ new => '$$$$$' ],
+   [ '$name' => '#1' ],
+   [ '$pkg' => '#2' ],
+   [ '$application' => '#3' ],
+   [ '$extension' => '$Application::extension' ],
+   [ '$super' => '#4' ],
+   [ '$generic' => 'undef' ],
+   [ '$params' => '#5' ],
+   [ '&abstract' => '\&type' ],
+   [ '&perform_typecheck' => 'undef' ],
+);
 
+####################################################################################
+#
+#  Constructor
+#
+#  new PropertyParamedType(generic PropertyParamedType, super PropertyType, [ template params ])
+#
+sub new {
+   my $self=&_new;
+   Overload::learn_package_retrieval($self, \&PropertyType::pkg);
+   scan_params($self);
+   unless ($self->abstract) {
+      if ($self->super && $self->super != $self->generic) {
+         # methods defined for the own generic class have precedence over those from the super class
+         my $generic_index=Struct::get_field_index(\&generic);
+         foreach my $method (@override_methods) {
+            if (defined($self->generic->$method)) {
+               $self->$method=$generic_index;
+            }
+         }
+      }
+      my $self_sub=sub { $self };
+      define_function($self->pkg, "type", $self_sub, 1);
+      define_function($self->pkg, ".type", $self_sub);
+      $self->dimension=$self->super->dimension;
+      $self->construct_node=$self->super->construct_node;
+      establish_inheritance($self, $self->generic, $self->super);
+      $self->init->();
+   }
+   $self;
+}
+####################################################################################
 sub concrete_type {
    my ($self, $obj_proto)=@_;
    $self->abstract->($obj_proto->descend_to_generic($self->context_pkg) ||
                      croak( $obj_proto->full_name, " is not the parameterization context of the abstract type ", $self->full_name));
 }
 
-sub resolve_abstract {
-   my $self=shift;
-   if ($self->abstract) {
-      if (defined ($self->context_pkg)) {
-         if (my ($obj,$kind)=caller_object($self->context_pkg, "Polymake::Core::HasType4Deduction")) {
-            $self->concrete_type($kind ? $obj->type4deduction : $obj->type);
-         } else {
-            croak( "Can't determine the concrete type for ", $proto->full_name, " from the context" );
-         }
-      } else {
-         $self->abstract->();
+sub create_type_instance : method {
+   my ($self, $arglist)=@_;
+   $self->pkg->typeof(map { $_->abstract->($arglist) } @{$self->params});
+}
+
+sub context_sensitive_typecheck : method {
+   my ($self, $args, $given)=@_;
+   concrete_type($self, $args->[0]->type)->perform_typecheck->($args, $given);
+}
+
+sub context_sensitive_deducing_typecheck : method {
+   my ($self, $args, $given, $backtrack)=@_;
+   deducing_typecheck(concrete_type($self, $args->[0]->type), $args, $given, $backtrack);
+}
+
+sub deducing_typecheck : method {
+   my ($self, $args, $given, $backtrack)=@_;
+   if (defined (my $comparable=$given->descend_to_generic($self->pkg))) {
+      my $i=0;
+      foreach my $param (@{$self->params}) {
+         $param->perform_typecheck->($args, $comparable->params->[$i++], $backtrack) or return 0;
       }
-   } else {
-      $self;
+      $self
    }
 }
 
-sub covering_app {
-   my $self=shift;
-   if (is_object($self->param)) {
-      $self->application->common($self->param->covering_app);
-   } else {
-      my $app=$self->application;
-      foreach my $param (@{$self->param}) {
-         $app=$app->common($param->covering_app) or last;
-      }
-      $app;
-   }
-}
-
-sub new_abstract {
-   my $param_index=pop @_;
-   my $self=&_new;
-   $self->param=$param_index;
-   $self->abstract= $param_index>=0 ? sub : method { $_[1]->param->[$_[0]->param] } : sub { $_[0]->param };
-   $self->context_pkg=$self->pkg;
-   $self->pkg .= "::".$self->name;
-   define_function($self->pkg, "new",
-                   sub {
-                      if (my ($obj,$kind)=caller_object($self->context_pkg, "Polymake::Core::HasType4Deduction")) {
-                         shift;
-                         new_object($self->abstract->($kind ? $obj->type4deduction : $obj->type),@_);
-                      } else {
-                         croak( "Can't determine the concrete type for ", $self->name, " from the context" );
-                      }
-                   }, 1);
-   define_function($self->pkg, "type", sub { $self });
-   $self;
-}
-
-sub get_typeof {
-   if ($#_>0 && instanceof namespaces::TemplateExpression($_[1])) {
-      shift;   # drop the package
-      eval_type_expr(shift)->resolve_abstract;
-   } else {
-      # either an object with a ready-to-use concrete type, or a naked package name supposing default parameters
-      (shift)->type->resolve_abstract;
-   }
-}
-
-sub check_instanceof : method {
-   (undef, my ($expr, $obj))=@_;
-   UNIVERSAL::isa($obj, eval_type_expr($expr)->pkg);
+sub performs_deduction {
+   $_[0]->abstract && $_[0]->perform_typecheck != \&context_sensitive_typecheck;
 }
 
 sub new_generic {
-   my ($self_pkg, $name, $pkg, $app, $params, $subpkg)=@_;
+   my ($self_pkg, $name, $pkg, $app, $params, $super, $subpkg)=@_;
+   my $self;
    my $n_defaults=shift @$params;
    my $min_params=@$params-$n_defaults;
-   my $param_index=@$params>1 ? 0 : -1;
-   foreach my $param_name (@$params) {
-      my $type_proto=new_abstract PropertyParamedType($param_name, $pkg, $app, $param_index);
-      ++$param_index;
-   }
-   get_pkg($name,1);                    # enforce a top-level package to trick out the perl parser
-   get_pkg($app->name."::$name",1);     # and the same for qualifications via application name
+   my $param_index=-1;
+   my @param_holders=map { new ClassTypeParam($_, $pkg, $app, ++$param_index) } @$params;
    my $symtab=get_pkg($pkg);
-   define_function($symtab, "new", sub { new_object(&get_typeof,@_) });
    if (!defined($subpkg)) {
-      my $self=_new($self_pkg, $name, $pkg, $app);
-      define_function($symtab, "self",  # for the rule parser
-                      sub {
-                         shift or croak( "This declaration is only allowed in the top-level (application) scope" );
-                         $self
-                      });
-      $subpkg="props";
-   }
-   define_function($symtab, "instanceof", \&check_instanceof);
-   define_function($symtab, "typeof", \&get_typeof);
-   define_function($symtab, "_min_params", sub { $min_params });
-   
-   no strict 'refs';
-   *{$app->pkg."::$subpkg\::$name\::"}=$symtab;
-}
-
-#################################################################################
-sub init_params {
-   my ($self, $params)=@_;
-   if (@$params==1) {
-      $self->param=$params->[0];
-      if ($self->param->abstract) {
-         $self->abstract=sub : method {
-            my ($self, $obj_proto)=@_;
-            $self->pkg->generic_type($self->param->abstract->($obj_proto));
-         };
-         $self->context_pkg=$self->param->context_pkg;
-      } else {
-         $self->context_pkg=$self->pkg;
-         $self->pkg.="__" . $self->param->mangled_name;
-         set_application($self, $self->param->application);
-         set_extension($self->extension, $self->param->extension);
-      }
-   } else {
-      $self->param=$params;
-      foreach (@$params) {
-         if ($_->abstract) {
-            $self->abstract=sub : method {
-               my ($self, $obj_proto)=@_;
-               $self->pkg->generic_type(map { $_->abstract ? $_->abstract->($obj_proto) : $_ } @{$self->param});
-            };
-            $self->context_pkg=$_->context_pkg;
-            last;
-         } else {
-            set_application($self, $_->application);
-            set_extension($self->extension, $_->extension);
+      $self=_new_generic($self_pkg, $name, $pkg, $app, $super, \@param_holders);
+      if ($super) {
+         $self->dimension=$super->dimension;
+         if ($self->construct_node=$super->construct_node) {
+            $self->create_method_new();
          }
       }
-      if (! $self->abstract) {
-         $self->context_pkg=$self->pkg;
-         $self->pkg.="_A_" . join("_I_", map { $_->mangled_name } @$params) . "_Z";
+      $subpkg="props";
+   }
+   define_function($symtab, "instanceof",
+                   sub {
+                      if (@_>1 && instanceof namespaces::TypeExpression($_[1])) {
+                         UNIVERSAL::isa($_[2], $_[1]->[0]->pkg);
+                      } else {
+                         UNIVERSAL::isa($_[1], $pkg);
+                      }
+                   });
+   define_function($symtab, "_min_params", sub { $min_params });
+
+   no strict 'refs';
+   *{$app->pkg."::$subpkg\::$name\::"}=$symtab;
+   $self // \@param_holders;
+}
+
+#################################################################################
+sub mangle_param_names {
+   @_==1 ? "__$_[0]" : "_A_" . join("_I_", @_) . "_Z";
+}
+
+sub mangle_paramed_type_name {
+   my ($pkg, $params)=@_;
+   $pkg . mangle_param_names(split /,/, $params)
+}
+
+sub scan_params {
+   my ($self)=@_;
+   my $deduction_involved;
+   foreach (@{$self->params}) {
+      if ($_->abstract) {
+         $self->abstract=\&create_type_instance;
+         $deduction_involved ||= $_->performs_deduction;
+         if ($_->context_pkg) {
+            if ($self->context_pkg) {
+               $self->context_pkg eq $_->context_pkg
+                 or croak( "invalid parameterized type: confilicting conext packages ", $self->context_pkg, " and ", $_->context_pkg );
+            } else {
+               $self->context_pkg=$_->context_pkg;
+            }
+         }
+      } else {
+         set_extension($self->extension, $_->extension);
       }
    }
-}
-#################################################################################
-sub set_field_names {
-   my $self=shift;
-   if ($#_ != $#{$self->param}) {
-      croak( "mismatch between type parameters and field names" );
-   }
-   my $symtab=get_pkg($self->pkg);
-   my $i=0;
-   foreach (@_) {
-      define_function($symtab, $_, Struct::create_accessor($i, \&Struct::access_field));
-      my $param=$self->param->[$i];
-      if (my $set_filter=
-          defined($param->construct)
-          ? sub {
-               my $arg=shift;
-               if (is_object($arg) && UNIVERSAL::isa($arg, $param->pkg)) {
-                  $arg
-               } else {
-                  new_object($param,$arg);
-               }
-            }
-          : defined($param->canonical) &&
-            sub {
-               my $arg=shift;
-               $param->canonical->($arg);
-               $arg
-            }
-         ) {
-         ${$symtab->{$_}}=$set_filter;
-      }
-      ++$i;
-   }
-}
-#################################################################################
-# self: abstract XxxType with placeholders;  proto: concrete XxxType
-sub match_type : method {
-   my ($self, $proto)=@_;
-   if (is_object($self->param)) {
-      $proto=$proto->descend_to_generic($self->pkg) or die "no match\n";
-      match_type($self->param, $proto->param);
-
-   } elsif (is_ARRAY($self->param)) {
-      $proto=$proto->descend_to_generic($self->pkg) or die "no match\n";
-      my $i=-1;
-      map { ++$i; $_->abstract ? match_type($_, $proto->param->[$i]) : () } @{$self->param};
-
+   if ($self->abstract) {
+      $self->perform_typecheck=
+        $deduction_involved
+        ? ($self->context_pkg ? \&context_sensitive_deducing_typecheck : \&deducing_typecheck)
+        : \&context_sensitive_typecheck;
    } else {
-      [ $self, $proto ];
+      $self->context_pkg=$self->pkg;
+      $self->pkg .= mangle_param_names(map { $_->mangled_name } @{$self->params});
    }
 }
 #################################################################################
 sub full_name {
    my $self=$_[0];
-   if (is_object($self->param)) {
-      $self->name . "<" . $self->param->full_name . ">"
-   } elsif (is_ARRAY($self->param)) {
-      $self->name . "<" . join(", ", map { $_->full_name } @{$self->param}) . ">"
-   } else {
+   if ($self->abstract ? !$self->performs_deduction : !defined($self->params)) {
       $self->name
+   } else {
+      $self->name . "<" . join(", ", map { $_->full_name } @{$self->params}) . ">"
    }
 }
 
@@ -550,59 +507,14 @@ sub mangled_name {
    $_[0]->pkg =~ /::(\w+)$/;
    $1
 }
-#################################################################################
-sub prepare_rebind {
-   my ($pkg, $generic_type_sub, $super_type, @param_names)=@_;
-   my $type_eval_pkg="Polymake::Core::PropertyParamedType::_type_eval";
-   my $type_eval_symtab=get_pkg($type_eval_pkg,1);
-   namespaces::using($type_eval_pkg,$pkg);
 
-   my $tpcount=0;
-   my @placeholders=map {
-      my $placeholder=_new PropertyParamedType($_,undef,undef);
-      $placeholder->cppoptions=new Overload::TemplateParam("T$tpcount", $tpcount, undef);
-      ++$tpcount;
-      $placeholder->abstract=sub { 1 };
-      define_function($type_eval_symtab, $_, sub { $placeholder->cppoptions->deduced=1; $placeholder });
-      $placeholder;
-   } @param_names;
-   --$tpcount;
-   translate_type($super_type);
-   my $super_proto=eval "package $type_eval_pkg; $super_type";
-   my @deduce_from_original= map { $_->cppoptions->deduced ? () : $_->cppoptions->index } @placeholders;
-
-   Symbol::delete_package($type_eval_pkg);
-
-   sub {
-      my ($object, $src_proto)=@_;
-      my @params;  $#params=$tpcount;
-      foreach ($super_proto->match_type($src_proto)) {
-         $params[$_->[0]->cppoptions->index]=$_->[1];
-      }
-      if (@deduce_from_original) {
-         my $obj_proto=$object->type;
-         $params[$_]=$obj_proto->param->[$_] for @deduce_from_original;
-      }
-      $generic_type_sub->(@params)
-   }
+# produce a name sufficient for reconstruction from a data file
+sub qualified_name {
+   my ($self, $in_app)=@_;
+   $in_app //= $self->application;
+   &PropertyType::qualified_name . "<" . join(", ", map { $_->qualified_name($in_app) } @{$self->params}) . ">"
 }
 #################################################################################
-sub set_application {
-   my ($self, $new_app)=@_;
-   if (defined (my $app=$self->application)) {
-      if ($new_app != $app) {
-         $self->application=$app->common($new_app)
-                            || croak( $self->complain_source_conflict, ": conflicting applications ", $app->name, " and ", $new_app->name );
-      }
-   } else {
-      $self->application=$new_app;
-   }
-}
-
-sub complain_source_conflict {
-   "Don't know where to place the instantiation of ", $_[0]->full_name
-}
-
 # Update the list of independent extensions in $_[0].
 # Both arguments may be undef (equivalent to an empty list) or single Extension objects (equivalent to a one-element list)
 sub set_extension {
@@ -639,61 +551,48 @@ sub set_extension {
    }
 }
 #################################################################################
-package Polymake::Core::PropertyTypePlaceholder;
-use Polymake::Struct (
-   [ '@ISA' => 'PropertyParamedType' ],
-   '@locals',
-);
-
-sub _undef { croak( "undefined template parameter ", $_[0]=~/($id_re)$/o ) }
-
-sub new {
-   my $self=&_new;
-   $self->abstract=sub : method { $_[0]->param };
-   $self->pkg .= "::".$self->name;
-   get_pkg($self->name,1);
-   define_function($self->pkg,"new",\&_undef,3);
-   define_function($self->pkg,"type",\&_undef,3);
-   define_function($self->pkg,"typeof",\&_undef,3);
-   no strict 'refs';
-   @{$self->locals}=( \*{$self->pkg."::new"}, sub { shift; new_object($self->param,@_); },
-                      \*{$self->pkg."::type"}, sub { $self },
-                      \*{$self->pkg."::typeof"}, sub { $self->param },
-                    );
-   $self
-}
-
-sub resolve_abstract { (shift)->param }
-
-sub full_name { my $self=shift; $self->name."=".(defined($self->param) ? $self->param->full_name : "UNDEF") }
-
-#################################################################################
 package Polymake::Core::PropertyTypeInstance;
 
 # for pure C++ types 'derived' from an abstract perl base class
 
 use Polymake::Struct (
    [ '@ISA' => 'PropertyType' ],
-   [ new => '$$$$$;$' ],
-   [ '$super' => '#4 || #6' ],
-   [ '$param' => '#5' ],
+   [ new => '$$$;$' ],
+   [ '$name' => '#1 ->name' ],
+   [ '$pkg' => '#1 ->pkg' ],
+   [ '$application' => '#1 ->application' ],
+   [ '$super' => '#2 || #4' ],
+   [ '$generic' => '#1' ],
+   [ '$param' => '#3' ],
+);
+
+use Polymake::Struct (
+   [ 'alt.constructor' => '_new_generic' ],
+   [ new => '$$$;$' ],
+   [ '$name' => '#1' ],
+   [ '$pkg' => '#2' ],
+   [ '$application' => '#3' ],
+   [ '$extension' => '$Application::extension' ],
+   [ '$super' => '#4' ],
+   [ '$generic' => 'undef' ],
+   [ '$param' => 'undef' ],
+   [ '&abstract' => '\&type' ],
 );
 
 sub new {
    my $self=&_new;
-   my $generic_pkg=$self->pkg;
    $self->param =~ s/[.\$<>]/_/g;
    $self->pkg.="::".$self->param;
-   $self->mangled_name=$self->name . "__" . $self->param;
-   define_function($self->pkg, "prototype", define_function($self->pkg, "type", sub { $self }, 1));
+   my $self_sub=sub { $self };
+   define_function($self->pkg, "type", $self_sub, 1);
+   define_function($self->pkg, ".type", $self_sub);
+   establish_inheritance($self, $self->generic, $self->super);
+   $self;
+}
 
-   my @isa=($generic_pkg);
-   if ($self->super) {
-      push @isa, $self->super->pkg;
-   }
-   namespaces::using($self->pkg, @isa);
-   no strict 'refs';
-   @{$self->pkg."::ISA"}=@isa;
+sub new_generic {
+   my $self=&_new_generic;
+   establish_inheritance($self, $self->super) if $self->super;
    $self;
 }
 
@@ -701,6 +600,201 @@ sub full_name {
    my ($self)=@_;
    $self->name . "<" . $self->param . ">";
 }
+
+sub mangled_name {
+   my ($self)=@_;
+   $self->name . "__" . $self->param;
+}
+
+#################################################################################
+package Polymake::Core::ClassTypeParam;
+
+use Polymake::Struct (
+   [ '@ISA' => 'PropertyType' ],
+   [ '$super' => 'undef' ],
+   [ '&abstract' => '\&extract_type' ],
+   [ '&perform_typecheck' => '\&no_typecheck' ],
+   [ '$context_pkg' => '#2' ],
+   [ '$type_param_index' => '#4' ],
+);
+
+*new=\&_new;
+
+# the context owner object type can be either passed directly or as the leading argument in a function arglist
+sub extract_type : method {
+   (is_object($_[1]) ? $_[1] : $_[1]->[0])->params->[$_[0]->type_param_index]
+}
+
+*concrete_type=\&PropertyParamedType::concrete_type;
+
+sub no_typecheck : method { croak( $_[0]->name, " inadvertently involved in overload resolution" ) }
+
+sub full_name {
+   my ($self)=@_;
+   $self->context_pkg->typeof_gen->name . "::" . $self->name
+}
+
+#################################################################################
+package Polymake::Core::FunctionTypeParam;
+
+use Polymake::Struct (
+   [ '@ISA' => 'PropertyType' ],
+   [ new => '$' ],
+   [ '$name' => '"__PARAM__" . #1' ],
+   [ '$pkg' => '"UNIVERSAL"' ],
+   [ '$application' => 'undef' ],
+   [ '$extension' => 'undef' ],
+   [ '$super' => 'undef' ],
+   [ '&abstract' => '\&extract_type' ],
+   [ '&perform_typecheck' => '\&deduce_type' ],
+   [ '$type_param_index' => '#1' ],
+);
+
+*new=\&_new;
+
+sub extract_type : method {
+   namespaces::fetch_explicit_typelist($_[1])->[$_[0]->type_param_index]
+}
+
+sub deduce_type : method {
+   my ($self, $args, $given, $backtrack, $deduce_func)=@_;
+   my ($typelist, $explicit_size)=namespaces::fetch_explicit_typelist($args);
+   if (my $settled=$typelist->[$self->type_param_index]) {
+      # if already deduced rather than explicitly specified, may be reduced to the common least derived type or updgraded
+      $deduce_func //= \&deduce_least_derived;
+      if (my $deduced=$deduce_func->($settled, $given)) {
+         if ($settled != $deduced) {
+            return if $self->type_param_index < $explicit_size;
+            $typelist->[$self->type_param_index]=$deduced;
+            push @$backtrack, $self->type_param_index, $settled, \&Overload::restore_type_param;
+         }
+         $self
+      }
+   } else {
+      $typelist->[$self->type_param_index]=$given;
+      push @$backtrack, $self->type_param_index, undef, \&Overload::restore_type_param;
+      $self
+   }
+}
+
+sub performs_deduction { 1 }
+
+# For RuleFilter:
+# the instances are shared among all overloaded functions
+declare @instances=(new(__PACKAGE__, undef));
+
+# The 0th parameter is the anonymous placeholder.
+# It does not deduce anything, but simply accepts any argument.
+
+$instances[0]->name="__ANON__";
+$instances[0]->perform_typecheck=sub { $_[1] };
+
+sub create {
+   my ($self_pkg, $num)=@_;
+   for my $index (@instances..$num) {
+      $instances[$index]=new($self_pkg, $index-1);
+   }
+}
+
+#################################################################################
+package Polymake::Core::PropertyType::Upgrade;
+
+use Polymake::Struct (
+   [ '@ISA' => 'PropertyParamedType' ],
+   [ new => '$' ],
+   [ '$name' => '"type_upgrade"' ],
+   [ '$pkg' => '"UNIVERSAL"' ],
+   [ '$super' => 'undef' ],
+   [ '$generic' => 'undef' ],
+   [ '$params' => '[ #1 ]' ],
+   [ '$context_pkg' => 'undef' ],
+   [ '&abstract' => '\&type' ],
+   [ '&perform_typecheck' => '\&check_and_upgrade' ],
+);
+
+*new=\&_new;
+
+sub typeof {
+   if (@_==2) {
+      # requested an upgrading type deduction from a function argument
+
+      instanceof FunctionTypeParam($_[1])
+        or croak( "type_upgrade is only applicable to function type parameters" );
+      state %inst_cache;
+      $inst_cache{ $_[1] } ||= &new;
+
+   } elsif (@_==3) {
+      # final typecheck clause
+
+      if (!is_readonly($_[1]) and
+          !defined($_[1]) || deduce_most_enhanced($_[1], $_[2]) == $_[2]) {
+         # no value deduced so far or upgrade successful
+         $_[1]=$_[2];
+      } else {
+         # the parameter has been specified explicitly, or upgrade failed: no changes
+         $_[1]
+      }
+   } else {
+      croak( "type_upgrade requires one or two type parameters" );
+   }
+}
+
+sub check_and_upgrade : method {
+   my $self=shift;
+   $self->params->[0]->deduce_type(@_, \&deduce_most_enhanced) && $self
+}
+
+sub type_param_index : method { $_[0]->params->[0]->type_param_index }
+
+#################################################################################
+package Polymake::Core::PropertyType::UpgradesTo;
+
+use Polymake::Struct (
+   [ '@ISA' => 'PropertyParamedType' ],
+   [ new => '$' ],
+   [ '$name' => '"type_upgrades_to"' ],
+   [ '$pkg' => '"UNIVERSAL"' ],
+   [ '$super' => 'undef' ],
+   [ '$generic' => 'undef' ],
+   [ '$params' => '[ #1 ]' ],
+   [ '$context_pkg' => '#1 ->context_pkg' ],
+   [ '&perform_typecheck' => '\&check_upgradable' ],
+);
+
+sub new {
+   my $self=&_new;
+   $self->abstract= $self->params->[0]->abstract
+                    ? sub : method { $_[0]->params->[0]->abstract->($_[1]) }
+                    : sub : method { $_[0]->params->[0] };
+   $self;
+}
+
+sub typeof {
+   @_==2 or croak( "type_upgrades_to requires exactly one type parameter" );
+   state %inst_cache;
+   $inst_cache{ $_[1] } ||= &new;
+}
+
+sub check_upgradable : method {
+   my ($self, $args, $given)=@_;
+   if (defined (my $expected=$self->abstract->($args))) {
+      if (deduce_most_enhanced($expected, $given)==$expected) {
+         return $self;
+      }
+   }
+   undef
+}
+
+sub type_param_index : method { $_[0]->params->[0]->type_param_index }
+
+#################################################################################
+package main;
+
+# fallback for normal packages without prototype objects
+sub UNIVERSAL::typeof_gen { @_==1 && $_[0] }
+
+*type_upgrades_to::=\%Polymake::Core::PropertyType::UpgradesTo::;
+*type_upgrade::=\%Polymake::Core::PropertyType::Upgrade::;
 
 1
 

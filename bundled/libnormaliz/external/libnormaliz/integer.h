@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2013  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2014  Winfried Bruns, Bogdan Ichim, Christof Soeger
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -14,12 +14,19 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * As an exception, when this program is distributed through (i) the App Store
+ * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
+ * by Google Inc., then that store may impose any digital rights management,
+ * device limits and/or redistribution restrictions that are required by its
+ * terms of service.
  */
 
 #ifndef INTEGER_H_
 #define INTEGER_H_
 
 #include "general.h"
+#include <list>
+#include <vector>
 
 // Integer should (may) support:
 // Integer abs(Integer); here implemented as Iabs
@@ -56,6 +63,20 @@ template<> inline long explicit_cast_to_long<mpz_class> (const mpz_class& a) {
     }
     return a.get_si();
 }
+
+template<typename Integer>
+Integer int_max_value_half();
+
+template<typename Integer>
+void check_range(const std::list<std::vector<Integer> >& ll);
+
+template<typename Integer> class CandidateList;
+template<typename Integer> class Candidate;
+
+template<typename Integer>
+void check_range(const CandidateList<Integer>& ll);
+template<typename Integer>
+void check_range(const std::list<Candidate<Integer> >& ll);
 
 //---------------------------------------------------------------------------
 //                     Basic functions

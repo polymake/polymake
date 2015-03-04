@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -88,7 +88,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# @option Bool noc : don't compute the coordinates, purely combinatorial description is produced."
                           "# @option Bool relabel copy the vertex labels from the original polytope,"
                           "#  label the new vertices with \"Apex\" and \"Apex'\".",
-                          "bipyramid<_DistType, Scalar={ typechecks::is_ordered_field(_DistType) ? _DistType : Rational }>(Polytope; _DistType=1, _DistType=(-$_[1]), {noc => undef, relabel => undef})");
+                          "bipyramid<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=1, type_upgrade<Scalar>=(-$_[1]), {noc => undef, relabel => undef})");
 } }
 
 // Local Variables:

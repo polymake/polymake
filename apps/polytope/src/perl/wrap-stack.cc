@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -24,7 +24,7 @@ namespace polymake { namespace polytope { namespace {
       WrapperReturn( polytope::stack(arg0, arg1.get<T0>(), arg2) );
    };
 
-   FunctionInstance4perl(stack_x_X_o, perl::TryCanned< const Array< int > >);
+   FunctionInstance4perl(stack_x_X_o, perl::Canned< const Array< int > >);
    FunctionInstance4perl(stack_x_X_o, perl::Enum<pm::all_selector>);
    FunctionInstance4perl(stack_x_X_o, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -20,7 +20,8 @@ object Polytope {
 
 property STEINER_POINTS : Matrix<Scalar>;
 
-# Steiner point of the whole polytope
+# @category Geometry
+# Steiner point of the whole polytope.
 property STEINER_POINT : Vector<Scalar>;
 
 # @notest
@@ -62,9 +63,9 @@ custom $steiner_point_thickness=1;
 #
 package Visual::Polytope;
 
-# @category Visualization
 # Add the [[Polytope::STEINER_POINTS|STEINER_POINTS]] to the 3-d visualization.
 # The facets become transparent.
+# @options %Visual::PointSet::decorations
 # @return Visual::Polytope
 
 user_method STEINER(%Visual::PointSet::decorations) {
@@ -84,8 +85,8 @@ user_method STEINER(%Visual::PointSet::decorations) {
 
 
 package Visual::SchlegelDiagram;
-# @category Visualization
 # Add the [[Visual::SchlegelDiagram::STEINER_POINTS|STEINER_POINTS]] to the Schlegel Diagram
+# @options %Visual::PointSet::decorations
 # @option Bool center place the projection center to the Steiner point of the polytope
 #                     and the view ray through the Steiner point of the facet
 # @return Visual::SchlegelDiagram

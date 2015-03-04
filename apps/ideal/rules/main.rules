@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,11 +15,22 @@
 
 IMPORT common
 
+# @topic application
+# This application allows to define ideals and enables other applications to
+# use these. For example we can compute the tropical variety of an ideal via
+# gfan in the application 'tropical'. Using this application with the bundled
+# extension Singular adds a lot more commutative algebra power.
+
+HELP help.rules
+
+# An ideal in a polynomial ring.
 declare object Ideal {
 
    file_suffix ideal
 }
 
+# The Groebner object collects information about an ideal depending on the
+# monomial ordering of the ambient ring.
 declare object Groebner;
 
 INCLUDE

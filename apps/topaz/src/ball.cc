@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -44,8 +44,8 @@ perl::Object ball(const int d)
 }
    
 UserFunction4perl("# @category Producing from scratch\n"
-                  "# A //d//-dimensional ball, realized as the //d//-simplex.\n"
-                  "# @param int d dimension"
+                  "# A //d//-dimensional __ball__, realized as the //d//-simplex.\n"
+                  "# @param Int d dimension"
                   "# @return GeometricSimplicialComplex",
                   &ball, "ball($)");
 } }

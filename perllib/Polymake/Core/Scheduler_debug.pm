@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -108,8 +108,10 @@ package Polymake::Core::Scheduler::VerboseHeap;
 
 sub reset {
    my ($self, $chain)=@_;
-   dbg_print( "====== reset ", $chain->debug->id, " ======" );
-   $chain->dump;
+   if (defined $chain) {
+      dbg_print( "====== reset ", $chain->debug->id, " ======" );
+      $chain->dump;
+   }
    &Heap::reset;
 }
 

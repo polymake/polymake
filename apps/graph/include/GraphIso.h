@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -144,7 +144,8 @@ bool isomorphic(const GenericGraph<Graph1>& G1, const GenericGraph<Graph2>& G2)
 {
    if (G1.is_directed != G2.is_directed || G1.nodes() != G2.nodes())
       return false;
-   if (G1.nodes()<=1) return true;
+   if (G1.nodes() <= 1)
+      return true;
    GraphIso GI1(G1), GI2(G2);
    return GI1==GI2;
 }
@@ -156,7 +157,8 @@ isomorphic(const GenericGraph<Graph1>& G1, const Colors1& colors1,
 {
    if (G1.is_directed != G2.is_directed || G1.nodes() != G2.nodes())
       return false;
-   if (G1.nodes()==0 || (G1.nodes()==1 && colors1.front()==colors2.front())) return true;
+   if (G1.nodes() <= 1)
+      return G1.nodes()==0 || colors1.front()==colors2.front();
    GraphIso GI1, GI2;
    return GraphIso::prepare_colored(GI1, G1, colors1, GI2, G2, colors2) && GI1==GI2;
 }
@@ -168,6 +170,8 @@ Array<int> find_node_permutation(const GenericGraph<Graph1>& G1, const GenericGr
       throw no_match("graphs of different kind");
    if (G1.nodes() != G2.nodes())
       throw no_match("graphs of different size");
+   if (G1.nodes() <= 1)
+      return Array<int>(G1.nodes(), 0);
    GraphIso GI1(G1), GI2(G2);
    return GI1.find_permutation(GI2);
 }
@@ -181,6 +185,11 @@ find_node_permutation(const GenericGraph<Graph1>& G1, const Colors1& colors1,
       throw no_match("graphs of different kind");
    if (G1.nodes() != G2.nodes())
       throw no_match("graphs of different size");
+   if (G1.nodes() <= 1) {
+      if (G1.nodes() == 1 && colors1.front() != colors2.front())
+         throw no_match("different colors");
+      return Array<int>(G1.nodes(), 0);
+   }
    GraphIso GI1, GI2;
    if (GraphIso::prepare_colored(GI1, G1, colors1, GI2, G2, colors2))
       return GI1.find_permutation(GI2);
@@ -199,7 +208,7 @@ template <typename Graph, typename Colors> inline
 Array< Array<int> > automorphisms(const GenericGraph<Graph>& G, const Colors& colors)
 {
    GraphIso GI;
-   GraphIso::prepare_colored(GI,G,colors);
+   GraphIso::prepare_colored(GI, G, colors);
    return Array< Array<int> >(GI.n_automorphisms(), GI.automorphisms().begin());
 }
 
@@ -222,9 +231,10 @@ template <typename Matrix1, typename Matrix2> inline
 typename pm::enable_if<bool, Matrix1::is_symmetric==Matrix2::is_symmetric>::type
 isomorphic(const GenericIncidenceMatrix<Matrix1>& M1, const GenericIncidenceMatrix<Matrix2>& M2)
 {
-   if (M1.rows() != M2.rows() || M1.cols() != M2.cols())
+   if (M1.rows() != M2.rows() || (!Matrix1::is_symmetric && M1.cols() != M2.cols()))
       return false;
-   if (M1.rows()<=1) return true;
+   if (M1.rows() == 0 || (!Matrix1::is_symmetric && M1.cols() == 0))
+      return true;
    GraphIso GI1(M1), GI2(M2);
    return GI1==GI2;
 }
@@ -235,6 +245,8 @@ find_row_permutation(const GenericIncidenceMatrix<Matrix1>& M1, const GenericInc
 {
    if (M1.rows() != M2.rows())
       throw no_match("matrices of different dimensions");
+   if (M1.rows() == 0)
+      return Array<int>();
    GraphIso GI1(M1), GI2(M2);
    return GI1.find_permutation(GI2);
 }
@@ -245,6 +257,8 @@ find_row_col_permutation(const GenericIncidenceMatrix<Matrix1>& M1, const Generi
 {
    if (M1.rows() != M2.rows() || M1.cols() != M2.cols())
       throw no_match("matrices of different dimensions");
+   if (M1.rows() == 0 && M1.cols() == 0)
+      return std::pair< Array<int>, Array<int> >();
    GraphIso GI1(M1), GI2(M2);
    return GI1.find_permutations(GI2, M1.cols());
 }

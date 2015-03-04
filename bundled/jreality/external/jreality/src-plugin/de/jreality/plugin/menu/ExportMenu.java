@@ -8,8 +8,9 @@ import javax.swing.SwingUtilities;
 import de.jreality.plugin.basic.View;
 import de.jreality.plugin.basic.ViewMenuBar;
 import de.jreality.plugin.icon.ImageHook;
-import de.jreality.ui.viewerapp.SunflowMenu;
 import de.jreality.ui.viewerapp.ViewerSwitch;
+import de.jreality.ui.viewerapp.actions.file.ExportBlender;
+import de.jreality.ui.viewerapp.actions.file.ExportBlenderImage;
 import de.jreality.ui.viewerapp.actions.file.ExportImage;
 import de.jreality.ui.viewerapp.actions.file.ExportOBJ;
 import de.jreality.ui.viewerapp.actions.file.ExportPDF;
@@ -51,13 +52,14 @@ public class ExportMenu extends Plugin implements UIFlavor {
 		exportMenu.setIcon(ImageHook.getIcon("disk.png"));
 		exportMenu.add(new ExportImage("Image", viewer, parent));
 		exportMenu.add(new ExportScreenshot("Screenshot", viewer, parent));
+		exportMenu.add(new ExportBlender("Blender", viewer, parent));
+		exportMenu.add(new ExportBlenderImage("Blender Image", viewer, parent));
 		exportMenu.add(new ExportSVG("SVG", viewer, parent));
 		exportMenu.add(new ExportPS("PS", viewer, parent));
 		exportMenu.add(new ExportSTL("STL", viewer, parent));
 		exportMenu.add(new ExportOBJ("OBJ", viewer, parent));
 		exportMenu.add(new ExportU3D("U3D", viewer, parent));
 		exportMenu.add(exportPDF = new ExportPDF("PDF", viewer, parent));
-		exportMenu.add(new SunflowMenu(viewer));
 		SaveScene saveSceneAction = new SaveScene("Save Scene", viewer, parent);
 		saveSceneAction.setIcon(ImageHook.getIcon("disk.png"));
 		viewMenuBar.addMenuItem(getClass(), 1, saveSceneAction, "File");
@@ -65,6 +67,7 @@ public class ExportMenu extends Plugin implements UIFlavor {
 	}
 	
 	
+	@Override
 	public void mainUIChanged(String uiClass) {
 		SwingUtilities.updateComponentTreeUI(exportPDF.getAccessory());
 	}

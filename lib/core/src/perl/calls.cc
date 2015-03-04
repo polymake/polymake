@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -185,6 +185,24 @@ HV* current_application_pkg(pTHX)
          throw std::runtime_error("current application not set");
       }
    }
+}
+
+SV* fetch_typeof_gv(pTHX_ const char* class_name, size_t class_namelen)
+{
+   HV* const app_stash=current_application_pkg(aTHX);
+   HV* const stash=pm_perl_namespace_lookup_class(aTHX_ app_stash, class_name, class_namelen, 0);
+   if (__builtin_expect(!stash, 0)) {
+      sv_setpvf(ERRSV, "unknown perl class %s::%.*s", HvNAME(app_stash), int(class_namelen), class_name);
+      PmCancelFuncall;
+      throw exception();
+   }
+   SV** const gvp=hv_fetch(stash, "typeof", 6, false);
+   if (__builtin_expect(!gvp, 0)) {
+      sv_setpvf(ERRSV, "%s is not an Object or Property type", HvNAME(stash));
+      PmCancelFuncall;
+      throw exception();
+   }
+   return *gvp;
 }
 
 SV** push_current_application(pTHX_ SV **SP)

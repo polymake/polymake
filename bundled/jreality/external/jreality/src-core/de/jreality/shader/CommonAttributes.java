@@ -62,7 +62,13 @@ import de.jreality.scene.Appearance;
 
 	// goes in root appearance: first set controls how the background of generated image appears
   	public static final String SMALL_OBJ_OPTIMIZATION = "smallObjectsOptimization";
+  	public static final String STEREOGRAM_RENDERING = "stereogramRendering";
+  	public static final String STEREOGRAM_NUM_SLICES = "stereogramNumSlices";
+  	
   	public static final boolean SMALL_OBJ_OPTIMIZATION_DEFAULT = true;
+  	public static final boolean STEREOGRAM_RENDERING_DEFAULT = false;
+  	public static final int STEREOGRAM_NUM_SLICES_DEFAULT = 2;
+  	
   	public final static String BACKGROUND_COLOR = 	"backgroundColor";
     public final static Color  BACKGROUND_COLOR_DEFAULT = new java.awt.Color(225, 225, 225);
 	public final static String BACKGROUND_COLORS = 	"backgroundColors";		// array of four colors for corners of background
@@ -351,6 +357,10 @@ import de.jreality.scene.Appearance;
 			return TEXT_ALIGNMENT_DEFAULT;
 		if(key.equals(SMALL_OBJ_OPTIMIZATION))
 			return SMALL_OBJ_OPTIMIZATION_DEFAULT;
+		if(key.equals(STEREOGRAM_RENDERING))
+			return STEREOGRAM_RENDERING_DEFAULT;
+		if(key.equals(STEREOGRAM_NUM_SLICES))
+			return STEREOGRAM_NUM_SLICES_DEFAULT;
 		if(key.equals(ANTI_ALIASING_FACTOR))
 			return ANTI_ALIASING_FACTOR_DEFAULT;
 		if(key.equals(ANTIALIASING_ENABLED))

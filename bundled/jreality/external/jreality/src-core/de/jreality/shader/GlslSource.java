@@ -101,6 +101,7 @@ public class GlslSource implements Serializable {
     if (vertexProgs != null) for (int i = 0; i < vertexProgs.length; i++) {
       extractUniforms(vertexProgs[i]);
       extractAttribs(vertexProgs[i]);
+//      System.err.println(vertexProgs[i]);
     }
     if (fragmentProgs != null) for (int i = 0; i < fragmentProgs.length; i++) {
       extractUniforms(fragmentProgs[i]);

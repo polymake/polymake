@@ -104,7 +104,7 @@ public class Appearance extends SceneGraphNode {
 		}
 	}
 
-	public HashMap getAttributes() {
+	public HashMap<String, Object> getAttributes() {
 		return attributes;
 	}
 
@@ -207,7 +207,7 @@ public class Appearance extends SceneGraphNode {
 			changedAttributes.put(key, old);
 	}
 
-	public Set getStoredAttributes() {
+	public Set<String> getStoredAttributes() {
 		return storedAttributes;
 	}
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -40,9 +40,9 @@ perl::Object poly2trop(perl::Object p)
    return t;
 }
 
-UserFunction4perl("# @category Other"
+UserFunction4perl("# @category Producing a tropical polytope"
                   "# Takes an ordinary convex polytope and interprets it in tropical projective space."
-                  "# @param Polytope P"
+                  "# @param polytope::Polytope P"
                   "# @return TropicalPolytope",
                   &poly2trop, "poly2trop(polytope::Polytope)");
 } }

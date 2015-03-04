@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -203,6 +203,28 @@ sub add {
       if ($cat) {
          $self->category=1;
 
+         if (length($self->text)==0) {
+            # the category has not been introduced so far, let's look in the global items...
+            $top ||= $self->top;
+            my ($specific_cat_group, $any_node, $matching_cat);
+            foreach my $app_top_help ($top, @{$top->related}) {
+               if ($specific_cat_group=$app_top_help->topics->{$self->parent->name} and
+                   $any_node=$specific_cat_group->topics->{any} and
+                   $matching_cat=$any_node->topics->{$self->name}) {
+                  $self->text=$matching_cat->text;
+                  last;
+               } elsif ($any_node=$app_top_help->topics->{any} and
+                        $matching_cat=$any_node->topics->{$self->name}) {
+                  $self->text=$matching_cat->text;
+                  $self->text =~ s/\Q+++\E/$self->parent->name/e;
+                  last;
+               }
+            }
+            if (length($self->text)==0) {
+               warn_print("undocumented category ", $self->full_path, " at ", join(", line ", (caller)[1,2]));
+            }
+         }
+
          if (defined ($h=delete $self->parent->topics->{$topic})) {
             my $old_toc=$self->parent->toc;
             for (my ($i, $l)=(0, $#$old_toc); $i<=$l; ++$i) {
@@ -406,7 +428,7 @@ sub display_function_text {
 }
 
 sub display_keys_text {
-   my $self=shift;
+   my ($self)=@_;
    my $text="";
    foreach my $topic ($self, @{$self->related}) {
       my $keys=$topic->annex->{keys} or next;
@@ -422,16 +444,16 @@ sub display_keys_text {
 
 # for properties
 sub display_property_text {
-	my $self=shift;
-	my $fp = $self->full_path;
-	$fp =~ m|(?<=/objects/)(\w+)|;
-	my $obj_type_name = $1;
-	my $type_name = Polymake::User::application->eval_type($obj_type_name)->lookup_property($self->name)->type->name;
+   my ($self)=@_;
+   my $obj_topic = $self->parent;
+   if ($obj_topic->category) { $obj_topic = $obj_topic->parent; }
+   my $obj_name = $obj_topic->parent->name;
+   my $type_name = $User::application->eval_type($obj_name, 1)->lookup_property($self->name)->type->full_name;
 
-	my $text = "property ". $self->name. " : ". $type_name ."\n";
-	
-	$text .= $self->text;
-	return $text;
+   my $text = "property ". $self->name. " : ". $type_name ."\n";
+
+   $text .= $self->text;
+   return $text;
 }
 
 sub display_text {
@@ -450,11 +472,11 @@ sub display_text {
          display_function_text($self,$self,$full);
       }
    } else {
-   	my $text;
-   	if ($self->parent->name eq "properties" or ($self->parent->category and $self->parent->parent->name eq "properties")) {
-   		$text = $self->display_property_text();
-   	} else {
-      	$text=$self->text;
+      my $text;
+      if ($self->parent->name eq "properties" or ($self->parent->category and $self->parent->parent->name eq "properties")) {
+         $text=$self->display_property_text();
+      } else {
+         $text=$self->text;
       }
       if (length($text)) {
          clean_text($text);
@@ -463,16 +485,16 @@ sub display_text {
          $text .= "\n" . display_keys_text($self);
       }
       if (defined (my $depends=$self->annex->{depends})) {
-        $text .= "Depends on:\n  ";
-        my $i = @$depends;
-        foreach (@$depends) { 
-          if(@$depends > 1) {$text .= "(";}
-          clean_text($_);
-          $text .= join(", ", split(/\s+/, $_));
-          if($i >= 1 && @$depends > 1) {$text .= ")"};
-          if($i > 1 ) {$text .= "  or  "};
-          --$i
-        }
+         $text .= "Depends on:\n  ";
+         my $i = @$depends;
+         foreach (@$depends) { 
+            if (@$depends > 1) {$text .= "(";}
+            clean_text($_);
+            $text .= join(", ", split(/\s+/, $_));
+            if ($i >= 1 && @$depends > 1) {$text .= ")"};
+            if ($i > 1 ) {$text .= "  or  "};
+            --$i
+         }
       }
       $text
    }

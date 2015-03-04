@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -574,11 +574,11 @@ project_to_orthogonal_complement(Matrix& M, const Matrix& N)
 }
 
 /// reflect u in the plane normal to nv
-template <typename E> inline
-SparseVector<E> reflect(const SparseVector<E>& u, const SparseVector<E>& nv) 
+template <typename Vector1Type, typename Vector2Type> inline
+Vector1Type reflect(const Vector1Type& u, const Vector2Type& nv) 
 {
    if (!nv.empty() && nv.begin().index()==0)
-      throw std::runtime_error("must reflect in a vector at infinity (first coordinate zero)");
+      throw std::runtime_error("cannot reflect in a vector at infinity (first coordinate zero)");
    return u - (2 * (u.slice(1)*nv.slice(1)) / sqr(nv.slice(1))) * nv; 
 }
 

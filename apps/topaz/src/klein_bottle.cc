@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -25,7 +25,7 @@ perl::Object klein_bottle()
    perl::Object p("SimplicialComplex");
    p.set_description() << "The Klein bottle.\n";
 
-   const Array< Set<int> > PJP = projective_plane_facets();
+   const Array< Set<int> > PJP = real_projective_plane_facets();
    const std::list< Set<int> > C = connected_sum(PJP,PJP);
    
    p.take("FACETS") << C;

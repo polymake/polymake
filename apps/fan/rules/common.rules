@@ -1,4 +1,4 @@
-#  copyright (c) 1997-2011
+#  copyright (c) 1997-2014
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,20 +15,18 @@
   
 object PolyhedralFan {
 
-rule FAN_AMBIENT_DIM : RAYS | INPUT_RAYS | LINEALITY_SPACE{
-   $this->FAN_AMBIENT_DIM=($this->RAYS | INPUT_RAYS | LINEALITY_SPACE)->cols;
+rule FAN_AMBIENT_DIM : {
+  my $d=0;
+  foreach (qw(RAYS INPUT_RAYS LINEALITY_SPACE INPUT_LINEALITY FACET_NORMALS LINEAR_SPAN_NORMALS)) {
+    my $M;
+    if (defined ($M=$this->lookup($_)) && $M->cols()>0) {
+      $d=$M->cols();
+      last;
+    }
+  } 
+  $this->FAN_AMBIENT_DIM=$d;
 }
-weight 0.10;
-
-rule FAN_AMBIENT_DIM : LINEALITY_SPACE {
-   $this->FAN_AMBIENT_DIM=$this->LINEALITY_SPACE->cols;
-}
-weight 0.10;
-precondition : LINEALITY_DIM { $this->LINEALITY_DIM!=0; }
-
-rule FAN_AMBIENT_DIM : FACET_NORMALS | LINEAR_SPAN_NORMALS {
-   $this->FAN_AMBIENT_DIM=($this->FACET_NORMALS | LINEAR_SPAN_NORMALS)->cols;
-}
+precondition : defined(RAYS | INPUT_RAYS | LINEALITY_SPACE | INPUT_LINEALITY | FACET_NORMALS | LINEAR_SPAN_NORMALS);
 weight 0.10;
 
 rule N_RAYS : RAYS {
@@ -106,7 +104,7 @@ weight 1.10;
 rule COMBINATORIAL_DIM, PURE : MAXIMAL_CONES_COMBINATORIAL_DIMS {
    if ($this->MAXIMAL_CONES_COMBINATORIAL_DIMS->size == 0) {
       $this->PURE=1;
-      $this->COMBINATORIAL_DIM=0;
+      $this->COMBINATORIAL_DIM=-2;
       return;
    }
 
@@ -177,12 +175,10 @@ weight 6.50;
 
 rule CONES : HASSE_DIAGRAM, N_RAYS {
    my $d=$this->HASSE_DIAGRAM->dim;
-   my $cones=new Array<IncidenceMatrix>($d);
-   for (my $i=0; $i<$d; ++$i) {
-      $cones->[$i]=new IncidenceMatrix((new Array<Set<Int>>([ map { $this->HASSE_DIAGRAM->FACES->[$_] } @{$this->HASSE_DIAGRAM->nodes_of_dim($i)} ])),
-                                       $this->N_RAYS);
-   }
-   $this->CONES=$cones;
+   $this->CONES=[ map {
+                     my @rows=map { $this->HASSE_DIAGRAM->FACES->[$_] } @{$this->HASSE_DIAGRAM->nodes_of_dim($_)};
+                     @rows ? new IncidenceMatrix(\@rows, $this->N_RAYS) : new IncidenceMatrix(0, $this->N_RAYS)
+                  } 0..$d-1 ];
 }
 
 rule F_VECTOR : HASSE_DIAGRAM {
@@ -340,7 +336,7 @@ permutation : RaysPerm;
 }
 
 
-# @category Producing a fan from fans
+# @category Producing a fan
 # Orthogonally project a pointed fan to a coordinate subspace.
 # 
 # The subspace the fan //P// is projected on is given by indices in the set //indices//.
@@ -356,7 +352,7 @@ user_function projection<Scalar>(PolyhedralFan<Scalar>; $=[ ], { revert=>0 }) {
 }
 
 
-# @category Producing a fan from fans
+# @category Producing a fan
 # Orthogonally project a fan to a coordinate subspace such that redundant columns are omitted,
 # i.e., the projection becomes full-dimensional without changing the combinatorial type.
 # @param PolyhedralFan P

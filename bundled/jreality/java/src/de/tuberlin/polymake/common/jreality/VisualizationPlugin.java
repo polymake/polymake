@@ -5,38 +5,31 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Collection;
 
 import javax.swing.AbstractAction;
-import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
-import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
-import javax.swing.event.ListDataListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
-import javax.swing.event.TableModelListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableModel;
 
 import de.jreality.geometry.CoordinateSystemFactory;
 import de.jreality.geometry.SphereUtility;
@@ -53,9 +46,7 @@ import de.jtem.jrworkspace.plugin.sidecontainer.SideContainerPerspective;
 import de.jtem.jrworkspace.plugin.sidecontainer.template.ShrinkPanelPlugin;
 import de.jtem.jrworkspace.plugin.sidecontainer.widget.ShrinkPanel;
 
-public class VisualizationPlugin 
-		extends ShrinkPanelPlugin 
-		implements ActionListener {
+public class VisualizationPlugin extends ShrinkPanelPlugin implements ActionListener {
 		
 	private SpinnerNumberModel 
 		levelModel = new SpinnerNumberModel(3, 0, 10, 1);
@@ -211,6 +202,8 @@ public class VisualizationPlugin
 	}
 
 	private class GeometryModel extends DefaultTableModel implements ListSelectionListener{
+
+		private static final long serialVersionUID = -2823363787108362699L;
 
 		private String[] 
 				columnNames = {"", "Name"};

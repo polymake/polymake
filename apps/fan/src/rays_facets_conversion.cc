@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,12 +18,14 @@
 #include "polymake/Rational.h"
 #include "polymake/linalg.h"
 #include "polymake/Matrix.h"
+#include "polymake/ListMatrix.h"
 #include "polymake/Vector.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/SparseVector.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Set.h"
 #include "polymake/PowerSet.h"
+#include "polymake/Map.h"
 
 namespace polymake { namespace fan {
 namespace {
@@ -55,9 +57,11 @@ void raysToFacetNormals(perl::Object f)
    const Matrix<Coord> rays = f.give("RAYS");
    const IncidenceMatrix<> incidence = f.give("MAXIMAL_CONES");
    const Matrix<Coord> linealitySpace = f.lookup("LINEALITY_SPACE|INPUT_LINEALITY");
-    
-   Matrix<Coord> facets(0,ambientDim);
-   Matrix<Coord> linearSpan(0,ambientDim);
+
+   int facetcounter = 0;
+   Map< Vector<Coord>, int > facetmap;
+   ListMatrix< Vector<Coord> > facets(0,ambientDim);
+   ListMatrix< Vector<Coord> > linearSpan(0,ambientDim);
    RestrictedSparseMatrix<int> facetIndices(incidence.rows());
    RestrictedIncidenceMatrix<only_rows> linearSpanIndices(incidence.rows());
     
@@ -73,8 +77,12 @@ void raysToFacetNormals(perl::Object f)
    {
       if (linealityDim > 0)
          fanLinearSpan = null_space(rays/linealitySpace);
-      else 
-         fanLinearSpan = null_space(rays);
+      else {
+         if (rays.rows() > 0)
+            fanLinearSpan = null_space(rays);
+         else
+            fanLinearSpan = unit_matrix<Coord>(ambientDim);
+      }
       
       linearSpan /= fanLinearSpan;
       fanLinearSpanIndices += sequence(0,fanLinearSpan.rows());
@@ -97,12 +105,13 @@ void raysToFacetNormals(perl::Object f)
       // add linear span of this cone if neccessary
       if (diff > 0) 
       {
-         for(int linearSpanIndex = (ambientDim-fanDim); linearSpanIndex < linearSpan.rows(); ++linearSpanIndex)
+         int linearSpanIndex = 0;
+         for(typename Entire< Rows< ListMatrix< Vector<Coord> > > >::const_iterator lsrow = entire(rows(linearSpan)); !lsrow.at_end(); ++lsrow, ++linearSpanIndex)
          {
-            if (coneRays * (linearSpan.row(linearSpanIndex)) == zero_vector<Coord>(coneRays.rows()))
+            if (coneRays * (*lsrow) == zero_vector<Coord>(coneRays.rows()))
             {
                linearSpanIndices.row(coneNum) +=linearSpanIndex;
-               coneRays /= linearSpan.row(linearSpanIndex);
+               coneRays /= *lsrow;
                diff--;
             }
          }
@@ -115,54 +124,31 @@ void raysToFacetNormals(perl::Object f)
          }
       }
       
-      if (coneDim < 1)
+      if (coneDim < 1 || coneSet.size() == 0)
       {
          coneNum++;
          continue;
       }
       
-      // iterate possible facets of the current cone
-      for (Entire< Subsets_of_k<const Set<int>&> >::const_iterator subset = entire(all_subsets_of_k(coneSet,coneDim-1-linealityDim)); !subset.at_end(); ++subset)
+      perl::Object c(perl::ObjectType::construct<Coord>("Cone"));
+      c.take("RAYS") << rays.minor(coneSet,All);
+      if (linealityDim > 0)
+         c.take("LINEALITY_SPACE") << linealitySpace;
+      const Matrix<Coord> cfacets = c.give("FACETS");
+
+      for (typename Entire< Rows< Matrix<Coord> > >::const_iterator facet = entire(rows(cfacets)); !facet.at_end(); ++facet)
       {
-         Matrix<Coord> facetRays = rays.minor(*subset,All);
-         if (linealityDim > 0) 
-            facetRays /= linealitySpace / (-linealitySpace);
-        
-         if (rank(facetRays) != coneDim - 1)
-            continue;
-        
-         Vector<Coord> facet;
-         if (ambientDim == 1)
-            facet = unit_vector<Coord>(1,0);
-         else if (coneDim == ambientDim)
-            facet = null_space(facetRays)[0];
-         else 
-            facet = null_space(facetRays / linearSpan.minor(linearSpanIndices.row(coneNum),All))[0];
-        
-         // check if the cone is on one side
-         Vector<Coord> dist = rays.minor((*cone)-(*subset),All) * facet;
-         int sgn = signCheck(dist);
-        
-         if (sgn != 0) 
+         if (facetmap.exists(*facet))
+            facetIndices(coneNum,facetmap[*facet]) = 1;
+         else if (facetmap.exists((-1)*(*facet)))
+            facetIndices(coneNum,facetmap[(-1)*(*facet)]) = -1;
+         else
          {
-            // search if this facet normal already exists
-            int facetNum = -1;
-            typename Entire< Rows< Matrix<Coord> > >::iterator currFacet=entire(rows(facets));
-            do 
-            {
-               facetNum++;
-               if(currFacet.at_end())
-               {
-                  facetNum = facets.rows();
-                  facets /= facet;
-                  break;
-               }
-            } while((*(currFacet++)) != facet);
-          
-            facetIndices(coneNum,facetNum) = sgn;
+            facets /= *facet;
+            facetIndices(coneNum,facetcounter) = 1;
+            facetmap[*facet] = facetcounter++;
          }
       }
-      
       coneNum++;
    }
     

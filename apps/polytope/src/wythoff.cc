@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,7 +18,7 @@
 #include "polymake/Rational.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Set.h"
-#include "polymake/hash_set"
+#include "polymake/hash_map"
 #include "polymake/Map.h"
 #include "polymake/Array.h"
 #include "polymake/SparseMatrix.h"
@@ -49,61 +49,35 @@ SparseVector<E> find_initial_point(const Set<int>& rings, const SparseMatrix<E>&
 }
 
 template <typename E>
-SparseMatrix<E> orbit (const SparseVector<E>& p0, const SparseMatrix<E>& R, Map<SparseVector<E>,int>& index_of)
+SparseMatrix<E> orbit (const SparseVector<E>& p0, 
+                       const SparseMatrix<E>& roots, 
+                       hash_map<SparseVector<E>, int>& index_of)
 {
-   hash_set<SparseVector<E> > 
-      points,
-      roots;
-   std::vector<SparseVector<E> > 
-      ordered_points,
-      ordered_roots; 
-   int index(0);
-   points += p0;
-   ordered_points.push_back(p0);
-   index_of[p0] = index++;
-   for (typename Entire<Rows<SparseMatrix<E> > >::const_iterator rit = entire(rows(R)); !rit.at_end(); ++rit) {
-      roots += *rit;
-      ordered_roots.push_back(*rit);
+   index_of[p0] = 0;
+   int new_point_index(1);
+   const int n_roots(roots.rows());
+
+   typedef std::pair<int, SparseVector<E> > key_type; // (root_index, point) not yet reflected
+   std::list<key_type> point_queue; 
+   for (int i=0; i<n_roots; ++i) 
+      point_queue.push_back(key_type(i, p0)); 
+
+   while (!point_queue.empty()) {
+      const key_type a(point_queue.front());  point_queue.pop_front();
+      const int root_index(a.first);
+      const SparseVector<E>& old_point(a.second);
+      const SparseVector<E> new_point(reflect(old_point, roots[root_index]));
+      if (!index_of.exists(new_point)) {
+         for (int i=0; i<n_roots; ++i)
+            point_queue.push_back(key_type(i, new_point));
+         index_of[new_point] = new_point_index++;
+      }
    }
 
-   typedef std::pair<unsigned int, unsigned int> key_type; // (root, point) not yet reflected
-   std::list<key_type> 
-      point_queue, 
-      root_queue;  
-   for (int i=0; i<R.rows(); ++i)
-      point_queue.push_back(key_type(i,0)); 
-   for (int i=0; i<R.rows()-1; ++i)
-      for (int j=i+1; j<R.rows(); ++j)
-         root_queue.push_back(key_type(i,j)); 
-
-   bool done (point_queue.empty() && root_queue.empty());
-   while (!done) {
-      if (!point_queue.empty()) {
-         const key_type a(point_queue.front());  point_queue.pop_front();
-         const SparseVector<E> new_point(reflect(ordered_points[a.second], ordered_roots[a.first]));
-         if (!points.exists(new_point)) {
-            for (unsigned int i=0; i<roots.size(); ++i)
-               point_queue.push_back(key_type(i, points.size()));
-            points += new_point;
-            ordered_points.push_back(new_point);
-            index_of[new_point] = index++;
-         }
-      }
-      if (!root_queue.empty()) {
-         const key_type r(root_queue.front());  root_queue.pop_front();
-         const SparseVector<E> new_root(reflect(ordered_roots[r.second], ordered_roots[r.first]));
-         if (!roots.exists(new_root) && !roots.exists(-new_root)) {
-            for (unsigned int i=0; i<roots.size(); ++i)
-               root_queue.push_back(key_type(i, roots.size()));
-            for (unsigned int j=0; j<points.size(); ++j)
-               point_queue.push_back(key_type(roots.size(), j));
-            roots += new_root;
-            ordered_roots.push_back(new_root);
-         }
-      }
-      done = point_queue.empty() && root_queue.empty();
-   }
-   return SparseMatrix<E>(ordered_points.size(), ordered_points[0].dim(), entire(ordered_points)); 
+   SparseMatrix<E> V(index_of.size(), index_of.begin()->first.dim());
+   for (typename Entire<hash_map<SparseVector<E>, int> >::const_iterator mit = entire(index_of); !mit.at_end(); ++mit)
+      V[mit->second] = mit->first;
+   return V;
 }
 
 } // end anonymous namespace
@@ -111,20 +85,20 @@ SparseMatrix<E> orbit (const SparseVector<E>& p0, const SparseMatrix<E>& R, Map<
 template <typename E>
 void wythoff(const std::string& type, const Set<int>& rings, const SparseMatrix<E>& R, SparseMatrix<E>& V, Array<Array<int> >& generators)
 {
-   if (accumulate(rings, operations::max()) >= R.rows())
+   const int n_roots = R.rows();
+   if (accumulate(rings, operations::max()) >= n_roots)
       throw std::runtime_error("Set specifies non-existing rows of the root matrix");
    const int d = R.cols()-1;
 
    const SparseVector<E> p0 = find_initial_point(rings, R, d, type[0] == 'A' || type[0] == 'a');
-   Map<SparseVector<E>,int> index_of;
+   hash_map<SparseVector<E>, int> index_of;
    V = orbit(p0, R, index_of);
-   generators = Array<Array<int> >(R.rows());
-   for (int i=0; i<R.rows(); ++i) {
-      Array<int> g(V.rows());
-      for (int j=0; j<V.rows(); ++j) {
-         const SparseVector<E> r(R.row(i)), p(V.row(j));
-         g[j] = index_of[reflect(p, r)];
-      }
+   const int n_points = V.rows();
+   generators = Array<Array<int> >(n_roots);
+   for (int i=0; i<n_roots; ++i) {
+      Array<int> g(n_points);
+      for (int j=0; j<n_points; ++j) 
+         g[j] = index_of[reflect(SparseVector<E>(V.row(j)), R.row(i))];
       generators[i] = g;
    }
 }
@@ -139,13 +113,16 @@ perl::Object wythoff_dispatcher(std::string type, Set<int> rings)
    std::istringstream is (type.substr(1));
    is >> n;
 
-   perl::Object p;
    Array<Array<int> > generators;
 
    typedef QuadraticExtension<Rational> QE;
 
+   SparseMatrix<Rational> RM;
+   SparseMatrix<QE> EM;
+
+   bool needs_QE = false;
+
    if ((t >= 'A' && t <= 'G') || (t >= 'a' && t <= 'g')) {
-      SparseMatrix<Rational> RM;
       if (t == 'A' || t == 'a') {
          if (n >= 1)
             wythoff<Rational>(type, rings, simple_roots_type_A(n), RM, generators);
@@ -167,9 +144,15 @@ perl::Object wythoff_dispatcher(std::string type, Set<int> rings)
          else 
             throw std::runtime_error("Coxeter group of type D requires rank >= 3.");
       } else if (t == 'E' || t == 'e') {
-         if (n==8)
+         if (n==6) {
+            needs_QE = true;
+            wythoff<QE>(type, rings, simple_roots_type_E6(), EM, generators);
+          } else if (n==7){
+            needs_QE = true;
+            wythoff<QE>(type, rings, simple_roots_type_E7(), EM, generators);
+          } else if (n==8)
             wythoff<Rational>(type, rings, simple_roots_type_E8(), RM, generators);
-         else throw std::runtime_error("Coxeter groups E6 and E7 not implemented.");
+         else throw std::runtime_error("Coxeter group of type E requires rank 6, 7 or 8.");
       }
       else if (t == 'F' || t == 'f') {
          if (n == 4)
@@ -182,12 +165,8 @@ perl::Object wythoff_dispatcher(std::string type, Set<int> rings)
       } else
          throw std::runtime_error("Did not recognize crystallographic Coxeter group.");
 
-      p = perl::Object("Polytope<Rational>");
-      p.take("VERTICES") << RM;
-      p.take("N_VERTICES") << RM.rows();
-      p.take("LINEALITY_SPACE") << Matrix<Rational>();
    } else if (t == 'H' || t == 'h') {
-      SparseMatrix<QE> EM;
+      needs_QE = true;
       switch(n) {
       case 3: {
          wythoff<QE>(type, rings, simple_roots_type_H3(), EM, generators);
@@ -201,12 +180,22 @@ perl::Object wythoff_dispatcher(std::string type, Set<int> rings)
          throw std::runtime_error("Coxeter group of type H requires rank 3 or 4.");
       }
 
+   } else
+      throw std::runtime_error("Did not recognize the Coxeter group.");
+
+   perl::Object p;
+
+   if (needs_QE) {
       p = perl::Object("Polytope<QuadraticExtension>");
       p.take("VERTICES") << EM;
       p.take("N_VERTICES") << EM.rows();
-      p.take("LINEALITY_SPACE") << Matrix<QE>();
-   } else
-      throw std::runtime_error("Did not recognize the Coxeter group.");
+   } else {
+      p = perl::Object("Polytope<Rational>");
+      p.take("VERTICES") << RM;
+      p.take("N_VERTICES") << RM.rows();
+   }
+
+   p.take("LINEALITY_SPACE") << Matrix<Rational>();
 
    p.take("CONE_AMBIENT_DIM") << ((t == 'A' || t == 'a') ? n+2 : n+1);
    p.take("CONE_DIM") << n+1;
@@ -227,14 +216,16 @@ perl::Object wythoff_dispatcher(std::string type, Set<int> rings)
 // wythoff_dispatcher("A3", Set<int>(0)) gives tetrahedron, but embedded in 4-space
 // That's why we explictly give a full-dimensional representation here.
 
-perl::Object tetrahedron() {
-   Matrix<Rational> RM(same_element_matrix(1,4,4));
+template <typename Scalar>
+perl::Object tetrahedron()
+{
+   Matrix<Scalar> RM(same_element_matrix(1,4,4));
    RM(0,2) = RM(0,3) = RM(1,1) = RM(1,3) = RM(2,1) = RM(2,2) = -1;
 
-   perl::Object p("Polytope<Rational>");
+   perl::Object p(perl::ObjectType::construct<Scalar>("Polytope"));
    p.take("VERTICES") << RM;
    p.take("N_VERTICES") << 4;
-   p.take("LINEALITY_SPACE") << Matrix<Rational>();
+   p.take("LINEALITY_SPACE") << Matrix<Scalar>();
 
    p.take("CONE_AMBIENT_DIM") << 4;
    p.take("CONE_DIM") << 4;
@@ -254,7 +245,7 @@ perl::Object cuboctahedron() {
 
 // wythoff_dispatcher("B3", Set<int>(2)) gives cube
 
-perl::Object truncated_cuboctahedron() {
+perl::Object truncated_octahedron() {
    return wythoff_dispatcher("B3", sequence(0,2));
 }
 
@@ -288,7 +279,7 @@ perl::Object truncated_dodecahedron() {
 
 perl::Object rhombicosidodecahedron() {
    Set<int> rings;
-   rings.push_back(0); rings.push_back(2);
+   rings+=0; rings+=2;
    return wythoff_dispatcher("H3", rings);
 }
 
@@ -310,10 +301,10 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @return Polytope",
                   &wythoff_dispatcher, "wythoff($ Set<Int>)");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
-                  "# Create regular tetrahedron.  A Platonic solid."
-                  "# @return Polytope",
-                  &tetrahedron, "tetrahedron()");
+UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
+                          "# Create regular tetrahedron.  A Platonic solid."
+                          "# @return Polytope",
+                          "tetrahedron<Scalar=Rational>()");
 
 UserFunction4perl("# @category Producing a polytope from scratch"
                   "# Create cuboctahedron.  An Archimedean solid."
@@ -321,10 +312,10 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   &cuboctahedron, "cuboctahedron()");
 
 UserFunction4perl("# @category Producing a polytope from scratch"
-                  "# Create truncated cuboctahedron.  An Archimedean solid."
+                  "# Create truncated octahedron.  An Archimedean solid."
                   "# Also known as the 3-permutahedron."
                   "# @return Polytope",
-                  &truncated_cuboctahedron, "truncated_cuboctahedron()");
+                  &truncated_octahedron, "truncated_octahedron()");
 
 UserFunction4perl("# @category Producing a polytope from scratch"
                   "# Create regular 24-cell."

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -1479,7 +1479,7 @@ public:
 
 template <typename VectorRef>
 class ConcatRepeatedCol_impl<VectorRef, true>
-   : ConcatRepeatedRow_impl<VectorRef, true> {};
+   : public ConcatRepeatedRow_impl<VectorRef, true> {};
 
 template <typename VectorRef>
 class ConcatRows< RepeatedRow<VectorRef> >

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -67,7 +67,7 @@ protected:
    template <typename TypeList>
    static SV* construct(const char* type_name, size_t tl)
    {
-      Stack stack(false, TypeListUtils<TypeList>::type_cnt);
+      Stack stack(true, 1+TypeListUtils<TypeList>::type_cnt);
       if (TypeListUtils<TypeList>::push_types(stack)) {
          return construct_parameterized_type(type_name, tl);
       } else {
@@ -105,7 +105,6 @@ public:
    ObjectType& operator= (const ObjectType& o);
 
    std::string name() const;
-   std::string generic_name() const;
  
    bool isa(const ObjectType& o) const;
 
@@ -533,7 +532,7 @@ public:
 };
 
 template <typename Container>
-void read_labels(Object& p, const char* label_prop, Container& labels)
+void read_labels(const Object& p, const char* label_prop, Container& labels)
 {
    if (!(p.lookup(label_prop) >> labels)) {
       std::ostringstream label;
@@ -547,6 +546,18 @@ void read_labels(Object& p, const char* label_prop, Container& labels)
 }
 
 }
+
+template <>
+struct spec_object_traits<perl::Object>
+   : spec_object_traits<is_opaque>
+{
+   // default constructor and destructor require a living perl interpreter
+   static const bool allow_static=false;
+};
+
+template <>
+struct spec_object_traits<perl::ObjectType>
+   : spec_object_traits<perl::Object> {};
 
 template <>
 class Array<perl::Object, void>

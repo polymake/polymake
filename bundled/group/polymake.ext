@@ -1,2 +1,6 @@
 # This is a bundled extension.
-# No credits or dependencies are defined so far.
+
+REQUIRE
+   bundled:lrs
+   bundled:cdd
+

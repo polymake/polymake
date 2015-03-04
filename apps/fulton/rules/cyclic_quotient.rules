@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -64,22 +64,27 @@ object CyclicQuotient {
 ###################################################
 
 
-
-# Compute the continued fraction corresponding to a rational number.
-user_function rational2cf(Rational){
-   my($check) = @_;
+# @category Continued fractions
+# Compute the continued fraction corresponding to a rational number //r//.
+# @param Rational r
+# @return Vector<Integer>
+user_function rational2cf(Rational) {
+   my ($check) = @_;
    my @result = ();
-   while($check != 0){
+   while ($check != 0) {
       push @result, new Integer(ceil($check));
       $check = ceil($check)- $check;
       $check = $check !=0 ? 1/$check : 0;
       # print $check."\n";
    }
-   return new Vector(@result);
+   return new Vector<Integer>(\@result);
 }
 
+# @category Continued fractions
 # Compute the rational number corresponding to a continued fraction.
-user_function cf2rational(Vector<Integer>){
+# @param Vector<Integer> v
+# @return Rational
+user_function cf2rational(Vector<Integer>) {
    my($v) = @_;
    my @chain = @$v;
    my $check = new Rational(pop @chain);

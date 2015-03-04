@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -32,7 +32,7 @@ rule to.simplex: LP.MINIMAL_VALUE, LP.MINIMAL_VERTEX, FEASIBLE : LP.LINEAR_OBJEC
 }
 weight 3.30;
 
-# FIXME #195 #473
+# FIXME #195
 # weight set slightly above the weight of the corresponding cdd rule
 # does not reflect complexity
 rule to.bounded : BOUNDED : FACETS | INEQUALITIES, LINEALITY_SPACE {

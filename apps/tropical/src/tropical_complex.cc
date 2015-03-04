@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -138,17 +138,19 @@ perl::Object tropical_complex(const Matrix<Coord> &tropical_input_points)
    //return CallPolymakeFunction("fan::pc_intersection", all);
 }
 
-   UserFunctionTemplate4perl("# @category Constructing a polyhedral complex"
+   UserFunctionTemplate4perl("# @category Producing another object"
                              "# Computes the intersection of two polyhedral complexes."
                              "# @param fan::PolyhedralComplex pc1"
                              "# @param fan::PolyhedralComplex pc2"
+                             "# @tparam Coord"
                              "# @return fan::PolyhedralComplex",
                              "tropical_intersection<Coord>(fan::PolyhedralComplex<Coord> +)");
 
-   UserFunctionTemplate4perl("# @category Constructing a polyhedral complex"
+   UserFunctionTemplate4perl("# @category Producing another object"
                              "# Computes the tropical complex of //points//."
-                             "# @param Matrix points"
-                             "# @return PolyhedralComplex"
+                             "# @param Matrix<Coord> points"
+                             "# @tparam Coord"
+                             "# @return fan::PolyhedralComplex"
                              "# @author Katja Kulas",
                              "tropical_complex<Coord>(Matrix<Coord>)");
 

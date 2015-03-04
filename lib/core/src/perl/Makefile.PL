@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -90,6 +90,14 @@ sub MY::xs_c {
       $copy =~ s{(?= *> *\$\*\.xsc)}{| sed -e 's/\\.xxs\\.c"/.cc"/'};
    }
    return $text.$copy;
+}
+
+sub MY::c_o {
+   package MY;
+   my $text=(shift)->SUPER::c_o;
+   # remove harmful compilation rules for C++ modules
+   $text =~ s{^\.(?:C|c[^.\$]).*?:\n\t.*?\n}{}mg;
+   return $text;
 }
 
 my (@CCFiles, @CFiles);

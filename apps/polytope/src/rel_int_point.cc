@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -80,6 +80,15 @@ void rel_int_point(perl::Object p)
             p_new.take("EQUATIONS")<<E;
          p_new.take("INEQUALITIES")<<F;
       }
+
+      p_new.take("ONE_VERTEX")<<v0;
+      // Either it was bounded to start, or we forced it to be bounded
+      p_new.take("BOUNDED")<<1;
+
+      // In the bounded case, we have a subset of constraints; in the
+      // unbounded case we take care to preserve our one vertex
+      p_new.take("FEASIBLE")<<1;
+
       p_new.take("LP.LINEAR_OBJECTIVE")<<(0|ort.row(i));
       const Coord min=p_new.give("LP.MINIMAL_VALUE");
       const Coord max=p_new.give("LP.MAXIMAL_VALUE");

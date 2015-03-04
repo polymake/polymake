@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -75,7 +75,7 @@ sub start {
 
       my $F1=InteractiveCommands::Tgetent()->{$User::help_key};
       $Shell->term->bind_keyseq($F1, $Shell->term->add_defun("context_help", \&context_help));
-      
+
    }
    add AtEnd("Shell", sub { undef $Shell });
 }
@@ -110,7 +110,7 @@ my $canceled=sub {
 };
 
 sub interactive_INC {
-   if ($_[1] eq "input:") { 
+   if ($_[1] eq "input:") {
       (\&get_line, $Shell)
    } elsif ($_[1] =~ /^history:/) {
       open my $hf, $';
@@ -122,7 +122,7 @@ sub interactive_INC {
 }
 
 sub pipe_INC {
-   if ($_[1] eq "input:") { 
+   if ($_[1] eq "input:") {
       (\&OverPipe::get_line, $Shell)
    } else {
       $User::application->INC($_[1]);
@@ -145,7 +145,7 @@ sub run {
    sigaction SIGINT, $sa_INT, $sa_INT_save;
 
    $Shell->term->ReadHistory($Shell->histfile) if -f $Shell->histfile;
-   undef $Shell->term->{MinLength};     # don't automatically add to history
+   $Shell->term->{MinLength}=0;     # don't automatically add to history
 
    print "\rPress F1 or enter 'help;' for basic instructions.\n";
    STDOUT->flush();
@@ -225,9 +225,9 @@ sub get_line {
       $_ .= "#line 1 \"input\"\n";
    } elsif ($self->state!=3 || ($l=line_continued())) {
       namespaces::temp_disable();
-      unless ($User::application->declared & 4) {
+      unless ($User::application->declared & $Application::credits_shown) {
          User::show_credits(1);
-         if ($User::application->declared & 8) {
+         if ($User::application->declared & $Application::has_failed_config) {
             print <<'.';
 
 Warning: some rulefiles could not be configured automatically
@@ -235,7 +235,7 @@ due to lacking third-party software and/or other issues.
 To see the complete list: show_unconfigured;
 .
          }
-         $User::application->declared |= 4;
+         $User::application->declared |= $Application::credits_shown;
       }
       my $prompt=$User::application->name." ";
       if (defined($self->within_history)) {
@@ -367,11 +367,11 @@ sub try_type_completion {
    my $app= $has_app_prefix ? eval { User::application($1) } || return ($User::application, $char) : $User::application;
    if ($maybe_object_type) {
       push @list, grep { /^$prefix/ } map { $_->name } map { @{$_->object_types} }
-                  ($app, $has_app_prefix ? () : values %{$app->used});
+                  ($app, $has_app_prefix ? () : values %{$app->imported});
    }
    if ($maybe_prop_type) {
       push @list, map { /^(.*)::$/ } map { complete_variable_name_in_pkg(get_pkg($_->pkg."::props"), " ", $prefix) }
-                  ($app, $has_app_prefix ? () : values %{$app->used});
+                  ($app, $has_app_prefix ? () : values %{$app->imported});
    }
    @list=sorted_uniq(sort(@list));
 
@@ -447,7 +447,7 @@ sub all_completions : method {
            | \b(?'File' File) \s*=>\s* )
          (?:(?'quote' ['"]) (?'prefix' [^"']*)? )? \G}xogc) {
       my ($simple_cmd, $dir_cmd, $paren, $File, $quote, $prefix)=@+{qw(simple_cmd dir_cmd paren File quote prefix)};
-       
+
       if (defined $quote) {
          try_filename_completion($self, $word, $quote, $prefix, $dir_cmd);
       } else {
@@ -615,9 +615,9 @@ sub all_completions : method {
    # command expecting a script file
    if ($line =~
        m{ $op_re script (?'paren' $args_start_re) (?:(?'quote' ['"]) (?'prefix' [^"']*)? )? \G}xogc) {
-       
+
       my ($paren, $quote, $prefix)=@+{qw(paren quote prefix)};
-      
+
       if (defined $quote) {
          if ($prefix =~ m|^[./~]|) {
             try_filename_completion($self, $word, $quote, $prefix, 0);
@@ -644,10 +644,10 @@ sub all_completions : method {
    # methods expecting a property name
    if ($line =~
        m{ $op_re $var_or_func_re $intermed_chain_re
-          (?: (?'mult_word' give | lookup | (?'mult_arg' provide | get_schedule)) | take | add | remove ) \s*\(\s*
-          (?('mult_arg') (?: (?: '$hier_id_alt_re'|"$hier_id_alt_re" )\s*,\s*)* )
+          (?: (?'mult_word' give | lookup | (?'mult_arg' provide | get_schedule | remove)) | take | add ) \s*\(\s*
+          (?('mult_arg') (?: (['"]) $hier_id_alt_re \g{-1} \s*,\s*)* )
           (?:(?'quote' ['"]) (?('mult_word') (?: $hier_id_re \s*\|\s*)* ) (?'prefix' $hier_id_re\.?)?)? \G}xogc) {
-      
+
       if (defined $+{quote}) {
          my ($var, $app_name, $func, $intermed, $mult_word, $mult_arg, $quote, $prefix)=@+{qw(var app_name func intermed mult_word mult_arg quote prefix)};
 
@@ -666,11 +666,12 @@ sub all_completions : method {
    # additional properties of a subobject
    if ($line =~
        m{ $op_re $var_or_func_re $intermed_chain_re
-          add \s*\(\s* (['"])(?'prop_name' $id_re)\g{-2} \s*,\s*  (?: $expression_re ,\s* )?
-          (?: (?: $id_re|'$hier_id_re'|"$hier_id_re" ) \s*=>\s* $expression_re ,\s* )*
+          add \s*\(\s* (['"])(?'prop_name' $id_re)\g{-2} \s*,\s*
+          (?'leading_args' (?: $expression_re ,\s* )?
+                           (?: (?: $id_re | (['"]) $hier_id_re \g{-1} ) \s*=>\s* $expression_re ,\s* )* )
           (?'quote' ['"])? (?'prefix' $hier_id_re\.?)? \G}xogc) {
 
-      my ($var, $app_name, $func, $intermed, $prop_name, $quote, $prefix)=@+{qw(var app_name func intermed prop_name quote prefix)};
+      my ($var, $app_name, $func, $intermed, $prop_name, $leading_args, $quote, $prefix)=@+{qw(var app_name func intermed prop_name leading_args quote prefix)};
 
       if (defined( my $type=retrieve_method_owner_type($var, $app_name, $func, $intermed) )) {
          if (instanceof ObjectType($type) && defined(my $prop=$type->lookup_property($prop_name))) {
@@ -679,6 +680,9 @@ sub all_completions : method {
                $self->term->Attribs->{completion_append_character}=$quote;
             } else {
                $_ .= "=>" for @{$self->completion_words};
+            }
+            if (length($leading_args)==0 && !$quote && index("temporary", $prefix)==0) {
+               push @{$self->completion_words}, "temporary,";
             }
          }
       }
@@ -899,7 +903,7 @@ sub all_completions : method {
 
       my ($type, $prop_name, $quote, $chain)=@+{qw(type prop_name quote chain)};
 
-      if (defined ($type=eval { $User::application->eval_type($type) })
+      if (defined ($type=$User::application->eval_type($type, 1))
             and
           instanceof ObjectType($type)) {
          $self->completion_words=[ try_property_completion($type, $prop_name || $chain) ];
@@ -1097,9 +1101,9 @@ sub find_user_variable {
 }
 
 sub retrieve_return_type {
-   my $name=(shift)->return_type;
+   my $name=$_[0]->return_type;
    if (defined($name) and $name !~ /::/) {
-      eval { $User::application->eval_type($name) }
+      $User::application->eval_type($name, 1)
    } else {
       $name
    }
@@ -1144,7 +1148,7 @@ sub retrieve_method_owner_type {
                }
                # otherwise let's just suppose the method returns the same object
             } else {
-               ref($type) or defined ($type=eval { $User::application->eval_type($type) }) or return;
+               ref($type) or defined ($type=$User::application->eval_type($type, 1)) or return;
                if (instanceof PropertyType($type)) {
                   $type=$type->get_field_type($method_name) or return;
                } else {

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -23,16 +23,17 @@ namespace pm { namespace perl {
 namespace {
 
 inline
-int register_function(pTHX_ SV *wrap_sv, SV *func_ptr_sv, SV *name_sv, SV *file_sv, SV *arg_types, int flist_index)
+int register_function(pTHX_ SV* wrap_sv, SV* func_ptr_sv, SV* name_sv, SV* file_sv, SV* arg_types, SV* cross_apps, int flist_index)
 {
    AV* const descr=newAV();
-   av_fill(descr,glue::FuncDescr_fill);
+   av_fill(descr, glue::FuncDescr_fill);
    SV** array=AvARRAY(descr);
    *array++=wrap_sv;
    *array++=func_ptr_sv;
    *array++=name_sv;
    *array++=file_sv;
-   *array  =SvREFCNT_inc_simple_NN(arg_types);
+   *array++=SvREFCNT_inc_simple_NN(arg_types);
+   if (cross_apps) *array=cross_apps;
 
    AV* const flist=(AV*)SvRV(PmArray(GvSV(glue::CPP_root))[flist_index]);
    av_push(flist, sv_bless(newRV_noinc((SV*)descr), glue::FuncDescr_stash));
@@ -49,8 +50,8 @@ SV* pointer_as_const_string(wrapper_type p)
 
 }
 
-int FunctionBase::register_func(wrapper_type wrapper, const char *sig, size_t siglen, const char *file, size_t filelen, int line,
-                                SV *arg_types, void *func_ptr, const char *func_ptr_type)
+int FunctionBase::register_func(wrapper_type wrapper, const char* sig, size_t siglen, const char* file, size_t filelen, int line,
+                                SV* arg_types, SV* cross_apps, void* func_ptr, const char* func_ptr_type)
 {
    dTHX;
    SV* const wrap_sv=pointer_as_const_string(wrapper);
@@ -58,20 +59,12 @@ int FunctionBase::register_func(wrapper_type wrapper, const char *sig, size_t si
    if (func_ptr) {
       // a regular function which will need an indirect wrapper later
       return register_function(aTHX_ wrap_sv, Scalar::const_string_with_int((char*)func_ptr, -1), Scalar::const_string(func_ptr_type),
-                               file_sv, arg_types, glue::CPP_regular_functions_index);
+                               file_sv, arg_types, cross_apps, glue::CPP_regular_functions_index);
    } else {
       // a function template
       return register_function(aTHX_ wrap_sv, newSViv(-1), sig ? newSVpvn(sig,siglen) : &PL_sv_undef,
-                               file_sv, arg_types, glue::CPP_functions_index);
+                               file_sv, arg_types, cross_apps, glue::CPP_functions_index);
    }
-}
-
-void FunctionBase::register_disabled(const char *sig, size_t siglen, const char *file, size_t filelen, int line, SV *arg_types)
-{
-   dTHX;
-   register_function(aTHX_ &PL_sv_undef, &PL_sv_undef, newSVpvn(sig,siglen),
-                     file ? Scalar::const_string_with_int(file, filelen, line) : &PL_sv_undef,
-                     arg_types, glue::CPP_functions_index);
 }
 
 void FunctionBase::add_rules(const char *file, int line, const char *text, ...)
@@ -80,8 +73,8 @@ void FunctionBase::add_rules(const char *file, int line, const char *text, ...)
    AV *embedded_rules=(AV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_embedded_rules_index]);
    va_list args;
    va_start(args, text);
-   av_push(embedded_rules, newSVpvf("#line %d \"%s\"\n",line,file));
-   av_push(embedded_rules, vnewSVpvf(text,&args));
+   av_push(embedded_rules, newSVpvf("#line %d \"%s\"\n", line, file));
+   av_push(embedded_rules, vnewSVpvf(text, &args));
    va_end(args);
 }
 
@@ -89,8 +82,8 @@ void EmbeddedRule::add(const char *file, int line, const char *text, size_t l)
 {
    dTHX;
    AV *embedded_rules=(AV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_embedded_rules_index]);
-   av_push(embedded_rules, newSVpvf("#line %d \"%s\"\n",line,file));
-   av_push(embedded_rules, newSVpv(text,l));
+   av_push(embedded_rules, newSVpvf("#line %d \"%s\"\n", line, file));
+   av_push(embedded_rules, newSVpv(text, l));
 }
 
 SV* ClassRegistratorBase::register_class(const char *name, size_t namelen, const char *file, size_t filelen, int line,

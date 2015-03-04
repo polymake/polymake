@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -214,13 +214,33 @@ template <typename Object>
 struct union_traits {
    static const int size=attrib<Object>::is_reference ? sizeof(typename deref<Object>::type*)
                                                       : sizeof(typename deref<Object>::type);
+
+   template <typename Object2>
+   struct isomorphic_types_helper
+      : isomorphic_types_deref<Object, Object2> {};
+
+   template <typename Head2, typename Tail2>
+   struct isomorphic_types_helper< cons<Head2, Tail2> > {
+      typedef isomorphic_types_helper<Head2> helper_for_head;
+      typedef isomorphic_types_helper<Tail2> helper_for_tail;
+      static const bool value = helper_for_head::value && helper_for_tail::value;
+      typedef typename identical<typename helper_for_head::discriminant, typename helper_for_tail::discriminant>::type discriminant;
+   };
 };
 
 template <typename Head, typename Tail>
-struct union_traits< cons<Head,Tail> > {
-   typedef union_traits<Head> traits1;
-   typedef union_traits<Tail> traits2;
-   static const int size= traits1::size >= traits2::size ? traits1::size : traits2::size;
+struct union_traits< cons<Head, Tail> > {
+   typedef union_traits<Head> traits_head;
+   typedef union_traits<Tail> traits_tail;
+   static const int size= traits_head::size >= traits_tail::size ? traits_head::size : traits_tail::size;
+
+   template <typename Object2>
+   struct isomorphic_types_helper {
+      typedef typename traits_head::template isomorphic_types_helper<Object2> helper_for_head;
+      typedef typename traits_tail::template isomorphic_types_helper<Object2> helper_for_tail;
+      static const bool value = helper_for_head::value && helper_for_tail::value;
+      typedef typename identical<typename helper_for_head::discriminant, typename helper_for_tail::discriminant>::type discriminant;
+   };
 };
 
 template <typename TypeList, bool heap_based>
@@ -380,6 +400,20 @@ public:
 
    template <typename,bool> friend class type_union;
 };
+
+template <typename TypeList, bool heap_based, typename Object2>
+struct isomorphic_types< type_union<TypeList, heap_based>, Object2>
+   : union_traits<TypeList>::template isomorphic_types_helper<Object2> {};
+
+template <typename Object1, typename TypeList, bool heap_based>
+struct isomorphic_types<Object1, type_union<TypeList, heap_based> >
+   : union_traits<TypeList>::template isomorphic_types_helper<Object1> {
+   typedef typename reverse_cons<typename union_traits<TypeList>::template isomorphic_types_helper<Object1>::discriminant>::type discriminant;
+};
+
+template <typename TypeList1, bool heap_based1, typename TypeList2, bool heap_based2>
+struct isomorphic_types< type_union<TypeList1, heap_based1>, type_union<TypeList2, heap_based2> >
+   : union_traits<TypeList1>::template isomorphic_types_helper<TypeList2> {};
 
 } // end namespace pm
 

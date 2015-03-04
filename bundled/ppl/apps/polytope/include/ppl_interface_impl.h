@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,6 +17,7 @@
 #ifndef POLYMAKE_POLYTOPE_PPL_INTERFACE_IMPL_H
 #define POLYMAKE_POLYTOPE_PPL_INTERFACE_IMPL_H
 
+#include <cstddef> // needed for gcc 4.9, see http://gcc.gnu.org/gcc-4.9/porting_to.html
 #include <gmpxx.h> //for mpz/mpq-handling
 #include "polymake/polytope/ppl_interface.h"
 #include "polymake/common/lattice_tools.h"
@@ -201,12 +202,11 @@ namespace {
                  e += coefficients[j] * PPL::Variable(j-1);
               }
 
-              PPL::Generator v;
               if (coefficients[0] != 0) {
-                 v = PPL::point(e, lcm_of_row_denom.gmp() ); // v is a point
+                 PPL::Generator v = PPL::point(e, lcm_of_row_denom.gmp() ); // v is a point
                  gs.insert(v);
               } else {
-                 v = PPL::ray(e); // v is a ray
+                 PPL::Generator v = PPL::ray(e); // v is a ray
                  gs.insert(v);
               }
            } 
@@ -266,6 +266,10 @@ namespace {
            }
         }
      }
+     // If P is just a point then it has one facet which is the empty set
+     // and we need to add a corresponding inequality.
+     if (!isCone && num_columns == affine_hull_list.rows() + 1)
+        facet_list /= triv_ineq;
 
      Matrix<Coord> facets(facet_list);
      Matrix<Coord> affine_hull(affine_hull_list);

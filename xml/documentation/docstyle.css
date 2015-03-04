@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 1997-2014
+  Copyright (c) 1997-2015
   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
   http://www.polymake.org
 
@@ -51,6 +51,14 @@ span.pm {
 
 .descr_func > div.descr {
 	margin-bottom: 1em;
+}
+
+div.unfoldable, .descr {
+	margin-top: .5em;
+}
+
+td > div.descr {
+	margin-top: 0em;
 }
 
 div.undoc {

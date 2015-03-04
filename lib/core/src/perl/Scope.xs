@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,24 +19,24 @@
 int Scope_local_marker_index;
 
 static
-void localize_marker(pTHX_ void *p)
+void localize_marker(pTHX_ void* p)
 {
-   if (PL_in_eval & ~(EVAL_INREQUIRE))  /* functionality of $^S less the lex test */
+   if (PL_in_eval & ~(EVAL_INREQUIRE))  // functionality of $^S less the lex test
       Perl_croak(aTHX_ "Scope::end missing");
 }
 
 typedef struct local_var_ptrs {
-   SV *var;
-   void *orig_any;
+   SV* var;
+   void* orig_any;
    U32 orig_flags;
-   char *orig_pv;       // as a representative for SV_HEAD_UNION
-   SV *temp_owner;
+   char* orig_pv;       // as a representative for SV_HEAD_UNION
+   SV* temp_owner;
 } local_var_ptrs;
 
 static
-local_var_ptrs* do_local_var(SV *var, SV *value)
+local_var_ptrs* do_local_var(SV* var, SV* value)
 {
-   local_var_ptrs *ptrs;
+   local_var_ptrs* ptrs;
    New(0, ptrs, 1, local_var_ptrs);
    ptrs->var=var;
    ptrs->orig_any=SvANY(var);
@@ -52,10 +52,10 @@ local_var_ptrs* do_local_var(SV *var, SV *value)
 }
 
 static
-void undo_local_var(pTHX_ void *p)
+void undo_local_var(pTHX_ void* p)
 {
-   local_var_ptrs *ptrs=(local_var_ptrs*)p;
-   SV *var=ptrs->var;
+   local_var_ptrs* ptrs=(local_var_ptrs*)p;
+   SV* var=ptrs->var;
    SvANY(var)=ptrs->orig_any;
    SvFLAGS(ptrs->temp_owner)=SvFLAGS(var);
    ptrs->temp_owner->sv_u.svu_pv=var->sv_u.svu_pv;
@@ -67,14 +67,14 @@ void undo_local_var(pTHX_ void *p)
 }
 
 typedef struct local_scalar_ptrs {
-   SV *var;
+   SV* var;
    SV orig;
 } local_scalar_ptrs;
 
 static
-local_scalar_ptrs* do_local_scalar(pTHX_ SV *var, SV *value, I32 tmp_refcnt)
+local_scalar_ptrs* do_local_scalar(pTHX_ SV* var, SV* value, I32 tmp_refcnt)
 {
-   local_scalar_ptrs *ptrs;
+   local_scalar_ptrs* ptrs;
    New(0, ptrs, 1, local_scalar_ptrs);
    ptrs->var=var;
    ptrs->orig.sv_any=var->sv_any;
@@ -89,10 +89,10 @@ local_scalar_ptrs* do_local_scalar(pTHX_ SV *var, SV *value, I32 tmp_refcnt)
 }
 
 static
-void undo_local_scalar(pTHX_ void *p)
+void undo_local_scalar(pTHX_ void* p)
 {
-   local_scalar_ptrs *ptrs=(local_scalar_ptrs*)p;
-   SV *var=ptrs->var;
+   local_scalar_ptrs* ptrs=(local_scalar_ptrs*)p;
+   SV* var=ptrs->var;
    if (SvREFCNT(var)>1) {
       SvREFCNT_dec(var);
    } else {
@@ -106,41 +106,27 @@ void undo_local_scalar(pTHX_ void *p)
 }
 
 void
-pm_perl_localize_scalar(pTHX_ SV *var)
+pm_perl_localize_scalar(pTHX_ SV* var)
 {
    save_destructor_x(&undo_local_scalar, do_local_scalar(aTHX_ var, sv_mortalcopy(var), 0));
 }
 
-static
-local_scalar_ptrs* do_local_ref(pTHX_ SV **varp, SV *value)
+void
+pm_perl_localize_array(pTHX_ SV* av, SV* ar_ref)
 {
-   local_scalar_ptrs *ptrs;
-   New(0, ptrs, 1, local_scalar_ptrs);
-   ptrs->var=*varp;
-   ptrs->orig.sv_any=(SV*)varp;
-   *varp=SvREFCNT_inc_simple_NN(value);
-   return ptrs;
-}
-
-static
-void undo_local_ref(pTHX_ void *p)
-{
-   local_scalar_ptrs *ptrs=(local_scalar_ptrs*)p;
-   SV **varp=(SV**)ptrs->orig.sv_any;
-   SvREFCNT_dec(*varp);
-   *varp=ptrs->var;
-   Safefree(p);
+   assert(av && SvTYPE(av)==SVt_PVAV && SvROK(ar_ref) && SvTYPE(SvRV(ar_ref))==SVt_PVAV);
+   save_destructor_x(&undo_local_var, do_local_var(av, SvRV(ar_ref)));
 }
 
 typedef struct local_incr_ptrs {
-   SV *var;
+   SV* var;
    I32 incr;
 } local_incr_ptrs; 
 
 static
-local_incr_ptrs* do_local_incr(pTHX_ SV *var, I32 incr)
+local_incr_ptrs* do_local_incr(pTHX_ SV* var, I32 incr)
 {
-   local_incr_ptrs *ptrs;
+   local_incr_ptrs* ptrs;
    New(0, ptrs, 1, local_incr_ptrs);
    ptrs->var=var;
    ptrs->incr=incr;
@@ -154,10 +140,10 @@ local_incr_ptrs* do_local_incr(pTHX_ SV *var, I32 incr)
 }
 
 static
-void undo_local_incr(pTHX_ void *p)
+void undo_local_incr(pTHX_ void* p)
 {
-   local_incr_ptrs *ptrs=(local_incr_ptrs*)p;
-   SV *var=ptrs->var;
+   local_incr_ptrs* ptrs=(local_incr_ptrs*)p;
+   SV* var=ptrs->var;
    if (SvIOK(var))
       sv_setiv(var, SvIVX(var)-ptrs->incr);
    else if (SvNOK(ptrs->var))
@@ -168,9 +154,9 @@ void undo_local_incr(pTHX_ void *p)
 }
 
 static
-local_incr_ptrs* do_local_push(pTHX_ SV *av, SV **src, int n, int side)
+local_incr_ptrs* do_local_push(pTHX_ SV* av, SV** src, int n, int side)
 {
-   local_incr_ptrs *ptrs;
+   local_incr_ptrs* ptrs;
    SV **dst, **src_end;
    New(0, ptrs, 1, local_incr_ptrs);
    ptrs->var=av;
@@ -183,7 +169,7 @@ local_incr_ptrs* do_local_push(pTHX_ SV *av, SV **src, int n, int side)
       dst=AvARRAY(av)+AvFILLp(av)+1;
    }
    for (src_end=src+n; src<src_end; ++src, ++dst) {
-      SV *d=*src;
+      SV* d=*src;
       if (SvREADONLY(d) || !SvTEMP(d))
          *dst=newSVsv(d);
       else
@@ -194,16 +180,16 @@ local_incr_ptrs* do_local_push(pTHX_ SV *av, SV **src, int n, int side)
 }
 
 static
-void undo_local_push(pTHX_ void *p)
+void undo_local_push(pTHX_ void* p)
 {
-   local_incr_ptrs *ptrs=(local_incr_ptrs*)p;
-   SV *av=ptrs->var;
+   local_incr_ptrs* ptrs=(local_incr_ptrs*)p;
+   SV* av=ptrs->var;
    I32 n=ptrs->incr;
    SV **e, **eend;
    if (n>0) {
       for (e=AvARRAY(av)+AvFILLp(av), eend=e-n; e>eend; --e) {
          SvREFCNT_dec(*e);
-         *e=&PL_sv_undef;
+         *e=PmEmptyArraySlot;
       }
       AvFILLp(av)-=n;
    } else {
@@ -213,20 +199,20 @@ void undo_local_push(pTHX_ void *p)
       ++eend;
       Move(eend-n, eend, AvFILLp(av)+1, SV*);
       for (e=eend+AvFILLp(av)+1, eend=e-n; e<eend; ++e)
-         *e=&PL_sv_undef;
+         *e=PmEmptyArraySlot;
    }
    Safefree(p);
 }
 
 typedef struct local_pop_ptrs {
-   AV *av;
-   SV *val;
+   AV* av;
+   SV* val;
 } local_pop_ptrs;
 
 static
-local_pop_ptrs* do_local_pop(pTHX_ AV *av)
+local_pop_ptrs* do_local_pop(pTHX_ AV* av)
 {
-   local_pop_ptrs *ptrs;
+   local_pop_ptrs* ptrs;
    if (AvFILLp(av)<0)
       Perl_croak(aTHX_ "local_pop on an empty array");
    SvREFCNT_inc_simple_void_NN(av);
@@ -237,19 +223,19 @@ local_pop_ptrs* do_local_pop(pTHX_ AV *av)
 }
 
 static
-void undo_local_pop(pTHX_ void *p)
+void undo_local_pop(pTHX_ void* p)
 {
-   local_pop_ptrs *ptrs=(local_pop_ptrs*)p;
-   AV *av=ptrs->av;
+   local_pop_ptrs* ptrs=(local_pop_ptrs*)p;
+   AV* av=ptrs->av;
    av_push(av,ptrs->val);
    SvREFCNT_dec(av);
    Safefree(p);
 }
 
 static
-local_pop_ptrs* do_local_shift(pTHX_ AV *av)
+local_pop_ptrs* do_local_shift(pTHX_ AV* av)
 {
-   local_pop_ptrs *ptrs;
+   local_pop_ptrs* ptrs;
    if (AvFILLp(av)<0)
       Perl_croak(aTHX_ "local_shift on an empty array");
    SvREFCNT_inc_simple_void_NN(av);
@@ -260,10 +246,10 @@ local_pop_ptrs* do_local_shift(pTHX_ AV *av)
 }
 
 static
-void undo_local_shift(pTHX_ void *p)
+void undo_local_shift(pTHX_ void* p)
 {
-   local_pop_ptrs *ptrs=(local_pop_ptrs*)p;
-   AV *av=ptrs->av;
+   local_pop_ptrs* ptrs=(local_pop_ptrs*)p;
+   AV* av=ptrs->av;
    av_unshift(av,1);
    AvARRAY(av)[0]=ptrs->val;
    SvREFCNT_dec(av);
@@ -282,7 +268,7 @@ local_incr_ptrs* do_local_shorten(pTHX_ AV* av, int n)
    } else {
       if (AvFILLp(av)<-n)
          Perl_croak(aTHX_ "local_shorten: array has less than %d elements", -n);
-      AvARRAY_set(av, AvARRAY(av)-n);
+      AvARRAY(av)-=n;
       store_incr=n;
       n+=AvFILLp(av);
    }
@@ -298,11 +284,11 @@ static
 void undo_local_shorten(pTHX_ void* p)
 {
    local_incr_ptrs* ptrs=(local_incr_ptrs*)p;
-   AV *av=(AV*)ptrs->var;
+   AV* av=(AV*)ptrs->var;
    if (ptrs->incr>=0) {
       AvFILLp(av)+=ptrs->incr;
    } else {
-      AvARRAY_set(av, AvARRAY(av)+ptrs->incr);
+      AvARRAY(av)+=ptrs->incr;
       AvFILLp(av)-=ptrs->incr;
    }
    SvREFCNT_dec(av);
@@ -315,11 +301,11 @@ typedef struct local_swap_ptrs {
 } local_swap_ptrs;
 
 static
-local_swap_ptrs* do_local_swap(pTHX_ SV *var, I32 ix1, I32 ix2)
+local_swap_ptrs* do_local_swap(pTHX_ SV* var, I32 ix1, I32 ix2)
 {
-   local_swap_ptrs *ptrs;
-   SV *tmp;
-   AV *av=(AV*)SvREFCNT_inc_NN(SvRV(var));
+   local_swap_ptrs* ptrs;
+   SV* tmp;
+   AV* av=(AV*)SvREFCNT_inc_NN(SvRV(var));
    if (ix1<0) ix1+=AvFILL(av)+1;
    if (ix2<0) ix2+=AvFILL(av)+1;
    if (ix1>AvFILL(av) || ix2>AvFILL(av)) Perl_croak(aTHX_ "local_swap: indices out of range");
@@ -334,11 +320,11 @@ local_swap_ptrs* do_local_swap(pTHX_ SV *var, I32 ix1, I32 ix2)
 }
 
 static
-void undo_local_swap(pTHX_ void *p)
+void undo_local_swap(pTHX_ void* p)
 {
-   local_swap_ptrs *ptrs=(local_swap_ptrs*)p;
-   AV *av=ptrs->var;
-   SV *tmp=AvARRAY(av)[ptrs->ix1];
+   local_swap_ptrs* ptrs=(local_swap_ptrs*)p;
+   AV* av=ptrs->var;
+   SV* tmp=AvARRAY(av)[ptrs->ix1];
    AvARRAY(av)[ptrs->ix1]=AvARRAY(av)[ptrs->ix2];
    AvARRAY(av)[ptrs->ix2]=tmp;
    SvREFCNT_dec(av);
@@ -346,17 +332,17 @@ void undo_local_swap(pTHX_ void *p)
 }
 
 typedef struct local_bless_ptrs {
-   SV *var;
-   HV *stash;
+   SV* var;
+   HV* stash;
    I32 mg_flags;
 } local_bless_ptrs;
 
 static
-local_bless_ptrs* do_local_bless(pTHX_ SV *ref, SV *pkg)
+local_bless_ptrs* do_local_bless(pTHX_ SV* ref, SV* pkg)
 {
-   local_bless_ptrs *ptrs;
-   SV *var;
-   HV *stash;
+   local_bless_ptrs* ptrs;
+   SV* var;
+   HV* stash;
    if (!SvROK(ref) || (var=SvRV(ref), !SvOBJECT(var)))
       Perl_croak(aTHX_ "usage: local_bless(\\object, \"pkg\" || \\%%stash");
    if (SvPOK(pkg)) {
@@ -374,11 +360,11 @@ local_bless_ptrs* do_local_bless(pTHX_ SV *ref, SV *pkg)
 }
 
 static
-void undo_local_bless(pTHX_ void *p)
+void undo_local_bless(pTHX_ void* p)
 {
-   local_bless_ptrs *ptrs=(local_bless_ptrs*)p;
-   SV *var=ptrs->var;
-   HV *tmp_stash=SvSTASH(var);
+   local_bless_ptrs* ptrs=(local_bless_ptrs*)p;
+   SV* var=ptrs->var;
+   HV* tmp_stash=SvSTASH(var);
    SvSTASH_set(var, ptrs->stash);
    SvFLAGS(var) &= ~(SVs_GMG|SVs_SMG|SVs_RMG|SVf_AMAGIC);
    SvFLAGS(var) |= ptrs->mg_flags;
@@ -409,7 +395,7 @@ LEAVE;
    I32 frame_top=PL_savestack_ix, frame_bottom=PL_scopestack[PL_scopestack_ix-1], f, to_save;
    AV* scope=(AV*)SvRV(scope_ref);
 
-   /* find the marker or resign */
+   // find the marker or resign
    for (f=frame_top-3; f >= frame_bottom; --f)
       if (mainstack[f].any_ptr == (void*)&localize_marker
           && f+2 < frame_top
@@ -421,7 +407,7 @@ LEAVE;
          if (to_save > 0) {
             SV* marker=AvARRAY(scope)[Scope_local_marker_index];
             sv_catpvn(marker, (char*)&(mainstack[f+3]), to_save*sizeof(ANY));
-            PL_savestack_ix=f;  /* pop the marker and the saved locals quickly */
+            PL_savestack_ix=f;  // pop the marker and the saved locals quickly
          }
          scope=Nullav;
          break;
@@ -437,12 +423,11 @@ CODE:
 {
    I32 saved=SvCUR(marker)/sizeof(ANY);
    if (saved) {
-      LEAVE;
       SSGROW(saved);
       Copy(SvPVX(marker), &(PL_savestack[PL_savestack_ix]), saved, ANY);
       PL_savestack_ix+=saved;
-      ENTER;
    }
+   // LEAVE in pp_entersub will execute all actions
 }
 
 MODULE = Polymake::Scope                PACKAGE = Polymake
@@ -452,7 +437,7 @@ local_scalar(var, value)
    SV *var;
    SV *value;
 PROTOTYPE: $$
-CODE:
+PPCODE:
 {
    if ( (isGV(var) ? !(var=GvSV(var))
                    : SvTYPE(var) >= SVt_PVAV) ||
@@ -461,6 +446,7 @@ CODE:
    LEAVE;
    save_destructor_x(&undo_local_scalar, do_local_scalar(aTHX_ var, value, 0));
    ENTER;
+   ++SP;
 }
 
 void
@@ -475,6 +461,7 @@ PPCODE:
    LEAVE;
    save_destructor_x(&undo_local_scalar, do_local_scalar(aTHX_ var, sv_mortalcopy(var), 0));
    ENTER;
+   ++SP;
 }
 
 void
@@ -484,14 +471,16 @@ local_array(var, value)
 PROTOTYPE: $$
 PPCODE:
 {
-   if (isGV(var) ? !(var=(SV*)GvAV(var))
-                 : !SvROK(var) || (var=SvRV(var), SvTYPE(var) != SVt_PVAV))
-      croak_xs_usage(cv, "*glob || \\@array, \\@array");
-   if (!SvROK(value) || (value=SvRV(value), SvTYPE(value) != SVt_PVAV))
-      croak_xs_usage(cv, "*glob || \\@array, \\@array");
-   LEAVE;
-   save_destructor_x(&undo_local_var, do_local_var(var, value));
-   ENTER;
+   if (SvROK(var) ? (var=SvRV(var), SvTYPE(var)==SVt_PVAV)
+                  : isGV(var) && (var=(SV*)GvAV(var))) {
+      if (SvROK(value) && (value=SvRV(value), SvTYPE(value)==SVt_PVAV)) {
+         LEAVE;
+         save_destructor_x(&undo_local_var, do_local_var(var, value));
+         ENTER;
+         XSRETURN(1);
+      }
+   }
+   croak_xs_usage(cv, "*glob || \\@array, \\@array");
 }
 
 void
@@ -501,14 +490,16 @@ local_hash(var, value)
 PROTOTYPE: $$
 PPCODE:
 {
-   if (isGV(var) ? !(var=(SV*)GvHV(var))
-                 : !SvROK(var) || (var=SvRV(var), SvTYPE(var) != SVt_PVHV))
-      croak_xs_usage(cv, "*glob || \\%%hash, \\%%hash");
-   if (!SvROK(value) || (value=SvRV(value), SvTYPE(value) != SVt_PVHV))
-      croak_xs_usage(cv, "*glob || \\%%hash, \\%%hash");
-   LEAVE;
-   save_destructor_x(&undo_local_var, do_local_var(var, value));
-   ENTER;
+   if (SvROK(var) ? (var=SvRV(var), SvTYPE(var)==SVt_PVHV)
+                  : isGV(var) && (var=(SV*)GvHV(var))) {
+      if (SvROK(value) && (value=SvRV(value), SvTYPE(value)==SVt_PVHV)) {
+         LEAVE;
+         save_destructor_x(&undo_local_var, do_local_var(var, value));
+         ENTER;
+         XSRETURN(1);
+      }
+   }
+   croak_xs_usage(cv, "*glob || \\%%hash, \\%%hash");
 }
 
 void
@@ -518,58 +509,18 @@ local_sub(var, value)
 PROTOTYPE: $$
 PPCODE:
 {
-   if (isGV(var) ? !(var=(SV*)GvCV(var))
-                 : !SvROK(var) || (var=SvRV(var), SvTYPE(var) != SVt_PVCV))
-      croak_xs_usage(cv, "*glob || \\&sub, \\&sub");
-   if (!SvROK(value) || (value=SvRV(value), SvTYPE(value) != SVt_PVCV))
-      croak_xs_usage(cv, "*glob || \\&sub, \\&sub");
-   LEAVE;
-   save_destructor_x(&undo_local_var, do_local_var(var, value));
-   ENTER;
-}
-
-void
-local_refs(...)
-PPCODE:
-{
-   I32 i, tmp_refcnt=0;
-   if (items%2) Perl_croak(aTHX_ "local_refs: odd argument list");
-   LEAVE;
-   for (i=0; i<items; i+=2) {
-      SV *var=ST(i), *value=ST(i+1);
-      if (SvROK(var)) {
-         GV *glob=(GV*)SvRV(var);
-         if (SvTYPE(glob)==SVt_PVGV) {
-            if (SvROK(value)) {
-               value=SvRV(value);
-               switch (SvTYPE(value)) {
-               case SVt_PVAV:
-                  save_destructor_x(&undo_local_ref, do_local_ref(aTHX_ (SV**)&(GvGP(glob)->gp_av), value));
-                  break;
-               case SVt_PVHV:
-                  save_destructor_x(&undo_local_ref, do_local_ref(aTHX_ (SV**)&(GvGP(glob)->gp_hv), value));
-                  break;
-               case SVt_PVCV:
-                  save_destructor_x(&undo_local_ref, do_local_ref(aTHX_ (SV**)&(GvGP(glob)->gp_cv), value));
-                  break;
-               default:
-                  ENTER;
-                  Perl_croak(aTHX_ "local_refs: only array, hash, or code references allowed");
-               }
-               continue;
-            }
-            var=GvSV(glob);
-         } else if (SvTEMP(var)) {
-            var=(SV*)glob;
-            tmp_refcnt=1;
+   if (SvROK(var) ? (var=SvRV(var), SvTYPE(var)==SVt_PVCV)
+                  : isGV(var) && (var=(SV*)GvCV(var), TRUE)) {
+      if (SvROK(value) && (value=SvRV(value), SvTYPE(value)==SVt_PVCV)) {
+         if (var) {
+            LEAVE;
+            save_destructor_x(&undo_local_var, do_local_var(var, value));
+            ENTER;
          }
-      } else if (SvTEMP(var)) {
-         ENTER;
-         Perl_croak(aTHX_ "local_refs: temporary target");
+         XSRETURN(1);
       }
-      save_destructor_x(&undo_local_scalar, do_local_scalar(aTHX_ var, value, tmp_refcnt));
    }
-   ENTER;
+   croak_xs_usage(cv, "*glob || \\&sub, \\&sub");
 }
 
 void
@@ -587,6 +538,7 @@ PPCODE:
    LEAVE;
    save_destructor_x(&undo_local_incr, do_local_incr(aTHX_ var, incr ? SvIV(incr) : 1));
    ENTER;
+   ++SP;
 }
 
 void
@@ -605,6 +557,7 @@ PPCODE:
       save_destructor_x(&undo_local_push, do_local_push(aTHX_ av, &ST(1), items-1, 1));
       ENTER;
    }
+   ++SP;
 }
 
 void
@@ -623,6 +576,7 @@ PPCODE:
       save_destructor_x(&undo_local_push, do_local_push(aTHX_ av, &ST(1), items-1, -1));
       ENTER;
    }
+   ++SP;
 }
 
 void
@@ -682,6 +636,7 @@ PPCODE:
    LEAVE;
    save_destructor_x(&undo_local_shorten, do_local_shorten(aTHX_ av, n));
    ENTER;
+   ++SP;
 }
 
 void
@@ -707,6 +662,7 @@ PPCODE:
    LEAVE;
    save_destructor_x(&undo_local_bless, do_local_bless(aTHX_ ref, pkg));
    ENTER;
+   ++SP;
 }
 
 void
@@ -723,51 +679,6 @@ PPCODE:
    }
 }
 
-void
-caller_object(pkg, ...)
-   SV* pkg;
-PPCODE:
-{
-   AV* args;
-   int descend_to_method=TRUE;
-   PERL_CONTEXT* cx_bottom;
-   PERL_CONTEXT* cx;
-   PERL_UNUSED_ARG(pkg);
-   for (cx_bottom=cxstack, cx=cx_bottom+cxstack_ix; cx>=cx_bottom; --cx) {
-      if (CxTYPE(cx)==CXt_SUB) {
-         CV *cv=cx->blk_sub.cv;
-         if (descend_to_method) {
-            /* there are no methods in DB:: */
-            if (!CvMETHOD(cv)) continue;
-            if (pm_perl_skip_debug_cx) {
-               /* the real argument list is stored in the block corresponding to DB::sub, not here */
-               descend_to_method=FALSE;
-               continue;
-            } else if (!CxHASARGS(cx)) continue;
-         } else if (SkipDebugSub(cv)) {
-            if (!CxHASARGS(cx)) {
-               descend_to_method=TRUE; continue;
-            }
-         } else continue;
-
-         args=cx->blk_sub.argarray;
-         if (AvFILLp(args)>=0 || AvALLOC(args)<AvARRAY(args)) {
-            SV *obj=*AvALLOC(args);     // the first arg may be shifted
-            if ((SvROK(obj) && SvOBJECT(SvRV(obj))) || SvPOK(obj)) {
-               int i;
-               for (i=0; i<items; ++i)
-                  if (sv_derived_from(obj, SvPVX(ST(i)))) {
-                     PUSHs(sv_mortalcopy(obj));
-                     if (GIMME_V==G_ARRAY) mXPUSHi(i);
-                     break;
-                  }
-            }
-         }
-         break;
-      }
-   }
-}
-
 
 BOOT:
 {
@@ -781,7 +692,6 @@ BOOT:
       CvNODEBUG_on(get_cv("Polymake::local_array", FALSE));
       CvNODEBUG_on(get_cv("Polymake::local_hash", FALSE));
       CvNODEBUG_on(get_cv("Polymake::local_sub", FALSE));
-      CvNODEBUG_on(get_cv("Polymake::local_refs", FALSE));
       CvNODEBUG_on(get_cv("Polymake::local_incr", FALSE));
       CvNODEBUG_on(get_cv("Polymake::local_push", FALSE));
       CvNODEBUG_on(get_cv("Polymake::local_unshift", FALSE));
@@ -791,7 +701,6 @@ BOOT:
       CvNODEBUG_on(get_cv("Polymake::local_swap", FALSE));
       CvNODEBUG_on(get_cv("Polymake::local_bless", FALSE));
       CvNODEBUG_on(get_cv("Polymake::propagate_match", FALSE));
-      CvNODEBUG_on(get_cv("Polymake::caller_object", FALSE));
    }
 }
 

@@ -1,17 +1,28 @@
-Left MouseButton: 
-		Orbit/Rotate Object
-		
-Middle MouseButton: 
-		Translate Object
-		
-Mousewheel: 
-		Scale the object
-		
-"e":
-		encompass/fit geometry				
+jReality/Polymake UI
 
-To select a vertex:
-	Left-Click on the vertex
+* Mouse:
 
-To drag a vertex:
-	Middle-Click and drag a vertex
+Left MouseButton: Orbit/Rotate Object
+		
+Middle MouseButton: Translate Object
+		
+Mousewheel: Scale the object
+
+Note that these functions may be en-/disabled in the toolbar. To show the
+toolbar use the windows menu.
+		
+To select a vertex: Left-Click on the vertex
+
+To drag a vertex: Middle-Click and drag a vertex
+
+* Keyboard:
+
+"e": encompass/fit geometry into the viewer
+
+* Shrink panel plugins
+
+You can get additional help for the individual panels by clicking on the "?" in
+the title bar of the shrink panel. If you happen to click onto the "X", the
+shrink panel is removed from the view. You can get it back via the menu bar
+"Window->Panels->...".
+

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -18,9 +18,9 @@
 # @category Producing other objects
 # Produces the Coxeter group of type //type//. 
 # The Dynkin diagrams of the different types can be
-# found in the description of the clients simple_roots_type_*.
+# found in the description of the clients [[simple_roots_type_A|simple_roots_type_*]].
 # @param String type the type of the Coxeter group
-# @return GroupOfPolytope the Coxeter group of type //type// 
+# @return group::GroupOfPolytope the Coxeter group of type //type// 
 user_function coxeter_group {
     my $type = $_[0];
     if (length($type) < 2) {

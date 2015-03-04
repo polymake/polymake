@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -21,6 +21,8 @@ use vars qw( %special_imports );
 $special_imports{"namespaces.pm"}=1;
 
 $INC{"namespaces.pm"}=$INC{"Polymake/Namespaces.pm"};
+$INC{"namespaces/Params.pm"}=$INC{"Polymake/Namespaces.pm"};
+$INC{"namespaces/Package.pm"}=$INC{"Polymake/Namespaces.pm"};
 *Polymake::Namespaces::import=\&import;
 
 1

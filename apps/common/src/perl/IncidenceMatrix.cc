@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,14 +16,18 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
-#include "polymake/IncidenceMatrix.h"
 #include "polymake/Array.h"
-#include "polymake/list"
-#include "polymake/Set.h"
 #include "polymake/FacetList.h"
-#include "polymake/SparseMatrix.h"
+#include "polymake/Graph.h"
+#include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
+#include "polymake/Rational.h"
+#include "polymake/Set.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/Vector.h"
+#include "polymake/client.h"
+#include "polymake/linalg.h"
+#include "polymake/list"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -72,5 +76,8 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary__ne, perl::Canned< const Wary< IncidenceMatrix< NonSymmetric > > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
    FunctionInstance4perl(new_X, IncidenceMatrix< NonSymmetric >, perl::Canned< const pm::MatrixMinor<pm::Transposed<pm::IncidenceMatrix<pm::NonSymmetric> >&, pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> const&, pm::all_selector const&> >);
    FunctionInstance4perl(new_X, IncidenceMatrix< NonSymmetric >, perl::Canned< const Array< Array< int > > >);
+   OperatorInstance4perl(Unary_com, perl::Canned< const Wary< pm::AdjacencyMatrix<pm::graph::Graph<pm::graph::Undirected>, false> > >);
+   OperatorInstance4perl(Binary_sub, perl::Canned< const Wary< pm::ComplementIncidenceMatrix<pm::AdjacencyMatrix<pm::graph::Graph<pm::graph::Undirected>, false> > > >, perl::Canned< const pm::IndexMatrix<pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true> const&> >);
+   FunctionInstance4perl(new_X, IncidenceMatrix< NonSymmetric >, perl::Canned< const Vector< Set< int > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

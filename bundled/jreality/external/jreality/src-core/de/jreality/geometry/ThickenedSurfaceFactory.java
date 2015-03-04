@@ -75,6 +75,7 @@ import de.jreality.scene.data.IntArrayArray;
 	boolean linearHole = false;
 	boolean thickenAlongFaceNormals = false;
 	boolean mergeDuplicateBoundaryVerts = false;
+	boolean constantWidth = false;
 	double holeFactor = 1.0;
 	double shiftAlongNormal = .5;
 	int stepsPerEdge = 3;
@@ -236,6 +237,13 @@ import de.jreality.scene.data.IntArrayArray;
 
 	public void setThickenAlongFaceNormals(boolean thickedAlongFaceNormals) {
 		this.thickenAlongFaceNormals = thickedAlongFaceNormals;
+	}
+	
+	public boolean isConstantWidth() {
+		return constantWidth;
+	}
+	public void setConstantWidth(boolean constantWidth) {
+		this.constantWidth = constantWidth;
 	}
 
 	/**
@@ -467,12 +475,18 @@ import de.jreality.scene.data.IntArrayArray;
 						vb = tangentQuadricBottom[j]; //Rn.linearCombination(null, 1-t, vb1, t,vb2);
 						vt = tangentQuadricTop[j]; //Rn.linearCombination(null, 1-t, vt1, t,vt2);
 					}
-//					else {
+					if (constantWidth) {
+						double[] vl = Rn.linearCombination(null, 1-u, vb, u, vt);
+						double[] cl = Rn.linearCombination(null, 1-u, cb, u, ct);
+						double cc = 1-v/Rn.euclideanDistance(vl, cl);
+						double vc = v/Rn.euclideanDistance(vl, cl);
+						Rn.linearCombination(allVertices[allVertCount+vertexCount], cc, vl, vc, cl);
+					} else {
 						Rn.bilinearInterpolation(allVertices[allVertCount+vertexCount], u, v, vb, vt, cb, ct);
-						allTexCoords[allVertCount+vertexCount][0] = tu;
-						allTexCoords[allVertCount+vertexCount][1] = tv;
-						nonDuplicateVertexIndicesForThisHole[vertexCount] = allVertCount+vertexCount;
-//					}
+					}
+					allTexCoords[allVertCount+vertexCount][0] = tu;
+					allTexCoords[allVertCount+vertexCount][1] = tv;
+					nonDuplicateVertexIndicesForThisHole[vertexCount] = allVertCount+vertexCount;
 					vertexCount++;
 					}				
 			}

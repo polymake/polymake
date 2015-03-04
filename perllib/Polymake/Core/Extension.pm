@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -98,7 +98,7 @@ sub new {
       if (defined (my $conflicts=delete $sections{CONFLICT})) {
          @{$self->conflicts} = $conflicts =~ /(\S+)/g;
       }
-            
+
       if (keys %sections) {
          warn_print( "Extension description file ", $self->dir, "/polymake.ext contains unknown or obsolete section(s): ",
                      join(", ", keys %sections) );
@@ -556,15 +556,16 @@ sub provide {
 #####################################################################################
 # private:
 sub activate {
-   local $Application::extension=shift;
-   $Application::extension->is_active=1;
-   foreach my $app_dir (glob($Application::extension->dir."/apps/*")) {
+   my ($self)=@_;
+   local $Application::extension=$self;
+   $self->is_active=1;
+   foreach my $app_dir (glob($self->dir."/apps/*")) {
       $app_dir =~ $filename_re;
       if (defined (my $app=lookup Application($1))) {
 	 $app->load_extension($app_dir);
       }
    }
-   push @active, $Application::extension;
+   push @active, $self;
 }
 #####################################################################################
 sub get_source_VCS {

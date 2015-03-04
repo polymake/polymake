@@ -40,6 +40,7 @@
 
 package de.jreality.geometry;
 
+import de.jreality.geometry.AbstractPointSetFactory.AttributeGenerator;
 import de.jreality.math.Rn;
 import de.jreality.scene.data.Attribute;
 
@@ -54,7 +55,10 @@ import de.jreality.scene.data.Attribute;
 	double[][] uvTriangle = {{0,0},{1,0},{0,1}};
 	final OoNode triangle = node(uvTriangle,"triangle");
 	int subdivision = 10;
+	boolean generateTextureCoordinates = false;
 	final OoNode subNode = node(new Integer(subdivision), "subdivision" );
+	AttributeGenerator textureCoordinates = attributeGeneratorNode( vertex, double[][].class, Attribute.TEXTURE_COORDINATES);
+	
 	public ParametricTriangularSurfaceFactory() {
 		setImmersion( new Immersion() {
 
@@ -82,6 +86,16 @@ import de.jreality.scene.data.Attribute;
 					}					
 				}
 		);
+		textureCoordinates.setGenerate(generateTextureCoordinates);
+		textureCoordinates.addIngr(vertexCoordinates);
+		textureCoordinates.setUpdateMethod(
+				new OoNode.UpdateMethod() {
+					public Object update( Object object) {	
+						return generateTextureCoordinates((double[][]) object);	
+					}
+				}
+		);
+		
 		faceIndices.addIngr(subNode);
 		faceIndices.setUpdateMethod(
 				new OoNode.UpdateMethod() {
@@ -107,6 +121,11 @@ import de.jreality.scene.data.Attribute;
 	public int getSubdivision()	{
 		return subdivision;
 	}
+	
+	public void setGenerateTextureCoordinates(boolean generateTextureCoordinates) {
+		this.generateTextureCoordinates = generateTextureCoordinates;
+	}
+
 	protected Object generateFaceIndices(int[][] is) {
 		int[][] indices = is;
 		
@@ -155,6 +174,12 @@ import de.jreality.scene.data.Attribute;
 		
 		return vertexCoordinates;
 	}
+
+
+	private Object generateTextureCoordinates(double[][] object) {
+		log( "compute", Attribute.TEXTURE_COORDINATES, "texture ");
+		return getDomainVertices(object);
+	}					
 
 	/**
 	 * generate regularly-spaced (u,v) points in the <i>uvTriangle</i> by subdividing

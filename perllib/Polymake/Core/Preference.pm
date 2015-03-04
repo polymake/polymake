@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -23,69 +23,105 @@ my $compile_clock=0;
 ####################################################################################
 package Polymake::Core::Preference::ControlList;
 
-# Structure of a control list:
-# for i=0..#{involved Labels}-1
-#   [i*2]   -> stored item
-#   [i*2+1] -> Label
-# [-1]  -> order count: number of leading items which are known to be ordered due to
-#          the active preferences. The trailing items are in arbitrary order.
-#          Thus, a control list without any active preferences applied has
-#          the order count == 0.
+use Polymake::Struct(
+   '@items',                          # even positions: controlled items (rules, subs); uneven positions: Label
+   [ '$ordered' => '0' ],             # number of leading items which are known to be ordered due to the active preferences.
+                                      #  The trailing items are considered equally ranked.
+                                      #  Thus, a control list without any active preferences applied has ordered==0.
+   [ '$cleanup_table' => 'undef' ],   # -> Scope::cleanup for lists changed by prefer_now
+);
 
 # the preferred item resides at the top position
-sub resolve { $_[0]->[0] }
+sub resolve { $_[0]->items->[0] }
 
 # private:
 sub register_copy {
    my ($self, $src)=@_;
-   for (my $i=1; $i<$#$src; $i+=2) {
-      ++($src->[$i]->controls->{$self});
+   for (my ($i, $last)=(1, $#{$src->items}); $i<=$last; $i+=2) {
+      ++($src->items->[$i]->controls->{$self});
    }
 }
 ####################################################################################
 sub dup {
    my ($self)=@_;
-   my @new=@$self;
-   register_copy(\@new, $self);
-   bless \@new;
+   my $copy=inherit_class([ [ @{$self->items} ], $self->ordered, undef ], $self);
+   register_copy($copy, $self);
+   $copy;
 }
 ####################################################################################
-sub merge {
+# protected:
+sub merge_items {
    my ($self, $src)=@_;
-   &register_copy;
 
-   if (!$src->[-1]  ||
-       $self->[-1] && $self->[1]->clock > $src->[1]->clock) {
+   if (!$src->ordered  ||
+       $self->ordered && $self->items->[1]->clock > $src->items->[1]->clock) {
       # src unordered - attach to the tail
-      splice @$self, -1, 0, @$src[0..$#$src-1];
+      push @{$self->items}, @{$src->items};
 
-   } elsif (!$self->[-1]  ||
-	    $src->[-1] && $self->[1]->clock < $src->[1]->clock) {
-      # self unordered - push the new items to the front
-      splice @$self, 0, 0, @$src[0..$#$src-1];
-      $self->[-1]=$src->[-1];
+   } elsif (!$self->ordered  ||
+            $src->ordered && $self->items->[1]->clock < $src->items->[1]->clock) {
+      # self unordered - insert the new items at the beginning
+      unshift @{$self->items}, @{$src->items};
+      $self->ordered=$src->ordered;
 
    } else {
       # both ordered: merge carefully
-      my $self_ord=$self->[-1];
+      my $self_ord=$self->ordered;
       my ($s, $d);
-      for (($s,$d)=(1,1);  $s<$src->[-1] && $d<$self_ord;  $d+=2) {
-	 if ($self->[$d]->rank > $src->[$s]->rank) {
-	    splice @$self, $d-1, 0, @$src[$s-1,$s];
-	    $s+=2;
-	    $self_ord+=2;
-	 }
+      for (($s, $d)=(0, 0);  $s<$src->ordered && $d<$self_ord;  $d+=2) {
+         if ($self->items->[$d+1]->rank > $src->items->[$s+1]->rank) {
+            splice @{$self->items}, $d, 0, @{$src->items}[$s, $s+1];
+            $s+=2;
+            $self_ord+=2;
+         }
       }
-      $self->[-1]+=$src->[-1];
-      # insert the unordered rest
-      splice @$self, $self_ord, 0, @$src[$s-1..$#$src-1];
+      $self->ordered += $src->ordered;
+      # insert the higher-ranked and unordered rest
+      splice @{$self->items}, $self_ord, 0, @{$src->items}[$s..$#{$src->items}];
+   }
+}
+####################################################################################
+# protected:
+sub merge {
+   my $src=shift;
+   my $self=$src->dup;
+   my $mergeinfo;
+   if (defined($src->cleanup_table)) {
+      # $src has been temporarily modified by prefer_now: this list has to be re-merged after leaving the scope
+      $src->cleanup_table->{$self}=$mergeinfo=[ [ ], 0, $src ];
+   }
+   foreach $src (@_) {
+      if (defined($src->cleanup_table)) {
+         # $src has been temporarily modified by prefer_now: this list has to be re-merged after leaving the scope
+         # mergeinfo holds the invariant part gathered so far
+         $mergeinfo //= [ [ @{$self->items} ], $self->ordered ];
+         $src->cleanup_table->{$self} //= $mergeinfo;
+      }
+      if (defined($mergeinfo)) {
+         push @$mergeinfo, $src;
+      }
+      register_copy($self, $src);
+      merge_items($self, $src);
+   }
+   $self
+}
+####################################################################################
+# called from Scope destructor
+# merge the items afresh after the source lists have been reverted
+sub cleanup {
+   my ($self, $mergeinfo)=@_;
+   # $mergeinfo may be shared between several scope cleanup tables, hence should be immutable
+   @{$self->items}=@{$mergeinfo->[0]};
+   $self->ordered=$mergeinfo->[1];
+   foreach my $src (@{$mergeinfo}[2..$#$mergeinfo]) {
+      merge_items($self, $src);
    }
 }
 ####################################################################################
 sub DESTROY {
    my ($self)=@_;
-   for (my $i=1; $i<$#$self; $i+=2) {
-      delete $self->[$i]->controls->{$self};
+   for (my ($i, $last)=(1, $#{$self->items}); $i<=$last; $i+=2) {
+      delete $self->items->[$i]->controls->{$self};
    }
 }
 
@@ -98,61 +134,85 @@ END {
    }
 }
 ####################################################################################
-# return all items from a control list, removing duplicates
+# return the items from a control list, removing duplicates
 sub get_items {
    my ($self)=@_;
    my (%seen, @items);
-   for (my $i=0; $i<$#$self; $i+=2) {
-      push @items, $self->[$i] unless $seen{$self->[$i]}++;
+   for (my ($i, $last)=(0, $#{$self->items}); $i<$last; $i+=2) {
+      push @items, $self->items->[$i] unless $seen{$self->items->[$i]}++;
    }
    @items;
 }
 ####################################################################################
 # return the items from a control list, sorted by rank
 # each bag starts with the rank value
-# the last bag always contains unordered items (and rank is undef)
+# the last bag may contain unordered items (and rank is undef)
 sub get_items_by_rank {
    my ($self)=@_;
    my (%seen, @bags);
    my $i;
-   for ($i=0; $i<$self->[-1]; $i+=2) {
-      my $cur_rank=$self->[$i+1]->rank;
+   for ($i=0; $i<$self->ordered; $i+=2) {
+      my $cur_rank=$self->items->[$i+1]->rank;
       if (!@bags) {
-	 push @bags, [ $cur_rank ];
-      } elsif (@{$bags[-1]}==0) {
-	 $bags[-1]->[0]=$cur_rank;
+         push @bags, [ $cur_rank ];
+      } elsif (@{$bags[-1]}==1) {
+         $bags[-1]->[0]=$cur_rank;
       } elsif ($bags[-1]->[0]<$cur_rank) {
-	 push @bags, [ $cur_rank ];
+         push @bags, [ $cur_rank ];
       }
-      push @{$bags[-1]}, $self->[$i] unless $seen{$self->[$i]}++;
+      push @{$bags[-1]}, $self->items->[$i] unless $seen{$self->items->[$i]}++;
    }
-   if ($i<$#$self) {
+   my $last=$#{$self->items};
+   if ($i<$last) {
       if (!@bags || @{$bags[-1]}>1) {
-	 push @bags, [ undef ];
+         push @bags, [ undef ];
       } else {
-	 undef $bags[-1]->[0];
+         undef $bags[-1]->[0];
       }
-      for (; $i<$#$self; $i+=2) {
-	 push @{$bags[-1]}, $self->[$i] unless $seen{$self->[$i]}++;
+      for (; $i<$last; $i+=2) {
+         push @{$bags[-1]}, $self->items->[$i] unless $seen{$self->items->[$i]}++;
       }
    }
    @bags;
 }
 
 ####################################################################################
+sub describe_control_item {
+   my $item=shift;
+   if (is_code($item)) {
+      $item=$item->() if sub_file($item) =~ m|Polymake/Overload\.pm$|;
+      (is_method($item) ? "method " : "sub ").method_owner($item)."::".method_name($item)." [".sub_file($item).":".sub_firstline($item)."]"
+   } else {
+      "rule of ".$item->defined_for->full_name." ".$item->header." [".sub_file($item->code).":".sub_firstline($item->code)."]"
+   }
+}
+
+sub describe {
+   my $self=shift;
+   my $ordered_until=$self->ordered;
+   my @result;
+   for (my ($i, $last)=(0, $#{$self->items}); $i<$last; $i+=2) {
+      if ($i==$self->ordered) {
+	 push @result, "------";
+      }
+      push @result, $self->items->[$i+1]->full_name, describe_control_item($self->items->[$i]);
+   }
+   @result;
+}
+####################################################################################
 package Polymake::Core::Preference::Label;
 
 use Polymake::Struct (
    [ new => '$;$$$$' ],
    [ '$name' => '#1' ],
-   [ '$parent' => 'weak( #2 )' ],	# Label higher in the hierarchy
+   [ '$parent' => 'weak( #2 )' ],       # Label higher in the hierarchy
    [ '$wildcard_name' => '#3 || "*"' ],
-   '%children',				# Labels lower in the hierarchy
-   '%controls',				# control list -> number of items in this list
-   [ '$clock' => '#4' ],		# sequential number of the last 'prefer' command
-   [ '$rank' => '#5' ],			# rank in this command
-   [ '$application' => 'undef' ],	# Application and ...
-   [ '$extension' => 'undef' ],		# Extension where this label occurs
+   '%children',                         # Labels lower in the hierarchy
+   '%controls',                         # control list -> number of items in this list
+   [ '$clock' => '#4' ],                # sequential number of the last 'prefer' command
+   [ '$rank' => '#5' ],                 # rank in this command
+   [ '$application' => 'undef' ],       # Application and ...
+   [ '$extension' => 'undef' ],         # Extension where this label occurs
 );
 
 ####################################################################################
@@ -160,10 +220,10 @@ sub set_application {
    my ($self, $app, $ext)=@_;
    while ($self->parent) {
       if ($self->application) {
-	 if ($self->application != $app && $self->application->imported->{$app->name}) {
-	    $self->application=$app;
-	 }
-	 last;
+         if ($self->application != $app && $self->application->imported->{$app->name}) {
+            $self->application=$app;
+         }
+         last;
       }
       $self->application=$app;
       $self->extension=$ext;
@@ -180,46 +240,38 @@ sub child {
 sub add_control {
    my ($self, $list, $item)=@_;
    ++$self->controls->{$list};
-   if (@$list) {
-      my $pos=-1;
+   if (is_object($list)) {
+      my $pos=@{$list->items};
       if (defined($self->clock)) {
-	 if ($list->[-1]==0  or
-	     (my $clock_diff=$list->[1]->clock - $self->clock) < 0) {
-	    $pos=0;
-	    $list->[-1]=2;
-	 } elsif ($clock_diff==0) {
-	    for ($pos=0;
-		 $pos<$list->[-1] && $list->[$pos+1]->rank <= $self->rank;
-		 $pos+=2) { }
-	    $list->[-1]+=2;
-	 }
+         if ($list->ordered==0  or
+             (my $clock_diff=$list->items->[1]->clock - $self->clock) < 0) {
+            $pos=0;
+            $list->ordered=2;
+         } elsif ($clock_diff==0) {
+            for ($pos=0;
+                 $pos<$list->ordered && $list->items->[$pos+1]->rank <= $self->rank;
+                 $pos+=2) { }
+            $list->ordered+=2;
+         }
       }
-      splice @$list, $pos, 0, $item, $self;
+      splice @{$list->items}, $pos, 0, $item, $self;
    } else {
+      @$list==0
+        or confess( "internal error: passing a non-empty anonymous array to Label::add_control" );
       bless $list, "Polymake::Core::Preference::ControlList";
-      @$list=($item, $self, defined($self->clock)*2);
-   }
-}
-####################################################################################
-sub describe_control_item {
-   my $item=shift;
-   if (is_code($item)) {
-      $item=$item->() if sub_file($item) =~ m|Polymake/Overload\.pm$|;
-      (is_method($item) ? "method " : "sub ").method_owner($item)."::".method_name($item)."(".prototype($item).")"
-   } else {
-      "rule of ".method_owner($item->code)->type->full_name." ".$item->header." from ".sub_file($item->code)." line ".sub_firstline($item->code);
+      @$list=( [ $item, $self ], defined($self->clock)*2, undef );
    }
 }
 ####################################################################################
 sub list_all_rules {
-   my $self=shift;
+   my ($self)=@_;
    my @rules;
    while (my ($list, $cnt)=each %{$self->controls}) {
-      for (my $pos=0; $pos < $#$list; $pos+=2) {
-	 if ($list->[$pos+1]==$self && instanceof Rule(my $rule=$list->[$pos])) {
-	    push @rules, $rule;
-	    --$cnt or last;
-	 }
+      for (my ($pos, $last)=(0, $#{$list->items}); $pos < $last; $pos+=2) {
+         if ($list->items->[$pos+1]==$self && instanceof Rule(my $rule=$list->items->[$pos])) {
+            push @rules, $rule;
+            --$cnt or last;
+         }
       }
    }
    keys %{$self->controls};  # reset iterator
@@ -232,42 +284,42 @@ sub set_preferred {
    my @out_of_effect;
    if (defined $self->clock) {
       if ($self->clock==$_[0]) {
-	 warn_print( $self->full_name, " occurs in the preference list at positions ", $self->rank, " and $_[1]" );
-	 return;
+         warn_print( $self->full_name, " occurs in the preference list at positions ", $self->rank, " and $_[1]" );
+         return;
       }
       push @out_of_effect, $self->clock;
    }
    ($self->clock, $self->rank)=@_;
    while (my ($list, $cnt)=each %{$self->controls}) {
       # what has to be done with this control list?
-      if ($list->[-1]) {
-	 my $clock_cmp=$list->[1]->clock <=> $self->clock;
-	 if ($clock_cmp<0) {
-	    # the control list is obsolete, current label moves to its head
-	    push @out_of_effect, $list->[1]->clock;
-	    $list->[-1]=0;
-	 } elsif ($clock_cmp>0) {
-	    # default preference from the rules defeated by an active setting
-	    push @out_of_effect, $self->clock;
-	    next;
-	 } elsif ($list->[1]==$self) {
-	    # nothing changes
-	    $list->[-1]=2*$cnt;
-	    next;
-	 }
+      if ($list->ordered) {
+         my $clock_cmp=$list->items->[1]->clock <=> $self->clock;
+         if ($clock_cmp<0) {
+            # the control list is obsolete, current label moves to its head
+            push @out_of_effect, $list->items->[1]->clock;
+            $list->ordered=0;
+         } elsif ($clock_cmp>0) {
+            # default preference from the rules defeated by an active setting
+            push @out_of_effect, $self->clock;
+            next;
+         } elsif ($list->items->[1]==$self) {
+            # nothing changes
+            $list->ordered=2*$cnt;
+            next;
+         }
       }
 
       # lift all occurences of the current label to the bottom end of the active region of the control list
-      my $new_pos=$list->[-1]+1;
-      $list->[-1]+=2*$cnt;
-      for (my $pos=$new_pos; $pos < $#$list; $pos+=2) {
-	 if ($list->[$pos] == $self) {
-	    if ($pos != $new_pos) {
-	       splice @$list, $new_pos-1, 0, splice @$list, $pos-1, 2;
-	    }
-	    --$cnt or last;
-	    $new_pos+=2;
-	 }
+      my $new_pos=$list->ordered;
+      $list->ordered+=2*$cnt;
+      for (my ($pos, $last)=($new_pos, $#{$list->items}); $pos<$last; $pos+=2) {
+         if ($list->items->[$pos+1] == $self) {
+            if ($pos != $new_pos) {
+               splice @{$list->items}, $new_pos, 0, splice @{$list->items}, $pos, 2;
+            }
+            --$cnt or last;
+            $new_pos+=2;
+         }
       }
       confess( "corrupted control list for label ", $self->full_name ) if $cnt;
    }
@@ -278,14 +330,14 @@ sub set_preferred {
 sub neutralize_controls {
    my ($self, $deep)=@_;
    foreach my $list (keys %{$self->controls}) {
-      if ($list->[-1]>0 && $list->[1]==$self) {
-	 $list->[-1]=0;
+      if ($list->ordered && $list->items->[1]==$self) {
+         $list->ordered=0;
       }
    }
 
    if ($deep) {
       foreach my $c (values %{$self->children}) {
-	 neutralize_controls($c, $deep);
+         neutralize_controls($c, $deep);
       }
    }
 }
@@ -298,41 +350,57 @@ sub set_temp_preferred {
    $scope->end_locals;
 
    while (my ($list, $cnt)=each %{$self->controls}) {
-      if ($#$list == $cnt*2) {
-	 # no competitors
-	 $scope->begin_locals;
-	 local_scalar($list->[-1], $cnt*2);
-	 $scope->end_locals;
-      } else {
-	 my $i=1;
-	 my $create_temp_list=1;
-	 my $higher=0;
-	 if ($rank && $list->[1]->clock == $clock && $list->[1]->rank < $rank) {
-	    $create_temp_list=0;
-	    $i=$list->[-1]+1;
-	    $higher=($i-1)/2;
-	 }
-	 my $new_list= $create_temp_list ? [ @{$list}[0..$#$list-1], 0 ] : $list;
-	 for (; $i<$#$new_list;  $i+=2) {
-	    if ($new_list->[$i] == $self) {
-	       if ($i-1 != $new_list->[-1]) {
-		  # put the controlled item in the first position
-		  splice @$new_list, $new_list->[-1], 0, splice @$new_list, $i-1, 2;
-	       }
-	       $new_list->[-1]+=2;
-	       last unless --$cnt;
-	    }
-	 }
-	 if ($Verbose::scheduler) {
-	    dbg_print( $self->full_name, " temporarily preferred over ",
-		       join(", ", map { $new_list->[$_*2+1]->full_name } $higher+$self->controls->{$list}..$#$new_list/2-1) );
-	 }
-	 confess( "corrupted control list for label ", $self->full_name ) if $cnt;
-         if ($create_temp_list) {
-	    $scope->begin_locals;
-	    local_array($list, bless $new_list, "Polymake::Core::Preference::ControlList");
-	    $scope->end_locals;
+      my ($new_items, $new_ordered);
+      if (@{$list->items} == $cnt*2) {
+         # no competitors
+         if ($list->ordered) {
+	    # nothing to do
+            next;
+	 } else {
+	    $new_items=[ @{$list->items}[0..$cnt*2-1] ];
+            $new_ordered=$cnt*2;
          }
+      } else {
+         if ($rank && $list->items->[1]->clock == $clock && $list->items->[1]->rank < $rank) {
+            # already modified this list via a higher-ranked label
+            $list->cleanup_table == $scope->cleanup
+              or confess( "internal error: cleanup table mismatch: ", $list->cleanup_table, " instead of ", $scope->cleanup );
+            $new_items=$list->items;
+            $new_ordered=$list->ordered;
+         } else {
+            $new_items=[ @{$list->items} ];
+            $new_ordered=0;
+         }
+         my $higher=$new_ordered/2;
+         for (my ($i, $last)=($new_ordered, $#$new_items); $i<$last; $i+=2) {
+            if ($new_items->[$i+1] == $self) {
+               if ($i != $new_ordered) {
+                  # put the controlled item in the first position
+                  splice @$new_items, $new_ordered, 0, splice @$new_items, $i, 2;
+               }
+               $new_ordered+=2;
+               last unless --$cnt;
+            }
+         }
+         if ($Verbose::scheduler) {
+            dbg_print( $self->full_name, " temporarily preferred over ",
+                       join(", ", map { $new_items->[$_*2+1]->full_name } $higher+$self->controls->{$list}..($#$new_items-1)/2) );
+         }
+         $cnt==0
+           or confess( "corrupted control list for label ", $self->full_name );
+      }
+      if ($list->cleanup_table == $scope->cleanup) {
+         # already modified in this scope
+         if ($new_items != $list->items) {
+            $list->items=$new_items;
+         }
+         $list->ordered=$new_ordered;
+      } else {
+         $scope->begin_locals;
+         local_array($list->items, $new_items);
+         local_scalar($list->ordered, $new_ordered);
+         local_scalar($list->cleanup_table, $scope->cleanup);
+         $scope->end_locals;
       }
    }
 
@@ -380,7 +448,7 @@ sub status {
    my ($self)=@_;
    my $status=3;
    foreach my $list (keys %{$self->controls}) {
-      $status &= ($list->[-1]>0 && $list->[1]->clock==$self->clock) ? 2 : 1
+      $status &= ($list->ordered && $list->items->[1]->clock==$self->clock) ? 2 : 1
       or return 0;
    }
 
@@ -398,11 +466,11 @@ sub add_to_pref_tree {
       push @$list, $self;
    } else {
       while (my ($name, $c)=each %{$self->children}) {
-	 if (!exists $list->{$name} || is_ARRAY($list->{$name})) {
-	    push @{$list->{$name}}, $c;
-	 } elsif ($list->{$name}) {
-	    add_to_pref_tree($c, $list->{$name});
-	 }
+         if (!exists $list->{$name} || is_ARRAY($list->{$name})) {
+            push @{$list->{$name}}, $c;
+         } elsif ($list->{$name}) {
+            add_to_pref_tree($c, $list->{$name});
+         }
       }
    }
 }
@@ -417,11 +485,11 @@ sub subtract {
 
    if (defined (my $subtree=$tree->{$self->name})) {
       if ($subtree) {
-	 # positive result already known
-	 add_to_pref_tree($self, $subtree);
+         # positive result already known
+         add_to_pref_tree($self, $subtree);
       } else {
-	 # negative result already known
-	 neutralize_controls($self, 1);
+         # negative result already known
+         neutralize_controls($self, 1);
       }
       return;
    }
@@ -441,8 +509,8 @@ sub subtract {
 
    } elsif ($status) {
       if ($wildcard_cmp>0) {
-	 # this branch has survived
-	 $tree->{$self->name}=[ $self ];
+         # this branch has survived
+         $tree->{$self->name}=[ $self ];
       }
 
    } else {
@@ -472,7 +540,7 @@ sub deactivate {
    my $self=shift;
    foreach (@{$self->labels}) {
       if ($_->clock == $self->clock) {
-	 $_->neutralize_controls(1);
+         $_->neutralize_controls(1);
       }
    }
 }
@@ -484,9 +552,9 @@ sub compare {
    my $result=0;
    for (my $i=0; $i<=$l; ++$i) {
       if ($p1->labels->[$i] != $p2->labels->[$i]) {
-	 my $cmp=prefix_cmp($p1->labels->[$i]->full_name, $p2->labels->[$i]->full_name, ".");
-	 return 2 if $cmp==2  or  $result && $result != $cmp;
-	 $result=$cmp;
+         my $cmp=prefix_cmp($p1->labels->[$i]->full_name, $p2->labels->[$i]->full_name, ".");
+         return 2 if $cmp==2  or  $result && $result != $cmp;
+         $result=$cmp;
       }
    }
    $result;
@@ -500,9 +568,9 @@ sub subtract {
    for (my $i=0; $i<=$#sublists; ++$i) {
       my $list=$sublists[$i];
       if (is_ARRAY($list)) {
-	 push @result, new List($self->clock, @$list);
+         push @result, new List($self->clock, @$list);
       } elsif ($list) {
-	 push @sublists, values %$list;
+         push @sublists, values %$list;
       }
    }
    @result;
@@ -522,14 +590,14 @@ sub belongs_to {
    my $answer=0;
    foreach my $label (@{$self->labels}) {
       if (defined $label->application)  {
-	 if ($label->application==$app) {
-	    $answer=1;
-	 } else {
-	    $app->imported->{$label->application->name} or return 0;
-	 }
+         if ($label->application==$app) {
+            $answer=1;
+         } else {
+            $app->imported->{$label->application->name} or return 0;
+         }
       } else {
-	 warn_print( "label ", $label->full_name, " seems to be obsolete" );
-	 return 0;
+         warn_print( "label ", $label->full_name, " seems to be obsolete" );
+         return 0;
       }
    }
    $answer;
@@ -538,6 +606,7 @@ sub belongs_to {
 sub visible_from {
    my ($self, $app)=@_;
    foreach my $label (@{$self->labels}) {
+      next unless defined($label->application);
       return 0 unless $label->application==$app || $app->imported->{$label->application->name};
    }
    1
@@ -563,7 +632,7 @@ sub find_label {
    my $label=$self->labels->{$name};
    unless ($label) {
       foreach (@{$self->imported}) {
-	 $label=$_->labels->{$name}  and  last;
+         $label=$_->labels->{$name}  and  last;
       }
       return unless $label;
    }
@@ -579,24 +648,24 @@ sub list_completions {
    my ($self, $expr)=@_;
    if (length($expr)) {
       if ($expr =~ s/^\*\.($hier_id_re)\s+//o) {
-	 my @sublevels=split /\./, $1, -1;
-	 my %ignore;
-	 while ($expr =~ s/^($id_re)\s*,\s*//go) {
-	    $ignore{$1}=1;
-	 }
-	 grep { !$ignore{$_} && /^\Q$expr\E/ } map { $_->descend(@sublevels) ? ($_->name) : () } values %{$self->labels}
+         my @sublevels=split /\./, $1, -1;
+         my %ignore;
+         while ($expr =~ s/^($id_re)\s*,\s*//go) {
+            $ignore{$1}=1;
+         }
+         grep { !$ignore{$_} && /^\Q$expr\E/ } map { $_->descend(@sublevels) ? ($_->name) : () } values %{$self->labels}
       } else {
-	 my ($top, @sublevels)=split /\./, $expr, -1;
-	 if (@sublevels) {
-	    if ($top eq "*") {
-	       map { $_->list_completions(@sublevels) } values %{$self->labels}
-	    } else {
-	       my $label=$self->labels->{$top} or return ();
-	       $label->list_completions(@sublevels)
-	    }
-	 } else {
-	    grep { /^\Q$top\E/ } keys %{$self->labels}
-	 }
+         my ($top, @sublevels)=split /\./, $expr, -1;
+         if (@sublevels) {
+            if ($top eq "*") {
+               map { $_->list_completions(@sublevels) } values %{$self->labels}
+            } else {
+               my $label=$self->labels->{$top} or return ();
+               $label->list_completions(@sublevels)
+            }
+         } else {
+            grep { /^\Q$top\E/ } keys %{$self->labels}
+         }
       }
    } else {
       keys %{$self->labels}
@@ -610,14 +679,14 @@ sub parse_label_expr {
 
    if ($expr =~ /^ $hier_id_re $/xo) {
       if (defined (my $label=find_label($self, $expr, $mode & 1))) {
-	 return $label;
+         return $label;
       } else {
-	 push @err, $expr;
+         push @err, $expr;
       }
    } elsif (my ($sublevel, $list)= $expr =~ /^ \*\.($hier_id_re) \s+ ($hier_ids_re) $/xo) {
       @l=map { find_label($self, "$_.$sublevel", $mode & 1) or
-	       push @err, "$_.$sublevel"
-	 } split /\s*,\s*/, $list;
+               push @err, "$_.$sublevel" and ()
+         } split /\s*,\s*/, $list;
    } else {
       croak( "syntax error in preference list" );
    }
@@ -626,8 +695,8 @@ sub parse_label_expr {
       if ($mode & 2) {
          croak( "unknown label", @err>1 && "s", " @err" );
       } else {
-	 warn_print( "stored preference statements for label", @err>1 && "s", " @err\n",
-		     "are not in effect - probably excluded by auto-configuration" );
+         warn_print( "stored preference statements for label", @err>1 && "s", " @err\n",
+                     "are not in effect - probably excluded by auto-configuration" );
          $self->handler->need_save=1;
       }
    }
@@ -648,12 +717,12 @@ sub add_preference {
       push @{$self->default_prefs}, $pref;
    } else {
       if (defined (my $dominating=$self->handler->check_repeating($pref))) {
-	 if ($mode==1) {
-	    # loading private file
-	    warn_print( "preference list ", $pref->toString, " ignored since another list ", $dominating->toString, " is already in effect" );
-	    $self->handler->need_save=1;
-	 }
-	 return;
+         if ($mode==1) {
+            # loading private file
+            warn_print( "preference list ", $pref->toString, " ignored since another list ", $dominating->toString, " is already in effect" );
+            $self->handler->need_save=1;
+         }
+         return;
       }
       $self->handler->need_save=1 if $mode==0;
       $self->handler->activate(0,$pref);
@@ -676,38 +745,38 @@ sub matching_default_prefs {
    my @matched;
    if ($expr =~ /^ $hier_id_re $/xo) {
       foreach my $pref (@{$self->default_prefs}) {
-	 my $cmp=prefix_cmp($expr, $pref->labels->[0]->full_name, ".");
-	 if ($cmp == 0) {
-	    # exact match
-	    return $pref;
-	 }
-	 if ($cmp==1) {
-	    # re-activating at a sublevel
-	    if (defined (my $label=find_label($self, $expr))) {
-	       return new List(++$clock, $label);
-	    }
-	 } elsif ($cmp==-1) {
-	    # re-activating this list and maybe more others
-	    push @matched, $pref;
-	 }
+         my $cmp=prefix_cmp($expr, $pref->labels->[0]->full_name, ".");
+         if ($cmp == 0) {
+            # exact match
+            return $pref;
+         }
+         if ($cmp==1) {
+            # re-activating at a sublevel
+            if (defined (my $label=find_label($self, $expr))) {
+               return new List(++$clock, $label);
+            }
+         } elsif ($cmp==-1) {
+            # re-activating this list and maybe more others
+            push @matched, $pref;
+         }
       }
 
    } elsif ($expr =~ /^ \*\.$hier_id_re $/xo) {
       foreach my $pref (@{$self->default_prefs}) {
-	 my $cmp=prefix_cmp($expr, $pref->labels->[0]->wildcard_name, ".");
-	 if ($cmp==0) {
-	    # exact match
-	    return $pref;
-	 }
-	 if ($cmp==1) {
-	    # re-activating at a sublevel
-	    my @sublevels=split /\./, substr($expr, length($pref->labels->[0]->wildcard_name)+1);
-	    if (my @sublabels=map { $_->descend(@sublevels) } @{$pref->labels}) {
-	       return new List(++$clock, @sublabels);
-	    }
-	 } elsif ($cmp==-1) {
-	    push @matched, $pref;
-	 }
+         my $cmp=prefix_cmp($expr, $pref->labels->[0]->wildcard_name, ".");
+         if ($cmp==0) {
+            # exact match
+            return $pref;
+         }
+         if ($cmp==1) {
+            # re-activating at a sublevel
+            my @sublevels=split /\./, substr($expr, length($pref->labels->[0]->wildcard_name)+1);
+            if (my @sublabels=map { $_->descend(@sublevels) } @{$pref->labels}) {
+               return new List(++$clock, @sublabels);
+            }
+         } elsif ($cmp==-1) {
+            push @matched, $pref;
+         }
       }
 
    } else {
@@ -756,12 +825,12 @@ sub user_commands {
 package Polymake::Core::Preference;
 
 use Polymake::Struct (
-   [ '$private_file' => 'undef' ],	# Customize::File
-   [ '$custom' => 'undef' ],		# Customize::perApplication for User custom variables
-   '@applications',			# perApplication
-   '%global_pieces',			# package => global file fragment
-   '%private_pieces',			# package => private file fragment
-   '$need_save',			# boolean
+   [ '$private_file' => 'undef' ],      # Customize::File
+   [ '$custom' => 'undef' ],            # Customize::perApplication for User custom variables
+   '@applications',                     # perApplication
+   '%global_pieces',                    # package => global file fragment
+   '%private_pieces',                   # package => private file fragment
+   '$need_save',                        # boolean
    '@active_prefs',
 );
 
@@ -769,9 +838,9 @@ sub load_private {
    my ($self, $filename)=@_;
    if (-f $filename) {
       if (defined ($self->private_file=new Customize::File($filename))) {
-	 $self->private_pieces=$self->private_file->pieces;
-	 $self->need_save= !defined($Version) || $self->private_file->version lt $VersionNumber;
-	 add AtEnd("Preference", sub { $self->save if $self->need_save }, before => "Customize");
+         $self->private_pieces=$self->private_file->pieces;
+         $self->need_save= !defined($Version) || $self->private_file->version lt $VersionNumber;
+         add AtEnd("Preference", sub { $self->save if $self->need_save }, before => "Customize");
       }
    } else {
       $self->need_save=1;
@@ -844,14 +913,14 @@ sub activate {
       $pref->clock=++$clock if $incr_clock;
 
       if (my %old_clocks=map { $_=>1 } $pref->activate) {
-	 # some older preference lists need modification or even must be discarded
-	 my $new_wildcard=$pref->labels->[0]->wildcard_name;
-	 for (my $i=$#{$self->active_prefs}; $i>=0; --$i) {
-	    my $old_pref=$self->active_prefs->[$i];
-	    if ($old_clocks{$old_pref->clock}) {
-	       splice @{$self->active_prefs}, $i, 1, $old_pref->subtract($new_wildcard);
-	    }
-	 }
+         # some older preference lists need modification or even must be discarded
+         my $new_wildcard=$pref->labels->[0]->wildcard_name;
+         for (my $i=$#{$self->active_prefs}; $i>=0; --$i) {
+            my $old_pref=$self->active_prefs->[$i];
+            if ($old_clocks{$old_pref->clock}) {
+               splice @{$self->active_prefs}, $i, 1, $old_pref->subtract($new_wildcard);
+            }
+         }
       }
    }
 }
@@ -861,10 +930,10 @@ sub check_repeating {
    foreach my $p (@{$self->active_prefs}) {
       my $cmp=$p->compare($pref);
       if ($cmp <= 0) {
-	 return ($cmp, $p);
+         return ($cmp, $p);
       } elsif ($cmp==1) {
-	 # has absorbed some existing preference list - can't have duplicates
-	 last;
+         # has absorbed some existing preference list - can't have duplicates
+         last;
       }
    }
    ()
@@ -874,41 +943,41 @@ sub reset {
    my ($self, $app, $expr)=@_;
    if (my @prefs=map { $_->matching_default_prefs($expr) } reverse($app->prefs, @{$app->prefs->imported})) {
       activate($self, 1, grep {
-	                    if (my ($cmp, $p)=check_repeating($self,$_)) {
-			       $p->provenience=2 if $cmp==0;
-			       0
-			    } else {
-			       $self->need_save=1
-			    }
-			 } @prefs);
+                            if (my ($cmp, $p)=check_repeating($self,$_)) {
+                               $p->provenience=2 if $cmp==0;
+                               0
+                            } else {
+                               $self->need_save=1
+                            }
+                         } @prefs);
 
    } else {
       my $matched=0;
       my @sublevels=split /\./, $expr;
       my $use_wildcard= $sublevels[0] eq "*" and shift @sublevels;
       for (my $i=$#{$self->active_prefs}; $i>=0; --$i) {
-	 my $pref=$self->active_prefs->[$i];
-	 if (!($pref->provenience & 2) && $pref->visible_from($app)) {
-	    if ($use_wildcard
-		? prefix_cmp($expr, $pref->labels->[0]->wildcard_name, ".")<=0
-		: @{$pref->labels}==1 && prefix_cmp($expr, $pref->labels->[0]->full_name, ".")<=0) {
-	       $pref->deactivate;
-	       splice @{$self->active_prefs}, $i, 1;
-	       $matched=1;
-	    } elsif ($use_wildcard and
-		     $pref->labels->[0]->wildcard_name eq "*"
-		     ? $pref->labels->[0]->descend(@sublevels)
-		     : prefix_cmp($pref->labels->[0]->wildcard_name, $expr, ".")<=0) {
-	       splice @{$self->active_prefs}, $i, 1, $pref->subtract($expr);
-	       $matched=1;
-	    }
-	 }
+         my $pref=$self->active_prefs->[$i];
+         if (!($pref->provenience & 2) && $pref->visible_from($app)) {
+            if ($use_wildcard
+                ? prefix_cmp($expr, $pref->labels->[0]->wildcard_name, ".")<=0
+                : @{$pref->labels}==1 && prefix_cmp($expr, $pref->labels->[0]->full_name, ".")<=0) {
+               $pref->deactivate;
+               splice @{$self->active_prefs}, $i, 1;
+               $matched=1;
+            } elsif ($use_wildcard and
+                     $pref->labels->[0]->wildcard_name eq "*"
+                     ? $pref->labels->[0]->descend(@sublevels)
+                     : prefix_cmp($pref->labels->[0]->wildcard_name, $expr, ".")<=0) {
+               splice @{$self->active_prefs}, $i, 1, $pref->subtract($expr);
+               $matched=1;
+            }
+         }
       }
       if ($matched) {
-	 $self->need_save=1;
-	 ++$clock;
+         $self->need_save=1;
+         ++$clock;
       } else {
-	 croak( "no active or default preferences matching '$expr'" );
+         croak( "no active or default preferences matching '$expr'" );
       }
    }
 }
@@ -918,9 +987,9 @@ sub reset_all {
    for (my $i=$#{$self->active_prefs}; $i>=0; --$i) {
       my $pref=$self->active_prefs->[$i];
       if (!($pref->provenience & 2) && $pref->visible_from($app)) {
-	 $pref->deactivate;
-	 splice @{$self->active_prefs}, $i, 1;
-	 $self->need_save=1;
+         $pref->deactivate;
+         splice @{$self->active_prefs}, $i, 1;
+         $self->need_save=1;
       }
    }
    foreach (reverse($app->prefs, @{$app->prefs->imported})) {
@@ -934,16 +1003,16 @@ sub obliterate_extension {
       my $pref=$self->active_prefs->[$i];
       my $cnt=0;
       foreach (@{$pref->labels}) {
-	 ++$cnt if $_->extension==$ext;
+         ++$cnt if $_->extension==$ext;
       }
       if ($cnt==@{$pref->labels}) {
-	 $pref->deactivate;
-	 splice @{$self->active_prefs}, $i, 1;
-	 $self->need_save=1;
+         $pref->deactivate;
+         splice @{$self->active_prefs}, $i, 1;
+         $self->need_save=1;
       } elsif ($cnt) {
-	 splice @{$self->active_prefs}, $i, 1;
-	 activate($self, 0, new List(++$clock, grep { $_->extension != $ext } @{$pref->labels}));
-	 $self->need_save=1;
+         splice @{$self->active_prefs}, $i, 1;
+         activate($self, 0, new List(++$clock, grep { $_->extension != $ext } @{$pref->labels}));
+         $self->need_save=1;
       }
    }
 }
@@ -980,17 +1049,17 @@ sub save {
       print $pf "application ", $per_app->application->name, ";\n";
 
       for (my $i=0; $i<=$#active_prefs; ) {
-	 my $pref=$active_prefs[$i];
-	 if (!($pref->provenience & 4) && $pref->belongs_to($per_app->application)) {
-	    print $pf "\n", ($pref->provenience & 2 ? "# prefer " : "prefer "), $pref->toString, ";\n";
-	    splice @active_prefs, $i, 1;
-	 } else {
-	    ++$i;
-	 }
+         my $pref=$active_prefs[$i];
+         if (!($pref->provenience & 4) && $pref->belongs_to($per_app->application)) {
+            print $pf "\n", ($pref->provenience & 2 ? "# prefer " : "prefer "), $pref->toString, ";\n";
+            splice @active_prefs, $i, 1;
+         } else {
+            ++$i;
+         }
       }
 
       if (defined (my $text=clean_borders($per_app->private_commands))) {
-	 print $pf "\n", $text;
+         print $pf "\n", $text;
       }
       print $pf $sep_line;
    }
@@ -1003,9 +1072,17 @@ sub save {
    close $pf;
    $self->need_save=0;
 }
+####################################################################################
+# merge several control lists together
+# If some of input lists is temporarily changed by prefer_now,
+# the resulting list will be re-merged after the changes are reverted when the enclosing scope is left.
+sub merge_controls {
+   @_<=1 ? $_[0] : &ControlList::merge
+}
 
 1
 
 # Local Variables:
 # cperl-indent-level:3
+# indent-tabs-mode:nil
 # End:

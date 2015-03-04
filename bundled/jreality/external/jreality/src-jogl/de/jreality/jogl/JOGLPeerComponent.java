@@ -170,12 +170,6 @@ public class JOGLPeerComponent extends JOGLPeerNode implements
 		}
 		// if (name.indexOf("root") != -1)
 		// System.err.println("JOGLPC: flipped = "+jr.renderingState.flipped);
-		oldFlipped = jr.renderingState.flipped;
-		jr.renderingState.flipped = isReflection ^ jr.renderingState.flipped;
-		if (oldFlipped != jr.renderingState.flipped) {
-			jr.globalGL.glFrontFace(jr.renderingState.flipped ? GL.GL_CW
-					: GL.GL_CCW);
-		}
 
 		if (appearanceDirty)
 			handleAppearanceChanged();
@@ -185,6 +179,13 @@ public class JOGLPeerComponent extends JOGLPeerNode implements
 		if (rhInfo != null && rhInfo.hasSomeActiveField) {
 			rhInfo.render(jr.renderingState, jr.rhStack.lastElement());
 			jr.rhStack.push(rhInfo);
+		}
+		oldFlipped = jr.renderingState.negativeDet;
+		jr.renderingState.negativeDet = isReflection ^ jr.renderingState.negativeDet;
+		if (oldFlipped != jr.renderingState.negativeDet) {
+//			System.err.println("prerender change in flip: "+goBetween.originalComponent.getName()+" is reflection = "+isReflection);
+			jr.globalGL.glFrontFace(jr.renderingState.negativeDet ^ jr.renderingState.flipNormals ? GL.GL_CW
+					: GL.GL_CCW);
 		}
 		if (goBetween.peerGeometry != null
 				&& goBetween.peerGeometry.localClippingPlane) {
@@ -220,9 +221,10 @@ public class JOGLPeerComponent extends JOGLPeerNode implements
 			popTransformation();
 			mustPop = false;
 		}
-		if (jr.renderingState.flipped != oldFlipped) {
-			jr.renderingState.flipped = oldFlipped;
-			jr.globalGL.glFrontFace(jr.renderingState.flipped ? GL.GL_CW
+		if (isReflection) {
+//			System.err.println("postrender change in flip: "+goBetween.originalComponent.getName()+" is reflection = "+isReflection);
+			jr.renderingState.negativeDet = oldFlipped;
+			jr.globalGL.glFrontFace(jr.renderingState.negativeDet ^ jr.renderingState.flipNormals ? GL.GL_CW
 					: GL.GL_CCW);
 		}
 		jr.renderingState.currentPath.pop();

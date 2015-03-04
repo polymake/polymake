@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -26,7 +26,7 @@ namespace polymake { namespace common { namespace {
    template <typename T0, typename T1>
    FunctionInterface4perl( induced_subgraph_X8_X, T0,T1 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturnAnch( (1)(arg0), induced_subgraph(arg0.get<T0>(), arg1.get<T1>()) );
+      WrapperReturnAnch( 1, (arg0), induced_subgraph(arg0.get<T0>(), arg1.get<T1>()) );
    };
 
    FunctionInstance4perl(induced_subgraph_X8_X, perl::Canned< const Wary< Graph< Undirected > > >, perl::Canned< const Set< int > >);

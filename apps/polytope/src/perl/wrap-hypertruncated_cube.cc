@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -14,13 +14,18 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
+
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( perl::Object (int, pm::Rational, pm::Rational) ) {
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( hypertruncated_cube_T_int_C_C, T0,T1,T2 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      IndirectWrapperReturn( arg0, arg1.get< perl::TryCanned< const Rational > >(), arg2.get< perl::TryCanned< const Rational > >() );
-   }
-   FunctionWrapperInstance4perl( perl::Object (int, pm::Rational, pm::Rational) );
+      WrapperReturn( (hypertruncated_cube<T0>(arg0.get<int>(), arg1.get<T1, T0>(), arg2.get<T2, T0>())) );
+   };
 
+   FunctionInstance4perl(hypertruncated_cube_T_int_C_C, Rational, int, perl::Canned< const Rational >);
+   FunctionInstance4perl(hypertruncated_cube_T_int_C_C, QuadraticExtension< Rational >, perl::Canned< const QuadraticExtension< Rational > >, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

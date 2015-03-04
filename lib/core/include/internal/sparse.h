@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -649,9 +649,21 @@ struct explicitly_convertible_to<sparse_elem_proxy<Base, E, Params>, Target>
    static const bool value=explicitly_convertible_to<E, Target>::value || convertible_to<E, Target>::value;
 };
 
+template <typename Base, typename E1, typename Params, typename E2>
+struct isomorphic_types< sparse_elem_proxy<Base, E1, Params>, E2 >
+   : isomorphic_types<E1, E2> {};
+
+template <typename E1, typename Base, typename E2, typename Params>
+struct isomorphic_types< E1, sparse_elem_proxy<Base, E2, Params> >
+   : isomorphic_types<E1, E2> {};
+
+template <typename Base1, typename E1, typename Params1, typename Base2, typename E2, typename Params2>
+struct isomorphic_types< sparse_elem_proxy<Base1, E1, Params1>, sparse_elem_proxy<Base2, E2, Params2> >
+   : isomorphic_types<E1, E2> {};
+
 template <typename Base, typename E, typename Params, typename Target, typename ExpectedRet>
-struct assignable_to<sparse_elem_proxy<Base, E, Params>, Target, ExpectedRet, false, false> :
-   assignable_to<E, Target, ExpectedRet> {};
+struct assignable_to<sparse_elem_proxy<Base, E, Params>, Target, ExpectedRet, false, false>
+   : assignable_to<E, Target, ExpectedRet> {};
 
 template <typename Base, typename E, typename Params> inline
 bool is_zero(const sparse_elem_proxy<Base, E, Params>& x)

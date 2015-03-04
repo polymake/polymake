@@ -1,0 +1,177 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+package ThreeJS;
+
+CREDIT threejs
+   Three.js is a lightweight cross-browser JavaScript library/API used to create and display animated 3D computer graphics on a Web browser.
+   See http://github.com/mrdoob for the source code.
+
+  
+# webbrowser
+custom $webbrowser;
+
+CONFIGURE_OPT {
+   find_program($webbrowser, qw( sensible-browser xdg-open chrome safari firefox ), { prompt => "the web browser" });
+}
+
+
+package ThreeJS::default;
+
+# background color
+custom @bgColor = (1, 1, 1);
+
+# background opacity
+custom $bgOpacity = 1;
+
+# coordinates of the viewpoint
+custom @view_point = (0, 0, 5);
+
+# coordinates of a point on the view axis: default is the origin
+custom @view_direction = (0, 0, 0);
+
+# camera orientation: default is y-axis towards zenith
+custom @view_up = (0, 1, 0);
+
+# scaling factor
+custom $scale = 1;
+
+# camera field of view angle
+custom $fov = 75;
+
+# camera near plane
+custom $near_plane = .1;
+
+# camera far plane
+custom $far_plane = 1000;
+
+
+
+package ThreeJS::Viewer;
+
+use ThreeJS;
+use BackgroundViewer;
+use Visual::Transformation;
+
+# The default behavior is to produce an html output, then open it in a web browser.
+
+use Polymake::Struct [ '@ISA' => 'SimpleViewer' ];
+
+sub file_suffix { ".html" }
+
+sub new {
+   unless (defined($webbrowser)) {
+      die <<'.';
+requires web browser;
+please specify the output File option or call reconfigure("common::threejs.rules");
+.
+   }
+   my $self = &_new;
+   $self->tempfile->descend_dir;
+   $self
+}
+
+sub command {
+   my ($self, $filename)=@_;
+
+	my $polydir = $Polymake::InstallTop;
+
+   my $outdir = $self->tempfile->dir;
+	"cp -r -L $polydir/resources/threejs/js $outdir; $webbrowser $filename 1>/dev/null 2>&1";
+}
+
+sub new_drawing {
+   my ($self, $title, $vis)=@_;
+   $self->SUPER::new_drawing($title);
+   if (defined (my $rep=$vis->representative)) {
+      $self->graphics->transform=Visual::Transformation->get_transformation_matrix($rep);
+   }
+   $self;
+}
+
+sub append {
+   my $self=shift;
+   $self->graphics->append(@_);
+}
+
+
+# @category Visualization
+# Create a three.js file.
+label threejs
+
+# The following are rarely used.
+# Much more common are the methods in apps/{graph,polytope,...}/rules/threejs.rules
+
+global_method threejs.geometry: draw(Visual::PointSet, @) {
+   my ($self, $PointSet)=@_;
+   $self->append(new ThreeJS::PointSet($PointSet));
+}
+
+global_method threejs.geometry: draw(Visual::Wire, @) {
+   my ($self, $G)=@_;
+   $self->append(new ThreeJS::Wire($G));
+}
+
+global_method threejs.geometry: draw(Visual::Polygon, @) {
+   my ($self, $P)=@_;
+   $self->append(new ThreeJS::Solid($P));
+}
+
+global_method threejs.geometry: draw(Visual::Polygons, @) {
+   my ($self, $P)=@_;
+   $self->append(new ThreeJS::Solid($P));
+}
+
+
+package ThreeJS::File::Writer;
+import Visual::FileWriter;
+
+sub file_suffix { ".html" }
+
+sub new_drawing {
+   my ($self, $title, $vis)=@_;
+   if (defined (my $rep=$vis->representative)) {
+      $self->graphics->transform=Visual::Transformation->get_transformation_matrix($rep);
+   }
+   $self->title=$title;
+   $self;
+}
+
+sub DESTROY { }
+
+
+package application;
+
+# @Category Visualization
+# Produce an html file with given visual objects.
+# @param Visual::Object vis_obj object to display
+#
+# @option String File "filename" or "AUTO"
+#
+#  For the file name you can use any expression allowed for the ''open'' function,
+#  including "-" for terminal output, "&HANDLE" for an already opened file handle,
+#  or "| program" for a pipe.  Real file names are automatically completed with the ''.html'' suffix if needed.
+#
+#  An automatically generated file name is displayed in the verbose mode.
+user_function threejs(Visual::Object+, { File => undef }) {
+   visualize_explicit(@_, "ThreeJS");
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# End:

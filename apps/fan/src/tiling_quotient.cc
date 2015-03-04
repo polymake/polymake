@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -151,11 +151,12 @@ perl::Object tiling_quotient(perl::Object P, perl::Object Q)
    return PS;
 }
 
-UserFunctionTemplate4perl("# @category Creating from scratch"
-			  "# Calculates the quotient of P by Q+L, where Q+L is a lattice tiling."
-                          "# The result is a polytopal complex inside Q. "
+UserFunctionTemplate4perl("# @category Producing a polyhedral complex"
+			  "# Calculates the quotient of //P// by //Q//+L, where //Q//+L is a lattice tiling."
+           "# The result is a polytopal complex inside //Q//. "
 			  "# @param Polytope P a polytope"
 			  "# @param Polytope Q a polytope that tiles space"
+			  "# @tparam Coord"
 			  "# @return PolyhedralComplex",
 			  "tiling_quotient<E>(Polytope<E>, Polytope<E>)");
     } }

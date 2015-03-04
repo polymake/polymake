@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -55,10 +55,11 @@ Vector<Rational> lifted_pluecker(Matrix<Rational> V)
 }
 
 UserFunctionTemplate4perl("# @category Other"
-                  "# Compute tropical Pluecker vector from matrix representing points in tropical torus."
-                  "# Can be used to lift regular subdivision of ordinary product of simplices to"
+                  "# Compute the tropical Pluecker vector from a matrix representing points in the tropical torus."
+                  "# This can be used to lift regular subdivisions of a product of simplices to a"
                   "# matroid decomposition of hypersimplices."
-                  "# @param Matrix V",
+                  "# @param Matrix V"
+                  "# @return Vector",
                   "lifted_pluecker<Dir=Min>($)");
 } }
 

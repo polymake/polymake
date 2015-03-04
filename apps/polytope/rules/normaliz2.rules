@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -165,7 +165,6 @@ object LatticePolytope {
         }
     }
     weight 5.60;
-    override : Cone<Rational>::normaliz2.hilbert;
     override : Cone<Rational>::normaliz2.hilbert;
 
     rule normaliz2.integer_points, normaliz2.normal, normaliz2.hilbert: \

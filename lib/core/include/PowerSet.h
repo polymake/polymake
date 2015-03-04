@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -522,7 +522,7 @@ int insertMin(PowerSet& power_set, const GenericSet<ElementSet>& _element_set)
    return 1;
 }
 
-template <typename E, typename Comparator=operations::cmp>
+template <typename E, typename Comparator>
 class PowerSet : public Set< Set<E,Comparator> > {
    typedef Set< Set<E,Comparator> > super;
 public:
@@ -590,11 +590,6 @@ public:
       }
    }
 #endif
-};
-
-template <typename Set, typename Comparator>
-struct persistent_set<Set,Comparator,is_set> {
-   typedef PowerSet<typename Set::element_type, Comparator> type;
 };
 
 // Gather all independent intersections of subsets from the given PowerSet.

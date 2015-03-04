@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -870,6 +870,16 @@ public:
    {
       return typename _super::const_iterator(get_container().find(i), get_operation());
    }
+
+   typename _super::const_reference operator[] (int i) const
+   {
+      if (i<0 || i>=_super::dim())
+         throw std::runtime_error("same_element_sparse_vector - index out of range");
+      if (get_container().contains(i))
+         return *apparent_elem;
+      return zero_value<typename deref<ElemRef>::type>();
+   }
+
    using _super::dim;
 };
 

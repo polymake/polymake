@@ -122,6 +122,20 @@ public class DeviceJinputJoystick implements RawDevice, PollingDevice {
         return "jinputJoystick";
     }
     
+    private class AnalogAxisState extends AxisState {
+
+		public AnalogAxisState(double value) {
+			super(value);
+		}
+
+		@Override
+		public boolean isPressed() {
+			return intValue() != 0;
+		}
+		
+    }
+    
+    
 	public void poll(long when) {
 		if (queue == null) return;
 		for (int i = 0; i < controllers.length; i++) {
@@ -135,13 +149,11 @@ public class DeviceJinputJoystick implements RawDevice, PollingDevice {
             Component c = element.getKey();
 			//InputSlot inputDevice = (InputSlot) element.getValue();
             float val = c.getPollData()/maxValues.get(c);
-            AxisState newState = new AxisState(val);
+            AxisState newState = new AnalogAxisState(val);
 			AxisState oldState = lastValues.get(c);
 			if(!newState.isReleased() || newState.intValue() != oldState.intValue()) {
-				//System.out.println("new event");
-				queue.addEvent(
-						new ToolEvent(this, when, element.getValue(), newState)
-						);
+//				System.out.println(newState + ", " + element.getValue() + ", " + c.getPollData());
+				queue.addEvent(new ToolEvent(this, when, element.getValue(), newState));
                 lastValues.put(c,newState);
 			}
 		}

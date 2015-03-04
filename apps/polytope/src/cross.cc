@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -32,8 +32,8 @@ perl::Object cross(int d, const Scalar& s, perl::OptionSet options)
    if (d > std::numeric_limits<int>::digits-1)
       throw std::runtime_error("cross: in this dimension the number of facets exceeds the machine int size ");
 
-   if (s <= 0)
-      throw std::runtime_error("cross : x >= 0 required");
+   if (s <= zero_value<Scalar>())
+      throw std::runtime_error("cross : scale >= 0 required");
 
    const int n_vertices=2*d;
 
@@ -112,13 +112,12 @@ UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
                           "# Regular polytope corresponding to the Coxeter group of type B<sub>//d//-1</sub> = C<sub>//d//-1</sub>."
                           "# "
                           "# All coordinates are +/- //scale// or 0."
-                          "# @param Int d the dimension"
                           "# @tparam Scalar Coordinate type of the resulting polytope.  Unless specified explicitly, deduced from the type of bound values, defaults to Rational."
                           "# @param Int d the dimension"
                           "# @param Scalar scale the absolute value of each non-zero vertex coordinate. Needs to be positive. The default value is 1."
                           "# @option Bool group add a symmetry group description to the resulting polytope"
                           "# @return Polytope<Scalar>",
-                          "cross<_Bounds, Scalar={ typechecks::is_ordered_field(_Bounds) ? _Bounds : Rational }>(Int; _Bounds=1, { group => undef } )");
+                          "cross<Scalar> [ is_ordered_field(type_upgrade<Scalar, Rational>) ] (Int; type_upgrade<Scalar>=1, { group => undef } )");
 
 } }
 

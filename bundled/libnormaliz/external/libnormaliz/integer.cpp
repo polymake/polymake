@@ -1,6 +1,7 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2013  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2014  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
@@ -13,6 +14,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * As an exception, when this program is distributed through (i) the App Store
+ * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
+ * by Google Inc., then that store may impose any digital rights management,
+ * device limits and/or redistribution restrictions that are required by its
+ * terms of service.
  */
 
 //---------------------------------------------------------------------------
@@ -128,7 +134,56 @@ Integer permutations_modulo(const size_t& a, const size_t& b, long m) {
     }
     return P;
 }
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+Integer int_max_value_half(){
+    Integer k=sizeof(Integer)*8-2;  // number of bytes convetred to number of bits
+    Integer test=1;
+    test = test << k;  // (maximal positive number)/2
+    return test;
+}
 
 //---------------------------------------------------------------------------
+
+template<>
+mpz_class int_max_value_half<mpz_class>(){
+    assert(false);
+    return 0;
+}
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+void check_range(CandidateList<Integer>& ll){
+    check_range(ll.Candidates);
+}
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+void check_range(const std::list<Candidate<Integer> >& ll){
+
+    if (!test_arithmetic_overflow)
+        return;
+        
+    typename list<Candidate<Integer> >::const_iterator v=ll.begin();
+    
+    Integer test=int_max_value_half<Integer>();
+    // cout << "test " << test << endl;
+    
+    for(;v!=ll.end();++v){
+        for(size_t i=0;i<v->values.size();++i)
+            if(Iabs(v->values[i])>= test){
+            // cout << *v;
+            // cout << "i " << i << " " << Iabs((*v)[i]) << endl;
+                errorOutput()<<"Vector out of range. Imminent danger of arithmetic overflow.\n";
+                throw ArithmeticException();
+            }
+                    
+    }
+    
+
+}
 
 }

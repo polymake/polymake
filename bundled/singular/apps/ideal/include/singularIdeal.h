@@ -1,11 +1,6 @@
-/* Copyright (c) 2012
-   by authors as mentioned on:
-   https://github.com/lkastner/polymake_algebra/wiki/Authors
-
-   Project home:
-   https://github.com/lkastner/polymake_algebra
-
-   For licensing we cite the original Polymake code:
+/* Copyright (c) 1997-2015
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+   http://www.polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -16,9 +11,19 @@
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
+--------------------------------------------------------------------------------
 */
 
-#include "polymake/ideal/singularFull.h"
+#ifndef POLYMAKE_IDEAL_SINGULAR_IDEAL_H
+#define POLYMAKE_IDEAL_SINGULAR_IDEAL_H
+
+
+// polymake includes
+#include "polymake/client.h"
+#include "polymake/Map.h"
+#include "polymake/Polynomial.h"
+#include "polymake/Array.h"
+#include "polymake/Matrix.h"
 
 namespace polymake { 
 namespace ideal {
@@ -37,6 +42,8 @@ public:
    virtual int dim() = 0;
 
    virtual Polynomial<> reduce(const Polynomial<>& p, const Ring<>& r) const = 0;
+   
+   virtual Array< Polynomial<> > division(const Polynomial<>& p, const Ring<>& r) const = 0;
 
    virtual SingularIdeal_wrap* radical() const = 0;
 
@@ -48,7 +55,9 @@ public:
 
    virtual Array<Polynomial<> > polynomials(const Ring<>& r) const = 0;
    
+   static SingularIdeal_wrap* create(const Array<Polynomial<> >& gens, const Vector<int>& order);
    static SingularIdeal_wrap* create(const Array<Polynomial<> >& gens, const Matrix<int>& order);
+   static SingularIdeal_wrap* create(const Array<Polynomial<> >& gens, const std::string& order);
 
 //   static SingularIdeal_wrap* quotient(const SingularIdeal_wrap* I, const SingularIdeal_wrap* J);
 };
@@ -58,7 +67,8 @@ private:
    SingularIdeal_wrap* singIdeal;
 
 public:
-   SingularIdeal(const Array<Polynomial<> >& gens, const Matrix<int>& order) {
+   template <typename Ordertype>
+   SingularIdeal(const Array<Polynomial<> >& gens, const Ordertype& order) {
       singIdeal = SingularIdeal_wrap::create(gens, order);
    }
 
@@ -84,6 +94,10 @@ public:
 
    Polynomial<> reduce(const Polynomial<>& p, const Ring<>& r) const {
       return singIdeal->reduce(p, r);
+   }
+
+   Array< Polynomial<> > division( const Polynomial<>& p, const Ring<>& r) const {
+      return singIdeal->division(p, r);
    }
 
    SingularIdeal initial_ideal() const  {
@@ -174,4 +188,4 @@ public:
 } // end namespace ideal
 } // end namespace polymake
 
-
+#endif

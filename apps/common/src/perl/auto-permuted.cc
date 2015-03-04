@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -22,6 +22,8 @@
 #include "polymake/PowerSet.h"
 #include "polymake/permutations.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/Rational.h"
+#include "polymake/SparseVector.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -31,12 +33,13 @@ namespace polymake { namespace common { namespace {
       WrapperReturn( permuted(arg0.get<T0>(), arg1.get<T1>()) );
    };
 
-   FunctionInstance4perl(permuted_X_X, perl::Canned< const Set< int > >, perl::TryCanned< const Array< int > >);
-   FunctionInstance4perl(permuted_X_X, perl::Canned< const PowerSet< int > >, perl::TryCanned< const Array< int > >);
-   FunctionInstance4perl(permuted_X_X, perl::Canned< const Array< Array< Set< int > > > >, perl::TryCanned< const Array< int > >);
-   FunctionInstance4perl(permuted_X_X, perl::Canned< const Array< Set< int > > >, perl::TryCanned< const Array< int > >);
+   FunctionInstance4perl(permuted_X_X, perl::Canned< const Set< int > >, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(permuted_X_X, perl::Canned< const PowerSet< int > >, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(permuted_X_X, perl::Canned< const Array< Array< Set< int > > > >, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(permuted_X_X, perl::Canned< const Array< Set< int > > >, perl::Canned< const Array< int > >);
    FunctionInstance4perl(permuted_X_X, perl::Canned< const Array< std::string > >, perl::Canned< const Array< int > >);
    FunctionInstance4perl(permuted_X_X, perl::Canned< const Array< int > >, perl::Canned< const Array< int > >);
    FunctionInstance4perl(permuted_X_X, perl::Canned< const Array< IncidenceMatrix< NonSymmetric > > >, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(permuted_X_X, perl::Canned< const SparseVector< Rational > >, perl::Canned< const Array< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

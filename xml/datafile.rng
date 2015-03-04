@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 
 <!--
-  Copyright (c) 1997-2014
+  Copyright (c) 1997-2015
   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
   http://www.polymake.org
 
@@ -191,6 +191,7 @@
         <empty/>
       </group>
 
+      <ref name="IdReference" />
       <ref name="Complex" />
 
       <note:a> Array of (sub-)objects. </note:a>
@@ -287,6 +288,20 @@
     </attribute>
   </define>
 
+  <define name="IdReference">
+    <note:a>
+      Reference to a data instance already introduced earlier in the document
+    </note:a>
+    <element name="r">
+      <optional>
+        <attribute name="id">
+          <data type="nonNegativeInteger" />
+        </attribute>
+      </optional>
+      <empty/>
+    </element>
+  </define>
+
   <define name="Vector">
     <element name="v">
       <ref name="VectorContents" />
@@ -346,6 +361,11 @@
       - entirely consisting of simple scalars delimited by white spaces
       - otherwise each element packed in own tag
     </note:a>
+    <optional>
+      <attribute name="id">
+        <data type="nonNegativeInteger"/>
+      </attribute>
+    </optional>
     <choice>
       <text/>
       <oneOrMore>
@@ -353,6 +373,7 @@
           <ref name="Vector" />
           <ref name="Matrix" />
           <ref name="Tuple" />
+          <ref name="IdReference" />
           <element name="e">
             <text/>
           </element>

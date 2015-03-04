@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,19 +20,19 @@
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0, typename T1>
-   FunctionInterface4perl( flow_polytope_x_X_x_x, T0,T1 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]), arg3(stack[4]);
-      WrapperReturn( flow_polytope<T0>(arg0, arg1.get<T1>(), arg2, arg3) );
-   };
-
    template <typename T0, typename T1, typename T2>
-   FunctionInterface4perl( flow_polytope_X_X_x_x, T0,T1,T2 ) {
-      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]), arg3(stack[4]);
-      WrapperReturn( flow_polytope<T0>(arg0.get<T1>(), arg1.get<T2>(), arg2, arg3) );
+   FunctionInterface4perl( flow_polytope_T_X_X_x_x, T0,T1,T2 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
+      WrapperReturn( (flow_polytope<T0>(arg0.get<T1>(), arg1.get<T2>(), arg2, arg3)) );
    };
 
-   FunctionInstance4perl(flow_polytope_X_X_x_x, Rational, perl::Canned< const Graph< Directed > >, perl::Canned< const EdgeMap< Directed, Rational > >);
-   FunctionInstance4perl(flow_polytope_x_X_x_x, Rational, perl::Canned< const Array< Rational > >);
+   template <typename T0, typename T1>
+   FunctionInterface4perl( flow_polytope_T_x_X_x_x, T0,T1 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
+      WrapperReturn( (flow_polytope<T0>(arg0, arg1.get<T1>(), arg2, arg3)) );
+   };
+
+   FunctionInstance4perl(flow_polytope_T_X_X_x_x, Rational, perl::Canned< const Graph< Directed > >, perl::Canned< const EdgeMap< Directed, Rational > >);
+   FunctionInstance4perl(flow_polytope_T_x_X_x_x, Rational, perl::Canned< const Array< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

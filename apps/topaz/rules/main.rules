@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,7 +15,7 @@
 
 
 # @topic application
-# The TOPology Application Zoo deals with abstract simplicial complexes.
+# The __TOP__ology __A__pplication __Z__oo deals with abstract simplicial complexes.
 # A complex is given as a list of facets.  You can ask for its global properties ([[SimplicialComplex::MANIFOLD|manifold recognition]],
 # [[SimplicialComplex::HOMOLOGY|homology groups]], etc.),  explore the local vertex environment ([[star|stars]], [[link_complex|links]], etc.),  and make a lot
 # of constructions.
@@ -31,14 +31,11 @@ USE ideal
 
 file_suffix top
 
+HELP
+	help.rules
+
 # An abstract simplicial complex represented by its facets.
 declare object SimplicialComplex;
-
-# forward declaration for some clients connecting the applications
-# FIXME #685
-declare object polytope::Polytope<Scalar>;
-
-declare object polytope::PointConfiguration<Scalar>;
 
 # intrinsic rules
 INCLUDE
@@ -50,9 +47,6 @@ INCLUDE
 # self-configuring rules
 # INCLUDE
 #   homology.rules -- FIXME: interface to homology not migrated
-
-
-default_object SimplicialComplex;
 
 
 # Local Variables:

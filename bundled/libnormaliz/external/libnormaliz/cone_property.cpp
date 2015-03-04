@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2013  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2014  Winfried Bruns, Bogdan Ichim, Christof Soeger
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -14,6 +14,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * As an exception, when this program is distributed through (i) the App Store
+ * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
+ * by Google Inc., then that store may impose any digital rights management,
+ * device limits and/or redistribution restrictions that are required by its
+ * terms of service.
  */
 
 #include <vector>
@@ -26,6 +31,7 @@ namespace libnormaliz {
 using std::bitset;
 using std::vector;
 using std::string;
+using std::endl;
 
 
 /* Constructors */
@@ -80,91 +86,136 @@ bool ConeProperties::any() const {
 bool ConeProperties::none() const {
     return CPs.none();
 }
-size_t ConeProperties::count () const {
+size_t ConeProperties::count() const {
     return CPs.count();
 }
 
 
-/* this method sets all fields that should be computed in that mode */
-ConeProperties& ConeProperties::set(Mode::ComputationMode mode) {
-    switch (mode) {
-    case Mode::supportHyperplanes:
-        set(ConeProperty::SupportHyperplanes, ConeProperty::ExtremeRays);
-        break;
-    case Mode::triangulationSize:
-        set(ConeProperty::TriangulationSize);
-        break;
-    case Mode::triangulation:
-        set(ConeProperty::Triangulation);
-        break;
-    case Mode::volumeTriangulation:
-        set(ConeProperty::Triangulation, ConeProperty::Multiplicity);
-        break;
-    case Mode::volumeLarge:
-        set(ConeProperty::Multiplicity);
-        break;
-    case Mode::degree1Elements:
-        set(ConeProperty::Deg1Elements);
-        break;
-    case Mode::hilbertBasisTriangulation:
-        set(ConeProperty::HilbertBasis, ConeProperty::Triangulation);
-        break;
-    case Mode::hilbertBasisMultiplicity:
-        set(ConeProperty::HilbertBasis, ConeProperty::Multiplicity);
-        break;
-    case Mode::hilbertBasisLarge:
-        set(ConeProperty::HilbertBasis);
-        break;
-    case Mode::hilbertSeries:
-        set(ConeProperty::Triangulation);
-    case Mode::hilbertSeriesLarge:
-        set(ConeProperty::Deg1Elements, ConeProperty::HilbertSeries);
-        break;
-    case Mode::hilbertBasisSeries:
-        set(ConeProperty::Triangulation);
-    case Mode::hilbertBasisSeriesLarge:
-        set(ConeProperty::HilbertSeries, ConeProperty::HilbertBasis);
-        break;
-    case Mode::dual:
-        set(ConeProperty::DualMode);
-        break;
-    default:
-        throw FatalException();
-        break;
+/* add preconditions */
+void ConeProperties::set_preconditions() {
+    if (CPs.test(ConeProperty::IsIntegrallyClosed))
+        CPs.set(ConeProperty::HilbertBasis);
+
+    if (CPs.test(ConeProperty::IsDeg1HilbertBasis)) {
+        CPs.set(ConeProperty::HilbertBasis);
+        CPs.set(ConeProperty::Grading);
     }
-    return *this;
+    if (CPs.test(ConeProperty::IsDeg1ExtremeRays)) {
+        CPs.set(ConeProperty::ExtremeRays);
+        CPs.set(ConeProperty::Grading);
+    }
+    if (CPs.test(ConeProperty::Grading))
+        CPs.set(ConeProperty::Generators);
+
+    if (CPs.test(ConeProperty::IsPointed))
+        CPs.set(ConeProperty::ExtremeRays);
+
+    if (CPs.test(ConeProperty::ExtremeRays))
+        CPs.set(ConeProperty::SupportHyperplanes);
+
+    if (CPs.test(ConeProperty::HilbertFunction))
+        CPs.set(ConeProperty::HilbertSeries);
+
+    // inhomogenous preconditions
+    if (CPs.test(ConeProperty::VerticesOfPolyhedron))
+        CPs.set(ConeProperty::ExtremeRays);
+
+    if (CPs.test(ConeProperty::ModuleGenerators))
+        CPs.set(ConeProperty::HilbertBasis);
+
 }
 
+/* removes ignored compute options and sets implications */
+void ConeProperties::prepare_compute_options() {
+    // -d without -1 means: compute Hilbert basis in dual mode
+    if (CPs.test(ConeProperty::DualMode) && !CPs.test(ConeProperty::Deg1Elements)){
+        CPs.set(ConeProperty::HilbertBasis);  
+    }
+
+    // dual mode has priority, approximation makes no sense if HB is computed 
+    if(CPs.test(ConeProperty::DualMode) || CPs.test(ConeProperty::HilbertBasis))
+        CPs.reset(ConeProperty::ApproximateRatPolytope);
+    
+    if ((CPs.test(ConeProperty::DualMode) || CPs.test(ConeProperty::ApproximateRatPolytope)) 
+        && (CPs.test(ConeProperty::HilbertSeries) || CPs.test(ConeProperty::StanleyDec))
+         && !CPs.test(ConeProperty::HilbertBasis)){
+        CPs.reset(ConeProperty::DualMode); //it makes no sense to compute only deg 1 elements in dual mode 
+        CPs.reset(ConeProperty::ApproximateRatPolytope); // or by approximation if the
+    }                                            // Stanley decomposition must be computed anyway
+}
+
+
+void ConeProperties::check_sanity(bool inhomogeneous) {
+    ConeProperty::Enum prop;
+    for (size_t i=0; i<ConeProperty::EnumSize; i++) {
+        if (CPs.test(i)) {
+            prop = static_cast<ConeProperty::Enum>(i);
+            if (inhomogeneous) {
+                if ( prop == ConeProperty::Deg1Elements
+                  || prop == ConeProperty::StanleyDec
+                  || prop == ConeProperty::Triangulation
+                  || prop == ConeProperty::ApproximateRatPolytope ) {
+                    errorOutput() << toString(prop) << " not computable in the inhomogeneous case." << endl;
+                    throw BadInputException();
+                }
+            } else { // homgeneous
+                if ( prop == ConeProperty::VerticesOfPolyhedron
+                  || prop == ConeProperty::Shift
+                  || prop == ConeProperty::ModuleRank
+                  || prop == ConeProperty::ModuleGenerators ) {
+                    errorOutput() << toString(prop) << " only computable in the inhomogeneous case." << endl;
+                    throw BadInputException();
+                }
+            }
+        }  //end if test(i)
+    }
+}
+
+
 /* conversion */
-namespace { 
+namespace {
     // only to initialize the CPN in ConePropertyNames
     vector<string> initializeCPN() {
         vector<string> CPN(ConeProperty::EnumSize);
-        if (ConeProperty::EnumSize != 21) { //to detect changes in size of Enum
+        if (ConeProperty::EnumSize != 34) { //to detect changes in size of Enum
             errorOutput() << "Fatal Error: ConeProperties Enum size does not fit!" << std::endl;
+            errorOutput() << "Fatal Error: Update cone_property.cpp!" << std::endl;
             throw FatalException();
         }
         CPN.at(ConeProperty::Generators) = "Generators";
         CPN.at(ConeProperty::ExtremeRays) = "ExtremeRays";
+        CPN.at(ConeProperty::VerticesOfPolyhedron) = "VerticesOfPolyhedron";
         CPN.at(ConeProperty::SupportHyperplanes) = "SupportHyperplanes";
         CPN.at(ConeProperty::TriangulationSize) = "TriangulationSize";
         CPN.at(ConeProperty::TriangulationDetSum) = "TriangulationDetSum";
         CPN.at(ConeProperty::Triangulation) = "Triangulation";
         CPN.at(ConeProperty::Multiplicity) = "Multiplicity";
+        CPN.at(ConeProperty::Shift) = "Shift";
+        CPN.at(ConeProperty::RecessionRank) = "RecessionRank";
+        CPN.at(ConeProperty::AffineDim) = "AffineDim";
+        CPN.at(ConeProperty::ModuleRank) = "ModuleRank";
         CPN.at(ConeProperty::HilbertBasis) = "HilbertBasis";
+        CPN.at(ConeProperty::ModuleGenerators) = "ModuleGenerators";
         CPN.at(ConeProperty::Deg1Elements) = "Deg1Elements";
         CPN.at(ConeProperty::HilbertSeries) = "HilbertSeries";
+        CPN.at(ConeProperty::HilbertFunction) = "HilbertFunction";
         CPN.at(ConeProperty::Grading) = "Grading";
         CPN.at(ConeProperty::IsPointed) = "IsPointed";
         CPN.at(ConeProperty::IsDeg1Generated) = "IsDeg1Generated";
         CPN.at(ConeProperty::IsDeg1ExtremeRays) = "IsDeg1ExtremeRays";
         CPN.at(ConeProperty::IsDeg1HilbertBasis) = "IsDeg1HilbertBasis";
         CPN.at(ConeProperty::IsIntegrallyClosed) = "IsIntegrallyClosed";
+        CPN.at(ConeProperty::OriginalMonoidGenerators) = "OriginalMonoidGenerators";
         CPN.at(ConeProperty::GeneratorsOfToricRing) = "GeneratorsOfToricRing";
         CPN.at(ConeProperty::ReesPrimary) = "ReesPrimary";
         CPN.at(ConeProperty::ReesPrimaryMultiplicity) = "ReesPrimaryMultiplicity";
         CPN.at(ConeProperty::StanleyDec) = "StanleyDec";
+        CPN.at(ConeProperty::ExcludedFaces) = "ExcludedFaces";
+        CPN.at(ConeProperty::Dehomogenization) = "Dehomogenization";
+        CPN.at(ConeProperty::InclusionExclusionData) = "InclusionExclusionData";
         CPN.at(ConeProperty::DualMode) = "DualMode";
+        CPN.at(ConeProperty::DefaultMode) = "DefaultMode";
+        CPN.at(ConeProperty::ApproximateRatPolytope) = "ApproximateRatPolytope";
         return CPN;
     }
  

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -30,6 +30,7 @@ static glue::cached_cv
    remove_cv={ "Polymake::Core::Object::remove", 0 },
    attach_cv={ "Polymake::Core::Object::attach", 0 },
    remove_attachment_cv={ "Polymake::Core::Object::remove_attachment", 0 },
+   set_name_cv={ "Polymake::Core::Object::set_name", 0 },
    object_isa_cv={ "Polymake::Core::Object::isa", 0 },
    object_type_isa_cv={ "Polymake::Core::ObjectType::isa", 0 },
    commit_cv={ "Polymake::Core::Object::commit", 0 },
@@ -72,7 +73,7 @@ SV* init_copy_ref(SV* src)
 }
 
 inline
-bool equal_refs(SV *r1, SV *r2)
+bool equal_refs(SV* r1, SV* r2)
 {
    return SvROK(r1) ? SvRV(r1)==SvRV(r2) : !SvROK(r2);
 }
@@ -141,7 +142,7 @@ std::string Object::name() const
 {
    dTHX;
    size_t l=0;
-   const char *namep=SvPV(PmArray(obj_ref)[glue::Object_name_index], l);
+   const char* namep=SvPV(PmArray(obj_ref)[glue::Object_name_index], l);
    return std::string(namep,l);
 }
 
@@ -149,14 +150,18 @@ std::string Object::description() const
 {
    dTHX;
    size_t l=0;
-   const char *descrp=SvPV(PmArray(obj_ref)[glue::Object_description_index], l);
+   const char* descrp=SvPV(PmArray(obj_ref)[glue::Object_description_index], l);
    return std::string(descrp,l);
 }
 
 void Object::set_name(const std::string& name)
 {
    dTHX;
-   sv_setpvn(PmArray(obj_ref)[glue::Object_name_index], name.c_str(), name.size());
+   PmStartFuncall;
+   XPUSHs(obj_ref);
+   mXPUSHp(name.c_str(), name.size());
+   PUTBACK;
+   glue::call_func_void(aTHX_ set_name_cv);
 }
 
 void Object::set_description(const std::string& value, bool append)
@@ -180,7 +185,7 @@ std::string ObjectType::name() const
    return PropertyValue(glue::call_method_scalar(aTHX_ "full_name"));
 }
 
-SV* Object::_give(const char *name, size_t nl) const
+SV* Object::_give(const char* name, size_t nl) const
 {
    dTHX;
    PmStartFuncall;
@@ -190,7 +195,7 @@ SV* Object::_give(const char *name, size_t nl) const
    return glue::call_func_scalar(aTHX_ give_cv);
 }
 
-SV* Object::_lookup(const char *name, size_t nl) const
+SV* Object::_lookup(const char* name, size_t nl) const
 {
    dTHX;
    PmStartFuncall;
@@ -200,7 +205,7 @@ SV* Object::_lookup(const char *name, size_t nl) const
    return glue::call_method_scalar(aTHX_ "lookup");
 }
 
-SV* Object::_give_with_property_name(const char *name, size_t nl, std::string& given) const
+SV* Object::_give_with_property_name(const char* name, size_t nl, std::string& given) const
 {
    dTHX;
    PmStartFuncall;
@@ -217,7 +222,7 @@ SV* Object::_give_with_property_name(const char *name, size_t nl, std::string& g
    }
 }
 
-SV* Object::_lookup_with_property_name(const char *name, size_t nl, std::string& given) const
+SV* Object::_lookup_with_property_name(const char* name, size_t nl, std::string& given) const
 {
    dTHX;
    PmStartFuncall;
@@ -234,7 +239,7 @@ SV* Object::_lookup_with_property_name(const char *name, size_t nl, std::string&
    }
 }
 
-SV* Object::_lookup(const char *name, size_t nl, const std::string& subobj_name) const
+SV* Object::_lookup(const char* name, size_t nl, const std::string& subobj_name) const
 {
    dTHX;
    PmStartFuncall;
@@ -245,7 +250,7 @@ SV* Object::_lookup(const char *name, size_t nl, const std::string& subobj_name)
    return glue::call_method_scalar(aTHX_ "give");
 }
 
-SV* Object::_give(const char *name, size_t nl, SV *props, property_type t) const
+SV* Object::_give(const char* name, size_t nl, SV* props, property_type t) const
 {
    dTHX;
    PmStartFuncall;
@@ -276,7 +281,7 @@ Object Object::load(const std::string& filename)
    return Object(glue::call_func_scalar(aTHX_ load_cv));
 }
 
-SV* Object::_lookup(const char *name, size_t nl, SV *props) const
+SV* Object::_lookup(const char* name, size_t nl, SV* props) const
 {
    dTHX;
    PmStartFuncall;
@@ -287,7 +292,7 @@ SV* Object::_lookup(const char *name, size_t nl, SV *props) const
    return glue::call_method_scalar(aTHX_ "lookup");
 }
 
-SV* Object::_give_all(const char *name, size_t nl) const
+SV* Object::_give_all(const char* name, size_t nl) const
 {
    dTHX;
    PmStartFuncall;
@@ -298,14 +303,14 @@ SV* Object::_give_all(const char *name, size_t nl) const
    return glue::call_method_scalar(aTHX_ "lookup");
 }
 
-SV* Object::_get_attachment(const char *name, size_t nl) const
+SV* Object::_get_attachment(const char* name, size_t nl) const
 {
    dTHX;
    SV** const valp=hv_fetch((HV*)SvRV(PmArray(obj_ref)[glue::Object_attachments_index]), name, nl, false);
    return valp ? SvREFCNT_inc(PmArray(*valp)[0]) : &PL_sv_undef;
 }
 
-bool Object::_exists(const char *name, size_t nl) const
+bool Object::_exists(const char* name, size_t nl) const
 {
    dTHX;
    PmStartFuncall;
@@ -315,7 +320,7 @@ bool Object::_exists(const char *name, size_t nl) const
    return glue::call_func_bool(aTHX_ lookup_cv, false);
 }
 
-SV* Object::_add(const char *name, size_t nl, SV* sub_obj, property_type t) const
+SV* Object::_add(const char* name, size_t nl, SV* sub_obj, property_type t) const
 {
    dTHX;
    PmStartFuncall;
@@ -327,7 +332,7 @@ SV* Object::_add(const char *name, size_t nl, SV* sub_obj, property_type t) cons
    return glue::call_func_scalar(aTHX_ add_cv);
 }
 
-void Object::_remove(const char *name, size_t nl) const
+void Object::_remove(const char* name, size_t nl) const
 {
    dTHX;
    PmStartFuncall;
@@ -337,7 +342,7 @@ void Object::_remove(const char *name, size_t nl) const
    glue::call_func_void(aTHX_ remove_cv);
 }
 
-void Object::_remove_attachment(const char *name, size_t nl) const
+void Object::_remove_attachment(const char* name, size_t nl) const
 {
    dTHX;
    PmStartFuncall;
@@ -357,24 +362,11 @@ void Object::remove(const Object& sub_obj)
    glue::call_func_void(aTHX_ remove_cv);
 }
 
-SV* ObjectType::construct_parameterized_type(const char *type_name, size_t nl)
+SV* ObjectType::construct_parameterized_type(const char* type_name, size_t nl)
 {
    dTHX;
    // type arguments are already pushed on the stack
-   HV* const app_stash=glue::current_application_pkg(aTHX);
-   HV* const stash=pm_perl_namespace_lookup_class(aTHX_ app_stash, type_name, nl, 0);
-   if (__builtin_expect(!stash, 0)) {
-      sv_setpvf(ERRSV, "unknown type %s::%.*s", HvNAME(app_stash), int(nl), type_name);
-      PmCancelFuncall;
-      throw exception();
-   }
-   GV** const gvp=(GV**)hv_fetch(stash, "generic_type", 12, false);
-   if (__builtin_expect(!gvp, 0)) {
-      sv_setpvf(ERRSV, "type %s is not parameterized", HvNAME(stash));
-      PmCancelFuncall;
-      throw exception();
-   }
-   return glue::call_func_scalar(aTHX_ (SV*)*gvp);
+   return glue::call_func_scalar(aTHX_ glue::fetch_typeof_gv(aTHX_ type_name, nl));
 }
 
 bool ObjectType::isa(const ObjectType& other) const
@@ -398,7 +390,7 @@ bool Object::isa(const ObjectType& type) const
    return glue::call_func_bool(aTHX_ object_isa_cv, true);
 }
 
-bool ObjectType::_isa(const char *type_name, size_t nl) const
+bool ObjectType::_isa(const char* type_name, size_t nl) const
 {
    dTHX;
    PmStartFuncall;
@@ -408,17 +400,17 @@ bool ObjectType::_isa(const char *type_name, size_t nl) const
    return glue::call_func_bool(aTHX_ object_type_isa_cv, true);
 }
 
-SV* ObjectType::find_type(const char *type_name, size_t tl)
+SV* ObjectType::find_type(const char* type_name, size_t tl)
 {
    dTHX;
    PmStartFuncall;
    SP=glue::push_current_application(aTHX_ SP);
    mXPUSHp(type_name, tl);
    PUTBACK;
-   return glue::call_method_scalar(aTHX_ "eval_type");
+   return glue::call_method_scalar(aTHX_ "eval_type_throw");
 }
 
-bool Object::_isa(const char *type_name, size_t nl) const
+bool Object::_isa(const char* type_name, size_t nl) const
 {
    dTHX;
    PmStartFuncall;
@@ -516,7 +508,7 @@ Object Object::parent() const
 {
    dTHX;
    if (obj_ref != NULL) {
-      SV *parent_ref=PmArray(obj_ref)[glue::Object_parent_index];
+      SV* parent_ref=PmArray(obj_ref)[glue::Object_parent_index];
       if (SvROK(parent_ref))
          return Object(newSVsv(parent_ref));
    }
@@ -551,7 +543,7 @@ False* Value::retrieve(ObjectType& x) const
    return NULL;
 }
 
-Value::AnchorChain Value::put(const ObjectType& x, const char*, int)
+Value::NoAnchor* Value::put(const ObjectType& x, const char*, int)
 {
    dTHX;
    if (__builtin_expect(SvROK(x.obj_ref), 1)) {
@@ -559,11 +551,11 @@ Value::AnchorChain Value::put(const ObjectType& x, const char*, int)
    } else {
       throw std::runtime_error("invalid assignment of a void object type");
    }
-   return AnchorChain();
+   return NULL;
 }
 
 
-Value::AnchorChain Value::put(const Object& x, const char *fup, int)
+Value::NoAnchor* Value::put(const Object& x, const char* fup, int)
 {
    dTHX;
    if (__builtin_expect(SvROK(x.obj_ref), 1)) {
@@ -592,11 +584,11 @@ Value::AnchorChain Value::put(const Object& x, const char *fup, int)
    } else {
       throw std::runtime_error("invalid assignment of a void object");
    }
-   return AnchorChain();
+   return NULL;
 }
 
 
-Value::AnchorChain Value::put(const pm::Array<Object>& ar, const char *fup, int)
+Value::NoAnchor* Value::put(const pm::Array<Object>& ar, const char* fup, int)
 {
    dTHX;
    if (ar.needs_commit) {
@@ -604,14 +596,14 @@ Value::AnchorChain Value::put(const pm::Array<Object>& ar, const char *fup, int)
       // If the read_only flag is set, then this call is part of the preparation for parent_object.take();
       // in this case the children's transactions will be hung into the parent's one.
       if ((options & (value_read_only|value_expect_lval)) != value_read_only) {
-         int last=AvFILLp(ar.get());
+         int last=AvFILLp(SvRV(ar.get()));
          if (last >= 0) {
             for (SV **objp=PmArray(ar.get()), **lastp=objp+last; objp<=lastp; ++objp) {
-               if (SvROK(*objp)) {
-                  SV* obj=SvRV(*objp);
-                  if (SvOK(PmArray(obj)[glue::Object_transaction_index])) {
+               SV* const objref=*objp;
+               if (SvROK(objref)) {
+                  if (SvOK(PmArray(objref)[glue::Object_transaction_index])) {
                      PmStartFuncall;
-                     XPUSHs(obj);
+                     XPUSHs(objref);
                      PUTBACK;
                      glue::call_func_void(aTHX_ commit_cv);
                   }
@@ -624,7 +616,7 @@ Value::AnchorChain Value::put(const pm::Array<Object>& ar, const char *fup, int)
    }
    if (SvROK(sv)) sv_unref_flags(sv, SV_IMMEDIATE_UNREF);
    sv_setsv(sv, ar.get());
-   return AnchorChain();
+   return NULL;
 }
 
 

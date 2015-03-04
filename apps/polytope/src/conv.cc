@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2015
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -55,7 +55,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# given in //P_Array//."
                           "# @param Array<Polytope> P_Array"
                           "# @return PropagatedPolytope",
-                          "conv<Scalar>(Polytope<Scalar> +)");
+                          "conv<Scalar>(Polytope<type_upgrade<Scalar>> +)");
 } }
 
 // Local Variables:

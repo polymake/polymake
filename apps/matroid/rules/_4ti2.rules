@@ -1,0 +1,74 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+REQUIRE polytope::_4ti2.rules
+
+CREDIT 4ti2
+
+# path to circuits
+custom $circuits;
+
+CONFIGURE {
+    ($circuits=$polytope::groebner) =~ s/groebner$/circuits/;
+
+}
+
+label _4ti2
+
+object Matroid {
+
+   rule _4ti2.circuits : CIRCUITS : VECTORS {
+      my $A = $this->VECTORS;
+      $this->CIRCUITS = [@{index_matrix(_4ti2Circuits($A))}];
+   }
+   weight 3.01;
+
+}
+
+
+# @category Combinatorics
+# Calculate the circuits of a set of points given as the rows of a Matrix A.
+# The circuits are given as a matrix such that vA=0 for all rows v.
+# @param Matrix A Matrix containing the points as rows.
+# @return Matrix
+user_function _4ti2Circuits(Matrix){
+   my($A) = @_;
+   my $tempname = new Tempfile;
+   open(my $filePipe, ">".$tempname.".mat");
+   print $filePipe $A->cols." ".$A->rows."\n";
+   print $filePipe dense(transpose(primitive($A)));
+   close($filePipe);
+   
+   if ($Verbose::external) {
+      dbg_print( "running 4ti2: $circuits -q $tempname" );
+   }
+   system("$circuits -q $tempname".(!$DebugLevel && " >/dev/null 2>&1"))
+      and die "couldn't run 4ti2: $circuits -q $tempname.mat\n";
+
+   
+   open(my $outfile, "<$tempname.cir")
+      or die "can't open output file $tempname.cir: $!";
+   
+   my $dimline = <$outfile>;
+   my @circuits=();
+	local $_;
+   while (<$outfile>) {
+       my @vec = split;
+       push @circuits, \@vec;
+   }
+   close $outfile;
+   return new SparseMatrix(\@circuits);
+}
+
