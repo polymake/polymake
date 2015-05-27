@@ -16,12 +16,13 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
 #include "polymake/Polynomial.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/RationalFunction.h"
 #include "polymake/Ring.h"
-#include "polymake/QuadraticExtension.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -32,5 +33,9 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::Serialized__RationalFunction_A_Rational_I_Int_Z", pm::Serialized< RationalFunction< Rational, int > >);
    Class4perl("Polymake::common::Serialized__Ring_A_Rational_I_Int_Z", pm::Serialized< Ring< Rational, int > >);
    Class4perl("Polymake::common::Serialized__Polynomial_A_Rational_I_Int_Z", pm::Serialized< Polynomial< Rational, int > >);
+   Class4perl("Polymake::common::Serialized__Ring_A_TropicalNumber_A_Max_I_Rational_Z_I_Int_Z", pm::Serialized< Ring< TropicalNumber< Max, Rational >, int > >);
+   Class4perl("Polymake::common::Serialized__Ring_A_TropicalNumber_A_Min_I_Rational_Z_I_Int_Z", pm::Serialized< Ring< TropicalNumber< Min, Rational >, int > >);
+   Class4perl("Polymake::common::Serialized__Polynomial_A_TropicalNumber_A_Max_I_Rational_Z_I_Int_Z", pm::Serialized< Polynomial< TropicalNumber< Max, Rational >, int > >);
+	Class4perl("Polymake::common::Serialized__Polynomial_A_TropicalNumber_A_Min_I_Rational_Z_I_Int_Z", pm::Serialized< Polynomial< TropicalNumber< Min, Rational >, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

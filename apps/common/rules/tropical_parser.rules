@@ -1,0 +1,231 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# This file contains methods to parse a tropical polynomial in the form
+# "max(3x+4,...)" and the like.
+
+# @category Data Conversion
+# This converts a string into a tropical polynomial. The syntax for the string is as follows:
+# It is of the form "min(...)" or "max(...)" or "min{...}" or "max{...}", where ...
+# is a comma-separated list of sums of the form "a + bx + c + dy + ...", where a,c are 
+# rational numbers, b,d are Ints and x,y are variables. 
+# Such a sum can contain several such terms for the same variable and they need not be in any order. 
+# Any text that starts with a letter and does not contain any of +-*,(){} or whitespace can be a variable.
+# A term in a sum can be of the form "3x", "3*x", but "x3"will be interpreted as 1 * "x3".
+# Coefficients should not contain letters and there is no evaluation of arithmetic, i.e. "(2+4)*x" does 
+# not work (though "2x+4x" would be fine). 
+# In fact, further brackets should only be used (but are not necessary!) for single coefficienst, 
+# e.g. "(-3)*x".
+# Warning: The parser will remove all brackets before parsing the individual sums.
+# If no further arguments are given, the function will take the number of occuring variables
+# as total number of variables and create a ring for the result. The variables will be sorted alphabetically.
+# @param String s The string to be parsed
+# @param String vars Optional. A list of variables. If this is given, all variables used in s must match one of the variables in this list. 
+# @return Polynomial<TropicalNumber<Addition,Rational> >, where Addition depends on 
+# whether min or max was used in the string.
+user_function toTropicalPolynomial(String; @) {
+	my ($string,@vars) = @_;
+
+	#Remove any whitespace before parsing
+	$string =~ s/\s+//g;
+
+	#Check if variables have been given
+	my $vars_defined = (scalar(@vars) > 0);
+	my $varset = new Set<String>(\@vars);
+	if($vars_defined) {
+		#If there are double variables, throw an error
+		if( $varset->size() < scalar(@vars)) {
+			die "Error: Variable names must be unique.";
+		}
+	}
+
+	#First separate min/max from the list of the functions
+	# The first part will contain min or max, the second the rest
+	my @minmax_separator = ($string =~ /^(max|min)[\(\{](.+)[\)\}]$/i);
+	
+	if(scalar(@minmax_separator) != 2) {
+		die "Error: Wrong syntax. See documentation.";
+	}
+
+	#Determine whether we're using min or max
+	my $uses_min = ($minmax_separator[0] =~ /^min$/i);
+
+	#Remove any brackets from the function list and separate by commas
+	$minmax_separator[1] =~ s/[\(\{\)\}]+//g;
+	my @functionlist = split(/,/,$minmax_separator[1]);
+
+	#This will store the monomials
+	#The i-th element corresponds to the i-th function. It is a reference to a 
+	#hash, which maps variable names to exponents.
+	# (We need this, since we might not know until the end how many variables we have and
+	# what order they appear in)
+	my @monomial_maps=();
+
+	#This stores the coefficients of each function.
+	my $coefficients = $uses_min ? (new Vector<TropicalNumber<Min> >(scalar(@functionlist))) :
+												(new Vector<TropicalNumber<Max> >(scalar(@functionlist)));
+	
+	#Now parse every single function by splitting at + or -
+	for my $index (0 .. scalar(@functionlist)-1) {
+		my %functionCoeffMap = ();
+
+		$coefficients->[$index] = $uses_min ? (new TropicalNumber<Min>(0)) : (new TropicalNumber<Max>(0));
+
+		#We split along any consecutive sequence of + and -, keeping the actual signs for counting
+	  	my @termlist = split(/[\+\-]+/,$functionlist[$index]); #We split along any consecutive sequence of + and -
+	  	my @signlist = ($functionlist[$index] =~ /[\+\-]+/g);
+
+		#If the first terms empty that means there are signs before the actual first term
+		if($termlist[0] eq "") {
+			shift(@termlist);
+		}
+		#If not then we don't have a sign for the first term and add it
+		else {
+			@signlist = ("+",@signlist);
+		}
+		#If the last term is empty that means there is an empty term at the end. 
+		if($termlist[scalar(@termlist)-1] eq "") {
+			die "Error: Empy term at the end of function $functionlist[$index]";
+		}
+
+		#Now every element in signlist corresponds to an element in termlist. We count the number of -'s
+		#to determine the actual sign.
+		for my $termindex (0 .. scalar(@termlist)-1) {
+			my $minussigns = scalar(($signlist[$termindex] =~ tr/\-//));
+			if ($minussigns % 2) { #If the number of -'s is odd, set sign to -
+				$termlist[$termindex] = "-" . $termlist[$termindex];
+			}
+		}
+		
+		#Now parse every single term
+		for my $term (@termlist){
+			#Separate into coefficient and variable
+	      my @termsep = ($term =~ /^(\-?[^a-zA-Z\*]*)?\*?([a-zA-Z]+[^\+\-\(\)\{\}]*)?$/);
+
+			#Check for basic validity
+			#If both parts are empty, we have a term of the form "*", which is nonsense
+			if(scalar(@termsep) != 2) {
+				die "Error: $term has invalid form. See documentation for allowed syntax.";
+			}
+			if($termsep[0] eq "" && $termsep[1] eq "") {
+				die "Error: $term has invalid form. See documentation for allowed syntax.";
+			}
+
+			#Parse the coefficient (if there is none, set it to 1, since there must be a variable)
+			my $rational_termcoeff = new Rational($termsep[0] eq ""? 1: ($termsep[0] eq "-"? -1 : $termsep[0]));
+			my $termcoeff = $uses_min? (new TropicalNumber<Min>($rational_termcoeff)) : (new TropicalNumber<Max>($rational_termcoeff));
+
+			#If there's no variable, add to the coefficient, otherwise add to the correct monomial
+			#(Note that we're already using tropical arithmetic here!)
+			if($termsep[1] eq "") {
+				$coefficients->[$index] *= $termcoeff;
+			}
+			else {
+				#Add the variable, if none were given in the function call. 
+				if(!$vars_defined) {
+					$varset = $varset + (new String($termsep[1]));
+				}
+				#Otherwise check if it's an allowed variable
+				else {
+					if(!$varset->contains($termsep[1])) {
+						die "Error: Variable $termsep[1] is not in the list of variables.";
+					}
+				}
+			}
+
+			#Save the coefficient in the hash map
+			if(!defined($functionCoeffMap{$termsep[1]})) {
+				$functionCoeffMap{$termsep[1]} = $termcoeff;
+			}
+			else {
+				$functionCoeffMap{$termsep[1]} *= $termcoeff;
+			}			
+		}#END parse all terms
+		
+		$monomial_maps[$index] = \%functionCoeffMap;
+	}#END for(functionlist)
+
+	#If no variables were given, we remove double variables and sort them alphabetically
+	if(!$vars_defined) {
+		if($varset->size() == 0) { die "Error: There must be at least one variable.";}
+		@vars = sort(@{$varset});		
+	}
+
+	#Now create exponent matrix
+	my $monom_matrix = new Matrix<Int>(scalar(@functionlist), scalar(@vars));
+	for my $func (0 .. scalar(@functionlist)-1) {
+		my $hashref = $monomial_maps[$func];
+		my %monmap = %$hashref;
+		for my $v (0 .. scalar(@vars)-1) {
+			$monom_matrix->($func,$v) = defined($monmap{$vars[$v]})? $monmap{$vars[$v]} : 0;
+		}
+	}
+
+	#Create a tropical ring
+	my $ring = $uses_min? (new Ring<TropicalNumber<Min> >(scalar(@vars))) :
+								(new Ring<TropicalNumber<Max> >(scalar(@vars)));
+	return $uses_min?
+		(new Polynomial<TropicalNumber<Min> >($monom_matrix,$coefficients,$ring)) :
+		(new Polynomial<TropicalNumber<Max> >($monom_matrix,$coefficients,$ring));
+
+}#END toTropicalPolynomial(String,...)
+
+# @category Data Conversion
+# Same as [[toTropicalPolynomial]](String,...), except that the result will live in
+# the specified ring.
+# @param String s The string to be parsed
+# @param Ring<TropicalNumber<Addition,Rational> > r The polynomial ring in which the result will live.
+# By default, all variables in s must match variables of the ring (this can be changed with the next argument)
+# and the ring must be over the TropicalNumbers.
+# @param bool match_variables_by_order Optional and false by default. If true, variables in s can be arbitrary,
+# though their total number has to match the total number of ring variables. The variables of the string
+# will be assigned to ring variables in alphabetical order.
+# @return Polynomial<TropicalNumber<Addition,Rational> >
+user_function toTropicalPolynomial<Addition>(String,Ring<TropicalNumber<Addition> >; $=0) {
+	my ($string,$ring,$match_variables_by_order) = @_;
+	#Need to convert variables to strings
+	my $f = toTropicalPolynomial($string, $match_variables_by_order? () : (map {"$_"} $ring->variables) );
+
+	#Need to check if number of variables match
+	if(!$match_variables_by_order) {
+		if($f->monomials_as_matrix->cols() != $ring->n_vars()) {
+			die "Number of variables of polynomial and ring do not match.";
+		}
+	}
+
+	#Now convert to polynomial in the given ring
+	return map_poly($f,$ring,!$match_variables_by_order);
+}
+
+# This functions converts a polynomial in the same number of variables as a given ring
+# to a polynomial in that ring. Additionally, it gives out a helpful error message, if the
+# tropical additions don't match (Without this additional function, one just gets a long
+# compiler error).
+function map_poly<Addition1,Addition2>(Polynomial<TropicalNumber<Addition1> >, Ring<TropicalNumber<Addition2> >, $) {
+	my ($f,$ring, $fill_up_variables) = @_;
+	if(Addition1->orientation() != Addition2->orientation()) {
+		die "Error: Polynomial uses a different tropical addition than the ring";
+	}
+	else {
+		my $mon_matrix = $f->monomials_as_matrix;
+		if($fill_up_variables) {
+			if($mon_matrix->cols() > $ring->n_vars()) {
+				die "Polynomial cannot lie in ring. Too many variables.";
+			}
+			$mon_matrix = $mon_matrix | new Matrix<Int>($mon_matrix->rows(), $ring->n_vars - $mon_matrix->cols());
+		}
+		return new Polynomial<TropicalNumber<Addition2> >($mon_matrix, $f->coefficients_as_vector,$ring);
+	}
+}

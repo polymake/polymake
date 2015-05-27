@@ -113,7 +113,7 @@ unless ($noExt) {
 		$ext_file =~ s|[/:.]|_|og;
 		run_xsltproc("$tmpdir/$ext_file.xml",		"extension", 	"all.xml", $ext_name);
 		run_xsltproc("$outdir/inc/$ext_file.inc",	"doc", 	   		"$ext_file.xml", $ext_name);
-		 run_xsltproc("$outdir/$ext_file.html", 		"export", "$outdir/inc/$ext_file.inc");
+		 run_xsltproc("$outdir/$ext_file.html", 		"export", "$outdir/inc/$ext_file.inc") unless ($noHTML);
 	}
 	run_xsltproc("$outdir/inc/extensions.inc",     "ext_list",     "applications.xml");
 	run_xsltproc("$outdir/extensions.html",     "export",     "$outdir/inc/extensions.inc") unless ($noHTML);

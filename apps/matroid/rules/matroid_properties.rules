@@ -125,16 +125,16 @@ property TERNARY_VECTORS : Matrix<Int>;
 # NOTE: the property is 'undef' when its hard to decide, whether the matroid is ternary. 
 property REGULAR : Bool;
 
-#The tutte polynomial of a matroid
+# The Tutte polynomial of a matroid
 property TUTTE_POLYNOMIAL : common::Polynomial;
 
-#The linear coefficient of the tutte polynomial
+# The linear coefficient of the Tutte polynomial
 property BETA_INVARIANT : Integer;
 
-#Whether the matroid is connected
+# Whether the matroid is connected
 property CONNECTED : Bool;
 
-#The connected componets
+# The connected componets
 property CONNECTED_COMPONENTS : Array<Set>{
     sub equal {
         my ($M1,$M2)=@_;
@@ -147,19 +147,22 @@ property CONNECTED_COMPONENTS : Array<Set>{
     }
 }
 
-#Whether the matroid is series-parallel
+# Whether the matroid is series-parallel
 property SERIES_PARALLEL : Bool;
 
-#The lattice of flats, this is a graph with all closed sets as nodes
+# The lattice of flats, this is a graph with all closed sets as nodes
 property LATTICE_OF_FLATS : FaceLattice;
 
-#The h-vector of a matroid
+# The facets of the matroid [[POLYTOPE]] are either hypersimplex facets or splits induced by flats
+property SPLITTING_FLACETS : Array<Set>;
+
+# The h-vector of a matroid
 property H_VECTOR : Vector<Integer>;
 
-#The f-vector of a matroid
+# The f-vector of a matroid
 property F_VECTOR : Vector<Integer>;
 
-#A string listing the bases in revlex order. A '*' means the basis is present, a '0' that it is absent
+# A string listing the bases in revlex order. A '*' means the basis is present, a '0' that it is absent
 property REVLEX_BASIS_ENCODING : String;
 }
 

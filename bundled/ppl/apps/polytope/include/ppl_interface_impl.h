@@ -22,6 +22,8 @@
 #include "polymake/polytope/ppl_interface.h"
 #include "polymake/common/lattice_tools.h"
 #include "polymake/linalg.h"
+#include "polymake/hash_set"
+#include "polymake/polytope/compress_incidence.h"
 // the following requires an entry in Makefile.inc
 #include <ppl.hh>
 
@@ -247,6 +249,8 @@ namespace {
   solver<Coord>::enumerate_facets(const Matrix<Coord>& Points, const Matrix<Coord>& Lineality, const bool isCone, const bool primal)
   {
      PPL::C_Polyhedron polyhedron = construct_ppl_polyhedron_V(Points, Lineality, isCone);
+     Set<int> far_face(far_points(Points));
+
      PPL::Constraint_System cs = polyhedron.minimized_constraints();
      ListMatrix< Vector<Coord> > facet_list;
      ListMatrix< Vector<Coord> > affine_hull_list;
@@ -266,10 +270,17 @@ namespace {
            }
         }
      }
-     // If P is just a point then it has one facet which is the empty set
-     // and we need to add a corresponding inequality.
-     if (!isCone && num_columns == affine_hull_list.rows() + 1)
+
+     // ppl seems to compute the far face inequality (shown in cs.ascii_dump())
+     // but the iterator above skips it...
+     // So we use the following to determine whether it is needed and add it manually:
+
+     // We use the rank of the far-face rays to determine
+     // whether we need to add the trivial inequality as facet.
+     // The case that p is just a point is also covered by this!
+     if (!isCone && rank(Points.minor(far_face,All)/Lineality) + 1 == num_columns - affine_hull_list.rows()) {
         facet_list /= triv_ineq;
+     }
 
      Matrix<Coord> facets(facet_list);
      Matrix<Coord> affine_hull(affine_hull_list);
@@ -307,6 +318,38 @@ namespace {
      return typename solver<Coord>::matrix_pair(vertices, lin_space);
   }
 
+  template <typename Coord>
+  Bitset
+  solver<Coord>::find_vertices_among_points(const Matrix<Coord>& Points, const Matrix<Coord>& Lineality, const bool isCone) {
+    return find_vertices_among_points_given_inequalities(Points, enumerate_facets(Points, Lineality, isCone).first);
+  }
+
+  template <typename Coord>
+  Bitset
+  solver<Coord>::find_vertices_among_points_given_inequalities(const Matrix<Coord>& Points, const Matrix<Coord>& Inequalities) {
+    IncidenceMatrix<> incidence(Points.rows(), Inequalities.rows(), attach_operation(product(rows(Points), rows(Inequalities), operations::mul()), operations::is_zero()).begin());
+    int r = Points.rows();
+    Bitset vertices(r,true);
+    vertices -= compress_incidence(incidence).first;
+    return vertices;
+  }
+
+  template <typename Coord>
+  Bitset
+  solver<Coord>::find_facets_among_inequalities(const Matrix<Coord>& Inequalities, const Matrix<Coord>& Equations, const bool isCone) {
+    return find_facets_among_inequalities_given_points(Inequalities, enumerate_vertices(Inequalities, Equations, isCone).first);
+  }
+
+
+  template <typename Coord>
+  Bitset
+  solver<Coord>::find_facets_among_inequalities_given_points(const Matrix<Coord>& Inequalities, const Matrix<Coord>& Points) {
+    IncidenceMatrix<> incidence(Inequalities.rows(), Points.rows(), attach_operation(product(rows(Inequalities), rows(Points), operations::mul()), operations::is_zero()).begin());
+    int r = Inequalities.rows();
+    Bitset facets(r,true);
+    facets -= compress_incidence(incidence).first;
+    return facets;
+  }
 
   template <typename Coord>
   typename solver<Coord>::lp_solution

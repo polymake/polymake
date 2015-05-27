@@ -1,0 +1,193 @@
+#  Copyright (c) 2012
+#  by authors as mentioned on:
+#  https://github.com/lkastner/polymake_toric/wiki/Authors
+#  
+#  Project home:
+#  https://github.com/lkastner/polymake_toric
+#
+#  For licensing we cite the original Polymake code:
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+
+
+REQUIRE fan::gfan.rules
+
+CREDIT gfan
+
+
+# path to gfan
+custom $gfan_buchberger;
+
+custom $gfan_homogenize;
+
+custom $gfan_tropicalbruteforce;
+
+custom $gfan_tropicalhypersurface;
+
+custom $gfan_tropicalintersection;
+
+custom $gfan_tropicalstartingcone;
+
+custom $gfan_tropicaltraverse;
+
+
+CONFIGURE {
+   ($gfan_buchberger=$fan::gfan_bases) =~ s/gfan_bases$/gfan_buchberger/;
+   ($gfan_homogenize=$gfan_buchberger) =~ s/gfan_buchberger$/gfan_homogenize/;
+   ($gfan_tropicalbruteforce=$gfan_buchberger) =~ s/gfan_buchberger$/gfan_tropicalbruteforce/;
+   ($gfan_tropicalhypersurface=$gfan_buchberger) =~ s/gfan_buchberger$/gfan_tropicalhypersurface/;
+   ($gfan_tropicalintersection=$gfan_buchberger) =~ s/gfan_buchberger$/gfan_tropicalintersection/;
+   ($gfan_tropicalstartingcone=$gfan_buchberger) =~ s/gfan_buchberger$/gfan_tropicalstartingcone/;
+   ($gfan_tropicaltraverse=$gfan_buchberger) =~ s/gfan_buchberger$/gfan_tropicaltraverse/;
+}
+
+
+# This program preprocesses the input for gfan and then reads in the gfan output.
+user_function gfan_tropicalintersection(ideal::Ideal) {
+   my ($I) = @_;
+   my $tempfile=new Tempfile;
+   my $R = $I->RING;
+
+   # Writing data to file:
+   write_ideal_to_file($tempfile, $I, $R);
+   
+   # Accessing gfan:
+   # print "Computing tropical intersecton\n";
+   system "$gfan_tropicalintersection --xml -t <$tempfile.in >$tempfile.poly";
+   # print "Output written.\n";
+   temporary_gfan_output_workaround($tempfile);
+   my $result = User::load("$tempfile.poly");
+   return $result;
+}
+
+
+# This program preprocesses the input for gfan and then reads in the gfan output.
+# It should be checked whether gfan_groebnerbla can really be left out.
+user_function gfan_tropicalhypersurface(Polynomial) {
+   my ($g) = @_;
+   my $tempfile=new Tempfile;
+   my $R = $g->get_ring;
+
+   # Writing data to file:
+   write_ideal_to_file($tempfile, new ideal::Ideal(GENERATORS=>[$g]), $R);
+
+   # Accessing gfan:
+   system "$gfan_tropicalhypersurface --xml <$tempfile.in >$tempfile.poly 2>/dev/null";
+   
+   temporary_gfan_output_workaround($tempfile);
+   return User::load("$tempfile.poly");
+}
+
+
+
+# This program preprocesses the input for gfan and then reads in the gfan output.
+user_function gfan_tropicalvariety_of_prime(ideal::Ideal) {
+   my ($I) = @_;
+   my $tempfile=new Tempfile;
+   my $R = $I->RING;
+
+   # Writing data to file:
+   write_ideal_to_file($tempfile, $I, $R);
+   
+   # Accessing gfan:
+   # print "Homogenizing\n";
+   system "$gfan_homogenize -H <$tempfile.in >$tempfile.homog";
+   # print "Buchberger\n";
+   # Commented out, probably we don't need that. rtfm
+   #system "$gfan_buchberger <$tempfile.homog >$tempfile.gr";
+   # print "Starting cone\n";
+   system "$gfan_tropicalstartingcone <$tempfile.homog >$tempfile.st";
+   # print "Traversing\n";
+   system "$gfan_tropicaltraverse --xml <$tempfile.st >$tempfile.poly";
+
+   return gfan_read_output_and_dehomogenize($tempfile);
+}
+
+# This program preprocesses the input for gfan and then reads in the gfan output.
+# It should be checked whether gfan_groebnerbla can really be left out.
+user_function gfan_tropicalbruteforce(ideal::Ideal) {
+   my ($I) = @_;
+   my $tempfile=new Tempfile;
+   my $R = $I->RING;
+
+   # Writing data to file:
+   write_ideal_to_file($tempfile, $I, $R);
+   
+   # Accessing gfan:
+   system "($gfan_homogenize -i -H <$tempfile.in | $gfan_tropicalbruteforce --xml) >$tempfile.poly 2>/dev/null";
+
+   return gfan_read_output_and_dehomogenize($tempfile);
+}
+
+sub temporary_gfan_output_workaround{
+   my($tempfile) = @_;
+   # system "sed -i s/fan\\\:\\\:SymmetricFan\\\&lt\\\;/tropical\\\:\\\:Cycle\\\\\\\&lt\\\;Min\\\,/ $tempfile.poly";
+   # system("sed -i s/2\\\.9\\\.9/2.13.2/ $tempfile.poly");
+   # system("sed -i s/MULTIPLICITIES/WEIGHTS/ $tempfile.poly");
+   # print "$tempfile.poly\n";
+   # sleep 300;
+}
+
+sub gfan_read_output_and_dehomogenize{
+   my($tempfile) = @_;
+   temporary_gfan_output_workaround($tempfile);
+   my $gfan_out= User::load("$tempfile.poly");
+
+   # Decompose output data:
+   my $n = $gfan_out->AMBIENT_DIM;
+   my $rays = $gfan_out->RAYS;
+   my $lin = $gfan_out->LINEALITY_SPACE;
+   my $maxCones = $gfan_out->MAXIMAL_CONES;
+   $maxCones = new Array<Set<Int> >(@$maxCones);
+   
+   # Dehomogenization:
+   my $v = ones_vector<Rational>($n-1);
+   my $projection_matrix = dense(unit_matrix<Rational>($n-1))|(-$v);
+   my $inRays = $rays * transpose($projection_matrix); #new Matrix(map($projection_matrix * $_,@$rays));
+   my $inLin = $lin * transpose($projection_matrix);
+   my $inWeights = $gfan_out->WEIGHTS;
+   
+   # The following is cheaper than check_fan, but probably we run into problems
+   # if 0 is a ray.
+   return new Cycle(INPUT_RAYS=>$inRays, INPUT_LINEALITY=>$inLin, INPUT_CONES=>$maxCones, WEIGHTS=>$inWeights);
+}
+
+
+sub write_ideal_to_file{
+   my($tempfile, $ideal, $ring) = @_;
+   open(my $input, ">$tempfile.in") or die "Can't create temporary file $tempfile.in: $!";
+   print $input "Q[";
+   print $input join(",",$ring->variables);
+   print $input "]{\n";
+   print $input join(",",@{$ideal->GENERATORS});
+   print $input "\n}";
+   close $input;
+}
+
+sub tropical_xml_update{
+   my ($f) = @_;
+   User::load("$f");
+   # Fixing gfan output:
+   system "sed -i s/SymmetricFan/TropicalVariety/ $f.bak";
+   # print $Core::Extension::by_URI->{"https://github.com/lkastner/polymake_toric"}, "\n";
+   print $Core::Extension::by_URI, "\n";
+   die;
+   #system "sed -i s/\\\"DIM\\\"/\\\"FAN_DIM\\\"/ $f";
+   #system "sed -i s/\\\"AMBIENT_DIM\\\"/\\\"FAN_AMBIENT_DIM\\\"/ $f";
+     
+   return User::load("$f.bak");
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

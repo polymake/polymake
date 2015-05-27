@@ -649,6 +649,41 @@ object LatticePolytope {
        $this->HOMOGENEOUS = 1;
     }
     weight 0.10;
+
+
+    rule LATTICE_WIDTH, LATTICE_WIDTH_DIRECTION : VERTICES | POINTS, CONE_AMBIENT_DIM{
+       my $direction = unit_vector($this->CONE_AMBIENT_DIM,1);
+       my $lp=$this->LP(LINEAR_OBJECTIVE=>$direction, temporary);
+       my $sched = $lp->get_schedule("MAXIMAL_VALUE","MINIMAL_VALUE");
+       $sched->apply($lp);
+       my $width=$lp->MAXIMAL_VALUE - $lp->MINIMAL_VALUE;
+
+       # we need VERTICES because of minkowski_sum.
+       my $half_space = unit_vector($this->CONE_AMBIENT_DIM,1) + (0|(ones_vector($this->CONE_AMBIENT_DIM-1)/$width));
+       my $S=new Polytope(INEQUALITIES=>(scale(polarize(minkowski_sum(1,$this, -1,$this)),$width)->FACETS)/$half_space);
+       my $B=$S->LATTICE_POINTS;      
+
+       for(my $i=0; $i<$B->rows(); ++$i){
+	   my $current_direction = (new Integer(0))|primitive($B->row($i)->slice(1));
+	   next if($current_direction == zero_vector($current_direction->dim)); #because 0 is a stupid direction
+	   
+	   $lp=$this->LP(LINEAR_OBJECTIVE=>$current_direction, temporary);
+
+	   $sched->apply($lp);
+
+	   my $current_width=$lp->MAXIMAL_VALUE-$lp->MINIMAL_VALUE;
+
+	   if ($current_width<$width){
+	       $width=$current_width; 
+	       $direction=$current_direction;
+	   }
+       }
+       $this->LATTICE_WIDTH=$width;
+       $this->LATTICE_WIDTH_DIRECTION=$direction;	
+    }
+    precondition : FULL_DIM;
+    weight 5.50;
+
 }
 
 

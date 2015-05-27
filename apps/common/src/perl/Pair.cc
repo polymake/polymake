@@ -22,7 +22,9 @@
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
+#include "polymake/SparseMatrix.h"
 #include "polymake/SparseVector.h"
+#include "polymake/TropicalNumber.h"
 #include "polymake/Vector.h"
 #include "polymake/client.h"
 #include "polymake/list"
@@ -60,5 +62,16 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::Pair_A_Rational_I_Set__Int_Z", std::pair< Rational, Set< int > >);
    FunctionInstance4perl(new, std::pair< Rational, Set< int > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const std::pair< Rational, Set< int > > >, perl::Canned< const std::pair< Rational, Set< int > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const std::pair< Set< int >, Set< int > > >, perl::Canned< const std::pair< Set< int >, Set< int > > >);
+
+   OperatorInstance4perl(Binary__eq, perl::Canned< const std::pair< int, int > >, perl::Canned< const std::pair< int, int > >);
+   Class4perl("Polymake::common::Pair_A_Pair_A_Int_I_Int_Z_I_Vector__Integer_Z", std::pair< std::pair< int, int >, Vector< Integer > >);
+   Class4perl("Polymake::common::Pair_A_Pair_A_Int_I_Int_Z_I_Int_Z", std::pair< std::pair< int, int >, int >);
+   Class4perl("Polymake::common::Pair_A_Matrix_A_Rational_I_NonSymmetric_Z_I_Matrix_A_Rational_I_NonSymmetric_Z_Z", std::pair< Matrix< Rational >, Matrix< Rational > >);
+   Class4perl("Polymake::common::Pair_A_Bool_I_Set__Int_Z", std::pair< bool, Set< int > >);
+   Class4perl("Polymake::common::Pair_A_Matrix_A_Rational_I_NonSymmetric_Z_I_Vector__Rational_Z", std::pair< Matrix< Rational >, Vector< Rational > >);
+   FunctionInstance4perl(new, std::pair< int, int >);
+   Class4perl("Polymake::common::Pair_A_SparseVector__Int_I_TropicalNumber_A_Max_I_Rational_Z_Z", std::pair< SparseVector< int >, TropicalNumber< Max, Rational > >);
+   Class4perl("Polymake::common::Pair_A_SparseVector__Int_I_TropicalNumber_A_Min_I_Rational_Z_Z", std::pair< SparseVector< int >, TropicalNumber< Min, Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

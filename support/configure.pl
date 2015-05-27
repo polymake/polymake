@@ -80,7 +80,7 @@ if ($^O eq "darwin") {
 # check for --repeat option: must happen early enough, before any other digging in @ARGV
 try_restore_config_command_line(\@ARGV);
 
-my (@ext, @ext_disabled, %ext_with_config, %ext_requires, %ext_conflicts, %ext_failed, %ext_bad);
+my (@ext, @ext_disabled, %ext_with_config, %ext_requires, %ext_requires_opt, %ext_conflicts, %ext_failed, %ext_bad);
 
 # sieve out disabled bundled extensions
 for (my $i=$#ARGV; $i>=0; --$i) {
@@ -93,6 +93,8 @@ for (my $i=$#ARGV; $i>=0; --$i) {
 
 # load configuration routines for enabled bundled extensions
 @ext=grep { $options{$_} ne ".none." } map { m{bundled/(.*)} } glob("bundled/*");
+
+my @prereq_sections=qw(REQUIRE REQUIRE_OPT);
 
 foreach my $ext (@ext) {
    eval {
@@ -107,12 +109,27 @@ foreach my $ext (@ext) {
          if ($sections{URI}) {
             die "bundled extensions have implict URIs; URI section not allowed\n";
          }
-         if ($sections{REQUIRE}) {
-            $ext_requires{$ext}=[ map { /^bundled:(\w+)$/ ? $1 : die "invalid reference to a prerequisite extension: $_\n" } $sections{REQUIRE} =~ /(\S+)/g ];
+
+         my @prereq;
+         foreach my $is_optional (0..1) {
+            if (my $section=$sections{$prereq_sections[$is_optional]}) {
+               foreach ($section =~ /(\S+)/g) {
+                  if (/^bundled:(\w+)$/) {
+                     push @prereq, $1;
+                     $ext_requires_opt{$ext}->{$1}=$is_optional;
+                  } else {
+                     die "invalid reference to a prerequisite extension: $_\n"
+                  }
+               }
+            }
          }
+         $ext_requires{$ext}=\@prereq;
+
+         my @confl;
          if ($sections{CONFLICT}) {
-            $ext_conflicts{$ext}=[ map { /^bundled:(\w+)$/ ? $1 : die "invalid reference to a conflicting extension: $_\n" } $sections{CONFLICT} =~ /(\S+)/g ];
+            @confl=map { /^bundled:(\w+)$/ ? $1 : die "invalid reference to a conflicting extension: $_\n" } $sections{CONFLICT} =~ /(\S+)/g;
          }
+         $ext_conflicts{$ext}=\@confl;
       } else {
          die "missing\n";
       }
@@ -854,9 +871,9 @@ my %ext_unordered=map { ($_ => 1) } grep { $options{$_} ne ".none." } @ext;
 while (keys %ext_unordered) {
    my $progress=@ext_ordered;
    while ((my $ext, undef)=each %ext_unordered) {
-      unless ($ext_requires{$ext} && grep { $ext_unordered{$_} } @{$ext_requires{$ext}}
+      unless (grep { $ext_unordered{$_} } @{$ext_requires{$ext}}
                 or
-              $ext_conflicts{$ext} && grep { $ext_unordered{$_} } @{$ext_conflicts{$ext}}) {
+              grep { $ext_unordered{$_} } @{$ext_conflicts{$ext}}) {
          push @ext_ordered, $ext;
          delete $ext_unordered{$ext};
       }
@@ -866,8 +883,8 @@ while (keys %ext_unordered) {
 
 while ((my $ext, undef)=each %ext_unordered) {
    print "bundled extension $ext ... disabled because of cyclic dependencies on other extension(s): ",
-         join(", ", $ext_requires{$ext} ? (grep { $ext_unordered{$_} } @{$ext_requires{$ext}}) : (),
-                    $ext_conflicts{$ext} ? (grep { $ext_unordered{$_} } @{$ext_conflicts{$ext}}) : ()), "\n";
+         join(", ", (grep { $ext_unordered{$_} } @{$ext_requires{$ext}}),
+                    (grep { $ext_unordered{$_} } @{$ext_conflicts{$ext}})), "\n";
 }
 
 # configure the bundled extensions
@@ -876,20 +893,20 @@ foreach my $ext (@ext_ordered) {
    print "bundled extension $ext ... ";
    my $enable=1;
 
-
-   if ($ext_requires{$ext}) {
-      foreach my $prereq (@{$ext_requires{$ext}}) {
-         unless ($ext_survived{$prereq}) {
-            if (-d "bundled/$prereq") {
-               print "disabled because of unsatisfied prerequisite: $prereq";
-            } else {
-               print "disabled because of unknown/missing prerequisite: $prereq";
-            }
-            $enable=0; last;
+   my @prereq;
+   foreach my $prereq (@{$ext_requires{$ext}}) {
+      if ($ext_survived{$prereq}) {
+         push @prereq, $prereq;
+      } elsif (!$ext_requires_opt{$ext}->{$prereq}) {
+         if (-d "bundled/$prereq") {
+            print "disabled because of unsatisfied prerequisite: $prereq";
+         } else {
+            print "disabled because of unknown/missing prerequisite: $prereq";
          }
+         $enable=0; last;
       }
    }
-   if ($enable && $ext_conflicts{$ext}) {
+   if ($enable) {
       foreach my $conflict (@{$ext_conflicts{$ext}}) {
          if ($ext_survived{$conflict}) {
             print "disabled because of conflict with other extension: $conflict";
@@ -899,7 +916,7 @@ foreach my $ext (@ext_ordered) {
    }
 
    if ($enable) {
-      eval { check_extension_source_conflicts("bundled/$ext", ".", $ext_requires{$ext} ? (map { "bundled/$_" } @{$ext_requires{$ext}}) : ()) };
+      eval { check_extension_source_conflicts("bundled/$ext", ".", (map { "bundled/$_" } @prereq)) };
       if ($@) {
          print "disabled because of the following conflicts:\n\n$@";
          $enable=0;
@@ -919,6 +936,7 @@ foreach my $ext (@ext_ordered) {
    }
 
    if ($enable) {
+      $ext_requires{$ext}=\@prereq;
       $ext_survived{$ext}=1;
    } else {
       $ext_failed{$ext}=1;
@@ -993,13 +1011,13 @@ close CONF;
 
 # create build directories for successfully configured bundled extensions
 foreach my $ext (keys %ext_survived) {
-   create_bundled_extension_build_dir("bundled/$ext", $BuildDir, "Polymake::Bundled::$ext", $ext_requires{$ext} ? (map { "bundled/$_" } @{$ext_requires{$ext}}) : ());
+   create_bundled_extension_build_dir("bundled/$ext", $BuildDir, "Polymake::Bundled::$ext", (map { "bundled/$_" } @{$ext_requires{$ext}}));
 }
 
 # delete build directories for disabled extensions, if any
 if (keys %ext_survived) {
    foreach my $d (glob "$BuildDir/bundled/*") {
-      exists $ext_survived{($d =~ $Polymake::filename_re)[0]}
+      $ext_survived{($d =~ $Polymake::filename_re)[0]}
         or File::Path::rmtree($d);
    }
 } else {

@@ -19,6 +19,9 @@
 # @topic category /functions/Symmetry
 # These functions are dealing with symmetries.
 
+# @topic category functions/Orbits
+# These functions are concerned with orbits in groups.
+
 
 # Local Variables:
 # mode: perl

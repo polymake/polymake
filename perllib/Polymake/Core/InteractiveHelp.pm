@@ -139,6 +139,19 @@ sub add {
                }
                $annex{function}=0;
 
+            } elsif ($tag eq "value") {
+               if ($value =~ s/^\s* (?'name' $id_re) \s+ (?'value' $quoted_re | $id_re ) \s+//xos) {
+                  if (defined (my $param_list=$annex{param})) {
+                     my ($param)=grep { $_->[1] eq $+{name} } @$param_list
+                       or croak( "unknown parameter name '$+{name}'" );
+                     push @{$param->[3] //= [ ]}, [$+{value}, $value];
+                  } else {
+                     croak( "help tag \@value must follow parameter descriptions \@param" );
+                  }
+               } else {
+                  croak( "help tag \@value '$value' does not start with valid name and quoted string or named constant" );
+               }
+
             } elsif ($tag eq "option" || $tag eq "key") {
                if ($value =~ s/^\s* (?'type' $type_re) \s+ (?'name' (?!\d)[\w-]+) \s*//xos) {
                   if ($tag eq "key") {
@@ -349,6 +362,14 @@ sub display_function_text {
             $comment =~ s/\n[ \t]*(?=\S)/\n    /g;
             my ($name)= $_->[1] =~ /^($id_re)/;
             $text .= "  $_->[0] " . InteractiveCommands::underline($name) . " $comment";
+            if (defined (my $value_list=$_->[3])) {
+               $text .= "    Possible values:\n";
+               foreach my $value (@$value_list) {
+                  $comment=$value->[1];
+                  clean_text($comment);
+                  $text .= "      " . $value->[0] . " : $comment";
+               }
+            }
          }
       }
       if (defined $options) {
@@ -445,15 +466,26 @@ sub display_keys_text {
 # for properties
 sub display_property_text {
    my ($self)=@_;
-   my $obj_topic = $self->parent;
-   if ($obj_topic->category) { $obj_topic = $obj_topic->parent; }
-   my $obj_name = $obj_topic->parent->name;
-   my $type_name = $User::application->eval_type($obj_name, 1)->lookup_property($self->name)->type->full_name;
+   my @objects=($self->name);
+   my $obj_topic=$self;
+   while (defined ($obj_topic=$obj_topic->parent)) {
+      if ($obj_topic->category) { $obj_topic = $obj_topic->parent; }
+      if ($obj_topic->name eq "properties") {
+         $obj_topic=$obj_topic->parent;
+         push @objects, $obj_topic->name;
+      } else {
+         last;
+      }
+   }
+   my $obj_type=$User::application->eval_type(pop @objects, 1)
+     or return "";
 
-   my $text = "property ". $self->name. " : ". $type_name ."\n";
-
-   $text .= $self->text;
-   return $text;
+   while (@objects) {
+      my $prop=$obj_type->lookup_property(pop @objects)
+        or return "";
+      $obj_type=(@objects ? $prop->specialization($obj_type, 1) : $prop)->type;
+   }
+   "property ". $self->name ." : ". $obj_type->full_name ."\n" . $self->text;
 }
 
 sub display_text {
@@ -573,13 +605,25 @@ sub find {
    wantarray ? @topics : $topics[0]
 }
 #################################################################################
-sub keyword_completions {
-   my ($self, $n_preceding_args, $obj_type, $prefix)=@_;
+sub argument_completions {
+   my ($self, $arg_num, $prefix)=@_;
+   my ($param_list, $param, $value_list);
+
    if (my $ovcnt=$self->annex->{function}) {
-      map { keyword_completions($self->topics->{"overload#$_"}, $n_preceding_args, $prefix) } 0..$ovcnt;
+      map { argument_completions($self->topics->{"overload#$_"}, $arg_num, $prefix) } 0..$ovcnt;
+
+   } elsif (defined ($param_list=$self->annex->{param}) and
+            defined ($param=$param_list->[$arg_num])    and
+            defined ($value_list=$param->[3])) {
+      if ((my $quote)= $prefix =~ /^(['"])/) {
+         # accept both kinds of quotes
+         grep { /^$prefix/ } map { $_->[0] =~ $quoted_re ? $quote.$+{quoted}.$quote : $_->[0] } @$value_list;
+      } else {
+         grep { /^$prefix/ } map { $_->[0] } @$value_list;
+      }
 
    } elsif (defined (my $mandatory=$self->annex->{mandatory})) {
-      return if $n_preceding_args <= $mandatory;
+      return if $arg_num <= $mandatory;
 
       my @matching;
       if (defined (my $options=$self->annex->{options})) {
@@ -595,7 +639,8 @@ sub keyword_completions {
             }
          }
       }
-      @matching;
+      map { "$_=>" } @matching;
+
    } else {
       ()
    }

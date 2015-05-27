@@ -15,8 +15,6 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/Rational.h"
-#include "polymake/QuadraticExtension.h"
 #include "polymake/Vector.h"
 #include "polymake/Matrix.h"
 #include "polymake/ListMatrix.h"
@@ -30,12 +28,11 @@ bounding_box(const Matrix<Scalar>& V, const Scalar& surplus_k, const bool visual
    if (surplus_k<0) throw std::runtime_error("bounding_box: surplus value must be non-negative");
    
    const int d=V.cols();
-   Vector<Scalar> min_vector(d), max_vector(d);
    int i=V.rows()-1;
    while (i>=0 && is_zero(V(i,0))) --i;
    if (i<0) throw std::runtime_error("bounding_box: no bounded vertices for box.");
 
-   min_vector=max_vector=V[i].slice(0,d);
+   Vector<Scalar> min_vector(V[i].slice(0,d)), max_vector(min_vector);
    for (--i ; i>=0; --i)
       if (!is_zero(V(i,0)))
          for (int j=1; j<d; ++j)
@@ -53,7 +50,7 @@ bounding_box(const Matrix<Scalar>& V, const Scalar& surplus_k, const bool visual
    ListMatrix< Vector<Scalar> > af(0,d);
    for (int j=1; j<d; ++j) {
       af /= ( max_vector[j] | -unit_vector<Scalar>(d-1,j-1));
-      af /= (-min_vector[j] | unit_vector<Scalar>(d-1,j-1));
+      af /= (-min_vector[j] |  unit_vector<Scalar>(d-1,j-1));
    }
 
    return af;

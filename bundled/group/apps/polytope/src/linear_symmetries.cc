@@ -74,7 +74,7 @@ UserFunction4perl("# CREDIT sympol\n\n"
                   "# @param Cone c the cone (or polytope) whose dual description is to be computed"
                   "# @param group::Group a symmetry group of the cone //c// ([[group::GroupOfCone]] or [[group::GroupOfPolytope]])"
                   "# @param Bool dual true if V to H, false if H to V" 
-                  "# @param Bool rayCompMethod specifies sympol's method of ray computation via lrs(0), cdd(1), beneath_and_beyond(2)" 
+                  "# @param Bool rayCompMethod specifies sympol's method of ray computation via lrs(0), cdd(1), beneath_and_beyond(2), ppl(3)" 
                   "# @return perl::ListReturn list which contains success as bool, vertices/inequalities and lineality/equations as [[Matrix<Rational>]]",
                   &representation_conversion_up_to_symmetry,"representation_conversion_up_to_symmetry(Cone<Rational>, group::Group $ $)");
 } }

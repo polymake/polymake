@@ -105,6 +105,53 @@ template <typename Graph> inline
 pm::GraphComponents<const Graph&, connected_components_iterator>
 connected_components(const GenericGraph<Graph>& G) { return G.top(); }
 
+namespace {
+
+template<typename Container, typename E>
+void add_to(Container& C, const E& e) 
+{
+   C.push_back(e);
+}
+
+template<typename E>
+void add_to(Set<E>& C, const E& e)
+{
+   C += e;
+}
+
+} // end anonymous namespace
+
+// compute a spanning tree rooted at vertex root_node,
+// optionally restricted to a support set
+template<typename GraphType, typename DirType, typename Container>
+void
+connected_component(const GenericGraph<GraphType, DirType>& G, 
+                    Container& C,
+                    int root_node=0,
+                    const Set<int> support=Set<int>())
+{
+   std::list<int> unprocessed_leaves;
+   Bitset marked;  // nodes already included in the tree
+
+   unprocessed_leaves.push_back(root_node); // we start the tree at the given node
+   add_to(C, root_node);
+   marked.insert(root_node);
+
+   while ( !unprocessed_leaves.empty() ) {      
+      const int current = unprocessed_leaves.front();
+      unprocessed_leaves.pop_front();
+      const Set<int> neighbours = G.top().adjacent_nodes(current);  
+      for (Entire< Set< int > >::const_iterator v = entire(neighbours); !v.at_end(); ++v) 
+         if ((!support.size() || support.contains(*v)) 
+             && !marked.contains(*v)) {
+            unprocessed_leaves.push_back(*v);
+            marked.insert(*v);
+            add_to(C, *v);
+         }
+   }
+}
+
+
 } }
 
 namespace pm {

@@ -1,6 +1,8 @@
-# This is a bundled extension.
+# This is a bundled extension for permlib+sympol
+
+REQUIRE_OPT
+   bundled:ppl
 
 REQUIRE
    bundled:lrs
    bundled:cdd
-

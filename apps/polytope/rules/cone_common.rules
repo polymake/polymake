@@ -30,8 +30,18 @@ rule N_RAYS : RAYS {
 }
 weight 0.10;
 
-rule N_FACETS : FACETS{
+rule N_RAYS : F_VECTOR {
+    $this->N_RAYS=$this->F_VECTOR->[0];
+}
+weight 0.10;
+
+rule N_FACETS : FACETS {
     $this->N_FACETS=$this->FACETS->rows;
+}
+weight 0.10;
+
+rule N_FACETS : F_VECTOR, COMBINATORIAL_DIM {
+   $this->N_FACETS=$this->F_VECTOR->[$this->COMBINATORIAL_DIM-1];
 }
 weight 0.10;
 
@@ -89,6 +99,11 @@ weight 1.10;
 
 rule COMBINATORIAL_DIM : CONE_DIM, LINEALITY_DIM {
    $this->COMBINATORIAL_DIM = $this->CONE_DIM - $this->LINEALITY_DIM-1;
+}
+weight 0.10;
+
+rule COMBINATORIAL_DIM : F_VECTOR {
+   $this->COMBINATORIAL_DIM = $this->F_VECTOR->dim;
 }
 weight 0.10;
 
@@ -510,6 +525,40 @@ user_method DIM {
   return $self->CONE_DIM;
 }
 
+
+# @category Combinatorics
+# For a given set of vertices compute the smallest face F containing them all.
+# Returns a Pair<Set,Set> where the first is the set of vertices of F, while the second is the set of facets containing F.
+# Example: $c=cube(3); print rank($c->VERTICES->minor($c->face([0,1])->first(),All))-1;
+# computes the dimension of the face of the 3-cube which is spanned by the vertices 0 and 1.
+user_method face {
+		my ($self,$some_vertices)=@_;
+		$some_vertices=new Set($some_vertices); # be flexible; take anything which can be interpreted as a Set
+		my $vif=$self->RAYS_IN_FACETS;
+		my $facets_containing_given_vertices; # will become of type Set
+		if ($some_vertices->size()==0) {
+				$facets_containing_given_vertices=sequence(0,$self->N_FACETS);
+		} else {
+				my @vertex_list=@{$some_vertices};
+				$facets_containing_given_vertices=new Set($vif->col($vertex_list[0]));
+				for (my $i=1; $i<$some_vertices->size(); ++$i) {
+						$facets_containing_given_vertices*=$vif->col($vertex_list[$i]);
+				}
+		}
+		my $vertices_in_facets_found; # will become of type Set
+		if ($facets_containing_given_vertices->size()==0) {
+				$vertices_in_facets_found=sequence(0,$self->N_VERTICES);
+		} else {
+				my @facet_list=@{$facets_containing_given_vertices};
+				$vertices_in_facets_found=new Set($vif->row($facet_list[0]));
+				for (my $i=1; $i<$facets_containing_given_vertices->size(); ++$i) {
+						$vertices_in_facets_found*=$vif->row($facet_list[$i]);
+				}
+		}
+		return new Pair<Set,Set>($vertices_in_facets_found,$facets_containing_given_vertices);
+}
+
+
 rule TRIANGULATION.FACETS : RAYS {
    $this->TRIANGULATION->FACETS=placing_triangulation($this->RAYS);
 }
@@ -545,27 +594,37 @@ user_function iterated_barycentric_subdivision<Scalar>(Cone<Scalar> $ { relabel=
     topaz::iterated_barycentric_subdivision_impl<Scalar>(@_);
 }
 
+
+user_function lawrence_matrix<Scalar>(Matrix<Scalar>) {
+# @category Other
+# @param Matrix M
+# Create the Lawrence matrix Lambda(M) corresponding to M.
+# If //M// has //n// rows and //d// columns, then Lambda(M) equals
+# ( //M//       //I_n// )
+# ( //0_{n,d}// //I_n// ).
+# @return Matrix
+    my $m = shift;
+    my $n = $m->rows();
+    my $d = $m->cols();
+    my $m1 = $m | unit_matrix<Scalar>($n);
+    my $m2 = ((ones_vector<Scalar>($n)) | (zero_matrix<Scalar>($n,$d-1))) 
+	| (unit_matrix<Scalar>($n));
+    return $m1/$m2;
+}
+
+
 # @category Producing a polytope from polytopes
 # Create the Lawrence polytope Lambda(P) corresponding to P.
-# If //V// is the matrix whose rows are the //n// vertices of P, 
-# then the vertices of Lambda(P) are the rows of the matrix
-# ( //V//   //I_n// )
-# ( //0_n// //I_n// ).
 # Lambda(P) has the property that 
 # Gale(Lambda(P)) = Gale(P) union -Gale(P).
 # @param Cone P an input cone or polytope
 # @return Cone the Lawrence cone or polytope to P
 user_function lawrence<Scalar>(Cone<Scalar>) {
     my $p = shift;
-    my $n = $p->N_VERTICES;
-    my $d = $p->AMBIENT_DIM;
-    my $v1 = $p->VERTICES | unit_matrix<Scalar>($n);
-    my $v2 = ((ones_vector<Scalar>($n)) | (zero_matrix<Scalar>($n,$d))) 
-	| (unit_matrix<Scalar>($n));
-    return new Polytope<Scalar>(VERTICES=>$v1/$v2);
+    return new Polytope<Scalar>(VERTICES=>lawrence_matrix($p->VERTICES));
 }
 
 # Local Variables:
-# c-basic-offset:3
+# c-basic-offset:2
 # mode: perl
 # End:

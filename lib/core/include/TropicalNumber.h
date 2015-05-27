@@ -24,6 +24,7 @@
 #define POLYMAKE_TROPICALNUMBER_H
 
 #include "polymake/internal/converters.h"
+#include "polymake/Polynomial.h"
 #include "polymake/Integer.h"
 
 namespace pm {
@@ -130,17 +131,22 @@ public:
       return TropicalNumber<Addition,Scalar>( convert_to<Scalar>(a) - convert_to<Scalar>(b));
    }
    
+   
    // The following are disallowed. We overload them to prevent calling any version
-   // Scalar may have overloaded.
+   // Scalar may have overloaded. The complicated templating takes care that only 
+   // operations with scalar types are blocked (i.e. polynomials and vectors, matrices are
+   // allowed)
    
    template <typename T>
-   friend TropicalNumber<Addition,Scalar> operator+(const TropicalNumber<Addition,Scalar> &a,
+   friend typename 
+   enable_if<TropicalNumber<Addition,Scalar>,identical<typename object_traits<T>::model, is_scalar>::value>::type operator+(const TropicalNumber<Addition,Scalar> &a,
 						    const T& b){
       throw std::runtime_error("Tropical addition is only applicable to explicitly declared TropicalNumbers");
    }
    
    template <typename T>
-   friend TropicalNumber<Addition,Scalar> operator+(const T& b, 
+   friend typename 
+   enable_if<TropicalNumber<Addition,Scalar>,identical<typename object_traits<T>::model, is_scalar>::value>::type operator+(const T& b, 
 						    const TropicalNumber<Addition,Scalar> &a){
       throw std::runtime_error("Tropical addition is only applicable to explicitly declared TropicalNumbers");
    }
@@ -163,25 +169,29 @@ public:
    }
  
    template <typename T>
-   friend TropicalNumber<Addition,Scalar> operator*(const TropicalNumber<Addition,Scalar> &a,
+   friend typename 
+   enable_if<TropicalNumber<Addition,Scalar>,identical<typename object_traits<T>::model, is_scalar>::value>::type operator*(const TropicalNumber<Addition,Scalar> &a,
 						    const T& b){
       throw std::runtime_error("Tropical multiplication  only applicable to explicitly declared TropicalNumbers");
    } 
    
    template <typename T>
-   friend TropicalNumber<Addition,Scalar> operator*(const T& b, 
+   friend typename 
+   enable_if<TropicalNumber<Addition,Scalar>,identical<typename object_traits<T>::model, is_scalar>::value>::type operator*(const T& b, 
 						    const TropicalNumber<Addition,Scalar> &a){
       throw std::runtime_error("Tropical multiplication  only applicable to explicitly declared TropicalNumbers");
    }
    
    template <typename T>
-   friend TropicalNumber<Addition,Scalar> operator/(const TropicalNumber<Addition,Scalar> &a,
+   friend typename 
+   enable_if<TropicalNumber<Addition,Scalar>,identical<typename object_traits<T>::model, is_scalar>::value>::type operator/(const TropicalNumber<Addition,Scalar> &a,
 						    const T& b){
       throw std::runtime_error("Tropical division is only applicable to explicitly declared TropicalNumbers");
    }
    
    template <typename T>
-   friend TropicalNumber<Addition,Scalar> operator/(const T&b, const TropicalNumber<Addition,Scalar> &a){
+   friend typename 
+   enable_if<TropicalNumber<Addition,Scalar>,identical<typename object_traits<T>::model, is_scalar>::value>::type operator/(const T&b, const TropicalNumber<Addition,Scalar> &a){
       throw std::runtime_error("Tropical division is only applicable to explicitly declared TropicalNumbers");
    }
  

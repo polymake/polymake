@@ -21,7 +21,7 @@
 #include "polymake/Set.h"
 #include "polymake/PowerSet.h"
 #include "polymake/Integer.h"
-#include "polymake/matroid/check_basis_exchange_axiom.h"
+#include "polymake/matroid/check_axioms.h"
 
 namespace polymake { namespace matroid {
 

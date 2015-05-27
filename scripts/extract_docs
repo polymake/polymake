@@ -393,8 +393,29 @@ sub write_function {
    }
    if (defined (my $params=$help->annex->{param})) {
       foreach (@$params) {
-         $writer->startTag("param", name => $_->[1], type => $_->[0], href => resolve_ref($help,$_->[0]));
-         write_descr_string($writer, $help, $_->[2]);
+         $writer->startTag("param", name => $_->[1], type => $_->[0], href => resolve_ref($help, $_->[0]));
+         my $descr=$_->[2];
+         my $value_list=$_->[3];
+         if ($descr =~ /\S/ || defined($value_list)) {
+            $descr .= "\nPossible values:\n" if defined($value_list);
+            $writer->startTag("description");
+            writeHTML($writer, $help, $descr, "div");
+            if (defined $value_list) {
+               $writer->setDataMode(0);
+               $writer->startTag([ $xhtmlns, "dl" ]);
+               foreach my $value (@$value_list) {
+                  $writer->startTag([ $xhtmlns, "dt" ]);
+                  writeHTMLtext($writer, $help, $value->[0]);
+                  $writer->endTag;
+                  $writer->startTag([ $xhtmlns, "dd" ]);
+                  writeHTMLtext($writer, $help, $value->[1]);
+                  $writer->endTag;
+               }
+               $writer->endTag;
+               $writer->setDataMode(1);
+            }
+            $writer->endTag("description");
+         }
          $writer->endTag;
       }
    }

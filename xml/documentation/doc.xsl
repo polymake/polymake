@@ -101,6 +101,15 @@ polymake application.
 <xsl:template match="html:div">
 	<div><xsl:apply-templates/></div>
 </xsl:template>
+<xsl:template match="html:dl">
+	<dl><xsl:apply-templates/></dl>
+</xsl:template>
+<xsl:template match="html:dt">
+	<dt><xsl:apply-templates/></dt>
+</xsl:template>
+<xsl:template match="html:dd">
+	<dd><xsl:apply-templates/></dd>
+</xsl:template>
 <xsl:template match="html:blockquote">
 	<blockquote><xsl:apply-templates/></blockquote>
 </xsl:template>

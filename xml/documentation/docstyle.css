@@ -169,6 +169,10 @@ table.args td{
 	padding: 3px;
 }
 
+/* option list */
+div.descr dt {
+	font-family: Monospace;
+}
 
 
 

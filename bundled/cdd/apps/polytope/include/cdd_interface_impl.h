@@ -556,16 +556,24 @@ Vector<Coord> cdd_lp<Coord>::optimal_vertex() const
 // end of cdd classes
 //  implementation of solver methods
 
+// count how many solver instances are active to make sure that they are initialized and freed correctly
+// the variable lives in cdd_interface.cc
+extern int solver_count;
+
+// we only use the dd_ variant as this allocates both the dd_ and ddf_ global variables
+// also to make sure there are no problems when only some are freed by the ddf_free function
 template <typename Coord>
 solver<Coord>::solver()
 {
-   CDDRESOLVE(set_global_constants)();
+   if (solver_count++ == 0)
+      dd_set_global_constants();
 }
 
 template <typename Coord>
 solver<Coord>::~solver()
 {
-   CDDRESOLVE(free_global_constants)();
+   if (--solver_count == 0)
+      dd_free_global_constants();
 }
 
 // this and the following function are identical

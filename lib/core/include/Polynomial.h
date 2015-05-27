@@ -27,6 +27,7 @@
 #include "polymake/TransformedContainer.h"
 #include "polymake/numerical_functions.h"
 #include "polymake/hash_map"
+#include "polymake/list"
 #include <cassert>
 
 namespace pm {
@@ -83,9 +84,11 @@ public:
    template <typename _Matrix>
    cmp_value compare_values(const SparseVector<Exponent>& m1, const SparseVector<Exponent>& m2, const GenericMatrix<_Matrix>& order) const
    {
-      if (POLYMAKE_DEBUG && order.rows() != order.cols())
-         throw std::runtime_error("order matrix not square");
-      return operations::cmp()(order * m1, order * m2);
+      cmp_value v(operations::cmp()(order * m1, order * m2));
+      if (v != cmp_eq)
+         return v;
+      else
+         return operations::cmp()(m1, m2);
    }
 
    // for univariate polynomials
@@ -1020,7 +1023,7 @@ operator- (const monomial_type& m)
 {
    return typename Term_result<monomial_type>::type(m, -m.get_ring().one_coef());
 }
-
+
 template <typename Monomial>
 class Polynomial_base {
 public:
@@ -1031,42 +1034,36 @@ public:
    typedef typename Term_result<monomial_type>::type term_type;
    typedef typename Polynomial_result<monomial_type>::type polynomial_result;
    typedef hash_map<typename monomial_type::value_type, coefficient_type> term_hash;
+   typedef std::list<typename monomial_type::value_type> sorted_terms_type; // use forward_list when using c++11
 
 protected:
    struct impl {
       term_hash the_terms;
       ring_type ring;
 
-      // leading monomial
-      mutable typename monomial_type::value_type the_lm;
-      // true if the_lm has a valid value
-      mutable bool the_lm_set;
+      // terms ordered by lex termorder 
+      mutable sorted_terms_type the_sorted_terms;
+      // true if sorted_terms has a valid value
+      mutable bool the_sorted_terms_set;
 
-      impl() : the_lm_set(false) {}
+      impl() : the_sorted_terms(), the_sorted_terms_set(false) {}
 
-      explicit impl(const ring_type& r) : ring(r), the_lm_set(false) {}
+      explicit impl(const ring_type& r) : ring(r), the_sorted_terms(), the_sorted_terms_set(false) {}
 
-      impl(const ring_type& r, const typename monomial_type::value_type& lm) :
-         ring(r), the_lm(lm), the_lm_set(true) {}
+      impl(const ring_type& r, const sorted_terms_type& sorted_terms) :
+         ring(r), the_sorted_terms(sorted_terms), the_sorted_terms_set(true) {}
 
-      void set_lm(const typename monomial_type::value_type& lm) const
+      void forget_sorted_terms()
       {
-         the_lm=lm;
-         the_lm_set=true;
-      }
-
-      void forget_lm()
-      {
-         if (the_lm_set) {
-            operations::clear<typename monomial_type::value_type> clr;
-            clr(the_lm);
-            the_lm_set=false;
+         if (the_sorted_terms_set) {
+            the_sorted_terms.clear();
+            the_sorted_terms_set=false;
          }
       }
 
       void clear()
       {
-         forget_lm();
+         forget_sorted_terms();
          the_terms.clear();
       }
    };
@@ -1093,8 +1090,7 @@ public:
       data(make_constructor(r, (impl*)0))
    {
       if (__builtin_expect(!is_zero(c), 1)) {
-         data.get()->set_lm(monomial_type::default_value(r));
-         data.get()->the_terms.insert(data.get()->the_lm, c);
+         data.get()->the_terms.insert(monomial_type::default_value(r), c);
       }
    }
 
@@ -1104,23 +1100,21 @@ public:
       data(make_constructor(r, (impl*)0))
    {
       if (__builtin_expect(!is_zero(c), 1)) {
-         data.get()->set_lm(monomial_type::default_value(r));
-         data.get()->the_terms.insert(data.get()->the_lm, deeper_coefficient_of<T, Polynomial_base>::construct(c, r));
+         data.get()->the_terms.insert(monomial_type::default_value(r), deeper_coefficient_of<T, Polynomial_base>::construct(c, r));
       }
    }
 
    Polynomial_base(const monomial_type& m) :
-      data(make_constructor(m.get_ring(), m.get_value(), (impl*)0))
+      data(make_constructor(m.get_ring(), (impl*)0))
    {
-      data.get()->the_terms.insert(data.get()->the_lm, m.get_ring().one_coef());
+      data.get()->the_terms.insert(m.get_value(), m.get_ring().one_coef());
    }
 
    Polynomial_base(const Term_base<monomial_type>& t) :
       data(make_constructor(t.get_ring(), (impl*)0))
    {
       if (__builtin_expect(!is_zero(t.get_coefficient()), 1)) {
-         data.get()->set_lm(t.get_value().first);
-         data.get()->the_terms.insert(data.get()->the_lm, t.get_coefficient());
+         data.get()->the_terms.insert(t.get_value().first, t.get_coefficient());
       }
    }
 
@@ -1210,14 +1204,10 @@ public:
          return term_type(*find_lm(cmp_monomial_ordered<Matrix>(order.top())), data->ring);
    }
 
-   bool lt_set() const { return data->the_lm_set; }
-
    //! Return the leading monomial.
    monomial_type lm() const
    {
-      if (data->the_lm_set)
-         return monomial_type(data->the_lm, data->ring);
-      else if (trivial())
+      if (trivial())
          return monomial_type(data->ring);
       else
          return monomial_type(find_lex_lm()->first, data->ring);
@@ -1235,9 +1225,7 @@ public:
    //! Return the leading monomial's exponents.
    typename monomial_type::value_type lm_exp() const
    {
-      if (data->the_lm_set)
-         return data->the_lm;
-      else if (trivial())
+      if (trivial())
          return monomial_type::default_value(data->ring);
       else
          return find_lex_lm()->first;
@@ -1344,7 +1332,6 @@ public:
       for (typename Entire<term_hash>::const_iterator it=entire(data->the_terms); !it.at_end(); ++it)
          prod.add_term(it->first + m.get_value(), it->second, True(), True());
 
-      if (lt_set()) prod.data->set_lm(data->the_lm + m.get_value());
       return prod;
    }
 
@@ -1367,7 +1354,6 @@ public:
                                              : it->second * t.get_value().second,
                           True(), True());
 
-         if (lt_set()) prod.data->set_lm(data->the_lm + t.get_value().first);
       }
       return prod;
    }
@@ -1538,56 +1524,83 @@ public:
       return top();
    }
 
-   template <typename Order>
-   struct cmp_monomial_ptr_ordered
-      : public cmp_monomial_ordered<Order>
-   {
-      typedef const typename term_hash::value_type* first_argument_type;
-      typedef const typename term_hash::value_type* second_argument_type;
-      typedef bool result_type;
-
-      explicit cmp_monomial_ptr_ordered(const Order& order_arg)
-         : cmp_monomial_ordered<Order>(order_arg) {}
-
-      result_type operator() (first_argument_type t1, second_argument_type t2) const
-      {
-         // let the leading term appear first
-         return cmp_monomial_ordered<Order>::operator()(t1->first, t2->first) == cmp_gt;
-      }
-   };
-
    template <typename Output, typename Order>
    void pretty_print(GenericOutput<Output>& out, const Order& order) const
    {
-      std::vector<const typename term_hash::value_type*> term_ptrs(data->the_terms.size());
-      typename std::vector<const typename term_hash::value_type*>::iterator tp_it = term_ptrs.begin(), tp_end = term_ptrs.end();
-      for (typename Entire<term_hash>::const_iterator it=entire(data->the_terms); !it.at_end(); ++it, ++tp_it)
-         *tp_it=it.operator->();
-      std::sort(term_ptrs.begin(), tp_end, cmp_monomial_ptr_ordered<Order>(order));
+      // this list will carry the sorted terms except in lex
+      sorted_terms_type temp;
+      const sorted_terms_type& sorted_terms = pm::identical<Order, cmp_monomial_ordered_base<exponent_type> >::value ? get_sorted_terms() : get_sorted_terms(temp, order);
       bool first = true;
-      for (tp_it = term_ptrs.begin(); tp_it != tp_end; ++tp_it) {
+      for (typename sorted_terms_type::const_iterator tp_it = sorted_terms.begin(), tp_end = sorted_terms.end(); tp_it != tp_end; ++tp_it) {
+        typename term_hash::const_iterator term = data->the_terms.find(*tp_it); 
          if (first)
             first = false;
-         else if (term_type::needs_plus((*tp_it)->second))
+         else if (term_type::needs_plus(term->second))
             out.top() << " + ";
          else
             out.top() << ' ';
 
-         term_type::pretty_print(out, (*tp_it)->first, (*tp_it)->second, get_ring());
+         term_type::pretty_print(out, term->first, term->second, get_ring());
       }
       if (first) out.top() << zero_value<coefficient_type>();
    }
 
 protected:
-   //! find and cache the leading term with respect of the lexicographic order
+   // replace by lambda function when using c++11
+   template <typename Order>
+   struct ordered_gt
+   {
+      typedef const typename monomial_type::value_type first_argument_type;
+      typedef const typename monomial_type::value_type second_argument_type;
+      typedef bool result_type;
+
+      explicit ordered_gt(const Order& order_arg)
+         : order(order_arg) {}
+
+      template< typename argument_type >
+      result_type operator() (argument_type t1, argument_type t2) const
+      {
+         return order(t1, t2) == cmp_gt;
+      }
+     private:
+      const Order& order;
+   };
+   // returns a list containing the exponents ordered by lex
+   const sorted_terms_type& get_sorted_terms() const
+   {
+      if(data->the_sorted_terms_set) return data->the_sorted_terms;
+      for(typename term_hash::const_iterator it = data->the_terms.begin(); it != data->the_terms.end(); ++it) {
+         data->the_sorted_terms.push_back(it->first);
+      }
+      data->the_sorted_terms.sort(ordered_gt< cmp_monomial_ordered_base<exponent_type> >(cmp_monomial_ordered_base<exponent_type>())); // TODO: check if this is sorted by lex
+      data->the_sorted_terms_set = true;
+      return data->the_sorted_terms;
+   }
+
+   // returns a list containing the exponents ordered by cmp_order 
+   template<typename Order>
+   sorted_terms_type&  get_sorted_terms(sorted_terms_type& sort, const Order& cmp_order) const
+   {
+      for(typename term_hash::const_iterator it = data->the_terms.begin(); it != data->the_terms.end(); ++it) {
+         sort.push_back(it->first);
+      }
+      sort.sort(ordered_gt< Order >(cmp_order));
+      return sort;
+   }
+
+   bool terms_sorted() const
+   {
+      return data->the_sorted_terms_set;
+   }
+
+   // find the leading term with respect of the lexicographic order
+   // Constant time, if terms have be sorted, else linear
    typename term_hash::const_iterator find_lex_lm() const
    {
-      if (lt_set()) {
-         return data->the_terms.find(data->the_lm);
-      } else if (!trivial()) {
-         typename term_hash::const_iterator lt_it = find_lm(cmp_monomial_ordered_base<exponent_type>());
-         data->the_lm=lt_it->first;
-         data->the_lm_set=true;
+      if (!trivial()) {
+         typename term_hash::const_iterator lt_it;
+         if(terms_sorted()) lt_it = data->the_terms.find(*(get_sorted_terms().begin()));
+         else lt_it = find_lm(cmp_monomial_ordered_base<exponent_type>());
          return lt_it;
       } else {
          return data->the_terms.end();
@@ -1611,7 +1624,7 @@ protected:
    {
       if (!trusted && __builtin_expect(is_zero(c), 0)) return;
 
-      data->forget_lm();
+      data->forget_sorted_terms();
       std::pair<typename term_hash::iterator, bool> it = data->the_terms.find_or_insert(m);
       if (it.second) {
          if (addition)
@@ -1723,35 +1736,35 @@ public:
       if (trivial()) return p.trivial() ? cmp_eq : cmp_lt;
       if (p.trivial()) return cmp_gt;
 
-      // for the default lexicographic comparison, benefit from the cached leading terms
-      typename term_hash::const_iterator lt1= pm::identical<Comparator, cmp_monomial_ordered_base<exponent_type> >::value ? find_lex_lm() : find_lm(cmp_order),
-                                         lt2= pm::identical<Comparator, cmp_monomial_ordered_base<exponent_type> >::value ? p.find_lex_lm() : p.find_lm(cmp_order);
+      // this list will carry the sorted terms except in lex
+      sorted_terms_type t1, t2;
 
-      cmp_value cmp_leading=term_type::compare_values(*lt1, *lt2, cmp_order);
-      if (cmp_leading == cmp_eq) {
-         // leading terms are equal:
-         // create copies of both polynomials, repeat deleting equal leading terms until a difference is found
-         Polynomial_base p1(*data), p2(*p.data);
-         lt1=p1.data.get()->the_terms.find(lt1->first);
-         lt2=p2.data.get()->the_terms.find(lt2->first);
-         do {
-            p1.data.get()->the_terms.erase(lt1);
-            p2.data.get()->the_terms.erase(lt2);
-            if (p1.trivial()) return p2.trivial() ? cmp_eq : cmp_lt;
-            if (p2.trivial()) return cmp_gt;
-            lt1 = p1.find_lm(cmp_order);
-            lt2 = p2.find_lm(cmp_order);
-            cmp_leading=term_type::compare_values(*lt1, *lt2, cmp_order);
+      const sorted_terms_type& fst = pm::identical<Comparator, cmp_monomial_ordered_base<exponent_type> >::value ?   get_sorted_terms() :   get_sorted_terms(t1, cmp_order),
+                               snd = pm::identical<Comparator, cmp_monomial_ordered_base<exponent_type> >::value ? p.get_sorted_terms() : p.get_sorted_terms(t1, cmp_order);
+        
+      typename sorted_terms_type::const_iterator it1 = fst.begin(), 
+                                                 it2 = snd.begin();
+
+      while(it1 != fst.end() && it2 != snd.end()) {
+         cmp_value cmp_terms = term_type::compare_values(*(  data->the_terms.find(*it1)),
+                                                         *(p.data->the_terms.find(*it2)),
+                                                         cmp_monomial_ordered_base<exponent_type>()); 
+         if(cmp_terms != cmp_eq) return cmp_terms;
+         else {
+           ++it1;
+           ++it2;
          }
-         while (cmp_leading == cmp_eq);
       }
-      return cmp_leading;
+      if(it1 == fst.end()) {
+        if(it2 == snd.end()) return cmp_eq;
+        else return cmp_lt;
+      } else return cmp_gt;
    }
 
    //! compare lexicographically
    cmp_value compare(const Polynomial_base& p) const
    {
-      return compare_ordered(p, cmp_monomial_ordered_base<exponent_type>());
+     return compare_ordered(p, cmp_monomial_ordered_base<exponent_type>());
    }
 
    friend
@@ -1838,14 +1851,14 @@ public:
    template <typename Output> friend
    Output& operator<< (GenericOutput<Output>& out, const Polynomial& me)
    {
-      me.pretty_print(out, unit_matrix<Exponent>(me.get_ring().n_vars()));
+      me.pretty_print(out, cmp_monomial_ordered_base<Exponent>());
       return out.top();
    }
 
    template <typename Matrix>
    void print_ordered(const GenericMatrix<Matrix, Exponent>& order) const
    {
-      this->pretty_print(cout, order.top());
+      this->pretty_print(cout, cmp_monomial_ordered<Matrix>(order.top()));
       cout << std::flush;
    }
 };
@@ -2076,13 +2089,13 @@ public:
    template <typename Output> friend
    Output& operator<< (GenericOutput<Output>& out, const UniPolynomial& me)
    {
-      me.pretty_print(out, Exponent(1));
+      me.pretty_print(out, cmp_monomial_ordered<Exponent>(Exponent(1)));
       return out.top();
    }
 
    void print_ordered(const Exponent& order) const
    {
-      this->pretty_print(cout, order);
+      this->pretty_print(cout, cmp_monomial_ordered<Exponent>(order));
       cout << std::flush;
    }
 
@@ -2108,7 +2121,7 @@ private:
          const Coefficient k = this_lead->second / b_lead->second;
          const Exponent d = this_lead->first - b_lead->first;
          quot_consumer(d, k);
-         this->data.get()->forget_lm();
+         this->data.get()->forget_sorted_terms();
 
          for (typename super::term_hash::const_iterator b_it=b.data->the_terms.begin();  b_it != b_end;  ++b_it) {
             std::pair<typename super::term_hash::iterator, bool> it = this->data.get()->the_terms.find_or_insert(b_it->first + d);
@@ -2135,7 +2148,7 @@ private:
             this->data.get()->the_terms.erase(it++);
          }
       }
-      this->data.get()->forget_lm();
+      this->data.get()->forget_sorted_terms();
    }
 };
 

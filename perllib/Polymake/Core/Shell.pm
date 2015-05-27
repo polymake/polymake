@@ -840,37 +840,43 @@ sub all_completions : method {
    # a method call, possible in a longer chain
    if ($line =~
        m{ $op_re $var_or_func_re $intermed_chain_re
-          (?: (?'last_method_name' $id_re) (?: (?'paren' \s*\() (?: (?'preceding_args' (?:$expression_re ,\s*)*) | (?'quote' ['"])) (?'prefix' $id_re)? )? )? \G}xogc) {
+          (?: (?'last_method_name' $id_re) (?: (?'paren' \s*\(\s*) (?'preceding_args' (?:$expression_re ,\s*)*) (?'prefix' .*) )? )? \G}xogc) {
 
-      my ($var, $app_name, $func, $intermed, $last_method_name, $paren, $preceding_args, $quote, $prefix)=@+{qw(
-           var   app_name   func   intermed   last_method_name   paren   preceding_args   quote   prefix )  };
+      my ($var, $app_name, $func, $intermed, $last_method_name, $paren, $preceding_args, $prefix)=@+{qw(
+           var   app_name   func   intermed   last_method_name   paren   preceding_args   prefix)   };
 
       if (($var, my $type)=retrieve_method_owner_type($var, $app_name, $func, $intermed)) {
          if (defined $paren) {
             if (instanceof ObjectType($type) && defined (my $prop=$type->lookup_property($last_method_name))) {
                if ($prop->flags & $Property::is_multiple) {
-                  if (defined $quote) {
+                  if (length($preceding_args)==0  and
+                      $prefix =~ s/^(['"])(?=[^'"]+$)//) {
                      # name of a subobject
                      if (defined($var)) {
+                        my $quote=$1;
                         $self->completion_words=[ sorted_uniq(sort( grep { defined($_) && index($_, $prefix)==0 } map { $_->name } @{$var->give($last_method_name)} )) ];
                         $self->term->Attribs->{completion_append_character}=$quote;
                      }
-                  } else {
+                  } elsif ($prefix =~ /^($id_re)?$/o) {
                      # property for selecting a subobject
                      $self->completion_words=[ map { "$_=>" } try_property_completion($prop->specialization($type)->type, $prefix) ];
                   }
                }
-               if (!defined($quote) && index("temporary", $prefix)==0) {
+               if (index("temporary", $prefix)==0) {
                   push @{$self->completion_words}, "temporary";
                }
 
             } else {
-               # completing the keyword argument
-               my $n_preceding_args=0;
-               ++$n_preceding_args while $preceding_args =~ /\G $expression_re ,\s* /xog;
-               my @list=map { $_->keyword_completions($n_preceding_args, $type, $prefix) }
-                            retrieve_method_topics($type, $last_method_name, "find");
-               $self->completion_words=[ map { "$_=>" } sorted_uniq(sort(@list)) ];
+               # completing a keyword or enumerated argument
+               my $arg_num=0;
+               ++$arg_num while $preceding_args =~ /\G $expression_re ,\s* /xog;
+               if (my @list=map { $_->argument_completions($arg_num, $prefix) }
+                                retrieve_method_topics($type, $last_method_name, "find")) {
+                  $self->completion_words=[ sorted_uniq(sort(@list)) ];
+                  if ((my $vor=length($prefix)-length($word))>0) {
+                     substr($_,0,$vor)="" for @{$self->completion_words};
+                  }
+               }
             }
 
          } else {
@@ -893,8 +899,8 @@ sub all_completions : method {
                $self->term->Attribs->{completion_append_character}="(";
             }
          }
+         return if @{$self->completion_words};
       }
-      return;
    }
 
    # a constructor call with property names?
@@ -987,65 +993,69 @@ sub all_completions : method {
 
    # a user function or "popular" perl function
    if ($line =~
-       m{ $op_re (?:(?'app_name' $id_re)::)?(?'func' $id_re) (?:(?=\s*<) $confined_re)? (?: (?'paren' \s*\()
-                 (?'preceding_args' (?:$expression_re ,\s*)*) (?'prefix' $id_re)? )? \G}xogc) {
+       m{ $op_re (?:(?'app_name' $id_re)::)?(?'func' $id_re) (?:(?=\s*<) $confined_re)? (?: (?'paren' \s*\(\s*)
+                 (?'preceding_args' (?:$expression_re ,\s*)*) (?'prefix' .*) )? \G}xogc) {
 
       my ($app_name, $func, $paren, $preceding_args, $prefix)=@+{qw(app_name func paren preceding_args prefix)};
 
       my $app= defined($app_name) ? (eval { User::application($app_name) } || return) : $User::application;
       my @list;
       if (defined $paren) {
-         # completing the keyword argument
-         my $n_preceding_args=0;
-         ++$n_preceding_args while $preceding_args =~ /\G $expression_re ,\s* /xog;
-         if (@list=map { $_->keyword_completions($n_preceding_args, $app, $prefix) }
+         # completing a keyword or enumerated argument
+         my $arg_num=0;
+         ++$arg_num while $preceding_args =~ /\G $expression_re ,\s* /xog;
+         if (@list=map { $_->argument_completions($arg_num, $prefix) }
                        $app->help->find((defined($app_name) ? "!rel" : ()), "functions", $func)) {
-            $self->completion_words=[ map { "$_=>" } sorted_uniq(sort(@list)) ];
+            $self->completion_words=[ sorted_uniq(sort(@list)) ];
+            if ((my $vor=length($prefix)-length($word))>0) {
+               substr($_,0,$vor)="" for @{$self->completion_words};
+            }
             return;
-         } elsif (length($prefix)) {
+         } elsif ($prefix =~ /^$id_re$/o) {
             # maybe a nested function call?
             undef $app_name;
             $app=$User::application;
             $func=$prefix;
          } else {
-            return;
+            undef $func;
          }
       }
 
       # completing the function name
-      if (defined $app_name) {
-         push @list, map { "$app_name\::$_" } $app->help->list_completions("!rel", "functions", $func);
-      } else {
-         push @list, $app->help->list_completions("functions", $func);
-         if ($line =~ m{ $statement_start_re $id_re \G}xogc) {
-            push @list, grep { index($_, $func)==0 } keys %popular_perl_keywords;
+      if (defined $func) {
+         if (defined $app_name) {
+            push @list, map { "$app_name\::$_" } $app->help->list_completions("!rel", "functions", $func);
+         } else {
+            push @list, $app->help->list_completions("functions", $func);
+            if ($line =~ m{ $statement_start_re $id_re \G}xogc) {
+               push @list, grep { index($_, $func)==0 } keys %popular_perl_keywords;
+            }
          }
-      }
-      $self->completion_words=[ sorted_uniq(sort(@list)) ];
+         $self->completion_words=[ sorted_uniq(sort(@list)) ];
 
-      if ($#{$self->completion_words}==0) {
-         my $cmd=$self->completion_words->[0];
-         my $h=$app->help->find("functions", $cmd);
+         if ($#{$self->completion_words}==0) {
+            my $cmd=$self->completion_words->[0];
+            my $h=$app->help->find("functions", $cmd);
 
-         $self->term->Attribs->{completion_append_character}=
-           $cmd =~ /^(?:exit|history|replay_history|show_(?:preferences|unconfigured|credits|extensions))$/
-           ? ";" :
-           defined($h) && $h->expects_template_params
-           ? "<" :
-           exists $popular_perl_keywords{$cmd} ||
-           $cmd =~ /^(?:application|help|apropos|include|prefer(?:_now)?|(?:re)?set_(?:custom|preference)|(?:re|un)configure)$/
-           ? " " : "(";
+            $self->term->Attribs->{completion_append_character}=
+              $cmd =~ /^(?:exit|history|replay_history|show_(?:preferences|unconfigured|credits|extensions))$/
+                ? ";" :
+              defined($h) && $h->expects_template_params
+                ? "<" :
+              exists $popular_perl_keywords{$cmd} ||
+                $cmd =~ /^(?:application|help|apropos|include|prefer(?:_now)?|(?:re)?set_(?:custom|preference)|(?:re|un)configure)$/
+                ? " " : "(";
+         }
+         return;
       }
-      return;
    }
 
-	# try tab completion rules defined in extensions	
-	foreach (@Core::Shell::custom_tab_completion) {
-		if ($_->($self, $line, $word)) {
-			return;
-		}
-	}
-
+   # try tab completion rules defined in extensions
+   foreach (@Core::Shell::custom_tab_completion) {
+      if ($_->($self, $line, $word)) {
+         return;
+      }
+   }
 
    if ($line =~
        m{((?<!\w)['"]) ([^"']*) \G}xogc) {
@@ -1570,7 +1580,7 @@ sub enter_program {
                   "Please enter a correct location or an empty string to abort.\n";
          }
       } else {
-         my ($first_shot, $full_path, $error)=find_program_in_path($response, $check_code ? $check_code : ());
+         my ($first_shot, $full_path, $error)=Configure::find_program_in_path($response, $check_code ? $check_code : ());
          if (defined $first_shot) {
             return $first_shot ? $response : $full_path;
          }

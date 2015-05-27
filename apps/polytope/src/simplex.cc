@@ -60,6 +60,19 @@ perl::Object simplex_group(int d) {
    return g;
 }
 
+
+void add_simplex_data(perl::Object& p, const int d, const bool group_flag) {
+   p.take("CONE_DIM") << d+1;   
+   p.take("N_VERTICES") << d+1;
+   p.take("SIMPLICIALITY") << d;
+   p.take("BOUNDED") << true;
+   p.take("FEASIBLE") << true;
+   p.take("POINTED") << true;
+   if ( group_flag ) {
+      p.take("GROUP") << simplex_group(d);
+   }
+}
+
 } // end anonymous namespace
 
 template<typename Scalar>
@@ -71,28 +84,18 @@ perl::Object simplex(int d, const Scalar& s, perl::OptionSet options)
       throw std::runtime_error("scale must be non-zero");
 
    perl::Object p(perl::ObjectType::construct<Scalar>("Polytope"));
-   p.set_description() << "simplex of dimension " << d << endl;
-
-// generate the combinatorial symmetry group on the vertices
-   bool group_flag = options["group"];
-   if ( group_flag ) {
-      p.take("GROUP") << simplex_group(d);
-   }
-
-
-   p.take("CONE_AMBIENT_DIM") << d+1;
-   p.take("CONE_DIM") << d+1;
+   p.set_description() << "standard simplex of dimension " << d << endl;
 
    SparseMatrix<Scalar> V( ones_vector<Scalar>(d+1) | (zero_vector<Scalar>(d) / (s*unit_matrix<Scalar>(d))));
+
    p.take("VERTICES") << V;
+   p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("LINEALITY_SPACE") << Matrix<Scalar>();
-   p.take("N_VERTICES") << d+1;
-   p.take("SIMPLICIALITY") << d;
-   p.take("BOUNDED") << true;
    if (d == 0)
      p.take("CENTERED") << true;
    else    
      p.take("CENTERED") << false;
+   add_simplex_data(p,d,options["group"]);
 
    return p;
 }
@@ -107,24 +110,16 @@ perl::Object regular_simplex(const int d, perl::OptionSet options)
       return simplex< QE >(0,QE(1,0,0),options);
 
    perl::Object p("Polytope<QuadraticExtension>");
+   p.set_description() << "regular simplex of dimension " << d << endl;
 
    QE c(Rational(1,d),Rational(-1,d),d+1);
    SparseMatrix<QE> V( ones_vector<QE>(d+1) | (unit_matrix<QE>(d) / same_element_vector<QE>(c,d)));
 
-// generate the combinatorial symmetry group on the vertices
-   bool group_flag = options["group"];
-   if ( group_flag ) {
-      p.take("GROUP") << simplex_group(d);
-   }
-
    p.take("VERTICES") << V;
    p.take("LINEALITY_SPACE") << Matrix<QE>();
-   p.take("N_VERTICES") << d+1;
-   p.take("SIMPLICIALITY") << d;
-   p.take("BOUNDED") << true;
    p.take("CONE_AMBIENT_DIM") << d+1;
-   p.take("CONE_DIM") << d+1;
    p.take("CENTERED") << true;
+   add_simplex_data(p,d,options["group"]);
 
    return p;
    
@@ -138,26 +133,37 @@ perl::Object fano_simplex(int d, perl::OptionSet options)
    perl::Object p(perl::ObjectType::construct<Rational>("Polytope"));
    p.set_description() << "Fano simplex of dimension " << d << endl;
 
-// generate the combinatorial symmetry group on the vertices
-   bool group_flag = options["group"];
-   if ( group_flag ) {
-      p.take("GROUP") << simplex_group(d);
-   }
-
-   p.take("CONE_AMBIENT_DIM") << d+1;
-   p.take("CONE_DIM") << d+1;
-
-
-   SparseMatrix<Rational> V( ones_vector<Rational>(d+1) | (unit_matrix<Rational>(d) / same_element_vector<Rational>(-1,d)));
+   SparseMatrix<Rational> V( ones_vector<Rational>(d+1) | (unit_matrix<Rational>(d) / same_element_vector<Rational>(-1,d)) );
 
    p.take("VERTICES") << V;
    p.take("LINEALITY_SPACE") << Matrix<Rational>();
-   p.take("N_VERTICES") << d+1;
-   p.take("SIMPLICIALITY") << d;
-   p.take("BOUNDED") << true;
+   p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("CENTERED") << true;
    p.take("REFLEXIVE") << true;
-   p.take("FEASIBLE") << true;
+   add_simplex_data(p,d,options["group"]);
+
+   return p;
+}
+
+perl::Object lecture_hall_simplex(int d, perl::OptionSet options)
+{
+   if (d <= 0)
+      throw std::runtime_error("lecture_hall_simplex : dimension must be postive");
+
+   perl::Object p(perl::ObjectType::construct<Rational>("Polytope"));
+   p.set_description() << "lecture hall simplex of dimension " << d << endl;
+
+   Matrix<Rational> V(d+1,d+1);
+   for (int i=0; i<=d; ++i) {
+      V(i,0)=1;
+      for (int k=d; k>d-i; --k) V(i,k)=k;
+   }
+
+   p.take("VERTICES") << V;
+   p.take("LINEALITY_SPACE") << Matrix<Rational>();
+   p.take("CONE_AMBIENT_DIM") << d+1;
+   p.take("CENTERED") << false;
+   add_simplex_data(p,d,options["group"]);
 
    return p;
 }
@@ -170,7 +176,6 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @return Polytope",
                   &regular_simplex, "regular_simplex(Int; { group => undef } )");
 
-
 UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
                           "# Produce the standard //d//-simplex."
                           "# Combinatorially equivalent to a regular polytope corresponding to the Coxeter group of type A<sub>//d//-1</sub>."
@@ -182,11 +187,18 @@ UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
                           "simplex<Scalar> [ is_ordered_field(type_upgrade<Scalar, Rational>) ] (Int; type_upgrade<Scalar>=1, { group => undef } )");
 
 UserFunction4perl("# @category Producing a polytope from scratch"
-                  "# Produce a fano //d//-simplex."
+                  "# Produce a Fano //d//-simplex."
                   "# @param Int d the dimension"
                   "# @option Bool group"
                   "# @return Polytope",
                   &fano_simplex, "fano_simplex(Int; { group => undef } )");
+
+UserFunction4perl("# @category Producing a polytope from scratch"
+                  "# Produce a lecture hall //d//-simplex."
+                  "# @param Int d the dimension"
+                  "# @option Bool group"
+                  "# @return Polytope",
+                  &lecture_hall_simplex, "lecture_hall_simplex(Int; { group => undef } )");
 
 } }
 

@@ -27,6 +27,12 @@
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1>
+   FunctionInterface4perl( new_X, T0,T1 ) {
+      perl::Value arg0(stack[1]);
+      WrapperReturnNew(T0, (arg0.get<T1>()) );
+   };
+
    template <typename T0>
    FunctionInterface4perl( new_int, T0 ) {
       perl::Value arg0(stack[1]);
@@ -36,12 +42,6 @@ namespace polymake { namespace common { namespace {
    template <typename T0>
    FunctionInterface4perl( new, T0 ) {
       WrapperReturnNew(T0, () );
-   };
-
-   template <typename T0, typename T1>
-   FunctionInterface4perl( new_X, T0,T1 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturnNew(T0, (arg0.get<T1>()) );
    };
 
    ClassTemplate4perl("Polymake::common::SparseVector");
@@ -91,5 +91,10 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< SparseVector< QuadraticExtension< Rational > > > >, perl::Canned< const SparseVector< QuadraticExtension< Rational > > >);
    FunctionInstance4perl(new_X, SparseVector< Rational >, perl::Canned< const SparseVector< Rational > >);
    FunctionInstance4perl(new_X, SparseVector< QuadraticExtension< Rational > >, perl::Canned< const SparseVector< QuadraticExtension< Rational > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< SparseVector< Rational > > >, perl::Canned< const pm::VectorChain<pm::SingleElementVector<pm::Integer>, pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer> const&>, pm::Series<int, true>, void> const&, pm::Series<int, true>, void> const&> >);
+   FunctionInstance4perl(new_X, SparseVector< Integer >, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::Rational> >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< SparseVector< Rational > > >, perl::Canned< const pm::VectorChain<pm::SingleElementVector<pm::Integer>, pm::Vector<pm::Integer> const&> >);
+   OperatorInstance4perl(Binary_add, perl::Canned< const Wary< pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::Rational> > >, perl::Canned< const pm::VectorChain<pm::SingleElementVector<pm::Rational>, pm::Vector<pm::Rational> const&> >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< SparseVector< Rational > > >, perl::Canned< const pm::VectorChain<pm::SingleElementVector<pm::Integer const&>, pm::Vector<pm::Integer> const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

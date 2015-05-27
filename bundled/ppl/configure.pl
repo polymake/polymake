@@ -26,6 +26,7 @@ sub usage {
 
 sub proceed {
    my ($options)=@_;
+   $CXXflags="-DPOLYMAKE_WITH_PPL ";
    my $ppl_path;
    my $ppl_version;
 
@@ -33,7 +34,7 @@ sub proceed {
       my $ppl_inc="$ppl_path/include";
       my $ppl_lib=Polymake::Configure::get_libdir($ppl_path, "ppl");
       if (-f "$ppl_inc/ppl.hh" && -f "$ppl_lib/libppl.$Config::Config{so}") {
-         $CXXflags="-I$ppl_inc";
+         $CXXflags.="-I$ppl_inc";
          $LDflags="-L$ppl_lib -Wl,-rpath,$ppl_lib";
       } else {
          die "Invalid installation location of libppl: header file ppl.hh and/or library libppl.$Config::Config{so} not found\n";
@@ -57,7 +58,7 @@ int main() {
              "Please investigate the reasons and fix the installation.\n";
       } else {
          $ppl_version=$output;
-         if(Polymake::Configure::v_cmp($ppl_version, "0.11.2") < 0) {
+         if (Polymake::Configure::v_cmp($ppl_version, "0.11.2") < 0) {
             die "PPL version is $ppl_version. Minimal required version is 0.11.2\n"
          }
       }

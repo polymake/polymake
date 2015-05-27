@@ -79,5 +79,9 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Unary_com, perl::Canned< const Wary< pm::AdjacencyMatrix<pm::graph::Graph<pm::graph::Undirected>, false> > >);
    OperatorInstance4perl(Binary_sub, perl::Canned< const Wary< pm::ComplementIncidenceMatrix<pm::AdjacencyMatrix<pm::graph::Graph<pm::graph::Undirected>, false> > > >, perl::Canned< const pm::IndexMatrix<pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true> const&> >);
    FunctionInstance4perl(new_X, IncidenceMatrix< NonSymmetric >, perl::Canned< const Vector< Set< int > > >);
+   OperatorInstance4perl(Binary_diva, perl::Canned< const Wary< IncidenceMatrix< NonSymmetric > > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
+   FunctionInstance4perl(new_X, IncidenceMatrix< NonSymmetric >, perl::Canned< const pm::RowChain<pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::IncidenceMatrix<pm::NonSymmetric> const&> >);
+   FunctionInstance4perl(new_X, IncidenceMatrix< NonSymmetric >, perl::Canned< const pm::MatrixMinor<pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> >);
+   FunctionInstance4perl(new_X, IncidenceMatrix< NonSymmetric >, perl::Canned< const pm::MatrixMinor<pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

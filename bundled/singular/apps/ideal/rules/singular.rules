@@ -37,6 +37,10 @@ declare property_type SingularIdeal : c++ (include => ["polymake/ideal/singularI
    method dim() : c++ ;
 
    # @category Singular interface
+   # Check via saturation whether the ideal contains a monomial.
+   method contains_monomial(Ring) : c++ ;
+
+   # @category Singular interface
    # Compute the initial ideal. Depends on monomial ordering.
    method initial_ideal() : c++;
 

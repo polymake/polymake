@@ -62,7 +62,8 @@ namespace singular {
            int *block1 = termOrder.get_block1();
            int **wvhdl = termOrder.get_wvhdl();
            ring singularRing = rDefault(0,nvars,variableNames,ord_size,ord,block0,block1,wvhdl);
-           char* ringid = (char*) malloc(2+sizeof(unsigned int));
+           // ceil(log_10(2))=3
+           char* ringid = (char*) malloc(2+3*sizeof(unsigned int)+1);
            sprintf(ringid,"R_%0u",ringidcounter++); 
            // Create handle for ring:
            idhdl newRingHdl=enterid(ringid,0,RING_CMD,&IDROOT,FALSE);

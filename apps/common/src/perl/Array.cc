@@ -16,18 +16,18 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
 #include "polymake/Array.h"
-#include "polymake/Rational.h"
-#include "polymake/QuadraticExtension.h"
-#include "polymake/Set.h"
-#include "polymake/list"
-#include "polymake/Polynomial.h"
 #include "polymake/Graph.h"
-#include "polymake/Vector.h"
-#include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
+#include "polymake/Matrix.h"
+#include "polymake/Polynomial.h"
+#include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
+#include "polymake/Set.h"
+#include "polymake/Vector.h"
+#include "polymake/client.h"
+#include "polymake/list"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -68,5 +68,8 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< Set< Array< Set< int > > > > >, perl::Canned< const Array< Set< Array< Set< int > > > > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< IncidenceMatrix< NonSymmetric > > >, perl::Canned< const Array< IncidenceMatrix< NonSymmetric > > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< std::pair< Vector< Rational >, Set< int > > > >, perl::Canned< const Array< std::pair< Vector< Rational >, Set< int > > > >);
+   Class4perl("Polymake::common::Array__Graph__Directed", Array< Graph< Directed > >);
+   FunctionInstance4perl(new_X, Array< std::string >, perl::Canned< const Vector< std::string > >);
+   OperatorInstance4perl(convert, Array< Integer >, perl::Canned< const Vector< Integer > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

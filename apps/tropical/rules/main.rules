@@ -19,7 +19,7 @@
 
 IMPORT common graph
 
-USE polytope fan
+USE polytope fan graph
 
 file_suffix trop
 
@@ -27,37 +27,6 @@ file_suffix trop
 HELP
 	help.rules
 
-##################################################################################
-# 
-# typecheck is_tropical_addition($ ) {
-#    my $type=shift;
-#    $type->abstract or defined(wantarray) ? 0 : croak( $type->full_name, " is not suitable for tropical addition" );
-# }
-# 
-# typecheck is_tropical_addition(Min) { 1 }
-# 
-# typecheck is_tropical_addition(Max) { 1 }
-
-# function apply<Min>($$) { return min($_[0],$_[1]); }
-
-#function apply<Max>($$) { return max($_[0],$_[1]); }
-
-# function orientation<Min>() { return 1; }
-
-#    method apply($,$) { shift; &min }
-# 
-#    method orientation() { 1 };
-# }
-
-   # @topic category functions/Tropical operations 
-   # Functions for tropical arithmetic
-    
-# @category Tropical operations
-# user_function scalar_product<Addition>($$) {
-#   my ($x,$y)=@_; my $z=$x->[0]+$y->[0];
-#   map { $z=apply<Addition>($x->[$_]+$y->[$_],$z) } 1..$#$x;
-#   return $z;
-# }
 
 ##################################################################################
 
@@ -67,79 +36,39 @@ HELP
 # Currently only works for Min as tropical addition (subject to change in future versions of polymake).
 #
 
-# FIXME: Include typecheck for Addition?/ Include addition!
+# FIXME #775:
+# change Rational to TropicalNumber<Addition,Rational>; maybe Scalar instead of crational for valuations of higher rank
+# change TropicalPolytope to Cone
 declare object TropicalPolytope<Scalar=Rational> [ is_ordered_field_with_unlimited_precision(Scalar) ];
 
-# FIXME: Include typecheck?
-declare object Hypersurface<Addition>;
+# A tropical cycle is a weighted, balanced, pure polyhedral complex.
+# It is given as a polyhedral complex in tropical projective coordinates.
+# To be precise: Each row of [[VERTICES]] and [[LINEALITY_SPACE]] 
+# has a leading 1 or 0, depending on whether it is a vertex or a ray. 
+# The remaining n coordinates are interpreted as an element of
+# R<sup>n</sup> modulo (1,..,1).
+# IMPORTANT NOTE: [[VERTICES]] are assumed to be normalized such that the first coordinate (i.e. 
+# column index 1) is 0. If your input is not of that form, use [[PROJECTIVE_VERTICES]].
+# Note that there is a convenience method [[thomog]], which converts affine coordinates 
+# into projective coordinates.
+# Its template parameter is the tropical addition.
+# Warning: There is NO default for this, you have to choose either Max or Min.
+declare object Cycle<Addition> : fan::PolyhedralComplex<Rational>;
+
+
+declare object Hypersurface<Addition> : Cycle<Addition>;
 
 INCLUDE
-  tropical_properties.rules
+  cycle.rules
   hypersurface.rules
+  cone.rules
   singular.rules
+  gfan.rules
   tplib.rules
   visual.rules
+  visual_cycle.rules
+  #toggle.rules
 
-
-# FIXME: create new rule file
-# Min and Max!
-object TropicalPolytope {
-
-rule AMBIENT_DIM : VERTICES | PSEUDOVERTICES | POINTS {
-  $this->AMBIENT_DIM=($this->VERTICES | PSEUDOVERTICES | POINTS)->cols-1;
-}
-weight 0.10;
-
-rule VERTICES : POINTS {
-  $this->VERTICES=discard_non_vertices($this->POINTS);
-}
-weight 1.20;
-
-rule VERTICES : PSEUDOVERTICES {
-  $this->VERTICES=discard_non_vertices($this->PSEUDOVERTICES);
-}
-weight 1.10;
-
-# It is structurally important that the envelope depends on the [[POINTS]].
-# If the exact subdivision does not matter it may be advisable to create a new
-# tropical polytope whose generators are the [[VERTICES]] of the former.
-rule ENVELOPE.INEQUALITIES, ENVELOPE.EQUATIONS : POINTS, AMBIENT_DIM {
-  $this->ENVELOPE = trop2poly($this);
-}
-
-# FIXME: This rule is slightly more efficient than the corresponding default rule but it makes scheduling much more difficult.
-# See [10072] and #195.
-# rule ENVELOPE.BOUNDED_COMPLEX : AMBIENT_DIM, ENVELOPE.VERTICES_IN_FACETS, ENVELOPE.FAR_FACE { 
-#    $this->ENVELOPE->BOUNDED_COMPLEX=polytope::bounded_complex($this->ENVELOPE->VERTICES_IN_FACETS, $this->ENVELOPE->FAR_FACE, $this->AMBIENT_DIM); 
-#} 
-#weight 4.20; 
-
-rule PSEUDOVERTICES, PSEUDOVERTEX_GRAPH.ADJACENCY : AMBIENT_DIM, ENVELOPE.VERTICES, ENVELOPE.FAR_FACE, ENVELOPE.BOUNDED_COMPLEX.GRAPH.ADJACENCY {
-  extract_pseudovertices($this, $this->ENVELOPE);
-}
-permutation : PseudoVertexPerm;
-
-rule VERTEX_TYPES : VERTICES {
-  $this->VERTEX_TYPES=types($this->VERTICES,$this->VERTICES);
-}
-weight 1.10;
-
-rule default.pseudovertex_types: PSEUDOVERTEX_TYPES : PSEUDOVERTICES, POINTS {
-  $this->PSEUDOVERTEX_TYPES=types($this->PSEUDOVERTICES,$this->POINTS);
-}
-weight 1.10;
-
-rule PSEUDOVERTEX_COARSE_TYPES : PSEUDOVERTICES, POINTS {
-  $this->PSEUDOVERTEX_COARSE_TYPES=coarse_types($this->PSEUDOVERTICES,$this->POINTS);
-}
-weight 1.10;
-
-rule CONVEX_HULL_2D_CYCLIC : POINTS, PSEUDOVERTEX_TYPES, PSEUDOVERTEX_GRAPH.ADJACENCY {
-  $this->CONVEX_HULL_2D_CYCLIC=ch2d_3phases(scalar(@{$this->POINTS}),$this->PSEUDOVERTEX_TYPES,$this->PSEUDOVERTEX_GRAPH->ADJACENCY);
-}
-precondition : AMBIENT_DIM { $this->AMBIENT_DIM==2 }
-
-}
 
 # Local Variables:
 # mode: perl

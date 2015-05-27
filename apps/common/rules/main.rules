@@ -42,6 +42,7 @@ INCLUDE
   lattice.rules
   property_viewer.rules
   poly_parser.rules
+  tropical_parser.rules
 
 # for algorithms shipped with polymake, as opposed to those imported from external software packages
 label default

@@ -693,7 +693,8 @@ template <typename Matrix> inline
 Set<int>
 far_points(const GenericMatrix<Matrix>& M)
 {
-   return indices(attach_selector(M.col(0), polymake::operations::is_zero()));
+   if(M.cols() == 0) return Set<int>();
+	return indices(attach_selector(M.col(0), polymake::operations::is_zero()));
 }
 
 /// Find indices of rows orthogonal to the given vector

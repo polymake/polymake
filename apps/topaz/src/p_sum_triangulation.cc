@@ -28,7 +28,7 @@ namespace{
 // the ball defined by the WEB. It creates a new simplicial complex
 // which contains all the facets indicated by WEB. It looks at the boundary
 // complex and glues F along that boundary.
-std::list<Set<int> > glue_facet(Set<int> F, Array<Set<int> > facets, Set<int> web, int shift, bool shift_facet)
+std::list<Set<int> > glue_facet(Set<int> F, Array<int> F_vertex_indices, Array<Set<int> > facets, Array<int> facets_vertex_indices, Set<int> web, int shift, bool shift_facet)
 {
    std::list<Set<int> > result;
 
@@ -46,12 +46,19 @@ std::list<Set<int> > glue_facet(Set<int> F, Array<Set<int> > facets, Set<int> we
    // taking care of index shifting for unused points
    Array<int> vertex_indices = sComplex.give("VERTEX_INDICES");
    Array<int> boundary_indices = sComplex.give("BOUNDARY.VERTEX_INDICES");
+
    // this is kind of lazy, but we do not need real permutations.
    // we just need some index shifting for which everything
    // which is created after the resize is redundant anyway.
    // the next line is to make sure the arrays have the same size
    boundary_indices.resize(vertex_indices.size());
    vertex_indices = permuted(vertex_indices, boundary_indices);
+
+   // taking care the vertex indices of facets
+   vertex_indices.resize(facets_vertex_indices.size());
+   vertex_indices = permuted(facets_vertex_indices, vertex_indices);
+   // take into account the vertex indices of F
+   F = Set<int>(permuted_inv(F,F_vertex_indices));
    
    // shift the indices of F or boundary facet
    if(shift_facet){
@@ -61,7 +68,7 @@ std::list<Set<int> > glue_facet(Set<int> F, Array<Set<int> > facets, Set<int> we
       // vertex permutation so that we don't have to do it later
       vertex_indices = attach_operation(vertex_indices, operations::fix2<int,operations::add>(operations::fix2<int,operations::add>(shift)));
    }
-   
+
    // glue everything together
    for (Entire<Array<Set<int> > >::const_iterator bfit = entire(boundary_facets); !bfit.at_end(); ++bfit){
       Set<int> face(permuted_inv(*bfit, vertex_indices));
@@ -74,7 +81,7 @@ std::list<Set<int> > glue_facet(Set<int> F, Array<Set<int> > facets, Set<int> we
 }
 
 template<typename Scalar>  
-perl::Object p_sum_triangulation(perl::Object p_in, perl::Object q_in, const IncidenceMatrix<> &webOfStars)
+perl::Object p_sum_triangulation(perl::Object p_in, perl::Object q_in, const IncidenceMatrix<> &webOfStars_in)
 {
 
    // gather information
@@ -86,22 +93,48 @@ perl::Object p_sum_triangulation(perl::Object p_in, perl::Object q_in, const Inc
    p_in.give("FACETS") >> facetsP;
    q_in.give("FACETS") >> facetsQ;
 
+   Array<int> pVertexIndices, qVertexIndices;
+   if(!(p_in.lookup("VERTEX_INDICES") >> pVertexIndices)){
+      pVertexIndices = sequence(0,pVert.rows());
+   }
+   if(!(q_in.lookup("VERTEX_INDICES") >> qVertexIndices)){
+      qVertexIndices = sequence(0,qVert.rows());
+   }
+
+   // make sure webOfStars has the right dimensions (fill with 0s if needed)
+   IncidenceMatrix<> webOfStars(webOfStars_in);
+   webOfStars.resize(facetsP.size(),facetsQ.size());
+
 
    std::list<Set<int> > output_list;
 
-   // build simplices from p_in
+   // build simplices from p_in to q_in
+   // according to WEB
    for(int i=0; i<facetsP.size(); ++i){
       Set<int> F(facetsP[i]), web(webOfStars.row(i));
-      std::list<Set<int> > tmp=glue_facet(F,facetsQ,web,pVert.rows(), false);
+      std::list<Set<int> > tmp=glue_facet(F,pVertexIndices,facetsQ,qVertexIndices,web,pVert.rows(), false);
       output_list.splice(output_list.end(), tmp);
    }
 
-   // build simplices from q_in
+   // build simplices from q_in to p_in
+   // deduce the web in the other direction by using WEB
+   // compatibility tells us that the inverse web function is
+   // invert(transpose(web))
    for(int i=0; i<facetsQ.size(); ++i){
-      Set<int> F(facetsQ[i]), web((~webOfStars).col(i));
+      Set<int> F(facetsQ[i]);
+      Set<int> web;
+      if(i < webOfStars.cols()){
+         // transpose and invert
+         web=Set<int>((~webOfStars).col(i));
+      } else {
+         // if the webOfStars has not enough columns
+         // we interpret missing columns as empty sets
+         // meaning: inverting yields the full simplicial complex p_in
+         web=Set<int>(sequence(0,webOfStars.rows()));
+      }
       if(web.empty()) continue;
       
-      std::list<Set<int> > tmp=glue_facet(F,facetsP,web,pVert.rows(), true);
+      std::list<Set<int> > tmp=glue_facet(F,qVertexIndices,facetsP,pVertexIndices,web,pVert.rows(), true);
       output_list.splice(output_list.end(), tmp);
    }
 
@@ -113,7 +146,7 @@ perl::Object p_sum_triangulation(perl::Object p_in, perl::Object q_in, const Inc
    bool found_zero = false;
    int zero_index;
    
-   for(zero_index=0; zero_index < qVert.cols(); ++zero_index){
+   for(zero_index=0; zero_index < qVert.rows(); ++zero_index){
       if(qVert.row(zero_index) == zero_vector<Scalar>(qVert.cols())){
          found_zero=true;
          break;
@@ -122,6 +155,7 @@ perl::Object p_sum_triangulation(perl::Object p_in, perl::Object q_in, const Inc
 
    Matrix<Scalar> sumVert;
    IncidenceMatrix<> output_facets(output_list);
+   output_facets.resize(output_facets.rows(), pVert.rows()+qVert.rows());
    if(found_zero){
       sumVert = (pVert | zero_matrix<Scalar>(pVert.rows(), qVert.cols())) / (zero_matrix<Scalar>(qVert.rows()-1, pVert.cols()) | qVert.minor(~scalar2set(zero_index), All));
       output_facets = output_facets.minor(All, ~scalar2set(pVert.rows() + zero_index));
@@ -138,8 +172,8 @@ perl::Object p_sum_triangulation(perl::Object p_in, perl::Object q_in, const Inc
 UserFunctionTemplate4perl("# @category Producing a new simplicial complex from others\n"
                           "# Produce a specific P-sum-triangulation of two given triangulations\n"
                           "# and a WebOfStars.\n"
-                          "# @param GeometricSimplicialComplex P First complex which will be favoured"
-                          "# @param GeometricSimplicialComplex Q second complex"
+                          "# @param GeometricSimplicialComplex P First complex which will be favoured."
+                          "# @param GeometricSimplicialComplex Q second complex."
                           "# @param IncidenceMatrix WebOfStars Every row corresponds to a full dimensional simplex in P and every column to a full dimensional simplex in Q."
                           "# @return GeometricSimplicialComplex",
                           "p_sum_triangulation<Scalar>(GeometricSimplicialComplex<type_upgrade<Scalar>> GeometricSimplicialComplex<type_upgrade<Scalar>> IncidenceMatrix)"); 

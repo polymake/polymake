@@ -80,13 +80,15 @@ perl::Object join_polytopes(perl::Object p1, perl::Object p2, perl::OptionSet op
 template <typename Scalar>
 perl::Object free_sum(perl::Object p1, perl::Object p2, perl::OptionSet options)
 {
+   const bool force_centered=options["force_centered"];
+
    const bool bounded=p1.give("BOUNDED") && p2.give("BOUNDED");
    if (!bounded)
       throw std::runtime_error("free_sum: input polyhedron not bounded");
 
    const bool centered=p1.give("CENTERED") && p2.give("CENTERED");
-   if (!centered)
-      throw std::runtime_error("free_sum: input polyhedron not centered");
+   if (!centered && force_centered)
+      throw std::runtime_error("free_sum: input polyhedron not centered. If you want to continue, you may use the option 'force_centered=>0'");
    const bool noc=options["noc"];
 
    perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
@@ -144,8 +146,10 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# Construct a new polyhedron as the free sum of two given bounded ones."
                           "# @param Polytope P1"
                           "# @param Polytope P2"
+                          "# @option bool force_centered if the input polytopes must be centered."
+                          "# Default is set to true."
                           "# @return Polytope",
-                          "free_sum<Scalar>(Polytope<Scalar> Polytope<Scalar>, {noc => 0})");
+                          "free_sum<Scalar>(Polytope<Scalar> Polytope<Scalar>, {force_centered=>1, noc => 0})");
 } }
 
 // Local Variables:

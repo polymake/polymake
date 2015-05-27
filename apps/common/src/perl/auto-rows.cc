@@ -80,5 +80,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<pm::Rational const&> const&>, pm::Matrix<pm::Rational> const&> >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::Transposed<pm::Matrix<pm::Rational> > >);
    FunctionInstance4perl(rows_X, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
+   FunctionInstance4perl(rows_f1, perl::Canned< const pm::RowChain<pm::Matrix<pm::Rational> const&, pm::SingleRow<pm::VectorChain<pm::Vector<pm::Rational> const&, pm::SameElementVector<pm::Rational const&> const&> const&> > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

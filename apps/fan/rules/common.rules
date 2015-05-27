@@ -308,17 +308,7 @@ rule SIMPLICIAL : MAXIMAL_CONES_COMBINATORIAL_DIMS, MAXIMAL_CONES{
 }
 weight 1.30;
 
-rule FACET_NORMALS , MAXIMAL_CONES_FACETS , LINEAR_SPAN_NORMALS , MAXIMAL_CONES_LINEAR_SPAN_NORMALS : RAYS , MAXIMAL_CONES , FAN_AMBIENT_DIM  {
-  raysToFacetNormals($this);
-}
-weight 4.10;
 
-
-rule RAYS, MAXIMAL_CONES, LINEALITY_SPACE : FACET_NORMALS , MAXIMAL_CONES_FACETS , FAN_AMBIENT_DIM {
-  facetsToRays($this);
-}
-weight 4.10;
-permutation : RaysPerm;
 
 
 rule RAYS, MAXIMAL_CONES, LINEALITY_SPACE : INPUT_RAYS, INPUT_CONES, FAN_AMBIENT_DIM {
@@ -334,6 +324,9 @@ weight 3.10;
 permutation : RaysPerm;
 
 }
+
+# NOTE: Both raysToFacetNormals and facetsToRays now live in bundled:cdd for
+# performance reasons.
 
 
 # @category Producing a fan

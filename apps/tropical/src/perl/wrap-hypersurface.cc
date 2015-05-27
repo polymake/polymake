@@ -19,12 +19,12 @@
 namespace polymake { namespace tropical { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( hypersurface_T_x_x_f16, T0 ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturnVoid( (hypersurface<T0>(arg0, arg1)) );
+   FunctionInterface4perl( hypersurface_T_x_f16, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturnVoid( (hypersurface<T0>(arg0)) );
    };
 
-   FunctionInstance4perl(hypersurface_T_x_x_f16, Min);
-   FunctionInstance4perl(hypersurface_T_x_x_f16, Max);
+   FunctionInstance4perl(hypersurface_T_x_f16, Min);
+   FunctionInstance4perl(hypersurface_T_x_f16, Max);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

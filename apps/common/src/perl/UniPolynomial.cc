@@ -16,12 +16,13 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
+#include "polymake/Array.h"
 #include "polymake/Polynomial.h"
 #include "polymake/Rational.h"
-#include "polymake/Array.h"
-#include "polymake/Ring.h"
 #include "polymake/RationalFunction.h"
+#include "polymake/Ring.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -76,5 +77,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X_X_X, UniPolynomial< Rational, int >, perl::Canned< const Array< Rational > >, perl::Canned< const Array< int > >, perl::Canned< const Ring< Rational, int > >);
    FunctionInstance4perl(new_X, UniPolynomial< Rational, int >, perl::Canned< const UniMonomial< Rational, int > >);
    FunctionInstance4perl(new_X, UniPolynomial< Rational, int >, int);
+   Class4perl("Polymake::common::UniPolynomial_A_TropicalNumber_A_Min_I_Rational_Z_I_Int_Z", UniPolynomial< TropicalNumber< Min, Rational >, int >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -631,6 +631,7 @@ sub update_extension_build_dir {
 sub create_bundled_extension_build_dir {
    my ($ext_dir, $top_build_dir, $conf_pkg, @prereqs)=@_;
    my $ext_build_dir=populate_bundled_extension_build_dir($ext_dir, $top_build_dir);
+   my $has_old_conf=rename "$ext_build_dir/conf.make", "$ext_build_dir/conf.make.old";
    open my $CF, ">$ext_build_dir/conf.make"
      or die "can't create $ext_build_dir/conf.make: $!\n";
    print $CF "ifndef ImportedIntoExtension\n",
@@ -644,6 +645,20 @@ sub create_bundled_extension_build_dir {
       write_conf_vars($conf_pkg, $CF);
    }
    close $CF;
+   if ($has_old_conf) {
+      require File::Compare;
+      if (File::Compare::compare("$ext_build_dir/conf.make.old", "$ext_build_dir/conf.make")) {
+         # configuration changed: delete all binary artifacts
+         require File::Find;
+         File::Find::find({ wanted => \&delete_binaries, no_chdir => 1 }, $ext_build_dir);
+      }
+      unlink "$ext_build_dir/conf.make.old";
+   }
+}
+
+# passed as a `wanted' callback to File::Find::find
+sub delete_binaries {
+   /\.(?:o|a|so|bundle|dep)$/ and unlink $File::Find::name
 }
 
 sub required_extensions {

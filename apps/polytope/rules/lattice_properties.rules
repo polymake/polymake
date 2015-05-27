@@ -197,6 +197,14 @@ object LatticePolytope {
 # The polytope is __very ample__ if the Hilbert Basis of the cone spanned by the edge-directions of any vertex lies inside the polytope.
     property VERY_AMPLE : Bool;
 
+# @category Lattice points in cones
+# One direction which realizes [[LATTICE_WIDTH]] of the polytope.
+    property LATTICE_WIDTH_DIRECTION : Vector<Integer>;
+
+# @category Lattice points in cones
+# The minimal integral width of the polytope.
+    property LATTICE_WIDTH : Integer;
+
 }
 
 

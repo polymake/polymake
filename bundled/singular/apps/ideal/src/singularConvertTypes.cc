@@ -63,6 +63,7 @@ number convert_Rational_to_number(const Rational& r)
 Polynomial<> convert_poly_to_Polynomial(const poly q, const Ring<>& r){
    int n = r.n_vars();
    poly p = pCopy(q);
+   poly pp = p;
    ListMatrix<Vector<int> > exponents(0,n);
    std::vector<Rational> coefficients;
    while(p != NULL){
@@ -75,6 +76,7 @@ Polynomial<> convert_poly_to_Polynomial(const poly q, const Ring<>& r){
       exponents /= monomial;
       pIter(p);
    }
+   p_Delete(&pp,currRing);
    return Polynomial<>(exponents, coefficients, r);
 }
 
@@ -89,7 +91,7 @@ poly convert_Polynomial_to_poly(const Polynomial<>& mypoly, ring ring){
          p_SetExp(monomial,k+1,term->first[k],ring);
       }
       p_Setm(monomial,ring);
-      p = p_Sub(p, monomial,ring);
+      p = p_Add_q(p, monomial,ring);
    }
    return p;
 }

@@ -16,16 +16,16 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
-#include "polymake/Set.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/SparseMatrix.h"
-#include "polymake/PowerSet.h"
-#include "polymake/list"
 #include "polymake/Polynomial.h"
-#include "polymake/Rational.h"
-#include "polymake/Vector.h"
+#include "polymake/PowerSet.h"
 #include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
+#include "polymake/Set.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/Vector.h"
+#include "polymake/client.h"
+#include "polymake/list"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -44,5 +44,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(size_f1, perl::Canned< const Set< Vector< QuadraticExtension< Rational > > > >);
    FunctionInstance4perl(size_f1, perl::Canned< const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, false, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> >&> >);
    FunctionInstance4perl(size_f1, perl::Canned< const Set< std::pair< Set< int >, Set< int > > > >);
+   FunctionInstance4perl(size_f1, perl::Canned< const Set< std::string > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

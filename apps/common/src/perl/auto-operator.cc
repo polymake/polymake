@@ -44,5 +44,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(operator_x_x_f5, perl::Canned< Wary< Matrix< Integer > > >);
    FunctionInstance4perl(operator_x_x_f5, perl::Canned< const Wary< Matrix< int > > >);
    FunctionInstance4perl(operator_x_x_f5, perl::Canned< Wary< Matrix< TropicalNumber< Min, Rational > > > >);
+   FunctionInstance4perl(operator_x_x_f5, perl::Canned< Wary< Matrix< int > > >);
+   FunctionInstance4perl(operator_x_x_f5, perl::Canned< const Wary< SparseMatrix< Rational, NonSymmetric > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

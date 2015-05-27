@@ -21,7 +21,7 @@
 property_type Polynomial {
 
    method construct(Ring, String) {
-      toPolynomial($_[2], $_[1]->variables);
+      toPolynomial($_[2], $_[1], $_[1]->variables);
    }
 }
 
@@ -37,7 +37,7 @@ property_type Term {
 # @param String s
 # @param ARRAY vars
 user_function toPolynomial {
-   my ($s, @vars) = @_;
+   my ($s, $ring, @vars) = @_;
    # Remove white spaces.
    $s =~ s/\s//g;
    my $stilda = $s;
@@ -50,11 +50,11 @@ user_function toPolynomial {
    }
    # Check for correct format of stilda:
    $stilda =~ m/^[0123456789\/\*\^\-\+a\(\)m]*$/ or die "Input error: $stilda.";
-   return parseSumRecursively($s, $stilda, @vars);
+   return parseSumRecursively($s, $stilda, $ring, @vars);
 }
 
 sub parseSumRecursively {
-   my ($s,$stilda,@vars) = @_;
+   my ($s,$stilda,$ring,@vars) = @_;
    my ($op) = $stilda =~ m/^([\+\-]?)/x;
    $s = substr($s,length($op),length($s));
    $stilda = substr($stilda,length($op),length($stilda));
@@ -81,18 +81,18 @@ sub parseSumRecursively {
          $s = substr($s,length($factor),length($s));
       }
    }
-   my $result = 1;
+   my $result = new Polynomial(1, $ring);
    if ($hasbrackets) {
       foreach my $factor (@termtilda) {
          my $f = shift @term;
          if (my ($inner, $pow) = $factor =~ m/^\((.*)\)\^?(\d*)$/) {
             if ($pow) {
                while ($pow>0) {
-                  $result = $result * parseSumRecursively(substr($f,1,length($inner)),$inner,@vars);
+                  $result = $result * parseSumRecursively(substr($f,1,length($inner)),$inner,$ring,@vars);
                   $pow--;
                }
             } else {
-               $result = $result * parseSumRecursively(substr($f,1,length($inner)),$inner,@vars);
+               $result = $result * parseSumRecursively(substr($f,1,length($inner)),$inner,$ring,@vars);
             }
          } else {
             $factor =~ s/^\*?//;
@@ -107,13 +107,13 @@ sub parseSumRecursively {
       }
    } else {
       # We must have a monomial!
-      $result = parseTerm(pop @term, pop @termtilda,@vars);
+      $result = new Polynomial(0, $ring) + parseTerm(pop @term, pop @termtilda, @vars);
    }
    if ($op eq "-") {
       $result = -$result;
    }
    if (length($stilda) > 0) {
-      $result = parseSumRecursively($s,$stilda,@vars) + $result;
+      $result = parseSumRecursively($s,$stilda, $ring, @vars) + $result;
    }
    return $result;
 }

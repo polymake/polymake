@@ -50,6 +50,16 @@ rule BASES, N_BASES, RANK, N_ELEMENTS : VECTORS {
 }
 weight 4.50;
 
+rule BASES, N_BASES, RANK, N_ELEMENTS : BINARY_VECTORS {
+  bases_from_points($this,2)
+}
+weight 4.51;
+
+rule BASES, N_BASES, RANK, N_ELEMENTS : TERNARY_VECTORS {
+  bases_from_points($this,3)
+}
+weight 4.51;
+
 rule BASES, N_BASES, RANK : LATTICE_OF_FLATS, N_ELEMENTS {
   bases_from_lof($this)
 }
@@ -168,10 +178,9 @@ rule BINARY, BINARY_VECTORS, TERNARY, TERNARY_VECTORS : BASES, NON_BASES, N_ELEM
 weight 2.10;
 
 rule REGULAR : BINARY, TERNARY {
-    if(defined($this->TERNARY)){
-        $this->REGULAR=$this->BINARY && $this->TERNARY; # See [Oxley:matroid theory (2nd ed.) Thm. 6.6.3]
-    }
+    $this->REGULAR=$this->BINARY && $this->TERNARY; # See [Oxley:matroid theory (2nd ed.) Thm. 6.6.3]
 }
+precondition :  defined(TERNARY);
 weight 0.10;
 
 rule VECTORS : BINARY_VECTORS, TERNARY_VECTORS {
@@ -238,10 +247,15 @@ rule SERIES_PARALLEL, CONNECTED : BETA_INVARIANT{ # See [David Speyer:tropical l
 weight 0.10;
 
 rule LATTICE_OF_FLATS : MATROID_HYPERPLANES {
-   my $hy=new IncidenceMatrix<NonSymmetric>($this->MATROID_HYPERPLANES);
-   $this->LATTICE_OF_FLATS=lattice_of_flats($hy);
+    my $hy=new IncidenceMatrix<NonSymmetric>($this->MATROID_HYPERPLANES);
+    $this->LATTICE_OF_FLATS = lattice_of_flats($hy);
 }
 weight 6.20;
+
+rule SPLITTING_FLACETS : N_ELEMENTS, RANK, POLYTOPE.FACETS {
+    splitting_flacets($this);
+}
+precondition : CONNECTED;
 
 rule CONNECTED_COMPONENTS : CIRCUITS, N_ELEMENTS{
     $this->CONNECTED_COMPONENTS = connected_components_from_circuits($this->CIRCUITS, $this->N_ELEMENTS);
@@ -311,6 +325,19 @@ rule REVLEX_BASIS_ENCODING : BASES, RANK, N_ELEMENTS {
 
 rule BASES : REVLEX_BASIS_ENCODING, RANK, N_ELEMENTS {
     $this->BASES = bases_from_revlex_encoding($this->REVLEX_BASIS_ENCODING, $this->RANK, $this->N_ELEMENTS);
+}
+
+# @category Combinatorics
+# calculate the rank of a set with respect to a given matroid
+# @return Int
+user_method rank(Set) {
+   my ($self,$S) = @_;
+   my $rk=0;
+   for (my $i=0; $i<$self->N_BASES; ++$i) {
+       my $inter = $S * $self->BASES->[$i];
+       $rk = max($rk, $inter->size());
+   }
+   return $rk;
 }
 
 }

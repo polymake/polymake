@@ -73,7 +73,7 @@ label singular
 rule singular.pseudovertex_types : PSEUDOVERTEX_TYPES : POINTS, AMBIENT_DIM {
   my $d=$this->AMBIENT_DIM+1;
   my $m=new Matrix<Rational>($this->POINTS);
-  canonicalize_to_nonnegative($m);
+  canonicalize_rational_to_nonnegative($m);
   my @points=@{$m};
   my $n=@points;
   my $dim= (($n<=$d)? $n : $d)-1;

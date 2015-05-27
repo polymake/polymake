@@ -1,5 +1,45 @@
 Changelog
 
+=== Polymake 2.15-beta1 ===
+
+-- General --
+ * fix jReality visualization on various Intel HD Graphics (updated jogl)
+ * various minor bugfixes and improvements
+
+-- common --
+ * new client for Hermite normal form
+
+-- fan --
+ * new clients for dual fans of graph associahedra and manipulating tubings
+
+-- group --
+ * new client for generic orbit computations
+
+-- matroid --
+ * new client for rank of arbitrary sets
+ * new property splitting_flacets
+ * fixed bug in check_basis_exchange_axiom
+
+-- polytope --
+ * new client for many of the Johnson solids (more to come):
+     - with correct combinatorics
+     - several with exact QuadraticExtension or Rational coordinates
+ * new client for lattice width
+ * wythoff client now produces maximally symmetric polytopes whenever possible, i.e. except for G2
+ * removed now redundant client for archimedean solids
+
+-- tropical --
+ * Major refactoring (in progress):
+     - new object type Cycle, based on polyhedral complex
+     - templated hypersurface client for Min/Max
+
+-- interfaces --
+ * singular:
+     - division of polynomials by ideals
+     - contains monomial test
+ * sympol:
+     - convex hull computation up to symmetry now supports ppl
+
 
 === Polymake 2.14 ===
 

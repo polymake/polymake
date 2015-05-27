@@ -26,6 +26,7 @@
 #include "polymake/Set.h"
 #include "polymake/PowerSet.h"
 #include "polymake/Map.h"
+#include "polymake/polytope/cdd_interface.h"
 
 namespace polymake { namespace fan {
 namespace {
@@ -72,6 +73,8 @@ void raysToFacetNormals(perl::Object f)
    Matrix<Coord> fanLinearSpan;
    Set<int> fanLinearSpanIndices;
     
+	polytope::cdd_interface::solver<Coord> sv;
+
    // find linear span of the whole fan
    if (fanDim < ambientDim)
    {
@@ -129,12 +132,8 @@ void raysToFacetNormals(perl::Object f)
          coneNum++;
          continue;
       }
-      
-      perl::Object c(perl::ObjectType::construct<Coord>("Cone"));
-      c.take("RAYS") << rays.minor(coneSet,All);
-      if (linealityDim > 0)
-         c.take("LINEALITY_SPACE") << linealitySpace;
-      const Matrix<Coord> cfacets = c.give("FACETS");
+
+		const Matrix<Coord> cfacets = sv.enumerate_facets(rays.minor(coneSet,All), linealitySpace,true,false).first;
 
       for (typename Entire< Rows< Matrix<Coord> > >::const_iterator facet = entire(rows(cfacets)); !facet.at_end(); ++facet)
       {

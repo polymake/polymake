@@ -23,49 +23,6 @@
 
 namespace polymake { namespace common {
 
-typedef long number_t;
-typedef Map<number_t, number_t> ExponentMap;
-
-ExponentMap naive_partial_prime_factorization(const Integer& n)
-{
-   Integer rest(n);
-   ExponentMap exponent_of;
-   number_t const* pptr = polymake_primes;
-   int i=0;
-   while (i < n_polymake_primes && rest > 1) {
-      const Div<Integer> qr = div(rest, *pptr);
-      if (qr.rem == 0) { 
-         exponent_of[*pptr]++;
-         rest = qr.quot;
-      } else 
-         ++pptr, ++i;
-   }
-   if (rest > 1) {
-      exponent_of[rest.to_long()] = 1;
-      cerr << "Warning: did not completely factorize the input. The result may simplify further."
-           << endl;
-   }
-   return exponent_of;
-}
-
-std::pair<number_t, number_t> integer_and_radical_of_sqrt(const Integer &n)
-{
-   const ExponentMap exponent_of = naive_partial_prime_factorization(n);
-   std::pair<number_t, number_t> ir_sqrt(1,1);
-   for (Entire<ExponentMap>::const_iterator mit = entire(exponent_of); !mit.at_end(); ++mit) {
-      number_t rest_exponent = mit->second;
-      if (mit->second & 1) { // odd exponent
-         ir_sqrt.second *= mit->first;
-         rest_exponent--;
-      }
-      while (rest_exponent) {
-         ir_sqrt.first *= mit->first;
-         rest_exponent -= 2;
-      }
-   }
-   return ir_sqrt;
-}
-
 Map<Rational, Rational> sum_of_square_roots_naive(const Array<Rational>& a)
 {
    // To avoid calling the extremely inefficient factoring algorithm many times, 
@@ -84,9 +41,9 @@ Map<Rational, Rational> sum_of_square_roots_naive(const Array<Rational>& a)
          ++multiplicity;
          ++a2;
       } 
-      const std::pair<number_t, number_t> // a2 could be at_end(), so use a1
-         ir_sqrt_num = integer_and_radical_of_sqrt(numerator(*a1)), 
-         ir_sqrt_den = integer_and_radical_of_sqrt(denominator(*a1));
+      const std::pair<primes::number_t, primes::number_t> // a2 could be at_end(), so use a1
+         ir_sqrt_num = primes::integer_and_radical_of_sqrt(numerator(*a1)), 
+         ir_sqrt_den = primes::integer_and_radical_of_sqrt(denominator(*a1));
       coefficient_of_sqrt[Rational(ir_sqrt_num.second, ir_sqrt_den.second)] += 
          multiplicity * Rational(ir_sqrt_num.first, ir_sqrt_den.first);
       a1 = a2; // could both be at_end(); that's ok
@@ -95,7 +52,7 @@ Map<Rational, Rational> sum_of_square_roots_naive(const Array<Rational>& a)
 }
 
 UserFunction4perl("# @category Arithmetic"
-		  "# Make a naive attempy to sum the square roots of the entries"
+		  "# Make a naive attempt to sum the square roots of the entries"
 		  "# of the input array."
 		  "# @param Array<Rational> a list of rational numbers (other coefficents are not implemented)."
 		  "# @return Map<Rational, Rational> coefficient_of_sqrt a map collecting the coefficients of various roots encountered in the sum."

@@ -24,6 +24,7 @@
 #include "polymake/Rational.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/SparseVector.h"
+#include "polymake/TropicalNumber.h"
 #include "polymake/Vector.h"
 #include "polymake/client.h"
 #include "polymake/linalg.h"
@@ -69,5 +70,10 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(dim_f1, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void> >);
    FunctionInstance4perl(dim_f1, perl::Canned< const pm::SameElementVector<pm::Rational const&> >);
    FunctionInstance4perl(dim_f1, perl::Canned< const pm::VectorChain<pm::SingleElementVector<pm::Rational>, pm::SameElementVector<pm::Rational const&> const&> >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const pm::VectorChain<pm::SingleElementVector<pm::Integer>, pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer> const&>, pm::Series<int, true>, void> const&, pm::Series<int, true>, void> const&> >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const pm::VectorChain<pm::SingleElementVector<pm::Integer>, pm::Vector<pm::Integer> const&> >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const pm::VectorChain<pm::SingleElementVector<pm::Integer const&>, pm::Vector<pm::Integer> const&> >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const Vector< TropicalNumber< Min, Rational > > >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const Vector< TropicalNumber< Max, Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -26,7 +26,7 @@ property AMBIENT_DIM : Int;
 
 property POINTS : Matrix<Scalar> {
 
-   sub canonical { &canonicalize_to_leading_zero; }
+   sub canonical { &canonicalize_rational_to_leading_zero; }
 #   sub canonical { &canonicalize_to_nonnegative; }
 }
 
@@ -35,7 +35,7 @@ property POINTS : Matrix<Scalar> {
 
 property VERTICES : Matrix<Scalar> {
 
-   sub canonical { &canonicalize_to_leading_zero; }
+   sub canonical { &canonicalize_rational_to_leading_zero; }
 #   sub canonical { &canonicalize_to_nonnegative; }
 }
 
@@ -43,7 +43,7 @@ property VERTICES : Matrix<Scalar> {
 # original: property PSEUDOVERTICES : Matrix<Scalar>;
 property PSEUDOVERTICES : Matrix<Scalar>{
 
-   sub canonical { &canonicalize_to_leading_zero; }
+   sub canonical { &canonicalize_rational_to_leading_zero; }
 #   sub canonical { &canonicalize_to_nonnegative; }
 };
 
@@ -79,7 +79,7 @@ property ENVELOPE : polytope::Polytope<Scalar>;
 # Tropical polytopes have a natural description as ordinary polytopal complexes. This is the 1-skeleton of such a
 # complex.
 
-property PSEUDOVERTEX_GRAPH : objects::Graph;
+property PSEUDOVERTEX_GRAPH : graph::Graph;
 
 rule PSEUDOVERTEX_GRAPH.NodePerm.PERMUTATION = PseudoVertexPerm.PERMUTATION;
 
@@ -150,6 +150,64 @@ property HALF_SPACES : Array< Pair<Vector<Scalar>,Set<Int> > >;
 user_function pseudovertices_float_coords(TropicalPolytope) {
   my $P=shift;
   dehomogenize_trop(convert_to<Float>($P->PSEUDOVERTICES));
+}
+
+object TropicalPolytope {
+
+rule AMBIENT_DIM : VERTICES | PSEUDOVERTICES | POINTS {
+  $this->AMBIENT_DIM=($this->VERTICES | PSEUDOVERTICES | POINTS)->cols-1;
+}
+weight 0.10;
+
+rule VERTICES : POINTS {
+  $this->VERTICES=discard_non_vertices($this->POINTS);
+}
+weight 1.20;
+
+rule VERTICES : PSEUDOVERTICES {
+  $this->VERTICES=discard_non_vertices($this->PSEUDOVERTICES);
+}
+weight 1.10;
+
+# It is structurally important that the envelope depends on the [[POINTS]].
+# If the exact subdivision does not matter it may be advisable to create a new
+# tropical polytope whose generators are the [[VERTICES]] of the former.
+rule ENVELOPE.INEQUALITIES, ENVELOPE.EQUATIONS : POINTS, AMBIENT_DIM {
+  $this->ENVELOPE = trop2poly($this);
+}
+
+# FIXME: This rule is slightly more efficient than the corresponding default rule but it makes scheduling much more difficult.
+# See [10072] and #195.
+# rule ENVELOPE.BOUNDED_COMPLEX : AMBIENT_DIM, ENVELOPE.VERTICES_IN_FACETS, ENVELOPE.FAR_FACE { 
+#    $this->ENVELOPE->BOUNDED_COMPLEX=polytope::bounded_complex($this->ENVELOPE->VERTICES_IN_FACETS, $this->ENVELOPE->FAR_FACE, $this->AMBIENT_DIM); 
+#} 
+#weight 4.20; 
+
+rule PSEUDOVERTICES, PSEUDOVERTEX_GRAPH.ADJACENCY : AMBIENT_DIM, ENVELOPE.VERTICES, ENVELOPE.FAR_FACE, ENVELOPE.BOUNDED_COMPLEX.GRAPH.ADJACENCY {
+  extract_pseudovertices($this, $this->ENVELOPE);
+}
+permutation : PseudoVertexPerm;
+
+rule VERTEX_TYPES : VERTICES {
+  $this->VERTEX_TYPES=types($this->VERTICES,$this->VERTICES);
+}
+weight 1.10;
+
+rule default.pseudovertex_types: PSEUDOVERTEX_TYPES : PSEUDOVERTICES, POINTS {
+  $this->PSEUDOVERTEX_TYPES=types($this->PSEUDOVERTICES,$this->POINTS);
+}
+weight 1.10;
+
+rule PSEUDOVERTEX_COARSE_TYPES : PSEUDOVERTICES, POINTS {
+  $this->PSEUDOVERTEX_COARSE_TYPES=coarse_types($this->PSEUDOVERTICES,$this->POINTS);
+}
+weight 1.10;
+
+rule CONVEX_HULL_2D_CYCLIC : POINTS, PSEUDOVERTEX_TYPES, PSEUDOVERTEX_GRAPH.ADJACENCY {
+  $this->CONVEX_HULL_2D_CYCLIC=ch2d_3phases(scalar(@{$this->POINTS}),$this->PSEUDOVERTEX_TYPES,$this->PSEUDOVERTEX_GRAPH->ADJACENCY);
+}
+precondition : AMBIENT_DIM { $this->AMBIENT_DIM==2 }
+
 }
 
 

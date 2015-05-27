@@ -31,5 +31,17 @@ namespace polymake { namespace polytope { namespace {
    }
    FunctionWrapperInstance4perl( perl::Object (std::string, pm::Set<int, pm::operations::cmp>) );
 
+   FunctionWrapper4perl( perl::Object (std::string, pm::Set<int, pm::operations::cmp>, bool) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      IndirectWrapperReturn( arg0, arg1.get< perl::TryCanned< const Set< int > > >(), arg2 );
+   }
+   FunctionWrapperInstance4perl( perl::Object (std::string, pm::Set<int, pm::operations::cmp>, bool) );
+
+   FunctionWrapper4perl( perl::Object (perl::OptionSet) ) {
+      perl::Value arg0(stack[0]);
+      IndirectWrapperReturn( arg0 );
+   }
+   FunctionWrapperInstance4perl( perl::Object (perl::OptionSet) );
+
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

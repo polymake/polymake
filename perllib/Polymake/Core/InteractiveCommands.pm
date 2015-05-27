@@ -74,7 +74,7 @@ sub store_rule_to_wake {
          my ($prereq_app, $prereq_rule_key) = splice @_, 0, 2  or  last;
          $list=($rules_to_wake{$prereq_app}->{$prereq_rule_key} //= [ ]);
       } else {
-         my ($prereq_ext) = shift @_  or  last;
+         my $prereq_ext = shift @_  or  last;
          $list=($rules_to_wake{$prereq_ext} //= [ ]);
       }
       if (@$list && $list->[-2]==$self) {
@@ -573,15 +573,21 @@ sub new_bundled {
      or die "can't create description file $ext_dir/polymake.ext: $!\n";
    print $META <<'.';
 # This is a bundled extension.
+# Please describe it briefly here.
+# Uncommment and fill the sections below on demand.
+# URIs of bundled extensions are written as bundled:NAME .
 
 # CREDIT
 # No credits defined so far.
 
 # REQUIRE
-# Names of other bundled extensions which are prerequisite for this one
+# URIs of other bundled extensions which are prerequisite for this one
+
+# REQUIRE_OPT
+# URIs of other bundled extensions being optional prerequisites for this one
 
 # CONFLICT
-# Names of other bundled extensions which are incompatible with this one.
+# URIs of other bundled extensions which are incompatible with this one.
 .
    close $META;
    $CoreVCS->add_file("$ext_dir/polymake.ext");

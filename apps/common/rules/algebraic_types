@@ -26,7 +26,7 @@
 # or
 #	$v = new Vector<Int>([1,2,3]);
 # @tparam Element
-declare property_type Vector<Element=Rational> : c++ (include => ["polymake/Vector.h"], operators => '@arith:wary |:anchor |= @compare:wary') {
+declare property_type Vector<Element=Rational> : c++ (include => ["polymake/Vector.h", "polymake/Matrix.h"], operators => '@arith:wary |:anchor |= @compare:wary') {
 
    method construct(Int) : c++;
 
@@ -214,10 +214,16 @@ user_function convert_to<Element>(Matrix) : c++ {
 }
 
 # @category Data Conversion
+# Create a [[Matrix]] by repeating the given [[Vector]] as rows.
 # @param Vector v
 # @param Int i
 user_function repeat_row(Vector:anchor,$) : c++ (include => "polymake/Matrix.h");
 
+# @category Data Conversion
+# Create a [[Matrix]] by repeating the given [[Vector]] as cols.
+# @param Vector v
+# @param Int i
+user_function repeat_col(Vector:anchor,$) : c++ (include => "polymake/Matrix.h");
 
 # @category Data Conversion
 # Convert a [[Vector]] to a [[Matrix]] with a single row.
@@ -520,7 +526,7 @@ declare property_type SparseIterator<*> : Iterator : c++ {
 #	(6) (1 1) (2 2)
 #	.
 # @tparam Element
-declare property_type SparseVector<Element=Rational> : Vector<Element> : c++ (include => ["polymake/SparseVector.h"]) {
+declare property_type SparseVector<Element=Rational> : Vector<Element> : c++ (include => ["polymake/SparseVector.h", "polymake/SparseMatrix.h"]) {
 
    # The number of non-zero entries.
    # @return Int
@@ -712,7 +718,7 @@ declare property_type Ring<Coefficient=Rational, Exponent=Int> \
 # @tparam Coefficient default: [[Rational]]
 # @tparam Exponent default: [[Int]]
 declare property_type Monomial<Coefficient=Rational, Exponent=Int> \
-   : c++ (operators => '@arith_nodiv / ^ ^= @compare', include => "polymake/Polynomial.h") {
+   : c++ (operators => '@arith_nodiv / ^ ^= @compare', include => "polymake/Polynomial.h", default_constructor => 'Deserializing') {
 
    method construct(Ring) : c++;
 
@@ -736,7 +742,7 @@ declare property_type UniMonomial<Coefficient=Rational, Exponent=Int> \
 # @tparam Exponent default: [[Int]]
 declare property_type Term<Coefficient=Rational, Exponent=Int> \
    : upgrades( Coefficient, Monomial<Coefficient, Exponent> ) \
-   : c++ (operators => '@arith @compare', include => "polymake/Polynomial.h") {
+   : c++ (operators => '@arith @compare', include => "polymake/Polynomial.h", default_constructor => 'Deserializing') {
 
    method construct(Ring) : c++;
 
@@ -761,7 +767,7 @@ declare property_type UniTerm<Coefficient=Rational, Exponent=Int> \
 # @tparam Exponent default: [[Int]]
 declare property_type Polynomial<Coefficient=Rational, Exponent=Int> \
    : upgrades( Term<Coefficient, Exponent> ) \
-   : c++ (operators => '@arith @compare', include => "polymake/Polynomial.h") {
+   : c++ (operators => '@arith @compare', include => "polymake/Polynomial.h", default_constructor => 'Deserializing') {
 
    method construct(Ring) : c++;
 
@@ -805,7 +811,7 @@ declare property_type UniPolynomial<Coefficient=Rational, Exponent=Int> \
 
    user_method deg() : c++;
 
-   user_method low_deg() : c++;
+   user_method lower_deg() : c++;
 
    # The __leading coefficient__.
    # @return Int

@@ -23,7 +23,7 @@ namespace polymake { namespace matroid { namespace flat_lattice {
 
 using namespace polytope::face_lattice;
 
-/// Compute the lattice of flats (modiefies compute from 'face_lattice_tools.h')
+/// Compute the lattice of flats (modifies compute from 'face_lattice_tools.h')
 template <typename MatrixTop, typename DiagrammFiller, bool dual>
 void compute_lattice_of_flats(const GenericIncidenceMatrix<MatrixTop>& VIF, DiagrammFiller HD, bool2type<dual> Dual, int dim_upper_bound=-1)
 {

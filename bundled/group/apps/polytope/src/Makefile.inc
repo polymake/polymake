@@ -3,6 +3,7 @@ ifeq (${ImportedIntoExtension},)
 
   sympol_interface$O : ExtraCXXFLAGS += -I${ExtensionTop}/external/sympol
   sympol_raycomputation_beneathbeyond$O : ExtraCXXFLAGS += -I${ExtensionTop}/external/sympol
+  sympol_raycomputation_ppl$O : ExtraCXXFLAGS += -I${ExtensionTop}/external/sympol
 
   LIBS += ${BuildDir}/staticlib/sympol/libsympol$A $(subst %A,${A},${CddLib} ${LrsLib})
 endif

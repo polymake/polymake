@@ -59,6 +59,11 @@ sub start_properties {
    my %jre_properties;
    if ($jogl) {
       $jre_properties{"java.library.path"}= $jogl_native_path eq "bundled" ? "$InstallArch/lib/jni/jreality" : $jogl_native_path;
+      if ($DebugLevel >= 2) {
+         $jre_properties{"newt.debug"}="all";
+         $jre_properties{"nativewindow.debug"}="all";
+         $jre_properties{"jogl.debug"}="all";
+      }
    }
    if ($DebugLevel) {
       $jre_properties{"polymake.debug"}=$DebugLevel>=2 ? "max" : "yes";
