@@ -534,6 +534,9 @@ if (defined($GCCversion)) {
    $CXXDEBUG .= " -g";
    $CXXflags .= " -Wall -Wno-logical-op-parentheses -Wno-shift-op-parentheses -Wno-duplicate-decl-specifier";
    $CflagsSuppressWarnings="-Wno-uninitialized -Wno-unused -Wno-unused-variable -Wno-enum-compare -Wno-sign-compare -Wno-switch -Wno-format -Wno-write-strings -Wno-empty-body -Wno-logical-op-parentheses -Wno-shift-op-parentheses -Wno-dangling-else";
+   if (v_cmp($CLANGversion, "3.6") >=0 and v_cmp($CLANGversion, "3.7") < 0) {
+      $CXXflags .= " -Wno-unused-local-typedef";
+   }
 }
 
 if ($^O eq "darwin") {
@@ -961,7 +964,7 @@ $BundledExts = join(" ",grep { $ext_survived{$_} } @ext_ordered);
 $warning .= <<"EOF" unless exists $ext_survived{"cdd"};
 
 WARNING: The bundled extension for cdd was either disabled or failed to configure.
-         Running polymake without cdd is discouraged and unsupported!
+         Running polymake without cdd is deprecated and not supported!
          Please recheck your configuration (and build.${Arch}/bundled.log).
 EOF
 

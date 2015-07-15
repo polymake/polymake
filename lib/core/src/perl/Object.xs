@@ -201,6 +201,9 @@ PPCODE:
             }
             if (o->op_type != OP_LEAVESUB && o->op_type != OP_LEAVESUBLV) {
                if (o->op_type == OP_RV2AV) XSRETURN_YES;
+#if PerlVersion >= 5220
+               if (o->op_type == OP_MULTIDEREF) XSRETURN_YES;
+#endif
                break;
             }
          }

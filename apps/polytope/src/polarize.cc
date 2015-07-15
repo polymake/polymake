@@ -97,6 +97,7 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
 
       // ... and the facet property
       if (facets_property_read) {
+         orthogonalize(entire(rows(lin)));
          project_to_orthogonal_complement(pts, lin); // cheap if lin==0
          p_out.take( facets_property == "FACETS"
                      ? "RAYS"

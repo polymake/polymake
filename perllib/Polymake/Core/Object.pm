@@ -935,16 +935,20 @@ sub _lookup_pv {
                my $shortcuts=$cur_obj_type->get_shortcuts_for($prop);
                if ($i==-1) {
                   # consider all shortcuts delivering the requested property directly
+                  # but only those without preconditions as we do not want to check these here!
                   foreach my $rule (@$shortcuts) {
-                     if (defined ($pv=$rule->descend_to_source($cur_obj))) {
+                     if (defined ($pv=$rule->descend_to_source($cur_obj))
+                         and @{$rule->preconditions} == 0) {
                         return $pv;
                      }
                   }
                } else {
-                  # consider shorcuts for subobjects on the path to the requested property, look there for the rest of the path
+                  # consider shortcuts for subobjects on the path to the requested property, look there for the rest of the path
+                  # but only those without preconditions as we do not want to check these here!
                   foreach my $rule (@$shortcuts) {
                      if (defined ($pv=$rule->descend_to_source($cur_obj))
-                         and defined ($pv=_lookup_pv($pv->value, [ [ @$req_item[$i+1..-1] ] ]))) {
+                         and defined ($pv=_lookup_pv($pv->value, [ [ @$req_item[$i+1..-1] ] ]))
+                         and @{$rule->preconditions} == 0) {
                         return $pv;
                      }
                   }

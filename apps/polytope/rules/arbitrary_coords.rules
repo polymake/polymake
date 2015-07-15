@@ -175,6 +175,22 @@ user_function projection_full<Scalar>(Cone<Scalar>; {nofm => 0, relabel=>0}) {
 }
 
 
+# @category Producing a polytope from polytopes
+# Decompose a given polytope into the direct sum of smaller ones
+# @param Polytope P
+# @return Array<Polytope>
+user_function direct_sum_decomposition<Scalar>(Polytope<Scalar>) {
+    my ($p) = @_;
+    my $indices = direct_sum_decomposition_indices($p);
+    my $summands = new Array<Polytope<Scalar>>($indices->size());
+    foreach my $i (0..$indices->size()-1) {
+	my $q = new Polytope<Scalar>(VERTICES=>$p->VERTICES->minor($indices->[$i], All), N_VERTICES=>$indices->[$i]->size(), CENTERED=>1);
+	$summands->[$i] = $q;
+    }
+    return $summands;
+}
+
+
 
 
 # Local Variables:

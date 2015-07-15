@@ -346,7 +346,7 @@ MAGIC* allocate_magic(pTHX_ SV* sv, char how, const base_vtbl* vtab, unsigned in
       Newxz(mg->mg_ptr, vtab->obj_size, char);
    }
    mg->mg_virtual = (MGVTBL*)&vtab->std;
-   Perl_mg_magical(aTHX_ sv);
+   mg_magical(sv);
    return mg;
 }
 
@@ -487,6 +487,12 @@ SV* clone_assoc_container_magic_sv(pTHX_ SV* src)
    return sv_bless(newRV_noinc(new_assoc_container_magic_sv(aTHX_ (const container_vtbl*)mg->mg_virtual, value_alloc_magic, 0)), SvSTASH(src));
 }
 
+#if PerlVersion >= 5220
+# define IsRandomAccessOp(opc) (opc==OP_AELEM || opc==OP_ASLICE || opc==OP_MULTIDEREF)
+#else
+# define IsRandomAccessOp(opc) (opc==OP_AELEM || opc==OP_ASLICE)
+#endif
+
 int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy, PM_svt_copy_klen_arg index)
 {
    const OPCODE opc=PL_op ? PL_op->op_type : OP_AELEM;   // assume a plain array access when called directly from the callable library
@@ -538,7 +544,7 @@ int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy,
          raise_exception(aTHX_ "Attempt to access array elements out of natural order");
       }
 
-   } else if ((opc==OP_AELEM || opc==OP_ASLICE) && acct->random) {
+   } else if (IsRandomAccessOp(opc) && acct->random) {
       GuardedCallSaveVtbl((acct->random)(obj, 0, index, nsv, sv, (char*)&obj), t);
       return 1;
    }
@@ -567,7 +573,7 @@ int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy,
       if (index==-1) {
          if (!acct->begin) raise_exception(aTHX_ "No access in reverse order");
       } else {
-         if (opc==OP_AELEM || opc==OP_ASLICE)
+         if (IsRandomAccessOp(opc))
             raise_exception(aTHX_ "No random access");
          else
             raise_exception(aTHX_ "Attempt to access array elements out of natural order");

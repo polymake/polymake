@@ -495,16 +495,30 @@ rule RAYS, LINEALITY_SPACE : FACETS, LINEAR_SPAN, RAYS_IN_FACETS {
 rule RIF_CYCLIC_NORMAL, NEIGHBOR_FACETS_CYCLIC_NORMAL : CONE_DIM, RAYS, LINEAR_SPAN, RAYS_IN_FACETS, DUAL_GRAPH.ADJACENCY {
    neighbors_cyclic_normal_primal($this);
 }
+precondition : POINTED;
 precondition : CONE_DIM { $this->CONE_DIM>=3 && $this->CONE_DIM<=4 }
 
 # FIXME check dependence on dim
-rule RIF_CYCLIC_NORMAL = RAYS_IN_FACETS;
+rule RIF_CYCLIC_NORMAL : RAYS_IN_FACETS {
+   # types are Array<Array<Int>> and IncidenceMatrix
+   $this->RIF_CYCLIC_NORMAL = rows($this->RAYS_IN_FACETS);
+}
 precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM<=1 }
+weight 1.10;
+
+rule FTR_CYCLIC_NORMAL : FACETS_THRU_RAYS {
+   # types are Array<Array<Int>> and IncidenceMatrix
+   $this->FTR_CYCLIC_NORMAL = rows($this->FACETS_THRU_RAYS);
+}
+precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM<=1 }
+weight 1.10;
 
 # FIXME check dependence on dim
 rule FTR_CYCLIC_NORMAL, NEIGHBOR_RAYS_CYCLIC_NORMAL : CONE_DIM, FACETS, RAYS_IN_FACETS, GRAPH.ADJACENCY {
    neighbors_cyclic_normal_dual($this);
 }
+precondition : POINTED;
+precondition : CONE_DIM { $this->CONE_DIM>=3 && $this->CONE_DIM<=4 }
 
 # @category Geometry
 # returns the dimension of the ambient space of the cone

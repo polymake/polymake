@@ -148,7 +148,7 @@ bool parallel_edges(const Vector<E>& e1, const Vector<E>& e2) {
    E q(0);              // quotient e2[j]/e1[j] -- should be constant
    while (!quotient_found) {
       if (is_zero(e1[j])) {
-         if (e2[j].non_zero())
+         if (!is_zero(e2[j]))
             return 0;
       }
       else {
@@ -291,7 +291,7 @@ bool Adj(const int k, Array<int>& next_components, const Array<int>& components,
    // maximize lambda
    const Vector<E> obj = unit_vector<E>(m.cols(),l);
    const Vector<E> opt = solve_lp(d, obj);
-   return opt[l].non_zero();
+   return !is_zero(opt[l]);
 }
 
 /* Reverse Search Algorithm according to Komei Fukuda
@@ -404,7 +404,7 @@ Set<int> find_max_face(const Matrix<E>& V, const Graph<Undirected>& G, const Vec
          const int neighbor=v.to_node();
          if (!visited[neighbor]) {
             visited[neighbor]=true;
-            if (V(neighbor,0).non_zero() && objective * V[neighbor] == opt) {
+            if (is_zero(V(neighbor,0)) && objective * V[neighbor] == opt) {
                optimal_face += neighbor;
                optimal_vertices.push_back(neighbor);
             }

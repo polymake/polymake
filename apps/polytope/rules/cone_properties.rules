@@ -317,6 +317,12 @@ rule FACETS_THRU_RAYS : RAYS_IN_FACETS{
     $this->FACETS_THRU_RAYS(temporary)=transpose($this->RAYS_IN_FACETS);
 }
 
+# this rule is needed. Otherwise a polytope only defined by FACETS_THRU_RAYS
+# is not able to compute anything else
+rule RAYS_IN_FACETS : FACETS_THRU_RAYS{
+    $this->RAYS_IN_FACETS(temporary)=transpose($this->FACETS_THRU_RAYS);
+}
+
 # @category Geometry
 # Transposed to [[INPUT_RAYS_IN_FACETS]].
 # Notice that this is a temporary property; it will not be stored in any file.

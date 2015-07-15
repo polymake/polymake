@@ -14,17 +14,32 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/IncidenceMatrix.h"
+#include "polymake/Array.h"
 #include "polymake/Rational.h"
+#include "polymake/Set.h"
 
 namespace polymake { namespace topaz { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0, typename T1>
-   FunctionInterface4perl( p_sum_triangulation_T_x_x_X, T0,T1 ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      WrapperReturn( (p_sum_triangulation<T0>(arg0, arg1, arg2.get<T1>())) );
+   template <typename T0>
+   FunctionInterface4perl( star_of_zero_T_x, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturn( (star_of_zero<T0>(arg0)) );
    };
 
-   FunctionInstance4perl(p_sum_triangulation_T_x_x_X, Rational, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
+   template <typename T0, typename T1>
+   FunctionInterface4perl( poset_by_inclusion_T_X, T0,T1 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturn( (poset_by_inclusion<T0>(arg0.get<T1>())) );
+   };
+
+   template <typename T0>
+   FunctionInterface4perl( star_shaped_balls_T_x, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturn( (star_shaped_balls<T0>(arg0)) );
+   };
+
+   FunctionInstance4perl(star_shaped_balls_T_x, Rational);
+   FunctionInstance4perl(poset_by_inclusion_T_X, Set< Set< int > >, perl::Canned< const Array< Set< Set< int > > > >);
+   FunctionInstance4perl(star_of_zero_T_x, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

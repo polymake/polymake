@@ -1,5 +1,23 @@
 Changelog
 
+=== Polymake 2.15-beta2 ===
+
+-- General --
+ * support for perl 5.22
+ * various minor bugfixes and improvements
+
+-- polytope --
+ * completed client for all Johnson solids
+ * new client for decomposing a polytope into direct summands
+ * renamed P_sum_triangulation client to sum_triangulation and improved functionality
+ * new auxiliary clients for supporting sum-triangulations
+ * fixed some problems with Minkowski sum client
+
+-- topaz --
+ * new header tools for dealing with posets (construction, homomorphisms, etc)
+ * new properties UNIMODULAR and  N_UNIMODULAR for GeomertricSimplicialComplex
+
+
 === Polymake 2.15-beta1 ===
 
 -- General --

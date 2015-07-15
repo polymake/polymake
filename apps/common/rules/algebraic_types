@@ -179,10 +179,10 @@ declare property_type Matrix<Element=Rational, Sym=NonSymmetric> : \
 }
 
 # @category Linear Algebra
-# Projects points into the [[null_space|orthogonal complement]] of a given subspace. 
+# Projects points into the [[null_space|orthogonal complement]] of a subspace given via an orthogonal basis.
 # The given points will be overwitten. 
 # @param Matrix points will be changed to orthogonal ones 
-# @param Matrix subspace
+# @param Matrix orthogonal basis of the subspace
 user_function project_to_orthogonal_complement(Matrix:lvalue,Matrix) : void : c++ (include => "polymake/linalg.h");
 
 

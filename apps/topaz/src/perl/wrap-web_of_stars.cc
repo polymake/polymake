@@ -14,23 +14,13 @@
 --------------------------------------------------------------------------------
 */
 
-///==== this line controls the automatic file splitting: max.instances=20
-
-#include "polymake/IncidenceMatrix.h"
-#include "polymake/Matrix.h"
-#include "polymake/Rational.h"
-#include "polymake/Set.h"
-#include "polymake/SparseMatrix.h"
-#include "polymake/client.h"
-
-namespace polymake { namespace common { namespace {
+namespace polymake { namespace topaz { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0, typename T1>
-   FunctionInterface4perl( new_X, T0,T1 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturnNew(T0, (arg0.get<T1>()) );
-   };
+   FunctionWrapper4perl( pm::IncidenceMatrix<pm::NonSymmetric> (pm::Array<int, void> const&, pm::Array<pm::Set<pm::Set<int, pm::operations::cmp>, pm::operations::cmp>, void> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Array< int > > >(), arg1.get< perl::TryCanned< const Array< Set< Set< int > > > > >(), arg2.get< perl::TryCanned< const Array< Set< int > > > >() );
+   }
+   FunctionWrapperInstance4perl( pm::IncidenceMatrix<pm::NonSymmetric> (pm::Array<int, void> const&, pm::Array<pm::Set<pm::Set<int, pm::operations::cmp>, pm::operations::cmp>, void> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&) );
 
-   FunctionInstance4perl(new_X, SparseMatrix< Rational, NonSymmetric >, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -47,6 +47,11 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::Matrix_A_TropicalNumber_A_Max_I_Rational_Z_I_NonSymmetric_Z", Matrix< TropicalNumber< Max, Rational > >);
    FunctionInstance4perl(new, Matrix< TropicalNumber< Min, Rational > >);
    OperatorInstance4perl(convert, Matrix< QuadraticExtension< Rational > >, perl::Canned< const Matrix< double > >);
+
+   FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::RowChain<pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&, pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&> >);
+   FunctionInstance4perl(new_X, Matrix< QuadraticExtension< Rational > >, perl::Canned< const pm::RowChain<pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&, pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&> >);
    OperatorInstance4perl(convert, Matrix< double >, perl::Canned< const SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >);
+   FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::RowChain<pm::Matrix<double> const&, pm::Matrix<double> const&> >);
+
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

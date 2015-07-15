@@ -27,8 +27,9 @@ namespace polymake { namespace polytope {
 template <typename Iterator> inline
 void canonicalize_oriented(Iterator e)
 {
-   if (!e.at_end() && !abs_equal(*e,1)) {
-      const typename Iterator::value_type leading=abs(*e);
+   typedef typename Iterator::value_type Scalar;
+   if (!e.at_end() && !abs_equal(*e,one_value<Scalar>())) {
+      const Scalar leading=abs(*e);
       do *e /= leading; while (!(++e).at_end());
    }
 }

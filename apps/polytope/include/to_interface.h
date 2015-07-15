@@ -45,6 +45,57 @@ public:
 #endif
 };
 
+template <typename Scalar>
+bool to_input_feasible_impl (const Matrix<Scalar>& I,
+                             const Matrix<Scalar>& E) 
+{
+   const int d = std::max(I.cols(),E.cols());
+   if (d == 0)
+      return true;
+
+   typedef to_interface::solver<Scalar> Solver;
+   try {
+      Vector<Scalar> obj = unit_vector<Scalar>(I.cols(),0);
+      Solver solver;
+      typename Solver::lp_solution S=solver.solve_lp(I, E, obj, true);
+   } 
+   catch (infeasible) {
+      return false;
+   }
+   catch (unbounded) {
+      return true;
+   } 
+   return true;
+}
+
+template <typename Scalar>
+bool to_input_bounded_impl(const Matrix<Scalar>& L,
+                           const Matrix<Scalar>& F,
+                           const Matrix<Scalar>& E) 
+{
+   int r = F.cols();
+   Matrix<Scalar> Eq;
+   if ( E.rows() ) { // FIXME write more efficiently
+      Eq = vector2col(-(unit_vector<Scalar>(r,0)))|vector2col(zero_vector<Scalar>(r))|T(F/E/-E);
+   } else {
+      Eq = vector2col(-(unit_vector<Scalar>(r,0)))|vector2col(zero_vector<Scalar>(r))|T(F);
+   }
+   r = Eq.cols()-2;
+   Matrix<Scalar> Ineq = vector2col(zero_vector<Scalar>(r))|vector2col(-(ones_vector<Scalar>(r)))|((unit_matrix<Scalar>(r)));
+   Vector<Scalar> v = (unit_vector<Scalar>(r+2,1));
+
+   typedef to_interface::solver<Scalar> Solver;
+   try {
+      Solver solver;
+      typename Solver::lp_solution S=solver.solve_lp(Ineq, Eq, v, true);
+      return S.first > 0 ? true : false;
+   } 
+   catch ( infeasible ) {
+      return true;     // the dual solution is unbounded, so the original problem is infeasible. 
+   }
+   return true;
+}
+
 } } }
 
 #endif // POLYMAKE_POLYTOPE_TO_INTERFACE_H

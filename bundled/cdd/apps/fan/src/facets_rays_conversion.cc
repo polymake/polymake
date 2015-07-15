@@ -70,7 +70,10 @@ namespace polymake { namespace fan {
 					sv.enumerate_vertices(zero_vector<Rational>() | c_facets, zero_vector<Rational>() | c_lspan, true, true);
 				Matrix<Coord> c_rays= v_description.first.minor(All,~scalar2set(0));
 
-				if (i==0) lineality_space= v_description.second.minor(All,~scalar2set(0));
+				if (i==0) {
+					lineality_space= v_description.second.minor(All,~scalar2set(0));
+					orthogonalize(entire(rows(lineality_space)));
+				}
 				// we need to normalize the rays wrt the lineality
 				// otherwise we might get the combinatorics wrong (via different representatives for the same face)
 				if (lineality_space.rows() > 0)

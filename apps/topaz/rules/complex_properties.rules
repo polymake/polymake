@@ -425,9 +425,14 @@ property COORDINATES : Matrix<Scalar>;
 # Dimension e of the space in which the [[COORDINATES]] of the complex is embedded.
 property G_DIM : Int;
 
-
 # Volume of a geometric simplicial complex.
 property VOLUME : Scalar;
+
+# A geometric simplicial complex is unimodular if all simplices have unit normalized volume.
+property UNIMODULAR : Bool;
+
+# count how many simplcies of a geometric simplicial complex are unimodular.
+property N_UNIMODULAR : Int;
 
 # Signature of a geometric simplicial complex embedded in the integer lattice.
 # Like [[DUAL_GRAPH_SIGNATURE]], but only simplices with odd normalized volume are counted.
@@ -461,6 +466,14 @@ weight 0.10;
 
 rule VOLUME : FACETS, COORDINATES, DIM {
   $this->VOLUME=volume($this);
+}
+
+rule UNIMODULAR : FACETS, COORDINATES {
+  $this->UNIMODULAR=unimodular($this);
+}
+
+rule N_UNIMODULAR : FACETS, COORDINATES {
+  $this->N_UNIMODULAR=n_unimodular($this);
 }
 
 }

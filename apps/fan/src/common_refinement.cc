@@ -56,8 +56,10 @@ perl::Object common_refinement(perl::Object f1, perl::Object f2)
    const int d=f1.give("FAN_DIM");
    const IncidenceMatrix<> max_cones1=f1.give("MAXIMAL_CONES");
    Matrix<Coord> rays1=f1.give("RAYS");
-   const Matrix<Coord> lineality_space1=f1.give("LINEALITY_SPACE");
-   const Matrix<Coord> lineality_space2=f2.give("LINEALITY_SPACE");
+   Matrix<Coord> lineality_space1=f1.give("LINEALITY_SPACE");
+   Matrix<Coord> lineality_space2=f2.give("LINEALITY_SPACE");
+   orthogonalize(entire(rows(lineality_space1)));
+   orthogonalize(entire(rows(lineality_space2)));
    Matrix<Coord> lineality_space;
    if (lineality_space1.rows() == 0 || lineality_space2.rows() == 0){
       lineality_space = Matrix<Coord>();
@@ -65,6 +67,7 @@ perl::Object common_refinement(perl::Object f1, perl::Object f2)
       lineality_space = unit_matrix<Coord>(ambient_dim);
    }else{
       lineality_space = null_space(null_space(lineality_space1) / null_space(lineality_space2));
+      orthogonalize(entire(rows(lineality_space)));
    }
 
    const IncidenceMatrix<> max_cones2=f2.give("MAXIMAL_CONES");

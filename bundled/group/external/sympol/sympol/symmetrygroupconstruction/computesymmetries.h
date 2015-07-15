@@ -74,8 +74,8 @@ public:
 		return group;
 	}
 private:
-	const bool m_useBliss;
-	const bool m_useEigen;
+	const bool m_useBliss __attribute__ ((unused));
+	const bool m_useEigen __attribute__ ((unused));
 };
 
 }

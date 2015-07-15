@@ -100,15 +100,24 @@ MAGIC* pm_perl_array_flags_magic(pTHX_ SV* sv)
 }
 
 static inline
-GV* retrieve_gv(pTHX_ OP *o, OP *const_op, SV **const_sv, PERL_CONTEXT *cx, PERL_CONTEXT *cx_bottom)
+GV* retrieve_gv(pTHX_ OP* o, OP* const_op, SV** const_sv, PERL_CONTEXT* cx, PERL_CONTEXT* cx_bottom)
 {
-   GV *gv;
+   GV* gv;
 #ifdef USE_ITHREADS
-   SV **saved_curpad=PL_curpad;
+   SV** saved_curpad=PL_curpad;
    PL_curpad=pm_perl_get_cx_curpad(aTHX_ cx, cx_bottom);
 #endif
-   gv=cGVOPo_gv;
-   if (const_op) *const_sv=cSVOPx_sv(const_op);
+#if PerlVersion >= 5220
+   if (o->op_type == OP_MULTIDEREF) {
+      UNOP_AUX_item* items=cUNOP_AUXo->op_aux;
+      gv=(GV*)UNOP_AUX_item_sv(++items);
+      if (const_sv) *const_sv=UNOP_AUX_item_sv(++items);
+   } else
+#endif
+   {
+      gv=cGVOPo_gv;
+      if (const_sv) *const_sv=cSVOPx_sv(const_op);
+   }
 #ifdef USE_ITHREADS
    PL_curpad=saved_curpad;
 #endif
@@ -116,10 +125,10 @@ GV* retrieve_gv(pTHX_ OP *o, OP *const_op, SV **const_sv, PERL_CONTEXT *cx, PERL
 }
 
 static
-SV* compose_varname(pTHX_ OP *o, OP *const_op, SV **const_sv, const char prefix, PERL_CONTEXT *cx, PERL_CONTEXT *cx_bottom)
+SV* compose_varname(pTHX_ OP* o, OP* const_op, SV** const_sv, const char prefix, PERL_CONTEXT* cx, PERL_CONTEXT* cx_bottom)
 {
-   GV *gv=retrieve_gv(aTHX_ o,const_op,const_sv,cx,cx_bottom);
-   SV *varname=newSVpvf("%c%s::%.*s", prefix, HvNAME(GvSTASH(gv)), (int)GvNAMELEN(gv), GvNAME(gv));
+   GV* gv=retrieve_gv(aTHX_ o, const_op, const_sv, cx, cx_bottom);
+   SV* varname=newSVpvf("%c%s::%.*s", prefix, HvNAME(GvSTASH(gv)), (int)GvNAMELEN(gv), GvNAME(gv));
    return sv_2mortal(varname);
 }
 
@@ -135,7 +144,7 @@ SV* pm_perl_name_of_ret_var(pTHX)
          while (o->op_type == OP_LEAVE) o=o->op_next;
          if (o->op_type != OP_LEAVESUB && o->op_type != OP_LEAVESUBLV) {
             if (o->op_type == OP_GVSV  &&  o->op_next->op_type == OP_SASSIGN) {
-               GV *gv=retrieve_gv(aTHX_ o,0,0,cx,cx_bottom);
+               GV *gv=retrieve_gv(aTHX_ o, 0, 0, cx, cx_bottom);
                return sv_2mortal(newSVpvn(GvNAME(gv),GvNAMELEN(gv)));
             }
             break;
@@ -1127,7 +1136,7 @@ PPCODE:
             } while (--arg_no>=0);
             if (o->op_type == OP_NULL) o=cUNOPo->op_first;
             if (o->op_type == OP_GVSV) {
-               GV *gv=retrieve_gv(aTHX_ o,0,0,cx,cx_bottom);
+               GV *gv=retrieve_gv(aTHX_ o, 0, 0, cx, cx_bottom);
                SETs(sv_2mortal(newSVpvn(GvNAME(gv),GvNAMELEN(gv))));
             }
          }
@@ -1183,8 +1192,24 @@ PPCODE:
                case OP_NULL:
                   if (allow_scalar) {
                      o=cUNOPo->op_first;
-                     if (o->op_type == OP_GVSV)
-                        XPUSHs(compose_varname(aTHX_ o,0,0,'$',cx,cx_bottom));
+                     switch (o->op_type) {
+                     case OP_GVSV:
+                        XPUSHs(compose_varname(aTHX_ o, 0, 0, '$', cx, cx_bottom));
+                        break;
+#if PerlVersion >= 5220
+                     case OP_MULTIDEREF:
+                        {
+                           UNOP_AUX_item* items = cUNOP_AUXo->op_aux;
+                           UV actions = items->uv;
+                           if (actions == (MDEREF_HV_gvhv_helem | MDEREF_INDEX_const | MDEREF_FLAG_last)) {
+                              SV *key_sv;
+                              XPUSHs(compose_varname(aTHX_ o, 0, &key_sv, '%', cx, cx_bottom));
+                              XPUSHs(key_sv);
+                           }
+                        }
+                        break;
+#endif
+                     }
                   }
                   break;
                case OP_HELEM:
@@ -1195,7 +1220,7 @@ PPCODE:
                         key_op=o->op_sibling;
                         if (key_op && key_op->op_type == OP_CONST) {
                            SV *key_sv;
-                           XPUSHs(compose_varname(aTHX_ cUNOPo->op_first,key_op,&key_sv,'%',cx,cx_bottom));
+                           XPUSHs(compose_varname(aTHX_ cUNOPo->op_first, key_op, &key_sv, '%', cx, cx_bottom));
                            XPUSHs(key_sv);
                         }
                      }
@@ -1203,11 +1228,11 @@ PPCODE:
                   break;
                case OP_RV2AV:
                   if (allow_list)
-                     XPUSHs(compose_varname(aTHX_ cUNOPo->op_first,0,0,'@',cx,cx_bottom));
+                     XPUSHs(compose_varname(aTHX_ cUNOPo->op_first, 0, 0, '@', cx, cx_bottom));
                   break;
                case OP_RV2HV:
                   if (allow_list)
-                     XPUSHs(compose_varname(aTHX_ cUNOPo->op_first,0,0,'%',cx,cx_bottom));
+                     XPUSHs(compose_varname(aTHX_ cUNOPo->op_first, 0, 0, '%', cx, cx_bottom));
                   break;
                }
             }

@@ -28,7 +28,8 @@
 namespace sympol {
 	class Polyhedron;
 	class QArray;
-	class FaceWithData;
+	// to match the definition in sympol's facewithdata.h, this might be better defined as a class ?
+	struct FaceWithData;
 	class RayComputationLRS;
 }
 

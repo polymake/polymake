@@ -14,23 +14,13 @@
 --------------------------------------------------------------------------------
 */
 
-///==== this line controls the automatic file splitting: max.instances=20
-
-#include "polymake/IncidenceMatrix.h"
-#include "polymake/Matrix.h"
-#include "polymake/Rational.h"
-#include "polymake/Set.h"
-#include "polymake/SparseMatrix.h"
-#include "polymake/client.h"
-
-namespace polymake { namespace common { namespace {
+namespace polymake { namespace topaz { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0, typename T1>
-   FunctionInterface4perl( new_X, T0,T1 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturnNew(T0, (arg0.get<T1>()) );
-   };
+   FunctionWrapper4perl( bool (perl::Object) ) {
+      perl::Value arg0(stack[0]);
+      IndirectWrapperReturn( arg0 );
+   }
+   FunctionWrapperInstance4perl( bool (perl::Object) );
 
-   FunctionInstance4perl(new_X, SparseMatrix< Rational, NonSymmetric >, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }
