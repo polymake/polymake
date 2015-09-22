@@ -303,14 +303,17 @@ sub locate_own_help_topic {
    my $full_name=$self->full_name;
    my $topic=$self->application->help->find($whence, $full_name);
    if (!defined($topic)) {
-      if ($self->name ne $full_name) {
+      if (defined($self->generic)) {
          # help node of the generic type
-         $topic=$self->application->help->find($whence, $self->name);
+         $topic=$self->application->help->find($whence, $self->generic->name);
       }
       if ($force) {
-         # hang the specialized topic as a sibling of the generic one
-         $topic= defined($topic) ? $topic->parent->add([$full_name])
-                                 : $self->application->help->add([$whence, $full_name]);
+         # add the specialization topic
+         $topic= defined($topic)
+                 ? $topic->add(['specializations', $full_name]) :
+                 defined($self->generic)
+                 ? $self->application->help->add([$whence, $self->generic->name, 'specializations', $full_name])
+                 : $self->application->help->add([$whence, $full_name]);
       } else {
          return $topic;
       }
@@ -418,7 +421,8 @@ sub deducing_typecheck : method {
 }
 
 sub performs_deduction {
-   $_[0]->abstract && $_[0]->perform_typecheck != \&context_sensitive_typecheck;
+   my ($self)=@_;
+   $self->abstract && defined($self->perform_typecheck) && $self->perform_typecheck != \&context_sensitive_typecheck;
 }
 
 sub new_generic {
@@ -495,7 +499,7 @@ sub scan_params {
 }
 #################################################################################
 sub full_name {
-   my $self=$_[0];
+   my ($self)=@_;
    if ($self->abstract ? !$self->performs_deduction : !defined($self->params)) {
       $self->name
    } else {
@@ -633,6 +637,8 @@ sub full_name {
    my ($self)=@_;
    $self->context_pkg->typeof_gen->name . "::" . $self->name
 }
+
+sub help_topic { undef }
 
 #################################################################################
 package Polymake::Core::FunctionTypeParam;

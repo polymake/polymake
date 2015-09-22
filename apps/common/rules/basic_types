@@ -180,7 +180,7 @@ user_function binomial(*,$) : c++ (name => 'Integer::binom', include => "polymak
 # You can easily create a Rational like that: $x = 1/2;
 declare property_type Rational : upgrades(Integer) : c++ \
    (operators => '++ -- bool neg ! +:int -:int *:int /:int +=:int -=:int *=:int /=:int  \
-                  << <<= >> >>= abs(abs(*)) @compare <=>(compare(*) : method)',         \
+                  << <<= >> >>= **(Rational::pow(*,*:int)) abs(abs(*)) @compare <=>(compare(*) : method)',         \
     include => "polymake/Rational.h") {
 
    # Literal fraction constants in the perl input are also built with this constructor.

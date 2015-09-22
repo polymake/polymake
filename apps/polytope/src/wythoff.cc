@@ -19,18 +19,18 @@
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Set.h"
 #include "polymake/PowerSet.h"
-#include "polymake/hash_map"
 #include "polymake/Map.h"
 #include "polymake/Array.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/SparseVector.h"
 #include "polymake/ListMatrix.h"
-#include "polymake/polytope/simple_roots.h"
 #include "polymake/linalg.h"
+#include "polymake/polytope/simple_roots.h"
 #include "polymake/group/group_domain.h"
+#include "polymake/hash_map"
+#include "polymake/list"
 #include <sstream>
 #include <vector>
-#include <list>
 
 namespace polymake { namespace polytope {
 

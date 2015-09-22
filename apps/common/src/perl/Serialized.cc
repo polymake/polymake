@@ -22,6 +22,7 @@
 #include "polymake/RationalFunction.h"
 #include "polymake/Ring.h"
 #include "polymake/TropicalNumber.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
@@ -37,5 +38,10 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::Serialized__Ring_A_TropicalNumber_A_Min_I_Rational_Z_I_Int_Z", pm::Serialized< Ring< TropicalNumber< Min, Rational >, int > >);
    Class4perl("Polymake::common::Serialized__Polynomial_A_TropicalNumber_A_Max_I_Rational_Z_I_Int_Z", pm::Serialized< Polynomial< TropicalNumber< Max, Rational >, int > >);
 	Class4perl("Polymake::common::Serialized__Polynomial_A_TropicalNumber_A_Min_I_Rational_Z_I_Int_Z", pm::Serialized< Polynomial< TropicalNumber< Min, Rational >, int > >);
+   Class4perl("Polymake::common::Serialized__Ring_A_Rational_I_Rational_Z", pm::Serialized< Ring< Rational, Rational > >);
+   Class4perl("Polymake::common::Serialized__PuiseuxFraction_A_Min_I_Rational_I_Rational_Z", pm::Serialized< PuiseuxFraction< Min, Rational, Rational > >);
+   Class4perl("Polymake::common::Serialized__PuiseuxFraction_A_Max_I_Rational_I_Rational_Z", pm::Serialized< PuiseuxFraction< Max, Rational, Rational > >);
+   Class4perl("Polymake::common::Serialized__RationalFunction_A_Rational_I_Rational_Z", pm::Serialized< RationalFunction< Rational, Rational > >);
+   Class4perl("Polymake::common::Serialized__Monomial_A_Rational_I_Int_Z", pm::Serialized< Monomial< Rational, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

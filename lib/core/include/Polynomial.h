@@ -190,6 +190,11 @@ public:
       return value_type(r.n_vars());
    }
 
+   static value_type empty_value(const ring_type& r)
+   {
+      return same_element_vector(std::numeric_limits<Exponent>::min(),r.n_vars());
+   }
+
    static bool equals_to_default(const value_type& x)
    {
       return x.empty();
@@ -353,6 +358,11 @@ public:
    static value_type default_value(const ring_type&)
    {
       return zero_value<Exponent>();
+   }
+
+   static value_type empty_value(const ring_type&)
+   {
+      return std::numeric_limits<Exponent>::min();
    }
 
    static bool equals_to_default(const value_type& x)
@@ -767,7 +777,7 @@ public:
    typename enable_if<bool, fits_as_coefficient<T, Term_base>::value>::type
    operator== (const T& x2) const
    {
-      return monomial_type::equals_to_default(the_term.first) && the_term.second==x2;
+      return is_zero(x2) && is_zero(the_term.second) || monomial_type::equals_to_default(the_term.first) && the_term.second==x2;
    }
 
    template <typename T>
@@ -1190,7 +1200,7 @@ public:
    term_type lt() const
    {
       if (trivial())
-         return term_type(data->ring);
+         return term_type(this->lm(), data->ring.zero_coef());
       else
          return term_type(*find_lex_lm(), data->ring);
    }
@@ -1199,7 +1209,7 @@ public:
    term_type lt(const GenericMatrix<Matrix, exponent_type>& order) const
    {
       if (trivial())
-         return term_type(data->ring);
+         return term_type(this->lm(order), data->ring.zero_coef());
       else
          return term_type(*find_lm(cmp_monomial_ordered<Matrix>(order.top())), data->ring);
    }
@@ -1208,7 +1218,7 @@ public:
    monomial_type lm() const
    {
       if (trivial())
-         return monomial_type(data->ring);
+         return monomial_type(monomial_type::empty_value(data->ring));
       else
          return monomial_type(find_lex_lm()->first, data->ring);
    }
@@ -1217,7 +1227,7 @@ public:
    monomial_type lm(const GenericMatrix<Matrix, exponent_type>& order) const
    {
       if (trivial())
-         return monomial_type(data->ring);
+         return monomial_type(monomial_type::empty_value(data->ring));
       else
          return monomial_type(find_lm(cmp_monomial_ordered<Matrix>(order.top()))->first, data->ring);
    }
@@ -1226,7 +1236,7 @@ public:
    typename monomial_type::value_type lm_exp() const
    {
       if (trivial())
-         return monomial_type::default_value(data->ring);
+         return monomial_type::empty_value(data->ring);
       else
          return find_lex_lm()->first;
    }
@@ -1235,7 +1245,7 @@ public:
    typename monomial_type::value_type lm_exp(const GenericMatrix<Matrix, exponent_type>& order) const
    {
       if (trivial())
-         return monomial_type::default_value(data->ring);
+         return monomial_type::empty_value(data->ring);
       else
          return find_lm(cmp_monomial_ordered<Matrix>(order.top()))->first;
    }
@@ -1579,7 +1589,7 @@ protected:
 
    // returns a list containing the exponents ordered by cmp_order 
    template<typename Order>
-   sorted_terms_type&  get_sorted_terms(sorted_terms_type& sort, const Order& cmp_order) const
+   const sorted_terms_type& get_sorted_terms(sorted_terms_type& sort, const Order& cmp_order) const
    {
       for(typename term_hash::const_iterator it = data->the_terms.begin(); it != data->the_terms.end(); ++it) {
          sort.push_back(it->first);
@@ -1701,7 +1711,8 @@ public:
    typename enable_if<bool, fits_as_coefficient<T, Polynomial_base>::value>::type
    operator== (const T& c) const
    {
-      return data->the_terms.size()==1
+      return trivial() && is_zero(c)
+         || data->the_terms.size()==1
           && monomial_type::equals_to_default(data->the_terms.begin()->first)
           && data->the_terms.begin()->second==c;
    }
@@ -1739,15 +1750,27 @@ public:
       // this list will carry the sorted terms except in lex
       sorted_terms_type t1, t2;
 
-      const sorted_terms_type& fst = pm::identical<Comparator, cmp_monomial_ordered_base<exponent_type> >::value ?   get_sorted_terms() :   get_sorted_terms(t1, cmp_order),
-                               snd = pm::identical<Comparator, cmp_monomial_ordered_base<exponent_type> >::value ? p.get_sorted_terms() : p.get_sorted_terms(t1, cmp_order);
+      const sorted_terms_type& fst = pm::identical<Comparator, cmp_monomial_ordered_base<exponent_type> >::value ?   get_sorted_terms() :   get_sorted_terms(t1, cmp_order);
+      const sorted_terms_type& snd = pm::identical<Comparator, cmp_monomial_ordered_base<exponent_type> >::value ? p.get_sorted_terms() : p.get_sorted_terms(t2, cmp_order);
         
       typename sorted_terms_type::const_iterator it1 = fst.begin(), 
                                                  it2 = snd.begin();
 
-      while(it1 != fst.end() && it2 != snd.end()) {
-         cmp_value cmp_terms = term_type::compare_values(*(  data->the_terms.find(*it1)),
-                                                         *(p.data->the_terms.find(*it2)),
+      while (it1 != fst.end() && it2 != snd.end()) {
+         typename term_hash::const_iterator it_term1=data->the_terms.find(*it1),
+                                            it_term2=p.data->the_terms.find(*it2);
+         if (POLYMAKE_DEBUG) {
+            if (it_term1 == data->the_terms.end()) {
+               cerr << "Polynomial:\n" << data->the_terms << "\nSorted terms:\n" << fst << "\n";
+               throw std::runtime_error("wrong 1st sorted term sequence");
+            }
+            if (it_term2 == p.data->the_terms.end()) {
+               cerr << "Polynomial:\n" << p.data->the_terms << "\nSorted terms:\n" << snd << "\n";
+               throw std::runtime_error("wrong 2nd sorted term sequence");
+            }
+         }
+
+         cmp_value cmp_terms = term_type::compare_values(*it_term1, *it_term2,
                                                          cmp_monomial_ordered_base<exponent_type>()); 
          if(cmp_terms != cmp_eq) return cmp_terms;
          else {
@@ -1967,12 +1990,69 @@ public:
    //! the lowest degree of a monomial occuring here
    Exponent lower_deg() const
    {
-      if (this->trivial()) return zero_value<Exponent>();
-
       Exponent low=std::numeric_limits<Exponent>::max();
       for (typename Entire<typename super::term_hash>::const_iterator it=entire(this->get_terms()); !it.at_end(); ++it)
          assign_min(low, it->first);
       return low;
+   }
+
+   //! Return the leading coefficient.
+   const Coefficient& lc() const
+   {
+      if (this->trivial())
+         return this->data->ring.zero_coef();
+      else
+         return this->find_lex_lm()->second;
+   }
+
+   // find leading coefficent (after multiplicating exponents with order, e.g. +/- 1)
+   const Coefficient& lc(const Exponent& order) const
+   {
+      if (this->trivial())
+         return this->data->ring.zero_coef();
+      else
+         return this->find_lm(cmp_monomial_ordered<Exponent>(order))->second;
+   }
+
+   template <typename T>
+   typename enable_if<typename algebraic_traits<T>::field_type, (is_field_of_fractions<Exponent>::value && fits_as_coefficient<T, UniPolynomial>::value)>::type
+   evaluate(const T& t, const long exp_lcm=1) const
+   {
+      typedef typename algebraic_traits<T>::field_type field;
+      field res;
+      for (typename Entire<typename super::term_hash>::const_iterator it=entire(this->get_terms()); !it.at_end(); ++it)
+      {
+         const Exponent exp = exp_lcm * it->first;
+         if (denominator(exp) != 1)
+            throw std::runtime_error("Exponents non-integral, larger exp_lcm needed.");
+         res += it->second * field::pow(t, convert_to<long>(exp));
+      }
+      return res;
+   }
+
+   template <typename T>
+   typename enable_if<typename algebraic_traits<T>::field_type, (std::numeric_limits<Exponent>::is_integer && fits_as_coefficient<T, UniPolynomial>::value)>::type
+   evaluate(const T& t, const long exp_lcm=1) const
+   {
+      typedef typename algebraic_traits<T>::field_type field;
+      field res;
+      for (typename Entire<typename super::term_hash>::const_iterator it=entire(this->get_terms()); !it.at_end(); ++it)
+      {
+         res += it->second * field::pow(t, convert_to<long>(exp_lcm * it->first));
+      }
+      return res;
+   }
+
+
+
+   double evaluate_float(const double a) const
+   {
+      double res = 0;
+      for (typename Entire<typename super::term_hash>::const_iterator it=entire(this->get_terms()); !it.at_end(); ++it)
+      {
+         res += convert_to<double>(it->second) * std::pow(a,convert_to<double>(it->first));
+      }
+      return res;
    }
 
    /*! Perform the polynomial division and assign the quotient to *this.
@@ -2152,7 +2232,6 @@ private:
    }
 };
 
-
 template <typename Coefficient, typename Exponent> inline
 Div< UniPolynomial<Coefficient, Exponent> >
 div(const UniPolynomial<Coefficient, Exponent>& num, const UniPolynomial<Coefficient, Exponent>& den)
@@ -2204,7 +2283,7 @@ gcd(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coefficie
    UniPolynomial<Coefficient, Exponent> p1(*(sw ? b : a).data),
                                         p2(*(sw ? a : b).data);
 
-   while (!is_zero(p2.lm_exp())) {
+   while (!p2.trivial() && !is_zero(p2.lm_exp())) {
       p1.remainder(p2, typename UniPolynomial<Coefficient, Exponent>::quot_black_hole());
       p1.swap(p2);
    }
@@ -2332,6 +2411,14 @@ struct spec_object_traits< Serialized< Polynomial<Coefficient,Exponent> > > :
    template <typename Me, typename Visitor>
    static void visit_elements(Me& me, Visitor& v)
    {
+      // here we read a serialized polynomial and should clear the sorted terms first
+      me.data->forget_sorted_terms();
+      v << me.data->the_terms << me.data->ring;
+   }
+
+   template <typename Me, typename Visitor>
+   static void visit_elements(const Me& me, Visitor& v)
+   {
       v << me.data->the_terms << me.data->ring;
    }
 };
@@ -2347,6 +2434,14 @@ struct spec_object_traits< Serialized< UniPolynomial<Coefficient,Exponent> > > :
 
    template <typename Me, typename Visitor>
    static void visit_elements(Me& me, Visitor& v)
+   {
+      // here we read a serialized polynomial and should clear the sorted terms first
+      me.data->forget_sorted_terms();
+      v << me.data->the_terms << me.data->ring;
+   }
+
+   template <typename Me, typename Visitor>
+   static void visit_elements(const Me& me, Visitor& v)
    {
       v << me.data->the_terms << me.data->ring;
    }

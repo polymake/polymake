@@ -13,25 +13,6 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-# FIXME #775
-# A tropical hypersurface is the set of points in R<sup>d</sup> for which
-# the minimum of a tropical polynomial is attained at least twice. It is given as a
-# list of [[MONOMIALS]] and [[COEFFICIENTS]].
-# 
-# polymake supports tropical hypersurfaces given by a homogeneous or inhomogeneous polynomial.
-# Visualization functions will take homogeneity into account and provide suitbale pictures (e.g.,
-# a tropical hypersurface defined by a homogeneous tropical polynomial in three variables will give
-# a planar picture.
-#
-# Throughout a tropical hypersurface is seen as a rational polyhedral complex in R<sup>d</sup>
-# (if inhomogeneous) or in R<sup>d-1</sup> (if homogeneous). 
-#
-# Our default tropical addition is [[Min]].  If you prefer [[Max]] use that as an optional template parameter.
-#
-# Example: max-tropical line with apex (-1,-2,-3) in the tropical 2-torus:
-# $H = new [[Hypersurface]]<Max>([[MONOMIALS]]=>[ [1,0,0],[0,1,0],[0,0,1] ], [[COEFFICIENTS]]=>[1,2,3]);
-#
-
 object Hypersurface { 
 
 # Homogeneous tropical polynomial defining the hypersurface.
@@ -83,34 +64,11 @@ rule DOME, PROJECTIVE_VERTICES, LINEALITY_SPACE, FAR_VERTICES, MAXIMAL_POLYTOPES
 }
 
 
-# List the optimum value and the indices of the [[MONOMIALS]] for which the optimum at a given point is attained.
-# @param Vector x given point
-# @return Pair<Rational,Set>
-# FIXME #775: (tropical) polynomials should have an evaluation function
-user_method opt_attained($) : MONOMIALS, COEFFICIENTS {
-  my ($this,$x)=@_;
-  my $x=new Vector($x); # takes care of a perl array etc
-  my $n=$this->MONOMIALS->rows();
-  my $val=$this->COEFFICIENTS->[0]+($x*$this->MONOMIALS->[0]);
-  my @val_attained=(0);
-  foreach my $i (1..$n-1) {
-    my $v=$this->COEFFICIENTS->[$i]+($x*$this->MONOMIALS->[$i]);
-    if (Addition->orientation()*($val-$v)>0) {
-      $val=$v;
-      @val_attained=($i);
-    } elsif ($v==$val) {
-      push @val_attained,$i;
-    }
-  }
-  return new Pair<Rational,Set>($val,new Set(\@val_attained));
-}
 
-
-# Privileged subdivision dual to the tropical hypersurface.
+# Subdivision of the Newton polytope dual to the tropical hypersurface.
 # The vertices of this PolyhedralComplex are the non-redundant [[MONOMIALS]].
 # @return fan::PolyhedralComplex<Rational>
-# FIXME #775: rule needs "RAYS"
-user_method privileged_subdivision : MONOMIALS, REDUNDANT_MONOMIALS, REGIONS {
+user_method dual_subdivision : MONOMIALS, REDUNDANT_MONOMIALS, REGIONS, FAR_VERTICES {
    my $this=shift;
    my $red=$this->REDUNDANT_MONOMIALS;
    my $n=$this->MONOMIALS->rows()-$red->size();
@@ -118,7 +76,7 @@ user_method privileged_subdivision : MONOMIALS, REDUNDANT_MONOMIALS, REGIONS {
    my $d=$homogenized->cols();
    my $dual_cells=transpose(new IncidenceMatrix($this->REGIONS));
    new fan::PolyhedralComplex<Rational>(VERTICES=>$homogenized,
-                                        MAXIMAL_POLYTOPES=>$dual_cells->minor(~$this->RAYS,All),
+                                        MAXIMAL_POLYTOPES=>$dual_cells->minor(~$this->FAR_VERTICES,All),
                                         LINEALITY_SPACE=>[],
                                         FAN_AMBIENT_DIM=>$d);
 }
@@ -140,6 +98,7 @@ user_function hyperplane<Addition>($)  {
     my $d=$coefs->dim();
     return new Hypersurface<Addition>(MONOMIALS=>unit_matrix($d),COEFFICIENTS=>$coefs);
 }
+
 
 
 

@@ -24,22 +24,22 @@
 
 namespace polymake { namespace tropical { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0, typename T1>
-   FunctionInterface4perl( dual_addition_version_T_X_x, T0,T1 ) {
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( dual_addition_version_T_X_x, T0,T1,T2 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturn( (dual_addition_version<T0>(arg0.get<T1>(), arg1)) );
+      WrapperReturn( (dual_addition_version<T0,T1>(arg0.get<T2>(), arg1)) );
    };
 
-   template <typename T0, typename T1>
-   FunctionInterface4perl( dual_addition_version_T_X, T0,T1 ) {
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( dual_addition_version_T_X, T0,T1,T2 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturn( (dual_addition_version<T0>(arg0.get<T1>())) );
+      WrapperReturn( (dual_addition_version<T0,T1>(arg0.get<T2>())) );
    };
 
-   FunctionInstance4perl(dual_addition_version_T_X_x, Min, perl::Canned< const TropicalNumber< Min, Rational > >);
-   FunctionInstance4perl(dual_addition_version_T_X_x, Max, perl::Canned< const Vector< TropicalNumber< Max, Rational > > >);
-   FunctionInstance4perl(dual_addition_version_T_X_x, Min, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >);
-   FunctionInstance4perl(dual_addition_version_T_X, Max, perl::Canned< const Ring< TropicalNumber< Max, Rational >, int > >);
-   FunctionInstance4perl(dual_addition_version_T_X_x, Min, perl::Canned< const Polynomial< TropicalNumber< Min, Rational >, int > >);
+   FunctionInstance4perl(dual_addition_version_T_X_x, Min, Rational, perl::Canned< const TropicalNumber< Min, Rational > >);
+   FunctionInstance4perl(dual_addition_version_T_X_x, Max, Rational, perl::Canned< const Vector< TropicalNumber< Max, Rational > > >);
+   FunctionInstance4perl(dual_addition_version_T_X_x, Min, Rational, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >);
+   FunctionInstance4perl(dual_addition_version_T_X, Max, Rational, perl::Canned< const Ring< TropicalNumber< Max, Rational >, int > >);
+   FunctionInstance4perl(dual_addition_version_T_X_x, Min, Rational, perl::Canned< const Polynomial< TropicalNumber< Min, Rational >, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

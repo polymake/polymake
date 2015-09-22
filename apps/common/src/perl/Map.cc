@@ -1,12 +1,12 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2014
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
-
+   
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
    Free Software Foundation; either version 2, or (at your option) any
    later version: http://www.gnu.org/licenses/gpl.txt.
-
+   
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -67,5 +67,9 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, Map< std::pair< int, int >, int >, perl::Canned< const Map< std::pair< int, int >, int > >);
    FunctionInstance4perl(new_X, Map< std::pair< int, int >, Vector< Integer > >, perl::Canned< const Map< std::pair< int, int >, Vector< Integer > > >);
    FunctionInstance4perl(new_X, Map< std::pair< int, int >, Vector< Rational > >, perl::Canned< const Map< std::pair< int, int >, Vector< Rational > > >);
+   FunctionInstance4perl(new, Map< Set< int >, int >);
+   OperatorInstance4perl(Binary_brk, perl::Canned< Map< Set< int >, int > >, perl::Canned< const Set< int > >);
+   Class4perl("Polymake::common::Map_A_Array__Int_I_Int_Z", Map< Array< int >, int >);
+   FunctionInstance4perl(new, Map< Array< int >, int >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

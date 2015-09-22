@@ -16,18 +16,18 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
-#include "polymake/Map.h"
-#include "polymake/Vector.h"
-#include "polymake/Matrix.h"
-#include "polymake/IncidenceMatrix.h"
-#include "polymake/Set.h"
-#include "polymake/hash_set"
-#include "polymake/Rational.h"
 #include "polymake/Array.h"
-#include "polymake/Integer.h"
 #include "polymake/Graph.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Integer.h"
+#include "polymake/Map.h"
+#include "polymake/Matrix.h"
+#include "polymake/Rational.h"
+#include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
+#include "polymake/Vector.h"
+#include "polymake/client.h"
+#include "polymake/hash_set"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -57,5 +57,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< Vector< Rational > > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, void> >);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< std::string > >, std::string);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Map< Vector< double >, bool > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< Vector< double > > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>, void> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

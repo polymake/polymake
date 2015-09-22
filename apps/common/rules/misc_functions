@@ -158,6 +158,21 @@ function find_labels {
    @ret;
 }
 
+# @category Utilities
+# Return a map indexing an array of sets
+# @param Array<Set<Int>> array
+# @return Map<Array<Set<Int>>, Int>
+user_function index_of {
+    my $array = shift;
+    my $index_of = new Map<Set<Int>, Int>;
+    my $i=0;
+    foreach (@{$array}) {
+        $index_of->{$_} = $i++;
+    }
+    $index_of;
+}
+
+
 # Local Variables:
 # mode: perl
 # cperl-indent-level:3

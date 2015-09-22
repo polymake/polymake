@@ -24,15 +24,15 @@
 
 namespace polymake { namespace tropical {
 
-	template <typename Addition>
-		TropicalNumber<typename Addition::dual > dual_addition_version(const TropicalNumber<Addition> &t, bool strong = true) {
-			return TropicalNumber<typename Addition::dual>(
-					(strong? -1 : 1) * Rational(t));
+	template <typename Addition, typename Scalar>
+		TropicalNumber<typename Addition::dual, Scalar > dual_addition_version(const TropicalNumber<Addition, Scalar> &t, bool strong = true) {
+			return TropicalNumber<typename Addition::dual, Scalar>(
+					(strong? -1 : 1) * Scalar(t));
 		}
 
-	template <typename Addition>
-		Vector<TropicalNumber<typename Addition::dual> > dual_addition_version(const Vector<TropicalNumber<Addition> > &v, bool strong = true) {
-			Vector<TropicalNumber<typename Addition::dual> > r(v.dim());
+	template <typename Addition, typename Scalar>
+		Vector<TropicalNumber<typename Addition::dual, Scalar> > dual_addition_version(const Vector<TropicalNumber<Addition, Scalar> > &v, bool strong = true) {
+			Vector<TropicalNumber<typename Addition::dual, Scalar> > r(v.dim());
 			for(int i = 0; i < v.dim(); i++) {
 				r[i] = dual_addition_version(v[i],strong);
 			}
@@ -40,30 +40,30 @@ namespace polymake { namespace tropical {
 		}
 
 	
-	template <typename Addition>
-		Matrix<TropicalNumber<typename Addition::dual> > dual_addition_version(const Matrix<TropicalNumber<Addition> > &v, bool strong = true) {
-			Matrix<TropicalNumber<typename Addition::dual> > r(v.rows(), v.cols());
+	template <typename Addition, typename Scalar>
+		Matrix<TropicalNumber<typename Addition::dual, Scalar> > dual_addition_version(const Matrix<TropicalNumber<Addition, Scalar> > &v, bool strong = true) {
+			Matrix<TropicalNumber<typename Addition::dual, Scalar> > r(v.rows(), v.cols());
 			for(int i = 0; i < v.rows(); i++) {
-				r.row(i) = dual_addition_version(Vector<TropicalNumber<Addition> >(v.row(i)),strong);
+				r.row(i) = dual_addition_version(Vector<TropicalNumber<Addition, Scalar> >(v.row(i)),strong);
 			}
 			return r;
 		}
 
-	template <typename Addition>
-		Ring<TropicalNumber<typename Addition::dual> > dual_addition_version(const Ring<TropicalNumber<Addition> > &r) {
-			return Ring<TropicalNumber<typename Addition::dual> >(r.names());	
+	template <typename Addition, typename Scalar>
+		Ring<TropicalNumber<typename Addition::dual, Scalar> > dual_addition_version(const Ring<TropicalNumber<Addition, Scalar> > &r) {
+			return Ring<TropicalNumber<typename Addition::dual, Scalar> >(r.names());	
 		}
 
-	template <typename Addition>
-		Polynomial<TropicalNumber<typename Addition::dual> > dual_addition_version(const Polynomial<TropicalNumber<Addition> > &p, bool strong = true) {
-			Ring<TropicalNumber<typename Addition::dual> > dualr = dual_addition_version(p.get_ring());
-			Polynomial<TropicalNumber<typename Addition::dual> > dualp(
+	template <typename Addition, typename Scalar>
+		Polynomial<TropicalNumber<typename Addition::dual, Scalar> > dual_addition_version(const Polynomial<TropicalNumber<Addition, Scalar> > &p, bool strong = true) {
+			Ring<TropicalNumber<typename Addition::dual, Scalar> > dualr = dual_addition_version(p.get_ring());
+			Polynomial<TropicalNumber<typename Addition::dual, Scalar> > dualp(
 					p.monomials_as_matrix(),
 					dual_addition_version(p.coefficients_as_vector(),strong),dualr);
 			return dualp;
 		}
 
-
+	
 
 }}
 

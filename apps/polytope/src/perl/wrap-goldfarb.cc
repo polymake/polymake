@@ -14,23 +14,31 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/SparseVector.h"
 #include "polymake/Rational.h"
+#include "polymake/SparseVector.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/PuiseuxFraction.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0, typename T1>
-   FunctionInterface4perl( new_X, T0,T1 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturnNew(T0, (arg0.get<T1>()) );
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( goldfarb_sit_T_int_C_C, T0,T1,T2 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      WrapperReturn( (goldfarb_sit<T0>(arg0.get<int>(), arg1.get<T1, T0>(), arg2.get<T2, T0>())) );
    };
 
-   FunctionWrapper4perl( perl::Object (int, pm::Rational const&, pm::Rational const&) ) {
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( goldfarb_T_int_C_C, T0,T1,T2 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      IndirectWrapperReturn( arg0, arg1.get< perl::TryCanned< const Rational > >(), arg2.get< perl::TryCanned< const Rational > >() );
-   }
-   FunctionWrapperInstance4perl( perl::Object (int, pm::Rational const&, pm::Rational const&) );
+      WrapperReturn( (goldfarb<T0>(arg0.get<int>(), arg1.get<T1, T0>(), arg2.get<T2, T0>())) );
+   };
 
-   FunctionInstance4perl(new_X, SparseVector< Rational >, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::Rational> >);
+   FunctionInstance4perl(goldfarb_T_int_C_C, Rational, perl::Canned< const Rational >, int);
+   FunctionInstance4perl(goldfarb_T_int_C_C, PuiseuxFraction< Max, Rational, Rational >, perl::Canned< const PuiseuxFraction< Max, Rational, Rational > >, int);
+   FunctionInstance4perl(goldfarb_T_int_C_C, PuiseuxFraction< Min, Rational, Rational >, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, int);
+   FunctionInstance4perl(goldfarb_T_int_C_C, PuiseuxFraction< Min, Rational, int >, perl::Canned< const PuiseuxFraction< Min, Rational, int > >, int);
+   FunctionInstance4perl(goldfarb_T_int_C_C, Rational, perl::Canned< const Rational >, perl::Canned< const Rational >);
+   FunctionInstance4perl(goldfarb_sit_T_int_C_C, Rational, perl::Canned< const Rational >, perl::Canned< const Rational >);
+   FunctionInstance4perl(goldfarb_sit_T_int_C_C, PuiseuxFraction< Min, Rational, Rational >, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

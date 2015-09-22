@@ -19,6 +19,8 @@
 #include "polymake/Integer.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/client.h"
 #include "polymake/linalg.h"
 
@@ -34,5 +36,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(zero_vector_T_x, Rational);
    FunctionInstance4perl(zero_vector_T_x, double);
    FunctionInstance4perl(zero_vector_T_x, QuadraticExtension< Rational >);
+   FunctionInstance4perl(zero_vector_T_x, PuiseuxFraction< Min, Rational, Rational >);
+   FunctionInstance4perl(zero_vector_T_x, PuiseuxFraction< Max, Rational, Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -49,13 +49,13 @@ perl::Object prism(perl::Object p_in, const Scalar& z, const Scalar& z_prime, pe
 
    int n_vertices=0, n_vertices_out=0;
    Set<int> rays;
-   if (!options["noc"])
+   if (!options["no_coordinates"])
       p_in.give("FAR_FACE") >> rays;
 
    perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
    p_out.set_description() << "prism over " << p_in.name() << endl;
 
-   if (options["noc"] || p_in.exists("VERTICES_IN_FACETS")) {
+   if (options["no_coordinates"] || p_in.exists("VERTICES_IN_FACETS")) {
       const IncidenceMatrix<> VIF=p_in.give("VERTICES_IN_FACETS");
       n_vertices=VIF.cols();
       n_vertices_out=2*n_vertices-rays.size();
@@ -77,7 +77,7 @@ perl::Object prism(perl::Object p_in, const Scalar& z, const Scalar& z_prime, pe
       p_out.take("VERTICES_IN_FACETS") << VIF_out;
    }
 
-   if (options["noc"]) {
+   if (options["no_coordinates"]) {
       if (p_in.exists("COMBINATORIAL_DIM")) {
          const int dim=p_in.give("COMBINATORIAL_DIM");
          p_out.take("COMBINATORIAL_DIM") << dim+1;
@@ -114,12 +114,12 @@ UserFunctionTemplate4perl("# @category  Producing a polytope from polytopes"
                           "# @param Polytope P the input polytope"
                           "# @param Scalar z1 the left endpoint of the interval; default value: -1"
                           "# @param Scalar z2 the right endpoint of the interval; default value: -//z1//"
-                          "# @option Bool noc only combinatorial information is handled"
+                          "# @option Bool no_coordinates only combinatorial information is handled"
                           "# @option Bool relabel creates an additional section [[VERTEX_LABELS]];"
                           "#   the bottom facet vertices get the labels from the original polytope;"
                           "#   the labels of their clones in the top facet get a tick (') appended."
                           "# @return Polytope",
-                          "prism<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=-1, type_upgrade<Scalar>=-$_[1], { noc => undef, relabel => undef})");
+                          "prism<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=-1, type_upgrade<Scalar>=-$_[1], { no_coordinates => undef, relabel => undef})");
 } }
 
 // Local Variables:

@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use feature 'state';
 
 package Polymake::Core::Application;
 
@@ -33,7 +34,7 @@ use Polymake::Enum qw( namespace_declared=1
                        has_failed_config=16
                      );
 
-my (%repository, $user_prefs_help);
+my %repository;
 
 #################################################################################
 #
@@ -169,10 +170,7 @@ Value 0 denotes configuration failure, which disables the corresponding rulefile
 
    if ($Help::gather) {
       $self->custom->create_help_topics($self->help);
-      unless ($user_prefs_help) {
-         $user_prefs_help=new Help;
-         $Prefs->custom->create_help_topics($user_prefs_help);
-      }
+      state $user_prefs_help=do { my $h=new Help; $Prefs->custom->create_help_topics($h); $h };
       push @{$self->help->related}, $user_prefs_help;
    }
 

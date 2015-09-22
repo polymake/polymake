@@ -1,5 +1,5 @@
 OwnLibraries := libnauty
-LibModules := nauty naututil nautil nautinv naugraph rng
+LibModules := nauty naututil nautil nautinv naugraph rng naurng schreier nausparse nautaux
 src := $(ExtensionTop)/external/nauty
 vpath %.c $(src)
 
@@ -21,7 +21,7 @@ ifeq "$(wildcard nauty.h)" ""
   override _dummy := $(shell $(_hide) CC=$(CC) CFLAGS="$(Cflags)" $(src)/configure --quiet 2>/dev/null; rm makefile $(_restore))
 endif
 
-ExtraCFLAGS := -DBIGNAUTY -I.
+ExtraCFLAGS := -DBIGNAUTY -I. -I$(src)
 ExtraCLEAN := nauty.h naututil.h gtools.h config.*
 
 # Local Variables:

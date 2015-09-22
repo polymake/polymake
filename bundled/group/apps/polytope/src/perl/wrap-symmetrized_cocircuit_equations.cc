@@ -14,14 +14,14 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/Rational.h"
-#include "polymake/Matrix.h"
-#include "polymake/IncidenceMatrix.h"
 #include "polymake/Array.h"
-#include "polymake/common/boost_dynamic_bitset.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
 #include "polymake/QuadraticExtension.h"
-#include "polymake/SparseMatrix.h"
+#include "polymake/Rational.h"
 #include "polymake/Set.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/common/boost_dynamic_bitset.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -32,5 +32,7 @@ namespace polymake { namespace polytope { namespace {
    };
 
    FunctionInstance4perl(symmetrized_cocircuit_equations_T_x_X_X_X_X_X_o, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >, perl::Canned< const Array< Array< int > > >, perl::Canned< const Array< boost_dynamic_bitset > >, perl::Canned< const Array< boost_dynamic_bitset > >);
+   FunctionInstance4perl(symmetrized_cocircuit_equations_T_x_X_X_X_X_X_o, Rational, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >, perl::Canned< const Array< Array< int > > >, perl::Canned< const Array< boost_dynamic_bitset > >, perl::Canned< const Array< boost_dynamic_bitset > >);
+   FunctionInstance4perl(symmetrized_cocircuit_equations_T_x_X_X_X_X_X_o, QuadraticExtension< Rational >, perl::Canned< const Matrix< QuadraticExtension< Rational > > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >, perl::Canned< const Array< Array< int > > >, perl::Canned< const Array< boost_dynamic_bitset > >, perl::Canned< const Array< boost_dynamic_bitset > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

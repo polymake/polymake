@@ -1,5 +1,49 @@
 Changelog
 
+=== Polymake 2.15-beta3 ===
+
+-- General --
+ * fix for gcc-5.x
+ * fix rare build issues
+ * fixes and improvements in TAB-completion and F1-help
+ * merge github pull #2 (fix -Werror=format-security issues)
+ * various minor bugfixes and improvements
+
+-- common --
+ * add new coordinate type PuiseuxFraction
+
+-- fan --
+ * new client planar_net
+
+-- group --
+ * refactored orbit and group action
+
+-- polytope --
+ * new client to count triangulations for 2-dim. point configurations (Alvarez,Seidel)
+ * new client long_and_winding
+ * new client goldfarb_sit
+
+-- topaz --
+ * new client random_discrete_morse
+
+-- tropical --
+ * refactoring of TropicalPolytope to Cone
+ * added support for infinite coordinates
+ * new client covector
+ * new data type CovectorLattice
+ * cleanup of obsolete funcionality
+
+-- bundled --
+ * added atint as a bundled extension
+
+-- interfaces --
+ * update lrs to 6.0
+ * update cdd to 094h
+ * update nauty to 2.5r9
+ * update libnormaliz to 2.99.4
+
+
+
 === Polymake 2.15-beta2 ===
 
 -- General --

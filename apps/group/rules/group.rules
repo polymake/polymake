@@ -43,6 +43,18 @@ rule ORDER : TRANSVERSAL_SIZES {
     $this->ORDER = $order;
 }
 
+rule CONJUGACY_CLASSES : GENERATORS, CONJUGACY_CLASS_REPRESENTATIVES {
+    $this->CONJUGACY_CLASSES = conjugacy_classes($this->GENERATORS, $this->CONJUGACY_CLASS_REPRESENTATIVES);
+}
+
+rule CONJUGACY_CLASS_SIZES : CONJUGACY_CLASSES {
+    my @sizes = ();
+    foreach (@{$this->CONJUGACY_CLASSES}) {
+        push @sizes, $_->size;
+    }
+    $this->CONJUGACY_CLASS_SIZES = new Array<Int>(\@sizes);
+}
+
 }
 
 # Local Variables:

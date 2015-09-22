@@ -938,7 +938,8 @@ package Polymake::User;
 sub apropos {
    my $expr=shift;
    $expr=qr/$expr/i;
-   if (my @list=map { $_->help->list_matching_leaves(sub { length($_[0]->text) && $_[0]->name =~ $expr }) } $application, values %{$application->used}) {
+   if (my @list=uniq( map { $_->list_matching_leaves(sub { length($_[0]->text) && $_[0]->name =~ $expr }) }
+                          map { $_->help, @{$_->help->related } } $application, values %{$application->used} )) {
       print map { $_->full_path."\n" } @list;
    } else {
       print "No matching help items found\n";

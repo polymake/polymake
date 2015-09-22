@@ -3082,8 +3082,10 @@ CODE:
       SAVEDESTRUCTOR_X(&catch_ptrs, NULL);
       SAVEINT(cur_lexical_import_ix);
       SAVEINT(cur_lexical_flags);
+      SAVEVPTR(PL_compcv);
       cur_lexical_import_ix=-1;
       cur_lexical_flags=0;
+      PL_compcv=Nullcv;       // new OPs needed for code restructuring must not be allocated in the op-slabs of the current cv
       ENTER;
    }
 }
@@ -3790,6 +3792,7 @@ BOOT:
       CvNODEBUG_on(get_cv("namespaces::store_explicit_typelist", FALSE));
       CvNODEBUG_on(get_cv("namespaces::fetch_explicit_typelist", FALSE));
       CvNODEBUG_on(get_cv("namespaces::Params::import", FALSE));
+      CvNODEBUG_on(get_cv("namespaces::BeginAV::PUSH", FALSE));
    }
    def_pp_GV       =PL_ppaddr[OP_GV];
    def_pp_GVSV     =PL_ppaddr[OP_GVSV];

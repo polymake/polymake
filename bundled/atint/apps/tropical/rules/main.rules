@@ -1,0 +1,76 @@
+###################################################################
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#  
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#  
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+#  Boston, MA  02110-1301, USA.
+#  
+#  ---
+#  Copyright (C) 2011-2015, Simon Hampe <simon.hampe@googlemail.com>
+#
+# This is the main rule file for application a-tint.
+#####################################################################
+
+# a-tint is an application for polymake (see [[http://polymake.mathematik.tu-darmstadt.de]]). 
+# It aims to implement algorithmic aspects of tropical intersection theory. 
+# Tropical varieties are realized as weighted polyhedral complexes. This project is part of and
+# financed by the DFG Priority Project SPP 1489 (see also [[http://www.computeralgebra.de/index.php]])
+# For more information see [[https://github.com/simonhampe/atint]]
+
+USE fan matroid graph 
+
+# A rational function on a polyhedral complex. It can be described by giving its [[DOMAIN]],
+# a Cycle, and values on this domain - which are encoded in the properties [[VERTEX_VALUES]] and 
+# [[LINEALITY_VALUES]].
+# Alternatively, it can be defined by a tropical quotient of homogeneous tropical polynomials of the 
+# same degree i.e. by giving [[NUMERATOR]] and [[DENOMINATOR]]. 
+# A [[DOMAIN]] can be defined additionally (though one should take
+# care that both functions are actually piecewise affine linear on the cells), otherwise it will be
+# computed as the common refinement of the domains of affine linearity of the two polynomials.
+# Note: This has nothing to do with common's RationalFunction (which is univariate). If you want to 
+# access that type or use this type from another application, be sure to prepend the appropriate 
+# namespace identifier.
+declare object RationalFunction<Addition>;
+
+# A morphism is a function between cycles which is locally affine linear and respects the lattices.
+# It is defined by a [[DOMAIN]], which is a cycle, and values on this domain, [[VERTEX_VALUES]] and
+# [[LINEALITY_VALUES]], much like [[RationalFunction]].
+# Alternatively, it can be defined as a global affine linear function by giving a matrix and a 
+# translation vector.
+declare object Morphism<Addition>;
+
+# An n-marked rational curve, identified by its [[SETS]], i.e. its partitions of {1,...,n} and
+# its [[COEFFICIENTS]], i.e. the lengths of the corresponding edges.
+declare object RationalCurve;
+
+# This represents the result of the method [[lines_in_cubic]]. It contains:
+# The tropical polynomial representing the surface, the surface itself as a Cycle and 
+# lists of lines and families of different types, each starting with LIST_... 
+# 
+# The object also has methods, starting with array_... that return the corresponding LIST_... as a perl array.
+# The different (lists of) lines can be visualized nicely with [[visualize_in_surface]].
+declare object LinesInCubic<Addition>;
+
+INCLUDE
+	help.rules
+	cycle.rules
+	rationalfunction.rules
+	rationalcurve.rules
+	rationalcurve_visual.rules
+	divisor.rules
+	morphism.rules
+	conversion.rules
+	matroidfanrincon.rules
+	visual.rules
+	visual_function.rules
+	intersection.rules
+	lines_in_cubic.rules

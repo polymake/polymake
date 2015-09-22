@@ -50,7 +50,10 @@ CONFIGURE {
 }
 
 
-# This program preprocesses the input for gfan and then reads in the gfan output.
+# @category gfan
+# Calls gfan_tropicalintersection for a homogeneous ideal.
+# @param ideal::Ideal I homogeneous ideal
+# @return Cycle<Max> most likely not balanced
 user_function gfan_tropicalintersection(ideal::Ideal) {
    my ($I) = @_;
    my $tempfile=new Tempfile;
@@ -61,16 +64,16 @@ user_function gfan_tropicalintersection(ideal::Ideal) {
    
    # Accessing gfan:
    # print "Computing tropical intersecton\n";
-   system "$gfan_tropicalintersection --xml -t <$tempfile.in >$tempfile.poly";
+   system "$gfan_tropicalintersection --xml <$tempfile.in >$tempfile.poly";
    # print "Output written.\n";
-   temporary_gfan_output_workaround($tempfile);
-   my $result = User::load("$tempfile.poly");
-   return $result;
+   return gfan_fix_lineality_space($tempfile);
 }
 
-
-# This program preprocesses the input for gfan and then reads in the gfan output.
-# It should be checked whether gfan_groebnerbla can really be left out.
+# @category gfan
+# Calls gfan_tropicalhypersurface for a single polynomial.
+# If the polynomial is a monomial, gfan will return an empty object and the xslt parsing fails. We do not catch this for you.
+# @param Polynomial<Rational> p homogeneous polynomial
+# @return Cycle<Max>
 user_function gfan_tropicalhypersurface(Polynomial) {
    my ($g) = @_;
    my $tempfile=new Tempfile;
@@ -80,15 +83,19 @@ user_function gfan_tropicalhypersurface(Polynomial) {
    write_ideal_to_file($tempfile, new ideal::Ideal(GENERATORS=>[$g]), $R);
 
    # Accessing gfan:
+   # It should be checked whether gfan_groebnerbla can really be left out.
    system "$gfan_tropicalhypersurface --xml <$tempfile.in >$tempfile.poly 2>/dev/null";
    
-   temporary_gfan_output_workaround($tempfile);
-   return User::load("$tempfile.poly");
+   return gfan_fix_lineality_space($tempfile);
 }
 
 
 
-# This program preprocesses the input for gfan and then reads in the gfan output.
+# @category gfan
+# Calls gfan_tropicalstartingcone | gfan_tropicaltraverse for a homogeneous prime ideal.
+# If the ideal contains a monomial, gfan will return an empty object and the xslt parsing fails. We do not catch this for you.
+# @param ideal::Ideal I homogeneous prime ideal
+# @return Cycle<Max>
 user_function gfan_tropicalvariety_of_prime(ideal::Ideal) {
    my ($I) = @_;
    my $tempfile=new Tempfile;
@@ -98,21 +105,22 @@ user_function gfan_tropicalvariety_of_prime(ideal::Ideal) {
    write_ideal_to_file($tempfile, $I, $R);
    
    # Accessing gfan:
-   # print "Homogenizing\n";
-   system "$gfan_homogenize -H <$tempfile.in >$tempfile.homog";
    # print "Buchberger\n";
    # Commented out, probably we don't need that. rtfm
    #system "$gfan_buchberger <$tempfile.homog >$tempfile.gr";
    # print "Starting cone\n";
-   system "$gfan_tropicalstartingcone <$tempfile.homog >$tempfile.st";
+   system "$gfan_tropicalstartingcone <$tempfile.in >$tempfile.st";
    # print "Traversing\n";
    system "$gfan_tropicaltraverse --xml <$tempfile.st >$tempfile.poly";
 
-   return gfan_read_output_and_dehomogenize($tempfile);
+   return gfan_fix_lineality_space($tempfile);
 }
 
-# This program preprocesses the input for gfan and then reads in the gfan output.
-# It should be checked whether gfan_groebnerbla can really be left out.
+# @category gfan
+# Calls gfan_tropicalbruteforce for a homogeneous ideal.
+# If the ideal contains a monomial, gfan will return an empty object and the xslt parsing fails. We do not catch this for you.
+# @param ideal::Ideal I homogeneous ideal
+# @return SymmetricFan
 user_function gfan_tropicalbruteforce(ideal::Ideal) {
    my ($I) = @_;
    my $tempfile=new Tempfile;
@@ -122,42 +130,31 @@ user_function gfan_tropicalbruteforce(ideal::Ideal) {
    write_ideal_to_file($tempfile, $I, $R);
    
    # Accessing gfan:
-   system "($gfan_homogenize -i -H <$tempfile.in | $gfan_tropicalbruteforce --xml) >$tempfile.poly 2>/dev/null";
+   system "$gfan_tropicalbruteforce --xml < $tempfile.in >$tempfile.poly 2>/dev/null";
 
-   return gfan_read_output_and_dehomogenize($tempfile);
+   return User::load("$tempfile.poly");
 }
 
-sub temporary_gfan_output_workaround{
+# Tropical cycle needs to mod out 1,1...1, unable to do that in xslt.
+sub gfan_fix_lineality_space{
    my($tempfile) = @_;
-   # system "sed -i s/fan\\\:\\\:SymmetricFan\\\&lt\\\;/tropical\\\:\\\:Cycle\\\\\\\&lt\\\;Min\\\,/ $tempfile.poly";
-   # system("sed -i s/2\\\.9\\\.9/2.13.2/ $tempfile.poly");
-   # system("sed -i s/MULTIPLICITIES/WEIGHTS/ $tempfile.poly");
-   # print "$tempfile.poly\n";
-   # sleep 300;
-}
-
-sub gfan_read_output_and_dehomogenize{
-   my($tempfile) = @_;
-   temporary_gfan_output_workaround($tempfile);
    my $gfan_out= User::load("$tempfile.poly");
 
-   # Decompose output data:
-   my $n = $gfan_out->AMBIENT_DIM;
-   my $rays = $gfan_out->RAYS;
-   my $lin = $gfan_out->LINEALITY_SPACE;
-   my $maxCones = $gfan_out->MAXIMAL_CONES;
-   $maxCones = new Array<Set<Int> >(@$maxCones);
+   my $lineality = new Matrix($gfan_out->LINEALITY_SPACE);
+   canonicalize_scalar_to_leading_zero($lineality->minor(All,~[0]));
+   $lineality = $lineality->minor(basis_rows($lineality), All);
    
-   # Dehomogenization:
-   my $v = ones_vector<Rational>($n-1);
-   my $projection_matrix = dense(unit_matrix<Rational>($n-1))|(-$v);
-   my $inRays = $rays * transpose($projection_matrix); #new Matrix(map($projection_matrix * $_,@$rays));
-   my $inLin = $lin * transpose($projection_matrix);
-   my $inWeights = $gfan_out->WEIGHTS;
+   my $result = new Cycle<Max>();
+   $result->take("LINEALITY_SPACE", $lineality);
    
-   # The following is cheaper than check_fan, but probably we run into problems
-   # if 0 is a ray.
-   return new Cycle(INPUT_RAYS=>$inRays, INPUT_LINEALITY=>$inLin, INPUT_CONES=>$maxCones, WEIGHTS=>$inWeights);
+   my @properties = $gfan_out->list_properties();
+   @properties = grep($_ !~ m/^LINEALITY_SPACE$/, @properties);
+
+   for my $prop (@properties){
+      $result->take($prop, $gfan_out->give($prop));
+   }
+
+   return $result;
 }
 
 
@@ -172,19 +169,6 @@ sub write_ideal_to_file{
    close $input;
 }
 
-sub tropical_xml_update{
-   my ($f) = @_;
-   User::load("$f");
-   # Fixing gfan output:
-   system "sed -i s/SymmetricFan/TropicalVariety/ $f.bak";
-   # print $Core::Extension::by_URI->{"https://github.com/lkastner/polymake_toric"}, "\n";
-   print $Core::Extension::by_URI, "\n";
-   die;
-   #system "sed -i s/\\\"DIM\\\"/\\\"FAN_DIM\\\"/ $f";
-   #system "sed -i s/\\\"AMBIENT_DIM\\\"/\\\"FAN_AMBIENT_DIM\\\"/ $f";
-     
-   return User::load("$f.bak");
-}
 
 # Local Variables:
 # mode: perl

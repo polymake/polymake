@@ -14,16 +14,21 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
+#include "polymake/Rational.h"
+#include "polymake/TropicalNumber.h"
 #include "polymake/tropical/arithmetic.h"
 
 namespace polymake { namespace tropical { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0>
-   FunctionInterface4perl( lifted_pluecker_T_x, T0 ) {
+   template <typename T0, typename T1>
+   FunctionInterface4perl( lifted_pluecker_T_X, T0,T1 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturn( (lifted_pluecker<T0>(arg0)) );
+      WrapperReturn( (lifted_pluecker<T0>(arg0.get<T1>())) );
    };
 
-   FunctionInstance4perl(lifted_pluecker_T_x, Min);
+   FunctionInstance4perl(lifted_pluecker_T_X, Min, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >);
+   FunctionInstance4perl(lifted_pluecker_T_X, Max, perl::Canned< const Matrix< TropicalNumber< Max, Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -58,5 +58,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, Ring< TropicalNumber< Min, Rational >, int >, int);
    FunctionInstance4perl(new_X, Ring< TropicalNumber< Max, Rational >, int >, int);
    FunctionInstance4perl(new_std__string_P, Ring< TropicalNumber< Max, Rational >, int >, perl::Canned< const Array< std::string > >);
+   FunctionInstance4perl(new_X, Ring< Rational, Rational >, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

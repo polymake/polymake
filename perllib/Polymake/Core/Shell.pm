@@ -19,6 +19,7 @@ use namespaces;
 require Term::ReadLine;
 require Polymake::Core::InteractiveCommands;
 require Polymake::Core::InteractiveHelp;
+require Polymake::Core::ShellHelpers;
 
 package Polymake::Core::Shell;
 
@@ -31,15 +32,23 @@ use Polymake::Struct (
    [ '$state' => '0' ],
    '$input_line',               # for callback interface
    '$line_cnt',                 # in the current input group
+# for history management
    '$first_hist_index',         # where in the history list the first line of the current input portion will go
    [ '$within_history' => 'undef' ],    # when defined: position in the history list to be copied to the pre-put
    '$within_history_begin',     # the index of the history line preceding the injected portion (for display in prompt)
    '$last_error_was_in_history',
-   '&try_completion',           # method choosing the completion list
-   '&completion',               # method iterating over the completion list
-   '@completion_words',
    [ '$histfile' => '"$PrivateDir/history"' ],
    '@remove_hist_lines',        # [ start..end ], ...
+# for TAB completion
+   '&try_completion',           # method choosing the completion list
+   '&completion',               # method iterating over the completion list
+   '@completion_words',         # proposals for TAB completion
+   '$partial_input',            # input received so far: continued lines concatenated with the input buffer
+# for F1 context help
+   '$help_point',               # cursor position when F1 was pressed last time
+   '$help_input_line',          # input buffer when F1 was pressed last time
+   '@help_topics',              # help topics prepared for the next F1 event
+   '$help_repeat_cnt',          # how many times F1 has been pressed without moving the cursor
 );
 
 
@@ -81,12 +90,6 @@ sub start {
 }
 
 sub interactive { 1 }
-
-# stuff for TAB completion and context-sensitive help
-
-my $statement_start_re=qr{(?: ^ | [;\}] )\s*}x;
-
-my $args_start_re=qr{(?: \s+ | \s*\(\s* )}x;
 
 my $interactive_preamble="$warn_options; use application undef, \$namespaces::auto_declare;\n";
 
@@ -222,6 +225,8 @@ sub get_line {
       $self->state=2;
       $self->first_hist_index=$self->term->Attribs->{history_length};
       $self->line_cnt=0;
+      $self->help_point=-1;
+      $#{$self->help_topics}=-1;
       $_ .= "#line 1 \"input\"\n";
    } elsif ($self->state!=3 || ($l=line_continued())) {
       namespaces::temp_disable();
@@ -311,14 +316,14 @@ sub completion_entry {
 
 sub postprocess_file_list {
    my ($self, $word, $quote, $prefix, $dir_cmd, $list)=@_;
-   my $vor=length($prefix)-length($word);
+   my $trim=length($prefix)-length($word);
    my $dir_seen;
    if ($dir_cmd) {
       unshift @$list, ".." if length($prefix)==0 || $prefix =~ /^\.\.?$/;
-      $self->completion_words=[ map { substr($_,$vor) } grep { m|^~/| ? -d "$ENV{HOME}/$'" : -d $_ } @$list ];
+      $self->completion_words=[ map { substr($_, $trim) } grep { m|^~/| ? -d "$ENV{HOME}/$'" : -d $_ } @$list ];
       $self->term->Attribs->{completion_append_character}="/";
    } else {
-      $self->completion_words=[ map { substr($_,$vor).( m|^~/| ? -d "$ENV{HOME}/$'" : -d $_ and $dir_seen="/") } @$list ];
+      $self->completion_words=[ map { substr($_, $trim).( m|^~/| ? -d "$ENV{HOME}/$'" : -d $_ and $dir_seen="/") } @$list ];
       $self->term->Attribs->{completion_append_character}=$quote unless $dir_seen;
    }
    $self->term->Attribs->{filename_completion_desired}=0;
@@ -329,1022 +334,152 @@ sub try_filename_completion {
    if (length($prefix) > length($word)) {
       if (my @list=$self->term->completion_matches($prefix,$self->term->Attribs->{filename_completion_function})) {
          shift @list if $#list;
-         postprocess_file_list(@_,\@list);
+         postprocess_file_list(@_, \@list);
       }
    } else {
       $self->completion=$self->term->Attribs->{filename_completion_function};
    }
 }
 
-sub matching_rulefiles {
-   my ($app, $cmd, $prefix)=@_;
-   if ($cmd eq "include") {
-      map { $_ =~ $filename_re } map { glob("$_/$prefix*") } @{$app->rulepath}
+# private:
+sub prepare_partial_input {
+   my ($self)=@_;
+   my $line=$self->term->Attribs->{line_buffer};
+   $self->partial_input="";
+   my $pos;
+   if ($self->line_cnt > 1) {
+      my $last_hist=$self->term->Attribs->{history_length}-1;
+      $self->partial_input=join(" ", map { $self->term->history_get($_) } $last_hist-$self->line_cnt+2 .. $last_hist).$line;
+      $pos=$self->term->Attribs->{point} + length($self->partial_input) - length($line);
    } else {
-      grep { /^\Q$prefix\E/ } $app->list_configured($cmd eq "unconfigure")
+      $self->partial_input=$line;
+      $pos=$self->term->Attribs->{point};
    }
+   $self->partial_input =~ /\S/ ? $pos : -1
 }
-
-sub try_property_completion {
-   my ($type, $prefix, $allow_auto_cast)=@_;
-   my @path=split /\./, $prefix;
-   $prefix= substr($prefix,-1,1) eq "." ? "" : pop @path;
-   foreach (@path) {
-      my $prop=$type->lookup_property($_) || ($allow_auto_cast && $type->lookup_auto_cast($_)) or return;
-      instanceof ObjectType($type=$prop->specialization($type)->type) or return;
-   }
-   sorted_uniq(sort( grep { !$type->is_overridden($_) } grep { /^$prefix/ } map { keys %{$_->properties} }
-                     map { ($_, $allow_auto_cast ? keys %{$_->auto_casts} : ()) } $type, @{$type->super} ));
-}
-
-sub try_type_completion {
-   my ($self, $word, $prefix, $before, $is_object_type)=@_;
-   my @list;
-   my $char="";
-   my $maybe_object_type= !( $prefix =~ s/\bprops::// ) && (!defined($is_object_type) || $is_object_type);
-   my $maybe_prop_type= !( $prefix =~ s/\bobjects::// ) && !$is_object_type;
-   my $has_app_prefix= $prefix =~ s/^($id_re):://;
-   my $app= $has_app_prefix ? eval { User::application($1) } || return ($User::application, $char) : $User::application;
-   if ($maybe_object_type) {
-      push @list, grep { /^$prefix/ } map { $_->name } map { @{$_->object_types} }
-                  ($app, $has_app_prefix ? () : values %{$app->imported});
-   }
-   if ($maybe_prop_type) {
-      push @list, map { /^(.*)::$/ } map { complete_variable_name_in_pkg(get_pkg($_->pkg."::props"), " ", $prefix) }
-                  ($app, $has_app_prefix ? () : values %{$app->imported});
-   }
-   @list=sorted_uniq(sort(@list));
-
-   my $vor=length($word)-length($prefix);
-   if ($vor>0) {
-      substr($_,0,0)=substr($word,0,$vor) for @list;
-   }
-
-   if ($#list==0) {
-      my $pkg=namespaces::lookup_class($app->pkg, $list[0]);
-      if (do { no strict 'refs'; exists &{"$pkg\::_min_params"} }) {
-         $pkg->_min_params and $char="<";
-      } else {
-         $char="(";
-         if (length($before)) {
-            my $cnt=1;
-            ++$cnt while $before =~ s/$type_re \s*,\s* $//xo;
-            if (my ($outer_type)= $before =~ /($qual_id_re) \s*<\s* $/xo) {
-               $app= $outer_type =~ s/^(?! props:: | objects::) ($id_re)::// ? (add Application($1)) : $User::application;
-               $pkg=namespaces::lookup_class($app->pkg, $outer_type);
-               if (do { no strict 'refs'; exists &{"$pkg\::_min_params"} }) {
-                  $char= $pkg->_min_params <= $cnt ? ">" : ",";
-               }
-            }
-         }
-      }
-   } elsif (!$vor) {
-      push @list, map { "$_\::" } grep { /^$prefix/ } known Application;
-   }
-
-   $self->completion_words=\@list;
-   $self->term->Attribs->{completion_append_character}=$char;
-
-   ($app, $char);
-}
-
-sub try_label_completion {
-   my ($app, $expr)=@_;
-   sorted_uniq(sort( map { $_->list_completions($expr) } $app->prefs, @{$app->prefs->imported} ))
-}
-
-# the term is NOT a method call, if preceded by:
-my $op_re=qr{(?:[-+*/.,<=;({}\[]| (?<!-)> | ^ )\s* | \w\s+ }x;
-
-# a variable or array element
-my $var_re=qr{ \$ $id_re (?:(?=\s*\[) $confined_re)? }xo;
-
-# start of a method call chain: a variable or a function call
-my $var_or_func_re=qr{ (?'var' $var_re) | (?:(?'app_name' $id_re)::)?(?'func' $id_re) (?(?=\s*\() $confined_re)? }xo;
-
-# intermediate expression in a method call chain
-my $intermed_re=qr{ \s*->\s* (?: (?'method_name' $id_re) (?(?=\s*\() $confined_re)? | (?(?=\s*\[) $confined_re ) ) }xo;
-
-# chain of intermediate expressions
-my $intermed_chain_re=qr{ (?'intermed' (?:$intermed_re)*?) \s*->\s* }xo;
-
-my (%popular_perl_keywords, %object_methods);
-@popular_perl_keywords{qw( local print require chdir rename unlink mkdir rmdir declare exit )}=();
-@object_methods{qw( name description give take add remove type provide lookup list_properties properties schedule list_names
-                    get_attachment remove_attachment list_attachments attach )}=();
 
 sub all_completions : method {
    my ($self, $word)=@_;
-   my $line=$self->term->Attribs->{line_buffer};
-   pos($line)=$self->term->Attribs->{point};
-
-   # commands expecting a filename argument
-   if ($line =~
-       m{(?: $statement_start_re (?: (?'simple_cmd' require | do | rename | unlink | mkdir | load_commands | save_history | export_configured) |
-                                     (?'dir_cmd' chdir | rmdir | found_extension | import_extension)) $args_start_re
-           | $op_re (?: load | load_data | glob ) (?'paren' $args_start_re)
-           | $statement_start_re (?: save | save_data ) (?'paren' $args_start_re) $expression_re ,\s*
-           | \b(?'File' File) \s*=>\s* )
-         (?:(?'quote' ['"]) (?'prefix' [^"']*)? )? \G}xogc) {
-      my ($simple_cmd, $dir_cmd, $paren, $File, $quote, $prefix)=@+{qw(simple_cmd dir_cmd paren File quote prefix)};
-
-      if (defined $quote) {
-         try_filename_completion($self, $word, $quote, $prefix, $dir_cmd);
-      } else {
-         $self->completion_words=[ $simple_cmd || $dir_cmd || $paren =~ /\(/ || $File ? '"' : '(' ];
-      }
-      return;
-   }
-
-   # command expecting an application name
-   if ($line =~
-       m{ $statement_start_re (extend_)?application $args_start_re (?(1) (?'ext_dir' $expression_re) ,\s*)
-          (?:(?'quote' ['"]) (?'prefix' [^"']*)? )? \G}xogc) {
-
-      my ($ext_dir, $quote, $prefix)=@+{qw(ext_dir quote prefix)};
-
-      if (defined $quote) {
-         $self->term->Attribs->{completion_append_character}=$quote;
-         if ($ext_dir) {
-            $ext_dir=eval $ext_dir or return;
-            replace_special_paths($ext_dir);
-            if ($ext_dir !~ m{^/} && defined (my $ext=$Extension::registered_by_URI{$ext_dir})) {
-               $ext_dir=$ext->dir;
-            }
-         }
-         $self->completion_words=[ sorted_uniq(sort( grep { not $ext_dir && -d "$ext_dir/apps/$_" }
-                                                     map { $_ =~ $filename_re }
-                                                     map { glob "$_/apps/$prefix*" }
-                                                     $InstallTop, map { $_->dir } @Extension::active[$Extension::num_bundled .. $#Extension::active] )) ];
-      } else {
-         $self->completion_words=[ '"' ];
-      }
-      return;
-   }
-
-   # commands expecting a label
-   if ($line =~
-       m{ $statement_start_re (?'cmd' prefer(?:_now)? | (?:re)?set_preference ) $args_start_re
-          (?:(?'quote' ['"]) (?: (?'app_name' $id_re) ::)? (?'expr' \*\.(?: $hier_id_re (?: \s+ (?: $ids_re (?:\s*,)? )? | \.? )? )? | $hier_id_re\.?)? )? \G}xogc) {
-
-      my ($cmd, $quote, $app_name, $expr)=@+{qw(cmd quote app_name expr)};
-
-      if (defined $quote) {
-         if (defined $app_name) {
-            $self->completion_words=[ map { "$app_name\::$_" } try_label_completion((eval { User::application($app_name) } or return), $expr) ];
-         } else {
-            $self->completion_words=[ try_label_completion($User::application, $expr) ];
-            if (length($expr)==0 || $expr =~ /^$id_re$/o) {
-               push @{$self->completion_words}, map { "$_\::" } grep { /^$expr/ && !$User::application->imported->{$_} } keys %{$User::application->used};
-            }
-         }
-         if (@{$self->completion_words}==1 && $self->completion_words->[0] !~ /:$/) {
-            $self->term->Attribs->{completion_append_character}=
-              $cmd ne "reset_preference" && $expr =~ /^\*\.$hier_id_re\s*$/o
-              ? " " : $quote;
-         }
-      } else {
-         $self->completion_words=[ '"' ];
-      }
-      return;
-   }
-
-   # command expecting a configuration option for an extension
-   if ($line =~
-       m{ $statement_start_re (?:import|reconfigure)_extension $args_start_re (?'ext_dir' $expression_re) ,\s*
-          (?: $expression_re ,\s* )* (?'quote' ['"])? (?'prefix' [^'"\s]*) \G}xogc) {
-
-      my ($ext_dir, $quote, $prefix)=@+{qw(ext_dir quote prefix)};
-
-      $ext_dir=eval $ext_dir or return;
-      replace_special_paths($ext_dir);
-      if ($ext_dir !~ m{^/} && defined (my $ext=$Extension::registered_by_URI{$ext_dir})) {
-         return if $ext->is_bundled;
-         $ext_dir=$ext->dir;
-      } elsif (defined ($ext=$Extension::registered_by_dir{$ext_dir})) {
-         return if $ext->is_bundled;
-      }
-      if (-f "$ext_dir/configure.pl") {
-         if (defined $quote) {
-            require Symbol;
-            my (%allowed_options, %allowed_with, $err);
-            {  package Polymake::StandaloneExt;
-               do "$ext_dir/configure.pl";
-               $err=$@;
-            }
-            unless ($err) {
-               eval "Polymake::StandaloneExt::allowed_options(\\%allowed_options, \\%allowed_with)";
-               $err=$@;
-            }
-            Symbol::delete_package("Polymake::StandaloneExt");
-            return if $err;
-            my $vor=length($prefix)-length($word);
-            $self->completion_words=[ map { substr($_, $vor) }
-                                      sort( grep { /^\Q$prefix\E/ }
-                                            (map { "--$_" } keys %allowed_options),
-                                            (map { ("--with-$_", "--without-$_") } keys %allowed_with) ) ];
-            $self->term->Attribs->{completion_append_character}=$quote;
-         } else {
-            $self->completion_words=[ '"' ];
-         }
-      }
-      return;
-   }
-
-   # command expecting a directory or URI of an extension
-   if ($line =~
-       m{ $statement_start_re (?:(?:obliterate|reconfigure)_extension | (?'app_cmd' found|extend)_application)
-          $args_start_re (?: (?'quote' ['"]) (?'prefix' [^'"]*) )? \G}xogc) {
-
-      my ($app_cmd, $quote, $prefix)=@+{qw(app_cmd quote prefix)};
-
-      if (defined $quote) {
-         my @list;
-         my $vor=length($prefix)-length($word);
-         my $match= $prefix =~ m{^/} ? "dir" : "URI";
-         my @list= map { my $item=$_->$match;
-                         ($app_cmd eq "extend" || !$_->is_bundled) && $item =~ /^\Q$prefix\E/ ? ($item) : ()
-                       } values %Extension::registered_by_dir;
-
-         if ($app_cmd eq "found" && index("core", $prefix)==0) {
-            push @list, "core";
-         }
-         $self->completion_words=[ map { substr($_,$vor) } sort @list ];
-         $self->term->Attribs->{completion_append_character}=$quote;
-      } else {
-         $self->completion_words=[ '"' ];
-      }
-      return;
-   }
-
-   # command expecting a rulefile
-   if ($line =~
-       m{ $statement_start_re (?'cmd' reconfigure|unconfigure|include)
-          $args_start_re (?: (?'quote' ['"]) (?: (?'app_name' $id_re) ::)? (?'prefix' .*) )? \G}xogc) {
-
-      my ($cmd, $quote, $app_name, $prefix)=@+{qw(cmd quote app_name prefix)};
-
-      if (defined $quote) {
-         my @list;
-         if (defined $app_name) {
-            if (defined (my $app=lookup Application($app_name))) {
-               @list=map { "$app_name\::$_" } matching_rulefiles($app, $cmd, $prefix);
-            }
-         } else {
-            @list=matching_rulefiles($User::application, $cmd, $prefix);
-            while (my ($app_name, $app)=each %{$User::application->used}) {
-               if ($app_name =~ /^\Q$prefix\E/ and
-                   $cmd eq "include" ? glob($app->rulepath->[0]."/*") : $app->list_configured($cmd eq "unconfigure")) {
-                  push @list, "$app_name\::";
-               }
-            }
-         }
-
-         my $vor=length($prefix)-length($word);
-         $vor += length($app_name)+2 if defined($app_name);
-         $self->completion_words=[ map { substr($_,$vor) } sort @list ];
-         if ($#{$self->completion_words}==0 && $self->completion_words->[0] !~ /::$/) {
-            $self->term->Attribs->{completion_append_character}=$quote;
-         }
-      } else {
-         $self->completion_words=[ '"' ];
-      }
-      return;
-   }
-
-   # command expecting a script file
-   if ($line =~
-       m{ $op_re script (?'paren' $args_start_re) (?:(?'quote' ['"]) (?'prefix' [^"']*)? )? \G}xogc) {
-
-      my ($paren, $quote, $prefix)=@+{qw(paren quote prefix)};
-
-      if (defined $quote) {
-         if ($prefix =~ m|^[./~]|) {
-            try_filename_completion($self, $word, $quote, $prefix, 0);
-         } else {
-            my @list=$self->term->completion_matches($prefix, $self->term->Attribs->{filename_completion_function});
-            foreach my $dir ((map { @{$_->scriptpath} } $User::application, values %{$User::application->imported}),
-                             @User::lookup_scripts, "$InstallTop/scripts") {
-               if (my @sublist=$self->term->completion_matches("$dir/$prefix", $self->term->Attribs->{filename_completion_function})) {
-                  shift @sublist if $#sublist;
-                  my $tail=length($dir)+1;
-                  push @list, map { substr($_,$tail) } @sublist;
-               }
-            }
-            if (@list) {
-               postprocess_file_list($self, $word, $quote, $prefix, 0, \@list);
-            }
-         }
-      } else {
-         $self->completion_words=[ $paren =~ /\(/ ? '"' : '(' ];
-      }
-      return;
-   }
-
-   # methods expecting a property name
-   if ($line =~
-       m{ $op_re $var_or_func_re $intermed_chain_re
-          (?: (?'mult_word' give | lookup | (?'mult_arg' provide | get_schedule | remove)) | take | add ) \s*\(\s*
-          (?('mult_arg') (?: (['"]) $hier_id_alt_re \g{-1} \s*,\s*)* )
-          (?:(?'quote' ['"]) (?('mult_word') (?: $hier_id_re \s*\|\s*)* ) (?'prefix' $hier_id_re\.?)?)? \G}xogc) {
-
-      if (defined $+{quote}) {
-         my ($var, $app_name, $func, $intermed, $mult_word, $mult_arg, $quote, $prefix)=@+{qw(var app_name func intermed mult_word mult_arg quote prefix)};
-
-         if (defined( my $type=retrieve_method_owner_type($var, $app_name, $func, $intermed) )) {
-            if (instanceof ObjectType($type)) {
-               push @{$self->completion_words}, try_property_completion($type, $prefix, 1);
-               $self->term->Attribs->{completion_append_character}=$quote;
-            }
-         }
-      } else {
-         $self->completion_words=[ '"' ];
-      }
-      return;
-   }
-
-   # additional properties of a subobject
-   if ($line =~
-       m{ $op_re $var_or_func_re $intermed_chain_re
-          add \s*\(\s* (['"])(?'prop_name' $id_re)\g{-2} \s*,\s*
-          (?'leading_args' (?: $expression_re ,\s* )?
-                           (?: (?: $id_re | (['"]) $hier_id_re \g{-1} ) \s*=>\s* $expression_re ,\s* )* )
-          (?'quote' ['"])? (?'prefix' $hier_id_re\.?)? \G}xogc) {
-
-      my ($var, $app_name, $func, $intermed, $prop_name, $leading_args, $quote, $prefix)=@+{qw(var app_name func intermed prop_name leading_args quote prefix)};
-
-      if (defined( my $type=retrieve_method_owner_type($var, $app_name, $func, $intermed) )) {
-         if (instanceof ObjectType($type) && defined(my $prop=$type->lookup_property($prop_name))) {
-            push @{$self->completion_words}, try_property_completion($prop->specialization($type)->type, $prefix);
-            if ($quote) {
-               $self->term->Attribs->{completion_append_character}=$quote;
-            } else {
-               $_ .= "=>" for @{$self->completion_words};
-            }
-            if (length($leading_args)==0 && !$quote && index("temporary", $prefix)==0) {
-               push @{$self->completion_words}, "temporary,";
-            }
-         }
-      }
-      return;
-   }
-
-   # methods expecting an attachment name
-   if ($line =~
-       m{ $op_re $var_or_func_re $intermed_chain_re (?: get_attachment | remove_attachment )
-          \s*\(\s* (?:(?'quote' ['"]) (?'prefix' $id_re)?)? \G}xogc) {
-
-      my ($var, $app_name, $func, $intermed, $quote, $prefix)=@+{qw(var app_name func intermed quote prefix)};
-
-      if (defined $quote) {
-         if (($var)=retrieve_method_owner_type($var, $app_name, $func, $intermed)) {
-            if (is_object($var) && instanceof Core::Object($var)) {
-               $self->completion_words=[ sort( grep { /^$prefix/ } keys %{$var->attachments} ) ];
-               $self->term->Attribs->{completion_append_character}=$quote;
-            }
-         }
-      } else {
-         $self->completion_words=[ '"' ];
-      }
-      return;
-   }
-
-   # methods expecting a label or rule header
-   if ($line =~
-       m{ $op_re $var_or_func_re $intermed_chain_re (?: disable_rules | apply_rule )
-          \s*\(\s* (?:(?'quote' ['"]) (?'prefix' [^'"]*))? \G}xogc) {
-
-      my ($var, $app_name, $func, $intermed, $quote, $prefix)=@+{qw(var app_name func intermed quote prefix)};
-
-      if (defined $quote) {
-         if (defined( my $type=retrieve_method_owner_type($var, $app_name, $func, $intermed) )) {
-            if (instanceof ObjectType($type)) {
-               my @list;
-               if ($prefix =~ /^ (?: $hier_id_re (?:\.)? )? $/xo) {
-                  # maybe a label
-                  @list=sorted_uniq(sort( grep { /^\Q$prefix\E/ } map { $_->full_name } map { @{$_->labels} } map { @{$_->production_rules} } $type, @{$type->super} ));
-               }
-               my $vor=length($prefix)-length($word);
-               Rule::prepare_header_search_pattern($prefix);
-               push @list, sorted_uniq(sort( grep { /^$prefix/ } map { $_->header } map { @{$_->production_rules} } $type, @{$type->super} ));
-               $self->completion_words=[ map { substr($_,$vor) } @list ];
-               $self->term->Attribs->{completion_append_character}=$quote;
-            }
-         }
-      } else {
-         $self->completion_words=[ '"' ];
-      }
-      return;
-   }
-
-   # function expecting a label or rule header
-   if ($line =~
-       m{ $statement_start_re disable_rules  \s*\(\s* (?:(?'quote' ['"]) (?'prefix' [^'"]*))? \G}xogc) {
-
-      my ($quote, $prefix)=@+{qw(quote prefix)};
-
-      if (defined $quote) {
-         my @list;
-         if ($prefix =~ /^ (?: $hier_id_re (?:\.)? )? $/xo) {
-            # maybe a label
-            @list=sorted_uniq(sort( grep { /^\Q$prefix\E/ } map { $_->full_name } map { @{$_->labels} } @{$User::application->rules} ));
-         }
-         my $vor=length($prefix)-length($word);
-         Rule::prepare_header_search_pattern($prefix);
-         push @list, sorted_uniq(sort( grep { /^$prefix/ } map { $_->header } @{$User::application->rules} ));
-         $self->completion_words=[ map { substr($_,$vor) } @list ];
-         $self->term->Attribs->{completion_append_character}=$quote;
-      } else {
-         $self->completion_words=[ '"' ];
-      }
-      return;
-   }
-
-   # help topic
-   if ($line =~
-       m{ $statement_start_re help $args_start_re (?:(?'quote' ['"]) (?'path' .*/)? (?'prefix' [^/]*))? \G}xogc) {
-
-      my ($quote, $path, $prefix)=@+{qw(quote path prefix)};
-
-      if (defined $quote) {
-         if (defined $path) {
-            $self->completion_words=[ sorted_uniq(sort( map { $_->list_toc_completions($prefix) } $User::application->help->get_topics($path) )) ];
-         } else {
-            $self->completion_words=[ sorted_uniq(sort( $User::application->help->list_completions($prefix) )) ];
-         }
-         if (@{$self->completion_words}==1 &&
-             grep { @{$_->toc} } $User::application->help->get_topics($path.$self->completion_words->[0])) {
-            $quote="/";
-         }
-         if ((my $vor=length($prefix)-length($word))>0) {
-            substr($_,0,$vor)="" for @{$self->completion_words};
-         }
-         $self->term->Attribs->{completion_append_character}=$quote;
-      } else {
-         $self->completion_words=[ "'" ];
-      }
-      return;
-   }
-
-   # a qualified variable name
-   if ($line =~
-       m{ (?: $statement_start_re (?'cmd' local | (?:re)?set_custom) $args_start_re)?
-          (?'type' (?'scalar'\$)|[\@%]) (?: (?'varname' $qual_id_re(?'qual'::)?)
-                                        (?('scalar') (?('qual') | \s*\{\s* (?'keyquote' ['"])?(?'key' [\w-]*) )?) )? \G}xogc) {
-
-      my ($cmd, $type, $varname, $keyquote, $key)=@+{qw(cmd type varname keyquote key)};
-
-      if (defined $key) {
-         # completing a hash key
-         my $i=0;
-         my @list=grep { defined } map { $_->custom->find("%$varname", ++$i >= 3) }
-                                       $User::application, $Prefs, values %{$User::application->imported};
-         if (@list) {
-            $self->completion_words=[ sorted_uniq(sort( grep { index($_,$key)==0 } map { keys %{$_->default_value} } @list)) ];
-         } elsif (defined (my $user_hash=find_user_variable('%',$varname))) {
-            $self->completion_words=[ sort( grep { index($_,$key)==0 } keys %$user_hash ) ];
-         }
-
-         if ($#{$self->completion_words}==0) {
-            $self->term->Attribs->{completion_append_character}=$keyquote || '}';
-         }
-
-      } else {
-         # completing variable name
-         my $i=0;
-         my @list=map { $_->custom->list_completions($type, $varname, ++$i >= 3) }
-                      $User::application, $Prefs, values %{$User::application->imported};
-         if ($cmd eq "" || $cmd eq "local"
-               and
-             !@list || $varname !~ /::/) {
-            push @list, complete_user_variable_name($type,$varname);
-         }
-         $self->completion_words=[ sort(@list) ];
-         if ($cmd && $#{$self->completion_words}==0 && substr($self->completion_words->[0],-1) ne ":") {
-            $self->term->Attribs->{completion_append_character}= $cmd eq "reset_custom" ? ";" : "=";
-            if ($type eq '$') {
-               foreach $type (qw(% @)) {
-                  $i=0;
-                  if (grep { defined } map { $_->custom->find($type.$self->completion_words->[0], ++$i >= 3) }
-                                           $User::application, $Prefs, values %{$User::application->imported}) {
-                     $self->term->Attribs->{completion_append_character}= $type eq '%' ? "{" : "[";
-                     return;
-                  }
-               }
-            }
-         }
-      }
-      return;
-   }
-
-   # a method call, possible in a longer chain
-   if ($line =~
-       m{ $op_re $var_or_func_re $intermed_chain_re
-          (?: (?'last_method_name' $id_re) (?: (?'paren' \s*\(\s*) (?'preceding_args' (?:$expression_re ,\s*)*) (?'prefix' .*) )? )? \G}xogc) {
-
-      my ($var, $app_name, $func, $intermed, $last_method_name, $paren, $preceding_args, $prefix)=@+{qw(
-           var   app_name   func   intermed   last_method_name   paren   preceding_args   prefix)   };
-
-      if (($var, my $type)=retrieve_method_owner_type($var, $app_name, $func, $intermed)) {
-         if (defined $paren) {
-            if (instanceof ObjectType($type) && defined (my $prop=$type->lookup_property($last_method_name))) {
-               if ($prop->flags & $Property::is_multiple) {
-                  if (length($preceding_args)==0  and
-                      $prefix =~ s/^(['"])(?=[^'"]+$)//) {
-                     # name of a subobject
-                     if (defined($var)) {
-                        my $quote=$1;
-                        $self->completion_words=[ sorted_uniq(sort( grep { defined($_) && index($_, $prefix)==0 } map { $_->name } @{$var->give($last_method_name)} )) ];
-                        $self->term->Attribs->{completion_append_character}=$quote;
-                     }
-                  } elsif ($prefix =~ /^($id_re)?$/o) {
-                     # property for selecting a subobject
-                     $self->completion_words=[ map { "$_=>" } try_property_completion($prop->specialization($type)->type, $prefix) ];
-                  }
-               }
-               if (index("temporary", $prefix)==0) {
-                  push @{$self->completion_words}, "temporary";
-               }
-
-            } else {
-               # completing a keyword or enumerated argument
-               my $arg_num=0;
-               ++$arg_num while $preceding_args =~ /\G $expression_re ,\s* /xog;
-               if (my @list=map { $_->argument_completions($arg_num, $prefix) }
-                                retrieve_method_topics($type, $last_method_name, "find")) {
-                  $self->completion_words=[ sorted_uniq(sort(@list)) ];
-                  if ((my $vor=length($prefix)-length($word))>0) {
-                     substr($_,0,$vor)="" for @{$self->completion_words};
-                  }
-               }
-            }
-
-         } else {
-            # completing the method name
-            $prefix=$last_method_name;
-            my @list=retrieve_method_topics($type, $prefix, "list_completions");
-            if (ref($type)) {
-               if (instanceof ObjectType($type)) {
-                  @list=( (grep { !$type->is_overridden($_) } @list),
-                          grep { index($_, $prefix)==0 } keys %object_methods );
-               } elsif ($type->cppoptions && $type->cppoptions->fields) {
-                  push @list, grep { index($_, $prefix)==0 } @{$type->cppoptions->fields};
-               }
-            }
-
-            $self->completion_words=[ sorted_uniq(sort(@list)) ];
-            if ($#{$self->completion_words}==0 && ref($type) &&
-                $self->completion_words->[0] !~ /^name|description|list_attachments$/ &&
-                exists $object_methods{$self->completion_words->[0]}) {
-               $self->term->Attribs->{completion_append_character}="(";
-            }
-         }
-         return if @{$self->completion_words};
-      }
-   }
-
-   # a constructor call with property names?
-   if ($line =~
-       m{ \bnew \s+ (?'type' $type_re) \s*\(\s* (?: $expression_re ,\s* )* (?: (?'prop_name' $id_re) | (?'quote' ['"]) (?'chain' $hier_id_re \.?)? )? \G}xogc) {
-
-      my ($type, $prop_name, $quote, $chain)=@+{qw(type prop_name quote chain)};
-
-      if (defined ($type=$User::application->eval_type($type, 1))
-            and
-          instanceof ObjectType($type)) {
-         $self->completion_words=[ try_property_completion($type, $prop_name || $chain) ];
-         if (defined $prop_name) {
-            $_ .= "=>" for @{$self->completion_words};
-         } else {
-            $self->term->Attribs->{completion_append_character}=$quote;
-         }
-         return;
-      }
-   }
-
-   # a type expression
-   if ($line =~
-       m{ $op_re (?'cmd' new|typeof|instanceof) \s+ (?'before' (?: $qual_id_re \s*[<>,]\s* )*) (?'prefix' $qual_id_re (?: ::)?)? \G}xogc) {
-
-      my ($cmd, $before, $prefix)=@+{qw(cmd before prefix)};
-
-      if ($before =~ /[<>]/ && $before !~ /,\s*$/ && $before =~ /^ $balanced_re $/xo) {
-         if (length($prefix)==0 && $cmd ne "typeof") {
-            $self->completion_words=[ "(" ];
-         }
-      } elsif (try_type_completion($self, $word, $prefix, $before) eq ">" &&
-               $cmd ne "typeof" &&
-               $line !~ m{\G \s*>}xgc) {
-         $self->completion_words->[0].=">";
-         $self->term->Attribs->{completion_append_character}="(";
-      }
-      return;
-   }
-
-   # a function with explicit template arguments
-   if ($line =~
-       m{ $op_re (?'cmd' $qual_id_re) \s*<\s* (?'before' (?: $qual_id_re \s*[<>,]\s* )*) (?'prefix' $qual_id_re (?: ::)?)? \G}xogc) {
-
-      my ($cmd, $before, $prefix)=@+{qw(cmd before prefix)};
-
-      if ($before =~ /[^\s,]\s*$/ && $before =~ /^ $balanced_re \s*>\s* $/xo) {
-         if (length($prefix)==0) {
-            $self->completion_words=[ "(" ];
-         }
-      } else {
-         # FIXME: don't list the functions expecting ObjectType literally (how to detect ???)
-         my $only_objects= $cmd eq "cast" && $before !~ /\S/ || undef;
-         my ($app, $char)=try_type_completion($self, $word, $prefix, $before, $only_objects);
-         if ($char eq ">" || $char eq "(") {
-            # type complete: check for the number of parameters
-            my $h=$app->help->find("functions", $cmd);
-            my $cnt=defined($h) && $h->expects_template_params;
-            $self->completion_words->[0].=">" if $char eq ">";
-            my $given=$before.$self->completion_words->[0];
-            --$cnt while $cnt>0 && $given =~ /\G $type_re \s* (?: ,\s* | $)/gox;
-            if ($cnt>0) {
-               $self->term->Attribs->{completion_append_character}=",";
-            } elsif ($line !~ m{\G \s*>}xgc) {
-               $self->completion_words->[0].=">";
-               $self->term->Attribs->{completion_append_character}="(";
-            }
-         }
-      }
-      return;
-   }
-
-   # symbolic color name
-   if ($line =~
-       m{(?: \$Visual::Color::$id_re \s*=\s* | Color \s*=>\s* ) (?:(?'quote' ['"])(?!\d)(?'prefix' [^"']*))? \G}xogc) {
-
-      my ($quote, $prefix)=@+{qw(quote prefix)};
-
-      if (defined $quote) {
-         $self->completion_words=[ sort( Visual::list_color_completions($prefix) ) ];
-         if ((my $vor=length($prefix)-length($word))>0) {
-            substr($_,0,$vor)="" for @{$self->completion_words};
-         }
-         $self->term->Attribs->{completion_append_character}=$quote;
-      } else {
-         $self->completion_words=[ '"' ];
-      }
-      return;
-   }
-
-   # a user function or "popular" perl function
-   if ($line =~
-       m{ $op_re (?:(?'app_name' $id_re)::)?(?'func' $id_re) (?:(?=\s*<) $confined_re)? (?: (?'paren' \s*\(\s*)
-                 (?'preceding_args' (?:$expression_re ,\s*)*) (?'prefix' .*) )? \G}xogc) {
-
-      my ($app_name, $func, $paren, $preceding_args, $prefix)=@+{qw(app_name func paren preceding_args prefix)};
-
-      my $app= defined($app_name) ? (eval { User::application($app_name) } || return) : $User::application;
-      my @list;
-      if (defined $paren) {
-         # completing a keyword or enumerated argument
-         my $arg_num=0;
-         ++$arg_num while $preceding_args =~ /\G $expression_re ,\s* /xog;
-         if (@list=map { $_->argument_completions($arg_num, $prefix) }
-                       $app->help->find((defined($app_name) ? "!rel" : ()), "functions", $func)) {
-            $self->completion_words=[ sorted_uniq(sort(@list)) ];
-            if ((my $vor=length($prefix)-length($word))>0) {
-               substr($_,0,$vor)="" for @{$self->completion_words};
-            }
-            return;
-         } elsif ($prefix =~ /^$id_re$/o) {
-            # maybe a nested function call?
-            undef $app_name;
-            $app=$User::application;
-            $func=$prefix;
-         } else {
-            undef $func;
-         }
-      }
-
-      # completing the function name
-      if (defined $func) {
-         if (defined $app_name) {
-            push @list, map { "$app_name\::$_" } $app->help->list_completions("!rel", "functions", $func);
-         } else {
-            push @list, $app->help->list_completions("functions", $func);
-            if ($line =~ m{ $statement_start_re $id_re \G}xogc) {
-               push @list, grep { index($_, $func)==0 } keys %popular_perl_keywords;
-            }
-         }
-         $self->completion_words=[ sorted_uniq(sort(@list)) ];
-
-         if ($#{$self->completion_words}==0) {
-            my $cmd=$self->completion_words->[0];
-            my $h=$app->help->find("functions", $cmd);
-
-            $self->term->Attribs->{completion_append_character}=
-              $cmd =~ /^(?:exit|history|replay_history|show_(?:preferences|unconfigured|credits|extensions))$/
-                ? ";" :
-              defined($h) && $h->expects_template_params
-                ? "<" :
-              exists $popular_perl_keywords{$cmd} ||
-                $cmd =~ /^(?:application|help|apropos|include|prefer(?:_now)?|(?:re)?set_(?:custom|preference)|(?:re|un)configure)$/
-                ? " " : "(";
-         }
-         return;
+   my $pos=&prepare_partial_input;
+   return if $pos<0;
+   pos($self->partial_input)=$pos;
+   foreach my $h (@Helper::list) {
+      if (substr($self->partial_input, 0, $pos) =~ /${$h->pattern}/) {
+         return if $h->completion->($self, $word);
       }
    }
 
    # try tab completion rules defined in extensions
    foreach (@Core::Shell::custom_tab_completion) {
-      if ($_->($self, $line, $word)) {
-         return;
-      }
+      return if $_->($self, substr($self->partial_input, 0, $pos), $word);
    }
 
-   if ($line =~
-       m{((?<!\w)['"]) ([^"']*) \G}xogc) {
+   if (substr($self->partial_input, 0, $pos) =~
+       m{^ $quote_balanced_re $quote_re (?'filename' $non_quote_space_re*) $}xo) {
       # if nothing else worked out, assume a file name
-      try_filename_completion($self, $word, $1, $2, 0);
+      try_filename_completion($self, $word, $+{quote}, $+{filename}, 0);
    }
 }
 
-sub complete_variable_name_in_pkg {
-   my ($pkg, $type, $prefix)=@_;
-   my @answer;
-   while (my ($name, $glob)=each %$pkg) {
-      if (length($prefix) ? index($name,$prefix)==0 : $name !~ /^\./) {
-         if (defined_scalar($glob) && $type eq '$' or
-             defined(*{$glob}{ARRAY}) && ($type eq '@' || $type eq '$') or
-             defined(*{$glob}{HASH}) && ($type eq '%' || $type eq '$' || $name =~ /::$/)) {
-            push @answer, $name;
-         }
-      }
-   }
-   @answer;
-}
+# private:
+sub fetch_help_topics {
+   my ($self, $pos)=@_;
+   $#{$self->help_topics}=-1;
+   pos($self->partial_input)=$pos;
+   $pos=0;
 
-sub complete_user_variable_name {
-   my ($type, $prefix)=@_;
-   if ((my $pkg_end=rindex($prefix,"::"))>0) {
-      my $pkg_part=substr($prefix,0,$pkg_end);
-      my $pkg=get_pkg("Polymake::User::$pkg_part") or return ();
-      map { "$pkg_part\::$_" } complete_variable_name_in_pkg($pkg,$type,substr($prefix,$pkg_end+2));
-   } else {
-      complete_variable_name_in_pkg(\%Polymake::User::,@_);
-   }
-}
+   do {
+      # move before the end of the statement if nothing follows
+      $self->partial_input =~ m{(?: \)\s* (?: ;\s*)? | \s*;\s* ) \G \s*$ }xgc and pos($self->partial_input)=$-[0];
 
-sub find_user_variable {
-   my ($type, $name)=@_;
-   my $glob=do {
-      if ((my $pkg_end=rindex($name,"::"))>0) {
-         my $pkg=get_pkg("Polymake::User::" . substr($name,0,$pkg_end)) or return;
-         $pkg->{substr($name,$pkg_end+2)};
-      } else {
-         $Polymake::User::{$name};
-      }
-   } or return;
+      # move before the trailing spaces and operator signs unless at the beginning of a name
+      $self->partial_input =~ m{[-+*/=&|^\s]+ \G (?![a-zA-Z])}xgc and pos($self->partial_input)=$-[0];
 
-   $type eq '%'
-   ? *{$glob}{HASH} :
-   $type eq '@'
-   ? *{$glob}{ARRAY} :
-   $type eq '$'
-   ? *{$glob}{SCALAR}
-   : $glob
-}
+      # move before the closing quote of a string if standing immediately behind it
+      $self->partial_input =~ m{^ $quote_balanced_re (?<= $anon_quote_re) \G}xogc and pos($self->partial_input)=pos($self->partial_input)-1;
 
-sub retrieve_return_type {
-   my $name=$_[0]->return_type;
-   if (defined($name) and $name !~ /::/) {
-      $User::application->eval_type($name, 1)
-   } else {
-      $name
-   }
-}
+      # move before the keyword arrow if standing immediately behind it
+      $self->partial_input =~ m{ ($id_re) \s* => \G }xogc and pos($self->partial_input)=$+[1];
 
-sub retrieve_method_owner_type {
-   my ($var, $app_name, $func, $intermed)=@_;
-   my ($app, $type, $topic, @how);
+      # move past the name if currently pointing in its middle
+      $self->partial_input =~ m{($qual_id_re)? \G (?(1) [\w:]* | $qual_id_re)}xogc;
 
-   if (defined($var)) {
-      package Polymake::User;
-      $type=eval "$var->type"
-        and
-      $var= length($intermed) ? undef : eval $var;
-   } else {
-      if (defined $app_name) {
-         $app=eval { User::application($app_name) } or return;
-         @how=qw(!rel);
-      } else {
-         $app=$User::application;
-      }
-      if (defined ($func=$app->help->find(@how, "functions", $func))) {
-         if (!defined ($type=retrieve_return_type($func)) &&
-             $func->parent->category &&
-             $func->parent->name =~ /^\s* (?: producing | transforming ) /xi) {
-            $type=$app->default_type;
-         }
-      }
-   }
-
-   if (defined($type)) {
-      my $prop;
-      while ($intermed =~ m{\G $intermed_re }gxo) {
-         if (defined (my $method_name=$+{method_name})) {
-            undef $prop;
-            if (instanceof ObjectType($type) and defined ($prop=$type->lookup_property($method_name, 1))) {
-               $type=$prop->specialization($type)->type;
-            } elsif (defined ($func= ref($type) ? ($topic=$type->help_topic and $topic->find("methods", $method_name))
-                                                : ($topic=$User::application->help->find("objects", $type)) and $topic->find("methods", $method_name))) {
-               if (defined (my $ret_type=retrieve_return_type($func))) {
-                  $type=$ret_type;
-               }
-               # otherwise let's just suppose the method returns the same object
-            } else {
-               ref($type) or defined ($type=$User::application->eval_type($type, 1)) or return;
-               if (instanceof PropertyType($type)) {
-                  $type=$type->get_field_type($method_name) or return;
-               } else {
-                  return;
-               }
+      foreach my $h (@Helper::list) {
+         if (defined($h->help) &&
+             substr($self->partial_input, 0, pos($self->partial_input)) =~ /${$h->pattern}/
+               and
+             ($pos, @{$self->help_topics})=$h->help->($self)) {
+            if ($pos >= pos($self->partial_input)) {
+               croak( "internal error:\nhelper ", $h->name, " requested to move position from\n",
+                      substr($self->partial_input, 0, pos($self->partial_input)), "<<*>>", substr($self->partial_input, pos($self->partial_input)), "\nto\n",
+                      substr($self->partial_input, 0, $pos), "<<*>>", substr($self->partial_input, $pos), "\n");
             }
-         } elsif (not defined($prop) && $prop->flags & $Property::is_multiple) {
-            # a bracketed index expression
-            $type=$type->get_element_type or return;
+            pos($self->partial_input)=$pos;
+            return 1 if @{$self->help_topics};
+            last;
          }
       }
-   }
-
-   ($var, $type)
+   } while ($pos>0);
+   0
 }
 
-sub retrieve_method_topics {
-   my ($type, $name, $help_method)=@_;
-   if (ref($type)) {
-      if (instanceof ObjectType($type)) {
-         return map { $_->$help_method("!rel", "properties", "methods", $name) }
-                    ( grep { defined } map { $_->help_topic }
-                      ($type, @{$type->super}, keys %{$type->auto_casts}) ),
-                    $type->application->help->find(qw(objects Core::Object));
+# private:
+sub display_help_topics {
+   my ($self)=@_;
+   my $full_text=$self->help_repeat_cnt>0;
+   my ($tell_about_full, $pos);
+   my $n=0;
+   foreach (@{$self->help_topics}) {
+      next if is_object($_) && $_->annex->{display} =~ /^\s*noshow\s*$/;
+      print "-------------------\n" if $User::help_delimit && $n++;
+      if (is_object($_)) {
+         print $full_text && substr($_->full_path,1).":\n",
+               $_->display_text($full_text, $tell_about_full);
+      } else {
+         print $_->($full_text, $tell_about_full);
       }
-
-      my @list;
-      do {
-         if (defined (my $topic=$type->help_topic)) {
-            push @list, $topic->$help_method("!rel", "methods", $name);
-         }
-         $type=$type->super;
-      } while (defined $type);
-      return @list;
    }
-
-   no strict 'refs';
-   map {
-      map { $_->$help_method("!rel", "methods", $name) } $User::application->help->find("objects", $_)
-   } $type, @{"$type\::ISA"};
+   if ($tell_about_full) {
+      print "Press help key again for more details\n";
+   } elsif (($pos=pos($self->partial_input)-1) >= 0  and
+            fetch_help_topics($self, $pos)) {
+      print "\nPress help key again for another topic\n";
+   } else {
+      # rewind to the initial state
+      $Shell->help_point=-1;
+      $Shell->help_input_line="";
+   }
 }
-
-sub guess_topics_from_context {
-   my $line=shift;
-   my ($var, $app_name, $func, $intermed, $app, $name, @how);
-   my $match=0;
-
-   if ($line =~
-       m{ (?: (?: $op_re (?:new|typeof|instanceof)) \s+ | [<,] \s* ) (?:(?'app_name' $id_re)::)?(?'name' $id_re) \s* $ }xo) {
-
-      ($app_name, $name)=@+{qw(app_name name)};
-
-      if (defined($app_name)) {
-         $app=eval { User::application($app_name) } or return;
-         @how=qw(!rel);
-      } else {
-         $app=$User::application;
-      }
-      if (my @topics=$app->help->find(@how, "objects", "property_types", $name)) {
-         return @topics;
-      }
-   }
-
-   if ($line =~
-       m{ (?:re)?set_custom \s+ (?'var' [\$\@%] $qual_id_re) \s* (?(?=[\{\[]) (?'elem' $confined_re) \s* )? (?: = (?:$balanced_re)?)? $}xo) {
-
-      my ($var, $elem)=@+{qw(var elem)};
-
-      if (substr($elem,0,1) eq '[') {
-         substr($var,0,1)='@';
-      } elsif (substr($elem,0,1) eq '{') {
-         substr($var,0,1)='%';
-      }
-      if (my @topics=$User::application->help->find($var)) {
-         return @topics;
-      }
-   }
-
-   # Find the rightmost match.  This operation can't be expressed directly in one regexp, hence the loop.
-   while ($line =~ m{ $op_re $var_or_func_re $intermed_chain_re (?'name' $id_re) \s*
-                      (?: \( (?'tail' $open_balanced_re) )? $ }xogc) {
-      $match=1;
-      ($var, $app_name, $func, $intermed, $name, $line)=@+{qw(var app_name func intermed name tail)};
-      defined($line) or last;
-   }
-   if ($match) {
-      if (defined (my $type=retrieve_method_owner_type($var, $app_name, $func, $intermed))) {
-         return retrieve_method_topics($type, $name, "find");
-      } else {
-         return;
-      }
-   }
-
-   while ($line =~
-          m{ $op_re (?:(?'app_name' $id_re)::)?(?'name' $id_re) (?:(?=\s*<) $confined_re)? (?: \s*\( (?'tail' $open_balanced_re) )? $ }xogc) {
-      $match=1;
-      ($app_name, $name, $line)=@+{qw(app_name name tail)};
-      defined($line) or last;
-   }
-   if ($match) {
-      if (defined($app_name)) {
-         $app=eval { User::application($app_name) } or return;
-         @how=qw(!rel);
-      } else {
-         $app=$User::application;
-      }
-      return $app->help->find(@how, "functions", $name);
-   }
-
-   return;
-}
-
-my ($last_F1_line, $last_F1_point);
 
 sub context_help {
    print "\n";
-   my $help_delim=$User::help_delimit? "-------------------\n" : '';
+   my $pt=$Shell->term->Attribs->{point};
    my $line=$Shell->term->Attribs->{line_buffer};
-   if ($line =~ /\S/) {
-      my $pt=pos($line)=$Shell->term->Attribs->{point};
-      my $full_text= $last_F1_point == $pt && $last_F1_line eq $line;
-
-      # move before the end of the statement if nothing follows
-      $line =~ m{(?: \)\s* (?: ;\s*)? | \s*;\s* ) \G \s*$ }xgc and pos($line)=$-[0];
-
-      # move before the trailing spaces
-      $line =~ m{\s+ \G}xgc and pos($line)=$-[0];
-
-      # move behind the name if currently pointing in its middle
-      $line =~ m{($qual_id_re)? \G (?(1) [\w:]* | $qual_id_re) (?: \s*\( )?}xgc;
-
-      my @topics;
-      until (@topics=guess_topics_from_context(substr($line, 0, pos($line)))) {
-         # try to move behind the next name
-         $line =~ m{\G .*? (?<! [\$\@%]) $id_re (?: \s*\( )?}xgc or last;
+   if ($pt==$Shell->help_point && $line eq $Shell->help_input_line) {
+      # repeatedly pressed F1 without moving the cursor
+      if (@{$Shell->help_topics}) {
+         ++$Shell->help_repeat_cnt;
+         display_help_topics($Shell);
       }
-
-      if (@topics) {
-         my $n=0;
-         my $tell_about_full;
-         foreach (@topics) {
-            print $n++>0 && $help_delim,
-                  $full_text && substr($_->full_path,1).":\n",
-                  $_->display_text($full_text, $tell_about_full);
-         }
-         if ($tell_about_full) {
-            print "Press help key again for more details\n";
-         } elsif ($full_text && $topics[0]->name =~ /^(?:import|reconfigure)_extension$/) {
-            if ($line =~ /$& $args_start_re (?| ' ($single_quoted_re) ' | " ($double_quoted_re) " ) [^;]* \G/xgc) {
-               display_config_options($1);
-            }
-         }
-         $last_F1_line=$line;
-         $last_F1_point=$pt;
-      } else {
-         print "Sorry, no suitable context help found; try moving cursor towards a name of interest.\n";
-      }
-
    } else {
-      User::help();
+      my $pos=prepare_partial_input($Shell);
+      if ($pos>=0) {
+         $Shell->help_point=$pt;
+         $Shell->help_input_line=$line;
+         $Shell->help_repeat_cnt=0;
+         if (fetch_help_topics($Shell, $pos)) {
+            display_help_topics($Shell);
+         } else {
+            print "Sorry, no matching help topics found; type more input, try TAB completion, or move the cursor towards a word of interest\n";
+         }
+      } else {
+         User::help();
+      }
    }
 
    STDOUT->flush;
    $Shell->term->on_new_line;
    $Shell->term->redisplay;
-}
-###############################################################################################
-sub display_config_options {
-   my $ext_dir=shift;
-   replace_special_paths($ext_dir);
-   if ($ext_dir !~ m{^/} && defined (my $ext=$Extension::registered_by_URI{$ext_dir})) {
-      return if $ext->is_bundled;
-      $ext_dir=$ext->dir;
-   } elsif (defined ($ext=$Extension::registered_by_dir{$ext_dir})) {
-      return if $ext->is_bundled;
-   }
-   if (-f "$ext_dir/configure.pl") {
-      require Symbol;
-      package Polymake::StandaloneExt;
-      do "$ext_dir/configure.pl";
-      unless ($@) {
-         print STDERR "\nFollowing configuration options are possible:\n";
-         eval { usage() };
-      }
-      Symbol::delete_package("Polymake::StandaloneExt");
-   }
 }
 ###############################################################################################
 sub Polymake::User::history {
@@ -1450,8 +585,10 @@ sub Polymake::User::save_history {
 ###############################################################################################
 sub Polymake::User::help {
    my ($subject)=@_;
-   my $help_delim=$User::help_delimit? "-------------------\n" : '';
-   if (my @topics=uniq( $User::application->help->get_topics($subject || "top") )) {
+   my $help_delim=$User::help_delimit ? "-------------------\n" : '';
+   my $app_name= $subject =~ s/^($id_re):://o && $1;
+   my $app= $app_name ? (eval { User::application($app_name) } // return err_print("unknown application $app_name")) : $User::application;
+   if (my @topics=uniq( $app->help->get_topics($subject || "top") )) {
       my (@subcats, @subtopics, $need_delim);
       foreach my $topic (@topics) {
          my $text=$topic->display_text;
@@ -1480,7 +617,7 @@ sub Polymake::User::help {
       }
    } elsif (length($subject) && index($subject,"/")<0
             and
-            @topics=$User::application->help->find($subject)) {
+            @topics=$app->help->find($subject)) {
 
       if (@topics==1) {
          print substr($topics[0]->full_path,1), ":\n", $topics[0]->display_text;

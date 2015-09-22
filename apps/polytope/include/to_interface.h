@@ -20,7 +20,7 @@
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
 #include "polymake/polytope/linsolver.h"
-
+#include "polymake/Set.h"
 
 namespace polymake { namespace polytope { namespace to_interface {
 
@@ -31,6 +31,8 @@ public:
 
    solver();
 
+   Set<int> initial_basis;
+
    typedef std::pair<coord_type, Vector<coord_type> > lp_solution;
 
    /// @retval first: objective value, second: solution
@@ -39,6 +41,8 @@ public:
    lp_solution
    solve_lp(const Matrix<coord_type>& Inequalities, const Matrix<coord_type>& Equations,
             const Vector<coord_type>& Objective, bool maximize);
+
+   void set_basis(const Set<int>& basis);
 
 #if POLYMAKE_DEBUG
    bool debug_print;

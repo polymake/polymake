@@ -196,6 +196,18 @@ det(const GenericMatrix<Matrix, E>& m)
    return det(typename Matrix::persistent_nonsymmetric_type(m));
 }
 
+/// Compute the trace of a matrix
+template <typename Matrix, typename E> inline
+E
+trace(const GenericMatrix<Matrix, E>& m)
+{
+   if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+      if (m.rows() != m.cols())
+         throw std::runtime_error("trace - non-square matrix");
+   }
+   return trace(typename Matrix::persistent_nonsymmetric_type(m));
+}
+
 
 template <typename Matrix, typename E> inline
 typename enable_if<E, !identical<E, typename algebraic_traits<E>::field_type>::value>::type
@@ -576,6 +588,13 @@ project_to_orthogonal_complement(Matrix1& M, const Matrix2& N)
                 *mit -= pivot/normsquared * (*nit);
           }
     }
+}
+
+/// the indices of nonzero entries
+template <typename Vector>
+Set<int> support(const GenericVector<Vector>& v)
+{
+   return indices(ensure(v.top(), (pure_sparse*)0));
 }
 
 /// reflect u in the plane normal to nv

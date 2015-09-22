@@ -17,10 +17,7 @@
 # These functions produce a [[Hypersurface|tropical hypersurface]] from other objects.
 
 # @topic category functions/Producing a tropical polytope
-# These functions produce an object of type [[TropicalPolytope]] from other objects.
-
-# @topic category functions/Producing another object
-# These functions produce an object of another type not contained in application tropical.
+# These functions produce an object of type [[Cone]] from other objects.
 
 # @topic category any/Weights and lattices
 # These +++ relate to the weights of a tropical cycle.
@@ -34,4 +31,10 @@
 
 # @topic category any/Tropical operations
 # These +++ deal with general tropical arithmetic.
+
+# @topic category any/Tropical covector decomposition
+# These +++ deal with covectors of subdivision of tropical point configurations.
+
+# @topic category any/gfan
+# These +++ are wrappers for gfan functions.
 

@@ -1,16 +1,16 @@
 /* Copyright (c) 1997-2015
-   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-   http://www.polymake.org
+	Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+http://www.polymake.org
 
-   This program is free software; you can redistribute it and/or modify it
-   under the terms of the GNU General Public License as published by the
-   Free Software Foundation; either version 2, or (at your option) any
-   later version: http://www.gnu.org/licenses/gpl.txt.
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2, or (at your option) any
+later version: http://www.gnu.org/licenses/gpl.txt.
 
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 --------------------------------------------------------------------------------
 */
 
@@ -22,24 +22,22 @@
 
 namespace polymake { namespace tropical {
 
-void extract_pseudovertices(perl::Object t, perl::Object p)
-{
-   const Matrix<Rational> V=p.give("VERTICES"); // col(1) expected to be zero due to construction in trop2poly
-   const Set<int> far_face=p.give("FAR_FACE");
-   const Graph<> G=p.give("BOUNDED_COMPLEX.GRAPH.ADJACENCY");
-   const int trop_adim=t.give("AMBIENT_DIM");
+	template <typename Addition, typename Scalar>
+		void extract_pseudovertices(perl::Object cone) {
+			perl::Object dome = cone.give("DOME");
+			Matrix<Scalar> vertices = dome.give("VERTICES");
+			IncidenceMatrix<> VIF = dome.give("VERTICES_IN_FACETS");
+			Set<int> far_face = dome.give("FAR_FACE");
 
-   const Matrix<Rational> VV= V.minor(sequence(0,V.rows())-far_face,sequence(1,trop_adim+1)); // we use the 0 in col(1)
+			Set<Set<int> > facets_as_set (rows(VIF));
+			facets_as_set -= far_face;
 
-   t.take("PSEUDOVERTICES") << VV;
-   t.take("PSEUDOVERTEX_GRAPH.ADJACENCY") << renumber_nodes(G);
-}
+			cone.take("PSEUDOVERTICES") << vertices;
+			cone.take("MAXIMAL_COVECTOR_CELLS") << IncidenceMatrix<>(facets_as_set);
+		}
 
-UserFunction4perl("# @category Other"
-                  "# Get the pseudovertices of a tropical polytope //T// from the bounded subcomplex of the corresponding unbounded polyhedron //P//.\n"
-                  "# @param TropicalPolytope T"
-                  "# @param polytope::Polytope P",
-                  &extract_pseudovertices, "extract_pseudovertices(TropicalPolytope<Rational> polytope::Polytope<Rational>)");
+	FunctionTemplate4perl("extract_pseudovertices<Addition,Scalar>(Cone<Addition,Scalar>) : void");
+
 } }
 
 // Local Variables:

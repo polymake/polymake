@@ -41,6 +41,15 @@ rule N_MAX_BOUNDARY_SIMPLICES : MAX_BOUNDARY_SIMPLICES {
 }
 
 # @category Combinatorics
+# The interior //d-1//-dimensional simplices of a cone of combinatorial dimension //d//
+# symmetries of the cone are NOT taken into account
+rule INTERIOR_RIDGE_SIMPLICES, MAX_BOUNDARY_SIMPLICES : DIM, POINTS, CONVEX_HULL.VERTICES_IN_FACETS {
+    my $pair=interior_and_boundary_ridges($this);
+    $this->INTERIOR_RIDGE_SIMPLICES = $pair->first;
+    $this->MAX_BOUNDARY_SIMPLICES = $pair->second;
+}
+
+# @category Combinatorics
 # A matrix whose rows contain the cocircuit equations of C
 rule COCIRCUIT_EQUATIONS : DIM, POINTS, CONVEX_HULL.VERTICES_IN_FACETS, MAX_INTERIOR_SIMPLICES {
     $this->COCIRCUIT_EQUATIONS = cocircuit_equations($this->DIM, $this->POINTS, $this->CONVEX_HULL->VERTICES_IN_FACETS, $this->MAX_INTERIOR_SIMPLICES);

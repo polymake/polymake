@@ -14,12 +14,20 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
-#include "polymake/IncidenceMatrix.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/PuiseuxFraction.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1>
+   FunctionInterface4perl( new_X, T0,T1 ) {
+      perl::Value arg0(stack[1]);
+      WrapperReturnNew(T0, (arg0.get<T1>()) );
+   };
+
    template <typename T0>
    FunctionInterface4perl( jarvis_X, T0 ) {
       perl::Value arg0(stack[0]);
@@ -33,5 +41,7 @@ namespace polymake { namespace polytope { namespace {
    FunctionWrapperInstance4perl( pm::ListMatrix<pm::Vector<pm::Rational> > (pm::Matrix<pm::Rational> const&) );
 
    FunctionInstance4perl(jarvis_X, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(jarvis_X, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(new_X, Matrix< PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const pm::ListMatrix<pm::Vector<pm::PuiseuxFraction<pm::Min, pm::Rational, pm::Rational> > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -19,11 +19,13 @@
 #include "polymake/Graph.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/SparseVector.h"
+#include "polymake/TropicalNumber.h"
 #include "polymake/Vector.h"
 #include "polymake/client.h"
 
@@ -67,5 +69,12 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(entire_R_X8, perl::Canned< const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::Rational, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> >&, pm::NonSymmetric> >);
    FunctionInstance4perl(entire_R_X8, perl::Canned< const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::Integer, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric> >);
    FunctionInstance4perl(entire_R_X8, perl::Canned< const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::QuadraticExtension<pm::Rational>, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> >&, pm::NonSymmetric> >);
+   FunctionInstance4perl(entire_R_X8, perl::Canned< const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::TropicalNumber<pm::Min, pm::Rational>, false, true, (pm::sparse2d::restriction_kind)0>, true, (pm::sparse2d::restriction_kind)0> >&, pm::Symmetric> >);
+   FunctionInstance4perl(entire_R_X8, perl::Canned< const SparseVector< TropicalNumber< Min, Rational > > >);
+   FunctionInstance4perl(entire_R_X8, perl::Canned< const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::TropicalNumber<pm::Max, pm::Rational>, false, true, (pm::sparse2d::restriction_kind)0>, true, (pm::sparse2d::restriction_kind)0> >&, pm::Symmetric> >);
+   FunctionInstance4perl(entire_R_X8, perl::Canned< const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::PuiseuxFraction<pm::Max, pm::Rational, pm::Rational>, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric> >);
+   FunctionInstance4perl(entire_R_X8, perl::Canned< const SparseVector< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(entire_R_X8, perl::Canned< const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<int, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> >&, pm::NonSymmetric> >);
+   FunctionInstance4perl(entire_R_X8, perl::Canned< const NodeMap< Directed, IncidenceMatrix< NonSymmetric > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

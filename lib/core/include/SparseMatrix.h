@@ -24,6 +24,7 @@
 #include "polymake/internal/sparse2d.h"
 #include "polymake/Matrix.h"
 #include "polymake/SparseVector.h"
+#include "polymake/Array.h"
 
 namespace pm {
 
@@ -1145,6 +1146,7 @@ class SparseMatrixStatistics {
 public:
    unsigned int maxnon0s, maxrowsize, maxcolsize;
    E maxabs;
+   Array<unsigned int> row_support_sizes;
 
    SparseMatrixStatistics()
       : maxnon0s(0), maxrowsize(0), maxcolsize(0), maxabs(0) {}
@@ -1152,14 +1154,20 @@ public:
    void gather(const SparseMatrix<E>& m)
    {
       unsigned int non0s=0;
-      for (typename Entire< Rows< SparseMatrix<E> > >::const_iterator r=entire(rows(m)); !r.at_end(); ++r) {
+
+      int row_ct(0);
+      row_support_sizes = Array<unsigned int>(m.rows());
+      for (typename Entire< Rows< SparseMatrix<E> > >::const_iterator r=entire(rows(m)); !r.at_end(); ++r, ++row_ct) {
          if (unsigned int s=r->size()) {
-            for (typename Entire< typename SparseMatrix<E>::row_type >::const_iterator e=entire(*r); !e.at_end(); ++e)
+            for (typename Entire< typename SparseMatrix<E>::row_type >::const_iterator e=entire(*r); !e.at_end(); ++e) {
                maxabs=std::max(maxabs, abs(*e));
+            }
             maxrowsize=std::max(maxrowsize, s);
             non0s+=s;
+            row_support_sizes[row_ct] = s;
          }
       }
+
       maxnon0s=std::max(maxnon0s, non0s);
       for (typename Entire< Cols< SparseMatrix<E> > >::const_iterator c=entire(cols(m)); !c.at_end(); ++c) {
          if (unsigned int s=c->size()) {
@@ -1180,6 +1188,7 @@ public:
       maxabs=std::max(maxabs,s.maxabs);
       maxrowsize=std::max(maxrowsize,s.maxrowsize);
       maxcolsize=std::max(maxcolsize,s.maxcolsize);
+      // FIXME: also take component-wise max of the row_support_sizes
       return *this;
    }
 
@@ -1187,8 +1196,11 @@ public:
    std::basic_ostream<char, Traits>&
    operator<< (std::basic_ostream<char, Traits>& os, const SparseMatrixStatistics& s)
    {
-      return os << ">>> " << s.maxnon0s << " nonzeroes,  max abs(element)=" << s.maxabs
-                << "\n>>> max row size=" << s.maxrowsize << ",  max col size=" << s.maxcolsize << endl;
+      wrap(os) << ">>> " << s.maxnon0s << " nonzeroes,  max abs(element)=" << s.maxabs
+               << "\n>>> max row size=" << s.maxrowsize << ",  max col size=" << s.maxcolsize 
+               << "\n>>> row support sizes=" << s.row_support_sizes
+               << endl;
+      return os;
    }
 };
 

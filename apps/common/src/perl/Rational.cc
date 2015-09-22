@@ -69,5 +69,10 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary__ne, perl::Canned< const Rational >, perl::Canned< const Integer >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Rational >, perl::Canned< const pm::SameElementVector<pm::Rational const&> >);
    FunctionInstance4perl(new_X, Rational, perl::Canned< const TropicalNumber< Max, Rational > >);
+   OperatorInstance4perl(Binary_add, perl::Canned< const Rational >, perl::Canned< const UniMonomial< Rational, Rational > >);
+   OperatorInstance4perl(Binary_div, perl::Canned< const Rational >, perl::Canned< const UniMonomial< Rational, Rational > >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const Rational >, perl::Canned< const UniMonomial< Rational, Rational > >);
+   OperatorInstance4perl(Binary_div, perl::Canned< const Rational >, perl::Canned< const UniTerm< Rational, Rational > >);
+   OperatorInstance4perl(Binary_div, perl::Canned< const Rational >, perl::Canned< const UniPolynomial< Rational, Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

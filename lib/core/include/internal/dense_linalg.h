@@ -64,6 +64,17 @@ det(Matrix<E> M)
    return result;
 }
 
+/// trace of a matrix
+template <typename E>
+E
+trace(Matrix<E> M)
+{
+   E trace(zero_value<E>());
+   for (int i=0; i<M.rows(); ++i)
+      trace += M(i,i);
+   return trace;
+}
+
 template <typename E>
 typename enable_if<Vector<E>, is_field<E>::value>::type
 reduce(Matrix<E> M, Vector<E> V)

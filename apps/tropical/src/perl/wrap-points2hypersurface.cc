@@ -14,10 +14,10 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/tropical/arithmetic.h"
+#include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
-#include "polymake/IncidenceMatrix.h"
+#include "polymake/TropicalNumber.h"
 
 namespace polymake { namespace tropical { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -27,6 +27,7 @@ namespace polymake { namespace tropical { namespace {
       WrapperReturn( (points2hypersurface<T0>(arg0.get<T1>())) );
    };
 
-   FunctionInstance4perl(points2hypersurface_T_X, Min, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(points2hypersurface_T_X, Min, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >);
+   FunctionInstance4perl(points2hypersurface_T_X, Max, perl::Canned< const Matrix< TropicalNumber< Max, Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

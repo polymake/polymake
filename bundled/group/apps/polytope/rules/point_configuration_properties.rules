@@ -33,6 +33,10 @@ property MAX_BOUNDARY_SIMPLICES : Array<Set>;
 property N_MAX_BOUNDARY_SIMPLICES : Int;
 
 # @category Combinatorics
+# Tells the number of codimension 1 simplices that are not on the boundary
+property INTERIOR_RIDGE_SIMPLICES : Array<Set>;
+
+# @category Combinatorics
 # Tells the cocircuit equations that hold for the configuration, one for each interior ridge
 property COCIRCUIT_EQUATIONS : SparseMatrix;
 

@@ -25,7 +25,9 @@ object Cycle {
 
 	rule VERTICES : PROJECTIVE_VERTICES {
 		my $m = new Matrix<Rational>($this->PROJECTIVE_VERTICES);
-		canonicalize_rational_to_leading_zero($m->minor(All,~[0]));
+		if($m->rows() > 0) { #Might be the empty cycle
+			canonicalize_scalar_to_leading_zero($m->minor(All,~[0]));
+		}
 		$this->VERTICES = $m;
 	}
 
@@ -60,8 +62,6 @@ object Cycle {
 	# This maps an index pair (i,j), where i corresponds to the i-th row of [[CODIMENSION_ONE_POLYTOPES]] and
 	# j to the j-th row of [[MAXIMAL_POLYTOPES]], to the matching row number in [[FACET_NORMALS]].
 	property FACET_NORMALS_BY_PAIRS : Map<Pair<Int,Int>, Int>;
-
-	#FIXME: Needs a perm?
 
 	rule MAXIMAL_AT_CODIM_ONE : ConesPerm.MAXIMAL_AT_CODIM_ONE, ConesPerm.PERMUTATION {
 		$this->MAXIMAL_AT_CODIM_ONE=permuted_cols($this->ConesPerm->MAXIMAL_AT_CODIM_ONE,$this->ConesPerm->PERMUTATION);

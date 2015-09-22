@@ -16,25 +16,31 @@
 
 #include "polymake/client.h"
 #include "polymake/Vector.h"
+#include "polymake/TropicalNumber.h"
 
 namespace polymake { namespace tropical {
 
-template <typename Scalar>
-Scalar norm(const Vector<Scalar>& vec)
+template <typename Addition, typename Scalar, typename VectorTop>
+Scalar norm(const GenericVector<VectorTop, TropicalNumber<Addition,Scalar> >& vec)
 {
-   const Scalar min(accumulate(vec,operations::min()));
-   const Scalar max(accumulate(vec,operations::max()));
-   return max-min;
+   const Scalar min(accumulate(vec.top(),operations::min()));
+   const Scalar max(accumulate(vec.top(),operations::max()));
+   try {
+		return max-min;
+	}
+	catch(...) {
+		//This goes wrong if vec is tropically zero everywhere
+		throw std::runtime_error("The tropical norm is not defined for the tropical zero-vector");
+	}
 }
   
 UserFunctionTemplate4perl("# @category Tropical operations"
                           "# The __tropical norm__ of a vector //v// in the tropical torus"
                           "# is the difference between the maximal and minimal coordinate "
                           "# in any coordinate representation of the vector."
-                          "# @param Vector<Scalar> v"
-                          "# @tparam Scalar"
+								  "# @param Vector<TropicalNumber<Addition,Scalar> > v"
                           "# @return Scalar" ,
-                          "norm<Scalar>(Vector<Scalar>)");
+                          "norm<Addition,Scalar>(Vector<TropicalNumber<Addition,Scalar> >)");
 } }
 
 // Local Variables:

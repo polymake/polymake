@@ -13,19 +13,22 @@
    GNU General Public License for more details.
 */
 
-#include "polymake/TropicalNumber.h"
-#include "polymake/Rational.h"
-#include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
+#include "polymake/Rational.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/TropicalNumber.h"
 
 namespace polymake { namespace tropical { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0, typename T1, typename T2>
-   FunctionInterface4perl( tdet_T_X, T0,T1,T2 ) {
+   template <typename T0>
+   FunctionInterface4perl( tdet_X, T0 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturn( (tdet<T0,T1>(arg0.get<T2>())) );
+      WrapperReturn( (tdet(arg0.get<T0>())) );
    };
 
-   FunctionInstance4perl(tdet_T_X, Min, Rational, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(tdet_X, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >);
+   FunctionInstance4perl(tdet_X, perl::Canned< const Matrix< TropicalNumber< Max, Rational > > >);
+   FunctionInstance4perl(tdet_X, perl::Canned< const SparseMatrix< TropicalNumber< Max, Rational >, Symmetric > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -38,7 +38,7 @@ perl::Object facet(perl::Object p_in, int facet_number, perl::OptionSet options)
    p_out.take("RAYS_IN_FACETS") << VIF_out;
    p_out.set_description() << "facet " << facet_number << " of " << p_in.name() << endl;
 
-   if (options["noc"]) {
+   if (options["no_coordinates"]) {
       if (p_in.exists("CONE_DIM")) {
          const int dim=p_in.give("CONE_DIM");
          p_out.take("CONE_DIM") << dim-1;
@@ -73,10 +73,10 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# Extract the given //facet// of a polyhedron and write it as a new polyhedron."
                   "# @param Cone P"
                   "# @param Int facet"
-                  "# @option Bool noc don't copy the coordinates, produce purely combinatorial description."
+                  "# @option Bool no_coordinates don't copy the coordinates, produce purely combinatorial description."
                   "# @option Bool relabel copy the vertex labels from the original polytope."
                   "# @return Cone",
-                  &facet,"facet(Cone $ {noc => 0, relabel => 0})");
+                  &facet,"facet(Cone $ {no_coordinates => 0, relabel => 0})");
 } }
 
 // Local Variables:

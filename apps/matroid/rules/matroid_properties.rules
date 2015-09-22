@@ -114,7 +114,7 @@ property BINARY : Bool;
 property BINARY_VECTORS : Matrix<Int>;
 
 # Whether the matroid is representable over GF(3)
-# NOTE: the property is 'undef' when its hard to decide. 
+# NOTE: the property may be 'undef' if the current implementation cannot decide. 
 property TERNARY : Bool;
 
 # If the matroid is realizable over the field GF(3) with three elements, this property contains

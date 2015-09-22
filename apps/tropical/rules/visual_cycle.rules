@@ -42,7 +42,6 @@ object Cycle {
 		my $chart = $$decor{"Chart"};
 		delete($$decor{"Chart"});
 
-		#FIXME Add options for weight visualization, etc? Get rid of Graph!
 		$this->affine_chart($chart)->VISUAL($decor,$cutoff_decor);
 	}
 }

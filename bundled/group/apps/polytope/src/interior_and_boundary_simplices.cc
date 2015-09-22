@@ -52,8 +52,7 @@ Array<SetType> max_interior_simplices_impl(perl::Object p, perl::OptionSet optio
    Set<SetType> interior_simplices;
    for (Entire<Subsets_of_k<const sequence&> >::const_iterator fit = entire(all_subsets_of_k(sequence(0,n), d+1)); !fit.at_end(); ++fit) {
        const SetType sigma(*fit);
-       if (is_interior(sigma, VIF) && rank(V.minor(sigma, All)) == d+1 
-           && is_empty(sigma, V))
+       if (is_interior(sigma, VIF) && rank(V.minor(sigma, All)) == d+1)
            interior_simplices += sigma;
    }
    return interior_simplices;
@@ -75,7 +74,7 @@ std::pair< Array<SetType>, Array<SetType> > interior_and_boundary_ridges(perl::O
    const IncidenceMatrix<> VIF = p.give(vif_property.c_str());
 
    const Matrix<Scalar> V = is_config
-      ? p.give("CONVEX_HULL.VERTICES")
+      ? p.give("POINTS")
       : p.give("RAYS");
 
    const int n = V.rows();

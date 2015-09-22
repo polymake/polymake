@@ -286,12 +286,18 @@ MODULE = Polymake::Struct               PACKAGE = Polymake::Struct
 PROTOTYPES: DISABLE
 
 void
-access_field(obj, ...)
-   SV *obj=SvRV(ST(0));
+access_field(obj_ref, ...)
+   SV *obj_ref=ST(0);
 PPCODE:
 {
    I32 index=CvDEPTH(cv);
-   OP *o=method_named_op(PL_op);
+   OP* o=method_named_op(PL_op);
+   SV* obj;
+   if (SvROK(obj_ref))
+      obj=SvRV(obj_ref);
+   else
+      Perl_croak(aTHX_ "field access for %.*s called as static method", (int)SvCUR(obj_ref), SvPVX(obj_ref));
+
    if (o != NULL) {
       OP* next_op=PL_op->op_next;
       SV* filter=NULL;
@@ -300,7 +306,7 @@ PPCODE:
       MAGIC* mg=NULL;
 
       if (SvTYPE(method_name) == SVt_PVMG) {
-         /* maybe the first object of some derived class? */
+         // maybe the first object of some derived class?
          mg=SvMAGIC(method_name);
          do {
             if (((method_info*)mg->mg_ptr)->accessor == cv) break;

@@ -95,7 +95,7 @@ wedge_coord(const Matrix<Scalar>& V,          // input vertices
 //template<typename Scalar>
 perl::Object wedge(perl::Object p_in, const int wedge_facet, const Scalar& z, const Scalar& z_prime, perl::OptionSet options)
 {
-   if (!options["noc"] && z==z_prime)
+   if (!options["no_coordinates"] && z==z_prime)
       throw std::runtime_error("wedge: z and z' must not be equal");
 
    const IncidenceMatrix<> VIF = p_in.give("VERTICES_IN_FACETS");
@@ -120,7 +120,7 @@ perl::Object wedge(perl::Object p_in, const int wedge_facet, const Scalar& z, co
    perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
    p_out.set_description() << "wedge over " << p_in.name() << "; edge facet " << wedge_facet << endl;
 
-   if (options["noc"]) {
+   if (options["no_coordinates"]) {
       if (p_in.exists("COMBINATORIAL_DIM")) {
          const int dim=p_in.give("COMBINATORIAL_DIM");
          p_out.take("COMBINATORIAL_DIM") << dim+1;
@@ -142,7 +142,7 @@ perl::Object wedge(perl::Object p_in, const int wedge_facet, const Scalar& z, co
       p_out.take("VERTEX_LABELS") << labels;
    }
 
-   if (!options["noc"]) {
+   if (!options["no_coordinates"]) {
       const bool bounded=p_in.give("BOUNDED");
       if (!bounded)
          throw std::runtime_error("wedge: input polyhedron must be bounded");
@@ -167,15 +167,15 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                           "# @param Int facet the `cutting edge'."
                           "# @param Scalar z default value is 0."
                           "# @param Scalar z_prime default value is -//z//, or 1 if //z//==0."
-                          "# @option Bool noc don't compute coordinates, pure combinatorial description is produced."
+                          "# @option Bool no_coordinates don't compute coordinates, pure combinatorial description is produced."
                           "# @option Bool relabel create vertex labels:"
                           "#  The bottom facet vertices obtain the labels from the original polytope;"
                           "#  the labels of their clones in the top facet get a tick (') appended."
                           "# @return Polytope"
                           "# @author Kerstin Fritzsche (initial version)",
                   &wedge,
-                          "wedge(Polytope, $; $=0, $=($_[2]==0 ? 1 : -$_[2]), { noc => undef, relabel => undef})");
-//                          "wedge<Scalar>(Polytope<type_upgrade<Scalar>>, Int; type_upgrade<Scalar>=0, type_upgrade<Scalar>=($_[2]==0 ? 1 : -$_[2]), { noc => undef, relabel => undef})");
+                          "wedge(Polytope, $; $=0, $=($_[2]==0 ? 1 : -$_[2]), { no_coordinates => undef, relabel => undef})");
+//                          "wedge<Scalar>(Polytope<type_upgrade<Scalar>>, Int; type_upgrade<Scalar>=0, type_upgrade<Scalar>=($_[2]==0 ? 1 : -$_[2]), { no_coordinates => undef, relabel => undef})");
 } }
 
 // Local Variables:

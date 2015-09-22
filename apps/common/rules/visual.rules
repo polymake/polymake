@@ -187,6 +187,9 @@ options %Visual::PointSet::decorations=(
 
    # Float  scale for Sketch visualization
    Scale => undef,
+
+	# Flexible<String>  Defines the alignment of the vertex labels: left, right or center
+	LabelAlignment => undef,
 );
 
 # @category Visualization

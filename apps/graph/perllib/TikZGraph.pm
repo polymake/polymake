@@ -22,7 +22,7 @@ sub new {
    my $self=&_new;
    my $Graph=$self->source;
    my @label_width=map {
-      (length($Graph->NodeLabels->($_))+1)*0.8;
+      (line_break_label_length($Graph->NodeLabels->($_))+1)*0.8;
    } 0..$Graph->n_nodes-1;
 
    my $embedding=$Graph->Coord;
@@ -45,6 +45,7 @@ sub drawPoint {
     my $point_color=$self->source->VertexColor;
     my $point_color_flag= is_code($point_color) ? "show" : "hide";
     my $point_labels=$self->source->VertexLabels;
+	 my $alignment=$self->source->LabelAlignment;
 #---
     my $point_thickness=$self->source->VertexThickness;
     my $point_thickness_flag= is_code($point_thickness) ? "show" : "hide";
@@ -52,9 +53,13 @@ sub drawPoint {
     my $text;
     my $option_string = ($point_color_flag eq "show") ? "pointcolor\_$id"."\_$i" : "pointcolor\_$id";
     my $pthick = ($point_thickness_flag eq "show") ? $point_thickness->($i) : $point_thickness;
-    $text .= "  \\node[text=black, inner sep=3pt,draw=black,fill=$option_string,rectangle,rounded corners=3pt] at (v$i\_$id) {".$point_labels->($i).'};'."\n";
+    $text .= "  \\node[text=black, inner sep=3pt,draw=black,fill=$option_string,rectangle,rounded corners=3pt,align=".$alignment."] at (v$i\_$id) {".$point_labels->($i).'};'."\n";
 
     return $text;
+}
+
+sub line_break_label_length {
+	return max(map {length($_)} split(/\\\\/,shift));
 }
 
 1

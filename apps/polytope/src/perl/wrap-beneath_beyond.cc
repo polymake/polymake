@@ -19,6 +19,8 @@
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/SparseMatrix.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/PuiseuxFraction.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -40,5 +42,9 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(beneath_beyond_T_x_x_x_f16, Rational);
    FunctionInstance4perl(beneath_beyond_T_x_x_x_f16, QuadraticExtension< Rational >);
    FunctionInstance4perl(placing_triangulation_X_x, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
+   FunctionInstance4perl(beneath_beyond_T_x_x_x_f16, PuiseuxFraction< Min, Rational, Rational >);
+   FunctionInstance4perl(beneath_beyond_T_x_x_x_f16, PuiseuxFraction< Max, Rational, Rational >);
+   FunctionInstance4perl(placing_triangulation_X_x, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(beneath_beyond_T_x_x_x_f16, PuiseuxFraction< Min, Rational, int >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

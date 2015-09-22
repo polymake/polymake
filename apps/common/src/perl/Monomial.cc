@@ -28,6 +28,11 @@
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0>
+   FunctionInterface4perl( new, T0 ) {
+      WrapperReturnNew(T0, () );
+   };
+
    template <typename T0, typename T1, typename T2>
    FunctionInterface4perl( new_X_X, T0,T1,T2 ) {
       perl::Value arg0(stack[1]), arg1(stack[2]);
@@ -46,5 +51,8 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::Monomial_A_TropicalNumber_A_Min_I_Rational_Z_I_Int_Z", Monomial< TropicalNumber< Min, Rational >, int >);
    Class4perl("Polymake::common::Monomial_A_TropicalNumber_A_Max_I_Rational_Z_I_Int_Z", Monomial< TropicalNumber< Max, Rational >, int >);
    OperatorInstance4perl(Binary_add, perl::Canned< const Monomial< TropicalNumber< Max, Rational >, int > >, perl::Canned< const Term< TropicalNumber< Max, Rational >, int > >);
+   FunctionInstance4perl(new, Monomial< Rational, int >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Monomial< Rational, int > >, perl::Canned< const Monomial< Rational, int > >);
+   OperatorInstance4perl(Binary_sub, perl::Canned< const Monomial< Rational, int > >, perl::Canned< const Monomial< Rational, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

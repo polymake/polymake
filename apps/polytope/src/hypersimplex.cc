@@ -47,9 +47,9 @@ perl::Object hypersimplex(int k, int d, perl::OptionSet options)
    p.take("N_VERTICES") << n;
 
    const bool group_flag = options["group"];
-   const bool nov_flag = options["nov"];
-   const bool nof_flag = options["nof"];
-   const bool novif_flag = options["novif"];
+   const bool nov_flag = options["no_vertices"];
+   const bool nof_flag = options["no_facets"];
+   const bool novif_flag = options["no_vif"];
 
    if ( !nov_flag ) {
    Array<std::string> labels(n);
@@ -146,11 +146,11 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @param Int k number of 1s"
                   "# @param Int d ambient dimension"
                   "# @option Bool group"
-                  "# @option Bool nov do not compute vertices"
-                  "# @option Bool nof do not compute facets"
-                  "# @option Bool novif do not compute vertices in facets"
+                  "# @option Bool no_vertices do not compute vertices"
+                  "# @option Bool no_facets do not compute facets"
+                  "# @option Bool no_vif do not compute vertices in facets"
                   "# @return Polytope",
-                  &hypersimplex, "hypersimplex($,$;{group=>undef,nov=>0,nof=>0,novif=>0})");
+                  &hypersimplex, "hypersimplex($,$;{group=>undef,no_vertices=>0,no_facets=>0,no_vif=>0})");
 } }
 
 // Local Variables:

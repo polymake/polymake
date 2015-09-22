@@ -147,6 +147,12 @@ public:
    }
 
    /// conversion
+   Integer(long long i)
+   {
+      mpz_init_set_si(rep, i);
+   }
+
+   /// conversion
    Integer(unsigned long i)
    {
       mpz_init_set_ui(rep, i);

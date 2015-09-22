@@ -63,8 +63,8 @@ weight 0.10;
 rule BOUNDED : POINTS {
    foreach my $v (@{$this->POINTS}) {
       if (! $v->[0]) {
-	 $this->BOUNDED=0;
-	 return;
+         $this->BOUNDED=0;
+         return;
       }
    }
    $this->BOUNDED=1;
@@ -132,15 +132,6 @@ rule BARYCENTER : POINTS {
 precondition : BOUNDED;
 weight 1.10;
 
-rule TRIANGULATION.FACETS : POINTS {
-	if ( defined(my $weights=$this->lookup("TRIANGULATION.WEIGHTS") ) ) {
-		   $this->TRIANGULATION->FACETS=regular_subdivision($this->POINTS, $weights);
-	   } else {
-		   $this->TRIANGULATION->FACETS=placing_triangulation($this->POINTS);
-	   }
-}
-weight 4.10;
-
 rule TRIANGULATION.GKZ_VECTOR : POINTS, TRIANGULATION.FACETS {
    $this->TRIANGULATION->GKZ_VECTOR=gkz_vector($this->POINTS,$this->TRIANGULATION->FACETS);
 }
@@ -173,12 +164,12 @@ weight 0.10;
 #Visualization
 
 rule PIF_CYCLIC_NORMAL : CONVEX_HULL.VIF_CYCLIC_NORMAL, VERTEX_POINT_MAP{
-  my $pif=new Array<Array<Int>>($this->CONVEX_HULL->VIF_CYCLIC_NORMAL);
-  foreach (@$pif) {
-     foreach (@$_) {
-        $_=@{$this->VERTEX_POINT_MAP}[$_];
-     }
-   }	
+   my $pif=new Array<Array<Int>>($this->CONVEX_HULL->VIF_CYCLIC_NORMAL);
+   foreach (@$pif) {
+      foreach (@$_) {
+         $_=@{$this->VERTEX_POINT_MAP}[$_];
+      }
+   }
    $this->PIF_CYCLIC_NORMAL(temporary)=$pif;
 }
 
@@ -213,10 +204,23 @@ weight 0.10;
 #rule TRIANGULATION.BOUNDARY.G_DIM = AMBIENT_DIM;
 
 rule MULTIPLE_POINTS : POINTS {
-   $this->MULTIPLE_POINTS=detect_multiple(new Matrix<Rational>($this->POINTS)); 
+   $this->MULTIPLE_POINTS=detect_multiple($this->POINTS); 
 }
 weight 1.10;   
 
+}
+
+# A point configuration with an exact coordinate type, like Rational.
+declare object_specialization ExactCoord<Scalar> = PointConfiguration<Scalar> [is_ordered_field_with_unlimited_precision(Scalar)] {
+
+rule TRIANGULATION.FACETS : POINTS {
+   if ( defined(my $weights=$this->lookup("TRIANGULATION.WEIGHTS") ) ) {
+      $this->TRIANGULATION->FACETS=regular_subdivision($this->POINTS, $weights);
+   } else {
+      $this->TRIANGULATION->FACETS=placing_triangulation($this->POINTS);
+   }
+}
+weight 4.10;
 
 }
 

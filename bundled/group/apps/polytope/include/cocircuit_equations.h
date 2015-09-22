@@ -66,7 +66,7 @@ cocircuit_equations_impl(int d,
          cerr << ct << " " << difftime(current_time, start_time) << endl;
       }
       const SetType rho = *rit;
-      if (rank(points.minor(rho, All)) == rho.size() && is_interior(rho, VIF) && is_empty(rho, points)) {
+      if (rank(points.minor(rho, All)) == rho.size() && is_interior(rho, VIF)) {
          SparseVector<int> eq(n_facets);
          const SparseVector<Scalar> nv = null_space(points.minor(*rit, All)).row(0);
          int row_index(0); 
@@ -74,8 +74,7 @@ cocircuit_equations_impl(int d,
             const int sigma = sign(nv * (*vit));
             if (sigma != 0) {
                const SetType s(*rit + scalar2set(row_index));
-               if ((!partial_equations || index_of.exists(s))
-                   && is_empty(s, points)) {
+               if ((!partial_equations || index_of.exists(s))) {
                   eq[index_of[s]] = sigma;
                }
             }

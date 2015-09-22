@@ -15,60 +15,44 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/tropical/arithmetic.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/tropical/dual_addition_version.h"
 
 namespace polymake { namespace tropical {
 
-PuiseuxPolynomial pointlift(const Vector<Rational>& p, const PuiseuxRing& r)
-// REMARK: this requires the length of p to match the number of indeterminates
-{
-  const int n=p.size();
-  Array< UniPolynomial<Rational,Rational> > coefs(n);
-  for (int i=0; i<n; ++i) {
-     coefs[i]=UniMonomial<Rational,Rational>(p[i]);
-  }
-  return PuiseuxPolynomial(unit_matrix<int>(n),coefs,r);
-}
+	template <typename Addition>
+		perl::Object points2hypersurface(const Matrix<TropicalNumber<Addition> >& points)
+		{
+			typedef TropicalNumber<typename Addition::dual>  TDualNumber;
 
-template <typename Addition>
-TropicalPolynomial tropicalize(const PuiseuxPolynomial& p)
-{
-   const int n_terms=p.n_terms();
-   Vector<Rational> exps(n_terms);
-   Vector<Rational>::iterator e=exps.begin();
-   for (Entire<PuiseuxPolynomial::term_hash>::const_iterator i=entire(p.get_terms()); !i.at_end(); ++i, ++e)
-      *e=Addition::orientation()*i->second.lm_exp();
+			const int d(points.cols());
+			const Matrix<TDualNumber> dual_points = 
+				dual_addition_version(points,1);
+			
+			Ring<TDualNumber> r(d);
+			Polynomial<TDualNumber > hyperpoly(TDualNumber::one(), r);
 
-   return TropicalPolynomial(p.monomials_as_matrix< Matrix<int> >(), exps);
-}
+			for(typename Entire<Rows<Matrix<TDualNumber> > >::const_iterator pt = entire(rows(dual_points));
+					!pt.at_end(); pt++) {
+				Matrix<int> monoms = unit_matrix<int>(d);
+				hyperpoly *= Polynomial<TDualNumber >(monoms, *pt, r);
+			}
 
-template <typename Addition>
-perl::Object points2hypersurface(const Matrix<Rational>& points)
-{
-  const int n=points.cols();
-  PuiseuxRing r(n);
-  PuiseuxPolynomial poly(1, r);
+			perl::Object result(perl::ObjectType::construct<typename Addition::dual>("Hypersurface"));
+				result.take("POLYNOMIAL") << hyperpoly;
 
-  for (Entire< Rows< Matrix<Rational> > >::const_iterator i=entire(rows(points)); !i.at_end(); ++i)
-     poly*=pointlift(-(*i),r);
+			return result;
+		
+		}
 
-  perl::Object h(perl::ObjectType::construct<typename Addition::dual>("Hypersurface"));
-  const TropicalPolynomial tpoly=tropicalize<typename Addition::dual>(poly);
-  h.take("MONOMIALS") << tpoly.first;
-  h.take("COEFFICIENTS") << tpoly.second;
-
-  return h;
-}
-    
-UserFunctionTemplate4perl("# @category Producing a tropical hypersurface"
-                          "# Constructs a tropical hypersurface defined by the linear"
-                          "# hypersurfaces associated to the points."
-                          "# If the points are part of a min-tropical polytope then the output is a"
-                          "# max-tropical hypersurface, and conversely."
-                          "# @param Matrix<Rational> points"
-                          "# @tparam Addition [[Min]] or [[Max]], default [[Min]]"
-                          "# @return Hypersurface",
-                          "points2hypersurface<Addition=Min>(Matrix)");
+	UserFunctionTemplate4perl("# @category Producing a tropical hypersurface"
+			"# Constructs a tropical hypersurface defined by the linear"
+			"# hypersurfaces associated to the points."
+			"# If the points are min-tropical points then the output is a"
+			"# max-tropical hypersurface, and conversely."
+			"# @param Matrix<TropicalNumber<Addition> > points"
+			"# @return Hypersurface",
+			"points2hypersurface<Addition>(Matrix<TropicalNumber<Addition> >)");
 } }
 
 // Local Variables:

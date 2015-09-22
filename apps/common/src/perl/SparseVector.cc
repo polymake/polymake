@@ -17,10 +17,12 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/SparseVector.h"
+#include "polymake/TropicalNumber.h"
 #include "polymake/Vector.h"
 #include "polymake/client.h"
 #include "polymake/linalg.h"
@@ -96,5 +98,21 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< SparseVector< Rational > > >, perl::Canned< const pm::VectorChain<pm::SingleElementVector<pm::Integer>, pm::Vector<pm::Integer> const&> >);
    OperatorInstance4perl(Binary_add, perl::Canned< const Wary< pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::Rational> > >, perl::Canned< const pm::VectorChain<pm::SingleElementVector<pm::Rational>, pm::Vector<pm::Rational> const&> >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< SparseVector< Rational > > >, perl::Canned< const pm::VectorChain<pm::SingleElementVector<pm::Integer const&>, pm::Vector<pm::Integer> const&> >);
+   Class4perl("Polymake::common::SparseVector__TropicalNumber_A_Min_I_Rational_Z", SparseVector< TropicalNumber< Min, Rational > >);
+   FunctionInstance4perl(new, SparseVector< TropicalNumber< Min, Rational > >);
+   Class4perl("Polymake::common::SparseVector__TropicalNumber_A_Max_I_Rational_Z", SparseVector< TropicalNumber< Max, Rational > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< SparseVector< TropicalNumber< Min, Rational > > > >, perl::Canned< const SparseVector< TropicalNumber< Min, Rational > > >);
+   FunctionInstance4perl(new_X, SparseVector< PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::PuiseuxFraction<pm::Min, pm::Rational, pm::Rational> > >);
+   Class4perl("Polymake::common::SparseVector__PuiseuxFraction_A_Min_I_Rational_I_Rational_Z", SparseVector< PuiseuxFraction< Min, Rational, Rational > >);
+   FunctionInstance4perl(new_X, SparseVector< PuiseuxFraction< Max, Rational, Rational > >, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::PuiseuxFraction<pm::Max, pm::Rational, pm::Rational> > >);
+   Class4perl("Polymake::common::SparseVector__PuiseuxFraction_A_Max_I_Rational_I_Rational_Z", SparseVector< PuiseuxFraction< Max, Rational, Rational > >);
+   Class4perl("Polymake::common::SparseVector__PuiseuxFraction_A_Min_I_Rational_I_Int_Z", SparseVector< PuiseuxFraction< Min, Rational, int > >);
+   FunctionInstance4perl(new_X, SparseVector< Rational >, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::Rational> >);
+   FunctionInstance4perl(new_X, SparseVector< Rational >, perl::Canned< const Vector< Rational > >);
+   FunctionInstance4perl(new_X, SparseVector< PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const Vector< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(new_X, SparseVector< PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const SparseVector< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(new, SparseVector< PuiseuxFraction< Min, Rational, Rational > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< SparseVector< PuiseuxFraction< Min, Rational, Rational > > > >, perl::Canned< const SparseVector< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(new_X, SparseVector< PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >, perl::Canned< const Vector< PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

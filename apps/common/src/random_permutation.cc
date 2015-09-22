@@ -20,7 +20,7 @@
 
 namespace polymake { namespace common {
 
-      Array<int> rand_perm(const int n, perl::OptionSet options)
+Array<int> rand_perm(const int n, perl::OptionSet options)
 {
    const RandomSeed seed(options["seed"]);
    Array<int> perm(n);
@@ -30,9 +30,10 @@ namespace polymake { namespace common {
 
 
 UserFunction4perl("# @category Utilities"
-		  "# gives a random permutation matrix"
+		  "# gives a random permutation"
 		  "# @param Int n"
-		  "# @return Matrix : random n times n permutation matrix",
+                  "# @option Int Seed"
+		  "# @return Array<Int> random permutation",
 		  &rand_perm,"rand_perm($ {seed=> undef})");
 
 } }

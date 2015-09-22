@@ -35,6 +35,7 @@ declare object AffineNormalToricVariety : NormalToricVariety;
 declare object CyclicQuotient : AffineNormalToricVariety;
 
 INCLUDE
+   toric_ideal.rules
    toric_divisor_properties.rules
    toric_divisor.rules
    toric_variety_properties.rules

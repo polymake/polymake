@@ -92,7 +92,7 @@ SV* ref2key(SV *keysv, tmp_keysv *tmp_key)
    }                                                                    \
 } STMT_END
 
-static char err_ref[]="Reference as a key in a normal hash";
+static const char err_ref[]="Reference as a key in a normal hash";
 
 static inline
 int ref_key_allowed(HV* class)

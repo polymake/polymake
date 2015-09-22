@@ -16,6 +16,7 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Polynomial.h"
 #include "polymake/PowerSet.h"
@@ -45,5 +46,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(size_f1, perl::Canned< const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, false, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> >&> >);
    FunctionInstance4perl(size_f1, perl::Canned< const Set< std::pair< Set< int >, Set< int > > > >);
    FunctionInstance4perl(size_f1, perl::Canned< const Set< std::string > >);
+   FunctionInstance4perl(size_f1, perl::Canned< const Set< Array< int > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

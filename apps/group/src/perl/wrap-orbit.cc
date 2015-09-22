@@ -14,31 +14,53 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/Array.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
+#include "polymake/Polynomial.h"
+#include "polymake/Rational.h"
+#include "polymake/Set.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/SparseVector.h"
+#include "polymake/Vector.h"
+#include "polymake/client.h"
+#include "polymake/group/orbit.h"
+
 namespace polymake { namespace group { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::Set<pm::Matrix<pm::Rational>, pm::operations::cmp> (pm::Array<pm::Vector<pm::Rational>, void> const&, pm::Matrix<pm::Rational> const&) ) {
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( action_T_X_X, T0,T1,T2 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Array< Vector< Rational > > > >(), arg1.get< perl::TryCanned< const Matrix< Rational > > >() );
-   }
-   FunctionWrapperInstance4perl( pm::Set<pm::Matrix<pm::Rational>, pm::operations::cmp> (pm::Array<pm::Vector<pm::Rational>, void> const&, pm::Matrix<pm::Rational> const&) );
+      WrapperReturn( (action<T0>(arg0.get<T1>(), arg1.get<T2>())) );
+   };
 
-   FunctionWrapper4perl( pm::Set<pm::Vector<pm::Rational>, pm::operations::cmp> (pm::Array<pm::Matrix<pm::Rational>, void> const&, pm::Vector<pm::Rational> const&) ) {
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( action_inv_T_X_X, T0,T1,T2 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Array< Matrix< Rational > > > >(), arg1.get< perl::TryCanned< const Vector< Rational > > >() );
-   }
-   FunctionWrapperInstance4perl( pm::Set<pm::Vector<pm::Rational>, pm::operations::cmp> (pm::Array<pm::Matrix<pm::Rational>, void> const&, pm::Vector<pm::Rational> const&) );
+      WrapperReturn( (action_inv<T0>(arg0.get<T1>(), arg1.get<T2>())) );
+   };
 
-   FunctionWrapper4perl( pm::Set<pm::Set<int, pm::operations::cmp>, pm::operations::cmp> (pm::Array<pm::Array<int, void>, void> const&, pm::Set<int, pm::operations::cmp> const&) ) {
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( orbit_T_X_X, T0,T1,T2 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Array< Array< int > > > >(), arg1.get< perl::TryCanned< const Set< int > > >() );
-   }
-   FunctionWrapperInstance4perl( pm::Set<pm::Set<int, pm::operations::cmp>, pm::operations::cmp> (pm::Array<pm::Array<int, void>, void> const&, pm::Set<int, pm::operations::cmp> const&) );
+      WrapperReturn( (orbit<T0>(arg0.get<T1>(), arg1.get<T2>())) );
+   };
 
-   FunctionWrapper4perl( pm::Set<pm::Set<pm::Set<int, pm::operations::cmp>, pm::operations::cmp>, pm::operations::cmp> (pm::Array<pm::Array<int, void>, void> const&, pm::Set<pm::Set<int, pm::operations::cmp>, pm::operations::cmp> const&) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Array< Array< int > > > >(), arg1.get< perl::TryCanned< const Set< Set< int > > > >() );
-   }
-   FunctionWrapperInstance4perl( pm::Set<pm::Set<pm::Set<int, pm::operations::cmp>, pm::operations::cmp>, pm::operations::cmp> (pm::Array<pm::Array<int, void>, void> const&, pm::Set<pm::Set<int, pm::operations::cmp>, pm::operations::cmp> const&) );
-
+   FunctionInstance4perl(orbit_T_X_X, on_elements, perl::Canned< const Array< Matrix< Rational > > >, perl::Canned< const SparseVector< Rational > >);
+   FunctionInstance4perl(orbit_T_X_X, on_elements, perl::Canned< const Array< Matrix< Rational > > >, perl::Canned< const Vector< Rational > >);
+   FunctionInstance4perl(orbit_T_X_X, on_container, perl::Canned< const Array< Array< int > > >, perl::Canned< const Set< int > >);
+   FunctionInstance4perl(orbit_T_X_X, on_elements, perl::Canned< const Array< Array< int > > >, perl::Canned< const Set< Set< int > > >);
+   FunctionInstance4perl(orbit_T_X_X, on_cols, perl::Canned< const Array< Array< int > > >, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(orbit_T_X_X, on_rows, perl::Canned< const Array< Array< int > > >, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(orbit_T_X_X, on_elements, perl::Canned< const Array< Array< int > > >, perl::Canned< const std::pair< Set< int >, Set< Set< int > > > >);
+   FunctionInstance4perl(orbit_T_X_X, on_container, perl::Canned< const Array< Array< int > > >, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(orbit_T_X_X, on_elements, perl::Canned< const Array< Array< int > > >, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(orbit_T_X_X, on_container, perl::Canned< const Array< Array< int > > >, perl::Canned< const Vector< int > >);
+   FunctionInstance4perl(orbit_T_X_X, on_elements, perl::Canned< const Array< Array< int > > >, perl::Canned< const Vector< int > >);
+   FunctionInstance4perl(orbit_T_X_X, on_elements, perl::Canned< const Array< Array< int > > >, perl::Canned< const Matrix< int > >);
+   FunctionInstance4perl(orbit_T_X_X, on_container, perl::Canned< const Array< Array< int > > >, perl::Canned< const Polynomial< Rational, int > >);
+   FunctionInstance4perl(orbit_T_X_X, on_container, perl::Canned< const Array< Array< int > > >, perl::Canned< const Monomial< Rational, int > >);
+   FunctionInstance4perl(action_T_X_X, on_container, perl::Canned< const Array< int > >, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(action_inv_T_X_X, on_container, perl::Canned< const Array< int > >, perl::Canned< const Array< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

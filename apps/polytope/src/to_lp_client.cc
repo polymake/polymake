@@ -51,7 +51,7 @@ bool to_input_bounded  (perl::Object p) {
 
 
 template <typename Scalar>
-void to_solve_lp(perl::Object p, perl::Object lp, bool maximize)
+void to_solve_lp(perl::Object p, perl::Object lp, bool maximize, perl::OptionSet options)
 {
    typedef to_interface::solver<Scalar> Solver;
    const Matrix<Scalar> H=p.give("FACETS | INEQUALITIES"),
@@ -60,6 +60,10 @@ void to_solve_lp(perl::Object p, perl::Object lp, bool maximize)
 
    try {
       Solver solver;
+      if(options.exists("initial_basis")){
+         const Set<int> basis = options["initial_basis"];
+         solver.set_basis(basis);
+      }
       typename Solver::lp_solution S=solver.solve_lp(H, E, Obj, maximize);
       lp.take(maximize ? "MAXIMAL_VALUE" : "MINIMAL_VALUE") << S.first;
       lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << S.second;
@@ -83,7 +87,7 @@ void to_solve_lp(perl::Object p, perl::Object lp, bool maximize)
 
 FunctionTemplate4perl("to_input_feasible<Scalar> (Polytope<Scalar>)");
 FunctionTemplate4perl("to_input_bounded<Scalar> (Polytope<Scalar>)");
-FunctionTemplate4perl("to_solve_lp<Scalar> (Polytope<Scalar>, LinearProgram<Scalar>, $) : void");
+FunctionTemplate4perl("to_solve_lp<Scalar> (Polytope<Scalar>, LinearProgram<Scalar>, $; {initial_basis => undef}) : void");
 
 } }
 

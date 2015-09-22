@@ -16,14 +16,16 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
+#include "polymake/Set.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/client.h"
 #include "polymake/linalg.h"
-#include "polymake/Matrix.h"
-#include "polymake/Rational.h"
-#include "polymake/SparseMatrix.h"
-#include "polymake/IncidenceMatrix.h"
-#include "polymake/Set.h"
-#include "polymake/QuadraticExtension.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -49,5 +51,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(rank_X, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
    FunctionInstance4perl(rank_X, perl::Canned< const pm::RowChain<pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&, pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&> >);
    FunctionInstance4perl(rank_X, perl::Canned< const pm::RowChain<pm::Matrix<double> const&, pm::SparseMatrix<double, pm::NonSymmetric> const&> >);
+   FunctionInstance4perl(rank_X, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(rank_X, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

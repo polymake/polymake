@@ -1330,6 +1330,52 @@ public:
       return Rational();
    }
 
+
+   /// Power.
+   static Rational pow(const Rational& a, long k)
+   {
+      if (__builtin_expect(isfinite(a),1))
+      {
+         if (k > 0)
+            return Rational(mpz_pow_ui, mpq_numref(a.rep), (unsigned long) k,
+                            mpz_pow_ui, mpq_denref(a.rep), (unsigned long) k, False());
+         else if (k < 0)
+            return Rational(mpz_pow_ui, mpq_denref(a.rep), (unsigned long) abs(k),
+                            mpz_pow_ui, mpq_numref(a.rep), (unsigned long) abs(k), True());
+         else
+            return Rational(1);
+      }
+      return Rational(maximal<Rational>(), k%2 ? isinf(a) : 1);
+   }
+
+   /// Power.
+   static Rational pow(unsigned long a, long k)
+   {
+      if (k > 0)
+         return Rational(mpz_ui_pow_ui, a, (unsigned long) k, 1);
+      else if (k < 0)
+         return Rational(1, mpz_ui_pow_ui, a, (unsigned long) abs(k));
+      else
+         return Rational(1);
+   }
+
+   /// Power
+   static Rational pow(const Integer& a, long k)
+   {
+      if (__builtin_expect(isfinite(a),1))
+      {
+         if (k > 0)
+            return Rational(mpz_pow_ui, a.rep, (unsigned long) k, 1);
+         else if (k < 0)
+            return Rational(1, mpz_pow_ui, a.rep, (unsigned long) abs(k));
+         else
+            return Rational(1);
+      }
+      return Rational(maximal<Rational>(), k%2 ? isinf(a) : 1);
+   }
+
+
+
    void read(std::istream& is)
    {
       numerator_nocanon(*this).read(is);

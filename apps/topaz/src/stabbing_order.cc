@@ -229,31 +229,37 @@ Graph<Directed> stabbing_order(perl::Object triangulation)
       for (Entire<Set<int> >::const_iterator iit = entire(ideal_of_sigma); !iit.at_end(); ++iit)
          stabbing_order.edge(sigma, *iit);
    }
+   // if 0 is not a point of the configuration, we're done
+   if (ioz < 0) return stabbing_order;
 
-   // the above code is not yet correct. As a partial fix, we remove all edges between simplices in the star of 0
-   if (ioz >= 0) {
-      Map<Set<int>, int> index_of;
-      std::vector<int> st_0_indices;
-      int index(-1);
-      for (Entire<Array<Set<int> > >::const_iterator ait = entire(simplices); !ait.at_end(); ++ait) {
-         index_of[*ait] = ++index;
-         if ((*ait).contains(ioz))
-            st_0_indices.push_back(index);
-      }
+   // We remove all edges between simplices in the star of 0
+   Map<Set<int>, int> index_of;
+   std::vector<int> st_0_indices;
+   int index(-1);
+   for (Entire<Array<Set<int> > >::const_iterator ait = entire(simplices); !ait.at_end(); ++ait) {
+      index_of[*ait] = ++index;
+      if ((*ait).contains(ioz))
+         st_0_indices.push_back(index);
+   }
 
-      for (Entire< Subsets_of_k<const sequence&> >::const_iterator i=entire(all_subsets_of_k(sequence(0, st_0_indices.size()),2)); !i.at_end(); ++i) {
-         const Set<int> pair(*i);
-         stabbing_order.delete_edge(st_0_indices[pair.front()],
-                                    st_0_indices[pair.back() ]);
-      }
+   // if 0 is not a vertex of the triangulation, we're done   
+   if (!st_0_indices.size()) return stabbing_order;
+
+   for (Entire< Subsets_of_k<const sequence&> >::const_iterator i=entire(all_subsets_of_k(sequence(0, st_0_indices.size()),2)); !i.at_end(); ++i) {
+      const Set<int> pair(*i);
+      stabbing_order.delete_edge(st_0_indices[pair.front()],
+                                 st_0_indices[pair.back() ]);
    }
    return stabbing_order;
 }
 
 InsertEmbeddedRule("REQUIRE_APPLICATION polytope\n\n");
 
-UserFunctionTemplate4perl("# @category Producing other objects"
-                          "# Determine the stabbing partial order of a simplicial ball"
+UserFunctionTemplate4perl("# @category Other"
+                          "# Determine the stabbing partial order of a simplicial ball with respect to the origin."
+                          "# The origin may be a vertex or not."
+                          "# For details see Assarf, Joswig & Pfeifle:"
+                          "# Webs of stars or how to triangulate sums of polytopes, to appear"
                           "# @param GeometricSimplicialComplex P"
                           "# @return graph::Graph<Directed>",
                           "stabbing_order<Scalar>(GeometricSimplicialComplex<type_upgrade<Scalar>>)"); 

@@ -20,10 +20,12 @@ GNU General Public License for more details.
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
+#include "polymake/SparseVector.h"
 #include "polymake/TropicalNumber.h"
 #include "polymake/Vector.h"
 #include "polymake/client.h"
@@ -44,14 +46,28 @@ namespace polymake { namespace common { namespace {
 
    FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
    FunctionInstance4perl(new_X, Matrix< Integer >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<pm::Integer const&> const&>, pm::Matrix<pm::Integer> const&> >);
-   Class4perl("Polymake::common::Matrix_A_TropicalNumber_A_Max_I_Rational_Z_I_NonSymmetric_Z", Matrix< TropicalNumber< Max, Rational > >);
-   FunctionInstance4perl(new, Matrix< TropicalNumber< Min, Rational > >);
-   OperatorInstance4perl(convert, Matrix< QuadraticExtension< Rational > >, perl::Canned< const Matrix< double > >);
 
    FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::RowChain<pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&, pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&> >);
    FunctionInstance4perl(new_X, Matrix< QuadraticExtension< Rational > >, perl::Canned< const pm::RowChain<pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&, pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&> >);
-   OperatorInstance4perl(convert, Matrix< double >, perl::Canned< const SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >);
    FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::RowChain<pm::Matrix<double> const&, pm::Matrix<double> const&> >);
 
+   FunctionInstance4perl(new_X, Matrix< TropicalNumber< Min, Rational > >, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< Matrix< TropicalNumber< Min, Rational > > > >, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >);
+   FunctionInstance4perl(new_X, Matrix< TropicalNumber< Max, Rational > >, perl::Canned< const Matrix< TropicalNumber< Max, Rational > > >);
+   FunctionInstance4perl(new, Matrix< TropicalNumber< Max, Rational > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< Matrix< TropicalNumber< Max, Rational > > > >, perl::Canned< const Matrix< TropicalNumber< Max, Rational > > >);
+   OperatorInstance4perl(BinaryAssign_div, perl::Canned< Wary< Matrix< Rational > > >, perl::Canned< const pm::VectorChain<pm::Vector<pm::Rational> const&, pm::Vector<pm::Rational> const&> >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< Matrix< PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > > > >, perl::Canned< const SparseVector< PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > > >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< Matrix< PuiseuxFraction< Max, Rational, Rational > > > >, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< Matrix< PuiseuxFraction< Max, Rational, Rational > > > >, perl::Canned< const pm::DiagMatrix<pm::SameElementVector<pm::PuiseuxFraction<pm::Max, pm::Rational, pm::Rational> const&>, true> >);
+   FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >);
+   FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const Matrix< TropicalNumber< Max, Rational > > >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< pm::RowChain<pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&> > >, perl::Canned< const Vector< Rational > >);
+   FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational>&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
+   FunctionInstance4perl(new_X, Matrix< double >, perl::Canned< const pm::MatrixMinor<pm::Matrix<double> const&, pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&> const&, pm::all_selector const&> >);
+   FunctionInstance4perl(new_X, Matrix< double >, perl::Canned< const pm::MatrixMinor<pm::Matrix<double> const&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> >);
+   FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::MatrixMinor<pm::Matrix<double> const&, pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&> const&, pm::all_selector const&> >);
+   FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::Vector<int> const&>, pm::MatrixMinor<pm::SparseMatrix<int, pm::NonSymmetric> const&, pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> const&, pm::all_selector const&> const&> >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< Matrix< Rational > > >, perl::Canned< const pm::Transposed<pm::ColChain<pm::Matrix<pm::Rational> const&, pm::SingleCol<pm::Vector<pm::Rational> const&> > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

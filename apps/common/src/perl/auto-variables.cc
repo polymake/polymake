@@ -32,5 +32,6 @@ namespace polymake { namespace common { namespace {
 
    FunctionInstance4perl(variables_L_f1, perl::Canned< const Ring< Rational, int > >);
    FunctionInstance4perl(variables_L_f1, perl::Canned< const Ring< TropicalNumber< Min, Rational >, int > >);
+   FunctionInstance4perl(variables_L_f1, perl::Canned< const Ring< TropicalNumber< Max, Rational >, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -309,6 +309,12 @@ user_function transpose(Matrix:anchor) : c++ (name => 'T');
 # @return Int det(A)
 user_function det(Matrix:wary) : c++ (include => "polymake/linalg.h");
 
+# @category Linear Algebra
+# Computes the __trace__ of a matrix.
+# @param Matrix A
+# @return Int trace(A)
+user_function trace(Matrix:wary) : c++ (include => "polymake/linalg.h");
+
 
 # @category Linear Algebra
 # Computes the __rank__ of a matrix.
@@ -632,6 +638,12 @@ user_function dense(Set $) { dense(toVector<Int>(@_)); }
 user_function indices(SparseVector:anchor) : c++ (include => "polymake/Set.h");
 
 # @category Data Conversion
+# Get the positions of non-zero entries of a vector.
+# @param Vector v
+# @return Set<Int>
+user_function support(Vector:anchor) : c++ (include => "polymake/linalg.h");
+
+# @category Data Conversion
 # Get the positions of non-zero entries of a sparse matrix.
 # @param SparseMatrix m
 # @return IncidenceMatrix
@@ -818,6 +830,10 @@ declare property_type UniPolynomial<Coefficient=Rational, Exponent=Int> \
    user_method lc() : c++;
 
    user_method print_ordered(Matrix) : c++ : void;
+
+   user_method evaluate_float($) : c++;
+
+   user_method evaluate(*;$=1) : c++;
 }
 
 # @category Arithmetic
@@ -852,8 +868,90 @@ user_function numerator(RationalFunction) : c++;
 # Returns the __denominator__ of a [[RationalFunction]] //f//.
 # @param RationalFunction f
 # @return Polynomial
-# @param RationalFunction f
 user_function denominator(RationalFunction) : c++;
+
+# @category Algebraic Types
+# @tparam MinMax default: NONE
+# @tparam Coefficient default: [[Rational]]
+# @tparam Exponent default: [[Rational]]
+declare property_type PuiseuxFraction<MinMax, Coefficient=Rational, Exponent=Rational> \
+   : upgrades( Coefficient ) \
+   : c++ (operators => '@arith @compare', include => "polymake/PuiseuxFraction.h") {
+
+   method construct(type_upgrades_to< RationalFunction<Coefficient,Exponent> >) : c++;
+
+   method construct(type_upgrades_to< UniPolynomial<Coefficient,Exponent> >,type_upgrades_to< UniPolynomial<Coefficient,Exponent> >) : c++;
+
+   # The __valuation__.
+   # @return TropicalNumber<MinMax>
+   user_method val() : c++;
+
+   # Approximate evaluation at //x//
+   # @param Scalar x
+   # @return Float
+   user_method evaluate_float($) : c++;
+
+   # Approximate evaluation of a [[Matrix]] at //x//
+   # @param Matrix m
+   # @param Scalar x
+   # @return Float
+   user_method evaluate_float(Matrix,*) : static : c++;
+
+   # Approximate evaluation of a [[Vector]] at //x//
+   # @param Vector v
+   # @param Scalar x
+   # @return Float
+   user_method evaluate_float(Vector,*) : static : c++;
+
+   # Evaluate all [[PuiseuxFraction]]s in a [[Matrix]] at a [[Rational]] number (//x^exp//).
+   # Let //explcm// be the lcm of the denominators of all exponents.
+   # If there are no denominators or //explcm// divides //exp//, then the evaluation
+   # is computed exactly.
+   # Otherwise, some rational number close to the root //(x^exp)^-explcm// will be chosen
+   # via an intermediate floating point number.
+   # @param Matrix m
+   # @param Scalar x
+   # @param Int exp (default: 1)
+   # @return Matrix<Coefficient>
+   user_method evaluate(Matrix,*;$=1) : static : c++;
+
+   # Evaluate all [[PuiseuxFraction]]s in a [[Vector]] at a [[Rational]] number (//x^exp//).
+   # Let //explcm// be the lcm of the denominators of all exponents.
+   # If there are no denominators or //explcm// divides //exp//, then the evaluation
+   # is computed exactly.
+   # Otherwise, some rational number close to the root //(x^exp)^-explcm// will be chosen
+   # via an intermediate floating point number.
+   # @param Vector v
+   # @param Scalar x
+   # @param Int exp (default: 1)
+   # @return Vector<Coefficient>
+   user_method evaluate(Vector,*;$=1) : static : c++;
+
+   # Evaluate a [[PuiseuxFraction]] at a [[Rational]] number (//x^exp//).
+   # Let //explcm// be the lcm of the denominators of all exponents.
+   # If there are no denominators or //explcm// divides //exp//, then the evaluation
+   # is computed exactly.
+   # Otherwise, some rational number close to the root //(x^exp)^-explcm// will be chosen
+   # via an intermediate floating point number.
+   # @param Scalar x
+   # @param Int exp (default: 1)
+   # @return Coefficient
+   user_method evaluate(*;$=1) : c++;
+}
+
+function is_ordered_field_with_unlimited_precision(PuiseuxFraction) { 1 }
+
+# @category Arithmetic
+# Returns the __numerator__ of a [[PuiseuxFraction]] //f//.
+# @param PuiseuxFraction f
+# @return Polynomial
+user_function numerator(PuiseuxFraction) : c++;
+
+# @category Arithmetic
+# Returns the __denominator__ of a [[PuiseuxFraction]] //f//.
+# @param PuiseuxFraction f
+# @return Polynomial
+user_function denominator(PuiseuxFraction) : c++;
 
 
 # @topic category property_types/Linear Algebra

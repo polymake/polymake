@@ -1708,7 +1708,8 @@ sub bind_functions {
           &&= do {
                  unless (defined $subst_for_temp_src) {
                     push @{$self->duplicate_function_instances}, new DuplicateInstance($descr,$self->application);
-                    $auto_func->seen_in->{$descr->source_file}+=0;   # pull into existence
+                    # pull into existence, OperatorInstance->seen_in is not a hash!
+                    $auto_func->seen_in->{$descr->source_file}+=0 if (ref($auto_func->seen_in));
                     ensure_update_sources($self);
                  }
                  next;
@@ -2598,6 +2599,13 @@ sub add_operator {
       }
       $op=new AutoFunction($descr->[0], $flags, $self->application);
       $op->prepare(@$signature, $pkg);
+
+      if (($flags & $func_is_method) == 0 && $pkg ne $self->application->pkg) {
+         my $app=$self->application->pkg;
+         (my $pkg_prefix=$pkg)=~s/^$app\:://;
+         $pkg_prefix=~tr/:/_/;
+         substr($op->wrapper_name,0,0)=$pkg_prefix."__";
+      }
       check_twins($op);
 
       if ($sign eq '<=>') {

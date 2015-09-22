@@ -49,8 +49,8 @@ rule UNBOUNDED_FACETS : VERTICES_IN_FACETS, FAR_FACE {
 property TOWARDS_FAR_FACE : Vector<Scalar>;
 
 rule TOWARDS_FAR_FACE : VERTICES, AFFINE_HULL {
-   my $cone=new Polytope<Rational>(INEQUALITIES => $this->VERTICES->minor($this->FAR_FACE,All),
-                                   EQUATIONS => $this->AFFINE_HULL);
+   my $cone=new Polytope<Scalar>(INEQUALITIES => $this->VERTICES->minor($this->FAR_FACE,All),
+                                 EQUATIONS => $this->AFFINE_HULL);
    $this->TOWARDS_FAR_FACE=$cone->REL_INT_POINT;
 }
 precondition : FAR_FACE { $this->FAR_FACE->size()>0 };

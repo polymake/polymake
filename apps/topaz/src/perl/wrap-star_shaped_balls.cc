@@ -20,12 +20,6 @@
 
 namespace polymake { namespace topaz { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0>
-   FunctionInterface4perl( star_of_zero_T_x, T0 ) {
-      perl::Value arg0(stack[0]);
-      WrapperReturn( (star_of_zero<T0>(arg0)) );
-   };
-
    template <typename T0, typename T1>
    FunctionInterface4perl( poset_by_inclusion_T_X, T0,T1 ) {
       perl::Value arg0(stack[0]);
@@ -38,8 +32,14 @@ namespace polymake { namespace topaz { namespace {
       WrapperReturn( (star_shaped_balls<T0>(arg0)) );
    };
 
+   template <typename T0>
+   FunctionInterface4perl( star_of_zero_T_x, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturn( (star_of_zero<T0>(arg0)) );
+   };
+
    FunctionInstance4perl(star_shaped_balls_T_x, Rational);
-   FunctionInstance4perl(poset_by_inclusion_T_X, Set< Set< int > >, perl::Canned< const Array< Set< Set< int > > > >);
    FunctionInstance4perl(star_of_zero_T_x, Rational);
+   FunctionInstance4perl(poset_by_inclusion_T_X, Set< Set< int > >, perl::Canned< const Array< Set< Set< int > > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -228,19 +228,19 @@ weight 0.10;
 
 # FIXME no testcases
 rule SIMPLICIAL_CONE : N_RAYS, LINEALITY_DIM, COMBINATORIAL_DIM {
-    if ( $this->LINEALITY_DIM > 0 ) {
-	$this->SIMPLICIAL_CONE = 0;
-    } else {
-	$this->SIMPLICIAL_CONE = ( $this->N_RAYS == $this->COMBINATORIAL_DIM+1 );
-    }
+   if ( $this->LINEALITY_DIM > 0 ) {
+      $this->SIMPLICIAL_CONE = 0;
+   } else {
+      $this->SIMPLICIAL_CONE = ( $this->N_RAYS == $this->COMBINATORIAL_DIM+1 );
+   }
 }
 weight 0.10;
 
 rule SIMPLICIAL : COMBINATORIAL_DIM, RAYS_IN_FACETS {
    foreach (@{$this->RAYS_IN_FACETS}) {
       if (@$_ != $this->COMBINATORIAL_DIM) {
-	 $this->SIMPLICIAL=0;
-	 return;
+         $this->SIMPLICIAL=0;
+         return;
       }
    }
    $this->SIMPLICIAL=1;
@@ -250,8 +250,8 @@ weight 1.10;
 rule SIMPLE : COMBINATORIAL_DIM, RAYS_IN_FACETS {
    foreach (@{transpose($this->RAYS_IN_FACETS)}) {
       if (@$_ != $this->COMBINATORIAL_DIM) {
-	 $this->SIMPLE=0;
-	 return;
+         $this->SIMPLE=0;
+         return;
       }
    }
    $this->SIMPLE=1;
@@ -419,10 +419,10 @@ weight 1.10;
 rule POSITIVE : RAYS | INPUT_RAYS {
    foreach my $v (@{$this->RAYS | INPUT_RAYS}) {
       foreach my $x (@$v) {
-	 if ($x<0) {
-	    $this->POSITIVE=0;
-	    return;
-	 }
+         if ($x<0) {
+            $this->POSITIVE=0;
+            return;
+         }
       }
    }
    $this->POSITIVE=1;
@@ -546,37 +546,31 @@ user_method DIM {
 # Example: $c=cube(3); print rank($c->VERTICES->minor($c->face([0,1])->first(),All))-1;
 # computes the dimension of the face of the 3-cube which is spanned by the vertices 0 and 1.
 user_method face {
-		my ($self,$some_vertices)=@_;
-		$some_vertices=new Set($some_vertices); # be flexible; take anything which can be interpreted as a Set
-		my $vif=$self->RAYS_IN_FACETS;
-		my $facets_containing_given_vertices; # will become of type Set
-		if ($some_vertices->size()==0) {
-				$facets_containing_given_vertices=sequence(0,$self->N_FACETS);
-		} else {
-				my @vertex_list=@{$some_vertices};
-				$facets_containing_given_vertices=new Set($vif->col($vertex_list[0]));
-				for (my $i=1; $i<$some_vertices->size(); ++$i) {
-						$facets_containing_given_vertices*=$vif->col($vertex_list[$i]);
-				}
-		}
-		my $vertices_in_facets_found; # will become of type Set
-		if ($facets_containing_given_vertices->size()==0) {
-				$vertices_in_facets_found=sequence(0,$self->N_VERTICES);
-		} else {
-				my @facet_list=@{$facets_containing_given_vertices};
-				$vertices_in_facets_found=new Set($vif->row($facet_list[0]));
-				for (my $i=1; $i<$facets_containing_given_vertices->size(); ++$i) {
-						$vertices_in_facets_found*=$vif->row($facet_list[$i]);
-				}
-		}
-		return new Pair<Set,Set>($vertices_in_facets_found,$facets_containing_given_vertices);
+   my ($self,$some_vertices)=@_;
+   $some_vertices=new Set($some_vertices); # be flexible; take anything which can be interpreted as a Set
+   my $vif=$self->RAYS_IN_FACETS;
+   my $facets_containing_given_vertices; # will become of type Set
+   if ($some_vertices->size()==0) {
+      $facets_containing_given_vertices=sequence(0,$self->N_FACETS);
+   } else {
+      my @vertex_list=@{$some_vertices};
+      $facets_containing_given_vertices=new Set($vif->col($vertex_list[0]));
+      for (my $i=1; $i<$some_vertices->size(); ++$i) {
+         $facets_containing_given_vertices*=$vif->col($vertex_list[$i]);
+      }
+   }
+   my $vertices_in_facets_found; # will become of type Set
+   if ($facets_containing_given_vertices->size()==0) {
+      $vertices_in_facets_found=sequence(0,$self->N_VERTICES);
+   } else {
+      my @facet_list=@{$facets_containing_given_vertices};
+      $vertices_in_facets_found=new Set($vif->row($facet_list[0]));
+      for (my $i=1; $i<$facets_containing_given_vertices->size(); ++$i) {
+         $vertices_in_facets_found*=$vif->row($facet_list[$i]);
+      }
+   }
+   return new Pair<Set,Set>($vertices_in_facets_found,$facets_containing_given_vertices);
 }
-
-
-rule TRIANGULATION.FACETS : RAYS {
-   $this->TRIANGULATION->FACETS=placing_triangulation($this->RAYS);
-}
-weight 4.10;
 
 }
 
@@ -621,8 +615,7 @@ user_function lawrence_matrix<Scalar>(Matrix<Scalar>) {
     my $n = $m->rows();
     my $d = $m->cols();
     my $m1 = $m | unit_matrix<Scalar>($n);
-    my $m2 = ((ones_vector<Scalar>($n)) | (zero_matrix<Scalar>($n,$d-1))) 
-	| (unit_matrix<Scalar>($n));
+    my $m2 = (ones_vector<Scalar>($n)) | (zero_matrix<Scalar>($n,$d-1)) | (unit_matrix<Scalar>($n));
     return $m1/$m2;
 }
 

@@ -1091,6 +1091,36 @@ PPCODE:
 }
 
 void
+capturing_group_boundaries(name)
+   SV* name;
+PPCODE:
+{
+   if (PL_curpm) {
+      REGEXP* re=PM_GETRE(PL_curpm);
+      struct regexp* rx;
+      if (re && (rx=ReANY(re), RXp_PAREN_NAMES(rx))) {
+        HE* he_str=hv_fetch_ent(RXp_PAREN_NAMES(rx), name, 0, 0);
+        if (he_str) {
+           I32 i;
+           SV* sv_dat=HeVAL(he_str);
+           I32* nums=(I32*)SvPVX(sv_dat);
+           for (i=0; i<SvIVX(sv_dat); i++) {
+              if ((I32)(rx->nparens) >= nums[i]) {
+                 I32 start=rx->offs[nums[i]].start;
+                 I32 end  =rx->offs[nums[i]].end;
+                 if (start != -1 && end != -1) {
+                    XPUSHs(sv_2mortal(newSViv(start)));
+                    XPUSHs(sv_2mortal(newSViv(end)));
+                    break;
+                 }
+              }
+           }
+        }
+      }
+   }
+}
+
+void
 disable_debugging()
 PPCODE:
 {
@@ -1446,6 +1476,7 @@ if (PL_DBgv) {
    CvNODEBUG_on(get_cv("Polymake::disable_debugging", FALSE));
    CvNODEBUG_on(get_cv("Polymake::enable_debugging", FALSE));
    CvNODEBUG_on(get_cv("Polymake::weak", FALSE));
+   CvNODEBUG_on(get_cv("Polymake::capturing_group_boundaries", FALSE));
    CvNODEBUG_on(get_cv("Polymake::Core::name_of_arg_var", FALSE));
    CvNODEBUG_on(get_cv("Polymake::Core::name_of_ret_var", FALSE));
    CvNODEBUG_on(get_cv("Polymake::Core::name_of_custom_var", FALSE));

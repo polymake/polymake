@@ -142,8 +142,13 @@ use Polymake::Struct (
 
 sub new {
    my $self=&_new;
-   open my $out, ">", $self->out
-      or die "Can't create output file ", $self->out, "\n";
+   my $out;
+   if ( $self->out eq "STDOUT" ) {
+       $out = *STDOUT;
+   } else {
+       open $out, ">", $self->out
+           or die "Can't create output file ", $self->out, "\n";
+   }
    $self->out=$out;
    $self;
 }
@@ -161,7 +166,7 @@ sub print_valid_point {
 }
 
 sub print_points {
-   my ($self, $Points)=@_;
+   my ($self, $Points, $Lin)=@_;
    my (@conv, @cone);
    my $out=$self->out;
    foreach my $p (@$Points) {
@@ -169,6 +174,12 @@ sub print_points {
          push @cone, join(" ", $p->slice(1))."\n";
       } else {
          push @conv, join(" ", $p->slice(1))."\n";
+      }
+   }
+   if ( defined($Lin) ) {
+       foreach my $p (@$Lin) {
+         push @cone, join(" ", $p->slice(1))."\n";
+         push @cone, join(" ", -$p->slice(1))."\n";
       }
    }
    print $out "CONV_SECTION\n", @conv if @conv;
@@ -199,7 +210,9 @@ sub DESTROY {
    my $self=shift;
    my $out=$self->out;
    print $out "END\n";
-   close $out;
+   if ( fileno($out) != fileno(STDOUT) ) {
+       close $out;
+   }
 }
 
 1

@@ -189,13 +189,14 @@ sub drawPoint {
     my $point_color=$self->source->VertexColor;
     my $point_labels=$self->source->VertexLabels;
     my $point_thickness=$self->source->VertexThickness;
+	 my $alignment = $self->source->LabelAlignment;
 
     my $text;
     if (defined($point_labels)) {
         if(is_code($point_labels)){
-            $text .= "  \\node at (v$i\_$id) [inner sep=0.5pt, above right, black] {".$point_labels->($i).'};'."\n";
+            $text .= "  \\node at (v$i\_$id) [inner sep=0.5pt, above right, black,align=".$alignment."] {".$point_labels->($i).'};'."\n";
         } elsif($point_labels !~ $Visual::hidden_re){
-            $text .= "  \\node at (v$i\_$id) [inner sep=0.5pt, above right, black] {".$point_labels.'};'."\n";
+            $text .= "  \\node at (v$i\_$id) [inner sep=0.5pt, above right, black,align=".$alignment."] {".$point_labels.'};'."\n";
         }
     }
     my $option_string = (is_code($point_color)) ? "pointcolor\_$id\_$i" : "pointcolor\_$id";

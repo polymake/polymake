@@ -18,13 +18,20 @@
 
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
+#include "polymake/TropicalNumber.h"
 #include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0>
+   FunctionInterface4perl( new, T0 ) {
+      WrapperReturnNew(T0, () );
+   };
+
    template <typename T0, typename T1>
    FunctionInterface4perl( new_X, T0,T1 ) {
       perl::Value arg0(stack[1]);
@@ -32,5 +39,13 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(new_X, SparseMatrix< Rational, NonSymmetric >, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> >);
+   FunctionInstance4perl(new, SparseMatrix< TropicalNumber< Min, Rational >, Symmetric >);
+   Class4perl("Polymake::common::SparseMatrix_A_TropicalNumber_A_Max_I_Rational_Z_I_Symmetric_Z", SparseMatrix< TropicalNumber< Max, Rational >, Symmetric >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< SparseMatrix< TropicalNumber< Min, Rational >, Symmetric > > >, perl::Canned< const SparseMatrix< TropicalNumber< Min, Rational >, Symmetric > >);
+   FunctionInstance4perl(new, SparseMatrix< TropicalNumber< Max, Rational >, Symmetric >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< SparseMatrix< TropicalNumber< Max, Rational >, Symmetric > > >, perl::Canned< const SparseMatrix< TropicalNumber< Max, Rational >, Symmetric > >);
+   Class4perl("Polymake::common::SparseMatrix_A_PuiseuxFraction_A_Max_I_Rational_I_Rational_Z_I_NonSymmetric_Z", SparseMatrix< PuiseuxFraction< Max, Rational, Rational >, NonSymmetric >);
+   FunctionInstance4perl(new, SparseMatrix< PuiseuxFraction< Max, Rational, Rational >, NonSymmetric >);
+   Class4perl("Polymake::common::SparseMatrix_A_PuiseuxFraction_A_Max_I_Rational_I_Rational_Z_I_Symmetric_Z", SparseMatrix< PuiseuxFraction< Max, Rational, Rational >, Symmetric >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

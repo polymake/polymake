@@ -23,25 +23,24 @@
 
 namespace polymake { namespace topaz {
 
-IncidenceMatrix<> web_of_stars(const Array<int>& poset_hom, 
-                               const Array<Set<Set<int> > >& star_shaped_balls,
-                               const Array<Set<int> >& simplices)
+IncidenceMatrix<> web_of_stars(const Array<int>& poset_hom,
+                                    const Array<Set<Set<int> > >& star_shaped_balls,
+                                    const Array<Set<int> >& simplices)
 {
    Map<Set<int>, int> index_of;
    int index(-1);
    for (Entire<Array<Set<int> > >::const_iterator ait = entire(simplices); !ait.at_end(); ++ait)
       index_of[*ait] = ++index;
 
-   IncidenceMatrix<> web_of_stars(poset_hom.size(), simplices.size());
+   IncidenceMatrix<> wos(poset_hom.size(), simplices.size());
    for (int i=0; i<poset_hom.size(); ++i) {
       Set<int> image_indices;
       for (Entire<Set<Set<int> > >::const_iterator sit = entire(star_shaped_balls[poset_hom[i]]); !sit.at_end(); ++sit)
          image_indices += index_of[*sit];
-      web_of_stars[i] = image_indices;
+      wos[i] = image_indices;
    }
-   return web_of_stars;
+   return wos;
 }
-
 
 UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# Produce a web of stars from two given triangulations\n"

@@ -1,0 +1,107 @@
+*******************************************************************************
+**********             The easiest way to use libnormaliz            **********
+*******************************************************************************
+
+This is an early version of libnormaliz. It may very well happen that the interface changes in the future!
+Please contact us if you want to use the normaliz library.
+
+More information on normaliz:
+http://www.mathematik.uni-osnabrueck.de/normaliz/
+
+Preperation:
+
+Check the compile instructions in ../INSTALL
+
+To use libnormaliz link libnormaliz.a in. It might be necessary to activate compilation with OpenMP (in g++ use the -fopenmp flag).
+
+
+Quick workflow overview:
+
+1) include libnormaliz/cone.h in your source code
+2) create a libnormaliz::Cone object
+3) call one of the Cone.compute() methods
+4) check if the desired data is computed: isComputed( X )
+5) get the data: getX()
+6) repeat 4+5 or 3+4+5
+
+
+In version 3.0 the default template parameter should be mpz_class.
+Internally libnormaliz will still use a smaller integer type in the
+computations if possible and switch to mpz_class where necessary.
+If you use another type, e.g. long, libnormaliz will use this type for
+computations and will throw an exception if it fails.
+
+Example:
+
+typedef mpz_class Integer;
+
+// get some input data
+std::vector< std::vector <Integer> > Data = ...
+libnormaliz::Type::InputType type = integral_closure; // for all input types see below
+libnormaliz::Cone<Integer> MyCone = libnormaliz::Cone<Integer>(type, Data);
+
+libnormaliz::ConeProperties Wanted;
+Wanted.set(libnormaliz::ConeProperty::Triangulation, libnormaliz::ConeProperty::HilbertBasis);
+MyCone.compute(Wanted);
+
+// or just
+//MyCone.compute(libnormaliz::ConeProperty::Triangulation, libnormaliz::ConeProperty::HilbertBasis);
+
+if (MyCone.isComputed(libnormaliz::ConeProperty::HilbertBasis)) {
+	std::vector< std::vector< Integer> > HB& = MyCone.getHilbertBasis();
+	//use it
+}
+if (MyCone.isComputed(libnormaliz::ConeProperty::Multiplicity)) {
+   cout << "MyCone has multiplicity " << MyCone.getMultiplicity();
+}
+
+
+
+Possible InputTypes (from libnormaliz.h):
+    integral_closure,
+    polyhedron,
+    normalization,
+    polytope,
+    rees_algebra,
+    inequalities,
+    strict_inequalities,
+    signs,
+    strict_signs,
+    equations,
+    congruences,
+    inhom_inequalities,
+    dehomogenization,
+    inhom_equations,
+    inhom_congruences,
+    lattice_ideal,
+    grading,
+    excluded_faces
+
+You can give up to 3 input type/matrix combinations directly in the constructor.
+To combine more input types, build a
+std::map <libnormaliz::InputType, vector< vector<Integer> >
+and construct the libnormaliz::Cone from it.
+
+See cone_property.h for a complete list of possible properties.
+
+Please see the Normaliz Documentation for more information on the input types and computation modes
+http://www.mathematik.uni-osnabrueck.de/normaliz/
+
+
+
+Alternative Configuration
+
+The integer type in the libnormaliz library is templated. So in theory it is possible to use other integer types. Then you have to include libnormaliz-all.cpp. In this case you do not need to link libnormaliz.a. We suggest (and only tested) 'long long int' and the gmp type 'mpz_class'.
+
+
+Other integer types
+
+If you want to use other types, you probably have to implement some conversion functions which you can find in integer.h. Namely
+
+bool libnormaliz::try_convert(TypeA, TypeB); // converts TypeB to TypeA, returns false if not possible
+
+where one type is your type and the other is long or long long (and maybe mpz_class?).
+Additionally if your type uses arbritary precision (i.e. it is some wrapper for mpz) also implement
+
+template<> inline bool using_GMP<YourType>() { return true; }
+

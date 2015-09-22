@@ -1,8 +1,8 @@
 /*****************************************************************************
 *                                                                            *
-*  Auxiliary source file for version 2.2 of nauty.                           *
+*  Auxiliary source file for version 2.5 of nauty.                           *
 *                                                                            *
-*   Copyright (1984-2002) Brendan McKay.  All rights reserved.               *
+*   Copyright (1984-2013) Brendan McKay.  All rights reserved.               *
 *   Subject to waivers and disclaimers in nauty.h.                           *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
@@ -48,6 +48,14 @@
 *                     the array (thanks to Jan Kieffer)                      *
 *       17-Nov-03 : changed INFINITY to NAUTY_INFINITY                       *
 *       14-Sep-04 : extended prototypes to recursive functions               *
+*       23-Nov-06 : replave targetcell() by maketargetcell()                 *
+*       10-Dec-06 : remove BIGNAUTY                                          *
+*       10-Dec-10 : remove shortish and permutation types                    *
+*       11-May-10 : use sorttemplates.c                                      *
+*       27-Mar-11 : add writegroupsize()                                     *
+*       15-Jan-12 : add TLS_ATTR attributes                                  *
+*       16-Sep-12 : small change to objoin(), more efficient for sparse case *
+*       22-Sep-12 : change documentation of orbjoin()                        *
 *                                                                            *
 *****************************************************************************/
 
@@ -58,13 +66,15 @@
 #endif
 
     /* macros for hash-codes: */
+    /* Don't use NAUTY_INFINITY here as that would make the canonical
+     * labelling depend on whether BIGNAUTY is in operation */
 #define MASH(l,i) ((((l) ^ 065435) + (i)) & 077777)
     /* : expression whose long value depends only on long l and int/long i.
-	 Anything goes, preferably non-commutative. */
+         Anything goes, preferably non-commutative. */
 
 #define CLEANUP(l) ((int)((l) % 077777))
     /* : expression whose value depends on long l and is less than 077777
-	 when converted to int then short.  Anything goes. */
+         when converted to int then short.  Anything goes. */
 
 #if  MAXM==1
 #define M 1
@@ -73,12 +83,12 @@
 #endif
 
 #if !MAXN
-DYNALLSTAT(permutation,workperm,workperm_sz);
+DYNALLSTAT(int,workperm,workperm_sz);
 #else
-static permutation workperm[MAXN];
+static TLS_ATTR int workperm[MAXN];
 #endif
 
-int labelorg = 0;
+int labelorg = 0;   /* no TLS_ATTR on purpose */
 
 /* aproto: header new_nauty_protos.h */
 
@@ -96,33 +106,33 @@ int labelorg = 0;
 int
 nextelement(set *set1, int m, int pos)
 {
-	register setword setwd;
-	register int w;
+    setword setwd;
+    int w;
 
 #if  MAXM==1
-	if (pos < 0) setwd = set1[0];
-	else         setwd = set1[0] & BITMASK(pos);
+    if (pos < 0) setwd = set1[0];
+    else         setwd = set1[0] & BITMASK(pos);
 
-	if (setwd == 0) return -1;
-	else            return FIRSTBIT(setwd);
+    if (setwd == 0) return -1;
+    else            return FIRSTBITNZ(setwd);
 #else
-	if (pos < 0)
-	{
-	    w = 0;
-	    setwd = set1[0];
-	}
-	else
-	{
-	    w = SETWD(pos);
-	    setwd = set1[w] & BITMASK(SETBT(pos));
-	}
+    if (pos < 0)
+    {
+        w = 0;
+        setwd = set1[0];
+    }
+    else
+    {
+        w = SETWD(pos);
+        setwd = set1[w] & BITMASK(SETBT(pos));
+    }
 
-	for (;;)
-	{
-	    if (setwd != 0) return  TIMESWORDSIZE(w) + FIRSTBIT(setwd);
-	    if (++w == m) return -1;
-	    setwd = set1[w];
-	}
+    for (;;)
+    {
+        if (setwd != 0) return  TIMESWORDSIZE(w) + FIRSTBITNZ(setwd);
+        if (++w == m) return -1;
+        setwd = set1[w];
+    }
 
 #endif
 }
@@ -137,32 +147,32 @@ nextelement(set *set1, int m, int pos)
 *****************************************************************************/
 
 void
-permset(set *set1, set *set2, int m, permutation *perm)
+permset(set *set1, set *set2, int m, int *perm)
 {
-	register setword setw;
-	register int pos,w,b;
+    setword setw;
+    int pos,w,b;
 
-	EMPTYSET(set2,m);
+    EMPTYSET(set2,m);
 
 #if  MAXM==1
-        setw = set1[0];
-	while (setw  != 0)
-	{
-	    TAKEBIT(b,setw);
-	    pos = perm[b];
-	    ADDELEMENT(set2,pos);
-	}
+    setw = set1[0];
+    while (setw  != 0)
+    {
+        TAKEBIT(b,setw);
+        pos = perm[b];
+        ADDELEMENT(set2,pos);
+    }
 #else
-	for (w = 0; w < m; ++w)
-	{
-	    setw = set1[w];
-	    while (setw != 0)
-	    {
-		TAKEBIT(b,setw);
-	        pos = perm[TIMESWORDSIZE(w)+b];
-	        ADDELEMENT(set2,pos);
-	    }
-	}
+    for (w = 0; w < m; ++w)
+    {
+        setw = set1[w];
+        while (setw != 0)
+        {
+            TAKEBIT(b,setw);
+            pos = perm[TIMESWORDSIZE(w)+b];
+            ADDELEMENT(set2,pos);
+        }
+    }
 #endif
 }
 
@@ -175,11 +185,11 @@ permset(set *set1, set *set2, int m, permutation *perm)
 void
 putstring(FILE *f, char *s)
 {
-	while (*s != '\0')
-	{
-	    PUTC(*s,f);
-	    ++s;
-	}
+    while (*s != '\0')
+    {
+        PUTC(*s,f);
+        ++s;
+    }
 }
 
 /*****************************************************************************
@@ -195,77 +205,78 @@ putstring(FILE *f, char *s)
 int
 itos(int i, char *s)
 {
-	register int digit,j,k;
-	register char c;
-	int ans;
+    int digit,j,k;
+    char c;
+    int ans;
 
-	if (i < 0)
-	{
-	    k = 0;
-	    i = -i;
-	    j = 1;
-	    s[0] = '-';
-	}
-	else
-	{
-	    k = -1;
-	    j = 0;
-	}
+    if (i < 0)
+    {
+        k = 0;
+        i = -i;
+        j = 1;
+        s[0] = '-';
+    }
+    else
+    {
+        k = -1;
+        j = 0;
+    }
 
-	do
-	{
-	    digit = i % 10;
-	    i = i / 10;
-	    s[++k] = digit + '0';
-	}
-	while (i);
+    do
+    {
+        digit = i % 10;
+        i = i / 10;
+        s[++k] = digit + '0';
+    }
+    while (i);
 
-	s[k+1] = '\0';
-	ans = k + 1;
+    s[k+1] = '\0';
+    ans = k + 1;
 
-	for (; j < k; ++j, --k)
-	{
-	    c = s[j];
-	    s[j] = s[k];
-	    s[k] = c;
-	}
+    for (; j < k; ++j, --k)
+    {
+        c = s[j];
+        s[j] = s[k];
+        s[k] = c;
+    }
 
-	return ans;
+    return ans;
 }
 
 /*****************************************************************************
 *                                                                            *
 *  orbits represents a partition of {0,1,...,n-1}, by orbits[i] = the        *
-*  smallest element in the same cell as i.  orbjoin(orbits,autom,n) updates  *
-*  the partition orbits to the join of its current value and the cycle       *
-*  partition of perm.  The function value returned is the new number of      *
-*  cells.                                                                    *
+*  smallest element in the same cell as i.  map[] is any array with values   *
+*  in {0,1,...,n-1}.  orbjoin(orbits,map,n) joins the cells of orbits[]      *
+*  together to the minimum extent such that for each i, i and map[i] are in  *
+*  the same cell.  The function value returned is the new number of cells.   *
 *                                                                            *
 *  GLOBALS ACCESSED: NONE                                                    *
 *                                                                            *
 *****************************************************************************/
 
 int
-orbjoin(int *orbits, permutation *perm, int n)
+orbjoin(int *orbits, int *map, int n)
 {
-	register int i,j1,j2;
+    int i,j1,j2;
 
-	for (i = 0; i < n; ++i)
-	{
-	    j1 = orbits[i];
-	    while (orbits[j1] != j1) j1 = orbits[j1];
-	    j2 = orbits[perm[i]];
-	    while (orbits[j2] != j2) j2 = orbits[j2];
+    for (i = 0; i < n; ++i)
+    if (map[i] != i)
+    {
+        j1 = orbits[i];
+        while (orbits[j1] != j1) j1 = orbits[j1];
+        j2 = orbits[map[i]];
+        while (orbits[j2] != j2) j2 = orbits[j2];
 
-	    if (j1 < j2)      orbits[j2] = j1;
-	    else if (j1 > j2) orbits[j1] = j2;
-	}
+        if (j1 < j2)      orbits[j2] = j1;
+        else if (j1 > j2) orbits[j1] = j2;
+    }
 
-	j1 = 0;
-	for (i = 0; i < n; ++i)
-	    if ((orbits[i] = orbits[orbits[i]]) == i) ++j1;
+    j1 = 0;
+    for (i = 0; i < n; ++i)
+        if ((orbits[i] = orbits[orbits[i]]) == i) ++j1;
 
-	return j1;
+    return j1;
 }
 
 /*****************************************************************************
@@ -283,68 +294,68 @@ orbjoin(int *orbits, permutation *perm, int n)
 *****************************************************************************/
 
 void
-writeperm(FILE *f, permutation *perm, boolean cartesian, int linelength, int n)
+writeperm(FILE *f, int *perm, boolean cartesian, int linelength, int n)
 {
-	register int i,k,l,curlen,intlen;
-	char s[30];
+    int i,k,l,curlen,intlen;
+    char s[30];
 
 #if !MAXN
-	DYNALLOC1(permutation,workperm,workperm_sz,n,"writeperm");
+    DYNALLOC1(int,workperm,workperm_sz,n,"writeperm");
 #endif
 
     /* CONDNL(x) writes end-of-line and 3 spaces if x characters
        won't fit on the current line. */
 #define CONDNL(x) if (linelength>0 && curlen+(x)>linelength)\
-	          {putstring(f,"\n   ");curlen=3;}
+              {putstring(f,"\n   ");curlen=3;}
 
-	curlen = 0;
-	if (cartesian)
-	{
-	    for (i = 0; i < n; ++i)
-	    {
-	        intlen = itos(perm[i]+labelorg,s);
-	        CONDNL(intlen+1);
-	        PUTC(' ',f);
-	        putstring(f,s);
-	        curlen += intlen + 1;
-	    }
-	    PUTC('\n',f);
-	}
-	else
-	{
-	    for (i = n; --i >= 0;) workperm[i] = 0;
+    curlen = 0;
+    if (cartesian)
+    {
+        for (i = 0; i < n; ++i)
+        {
+            intlen = itos(perm[i]+labelorg,s);
+            CONDNL(intlen+1);
+            PUTC(' ',f);
+            putstring(f,s);
+            curlen += intlen + 1;
+        }
+        PUTC('\n',f);
+    }
+    else
+    {
+        for (i = n; --i >= 0;) workperm[i] = 0;
 
-	    for (i = 0; i < n; ++i)
-	    {
-	        if (workperm[i] == 0 && perm[i] != i)
-	        {
-	            l = i;
-	            intlen = itos(l+labelorg,s);
-	            if (curlen > 3) CONDNL(2*intlen+4);
-	            PUTC('(',f);
-	            do
-	            {
-	                putstring(f,s);
-	                curlen += intlen + 1;
-	                k = l;
-	                l = perm[l];
-	                workperm[k] = 1;
-	                if (l != i)
-	                {
-	                    intlen = itos(l+labelorg,s);
-	                    CONDNL(intlen+2);
-	                    PUTC(' ',f);
-	                }
-	            }
-	            while (l != i);
-	            PUTC(')',f);
-	            ++curlen;
-	        }
-	    }
+        for (i = 0; i < n; ++i)
+        {
+            if (workperm[i] == 0 && perm[i] != i)
+            {
+                l = i;
+                intlen = itos(l+labelorg,s);
+                if (curlen > 3) CONDNL(2*intlen+4);
+                PUTC('(',f);
+                do
+                {
+                    putstring(f,s);
+                    curlen += intlen + 1;
+                    k = l;
+                    l = perm[l];
+                    workperm[k] = 1;
+                    if (l != i)
+                    {
+                        intlen = itos(l+labelorg,s);
+                        CONDNL(intlen+2);
+                        PUTC(' ',f);
+                    }
+                }
+                while (l != i);
+                PUTC(')',f);
+                ++curlen;
+            }
+        }
 
-	    if (curlen == 0) putstring(f,"(1)\n");
-	    else             PUTC('\n',f);
-	}
+        if (curlen == 0) putstring(f,"(1)\n");
+        else             PUTC('\n',f);
+    }
 }
 
 /*****************************************************************************
@@ -358,38 +369,38 @@ writeperm(FILE *f, permutation *perm, boolean cartesian, int linelength, int n)
 *****************************************************************************/
 
 void
-fmperm(permutation *perm, set *fix, set *mcr, int m, int n)
+fmperm(int *perm, set *fix, set *mcr, int m, int n)
 {
-	register int i,k,l;
+    int i,k,l;
 
 #if !MAXN
-	DYNALLOC1(permutation,workperm,workperm_sz,n,"writeperm");
+    DYNALLOC1(int,workperm,workperm_sz,n,"writeperm");
 #endif
 
-	EMPTYSET(fix,m);
-	EMPTYSET(mcr,m);
+    EMPTYSET(fix,m);
+    EMPTYSET(mcr,m);
 
-	for (i = n; --i >= 0;) workperm[i] = 0;
+    for (i = n; --i >= 0;) workperm[i] = 0;
 
-	for (i = 0; i < n; ++i)
-	    if (perm[i] == i)
-	    {
-	        ADDELEMENT(fix,i);
-	        ADDELEMENT(mcr,i);
-	    }
-	    else if (workperm[i] == 0)
-	    {
-	        l = i;
-	        do
-	        {
-	            k = l;
-	            l = perm[l];
-	            workperm[k] = 1;
-	        }
-	        while (l != i);
+    for (i = 0; i < n; ++i)
+        if (perm[i] == i)
+        {
+            ADDELEMENT(fix,i);
+            ADDELEMENT(mcr,i);
+        }
+        else if (workperm[i] == 0)
+        {
+            l = i;
+            do
+            {
+                k = l;
+                l = perm[l];
+                workperm[k] = 1;
+            }
+            while (l != i);
 
-	        ADDELEMENT(mcr,i);
-	    }
+            ADDELEMENT(mcr,i);
+        }
 }
 
 /*****************************************************************************
@@ -406,26 +417,32 @@ fmperm(permutation *perm, set *fix, set *mcr, int m, int n)
 void
 fmptn(int *lab, int *ptn, int level, set *fix, set *mcr, int m, int n)
 {
-	register int i,lmin;
+    int i,lmin;
 
-	EMPTYSET(fix,m);
-	EMPTYSET(mcr,m);
+    EMPTYSET(fix,m);
+    EMPTYSET(mcr,m);
 
-	for (i = 0; i < n; ++i)
-	    if (ptn[i] <= level)
-	    {
-	        ADDELEMENT(fix,lab[i]);
-	        ADDELEMENT(mcr,lab[i]);
-	    }
-	    else
-	    {
-	        lmin = lab[i];
-	        do
-	            if (lab[++i] < lmin) lmin = lab[i];
-	        while (ptn[i] > level);
-	        ADDELEMENT(mcr,lmin);
-	    }
+    for (i = 0; i < n; ++i)
+        if (ptn[i] <= level)
+        {
+            ADDELEMENT(fix,lab[i]);
+            ADDELEMENT(mcr,lab[i]);
+        }
+        else
+        {
+            lmin = lab[i];
+            do
+                if (lab[++i] < lmin) lmin = lab[i];
+            while (ptn[i] > level);
+            ADDELEMENT(mcr,lmin);
+        }
 }
+
+#define SORT_TYPE1 int
+#define SORT_TYPE2 int
+#define SORT_OF_SORT 2
+#define SORT_NAME sortparallel
+#include "sorttemplates.c"
 
 /*****************************************************************************
 *                                                                            *
@@ -455,106 +472,81 @@ fmptn(int *lab, int *ptn, int level, set *fix, set *mcr, int m, int n)
 
 void
 doref(graph *g, int *lab, int *ptn, int level, int *numcells,
-     int *qinvar, permutation *invar, set *active, int *code,
-     void (*refproc)(graph*,int*,int*,int,int*,permutation*,set*,int*,int,int),
-     void (*invarproc)(graph*,int*,int*,int,int,int,permutation*,
-                                                     int,boolean,int,int),
+     int *qinvar, int *invar, set *active, int *code,
+     void (*refproc)(graph*,int*,int*,int,int*,int*,set*,int*,int,int),
+     void (*invarproc)(graph*,int*,int*,int,int,int,int*,
+                                                 int,boolean,int,int),
      int mininvarlev, int maxinvarlev, int invararg,
      boolean digraph, int m, int n)
 {
-	register int j,h;
-	register permutation pw;
-	int iw;
-	int i,cell1,cell2,nc,tvpos,minlev,maxlev;
-	long longcode;
-	boolean same;
+    int pw;
+    int i,cell1,cell2,nc,tvpos,minlev,maxlev;
+    long longcode;
+    boolean same;
 
 #if !MAXN 
-	DYNALLOC1(permutation,workperm,workperm_sz,n,"doref"); 
+    DYNALLOC1(int,workperm,workperm_sz,n,"doref"); 
 #endif
 
-	if ((tvpos = nextelement(active,M,-1)) < 0) tvpos = 0;
+    if ((tvpos = nextelement(active,M,-1)) < 0) tvpos = 0;
 
-	(*refproc)(g,lab,ptn,level,numcells,invar,active,code,M,n);
+    (*refproc)(g,lab,ptn,level,numcells,invar,active,code,M,n);
 
-	minlev = (mininvarlev < 0 ? -mininvarlev : mininvarlev);
-	maxlev = (maxinvarlev < 0 ? -maxinvarlev : maxinvarlev);
-	if (invarproc != NULL && *numcells < n
-	                    && level >= minlev && level <= maxlev)
-	{
-	    (*invarproc)(g,lab,ptn,level,*numcells,tvpos,invar,invararg,
-	                                                         digraph,M,n);
-	    EMPTYSET(active,m);
-	    for (i = n; --i >= 0;) workperm[i] = invar[lab[i]];
-	    nc = *numcells;
-	    for (cell1 = 0; cell1 < n; cell1 = cell2 + 1)
-	    {
-	        pw = workperm[cell1];
-	        same = TRUE;
-	        for (cell2 = cell1; ptn[cell2] > level; ++cell2)
-	            if (workperm[cell2+1] != pw) same = FALSE;
+    minlev = (mininvarlev < 0 ? -mininvarlev : mininvarlev);
+    maxlev = (maxinvarlev < 0 ? -maxinvarlev : maxinvarlev);
+    if (invarproc != NULL && *numcells < n
+                        && level >= minlev && level <= maxlev)
+    {
+        (*invarproc)(g,lab,ptn,level,*numcells,tvpos,invar,invararg,
+                                                             digraph,M,n);
+        EMPTYSET(active,m);
+        for (i = n; --i >= 0;) workperm[i] = invar[lab[i]];
+        nc = *numcells;
+        for (cell1 = 0; cell1 < n; cell1 = cell2 + 1)
+        {
+            pw = workperm[cell1];
+            same = TRUE;
+            for (cell2 = cell1; ptn[cell2] > level; ++cell2)
+                if (workperm[cell2+1] != pw) same = FALSE;
 
-	        if (same) continue;
+            if (same) continue;
 
-	        j = (cell2 - cell1 + 1) / 3;
-	        h = 1;
-	        do
-	            h = 3 * h + 1;
-	        while (h < j);
+            sortparallel(workperm+cell1, lab+cell1, cell2-cell1+1);
 
-	        do                      /* shell sort */
-	        {
-	            for (i = cell1 + h; i <= cell2; ++i)
-	            {
-	                iw = lab[i];
-	                pw = workperm[i];
-	                for (j = i; workperm[j-h] > pw; )
-	                {
-	                    workperm[j] = workperm[j-h];
-	                    lab[j] = lab[j-h];
-	                    if ((j -= h) < cell1 + h) break;
-	                }
-	                workperm[j] = pw;
-	                lab[j] = iw;
-	            }
-	            h /= 3;
-	        }
-	        while (h > 0);
+            for (i = cell1 + 1; i <= cell2; ++i)
+                if (workperm[i] != workperm[i-1])
+                {
+                    ptn[i-1] = level;
+                    ++*numcells;
+                    ADDELEMENT(active,i);
+                }
+        }
 
-	        for (i = cell1 + 1; i <= cell2; ++i)
-	            if (workperm[i] != workperm[i-1])
-	            {
-	                ptn[i-1] = level;
-	                ++*numcells;
-	                ADDELEMENT(active,i);
-	            }
-	    }
-
-	    if (*numcells > nc)
-	    {
-	        *qinvar = 2;
-	        longcode = *code;
-	        (*refproc)(g,lab,ptn,level,numcells,invar,active,code,M,n);
-	        longcode = MASH(longcode,*code);
-	        *code = CLEANUP(longcode);
-	    }
-	    else
-	        *qinvar = 1;
-	}
-	else
-	    *qinvar = 0;
+        if (*numcells > nc)
+        {
+            *qinvar = 2;
+            longcode = *code;
+            (*refproc)(g,lab,ptn,level,numcells,invar,active,code,M,n);
+            longcode = MASH(longcode,*code);
+            *code = CLEANUP(longcode);
+        }
+        else
+            *qinvar = 1;
+    }
+    else
+        *qinvar = 0;
 }
 
 /*****************************************************************************
 *                                                                            *
-*  targetcell(g,lab,ptn,level,numcells,tcell,tcellsize,&cellpos,tc_level,    *
-*             hint,goodcell,m,n)                                             *
-*  examines the partition at the specified level in the partition nest       *
-*  (lab,ptn) and finds a non-trival cell (if none, the first cell).          *
-*  If hint >= 0 and there is a non-trivial cell starting at position hint    *
-*      in lab, that cell is chosen.                                          *
-*  Else, If level <= tc_level, *goodcell is called to choose a cell.         *
-*        Else, the first non-trivial cell is chosen.                         *
+*  maketargetcell(g,lab,ptn,level,tcell,tcellsize,&cellpos,                  *
+*                 tc_level,digraph,hint,targetcell,m,n)                      *
+*  calls targetcell() to determine the target cell at the specified level    *
+*  in the partition nest (lab,ptn).  It must be a nontrivial cell (if not,   *
+*  the first cell.  The intention of hint is that, if hint >= 0 and there    *
+*  is a suitable non-trivial cell starting at position hint in lab,          *
+*  that cell is chosen.                                                      *
+*  tc_level and digraph are input options.                                   *
 *  When a cell is chosen, tcell is set to its contents, *tcellsize to its    *
 *  size, and cellpos to its starting position in lab.                        *
 *                                                                            *
@@ -563,32 +555,23 @@ doref(graph *g, int *lab, int *ptn, int level, int *numcells,
 *****************************************************************************/
 
 void
-targetcell(graph *g, int *lab, int *ptn, int level, int numcells,
-           set *tcell, int *tcellsize, int *cellpos, int tc_level,
-           int hint, int (*goodcell)(graph*,int*,int*,int,int,int,int),
-           int m, int n)
+maketargetcell(graph *g, int *lab, int *ptn, int level, set *tcell,
+       int *tcellsize, int *cellpos, int tc_level, boolean digraph,
+       int hint,
+       int (*targetcell)(graph*,int*,int*,int,int,boolean,int,int,int),
+       int m, int n)
 {
-	register int i,j,k;
+    int i,j,k;
 
-	if (hint >= 0 && ptn[hint] > level &&
-	                 (hint == 0 || ptn[hint-1] <= level))
-	    i = hint;
-	else if (level <= tc_level && goodcell != NULL)
-	    i = (*goodcell)(g,lab,ptn,level,tc_level,m,n);
-	else
-	    for (i = 0; i < n && ptn[i] <= level; ++i) {}
+    i = (*targetcell)(g,lab,ptn,level,tc_level,digraph,hint,m,n);
+    for (j = i + 1; ptn[j] > level; ++j) {}
 
-	if (i == n)
-	    i = j = 0;
-	else
-	    for (j = i + 1; ptn[j] > level; ++j) {}
+    *tcellsize = j - i + 1;
 
-	*tcellsize = j - i + 1;
+    EMPTYSET(tcell,m);
+    for (k = i; k <= j; ++k) ADDELEMENT(tcell,lab[k]);
 
-	EMPTYSET(tcell,m);
-	for (k = i; k <= j; ++k) ADDELEMENT(tcell,lab[k]);
-
-	*cellpos = i;
+    *cellpos = i;
 }
 
 /*****************************************************************************
@@ -602,9 +585,9 @@ targetcell(graph *g, int *lab, int *ptn, int level, int numcells,
 void
 shortprune(set *set1, set *set2, int m)
 {
-	register int i;
+    int i;
 
-	for (i = 0; i < M; ++i) INTERSECT(set1[i],set2[i]);
+    for (i = 0; i < M; ++i) INTERSECT(set1[i],set2[i]);
 }
 
 /*****************************************************************************
@@ -621,25 +604,25 @@ shortprune(set *set1, set *set2, int m)
 
 void
 breakout(int *lab, int *ptn, int level, int tc, int tv,
-         set *active, int m)
+     set *active, int m)
 {
-	register int i,prev,next;
+    int i,prev,next;
 
-	EMPTYSET(active,m);
-	ADDELEMENT(active,tc);
+    EMPTYSET(active,m);
+    ADDELEMENT(active,tc);
 
-	i = tc;
-	prev = tv;
+    i = tc;
+    prev = tv;
 
-	do
-	{
-	    next = lab[i];
-	    lab[i++] = prev;
-	    prev = next;
-	}
-	while (prev != tv);
+    do
+    {
+        next = lab[i];
+        lab[i++] = prev;
+        prev = next;
+    }
+    while (prev != tv);
 
-	ptn[tc] = level;
+    ptn[tc] = level;
 }
 
 /*****************************************************************************
@@ -656,18 +639,43 @@ breakout(int *lab, int *ptn, int level, int tc, int tv,
 void
 longprune(set *tcell, set *fix, set *bottom, set *top, int m)
 {
-	register int i;
+    int i;
 
-	while (bottom < top)
-	{
-	    for (i = 0; i < M; ++i)
-	        if (NOTSUBSET(fix[i],bottom[i])) break;
-	    bottom += M;
+    while (bottom < top)
+    {
+        for (i = 0; i < M; ++i)
+            if (NOTSUBSET(fix[i],bottom[i])) break;
+        bottom += M;
 
-	    if (i == M)
-	        for (i = 0; i < M; ++i) INTERSECT(tcell[i],bottom[i]);
-	    bottom += M;
-	}
+        if (i == M)
+            for (i = 0; i < M; ++i) INTERSECT(tcell[i],bottom[i]);
+        bottom += M;
+    }
+}
+
+/*****************************************************************************
+*                                                                            *
+*  writegroupsize(f,gpsize1,gpsize2) writes a real number gpsize1*10^gpsize2 *
+*  It is assumed that gpsize1 >= 1 and that gpsize1 equals an integer in the *
+*  case that gpsize2==0.  These assumptions are true for group sizes         *
+*  computed by nauty.                                                        *
+*                                                                            *
+*****************************************************************************/
+
+void
+writegroupsize(FILE *f, double gpsize1, int gpsize2)
+{
+    if (gpsize2 == 0)
+        fprintf(f,"%.0f",gpsize1+0.1);
+    else
+    {   
+        while (gpsize1 >= 10.0)
+        {   
+            gpsize1 /= 10.0;
+            ++gpsize2;
+        }
+        fprintf(f,"%14.12fe%d",gpsize1,gpsize2);
+    }
 }
 
 /*****************************************************************************
@@ -680,45 +688,31 @@ longprune(set *tcell, set *fix, set *bottom, set *top, int m)
 void
 nautil_check(int wordsize, int m, int n, int version)
 {
-	if (wordsize != WORDSIZE)
-	{
-	    fprintf(ERRFILE,"Error: WORDSIZE mismatch in nautil.c\n");
-	    exit(1);
-	}
+    if (wordsize != WORDSIZE)
+    {
+        fprintf(ERRFILE,"Error: WORDSIZE mismatch in nautil.c\n");
+        exit(1);
+    }
 
 #if MAXN
-	if (m > MAXM)
-	{
-	    fprintf(ERRFILE,"Error: MAXM inadequate in nautil.c\n");
-	    exit(1);
-	}
+    if (m > MAXM)
+    {
+        fprintf(ERRFILE,"Error: MAXM inadequate in nautil.c\n");
+        exit(1);
+    }
 
-	if (n > MAXN)
-	{
-	    fprintf(ERRFILE,"Error: MAXN inadequate in nautil.c\n");
-	    exit(1);
-	}
+    if (n > MAXN)
+    {
+        fprintf(ERRFILE,"Error: MAXN inadequate in nautil.c\n");
+        exit(1);
+    }
 #endif
 
-#ifdef BIGNAUTY
-	if ((version & 1) == 0)
-        {   
-            fprintf(ERRFILE,"Error: BIGNAUTY mismatch in nautil.c\n");
-            exit(1);
-        }
-#else
-        if ((version & 1) == 1)
-        {   
-            fprintf(ERRFILE,"Error: BIGNAUTY mismatch in nautil.c\n");
-            exit(1);
-        }
-#endif
-
-        if (version < NAUTYREQUIRED)
-        {
-            fprintf(ERRFILE,"Error: nautil.c version mismatch\n");
-            exit(1);
-        }
+    if (version < NAUTYREQUIRED)
+    {
+        fprintf(ERRFILE,"Error: nautil.c version mismatch\n");
+        exit(1);
+    }
 }
 
 /*****************************************************************************
@@ -730,8 +724,8 @@ nautil_check(int wordsize, int m, int n, int version)
 void
 alloc_error(char *s)
 {
-        fprintf(ERRFILE,"Dynamic allocation failed: %s\n",s);
-        exit(2);
+    fprintf(ERRFILE,"Dynamic allocation failed: %s\n",s);
+    exit(2);
 }
 
 /*****************************************************************************
@@ -744,6 +738,6 @@ void
 nautil_freedyn(void)
 {
 #if !MAXN
-        DYNFREE(workperm,workperm_sz);
+    DYNFREE(workperm,workperm_sz);
 #endif
 }

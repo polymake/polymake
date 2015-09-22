@@ -13,18 +13,6 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-object TDivisor {
-
-   # @category Combinatorics
-   # Exponents of the fractional ideal of global sections. This property only
-   # makes sense for affine toric varieties.
-   property MODULE_GENERATORS : Matrix<Integer> {
-
-      sub equal { &equal_up_to_row_permutation; }
-
-   }
-
-}
 
 object AffineNormalToricVariety {
    
@@ -33,6 +21,20 @@ object AffineNormalToricVariety {
    # I.e., intersect this cone with the lattice, take the semigroup algebra over
    # it and take the spectrum.
    property WEIGHT_CONE : Cone;
+
+   property DIVISOR {
+
+      # @category Combinatorics
+      # Exponents of the fractional ideal of global sections. This property only
+      # makes sense for affine toric varieties.
+      property MODULE_GENERATORS : Matrix<Integer> {
+
+         sub equal { &equal_up_to_row_permutation; }
+
+      }
+
+   }
+
 
    rule WEIGHT_CONE.INEQUALITIES : RAYS {
       $this->WEIGHT_CONE->INEQUALITIES = $this->RAYS;

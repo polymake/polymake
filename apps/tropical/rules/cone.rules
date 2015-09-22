@@ -14,199 +14,59 @@
 #-------------------------------------------------------------------------------
 
 
-object TropicalPolytope {
+object Cone{
 
-# Dimension of the tropical projective space which contains the tropical polytope.
+	#rule PSEUDOVERTEX_LABELS : PSEUDOVERTEX_COVECTORS {
+	#	$this->PSEUDOVERTEX_LABELS(temporary)=[ map { join("", @$_) } @{$this->PSEUDOVERTEX_COVECTORS} ];
+	#}
 
-property AMBIENT_DIM : Int;
+	rule PROJECTIVE_AMBIENT_DIM : PSEUDOVERTICES | POINTS {
+		$this->PROJECTIVE_AMBIENT_DIM=($this->PSEUDOVERTICES | POINTS)->cols-1;
+	}
+	weight 0.10;
 
+	rule VERTICES, VERTICES_IN_POINTS : POINTS {
+		discard_non_vertices($this);
+	}
+	weight 1.20;
 
-# Input points in homogeneous coordinates.  This is the fixed system of generators with respect
-# to which many combinatorial properties are expressed.
+	rule ENVELOPE.INEQUALITIES, ENVELOPE.EQUATIONS : POINTS{
+		$this->ENVELOPE = envelope($this->POINTS);
+	}
 
-property POINTS : Matrix<Scalar> {
+	rule DOME : POINTS {
+		$this->DOME = dome_hyperplane_arrangement($this->POINTS);
+	}
 
-   sub canonical { &canonicalize_rational_to_leading_zero; }
-#   sub canonical { &canonicalize_to_nonnegative; }
-}
+	rule PSEUDOVERTICES, MAXIMAL_COVECTOR_CELLS : DOME {
+		extract_pseudovertices($this);
+	}
 
-# Vertices of the tropical convex hull in homogeneous coordinates:
-# We normalize by setting the first homogeneous coordinate to zero.
+	rule TORUS_COVECTOR_DECOMPOSITION, CONE_COVECTOR_DECOMPOSITION, CONE_MAXIMAL_COVECTOR_CELLS, MAXIMAL_COVECTORS, CONE_MAXIMAL_COVECTORS : POINTS, PSEUDOVERTICES, PSEUDOVERTEX_COVECTORS, MAXIMAL_COVECTOR_CELLS {
+		compute_covector_decomposition($this,0);
+	}
+	weight 6.20;
 
-property VERTICES : Matrix<Scalar> {
+	rule CONE_COVECTOR_DECOMPOSITION, CONE_MAXIMAL_COVECTOR_CELLS, CONE_MAXIMAL_COVECTORS : POINTS, PSEUDOVERTICES, PSEUDOVERTEX_COVECTORS, MAXIMAL_COVECTOR_CELLS {
+		compute_covector_decomposition($this,1);
+	}
+	weight 6.10;
 
-   sub canonical { &canonicalize_rational_to_leading_zero; }
-#   sub canonical { &canonicalize_to_nonnegative; }
-}
+	rule MAXIMAL_COVECTORS : MAXIMAL_COVECTOR_CELLS, PSEUDOVERTICES, POINTS {
+		compute_maximal_covectors($this);
+	}	
+	weight 2.10;
 
-# Pseudovertices are the vertices of the [[ENVELOPE]] (with respect to [[POINTS]]).
-# original: property PSEUDOVERTICES : Matrix<Scalar>;
-property PSEUDOVERTICES : Matrix<Scalar>{
+	rule PSEUDOVERTEX_COVECTORS : PSEUDOVERTICES, POINTS {
+		$this->PSEUDOVERTEX_COVECTORS=covectors_of_scalar_vertices($this->PSEUDOVERTICES, $this->POINTS);
+	}
+	weight 1.10;
 
-   sub canonical { &canonicalize_rational_to_leading_zero; }
-#   sub canonical { &canonicalize_to_nonnegative; }
-};
+	rule PSEUDOVERTEX_COARSE_COVECTORS : PSEUDOVERTICES, POINTS {
+		$this->PSEUDOVERTEX_COARSE_COVECTORS=coarse_covectors_of_scalar_vertices($this->PSEUDOVERTICES, $this->POINTS);
+	}
+	weight 1.10;
 
-declare permutation PseudoVertexPerm {
-
-# transforming [[PSEUDOVERTICES]] from this into basic object
-   property PERMUTATION : Array<Int>;
-}
-
-rule PseudoVertexPerm.PERMUTATION : PseudoVertexPerm.PSEUDOVERTICES, PSEUDOVERTICES {
-   ### my $cmp=$this->prepare_computations;
-   $this->PseudoVertexPerm->PERMUTATION=polytope::find_matrix_row_permutation($this->PseudoVertexPerm->PSEUDOVERTICES, $this->PSEUDOVERTICES);
-}
-
-rule PSEUDOVERTICES : PseudoVertexPerm.PSEUDOVERTICES, PseudoVertexPerm.PERMUTATION {
-   $this->PSEUDOVERTICES=permuted_rows($this->PseudoVertexPerm->PSEUDOVERTICES, $this->PseudoVertexPerm->PERMUTATION);
-}
-weight 1.10;
-
-
-# Unique names assigned to the [[VERTICES]].
-# If specified, they are shown by visualization tools instead of vertex indices.
-
-property VERTEX_LABELS : Array<String>;
-
-
-# Tropical polytopes have a natural description as the complex of bounded faces of their envelopes.
-# This envelope depends on the choice of the [[POINTS]] that generate the tropical polytope.
-
-property ENVELOPE : polytope::Polytope<Scalar>;
-
-
-# Tropical polytopes have a natural description as ordinary polytopal complexes. This is the 1-skeleton of such a
-# complex.
-
-property PSEUDOVERTEX_GRAPH : graph::Graph;
-
-rule PSEUDOVERTEX_GRAPH.NodePerm.PERMUTATION = PseudoVertexPerm.PERMUTATION;
-
-
-# Cyclic order of the [[PSEUDOVERTICES]] in the boundary (for dimension 2 only).
-
-property CONVEX_HULL_2D_CYCLIC : Array<Int>;
-
-
-# Types of [[VERTICES]] relative to [[VERTICES]].
-
-property VERTEX_TYPES : Array<Array<Set>>;
-
-
-# Types of [[PSEUDOVERTICES]] relative to [[POINTS]].
-
-property PSEUDOVERTEX_TYPES : Array<Array<Set>>;
-
-rule PSEUDOVERTEX_TYPES : PseudoVertexPerm.PSEUDOVERTEX_TYPES, PseudoVertexPerm.PERMUTATION {
-   $this->PSEUDOVERTEX_TYPES=permuted($this->PseudoVertexPerm->PSEUDOVERTEX_TYPES, $this->PseudoVertexPerm->PERMUTATION);
-}
-weight 1.10;
-
-rule PseudoVertexPerm.PERMUTATION : PseudoVertexPerm.PSEUDOVERTEX_TYPES, PSEUDOVERTEX_TYPES {
-   $this->PseudoVertexPerm->PERMUTATION=find_permutation($this->PseudoVertexPerm->PSEUDOVERTEX_TYPES, $this->PSEUDOVERTEX_TYPES);
-}
-
-# Coarse types of [[PSEUDOVERTICES]] relative to [[POINTS]].
-
-property PSEUDOVERTEX_COARSE_TYPES : Array<Array<Int>>;
-
-rule PSEUDOVERTEX_COARSE_TYPES : PseudoVertexPerm.PSEUDOVERTEX_COARSE_TYPES, PseudoVertexPerm.PERMUTATION {
-   $this->PSEUDOVERTEX_COARSE_TYPES=permuted($this->PseudoVertexPerm->PSEUDOVERTEX_COARSE_TYPES, $this->PseudoVertexPerm->PERMUTATION);
-}
-weight 1.10;
-
-rule PseudoVertexPerm.PERMUTATION : PseudoVertexPerm.PSEUDOVERTEX_COARSE_TYPES, PSEUDOVERTEX_COARSE_TYPES {
-   $this->PseudoVertexPerm->PERMUTATION=find_permutation($this->PseudoVertexPerm->PSEUDOVERTEX_COARSE_TYPES, $this->PSEUDOVERTEX_COARSE_TYPES);
-}
-
-# Unique names assigned to the [[PSEUDOVERTICES]].
-# Can be used as "NodeLabels" in [[VISUAL_PLANAR]].
-
-property PSEUDOVERTEX_LABELS : Array<String>;
-
-# @notest  Rule defined "in stock" - currently without use
-rule PSEUDOVERTEX_LABELS : PseudoVertexPerm.PSEUDOVERTEX_LABELS, PseudoVertexPerm.PERMUTATION {
-  $this->PSEUDOVERTEX_LABELS=permuted($this->PseudoVertexPerm->PSEUDOVERTEX_LABELS, $this->PseudoVertexPerm->PERMUTATION);
-}
-weight 1.10;
-
-rule PSEUDOVERTEX_LABELS : PSEUDOVERTEX_TYPES {
-   $this->PSEUDOVERTEX_LABELS(temporary)=[ map { join("", @$_) } @{$this->PSEUDOVERTEX_TYPES} ];
-}
-
-# Tropical halfspaces encoded as pairs of apices and sets of sectors.
-# Maybe redundant (for now; subject to change in the future).
-property HALF_SPACES : Array< Pair<Vector<Scalar>,Set<Int> > >;
-
-}
-
-# @hide
-# @category Other
-# Return the pseudovertex coordinates dehomogenized and converted to Matrix<Float>;
-# to be used as "Coord" for visualization.
-# @param TropicalPolytope P
-# @return Matrix<Float>
-user_function pseudovertices_float_coords(TropicalPolytope) {
-  my $P=shift;
-  dehomogenize_trop(convert_to<Float>($P->PSEUDOVERTICES));
-}
-
-object TropicalPolytope {
-
-rule AMBIENT_DIM : VERTICES | PSEUDOVERTICES | POINTS {
-  $this->AMBIENT_DIM=($this->VERTICES | PSEUDOVERTICES | POINTS)->cols-1;
-}
-weight 0.10;
-
-rule VERTICES : POINTS {
-  $this->VERTICES=discard_non_vertices($this->POINTS);
-}
-weight 1.20;
-
-rule VERTICES : PSEUDOVERTICES {
-  $this->VERTICES=discard_non_vertices($this->PSEUDOVERTICES);
-}
-weight 1.10;
-
-# It is structurally important that the envelope depends on the [[POINTS]].
-# If the exact subdivision does not matter it may be advisable to create a new
-# tropical polytope whose generators are the [[VERTICES]] of the former.
-rule ENVELOPE.INEQUALITIES, ENVELOPE.EQUATIONS : POINTS, AMBIENT_DIM {
-  $this->ENVELOPE = trop2poly($this);
-}
-
-# FIXME: This rule is slightly more efficient than the corresponding default rule but it makes scheduling much more difficult.
-# See [10072] and #195.
-# rule ENVELOPE.BOUNDED_COMPLEX : AMBIENT_DIM, ENVELOPE.VERTICES_IN_FACETS, ENVELOPE.FAR_FACE { 
-#    $this->ENVELOPE->BOUNDED_COMPLEX=polytope::bounded_complex($this->ENVELOPE->VERTICES_IN_FACETS, $this->ENVELOPE->FAR_FACE, $this->AMBIENT_DIM); 
-#} 
-#weight 4.20; 
-
-rule PSEUDOVERTICES, PSEUDOVERTEX_GRAPH.ADJACENCY : AMBIENT_DIM, ENVELOPE.VERTICES, ENVELOPE.FAR_FACE, ENVELOPE.BOUNDED_COMPLEX.GRAPH.ADJACENCY {
-  extract_pseudovertices($this, $this->ENVELOPE);
-}
-permutation : PseudoVertexPerm;
-
-rule VERTEX_TYPES : VERTICES {
-  $this->VERTEX_TYPES=types($this->VERTICES,$this->VERTICES);
-}
-weight 1.10;
-
-rule default.pseudovertex_types: PSEUDOVERTEX_TYPES : PSEUDOVERTICES, POINTS {
-  $this->PSEUDOVERTEX_TYPES=types($this->PSEUDOVERTICES,$this->POINTS);
-}
-weight 1.10;
-
-rule PSEUDOVERTEX_COARSE_TYPES : PSEUDOVERTICES, POINTS {
-  $this->PSEUDOVERTEX_COARSE_TYPES=coarse_types($this->PSEUDOVERTICES,$this->POINTS);
-}
-weight 1.10;
-
-rule CONVEX_HULL_2D_CYCLIC : POINTS, PSEUDOVERTEX_TYPES, PSEUDOVERTEX_GRAPH.ADJACENCY {
-  $this->CONVEX_HULL_2D_CYCLIC=ch2d_3phases(scalar(@{$this->POINTS}),$this->PSEUDOVERTEX_TYPES,$this->PSEUDOVERTEX_GRAPH->ADJACENCY);
-}
-precondition : AMBIENT_DIM { $this->AMBIENT_DIM==2 }
 
 }
 

@@ -26,12 +26,12 @@
 
 namespace polymake { namespace tropical {
 
-template <typename Dir>
-Vector<Rational> lifted_pluecker(Matrix<Rational> V)
+template <typename Addition>
+Vector<TropicalNumber<Addition> > lifted_pluecker(const Matrix<TropicalNumber<Addition> > &V)
 {
    const int n(V.rows()), d(V.cols());
    const int nd_d=Integer::binom(d+n,d).to_int();
-   Vector<Rational> pi(nd_d);
+   Vector<TropicalNumber<Addition> > pi(nd_d);
 
    const sequence all_rows = sequence(0,d+n); // d extra rows plus n given ones
    int i=0;
@@ -48,7 +48,7 @@ Vector<Rational> lifted_pluecker(Matrix<Rational> V)
             tau.push_back(*rii);
          else
             sigma.push_back(*rii-d);
-      pi[i]=tdet<Dir>(Matrix<Rational>(V.minor(sigma,~tau)));
+      pi[i]=tdet(Matrix<TropicalNumber<Addition> >(V.minor(sigma,~tau)));
       ++i;
    }
    return pi;
@@ -58,9 +58,9 @@ UserFunctionTemplate4perl("# @category Other"
                   "# Compute the tropical Pluecker vector from a matrix representing points in the tropical torus."
                   "# This can be used to lift regular subdivisions of a product of simplices to a"
                   "# matroid decomposition of hypersimplices."
-                  "# @param Matrix V"
-                  "# @return Vector",
-                  "lifted_pluecker<Dir=Min>($)");
+                  "# @param Matrix<TropicalNumber<Addition> > V"
+                  "# @return Vector<TropicalNumber<Addition> >",
+                  "lifted_pluecker<Addition>(Matrix<TropicalNumber<Addition> >)");
 } }
 
 // Local Variables:

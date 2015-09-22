@@ -13,9 +13,8 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-
-object Cone {
-
+# An affine cone with an exact coordinate type, like Rational.
+declare object_specialization ExactCoord<Scalar> = Cone<Scalar> [is_ordered_field_with_unlimited_precision(Scalar)] {
 
 # A Cone defined with an empty [[RAYS]] or [[INPUT_RAYS]] matrix gets trivial [[FACETS]] assigned
 # Note that all convex hull clients need at least one ray.
@@ -43,8 +42,7 @@ weight 1.10;
 
 # @category Convex hull computation
 # Use the sequential (beneath-beyond) convex hull algorithm. It performs well at lower dimensions
-# and produces a triangulation of the polytope as a byproduct. There is no dual (vertex enumeration)
-# implementation of this algorithm.
+# and produces a triangulation of the polytope as a byproduct.
 label beneath_beyond
 
 rule beneath_beyond.convex_hull.primal, default.triangulation: \
@@ -81,6 +79,11 @@ rule beneath_beyond.convex_hull.dual: \
 weight 4.10;
 precondition : FULL_DIM;
 permutation : VertexPerm;
+
+rule TRIANGULATION.FACETS : RAYS {
+   $this->TRIANGULATION->FACETS=placing_triangulation($this->RAYS);
+}
+weight 4.10;
 
 }
 

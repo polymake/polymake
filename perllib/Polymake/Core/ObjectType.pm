@@ -35,8 +35,10 @@ use Polymake::Struct (
    [ '$application' => '#2' ],          # -> Application
    [ '$extension' => '$Application::extension' ],
    '$pkg',                              # perl class
-   [ '$context_pkg' => 'undef' ],       # for abstract parameterized object types: class of other ObjectType in whose scope the abstract typeholders are defined
-   [ '$params' => 'undef' ],            # for type templates
+   [ '$context_pkg' => 'undef' ],       # for abstract parameterized object types resulting from local derivation
+                                        #  as a property of another parameterized ObjectType:
+                                        #  perl class of the enclosing ObjectType (i.e. property owner)
+   [ '$params' => 'undef' ],            # for parameterized types: list of ObjectType or PropertyType describing the parameters
    '&abstract',
    [ '&perform_typecheck' => '\&PropertyType::concrete_typecheck' ],
    [ '&construct' => '\&PropertyType::construct_object' ],
@@ -45,34 +47,38 @@ use Polymake::Struct (
 #
 #  Derivation relations
 #
-   '@super',                    # ( ObjectType )  super classes: transitive closure in MRO C3 order
-   '%auto_casts',               # derived ObjectType => Rule::AutoCast
+   '@super',                       # ( ObjectType )  super classes: transitive closure in MRO C3 order
+   '%auto_casts',                  # derived ObjectType => Rule::AutoCast
+   [ '$generic' => 'undef' ],      # for instances of parametrized types: ObjectType of the own generic type
 #
 #  Own components
 #
-   '%properties',               # 'name' => Property
-   '%permutations',             # 'name' => permutation Property
-   '%producers',                # own rules producing a property: Property/Key => [ Rule, ... ]
-   '%all_producers',            # cached own and inherited rules: Property/Key => [ Rule, ... ]
-   '%shortcuts',                # cached own and inherited shortcut rules
-   '%rules_by_label',           # own labeled producing rules: '*.label' => ControlList
-   '%all_rules_by_label',       # cached own and inherited labeled rules
-   '@production_rules',         # ( Rule ) all production rules directly applicable to this object type and descendants (for search by header)
+   '%properties',                  # 'name' => Property
+   '%permutations',                # 'name' => permutation Property
+   '%producers',                   # own rules producing a property: Property/Key => [ Rule, ... ]
+   '%all_producers',               # cached own and inherited rules: Property/Key => [ Rule, ... ]
+   '%shortcuts',                   # cached own and inherited shortcut rules
+   '%rules_by_label',              # own labeled producing rules: '*.label' => ControlList
+   '%all_rules_by_label',          # cached own and inherited labeled rules
+   '@production_rules',            # ( Rule ) all production rules directly applicable to this object type and descendants (for search by header)
 #
-   [ '$help' => 'undef' ],      # InteractiveHelp (in interactive mode, when comments are supplied for properties, user methods, etc.)
+   [ '$specializations' => 'undef' ],  # ( Specialization ) for parameterized types with specializations: the abstract objects
+#
+   [ '$help' => 'undef' ],         # InteractiveHelp (in interactive mode, when comments are supplied for properties, user methods, etc.)
 );
 
 ####################################################################################
 #
 #  Constructor
 #
-#  new ObjectType('name', Application, [ template params ], [ super ObjectType, ... ]);
+#  new ObjectType('name', Application, [ type params ], [ super ObjectType, ... ]);
 #
 sub new {
    my $self=&_new;
    Overload::learn_package_retrieval($self, \&pkg);
    my $tparams=splice @_, 0, 3;
    my $self_sub=sub { $self };
+   my $generic_type;
 
    unless ($construct_node) {
       $construct_node=new Overload::Node(undef, undef, 0);
@@ -98,14 +104,15 @@ sub new {
    } else {
       # it is an instance of an abstract Object type
       # the first super-Object is always the own abstract type
-      $self->application=$_[0]->application;
-      $self->extension=$_[0]->extension;
-      $self->pkg=$_[0]->pkg;
+      $generic_type=$_[0];
+      $self->application=$generic_type->application;
+      $self->extension=$generic_type->extension;
+      $self->pkg=$generic_type->pkg;
       $self->params=$tparams;
       PropertyParamedType::scan_params($self);
       if ($self->abstract) {
          if (defined($self->context_pkg)) {
-            push @{$self->super}, $_[0], @{$_[0]->super};
+            push @{$self->super}, $generic_type, @{$generic_type->super};
          }
          return $self;
       }
@@ -118,12 +125,40 @@ sub new {
 
    # proceed with parent classes
    if (@_) {
-      my @isa;
-      foreach my $super_proto (@_) {
-         push @isa, $super_proto->pkg;
-         PropertyParamedType::set_extension($self->extension, $super_proto->extension);
+      establish_inheritance($self, map { PropertyParamedType::set_extension($self->extension, $_->extension); $_->pkg } @_);
+      if (defined($generic_type)) {
+         $self->generic=$generic_type;
+
+         if (defined($generic_type->specializations)) {
+            my @matching_spezs=map { pick_specialization($_, $self) } @{$generic_type->specializations};
+
+            # verify the consistency of relations between specializations
+            my %required_spezs;
+            foreach my $spez (@matching_spezs) {
+               my $gen_spez=$spez->generic;
+               $required_spezs{$gen_spez} |= 2;
+               $required_spezs{$_} |= 1 for keys %{$gen_spez->borrowed_from};
+            }
+            while (my ($gen_spez, $status)=each %required_spezs) {
+               if ($status == 1) {
+                  foreach my $spez (@matching_spezs) {
+                     my $bad_spez=$spez->generic;
+                     if (exists $bad_spez->borrowed_from->{$gen_spez}) {
+                        die "Invalid inheritance: ", $bad_spez->describe,
+                            "\n refers to properties defined in ", $gen_spez->describe,
+                            "\n but only the former matches the object type ", $self->full_name, "\n";
+                     }
+                  }
+               }
+            }
+
+            my @spez_pkgs=map { $_->pkg } @matching_spezs;
+            namespaces::using($self->pkg, @spez_pkgs);
+            no strict 'refs';
+            unshift @{$self->pkg."::ISA"}, @spez_pkgs;
+            update_inheritance($self);
+         }
       }
-      establish_inheritance($self, @isa);
    } else {
       no strict 'refs';
       push @{$self->pkg."::ISA"}, "Polymake::Core::Object";
@@ -135,16 +170,32 @@ sub new {
 }
 
 ####################################################################################
+sub pick_specialization {
+   my $spez=shift;
+   &{$spez->match_node->resolve(\@_) // return ()}
+}
+
+sub all_specializations {
+   my ($self)=@_;
+   map { defined($_->specializations) ? @{$_->specializations} : () } $self, @{$self->super}
+}
+####################################################################################
 sub establish_inheritance {
    my $self=shift;
    namespaces::using($self->pkg, @_);
-   {  no strict 'refs';  push @{$self->pkg."::ISA"}, @_;  }
+   { no strict 'refs'; push @{$self->pkg."::ISA"}, @_; }
    mro::set_mro($self->pkg, "c3");
    my $linear_isa=mro::get_linear_isa($self->pkg);
    # ignore the type itself and ubiquitous Object/Object_4test
    @{$self->super}=map { $_->type } grep { !/^Polymake::Core::/ } @$linear_isa[1..$#$linear_isa];
 }
-####################################################################################
+
+sub update_inheritance {
+   my ($self)=@_;
+   my $linear_isa=mro::get_linear_isa($self->pkg);
+   @{$self->super}=map { $_->type } grep { !/^Polymake::Core::/ } @$linear_isa[1..$#$linear_isa];
+}
+
 sub derived {
    my ($self)=@_;
    map { $_->type } @{mro::get_isarev($self->pkg)}
@@ -157,8 +208,9 @@ sub derived {
 *full_name=\&PropertyParamedType::full_name;
 *typecheck=\&PropertyType::typecheck;
 *add_constructor=\&PropertyType::add_constructor;
-*performs_deduction=\&PropertyType::performs_deduction;
+*performs_deduction=\&PropertyParamedType::performs_deduction;
 *type_param_index=\&PropertyType::type_param_index;
+define_function(__PACKAGE__, ".type", \&type);
 
 sub qualified_name {
    defined($_[0]->params) ? &PropertyParamedType::qualified_name : &PropertyType::qualified_name
@@ -172,9 +224,9 @@ sub concrete_type {
 sub descend_to_generic {
    my ($self, $pkg)=@_;
    if (@{$self->super}) {
-      return $self if $self->super->[0]->pkg eq $pkg;
+      return $self if defined($self->generic) && $self->generic->pkg eq $pkg;
       foreach my $super_proto (@{$self->super}) {
-         return $super_proto if !$super_proto->abstract && @{$super_proto->super} && $super_proto->super->[0]->pkg eq $pkg;
+         return $super_proto if defined($super_proto->generic) && $super_proto->generic->pkg eq $pkg;
       }
    }
    undef
@@ -352,7 +404,7 @@ sub add_property_alias {        # "new name", "old name", override => Property
    if ($override) {
       if ($Application::plausibility_checks and
           $old_prop->belongs_to == $self ||
-          @{$self->super} && $self->super->[0]->abstract && $self->super->[0]->name eq $self->name) {
+          $old_prop->belongs_to == $self->generic) {
          croak( "only properties inherited from other object types can be overridden" );
       }
       $self->properties->{$old_prop_name}=$new_prop;
@@ -618,7 +670,7 @@ sub reopen_subobject {
    }
 }
 ####################################################################################
-package Polymake::Core::ObjectType::MethodAsRule;
+package _::MethodAsRule;
 
 sub add_control {
    my ($pkg, $list, $rule)=@_;
@@ -639,7 +691,7 @@ sub resolve {
 }
 
 ####################################################################################
-package Polymake::Core::ObjectType::LocalDerivationMixin;
+package __::LocalDerivationMixin;
 
 use Polymake::Struct (
    [ '@ISA' => 'ObjectType' ],
@@ -767,7 +819,8 @@ sub help_topic {
                                           . "# Specialization of [["
                                           . ( $refer_to->application != $self->belongs_to->application && $refer_to->application->name . "::" )
                                           . $refer_to->full_name . "::" . $self->parent_property->name
-                                          . "]] for " . $self->belongs_to->full_name . "\n");
+                                          . "]] for " . $self->belongs_to->full_name . "\n"
+                                          . "# \@display noshow\n");
 
             push @{$topic->related}, uniq( map { ($_, @{$_->related}) } map { $_->help_topic } @{$self->super}, $self->parent_property->type );
          }
@@ -776,7 +829,7 @@ sub help_topic {
    };
 }
 ####################################################################################
-package Polymake::Core::ObjectType::LocallyDerived;
+package __::LocallyDerived;
 
 use Polymake::Struct (
    [ '@ISA' => 'ObjectType' ],
@@ -836,8 +889,15 @@ sub find_rule_label {
    }
 }
 
+sub update_inheritance {
+   my ($self)=@_;
+   my $pure_type=$self->super->[$super->pure_type_at];
+   &ObjectType::update_inheritance;
+   $super->pure_type_at=list_index($self->super, $pure_type);
+}
+
 ####################################################################################
-package Polymake::Core::ObjectType::Permuted;
+package __::Permuted;
 
 use Polymake::Struct (
    [ '@ISA' => 'LocallyDerived' ],
@@ -847,6 +907,122 @@ sub get_producers_of {
    my ($self, $prop)=@_;
    # don't inherit any production rule from the basis type, otherwise the scheduler would drive crazy
    $self->super->[0]->producers->{$prop->key} || [ ];
+}
+
+####################################################################################
+package __::Specialization;
+
+use Polymake::Struct (
+   [ '@ISA' => 'ObjectType' ],
+   [ new => '$$$$' ],
+   [ '$application' => '#3 ->application' ],
+   [ '$match_node' => 'undef' ],
+   '%borrowed_from',             # other Specializations defining properties this Specializations refers to
+   '$def_file',                  # rulefile and line of definition: for diagnostic purposes
+   '$def_line',
+);
+
+# Constructor: new Specializations('name', 'pkg', generic_ObjectType | generic_Specialization, [ type params ] )
+sub new {
+   my $self=&_new;
+   (undef, my ($pkg, $gen_proto, $tparams))=@_;
+
+   if (defined $pkg) {
+      # new abstract specialization
+      $self->pkg=$pkg;
+      my $symtab=get_pkg($pkg, 1);
+      $self->abstract=\&type;
+      undef $self->perform_typecheck;
+      my $param_index=-1;
+      $self->params=[ map { new ClassTypeParam($_, $pkg, $self->application, ++$param_index) } @$tparams ];
+      (undef, $self->def_file, $self->def_line)=caller;
+      $self->match_node=new Overload::Node(undef, undef, 0);
+      push @{$gen_proto->specializations //= [ ]}, $self;
+   } else {
+      # a concrete instance of a specialization
+      $self->extension=$gen_proto->extension;
+      $self->pkg=$gen_proto->pkg;
+      $self->params=$tparams;
+      PropertyParamedType::scan_params($self);
+   }
+   define_function($self->pkg, "type", sub { $self }, 1);
+   establish_inheritance($self, $gen_proto->pkg);
+   $self->generic=$gen_proto;
+   $self;
+}
+
+sub apply_to_existing_types {
+   my ($self)=@_;
+   my $gen_proto=$self->generic;
+   my @derived_types=grep { !$_->abstract } $gen_proto->derived;
+   # first update the ISA lists of matching instances of the same generic type
+   foreach my $proto (@derived_types) {
+      if ($proto->generic == $gen_proto and
+          my ($spez)=pick_specialization($self, $proto)) {
+         namespaces::using($proto->pkg, $spez->pkg);
+         no strict 'refs';
+         unshift @{$proto->pkg."::ISA"}, $spez->pkg;
+      }
+   }
+   # then regenerate the super lists of all derived types
+   $_->update_inheritance for @derived_types;
+}
+
+sub lookup_property {
+   my ($self, $prop_name)=@_;
+   &ObjectType::lookup_property // do {
+      my $prop;
+      my $gen_proto=$self->generic;
+      foreach my $other_spez ($gen_proto->all_specializations) {
+         if ($other_spez != $self &&
+             defined ($prop=$other_spez->properties->{$prop_name})) {
+            $self->properties->{$prop_name}=$prop;
+            $self->borrowed_from->{$other_spez} ||= do {
+               # verify the correctness of borrowing
+               foreach my $proto (grep { $_->generic==$gen_proto } $self->derived) {
+                  if (list_index($proto->super, $other_spez)<0) {
+                     die "Invalid inheritance: ", $self->describe,
+                         "\n refers to properties defined in ", $other_spez->describe,
+                         "\n but only the former matches the object type ", $proto->full_name, "\n";
+                  }
+               }
+               1
+            };
+            last;
+         }
+      }
+      $prop
+   }
+}
+
+sub add_permutation {
+   croak("A type specialization can't have own permutation types; consider introducing a derived `big' object type for this");
+}
+
+sub full_name {
+   my ($self)=@_;
+   if ($self->name =~ /[<>]/) {
+      # unnamed specialization
+      $self->name . " specialization[" . join(", ", map { $self->generic->params->[$_]->name . "=" . $self->params->[$_]->full_name } 0..$#{$self->params}) . "]"
+   } else {
+      &PropertyParamedType::full_name
+   }
+}
+
+sub help_topic {
+   my $self=shift;
+   $self->help || do {
+      if ($Application::plausibility_checks && $self->name =~ /[<>]/) {
+         croak( "For the sake of better documentation, user-visible features (properties, methods, etc.) may not be introduced in unnamed specializations" );
+      }
+      PropertyType::locate_own_help_topic($self, "objects", @_);
+   }
+}
+
+sub describe {
+   my ($self)=@_;
+   "object specialization " . $self->full_name .
+   " defined at " . $self->def_file . ", line " . ($self->def_line-2)   # the correction by 2 is caused by code inserted in RuleFilter
 }
 
 ####################################################################################

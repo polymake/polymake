@@ -1,0 +1,181 @@
+########################################################################
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#  
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#  
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+#  Boston, MA  02110-1301, USA.
+#  
+#  ---
+#  Copyright (C) 2011-2015, Simon Hampe <simon.hampe@googlemail.com>
+#
+#
+#	Contains visualization procedures for Cycle
+########################################################################
+
+package Visual::Cycle;
+
+
+options %Visual::Cycle::BoundingDecorations=(
+	%Visual::Polygons::decorations,
+
+	# Flexible<Int> The visualization is always a visualization in affine coordinates. This 
+	# chooses the chart
+	Chart => 0,
+
+	# String if set to "hidden", the labels indicating the weights are hidden
+	WeightLabels => enum("hidden"),
+
+	# String If set to "show", the labels indicating the vertex coordinates are displayed, otherwise they are not. Note that this is expensive and significantly increases computation time.
+	CoordLabels => enum("show"),
+	# Flexible<Rational> The distance of the border of the bounding box from the smallest box 
+	# containing the affine points of the complex. This is only relevant, if BoundingMode is "relative"
+	BoundingDistance => 1,
+
+	# Matrix<Rational> A fixed bounding box, determined by two row vectors that specify two of its vertices (on "on top" and one "at the bottom"). Is only relevant, if BoundingMode is "absolute"
+	BoundingBox => undef,
+
+	# String If set to "relative", the function determines the smallest possible box containing all affine points of the complex and then enlarges the box by BoundingDistance to all sides. If set to "absolute", BoundingBox must be specified and the complex will be intersected with that box. "cube" does a similar thing as relative, except that the resulting bounding box is always a cube. By default this is set to "cube".
+	BoundingMode => enum("cube","relative","absolute"),
+
+	# Array<String> A list of strings to be displayed as labels for the maximal cones. If this is empty, the weight labels (if present and not suppressed by WeightLabels=>"hidden") are displayed
+	ConeLabels => undef,
+);
+
+object Cycle {
+
+	# @category Visualization
+	# Displays a (possibly weighted) polyhedral complex by intersecting it with a bounding box. This bounding box
+	# is either defined by the vertices of the complex and the option "BoundingDistance" or explicitly given by
+	# "BoundingBox" and by setting "BoundingMode" to "absolute"
+	# @options
+	# @option Int Chart Which affine chart to visualize, i.e. which coordinate to shift to 0. This is 0 by default.
+	# @option String WeightLabels If "hidden", no weight labels are displayed. Not hidden by default.
+	# @option String CoordLabels If "show", coordinate labels are displayed at vertices. Hidden by default.
+	# @option String BoundingMode Can be "relative" (intersects with the bounding box returned by the method  boundingBox(BoundingDistance)) or "absolute" (intersects with the given BoundingBox). "relative" by default.
+	# @option Rational BoundingDistance The distance parameter for relative bounding mode
+	# @option Matrix<Rational> BoundingBox The bounding parameter for absolute bounding mode
+	user_method BB_VISUAL(%Visual::Cycle::BoundingDecorations, {CutOff => $Visual::Color::cutoff}) {
+		my ($this,$decor,$cutoff_decor)=@_;
+
+		if(is_empty($this)) {
+			die "Cannot draw zero cycle";
+		}
+		#Take care of self-defined decor options and delete them
+		my $chart = $$decor{"Chart"};
+		delete($$decor{"Chart"});
+
+		my $showWeights = 1;
+		if(defined($$decor{"WeightLabels"})) {
+			if($$decor{"WeightLabels"} eq "hidden") {
+				$showWeights = 0;
+			}
+		}
+		if(!defined($this->lookup("WEIGHTS"))) {
+			$showWeights = 0;
+		}
+		delete($$decor{"WeightLabels"});
+		my $showCoordinates = 0;
+		if(defined($$decor{"CoordLabels"})) {
+			if($$decor{"CoordLabels"} eq "show") {
+				$showCoordinates = 1;
+			}
+		}
+		delete($$decor{"CoordLabels"});
+		if($showCoordinates == 0) {
+			$$decor{"VertexLabels"} = "hidden";
+		}
+		my $isRelative = 0;
+		my $isCube = 1;
+		if(defined($$decor{"BoundingMode"})) {
+			if($$decor{"BoundingMode"} eq "absolute") {
+				$isCube = 0;
+			}
+			if($$decor{"BoundingBox"} eq "relative") {
+				$isRelative = 1;
+				$isCube = 0;
+			}
+		}
+		delete($$decor{"BoundingMode"});
+		my $boundingDistance = new Rational(1);
+		if(defined($$decor{"BoundingDistance"})) {
+			$boundingDistance = $$decor{"BoundingDistance"};
+		}
+		delete($$decor{"BoundingDistance"});
+		my $boundingBox = new Matrix<Rational>();
+		if(defined($$decor{"BoundingBox"})) {
+			$boundingBox = $$decor{"BoundingBox"};
+		}
+		delete($$decor{"BoundingBox"}); 
+		my $haveConeLabels = 0;
+		my $clabels = new Array<String>();
+		if(defined($$decor{"ConeLabels"})) {
+			$haveConeLabels = 1;
+			$showWeights = 0;
+			$clabels = $$decor{"ConeLabels"};
+		}
+		delete($$decor{"ConeLabels"});
+
+	
+		#Set some default values
+		my $dim = $this->PROJECTIVE_DIM;
+		#if(!defined($$decor{"FacetTransparency"}) && $dim >= 2) {
+		#		$$decor{"FacetTransparency"} = 0.7;
+		#}
+		if(!defined($$decor{"PointThickness"})) {
+			$$decor{"PointThickness"} = 0.1;
+		}
+
+		#Create bounding box
+		my $affine_version = $this->affine_chart($chart);
+		if($isCube || $isRelative) {
+			$boundingBox = boundingBox($affine_version->VERTICES->minor(~$affine_version->FAR_VERTICES,~[0]), 
+												$boundingDistance, $isCube);
+		}	
+		
+		#Make sure that the bounding box has the right dimension, otherwise, we get a segfault
+		if(!$isRelative) {
+			my $m = new Matrix<Rational>($boundingBox);
+			if($m->rows() < 2 || $m->cols() < $this->PROJECTIVE_AMBIENT_DIM) {
+				die "Bounding box has invalid dimension\n";
+			}
+		}
+		my @result = computeBoundedVisual($this->affine_chart($chart),
+			$showWeights? $this->WEIGHTS : (new Vector<Integer>()),
+			(new Matrix<Rational>($boundingBox)),$clabels);
+		my @cells_visual;
+		my $weightCenters = pop(@result);
+
+		for my $cell (@result) {
+			$cell->VERTEX_LABELS = ();
+
+			#Compute coordinate labels if necessary
+			if($showCoordinates != 0) {
+				#Create labels for vertices
+				my @labels = ();
+				my $vtx = $cell->VERTICES;
+				for(my $row = 0; $row < $vtx->rows(); $row++) {
+					my $coords = $vtx->row($row)->slice(1,$vtx->cols()-1) ;
+					@labels = (@labels,"(".$coords.")");
+				}
+				$cell->VERTEX_LABELS = \@labels;
+			}
+
+			push @cells_visual, ($cell->VISUAL( $decor ));
+		}
+		if($showWeights != 0 || $haveConeLabels != 0) {
+			push @cells_visual, $weightCenters->VISUAL_POINTS(PointColor=>'black', PointThickness=>0.2);
+		}
+		visualize(new Visual::Cycle(Name =>$this->name,
+				Cycle=> $this,
+				@cells_visual));
+	}
+}#END object Cycle

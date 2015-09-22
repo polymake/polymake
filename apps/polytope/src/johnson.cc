@@ -25,16 +25,7 @@ namespace {
   return sqrt(n);
  }
 
- template<typename T>
- T scalar_product(Vector<T> v, Vector<T> w){
-  double p = 0;
-  for(int i = 0; i<v.size(); i++){
-    p = p + v[i]*w[i];
-  }
-  return p;
- }
-   
-      //rotates vectors in V by angle a about axis u (given in hom. coords) using rodrigues' rotation formula
+ //rotates vectors in V by angle a about axis u (given in hom. coords) using rodrigues' rotation formula
  Matrix<double> rotate(Matrix<double> V, Vector<double> u, double a){
 
     u[0]=0; //projection to plane
@@ -65,27 +56,6 @@ namespace {
    return V;
  }
 
- //vertices of lattice hexagon
- template<typename T>
- Matrix<T> create_hexagon_vertices()
- {
-  //vertices: {0,0,0}, {7,-2,1},{12,3,3}, {10,10,4}, {3,12,3},{-2,7,1}
-  //barycentre: {5,5,2}
-  //side length: 3*sqrt(6)
-    Matrix<T> V(6,4);
-    V.col(0).fill(1);
-
-    V(1,1)=V(2,2)=7;
-    V(1,2)=V(2,1)=-2;
-    V(1,3)=V(2,3)=1;
-    V(3,2)=V(3,3)=V(4,1)=V(4,3)=3;
-    V(3,1)=V(4,2)=12;
-    V(5,1)=V(5,2)=10;
-    V(5,3)=4;
-
-    return V;
- }
-
 //FIXME: coordinates #830
 //creates vertices of regular n-gon with the origin as center, radius r and angle of first vertex s
   Matrix<double> create_regular_polygon_vertices(int n, double r, double s){
@@ -102,16 +72,6 @@ namespace {
      V(i,2)=r*sin(s+i*phi);
    }
    return V;
- }
-
-//FIXME: coordinates #830
-//creates vertices of regular n-gon with the origin as center and first vertex x
-  Matrix<double> create_regular_polygon_vertices(int n, Vector<double> x){
-   if(x[0]==0 && x[1]==0)
-      throw std::runtime_error("Vertex cannot be in the center (0,0)");
-   double r = sqrt(x[0]*x[0]+x[1]*x[1]); //radius of polygon = vector length
-   double s = acos(x[0]/r); //angle of first vertex
-   return create_regular_polygon_vertices(n, r, s);
  }
 
 //creates an exact octagonal prism with z-coordinates z_1 and z_2
@@ -136,26 +96,6 @@ perl::Object exact_octagonal_prism(QE z_1, QE z_2)
    return p;
 }
 
-   //creates regular pyramid over (3d-embedded) polygon
-perl::Object pyramid(perl::Object p){
-   
-  Matrix<double> V = (p.give("VERTICES"));
-  IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
-
-  Matrix<double> neighbors = V.minor(VIF.row(0),All); //two neighbor vertices
-  double side_length = norm(neighbors[0]-neighbors[1]);
-  int n_vert = p.give("N_VERTICES");
-  double height = side_length*sqrt(1-1/(2-2*cos(2*M_PI/n_vert)));
-
-  Vector<double> bary = average(rows(V));
-
-  perl::Object p_out(perl::ObjectType::construct<double>("Polytope"));
-
-  p_out.take("VERTICES") << (V | zero_vector<double>()) / (bary | height);
-
-  return p_out;
-}
- 
 //augments the n-th facet
 //uses sqrt and cos to calculate height, thus not exact
 perl::Object augment(perl::Object p, int n){
@@ -192,10 +132,10 @@ perl::Object augment(perl::Object p, int n){
       H = ones_vector<double>(H.rows()) | H.minor(All,sequence(1,3)); //adjust hom.coords
       V -= trans;
       H -= trans.minor(sequence(0,H.rows()),All);
-      
+
       double h = sqrt(side_length*side_length - r*r); //height of regular pyramid
       H -= repeat_row(h*normal, H.rows());
-      
+
       V /= H;
    }
    perl::Object p_out(perl::ObjectType::construct<double>("Polytope"));
@@ -213,7 +153,7 @@ perl::Object augment(perl::Object p, Vector<double> normal){
   if(i == F.rows()) throw std::runtime_error("Facet not found.");
    return augment(p,i);
 }
-   
+
 //places a rotunda on n-th facet (must be a decagonal facet)
 perl::Object rotunda(perl::Object p, int n){
 
@@ -228,54 +168,44 @@ perl::Object rotunda(perl::Object p, int n){
    Vector<double> normal = F.row(n);
    normal[0]=0; //project to plane
    normal = normal/norm(normal); //unit facet normal
-      
+
    Matrix<double> FV = V.minor(Set<int>(neigh),All);
    Vector<double> bary = average(rows(FV));
    Matrix<double> trans = zero_vector<double>( V.rows()) | repeat_row(-average(rows(FV)), V.rows()).minor(All,sequence(1,3)); 
    V += trans; //translate barycentre to zero
-   
+
    double r_l = (1+sqrt(5))*sqrt(10*(5+sqrt(5)))*side_length/20;
    double r_s = sqrt((5+sqrt(5))/10)*side_length;
    Matrix<double> H_l(0,4);
    Matrix<double> H_s(0,4);
    Vector<double> v;
-   for(int i = 0; i<9; i=i+2){         
+   for(int i = 0; i<9; i=i+2){
       v = (V.row(neigh[i])+V.row(neigh[i+1]))/2;
       H_l /= r_l*v/norm(v);
       if(i!=8) v = (V.row(neigh[i+1])+V.row(neigh[i+2]))/2;
       else v = (V.row(neigh[9])+V.row(neigh[0]))/2;
       H_s /= r_s*v/norm(v);
    }
-   
+
    double r_i = norm(v); //radius of incircle
-   
+
    V -= trans;
    H_l -= trans.minor(sequence(0,H_l.rows()), All);
    H_s -= trans.minor(sequence(0,H_s.rows()), All);
-      
+
    double h_l = sqrt(3*side_length*side_length/4-(r_i-r_l)*(r_i-r_l));
    double h_s =  sqrt(1+2/sqrt(5))*side_length;
    H_l -= repeat_row(h_l*normal, 5);
    H_s -= repeat_row(h_s*normal, 5);
    Matrix<double>H = ones_vector<double>(10) | (H_l.minor(All,sequence(1,3)) / H_s.minor(All,sequence(1,3))); //adjust hom.coords
    V /= H;
-   
+
    perl::Object p_out(perl::ObjectType::construct<double>("Polytope"));
    p_out.take("VERTICES") << V;
 
-   return p_out;   
+   return p_out;
 }
 
-perl::Object rotunda(perl::Object p, Vector<double> normal){
-   Matrix<double> F = p.give("FACETS");
-   int i = 0;
-   for(; i<F.rows(); i++){
-      if(F.row(i) == normal) break; //find facet index
-   }
-   if(i == F.rows()) throw std::runtime_error("Facet not found.");
-  return rotunda(p,i);
-}
-   
 //places a rotated rotunda on n-th facet (must be a decagonal facet)
 perl::Object gyrotunda(perl::Object p, int n){
    
@@ -295,13 +225,13 @@ perl::Object gyrotunda(perl::Object p, int n){
    Vector<double> bary = average(rows(FV));
    Matrix<double> trans = zero_vector<double>( V.rows()) | repeat_row(-average(rows(FV)), V.rows()).minor(All,sequence(1,3)); 
    V += trans; //translate barycentre to zero
-   
+
    double r_l = (1+sqrt(5))*sqrt(10*(5+sqrt(5)))*side_length/20;
    double r_s = sqrt((5+sqrt(5))/10)*side_length;
    Matrix<double> H_l(0,4);
    Matrix<double> H_s(0,4);
    Vector<double> v;
-   for(int i = 0; i<9; i=i+2){         
+   for(int i = 0; i<9; i=i+2){
       v = (V.row(neigh[i])+V.row(neigh[i+1]))/2;
       H_s /= r_s*v/norm(v);
       if(i!=8) v = (V.row(neigh[i+1])+V.row(neigh[i+2]))/2;
@@ -1300,7 +1230,17 @@ perl::Object triangular_orthobicupola()
   triangle_V(2,2)=9;
   triangle_V(2,3)=3;
 
-  Matrix<QE> V=( create_hexagon_vertices<QE>() / (triangle_V + repeat_row(6*trans,3)) / (triangle_V - repeat_row(6*trans,3)));
+  Matrix<QE> hexagon_V(6,4);
+  hexagon_V.col(0).fill(1);
+  hexagon_V(1,1)=hexagon_V(2,2)=7;
+  hexagon_V(1,2)=hexagon_V(2,1)=-2;
+  hexagon_V(1,3)=hexagon_V(2,3)=1;
+  hexagon_V(3,2)=hexagon_V(3,3)=hexagon_V(4,1)=hexagon_V(4,3)=3;
+  hexagon_V(3,1)=hexagon_V(4,2)=12;
+  hexagon_V(5,1)=hexagon_V(5,2)=10;
+  hexagon_V(5,3)=4;
+
+  Matrix<QE> V=( hexagon_V / (triangle_V + repeat_row(6*trans,3)) / (triangle_V - repeat_row(6*trans,3)));
 
   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
   p.set_description() << "Johnson solid J27: Triangular orthobicupola" << endl;

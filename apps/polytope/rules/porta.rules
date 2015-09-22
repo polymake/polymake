@@ -82,6 +82,32 @@ weight 4.10;
 precondition : POINTED;
 permutation : VertexPerm;
 
+
+}
+
+# @category Optimization
+# take a rational polytope and write a porta input file (.ieq or .poi)
+# @param Polytope<Rational> p
+# @param String file filename for the porta file (.ieq or .poi)
+# @option Bool primal true if points should be written, false if inequalities should be written (default is true)
+
+user_function poly2porta(Polytope<Rational>, String, {primal=>1} ) {
+    
+    require PortaParser;
+
+    my ($p, $filename, $options) = @_;
+    
+    my $converter=new PortaConverter($filename);
+    if ( $options->{primal} ) {
+	$converter->print_dim($p->CONE_AMBIENT_DIM-1);
+	$converter->print_points($p->VERTICES | POINTS, $p->lookup("LINEALITY_SPACE | INPUT_LINEALITY"));
+    } else {
+	$converter->print_dim($p->CONE_AMBIENT_DIM-1);
+	$converter->print_valid_point($p->VALID_POINT);
+	$converter->print_inequalities($p->FACETS | INEQUALITIES, $p->lookup("AFFINE_HULL | EQUATIONS"));
+    }
+    undef $converter;    
+    
 }
 
 

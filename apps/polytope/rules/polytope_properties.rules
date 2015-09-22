@@ -14,10 +14,10 @@
 #-------------------------------------------------------------------------------
 
 
-# @topic objects/Polytope<Rational>
+# @topic objects/Polytope/specializations/Polytope<Rational>
 # A rational polyhedron realized in Q^d
 
-# @topic objects/Polytope<Float>
+# @topic objects/Polytope/specializations/Polytope<Float>
 # A pointed polyhedron with float coordinates realized in R<sup>d</sup>.
 #
 # It mainly exists for visualization.
@@ -29,12 +29,6 @@
 #
 # None of the standard construction clients produces objects of this type.
 # If you want to get one, create it with the explicit constructor or [[convert_to]].
-
-# @topic objects/Polytope<QuadraticExtension>
-# A pointed polyhedron with coordinates in a [[QuadraticExtension]] field realized in R<sup>d</sup>.
-#
-# Convex hull and related algorithms use exact quadratic extension fields for arithmetics.
-
 
 object Polytope {
 

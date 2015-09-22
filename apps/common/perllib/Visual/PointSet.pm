@@ -55,6 +55,8 @@ use Polymake::Struct (
    [ '$ViewDirection' => '#%', default => '[0, 0, 0]' ],
    [ '$ViewUp' => '#%', default => '[0, 1, 0]' ],
    [ '$Scale' => '#%', default => '1' ],
+
+	[ '$LabelAlignment' => '#%', default => '"left"'],
 );
 
 

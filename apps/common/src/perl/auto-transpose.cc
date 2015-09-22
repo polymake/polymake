@@ -41,5 +41,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(transpose_X8, perl::Canned< const SparseMatrix< int, NonSymmetric > >);
    FunctionInstance4perl(transpose_X8, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
    FunctionInstance4perl(transpose_X8, perl::Canned< const pm::ColChain<pm::Matrix<pm::Rational> const&, pm::SingleCol<pm::Vector<pm::Rational> const&> > >);
+   FunctionInstance4perl(transpose_X8, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

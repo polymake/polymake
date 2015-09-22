@@ -21,11 +21,11 @@
 
 namespace polymake { namespace polytope {
 
-template <typename Scalar>
-bool detect_multiple(const Matrix<Scalar> &mat)
+template <typename Matrix>
+bool detect_multiple(const GenericMatrix<Matrix> &mat)
 {
-   hash_set<Vector<Scalar> > all;
-   for (typename Entire<Rows<Matrix<Scalar> > >::const_iterator v=entire(rows(mat));!v.at_end();++v)
+   hash_set<typename Matrix::const_row_type> all;
+   for (typename Entire<Rows<Matrix> >::const_iterator v=entire(rows(mat)); !v.at_end(); ++v)
       if (!all.insert(*v).second) return true;
    return false;
 }

@@ -46,12 +46,11 @@ void write_output(const perl::Object& q, const perl::Object& lp, const std::stri
 } // end anonymous namespace
 
 template <typename Scalar, typename SetType>
-perl::Object simplexity_ilp(int d, 
-                            const Matrix<Scalar>& points, 
-                            const Array<SetType>& facet_reps, 
-                            Scalar vol, 
-                            const SparseMatrix<Rational>& cocircuit_equations, 
-                            perl::OptionSet options)
+perl::Object universal_polytope(int d, 
+                                const Matrix<Scalar>& points, 
+                                const Array<SetType>& facet_reps, 
+                                Scalar vol, 
+                                const SparseMatrix<Rational>& cocircuit_equations)
 {
    const int n = facet_reps.size();
    Vector<Scalar> volume_vect(n);
@@ -66,14 +65,28 @@ perl::Object simplexity_ilp(int d,
       Equations /= (zero_vector<Scalar>(cocircuit_equations.rows()) 
                     | Matrix<Scalar>(cocircuit_equations));
 
-   perl::Object lp(perl::ObjectType::construct<Scalar>("LinearProgram"));
-   lp.attach("INTEGER_VARIABLES") << Array<bool>(n,true);
-   lp.take("LINEAR_OBJECTIVE") << Vector<Scalar>(0|ones_vector<Scalar>(n));
-
    perl::Object q(perl::ObjectType::construct<Scalar>("Polytope"));
    q.take("FEASIBLE") << true;
    q.take("INEQUALITIES") << Inequalities;
    q.take("EQUATIONS") << Equations;
+   return q;
+}
+
+template <typename Scalar, typename SetType>
+perl::Object simplexity_ilp(int d, 
+                            const Matrix<Scalar>& points, 
+                            const Array<SetType>& facet_reps, 
+                            Scalar vol, 
+                            const SparseMatrix<Rational>& cocircuit_equations, 
+                            perl::OptionSet options)
+{
+   const int n = facet_reps.size();
+
+   perl::Object lp(perl::ObjectType::construct<Scalar>("LinearProgram"));
+   lp.attach("INTEGER_VARIABLES") << Array<bool>(n,true);
+   lp.take("LINEAR_OBJECTIVE") << Vector<Scalar>(0|ones_vector<Scalar>(n));
+
+   perl::Object q = universal_polytope(d, points, facet_reps, vol, cocircuit_equations);
    q.take("LP") << lp;
 
    const std::string filename = options["filename"];
@@ -157,6 +170,8 @@ Integer foldable_max_signature_upper_bound(int d,
    const Integer int_sll = convert_to<Integer>(sll); // rounding down
    return int_sll;
 }
+
+FunctionTemplate4perl("universal_polytope<Scalar>($ Matrix<Scalar> Array<Set> $ SparseMatrix)");
 
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"

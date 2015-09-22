@@ -52,5 +52,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, TropicalNumber< Min, Rational >, perl::Canned< const Rational >);
    OperatorInstance4perl(BinaryAssign_mul, perl::Canned< TropicalNumber< Min, Rational > >, perl::Canned< const TropicalNumber< Min, Rational > >);
    OperatorInstance4perl(BinaryAssign_mul, perl::Canned< TropicalNumber< Max, Rational > >, perl::Canned< const TropicalNumber< Max, Rational > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const TropicalNumber< Min, Rational > >, perl::Canned< const TropicalNumber< Min, Rational > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const TropicalNumber< Max, Rational > >, perl::Canned< const TropicalNumber< Max, Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

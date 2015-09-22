@@ -1,0 +1,309 @@
+########################################################################
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#  
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#  
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+#  Boston, MA  02110-1301, USA.
+#  
+#  ---
+#  Copyright (C) 2011-2015, Simon Hampe <simon.hampe@googlemail.com>
+#
+#
+#  Defines properties and rules for RationalFunction 
+########################################################################
+
+
+object RationalFunction {
+	
+	#Operator overload
+	#Fallback=> TRUE is needed to that perl can implement missing operators such as == in the usual manner.
+	use overload('*' => 'mult','""' => 'to_string', 'bool' => 'bool','^' => 'power_operator', '+' => 'sum','-' => 'minus','neg'=>'neg', "fallback" => TRUE);
+
+	# @category Defining morphisms and functions
+	# This property describes the affine linearity domains of the function. I.e. the function is
+	# affine integral linear on each maximal polytope of [[DOMAIN]]. 
+	property DOMAIN : Cycle<Addition>; 
+
+	# @category Defining morphisms and functions
+	# The value at index i describes the function value at [[DOMAIN]]->SEPARATED_VERTICES->row(i). 
+	# More precisely, if the corresponding vertex is not a far ray, it describes its function value. 
+	# If it is a directional ray, it describes the slope on that ray.
+	property VERTEX_VALUES : Vector<Rational>;
+
+	# @category Defining morphisms and functions 
+	# The value at index i describes the function value of [[DOMAIN]]->LINEALITY_SPACE->row(i)
+	property LINEALITY_VALUES : Vector<Rational>; 
+
+	# @category Defining morphisms and functions
+	# When representing the function as a quotient of tropical polynomials, this
+	# is the numerator. Should be a homogeneous polynomial of the same degree as [[DENOMINATOR]].
+	property NUMERATOR : Polynomial<TropicalNumber<Addition> >;
+
+	# @category Defining morphisms and functions
+	# When representing the function as a quotient of tropical polynomials, this
+	# is the denominator. Should be a homogeneous polynomial of the same degree as [[NUMERATOR]]. 
+	property DENOMINATOR : Polynomial<TropicalNumber<Addition> >;
+
+
+	# @category Defining morphisms and functions
+	# This is an internally used property that should not actually be set by the user. When creating a
+	# rational function with the ^-operator, this property is set to the exponent. 
+	# The semantics is that when computing a divisor, this function should be applied so many times
+	# The usual application of this is a call to divisor($X, $f^4) or something similar.
+	# Warning: This property is not stored if the RationalFunction object is saved. Nor should be assumed
+	# to be preserved during any kind of arithmetic or restricting operation.
+	property POWER : Int : non_storable;
+
+	# @category Defining morphisms and functions
+	# This is TRUE, if the function is defined on the full projective torus by a [[NUMERATOR]] and a 
+	# [[DENOMINATOR]].
+	# The rules do not actually check for completeness of the [[DOMAIN]]. This property will be set to true, 
+	# if the function is created only via [[NUMERATOR]] and [[DENOMINATOR]]. Otherwise
+	# it will be set to FALSE (or you can set it manually upon creation).
+	property IS_GLOBALLY_DEFINED : Bool;
+
+	## RULES ###################
+
+	rule POWER : {
+		$this->POWER = 1;
+	}
+
+	rule DOMAIN, IS_GLOBALLY_DEFINED : NUMERATOR, DENOMINATOR {
+		computeDomain($this);
+		$this->IS_GLOBALLY_DEFINED = !(defined($this->lookup("VERTEX_VALUES")) || defined($this->lookup("LINEALITY_VALUES")));
+	}
+	weight 2.10;
+	#FIXME: THis property should maybe be used in some arithmetic functions...
+
+	rule IS_GLOBALLY_DEFINED : {
+		$this->IS_GLOBALLY_DEFINED = FALSE;
+	}
+	precondition : defined(DOMAIN);  
+	weight 0.10;
+	#If a domain has been defined and this property is not true, it is false.
+
+	rule LINEALITY_VALUES : {		
+		$this->LINEALITY_VALUES = new Vector<Rational>();
+	}
+	precondition : DOMAIN.LINEALITY_SPACE {
+		$this->DOMAIN->LINEALITY_SPACE->rows() == 0;
+	}
+	weight 0.10;
+
+	rule VERTEX_VALUES, LINEALITY_VALUES : DOMAIN, NUMERATOR, DENOMINATOR {
+		computeGeometricFunctionData($this);
+	}
+	precondition : NUMERATOR, DENOMINATOR {
+		$this->NUMERATOR != (new Polynomial<TropicalNumber<Addition> >($this->NUMERATOR->get_ring)) 
+			or die "Numerator cannot be the zero polynomial.";
+		polynomial_degree($this->NUMERATOR) == polynomial_degree($this->DENOMINATOR) 
+			or die "Both numerator and denominator must have the same degree";
+		is_homogeneous($this->NUMERATOR) or die "Numerator must be homogeneous";
+		is_homogeneous($this->DENOMINATOR)  or die "Denominator must be homogeneous";
+	}
+
+	# @category Defining morphisms and functions
+	# Computes the restriction of this RationalFunction on a given Cycle.
+	# The cycle need not be contained in the [[DOMAIN]] of the function, the restriction
+	# will be computed on the intersection of the cycle and the [[DOMAIN]].
+	# @param Cycle<Addition> C The new domain.
+	# @return RationalFunction<Addition>
+	user_method restrict(Cycle<Addition>) {
+		my ($f,$X) = @_;
+	
+		#Need to do that to be able to use it in rules of $X
+		my $Xcopy = new Cycle<Addition>(VERTICES=>$X->VERTICES, MAXIMAL_POLYTOPES=>$X->MAXIMAL_POLYTOPES, 
+													LINEALITY_SPACE=>$X->LINEALITY_SPACE, WEIGHTS=>$X->WEIGHTS);
+
+		#Define identity on X
+		my $vertexvalues = new Matrix<Rational>($Xcopy->SEPARATED_VERTICES->minor(All,~scalar2set(0)));
+		my $linealityvalues = new Matrix<Rational>($Xcopy->LINEALITY_SPACE);
+		if($linealityvalues->rows() > 0) {
+			$linealityvalues = $linealityvalues->minor(All,~scalar2set(0));
+		}
+
+	
+		my $emb = new Morphism<Addition>( DOMAIN=>$Xcopy, VERTEX_VALUES=>$vertexvalues,LINEALITY_VALUES=>$linealityvalues, MATRIX=>(unit_matrix<Rational>($f->DOMAIN->PROJECTIVE_AMBIENT_DIM+1)));
+		return pullback($emb,$f);
+	}
+
+	# Changes the power of the function
+	method to_the_power_of {
+		my ($this,$k) = @_;
+		if($k < 0) {
+			die "Illegal function power. Must be >= 0.";
+		}
+		if(defined($this->lookup("NUMERATOR"))) {
+			if(defined($this->lookup("DOMAIN"))) {
+				return new RationalFunction<Addition>(NUMERATOR=>$this->NUMERATOR, DENOMINATOR=>$this->DENOMINATOR,
+						DOMAIN=>$this->DOMAIN, POWER=>$k);
+			}
+			else {
+				return new RationalFunction<Addition>(NUMERATOR=>$this->NUMERATOR, DENOMINATOR=>$this->DENOMINATOR,
+						POWER=>$k);
+			}
+		}
+		return new RationalFunction<Addition>(DOMAIN=>$this->DOMAIN, VERTEX_VALUES=>$this->VERTEX_VALUES,
+							LINEALITY_VALUES=>$this->LINEALITY_VALUES,POWER=>$k);
+	}
+
+	## OPERATORS ########
+	
+	sub power_operator {
+		my ($f,$k) = @_;
+		return $f->to_the_power_of($k);
+	}
+
+	sub bool {
+		my $this = shift;
+		return !undef($this);
+	}
+
+	sub to_string {
+		my $this = shift;
+		if(defined($this->lookup("NUMERATOR"))) {
+			return "(".$this->NUMERATOR.") / (".$this->DENOMINATOR.")";
+		}
+		else {
+			return "Rational function on ".$this->DOMAIN->description();
+		}
+	}
+
+	sub sum {
+		my ($f,$g) = @_;
+		if(!is_compatible($f,$g)) {
+			die "Rational functions use different tropical additions.";
+		}
+		if(defined($f->lookup("NUMERATOR")) && defined($g->lookup("NUMERATOR"))) {
+			return new RationalFunction<Addition>(NUMERATOR=>(tolerant_multiplication($f->NUMERATOR ,$g->NUMERATOR)),
+				DENOMINATOR=>(tolerant_multiplication($f->DENOMINATOR, $g->DENOMINATOR)));
+		}
+		else {
+			return add_rational_functions($f,$g);
+		}
+	}
+
+	sub minus {
+		my ($f,$g) = @_;
+		return sum($f, (-1)*$g);
+	}
+
+	#FIXME: Still need tropical sum?
+
+	#Multiply by an integer
+	sub mult {
+		my ($this,$r) = @_;
+		if($r == 0) {
+			my $zero;
+			my $ring;
+			if(defined($this->lookup("NUMERATOR"))) {
+				$ring = $this->NUMERATOR->get_ring();
+			}
+			else {
+				$ambient_dim = $this->DOMAIN->FAN_AMBIENT_DIM;
+				my $ring = new Ring<TropicalNumber<Addition> >($ambient_dim);
+			}
+			$zero = new Polynomial<TropicalNumber<Addition> >( 
+				(new TropicalNumber<Addition>(0)),$ring);
+			return new RationalFunction<Addition>(NUMERATOR=>$zero,DENOMINATOR=>$zero);
+		}
+		if(defined($this->lookup("NUMERATOR"))) {
+			my $num = new Polynomial<TropicalNumber<Addition> >($this->NUMERATOR);
+			my $den = new Polynomial<TropicalNumber<Addition> >($this->DENOMINATOR);
+			my $power = $r < 0? -$r : $r;
+			for my $i (1 .. $power-1) {
+				$num *= $num;
+				$den *= $den;
+			}
+			return new RationalFunction<Addition>(NUMERATOR=>($r > 0? $num : $den), DENOMINATOR=>($r > 0? $den : $num));
+		}
+		else {
+			return new RationalFunction<Addition>(DOMAIN=>$this->DOMAIN,VERTEX_VALUES=>$r*($this->VERTEX_VALUES),
+							LINEALITY_VALUES=>$r*($this->LINEALITY_VALUES));
+		}
+	}
+
+	sub neg {
+		my $f = shift;
+		return mult($f,-1);
+	}
+
+
+}
+
+# @category Affine and projective coordinates
+# This takes a tropical polynomial defined on tropical affine coordinates and turns it into 
+# a rational function on tropical homogeneous coordinates
+# @param Polynomial<TropicalNumber<Addition> > p A polynomial on affine coordinates.
+# @param Int chart The index of the homogenizing coordinate. 0 by default.
+# @return RationalFunction A rational function, which on the given chart is described by p.
+user_function rational_fct_from_affine_numerator<Addition>(Polynomial<TropicalNumber<Addition> >; $=0) {
+	my ($p,$chart) = @_;
+	return homogenize_quotient($p,
+		(new Polynomial<TropicalNumber<Addition> >( (new TropicalNumber<Addition>(0)),$p->get_ring())),
+		$chart);	
+}
+
+# @category Affine and projective coordinates
+# Same as [[rational_fct_from_affine_numerator]](Polynomial), except that it takes
+# a string which it converts to a tropical polynomial using [[toTropicalPolynomial]].
+# @param String p A string that will be converted to a tropical polynomial
+# @param Int chart The index of the homogenizing coordinate. 0 by default.
+# @return RationalFunction 
+user_function rational_fct_from_affine_numerator(String; $=0) {
+	my ($s,$chart) = @_;
+	return rational_fct_from_affine_numerator(toTropicalPolynomial($s),$chart);
+}
+
+# @category Affine and projective coordinates
+# This takes a tropical polynomial p defined on tropical affine coordinates and turns it into 
+# the rational function (1/p) on tropical homogeneous coordinates
+# @param Polynomial<TropicalNumber<Addition> > p A polynomial on affine coordinates.
+# @param Int chart The index of the homogenizing coordinate. 0 by default.
+# @return RationalFunction A rational function, which on the given chart is described by (1/p).
+user_function rational_fct_from_affine_denominator<Addition>(Polynomial<TropicalNumber<Addition> >; $=0) {
+	my ($p,$chart) = @_;
+	return homogenize_quotient(
+		(new Polynomial<TropicalNumber<Addition> >( (new TropicalNumber<Addition>(0)),$p->get_ring())),
+		$p,
+		$chart);	
+}
+
+# @category Affine and projective coordinates
+# Same as [[rational_fct_from_affine_denominator]](Polynomial), except that it takes
+# a string which it converts to a tropical polynomial using [[toTropicalPolynomial]].
+# @param String p A string that will be converted to a tropical polynomial
+# @param Int chart The index of the homogenizing coordinate. 0 by default.
+# @return RationalFunction 
+user_function rational_fct_from_affine_denominator(String; $=0) {
+	my ($s,$chart) = @_;
+	return rational_fct_from_affine_denominator(toTropicalPolynomial($s),$chart);
+}
+
+# @category Intersection theory
+# Constructs a list of rational functions that cut out a single point in the projective torus
+# @param Vector<Rational> A point in the projective torus, given in tropical homogeneous coordinates, but without
+# leading coordinate.
+# @tparam Addition Min or Max. Determines the type of the rational functions.
+# @return RationalFunction. A perl array of rational functions of the form (v_i*x_0 + x_i)/(x_0), i = 1,..,n
+user_function point_functions<Addition>($) {
+	my $v = new Vector<Rational>(shift);
+	my @result = ();
+	my $r = new Ring<TropicalNumber<Addition> >($v->dim());
+	my @vars = $r->variables;
+	my $denom = $vars[0]; 
+	for my $i (1 .. $v->dim()-1) {
+		my $num = $vars[$i] + (new TropicalNumber<Addition>($v->[$i] - $v->[0]))*$vars[0];
+		@result = (@result,new RationalFunction<Addition>(NUMERATOR=>$num,DENOMINATOR=>$denom));
+	}
+	return @result;
+}

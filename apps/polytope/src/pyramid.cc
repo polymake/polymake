@@ -25,7 +25,7 @@ namespace polymake { namespace polytope {
 template<typename Scalar>
 perl::Object pyramid(perl::Object p_in, const Scalar& z, perl::OptionSet options)
 {
-   const bool noc = options["noc"],
+   const bool noc = options["no_coordinates"],
       relabel = options["relabel"];
 
    if (z==0 && !noc)
@@ -82,11 +82,11 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# @param Polytope P"
                           "# @param Scalar z is the distance between the vertex barycenter and //v//,"
                           "#   default value is 1."
-                          "# @option Bool noc don't compute new coordinates, produce purely combinatorial description."
+                          "# @option Bool no_coordinates don't compute new coordinates, produce purely combinatorial description."
                           "# @option Bool relabel copy vertex labels from the original polytope,"
                           "#   label the new top vertex with \"Apex\"."
                           "# @return Polytope",
-                          "pyramid<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=1, { noc => 0, relabel => undef })");
+                          "pyramid<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=1, { no_coordinates => 0, relabel => undef })");
 } }
 
 // Local Variables:

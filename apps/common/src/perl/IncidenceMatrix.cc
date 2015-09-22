@@ -85,5 +85,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, IncidenceMatrix< NonSymmetric >, perl::Canned< const pm::MatrixMinor<pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
    OperatorInstance4perl(Unary_com, perl::Canned< const Wary< pm::Transposed<pm::IncidenceMatrix<pm::NonSymmetric> > > >);
    FunctionInstance4perl(new_X, IncidenceMatrix< NonSymmetric >, perl::Canned< const pm::ComplementIncidenceMatrix<pm::Transposed<pm::IncidenceMatrix<pm::NonSymmetric> > > >);
+   OperatorInstance4perl(convert, IncidenceMatrix< NonSymmetric >, perl::Canned< const NodeMap< Directed, Set< int > > >);
+   FunctionInstance4perl(new_X, IncidenceMatrix< NonSymmetric >, perl::Canned< const pm::MatrixMinor<pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::all_selector const&, pm::Set<int, pm::operations::cmp> const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

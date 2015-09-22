@@ -603,6 +603,12 @@ start:
     storesign (a, POS);
 }				/* end of normalize */
 
+long
+length (lrs_mp a)
+{
+/* formerly a macro but conflicts with string length */
+  return ((a[0] > 0) ? a[0] : -a[0]);
+}
 
 long 
 mptoi (lrs_mp a)		/* convert lrs_mp to long integer */
@@ -738,7 +744,7 @@ readrat (lrs_mp Na, lrs_mp Da)
   char in[MAXINPUT], num[MAXINPUT], den[MAXINPUT];
   if(fscanf (lrs_ifp, "%s", in)==EOF)
                  {
-                   fprintf (lrs_ofp, "\nInvalid rational input"); 
+                   fprintf (lrs_ofp, "\nInvalid input: check you have entered enough data!\n"); 
                    exit(1);
                  }
   if(!strcmp(in,"end"))          /*premature end of input file */

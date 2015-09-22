@@ -18,42 +18,50 @@
 #include "polymake/Set.h"
 #include "polymake/Array.h"
 #include "polymake/Matrix.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/tropical/arithmetic.h"
 
 namespace polymake { namespace tropical {
-   
-   template <typename Scalar>
-   Vector<Scalar> nearest_point(perl::Object t_in, const Vector<Scalar>& point)
+  
+	//FIXME Adapt to tropical numbers. -- only finite coordinates
+      
+      template <typename Addition, typename Scalar>
+      Vector<TropicalNumber<Addition, Scalar> > nearest_point(perl::Object t_in, const Vector<TropicalNumber<Addition, Scalar> >& point)
    {
-      Matrix<Scalar> V = t_in.give("VERTICES");
-      const int n(V.rows()), d(V.cols());
+      typedef TropicalNumber<Addition, Scalar> TNumber;
+      Matrix<TNumber> V = t_in.give("POINTS");
+      //Matrix<TNumber> V = t_in.give("VERTICES");
       
-      Vector<Scalar> lambdas(n);
-      Vector<Scalar> n_point(d);
-      
-      for (int i=0; i<n; ++i)
-      {
-         lambdas[i]=accumulate(point-V[i], operations::max());
-         V[i]=V[i]+same_element_vector(lambdas[i],d);
-      }
-      
-      Scalar first=accumulate(V.col(0), operations::min());
-      n_point[0]=0;
-      for (int j=1; j<d;++j)
-         n_point[j]=accumulate(V.col(j), operations::min())-first;
-      
-      return n_point;   
-   }
-   
-	UserFunctionTemplate4perl("# @category Tropical operations"
-                             "# Compute the projection of a point //x// in  tropical projective space onto a tropical polytope //P//."
+      Vector<TNumber> lambda = principal_solution(T(V), point);
+
+      return T(V) * lambda;
+
+      //should this output be homogenized?
+
+   } 
+      UserFunctionTemplate4perl("# @category Tropical operations"
+                             "# Compute the projection of a point //x// in  tropical projective space onto a tropical cone //C//."
                              "# Cf."
                              "# \t Develin & Sturmfels math.MG/0308254v2, Proposition 9."
-                             "# @param TropicalPolytope P"
-                             "# @param Vector<Coord> x"
-                             "# @tparam Coord"
-                             "# @return Vector"
+                             "# @param Cone<Addition,Scalar> C"
+                             "# @param Vector<TropicalNumber<Addition,Scalar> > x"
+                             "# @return Vector<TropicalNumber<Addition,Scalar> >"
                              "# @author Katja Kulas",
-                             "nearest_point<Scalar>(TropicalPolytope<Scalar> Vector<Scalar>)");
+                             "nearest_point<Addition, Scalar>(Cone<Addition, Scalar>, Vector<TropicalNumber<Addition, Scalar> >)"); 
+
+
+      UserFunctionTemplate4perl("# @category Tropical operations"
+                                "# Compute the solution of the tropical equation //A// * //x// = //b//."
+                                "# If there is no solution, the return value is 'near' a solution."
+                                "# Cf. "
+                                "# Butkovič 'Max-linear systems: theory and algorithms' (MR2681232), "
+                                "# Theorem 3.1.1"
+                                "# @param Matrix<TropicalNumber<Addition, Scalar> > A"
+                                "# @param Vector<TropicalNumber<Addition, Scalar> > b"
+                                "# @return Vector<TropicalNumber<Addition, Scalar> > ",
+                                "principal_solution(Matrix, Vector)"); 
+
+      FunctionTemplate4perl("rel_coord(Vector, Vector)");
 } }
 
 // Local Variables:

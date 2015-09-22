@@ -23,91 +23,239 @@
 #include <polymake/Matrix.h>
 #include <polymake/ListMatrix.h>
 #include <polymake/Polynomial.h>
+#include <polymake/permutations.h>
 #include <queue>
+
+namespace pm{
+namespace operations{
+namespace group{
+
+struct on_container{};
+struct on_elements{};
+struct on_rows{};
+struct on_cols{};
+
+template <typename OpRef, typename action_type, typename PERM, 
+typename op_tag=typename object_traits<typename deref<OpRef>::type>::generic_tag, 
+typename perm_tag=typename object_traits<PERM>::generic_tag,
+typename enabled=True
+>
+struct action;
+
+// generic action on container with Array<int>
+template <typename OpRef, typename PERM, typename op_tag>
+struct action<OpRef, on_container, PERM, op_tag, is_container> {
+  typedef OpRef argument_type;
+  typedef typename deref<argument_type>::type result_type;
+
+  const PERM& perm;
+  
+  action(const PERM& p)
+   : perm(p) {}
+  
+  result_type operator() (typename function_argument<argument_type>::const_type x) const
+  {
+    return permuted(x,perm);
+  }      
+}; 
+
+// action on integers (anchor of the on_elements recursion)
+template <typename PERM>
+struct action<int&, on_elements, PERM, is_scalar, is_container> {
+  typedef int& argument_type;
+  typedef typename deref<argument_type>::type result_type;
+  
+  const PERM& perm;
+  
+  action(const PERM& p)
+    : perm(p) {}
+  
+  result_type operator() (typename function_argument<argument_type>::const_type x) const
+  {
+    return perm[x];
+  }      
+}; 
+
+// generic action on elements in a container with Array<int>
+template <typename OpRef, typename PERM, typename op_tag>
+  struct action<OpRef, on_elements, PERM, op_tag, is_container,
+  typename enable_if<True, (identical< typename object_traits<typename deref<OpRef>::type>::model, is_container>::value && !identical<op_tag, is_matrix>::value) >::type
+  > {
+  typedef OpRef argument_type;
+  typedef typename object_traits<typename deref<argument_type>::type>::persistent_type result_type;
+
+
+  const PERM& perm;
+
+  action(const PERM& p)
+   : perm(p) {}
+
+  result_type operator() (typename function_argument<argument_type>::const_type x) const
+  {
+    return result_type(attach_operation(x,action<typename deref<argument_type>::type::value_type&, on_elements, PERM>(perm)));
+  }      
+}; 
+
+// generic action on elements in a matrix with Array<int>
+template <typename OpRef, typename PERM>
+  struct action<OpRef, on_elements, PERM, is_matrix, is_container> {
+  typedef OpRef argument_type;
+  typedef typename object_traits<typename deref<argument_type>::type>::persistent_type result_type;
+
+
+  const PERM& perm;
+
+  action(const PERM& p)
+   : perm(p) {}
+
+  result_type operator() (typename function_argument<argument_type>::const_type x) const
+  {
+    return result_type(x.rows(),x.cols(),entire(attach_operation(concat_rows(x),action<typename deref<argument_type>::type::value_type&, on_elements, PERM>(perm))));
+  }      
+}; 
+
+// action on rows of a matrix with Array<int>
+template <typename OpRef, typename PERM>
+struct action<OpRef, on_rows, PERM, is_matrix, is_container> {
+  typedef OpRef argument_type;
+  typedef typename deref<argument_type>::type result_type;
+
+  const PERM& perm;
+
+  action(const PERM& p)
+   : perm(p) {}
+
+  result_type operator() (typename function_argument< argument_type >::const_type x) const
+  {
+    return permuted_rows(x,perm);
+  }
+};
+
+// action on cols of a matrix with Array<int>
+template <typename OpRef, typename PERM>
+struct action<OpRef, on_cols, PERM, is_matrix, is_container> {
+  typedef OpRef argument_type;
+  typedef typename deref<argument_type>::type result_type;
+    
+  const PERM& perm;
+
+  action(const PERM& p)
+   : perm(p) {}
+
+  result_type operator() (typename function_argument< argument_type >::const_type x) const
+  {
+    return permuted_cols(x,perm);
+  }      
+}; 
+
+// action on a vector under a matrix group
+template <typename OpRef, typename PERM>
+struct action<OpRef, on_elements, PERM, is_vector, is_matrix> {
+  typedef OpRef argument_type;
+  typedef typename deref<argument_type>::type result_type;
+    
+  const PERM& mat;
+    
+  action(const PERM& m)
+   : mat(m.top()) {}
+    
+  result_type operator() (typename function_argument<argument_type>::const_type x) const
+  {
+    return mat*x;
+  }
+};
+
+// action on the variables of a polyomial with Array<int>
+template <typename PERM, typename Coefficient, typename Exponent>
+struct action<Polynomial<Coefficient,Exponent>&, on_container, PERM, is_polynomial, is_container> {
+  typedef Polynomial<Coefficient, Exponent>& argument_type;
+  typedef typename deref<argument_type>::type result_type;
+
+  const PERM& perm;
+
+  action(const PERM& p)
+   : perm(p) {}
+
+  result_type operator() (typename function_argument<argument_type>::const_type x) const
+  {
+    return Polynomial<Coefficient, Exponent>(action<Matrix<Exponent>, on_cols, PERM>(perm)(x.monomials_as_matrix()), x.coefficients_as_vector(), x.get_ring());
+  }      
+}; 
+
+// action on the variables of a monomial with Array<int>
+template <typename PERM, typename Coefficient, typename Exponent>
+struct action<Monomial<Coefficient,Exponent>&, on_container, PERM, is_opaque, is_container> {
+  typedef Monomial<Coefficient,Exponent>& argument_type;
+  typedef typename deref<argument_type>::type result_type;
+
+  const PERM& perm;
+
+  action(const PERM& p)
+   : perm(p) {}
+
+  result_type operator() (typename function_argument<argument_type>::const_type x) const
+  {
+    return Monomial<Coefficient,Exponent>(action<Vector<Exponent>, on_container, PERM>(perm)(x.get_value()), x.get_ring());
+  }      
+};
+
+// generic action on both elements of a pair
+template <typename E1, typename E2, typename action_type, typename PERM, typename perm_tag>
+struct action<std::pair<E1,E2>&, action_type, PERM, is_composite, perm_tag> {
+  typedef std::pair<E1,E2>& argument_type;
+  typedef typename deref<argument_type>::type result_type;
+
+  const PERM& perm;
+
+  action(const PERM& p)
+   : perm(p) {}
+
+  result_type operator() (typename function_argument<argument_type>::const_type x) const
+  {
+    return std::make_pair<E1,E2>(action<E1&, action_type, PERM>(perm)(x.first),action<E2&, action_type, PERM>(perm)(x.second));
+  }      
+}; 
+
+} //end namespace group
+} //end namespace operations
+
+} //end namespace pm
 
 namespace polymake {
 namespace group {
 
-template<typename PERM, typename T>
-T action_on_container(const PERM& perm, const T& t);
+using pm::operations::group::on_container;
+using pm::operations::group::on_elements;
+using pm::operations::group::on_rows;
+using pm::operations::group::on_cols;
 
-// baseaction on int
-inline int action_on_container(const Array<int>& p, int i) {
-  return p[i];
+/*
+ * computes the action on something under one permutation element
+ */
+template <typename action_type, typename PERM, typename Element>
+typename pm::object_traits<Element>::persistent_type
+action(const PERM& perm, const Element& element) 
+{
+  return pm::operations::group::action<Element&,action_type,PERM>(perm)(element);
 }
 
-// action on bitset
-template<>
-inline Bitset action_on_container(const Array<int>& p, const Bitset& set) {
-  Bitset image;
-  for(Entire< Bitset >::const_iterator it = entire(set); !it.at_end(); ++it) {
-    image += action_on_container(p, *it);
-  }
-  return image;
+/*
+ * computes the action on something under the inverse of a Array<int>
+ */
+template <typename action_type, typename Element>
+typename pm::object_traits<Element>::persistent_type
+action_inv(const Array<int>& perm, const Element& element) 
+{
+  Array<int> inv(perm.size());
+  inverse_permutation(perm, inv);
+  return pm::operations::group::action<Element&,action_type,Array<int> >(inv)(element);
 }
 
-// baseaction of matrix on vector
-template<typename T>
-inline Vector<T> action_on_container(const Matrix<T>& p, const Vector<T>& vector) {
-  return p*vector;
-}
-
-// action on vector
-template<typename PERM, typename T>
-inline Vector<T> action_on_container(const PERM& p, const Vector<T>& vector) {
-  int n = vector.size();
-  Vector<T> image = zero_vector<T>(n);
-  for(int i = 0; i < n; i++) {
-    image[action_on_container(p,i)] = vector[i];
-  }
-  return image;
-}
-
-// action on matrix
-template<typename PERM, typename T>
-inline Matrix<T> action_on_container(const PERM& p, const Matrix<T>& matrix) {
-  ListMatrix<Vector<T> > image;
-  for(typename Entire<Rows<Matrix<T> > >::const_iterator row = entire(rows(matrix)); !row.at_end(); ++row) {
-    image /= action_on_container(p, Vector<T>(*row));
-  }
-  return Matrix<T>(image);
-}
-
-// action on polynomial
-template<typename PERM, typename Coefficient, typename Exponent>
-inline Polynomial<Coefficient, Exponent> action_on_container(const PERM& p, const Polynomial<Coefficient, Exponent>& polynomial) {
-  Matrix<Exponent> monoms = polynomial.template monomials_as_matrix<Matrix<Exponent> >();
-  Vector<Coefficient> coefficients = polynomial.coefficients_as_vector();
-  return Polynomial<Coefficient, Exponent>(action_on_container(p, monoms), coefficients, polynomial.get_ring());
-}
-
-// action on monomial
-template<typename PERM, typename Coefficient, typename Exponent>
-inline Monomial<Coefficient, Exponent> action_on_container(const PERM& p, const Monomial<Coefficient, Exponent>& monomial) {
-  Vector<Exponent> monom(monomial.get_value());
-  return Monomial<Coefficient, Exponent>(action_on_container(p, monom), monomial.get_ring());
-}
-
-// action on pair
-template<typename PERM, typename T, typename U>
-inline std::pair<T,U> action_on_container(const PERM& p, const std::pair<T,U>& pair) {
-  return std::make_pair<T,U>(action_on_container(p,pair.first), action_on_container(p,pair.second));
-}
-
-// action on bitset
-template<typename PERM, typename T>
-inline Set<T> action_on_container(const PERM& p, const Set<T>& set) {
-  Set<T> image;
-  for(typename Entire< Set< T > >::const_iterator it = entire(set); !it.at_end(); ++it) {
-    image += action_on_container(p, *it);
-  }
-  return image;
-}
 
 /*
  * Comutes the orbit of element, where the group is spanned by generators
  */
-template<typename PERM, typename Element>
+template<typename action_type, typename PERM, typename Element>
 Set< Element > orbit(const Array< PERM >& generators, const Element& element) {
   Set< Element > orbit;
   orbit += element;
@@ -117,7 +265,7 @@ Set< Element > orbit(const Array< PERM >& generators, const Element& element) {
     Element orbitElement = q.front();
     q.pop();
     for(typename Entire<Array< PERM > >::const_iterator generator = entire(generators); !generator.at_end(); ++generator) {
-      Element next = action_on_container(*generator, orbitElement);
+      Element next = action<action_type>(*generator,orbitElement);
       if(!orbit.collect(next)) {
         q.push(next);
       }

@@ -327,7 +327,7 @@ rule BASES : REVLEX_BASIS_ENCODING, RANK, N_ELEMENTS {
     $this->BASES = bases_from_revlex_encoding($this->REVLEX_BASIS_ENCODING, $this->RANK, $this->N_ELEMENTS);
 }
 
-# @category Combinatorics
+# @category Other
 # calculate the rank of a set with respect to a given matroid
 # @return Int
 user_method rank(Set) {
@@ -342,7 +342,7 @@ user_method rank(Set) {
 
 }
 
-# @category Combinatorics
+# @category Other
 # calculate the internal activity of a base with respect to a given ordering of all bases.
 # Let the given base B = B_j be the j-th one in the given ordering B_1, B_2, ...
 # The internal activity of B_j is the number of "necessary" elements in B_j, 

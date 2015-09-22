@@ -134,11 +134,6 @@ using namespace std;
 #define errcheck(s,e) if ((long)(e)==-1L){  perror(s);exit(1);}
 #endif
 
-#ifndef OMIT_TIMES
-void ptimes ();
-#endif
-
-
 #define CALLOC(n,s) xcalloc(n,s,__LINE__,__FILE__)
 
 /*************/

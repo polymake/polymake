@@ -16,14 +16,16 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
-#include "polymake/SparseVector.h"
-#include "polymake/Integer.h"
-#include "polymake/SparseMatrix.h"
-#include "polymake/Rational.h"
-#include "polymake/IncidenceMatrix.h"
 #include "polymake/Graph.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Integer.h"
 #include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/SparseVector.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/PuiseuxFraction.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -45,5 +47,10 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(index_f1, perl::Canned< const pm::unary_transform_iterator<pm::AVL::tree_iterator<pm::sparse2d::it_traits<pm::QuadraticExtension<pm::Rational>, true, false> const, (pm::AVL::link_index)1>, std::pair<pm::BuildUnary<pm::sparse2d::cell_accessor>, pm::BuildUnaryIt<pm::sparse2d::cell_index_accessor> > > >);
    FunctionInstance4perl(index_f1, perl::Canned< const pm::unary_transform_iterator<pm::AVL::tree_iterator<pm::AVL::it_traits<int, pm::QuadraticExtension<pm::Rational>, pm::operations::cmp> const, (pm::AVL::link_index)1>, std::pair<pm::BuildUnary<pm::sparse_vector_accessor>, pm::BuildUnary<pm::sparse_vector_index_accessor> > > >);
    FunctionInstance4perl(index_f1, perl::Canned< const pm::unary_transform_iterator<pm::AVL::tree_iterator<pm::AVL::it_traits<int, pm::Integer, pm::operations::cmp> const, (pm::AVL::link_index)1>, std::pair<pm::BuildUnary<pm::sparse_vector_accessor>, pm::BuildUnary<pm::sparse_vector_index_accessor> > > >);
+   FunctionInstance4perl(index_f1, perl::Canned< const pm::unary_transform_iterator<pm::AVL::tree_iterator<pm::sparse2d::it_traits<pm::TropicalNumber<pm::Min, pm::Rational>, false, true> const, (pm::AVL::link_index)1>, std::pair<pm::BuildUnary<pm::sparse2d::cell_accessor>, pm::BuildUnaryIt<pm::sparse2d::cell_index_accessor> > > >);
+   FunctionInstance4perl(index_f1, perl::Canned< const pm::unary_transform_iterator<pm::AVL::tree_iterator<pm::AVL::it_traits<int, pm::TropicalNumber<pm::Min, pm::Rational>, pm::operations::cmp> const, (pm::AVL::link_index)1>, std::pair<pm::BuildUnary<pm::sparse_vector_accessor>, pm::BuildUnary<pm::sparse_vector_index_accessor> > > >);
+   FunctionInstance4perl(index_f1, perl::Canned< const pm::unary_transform_iterator<pm::AVL::tree_iterator<pm::sparse2d::it_traits<pm::TropicalNumber<pm::Max, pm::Rational>, false, true> const, (pm::AVL::link_index)1>, std::pair<pm::BuildUnary<pm::sparse2d::cell_accessor>, pm::BuildUnaryIt<pm::sparse2d::cell_index_accessor> > > >);
+   FunctionInstance4perl(index_f1, perl::Canned< const pm::unary_transform_iterator<pm::AVL::tree_iterator<pm::sparse2d::it_traits<pm::PuiseuxFraction<pm::Max, pm::Rational, pm::Rational>, true, false> const, (pm::AVL::link_index)1>, std::pair<pm::BuildUnary<pm::sparse2d::cell_accessor>, pm::BuildUnaryIt<pm::sparse2d::cell_index_accessor> > > >);
+   FunctionInstance4perl(index_f1, perl::Canned< const pm::unary_transform_iterator<pm::AVL::tree_iterator<pm::AVL::it_traits<int, pm::PuiseuxFraction<pm::Min, pm::Rational, pm::Rational>, pm::operations::cmp> const, (pm::AVL::link_index)1>, std::pair<pm::BuildUnary<pm::sparse_vector_accessor>, pm::BuildUnary<pm::sparse_vector_index_accessor> > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

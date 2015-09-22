@@ -14,14 +14,16 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/Matrix.h"
-#include "polymake/Rational.h"
-#include "polymake/Vector.h"
-#include "polymake/SparseMatrix.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
-#include "polymake/SparseVector.h"
+#include "polymake/Matrix.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/SparseVector.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/Vector.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -103,5 +105,19 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(find_representation_permutation_X_X_X_x, perl::Canned< const Matrix< QuadraticExtension< Rational > > >, perl::Canned< const SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
    FunctionInstance4perl(canonicalize_rays_X2_f16, perl::Canned< Vector< QuadraticExtension< Rational > > >);
    FunctionInstance4perl(dehomogenize_X, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(canonicalize_rays_X2_f16, perl::Canned< Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(orthogonalize_subspace_X2_f16, perl::Canned< Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(canonicalize_rays_X2_f16, perl::Canned< Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
+   FunctionInstance4perl(orthogonalize_subspace_X2_f16, perl::Canned< Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
+   FunctionInstance4perl(canonicalize_rays_X2_f16, perl::Canned< Vector< PuiseuxFraction< Max, Rational, Rational > > >);
+   FunctionInstance4perl(canonicalize_rays_X2_f16, perl::Canned< Vector< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(orthogonalize_subspace_X2_f16, perl::Canned< SparseMatrix< PuiseuxFraction< Min, Rational, Rational >, NonSymmetric > >);
+   FunctionInstance4perl(orthogonalize_subspace_X2_f16, perl::Canned< Matrix< PuiseuxFraction< Min, Rational, int > > >);
+   FunctionInstance4perl(canonicalize_rays_X2_f16, perl::Canned< Vector< PuiseuxFraction< Min, Rational, int > > >);
+   FunctionInstance4perl(canonicalize_rays_X2_f16, perl::Canned< Matrix< PuiseuxFraction< Min, Rational, int > > >);
+   FunctionInstance4perl(canonicalize_rays_X2_f16, perl::Canned< SparseVector< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(canonicalize_rays_X2_f16, perl::Canned< SparseVector< PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > > >);
+   FunctionInstance4perl(orthogonalize_subspace_X2_f16, perl::Canned< Matrix< PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > > >);
+   FunctionInstance4perl(find_representation_permutation_X_X_X_x, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

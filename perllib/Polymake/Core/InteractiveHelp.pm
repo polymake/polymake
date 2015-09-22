@@ -104,7 +104,7 @@ sub add {
             my ($tag, $value)=(lc($1), $2);
             sanitize_help($value);
 
-            if ($tag eq "author") {
+            if ($tag eq "author" or $tag eq "display") {
                $annex{$tag}=$value;
 
             } elsif ($tag eq "return") {
@@ -118,6 +118,7 @@ sub add {
             } elsif ($tag eq "tparam") {
                if ($value =~ s/^\s* ($id_re) \s*//xos) {
                   push @{$annex{$tag}}, [$1, $value];
+                  $annex{min_tparam} += $value !~ /\bdefault:/;
                } else {
                   croak( "help tag \@tparam '$value' does not start with a valid name" );
                }
@@ -140,7 +141,7 @@ sub add {
                $annex{function}=0;
 
             } elsif ($tag eq "value") {
-               if ($value =~ s/^\s* (?'name' $id_re) \s+ (?'value' $quoted_re | $id_re ) \s+//xos) {
+               if ($value =~ s/^\s* (?'name' $id_re) \s+ (?'value' $anon_quoted_re | $id_re ) \s+//xos) {
                   if (defined (my $param_list=$annex{param})) {
                      my ($param)=grep { $_->[1] eq $+{name} } @$param_list
                        or croak( "unknown parameter name '$+{name}'" );
@@ -463,31 +464,6 @@ sub display_keys_text {
    $text
 }
 
-# for properties
-sub display_property_text {
-   my ($self)=@_;
-   my @objects=($self->name);
-   my $obj_topic=$self;
-   while (defined ($obj_topic=$obj_topic->parent)) {
-      if ($obj_topic->category) { $obj_topic = $obj_topic->parent; }
-      if ($obj_topic->name eq "properties") {
-         $obj_topic=$obj_topic->parent;
-         push @objects, $obj_topic->name;
-      } else {
-         last;
-      }
-   }
-   my $obj_type=$User::application->eval_type(pop @objects, 1)
-     or return "";
-
-   while (@objects) {
-      my $prop=$obj_type->lookup_property(pop @objects)
-        or return "";
-      $obj_type=(@objects ? $prop->specialization($obj_type, 1) : $prop)->type;
-   }
-   "property ". $self->name ." : ". $obj_type->full_name ."\n" . $self->text;
-}
-
 sub display_text {
    my $self=shift;
    if (defined (my $ovcnt=$self->annex->{function})) {
@@ -504,12 +480,7 @@ sub display_text {
          display_function_text($self,$self,$full);
       }
    } else {
-      my $text;
-      if ($self->parent->name eq "properties" or ($self->parent->category and $self->parent->parent->name eq "properties")) {
-         $text=$self->display_property_text();
-      } else {
-         $text=$self->text;
-      }
+      my $text=$self->annex->{header} . $self->text;
       if (length($text)) {
          clean_text($text);
       }
@@ -615,11 +586,11 @@ sub argument_completions {
    } elsif (defined ($param_list=$self->annex->{param}) and
             defined ($param=$param_list->[$arg_num])    and
             defined ($value_list=$param->[3])) {
-      if ((my $quote)= $prefix =~ /^(['"])/) {
+      if ((my $quote)= $prefix =~ /^$quote_re/o) {
          # accept both kinds of quotes
-         grep { /^$prefix/ } map { $_->[0] =~ $quoted_re ? $quote.$+{quoted}.$quote : $_->[0] } @$value_list;
+         grep { /^\Q$prefix\E/ } map { $_->[0] =~ $quoted_re ? $quote.$+{quoted}.$quote : $_->[0] } @$value_list;
       } else {
-         grep { /^$prefix/ } map { $_->[0] } @$value_list;
+         grep { /^\Q$prefix\E/ } map { $_->[0] } @$value_list;
       }
 
    } elsif (defined (my $mandatory=$self->annex->{mandatory})) {
@@ -631,11 +602,11 @@ sub argument_completions {
             if (is_object($opt_group)) {
                foreach my $topic ($opt_group, @{$opt_group->related}) {
                   my $keys=$topic->annex->{keys} or next;
-                  push @matching, grep { /^$prefix/ } map { $_->[1] } @$keys;
+                  push @matching, grep { /^\Q$prefix\E/ } map { $_->[1] } @$keys;
                }
             } else {
                local_shift($opt_group);
-               push @matching, grep { /^$prefix/ } map { $_->[1] } @$opt_group;
+               push @matching, grep { /^\Q$prefix\E/ } map { $_->[1] } @$opt_group;
             }
          }
       }
@@ -646,26 +617,29 @@ sub argument_completions {
    }
 }
 #################################################################################
+# => (min, max)
 sub expects_template_params {
-   my $self=shift;
+   my ($self, $rec)=@_;
    if (defined (my $tparams=$self->annex->{tparam})) {
-      scalar @$tparams;
-   } elsif (defined (my $ovcnt=$self->annex->{function})) {
-      my $cnt=0;
+      ($self->annex->{min_tparam}, scalar @$tparams)
+   } elsif (!$rec && defined (my $ovcnt=$self->annex->{function})) {
+      my ($min_min, $max_max);
+      my $ret;
       foreach (0..$ovcnt-1) {
-         my $h=$self->topics->{"overload#$_"};
-         if (defined ($tparams=$h->annex->{tparam})) {
-            assign_max($cnt, scalar @$tparams);
+         if (my ($min, $max)=expects_template_params($self->topics->{"overload#$_"}, 1)) {
+            assign_min($min_min, $min);
+            assign_max($max_max, $max);
+            $ret=1;
          }
       }
-      $cnt
+      $ret ? ($min_min, $max_max) : ()
    } else {
-      0
+      ()
    }
 }
 
 sub return_type {
-   my $self=shift;
+   my ($self)=@_;
    if (defined (my $ret=$self->annex->{return})) {
       return $ret->[0];
    } elsif (my $ovcnt=$self->annex->{function}) {

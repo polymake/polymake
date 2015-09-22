@@ -530,7 +530,7 @@ protected:
       if (e1 < e2)
       {
          // r(x)*x^e1 / x^e2  ==  r(x) / x^(e2-e1)
-         if (e1) {
+         if ( !is_zero(e1) ) {
             div_exact(p1, monomial_type(e1, ring)).swap(num);
          } else {
             num=p1;

@@ -144,13 +144,16 @@ public:
    int** get_wvhdl() const {
       int ord_size = this->get_ord_size();
       int nvars = this->polymakeRing.n_vars();
-      int** wvhdl=(int**)omalloc0((ord_size-1)*sizeof(int*));
+      int** wvhdl=(int**)omalloc0((ord_size+2)*sizeof(int*));
       for(int i =0; i<ord_size-1; i++){
          wvhdl[i] = (int*)omalloc0(nvars*sizeof(int));
          for(int j = 0; j<nvars; j++){
             wvhdl[i][j] = (int)this->orderData(i,j);
          }
       }
+      wvhdl[ord_size-1]=NULL;
+      wvhdl[ord_size]=NULL;
+      wvhdl[ord_size+1]=NULL;
       return wvhdl;
    }
 };

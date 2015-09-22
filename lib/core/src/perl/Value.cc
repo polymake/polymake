@@ -283,11 +283,10 @@ void ListReturn::upgrade(int size)
    EXTEND(SP, size);
 }
 
-const char* Value::frame_lower_bound()
+bool Value::on_stack(const char* val, const char* frame_upper_bound)
 {
-   char c=0;
-   const char* flo=&c;
-   return flo;
+  char frame_lower_bound=0;
+  return (val<&frame_lower_bound) != (val<frame_upper_bound);
 }
 
 long Value::int_value() const

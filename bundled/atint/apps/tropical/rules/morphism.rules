@@ -1,0 +1,246 @@
+########################################################################
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#  
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#  
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+#  Boston, MA  02110-1301, USA.
+#  
+#  ---
+#  Copyright (C) 2011-2015, Simon Hampe <simon.hampe@googlemail.com>
+#
+#
+#  Defines properties and rules for Morphism 
+########################################################################
+
+object Morphism {
+
+	use overload('*' => 'mult','""' => 'to_string', 'bool' => 'bool', '+' => 'sum','-' => 'minus','neg'=>'neg', "fallback" => TRUE);
+
+	# @category Defining morphisms and functions
+	# This property describes the domain of the morphism. I.e. the morphism is
+	# defined on this complex and is locally affine integral linear. 
+	property DOMAIN : Cycle<Addition>;
+
+	# @category Defining morphisms and functions 
+	# The vector at row i describes the function value of vertex [[DOMAIN]]->SEPARATED_VERTICES->row(i). 
+	# (In tropical homogenous coordinates, but without leading coordinate).
+	# More precisely, if the corresponding vertex is not a far ray, it describes its function value. 
+	# If it is a directional ray, it describes the slope on that ray.
+	property VERTEX_VALUES : Matrix<Rational>;
+
+	# @category Defining morphisms and functions
+	# The vector in row i describes the function value (slope) of [[DOMAIN]]->LINEALITY_SPACE->row(i)
+	property LINEALITY_VALUES : Matrix<Rational>; 
+
+	# @category Defining morphisms and functions
+	# If the morphism is a global affine linear map x |-> Ax+v, then this contains the matrix A.
+	# Note that this must be well-defined on tropical projective coordinates, so the sum of the columns of A
+	# must be a multiple of the (1,..,1)-vector.
+	# If [[TRANSLATE]] is set, but this property is not set, then it is the identity by default.
+	property MATRIX : Matrix<Rational>;
+
+	# @category Defining morphisms and functions
+	# If the morphism is a global affine linear map x |-> Ax+v, then this contains the translation vector 
+	# v. If [[MATRIX]] is set, but this property is not set, then it is the zero vector by default.
+	property TRANSLATE : Vector<Rational>;
+
+
+	# @category Defining morphisms and functions
+	# This is TRUE, if the morphism is defined on the full projective torus by a [[MATRIX]] and a [[TRANSLATE]]
+	# The rules do not actually check for completeness of the [[DOMAIN]]. 
+	# This property will be set to TRUE, if the morphism is only defined by [[MATRIX]] and [[TRANSLATE]], 
+	# otherwise it is false (or you can set it upon creation).
+	property IS_GLOBALLY_AFFINE_LINEAR : Bool;
+
+	### RULES ###################################
+
+	rule MATRIX : TRANSLATE {
+		if(defined($this->lookup("DOMAIN"))) {
+			die "Cannot infer matrix on nontrivial domain";
+		}
+		$this->MATRIX = unit_matrix($this->TRANSLATE->dim());
+	}
+
+	rule TRANSLATE : MATRIX {
+		$this->TRANSLATE = zero_vector<Rational>($this->MATRIX->rows());
+	}
+
+	rule VERTEX_VALUES : LINEALITY_VALUES {
+		$this->VERTEX_VALUES = new Matrix<Rational>(0,$this->LINEALITY_VALUES->cols());
+	}
+
+	rule LINEALITY_VALUES : VERTEX_VALUES {
+		$this->LINEALITY_VALUES = new Matrix<Rational>(0,$this->VERTEX_VALUES->cols());
+	}
+
+	rule DOMAIN, IS_GLOBALLY_AFFINE_LINEAR : MATRIX, TRANSLATE {
+		computeDomainFromMatrix($this);
+		$this->IS_GLOBALLY_AFFINE_LINEAR = !(defined($this->lookup(VERTEX_VALUES)) || defined($this->lookup(LINEALITY_VALUES)));
+	}
+	weight 0.10;
+	precondition : MATRIX, TRANSLATE {
+		$this->MATRIX->rows() == $this->TRANSLATE->dim() or
+		die "Matrix and vector dimensions do not match.";
+		is_homogeneous_matrix($this->MATRIX) or
+		die "Matrix is not homogeneous. Columns must add up to (projective) zero";
+	}
+
+	rule IS_GLOBALLY_AFFINE_LINEAR : {
+		$this->IS_GLOBALLY_AFFINE_LINEAR = FALSE;
+	}
+	precondition : defined(DOMAIN);
+	weight 0.10;
+
+	rule VERTEX_VALUES, LINEALITY_VALUES : MATRIX, TRANSLATE, DOMAIN {
+		computeValuesFromMatrix($this);
+	}
+	precondition : MATRIX, TRANSLATE, DOMAIN {
+		($this->DOMAIN->AMBIENT_DIM == $this->MATRIX->cols() and $this->MATRIX->rows() == $this->TRANSLATE->dim())
+			or die "Dimensions don't match.";
+		is_homogeneous_matrix($this->MATRIX) or
+		die "Matrix is not homogeneous. Columns must add up to (projective) zero";
+	}
+
+	# @category Affine and projective coordinates
+	# Computes the representation of a morphism (given by [[MATRIX]] and [[TRANSLATE]])
+	# on tropical affine coordinates.
+	# @param Int domain_chart Which coordinate index of the homogenized domain is shifted to zero to identify
+	# it with the domain of the affine function. 0 by default.
+	# @param Int target_chart Which coordinate of the homogenized target space is shifted to zero to identify
+	# it with the target of the affine function. 0 by default.
+	# @return Pair<Matrix<Rational>, Vector<Rational> > A matrix and a translate in affine coordinates.
+	user_method affine_representation(;$=0,$=0) {
+		my ($morphism, $domain_chart, $target_chart) = @_;
+		if(!defined($morphism->lookup("MATRIX"))) {
+			die "Morphism is not defined by matrix and translate.";
+		}
+		return tdehomog_morphism($morphism->MATRIX,$morphism->TRANSLATE, $domain_chart, $target_chart);
+	}
+
+	# @category Morphisms
+	# Computes the composition of another morphism g and this morphism.
+	# This morphism comes after g.
+	# @param Morphism g
+	# @return this after g
+	user_method after(Morphism<Addition>) {
+		my ($this, $g) = @_;
+		return morphism_composition($g,$this);
+	}
+
+	# @category Morphisms
+	# Computes the composition of this morphism and another morphism g.
+	# This morphism comes before g.
+	# @param Morphism g
+	# @return g after f
+	user_method before(Morphism<Addition>) {
+		my ($this,$g) = @_;
+		return morphism_composition($this,$g);
+	}
+
+	# @category Morphisms
+	# Computes the restriction of the morphism to a cycle.
+	# The cycle need not be contained in the [[DOMAIN]] of the morphism,
+	# the restriction will be computed on the intersection.
+	# @param Cycle Some cycle living in the same ambient space as the [[DOMAIN]]
+	# @return Morphism The restriction of the morphism to the cycle (or its
+	# intersection with [[DOMAIN]].
+	user_method restrict(Cycle<Addition>) {
+		my ($f,$X) = @_;
+
+		#Define identity on X
+		my $vertexvalues = $X->SEPARATED_VERTICES->minor(All,~scalar2set(0));
+		my $linealityvalues = $X->LINEALITY_SPACE;
+		if($linealityvalues->rows() > 0) {
+			$linealityvalues = $linealityvalues->minor(All,~scalar2set(0));
+		}
+
+		my $emb = new Morphism<Addition>( DOMAIN=>$X, VERTEX_VALUES=>$vertexvalues,LINEALITY_VALUES=>$linealityvalues, MATRIX=>(unit_matrix<Rational>($f->DOMAIN->PROJECTIVE_AMBIENT_DIM+1)));
+
+		return morphism_composition($emb,$f);
+	}
+
+	#----------------------------- OVERLOADED OPERATORS -----------------
+
+	sub bool {
+		my $this = shift;
+		return !undef($this);
+	}
+
+
+	sub to_string {
+		my $this = shift;  
+		my $txt = "Morphism on ".($this->DOMAIN->description());
+		if(defined($this->lookup("MATRIX"))) {
+			$txt = $txt."\nMatrix:\n".$this->MATRIX."\nTranslate:\n".$this->TRANSLATE;	
+		}
+		return $txt;
+	}
+
+	sub sum {
+		my ($f,$g) = @_;
+		return add_morphisms($f,$g);
+	}
+
+	function mult_m(Morphism, RationalFunction) {
+		return pullback(@_);
+	}
+
+	function mult_m(Morphism, Morphism) {
+		return morphism_composition(@_);
+	}
+
+	function mult_m(Morphism, $) {
+			my ($f,$r) = @_;
+			if(defined($f->lookup("MATRIX"))) {
+				return new Morphism<Addition>(DOMAIN=>$f->DOMAIN, VERTEX_VALUES=>($r * ($f->VERTEX_VALUES)), LINEALITY_VALUES=>$r * ($f->LINEALITY_VALUES), MATRIX=> $r*$f->MATRIX, TRANSLATE=>$r*$f->TRANSLATE);
+			}
+			else {
+				return new Morphism<Addition>(DOMAIN=>$f->DOMAIN, VERTEX_VALUES=>($r * ($f->VERTEX_VALUES)), LINEALITY_VALUES=>$r * ($f->LINEALITY_VALUES));
+			}
+	}
+	
+
+	sub mult {
+		my ($f,$r ) = @_;
+		return mult_m($f,$r);
+	}
+
+
+	sub minus {
+		my ($f,$g) = @_;
+		return add_morphisms($f, (-1) * $g);
+	}
+
+	sub neg {
+		my $f = shift;
+		return mult($f,-1);
+	}
+
+
+
+}
+
+# @category Affine and projective coordinates
+# Takes a representation of a morphism on affine coordinates and converts it to projective ones.
+# @param Matrix<Rational> A. The matrix of the morphism x |-> Ax + v in affine coordinates.
+# @param Vector<Rational> v. The translate of the morphism x |-> Ax + v in affine coordinates.
+# @param Int domain_chart Which coordinate index of the homogenized domain is shifted to zero to identify
+# it with the domain of the affine function. 0 by default.
+# @param Int target_chart Which coordinate of the homogenized target space is shifted to zero to identify
+# it with the target of the affine function. 0 by default.
+# @tparam Addition Min or Max
+# @return Morphism
+user_function morphism_from_affine<Addition>($, $;$=0,$=0) {
+	my ($matrix,$translate, $domain_chart, $target_chart) = @_;
+	my $homog_rep = thomog_morphism($matrix,$translate, $domain_chart, $target_chart);
+	return new Morphism<Addition>(MATRIX=>$homog_rep->first, TRANSLATE=>$homog_rep->second);
+}

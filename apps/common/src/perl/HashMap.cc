@@ -33,5 +33,6 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::HashMap_A_Int_I_Rational_Z", hash_map< int, Rational >);
    Class4perl("Polymake::common::HashMap_A_SparseVector__Int_I_TropicalNumber_A_Max_I_Rational_Z_Z", hash_map< SparseVector< int >, TropicalNumber< Max, Rational > >);
    Class4perl("Polymake::common::HashMap_A_SparseVector__Int_I_TropicalNumber_A_Min_I_Rational_Z_Z", hash_map< SparseVector< int >, TropicalNumber< Min, Rational > >);
+   Class4perl("Polymake::common::HashMap_A_Rational_I_Rational_Z", hash_map< Rational, Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -78,13 +78,19 @@ public:
 
    // *** ZERO ***
    
-   static const TropicalNumber<Addition, Scalar> zero() {
+   static const TropicalNumber<Addition, Scalar>& zero() {
       return spec_object_traits<TropicalNumber<Addition,Scalar> >::zero();
+   }
+
+   // *** DUAL_ZERO ***
+
+   static const TropicalNumber<Addition, Scalar>& dual_zero() {
+      return spec_object_traits<TropicalNumber<Addition,Scalar> >::dual_zero();
    }
    
    // *** ONE ***
    
-   static const TropicalNumber<Addition, Scalar> one() {
+   static const TropicalNumber<Addition, Scalar>& one() {
       return spec_object_traits<TropicalNumber<Addition,Scalar> >::one();
    }
    
@@ -286,6 +292,7 @@ public:
 
 template <typename Addition, typename Scalar>
 class conv<TropicalNumber<Addition,Scalar>, Integer> : public conv_by_cast<TropicalNumber<Addition,Scalar>, Integer> {};
+
    
 
 /**
@@ -314,6 +321,12 @@ struct spec_object_traits<TropicalNumber<Addition, Scalar> > : spec_object_trait
       return t_zero;
    }
 
+   static const TropicalNumber<Addition,Scalar>& dual_zero()
+   {
+      static const TropicalNumber<Addition,Scalar> t_d_zero(-Addition::orientation() * std::numeric_limits<Scalar>().infinity());
+      return t_d_zero;
+   }
+
    static const TropicalNumber<Addition,Scalar>& one()
    {
      static const TropicalNumber<Addition,Scalar> t_one(spec_object_traits<Scalar>::zero());
@@ -321,7 +334,6 @@ struct spec_object_traits<TropicalNumber<Addition, Scalar> > : spec_object_trait
    }
 
 };
-
 
 }
 

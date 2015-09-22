@@ -57,6 +57,10 @@ namespace {
       to_coefficients.reserve(nnz);
       to_colinds.reserve(nnz);
       
+      /*
+        note: polymake input with rows [c_i, a_i] and [c_j, a_j] with a_i=-a_j
+        could be reduced to one column with 'to_rowupperbounds' and 'to_rowlowerbounds'.
+       */
       
       const unsigned int m = A1.cols() - 1;
       const unsigned int n1 = A1.rows();
@@ -85,20 +89,20 @@ namespace {
       
       to_rowupperbounds.reserve(m);
       for (unsigned int i=0; i<m; ++i){
-         to_rowupperbounds.push_back(MinObjective[i]);
+         to_rowupperbounds.push_back(MinObjective[i]); // A'u + E'v =< c
       }
-      to_rowlowerbounds = to_rowupperbounds;
+      to_rowlowerbounds = to_rowupperbounds; // A'u + E'v >= c
       
       to_objective.reserve(n);
       to_varlowerbounds.reserve(n);
       to_varupperbounds.reserve(n);
       for (unsigned int i=0; i<n1; ++i){
-         to_objective.push_back(A1(i,0));
-         to_varlowerbounds.push_back(Coord(0));
-         to_varupperbounds.push_back(true);
+         to_objective.push_back(A1(i,0));       // = b_i
+         to_varlowerbounds.push_back(Coord(0)); // u_i >= 0
+         to_varupperbounds.push_back(true);     // true = no restriction
       }
       for (unsigned int i=0; i<n2; ++i){
-         to_objective.push_back(A2(i,0));
+         to_objective.push_back(A2(i,0));  // = d_i
          to_varlowerbounds.push_back(true);
          to_varupperbounds.push_back(true);
       }
@@ -126,6 +130,8 @@ solver<Coord>::solver()
  *      Ex == d             u >= 0
  *
  * After solving, the dual variables are obtained, if the problem is feasible.
+ * note: restrictions on variables (in this case u >= 0) are handeld
+ * via 'to_varupperbounds' and 'to_varlowerbounds'.
  */
 
 template <typename Coord>
@@ -171,6 +177,30 @@ solver<Coord>::solve_lp(const Matrix<Coord>& Inequalities, const Matrix<Coord>& 
 #endif
 
    to_solver solver( to_coefficients, to_colinds, to_rowbegininds, to_objective, to_rowlowerbounds, to_rowupperbounds, to_varlowerbounds, to_varupperbounds );
+
+
+   //add start basis:
+   if(!initial_basis.empty()){
+      int m(Inequalities.rows()+Equations.rows());
+      std::vector<int> b1(m);
+      std::vector<int> b2(n); //slack variables
+      /*
+        interpretation of the entries
+        0 : the value is between the bounds (non strict)
+        1 : the lower bound is attained
+        2 : the upper bound is attained
+       */
+
+      int count=0;
+      for(Entire< Set<int> >::const_iterator it=entire(initial_basis); !it.at_end(); ++it){
+         b1[*it]=1;
+         if( ++count >= Inequalities.cols()-1 ) break;
+      }
+      solver.setBase(b1,b2);
+   }
+
+
+
    const int result (solver.opt());
 
    if (result==0) { // solved to optimality
@@ -185,6 +215,11 @@ solver<Coord>::solve_lp(const Matrix<Coord>& Inequalities, const Matrix<Coord>& 
    } else {
       throw infeasible();
    }
+}
+
+template <typename Coord>
+void solver<Coord>::set_basis(const Set<int>& basis){
+   initial_basis=basis;
 }
 
 } } }
