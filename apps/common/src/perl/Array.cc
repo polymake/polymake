@@ -68,5 +68,9 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< Set< Array< Set< int > > > > >, perl::Canned< const Array< Set< Array< Set< int > > > > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< IncidenceMatrix< NonSymmetric > > >, perl::Canned< const Array< IncidenceMatrix< NonSymmetric > > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< std::pair< Vector< Rational >, Set< int > > > >, perl::Canned< const Array< std::pair< Vector< Rational >, Set< int > > > >);
+   Class4perl("Polymake::common::Array__Graph__Directed", Array< Graph< Directed > >);
+   FunctionInstance4perl(new_X, Array< std::string >, perl::Canned< const Vector< std::string > >);
+   OperatorInstance4perl(convert, Array< Integer >, perl::Canned< const Vector< Integer > >);
+   OperatorInstance4perl(assign, Array< int >, perl::Canned< const Set< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

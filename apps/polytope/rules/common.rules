@@ -471,25 +471,6 @@ rule SPECIAL_FACETS : VERTEX_BARYCENTER, VERTICES_IN_FACETS, VERTICES {
 precondition : BOUNDED;
 precondition : CENTERED;
 
-# helper clients for various visualization tasks
-
-rule VIF_CYCLIC_NORMAL, NEIGHBOR_FACETS_CYCLIC_NORMAL : CONE_DIM, VERTICES, AFFINE_HULL, VERTICES_IN_FACETS, DUAL_GRAPH.ADJACENCY {
-   neighbors_cyclic_normal_primal($this);
-}
-precondition : BOUNDED;
-precondition : CONE_DIM { $this->CONE_DIM>=3 && $this->CONE_DIM<=4 }
-
-rule VIF_CYCLIC_NORMAL = VERTICES_IN_FACETS;
-precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM<=1 }
-
-# FIXME check dependence on dim
-# FIXME: Added precondition POINTED!
-rule FTV_CYCLIC_NORMAL, NEIGHBOR_VERTICES_CYCLIC_NORMAL : CONE_DIM, FACETS, VERTICES_IN_FACETS, GRAPH.ADJACENCY {
-   neighbors_cyclic_normal_dual($this);
-}
-precondition : BOUNDED;
-precondition : CONE_DIM { $this->CONE_DIM>=3 && $this->CONE_DIM<=4 }
-
 # @category Triangulation and volume
 # the orientation of the simplices of [[TRIANGULATION_INT]] in the given order of the [[POINTS]]
 # @return Array<Int> - +1/-1 array specifying the sign of the determinant of each simplex

@@ -28,8 +28,10 @@ namespace polymake { namespace polytope {
  * complement of the lineality space
  */
 template <typename E>
-void orthogonalize(Matrix<E>& Points, const Matrix<E>& LS)
+void orthogonalize(Matrix<E>& Points, Matrix<E>& LS)
 {
+    // needed since project_to_orthogonal_complement wants a orthogonal basis.
+    orthogonalize(entire(rows(LS)));
     Set<int> noRays;
     for (int i=0; i< Points.rows(); ++i){
        if (Points(i,0) != 0)

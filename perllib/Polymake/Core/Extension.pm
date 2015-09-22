@@ -34,7 +34,7 @@ use Polymake::Struct (
    [ '$URI' => '#2' ],              # unique identifier used in XML files and metadata
    [ '$version' => 'undef' ],       # version as string
    [ '$version_num' => 'undef' ],   # version as comparable v-string
-   [ '$credit' => 'undef' ],        # Credit credit nore, if present in metadata
+   [ '$credit' => 'undef' ],        # Credit credit note, if present in metadata
    [ '$short_name' => 'undef'],
    [ '$is_bundled' => '#3' ],       # boolean
    '$is_active',                    # boolean: configured, included in @active

@@ -774,13 +774,12 @@ sub complain {
 ####################################################################################
 # 'name', \&code, [ min_arg, max_arg, @arg_list ], options  =>
 sub add {
-   shift;       # get rid of own package name
-   (my ($name, $code, $arg_types, %opts)=@_) >= 3 or return;
+   ((undef, my ($name, $code, $arg_types, %opts))=@_) >= 4 or return;
    my $caller=caller;
    my $label=$opts{label};
    $label=[ $label ] if is_object($label);
    if (defined $arg_types) {
-      add_instance($caller, $name, $code, $label, $arg_types, $opts{tparams});
+      add_instance($caller, $name, $code, $label, $arg_types, $opts{tparams}, $opts{root_node});
       if ($label && ref($code) eq "CODE") {
          $name =~ /([^:]+)$/;
          set_sub_name($code, $1);
@@ -803,9 +802,8 @@ sub add {
 }
 ####################################################################################
 sub add_global {
-   shift;       # get rid of own package name
+   (undef, my ($name, $code, $arg_types, %opts))=@_;
    my $caller=caller;
-   my ($name, $code, $arg_types, %opts)=@_;
    croak( "cannot declare a non-method '$name' as global" ) unless is_method($code);
    croak( "package $caller tries to declare method '$name' as global although it comes from different package" )
       unless method_owner($code) eq $caller;

@@ -864,17 +864,21 @@ protected:
          rep *r=allocate_copy(n,old,identical<prefix_type,nothing>());
          const size_t n_copy=std::min(n,old->size_and_prefix.first);
          Object *dst=r->obj, *middle=dst+n_copy, *end=dst+n;
+			Object *src_copy = NULL, *src_end = NULL;
 
          if (old->refc > 0) {
             init(r, dst, middle, const_cast<const Object*>(old->obj), owner);
          } else {
-            Object *src_copy=old->obj, *src_end=src_copy+old->size_and_prefix.first;
+            src_copy=old->obj, src_end=src_copy+old->size_and_prefix.first;
             for (; dst!=middle;  ++src_copy, ++dst)
                relocate(src_copy,dst);
-            destroy(src_end, src_copy);
-            deallocate(old);
          }
          init(r, middle, end, src, owner);
+			if (old->refc <= 0) {
+            destroy(src_end, src_copy);
+				deallocate(old);
+			}
+
          return r;
       }
 

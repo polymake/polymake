@@ -558,15 +558,20 @@ proj(const GenericVector<Vector1,E>& u, const GenericVector<Vector2,E>& v)
 }
 
 /// project the rows of M into the orthogonal complement of N
-template <typename Matrix> inline
+/// the rows of N need to be orthogonal
+template <typename Matrix1, typename Matrix2> inline
 void 
-project_to_orthogonal_complement(Matrix& M, const Matrix& N)
+project_to_orthogonal_complement(Matrix1& M, const Matrix2& N)
 {
-    for (typename Entire<Rows<Matrix> >::const_iterator nit = entire(rows(N)); !nit.at_end(); ++nit) {
-       const typename Matrix::element_type normsquared = sqr(*nit);
+    for (typename Entire<Rows<Matrix2> >::const_iterator nit = entire(rows(N)); !nit.at_end(); ++nit) {
+       const typename Matrix2::element_type normsquared = sqr(*nit);
+       if (POLYMAKE_DEBUG || !Unwary<Matrix2>::value) {
+         for (typename Entire<Rows<Matrix2> >::const_iterator nit2 = nit+1; !nit2.at_end(); ++nit2)
+           if(!is_zero((*nit) * (*nit2))) throw std::runtime_error("project_to_orthogonal_complement: error: non-orthogonal matrix");
+       }
        if (!is_zero(normsquared))
-          for (typename Entire<Rows<Matrix> >::iterator mit = entire(rows(M)); !mit.at_end(); ++mit) {
-             const typename Matrix::element_type pivot = (*mit) * (*nit);
+          for (typename Entire<Rows<Matrix1> >::iterator mit = entire(rows(M)); !mit.at_end(); ++mit) {
+             const typename Matrix1::element_type pivot = (*mit) * (*nit);
              if (!is_zero(pivot))
                 *mit -= pivot/normsquared * (*nit);
           }

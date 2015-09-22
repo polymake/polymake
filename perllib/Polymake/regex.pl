@@ -47,6 +47,18 @@ declare $qual_ids_re=qr{(?> $qual_id_re (?: \s*,\s* $qual_id_re)* )}xo;
 # unqualified name
 declare $unqual_id_re=qr{(?<!::) (?<!\w) $id_re (?! :: )}xo;
 
+# a single or double quote
+declare $anon_quote_re=qr{ ['"] }x;
+
+# a single or double quote in a named capturing group
+declare $quote_re=qr{ (?'quote' $anon_quote_re) }xo;
+
+# anything but a quote character
+declare $non_quote_re=qr{ [^"'] }x;
+
+# anything but a quote character or white space
+declare $non_quote_space_re=qr{ [^"'\s] }x;
+
 # a sequence of symbols not being delimiters (paired brackets or quotes), escaped delimiters, or arrows
 my $non_delims=qr{(?: [^()\[\]{}<>'"\#]++
                     | (?<=\\)(?<!\\\\) [()\[\]{}<>"'\#]
@@ -56,7 +68,10 @@ my $non_delims=qr{(?: [^()\[\]{}<>'"\#]++
 declare $single_quoted_re=qr{(?: [^']+ | (?<=\\)(?<!\\\\) ' )*+}x;
 declare $double_quoted_re=qr{(?: [^"]+ | (?<=\\)(?<!\\\\) " )*+}x;
 
-# a sequence in quoted, capturing the contents
+# a sequence in quotes
+declare $anon_quoted_re=qr{(?: ' $single_quoted_re ' | " $double_quoted_re " )}xo;
+
+# a sequence in quotes, capturing the contents
 declare $quoted_re=qr{(?: ' (?'quoted' $single_quoted_re) ' |
                           " (?'quoted' $double_quoted_re) " )}xo;
 
@@ -66,8 +81,7 @@ declare $confined_re=qr{ ( \( $non_delims (?: (?-1) $non_delims )* \) |
                            \[ $non_delims (?: (?-1) $non_delims )* \] |
                            \{ $non_delims (?: (?-1) $non_delims )* \} |
                             < $non_delims (?: (?-1) $non_delims )*  > |
-                            ' $single_quoted_re '                     |
-                            " $double_quoted_re "                      ) }xo;
+                            $anon_quoted_re                            ) }xo;
 
 # a piece of code with proper nested embraced and quoted subexpressions
 # 1 capturing group
@@ -79,9 +93,11 @@ declare $open_balanced_re=qr{ (?: $non_delims (?: \( (?: $balanced_re \) )?+ |
                                                   \[ (?: $balanced_re \] )?+ |
                                                   \{ (?: $balanced_re \} )?+ |
                                                    < (?: $balanced_re  > )?+ |
-                                                   ' $single_quoted_re '     |
-                                                   " $double_quoted_re "     |
+                                                   $anon_quoted_re           |
                                                    $ ) )* }xo;
+
+# a piece of code with all quoted strings properly closed
+declare $quote_balanced_re=qr{ $non_quote_re* (?: $anon_quoted_re $non_quote_re* )* }xo;
 
 # an expression in a list; < > are treated as comparison ops, therefore not trying to match them pairwise
 # 1 capturing group
@@ -156,6 +172,9 @@ declare $nonsignificant_line_re=qr{^ [ \t]* (?:\#.*)? \n}xm;
 
 # a line with some contents (like perl code)
 declare $significant_line_re=qr{^ [ \t]* (?! $ | \#) }xm;
+
+# beginning of a complete statement
+declare $statement_start_re=qr{(?: ^ | [;\}] )\s*}x;
 
 1;
 

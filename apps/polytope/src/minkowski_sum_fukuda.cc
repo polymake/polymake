@@ -93,12 +93,12 @@ Vector<E> components2vector(const Array<int>& components, const Array<Matrix<E> 
 }
 
 /* computes a canonical vector in the relative interior of the normal cone N(v,P)
- * (can also return a vector [v,w], where w is a ...)
+ * (can also return a vector [v,w], where w is a slightly perturbed variant of v)
  *
  * TODO: comment
  */
 template<typename E>
-Vector<E> canonical_vector(const int k, const Array<int>& components, const Array<Matrix<E> >& polytopes, const graph_list& graphs, bool setc_st=false) {
+Vector<E> canonical_vector(const int k, const Array<int>& components, const Array<Matrix<E> >& polytopes, const graph_list& graphs) {
    typename std::vector<Vector<E> > c;  // constraints
    for (int j=0; j<k; ++j) 
       for (Entire<Graph<>::adjacent_node_list>::const_iterator it=entire(graphs[j].adjacent_nodes(components[j])); !it.at_end(); ++it) 
@@ -119,19 +119,20 @@ Vector<E> canonical_vector(const int k, const Array<int>& components, const Arra
    const Vector<E> obj(unit_vector<E>(dim+1,dim));      // objective function
    const Vector<E> r = solve_lp(constraints, obj);
 
-   if (!setc_st)  
-      return r.slice(0,r.size()-1);
-
    const E d(r[r.size()-1]);    // the "minimal distance" of r to the bounding hyperplanes
    const Vector<E> x(r.slice(0,r.size()-1));
    assert(x.size()>=2);
 
    Vector<E> eps(x.size());
-   eps[1] = d/2;
+   // as d is the minimal distance, we need to factor out the maximal
+   // coefficient of the contraints times the dimension, to make sure
+   // the pertubation is small enough.
+   E max_coef(accumulate(attach_operation(concat_rows(c1), operations::abs_value()), operations::max()));
+   eps[1] = d/(2*dim*max_coef);
    for (int i=2; i<eps.size(); ++i)
       eps[i] = eps[i-1]/E(-i);
 
-   return r.slice(0,r.size()-1) | r.slice(0,r.size()-1) + eps;
+   return r.slice(0,r.size()-1) | eps;
 }
 
 /* checks whether two Vectors are parallel
@@ -147,7 +148,7 @@ bool parallel_edges(const Vector<E>& e1, const Vector<E>& e2) {
    E q(0);              // quotient e2[j]/e1[j] -- should be constant
    while (!quotient_found) {
       if (is_zero(e1[j])) {
-         if (e2[j].non_zero())
+         if (!is_zero(e2[j]))
             return 0;
       }
       else {
@@ -173,12 +174,17 @@ bool parallel_edges(const Vector<E>& e1, const Vector<E>& e2) {
 template<typename E>
 Vector<E> search_direction(const int k, const Vector<E>& c_st1, const Vector<E>& c_st2, const Array<int>& components, const Array<Matrix<E> >& polytopes, const graph_list& graphs) {
    // computes canonical vector for v
-   const Vector<E> c = canonical_vector(k, components, polytopes, graphs);
-   const Vector<E> c_st = parallel_edges(c_st1, c) ? c_st2 : c_st1;   
+   const Vector<E> c_eps = canonical_vector(k, components, polytopes, graphs);
+   const int size(c_eps.size()/2);
+   Vector<E> c = c_eps.slice(0,size);
+   const Vector<E> eps = c_eps.slice(size,size);
+   const Vector<E> c_st = parallel_edges(c_st2, c) ? c_st1 : c_st2;
    E best_theta(2);                             // smallest theta value (so far)
    Vector<E> best_hyperplane;   // the hyperplane intersected first
 
    // goes through all (potential) neighbours of next
+   int hyperplane_counter = 0;
+   int restart_count = 0;
    for (int j=0; j<k; ++j) {
       for (Entire<Graph<>::adjacent_node_list>::const_iterator it=entire(graphs[j].adjacent_nodes(components[j])); !it.at_end(); ++it) {
          const Vector<E> hyperplane = polytopes[j].row(*it)-polytopes[j].row(components[j]); //= e_j(next_j,i)
@@ -188,10 +194,22 @@ Vector<E> search_direction(const int k, const Vector<E>& c_st1, const Vector<E>&
             continue;   // the current hyperplane is parallel to c-c_st -> no intersection
          }
          const E theta = (hyperplane*c) / d;
-         if (0<=theta && 1>=theta && theta<best_theta) {
-            best_theta=theta;
-            best_hyperplane=hyperplane;
+         if (0<=theta && 1>=theta){
+            if (theta == best_theta && !parallel_edges(hyperplane,best_hyperplane)) {
+               hyperplane_counter++;
+            } else if (theta<best_theta) {
+               hyperplane_counter=1;
+               best_theta=theta;
+               best_hyperplane=hyperplane;
+            }
          }
+      }
+      if (j==k-1 && hyperplane_counter > 1) {
+         restart_count++;
+         j=-1;
+         c = c - eps/(2*restart_count);
+         c[restart_count%size] += eps[restart_count%size]/restart_count;
+         best_theta = 2;
       }
    }
    return best_hyperplane;
@@ -273,7 +291,7 @@ bool Adj(const int k, Array<int>& next_components, const Array<int>& components,
    // maximize lambda
    const Vector<E> obj = unit_vector<E>(m.cols(),l);
    const Vector<E> opt = solve_lp(d, obj);
-   return opt[l].non_zero();
+   return !is_zero(opt[l]);
 }
 
 /* Reverse Search Algorithm according to Komei Fukuda
@@ -386,7 +404,7 @@ Set<int> find_max_face(const Matrix<E>& V, const Graph<Undirected>& G, const Vec
          const int neighbor=v.to_node();
          if (!visited[neighbor]) {
             visited[neighbor]=true;
-            if (V(neighbor,0).non_zero() && objective * V[neighbor] == opt) {
+            if (is_zero(V(neighbor,0)) && objective * V[neighbor] == opt) {
                optimal_face += neighbor;
                optimal_vertices.push_back(neighbor);
             }
@@ -447,10 +465,10 @@ void initialize(const Array<perl::Object>& summands, const int k, graph_list& gr
    v_st=components2vector(components, polytopes);
 
    //initialize c_st and c_st2 (canonical Vectors in N(P,v_st)):
-   const Vector<E> c = canonical_vector(k, components, polytopes, graphs, true);
+   const Vector<E> c = canonical_vector(k, components, polytopes, graphs);
    const int size = c.size()/2;
    c_st = c.slice(0,size);
-   c_st2= c.slice(size,size);
+   c_st2= c_st + c.slice(size,size);
 }
 
 template <typename E>
@@ -496,6 +514,7 @@ Matrix<E> zonotope_vertices_fukuda(const Matrix<E>& Z, perl::OptionSet options)
       opposite = unit_vector<E>(d, 0);
    for (int i=0; i<n; ++i) {
       point = Z.row(i);
+
       if (centered_zonotope) {
          point[0] *= 2;  // make the segment half as long to compensate for the addition of opposite
          opposite = -point;
@@ -503,8 +522,14 @@ Matrix<E> zonotope_vertices_fukuda(const Matrix<E>& Z, perl::OptionSet options)
       } 
 
       perl::Object summand(perl::ObjectType::construct<E>("Polytope"));
-      summand.take("VERTICES") << Matrix<E>(point/opposite);
-      summand.take("GRAPH.ADJACENCY") << G;
+      // take care of the origin
+      if (point.slice(1) == zero_vector<E>(d-1)){
+         summand.take("VERTICES") << Matrix<E>(vector2row(point));
+         summand.take("GRAPH.ADJACENCY") << Graph<Undirected>(1);
+      } else {
+         summand.take("VERTICES") << Matrix<E>(point/opposite);
+         summand.take("GRAPH.ADJACENCY") << G;
+      }
       summands[i] = summand;
    }
 
@@ -514,17 +539,15 @@ Matrix<E> zonotope_vertices_fukuda(const Matrix<E>& Z, perl::OptionSet options)
 UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# Computes the ([[VERTICES]] of the) __Minkowski sum__ of a list of polytopes using the algorithm by Fukuda described in"
                           "#\t   Komei Fukuda, From the zonotope construction to the Minkowski addition of convex polytopes, J. Symbolic Comput., 38(4):1261-1272, 2004."
-                          "# @tparam Scalar"
                           "# @param Array<Polytope<Scalar>> summands"
                           "# @return Polytope<Scalar>",
                           "minkowski_sum_fukuda<E>(Polytope<type_upgrade<E>> +)");
 
 UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
-                          "# Create a zonotope from a matrix whose rows are input points or vectors."
-                          "# @tparam Scalar"
+                          "# Create the vertices of a zonotope from a matrix whose rows are input points or vectors."
                           "# @param Matrix<Scalar> M"
-                          "# @options Bool centered_zonotope default 1"
-                          "# @return Polytope<Scalar>",
+                          "# @option Bool centered_zonotope default 1"
+                          "# @return Matrix<Scalar>",
                           "zonotope_vertices_fukuda<E>(Matrix<E> { centered_zonotope => 1 })");
 
 } }

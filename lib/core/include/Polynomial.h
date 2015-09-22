@@ -764,7 +764,7 @@ public:
    typename enable_if<bool, fits_as_coefficient<T, Term_base>::value>::type
    operator== (const T& x2) const
    {
-      return monomial_type::equals_to_default(the_term.first) && the_term.second==x2;
+      return is_zero(x2) && is_zero(the_term.second) || monomial_type::equals_to_default(the_term.first) && the_term.second==x2;
    }
 
    template <typename T>
@@ -1688,7 +1688,8 @@ public:
    typename enable_if<bool, fits_as_coefficient<T, Polynomial_base>::value>::type
    operator== (const T& c) const
    {
-      return data->the_terms.size()==1
+      return trivial() && is_zero(c)
+         || data->the_terms.size()==1
           && monomial_type::equals_to_default(data->the_terms.begin()->first)
           && data->the_terms.begin()->second==c;
    }

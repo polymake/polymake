@@ -44,5 +44,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X_X, Monomial< Rational, int >, perl::Canned< const Vector< int > >, perl::Canned< const Ring< Rational, int > >);
    OperatorInstance4perl(Binary_mul, int, perl::Canned< const Monomial< Rational, int > >);
    Class4perl("Polymake::common::Monomial_A_TropicalNumber_A_Min_I_Rational_Z_I_Int_Z", Monomial< TropicalNumber< Min, Rational >, int >);
+   OperatorInstance4perl(Binary_sub, perl::Canned< const Monomial< Rational, int > >, perl::Canned< const Monomial< Rational, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

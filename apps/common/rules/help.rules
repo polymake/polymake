@@ -53,7 +53,7 @@ INCLUDE
 # help 'citation';
 #    How to cite polymake correctly.
 #
-# Press F1 to get context-sensitive help to the keyword under cursor.
+# Press F1 to get context-sensitive help to the keyword near cursor.
 
 
 # @topic category functions/Basic

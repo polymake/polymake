@@ -362,22 +362,16 @@ sub writeHTML {
 }
 
 sub write_function {
-   my ($writer, $help, $ovcnt, @attrs)=@_;
-   my $obj;
+   my ($writer, $help, $obj, $ovcnt, @attrs)=@_;
    if (!@attrs) {
-      # sometimes the third argument is an object type...
-      if (defined $ovcnt && defined $ovcnt->full_name) {
-         $obj = $ovcnt;
-      }
-
       @attrs=(name => $help->name, $xmlid => $topic2id{$help}->[0]);
       if ($ovcnt=$help->annex->{function}) {
          foreach (0..$ovcnt) {
             my $ov_topic=$help->topics->{"overload#$_"};
             $attrs[-1]=$topic2id{$ov_topic}->[0] if $_;     # the first instance inherits the id of the common parent node
-            write_function($writer, $ov_topic, $_, @attrs);
+            write_function($writer, $ov_topic, $obj, $_, @attrs);
          }
-         return;
+         return 1;
       }
    }
    my %ext=ext_attr_dir($help);
@@ -393,8 +387,29 @@ sub write_function {
    }
    if (defined (my $params=$help->annex->{param})) {
       foreach (@$params) {
-         $writer->startTag("param", name => $_->[1], type => $_->[0], href => resolve_ref($help,$_->[0]));
-         write_descr_string($writer, $help, $_->[2]);
+         $writer->startTag("param", name => $_->[1], type => $_->[0], href => resolve_ref($help, $_->[0]));
+         my $descr=$_->[2];
+         my $value_list=$_->[3];
+         if ($descr =~ /\S/ || defined($value_list)) {
+            $descr .= "\nPossible values:\n" if defined($value_list);
+            $writer->startTag("description");
+            writeHTML($writer, $help, $descr, "div");
+            if (defined $value_list) {
+               $writer->setDataMode(0);
+               $writer->startTag([ $xhtmlns, "dl" ]);
+               foreach my $value (@$value_list) {
+                  $writer->startTag([ $xhtmlns, "dt" ]);
+                  writeHTMLtext($writer, $help, $value->[0]);
+                  $writer->endTag;
+                  $writer->startTag([ $xhtmlns, "dd" ]);
+                  writeHTMLtext($writer, $help, $value->[1]);
+                  $writer->endTag;
+               }
+               $writer->endTag;
+               $writer->setDataMode(1);
+            }
+            $writer->endTag("description");
+         }
          $writer->endTag;
       }
    }
@@ -432,12 +447,13 @@ sub write_function {
       $writer->emptyTag("author", name => $author);
    }
 
-   if (defined $obj && $obj->full_name =~/<\w+>/ && $obj->full_name !~ /\sas\s/) {
+   if (defined $obj && defined($obj->generic)) {
       $writer->emptyTag("only", name=>$obj->full_name, href => search_type($obj));
    }
 
    write_descr($writer, $help, $ovcnt);
    $writer->endTag("function");
+   1
 }
 
 sub write_option_list {
@@ -533,11 +549,12 @@ sub write_property {
                      href => search_type($type),
                      %ext,
                      $xmlid => $topic2id{$help}->[0]);
-   if ($obj_proto->full_name=~/<\w+>/ && $obj_proto->full_name!~/\sas\s/) {
-           $writer->emptyTag("only", name=>$obj_proto->full_name, href=>search_type($obj_proto));
+   if (defined($obj_proto->generic)) {
+      $writer->emptyTag("only", name=>$obj_proto->full_name, href=>search_type($obj_proto));
    }
    write_property_contents($writer, $help, $prop, $obj_proto);
    $writer->endTag("property");
+   1
 }
 
 sub write_permutation {
@@ -552,14 +569,10 @@ sub write_permutation {
 sub write_object {
    my ($writer, $help)=@_;
 
-   # do not write objects with template parameter
-   if ($help->name =~ /<\w+/) { return; }
-
-   # we need super help object so that we can add stuff of related objects
-   my $help_super = $help->parent;
-   # get all objects that only differ by template parameter
-   my $name = $help->name;
-   my @specializations = grep { /$name<\w+/ } @{$help_super->toc};
+   my @specializations;
+   if (defined (my $s=$help->topics->{specializations})) {
+      @specializations=@{$s->topics}{@{$s->toc}};
+   }
 
    # get extension attribute of object
    my %ext;
@@ -576,9 +589,9 @@ sub write_object {
       }
    }
 
-   foreach (@specializations) {
-      $writer->startTag("specialization", name=> $_, $xmlid => $topic2id{$help_super->topics->{$_}}->[0]);
-      write_descr($writer, $help_super->topics->{$_}, 1);
+   foreach my $s (@specializations) {
+      $writer->startTag("specialization", name=> $s->name, $xmlid => $topic2id{$s}->[0]);
+      write_descr($writer, $s, 1);
       $writer->endTag;
    }
 
@@ -587,27 +600,33 @@ sub write_object {
    if (defined (my $properties=$help->topics->{properties})) {
       $properties{$help->name}=$properties;
    }
-   foreach (@specializations) {
-      if (defined (my $properties=$help_super->topics->{$_}->topics->{properties})) {
-         $properties{$_}=$properties;
+   foreach my $s (@specializations) {
+      if (defined (my $properties=$s->topics->{properties})) {
+         $properties{$s->name}=$properties;
       }
    }
 
    my ($obj_proto)=(grep { $_->help_topic == $help } @{$application->object_types});
 
    my %obj_protos = ();
-   if (($obj_proto)) {
+   if ($obj_proto) {
       # gather object protos
       $obj_protos{$obj_proto->full_name} = $obj_proto;
       foreach my $s (@specializations) {
-         if (my $obj_proto= $application->eval_type($s)) {
-            $obj_protos{$obj_proto->full_name} = $obj_proto;
+         if ($s->name =~ /<.*>/) {
+            if (defined (my $spec_proto=$application->eval_type($s->name))) {
+               $obj_protos{$spec_proto->full_name} = $spec_proto;
+            }
+         } elsif (defined ($obj_proto->specializations)) {
+            if (my ($spez_proto)=grep { $_->name eq $s->name } @{$obj_proto->specializations}) {
+               $obj_protos{$spez_proto->full_name} = $spez_proto;
+            }
          }
       }
    }
 
    if ($obj_proto) {
-      write_descr($writer, $help, @{$obj_proto->super} && $obj_proto->name eq $obj_proto->super->[0]->name);
+      write_descr($writer, $help, defined($obj_proto->generic));
       my %shown_super_types;
       foreach my $super (@{$obj_proto->super}) {
          if (defined($super->help_topic) && !$shown_super_types{$obj_proto->name}++) {
@@ -638,9 +657,9 @@ sub write_object {
    if (defined (my $methods=$help->topics->{methods})) {
       $methods{$help->name}=$methods;
    }
-   foreach (@specializations) {
-      if (defined (my $methods=$help_super->topics->{$_}->topics->{methods})) {
-         $methods{$_}=$methods;
+   foreach my $s (@specializations) {
+      if (defined (my $methods=$s->topics->{methods})) {
+         $methods{$s->name}=$methods;
       }
    }
 
@@ -653,11 +672,11 @@ sub write_object {
 }
 
 sub write_object_categories {
-   my ($writer, $helps, $obj_protos, $write_sub, %taboo)=@_;
+   my ($writer, $helps, $obj_protos, $write_sub)=@_;
    my $has_categories;
 
    # gather categories
-   my @cats = Polymake::uniq(map {$_->name} grep { $_->category && !$taboo{$_->name} } map {values %{$_->topics}}  values %$helps);
+   my @cats = Polymake::uniq(map {$_->name} grep { $_->category } map {values %{$_->topics}}  values %$helps);
 
    foreach my $cat (@cats) {
       $has_categories=1;
@@ -676,8 +695,8 @@ sub write_object_categories {
          }
       }
 
-      foreach my $obj_name (keys %$helps) {
-         if (defined $helps->{$obj_name} && defined(my $topic = $helps->{$obj_name}->topics->{$cat})) {
+      while (my ($obj_name, $obj_topic) = each %$helps) {
+         if (defined(my $topic = $obj_topic->topics->{$cat})) {
             foreach (@{$topic->toc}) {
                $write_sub->($writer, $topic->topics->{$_}, $obj_protos->{$obj_name});
             }
@@ -686,17 +705,13 @@ sub write_object_categories {
       $writer->endTag("category");
    }
 
-   foreach my $obj_name (keys %$helps) {
-      if (defined (my $help=$helps->{$obj_name})) {
-         foreach (@{$help->toc}) {
-            my $topic=$help->topics->{$_};
-            unless ($topic->category) {
-               if ($has_categories) {
-                  warn_print( "Item without category: ", $application->name, "::", $topic->full_path);
-               }
-
-               $write_sub->($writer, $topic, $obj_protos->{$obj_name});
-            }
+   while (my ($obj_name, $obj_topic) = each %$helps) {
+      foreach (@{$obj_topic->toc}) {
+         my $topic=$obj_topic->topics->{$_};
+         if (!$topic->category &&
+             $write_sub->($writer, $topic, $obj_protos->{$obj_name}) &&
+             $has_categories) {
+            warn_print( "Item without category: ", $application->name, "::", $topic->full_path);
          }
       }
    }

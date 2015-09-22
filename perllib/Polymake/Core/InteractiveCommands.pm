@@ -74,7 +74,7 @@ sub store_rule_to_wake {
          my ($prereq_app, $prereq_rule_key) = splice @_, 0, 2  or  last;
          $list=($rules_to_wake{$prereq_app}->{$prereq_rule_key} //= [ ]);
       } else {
-         my ($prereq_ext) = shift @_  or  last;
+         my $prereq_ext = shift @_  or  last;
          $list=($rules_to_wake{$prereq_ext} //= [ ]);
       }
       if (@$list && $list->[-2]==$self) {
@@ -932,7 +932,8 @@ package Polymake::User;
 sub apropos {
    my $expr=shift;
    $expr=qr/$expr/i;
-   if (my @list=map { $_->help->list_matching_leaves(sub { length($_[0]->text) && $_[0]->name =~ $expr }) } $application, values %{$application->used}) {
+   if (my @list=uniq( map { $_->list_matching_leaves(sub { length($_[0]->text) && $_[0]->name =~ $expr }) }
+                          map { $_->help, @{$_->help->related } } $application, values %{$application->used} )) {
       print map { $_->full_path."\n" } @list;
    } else {
       print "No matching help items found\n";

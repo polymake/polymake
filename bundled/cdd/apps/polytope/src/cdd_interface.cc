@@ -20,6 +20,9 @@
 
 namespace polymake { namespace polytope { namespace cdd_interface {
 
+// variable to count the number of solver instances, see cdd_interface_impl.h
+int solver_count = 0;
+
 template <> inline
 Rational cdd_lp_sol<Rational>::optimal_value() const
 {

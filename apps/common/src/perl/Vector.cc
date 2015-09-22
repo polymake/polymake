@@ -48,5 +48,7 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(BinaryAssign_sub, perl::Canned< Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, false>, void> > >, perl::Canned< const Vector< Rational > >);
    OperatorInstance4perl(BinaryAssign_add, perl::Canned< Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, false>, void> > >, perl::Canned< const Vector< Rational > >);
    OperatorInstance4perl(convert, Vector< QuadraticExtension< Rational > >, perl::Canned< const Vector< Rational > >);
+   OperatorInstance4perl(BinaryAssign__or, perl::Canned< Vector< Rational > >, perl::Canned< const Rational >);
+   OperatorInstance4perl(BinaryAssign__or, perl::Canned< Vector< int > >, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -655,7 +655,7 @@ protected:
       , options(value_not_trusted)
    {}
 
-   static const char* frame_lower_bound();
+   static bool on_stack(const char* val, const char* frame_upper_bound);
 
    bool is_defined() const;
    bool is_TRUE() const;
@@ -1044,9 +1044,8 @@ public:
       typedef typename object_traits<Source>::persistent_type Persistent;
       if (type_cache<Source>::magic_allowed(prescribed_pkg)) {
          if (fup && !object_traits<Source>::is_lazy) {
-            const char* const flo=frame_lower_bound();
             const char* const val=reinterpret_cast<const char*>(&x);
-            if ((val<flo)==(val<fup)) {
+            if (!on_stack(val,fup)) {
                // the wrapped function has returned a reference to an object stored elsewhere
                return store_magic_ref(x, is_masquerade<Source>(), bool2type<object_traits<Source>::is_lazy>(), identical<Source,Persistent>());
             }
@@ -1114,9 +1113,8 @@ public:
    typename enable_if<Anchor*, list_contains<primitive_lvalues, Source>::value>::type
    put_lval(const Source& x, const char* fup, int, const Value* owner, OwnerType*)
    {
-      const char* const flo=frame_lower_bound();
       const char* const val=reinterpret_cast<const char*>(&x);
-      Anchor* anchor=store_primitive_ref(x, type_cache<Source>::get_descr(), (val<flo)==(val<fup));
+      Anchor* anchor=store_primitive_ref(x, type_cache<Source>::get_descr(), !on_stack(val,fup));
       if (owner) get_temp();
       return anchor;
    }

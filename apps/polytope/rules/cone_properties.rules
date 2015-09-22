@@ -19,15 +19,11 @@ function equal_up_to_row_permutation(Matrix, Matrix) {
     $M1==$M2 || defined(eval { find_matrix_row_permutation($M1,$M2) })
 }
 
-# @topic objects/Cone<Rational>
+# @topic objects/Cone/specializations/Cone<Rational>
 # An affine rational cone realized in R<sup>d</sup>.
 
-# @topic objects/Cone<Float>
+# @topic objects/Cone/specializations/Cone<Float>
 # An affine cone with float coordinates realized in R<sup>d</sup>.
-
-# @topic objects/Cone<QuadraticExtension>
-# An affine cone with coordinates in a [[QuadraticExtension]] field realized in R<sup>d</sup>.
-
 
 object Cone {
 

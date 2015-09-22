@@ -105,10 +105,18 @@ MAGIC* pm_perl_mg_findext(const SV *sv, int type, const MGVTBL *vtbl);
 
 // PerlVersion < 5180
 #ifndef PadlistARRAY
-# define PadlistARRAY(x) (AV**)AvARRAY(x)
-# define PadARRAY(x)     (SV**)AvARRAY(x)
+# define PadlistARRAY(x) ((AV**)AvARRAY(x))
+# define PadARRAY(x)     ((SV**)AvARRAY(x))
 # define PadMAX(x)       AvFILLp(x)
 # define PadlistMAX(x)   AvFILLp(x)
+#endif
+#ifndef ReANY
+# if PerlVersion < 5120
+#  define ReANY(x) (x)
+#  define RXp_PAREN_NAMES(rx) ((rx)->paren_names)
+# else
+#  define ReANY(x) ((struct regexp *)SvANY(x))
+# endif
 #endif
 
 #if PerlVersion >= 5200

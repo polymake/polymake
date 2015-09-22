@@ -247,6 +247,8 @@ namespace {
   solver<Coord>::enumerate_facets(const Matrix<Coord>& Points, const Matrix<Coord>& Lineality, const bool isCone, const bool primal)
   {
      PPL::C_Polyhedron polyhedron = construct_ppl_polyhedron_V(Points, Lineality, isCone);
+     Set<int> far_face(far_points(Points));
+
      PPL::Constraint_System cs = polyhedron.minimized_constraints();
      ListMatrix< Vector<Coord> > facet_list;
      ListMatrix< Vector<Coord> > affine_hull_list;
@@ -266,10 +268,17 @@ namespace {
            }
         }
      }
-     // If P is just a point then it has one facet which is the empty set
-     // and we need to add a corresponding inequality.
-     if (!isCone && num_columns == affine_hull_list.rows() + 1)
+
+     // ppl seems to compute the far face inequality (shown in cs.ascii_dump())
+     // but the iterator above skips it...
+     // So we use the following to determine whether it is needed and add it manually:
+
+     // We use the rank of the far-face rays to determine
+     // whether we need to add the trivial inequality as facet.
+     // The case that p is just a point is also covered by this!
+     if (!isCone && rank(Points.minor(far_face,All)/Lineality) + 1 == num_columns - affine_hull_list.rows()) {
         facet_list /= triv_ineq;
+     }
 
      Matrix<Coord> facets(facet_list);
      Matrix<Coord> affine_hull(affine_hull_list);

@@ -1,5 +1,21 @@
 Changelog
 
+=== Polymake 2.14r1 ===
+
+-- general --
+ * support for perl 5.22
+ * fix for gcc-5.x
+ * fix rare build issues
+ * fixes and improvements in TAB-completion and F1-help
+ * merge github pull #2 (fix -Werror=format-security issues)
+ * various other bug fixes
+
+-- polytope --
+ * several fixes in minkowski_sum_fukuda
+
+-- visualization --
+ * update to jogl to fix issues on intel graphics
+
 
 === Polymake 2.14 ===
 

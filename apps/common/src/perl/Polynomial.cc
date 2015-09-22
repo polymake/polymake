@@ -68,5 +68,6 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary_add, perl::Canned< const Polynomial< Rational, int > >, int);
    Class4perl("Polymake::common::Polynomial_A_TropicalNumber_A_Min_I_Rational_Z_I_Int_Z", Polynomial< TropicalNumber< Min, Rational >, int >);
    FunctionInstance4perl(new_X_X_X, Polynomial< TropicalNumber< Min, Rational >, int >, perl::Canned< const Matrix< int > >, perl::Canned< const Vector< TropicalNumber< Min, Rational > > >, perl::Canned< const Ring< TropicalNumber< Min, Rational >, int > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Polynomial< Rational, int > >, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

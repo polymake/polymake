@@ -900,7 +900,7 @@ same_element_sparse_vector(const GenericSet<Set,int>& s, int dim)
       if (!set_within_range(s.top(),dim))
          throw std::runtime_error("same_element_sparse_vector - dimension mismatch");
    }
-   return SameElementSparseVector<const typename Unwary<Set>::type&, E>(s.top(), E(1), dim);
+   return SameElementSparseVector<const typename Unwary<Set>::type&, E>(s.top(), one_value<E>(), dim);
 }
 
 template <typename E, typename Set> inline
@@ -918,7 +918,7 @@ template <typename E, typename Set> inline
 const SameElementSparseVector<const Complement<Set>&, E>
 same_element_sparse_vector(const Complement<Set,int>& s, int dim)
 {
-   return SameElementSparseVector<const Complement<Set>&, E>(s, E(1), dim);
+   return SameElementSparseVector<const Complement<Set>&, E>(s, one_value<E>(), dim);
 }
 
 template <typename E, typename Set> inline
@@ -932,7 +932,7 @@ template <typename E, typename Set> inline
 typename enable_if<const SameElementSparseVector<const Set&, E>, Set_with_dim_helper<Set>::value>::type
 same_element_sparse_vector(const GenericSet<Set,int>& s)
 {
-   return SameElementSparseVector<const Set&, E>(s.top(), E(1));
+   return SameElementSparseVector<const Set&, E>(s.top(), one_value<E>());
 }
 
 /// Create a SparseVector with all entries equal to the given element x
@@ -948,7 +948,7 @@ template <typename E, typename Set> inline
 typename enable_if<const SameElementSparseVector<const Complement<Set>&, E>, Set_with_dim_helper<Set>::value>::type
 same_element_sparse_vector(const Complement<Set,int>& s)
 {
-   return SameElementSparseVector<const Complement<Set>&, E>(s, E(1));
+   return SameElementSparseVector<const Complement<Set>&, E>(s, one_value<E>());
 }
 
 template <typename E, typename Set> inline
@@ -1046,7 +1046,7 @@ unit_vector(int dim, int i)
       if (i<0 || i>=dim)
          throw std::runtime_error("unit_vector - index out of range");
    }
-   return SameElementSparseVector<SingleElementSet<int>, E>(i,E(1),dim);
+   return SameElementSparseVector<SingleElementSet<int>, E>(i,one_value<E>(),dim);
 }
 
 /* ----------------

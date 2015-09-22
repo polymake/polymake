@@ -59,6 +59,7 @@ perl::Object transform(perl::Object p_in, const GenericMatrix<TransMatrix>& tau,
    perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
 
    transform_section(p_out, p_in, "VERTICES | POINTS", tau);
+   transform_section(p_out, p_in, "LINEALITY_SPACE | INPUT_LINEALITY", tau);
    transform_section(p_out, p_in, "ZONOTOPE_INPUT_POINTS", tau);
    transform_section(p_out, p_in, "FACETS | INEQUALITIES", T(tau_inv));
    transform_section(p_out, p_in, "AFFINE_HULL | EQUATIONS", T(tau_inv));

@@ -1708,7 +1708,8 @@ sub bind_functions {
           &&= do {
                  unless (defined $subst_for_temp_src) {
                     push @{$self->duplicate_function_instances}, new DuplicateInstance($descr,$self->application);
-                    $auto_func->seen_in->{$descr->source_file}+=0;   # pull into existence
+                    # pull into existence, OperatorInstance->seen_in is not a hash!
+                    $auto_func->seen_in->{$descr->source_file}+=0 if (ref($auto_func->seen_in));
                     ensure_update_sources($self);
                  }
                  next;

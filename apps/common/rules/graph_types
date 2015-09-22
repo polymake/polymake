@@ -310,14 +310,14 @@ declare property_type GraphMap<Dir,Element> {
 # @tparam Dir kind of the host graph, [[Undirected]], [[Directed]], [[UndirectedMulti]], or [[DirectedMulti]]
 # @tparam Element data associated with nodes
 declare property_type NodeMap<Dir,Element> : GraphMap<Dir,Element> \
-   : c++ ( include => "polymake/Graph.h" );
+   : c++ ( include => "polymake/Graph.h", operators => '@eq' );
 
 # @category Graph Types
 # Dense mapping of edges to data items.
 # @tparam Dir kind of the host graph, [[Undirected]], [[Directed]], [[UndirectedMulti]], or [[DirectedMulti]]
 # @tparam Element data associated with edges
 declare property_type EdgeMap<Dir,Element> : GraphMap<Dir,Element> \
-   : c++ ( include => "polymake/Graph.h" ) {
+   : c++ ( include => "polymake/Graph.h", operators => '@eq' ) {
 
    # Access the data associated with an edge between two given nodes.
    # @param Int from source node
@@ -330,14 +330,14 @@ declare property_type EdgeMap<Dir,Element> : GraphMap<Dir,Element> \
 # @tparam Dir one of [[Undirected]], [[Directed]], [[UndirectedMulti]] or [[DirectedMulti]]
 # @tparam Element data associated with nodes
 declare property_type NodeHashMap<Dir,Element> : GraphMap<Dir,Element> \
-   : c++ ( include => "polymake/Graph.h" );
+   : c++ ( include => "polymake/Graph.h", operators => '@eq' );
 
 # @category Graph Types
 # Sparse mapping of edges to data items.
 # @tparam Dir one of [[Undirected]], [[Directed]], [[UndirectedMulti]] or [[DirectedMulti]]
 # @tparam Element data associated with edges
 declare property_type EdgeHashMap<Dir,Element> : GraphMap<Dir,Element> \
-   : c++ ( include => "polymake/Graph.h" ) {
+   : c++ ( include => "polymake/Graph.h", operators => '@eq' ) {
 
    # Access the data associated with an edge between two given nodes.
    # The new data element is created on demand.

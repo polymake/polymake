@@ -29,6 +29,9 @@ static Perl_ppaddr_t def_pp_CONST, def_pp_HELEM, def_pp_HSLICE, def_pp_EXISTS, d
 #if PerlVersion >= 5180
 static Perl_ppaddr_t def_pp_PADRANGE;
 #endif
+#if PerlVersion >= 5220
+static Perl_check_t def_ck_HELEM, def_ck_EXISTS, def_ck_DELETE;
+#endif
 
 typedef struct tmp_keysv {
    U32 place_for_HEK[2];
@@ -65,6 +68,7 @@ SV* ref2key(SV *keysv, tmp_keysv *tmp_key)
 #else
    tmp_key->xpv.xnv_u.xgv_stash=NULL;
 #endif
+   HEK_FLAGS(hek) |= HVhek_UNSHARED;
    tmp_key->sv.sv_any=&tmp_key->xpv;
    tmp_key->sv.sv_refcnt=1;
    tmp_key->sv.sv_flags= SVt_PVIV | SVf_IVisUV | SVf_POK | SVp_POK | PmFlagsForHashKey;
@@ -88,7 +92,7 @@ SV* ref2key(SV *keysv, tmp_keysv *tmp_key)
    }                                                                    \
 } STMT_END
 
-static char err_ref[]="Reference as a key in a normal hash";
+static const char err_ref[]="Reference as a key in a normal hash";
 
 static inline
 int ref_key_allowed(HV* class)
@@ -728,6 +732,59 @@ OP* check_pushhv(pTHX_ OP *o)
    return Perl_ck_fun(aTHX_ o);
 }
 
+#if PerlVersion >= 5220
+// The following senseless routines have a sole purpose:
+// to prevent the operations HELEM, EXISTS, and DELETE from being lumped together with MULTIDEREF.
+// The concrete manipulations have been deduced from studying the source code of S_maybe_multideref,
+// they might need to be adapted in the future versions.
+
+static
+OP* intercept_ck_helem(pTHX_ OP *o)
+{
+   // currently it's enough just to install a non-standard check hook
+   return def_ck_HELEM(aTHX_ o);
+}
+
+// For EXISTS and DELETE, it's enough to mark the operation delivering the key with a flag OPf_REF;
+// this flag does not influence the operation itself but, weirdly enough, is respected by S_maybe_multideref.
+static
+void protect_key_operand(pTHX_ OP* o)
+{
+   o=cUNOPo->op_first;  // null = former HELEM or HSLICE
+   assert(o->op_type == OP_NULL);
+   if (o->op_targ != OP_HELEM) return;
+
+   o=cBINOPo->op_last;  // key source
+   switch (o->op_type)
+   {
+   case OP_PADSV:
+      o->op_flags |= OPf_REF;
+      break;
+   case OP_RV2SV:
+      if (cUNOPo->op_first->op_type == OP_GV)
+         o->op_flags |= OPf_REF;
+      break;
+   }
+}
+
+static
+OP* intercept_ck_exists(pTHX_ OP *o)
+{
+   o=def_ck_EXISTS(aTHX_ o);
+   protect_key_operand(aTHX_ o);
+   return o;
+}
+
+static
+OP* intercept_ck_delete(pTHX_ OP *o)
+{
+   o=def_ck_DELETE(aTHX_ o);
+   protect_key_operand(aTHX_ o);
+   return o;
+}
+
+#endif
+
 static
 OP* intercept_pp_const(pTHX)
 {
@@ -755,6 +812,11 @@ void catch_ptrs(pTHX_ SV *dummy)
 #endif
    PL_ppaddr[OP_ANONHASH]=&intercept_pp_anonhash;
    PL_check[OP_PUSH]=&check_pushhv;
+#if PerlVersion >= 5220
+   PL_check[OP_HELEM]=&intercept_ck_helem;
+   PL_check[OP_EXISTS]=&intercept_ck_exists;
+   PL_check[OP_DELETE]=&intercept_ck_delete;
+#endif
 }
 
 static
@@ -774,6 +836,11 @@ void reset_ptrs(pTHX_ SV *dummy)
 #endif
    PL_ppaddr[OP_ANONHASH]=def_pp_ANONHASH;
    PL_check[OP_PUSH]=def_ck_PUSH;
+#if PerlVersion >= 5220
+   PL_check[OP_HELEM]=def_ck_HELEM;
+   PL_check[OP_EXISTS]=def_ck_EXISTS;
+   PL_check[OP_DELETE]=def_ck_DELETE;
+#endif
 }
 
 MODULE = Polymake::RefHash              PACKAGE = Polymake
@@ -819,6 +886,11 @@ BOOT:
 #endif
    def_pp_ANONHASH=PL_ppaddr[OP_ANONHASH];
    def_ck_PUSH=PL_check[OP_PUSH];
+#if PerlVersion >= 5220
+   def_ck_HELEM=PL_check[OP_HELEM];
+   def_ck_EXISTS=PL_check[OP_EXISTS];
+   def_ck_DELETE=PL_check[OP_DELETE];
+#endif
    pm_perl_namespace_register_plugin(aTHX_ catch_ptrs, reset_ptrs, &PL_sv_undef);
 }
 

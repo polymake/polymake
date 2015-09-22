@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use feature 'state';
 
 #################################################################################
 package Polymake::Core;
@@ -23,20 +24,30 @@ sub multiple_func_definition {
    croak( "Multiple definition of a non-overloaded function" );
 }
 
-sub multiple_type_definition {
-   my ($type_name, $where)=@_;
-   if (defined (my $pkg_entry=$application::{$where})) {
-      if (defined ($pkg_entry=$pkg_entry->{$type_name})) {
-         if (defined (my $type_stash=*{$pkg_entry}{HASH})) {
-            exists $type_stash->{typeof}
-              and croak( "Multiple definition of ", $where eq "props::" ? "a property" : "an object", " type" );
+sub check_type_definition {
+   my $expected=shift;
+   my $pkg_entry=shift;
+   foreach (@_) {
+      unless (defined ($pkg_entry=$pkg_entry->{$_."::"})) {
+         if ($expected) {
+            croak( "Unknown ", $_[0] eq "props" ? "property" : "`big' object", " type" );
          }
+         return;
       }
+   }
+   if (defined (my $type_stash=*{$pkg_entry}{HASH})) {
+      if (exists $type_stash->{typeof}) {
+         return if $expected;
+         croak( "Multiple definition of ", $_[0] eq "props" ? "a property type" : @_==2 ? "an object type" : "a named type specialization" );
+      }
+   }
+   if ($expected) {
+      croak( "Unknown ", $_[0] eq "props" ? "property type" : @_==2 ? "`big' object type" : "type specialization");
    }
 }
 
-sub multiple_prop_definition { multiple_type_definition(@_, "props::") }
-sub multiple_object_definition { multiple_type_definition(@_, "objects::") }
+sub multiple_prop_definition { check_type_definition(0, \%application::, "props", @_) }
+sub multiple_object_definition { check_type_definition(0, \%application::, "objects", @_) }
 
 sub check_proper_app_use {
    my ($app, $other_app_name)=@_;
@@ -386,6 +397,8 @@ sub translate_type_expr {
 
    object => sub { reopen_type(@_, "objects") },
 
+   object_specialization => sub { reopen_specialization(@_) },
+
    property_type => sub { reopen_type(@_, "props") },
 
    default_object => sub {
@@ -405,7 +418,11 @@ sub translate_type_expr {
 
          my ($prop_name, $prop_type, $attrs, $default, $open_scope)=@+{qw(prop_name prop_type attrs default open_scope)};
 
-         fill_help($self, "self(1)", "'properties', '$prop_name'") if $Help::gather;
+         if ($Help::gather) {
+            # always include the type in the displayed text
+            append_comments($self, "# \@display property $prop_name : $prop_type\n");
+            fill_help($self, "self(1)", "'properties', '$prop_name'");
+         }
          my @attrs;
          my $flags=0;
          while ($attrs =~ s/:\s* (mutable|multiple|non_storable) \s* (?=:|$)//ox) {
@@ -436,7 +453,7 @@ sub translate_type_expr {
          my ($prop_name, $override, $alias)=($1, 0+defined($2), $3);
          if ($Help::gather) {
             push @{$self->buffer},
-                 "self(1)->help_topic(1)->add(['properties', '$prop_name'], <<'_#_#_#_');\n",
+                 "self(1)->help_topic(1)->add(['properties', '$prop_name'], <<'_#_#_#_' . '# \@display property $prop_name : '.(self(1)->help_topic(1)->find('properties', '$alias')->annex->{header} =~ / : (\$type_re)/)[0].\"\\n\");\n",
                  cut_comments($self),
                  "# Alias for property [[$alias]].\n",
                  "_#_#_#_\n",
@@ -521,7 +538,7 @@ sub translate_type_expr {
            "application::self()->prefs->add_preference('$header', 3);\n";
    },
 
-   function => sub { prepare_function(@_, 0, "") },
+   function => sub { prepare_function(@_, 0, "", "") },
 
    method => sub { prepare_function(@_, 1, "", "Core::check_application_pkg(0);") },
 
@@ -632,6 +649,8 @@ sub provide_long_prologue {
 
 %decl_headers=(
    object => \&process_object_decl,
+
+   object_specialization => \&process_object_specialization,
 
    property_type => \&process_property_type,
 
@@ -830,8 +849,8 @@ sub start_preamble {
 #####################################################################################################
 #  helper routines common for object and property type declaration processing
 
-sub process_template_params($$\@\@\@\@) {
-   my ($text, $super_text, $param_names, $prologue, $super_abstract, $super_instance)=@_;
+sub process_template_params($$\@\@\@\@$) {
+   my ($text, $super_text, $param_names, $prologue, $super_abstract, $super_instance, $for_spez)=@_;
 
    my ($i, $defaults_seen)=(0,0);
    while ($text =~ m{\G $type_param_re \s* (?: ,\s* | $ ) }xog) {
@@ -848,6 +867,10 @@ sub process_template_params($$\@\@\@\@) {
       } elsif ($defaults_seen) {
          return "wrong order of parameters with and without default types";
       }
+   }
+
+   if ($for_spez && $defaults_seen) {
+      return "type parameters can't have default values";
    }
 
    if (@$param_names>1) {
@@ -874,6 +897,9 @@ sub process_template_params($$\@\@\@\@) {
 
    while ($super_text =~ m{\G $type_expr_re \s*(?:,\s*)?}xgo) {
       if (defined (my $super_type=$+{dynamic})) {
+         if ($for_spez) {
+            return "dynamic type expression not allowed";
+         }
          translate_type_expr($super_type);
          push @$super_instance, $super_type;
          $needs_use_Params=1;
@@ -886,15 +912,21 @@ sub process_template_params($$\@\@\@\@) {
                $dependent= $super_params =~ m{\b$_\b} and last;
             }
             if ($dependent) {
-               push @$super_abstract, "typeof_gen $super_abstract_type";
-               push @$super_instance, $super_expr;
+               if ($for_spez) {
+                  push @$super_abstract, $super_abstract_type;
+                  push @$super_instance, $super_type;
+               } else {
+                  push @$super_abstract, "typeof_gen $super_abstract_type";
+                  push @$super_instance, $super_expr;
+               }
                $needs_use_Params=1;
-            } else {
-               push @$super_abstract, $super_expr;
+               next;
             }
-         } else {
-            push @$super_abstract, $super_expr;
          }
+         if ($for_spez) {
+            return "`big' object type must depend on type parameters";
+         }
+         push @$super_abstract, $super_expr;
       }
    }
 
@@ -924,24 +956,111 @@ my @ellipsis_prologue=split /(?<=\n)/, <<'.';
   $type_inst->{$root}
 .
 
+sub check_outer_pkg {
+   my ($self, $what)=@_;
+   my $outer_pkg=compiling_in();
+   if ($outer_pkg ne $self->application->pkg) {
+      if ($plausibility_checks && index($outer_pkg, $self->application->pkg."::")==0) {
+         my $msg= $what eq "object"
+                  ? "a `big' object type must be declared" :
+                  $what eq "property"
+                  ? "a property type must be declared" :
+                  $what eq "spez"
+                  ? "a `big' type specialization must be declared" :
+                  $what eq "objects"
+                  ? "a `big' object type scope must be directly contained" :
+                  $what eq "props"
+                  ? "a property type scope must be directly contained" :
+                  $what eq "spezs"
+                  ? "a `big' type specialization scope must be directly contained"
+                  : "??? internal error ???";
+         push @{$self->buffer},
+              "BEGIN { die '$msg in the top-level (application) scope' }\n";
+         return;
+      }
+      "package application; "
+   } else {
+      ""
+   }
+}
+
+sub generate_scope_type_params {
+   "sub __scope_type_params { (is_object(\$_[0]) ? \$_[0] : \$_[0]->[0])->type->descend_to_generic(__PACKAGE__)->params } " .
+   "use namespaces::Params *__scope_type_params, qw(@_);\n"
+}
+
+sub announce_parametrized_class {
+   my ($self, $name, $subpkg, @param_names)=@_;
+   get_pkg($name, 1);                                  # enforce a top-level package to fool the perl parser
+   get_pkg($self->application->name."::$name", 1);     # and the same for qualifications via application name
+   get_pkg($subpkg."::$name", 1);                      # and the same for qualifications via type family
+   get_pkg($_, 1) for @param_names;                    # type parameter names must also be known as packages
+}
+#####################################################################################################
+sub reopen_type {
+   my ($self, $header, $where)=@_;
+   if (my ($type)= $header =~ /^$type_re \s*\{\s*$/xo) {
+      my $preamble=check_outer_pkg($self, $where);
+      return unless defined($preamble);
+      my ($outer_pkg, $check_app_pkg);
+      my $sanity_check="";
+      if ($type =~ s/^($id_re):://o) {
+         if ($plausibility_checks) {
+            $sanity_check="Core::check_proper_app_use(application::self(), '$1'); ";
+         }
+         $outer_pkg="Polymake::$1";
+         $check_app_pkg="\\%Polymake::, '$1'";
+      } else {
+         $outer_pkg="_";
+         $check_app_pkg='\\%application::';
+      }
+
+      if ($type =~ /</) {
+         # shouldn't create prototype objects in a BEGIN block
+         (my $pkg=$type) =~ s/\s//g;
+         while ($pkg =~ s/($id_re)<($ids_re)>/ PropertyParamedType::mangle_paramed_type_name($1, $2) /goe) {}
+         if ($plausibility_checks) {
+            $type =~ /^$id_re/o;
+            $sanity_check="BEGIN { $sanity_check Core::check_type_definition(1, $check_app_pkg, '$where', '$&') } ";
+         }
+         $preamble .= $sanity_check . "{ package ${outer_pkg}::$pkg; sub self { &Core::check_object_pkg; typeof $type }";
+      } else {
+         if ($plausibility_checks) {
+            $sanity_check="BEGIN { $sanity_check Core::check_type_definition(1, $check_app_pkg, '$where', '$type') } ";
+         }
+         $preamble .= $sanity_check . "{ package ${outer_pkg}::$type;"
+                      . " local_array(*__scope_type_params, typeof_gen(undef)->params) if typeof_gen(undef)->abstract;  use namespaces::Params *__scope_type_params;";
+      }
+      push @{$self->buffer}, "$preamble\n";
+   } else {
+      push @{$self->buffer}, "BEGIN { die 'invalid " . ($where eq "objects" ? "object" : "property") . " type reference' }\n";
+   }
+}
+#####################################################################################################
+sub reopen_specialization {
+   my ($self, $header)=@_;
+   if (my ($obj_type, $alias_name)= $header =~ /^($id_re)::($id_re) \s*\{\s*$/xo) {
+      my $preamble=check_outer_pkg($self, "spezs");
+      return unless defined($preamble);
+      my $sanity_check=$plausibility_checks ? "BEGIN { Core::check_type_definition(1, \\%application::, 'objects', '$obj_type', '$alias_name') } " : "";
+      push @{$self->buffer},
+           $preamble . $sanity_check . "{ package _::$obj_type\::$alias_name;" .
+           " local_array(*__scope_type_params, typeof_gen(undef)->params);  use namespaces::Params *__scope_type_params;\n";
+   } else {
+      push @{$self->buffer}, "BEGIN { die 'invalid type specialization reference' }\n";
+   }
+}
+#####################################################################################################
 sub process_property_type {
    my ($self, $header)=@_;
    my $first_line=@{$self->buffer};
-   my $outer_pkg=compiling_in();
-   my $preamble="";
-   if ($outer_pkg ne $self->application->pkg) {
-      if ($plausibility_checks && index($outer_pkg, $self->application->pkg."::")==0) {
-         push @{$self->buffer},
-              "BEGIN { die 'property types must be declared in the top-level (application) scope' }\n";
-         return;
-      }
-      $preamble="package application; ";
-   }
+   my $preamble=check_outer_pkg($self, "property");
+   return unless defined($preamble);
 
    if ($header =~ /^ ($id_re) \s*=\s* ($type_re) \s*;\s* $/xo) {
       my ($type_name, $alias)=@_;
       if ($plausibility_checks) {
-         $preamble .= "BEGIN { Core::multiple_prop_definition('$type_name\::') } ";
+         $preamble .= "BEGIN { Core::multiple_prop_definition('$type_name') } ";
       }
       push @{$self->buffer},
            $preamble."{ my \$stash=get_pkg((typeof $alias)->pkg); *application::$type_name\::=\$stash; *application::props::$type_name\::=\$stash; }\n";
@@ -958,7 +1077,7 @@ sub process_property_type {
       fill_help($self, "", "'property_types', '$type_name'") if $Help::gather;
 
       if ($plausibility_checks) {
-         $preamble .= "BEGIN { Core::multiple_prop_definition('$type_name\::') } ";
+         $preamble .= "BEGIN { Core::multiple_prop_definition('$type_name') } ";
       }
       $preamble .= "{ package _::$type_name; BEGIN { *application::props::$type_name\::=get_pkg(__PACKAGE__) } namespaces::memorize_lexical_scope;\n";
       push @{$self->buffer}, $preamble;
@@ -1000,14 +1119,12 @@ sub process_property_type {
             }
             push @prologue, "  \$type_inst{\$_[0]}\n";
          } else {
-            $n_defaults=process_template_params($tparams, $super, @param_names, @prologue, @super_abstract, @super_instance);
+            $n_defaults=process_template_params($tparams, $super, @param_names, @prologue, @super_abstract, @super_instance, 0);
             if (is_string($n_defaults)) {
                $self->buffer->[$first_line]="BEGIN { die 'invalid property type declaration: $n_defaults' }\n";
                return;
             }
-            push @{$self->buffer},
-                 "sub __scope_type_params { (is_object(\$_[0]) ? \$_[0] : \$_[0]->[0])->type->descend_to_generic(__PACKAGE__)->params }  use namespaces::Params *__scope_type_params, qw(@param_names);\n";
-
+            push @{$self->buffer}, generate_scope_type_params(@param_names);
             translate_type_expr($typecheck) if defined($typecheck);
          }
 
@@ -1088,82 +1205,19 @@ sub process_property_type {
    }
 }
 #####################################################################################################
-sub announce_parametrized_class {
-   my ($self, $name, $subpkg, @param_names)=@_;
-   get_pkg($name, 1);                                  # enforce a top-level package to fool the perl parser
-   get_pkg($self->application->name."::$name", 1);     # and the same for qualifications via application name
-   get_pkg($subpkg."::$name", 1);                      # and the same for qualifications via type family
-   get_pkg($_, 1) for @param_names;                    # type parameter names must also be known as packages
-}
-#####################################################################################################
-sub reopen_type {
-   my ($self, $header, $where)=@_;
-   if (my ($type)= $header =~ /^$type_re \s*\{\s*$/xo) {
-      my $outer_pkg=compiling_in();
-      my $preamble="";
-      my $sanity_check="";
-      my $check_app_pkg;
-      if ($outer_pkg ne $self->application->pkg) {
-         if ($plausibility_checks && index($outer_pkg, $self->application->pkg."::")==0) {
-            push @{$self->buffer},
-                 "BEGIN { die 'object and property type scopes must be directly contained in the top-level (application) scope' }\n";
-            return;
-         }
-         $preamble="package application; ";
-      }
-      if ($type =~ s/^($id_re):://o) {
-         if ($plausibility_checks) {
-            $sanity_check .= "Core::check_proper_app_use(application::self(), '$1');";
-         }
-         $outer_pkg=$check_app_pkg="Polymake::$1";
-      } else {
-         $outer_pkg="_";
-         $check_app_pkg="application";
-      }
-
-      if ($type =~ /</) {
-         # shouldn't create prototype objects in a BEGIN block
-         (my $pkg=$type) =~ s/\s//g;
-         while ($pkg =~ s/($id_re)<($ids_re)>/ PropertyParamedType::mangle_paramed_type_name($1, $2) /goe) {}
-         if ($plausibility_checks) {
-            $type =~ /^$id_re/o;
-            $sanity_check="BEGIN { $sanity_check exists \$${check_app_pkg}::${where}::{'${&}::'} or die 'Unknown type $&' } ";
-         }
-         $preamble .= $sanity_check . "{ package ${outer_pkg}::$pkg; sub self { &Core::check_object_pkg; typeof $type }";
-      } else {
-         if ($plausibility_checks) {
-            $sanity_check="BEGIN { $sanity_check exists \$${check_app_pkg}::${where}::{'${type}::'} or die 'Unknown type $type' } ";
-         }
-         $preamble .= $sanity_check . "{ package ${outer_pkg}::$type;"
-                      . " local_array(*__scope_type_params, typeof_gen(undef)->params) if typeof_gen(undef)->abstract;  use namespaces::Params *__scope_type_params;";
-      }
-      push @{$self->buffer}, "$preamble\n";
-   } else {
-      push @{$self->buffer}, "BEGIN { die 'invalid " . ($where eq "objects" ? "object" : "property") . " type reference' }\n";
-   }
-}
-#####################################################################################################
 sub process_object_decl {
    my ($self, $header)=@_;
    my $first_line=@{$self->buffer};
+   my $preamble=check_outer_pkg($self, "object");
+   return unless defined($preamble);
+
    if ($header =~ /^ $paramed_decl_re (?: (?: \s*:\s* (?'super' $type_exprs_re))?+ \s*(?: ; | (?'open_scope' \{))
                                         | (?('tparams') | \s*=\s* (?'alias' $type_re) (?: \s*;)?)) \s*$/xo) {
 
       my ($type_name, $tparams, $typecheck, $super, $open_scope, $alias)=@+{qw(lead_name tparams typecheck super open_scope alias)};
 
-      my $outer_pkg=compiling_in();
-      my $preamble="";
-      if ($outer_pkg ne $self->application->pkg) {
-         if ($plausibility_checks && index($outer_pkg, $self->application->pkg."::")==0) {
-            push @{$self->buffer},
-                 "BEGIN { die 'object types must be declared in the top-level (application) scope' }\n";
-            return;
-         }
-         $preamble="package application; ";
-      }
-
       if ($plausibility_checks) {
-         $preamble .= "BEGIN { Core::multiple_object_definition('$type_name\::') } ";
+         $preamble .= "BEGIN { Core::multiple_object_definition('$type_name') } ";
       }
 
       if (defined($alias)) {
@@ -1187,17 +1241,16 @@ sub process_object_decl {
          if (defined($tparams)) {
             # parameterized template
 
-            my (@param_names, @prologue, @super_abstract, @super_instance, $all_params_have_defaults);
-            my $n_defaults=process_template_params($tparams, $super, @param_names, @prologue, @super_abstract, @super_instance);
+            my (@param_names, @prologue, @super_abstract, @super_instance);
+            my $n_defaults=process_template_params($tparams, $super, @param_names, @prologue, @super_abstract, @super_instance, 0);
             if (is_string($n_defaults)) {
                $self->buffer->[$first_line]="BEGIN { die 'invalid object declaration: $n_defaults' }\n";
-               last;
+               return;
             }
             translate_type_expr($typecheck) if defined($typecheck);
 
             push @{$self->buffer},
-                 "sub __scope_type_params { (is_object(\$_[0]) ? \$_[0] : \$_[0]->[0])->type->descend_to_generic(__PACKAGE__)->params }\n",
-                 "use namespaces::Params *__scope_type_params, qw(@param_names);\n",
+                 generate_scope_type_params(@param_names),
                  "sub typeof_gen { state \$abstract_inst=\n",
                  "  new Polymake::Core::ObjectType('$type_name', application::self(), [$n_defaults, qw(@param_names)], " . join(",", @super_abstract). "); }\n",
                  "sub self { &Core::check_object_pkg; &typeof_gen }\n",
@@ -1234,10 +1287,91 @@ sub process_object_decl {
          } else {
             push @{$self->buffer}, "#line ".($.+1)."\n";
          }
-         $self->prolonged=0;
       }
+      $self->prolonged=0;
    } else {
       push @{$self->buffer}, "BEGIN { die 'invalid object declaration' }\n";
+   }
+}
+#####################################################################################################
+sub process_object_specialization {
+   my ($self, $header)=@_;
+   my $first_line=@{$self->buffer};
+   my $preamble=check_outer_pkg($self, "spez");
+   return unless defined($preamble);
+
+   if ($header =~ /^ (?'spez_name' $id_re)? \s*<\s* (?'tparams' $ids_re) \s*>\s*=\s*
+                     (?'obj_type' $type_expr_re) (?: \s*\[ (?'typecheck' $balanced_re) \s*\] )? \s*\{ /xo) {
+
+      my ($spez_name, $tparams, $typecheck, $obj_type)=@+{qw(spez_name tparams typecheck obj_type)};
+      my $pkg_name=$spez_name;
+      my $visible_spez_name=$spez_name;
+
+      my (@param_names, @prologue, @super_abstract, @super_instance);
+      my $error=process_template_params($tparams, $obj_type, @param_names, @prologue, @super_abstract, @super_instance, 1);
+      if (is_string($error)) {
+         $self->buffer->[$first_line]="BEGIN { die 'invalid type specialization declaration: $error' }\n";
+         return;
+      }
+      my $generic_type=$super_abstract[0];
+      my $concrete_type=$super_instance[0];
+
+      if (defined $spez_name) {
+         $spez_name="$generic_type\::$spez_name";
+         fill_help($self, "", "'objects', '$generic_type', 'specializations', '$spez_name'") if $Help::gather;
+      } else {
+         $spez_name="$generic_type<$tparams>";
+      }
+
+      my $buffer_size;
+      if ($accurate_linenumbers) {
+         $buffer_size=@{$self->buffer};
+         push @{$self->buffer},
+              "#line ".$self->injected_lines." \"".$self->injected_source."\"\n";
+      }
+
+      if (defined $pkg_name) {
+         if ($plausibility_checks) {
+            $preamble .= "BEGIN { Core::multiple_object_definition('$generic_type', '$pkg_name') } ";
+         }
+      } else {
+         state $spez_cnt=0;
+         $pkg_name="_Spez_".++$spez_cnt;
+      }
+
+      push @{$self->buffer},
+           $preamble."{ package _::$generic_type\::$pkg_name; namespaces::memorize_lexical_scope;\n";
+
+      push @{$self->buffer},
+           generate_scope_type_params(@param_names),
+           "sub typeof_gen { state \$abstract_inst=\n",
+           "  new Polymake::Core::ObjectType::Specialization('$spez_name', __PACKAGE__, (typeof_gen $generic_type), [qw(@param_names)]); }\n",
+           "sub self { &Core::check_object_pkg; &typeof_gen }\n",
+           "sub typeof { shift; state %type_inst;\n",
+           @prologue,
+           "    //= new Polymake::Core::ObjectType::Specialization('$spez_name', undef, &typeof_gen, \\\@_); }\n",
+           "local_array(*__scope_type_params, &typeof_gen->params);\n";
+
+      my $match_func_name="_match_type";
+      my $unique_name=$match_func_name."__inst";
+      add_overloaded_instance($self,
+                              "{ (typeof ".$self->application->pkg."::$generic_type\::$pkg_name<$tparams>) } " .
+                              "&typeof_gen->apply_to_existing_types;",
+                              undef, "", "",
+                              $match_func_name, 0, $unique_name, "\\&$unique_name", $concrete_type, $tparams,
+                              $typecheck, "root_node=>&typeof_gen->match_node");
+
+      # reduced form of announce_parametrized_class
+      get_pkg($visible_spez_name, 1) if defined($visible_spez_name);
+      get_pkg($_, 1) for $tparams;
+
+      if ($accurate_linenumbers) {
+         $self->injected_lines += @{$self->buffer}-$buffer_size;
+         push @{$self->buffer}, "#line ".($.+1)." \"".$self->path."\"\n";
+      }
+      $self->prolonged=0;
+   } else {
+      push @{$self->buffer}, "BEGIN { die 'invalid type specialization declaration' }\n";
    }
 }
 #####################################################################################################
@@ -1511,6 +1645,10 @@ sub add_overloaded_instance {
       if (length($subref)) {
          # the preamble is inserted into the transformed code
          $deferred_preamble=\@preamble;
+      } elsif ($cxx && @preamble==1 && @type_param_names) {
+         # a preamble for pure C++ functions should only be generated if it contains some actions
+         $subref="undef";
+         @preamble=();
       } else {
          $subref="\\&${unique_name}_preamble";
       }
@@ -1518,7 +1656,7 @@ sub add_overloaded_instance {
       $subref ||= "undef";
    }
 
-   my $ov_line=prepare_context_check($self, $func_name, $type_params, $context_check);
+   my $ov_line=defined($context_check) ? prepare_context_check($self, $func_name, $type_params, $context_check) : "";
 
    if ($type_deduction) {
       $ov_line .= " { use namespaces::Params \\*Polymake::Core::FunctionTypeParam::instances, qw(_ @type_param_names);";
@@ -1745,7 +1883,7 @@ sub fill_help {
 }
 
 sub cut_comments {
-   my $self=shift;
+   my ($self)=@_;
    if ($self->from_embedded_rules) {
       map { split /(?<=\n)/ } map { s/(?<!^)(?<![\#\n])(?=\#)/\n/mg; $_ }
       splice @{$self->buffer}, $self->start_comments, $self->len_comments;
@@ -1755,8 +1893,14 @@ sub cut_comments {
 }
 
 sub scan_comments {
-   my $self=shift;
+   my ($self)=@_;
    @{$self->buffer}[$self->start_comments .. $self->start_comments + $self->len_comments - 1];
+}
+
+sub append_comments {
+   my $self=shift;
+   splice @{$self->buffer}, $self->start_comments+$self->len_comments, 0, @_;
+   $self->len_comments += @_;
 }
 #################################################################################
 sub custom_hash_filter {
@@ -1923,7 +2067,7 @@ sub fill {
       }
 
       $self->gap=0;
-      if ($line =~ m{^[ \t]* (?> (declare \s+)?) ($id_re) (?: $|\s+)}xo  and
+      if ($line =~ m{^[ \t]* (?> (declare \s+)?) ($id_re) (?: $|\s+|(?= <))}xo  and
           my $header_sub= $1 ? $self->decl_rule_header_table->{$2} : $self->rule_header_table->{$2} || ($self->after_rule && $rule_subheaders{$2})) {
 
          # header recognized

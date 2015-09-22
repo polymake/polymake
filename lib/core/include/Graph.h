@@ -2546,6 +2546,8 @@ public:
          to->dflt=from->dflt;
          to->map=from->map;
       }
+
+      bool invalid_node(int n) const { return map->ctable().invalid_node(n); }
    };
 public:
    template <typename Map>
@@ -2757,7 +2759,7 @@ public:
    friend int index_within_range(const NodeMap& me, int n)
    {
       if (n<0) n+=me.map->ctable().dim();
-      if (me.map->ctable().invalid_node(n))
+      if (me.invalid_node(n))
          throw std::runtime_error("NodeMap::operator[] - node id out of range or deleted");
       return n;
    }
@@ -2915,14 +2917,14 @@ public:
 
    E& operator[] (int n)
    {
-      if (this->map->ctable().invalid_node(n))
+      if (this->invalid_node(n))
          throw std::runtime_error("NodeHashMap::operator[] - node id out of range or deleted");
       return get_container()[n];
    }
 
    const E& operator[] (int n) const
    {
-      if (this->map->ctable().invalid_node(n))
+      if (this->invalid_node(n))
          throw std::runtime_error("NodeHashMap::operator[] - node id out of range or deleted");
       typename _super::const_iterator it=find(n);
       if (it==get_container().end()) throw no_match();
@@ -2932,7 +2934,7 @@ public:
    typename _super::iterator insert(int n, typename function_argument<E>::type v)
    {
       if (POLYMAKE_DEBUG) {
-         if (this->map->ctable().invalid_node(n))
+         if (this->invalid_node(n))
             throw std::runtime_error("NodeHashMap::insert - node index out of range or deleted");
       }
       return get_container().insert(n,v);
@@ -2941,7 +2943,7 @@ public:
    pair<typename _super::iterator, bool> insert(const typename _super::value_type& v)
    {
       if (POLYMAKE_DEBUG) {
-         if (this->map->ctable().invalid_node(v.first))
+         if (this->invalid_node(v.first))
             throw std::runtime_error("NodeHashMap::insert - node index out of range or deleted");
       }
       return get_container().insert(v);
@@ -3162,13 +3164,13 @@ protected:
 public:
    E& operator() (int n1, int n2)
    {
-      if (this->top().map->ctable().invalid_node(n1) || this->top().map->ctable().invalid_node(n2))
+      if (this->top().invalid_node(n1) || this->top().invalid_node(n2))
          throw std::runtime_error("EdgeMap::operator() - node id out of range or deleted");
       return this->top()(n1,n2);
    }
    const E& operator() (int n1, int n2) const
    {
-      if (this->top().map->ctable().invalid_node(n1) || this->top().map->ctable().invalid_node(n2))
+      if (this->top().invalid_node(n1) || this->top().invalid_node(n2))
          throw std::runtime_error("EdgeMap::operator() - node id out of range or deleted");
       return this->top()(n1,n2);
    }
@@ -3182,19 +3184,19 @@ protected:
 public:
    E& operator() (int n1, int n2)
    {
-      if (this->top().map->ctable().invalid_node(n1) || this->top().map->ctable().invalid_node(n2))
+      if (this->top().invalid_node(n1) || this->top().invalid_node(n2))
          throw std::runtime_error("EdgeHashMap::operator() - node id out of range or deleted");
       return this->top()(n1,n2);
    }
    typename graph::EdgeHashMap<dir,E,Params>::const_iterator find(int n1, int n2) const
    {
-      if (this->top().map->ctable().invalid_node(n1) || this->top().map->ctable().invalid_node(n2))
+      if (this->top().invalid_node(n1) || this->top().invalid_node(n2))
          throw std::runtime_error("EdgeHashMap::find - node id out of range or deleted");
       return this->top().find(n1,n2);
    }
    void erase(int n1, int n2)
    {
-      if (this->top().map->ctable().invalid_node(n1) || this->top().map->ctable().invalid_node(n2))
+      if (this->top().invalid_node(n1) || this->top().invalid_node(n2))
          throw std::runtime_error("EdgeHashMap::erase - node id out of range or deleted");
       this->top().erase(n1,n2);
    }

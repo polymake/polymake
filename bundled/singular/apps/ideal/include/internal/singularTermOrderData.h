@@ -103,26 +103,57 @@ template<typename Scalar> class SingularTermOrderData<Matrix<Scalar> > : public 
 public:
    SingularTermOrderData(const Ring<>& r, const Matrix<Scalar>& order) : SingularTermOrderData_base< Matrix<Scalar> >(r,order) {}
 
+   int get_ord_size() const {
+     return this->orderData.rows()+1;
+   }
+
+   int* get_block0() const {
+      int ord_size = this->get_ord_size();
+      int* block0 = (int*)omalloc0((ord_size+2)*sizeof(int));
+      for(int i = 0; i < ord_size; ++i) {
+        block0[i] = 1;
+      }
+      block0[ord_size]=0;
+      block0[ord_size+1]=0;
+      return block0;
+   }
+
+   int* get_block1() const {
+      int ord_size = this->get_ord_size();
+      int nvars = this->polymakeRing.n_vars();
+      int* block1 = (int*)omalloc0((ord_size+2)*sizeof(int));
+      for(int i = 0; i < ord_size; ++i) {
+        block1[i] = nvars;
+      }
+      block1[ord_size]=0;
+      block1[ord_size+1]=0;
+      return block1;
+   }
+
    int* get_ord() const {
       int ord_size = this->get_ord_size();
-      int* ord=(int*)omalloc0((ord_size+1)*sizeof(int));
-      ord[1]=ringorder_c;
-      ord[2]=0;
-      ord[0] = ringorder_M;
+      int* ord=(int*)omalloc0((ord_size+2)*sizeof(int));
+      for(int i = 0; i < ord_size-1; ++i) {
+        ord[i] = ringorder_a;
+      }
+      ord[ord_size-1] = ringorder_lp;
+      ord[ord_size] = ringorder_c;
       return ord;
    }
 
    int** get_wvhdl() const {
       int ord_size = this->get_ord_size();
       int nvars = this->polymakeRing.n_vars();
-      int** wvhdl=(int**)omalloc0((ord_size+1)*sizeof(int*));
-      wvhdl = (int**)omalloc0((ord_size+1)*sizeof(int*));
-      wvhdl[0] = (int*)omalloc0(nvars*nvars*sizeof(int));
-      for(int i =0; i<nvars; i++){
+      int** wvhdl=(int**)omalloc0((ord_size+2)*sizeof(int*));
+      for(int i =0; i<ord_size-1; i++){
+         wvhdl[i] = (int*)omalloc0(nvars*sizeof(int));
          for(int j = 0; j<nvars; j++){
-            wvhdl[0][i*nvars+j] = (int)this->orderData(i,j);
+            wvhdl[i][j] = (int)this->orderData(i,j);
          }
       }
+      wvhdl[ord_size-1]=NULL;
+      wvhdl[ord_size]=NULL;
+      wvhdl[ord_size+1]=NULL;
       return wvhdl;
    }
 };

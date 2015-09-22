@@ -89,7 +89,7 @@ poly convert_Polynomial_to_poly(const Polynomial<>& mypoly, ring ring){
          p_SetExp(monomial,k+1,term->first[k],ring);
       }
       p_Setm(monomial,ring);
-      p = p_Sub(p, monomial,ring);
+      p = p_Add_q(p, monomial,ring);
    }
    return p;
 }

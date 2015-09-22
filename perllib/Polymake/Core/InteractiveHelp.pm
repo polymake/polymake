@@ -104,7 +104,7 @@ sub add {
             my ($tag, $value)=(lc($1), $2);
             sanitize_help($value);
 
-            if ($tag eq "author") {
+            if ($tag eq "author" or $tag eq "display") {
                $annex{$tag}=$value;
 
             } elsif ($tag eq "return") {
@@ -118,6 +118,7 @@ sub add {
             } elsif ($tag eq "tparam") {
                if ($value =~ s/^\s* ($id_re) \s*//xos) {
                   push @{$annex{$tag}}, [$1, $value];
+                  $annex{min_tparam} += $value !~ /\bdefault:/;
                } else {
                   croak( "help tag \@tparam '$value' does not start with a valid name" );
                }
@@ -138,6 +139,19 @@ sub add {
                   croak( "help tag \@param '$value' does not start with valid type and name" );
                }
                $annex{function}=0;
+
+            } elsif ($tag eq "value") {
+               if ($value =~ s/^\s* (?'name' $id_re) \s+ (?'value' $anon_quoted_re | $id_re ) \s+//xos) {
+                  if (defined (my $param_list=$annex{param})) {
+                     my ($param)=grep { $_->[1] eq $+{name} } @$param_list
+                       or croak( "unknown parameter name '$+{name}'" );
+                     push @{$param->[3] //= [ ]}, [$+{value}, $value];
+                  } else {
+                     croak( "help tag \@value must follow parameter descriptions \@param" );
+                  }
+               } else {
+                  croak( "help tag \@value '$value' does not start with valid name and quoted string or named constant" );
+               }
 
             } elsif ($tag eq "option" || $tag eq "key") {
                if ($value =~ s/^\s* (?'type' $type_re) \s+ (?'name' (?!\d)[\w-]+) \s*//xos) {
@@ -349,6 +363,14 @@ sub display_function_text {
             $comment =~ s/\n[ \t]*(?=\S)/\n    /g;
             my ($name)= $_->[1] =~ /^($id_re)/;
             $text .= "  $_->[0] " . InteractiveCommands::underline($name) . " $comment";
+            if (defined (my $value_list=$_->[3])) {
+               $text .= "    Possible values:\n";
+               foreach my $value (@$value_list) {
+                  $comment=$value->[1];
+                  clean_text($comment);
+                  $text .= "      " . $value->[0] . " : $comment";
+               }
+            }
          }
       }
       if (defined $options) {
@@ -442,20 +464,6 @@ sub display_keys_text {
    $text
 }
 
-# for properties
-sub display_property_text {
-   my ($self)=@_;
-   my $obj_topic = $self->parent;
-   if ($obj_topic->category) { $obj_topic = $obj_topic->parent; }
-   my $obj_name = $obj_topic->parent->name;
-   my $type_name = $User::application->eval_type($obj_name, 1)->lookup_property($self->name)->type->full_name;
-
-   my $text = "property ". $self->name. " : ". $type_name ."\n";
-
-   $text .= $self->text;
-   return $text;
-}
-
 sub display_text {
    my $self=shift;
    if (defined (my $ovcnt=$self->annex->{function})) {
@@ -472,12 +480,7 @@ sub display_text {
          display_function_text($self,$self,$full);
       }
    } else {
-      my $text;
-      if ($self->parent->name eq "properties" or ($self->parent->category and $self->parent->parent->name eq "properties")) {
-         $text=$self->display_property_text();
-      } else {
-         $text=$self->text;
-      }
+      my $text=$self->annex->{header} . $self->text;
       if (length($text)) {
          clean_text($text);
       }
@@ -573,13 +576,25 @@ sub find {
    wantarray ? @topics : $topics[0]
 }
 #################################################################################
-sub keyword_completions {
-   my ($self, $n_preceding_args, $obj_type, $prefix)=@_;
+sub argument_completions {
+   my ($self, $arg_num, $prefix)=@_;
+   my ($param_list, $param, $value_list);
+
    if (my $ovcnt=$self->annex->{function}) {
-      map { keyword_completions($self->topics->{"overload#$_"}, $n_preceding_args, $prefix) } 0..$ovcnt;
+      map { argument_completions($self->topics->{"overload#$_"}, $arg_num, $prefix) } 0..$ovcnt;
+
+   } elsif (defined ($param_list=$self->annex->{param}) and
+            defined ($param=$param_list->[$arg_num])    and
+            defined ($value_list=$param->[3])) {
+      if ((my $quote)= $prefix =~ /^$quote_re/o) {
+         # accept both kinds of quotes
+         grep { /^\Q$prefix\E/ } map { $_->[0] =~ $quoted_re ? $quote.$+{quoted}.$quote : $_->[0] } @$value_list;
+      } else {
+         grep { /^\Q$prefix\E/ } map { $_->[0] } @$value_list;
+      }
 
    } elsif (defined (my $mandatory=$self->annex->{mandatory})) {
-      return if $n_preceding_args <= $mandatory;
+      return if $arg_num <= $mandatory;
 
       my @matching;
       if (defined (my $options=$self->annex->{options})) {
@@ -587,40 +602,44 @@ sub keyword_completions {
             if (is_object($opt_group)) {
                foreach my $topic ($opt_group, @{$opt_group->related}) {
                   my $keys=$topic->annex->{keys} or next;
-                  push @matching, grep { /^$prefix/ } map { $_->[1] } @$keys;
+                  push @matching, grep { /^\Q$prefix\E/ } map { $_->[1] } @$keys;
                }
             } else {
                local_shift($opt_group);
-               push @matching, grep { /^$prefix/ } map { $_->[1] } @$opt_group;
+               push @matching, grep { /^\Q$prefix\E/ } map { $_->[1] } @$opt_group;
             }
          }
       }
-      @matching;
+      map { "$_=>" } @matching;
+
    } else {
       ()
    }
 }
 #################################################################################
+# => (min, max)
 sub expects_template_params {
-   my $self=shift;
+   my ($self, $rec)=@_;
    if (defined (my $tparams=$self->annex->{tparam})) {
-      scalar @$tparams;
-   } elsif (defined (my $ovcnt=$self->annex->{function})) {
-      my $cnt=0;
+      ($self->annex->{min_tparam}, scalar @$tparams)
+   } elsif (!$rec && defined (my $ovcnt=$self->annex->{function})) {
+      my ($min_min, $max_max);
+      my $ret;
       foreach (0..$ovcnt-1) {
-         my $h=$self->topics->{"overload#$_"};
-         if (defined ($tparams=$h->annex->{tparam})) {
-            assign_max($cnt, scalar @$tparams);
+         if (my ($min, $max)=expects_template_params($self->topics->{"overload#$_"}, 1)) {
+            assign_min($min_min, $min);
+            assign_max($max_max, $max);
+            $ret=1;
          }
       }
-      $cnt
+      $ret ? ($min_min, $max_max) : ()
    } else {
-      0
+      ()
    }
 }
 
 sub return_type {
-   my $self=shift;
+   my ($self)=@_;
    if (defined (my $ret=$self->annex->{return})) {
       return $ret->[0];
    } elsif (my $ovcnt=$self->annex->{function}) {
