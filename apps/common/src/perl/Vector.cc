@@ -20,35 +20,21 @@
 #include "polymake/Matrix.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
-#include "polymake/Set.h"
-#include "polymake/SparseVector.h"
-#include "polymake/TropicalNumber.h"
 #include "polymake/Vector.h"
 #include "polymake/client.h"
-#include "polymake/linalg.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0>
-   FunctionInterface4perl( new, T0 ) {
-      WrapperReturnNew(T0, () );
+   template <typename T0, typename T1>
+   FunctionInterface4perl( new_X, T0,T1 ) {
+      perl::Value arg0(stack[1]);
+      WrapperReturnNew(T0, (arg0.get<T1>()) );
    };
 
-   OperatorInstance4perl(Binary__ora, perl::Canned< const pm::SameElementVector<pm::QuadraticExtension<pm::Rational> const&> >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<pm::QuadraticExtension<pm::Rational> const&> const&>, pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&> >);
-   OperatorInstance4perl(convert, Vector< QuadraticExtension< Rational > >, perl::Canned< const SparseVector< Rational > >);
-   Class4perl("Polymake::common::Vector__Bool", Vector< bool >);
-   Class4perl("Polymake::common::Vector__Set__Int", Vector< Set< int > >);
-   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>, perl::Canned< const pm::SameElementVector<pm::Rational const&> >);
-   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>, perl::Canned< const pm::VectorChain<pm::SingleElementVector<pm::Rational>, pm::SameElementVector<pm::Rational const&> const&> >);
-   Class4perl("Polymake::common::Vector__TropicalNumber_A_Min_I_Rational_Z", Vector< TropicalNumber< Min, Rational > >);
-   FunctionInstance4perl(new, Vector< TropicalNumber< Min, Rational > >);
-   OperatorInstance4perl(BinaryAssign_sub, perl::Canned< Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, false>, void> > >, perl::Canned< const pm::SameElementVector<pm::Rational const&> >);
-   OperatorInstance4perl(BinaryAssign_mul, perl::Canned< Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, false>, void> > >, int);
-   OperatorInstance4perl(BinaryAssign_add, perl::Canned< Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, false>, void> > >, perl::Canned< const pm::SameElementVector<pm::Rational const&> >);
-   OperatorInstance4perl(BinaryAssign_sub, perl::Canned< Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, false>, void> > >, perl::Canned< const Vector< Rational > >);
-   OperatorInstance4perl(BinaryAssign_add, perl::Canned< Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, false>, void> > >, perl::Canned< const Vector< Rational > >);
-   OperatorInstance4perl(convert, Vector< QuadraticExtension< Rational > >, perl::Canned< const Vector< Rational > >);
-   OperatorInstance4perl(BinaryAssign__or, perl::Canned< Vector< Rational > >, perl::Canned< const Rational >);
-   OperatorInstance4perl(BinaryAssign__or, perl::Canned< Vector< int > >, int);
+   FunctionInstance4perl(new_X, Vector< QuadraticExtension< Rational > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::QuadraticExtension<pm::Rational> > const&>, pm::Series<int, true>, void> >);
+   OperatorInstance4perl(Binary_add, perl::Canned< const Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double>&>, pm::Series<int, true>, void> > >, perl::Canned< const Vector< double > >);
+   OperatorInstance4perl(Binary_add, perl::Canned< const Wary< Vector< double > > >, perl::Canned< const Vector< double > >);
+   OperatorInstance4perl(Binary_sub, perl::Canned< const Wary< Vector< double > > >, perl::Canned< const Vector< double > >);
+   OperatorInstance4perl(Binary_mul, int, perl::Canned< const Wary< Vector< double > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

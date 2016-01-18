@@ -70,7 +70,7 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
 {
    int n_vertices1=0, n_vertices2=0, n_vertices_out=0, n_rays=0;
 
-   const bool noc=options["noc"],
+   const bool noc=options["no_coordinates"],
       relabel=options["relabel"];
 
    Set<int> rays1, rays2;
@@ -166,12 +166,17 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# Construct a new polytope as the product of two given polytopes //P1// and //P2//."
                           "# @param Polytope P1"
                           "# @param Polytope P2"
-                          "# @option Bool noc only combinatorial information is handled"
+                          "# @option Bool no_coordinates only combinatorial information is handled"
                           "# @option Bool relabel creates an additional section [[VERTEX_LABELS]];"
                           "#   the label of a new vertex corresponding to v<sub>1</sub> &oplus; v<sub>2</sub> will"
                           "#   have the form LABEL_1*LABEL_2."
-                          "# @return Polytope",
-                          "product<Scalar>(Polytope<type_upgrade<Scalar>>, Polytope<type_upgrade<Scalar>>; { noc => 0, relabel => undef })");
+                          "# @return Polytope"
+                          "# @example The following builds the product of a square and an interval while relabeling,"
+                          "# and then prints a nice representation of its vertices."
+                          "# > $p = product(cube(2),cube(1),relabel=>1);"
+                          "# > print labeled($p->VERTICES,$p->VERTEX_LABELS);"
+                          "# | 0*0:1 -1 -1 -1 0*1:1 -1 -1 1 1*0:1 1 -1 -1 1*1:1 1 -1 1 2*0:1 -1 1 -1 2*1:1 -1 1 1 3*0:1 1 1 -1 3*1:1 1 1 1",
+                          "product<Scalar>(Polytope<type_upgrade<Scalar>>, Polytope<type_upgrade<Scalar>>; { no_coordinates => 0, relabel => undef })");
 
 } }
 

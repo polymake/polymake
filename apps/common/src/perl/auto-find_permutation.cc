@@ -16,10 +16,12 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/Array.h"
+#include "polymake/Polynomial.h"
+#include "polymake/Rational.h"
+#include "polymake/Set.h"
 #include "polymake/client.h"
 #include "polymake/permutations.h"
-#include "polymake/Array.h"
-#include "polymake/Set.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -31,5 +33,6 @@ namespace polymake { namespace common { namespace {
 
    FunctionInstance4perl(find_permutation_X_X, perl::Canned< const Array< Array< Set< int > > > >, perl::Canned< const Array< Array< Set< int > > > >);
    FunctionInstance4perl(find_permutation_X_X, perl::Canned< const Array< Set< int > > >, perl::Canned< const Array< Set< int > > >);
+   FunctionInstance4perl(find_permutation_X_X, perl::Canned< const Array< Polynomial< Rational, int > > >, perl::Canned< const Array< Polynomial< Rational, int > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

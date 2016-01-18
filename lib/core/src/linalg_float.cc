@@ -67,66 +67,6 @@ Matrix<double> inv(Matrix<double> m)
    return Matrix<double>(dim, dim, select(rows(u),row_index).begin());
 }
 
-
-Vector<double> lin_solve(Matrix<double> A, Vector<double> B)
-{
-   const int m=A.rows(), n=A.cols();
-   const double epsilon=1e-8;
-
-   if (m < n) throw degenerate_matrix();
-   std::vector<int> row_index(m);
-   copy(entire(sequence(0,m)), row_index.begin());
-
-   for (int c=0; c<n; ++c) {
-      int r=0;
-      double max_pivot=0;
-      for (int rr=c; rr<m; ++rr) {
-         const double p=abs(A(row_index[rr],c));
-         if (p > max_pivot) {
-            r=rr;
-            max_pivot=p;
-         }
-      }
-      if (max_pivot > epsilon) {
-         double *ppivot=&A(row_index[r],c);
-         const double pivot=*ppivot;
-         if (r!=c) std::swap(row_index[r],row_index[c]);
-         r=row_index[c];
-         if (pivot != 1) {
-            double *e=ppivot;
-            for (int i=c+1; i<n; ++i) (*++e)/=pivot;
-            B[r]/=pivot;
-         }
-         for (int c2=c+1; c2<m; ++c2) {
-            const int r2=row_index[c2];
-            double *e2=&A(r2,c);
-            const double factor=*e2;
-            if (abs(factor) > epsilon) {
-               double *e=ppivot;
-               for (int i=c+1; i<n; ++i) (*++e2)-=(*++e)*factor;
-               B[r2]-=B[r]*factor;
-            }
-         }
-      } else {
-         throw degenerate_matrix();
-      }
-   }
-   for (int c=n; c<m; ++c) {
-      if (abs(B[row_index[c]]) > epsilon) throw infeasible();
-   }
-
-   Vector<double> x(n);
-   for (int c=n-1; c>=0; --c) {
-      x[c]=B[row_index[c]];
-      for (int c2=0; c2<c; ++c2) {
-         const int r2=row_index[c2];
-         B[r2] -= x[c] * A(r2,c);
-      }
-   }
-
-   return x;
-}
-
 } // end namespace pm
 
 // Local Variables:

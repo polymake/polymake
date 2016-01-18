@@ -38,7 +38,8 @@ use Polymake::Struct (
    [ '$short_name' => 'undef'],
    [ '$is_bundled' => '#3' ],       # boolean
    '$is_active',                    # boolean: configured, included in @active
-   '@requires',                     # Extension direct and indirect prerequisits
+   '@requires',                     # ( Extension ) direct and indirect prerequisites
+   '@requires_opt',                 # ( Extension ) direct and indirect optional prerequisites
    '@replaces',                     # URIs obsoleted by this Extension
    '@conflicts',                    # URIs conflicting with this Extension
    [ '$VCS' => 'undef' ],           # version control system for source files
@@ -81,6 +82,12 @@ sub new {
                                          "Unexpected URI $_ encountered in the REQUIRE section of description file ", $self->dir, "/polymake.ext\n"
             } @{$self->requires};
          }
+      }
+      if (defined (my $requires=delete $sections{REQUIRE_OPT})) {
+         $self->is_bundled
+            or die "REQUIRE_OPT section is only supported for bundled extensions.\n";
+         my @req = $requires =~ /(\S+)/g;
+         push @{$self->requires_opt}, @req;
       }
 
       if (defined (my $credit=delete $sections{CREDIT})) {
@@ -149,16 +156,17 @@ sub process_URI {
 # load all configured bundled and imported extensions
 sub init {
    # create objects for bundled extensions, filter out unconfigured ones
-   my (@pending, @unconfigured);
+   my (@pending, %unconfigured, %seen);
    foreach (glob("$InstallTop/bundled/*")) {
       m{/bundled/($id_re)$}o;
       my $conf_file="$InstallArch/$&/conf.make";
+      $seen{"bundled:$1"}=1;
       my $ext=new($_[0], $_, "bundled:$1", 1);
       if (-f $conf_file) {
          push @pending, $ext;
          $ext->configured_at=max((stat _)[9], $Application::configured_at);
       } else {
-         push @unconfigured, $ext;
+         $unconfigured{$ext->URI}=$ext;
       }
    }
 
@@ -168,7 +176,9 @@ sub init {
       for (my $i=$pending; $i>=0; --$i) {
          my $ext=$pending[$i];
          my $satisfied=1;
-         my @prereqs=map { $registered_by_URI{$_} // ($satisfied=0) } @{$ext->requires};
+         my @prereqs=map { $registered_by_URI{$_} // ($satisfied=0) }
+                         @{$ext->requires},
+                         grep { $seen{$_} && !exists $unconfigured{$_} } @{$ext->requires_opt};
          if ($satisfied) {
             $registered_by_URI{$_}=$ext for $ext->URI, @{$ext->replaces};
             $registered_by_dir{$ext->dir}=$ext;
@@ -183,13 +193,13 @@ sub init {
          # no further progress
          warn_print( "Bundled extension", $pending>1 && "s", " ", join(", ", map { $_->dir =~ $filename_re } @pending),
                      " could not be loaded because of missing or cyclic dependencies.\n",
-                     "Please investigate the reason and repeat the configuration step and/or revise the REQUIRE sections." );
+                     "Please investigate the reason and repeat the configuration step and/or revise the REQUIRE/REQUIRE_OPT sections." );
          last;
       }
    }
 
-   # register the inactive bundled extensions in order to recognize them as prerequisits of other extensions and rulefiles
-   $registered_by_URI{$_->URI}=$_ for (@pending, @unconfigured);
+   # register the inactive bundled extensions in order to recognize them as prerequisites of other extensions and rulefiles
+   $registered_by_URI{$_->URI}=$_ for (@pending, values %unconfigured);
 
    $num_bundled=@active;
 

@@ -40,8 +40,7 @@ private:
       // Converting monomials as described in libsing-test2.cc.
       for(Entire<Array<Polynomial<> > >::const_iterator mypoly = entire(gens); !mypoly.at_end(); ++mypoly, ++j) {
          poly p = convert_Polynomial_to_poly(*mypoly,IDRING(singRing));
-         //cout << "poly: " << p_String(p,singRing,singRing) << endl;
-         singIdeal->m[j]=p_Copy(p,currRing);
+         singIdeal->m[j]=p;
       }
    }
 
@@ -86,7 +85,7 @@ public:
       if(singRing!=NULL) {
          check_ring(singRing);
          if(singIdeal!=NULL)
-            id_Delete(&singIdeal,currRing);
+            id_Delete(&singIdeal,IDRING(singRing));
       }
    }
 
@@ -95,7 +94,7 @@ public:
    {
       check_ring(singRing); 
       ::ideal res = kStd(singIdeal,NULL,testHomog,NULL);
-      id_Delete(&singIdeal,currRing);
+      id_Delete(&singIdeal,IDRING(singRing));
       singIdeal = res;
    }
 
@@ -105,12 +104,60 @@ public:
       return scDimInt(singIdeal, NULL);
    }
    
+   // Computes a monomial in the initial ideal via saturation (returns 0 if no monnomial is contained)
+   Polynomial<> contains_monomial(const Ring<>& poly_ring) const
+   {
+      check_ring(singRing);
+      ring r = IDRING(singRing);
+      ::ideal M = idInit(1);
+      M->m[0] = p_Init(r);
+      for (int i=1; i<=rVar(r); i++)
+         p_SetExp(M->m[0],i,1,r);
+      p_SetCoeff(M->m[0],n_Init(1,r->cf),r);
+      p_Setm(M->m[0],r);
+      ::ideal J = id_Copy(singIdeal,r);
+      bool b;
+      int k = 0;
+
+      do
+      {
+         ::ideal Jstd = kStd(J,NULL,testHomog,NULL);
+         for (int i=0; i<idSize(Jstd); i++)
+         {
+            poly g = Jstd->m[i];
+            if (pNext(g)==NULL)
+            {
+               for (int j=1; j<=rVar(r); j++)
+                  p_AddExp(g,j,k,r);
+               p_Setm(g,r);
+               Polynomial<> monom = convert_poly_to_Polynomial(g,poly_ring);
+               id_Delete(&M,r);
+               id_Delete(&J,r);
+               id_Delete(&Jstd,r);
+               return monom;
+            }
+         }
+         ::ideal JquotM = idQuot(Jstd,M,true,true);
+         ::ideal JquotMredJ = kNF(Jstd,NULL,JquotM);
+         b = idIs0(JquotMredJ);
+         id_Delete(&Jstd,r);
+         id_Delete(&J,r);
+         J = JquotM;
+         id_Delete(&JquotMredJ,r);
+         k++;
+      } while (!b);
+
+      id_Delete(&M,r);
+      id_Delete(&J,r);
+      return Polynomial<>(poly_ring);
+   }
+
 
    SingularIdeal_wrap* initial_ideal() const {
       check_ring(singRing); 
       ::ideal res = id_Head(singIdeal,IDRING(singRing));
       SingularIdeal_wrap* initial = new SingularIdeal_impl(res,singRing);
-      id_Delete(&res,currRing);
+      id_Delete(&res,IDRING(singRing));
       return initial;
    }
 
@@ -132,7 +179,6 @@ public:
          throw std::runtime_error("radical returned an error");
       }
       SingularIdeal_wrap* radical_wrap = new SingularIdeal_impl((::ideal) (iiRETURNEXPR.Data()), singRing);
-      // FIXME cleanup iiRETURNEXPR ?
       iiRETURNEXPR.CleanUp();
       iiRETURNEXPR.Init();
       return radical_wrap;
@@ -159,7 +205,6 @@ public:
                throw std::runtime_error("Something went wrong for the primary decomposition");
             }
          }
-         // FIXME cleanup returndata ?
          iiRETURNEXPR.CleanUp();
          iiRETURNEXPR.Init();
          return result;
@@ -232,22 +277,35 @@ public:
       }
    }
 
+   Array<Polynomial<> > reduce(const Array<Polynomial<> >& ideal, const Ring<>& r) const {
+      check_ring(singRing);
+      SingularIdeal_impl toBeReduced(ideal, singRing);
+      ::ideal q = kNF(singIdeal, NULL, toBeReduced.singIdeal);
+      SingularIdeal_impl reduced(q, singRing);
+      id_Delete(&q,IDRING(singRing));
+      return reduced.polynomials(r);
+   }
+
    Polynomial<> reduce(const Polynomial<>& p, const Ring<>& r) const {
       check_ring(singRing);
-      poly q = kNF(singIdeal, NULL, convert_Polynomial_to_poly(p,IDRING(singRing)));
-      return convert_poly_to_Polynomial(q,r);
+      poly p_s = convert_Polynomial_to_poly(p,IDRING(singRing));
+      poly q_s = kNF(singIdeal, NULL, p_s);
+      Polynomial<> q_p(convert_poly_to_Polynomial(q_s,r));
+      p_Delete(&q_s,IDRING(singRing));
+      p_Delete(&p_s,IDRING(singRing));
+      return q_p;
    }
 
    /*
     * Returns n+1 Polynomials, where the n+1 Polynomial is equal to the result of reduce and the previous are the coeffients of the division.
     */
-   Array< Polynomial<> > division(const Polynomial<>& p, const Ring<>& r) const {
-      Array< Polynomial<> > m_generator(1, p);
+   Array< Polynomial<> > division(const Polynomial<>& p, const Ring<>& r, const bool is_std = 0) const {
       check_ring(singRing);
-      SingularIdeal_impl m( m_generator, singRing );
+      ::ideal m = idInit(1,1);
+      m->m[0] = convert_Polynomial_to_poly(p,IDRING(singRing));
       ::ideal R;
       matrix U;
-      ::ideal t = idLift(singIdeal, m.singIdeal, &R, FALSE, FALSE /*Maybe true if std*/, TRUE, &U);
+      ::ideal t = idLift(singIdeal, m, &R, FALSE, is_std ? TRUE : FALSE, TRUE, &U);
       matrix T = id_Module2formatedMatrix(t, IDELEMS(singIdeal), 1, IDRING(singRing));
       std::vector< Polynomial<> > polys;
       int rows = MATROWS(T);
@@ -259,6 +317,9 @@ public:
         }
       }
       polys.push_back(convert_poly_to_Polynomial(R->m[0],r));
+      mp_Delete(&T,IDRING(singRing));
+      mp_Delete(&U,IDRING(singRing));
+      id_Delete(&R,IDRING(singRing));
       return Array< Polynomial<> >(polys);
    }
 
@@ -285,7 +346,7 @@ SingularIdeal_impl* SingularIdeal_impl::quotient(const SingularIdeal_impl* I, co
    // the second one that we want the output to be an ideal.
    ::ideal quot = idQuot(idCopy(I->singIdeal), idCopy(J->singIdeal), true, true);
    SingularIdeal_impl* quotient_impl = new SingularIdeal_impl(quot,I->singRing);
-   id_Delete(&quot,currRing);
+   id_Delete(&quot,IDRING(I->singRing));
    return quotient_impl;
 }
 

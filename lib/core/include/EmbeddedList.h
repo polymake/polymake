@@ -22,30 +22,31 @@
 
 namespace pm {
 
-template <typename Class> class ptr_pair;
+template <typename Class> struct ptr_pair;
 template <typename Class, ptr_pair<Class> Class::* Ptrs> class EmbeddedList;
 template <typename Class, ptr_pair<Class> Class::* Ptrs, bool _is_const, bool _rev> class embedded_list_iterator;
 
 template <typename Class>
-class ptr_pair {
-   template <typename Class2, ptr_pair<Class2> Class2::* Ptrs2> friend class EmbeddedList;
-   template <typename Class2, ptr_pair<Class2> Class2::* Ptrs2, bool, bool> friend class embedded_list_iterator;
+struct ptr_pair {
    Class* prev;
    Class* next;
 
-   ptr_pair(Class* self) : prev(self), next(self) {}
-   void exclude() { prev=NULL; next=NULL; }
-public:
    ptr_pair() : prev(NULL), next(NULL) {}
+
+   explicit ptr_pair(Class* self) : prev(self), next(self) {}
+
+   explicit ptr_pair(ptr_pair Class::*pptr)
+   {
+      prev=next=reverse_cast(this, pptr);
+   }
+
+   void exclude() { prev=NULL; next=NULL; }
 
    bool is_member() const { return next != NULL; }
 };
 
 template <typename Class, ptr_pair<Class> Class::* Ptrs, bool _is_const, bool _rev>
 class embedded_list_iterator {
-protected:
-   Class *cur;
-   template <typename Class2, ptr_pair<Class2> Class2::* Ptrs2, bool,bool> friend class embedded_list_iterator;
 public:
    typedef bidirectional_iterator_tag iterator_category;
    typedef Class value_type;
@@ -56,7 +57,7 @@ public:
    typedef embedded_list_iterator<Class,Ptrs,true,_rev> const_iterator;
 
    embedded_list_iterator() {}
-   embedded_list_iterator(Class *arg) : cur(arg) {}
+   embedded_list_iterator(pointer arg) : cur(arg) {}
    embedded_list_iterator(const iterator& it) : cur(it.cur) {}
    embedded_list_iterator(const embedded_list_iterator<Class,Ptrs,_is_const,!_rev>& it) : cur(it.cur) {}
    embedded_list_iterator(typename assign_const<embedded_list_iterator<Class,Ptrs,false,!_rev>, _is_const>::type& it) : cur(it.cur) {}
@@ -77,6 +78,9 @@ public:
    bool operator== (const embedded_list_iterator<Class,Ptrs,_is_const2,_rev2>& it) const { return cur==it.cur; }
    template <bool _is_const2, bool _rev2>
    bool operator!= (const embedded_list_iterator<Class,Ptrs,_is_const2,_rev2>& it) const { return cur!=it.cur; }
+protected:
+   pointer cur;
+   template <typename Class2, ptr_pair<Class2> Class2::* Ptrs2, bool,bool> friend class embedded_list_iterator;
 };
 
 template <typename Class, ptr_pair<Class> Class::* Ptrs>

@@ -70,15 +70,15 @@ perl::Object stack(perl::Object p_in, const GenericSet<SetTop>& stack_facets, pe
      
    Rational lift_factor(1,2);
    if (options.exists("lift")) {
-      if (options.exists("noc")) 
-         throw std::runtime_error("stack: cannot specify lift and noc options simultaneously");
+      if (options.exists("no_coordinates")) 
+         throw std::runtime_error("stack: cannot specify lift and no_coordinates options simultaneously");
 
       options["lift"] >> lift_factor;
       if (lift_factor<=0 || lift_factor>=1)
          throw std::runtime_error("lift factor must be between 0 and 1");
    }
    const bool relabel=options["relabel"],
-      noc=options["noc"];
+      noc=options["no_coordinates"];
    const int dim=p_in.give("COMBINATORIAL_DIM");
    if (dim<=2)
       throw std::runtime_error("dimension too low to distinguish between simpliciality and cubicality");
@@ -253,12 +253,14 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "#   Special keyword __All__ means that all factes are to be stacked."
                           "# @option Rational lift controls the exact coordinates of the new vertices;"
                           "#   rational number between 0 and 1; default value: 1/2"
-                          "# @option Bool noc produces a pure combinatorial description (in contrast to //lift//)"
+                          "# @option Bool no_coordinates  produces a pure combinatorial description (in contrast to //lift//)"
                           "# @option Bool relabel creates an additional section [[VERTEX_LABELS]];"
                           "#   New vertices get labels 'f(FACET_LABEL)' in the simplicial case,"
                           "#   and 'f(FACET_LABEL)-NEIGHBOR_VERTEX_LABEL' in the cubical case."
-                          "# @return Polytope",
-                          "stack(Polytope * {lift=>undef, noc=>undef, relabel=>undef})");
+                          "# @return Polytope"
+                          "# @example To generate a cubical polytope by stacking all facets of the 3-cube to height 1/4, do this:"
+                          "#  > $p = stack(cube(3),All,lift=>1/4);",
+                          "stack(Polytope * {lift=>undef, no_coordinates=>undef, relabel=>undef})");
 } }
 
 // Local Variables:

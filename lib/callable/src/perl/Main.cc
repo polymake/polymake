@@ -16,7 +16,6 @@
 
 #include "polymake/perl/glue.h"
 #include "polymake/Main.h"
-#include "polymake/internal/lib_init.h"
 #include "Bootstrap.h"
 
 #include <memory>
@@ -159,7 +158,7 @@ Main::Main(const std::string& user_opts, const std::string& install_top, const s
    PL_perl_destruct_level = 1;
    perl_construct(aTHXx);
    PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
-   if (perl_parse(aTHXx, xs_init, argc, (char**)argv, *env)) {
+   if (perl_parse(aTHXx_ xs_init, argc, (char**)argv, *env)) {
       destroy_perl(aTHXx);
       throw std::runtime_error("could not initialize the perl interpreter");
    }
@@ -167,16 +166,8 @@ Main::Main(const std::string& user_opts, const std::string& install_top, const s
    static_perl=aTHXx;
 #endif
    perl_run(aTHXx);
-   globalScope_gv=gv_fetchpvn_flags(globalScope, sizeof(globalScope)-1, false, SVt_RV);
 
-   // switch to custom GMP allocators only if no other component did it before
-   void* (*was_alloc)(size_t);
-#if __GNU_MP_VERSION>4 || __GNU_MP_VERSION==4 && __GNU_MP_VERSION_MINOR>=2
-   mp_get_memory_functions(&was_alloc, NULL, NULL);
-#else
-   was_alloc=__gmp_allocate_func;
-#endif
-   if (was_alloc==&malloc) init_gmp_memory_management();
+   globalScope_gv=gv_fetchpvn_flags(globalScope, sizeof(globalScope)-1, false, SVt_RV);
 }
 
 unsigned int Scope::depth=0;
@@ -186,7 +177,7 @@ Scope::~Scope()
    if (saved != NULL) {
       dTHX;
       if (depth-- != id) {
-         // can't throw an exception from a constructor
+         // can't throw an exception from a destructor
          std::cerr << "polymake::perl::Scope nesting violation" << std::endl;
          std::terminate();
       }

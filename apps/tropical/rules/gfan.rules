@@ -1,0 +1,177 @@
+#  Copyright (c) 2012
+#  by authors as mentioned on:
+#  https://github.com/lkastner/polymake_toric/wiki/Authors
+#  
+#  Project home:
+#  https://github.com/lkastner/polymake_toric
+#
+#  For licensing we cite the original Polymake code:
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+
+
+REQUIRE fan::gfan.rules
+
+CREDIT gfan
+
+
+# path to gfan
+custom $gfan_buchberger;
+
+custom $gfan_homogenize;
+
+custom $gfan_tropicalbruteforce;
+
+custom $gfan_tropicalhypersurface;
+
+custom $gfan_tropicalintersection;
+
+custom $gfan_tropicalstartingcone;
+
+custom $gfan_tropicaltraverse;
+
+
+CONFIGURE {
+   ($gfan_buchberger=$fan::gfan_bases) =~ s/gfan_bases$/gfan_buchberger/;
+   ($gfan_homogenize=$gfan_buchberger) =~ s/gfan_buchberger$/gfan_homogenize/;
+   ($gfan_tropicalbruteforce=$gfan_buchberger) =~ s/gfan_buchberger$/gfan_tropicalbruteforce/;
+   ($gfan_tropicalhypersurface=$gfan_buchberger) =~ s/gfan_buchberger$/gfan_tropicalhypersurface/;
+   ($gfan_tropicalintersection=$gfan_buchberger) =~ s/gfan_buchberger$/gfan_tropicalintersection/;
+   ($gfan_tropicalstartingcone=$gfan_buchberger) =~ s/gfan_buchberger$/gfan_tropicalstartingcone/;
+   ($gfan_tropicaltraverse=$gfan_buchberger) =~ s/gfan_buchberger$/gfan_tropicaltraverse/;
+}
+
+
+# @category gfan
+# Calls gfan_tropicalintersection for a homogeneous ideal.
+# @param ideal::Ideal I homogeneous ideal
+# @return Cycle<Max> most likely not balanced
+user_function gfan_tropicalintersection(ideal::Ideal) {
+   my ($I) = @_;
+   my $tempfile=new Tempfile;
+   my $R = $I->RING;
+
+   # Writing data to file:
+   write_ideal_to_file($tempfile, $I, $R);
+   
+   # Accessing gfan:
+   # print "Computing tropical intersecton\n";
+   system "$gfan_tropicalintersection --xml <$tempfile.in >$tempfile.poly";
+   # print "Output written.\n";
+   return gfan_fix_lineality_space($tempfile);
+}
+
+# @category gfan
+# Calls gfan_tropicalhypersurface for a single polynomial.
+# If the polynomial is a monomial, gfan will return an empty object and the xslt parsing fails. We do not catch this for you.
+# @param Polynomial<Rational> p homogeneous polynomial
+# @return Cycle<Max>
+user_function gfan_tropicalhypersurface(Polynomial) {
+   my ($g) = @_;
+   my $tempfile=new Tempfile;
+   my $R = $g->get_ring;
+
+   # Writing data to file:
+   write_ideal_to_file($tempfile, new ideal::Ideal(GENERATORS=>[$g]), $R);
+
+   # Accessing gfan:
+   # It should be checked whether gfan_groebnerbla can really be left out.
+   system "$gfan_tropicalhypersurface --xml <$tempfile.in >$tempfile.poly 2>/dev/null";
+   
+   return gfan_fix_lineality_space($tempfile);
+}
+
+
+
+# @category gfan
+# Calls gfan_tropicalstartingcone | gfan_tropicaltraverse for a homogeneous prime ideal.
+# If the ideal contains a monomial, gfan will return an empty object and the xslt parsing fails. We do not catch this for you.
+# @param ideal::Ideal I homogeneous prime ideal
+# @return Cycle<Max>
+user_function gfan_tropicalvariety_of_prime(ideal::Ideal) {
+   my ($I) = @_;
+   my $tempfile=new Tempfile;
+   my $R = $I->RING;
+
+   # Writing data to file:
+   write_ideal_to_file($tempfile, $I, $R);
+   
+   # Accessing gfan:
+   # print "Buchberger\n";
+   # Commented out, probably we don't need that. rtfm
+   #system "$gfan_buchberger <$tempfile.homog >$tempfile.gr";
+   # print "Starting cone\n";
+   system "$gfan_tropicalstartingcone <$tempfile.in >$tempfile.st";
+   # print "Traversing\n";
+   system "$gfan_tropicaltraverse --xml <$tempfile.st >$tempfile.poly";
+
+   return gfan_fix_lineality_space($tempfile);
+}
+
+# @category gfan
+# Calls gfan_tropicalbruteforce for a homogeneous ideal.
+# If the ideal contains a monomial, gfan will return an empty object and the xslt parsing fails. We do not catch this for you.
+# @param ideal::Ideal I homogeneous ideal
+# @return fan::SymmetricFan
+user_function gfan_tropicalbruteforce(ideal::Ideal) {
+   my ($I) = @_;
+   my $tempfile=new Tempfile;
+   my $R = $I->RING;
+
+   # Writing data to file:
+   write_ideal_to_file($tempfile, $I, $R);
+   
+   # Accessing gfan:
+   system "$gfan_tropicalbruteforce --xml < $tempfile.in >$tempfile.poly 2>/dev/null";
+
+   return User::load("$tempfile.poly");
+}
+
+# Tropical cycle needs to mod out 1,1...1, unable to do that in xslt.
+sub gfan_fix_lineality_space{
+   my($tempfile) = @_;
+   my $gfan_out= User::load("$tempfile.poly");
+
+   my $lineality = new Matrix($gfan_out->LINEALITY_SPACE);
+   canonicalize_scalar_to_leading_zero($lineality->minor(All,~[0]));
+   $lineality = $lineality->minor(basis_rows($lineality), All);
+   
+   my $result = new Cycle<Max>();
+   $result->take("LINEALITY_SPACE", $lineality);
+   
+   my @properties = $gfan_out->list_properties();
+   @properties = grep($_ !~ m/^LINEALITY_SPACE$/, @properties);
+
+   for my $prop (@properties){
+      $result->take($prop, $gfan_out->give($prop));
+   }
+
+   return $result;
+}
+
+
+sub write_ideal_to_file{
+   my($tempfile, $ideal, $ring) = @_;
+   open(my $input, ">$tempfile.in") or die "Can't create temporary file $tempfile.in: $!";
+   print $input "Q[";
+   print $input join(",",$ring->variables);
+   print $input "]{\n";
+   print $input join(",",@{$ideal->GENERATORS});
+   print $input "\n}";
+   close $input;
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

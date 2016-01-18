@@ -16,13 +16,13 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
 #include "polymake/Graph.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/IndexedSubgraph.h"
-#include "polymake/Set.h"
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
+#include "polymake/Set.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -71,5 +71,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new, Graph< UndirectedMulti >);
    FunctionInstance4perl(new_X, Graph< Undirected >, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Directed> const&, pm::Nodes<pm::graph::Graph<pm::graph::Undirected> > const&, void> >);
    FunctionInstance4perl(new_X, Graph< Undirected >, perl::Canned< const IncidenceMatrix< Symmetric > >);
+   OperatorInstance4perl(convert, Graph< Undirected >, perl::Canned< const Graph< Directed > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

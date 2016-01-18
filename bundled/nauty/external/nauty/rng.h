@@ -25,11 +25,13 @@ void ran_array(long *aa, int n);
 }
 #endif
 
-#define MAXRAN (0x3FFFFFFFL)    /* Values are 0..MAXRAN-1 */
+#define MAXRAN (0x3fffffffL)    /* Values are 0..MAXRAN */
 #define NEXTRAN (*ran_arr_ptr>=0 ? *ran_arr_ptr++ : ran_arr_cycle())
 #define KRAN(k) (NEXTRAN%(k))
+#define RANREAL ((NEXTRAN+0.5)/(MAXRAN+1.0))  /* Uniform (0,1) */
 
-#define MAXSAFE(k) ((MAXRAN/(k))*(k))
+#define MAXSAFE(k) (((MAXRAN+1)/(k))*(k))
 #define GETKRAN(k,var) {long __getkran; \
     do {__getkran = NEXTRAN;} while (__getkran >= MAXSAFE(k)); \
     var = __getkran % (k);}
+#define INITRANBYTIME ran_init((long)time(NULL))

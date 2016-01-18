@@ -24,8 +24,8 @@ object PointConfiguration {
 
 # @category Combinatorics
 # The equivalence classes of maximal-dimensional simplices under a symmetry group 
-rule GROUP.REPRESENTATIVE_SIMPLICES : DIM, POINTS, GROUP.GENERATORS {
-    $this->GROUP->REPRESENTATIVE_SIMPLICES = representative_simplices($this->DIM, $this->POINTS, $this->GROUP->GENERATORS);
+rule GROUP.REPRESENTATIVE_SIMPLICES : VECTOR_DIM, POINTS, GROUP.GENERATORS {
+    $this->GROUP->REPRESENTATIVE_SIMPLICES = representative_simplices($this->VECTOR_DIM-1, $this->POINTS, $this->GROUP->GENERATORS);
 }
 
 # @category Combinatorics
@@ -38,7 +38,7 @@ rule GROUP.N_REPRESENTATIVE_SIMPLICES : GROUP.REPRESENTATIVE_SIMPLICES {
 
 # @category Combinatorics
 # The equivalence classes of maximal-dimensional simplices in the interior and boundary under a symmetry group 
-rule GROUP.REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, GROUP.REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES : DIM, CONVEX_HULL.VERTICES_IN_FACETS, CONVEX_HULL.VERTICES, GROUP.GENERATORS {
+rule GROUP.REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, GROUP.REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES : VECTOR_DIM, CONVEX_HULL.VERTICES_IN_FACETS, CONVEX_HULL.VERTICES, GROUP.GENERATORS {
     my $pair = representative_interior_and_boundary_ridges($this);
     $this->GROUP->REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES = $pair->first;
     $this->GROUP->REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES = $pair->second;
@@ -47,22 +47,33 @@ rule GROUP.REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, GROUP.REPRESENTATIVE_MAX_BOU
 
 # @category Combinatorics
 # The symmetrized version of the cocircuit equations, where equivalent simplices have been merged into the same variable
-rule GROUP.SYMMETRIZED_COCIRCUIT_EQUATIONS : GROUP.REPRESENTATIVE_SIMPLICES, GROUP.DOMAIN, DIM, POINTS, CONVEX_HULL.VERTICES_IN_FACETS, GROUP.GENERATORS {
+rule GROUP.SYMMETRIZED_COCIRCUIT_EQUATIONS : GROUP.REPRESENTATIVE_SIMPLICES, GROUP.DOMAIN, VECTOR_DIM, POINTS, CONVEX_HULL.VERTICES_IN_FACETS, GROUP.GENERATORS {
     my $group_on_vertices = group_acting_on_vertices($this, "GROUP");
-    my $rs = representative_simplices($this->DIM, $this->POINTS, $group_on_vertices->GENERATORS);
-    my $cceqs = symmetrized_cocircuit_equations($this->DIM, $this->POINTS, $this->CONVEX_HULL->VERTICES_IN_FACETS, $group_on_vertices->GENERATORS, $rs);
+    my $rs = representative_simplices($this->VECTOR_DIM-1, $this->POINTS, $group_on_vertices->GENERATORS);
+    my $cceqs = symmetrized_cocircuit_equations($this->VECTOR_DIM-1, $this->POINTS, $this->CONVEX_HULL->VERTICES_IN_FACETS, $group_on_vertices->GENERATORS, $rs);
     $this->GROUP->SYMMETRIZED_COCIRCUIT_EQUATIONS = $cceqs;
 }
 
 # @category Combinatorics
 # The symmetrized version of SIMPLEXITY_LOWER_BOUND
-rule GROUP.SIMPLEXITY_LOWER_BOUND : CONVEX_HULL.VOLUME, GROUP.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, DIM, POINTS, GROUP.SYMMETRIZED_COCIRCUIT_EQUATIONS {
-   my $d = $this->DIM;
-   $this->GROUP->SIMPLEXITY_LOWER_BOUND = simplexity_lower_bound($this->DIM, $this->POINTS, $this->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, $this->CONVEX_HULL->VOLUME, $this->GROUP->SYMMETRIZED_COCIRCUIT_EQUATIONS);
+rule GROUP.SIMPLEXITY_LOWER_BOUND : CONVEX_HULL.VOLUME, GROUP.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, VECTOR_DIM, POINTS, GROUP.SYMMETRIZED_COCIRCUIT_EQUATIONS {
+   my $d = $this->VECTOR_DIM-1;
+   $this->GROUP->SIMPLEXITY_LOWER_BOUND = simplexity_lower_bound($this->VECTOR_DIM-1, $this->POINTS, $this->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, $this->CONVEX_HULL->VOLUME, $this->GROUP->SYMMETRIZED_COCIRCUIT_EQUATIONS);
 }
 
 
 }
+
+
+# @category Triangulations, subdivisions and volume
+# Calculate the universal polytope of a point configuration
+# @param PointConfiguration<Scalar> PC the point configuration
+# @return Polytope
+user_function universal_polytope<Scalar>(PointConfiguration<Scalar>) {
+    my $p = shift;
+    return universal_polytope_impl($p->VECTOR_DIM-1, $p->POINTS, $p->MAX_INTERIOR_SIMPLICES, $p->CONVEX_HULL->VOLUME, $p->COCIRCUIT_EQUATIONS);
+}                      
+
 
 # @category Triangulations, subdivisions and volume
 # Find a set of representative simplices of the cone or polytope, up to its symmetry group in GROUP.

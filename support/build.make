@@ -48,9 +48,9 @@ ifndef make_dep
     endif
   endif
   ifdef CCache
-    make_dep = -MD -MF $(@:.o=.d) $(patsubst %,-MT '%',$(filter-out $@,${lib_dep_target}) $@)
+    make_dep = -MD -MF $(@:.o=.d)
   else
-    make_dep = -MD $(patsubst %,-MT '%',${lib_dep_target})
+    make_dep = -MD
   endif
 endif
 
@@ -206,7 +206,7 @@ else
 		   -e '/^[ 	]*\\$$/ d' $(1) >$(@:.o=.dep) \
 	       && rm $(1)
 
-  _start_dep_block = $(subst /,\/,$(if ${OwnLibraries},$(call _archive_member,$(1)),$(1)))
+  _start_dep_block = $(subst /,\/,$(1))
 
   .dependences : $(wildcard *.dep $(if ${ObjectsAlso},${ObjectsAlso}/*.dep))
 	@{ [ ! -f $@ ] || sed $(foreach f,$^, -e '/^$(call _start_dep_block,$(f:.dep=\.o)):/,/[^\\]$$/ d') $@; \

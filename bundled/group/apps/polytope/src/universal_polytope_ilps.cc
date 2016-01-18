@@ -36,7 +36,7 @@ void write_output(const perl::Object& q, const perl::Object& lp, const std::stri
       return;
    }
    else if (filename == "-") {
-      print_lp(q, lp, false, std::cout);
+      print_lp(q, lp, false, perl::cout);
    } else {
       std::ofstream os(filename.c_str());
       print_lp(q, lp, false, os);
@@ -46,12 +46,11 @@ void write_output(const perl::Object& q, const perl::Object& lp, const std::stri
 } // end anonymous namespace
 
 template <typename Scalar, typename SetType>
-perl::Object simplexity_ilp(int d, 
-                            const Matrix<Scalar>& points, 
-                            const Array<SetType>& facet_reps, 
-                            Scalar vol, 
-                            const SparseMatrix<Rational>& cocircuit_equations, 
-                            perl::OptionSet options)
+perl::Object universal_polytope_impl(int d, 
+                                const Matrix<Scalar>& points, 
+                                const Array<SetType>& facet_reps, 
+                                Scalar vol, 
+                                const SparseMatrix<Rational>& cocircuit_equations)
 {
    const int n = facet_reps.size();
    Vector<Scalar> volume_vect(n);
@@ -66,14 +65,28 @@ perl::Object simplexity_ilp(int d,
       Equations /= (zero_vector<Scalar>(cocircuit_equations.rows()) 
                     | Matrix<Scalar>(cocircuit_equations));
 
-   perl::Object lp(perl::ObjectType::construct<Scalar>("LinearProgram"));
-   lp.attach("INTEGER_VARIABLES") << Array<bool>(n,true);
-   lp.take("LINEAR_OBJECTIVE") << Vector<Scalar>(0|ones_vector<Scalar>(n));
-
    perl::Object q(perl::ObjectType::construct<Scalar>("Polytope"));
    q.take("FEASIBLE") << true;
    q.take("INEQUALITIES") << Inequalities;
    q.take("EQUATIONS") << Equations;
+   return q;
+}
+
+template <typename Scalar, typename SetType>
+perl::Object simplexity_ilp(int d, 
+                            const Matrix<Scalar>& points, 
+                            const Array<SetType>& facet_reps, 
+                            Scalar vol, 
+                            const SparseMatrix<Rational>& cocircuit_equations, 
+                            perl::OptionSet options)
+{
+   const int n = facet_reps.size();
+
+   perl::Object lp(perl::ObjectType::construct<Scalar>("LinearProgram"));
+   lp.attach("INTEGER_VARIABLES") << Array<bool>(n,true);
+   lp.take("LINEAR_OBJECTIVE") << Vector<Scalar>(0|ones_vector<Scalar>(n));
+
+   perl::Object q = universal_polytope_impl(d, points, facet_reps, vol, cocircuit_equations);
    q.take("LP") << lp;
 
    const std::string filename = options["filename"];
@@ -116,11 +129,11 @@ perl::Object foldable_max_signature_ilp(int d,
       if (volume_vect[2*i].even()) volume_vect[2*i] = volume_vect[2*i+1] = 0;
       else volume_vect[2*i+1].negate();
    
-   perl::Object lp(perl::ObjectType::construct<Rational>("LinearProgram"));
+   perl::Object lp("LinearProgram<Rational>");
    lp.attach("INTEGER_VARIABLES") << Array<bool>(n2,true);
    lp.take("LINEAR_OBJECTIVE") << Vector<Rational>(0|volume_vect);
 
-   perl::Object q(perl::ObjectType::construct<Rational>("Polytope"));
+   perl::Object q("Polytope<Rational>");
    q.take("FEASIBLE") << true;
    q.take("INEQUALITIES") << Inequalities;
    q.take("EQUATIONS") << Equations;
@@ -158,6 +171,8 @@ Integer foldable_max_signature_upper_bound(int d,
    return int_sll;
 }
 
+FunctionTemplate4perl("universal_polytope_impl<Scalar>($ Matrix<Scalar> Array<Set> $ SparseMatrix)");
+
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# Set up an ILP whose MINIMAL_VALUE is the minimal number of simplices needed to triangulate a polytope, point configuration or quotient manifold"
@@ -166,8 +181,8 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# @param Array<Set> the representatives of maximal interior simplices "
                           "# @param Scalar volume the volume of the convex hull "
                           "# @param SparseMatrix cocircuit_equations the matrix of cocircuit equations "
-                          "# @option filename a name for a file in .lp format to store the linear program"
-                          "# @return an LP that provides a lower bound",
+                          "# @option String filename a name for a file in .lp format to store the linear program"
+                          "# @return LinearProgram an LP that provides a lower bound",
                           "simplexity_ilp<Scalar>($ Matrix<Scalar> Array<Set> $ SparseMatrix { filename=>'' })");
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
@@ -176,7 +191,7 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# @param Matrix points the input points or vertices "
                           "# @param Scalar volume the volume of the convex hull "
                           "# @param SparseMatrix cocircuit_equations the matrix of cocircuit equations "
-                          "# @return the optimal value of an LP that provides a lower bound",
+                          "# @return Integer the optimal value of an LP that provides a lower bound",
                           "simplexity_lower_bound<Scalar,SetType>($ Matrix<Scalar> Array<SetType> $ SparseMatrix { filename=>'' })");
 
 UserFunction4perl("# @category Triangulations, subdivisions and volume"
@@ -185,8 +200,8 @@ UserFunction4perl("# @category Triangulations, subdivisions and volume"
                   "# @param Matrix points the input points or vertices "
                   "# @param Rational volume the volume of the convex hull "
                   "# @param SparseMatrix cocircuit_equations the matrix of cocircuit equations "
-                  "# @option filename a name for a file in .lp format to store the linear program"
-                  "# @return an ILP that provides the result",
+                  "# @option String filename a name for a file in .lp format to store the linear program"
+                  "# @return LinearProgram<Rational> an ILP that provides the result",
                   &foldable_max_signature_ilp,
                   "foldable_max_signature_ilp($ Matrix Array<Set> $ SparseMatrix { filename=>'' })");
 
@@ -196,7 +211,7 @@ UserFunction4perl("# @category Triangulations, subdivisions and volume"
                   "# @param Matrix points the input points or vertices "
                   "# @param Rational volume the volume of the convex hull "
                   "# @param SparseMatrix cocircuit_equations the matrix of cocircuit equations "
-                  "# @return the optimal value of an LP that provides a bound",
+                  "# @return Integer the optimal value of an LP that provides a bound",
                   &foldable_max_signature_upper_bound,
                   "foldable_max_signature_upper_bound($ Matrix Array<Set> $ SparseMatrix { filename=>'' })");
 

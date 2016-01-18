@@ -22,21 +22,21 @@
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0, typename T1, typename T2>
-   FunctionInterface4perl( separating_hyperplane_T_X_X, T0,T1,T2 ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturn( (separating_hyperplane<T0>(arg0.get<T1>(), arg1.get<T2>())) );
-   };
-
    template <typename T0>
    FunctionInterface4perl( separating_hyperplane_poly_T_x_x, T0 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
       WrapperReturn( (separating_hyperplane_poly<T0>(arg0, arg1)) );
    };
 
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( separating_hyperplane_T_X_X, T0,T1,T2 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      WrapperReturn( (separating_hyperplane<T0>(arg0.get<T1>(), arg1.get<T2>())) );
+   };
+
    FunctionInstance4perl(separating_hyperplane_T_X_X, Rational, perl::Canned< const Vector< Rational > >, perl::Canned< const Matrix< Rational > >);
-   FunctionInstance4perl(separating_hyperplane_poly_T_x_x, Rational);
    FunctionInstance4perl(separating_hyperplane_T_X_X, QuadraticExtension< Rational >, perl::Canned< const Vector< QuadraticExtension< Rational > > >, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
+   FunctionInstance4perl(separating_hyperplane_poly_T_x_x, Rational);
    FunctionInstance4perl(separating_hyperplane_poly_T_x_x, QuadraticExtension< Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

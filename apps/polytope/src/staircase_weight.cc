@@ -34,10 +34,19 @@ Vector<Rational> staircase_weight(const int k, const int l)
 
 UserFunction4perl("# @category Triangulations, subdivisions and volume"
                   "# Gives a weight vector for the staircase triangulation of"
-                  "# the product of a //k//- and an //l//-dimensional simplex."
-                  "# @param Int k the dimension of the first simplex"
-                  "# @param Int l the dimension of the second simplex"              
-                  "# @return Vector<Rational>",
+                  "# the product of a //k-1//- and an //l-1//-dimensional simplex."
+                  "# @param Int k the number of vertices of the first simplex"
+                  "# @param Int l the number of vertices of the second simplex"
+                  "# @return Vector<Rational>"
+                  "# @example The following creates the staircase triangulation of the product"
+                  "# of the 2- and the 1-simplex."
+                  "# > $w = staircase_weight(3,2);"
+                  "# > $p = product(simplex(2),simplex(1));"
+                  "# > $p->POLYTOPAL_SUBDIVISION(WEIGHTS=>$w);"
+                  "# > print $p->POLYTOPAL_SUBDIVISION->MAXIMAL_CELLS;"
+                  "# | {0 2 4 5}"
+                  "# | {0 1 3 5}"
+                  "# | {0 2 3 5}",
                   &staircase_weight,"staircase_weight"); 
 } }
 

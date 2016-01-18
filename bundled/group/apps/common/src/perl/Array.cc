@@ -16,10 +16,10 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
 #include "polymake/Array.h"
-#include "polymake/common/boost_dynamic_bitset.h"
 #include "polymake/Set.h"
+#include "polymake/client.h"
+#include "polymake/common/boost_dynamic_bitset.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -34,7 +34,6 @@ namespace polymake { namespace common { namespace {
       WrapperReturnNew(T0, () );
    };
 
-   FunctionInstance4perl(new_X, Array< Set< int > >, perl::Canned< const Set< Set< int > > >);
    Class4perl("Polymake::common::Array__Array__boost_dynamic_bitset", Array< Array< boost_dynamic_bitset > >);
    Class4perl("Polymake::common::Array__boost_dynamic_bitset", Array< boost_dynamic_bitset >);
    FunctionInstance4perl(new_X, Array< Array< Set< int > > >, perl::Canned< const Array< Array< boost_dynamic_bitset > > >);
@@ -45,5 +44,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, Array< Set< int > >, perl::Canned< const Array< boost_dynamic_bitset > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< boost_dynamic_bitset > >, perl::Canned< const Array< boost_dynamic_bitset > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< Array< boost_dynamic_bitset > > >, perl::Canned< const Array< Array< boost_dynamic_bitset > > >);
+   OperatorInstance4perl(convert, Array< boost_dynamic_bitset >, perl::Canned< const Array< Set< int > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

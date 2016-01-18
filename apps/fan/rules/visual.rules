@@ -13,6 +13,12 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+# @topic objects/Visual::PolyhedralFan
+# @category Visualization
+# Visualization of a polyhedral fan as a graph
+# @super Visual::Container
+# @relates PolyhedralFan
+
 package Visual::PolyhedralFan;
 use Polymake::Struct (
    [ '@ISA' => 'Container' ],
@@ -27,8 +33,7 @@ object PolyhedralFan {
 # @category Visualization
 # Visualizes the fan, intersected with the unit ball.
 # @return Visual::PolyhedralFan
-#
-# **FIXME:** use combinatorics via MAXIMAL_CONES_FACETS
+
 user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cutoff}) : RAYS, MAXIMAL_CONES, LINEALITY_SPACE {
    my ($this,$decor,$cutoff_decor)=@_;
    $decor->{VertexStyle} ||= "hidden";
@@ -43,7 +48,7 @@ user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cu
    my $rays=normalized(convert_to<Float>($this->RAYS));
    my $lineality = convert_to<Float>($this->LINEALITY_SPACE);
    my $bbox = $lineality->rows > 0 ?
-         polytope::bounding_box<Float>((ones_vector<Float>()) | $rays, 6/5)
+         polytope::bounding_box<Float>((ones_vector<Float>()) | $rays, 6/5, 1)
          : undef;
    my $zero=new Vector<Float>($d);
    my @cells_visual = ();
@@ -56,22 +61,27 @@ user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cu
    unshift(@labels," ");
    my $coords = $zero / convert_to<Float>($rays);
    my $graph = new Graph(ADJACENCY=>$rays_graph);
-   my $rays_vgraph = new Visual::Graph( Name =>  "Rays",
-                                      Graph => $graph,
-                                      Coord =>  $coords,
-                                      NodeStyle => "show",
-                                      VertexLabels => \@labels,
-                                      EdgeColor => "0 0 0",
-                                    );
+   my $rays_vgraph = new Visual::Graph(Name =>  "Rays",
+                                       Graph => $graph,
+                                       Coord =>  $coords,
+                                       NodeStyle => "show",
+                                       VertexLabels => \@labels,
+                                       EdgeColor => "0 0 0",
+                                      );
    push @cells_visual, $rays_vgraph;
    foreach (@{$this->MAXIMAL_CONES}) {
       my $cone=$_;
       my $all_ones=ones_vector<Float>($cone->size()+1);
       my $v=$all_ones | ($rays->minor($cone,All) / $zero);
+# FIXME #885: the following is too costly
+# Either add additional properties FACETS and VERTICES_IN_FACETS from MAXIMAL_CONES_FACETS etc
+# or create suitable visual objects directly.
       my $p=new polytope::Polytope<Float>(VERTICES => $v, LINEALITY_SPACE => (zero_vector<Float>($lineality->rows)) | $lineality);
+
       my $pv= $lineality->rows > 0 && $this->FAN_DIM > 1 ?
          $p->VISUAL( $decor , BoundingBox=>$bbox ) :
          $p->VISUAL( $decor );
+
       my (@cutoff_attrs);
       my $dim=$p->DIM;
       if ($dim==3) {
@@ -80,17 +90,11 @@ user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cu
           push @cutoff_attrs, $attr, sub { $_[0] < $p->FACETS->rows && $p->FACETS->[shift]->[0] ? $value : undef };
         }
       }
-      #else {if ($dim==2) {
-       # while (my @kv=each %$cutoff_decor2d) {
-        #  my ($attr, $value)=@kv;
-         # push @cutoff_attrs, $attr, sub { $p->FACETS->[shift]->[0] ? $value : undef };
-        #}
-      #}}
       $pv->basis_solid->merge(@cutoff_attrs);
       push @cells_visual, $pv;
    }
    visualize(new Visual::PolyhedralFan( Name => "fan:".$this->name,
-                                        PolyhedralFan => $this,
+                                        PolyhedralFan => new PolyhedralFan(RAYS=>(ones_vector<Float>()) | $rays),
                                         @cells_visual));
 }
 precondition : FAN_AMBIENT_DIM { $this->FAN_AMBIENT_DIM<=3 }
@@ -99,16 +103,16 @@ precondition : FAN_AMBIENT_DIM { $this->FAN_AMBIENT_DIM<=3 }
 }
 
 
-object PolyhedralComplex {
+object SubdivisionOfPoints {
 
 # @category Visualization
-# Visualizes the polyhedral complex.  The cells of the complex may have interior points.
-# @return Visual::PolyhedralComplex
+# Visualizes the [[SubdivisionOfPoints]].
+# @return Visual::PolyhedralFan
 #
-user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cutoff}) : POINTS, VERTICES, GRAPH, MAXIMAL_CELLS {
+user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cutoff}) : POINTS, POLYHEDRAL_COMPLEX.VERTICES, POLYHEDRAL_COMPLEX.GRAPH, MAXIMAL_CELLS {
    my ($this,$decor,$cutoff_decor)=@_;
-   my $d=$this->VERTICES->cols;
-   my $vertices=convert_to<Float>($this->VERTICES);
+   my $d=$this->POINTS->cols;
+   my $vertices=convert_to<Float>($this->POLYHEDRAL_COMPLEX->VERTICES);
    my $points=convert_to<Float>($this->POINTS);
    my @cells_visual = ();
    my $vpoints=new Visual::PointSet( Name => 'points',
@@ -119,7 +123,7 @@ user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cu
    $decor->{PointLabels} ||= "hidden";
    push @cells_visual, $vpoints;
    my $vgraph = new Visual::Graph( Name =>  "Vertices",
-                                   Graph => $this->GRAPH,
+                                   Graph => $this->POLYHEDRAL_COMPLEX->GRAPH,
                                    Coord =>  dehomogenize($vertices),
                                    NodeStyle => "hidden",
                                    EdgeColor => "0 0 0", $decor);
@@ -134,35 +138,35 @@ user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cu
                                         PolyhedralFan => $this,
                                         @cells_visual));
 }
-precondition : FAN_AMBIENT_DIM { $this->FAN_AMBIENT_DIM<=4 }
+precondition : VECTOR_AMBIENT_DIM { $this->VECTOR_AMBIENT_DIM<=4 }
 
+}
 
-
-
+object PolyhedralComplex {
 
 # @category Visualization
 # Visualizes the polyhedral complex.
-# @return Visual::PolyhedralComplex
+# @return Visual::PolyhedralFan
 #
 user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cutoff}) : VERTICES, MAXIMAL_POLYTOPES, LINEALITY_SPACE {
    my ($this,$decor,$cutoff_decor)=@_;
-   $decor->{VertexStyle} ||= "hidden";
+   $decor->{VertexLabels} ||= "hidden";
    my $d=$this->VERTICES->cols;
    my $vertices=convert_to<Float>($this->VERTICES);
    my @cells_visual = ();
-   my $vgraph = new Visual::Graph( Name =>  "Vertices",
-                                      Graph => $this->GRAPH,
-                                      Coord =>  dehomogenize($vertices),
-                                      NodeColor => "0 0 0",
-                                      VertexLabels => $this->lookup("VERTEX_LABELS"),
-                                      EdgeColor => "0 0 0",
-                                    );
-   push @cells_visual, $vgraph;
+   my @vcolor = ();
+   my $dv = $decor->{VertexColor};
+   if (defined($dv) and ref($dv) eq "ARRAY")  {
+       @vcolor = @{$decor->{VertexColor}};
+   }
    foreach (@{$this->MAXIMAL_POLYTOPES}) {
       my $cell=$_;
       my $v= ($vertices->minor($cell,All) );
-      my $p=new polytope::Polytope<Rational>(VERTICES => $v, LINEALITY_SPACE => $this->LINEALITY_SPACE);
-      push @cells_visual, (my $pv=$p->VISUAL( $decor ));
+      my $p=new polytope::Polytope<Float>(VERTICES => $v, LINEALITY_SPACE => $this->LINEALITY_SPACE);
+      my @pcolor = map {$vcolor[$_]} @{$cell};
+      my $pv = scalar(@vcolor)>1 ? $p->VISUAL( $decor, VertexColor=>\@pcolor ) : $p->VISUAL( $decor); 
+      if (!defined($pv)) {print "bla not def\n";}
+      push @cells_visual, $pv;
       my $dim=$p->DIM;
    }
    visualize(new Visual::PolyhedralFan( Name => "pcom:".$this->name,

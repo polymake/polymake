@@ -25,5 +25,6 @@ namespace polymake { namespace polytope { namespace {
    };
 
    FunctionInstance4perl(integer_points_bbox_T_x, double);
+   FunctionInstance4perl(integer_points_bbox_T_x, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

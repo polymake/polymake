@@ -42,7 +42,7 @@ object NormalToricVariety {
    rule DEGENERATE : LINEALITY_DIM {
       $this->DEGENERATE = $this->LINEALITY_DIM > 0;
    }
-   weight 0.10;
+   weight 0.1;
 
    rule PROJECTIVE : RAYS, MAXIMAL_CONES {
       $this->PROJECTIVE = regular($this);
@@ -50,16 +50,9 @@ object NormalToricVariety {
 
    # the number of maximal torus orbits
    # they correspond to the rays of the fan
-   rule N_MAXIMAL_TORUS_ORBITS : N_RAYS {
-      $this->N_MAXIMAL_TORUS_ORBITS = $this->N_RAYS;
-   }
-   weight 0.10;
+   rule N_MAXIMAL_TORUS_ORBITS = N_RAYS;
 
-   rule ORBIFOLD : SIMPLICIAL {
-      $this->ORBIFOLD = $this->SIMPLICIAL;
-   }
-   weight 0.10;
-
+   rule ORBIFOLD = SIMPLICIAL;
 }
 
 

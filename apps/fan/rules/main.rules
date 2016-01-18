@@ -38,16 +38,30 @@ declare object PolyhedralFan<Scalar=Rational> [ is_ordered_field(Scalar) ];
 # A polyhedral complex.  The derivation from [[PolyhedralFan]] works like the derivation of [[Polytope]] from [[Cone]].
 declare object PolyhedralComplex<Scalar=Rational> [ is_ordered_field(Scalar) ] : PolyhedralFan<Scalar>;
 
+# A special big object class devoted to planar drawings of 3-polytopes.  Its main functionality is the visualization.
+declare object PlanarNet : PolyhedralComplex<Float>;
+
+# A subdivision of vectors, in contrast to [[PolyhedralFan]] this allows cells with interior points.
+# Similar to the distinction between [[Cone]] and [[VectorConfiguration]].
+# @tparam Scalar default: [[Rational]]
+declare object SubdivisionOfVectors<Scalar=Rational> [ is_ordered_field(Scalar) ];
+
+# A homogeneous variant of [[SubdivisionOfVectors]], similar to the derivation of [[PointConfiguration]] from [[VectorConfiguration]].
+# @tparam Scalar default: [[Rational]]
+declare object SubdivisionOfPoints<Scalar=Rational> [ is_ordered_field(Scalar) ] : SubdivisionOfVectors<Scalar>;
+
 INCLUDE
   fan_properties.rules
   initial.rules
-  tropical_variety_properties.rules
   polyhedral_complex_properties.rules
+  subdivision_properties.rules
   common.rules
   incidence_perm.rules
   polyhedral_complex.rules
+  planar_net.rules
   bounded_complex.rules
   bounded_complex_visual_graph.rules
+  subdivision.rules
   visual.rules
   lattice.rules
   symmetric_fan.rules

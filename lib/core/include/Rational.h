@@ -148,7 +148,7 @@ inline int isinf(const Rational& a);
 /// @brief A class for rational numbers.
 class Rational {
    friend class Integer;
-   template <typename> friend struct std::numeric_limits;
+   template <typename> friend class std::numeric_limits;
    friend struct spec_object_traits<Rational>;
    template <GMP::proxy_kind, bool> friend class GMP::Proxy;
 protected:
@@ -1330,6 +1330,52 @@ public:
       return Rational();
    }
 
+
+   /// Power.
+   static Rational pow(const Rational& a, long k)
+   {
+      if (__builtin_expect(isfinite(a),1))
+      {
+         if (k > 0)
+            return Rational(mpz_pow_ui, mpq_numref(a.rep), (unsigned long) k,
+                            mpz_pow_ui, mpq_denref(a.rep), (unsigned long) k, False());
+         else if (k < 0)
+            return Rational(mpz_pow_ui, mpq_denref(a.rep), (unsigned long) abs(k),
+                            mpz_pow_ui, mpq_numref(a.rep), (unsigned long) abs(k), True());
+         else
+            return Rational(1);
+      }
+      return Rational(maximal<Rational>(), k%2 ? isinf(a) : 1);
+   }
+
+   /// Power.
+   static Rational pow(unsigned long a, long k)
+   {
+      if (k > 0)
+         return Rational(mpz_ui_pow_ui, a, (unsigned long) k, 1);
+      else if (k < 0)
+         return Rational(1, mpz_ui_pow_ui, a, (unsigned long) abs(k));
+      else
+         return Rational(1);
+   }
+
+   /// Power
+   static Rational pow(const Integer& a, long k)
+   {
+      if (__builtin_expect(isfinite(a),1))
+      {
+         if (k > 0)
+            return Rational(mpz_pow_ui, a.rep, (unsigned long) k, 1);
+         else if (k < 0)
+            return Rational(1, mpz_pow_ui, a.rep, (unsigned long) abs(k));
+         else
+            return Rational(1);
+      }
+      return Rational(maximal<Rational>(), k%2 ? isinf(a) : 1);
+   }
+
+
+
    void read(std::istream& is)
    {
       numerator_nocanon(*this).read(is);
@@ -1376,7 +1422,8 @@ namespace std {
 inline void swap(pm::Rational& a, pm::Rational& b) { a.swap(b); }
 
 template <>
-struct numeric_limits<pm::Rational> : numeric_limits<pm::Integer> {
+class numeric_limits<pm::Rational> : public numeric_limits<pm::Integer> {
+public:
    static const bool is_integer=false;
    static pm::Rational min() throw() { return pm::Rational(pm::maximal<pm::Rational>(),-1); }
    static pm::Rational infinity() throw() { return pm::Rational(pm::maximal<pm::Rational>()); }

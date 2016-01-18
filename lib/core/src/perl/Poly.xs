@@ -15,6 +15,8 @@
 */
 
 #include "polymake/perl/Ext.h"
+#include <sys/time.h>
+#include <sys/resource.h>
 
 static
 void unimport_function(pTHX_ SV *gv)
@@ -530,6 +532,43 @@ PPCODE:
 {
   if (x==&PL_sv_yes || x==&PL_sv_no ||
       (SvIOK(x) && (SvIVX(x)==1 || SvIVX(x)==0))) XSRETURN_YES;
+  XSRETURN_NO;
+}
+
+void
+is_acceptable_as_boolean(x)
+   SV *x;
+PROTOTYPE: $
+PPCODE:
+{
+  if (x==&PL_sv_yes || x==&PL_sv_no ||
+      (SvIOK(x) && (SvIVX(x)==1 || SvIVX(x)==0))) XSRETURN_YES;
+  if (SvAMAGIC(x)) {
+     HV* stash=SvSTASH(SvRV(x));
+     if (gv_fetchmeth(stash, "(bool", 5, 0)) XSRETURN_YES;
+  }
+  XSRETURN_NO;
+}
+
+void
+is_boolean_true(x)
+   SV *x;
+PROTOTYPE: $
+PPCODE:
+{
+  if (x==&PL_sv_yes ||
+      (SvIOK(x) && SvIVX(x)==1)) XSRETURN_YES;
+  XSRETURN_NO;
+}
+
+void
+is_boolean_false(x)
+   SV *x;
+PROTOTYPE: $
+PPCODE:
+{
+  if (x==&PL_sv_no ||
+      (SvIOK(x) && SvIVX(x)==0)) XSRETURN_YES;
   XSRETURN_NO;
 }
 
@@ -1146,6 +1185,19 @@ PPCODE:
    }
 }
 
+void
+get_user_cpu_time()
+PPCODE:
+{
+   dTARGET;
+   struct rusage ru;
+   double result= getrusage(RUSAGE_SELF, &ru)<0
+                  ? -1
+                  : (double)ru.ru_utime.tv_sec + (double)ru.ru_utime.tv_usec * 1e-6;
+   XPUSHn(result);
+}
+
+
 MODULE = Polymake                       PACKAGE = Polymake::Core
 
 void
@@ -1469,6 +1521,7 @@ PPCODE:
    CvDEPTH(script_cv)=1;
    ENTER;
 }
+
 
 BOOT:
 if (PL_DBgv) {

@@ -39,5 +39,6 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< Matrix< Rational > > >, perl::Canned< const Vector< Rational > >);
    OperatorInstance4perl(Unary_neg, perl::Canned< const Wary< Matrix< Integer > > >);
    OperatorInstance4perl(BinaryAssign_div, perl::Canned< Wary< Matrix< Integer > > >, perl::Canned< const pm::RowChain<pm::Matrix<pm::Integer> const&, pm::Matrix<pm::Integer> const&> >);
+   OperatorInstance4perl(BinaryAssign_mul, perl::Canned< Wary< Matrix< Integer > > >, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

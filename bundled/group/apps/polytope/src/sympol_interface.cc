@@ -1,5 +1,6 @@
 #include "polymake/polytope/sympol_interface.h"
 #include "polymake/polytope/sympol_raycomputation_beneathbeyond.h"
+#include "polymake/polytope/sympol_raycomputation_ppl.h"
 #include "sympol/polyhedron.h"
 #include "sympol/yal/reportlevel.h"
 #include "sympol/symmetrygroupconstruction/computesymmetries.h"
@@ -49,6 +50,13 @@ namespace polymake { namespace polytope { namespace sympol_interface {
         case beneath_beyond:
           rayComp = new RayComputationBeneathBeyond();
           break;
+#ifdef POLYMAKE_WITH_PPL
+        case ppl:
+          rayComp = new RayComputationPPL();
+          break;
+#endif
+      default:
+         break;
       }
       if ( ! rayComp ) {
         throw std::runtime_error("Invalid ray computation method");

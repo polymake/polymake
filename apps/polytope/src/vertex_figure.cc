@@ -26,8 +26,8 @@ namespace polymake { namespace polytope {
 template<typename Scalar>
 perl::Object vertex_figure(perl::Object p_in, int v_cut_off, perl::OptionSet options)
 {
-   if (options.exists("cutoff") && options.exists("noc")) 
-       throw std::runtime_error("vertex_figure: cannot specify cutoff and noc options simultaneously");
+   if (options.exists("cutoff") && options.exists("no_coordinates")) 
+       throw std::runtime_error("vertex_figure: cannot specify cutoff and no_coordinates options simultaneously");
 
    const IncidenceMatrix<> VIF=p_in.give("VERTICES_IN_FACETS");
    const Graph<> G=p_in.give("GRAPH.ADJACENCY");
@@ -44,7 +44,7 @@ perl::Object vertex_figure(perl::Object p_in, int v_cut_off, perl::OptionSet opt
 
    p_out.take("VERTICES_IN_FACETS") << VIF_out;
 
-   if (options["noc"]) {
+   if (options["no_coordinates"]) {
       if (p_in.exists("COMBINATORIAL_DIM")) {
          const int dim=p_in.give("COMBINATORIAL_DIM");
          p_out.take("COMBINATORIAL_DIM") << dim-1;
@@ -103,10 +103,16 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "#   thus degenerating the vertex figure to a single point."
                           "#   Value 1 would let the hyperplane touch the nearest neighbor vertex of a polyhedron."
                           "#   Default value is 1/2."
-                          "# @option Bool noc skip the coordinates computation, producing a pure combinatorial description."
+                          "# @option Bool no_coordinates skip the coordinates computation, producing a pure combinatorial description."
                           "# @option Bool relabel inherit vertex labels from the corresponding neighbor vertices of the original polytope."
-                          "# @return Polytope",
-                          "vertex_figure<Scalar>(Polytope<Scalar> $ {cutoff => undef, noc => undef, relabel => 0})");
+                          "# @return Polytope"
+                          "# @example This produces a vertex figure of one vertex of a 3-dimensional cube with the origin as its center"
+                          "# and side length 2. The result is a 2-simplex."
+                          "# > $p = vertex_figure(cube(3),5);"
+                          "# > print $p->VERTICES;"
+                          "# | 1 1 -1 0"
+                          "# | 1 1 0 1",
+                          "vertex_figure<Scalar>(Polytope<Scalar> $ {cutoff => undef, no_coordinates => undef, relabel => 0})");
 } }
 
 // Local Variables:

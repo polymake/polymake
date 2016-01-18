@@ -70,11 +70,13 @@ void cdd_canonicalize(perl::Object p, bool primal = true)
 {
    cdd_interface::solver<Scalar> solver;
    Matrix<Scalar> P,L;
-   if ( primal ) 
-      p.give("INEQUALITIES") >> P, p.lookup("EQUATIONS") >> L;
-   else 
-      p.give("INPUT_RAYS") >> P, p.lookup("INPUT_LINEALITY") >> L;
-
+   if ( primal ) {
+      p.give("INEQUALITIES") >> P;
+      p.lookup("EQUATIONS") >> L;
+   } else {
+      p.give("INPUT_RAYS") >> P;
+      p.lookup("INPUT_LINEALITY") >> L;
+   }
    const bool isCone = !p.isa("Polytope");
    if (isCone) {
       if ( P.rows() )  // leave matrix empty otherwise
@@ -88,7 +90,7 @@ void cdd_canonicalize(perl::Object p, bool primal = true)
 
    if ( PL.rows() ) { 
       const typename cdd_interface::solver<Scalar>::non_redundant_canonical non_red=solver.canonicalize(P, L, primal);
-      if ( primal ) 
+      if ( primal ) {
          if ( isCone ) {
             p.take("FACETS") << PL.minor(non_red.first,~scalar2set(0));
             p.take("LINEAR_SPAN") << PL.minor(non_red.second,~scalar2set(0));
@@ -103,7 +105,7 @@ void cdd_canonicalize(perl::Object p, bool primal = true)
                p.take("AFFINE_HULL") << PL.minor(non_red.second,All);
             }
          }
-      else {
+      } else {
          if ( isCone ) {
             p.take("RAYS") << PL.minor(non_red.first,~scalar2set(0));
             p.take("LINEALITY_SPACE") << PL.minor(non_red.second,~scalar2set(0));
@@ -111,12 +113,11 @@ void cdd_canonicalize(perl::Object p, bool primal = true)
             p.take("RAYS") << PL.minor(non_red.first,All);
             p.take("LINEALITY_SPACE") << PL.minor(non_red.second,All);
          }
-         p.take("POINTED") << ( non_red.second.size()>0 ? 0 : 1 );
+         p.take("POINTED") << non_red.second.empty();
       }
    } else {
       p.take(primal ? "FACETS" : "RAYS") << Matrix<Scalar>();
       p.take(primal ? "LINEAR_SPAN" : "LINEALITY_SPACE") << Matrix<Scalar>();     
-      if (primal) p.take("POINTED") << 0;
    }
 }
 
@@ -126,11 +127,13 @@ void cdd_canonicalize_lineality(perl::Object p, bool primal = true)
 {
    cdd_interface::solver<Scalar> solver;
    Matrix<Scalar> P,L;
-   if ( primal ) 
-      p.give("INEQUALITIES") >> P, p.lookup("EQUATIONS") >> L;
-   else 
-      p.give("INPUT_RAYS") >> P, p.lookup("INPUT_LINEALITY") >> L;
-
+   if ( primal ) {
+      p.give("INEQUALITIES") >> P;
+      p.lookup("EQUATIONS") >> L;
+   } else {
+      p.give("INPUT_RAYS") >> P;
+      p.lookup("INPUT_LINEALITY") >> L;
+   }
    const bool isCone = !p.isa("Polytope");
    if (isCone) {
       if ( P.rows() )  // leave matrix empty otherwise
@@ -143,10 +146,10 @@ void cdd_canonicalize_lineality(perl::Object p, bool primal = true)
    const Matrix<Scalar> PL = P/L; 
 
    Bitset lineality=solver.canonicalize_lineality(P, L, primal);
-   if ( primal )
-      if ( isCone )
+   if ( primal ) {
+      if ( isCone ) {
          p.take("LINEAR_SPAN") << PL.minor(lineality,~scalar2set(0));
-      else {
+      } else {
          // cdd doesn't handle the case of an empty polytope in the same way as polymake
          // so first check for an infeasible system
          if ( is_zero(null_space(PL.minor(lineality,All)).col(0)) ) 
@@ -154,12 +157,12 @@ void cdd_canonicalize_lineality(perl::Object p, bool primal = true)
          else
             p.take("AFFINE_HULL") << PL.minor(lineality,All);
       }
-   else { 
+   } else {
       if ( isCone )
          p.take("LINEALITY_SPACE") << PL.minor(lineality,~scalar2set(0));
       else
          p.take("LINEALITY_SPACE") << PL.minor(lineality,All);
-      p.take("POINTED") << ( lineality.size()>0 ? 0 : 1 );
+      p.take("POINTED") << lineality.empty();
    }
 }
 

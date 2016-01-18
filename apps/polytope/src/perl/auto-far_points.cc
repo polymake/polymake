@@ -16,13 +16,15 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
-#include "polymake/linalg.h"
+#include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/SparseMatrix.h"
-#include "polymake/IncidenceMatrix.h"
-#include "polymake/QuadraticExtension.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/PuiseuxFraction.h"
+#include "polymake/client.h"
+#include "polymake/linalg.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -38,5 +40,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(far_points_X, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
    FunctionInstance4perl(far_points_X, perl::Canned< const SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >);
    FunctionInstance4perl(far_points_X, perl::Canned< const SparseMatrix< double, NonSymmetric > >);
+   FunctionInstance4perl(far_points_X, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -27,7 +27,12 @@ namespace polymake { namespace matroid {
 
 Array<Set<int> > bases_from_lof_impl(const graph::HasseDiagram& LF, int n)
 {
-   const int rank(LF.dim());
+	int LF_dim = LF.dim();
+	if(LF_dim == -1) {
+		//THis means the rank is 0
+		return Array<Set<int> >(1);
+	}
+   const int rank(LF_dim);
    std::vector<Set<int> > bases;
    for (Entire<Subsets_of_k<const sequence&> >::const_iterator bit=entire(all_subsets_of_k(sequence(0,n), rank)); !bit.at_end(); ++bit) {
       const Set<int> basis(*bit);

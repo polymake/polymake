@@ -15,6 +15,7 @@
 */
 
 #include "polymake/topaz/is_sphere_h.h"
+#include "polymake/topaz/random_discrete_morse.h"
 
 namespace polymake { namespace topaz {
 
@@ -40,13 +41,20 @@ bool is_homology_sphere(const HasseDiagram& HD)
    return true; // passed all tests
 }
 
+// implementation of sphere recognition heuristics algorithm described in Sphere Recognition: Heuristics and Examples by Joswig, Lutz, Tsuruga; arxiv 1405.3848
 // HD: Hasse diagram of pure simplicial complex
 // return values: 1=true, 0=false, -1=undef
 int is_sphere_h(const HasseDiagram& HD, const pm::SharedRandomState& random_source, int strategy, const int n_stable_rounds)
 {
-   if (!is_homology_sphere(HD)) return 0; // check first if homology fits
-
    const int dim = HD.dim()-1;
+
+   Array<int> sph(dim);
+   sph[0]=sph[dim-1]=1;
+
+   Map<Array<int>, int> M = random_discrete_morse(HD, UniformlyRandom<long>(random_source), strategy, 0, n_stable_rounds, sph, Array<int>(), "");
+   if(M[sph]) return 1; // found spherical acyclic matching
+
+   if (!is_homology_sphere(HD)) return 0; // check first if homology fits
 
    // strategic options
    int max_relax=0, heating=0, preheat=0;

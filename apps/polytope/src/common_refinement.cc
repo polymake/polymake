@@ -75,6 +75,16 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# @param IncidenceMatrix sub2 second subdivision"
                           "# @param Int dim dimension of the point configuration"
                           "# @return IncidenceMatrix the common refinement"
+                          "# @example A simple 2-dimensional set of points:"
+                          "# > $points = new Matrix<Rational>([[1,0,0],[1,1,0],[1,0,1],[1,1,1],[1,2,1]]);"
+                          "# Two different subdivisions..."
+                          "# > $sub1 = new IncidenceMatrix([[0,1,2],[1,2,3,4]]);"
+                          "# > $sub2 = new IncidenceMatrix([[1,3,4],[0,1,2,3]]);"
+                          "# ...and their common refinement:"
+                          "# > print common_refinement($points,$sub1,$sub2,2);"
+                          "# | {0 1 2}"
+                          "# | {1 3 4}"
+                          "# | {1 2 3}"
                           "# @author Sven Herrmann",
                           "common_refinement(Matrix IncidenceMatrix IncidenceMatrix $)");
 

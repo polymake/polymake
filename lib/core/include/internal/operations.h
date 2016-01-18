@@ -184,6 +184,21 @@ struct square : square_impl<OpRef> {};
 template <typename LeftRef, typename RightRef>
 struct tensor : tensor_impl<LeftRef,RightRef> {};
 
+struct unary_noop {
+   typedef void argument_type;
+   typedef void result_type;
+   template <typename Any>
+   result_type operator() (const Any&) const {}
+};
+
+struct binary_noop {
+   typedef void first_argument_type;
+   typedef void second_argument_type;
+   typedef void result_type;
+   template <typename Any1, typename Any2>
+   result_type operator() (const Any1&, const Any2&) const {}
+};
+
 } // end namespace operations
 
 namespace operators {

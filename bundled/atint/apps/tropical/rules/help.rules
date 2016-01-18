@@ -1,0 +1,81 @@
+########################################################################
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#  
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#  
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+#  Boston, MA  02110-1301, USA.
+#  
+#  ---
+#  Copyright (C) 2011-2015, Simon Hampe <simon.hampe@googlemail.com>
+#
+#
+#  This file contains definitions of help categories.
+########################################################################
+
+# @topic category any/Intersection theory
+# These are general +++ related to intersection theory.
+
+# @topic category any/Defining morphisms and functions
+# These +++ are used to define morphisms or rational functions on a Cycle.
+
+# @topic category any/Local computations
+# These +++ are used for doing computations locally around a specified part of a Cycle.
+
+# @topic category any/Creation functions for specific cycles
+# These +++ are special +++ for creating special tropical cycles.
+
+# @topic category any/Creation function for specific morphisms and functions
+# These +++ create specific morphisms and functions.
+
+# @topic category any/Basic polyhedral operations
+# These +++ provide basic functionality related to polyhedral geometry, but not
+# necessarily to tropical geometry
+
+# @topic category any/Divisor computation
+# These +++ deal with the computation of divisors
+
+# @topic category any/Degeneracy tests
+# These +++ test cycles for degeneracy, i.e. whether a cycle is the empty cycle
+
+# @topic category any/Abstract rational curves
+# These +++ deal with abstract rational n-marked curves.
+
+# @topic category any/Moduli of rational curves
+# These +++ deal with moduli spaces of abstract or parametrized rational curves.
+
+# @topic category any/Matroids
+# These +++ deal with matroids and matroidal fans.
+
+# @topic category any/Lattices
+# These +++ deal with lattices (meaning free abelian, finitely generated groups).
+
+# @topic category any/Morphisms
+# These are general +++ that deal with morphisms and their arithmetic.
+
+# @topic category any/Local computations
+# These +++ deal with the creation and modification of cycles with nontrivial
+# [[LOCAL_RESTRICTION]].
+
+# @topic category any/Weight space
+# These +++ deal with the weight space of a cycle, i.e. the space of weights
+# that make it balanced and related properties.
+
+# @topic category any/Hurwitz cycles
+# These +++ deal with the creation and study of tropical Hurwitz cycles.
+
+# @topic category any/Lines in surfaces 
+# These +++ deal with the computation and representation of (families of) lines
+# in surfaces.
+
+# @topic category any/Inverse problems
+# These +++ deal with finding rational functions to given divisors.
+

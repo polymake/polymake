@@ -33,7 +33,7 @@ property N_SITES : Int;
 rule N_SITES : SITES {
    $this->N_SITES=$this->SITES->rows;
 }
-weight 0.10;
+weight 0.1;
 
 # The polyhedron defined by the set of [[SITES]] is the Voronoi polyhedron.  Beware of facet at infinity.
 rule FACETS, AFFINE_HULL, REL_INT_POINT, FEASIBLE, BOUNDED : SITES {

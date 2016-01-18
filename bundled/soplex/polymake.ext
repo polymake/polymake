@@ -1,0 +1,7 @@
+# This is a bundled extension for SoPlex.
+
+CREDIT
+  SoPlex - The Sequential object-oriented simPlex
+  SoPlex is an LP solver that also allows to solve LP with exact
+  rational arithmetic.
+  http://soplex.zib.de

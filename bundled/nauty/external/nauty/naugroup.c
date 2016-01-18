@@ -13,8 +13,8 @@ static int group_depth = 0;
 DYNALLSTAT(cosetrec,coset,coset_sz);
 static permrec *gens;
 DYNALLSTAT(set,workset,workset_sz);
-DYNALLSTAT(permutation,allp,allp_sz);
-DYNALLSTAT(permutation,id,id_sz);
+DYNALLSTAT(int,allp,allp_sz);
+DYNALLSTAT(int,id,id_sz);
 
 /**************************************************************************/
 
@@ -44,7 +44,7 @@ same value of n. */
 	return p;
     }
 
-    p = (permrec*) malloc(sizeof(permrec)+(freelist_n-2)*sizeof(permutation)); 
+    p = (permrec*) malloc(sizeof(permrec)+(freelist_n-2)*sizeof(int)); 
 
     if (p == NULL)
     {
@@ -61,15 +61,17 @@ void
 freepermrec(permrec *p, int n)
 /* Free a permrec of given size. */
 {
+    permrec *q;
+
     if (p == NULL) return;
 
     if (freelist_n != n)
     {
 	while (freelist)
 	{
-	    p = freelist;
+	    q = freelist;
 	    freelist = freelist->ptr;
-	    free(p);
+	    free(q);
 	}
 	freelist_n = n;
     }
@@ -144,7 +146,7 @@ freegroup(grouprec *grp)
 /**************************************************************************/
 
 void
-groupautomproc(int count, permutation *perm, int *orbits,
+groupautomproc(int count, int *perm, int *orbits,
                                         int numorbits, int stabvertex, int n)
 {
     permrec *p;
@@ -207,7 +209,7 @@ makecosetreps(grouprec *grp)
 {
     int i,j,k,n,depth;
     int l,index;
-    permutation *p,*q;
+    int *p,*q;
     permrec *gen,*g;
     cosetrec *cr;
     int head,tail;
@@ -273,7 +275,7 @@ makecosetreps(grouprec *grp)
 /**************************************************************************/
 
 int
-permcycles(permutation *p, int n, int *len, boolean sort)
+permcycles(int *p, int n, int *len, boolean sort)
 /* Puts in len[0..] the cycle lengths of p.  If sort, sort them. 
    Return the number of cycles. */
 {
@@ -328,12 +330,12 @@ permcycles(permutation *p, int n, int *len, boolean sort)
 /**************************************************************************/
 
 static void
-groupelts(levelrec *lr, int n, int level, void (*action)(permutation*,int),
-          permutation *before, permutation *after, permutation *id)
+groupelts(levelrec *lr, int n, int level, void (*action)(int*,int),
+          int *before, int *after, int *id)
 /* Recursive routine used by allgroup. */
 {
     int i,j,orbsize;
-    permutation *p,*cr;
+    int *p,*cr;
     cosetrec *coset;
     
     coset = lr[level].replist;
@@ -362,7 +364,7 @@ groupelts(levelrec *lr, int n, int level, void (*action)(permutation*,int),
 /**************************************************************************/
 
 void
-allgroup(grouprec *grp, void (*action)(permutation*,int))
+allgroup(grouprec *grp, void (*action)(int*,int))
 /* Call action(p,n) for every element of the group, including the identity. 
    The identity is always the first call. */
 {
@@ -371,7 +373,7 @@ allgroup(grouprec *grp, void (*action)(permutation*,int))
     depth = grp->depth;
     n = grp->n;
 
-    DYNALLOC1(permutation,id,id_sz,n,"malloc");
+    DYNALLOC1(int,id,id_sz,n,"malloc");
     for (i = 0; i < n; ++i) id[i] = i;
 
     if (depth == 0)
@@ -380,21 +382,21 @@ allgroup(grouprec *grp, void (*action)(permutation*,int))
 	return;
     }
 
-    DYNALLOC1(permutation,allp,allp_sz,n*depth,"malloc");
+    DYNALLOC1(int,allp,allp_sz,n*depth,"malloc");
 
     groupelts(grp->levelinfo,n,depth-1,action,NULL,allp,id);
 }
 
 /**************************************************************************/
 
-static int
+static void
 groupelts2(levelrec *lr, int n, int level,
-    void (*action)(permutation*,int,int*), permutation *before,
-    permutation *after, permutation *id, int *abort)
+    void (*action)(int*,int,int*), int *before,
+    int *after, int *id, int *abort)
 /* Recursive routine used by allgroup2. */
 {
     int i,j,orbsize;
-    permutation *p,*cr;
+    int *p,*cr;
     cosetrec *coset;
     
     coset = lr[level].replist;
@@ -424,7 +426,7 @@ groupelts2(levelrec *lr, int n, int level,
 /**************************************************************************/
 
 int
-allgroup2(grouprec *grp, void (*action)(permutation*,int,int*))
+allgroup2(grouprec *grp, void (*action)(int*,int,int*))
 /* Call action(p,n,&abort) for every element of the group, including
    the identity.  The identity is always the first call.
    If action() stores a non-zero value in abort, group generation is
@@ -437,7 +439,7 @@ allgroup2(grouprec *grp, void (*action)(permutation*,int,int*))
     depth = grp->depth;
     n = grp->n;
 
-    DYNALLOC1(permutation,id,id_sz,n,"malloc");
+    DYNALLOC1(int,id,id_sz,n,"malloc");
     for (i = 0; i < n; ++i) id[i] = i;
 
     abort = 0;
@@ -447,7 +449,7 @@ allgroup2(grouprec *grp, void (*action)(permutation*,int,int*))
 	return abort;
     }
 
-    DYNALLOC1(permutation,allp,allp_sz,n*depth,"malloc");
+    DYNALLOC1(int,allp,allp_sz,n*depth,"malloc");
 
     groupelts2(grp->levelinfo,n,depth-1,action,NULL,allp,id,&abort);
 

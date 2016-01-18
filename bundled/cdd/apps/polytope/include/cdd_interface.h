@@ -23,7 +23,7 @@
 #include "polymake/Vector.h"
 #include "polymake/Bitset.h"
 #include "polymake/permutations.h"
-#include "polymake/polytope/linsolver.h"
+#include "polymake/polytope/lpch_dispatcher.h"
 
 namespace polymake { namespace polytope { namespace cdd_interface {
 

@@ -13,6 +13,11 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+# @topic category objects/any/Visualization
+# Drawable primitives and arrangements thereof.
+# Objects of this family are created on the fly when a visualization of a `big' object is being prepared.
+# They are generic in the sense that they don't carry any attributes specific for selected/preferred
+# visualization tool.
 
 # @topic category any/Visualization
 # These +++ are for visualization.

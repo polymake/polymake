@@ -29,7 +29,7 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
       RIF_property_read = false,
       rays_property_read = false,
       facets_property_read = false;
-   const bool no_coordinates = options["noc"];
+   const bool no_coordinates = options["no_coordinates"];
    const bool isCone = !p_in.isa("Polytope");
 
    perl::ObjectType t = p_in.type();
@@ -143,9 +143,16 @@ UserFunctionTemplate4perl("# @category Transformations"
                           "# If you want to compute the polar inside the affine hull you may "
                           "# use the [[pointed_part]] client afterwards."
                           "# @param Cone C"
-                          "# @option Bool noc only combinatorial information is handled"
-                          "# @return Cone",
-                          "polarize<Scalar> (Cone<Scalar>, { noc => 0 })");
+                          "# @option Bool no_coordinates only combinatorial information is handled"
+                          "# @return Cone"
+                          "# @example To save the polar of the square in the variable $p and then print its vertices, do this:"
+                          "# > $p = polarize(cube(2));"
+                          "# > print $p->VERTICES;"
+                          "# | 1 1 0"
+                          "# | 1 -1 0"
+                          "# | 1 0 1"
+                          "# | 1 0 -1",
+                          "polarize<Scalar> (Cone<Scalar>, { no_coordinates => 0 })");
 } }
 
 // Local Variables:

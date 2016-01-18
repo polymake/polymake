@@ -53,14 +53,14 @@ object NormalToricVariety {
    rule DIVISOR.NEF : {
       $this->DIVISOR->NEF = 1;
    }
-   weight 0.10;
+   weight 0.1;
    precondition : DIVISOR.AMPLE;
 
    # [[AMPLE]] implies [[COMPLETE]] and [[CARTIER]]
    rule DIVISOR.AMPLE : {
       $this->DIVISOR->AMPLE = 0;
    }
-   weight 0.10;
+   weight 0.1;
    precondition : DIVISOR.CARTIER, COMPLETE {
       !$this->DIVISOR.CARTIER | !$this->COMPLETE;
    }
@@ -69,14 +69,14 @@ object NormalToricVariety {
    rule DIVISOR.CARTIER : {
       $this->DIVISOR->CARTIER = 1;
    }
-   weight 0.10;
+   weight 0.1;
    precondition : DIVISOR.AMPLE;
 
    # [[CARTIER]] implies [[Q_CARTIER]]
    rule DIVISOR.CARTIER : {
       $this->DIVISOR->CARTIER = 0;
    }
-   weight 0.10;
+   weight 0.1;
    precondition : !DIVISOR.Q_CARTIER;
 
    # On a smooth ntv every Weil divisor is Cartier.

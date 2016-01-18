@@ -58,6 +58,22 @@ det(SparseMatrix<E> M)
 }
 
 template <typename E>
+E
+trace(SparseMatrix<E> M)
+{
+   E trace(zero_value<E>());
+   int i(0);
+   for (typename Entire< Rows< SparseMatrix<E> > >::iterator rowit=entire(rows(M)); !rowit.at_end(); ++rowit, ++i) {
+      typename SparseMatrix<E>::row_type::iterator eltit = rowit->begin();
+      while (!eltit.at_end() && eltit.index() < i)
+         ++eltit;
+      if (!eltit.at_end() && eltit.index() == i)
+         trace += *eltit;
+   }
+   return trace;
+}
+
+template <typename E>
 typename enable_if<SparseVector<E>, is_field<E>::value>::type
 reduce(SparseMatrix<E> M, SparseVector<E> V)
 {

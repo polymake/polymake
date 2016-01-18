@@ -20,9 +20,15 @@
 #include "polymake/internal/operations_basic_defs.h"
 
 #include <limits>
+#include <cstdlib>
 #include <cmath>
 #include <string>
+
+#if __cplusplus >= 201103L && !defined(PM_FORCE_TR1)
+#include <functional>
+#else
 #include <tr1/functional>
+#endif
 
 namespace pm {
 
@@ -303,11 +309,19 @@ void assign_min_max(T1& min, T2& max, const T3& x)
 template <typename T, typename Tag=typename object_traits<T>::generic_tag>
 struct hash_func;
 
+#if __cplusplus >= 201103L && !defined(PM_FORCE_TR1)
+template <typename T>
+struct hash_func<T, is_scalar> : public std::hash<T> {};
+
+template <typename Char, typename Traits, typename Alloc>
+struct hash_func<std::basic_string<Char, Traits, Alloc>, is_opaque> : public std::hash< std::basic_string<Char, Traits, Alloc> > {};
+#else
 template <typename T>
 struct hash_func<T, is_scalar> : public std::tr1::hash<T> {};
 
 template <typename Char, typename Traits, typename Alloc>
 struct hash_func<std::basic_string<Char, Traits, Alloc>, is_opaque> : public std::tr1::hash< std::basic_string<Char, Traits, Alloc> > {};
+#endif // __cplusplus
 
 template <typename T>
 struct hash_func<T*, is_not_object> {
@@ -315,8 +329,9 @@ struct hash_func<T*, is_not_object> {
 };
 
 using std::abs;
-using std::isfinite;
 inline int isinf(double x) { if (std::isinf(x)) return (x>0)*2-1; else return 0; }
+// isfinite in C99 returns int but in C++11 returns bool ...
+inline int isfinite(double x) { return std::isfinite(x); }
 
 template <typename T, bool _is_max>
 struct spec_object_traits< extremal<T,_is_max> > : spec_object_traits<T> {};

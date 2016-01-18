@@ -26,6 +26,8 @@
 # @topic category functions/Comparing
 # These functions compare two [[SimplicialComplex]]
 
+# @topic category functions/Producing other objects
+# Functions producing big objects which are not contained in application topaz.
 
 # Local Variables:
 # mode: perl

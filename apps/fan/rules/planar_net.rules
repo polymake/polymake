@@ -1,0 +1,198 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object PlanarNet {
+
+# @category Geometry
+# The corresponding 3-polytope.
+
+property POLYTOPE : polytope::Polytope;
+
+# @category Combinatorics
+# Counter clockwise ordering of the [[VERTICES]] in each [[MAXIMAL_POLYTOPES]].
+# This is a copy of the property [[Polytope::VIF_CYCLIC_NORMAL]] of [[POLYTOPE]].
+
+property VIF_CYCLIC_NORMAL : Array< Array<Int> >;
+
+# @category Combinatorics
+# Map which tells which vertex/facet pair of the 3-polytope is mapped to which vertex of the planar net.
+# The dependence on the facets comes from the fact that most [[Polytope::VERTICES]] occur more than once in the planar net.
+# The inverse is [[VF_MAP_INV]].
+
+property VF_MAP : Map< Pair<Int,Int>, Int >;
+
+# @category Combinatorics
+# Map which tells how the [[VERTICES]] of the planar net are mapped to the [[Polytope::VERTICES]] of the 3-polytope.
+# Inverse of [[VF_MAP]].
+
+property VF_MAP_INV : Array<Int>;
+    
+# @category Combinatorics
+# The spanning tree in the [[Polytope::DUAL_GRAPH]] which defines the layout.
+# Endoded as a list of edges, directed away from the root facet.
+# Indices correspond to [[MAXIMAL_POLYTOPES]] as well as [[Polytope::FACETS]].
+
+property DUAL_TREE : Array< Pair<Int,Int> >;
+
+# @category Combinatorics
+# List of directed edges in the primal graph [[Polytope::GRAPH]] which need flaps for gluing.
+# Indices correspond to [[VERTICES]].  The orientation is chosen such that the facet in the layout is always on the left.
+# In fact, the flaps define a spanning tree of [[Polytope::GRAPH]].
+
+property FLAPS : Array< Pair<Int,Int> >;
+
+rule VIF_CYCLIC_NORMAL : POLYTOPE.VIF_CYCLIC_NORMAL {
+   $this->VIF_CYCLIC_NORMAL(temporary) = $this->POLYTOPE->VIF_CYCLIC_NORMAL;
+}
+weight 0.10;
+
+}
+
+# @topic objects/Visual::PlanarNet
+# @category Visualization
+# Visualization of a 3-polytope as a planar net.
+# @super Visual::Container
+# @relates PlanarNet
+
+package Visual::PlanarNet;
+
+use Polymake::Struct (
+   [ '@ISA' => 'Container' ],
+   [ '$PlanarNet' => '#%', default => 'undef' ],
+);
+
+# where to keep any additional data
+method representative { $_[0]->PlanarNet }
+
+# @category Visualization
+# Parameters to control the shapes of the flaps.
+# The precise values are more or less randomly chosen.  Should work fine for most polytopes
+# whose edge lengths do not vary too much.
+
+options %flap_options=(
+    # Float  absolute minimum width
+    WidthMinimum=>0.25,
+    # Float  minimum relative width (w.r.t. length of first edge)
+    WidthRelativeMinimum=>0.1,
+    # Float  absolute width, overrides the previous
+    Width=>undef,
+    # Float  proportion by which outer edge of flap is shorter than the actual edge (on both sides)
+    FlapCutOff=>0.2
+);
+
+# Add flaps for gluing.
+# @options %Visual::Polygons::decorations
+# @options %flap_options
+# @return Visual::PlanarNet
+
+user_method FLAPS (%Visual::Polygons::decorations, %flap_options) {
+   my ($self, $decor, $options)=@_;
+
+   my $vertices=dehomogenize($self->PlanarNet->VERTICES);
+   my $flap_edges=$self->PlanarNet->FLAPS;
+
+   my $flap_width_min=$options->{WidthMinimum};
+   my $flap_width_rel=$options->{WidthRelativeMinimum};
+   my $flap_cutoff=$options->{FlapCutOff};
+   my $flap_width=$options->{Width};
+
+   my $n_flaps=$flap_edges->size();
+   my @flaps=();
+   my @flap_vertices=@{rows($vertices)};
+   my $next_flap_vertex=$vertices->rows();
+   for (my $i=0; $i<$n_flaps; ++$i) {
+       my ($ia,$ib) = @{$flap_edges->[$i]};
+       my ($a,$b) = ($vertices->[$ia],$vertices->[$ib]);
+       my $vec = $b-$a;
+       my $norm_vec = sqrt($vec*$vec);
+       $flap_width = max($norm_vec*$flap_width_rel, $flap_width_min) unless defined($flap_width); # only first flap counts
+       my $scp = ($b->[0] - $a->[0])/$norm_vec;
+       # beware of numerical atrocities
+       if ($scp>1.0) { $scp=1.0 } elsif ($scp<-1.0) { $scp=-1.0 }
+       my $alpha = $vec->[1]>=0.0 ? Math::Trig::acos($scp) : -Math::Trig::acos($scp);
+       $alpha -= Math::Trig::pi/2;
+       my $translation = new Vector<Float>(cos($alpha) * $flap_width, sin($alpha) * $flap_width);
+       push @flaps, [$ia, $next_flap_vertex, $next_flap_vertex+1, $ib];
+       push @flap_vertices, $a+$translation+$flap_cutoff*$vec;
+       push @flap_vertices, $b+$translation-$flap_cutoff*$vec;
+       $next_flap_vertex += 2;
+   }
+
+   my $flap_vertices_matrix=new Matrix<Float>(@flap_vertices);
+
+   unshift @{$self->elements},
+       new Visual::Polygons( Name => "flaps",
+                             Points => $flap_vertices_matrix,
+                             PointLabels => "hidden",
+                             PointStyle => "hidden",
+                             Facets => \@flaps,
+                             FacetColor => $Visual::Color::PlanarNetFlapColor,
+                             EdgeThickness => 0.05,
+                             NEdges => 4*($self->PlanarNet->POLYTOPE->N_VERTICES-1),
+                             $decor
+           );
+   visualize($self);
+}
+
+
+object PlanarNet {
+
+# @category Visualization
+# This function is the main purpose of the entire class [[PlanarNet]].
+# @options %Visual::Polygons::decorations
+# @return Visual::PlanarNet
+
+user_method VISUAL(%Visual::Polygons::decorations) : VERTICES, MAXIMAL_POLYTOPES, VIF_CYCLIC_NORMAL, VF_MAP, VF_MAP_INV, FLAPS , POLYTOPE.N_VERTICES {
+   my ($this,$decor)=@_;
+   
+   my $vif=$this->VIF_CYCLIC_NORMAL;
+   my $vf_map=$this->VF_MAP;
+   my $vf_map_inv=$this->VF_MAP_INV;
+
+   my $n_facets=$this->MAXIMAL_POLYTOPES->rows();
+   die "VIF_CYCLIC_NORMAL and MAXIMAL_POLYTOPES sizes do not match" unless $vif->size() == $n_facets;
+
+   # faces of the planar net
+   my $vertices=dehomogenize($this->VERTICES);
+   my @polygons = ();
+   for (my $i=0; $i<$n_facets; ++$i) {
+      my @this_face = map { $vf_map->{new Pair<Int,Int>($_,$i)} } @{$vif->[$i]};
+      push @polygons, \@this_face;
+   }
+
+   my $Layout = new Visual::Polygons( Name => "planar_net_".$this->name,
+                                      Points => $vertices,
+                                      PointLabels => $vf_map_inv,
+                                      Facets => \@polygons,
+                                      NEdges => $n_facets-1 + 2*($this->POLYTOPE->N_VERTICES-1),
+                                      $decor
+       );
+   visualize( new Visual::PlanarNet(Name => $this->name, PlanarNet => $this, $Layout) );
+}
+
+}
+
+
+package Visual::Color;
+
+# Color for flaps in the visualization of planar nets
+custom $PlanarNetFlapColor="255 255 255"; # white
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

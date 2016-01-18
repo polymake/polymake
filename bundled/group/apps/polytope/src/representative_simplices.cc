@@ -75,7 +75,7 @@ representative_interior_and_boundary_ridges(perl::Object p, perl::OptionSet opti
    const bool is_config = p.isa("PointConfiguration");
 
    const int d = is_config 
-      ? p.give("DIM")
+      ? ((int) p.give("VECTOR_DIM"))-1
       : p.give("COMBINATORIAL_DIM");
 
    std::string vif_property = options["vif_property"];

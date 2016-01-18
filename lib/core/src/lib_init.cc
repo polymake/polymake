@@ -14,16 +14,21 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/internal/lib_init.h"
+#include "polymake/internal/pool_allocator.h"
 
 #include <cstring>
 #include <memory>
 #include <cstdio>
 #include <gmp.h>
 
+extern "C" {
+   void* __gmp_default_allocate(size_t);
+}
+
 namespace {
 
-#if defined(__GNUC__)
+// clang also defines __GNUC__, this is only for libstdc++
+#if defined(__GLIBCXX__)
 
 __gnu_cxx::__pool_alloc<char> gmp_allocator;
 void* pm_gmp_allocate(size_t n) { return gmp_allocator.allocate(n); }
@@ -43,7 +48,8 @@ void* pm_gmp_reallocate(void* p, size_t old_sz, size_t new_sz)
    return new_p;
 }
 
-#elif defined(__INTEL_COMPILER)
+// no GNU extensions available, hence use default allocator
+#elif defined(__INTEL_COMPILER) || defined(_LIBCPP_VERSION)
 
 std::allocator<char> gmp_allocator;
 void* pm_gmp_allocate(size_t n) { return gmp_allocator.allocate(n); }
@@ -59,14 +65,24 @@ void* pm_gmp_reallocate(void* p, size_t old_sz, size_t new_sz)
    return new_p;
 }
 
-#endif // __INTEL_COMPILER
+#endif
 
-}
-namespace pm {
+void init_gmp_memory_management() __attribute__((constructor));
 
 void init_gmp_memory_management()
 {
-   mp_set_memory_functions(pm_gmp_allocate, pm_gmp_reallocate, pm_gmp_deallocate);
+   // switch to custom GMP allocators only if no other component did it before
+   typedef void* (*alloc_t)(size_t);
+#if __GNU_MP_VERSION>4 || __GNU_MP_VERSION==4 && __GNU_MP_VERSION_MINOR>=2
+   alloc_t was_alloc;
+   mp_get_memory_functions(&was_alloc, NULL, NULL);
+   const alloc_t def_alloc=&__gmp_default_allocate;
+#else
+   alloc_t was_alloc=__gmp_allocate_func;
+   const alloc_t def_alloc=&malloc;
+#endif
+   if (was_alloc==def_alloc)
+      mp_set_memory_functions(pm_gmp_allocate, pm_gmp_reallocate, pm_gmp_deallocate);
 }
 
 }

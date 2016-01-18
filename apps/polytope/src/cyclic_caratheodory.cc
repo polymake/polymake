@@ -58,8 +58,8 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# Produce a //d//-dimensional cyclic polytope with //n// points."
                   "# Prototypical example of a neighborly polytope.  Combinatorics completely known"
                   "# due to Gale's evenness criterion.  Coordinates are chosen on the trigonometric"
-                  "# moment curve."
-                  "# @param Int d the dimension"
+                  "# moment curve. For cyclic polytopes from other curves, see [[polytope::cyclic]]."
+                  "# @param Int d the dimension. Required to be even."
                   "# @param Int n the number of points"
                   "# @return Polytope",
                   &cyclic_caratheodory,"cyclic_caratheodory($$)");

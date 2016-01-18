@@ -90,11 +90,7 @@ void quotient_space_faces(perl::Object p)
    p.take("QUOTIENT_SPACE.SYMMETRY_GROUP.GENERATORS") << induced_symmetry_group_generators(n, sym_group_generators, face_orbits_of_dim);
 }
 
-UserFunction4perl("# @category Quotient spaces"
-                  "# Find the faces of the quotient space represented by //P// and its [[IDENTIFICATION_GROUP]]."
-                  "# @param Polytope P",
-                  &quotient_space_faces,
-                  "quotient_space_faces(Polytope)");
+Function4perl(&quotient_space_faces,"quotient_space_faces(Polytope)");
 
 
 } }

@@ -29,7 +29,7 @@ namespace polymake { namespace topaz {
 bool delete_face(FacetList &C, const Set<int>& face)
 {
    std::list< Set<int> > deletedFaces;
-   if (C.eraseMin(face, back_inserter(deletedFaces))) {
+   if (C.eraseSupersets(face, back_inserter(deletedFaces))) {
       do {
          // insert the parts of the boundary not containing the face
          const Set<int> deleted = deletedFaces.front();  deletedFaces.pop_front();

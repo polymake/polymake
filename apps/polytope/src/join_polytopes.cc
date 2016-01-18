@@ -28,7 +28,7 @@ perl::Object join_polytopes(perl::Object p1, perl::Object p2, perl::OptionSet op
    if (!bounded)
       throw std::runtime_error("join_polytopes: input polyhedron not BOUNDED");
 
-   const bool noc=options["noc"];
+   const bool noc=options["no_coordinates"];
 
    perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
    p_out.set_description() << "Join of " << p1.name() << " and " << p2.name() << endl;
@@ -80,14 +80,16 @@ perl::Object join_polytopes(perl::Object p1, perl::Object p2, perl::OptionSet op
 template <typename Scalar>
 perl::Object free_sum(perl::Object p1, perl::Object p2, perl::OptionSet options)
 {
+   const bool force_centered=options["force_centered"];
+
    const bool bounded=p1.give("BOUNDED") && p2.give("BOUNDED");
    if (!bounded)
       throw std::runtime_error("free_sum: input polyhedron not bounded");
 
    const bool centered=p1.give("CENTERED") && p2.give("CENTERED");
-   if (!centered)
-      throw std::runtime_error("free_sum: input polyhedron not centered");
-   const bool noc=options["noc"];
+   if (!centered && force_centered)
+      throw std::runtime_error("free_sum: input polyhedron not centered. If you want to continue, you may use the option 'force_centered=>0'");
+   const bool noc=options["no_coordinates"];
 
    perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
    p_out.set_description() << "Free sum of "<< p1.name() << " and " << p2.name() << endl;
@@ -137,15 +139,39 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# Construct a new polyhedron as the join of two given bounded ones."
                           "# @param Polytope P1"
                           "# @param Polytope P2"
-                          "# @return Polytope",
-                          "join_polytopes<Scalar>(Polytope<Scalar> Polytope<Scalar>, {noc => 0})");
+                          "# @option Bool no_coordinates produces a pure combinatorial description."
+                          "# @return Polytope"
+                          "# @example To join two squares, use this:"
+                          "# > $p = join_polytopes(cube(2),cube(2));"
+                          "# > print $p->VERTICES;"
+                          "# | 1 -1 -1 -1 0 0"
+                          "# | 1 1 -1 -1 0 0"
+                          "# | 1 -1 1 -1 0 0"
+                          "# | 1 1 1 -1 0 0"
+                          "# | 1 0 0 1 -1 -1"
+                          "# | 1 0 0 1 1 -1"
+                          "# | 1 0 0 1 -1 1"
+                          "# | 1 0 0 1 1 1",
+                          "join_polytopes<Scalar>(Polytope<Scalar> Polytope<Scalar>, {no_coordinates => 0})");
 
 UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# Construct a new polyhedron as the free sum of two given bounded ones."
                           "# @param Polytope P1"
                           "# @param Polytope P2"
-                          "# @return Polytope",
-                          "free_sum<Scalar>(Polytope<Scalar> Polytope<Scalar>, {noc => 0})");
+                          "# @option Bool force_centered if the input polytopes must be centered. Defaults to true."
+                          "# @option Bool no_coordinates produces a pure combinatorial description. Defaluts to false."
+                          "# @return Polytope"
+                          "# @example > $p = free_sum(cube(2),cube(2));"
+                          "# > print $p->VERTICES;"
+                          "# | 1 -1 -1 0 0"
+                          "# | 1 1 -1 0 0"
+                          "# | 1 -1 1 0 0"
+                          "# | 1 1 1 0 0"
+                          "# | 1 0 0 -1 -1"
+                          "# | 1 0 0 1 -1"
+                          "# | 1 0 0 -1 1"
+                          "# | 1 0 0 1 1",
+                          "free_sum<Scalar>(Polytope<Scalar> Polytope<Scalar>, {force_centered=>1, no_coordinates=> 0})");
 } }
 
 // Local Variables:

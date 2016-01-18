@@ -33,7 +33,7 @@ use Polymake::Struct (
    [ '$EdgeThickness' => '#%', default => 'undef' ],
    [ '$EdgeStyle' => '#%', default => 'undef' ],
    [ '$Closed' => '#%', default => 'defined($this->FacetNeighbors) && $this->Dim==3' ],
-   [ '$NEdges' => '#%'],
+   [ '$NEdges' => '#%', default => 'croak("NEdges missing")' ],
 );
 
 1

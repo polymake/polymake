@@ -23,7 +23,7 @@
 #include "polymake/Vector.h"
 #include "polymake/Bitset.h"
 #include "polymake/permutations.h"
-#include "polymake/polytope/linsolver.h"
+#include "polymake/polytope/lpch_dispatcher.h"
 
 namespace polymake { namespace polytope { namespace ppl_interface {
 
@@ -45,13 +45,24 @@ public:
    matrix_pair
    enumerate_vertices(const Matrix<coord_type>& Inequalities, const Matrix<coord_type>& Equations, const bool isCone = false, const bool primal = true); 
 
-   /*
+
    typedef std::pair<Bitset, ListMatrix< Vector<coord_type> > > non_redundant;
 
-   /// @retval first: indices of vertices, second: certificates (co-vertices)
-   non_redundant
-   find_vertices_among_points(const Matrix<coord_type>& Points);
+   /// @retval indices of the vertices 
+   Bitset
+   find_vertices_among_points(const Matrix<coord_type>& Points, const Matrix<coord_type>& Lineality, const bool isCone = false);
 
+   Bitset
+   find_vertices_among_points_given_inequalities(const Matrix<coord_type>& Points, const Matrix<coord_type>& Inequalities);
+
+   /// @retval indices of the facets 
+   Bitset
+   find_facets_among_inequalities(const Matrix<coord_type>& Inequalities, const Matrix<coord_type>& Equations, const bool isCone = false);
+
+   Bitset
+   find_facets_among_inequalities_given_points(const Matrix<coord_type>& Inequalities, const Matrix<coord_type>& Points);
+
+   /*
    typedef std::pair<Bitset, Bitset > non_redundant_canonical;
 
    /// @retval first: indices of vertices, second: indices of lineality_space

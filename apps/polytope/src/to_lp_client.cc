@@ -25,23 +25,7 @@ bool to_input_feasible (perl::Object p) {
    Matrix<Scalar> I = p.lookup("FACETS | INEQUALITIES"),
                   E = p.lookup("LINEAR_SPAN | EQUATIONS");
 
-   const int d = std::max(I.cols(),E.cols());
-   if (d == 0)
-      return true;
-
-   typedef to_interface::solver<Scalar> Solver;
-   try {
-      Vector<Scalar> obj = unit_vector<Scalar>(I.cols(),0);
-      Solver solver;
-      typename Solver::lp_solution S=solver.solve_lp(I, E, obj, true);
-   } 
-   catch (infeasible) {
-      return false;
-   }
-   catch (unbounded) {
-      return true;
-   } 
-   return true;
+   return to_interface::to_input_feasible_impl(I, E);
 }
 
 
@@ -60,34 +44,14 @@ bool to_input_bounded  (perl::Object p) {
    Matrix<Scalar> F = p.give("FACETS | INEQUALITIES"),
                   E = p.lookup("AFFINE_HULL | EQUATIONS");
 
-   int r = F.cols();
-   Matrix<Scalar> Eq;
-   if ( E.rows() ) { // FIXME write more efficiently
-      Eq = vector2col(-(unit_vector<Scalar>(r,0)))|vector2col(zero_vector<Scalar>(r))|T(F/E/-E);
-   } else {
-      Eq = vector2col(-(unit_vector<Scalar>(r,0)))|vector2col(zero_vector<Scalar>(r))|T(F);
-   }
-   r = Eq.cols()-2;
-   Matrix<Scalar> Ineq = vector2col(zero_vector<Scalar>(r))|vector2col(-(ones_vector<Scalar>(r)))|((unit_matrix<Scalar>(r)));
-   Vector<Scalar> v = (unit_vector<Scalar>(r+2,1));
-
-   typedef to_interface::solver<Scalar> Solver;
-   try {
-      Solver solver;
-      typename Solver::lp_solution S=solver.solve_lp(Ineq, Eq, v, true);
-      return S.first > 0 ? true : false;
-   } 
-   catch ( infeasible ) {
-      return true;     // the dual solution is unbounded, so the original problem is infeasible. 
-   }
-   return true;
+   return to_interface::to_input_bounded_impl(L, F, E);
 }
 
 
 
 
 template <typename Scalar>
-void to_solve_lp(perl::Object p, perl::Object lp, bool maximize)
+void to_solve_lp(perl::Object p, perl::Object lp, bool maximize, perl::OptionSet options)
 {
    typedef to_interface::solver<Scalar> Solver;
    const Matrix<Scalar> H=p.give("FACETS | INEQUALITIES"),
@@ -96,6 +60,10 @@ void to_solve_lp(perl::Object p, perl::Object lp, bool maximize)
 
    try {
       Solver solver;
+      if(options.exists("initial_basis")){
+         const Set<int> basis = options["initial_basis"];
+         solver.set_basis(basis);
+      }
       typename Solver::lp_solution S=solver.solve_lp(H, E, Obj, maximize);
       lp.take(maximize ? "MAXIMAL_VALUE" : "MINIMAL_VALUE") << S.first;
       lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << S.second;
@@ -119,7 +87,7 @@ void to_solve_lp(perl::Object p, perl::Object lp, bool maximize)
 
 FunctionTemplate4perl("to_input_feasible<Scalar> (Polytope<Scalar>)");
 FunctionTemplate4perl("to_input_bounded<Scalar> (Polytope<Scalar>)");
-FunctionTemplate4perl("to_solve_lp<Scalar> (Polytope<Scalar>, LinearProgram<Scalar>, $) : void");
+FunctionTemplate4perl("to_solve_lp<Scalar> (Polytope<Scalar>, LinearProgram<Scalar>, $; {initial_basis => undef}) : void");
 
 } }
 

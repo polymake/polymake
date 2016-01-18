@@ -39,29 +39,28 @@ custom $latte_ehrhart_param="";
 label latte
 
 sub write_latte_ineq {
-   my $tempname = shift;
-   my $this = shift;
-   my $int = shift;
+   my ($this, $tempname, $int)=@_;
    # daten: ineq / eq
-   my $n_ineq = ($this->FACETS | INEQUALITIES)->rows;
-   my $fac = dense(eliminate_denominators_in_rows($this->FACETS | INEQUALITIES));
+   my $ineq = $this->FACETS | INEQUALITIES;
+   my $n_ineq = $ineq->rows;
+   my $fac = dense(eliminate_denominators_in_rows($ineq));
    my $n_lines = $n_ineq;
    my $ah;
    if (defined (my $AH = $this->lookup("AFFINE_HULL | EQUATIONS"))) {
-      $n_lines = $n_lines + ($AH->rows);
+      $n_lines = $n_lines + $AH->rows;
       $ah = dense(eliminate_denominators_in_rows($AH));
    }
         
    open(my $P, ">$tempname")
     or die "can't create temporary file $tempname: $!";
    #header
-   print $P $n_lines, " ", ($this->CONE_AMBIENT_DIM), "\n";
+   print $P $n_lines, " ", $this->CONE_AMBIENT_DIM, "\n";
         
    # facet lines
    if ($int) {
-      $fac=$fac*($this->CONE_DIM);
+      $fac *= $this->CONE_DIM;
       for (my $i=0; $i<$fac->rows; $i++) {
-        $fac->($i,0) -= 1;
+        $fac->elem($i,0) -= 1;
       }
    }
    print $P $fac;
@@ -115,15 +114,15 @@ sub latte_cleanup {
 
 object Polytope<Rational> {
 
-    rule latte.integer_points: N_LATTICE_POINTS : CONE_AMBIENT_DIM , FACETS | INEQUALITIES {
+    rule latte.integer_points: N_LATTICE_POINTS : CONE_AMBIENT_DIM, CONE_DIM, FACETS | INEQUALITIES {
         my $tempname=new Tempfile;
         my $interior = 0;
-        write_latte_ineq($tempname, $this, $interior);
+        write_latte_ineq($this, $tempname, $interior);
         
         # latte 1.2 does not do a full redundancy check by default, so force it when using inequalities
         # furthermore it might produce wrong output for 0-dim polytopes when given the far face inequality
         my $check = "--redundancy-check=full-cddlib";
-        if (defined($this->lookup("FACETS")) && $this->lookup("CONE_DIM") > 1) {
+        if (defined($this->lookup("FACETS")) && $this->CONE_DIM > 1) {
             $check = "--redundancy-check=none";
         }
         if ($Verbose::external) {
@@ -158,10 +157,10 @@ object Polytope<Rational> {
 
     # Read [[FACETS]], multiply with POLYTOPE_DIM+1 (or CONE_DIM, respectively!) and substract 1 from the first column.
     # Call LattE's count on the polytope having this matrix as facet matrix.
-    rule latte.integer_points: N_INTERIOR_LATTICE_POINTS : CONE_AMBIENT_DIM , FACETS | INEQUALITIES , CONE_DIM {
+    rule latte.integer_points: N_INTERIOR_LATTICE_POINTS : CONE_AMBIENT_DIM, CONE_DIM, FACETS | INEQUALITIES {
         my $tempname=new Tempfile;
         my $interior = 1;
-        write_latte_ineq($tempname, $this, $interior);
+        write_latte_ineq($this, $tempname, $interior);
         
         # latte 1.2 does not do a full redundancy check by default, so force it when using inequalities
         # furthermore it might produce wrong output for 0-dim polytopes when given the far face inequality
@@ -182,17 +181,16 @@ object Polytope<Rational> {
 
 }
 
-object LatticePolytope {
+object_specialization Polytope::Lattice {
 
     rule EHRHART_POLYNOMIAL_COEFF : {
       $this->EHRHART_POLYNOMIAL_COEFF = ones_vector<Rational>(1);
     }
     precondition : CONE_DIM { $this->CONE_DIM == 1 }
-    precondition : LATTICE;
 
-    rule latte.ehrhartpoly: LATTICE , EHRHART_POLYNOMIAL_COEFF : CONE_AMBIENT_DIM , FACETS | INEQUALITIES {
+    rule latte.ehrhartpoly: LATTICE, EHRHART_POLYNOMIAL_COEFF : CONE_AMBIENT_DIM, FACETS | INEQUALITIES {
         my $tempname=new Tempfile;
-        write_latte_ineq($tempname, $this);
+        write_latte_ineq($this, $tempname);
         
         if ($Verbose::external) {
             dbg_print( "running latte's count: $latte_count $latte_ehrhart_param --ehrhart-polynomial $tempname" );
@@ -234,12 +232,10 @@ object LatticePolytope {
 
     }
     weight 5.8;
+    precondition override : BOUNDED && FEASIBLE;
     precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM > 0 && $this->CONE_AMBIENT_DIM <= 100 } # upper limits for matrix dimension: 
-    precondition : FACETS | INEQUALITIES { ($this->FACETS | INEQUALITIES)->rows <= 50000 }            # default values stored explicitely of cdd used by latte
-    precondition : CONE_DIM { $this->CONE_DIM > 1 }                                                   # latte does not like polytopes that only hav a far facet
-    precondition : FEASIBLE;
-
-
+    precondition : FACETS | INEQUALITIES { ($this->FACETS | INEQUALITIES)->rows <= 50000 }            # default values stored explicitly for cdd used by latte
+    precondition : CONE_DIM { $this->CONE_DIM > 1 }                                                   # latte does not like polytopes that only have a far facet
 
 }
 

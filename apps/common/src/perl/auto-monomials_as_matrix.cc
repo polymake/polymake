@@ -16,9 +16,10 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
 #include "polymake/Polynomial.h"
 #include "polymake/Rational.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -29,5 +30,7 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(monomials_as_matrix_f1, perl::Canned< const Polynomial< Rational, int > >);
+   FunctionInstance4perl(monomials_as_matrix_f1, perl::Canned< const Polynomial< TropicalNumber< Max, Rational >, int > >);
+   FunctionInstance4perl(monomials_as_matrix_f1, perl::Canned< const Polynomial< TropicalNumber< Min, Rational >, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

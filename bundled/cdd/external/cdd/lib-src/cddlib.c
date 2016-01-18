@@ -1,6 +1,6 @@
 /* cddlib.c: cdd library  (library version of cdd)
-   written by Komei Fukuda, fukuda@ifor.math.ethz.ch
-   Version 0.94f, February 7, 2008
+   written by Komei Fukuda, fukuda@math.ethz.ch
+   Version 0.94h, April 30, 2015
    Standard ftp site: ftp.ifor.math.ethz.ch, Directory: pub/fukuda/cdd
 */
 
@@ -146,10 +146,26 @@ void dd_InitialDataSetup(dd_ConePtr cone)
 {
   long j, r;
   dd_rowset ZSet;
-  dd_Arow Vector1,Vector2;
+  static dd_Arow Vector1,Vector2;
+  static dd_colrange last_d=0;
 
-  dd_InitializeArow(cone->d, &Vector1);
-  dd_InitializeArow(cone->d, &Vector2);
+  if (last_d < cone->d){
+    if (last_d>0) {
+    for (j=0; j<last_d; j++){
+      dd_clear(Vector1[j]);
+      dd_clear(Vector2[j]);
+    }
+    free(Vector1); free(Vector2);
+    }
+    Vector1=(mytype*)calloc(cone->d,sizeof(mytype));
+    Vector2=(mytype*)calloc(cone->d,sizeof(mytype));
+    for (j=0; j<cone->d; j++){
+      dd_init(Vector1[j]);
+      dd_init(Vector2[j]);
+    }
+    last_d=cone->d;
+  }
+
   cone->RecomputeRowOrder=dd_FALSE;
   cone->ArtificialRay = NULL;
   cone->FirstRay = NULL;
@@ -185,8 +201,6 @@ void dd_InitialDataSetup(dd_ConePtr cone)
   cone->Iteration = cone->d + 1;
   if (cone->Iteration > cone->m) cone->CompStatus=dd_AllFound; /* 0.94b  */
   set_free(ZSet);
-  dd_FreeArow(cone->d, Vector1);
-  dd_FreeArow(cone->d, Vector2);
 }
 
 dd_boolean dd_CheckEmptiness(dd_PolyhedraPtr poly, dd_ErrorType *err)

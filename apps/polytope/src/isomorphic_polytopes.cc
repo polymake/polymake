@@ -44,8 +44,14 @@ UserFunction4perl("# @category Comparing"
                   "# The problem is reduced to graph isomorphism of the vertex-facet incidence graphs."
                   "# @param Cone P1 the first cone/polytope"
                   "# @param Cone P2 the second cone/polytope"
-                  "# @return Bool 'true' if the face lattices are isomorphic, 'false' otherwise",
-                  &isomorphic, "isomorphic(Cone,Cone)");        // FIXME: CombinatorialPolytope in all signatures
+                  "# @return Bool 'true' if the face lattices are isomorphic, 'false' otherwise"
+                  "# @example The following compares the standard 2-cube with a polygon generated as"
+                  "# the convex hull of five points.  The return value is true since both polygons are"
+                  "# quadrangles."
+                  "# > $p = new Polytope(POINTS=>[[1,-1,-1],[1,1,-1],[1,-1,1],[1,1,1],[1,0,0]]);"
+                  "# > print isomorphic(cube(2),$p);"
+                  "# | 1",
+                  &isomorphic, "isomorphic(Cone,Cone)");
 
 UserFunction4perl("# @category Comparing"
                   "# Find the permutations of facets and vertices which maps the cone or polyhedron //P1// to //P2//."

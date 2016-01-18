@@ -64,7 +64,7 @@ perl::Object edge_contraction(perl::Object p_in, perl::OptionSet options)
          continue;
 
       Set<int> V;
-      for (FacetList::iteratorMax star = F.findMax(scalar2set(*v)); !star.at_end(); ++star)
+      for (FacetList::superset_iterator star = F.findSupersets(scalar2set(*v)); !star.at_end(); ++star)
          V += *star-*v;
 
       for (Entire< Set<int> >::const_iterator w=entire(V); !w.at_end(); ++w) {
@@ -74,15 +74,15 @@ perl::Object edge_contraction(perl::Object p_in, perl::OptionSet options)
          tested_edges += e;
          
          std::list< Set<int> > link_v, link_w, link_e;
-         for (FacetList::iteratorMax star = F.findMax(scalar2set(*v)); !star.at_end(); ++star)
+         for (FacetList::superset_iterator star = F.findSupersets(scalar2set(*v)); !star.at_end(); ++star)
             link_v.push_back(*star-*v);
-         for (FacetList::iteratorMax star = F.findMax(scalar2set(*w)); !star.at_end(); ++star)
+         for (FacetList::superset_iterator star = F.findSupersets(scalar2set(*w)); !star.at_end(); ++star)
             link_w.push_back(*star-*w);
-         for (FacetList::iteratorMax star = F.findMax(e); !star.at_end(); ++star)
+         for (FacetList::superset_iterator star = F.findSupersets(e); !star.at_end(); ++star)
             link_e.push_back(*star-e);
 
          if (is_contractible(link_v,link_w,link_e)) { // e is contarctible
-            F.eraseMin(scalar2set(*w)); // remove star(w)
+            F.eraseSupersets(scalar2set(*w)); // remove star(w)
 
             // update star(w)-star(e)
             for (Entire< std::list< Set<int> > >::const_iterator l=entire(link_w); !l.at_end(); ++l)
@@ -95,7 +95,7 @@ perl::Object edge_contraction(perl::Object p_in, perl::OptionSet options)
    }
 
    if (!is_closed)  // remove apex
-      F.eraseMin(scalar2set(n_vert));
+      F.eraseSupersets(scalar2set(n_vert));
    F.squeeze();
 
    perl::Object p_out("SimplicialComplex");

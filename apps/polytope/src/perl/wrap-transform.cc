@@ -14,12 +14,12 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/Rational.h"
-#include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/Vector.h"
-#include "polymake/Set.h"
+#include "polymake/Matrix.h"
 #include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
+#include "polymake/Set.h"
+#include "polymake/Vector.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -45,5 +45,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(translate_T_x_X_x, Rational, perl::Canned< const Vector< Rational > >);
    FunctionInstance4perl(scale_T_x_C_x, Rational, perl::Canned< const Rational >);
    FunctionInstance4perl(scale_T_x_C_x, Rational, int);
+   FunctionInstance4perl(translate_T_x_X_x, Rational, perl::Canned< const pm::IndexedSlice<pm::Vector<pm::Rational>&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&, void> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

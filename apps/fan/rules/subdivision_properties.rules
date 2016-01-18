@@ -1,0 +1,175 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object SubdivisionOfVectors {
+
+file_suffix sov
+
+# @category Geometry
+# The vectors of the subdivision, 
+property VECTORS : Matrix<Scalar> {
+
+  method canonical { 
+      my ($this,$M)=@_;
+      if ($this->isa("SubdivisionOfPoints")) {
+         polytope::canonicalize_point_configuration($M);
+      }
+  }
+}
+
+# @category Geometry
+# Dimension of the space in which the vector configuration lives.
+property VECTOR_AMBIENT_DIM : Int;
+
+
+# @category Geometry
+# Dimension of the linear hull of the vector configuration.
+property VECTOR_DIM : Int;
+
+
+# @category Geometry
+# [[AMBIENT_DIM]] and [[DIM]] coincide.
+property FULL_DIM : Bool;
+
+
+# @category Geometry
+# Number of [[VECTORS]].
+property N_VECTORS : Int;
+
+
+# @category Geometry
+# Dual basis of the linear hull of the vector configuration
+property LINEAR_SPAN : Matrix<Scalar>;
+
+# @category Visualization
+# Unique names assigned to the [[VECTORS]].
+# If specified, they are shown by visualization tools instead of point indices.
+property LABELS : Array<String> : mutable;
+
+# @category Combinatorics
+# Maximal cells of the polyhedral complex.
+# Indices refer to [[VECTORS]]. Points do not have to be vertices of the cells.
+property MAXIMAL_CELLS : IncidenceMatrix;
+
+# @category Geometry
+# True if [[VECTORS]] for each maximal cell are in convex position.
+property CONVEX : Bool;
+
+# @category Geometry
+# Returns the //i//-th cell of the complex as a [[VectorConfiguration]]
+# @param Int i 
+# @return VectorConfiguration
+user_method cell($) : MAXIMAL_CELLS , VECTORS {
+   my ($self, $i) = @_;
+   my $v=new VectorConfiguration<Scalar>;
+   $v->VECTORS=$self->VECTORS->minor($self->MAXIMAL_CELLS->[$i],All);
+   return $v;
+}
+
+
+
+}
+
+object SubdivisionOfPoints {
+
+file_suffix sop
+
+# @category Geometry
+# The points of the configuration.  Multiples allowed.
+property POINTS = override VECTORS;
+
+# @category Geometry
+# The number of [[POINTS]] in the configuration.
+property N_POINTS = override N_VECTORS;
+
+# @category Geometry
+# Affine dimension of the point configuration.
+# Similar to [[PointConfiguration::DIM]].
+user_method DIM() : VECTOR_DIM {
+   return $_[0]->VECTOR_DIM-1;
+}
+
+# @category Geometry
+# Ambient dimension of the point configuration (without the homogenization coordinate).
+# Similar to [[PointConfiguration::AMBIENT_DIM]].
+user_method AMBIENT_DIM() : VECTOR_AMBIENT_DIM {
+   return $_[0]->VECTOR_AMBIENT_DIM-1;
+}
+
+# @category Visualization
+# Unique names assigned to the [[POINTS]].
+# If specified, they are shown by visualization tools instead of point indices.
+property POINT_LABELS = override LABELS;
+
+# @category Combinatorics
+# The splits that are coarsenings of the subdivision.
+# If the subdivision is regular these form the unique split decomposition of
+# the corresponding weight function.
+property REFINED_SPLITS : Set<Int>;
+
+# @category Geometry
+# Vector assigning a weight to each point to get a regular subdivision.
+property WEIGHTS : Vector<Scalar>;
+
+# @category Geometry
+# Whether the subdivision is regular, i.e. induced by a weight vector.
+property REGULAR : Bool;
+
+
+# @category Geometry
+# The polyhedral complex induced by the cells of the subdivision.
+property POLYHEDRAL_COMPLEX : PolyhedralComplex<Scalar>;
+
+# @category Geometry
+# Returns the //i//-th cell of the complex as a [[PointConfiguration]]
+# @param Int i
+# @return PointConfiguration
+user_method cell($) : MAXIMAL_CELLS , POINTS {
+   my ($self, $i) = @_;
+   my $v=new PointConfiguration<Scalar>;
+   $v->POINTS=$self->POINTS->minor($self->MAXIMAL_CELLS->[$i],All);
+   return $v;
+}
+
+
+
+}
+
+
+object polytope::Polytope {
+
+# @category Triangulation and volume
+# Polytopal Subdivision of the polytope using only its vertices.
+property POLYTOPAL_SUBDIVISION : SubdivisionOfPoints<Scalar> : multiple;
+
+
+rule POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS : VertexPerm.POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS, VertexPerm.PERMUTATION {
+   $this->POLYTOPAL_SUBDIVISION->MAXIMAL_CELLS=permuted_cols($this->VertexPerm->POLYTOPAL_SUBDIVISION->MAXIMAL_CELLS, $this->VertexPerm->PERMUTATION);
+}
+weight 1.20;
+
+}
+
+
+
+object polytope::PointConfiguration {
+
+# @category Triangulation and volume
+#Polytopal Subdivision of the point configuration
+property POLYTOPAL_SUBDIVISION : SubdivisionOfPoints<Scalar> : multiple;
+
+}
+
+

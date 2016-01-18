@@ -94,7 +94,7 @@ UserFunction4perl("# @category Producing a matroid from other objects\n"
 UserFunction4perl("# @category Other\n"
                   "# Creates the characteristic- and the rank-plueckervector of a matroid."
                   "# @param Matroid m"
-                  "# @return ListReturn (Vector<Integer>, Vector<Integer>)",
+                  "# @return List (Vector<Integer>, Vector<Integer>)",
                   &matroid_plueckervector, "matroid_plueckervector");
 
 } }

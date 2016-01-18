@@ -17,6 +17,8 @@
 #ifndef POLYMAKE_COMMON_PRIMES_H
 #define POLYMAKE_COMMON_PRIMES_H
 
+namespace {
+
 // The following list is taken from http://primes.utm.edu/lists/small/1000.txt
 
 static const long polymake_primes[] = {  // how we long for c++11
@@ -123,6 +125,55 @@ static const long polymake_primes[] = {  // how we long for c++11
 };
 
 const int n_polymake_primes = 1000;
+
+} // end anonymous namespace
+
+namespace polymake { namespace common { namespace primes {
+
+typedef long number_t;
+typedef Map<number_t, number_t> ExponentMap;
+
+ExponentMap naive_partial_prime_factorization(const Integer& n)
+{
+   Integer rest(n);
+   ExponentMap exponent_of;
+   number_t const* pptr = polymake_primes;
+   int i=0;
+   while (i < n_polymake_primes && rest > 1) {
+      const Div<Integer> qr = div(rest, *pptr);
+      if (qr.rem == 0) { 
+         exponent_of[*pptr]++;
+         rest = qr.quot;
+      } else 
+         ++pptr, ++i;
+   }
+   if (rest > 1) {
+      exponent_of[rest.to_long()] = 1;
+      cerr << "Warning: did not completely factorize the input. The result may simplify further."
+           << endl;
+   }
+   return exponent_of;
+}
+
+std::pair<number_t, number_t> integer_and_radical_of_sqrt(const Integer &n)
+{
+   const ExponentMap exponent_of = naive_partial_prime_factorization(n);
+   std::pair<number_t, number_t> ir_sqrt(1,1);
+   for (Entire<ExponentMap>::const_iterator mit = entire(exponent_of); !mit.at_end(); ++mit) {
+      number_t rest_exponent = mit->second;
+      if (mit->second & 1) { // odd exponent
+         ir_sqrt.second *= mit->first;
+         rest_exponent--;
+      }
+      while (rest_exponent) {
+         ir_sqrt.first *= mit->first;
+         rest_exponent -= 2;
+      }
+   }
+   return ir_sqrt;
+}
+
+} } } // namespaces
 
 #endif // POLYMAKE_COMMON_PRIMES_H
 

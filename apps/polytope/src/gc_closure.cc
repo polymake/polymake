@@ -87,7 +87,7 @@ perl::Object make_totally_dual_integral(perl::Object p_in)
 }
 
 /*
- *  Checks weather a given system of inequalities is totally dual integral or not
+ *  Checks wether a given system of inequalities is totally dual integral or not
  */
 bool totally_dual_integral(const Matrix<Rational>& inequalities)
 {
@@ -177,7 +177,9 @@ UserFunction4perl("# @category Optimization"
                   "# Checks weather a given system of inequalities is totally dual integral or not."
                   "# The inequalities should describe a full dimensional polyhedron"
                   "# @param Matrix inequalities"
-                  "# @return Bool", 
+                  "# @return Bool"
+                  "# @example > print totally_dual_integral(cube(2)->FACETS);"
+                  "# | 1",
                   &totally_dual_integral, "totally_dual_integral");
 
 } }

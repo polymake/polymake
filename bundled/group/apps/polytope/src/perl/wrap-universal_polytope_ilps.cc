@@ -14,17 +14,23 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/Rational.h"
-#include "polymake/common/boost_dynamic_bitset.h"
-#include "polymake/Matrix.h"
-#include "polymake/IncidenceMatrix.h"
 #include "polymake/Array.h"
-#include "polymake/SparseMatrix.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
 #include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
 #include "polymake/Set.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/common/boost_dynamic_bitset.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1, typename T2, typename T3>
+   FunctionInterface4perl( universal_polytope_impl_T_x_X_X_x_X, T0,T1,T2,T3 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]), arg4(stack[4]);
+      WrapperReturn( (universal_polytope_impl<T0>(arg0, arg1.get<T1>(), arg2.get<T2>(), arg3, arg4.get<T3>())) );
+   };
+
    template <typename T0, typename T1, typename T2, typename T3, typename T4>
    FunctionInterface4perl( simplexity_lower_bound_T_x_X_X_x_X_o, T0,T1,T2,T3,T4 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]), arg4(stack[4]), arg5(stack[5]);
@@ -41,5 +47,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(simplexity_lower_bound_T_x_X_X_x_X_o, QuadraticExtension< Rational >, boost_dynamic_bitset, perl::Canned< const SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >, perl::Canned< const Array< boost_dynamic_bitset > >, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
    FunctionInstance4perl(simplexity_ilp_T_x_X_X_x_X_o, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< Set< int > > >, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
    FunctionInstance4perl(simplexity_lower_bound_T_x_X_X_x_X_o, Rational, Set< int >, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< Set< int > > >, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
+   FunctionInstance4perl(universal_polytope_impl_T_x_X_X_x_X, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< Set< int > > >, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

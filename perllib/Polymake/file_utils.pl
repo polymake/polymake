@@ -28,20 +28,6 @@ Please set TMPDIR environment variable to a suitable path.
 .
 }
 
-# "filename" (relative or absolute), "dir", ... => full_path || undef
-sub find_file {
-   my $filename=shift;
-   if (-f $filename) {
-      Cwd::abs_path($filename)
-   } else {
-      my $full_path;
-      foreach my $dir (@_) {
-         -f ($full_path="$dir/$filename") and return $full_path;
-      }
-      undef
-   }
-}
-
 # "filename" (relative), [ "dir", ... ] => full_path || undef
 sub find_file_in_path {
    my ($filename, $dirs)=@_;

@@ -64,6 +64,16 @@ det(Matrix<E> M)
    return result;
 }
 
+/// trace of a matrix
+template <typename E>
+E
+trace(Matrix<E> M)
+{
+   E trace(zero_value<E>());
+   for (int i=0; i<M.rows(); ++i)
+      trace += M(i,i);
+   return trace;
+}
 template <typename E>
 typename enable_if<Vector<E>, is_field<E>::value>::type
 reduce(Matrix<E> M, Vector<E> V)
@@ -167,7 +177,7 @@ Matrix<double> inv(Matrix<double> M);
 /// solving systems of linear equations
 template <typename E>
 typename enable_if<Vector<E>, is_field<E>::value>::type
-lin_solve(Matrix<E> A, Vector<E> B)
+lin_solve(Matrix<E> A, Vector<E> b)
 {
    const int m=A.rows(), n=A.cols();
    if (m<n) throw degenerate_matrix();
@@ -186,7 +196,7 @@ lin_solve(Matrix<E> A, Vector<E> B)
       if (!is_one(pivot)) {
          E *e=ppivot;
          for (int i=c+1; i<n; ++i) (*++e) /= pivot;
-         B[r] /= pivot;
+         b[r] /= pivot;
       }
       for (int c2=c+1; c2<m; ++c2) {
          const int r2=row_index[c2];
@@ -195,29 +205,54 @@ lin_solve(Matrix<E> A, Vector<E> B)
          if (!is_zero(factor)) {
             E *e=ppivot;
             for (int i=c+1; i<n; ++i) (*++e2) -= (*++e) * factor;
-            B[r2] -= B[r] * factor;
+            b[r2] -= b[r] * factor;
          }
       }
    }
    for (int c=n; c<m; ++c) {
-      if (!is_zero(B[row_index[c]])) throw infeasible();
+      if (!is_zero(b[row_index[c]])) throw infeasible();
    }
 
    Vector<E> x(n);
    for (int c=n-1; c>=0; --c) {
-      x[c]=B[row_index[c]];
+      x[c]=b[row_index[c]];
       for (int c2=0; c2<c; ++c2) {
          const int r2=row_index[c2];
-         B[r2] -= x[c] * A(r2,c);
+         b[r2] -= x[c] * A(r2,c);
       }
    }
 
    return x;
 }
 
-Vector<double> lin_solve(Matrix<double> A, Vector<double> B);
+class SingularValueDecomposition :
+   public GenericStruct<SingularValueDecomposition> {
+public:
+   typedef Matrix<double> matrix_type;
+
+   // sigma: input matrix converted to the diagonal form
+   // input = left_companion * sigma * T(right_companion)
+   DeclSTRUCT( DeclFIELD(sigma, matrix_type)
+               DeclFIELD(left_companion, matrix_type)
+               DeclFIELD(right_companion, matrix_type));
+};
+
+
+
+Vector<double> lin_solve(Matrix<double> A, Vector<double> b);
+
+Matrix<double> householder_trafo(const Vector<double>& v);
+std::pair< Matrix<double>,Matrix<double> > qr_decomp(Matrix<double> M);
+SingularValueDecomposition singular_value_decomposition(Matrix<double> M);
+Matrix<double> moore_penrose_inverse(const Matrix<double>& M);
 
 } // end namespace pm
+
+namespace polymake {
+
+using pm::SingularValueDecomposition;
+
+}
 
 #endif // POLYMAKE_INTERNAL_DENSE_LINALG_H
 

@@ -616,22 +616,22 @@ public:
    bool exists(int i, int j) const { return operator()(i,j); }
 
    template <typename row_number_consumer, typename col_number_consumer>
-   void squeeze(row_number_consumer rnc, col_number_consumer cnc) { this->data->squeeze(rnc,cnc); }
+   void squeeze(const row_number_consumer& rnc, const col_number_consumer& cnc) { this->data->squeeze(rnc,cnc); }
 
    template <typename row_number_consumer>
-   void squeeze(row_number_consumer rnc) { this->data->squeeze(rnc); }
+   void squeeze(const row_number_consumer& rnc) { this->data->squeeze(rnc); }
 
    /// Delete empty rows and columns, renumber the rest and reduce the dimensions.
    void squeeze() { this->data->squeeze(); }
 
    template <typename row_number_consumer>
-   void squeeze_rows(row_number_consumer rnc) { this->data->squeeze_rows(rnc); }
+   void squeeze_rows(const row_number_consumer& rnc) { this->data->squeeze_rows(rnc); }
 
    /// Delete empty rows, renumber the rest and reduce the dimensions.
    void squeeze_rows() { this->data->squeeze_rows(); }
 
    template <typename col_number_consumer>
-   void squeeze_cols(col_number_consumer cnc) { this->data->squeeze_cols(cnc); }
+   void squeeze_cols(const col_number_consumer& cnc) { this->data->squeeze_cols(cnc); }
 
    /// Delete empty columns, renumber the rest and reduce the dimensions.
    void squeeze_cols() { this->data->squeeze_cols(); }

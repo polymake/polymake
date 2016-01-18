@@ -1,0 +1,144 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object SubdivisionOfVectors {
+
+
+rule LINEAR_SPAN : VECTORS {
+   $this->LINEAR_SPAN=null_space($this->VECTORS);
+}
+weight 1.10;
+
+rule VECTOR_DIM : VECTORS {
+   $this->VECTOR_DIM=rank($this->VECTORS);
+}
+weight 1.10;
+
+rule VECTOR_AMBIENT_DIM : VECTORS {
+   $this->VECTOR_AMBIENT_DIM=$this->VECTORS->cols;
+}
+precondition : VECTORS { $this->VECTORS->rows > 0 }
+weight 0.10;
+
+rule VECTOR_DIM : VECTOR_AMBIENT_DIM, LINEAR_SPAN {
+   $this->VECTOR_DIM= $this->VECTOR_AMBIENT_DIM - $this->LINEAR_SPAN->rows;
+}
+weight 0.10;
+
+rule LINEAR_SPAN : {
+   $this->LINEAR_SPAN=new Matrix<Scalar>;
+}
+precondition : FULL_DIM;
+weight 0.10;
+
+rule N_VECTORS : VECTORS {
+    $this->N_VECTORS=$this->VECTORS->rows;
+}
+weight 0.10;
+
+}
+
+
+object SubdivisionOfPoints {
+
+rule POLYHEDRAL_COMPLEX.VERTICES, POLYHEDRAL_COMPLEX.MAXIMAL_POLYTOPES : POINTS, MAXIMAL_CELLS {
+   my $points=$this->POINTS;
+   my $n_points=$points->rows();
+   my $max_cells=$this->MAXIMAL_CELLS;
+   my $vertices=new Set<Vector<Scalar>>;
+   # VERTICES are the union of all vertices of MAXIMAL_CELLS
+   foreach my $cell (@{$max_cells}) {
+      my $v=$points->minor($cell,All);
+      my $p=new polytope::Polytope<Scalar>(POINTS=> $v);
+      $vertices+=$_ for @{rows($p->VERTICES)};
+   }
+   # find the non-vertex points
+   my $vertex_ord=0;
+   my @vertex_indices;
+   my $i=-1;
+   my @point_map=map {
+      ++$i;
+      if ($vertices->contains($_)) {
+         push @vertex_indices, $i;
+         $vertex_ord++;
+      } else {
+         -1;
+      }
+   } @{$this->POINTS};
+   $this->POLYHEDRAL_COMPLEX->VERTICES=$points->minor(\@vertex_indices,All);
+   # re-index MAXIMAL_CELLS
+   # requires that MAXIMAL_CELLS are really maximal
+   $this->POLYHEDRAL_COMPLEX->MAXIMAL_POLYTOPES=[ map { new Set(grep { $_>=0 } @point_map[@$_]) } @$max_cells ];
+}
+weight 2.10;
+
+rule POLYHEDRAL_COMPLEX.MAXIMAL_POLYTOPES = MAXIMAL_CELLS;
+precondition : CONVEX;
+
+rule POLYHEDRAL_COMPLEX.VERTICES = POINTS;
+precondition : CONVEX;
+
+rule REGULAR : {
+   $this->REGULAR = 1;
+}
+precondition : defined(WEIGHTS);
+
+rule MAXIMAL_CELLS : POINTS, WEIGHTS {
+   $this->MAXIMAL_CELLS = polytope::regular_subdivision($this->POINTS, $this->WEIGHTS);
+}
+weight 3.10;
+#
+rule REGULAR, WEIGHTS : POINTS, MAXIMAL_CELLS {
+   my $pair = polytope::is_regular($this->POINTS, rows($this->MAXIMAL_CELLS));
+   if ($this->REGULAR = $pair->first) {
+      $this->WEIGHTS = $pair->second;
+   }
+}
+weight 3.10;
+
+
+
+}
+
+
+object polytope::Polytope {
+
+property POLYTOPAL_SUBDIVISION {
+
+  rule CONVEX : {
+     $this->CONVEX = 1;
+  }
+  weight 0.1;
+}
+
+rule POLYTOPAL_SUBDIVISION(any).POINTS = VERTICES;
+
+rule POLYTOPAL_SUBDIVISION.REFINED_SPLITS : SPLITS, VERTICES, POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS {
+   $this->POLYTOPAL_SUBDIVISION->REFINED_SPLITS=polytope::splits_in_subdivision($this->VERTICES,$this->POLYTOPAL_SUBDIVISION->MAXIMAL_CELLS,$this->SPLITS);
+}
+
+}
+
+object polytope::PointConfiguration {
+
+rule POLYTOPAL_SUBDIVISION(any).POINTS = POINTS;
+
+rule POLYTOPAL_SUBDIVISION(any).CONVEX = CONVEX;
+
+rule POLYTOPAL_SUBDIVISION.REFINED_SPLITS : SPLITS, POINTS, POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS {
+   $this->POLYTOPAL_SUBDIVISION->REFINED_SPLITS=polytope::splits_in_subdivision($this->POINTS,$this->POLYTOPAL_SUBDIVISION->MAXIMAL_CELLS,$this->SPLITS);
+}
+
+}

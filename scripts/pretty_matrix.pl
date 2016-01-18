@@ -1,4 +1,17 @@
-use application 'ideal';
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
 
 # pretty matrix output
 sub pretty_matrix($;$){
@@ -7,20 +20,20 @@ sub pretty_matrix($;$){
 
   my $spaces = " ";
   if (defined($options->{"spaces"})) {
-      $spaces= " " x $options->{"spaces"};
+    $spaces= " " x $options->{"spaces"};
   }
 
-  my @len = map{0}(1..$M->cols());
-    for(my $j=0; $j<$M->cols(); ++$j){
-  for(my $i=0; $i<$M->rows(); ++$i){
-      $len[$j] = maximum([$len[$j], length($M->($i,$j))]);
+  my @len = (0) x $M->cols();
+  for (my $j=0; $j<$M->cols(); ++$j) {
+    for (my $i=0; $i<$M->rows(); ++$i){
+      $len[$j] = max($len[$j], length($M->elem($i,$j)));
     }
   }
 
-  for(my $i=0; $i<$M->rows(); ++$i){
-    for(my $j=0; $j<$M->cols(); ++$j){
-	my $collen = $len[$j];
-	printf("%${collen}s%s", $M->($i,$j), $spaces);
+  for (my $i=0; $i<$M->rows(); ++$i) {
+    for (my $j=0; $j<$M->cols(); ++$j) {
+      my $collen = $len[$j];
+      printf("%${collen}s%s", $M->elem($i,$j), $spaces);
     }
     print "\n";
   }
@@ -31,15 +44,21 @@ sub pretty_matrix($;$){
 sub sign_matrix($){
   my ($M) = @_;
 
-  for(my $i=0; $i<$M->rows(); ++$i){
-    for(my $j=0; $j<$M->cols(); ++$j){
-	if($M->($i,$j) == 0){
-	    print "  ";
-	} else {
-	   my $sgn = ($M->($i,$j) >0)?"+ ":"- ";
-	   print $sgn;
-	}
+  for (my $i=0; $i<$M->rows(); ++$i) {
+    for (my $j=0; $j<$M->cols(); ++$j) {
+      if ($M->elem($i,$j) == 0) {
+	print "  ";
+      } else {
+	my $sgn = $M->elem($i,$j) > 0 ? "+ " : "- ";
+	print $sgn;
+      }
     }
     print "\n";
   }
 }
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:2
+# indent-tabs-mode:nil
+# End:

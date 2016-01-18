@@ -45,13 +45,13 @@ custom $points_thickness = 4;
 # absolute width of lines in JavaView measurement units
 custom $lines_thickness = 3;
 
-# ???
+# intensity of ambient light
 custom $ambientIntensity=0.2;
 
 # diffuse reflection of polygons
 custom $diffuseColor   = "204 204 204";
 
-#emissive color of polygons
+# emissive color of polygons
 custom $emissiveColor  = "0 0 0";
 
 # shininess of polygons

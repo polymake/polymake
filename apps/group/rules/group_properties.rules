@@ -62,7 +62,22 @@ property TRANSVERSALS : Array < Array<Int> >;
 # The number of group elements per transversal.
 property TRANSVERSAL_SIZES : Array<Int>;
 
+# The character table.
+# NOTE: We do not support complex characters, but for the moment only real rational ones.
+property CHARACTER_TABLE : Matrix<Rational>;
+
+# A set of representatives for each conjugacy class
+property CONJUGACY_CLASS_REPRESENTATIVES : Array<Array<Int>>;
+
+# The conjugacy classes themselves
+property CONJUGACY_CLASSES : Array<Set<Array<Int>>>;
+
+# The sizes of the conjugacy classes
+property CONJUGACY_CLASS_SIZES : Array<Int>;
+
 }
+
+
 
 # Local Variables:
 # mode: perl

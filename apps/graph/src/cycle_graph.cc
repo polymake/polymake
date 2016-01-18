@@ -61,13 +61,20 @@ perl::Object path_graph(const int n)
 
 UserFunction4perl("# @category Producing a graph\n"
                   "# Constructs a __cycle graph__ on //n// nodes."
-                  "# @param Int n &ge; 3"
-                  "# @return Graph",
+                  "# @param Int n"
+                  "# @return Graph"
+                  "# @example To print the adjacency representation of the cycle graph on four nodes, type this:"
+                  "# > $g = cycle_graph(4);"
+                  "# > print $g->ADJACENCY;"
+                  "# | {1 3}"
+                  "# | {0 2}"
+                  "# | {1 3}"
+                  "# | {0 2}",
                   &cycle_graph, "cycle_graph");
 
 UserFunction4perl("# @category Producing a graph\n"
                   "# Constructs a __path graph__ on //n// nodes."
-                  "# @param Int n &ge;2"
+                  "# @param Int n"
                   "# @return Graph",
                   &path_graph, "path_graph");
 

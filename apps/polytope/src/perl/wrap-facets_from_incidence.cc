@@ -16,19 +16,21 @@
 
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/PuiseuxFraction.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( facets_from_incidence_T_x_f16, T0 ) {
-      perl::Value arg0(stack[0]);
-      WrapperReturnVoid( (facets_from_incidence<T0>(arg0)) );
-   };
-
-   template <typename T0>
    FunctionInterface4perl( vertices_from_incidence_T_x_f16, T0 ) {
       perl::Value arg0(stack[0]);
       WrapperReturnVoid( (vertices_from_incidence<T0>(arg0)) );
+   };
+
+   template <typename T0>
+   FunctionInterface4perl( facets_from_incidence_T_x_f16, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturnVoid( (facets_from_incidence<T0>(arg0)) );
    };
 
    FunctionInstance4perl(vertices_from_incidence_T_x_f16, Rational);
@@ -36,5 +38,7 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(facets_from_incidence_T_x_f16, Rational);
    FunctionInstance4perl(facets_from_incidence_T_x_f16, double);
    FunctionInstance4perl(vertices_from_incidence_T_x_f16, double);
+   FunctionInstance4perl(vertices_from_incidence_T_x_f16, PuiseuxFraction< Min, Rational, Rational >);
+   FunctionInstance4perl(vertices_from_incidence_T_x_f16, PuiseuxFraction< Max, Rational, Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

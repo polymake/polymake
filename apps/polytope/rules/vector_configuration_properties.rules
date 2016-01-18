@@ -20,21 +20,31 @@ file_suffix vc
 # @category Input property
 # The Vectors of the configuration
 property VECTORS : Matrix<Scalar> {
+
+   method canonical {
+      my ($this,$M)=@_;
+      if ($this->isa("PointConfiguration")) {
+         canonicalize_point_configuration($M);
+      }
+   }
+
 }
 
 
 # @category Geometry
 # Dimension of the space in which the vector configuration lives.
-property AMBIENT_DIM : Int;
+# Similar to [[Cone::CONE_AMBIENT_DIM]].
+property VECTOR_AMBIENT_DIM : Int;
 
 
 # @category Geometry
 # Dimension of the linear hull of the vector configuration.
-property DIM : Int;
+# Similar to [[Cone::CONE_DIM]].
+property VECTOR_DIM : Int;
 
 
 # @category Geometry
-# [[AMBIENT_DIM]] and [[DIM]] coincide.  
+# [[VECTOR_AMBIENT_DIM]] and [[VECTOR_DIM]] coincide.
 property FULL_DIM : Bool;
 
 

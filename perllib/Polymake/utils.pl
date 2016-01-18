@@ -127,6 +127,7 @@ sub num_sorted_uniq {
    grep { ++$i == 0 || $_[$i-1] != $_ } @_;
 }
 ####################################################################################
+# \list1, \list2 => boolean
 sub equal_lists {
    my ($l1, $l2)=@_;
    my $end=@$l1;
@@ -146,75 +147,47 @@ sub equal_string_lists {
    }
    1
 }
-####################################################################################
-# the following routines are defined for lists of integers sorted in increasing order
 
-# s1, s2, compl2 => length of s1*=s2 (!compl2) or s1-=s2 (compl2)
-sub set_intersection {
-   my ($s1, $s2, $compl2)=@_;
-   my ($i1, $i2, $l1, $l2)=(0,0,scalar(@$s1),scalar(@$s2));
-   $l1 or return 0;
-   while ($i2<$l2) {
-      my $diff= $s1->[$i1] <=> $s2->[$i2];
-      ++$i2, next if $diff>0;
-      if (!$diff==$compl2) {
-         splice @$s1, $i1, 1;
-         --$l1;
-      } else {
-         ++$i1;
-      }
-      $i1>=$l1 and return scalar(@$s1);
+# \list1, start_index1, \list2, start_index2 => length of the equal sequence starting at given positions
+sub equal_sublists {
+   my ($l1, $i1, $l2, $i2)=@_;
+   my $end=min(@$l1-$i1, @$l2-$i2)+$i1;
+   for (; $i1<$end; ++$i1, ++$i2) {
+      $l1->[$i1] == $l2->[$i2] or last;
    }
-   splice @$s1, $i1;
-   scalar(@$s1);
+   $i1-$_[1]
 }
 
-# s, elem => length of s-=elem
-sub set_remove {
-   my ($s, $elem)=@_;
-   my $l=@$s;
-   for (my $i=0; $i<$l; ++$i) {
-      if (my $diff=$s->[$i]<=>$elem) {
-         last if $diff>0;
-      } else {
-         splice @$s, $i, 1;
-         return --$l;
-      }
+sub equal_string_sublists {
+   my ($l1, $i1, $l2, $i2)=@_;
+   my $end=min(@$l1-$i1, @$l2-$i2)+$i1;
+   for (; $i1<$end; ++$i1, ++$i2) {
+      $l1->[$i1] eq $l2->[$i2] or last;
    }
-   return $l;
+   $i1-$_[1]
 }
 
-# s1, s2 => first element of s1*s2 or undef
-sub first_set_intersection {
-   my ($s1, $s2)=@_;
-   my ($i1, $i2, $l1, $l2)=(0,0,scalar(@$s1),scalar(@$s2));
-   $l1 or return;
-   while ($i2<$l2) {
-      my $diff= $s1->[$i1] <=> $s2->[$i2];
-      return $s1->[$i1] if !$diff;
-      if ($diff>0) {
-         ++$i2;
-      } else {
-         ++$i1>=$l1 and last;
-      }
-   }
-   undef
+# \list1, \list2 => length of the common prefix
+sub equal_list_prefixes {
+   equal_sublists($_[0], 0, $_[1], 0);
 }
 
-####################################################################################
-# \@list, scalar, [order] => bool
-# @list must be sorted in increasing order (or decreasing if $order==-1)
-sub binsearch($$;$) {
-   my ($list, $item, $order)=(@_, 1);
-   my ($l, $h)=(0, scalar @$list);
-   while ($l<$h) {
-      my $m=($l+$h)/2;
-      my $cmp=$item <=> $list->[$m];
-      return 1 if !$cmp;
-      $cmp!=$order ? ($h=$m) : ($l=$m+1);
-   }
-   return 0;
+sub equal_string_list_prefixes {
+   equal_string_sublists($_[0], 0, $_[1], 0);
 }
+
+# \list1, \list2, ... => length of the common prefix of list1 and concatenated other lists
+sub equal_list_prefixes2 {
+   my $l1=shift;
+   my $ret=0;
+   foreach my $l2 (@_) {
+      my $match=equal_sublists($l1, $ret, $l2, 0);
+      $ret+=$match;
+      last if $ret==@$l1 || $match<@$l2;
+   }
+   $ret
+}
+
 ####################################################################################
 sub enforce_nl($) {
    $_[0].="\n" if substr($_[0],-1) ne "\n";
@@ -266,14 +239,14 @@ sub croak {
                ($app_file, $app_line)=($file, $line);
             }
          }
+         if ($file =~ m{/scripts/run_testcases(?:_oo)?$}) {
+            undef $pkg;
+         }
       }
 
       if ($file =~ m{^\(eval|/User.pm$} || $sub eq "(eval)") {
          # compatibility mode or command line script
          die @_, "\n";
-      }
-      if ($file =~ m{/scripts/run_testcases$} && $app_line) {
-         ($file, $line)=($app_file, $app_line);
       }
    }
    local $_=join("", @_);

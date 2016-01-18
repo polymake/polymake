@@ -14,7 +14,7 @@
 #-------------------------------------------------------------------------------
 
 # The class group Cl(X) of Weil divisors on the toric variety
-# defined by the fan is a finitely generated abelian group of rank [[N_RAYS]]-[[DIM]].
+# defined by the fan is a finitely generated abelian group of rank [[PolyhedralFan::N_RAYS|N_RAYS]]-[[PolyhedralFan::DIM|DIM]].
 # It usually contains torsion.
 # The rational divisor class group is the tensor product of Cl(X) with Q over Z.
 # This group is torsion free and corresponds to the Picard group if the variety is non-singular.
@@ -35,12 +35,11 @@ object NormalToricVariety {
    file_suffix tv
 
    # @category Algebraic Geometry
-   # A toric variety is __affine__ if the fan consists of a single
-   # cone.
+   # A toric variety is __affine__ if the fan consists of a single cone.
    property AFFINE : Bool;
 
    # @category Algebraic Geometry
-   # A toric variety is [[DEGENERATE]] if the fan is not [[FULL_DIM]].
+   # A toric variety is __degenerate__ if the fan is not [[FULL_DIM]].
    property DEGENERATE : Bool;  	
 
    # @category Algebraic Geometry
@@ -49,7 +48,7 @@ object NormalToricVariety {
    property EFFECTIVE_CONE : Cone<Rational>;
 
    # @category Algebraic Geometry
-   # A toric variety is [[FANO]] if the anticanonical divisor is [[AMPLE]].
+   # A toric variety is __fano__ if the anticanonical divisor is [[AMPLE]].
    property FANO : Bool;
 
    # @category Basic properties
@@ -74,7 +73,7 @@ object NormalToricVariety {
    property N_MAXIMAL_TORUS_ORBITS : Int;
 
    # @category Basic properties
-   # A toric variety is an [[ORBIFOLD]] if the fan is [[SIMPLICIAL]].
+   # A toric variety is an __orbifold__ if the fan is [[SIMPLICIAL]].
    property ORBIFOLD : Bool;
 
    # @category Algebraic Geometry
@@ -86,7 +85,7 @@ object NormalToricVariety {
    property RATIONAL_DIVISOR_CLASS_GROUP : RationalDivisorClassGroup;
 
    # @category Algebraic Geometry
-   # A toric variety is __smooth__ if the fan is [[PolyhedralFan<Rational>::SMOOTH_FAN|smooth]].
+   # A toric variety is __smooth__ if the fan is [[SMOOTH_FAN|smooth]].
    property SMOOTH = override SMOOTH_FAN;
 
 }

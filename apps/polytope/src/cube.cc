@@ -111,7 +111,7 @@ perl::Object cube(int d, Scalar x_up, Scalar x_low, perl::OptionSet options)
    return p;
 }
 
-UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
+UserFunctionTemplate4perl("# @category Producing regular polytopes and their generalizations"
                           "# Produce a //d//-dimensional cube."
                           "# Regular polytope corresponding to the Coxeter group of type B<sub>//d//-1</sub> = C<sub>//d//-1</sub>."
                           "# "
@@ -121,7 +121,15 @@ UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
                           "# @param Scalar x_up upper bound in each dimension"
                           "# @param Scalar x_low lower bound in each dimension"
                           "# @option Bool group add a symmetry group description to the resulting polytope"
-                          "# @return Polytope<Scalar>",
+                          "# @return Polytope<Scalar>"
+                          "# @example This yields a +/-1 cube of dimension 3 and stores it in the variable $c."
+                          "# > $c = cube(3);"
+                          "# @example This stores a standard unit cube of dimension 3 in the variable $c."
+                          "# > $c = cube(3,0);"
+                          "# @example This prints the area of a square with side length 4 translated to have"
+                          "# its vertex barycenter at [5,5]:"
+                          "# > print cube(2,7,3)->VOLUME;"
+                          "# | 16",
                           "cube<Scalar> [ is_ordered_field(type_upgrade<Scalar, Rational>) ]"
                           "    (Int; type_upgrade<Scalar>=1, type_upgrade<Scalar>=(-$_[-1]), { group => undef } )");
 } }

@@ -47,7 +47,7 @@ perl::Object apply_lattice_normalization(perl::Object p, bool ambient, bool stor
     SNF.right_companion.row(SNF.rank-1).negate();
   }
         
-  perl::Object q("LatticePolytope");
+  perl::Object q("Polytope<Rational>");
   Matrix<Rational> F;
   if (ambient) {
     q.set_description() << "transformation of "
@@ -86,7 +86,9 @@ perl::Object apply_lattice_normalization(perl::Object p, bool ambient, bool stor
       q.attach("REVERSE_LATTICE_PROJECTION") << RLP;
     }
   }
-        
+  q.take("LATTICE") << true;
+  q.take("BOUNDED") << true;
+
   Array<std::string> labels;
   if (p.lookup("VERTEX_LABELS") >> labels) q.take("VERTEX_LABELS") << labels;
   if (p.lookup("FACET_LABELS")  >> labels) q.take("FACET_LABELS")  << labels;
@@ -122,7 +124,26 @@ UserFunction4perl("# @category Transformations"
                   "# @param Polytope p the input polytope,"
                   "# @option Bool store_transform store the reverse transformation as an attachement"
                   "# @return Polytope - the transformed polytope defined by its vertices."
-                  "#  Facets are only written if available in //p//.",
+                  "#  Facets are only written if available in //p//."
+                  "# @example Consider a line segment embedded in 2-space containing three lattice points:"
+                  "# > $p = new Polytope(VERTICES=>[[1,0,0],[1,2,2]]);"
+                  "# > print ambient_lattice_normalization($p)->VERTICES;"
+                  "# | 1 0"
+                  "# | 1 2"
+                  "# The ambient lattice of the projection equals the intersection of the affine hull of $p with Z^2."
+                  "# @example Another line segment containing only two lattice points:"
+                  "# > $p = new Polytope(VERTICES=>[[1,0,0],[1,1,2]]);"
+                  "# > $P = ambient_lattice_normalization($p,store_transform=>1);"
+                  "# > print $P->VERTICES;"
+                  "# | 1 0"
+                  "# | 1 1"
+                  "# To get the transformation, do the following:"
+                  "# > print $M = $P->get_attachment(REVERSE_LATTICE_PROJECTION);"
+                  "# | 1 0 0"
+                  "# | 0 1 2"
+                  "# > print $P->VERTICES * $M;"
+                  "# | 1 0 0"
+                  "# | 1 1 2",
                   &ambient_lattice_normalization, "ambient_lattice_normalization(Polytope<Rational> {store_transform => 0})");
 
 UserFunction4perl("# @category Transformations"
@@ -138,7 +159,15 @@ UserFunction4perl("# @category Transformations"
 UserFunction4perl("# @category Geometry"
                   "# Returns a basis of the affine lattice spanned by the vertices"
                   "# @param Polytope p the input polytope"
-                  "# @return Matrix<Integer> - the lattice basis.",
+                  "# @return Matrix<Integer> - the lattice basis."
+                  "# @example The vertices of the 2-simplex span all of Z^2..."
+                  "# > print induced_lattice_basis(simplex(2));"
+                  "# | 0 1 0"
+                  "# | 0 0 1"
+                  "# ...but if we scale it with 2, we get only every second lattice point."
+                  "# > print induced_lattice_basis(scale(simplex(2),2));"
+                  "# | 0 2 0"
+                  "# | 0 0 2",
                   &induced_lattice_basis, "induced_lattice_basis(Polytope<Rational>)");
 } }
 

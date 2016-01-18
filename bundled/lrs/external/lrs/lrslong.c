@@ -217,7 +217,7 @@ readrat (lrs_mp Na, lrs_mp Da)	/* read a rational or integer and convert to lrs_
   char in[MAXINPUT], num[MAXINPUT], den[MAXINPUT];
   if(fscanf (lrs_ifp, "%s", in)==EOF)
                  {
-                   fprintf (lrs_ofp, "\nInvalid rational input");
+                   fprintf (lrs_ofp, "\nInvalid input: check you have entered enough data!\n");
                    exit(1);
                  }
 

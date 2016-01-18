@@ -35,10 +35,10 @@ EdgeMap<Dir,double> edge_lengths(const Graph<Dir>& G, const GenericMatrix<Matrix
 UserFunctionTemplate4perl("# @category Other"
 			  "# Compute the lengths of all edges of a given graph //G// from"
 			  "# the coordinates //coords// of its nodes."
-			  "# @param Graph<Directed> G the input graph"
+			  "# @param props::Graph<Directed> G the input graph"
 			  "# @param Matrix coords the coordinates of the nodes"
 			  "# @return EdgeMap",
-			  "edge_lengths(Graph Matrix)");
+			  "edge_lengths(props::Graph Matrix)");
 } }
 
 // Local Variables:

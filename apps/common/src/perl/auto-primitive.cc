@@ -16,15 +16,15 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
-#include "polymake/common/lattice_tools.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Integer.h"
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
-#include "polymake/IncidenceMatrix.h"
 #include "polymake/SparseMatrix.h"
-#include "polymake/Vector.h"
-#include "polymake/Integer.h"
 #include "polymake/SparseVector.h"
+#include "polymake/Vector.h"
+#include "polymake/client.h"
+#include "polymake/common/lattice_tools.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -43,5 +43,8 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(primitive_X, perl::Canned< const Matrix<int> >);
    FunctionInstance4perl(primitive_X, perl::Canned< const SparseVector< Rational > >);
    FunctionInstance4perl(primitive_X, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(primitive_X, perl::Canned< const pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer> const&>, pm::Series<int, true>, void> const&, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(primitive_X, perl::Canned< const pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer>&>, pm::Series<int, true>, void>&, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(primitive_X, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer>&>, pm::Series<int, true>, void> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

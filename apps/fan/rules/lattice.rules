@@ -16,11 +16,11 @@
 object PolyhedralFan<Rational> {
 
 # @category Toric Varieties
-# A fan is __Q-GORENSTEIN__ if each maximal cone is [[polytope::Cone<Rational>::Q_GORENSTEIN_CONE|Q_Gorenstein]].
+# A fan is __Q-GORENSTEIN__ if each maximal cone is [[Cone::Q_GORENSTEIN_CONE|Q_Gorenstein]].
   property Q_GORENSTEIN : Bool;
 
 # @category Toric Varieties
-# If a fan is [[Q_GORENSTEIN]], then its __Q-Gorenstein index__ is the least common multiple of the [[Cone<Rational>::Q_GORENSTEIN_CONE_INDEX|Q-Gorenstein indices]] of its maximal cones. Otherwise Q_GORENSTEIN_INDEX is undefined.
+# If a fan is [[Q_GORENSTEIN]], then its __Q-Gorenstein index__ is the least common multiple of the [[Cone::Q_GORENSTEIN_CONE_INDEX|Q-Gorenstein indices]] of its maximal cones. Otherwise Q_GORENSTEIN_INDEX is undefined.
   property Q_GORENSTEIN_INDEX : Int;
 
 # @category Toric Varieties
@@ -28,7 +28,7 @@ object PolyhedralFan<Rational> {
   property GORENSTEIN : Bool;
 
 # @category Toric Varieties
-# A fan is __smooth__ if all cones of the fan are [[Cone<Rational>::SMOOTH_CONE|smooth]].
+# A fan is __smooth__ if all cones of the fan are [[Cone::SMOOTH_CONE|smooth]].
   property SMOOTH_FAN : Bool;
 
   rule Q_GORENSTEIN, Q_GORENSTEIN_INDEX : RAYS, MAXIMAL_CONES, FAN_DIM {
@@ -50,14 +50,9 @@ object PolyhedralFan<Rational> {
   weight 1.10;
 
   rule GORENSTEIN : Q_GORENSTEIN, Q_GORENSTEIN_INDEX {
-
-    if ( $this->Q_GORENSTEIN && $this->Q_GORENSTEIN_INDEX == 1 ) {
-        $this->GORENSTEIN = 1;
-	return;
-      }
-    $this->GORENSTEIN = 0;
+    $this->GORENSTEIN = $this->Q_GORENSTEIN && $this->Q_GORENSTEIN_INDEX == 1;
   }
-  weight 0.10;
+  weight 0.1;
 
   rule GORENSTEIN, Q_GORENSTEIN, Q_GORENSTEIN_INDEX : {
     $this->GORENSTEIN = 1;
@@ -65,7 +60,7 @@ object PolyhedralFan<Rational> {
     $this->Q_GORENSTEIN_INDEX = 1;
   }
   precondition : SMOOTH_FAN;
-  weight 0.10;
+  weight 0.1;
 
   rule SMOOTH_FAN : RAYS, MAXIMAL_CONES, SIMPLICIAL {
     if ( !$this->SIMPLICIAL ) {

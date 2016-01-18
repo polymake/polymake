@@ -18,6 +18,14 @@ object Polytope {
 # @category Combinatorics
 # True if there exists an edge-orientation (see [[EDGE_ORIENTATION]] for a definition).
 # The polytope is required to be 2-cubical.
+# @example The following checks a 3-dimensional cube for edge orientability:
+# > $p = cube(3);
+# > print $p->EDGE_ORIENTABLE;
+# | 1
+# @example A 3-dimensinal cube with one stacked facet is still 2-cubical. Therefore we can check for edge orientability:
+# > $p = stack(cube(3),5);
+# > print $p->EDGE_ORIENTABLE;
+# | 1
 
 property EDGE_ORIENTABLE : Bool;
 
@@ -26,6 +34,13 @@ property EDGE_ORIENTABLE : Bool;
 # List of all edges with orientation, such that for each 2-face the opposite edges point in the same direction.
 # Each line is of the form (u v), which indicates that the edge {u,v} is oriented from u to v.
 # The polytope is required to be 2-cubical.
+# @example The following prints a list of oriented edges of a 2-dimensional cube such that opposing edges have the same orientation:
+# > $p = cube(2);
+# > print $p->EDGE_ORIENTATION;
+# | 0 2
+# | 1 3
+# | 0 1
+# | 2 3
 
 property EDGE_ORIENTATION : Matrix<Int>;
 

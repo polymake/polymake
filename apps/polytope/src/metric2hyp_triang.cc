@@ -44,7 +44,6 @@ perl::Object metric2hyp_triang(perl::Object p_in)
          } 
          if (!stop) triang.insert(simplex);
       }
-   
    perl::Object p_out=hypersimplex(2,n,perl::OptionSet());
    p_out.take("TRIANGULATION.FACETS") << triang;
    return p_out;

@@ -39,16 +39,20 @@ class normalize_impl<OpRef, is_vector>
    : public div_impl<OpRef, typename deref<OpRef>::type::element_type, cons<is_vector, is_scalar> > {
 public:
    typedef OpRef argument_type;
-   typedef div_impl<OpRef, typename deref<OpRef>::type::element_type, cons<is_vector, is_scalar> > _super;
+   typedef typename deref<OpRef>::type::element_type scalar_type;
+   typedef div_impl<OpRef, scalar_type, cons<is_vector, is_scalar> > _super;
 
    typename _super::result_type operator() (typename function_argument<OpRef>::const_type v) const
    {
-      return _super::operator()(v, sqrt(sqr(v)));
+      const scalar_type norm=sqrt(sqr(v));
+      return _super::operator()(v, is_zero(norm) ? one_value<scalar_type>() : norm);
    }
 
    void assign(typename lvalue_arg<OpRef>::type v) const
    {
-      v /= sqrt(sqr(v));
+      const scalar_type norm=sqrt(sqr(v));
+      if (!is_zero(norm))
+         v /= norm;
    }
 };
 
@@ -196,6 +200,18 @@ det(const GenericMatrix<Matrix, E>& m)
    return det(typename Matrix::persistent_nonsymmetric_type(m));
 }
 
+/// Compute the trace of a matrix
+template <typename Matrix, typename E> inline
+E
+trace(const GenericMatrix<Matrix, E>& m)
+{
+   if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+      if (m.rows() != m.cols())
+         throw std::runtime_error("trace - non-square matrix");
+   }
+   return trace(typename Matrix::persistent_nonsymmetric_type(m));
+}
+
 
 template <typename Matrix, typename E> inline
 typename enable_if<E, !identical<E, typename algebraic_traits<E>::field_type>::value>::type
@@ -261,33 +277,33 @@ inv(const GenericMatrix<Matrix, E>& m)
    return inv(typename GenericMatrix<Matrix, typename algebraic_traits<E>::field_type>::persistent_nonsymmetric_type(m));
 }
 
-/** Solve the linear system A*x==B
+/** Solve the linear system A*x==b
     @return x
     @exception degenerate_matrix if det(A) == 0
-    @exception infeasible if rank(A) != rank(A|B)
+    @exception infeasible if rank(A) != rank(A|b)
 */
 template <typename MatrixTop, typename VectorTop, typename E> inline
 typename enable_if<Vector<E>, is_field<E>::value>::type
-lin_solve(const GenericMatrix<MatrixTop, E>& A, const GenericVector<VectorTop, E>& B)
+lin_solve(const GenericMatrix<MatrixTop, E>& A, const GenericVector<VectorTop, E>& b)
 {
    if (POLYMAKE_DEBUG || !Unwary<MatrixTop>::value || !Unwary<VectorTop>::value) {
-      if (B.dim() != A.rows())
+      if (b.dim() != A.rows())
          throw std::runtime_error("lin_solve - dimension mismatch");
    }
-   return lin_solve(typename MatrixTop::persistent_nonsymmetric_type(A), Vector<E>(B));
+   return lin_solve(typename MatrixTop::persistent_nonsymmetric_type(A), Vector<E>(b));
 }
 
 template <typename MatrixTop, typename VectorTop, typename E> inline
 typename enable_if<Vector<typename algebraic_traits<E>::field_type>,
                    !identical<E, typename algebraic_traits<E>::field_type>::value>::type
-lin_solve(const GenericMatrix<MatrixTop, E>& A, const GenericVector<VectorTop, E>& B)
+lin_solve(const GenericMatrix<MatrixTop, E>& A, const GenericVector<VectorTop, E>& b)
 {
    if (POLYMAKE_DEBUG || !Unwary<MatrixTop>::value || !Unwary<VectorTop>::value) {
-      if (B.dim() != A.rows())
+      if (b.dim() != A.rows())
          throw std::runtime_error("lin_solve - dimension mismatch");
    }
    typedef typename algebraic_traits<E>::field_type Field;
-   return lin_solve(typename GenericMatrix<MatrixTop, Field>::persistent_nonsymmetric_type(A), Vector<Field>(B));
+   return lin_solve(typename GenericMatrix<MatrixTop, Field>::persistent_nonsymmetric_type(A), Vector<Field>(b));
 }
 
 /**
@@ -578,6 +594,13 @@ project_to_orthogonal_complement(Matrix1& M, const Matrix2& N)
     }
 }
 
+/// the indices of nonzero entries
+template <typename Vector>
+Set<int> support(const GenericVector<Vector>& v)
+{
+   return indices(ensure(v.top(), (pure_sparse*)0));
+}
+
 /// reflect u in the plane normal to nv
 template <typename Vector1Type, typename Vector2Type> inline
 Vector1Type reflect(const Vector1Type& u, const Vector2Type& nv) 
@@ -698,7 +721,8 @@ template <typename Matrix> inline
 Set<int>
 far_points(const GenericMatrix<Matrix>& M)
 {
-   return indices(attach_selector(M.col(0), polymake::operations::is_zero()));
+   if(M.cols() == 0) return Set<int>();
+	return indices(attach_selector(M.col(0), polymake::operations::is_zero()));
 }
 
 /// Find indices of rows orthogonal to the given vector

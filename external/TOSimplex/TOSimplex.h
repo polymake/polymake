@@ -3584,7 +3584,7 @@ inline std::pair<std::vector<mpq_class>, mpq_class> TOSolver<mpq_class>::getGMI(
 	for( int k = 0; k < n; ++k ){
 		int nind = N[k];
 		mpq_class & aij = gmicoeff[k];
-		if( intVars[nind] ){
+		if( (unsigned int) nind < intVars.size() && intVars[nind] ){
 			// Integer nonbasic Variables
 			mpq_class fij = aij * kcut - mpq2mpz_floor( aij * kcut );
 			if( fij <= fi0 ){

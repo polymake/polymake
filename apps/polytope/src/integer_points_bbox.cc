@@ -155,12 +155,19 @@ Matrix<Integer> integer_points_bbox(perl::Object p_in)
 }
 
 
-UserFunctionTemplate4perl("# @category Geometry\n"
-   "# Enumerate all integer points in the given polytope by searching a bounding box.\n"
-   "# @author Marc Pfetsch\n"
-   "# @param  Polytope<Scalar> P\n"
-   "# @return Matrix<Integer>\n",
-   "integer_points_bbox<Scalar>(Polytope<Scalar>)");
+UserFunctionTemplate4perl("# @category Geometry"
+                          "# Enumerate all integer points in the given polytope by searching a bounding box."
+                          "# @author Marc Pfetsch"
+                          "# @param  Polytope<Scalar> P"
+                          "# @return Matrix<Integer>"
+                          "# @example > $p = new Polytope(VERTICES=>[[1,1.3,0.5],[1,0.2,1.2],[1,0.1,-1.5],[1,-1.4,0.2]]);"
+                          "# > print integer_points_bbox($p);"
+                          "# | 1 0 -1"
+                          "# | 1 -1 0"
+                          "# | 1 0 0"
+                          "# | 1 1 0"
+                          "# | 1 0 1",
+                          "integer_points_bbox<Scalar>(Polytope<Scalar>)");
 
 }
 }

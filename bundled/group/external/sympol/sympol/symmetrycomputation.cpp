@@ -85,7 +85,7 @@ bool SymmetryComputation::equivalentFaces(const PermutationGroup & permGroup, co
   backtrackSearch.construct(setF1.begin(), setF1.end(), setF2.begin(), setF2.end());
   boost::shared_ptr<PERM> repr = backtrackSearch.searchCosetRepresentative();
     
-  return repr;
+  return repr.get() != NULL;
 }
 
 

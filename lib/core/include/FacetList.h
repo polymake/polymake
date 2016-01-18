@@ -22,8 +22,10 @@
 #define POLYMAKE_FACET_LIST_H
 
 #include "polymake/internal/sparse2d_ruler.h"
+#include "polymake/internal/chunk_allocator.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/CascadedContainer.h"
+#include "polymake/EmbeddedList.h"
+#include "polymake/vector"
 #include "polymake/list"
 #include <cassert>
 
@@ -32,210 +34,138 @@ namespace pm {
 class FacetList;
 template <> class Cols<FacetList>;
 
-namespace facet_list {
-   template <bool standalone=false> class facet;
+namespace fl_internal {
+   class facet;
    class vertex_list;
    class lex_ordered_vertex_list;
    class superset_iterator;
    template <typename Iterator, bool check_range=true> class subset_iterator;
    class Facet; class Table;
+   typedef unsigned long facet_id_t;
 }
 
-template <bool standalone>
-struct spec_object_traits< facet_list::facet<standalone> >
+template <>
+struct spec_object_traits<fl_internal::facet>
    : spec_object_traits<is_container> {
    static const bool is_always_const=true;
    static const IO_separator_kind IO_separator=IO_sep_inherit;
 };
 template <>
-struct spec_object_traits<facet_list::Facet>
+struct spec_object_traits<fl_internal::Facet>
    : spec_object_traits<is_container> {
    static const bool is_always_const=true;
-   typedef facet_list::facet<> masquerade_for;
+   typedef fl_internal::facet masquerade_for;
 };
 
-template <> struct spec_object_traits<facet_list::vertex_list>
+template <> struct spec_object_traits<fl_internal::vertex_list>
    : spec_object_traits<is_container> {};
-template <> struct spec_object_traits<facet_list::lex_ordered_vertex_list>
+template <> struct spec_object_traits<fl_internal::lex_ordered_vertex_list>
    : spec_object_traits<is_container> {};
 
-namespace facet_list {
+namespace fl_internal {
 
-struct cell;
-
-union cell_pointer {
-   cell *ptr;
-   unsigned long key;
-
-   cell_pointer() : ptr(0) {}
-   explicit cell_pointer(cell *p) : ptr(p) {}
-   explicit cell_pointer(unsigned long k) : key(k) {}
-   cell_pointer(cell *p1, cell *p2) : ptr(p1) { cell_pointer cp2(p2); key^=cp2.key; }
-   cell_pointer(cell *p, unsigned long k) : ptr(p) { key^=k; }
-
-   cell_pointer& operator= (cell *p) { ptr=p; return *this; }
-   cell_pointer& operator= (unsigned long k) { key=k; return *this; }
-
-   cell_pointer& operator^= (const cell_pointer& cp) { key ^= cp.key; return *this; }
-   cell_pointer& operator^= (unsigned long k) { key ^= k; return *this; }
-
-   cell_pointer operator^ (const cell_pointer& cp) const { return cell_pointer(key ^ cp.key); }
-   cell* operator^ (unsigned long k2) const { cell_pointer p(key ^ k2); return p.ptr; }
-   unsigned long operator^ (cell *p2) const { cell_pointer p(p2); return p.key ^ key; }
-
-   const cell* operator-> () const { return ptr; }
-};
-
+// element of a facet
 struct cell {
-   /// vertex number XOR facet list addr
-   cell_pointer key;
+   cell* head_cell;  // apparent head cell contained in the facet structure
 
-   /// facet list (=row)
-   cell *row_prev, *row_next,
-   /// vertex list (=column)
-        *col_prev, *col_next,
-   /// lexicographical list
-        *lex_prev, *lex_next;
+   // links to neighbor cells in the same facet; =head_cell for the lowest/highest vertex
+   ptr_pair<cell> facet;   // preceding vertex;  
 
-   explicit cell(unsigned long k)
-      : key(k), lex_prev(0), lex_next(0) {}
+   // links to other facets containing the same vertex:
+   // prev = facet added after this one - new facets are always pushed at the front of the column list
+   // next = facet added before this one
+   ptr_pair<cell> col;
 
-   cell(cell *p, unsigned long k)
-      : key(p,k), lex_prev(0), lex_next(0) {}
+   // links to neighbor siblings in the prefix tree: facets containing same vertices up to here and differing in the next vertex
+   ptr_pair<cell> lex;
 
-   cell(const cell_pointer& cp)
-      : key(cp), lex_prev(0), lex_next(0) {}
+   int vertex;       // vertex number = element of the facet
+
+   cell(cell* head_arg, int vertex_arg)
+      : head_cell(head_arg)
+      , vertex(vertex_arg) {}
 };
 
-extern std::allocator<cell> cell_allocator;
-
-template <bool _forward>
-class facet_list_iterator {
+// iterator along a list of cells
+template <ptr_pair<cell> cell::* links, bool _rev=false>
+class cell_iterator
+   : public embedded_list_iterator<cell, links, true, _rev> {
 public:
-   typedef bidirectional_iterator_tag iterator_category;
-   typedef cell value_type;
-   typedef const cell& reference;
-   typedef const cell* pointer;
-   typedef ptrdiff_t difference_type;
-   typedef facet_list_iterator iterator;
-   typedef facet_list_iterator const_iterator;
+   typedef cell_iterator iterator;
+   typedef cell_iterator const_iterator;
 
-   facet_list_iterator() {}
+   typedef embedded_list_iterator<cell, links, true, _rev> super;
 
-   facet_list_iterator(cell *cur_arg, cell *head_arg)
-      : head(head_arg), cur(cur_arg) {}
+   cell_iterator() {}
 
-   facet_list_iterator(cell *cur_arg, unsigned long index_arg)
-      : head(cur_arg->key ^ index_arg), cur(cur_arg) {}
+   cell_iterator(const cell* cur_arg, const cell* head_arg)
+      : super(cur_arg)
+      , head(head_arg)
+   {
+      assert(links == &cell::facet || head_arg == NULL);
+   }
 
-   reference operator* () const { return *cur; }
-   pointer operator-> () const { return cur; }
+   explicit cell_iterator(const cell* cur_arg)
+      : super(cur_arg)
+      , head(links == &cell::facet ? cur_arg->head_cell : NULL) {}
 
    iterator& operator++ ()
    {
-      cur= _forward ? cur->row_next : cur->row_prev;
+      super::operator++();
       return *this;
    }
    iterator& operator-- ()
    {
-      cur= _forward ? cur->row_prev : cur->row_next;
+      super::operator--();
       return *this;
    }
    const iterator operator++ (int) { iterator copy(*this); operator++(); return copy; }
    const iterator operator-- (int) { iterator copy(*this); operator--(); return copy; }
 
-   bool at_end() const { return cur==head.ptr; }
-
-   template <bool _forward2>
-   bool operator== (const facet_list_iterator<_forward2>& it) const { return cur==it.cur; }
-
-   template <bool _forward2>
-   bool operator!= (const facet_list_iterator<_forward2>& it) const { return !operator==(it); }
+   bool at_end() const { return this->cur == head; }
 
    int index() const
    {
-      return head.key ^ cur->key.key;
+      return links == &cell::facet ? this->cur->vertex : get_facet()->get_id();
    }
-protected:
-   cell_pointer head;
-   cell *cur;
 
-   bool down(cell* cell::* next_ptr)
+   const facet* get_facet() const;
+
+protected:
+   const cell* head;   // apparent head cell of the facet or NULL for vertical traversals
+
+   // move to another facet following the given link
+   // @return false if no cell exists in the given direction
+   bool down(ptr_pair<cell> cell::* vertical_links)
    {
-      cell *next=cur->*next_ptr;
-      if (!next) return false;
-      head ^= cur->key ^ next->key;
-      cur=next;
+      assert(links == &cell::facet && links != vertical_links);
+      const cell* next=(this->cur->*vertical_links).next;
+      if (next==NULL) return false;
+      this->cur=next;
+      head=this->cur->head_cell;
       return true;
    }
 
-   template <bool> friend class facet;
-   template <bool> friend class facet_list_iterator;
+   template <ptr_pair<cell> cell::*, bool> friend class cell_iterator;
+   friend class facet;
    friend class Table;
 };
 
-template <bool standalone>
 class facet {
 public:
-   explicit facet(unsigned int id_arg=-1U)
-      : _size(0), id(id_arg), last(_end_cell()), first(last) {}
+   explicit facet(facet_id_t id_arg=facet_id_t(-1))
+      : cells(&cell::facet)
+      , _size(0)
+      , id(id_arg) {}
 
-   facet(const facet& l)
-      : _size(l._size), id(l.id)
-   {
-      cell *prev_clone=_end_cell();
-      if (_size) {
-         cell *end=l._end_cell();
-         const cell_pointer key_mask(prev_clone,end);
-         for (cell *orig=l.first;  orig!=end;  orig=orig->row_next) {
-            cell *clone=new(cell_allocator.allocate(1)) cell(orig->key ^ key_mask);
-            clone->col_prev=orig->col_prev;
-            orig->col_prev=clone;
-            prev_clone->row_next=clone;
-            clone->row_prev=prev_clone;
-            prev_clone=clone;
-         }
-         prev_clone->row_next=_end_cell();
-      } else {
-         first=prev_clone;
-      }
-      last=prev_clone;
-   }
+   facet(const facet& l, chunk_allocator& al);
 
-   // we don't use it at all, but std::list requires its elements be assignable
-   facet& operator= (const facet&)
-   {
-      throw std::runtime_error("FacetList::facet::operator= forbidden");
-   }
+   void unlink_cells(chunk_allocator& al);
+   cell* push_back(int vertex, chunk_allocator& al);
 
-public:
-   ~facet();
-
-   cell* push_back(int index)
-   {
-      cell* c=new(cell_allocator.allocate(1)) cell(_end_cell(), index);
-      c->row_next=_end_cell();
-      c->row_prev=last;
-      last->row_next=c;
-      last=c;
-      ++_size;
-      return c;
-   }
-
-   cell* push_front(int index)
-   {
-      cell* c=new(cell_allocator.allocate(1)) cell(_end_cell(), index);
-      c->row_next=first;
-      c->row_prev=_end_cell();
-      first->row_prev=c;
-      first=c;
-      ++_size;
-      return c;
-   }
-
-   typedef facet_list_iterator<true> iterator;
+   typedef cell_iterator<&cell::facet, false> iterator;
    typedef iterator const_iterator;
-   typedef facet_list_iterator<false> reverse_iterator;
+   typedef cell_iterator<&cell::facet, true> reverse_iterator;
    typedef reverse_iterator const_reverse_iterator;
    typedef cell value_type;
    typedef const cell& reference;
@@ -243,51 +173,51 @@ public:
 
    iterator begin() const
    {
-      return iterator(first, _end_cell());
+      return iterator(cells.next, head_cell());
    }
    iterator end() const
    {
-      return iterator(_end_cell(), _end_cell());
+      return iterator(head_cell(), head_cell());
    }
    reverse_iterator rbegin() const
    {
-      return reverse_iterator(last, _end_cell());
+      return reverse_iterator(cells.prev, head_cell());
    }
    reverse_iterator rend() const
    {
-      return reverse_iterator(_end_cell(), _end_cell());
+      return reverse_iterator(head_cell(), head_cell());
    }
 
    int size() const { return _size; }
-   bool empty() const { return !_size; }
+   bool empty() const { return _size==0; }
 
 protected:
+   ptr_pair<facet> list_ptrs;  // embedded list of all facets in FacetList
+   ptr_pair<cell> cells;       // vertices comprising this facet
    int _size;
-   unsigned int id;
-   cell *last, *first;
+   facet_id_t id;
 
-   cell* _end_cell() const
+   const cell* head_cell() const
    {
-      return reverse_cast(const_cast<cell**>(&last), &cell::row_prev);
+      return reverse_cast(&cells, &cell::facet);
    }
+   cell* head_cell()
+   {
+      return reverse_cast(&cells, &cell::facet);
+   }
+
 public:
-   static const facet* from_end_cell(const cell *c)
+   static const facet* from_head_cell(const cell* head)
    {
-      return reverse_cast(&(c->row_prev), &facet::last);
+      return reverse_cast(&(head->facet), &facet::cells);
    }
 
-   static const facet* from_cell(const cell *c, unsigned long col)
+   static const facet* from_cell(const cell* c)
    {
-      return from_end_cell(c->key^col);
+      return from_head_cell(c->head_cell);
    }
 
-   template <bool _forward>
-   static const facet* from_iterator(const facet_list_iterator<_forward>& it)
-   {
-      return from_end_cell(it.head.ptr);
-   }
-
-   unsigned int get_id() const { return id; }
+   facet_id_t get_id() const { return id; }
 
    struct id2index {
       typedef facet argument_type;
@@ -297,14 +227,25 @@ public:
 
    friend class Table;
    friend class superset_iterator;
+   friend class fl_allocator;
+private:
+   // deleted
+   facet(const facet&);
+   void operator= (const facet&);
 };
 
-template <> facet<true>::~facet();
-template <> facet<false>::~facet();
+
+template <ptr_pair<cell> cell::* links, bool _rev>
+inline
+const facet* cell_iterator<links, _rev>::get_facet() const
+{
+   return links == &cell::facet ? facet::from_head_cell(head) : facet::from_cell(this->cur);
+}
+
 
 class Facet
    : public modified_container_impl< Facet,
-                                     list( Hidden< facet<> >,
+                                     list( Hidden<facet>,
                                            Operation< BuildUnaryIt<operations::index2element> > ) >,
    public GenericSet<Facet, int, operations::cmp> {
 public:
@@ -314,66 +255,21 @@ protected:
    ~Facet();
 };
 
-template <cell* cell::* next_ptr>
-class column_iterator {
-protected:
-   const cell *cur;
-   int col;
+// Iterator over facets containing a given vertex.
+// The facets are visited in reverse chronological order.
+class col_order_iterator
+   : public cell_iterator<&cell::col> {
+   typedef cell_iterator<&cell::col> super;
 public:
    typedef forward_iterator_tag iterator_category;
-   typedef cell value_type;
-   typedef const cell& reference;
-   typedef const cell* pointer;
-   typedef ptrdiff_t difference_type;
-   typedef column_iterator iterator;
-   typedef column_iterator const_iterator;
-
-   column_iterator() {} 
-   column_iterator(const cell* cur_arg, int col_arg)
-      : cur(cur_arg), col(col_arg) {}
-
-   reference operator* () const { return *cur; }
-   pointer operator-> () const { return cur; }
-
-   iterator& operator++ ()
-   {
-      cur=cur->*next_ptr;
-      return *this;
-   }
-   const iterator operator++ (int) { iterator copy(*this); operator++(); return copy; }
-
-   bool at_end() const { return !cur; }
-   bool operator== (const iterator& it) const { return cur==it.cur; }
-   bool operator!= (const iterator& it) const { return !operator==(it); }
-
-   const facet<>* get_facet() const
-   {
-      return facet<>::from_end_cell(cur->key^col);
-   }
-
-   template <bool _forward>
-   facet_list_iterator<_forward> get_facet_iterator(bool2type<_forward>) const
-   {
-      return facet_list_iterator<_forward>(cur, *get_facet());
-   }
-
-   int get_col() const { return col; }
-
-   int index() const { return get_facet()->get_id(); }
-};
-
-class col_order_iterator : public column_iterator<&cell::col_next> {
-   typedef column_iterator<&cell::col_next> super;
-public:
    typedef Facet value_type;
    typedef const Facet& reference;
    typedef const Facet* pointer;
    typedef col_order_iterator iterator;
    typedef iterator const_iterator;
 
-   col_order_iterator() {}
-   col_order_iterator(const cell* cur_arg, int col_arg)
-      : super(cur_arg, col_arg) {}
+   col_order_iterator(const cell* cur_arg = NULL)
+      : super(cur_arg, NULL) {}
 
    reference operator* () const
    {
@@ -385,9 +281,11 @@ public:
    const iterator operator++ (int) { iterator copy(*this); super::operator++(); return copy; }
 };
 
+//! Iterator over facets containing a given vertex as the lowest one.
+//! Facets are visited in lexicographical order.
 class lex_order_iterator {
 protected:
-   typedef column_iterator<&cell::lex_next> cit;
+   typedef cell_iterator<&cell::lex> cit;
    typedef std::list<cit> it_list;
    it_list Q;
 
@@ -400,8 +298,7 @@ public:
    typedef lex_order_iterator iterator;
    typedef lex_order_iterator const_iterator;
 
-   lex_order_iterator() {}
-   lex_order_iterator(const cell* cur_arg, int col);
+   lex_order_iterator(const cell* cur_arg = NULL);
 
    reference operator* () const
    {
@@ -424,18 +321,21 @@ public:
       return Q.back().index();
    }
 private:
-   void scan_facet(const cell* cur, int col);
-
-   void push(int);
+   void scan_facet(const cell* cur);
 };
 
+
+// Heads of lists of cells pertaining to a certain vertex
 class vertex_list {
 public:
-   explicit vertex_list(int index_arg)
-      : vertex_index(index_arg), first_col(0), first_lex(0) {}
+   explicit vertex_list(int vertex_arg)
+      : vertex(vertex_arg)
+      , first_col(NULL)
+      , first_lex(NULL) {}
 
    vertex_list(const vertex_list& l);
 private:
+   // deleted
    void operator=(const vertex_list&);
 
 public:
@@ -448,15 +348,15 @@ public:
 
    iterator begin() const
    {
-      return iterator(first_col, vertex_index);
+      return iterator(first_col);
    }
    iterator end() const
    {
-      return iterator(0, vertex_index);
+      return iterator();
    }
    reference front() const
    {
-      return *begin();
+      return reinterpret_cast<reference>(*facet::from_cell(first_col));
    }
    int size() const
    {
@@ -464,52 +364,68 @@ public:
    }
    bool empty() const
    {
-      return !first_col;
+      return first_col==NULL;
    }
 
    friend void relocate(vertex_list* from, vertex_list* to)
    {
-      to->vertex_index=from->vertex_index;
+      to->vertex=from->vertex;
       cell *first;
-      if ((to->first_col=first=from->first_col))
-         first->col_prev=to->_col_head_cell();
-      if ((to->first_lex=first=from->first_lex))
-         first->lex_prev=to->_lex_head_cell();
+      if ((to->first_col=first=from->first_col) != NULL)
+         first->col.prev=to->col_head_cell();
+      if ((to->first_lex=first=from->first_lex) != NULL)
+         first->lex.prev=to->lex_head_cell();
    }
 protected:
-   int vertex_index;
-   cell *first_col, *first_lex;
+   int vertex;
+   cell* first_col;
+   cell* first_lex;
 
-   cell* _col_head_cell() const
+   cell* col_head_cell() const
    {
-      return reverse_cast(const_cast<cell**>(&first_col), &cell::col_next);
+      return reverse_cast(reverse_cast(const_cast<cell**>(&first_col), &ptr_pair<cell>::next), &cell::col);
    }
-   cell* _lex_head_cell() const
+   cell* lex_head_cell() const
    {
-      return reverse_cast(const_cast<cell**>(&first_lex), &cell::lex_next);
+      return reverse_cast(reverse_cast(const_cast<cell**>(&first_lex), &ptr_pair<cell>::next), &cell::lex);
    }
 
+   // helper class inserting cells of a new facet into all lists
    class inserter {
    private:
+      // deleted
       inserter(const inserter&);
       void operator=(const inserter&);
    public:
-      explicit inserter()
-         : first_old(0), first_new(0), last_old(0), last_new(0) {}
+      inserter()
+         : first_old(NULL)
+         , last_old(NULL)
+         , first_new(NULL)
+         , last_new(NULL) {}
 
-      /// @retval true if the fork point reached
-      bool push(vertex_list& column, cell *newc);
+      // @retval true if the fork point reached
+      bool push(vertex_list& column, cell* newc);
 
-   protected:
-      cell *first_old, *first_new, *last_old, *last_new;
-      cell_pointer old_key_mask;
+      // the new facet ended up as a prefix of an existing one
+      bool new_facet_ended();
+
+   private:
+      void finalize();
+
+      // cells of an existing facet that equals the new one so far
+      cell* first_old;   // target cell of the incoming arc of the prefix tree
+      cell* last_old;    // highest vertex coinciding with the new facet
+      // cells of the new facet
+      cell* first_new;   // of the same vertex as first_old
+      cell* last_new;    // of the same vertex as last_old, that is, the new cell consumed last
    };
 
-   cell* push_front(cell *c)
+   // insert the cell at front of the column list
+   cell* push_front(cell* c)
    {
-      if ((c->col_next=first_col))
-         first_col->col_prev=c;
-      c->col_prev=_col_head_cell();
+      if ((c->col.next=first_col) != NULL)
+         first_col->col.prev=c;
+      c->col.prev=col_head_cell();
       first_col=c;
       return c;
    }
@@ -518,7 +434,9 @@ protected:
    template <typename,bool> friend class subset_iterator;
 };
 
-class lex_ordered_vertex_list : public vertex_list {
+// masquerade for vertex_list, exposing the facets in lexicographical order
+class lex_ordered_vertex_list
+   : public vertex_list {
 protected:
    lex_ordered_vertex_list();
    ~lex_ordered_vertex_list();
@@ -531,15 +449,15 @@ public:
 
    iterator begin() const
    {
-      return iterator(first_lex, vertex_index);
+      return iterator(first_lex);
    }
    iterator end() const
    {
-      return iterator(0, vertex_index);
+      return iterator();
    }
    reference front() const
    {
-      return reinterpret_cast<reference>(*facet<>::from_cell(first_lex, vertex_index));
+      return reinterpret_cast<reference>(*facet::from_cell(first_lex));
    }
    int size() const
    {
@@ -547,21 +465,21 @@ public:
    }
    bool empty() const
    {
-      return !first_lex;
+      return first_lex == NULL;
    }
 };
 
 class superset_iterator {
 public:
    typedef forward_iterator_tag iterator_category;
-   typedef facet<> value_type;
+   typedef facet value_type;
    typedef const value_type& reference;
    typedef const value_type* pointer;
    typedef ptrdiff_t difference_type;
    typedef superset_iterator iterator;
    typedef iterator const_iterator;
 protected:
-   typedef column_iterator<&cell::col_next> it_type;
+   typedef cell_iterator<&cell::col> it_type;
    typedef std::list<it_type> it_list;
 
    it_list its;
@@ -598,7 +516,7 @@ public:
    iterator& operator++ () { valid_position(); return *this; }
    const iterator operator++ (int) { iterator copy(*this);  operator++();  return copy; }
 
-   bool at_end() const { return !cur; }
+   bool at_end() const { return cur==NULL; }
 
    bool operator== (const iterator& it) const { return cur==it.cur; }
    bool operator!= (const iterator& it) const { return !operator==(it); }
@@ -614,21 +532,20 @@ template <typename Set, bool check_range>
 class subset_iterator {
 public:
    typedef forward_iterator_tag iterator_category;
-   typedef facet<> value_type;
+   typedef facet value_type;
    typedef const value_type& reference;
    typedef const value_type* pointer;
    typedef ptrdiff_t difference_type;
    typedef subset_iterator iterator;
    typedef iterator const_iterator;
 protected:
-   typedef facet_list_iterator<true> it_type;
-   typedef typename Entire<Set>::const_iterator second_it_type;
-   typedef std::pair<it_type, second_it_type> it_pair;
+   typedef typename Entire<Set>::const_iterator set_iterator;
+   typedef std::pair<facet::iterator, set_iterator> it_pair;
    typedef std::list<it_pair> it_list;
 
    const vertex_list* columns;
    int n_columns;
-   second_it_type start;
+   set_iterator start;
    it_list Q;
    pointer cur;
 
@@ -675,30 +592,30 @@ void subset_iterator<Set,check_range>::valid_position()
          it_pair itp=Q.back();  Q.pop_back();
          bool match;
          do {
-            if (itp.first->lex_next) {
-               Q.push_back(it_pair(it_type(itp.first->lex_next, itp.first.index()), itp.second));
+            if (itp.first->lex.next != NULL) {
+               Q.push_back(it_pair(facet::iterator(itp.first->lex.next), itp.second));
             }
             if ((++itp.first).at_end()) {
-               cur=facet<>::from_end_cell(itp.first.operator->());
+               cur=itp.first.get_facet();
                return;
             }
-            int v_f=itp.first.index();
+            const int vertex_of_facet=itp.first->vertex;
             while ((match=!(++itp.second).at_end())) {
-               int v=*itp.second;
-               if (v>=v_f) {
-                  match= v==v_f; break;
+               const int vertex_of_query=*itp.second;
+               if (vertex_of_query >= vertex_of_facet) {
+                  match= vertex_of_query==vertex_of_facet; break;
                }
             }
          } while (match);
       }
 
       for (;;) {
-         if (start.at_end() || check_range && *start>=n_columns) {
-            cur=0; return;
+         if (start.at_end() || check_range && *start >= n_columns) {
+            cur=NULL; return;
          }
-         cell *first_lex=columns[*start].first_lex;
-         if (first_lex) {
-            Q.push_back(it_pair(it_type(first_lex, *start), start));
+         cell* first_lex=columns[*start].first_lex;
+         if (first_lex != NULL) {
+            Q.push_back(it_pair(facet::iterator(first_lex), start));
             ++start;
             break;
          }
@@ -707,121 +624,163 @@ void subset_iterator<Set,check_range>::valid_position()
    }
 }
 
-} // end namespace facet_list;
+} // end namespace fl_internal;
 
-template <bool _forward>
-struct check_iterator_feature<facet_list::facet_list_iterator<_forward>, end_sensitive> : True {};
-template <bool _forward>
-struct check_iterator_feature<facet_list::facet_list_iterator<_forward>, indexed> : True {};
+template <ptr_pair<fl_internal::cell> fl_internal::cell::* links, bool _rev>
+struct check_iterator_feature<fl_internal::cell_iterator<links, _rev>, end_sensitive> : True {};
+template <ptr_pair<fl_internal::cell> fl_internal::cell::* links, bool _rev>
+struct check_iterator_feature<fl_internal::cell_iterator<links, _rev>, indexed> : True {};
 
-template <facet_list::cell* facet_list::cell::* next_ptr>
-struct check_iterator_feature<facet_list::column_iterator<next_ptr>, end_sensitive> : True {};
-template <facet_list::cell* facet_list::cell::* next_ptr>
-struct check_iterator_feature<facet_list::column_iterator<next_ptr>, indexed> : True {};
+template <> struct check_iterator_feature<fl_internal::col_order_iterator, end_sensitive> : True {};
+template <> struct check_iterator_feature<fl_internal::col_order_iterator, indexed> : True {};
 
-template <> struct check_iterator_feature<facet_list::col_order_iterator, end_sensitive> : True {};
-template <> struct check_iterator_feature<facet_list::col_order_iterator, indexed> : True {};
+template <> struct check_iterator_feature<fl_internal::lex_order_iterator, end_sensitive> : True {};
+template <> struct check_iterator_feature<fl_internal::lex_order_iterator, indexed> : True {};
 
-template <> struct check_iterator_feature<facet_list::lex_order_iterator, end_sensitive> : True {};
-template <> struct check_iterator_feature<facet_list::lex_order_iterator, indexed> : True {};
-
-template <> struct check_iterator_feature<facet_list::superset_iterator, end_sensitive> : True {};
-template <> struct check_iterator_feature<facet_list::superset_iterator, indexed> : True {};
+template <> struct check_iterator_feature<fl_internal::superset_iterator, end_sensitive> : True {};
+template <> struct check_iterator_feature<fl_internal::superset_iterator, indexed> : True {};
 
 template <typename Set, bool check_range>
-struct check_iterator_feature<facet_list::subset_iterator<Set,check_range>, end_sensitive> : True {};
+struct check_iterator_feature<fl_internal::subset_iterator<Set, check_range>, end_sensitive> : True {};
 template <typename Set, bool check_range>
-struct check_iterator_feature<facet_list::subset_iterator<Set,check_range>, indexed> : True {};
+struct check_iterator_feature<fl_internal::subset_iterator<Set, check_range>, indexed> : True {};
 
-namespace facet_list {
+namespace fl_internal {
 
-/** @class Table
-    @brief abstraction of FacetList
-*/
 class Table {
 public:
-   typedef std::list< facet<> > facet_list;
    typedef sparse2d::ruler<vertex_list> col_ruler;
 
-   explicit Table(int n_vertices=0)
-      : columns(col_ruler::construct(n_vertices)), _size(0), next_id(0) {}
+   typedef facet value_type;
+   typedef const value_type& reference;
+   typedef reference const_reference;
+   typedef embedded_list_iterator<facet, &facet::list_ptrs, true, false> iterator;
+   typedef embedded_list_iterator<facet, &facet::list_ptrs, true, true> reverse_iterator;
+   typedef iterator const_iterator;
+   typedef reverse_iterator const_reverse_iterator;
 
-   Table(const Table& c)
-      : _facets(c._facets), columns(col_ruler::construct(*c.columns)), _size(c._size), next_id(c.next_id) {}
+   explicit Table(size_t facet_size=sizeof(facet), int n_vertices=0);
 
+   Table(const Table& c);
+
+private:
+   // deleted
+   void operator= (const Table&);
+
+public:
    ~Table() { col_ruler::destroy(columns); }
 
-   void clear()
-   {
-      _facets.clear();
-      columns=col_ruler::resize(columns,0);
-   }
+   //! make the table look empty
+   void clear();
+
+   //! remove all facets, keep the allocated number of vertices
+   void clear_facets();
 
    int n_vertices() const { return columns->size(); }
 
+   iterator begin() const { return iterator(facets.next); }
+   iterator end() const { return iterator(end_facet()); }
+   reverse_iterator rbegin() const { return reverse_iterator(facets.prev); }
+   reverse_iterator rend() const { return reverse_iterator(end_facet()); }
+
    template <typename IndexConsumer>
-   void squeeze(IndexConsumer ic)
+   void squeeze(const IndexConsumer& ic)
    {
-      int cnew=0;
+      int new_vertex=0;
       for (vertex_list *column=columns->begin(), *end=columns->end(); column!=end; ++column) {
-         if (cell *c=column->first_col) {
-            int cold=column->vertex_index;
-            if (unsigned long diff = cold ^ cnew) {
+         if (cell* c=column->first_col) {
+            const int old_vertex=column->vertex;
+            if (old_vertex != new_vertex) {
                do
-                  c->key ^= diff;
-               while ((c=c->col_next));
-               vertex_list *column_new=column+(cnew-cold);
+                  c->vertex = new_vertex;
+               while ((c=c->col.next) != NULL);
+               vertex_list* column_new=column+(new_vertex - old_vertex);
                relocate(column, column_new);
-               column_new->vertex_index=cnew;
+               column_new->vertex=new_vertex;
             }
-            *ic++=cold; ++cnew;
+            ic(old_vertex, new_vertex);  ++new_vertex;
          }
       }
-      if (cnew < n_vertices()) columns=col_ruler::resize(columns,cnew,false);
+      if (new_vertex < n_vertices()) columns=col_ruler::resize(columns, new_vertex, false);
 
       if (next_id != _size) squeeze_ids();
    }
 
 protected:
    template <typename Iterator>
-   Table(Iterator src, False)
-      : columns(col_ruler::construct(0)), _size(0), next_id(0)
+   Table(size_t facet_size, Iterator src, False)
+      : facet_alloc(facet_size)
+      , cell_alloc(sizeof(cell))
+      , facets(&facet::list_ptrs)
+      , columns(col_ruler::construct(0))
+      , _size(0)
+      , next_id(0)
    {
       for (; !src.at_end(); ++src)
          insert(*src);
    }
 
    template <typename Iterator>
-   Table(Iterator src, Iterator src_end, False)
-      : columns(col_ruler::construct(0)), _size(0), next_id(0)
+   Table(size_t facet_size, Iterator src, Iterator src_end, False)
+      : facet_alloc(facet_size)
+      , cell_alloc(sizeof(cell))
+      , facets(&facet::list_ptrs)
+      , columns(col_ruler::construct(0))
+      , _size(0)
+      , next_id(0)
    {
       for (; src!=src_end; ++src)
          insert(*src);
    }
 
    template <typename Iterator>
-   Table(int n_vertices, Iterator src, False)
-      : columns(col_ruler::construct(n_vertices)), _size(0), next_id(0)
+   Table(size_t facet_size, int n_vertices, Iterator src, False)
+      : facet_alloc(facet_size)
+      , cell_alloc(sizeof(cell))
+      , facets(&facet::list_ptrs)
+      , columns(col_ruler::construct(n_vertices))
+      , _size(0)
+      , next_id(0)
    {
       for (; !src.at_end(); ++src)
-         _insert(entire(*src));
+         insert_from_it(entire(*src), new_id());
    }
 
    template <typename Iterator>
-   Table(Iterator src, True)
-      : columns(col_ruler::construct(0)), _size(0), next_id(0)
+   Table(size_t facet_size, Iterator src, True)
+      : facet_alloc(facet_size)
+      , cell_alloc(sizeof(cell))
+      , facets(&facet::list_ptrs)
+      , columns(col_ruler::construct(0))
+      , _size(0)
+      , next_id(0)
    {
       for (; !src.at_end(); ++src)
          push_back(*src);
    }
 
    template <typename Iterator>
-   Table(int n_vertices, Iterator src, True)
-      : columns(col_ruler::construct(n_vertices)), _size(0), next_id(0)
+   Table(size_t facet_size, int n_vertices, Iterator src, True)
+      : facet_alloc(facet_size)
+      , cell_alloc(sizeof(cell))
+      , facets(&facet::list_ptrs)
+      , columns(col_ruler::construct(n_vertices))
+      , _size(0)
+      , next_id(0)
    {
       for (; !src.at_end(); ++src)
-         _push_back(entire(*src));
+         push_back_from_it(entire(*src));
    }
+
+   const facet* end_facet() const
+   {
+      return reverse_cast(&facets, &facet::list_ptrs);
+   }
+   facet* end_facet()
+   {
+      return reverse_cast(&facets, &facet::list_ptrs);
+   }
+
 public:
    class LexOrdered_helper
       : public modified_container_impl< LexOrdered_helper,
@@ -833,162 +792,144 @@ public:
    };
 
 protected:
-   template <typename Iterator>
-   void _insert(Iterator src, unsigned int nid)
-   {
-      _facets.push_back(facet<>(nid));
-      facet<>& newf=_facets.back();
+   void push_back_new_facet(facet* f);
+   void push_back_facet(facet* f);
 
+   template <typename Iterator>
+   void insert_cells(facet* f, Iterator src)
+   {
       vertex_list::inserter inserter;
       int v;
       do {
-         assert(!src.at_end());
+         if (src.at_end()) {
+            if (inserter.new_facet_ended()) return;
+            erase_facet(*f);
+            throw std::runtime_error("attempt to insert a duplicate or empty facet into FacetList");
+         }
          v=*src;  ++src;
          if (identical<typename iterator_traits<Iterator>::iterator_category, input_iterator_tag>::value)
-            _extend(v);
-      } while (!inserter.push((*columns)[v], newf.push_back(v)));
+            extend_cols(v);
+      } while (!inserter.push((*columns)[v], f->push_back(v, cell_alloc)));
 
       for (; !src.at_end(); ++src) {
          v=*src;
          if (identical<typename iterator_traits<Iterator>::iterator_category, input_iterator_tag>::value)
-            _extend(v);
-         (*columns)[v].push_front(newf.push_back(v));
+            extend_cols(v);
+         (*columns)[v].push_front(f->push_back(v, cell_alloc));
       }
+   }
+
+   template <typename Iterator>
+   facet* insert_from_it(Iterator src, facet_id_t nid)
+   {
+      facet* f=new(facet_alloc.allocate()) facet(nid);
+      push_back_facet(f);
       ++_size;
+      insert_cells(f, src);
+      return f;
    }
 
    template <typename Iterator>
-   void _insert(Iterator src)
+   void push_back_from_it(Iterator src)
    {
-      _insert(src, new_id());
-   }
+      int new_vertex=*src;
+      facet* f=new(facet_alloc.allocate()) facet(new_id());
+      cell* newc;
+      cell* lex_prev;
 
-   template <typename Iterator>
-   void _push_back(Iterator src)
-   {
-      int v=*src;
-      facet<> *newf;
-      cell *newc, *lex_prev;
-
-      if ((*columns)[v].first_lex) {
-         facet<>::const_iterator old_it=_facets.back().begin();
-         assert(old_it.index()==v);
-         _facets.push_back(facet<>(new_id()));
-         newf=&_facets.back();
+      if ((*columns)[new_vertex].first_lex != NULL) {
+         assert(facets.prev != end_facet());
+         facet::const_iterator prev_facet_it=facets.prev->begin();
+         assert(new_vertex == prev_facet_it->vertex);
+         push_back_facet(f);
          do {
-            newc=(*columns)[v].push_front(newf->push_back(v));
-            lex_prev=const_cast<cell*>(old_it.cur);
-            ++src; ++old_it;
-            assert(!src.at_end() && !old_it.at_end());
-            v=*src;
-            assert(v >= old_it.index());
-         } while (v==old_it.index());
+            newc=(*columns)[new_vertex].push_front(f->push_back(new_vertex, cell_alloc));
+            lex_prev=const_cast<cell*>(prev_facet_it.cur);
+            ++src;  ++prev_facet_it;
+            if (prev_facet_it.at_end()) break;
+            assert(!src.at_end());
+            new_vertex=*src;
+            assert(new_vertex >= prev_facet_it->vertex);
+         } while (new_vertex == prev_facet_it->vertex);
       } else {
-         _facets.push_back(facet<>(new_id()));
-         newf=&_facets.back();
-         lex_prev=(*columns)[v]._lex_head_cell();
-         newc=(*columns)[v].push_front(newf->push_back(v));
+         push_back_facet(f);
+         lex_prev=(*columns)[new_vertex].lex_head_cell();
+         newc=(*columns)[new_vertex].push_front(f->push_back(new_vertex, cell_alloc));
       }
 
-      newc->lex_prev=lex_prev;
-      lex_prev->lex_next=newc;
+      newc->lex.prev=lex_prev;
+      lex_prev->lex.next=newc;
 
       while (!(++src).at_end()) {
-         v=*src;
-         (*columns)[v].push_front(newf->push_back(v));
+         new_vertex=*src;
+         (*columns)[new_vertex].push_front(f->push_back(new_vertex, cell_alloc));
       }
       ++_size;
    }
 
+public:
    template <typename Set>
-   const facet<>* _find(const GenericSet<Set>& f) const
+   const facet* find_facet(const GenericSet<Set>& f) const
    {
       typename Entire<Set>::const_iterator v_it=entire(f.top());
-      if (v_it.at_end()) return 0;
+      if (v_it.at_end()) return NULL;
       int v=*v_it;
-      if (v>=n_vertices()) return 0;
+      if (v>=n_vertices()) return NULL;
 
-      cell *c=(*columns)[v].first_lex;
-      if (!c) return 0;
+      const cell* c=(*columns)[v].first_lex;
+      if (c==NULL) return NULL;
 
-      for (facet<>::iterator cur(c,v); ;) {
+      for (facet::iterator cur(c); ;) {
          ++v_it;  ++cur;
          if (cur.at_end()) {
             if (v_it.at_end())
-               return facet<>::from_iterator(cur);
+               return cur.get_facet();
             else
                break;
          }
          if (v_it.at_end()) break;
          v=*v_it;
-         int vc;
-         while ((vc=cur.index()) != v) {
-            if (vc>v) return 0;
+         while (cur->vertex != v) {
+            if (cur->vertex > v) return NULL;
             --cur;
-            if (!cur.down(&cell::lex_next)) return 0;
+            if (!cur.down(&cell::lex)) return NULL;
             ++cur;
          }
       }
-      return 0;
+      return NULL;
    }
 
-   void _erase(const facet<>& f)
-   {
-      typedef std::list< facet<true> > list;
-      typedef list::iterator list_iterator;
-      typedef std_list_traits< facet<true> > traits;
-      traits::Node *n=traits::to_node(reinterpret_cast<facet<true>*>(const_cast<facet<>*>(&f)));
-      reinterpret_cast<list&>(_facets).erase(list_iterator(n));
-      --_size;
-   }
-public:
    template <typename Set>
-   void insert(const GenericSet<Set, int, operations::cmp>& f)
+   facet* insert(const GenericSet<Set, int, operations::cmp>& f)
    {
-      _extend(f.top().back());
-      _insert(entire(f.top()));
+      extend_cols(f.top().back());
+      return insert_from_it(entire(f.top()), new_id());
    }
 
    template <typename Set>
    void push_back(const GenericSet<Set, int, operations::cmp>& f)
    {
-      _extend(f.top().back());
-      _push_back(entire(f.top()));
+      extend_cols(f.top().back());
+      push_back_from_it(entire(f.top()));
    }
 
    template <typename Set>
    int erase(const GenericSet<Set, int, operations::cmp>& f)
    {
-      const facet<>* fp=_find(f);
-      return fp ? (_erase(*fp), 1) : 0;
+      const facet* fp=find_facet(f);
+      return fp != NULL ? (erase_facet(*fp), 1) : 0;
    }
 
-   void erase(const facet_list::const_iterator& where)
-   {
-      typedef std::list< facet<true> > list;
-      typedef list::iterator list_iterator;
-      reinterpret_cast<list&>(_facets).erase(reinterpret_cast<const list_iterator&>(where));
-      --_size;
-   }
+   void erase_facet(const facet& f);
 
    template <typename Set>
-   facet_list::const_iterator
-   find(const GenericSet<Set, int, operations::cmp>& f) const
-   {
-      const facet<>* fp=_find(f);
-      if (fp)
-         return facet_list::const_iterator(std_list_traits< facet<> >::to_node(fp));
-      return _facets.end();
-   }
-
-   template <typename Set>
-   superset_iterator findMax(const GenericSet<Set, int, operations::cmp>& f, bool show_empty_facet) const
+   superset_iterator findSupersets(const GenericSet<Set, int, operations::cmp>& f, bool show_empty_facet) const
    {
       return superset_iterator(columns->begin(), f, show_empty_facet);
    }
 
    template <typename Set, bool check_range>
-   subset_iterator<Set, check_range> findMin(const GenericSet<Set, int, operations::cmp>& f, bool2type<check_range>) const
+   subset_iterator<Set, check_range> findSubsets(const GenericSet<Set, int, operations::cmp>& f, bool2type<check_range>) const
    {
       return subset_iterator<Set, check_range>(columns->begin(), n_vertices(), f);
    }
@@ -1024,93 +965,94 @@ public:
    }
 
    template <typename Set, typename Consumer>
-   int eraseMax(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
+   int eraseSubsets(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
    {
-      int cnt=_size;
-      for (subset_iterator<Set> ss=findMin(f, True()); !ss.at_end(); ++ss) {
-         consume_erased(ss,consumer);
-         _erase(*ss);
+      const size_t orig_size=_size;
+      for (subset_iterator<Set> ss=findSubsets(f, True()); !ss.at_end(); ++ss) {
+         consume_erased(ss, consumer);
+         erase_facet(*ss);
       }
-      return cnt-_size;
+      return orig_size-_size;
    }
 
    template <typename Set, typename Consumer>
-   int eraseMin(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
+   int eraseSupersets(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
    {
       if (back_or_nothing(f.top()) >= n_vertices()) {
          return 0;
       }
-      int cnt=_size;
-      for (superset_iterator ss=findMax(f,false); !ss.at_end(); ++ss) {
-         consume_erased(ss,consumer);
-         _erase(*ss);
+      const size_t orig_size=_size;
+      for (superset_iterator ss=findSupersets(f,false); !ss.at_end(); ++ss) {
+         consume_erased(ss, consumer);
+         erase_facet(*ss);
       }
-      return cnt-_size;
+      return orig_size-_size;
    }
 
    template <typename Set, bool can_extend, typename Consumer>
-   bool insertMax(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer,
-                  bool2type<can_extend>)
+   facet* insertMax(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer,
+                    bool2type<can_extend>)
    {
       int v_last;
-      unsigned int nid=new_id();
+      facet_id_t nid=new_id();
       if (can_extend && (v_last=back_or_nothing(f.top())) >= n_vertices()) {
-         _extend(v_last);
+         extend_cols(v_last);
       } else {
-         superset_iterator ss=findMax(f,true);
-         if (!ss.at_end()) return false;
+         superset_iterator ss=findSupersets(f, true);
+         if (!ss.at_end()) return NULL;
       }
 
-      for (subset_iterator<Set,false> ss=findMin(f, False());  !ss.at_end();  ++ss) {
+      for (subset_iterator<Set,false> ss=findSubsets(f, False());  !ss.at_end();  ++ss) {
          consume_erased(ss, consumer);
-         _erase(*ss);
+         erase_facet(*ss);
       }
-      _insert(entire(f.top()), nid);
-      return true;
+      return insert_from_it(entire(f.top()), nid);
    }
 
    template <typename Set, bool can_extend, typename Consumer>
-   bool insertMin(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer,
-                  bool2type<can_extend>)
+   facet* insertMin(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer,
+                    bool2type<can_extend>)
    {
       bool accept=false;
       int v_last;
-      unsigned int nid=new_id();
+      facet_id_t nid=new_id();
       if (can_extend && (v_last=back_or_nothing(f.top())) >= n_vertices()) {
-         _extend(v_last);
+         extend_cols(v_last);
       } else {
-         superset_iterator ss=findMax(f,true);
+         superset_iterator ss=findSupersets(f, true);
          if (!ss.at_end()) {
-            if (ss.exact_match()) return false;
+            if (ss.exact_match()) return NULL;
             do {
                consume_erased(ss,consumer);
-               _erase(*ss); 
+               erase_facet(*ss); 
                accept=true;
             } while (! (++ss).at_end());
          }
       }
 
       if (!accept) {
-         subset_iterator<Set,false> ss=findMin(f, False());
-         if (!ss.at_end()) return false;
+         subset_iterator<Set,false> ss=findSubsets(f, False());
+         if (!ss.at_end()) return NULL;
       }
-      _insert(entire(f.top()), nid);
-      return true;
+      return insert_from_it(entire(f.top()), nid);
    }
 
 protected:
-   facet_list _facets;
-   sparse2d::ruler<vertex_list> *columns;
-   unsigned int _size, next_id;
+   chunk_allocator facet_alloc;
+   chunk_allocator cell_alloc;
+   ptr_pair<facet> facets;
+   col_ruler* columns;
+   size_t _size;
+   facet_id_t next_id;
 
-   void _extend(int v)
+   void extend_cols(int v)
    {
       if (v >= n_vertices()) columns=col_ruler::resize(columns, v+1);
    }
 
-   unsigned int new_id()
+   facet_id_t new_id()
    {
-      unsigned int id=next_id;
+      facet_id_t id=next_id;
       if (++next_id == 0) {
          id=squeeze_ids();
          ++next_id;
@@ -1123,10 +1065,10 @@ protected:
       next_id+=amount;
    }
 
-   unsigned int squeeze_ids()
+   facet_id_t squeeze_ids()
    {
-      unsigned int id=0;
-      for (Entire<facet_list>::iterator f=entire(_facets); !f.at_end(); ++f, ++id)
+      facet_id_t id=0;
+      for (facet *f=facets.next, *fe=end_facet(); f != fe;  f=f->list_ptrs.next, ++id)
          f->id=id;
       return next_id=id;
    }
@@ -1135,16 +1077,16 @@ protected:
    friend class pm::Cols<pm::FacetList>;
    template <typename> friend class pm::constructor;
 #if POLYMAKE_DEBUG
-   void check() const;
+   bool sanity_check() const;
 #endif
 };
 
-} // end namespace facet_list
+} // end namespace fl_internal
 
 template <>
 class Cols<FacetList>
    : public redirected_container< Cols<FacetList>,
-                                  list( Container< const facet_list::Table::col_ruler >,
+                                  list( Container< const fl_internal::Table::col_ruler >,
                                         Hidden< FacetList > ) > {
 protected:
    ~Cols();
@@ -1159,9 +1101,11 @@ public:
     complexes and related mathematical objects.  Thus we will refer to the
     contained sets as @em facets, and to the set elements as @em vertices.
 
-    The main invariant is that all facets are mutually inclusion-free.  The
-    primary design goal of this class is effective search, insertion, and
-    removal of facets included in or including a given vertex set.
+    The class can efficiently maintain the property of all facets being
+    mutually inclusion-free, although this property is not mandatory,
+    it can be violated by the application if needed.
+    The primary design goal of this class is efficient search, insertion,
+    and removal of facets included in or including a given vertex set.
 
     The data structure is a rectangular grid, similar to IncidenceMatrix,
     interwoven with a forest of suffix trees, indexed with the vertex number.
@@ -1180,24 +1124,25 @@ public:
     constant time.
 
     The elements of the list (facets) are of type GenericSet and implement the
-    reversible container interface, too.
+    reversible container interface, too.  However, there is no random access or
+    cheap existence checks for single vertices; facets have to be scanned
+    sequentially.
 
     The iterators over the facet list have an additional method @c index()
-    retrieving the unique integer id assigned to each facet when it was being
+    retrieving the unique integer id assigned to each facet when it was
     inserted into the FacetList.  A new id is generated by each call to any of
     the insert() methods, regardless whether the facet is eventually inserted
     or discarded as being dependent.  Using methods squeeze() and
-    skip_facet_id() you can take effect on the id generated for the next
-    facet.
+    skip_facet_id() you can affect the id generated for the next facet.
  */
 
 class FacetList
    : public modified_container_impl< FacetList,
-                                     list( Container< const facet_list::Table::facet_list >,
-                                           Operation< pair< operations::reinterpret<facet_list::Facet>, facet_list::facet<>::id2index> > ) >,
+                                     list( Container< const fl_internal::Table >,
+                                           Operation< pair< operations::reinterpret<fl_internal::Facet>, fl_internal::facet::id2index> > ) >,
      public matrix_col_methods<FacetList> {
 protected:
-   shared_object<facet_list::Table, AliasHandler<shared_alias_handler> > table;
+   shared_object<fl_internal::Table, AliasHandler<shared_alias_handler> > table;
 
    friend FacetList& make_mutable_alias(FacetList& alias, FacetList& owner)
    {
@@ -1206,52 +1151,52 @@ protected:
    }
 
 public:
-   const container& get_container() const { return table->_facets; }
+   const container& get_container() const { return *table; }
 
-  /** @brief Create an empty list.
+   /** @brief Create an empty list.
       
       Allocate the internal data structures capable of handling sets of
       vertices from the range [0 .. @a n_vertices-1] in advance.  The vertex range can be
       dynamically expanded later, by @c insert* and @c push_back %operations,
       with reallocation costs O(@a n_vertices).
-  */
+   */
    explicit FacetList(int n_vertices=0)
-      : table( constructor<facet_list::Table(int)>(n_vertices) ) {}
+      : table( constructor<fl_internal::Table(size_t, int)>(sizeof(fl_internal::facet), n_vertices) ) {}
 
    template <typename Iterator>
    explicit FacetList(Iterator src, typename enable_if_iterator<Iterator,end_sensitive>::type=0)
-      : table( constructor<facet_list::Table(Iterator&, False)>(src, False()) ) {}
+      : table( constructor<fl_internal::Table(size_t, Iterator&, False)>(sizeof(fl_internal::facet), src, False()) ) {}
 
-  /** @brief Initialize the facets from the input sequence.
-      The items obtained by dereferencing @a src must be sets of cardinals (of type GenericSet).
-  */
+   /** @brief Initialize the facets from the input sequence.
+       The items obtained by dereferencing @a src must be sets of cardinals (of type GenericSet).
+   */
    template <typename Iterator>
    FacetList(Iterator src, Iterator src_end)
-      : table( constructor<facet_list::Table(Iterator&, Iterator&, False)>(src, src_end, False()) ) {}
+      : table( constructor<fl_internal::Table(size_t, Iterator&, Iterator&, False)>(sizeof(fl_internal::facet), src, src_end, False()) ) {}
 
-  /** @brief As above, but avoiding reallocation during the construction.
-      The facets supplied by @a src may not contain vertices outside the range [0, @a n_vertices-1].
-  */
+   /** @brief As above, but avoiding reallocation during the construction.
+       The facets supplied by @a src may not contain vertices outside the range [0, @a n_vertices-1].
+   */
    template <typename Iterator>
    FacetList(int n_vertices, Iterator src)
-      : table( constructor<facet_list::Table(int, Iterator&, False)>(n_vertices, src, False()) ) {}
+      : table( constructor<fl_internal::Table(size_t, int, Iterator&, False)>(sizeof(fl_internal::facet), n_vertices, src, False()) ) {}
 
    template <typename Set>
-   FacetList(const GenericSet<Set, facet_list::Facet::persistent_type, operations::cmp>& ps)
-      : table( constructor<facet_list::Table(typename Entire<Set>::const_iterator, True)>(entire(ps.top()), True()) ) {}
+   FacetList(const GenericSet<Set, fl_internal::Facet::persistent_type, operations::cmp>& ps)
+      : table( constructor<fl_internal::Table(size_t, typename Entire<Set>::const_iterator, True)>(sizeof(fl_internal::facet), entire(ps.top()), True()) ) {}
 
    template <typename Set>
-   FacetList(int n_vertices, const GenericSet<Set, facet_list::Facet::persistent_type, operations::cmp>& ps)
-      : table( constructor<facet_list::Table(int, typename Entire<Set>::const_iterator, True)>(n_vertices, entire(ps.top()), True()) ) {}
+   FacetList(int n_vertices, const GenericSet<Set, fl_internal::Facet::persistent_type, operations::cmp>& ps)
+      : table( constructor<fl_internal::Table(size_t, int, typename Entire<Set>::const_iterator, True)>(sizeof(fl_internal::facet), n_vertices, entire(ps.top()), True()) ) {}
 
    template <typename Matrix>
    FacetList(const GenericIncidenceMatrix<Matrix>& m)
-      : table( constructor<facet_list::Table(int, typename Entire< Rows<Matrix> >::const_iterator, False)>(m.cols(), entire(rows(m)), False()) ) {}
+      : table( constructor<fl_internal::Table(size_t, int, typename Entire< Rows<Matrix> >::const_iterator, False)>(sizeof(fl_internal::facet), m.cols(), entire(rows(m)), False()) ) {}
 
    template <typename Container>
    FacetList(const Container& src,
              typename enable_if<void**, isomorphic_to_container_of<Container, Set<int>, is_set>::value>::type=0)
-      : table( constructor<facet_list::Table(typename Entire<Container>::const_iterator, False)>(entire(src), False()) ) {}
+      : table( constructor<fl_internal::Table(size_t, typename Entire<Container>::const_iterator, False)>(sizeof(fl_internal::facet), entire(src), False()) ) {}
 
    /// Swap the contents of two lists in a most efficient way.
    void swap(FacetList& l) { table.swap(l.table); }
@@ -1271,27 +1216,27 @@ public:
    /// Renumber the facet ids consequently, starting with 0, thus eliminating the gaps.
    void squeeze()
    {
-      table->squeeze(black_hole<int>());
+      table->squeeze(operations::binary_noop());
    }
 
-   /// If you want to gather the old ids, pass an output iterator as @a index_consumer.
+   /// If you want to gather the old ids, pass a binary functor as @a index_consumer.
    template <typename IndexConsumer>
-   void squeeze(IndexConsumer ic)
+   void squeeze(const IndexConsumer& ic)
    {
       table->squeeze(ic);
    }
 
    /** @brief Make an artificial gap in the generated facet id sequence.
     *  The facet inserted next will have an id @a amount greater than it would have had without this call.
-   */
+    */
    void skip_facet_id(int amount=1) { table->skip_ids(amount); }
 
    class LexOrdered
       : public cascade_impl< LexOrdered,
-                             list( Container< facet_list::Table::LexOrdered_helper >,
+                             list( Container< fl_internal::Table::LexOrdered_helper >,
                                    CascadeDepth< int2type<2> >,
-                                   Hidden< facet_list::Table > ) >,
-        public GenericSet< LexOrdered, facet_list::Facet::persistent_type, operations::cmp> {
+                                   Hidden< fl_internal::Table > ) >,
+        public GenericSet< LexOrdered, fl_internal::Facet::persistent_type, operations::cmp> {
    protected:
       ~LexOrdered();
    };
@@ -1307,9 +1252,8 @@ public:
 
    /** @brief Add a new facet without checking the inclusion relation to the existing facets.
     *
-    *  It should be guaranteed by the application logic, that the
-    *  non-inclusion invariant is not violated!  There is no debugging mode
-    *  that could detect this.
+    *  It is allowed to insert a new facet being a subset or superset of existing facets.
+    *  However, insertion of an empty set or of a duplicate facet is forbidden.
     *
     *  The operation costs are O(dim + deg).
     */
@@ -1320,18 +1264,17 @@ public:
          if (f.top().empty())
             throw std::runtime_error("FacetList::insert - empty facet");
       }
-      table->insert(f);
-      return --(const_cast<const FacetList*>(this)->table->_facets.end());
+      return iterator(fl_internal::Table::iterator(table->insert(f)));
    }
 
-   /** @brief Add a facet to the list.
+   /** @brief Add a facet to the list with least efforts.
     *
     *  This method is primarily thought of as an construction aid, if none of
     *  the explicit constructors above suites, and enables the use of the
     *  convenient std::back_inserter.  The operation costs are O(dim).
     *
     *  The given facet must be lexicographically greater than all facets added
-    *  before.
+    *  before.  This can only be checked in debugging mode.
     */
    template <typename Set>
    void push_back(const GenericSet<Set, int, operations::cmp>& f)
@@ -1358,112 +1301,128 @@ public:
    /// Remove the facet pointed to by the given iterator.
    void erase(const iterator& where)
    {
-      return table->erase(where);
+      return table->erase_facet(reinterpret_cast<const fl_internal::facet&>(*where));
    }
 
    template <typename Set>
    iterator find(const GenericSet<Set, int, operations::cmp>& f) const
    {
-      return iterator(table->find(f));
+      const fl_internal::facet* facet=table->find_facet(f);
+      return facet != NULL ? iterator(fl_internal::Table::iterator(facet)) : end();
    }
 
-   typedef unary_transform_iterator<facet_list::superset_iterator, operations::reinterpret<facet_list::Facet> >
-      iteratorMax;
+   typedef unary_transform_iterator<fl_internal::superset_iterator, operations::reinterpret<fl_internal::Facet> >
+      superset_iterator;
 
    template <typename Set>
-   iteratorMax findMax(const GenericSet<Set, int, operations::cmp>& f) const
+   superset_iterator findSupersets(const GenericSet<Set, int, operations::cmp>& f) const
    {
-      return iteratorMax(table->findMax(f, false));
+      return superset_iterator(table->findSupersets(f, false));
    }
 
    template <typename Set>
-   class iteratorMin
-      : public unary_transform_iterator<facet_list::subset_iterator<Set>, operations::reinterpret<facet_list::Facet> > {
-      typedef unary_transform_iterator<facet_list::subset_iterator<Set>, operations::reinterpret<facet_list::Facet> > _super;
+   class subset_iterator
+      : public unary_transform_iterator<fl_internal::subset_iterator<Set>, operations::reinterpret<fl_internal::Facet> > {
+      typedef unary_transform_iterator<fl_internal::subset_iterator<Set>, operations::reinterpret<fl_internal::Facet> > _super;
    public:
-      iteratorMin(const facet_list::subset_iterator<Set>& it) : _super(it) {}
+      subset_iterator(const fl_internal::subset_iterator<Set>& it) : _super(it) {}
    };
 
    template <typename Set>
-   iteratorMin<Set> findMin(const GenericSet<Set, int, operations::cmp>& f) const
+   subset_iterator<Set> findSubsets(const GenericSet<Set, int, operations::cmp>& f) const
    {
-      return iteratorMin<Set>(table->findMin(f, True()));
+      return subset_iterator<Set>(table->findSubsets(f, True()));
    }
 
-   /** @brief The same as insertMax(), but without adding any new facet.
-       Returns the number of facets actually removed.
+   /** @brief Erase all supersets of a given set.
+       @return the number of facets actually removed.
    */
    template <typename Set>
-   int eraseMax(const GenericSet<Set, int, operations::cmp>& f)
+   int eraseSupersets(const GenericSet<Set, int, operations::cmp>& f)
    {
-      return table->eraseMax(f, black_hole<int>());
+      return table->eraseSupersets(f, black_hole<int>());
    }
 
-   /** @brief The same as insertMin(), but without adding any new facet.
-       Returns the number of facets actually removed.
+   /** @brief Erase all supersets of a given set.
+       @param consumer an output iterator swallowing all erased facets or their IDs
+       @return the number of facets actually removed.
+   */
+   template <typename Set, typename Consumer>
+   int eraseSupersets(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
+   {
+      return table->eraseSupersets(f, consumer);
+   }
+
+   /** @brief Erase all subsets of a given set.
+    *  @return the number of facets actually removed.
    */
    template <typename Set>
-   int eraseMin(const GenericSet<Set, int, operations::cmp>& f)
+   int eraseSubsets(const GenericSet<Set, int, operations::cmp>& f)
    {
-      return table->eraseMin(f, black_hole<int>());
+      return table->eraseSubsets(f, black_hole<int>());
    }
 
-   template <typename Set, typename Consumer>
-   int eraseMax(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
-   {
-      return table->eraseMax(f, consumer);
-   }
-
-   template <typename Set, typename Consumer>
-   int eraseMin(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
-   {
-      return table->eraseMin(f, consumer);
-   }
-
-  /** Add a new facet @em{if and only if} there are no facets including it.
-   *  If this holds, remove also all facets that are included in the new one.
-   *  Return @c true if the new facet was really included.
-   *
-   *  The average operation costs are O(dim<sup>2</sup> deg).
+   /** @brief Erase all subsets of a given set.
+    *  @param consumer an output iterator swallowing all erased facets or their IDs
+    *  @return the number of facets actually removed.
    */
+   template <typename Set, typename Consumer>
+   int eraseSubsets(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
+   {
+      return table->eraseSubsets(f, consumer);
+   }
+
+   /** Add a new facet @em{if and only if} there are no facets including it.
+    *  If this holds, remove all facets that are included in the new one.
+    *  The average operation costs are O(dim<sup>2</sup> deg).
+    *
+    *  @return @c true if the new facet was really included.
+    */
    template <typename Set>
    bool insertMax(const GenericSet<Set, int, operations::cmp>& f)
    {
-      return table->insertMax(f, black_hole<int>(), True());
+      return table->insertMax(f, black_hole<int>(), True()) != NULL;
    }
 
-   /** The opposite of insertMax: add a new facet @em{if and only if}
-    *  there are no facets included in it, remove all facets including the new facet.
+   /** Add a new facet @em{if and only if} there are no facets included in it.
+    *  If this holds, remove all facets including the new one.
+    *
+    *  @return @c true if the new facet was really included.
     */
    template <typename Set>
    bool insertMin(const GenericSet<Set, int, operations::cmp>& f)
    {
-      return table->insertMin(f, black_hole<int>(), True());
+      return table->insertMin(f, black_hole<int>(), True()) != NULL;
    }
 
-  /** Same as insertMax(const GenericSet<Set, int, operations::cmp>& f) except
-      for a second argument.  This iterator gathers the facets removed by
-      the operation.  It must implement the output iterator interface; its @c
-      value_type must be either int, if it is collecting the facet @em id's,
-      or GenericSet<...,int>, if it is collecting the complete facets.
-  */
+   /** Add a new facet @em{if and only if} there are no facets including it.
+    *  If this holds, remove all facets that are included in the new one.
+    *  @param consumer an output iterator swallowing all erased facets or their IDs
+    *
+    *  @return @c true if the new facet was really included.
+    */
    template <typename Set, typename Consumer>
    bool insertMax(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
    {
-      return table->insertMax(f, consumer, True());
+      return table->insertMax(f, consumer, True()) != NULL;
    }
 
-  /// Opposite of the above.
+   /** Add a new facet @em{if and only if} there are no facets included in it.
+    *  If this holds, remove all facets including the new one.
+    *  @param consumer an output iterator swallowing all erased facets or their IDs
+    *
+    *  @return @c true if the new facet was really included.
+    */
    template <typename Set, typename Consumer>
    bool insertMin(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
    {
-      return table->insertMin(f, consumer, True());
+      return table->insertMin(f, consumer, True()) != NULL;
    }
 
-  /** Slightly optimized versions of @c insertMax.  Assumes that the @c
-      FacetList object already has all columns corresponding to the vertices of a
-      new facet, and therefore does not need to be expanded.
-  */
+   /** Slightly optimized versions of @see insertMax.  Assumes that the
+       @c FacetList object already has all columns corresponding to the vertices
+       of a new facet, and therefore does not need to be expanded.
+   */
    template <typename Set>
    bool replaceMax(const GenericSet<Set, int, operations::cmp>& f)
    {
@@ -1471,10 +1430,13 @@ public:
          if (!set_within_range(f.top(), this->cols()))
             throw std::runtime_error("FacetList::replaceMax - invalid face");
       }
-      return table->insertMax(f, black_hole<int>(), False());
+      return table->insertMax(f, black_hole<int>(), False()) != NULL;
    }
 
-  /// Opposite of the above.
+   /** Slightly optimized versions of @see insertMin.  Assumes that the
+       @c FacetList object already has all columns corresponding to the vertices
+       of a new facet, and therefore does not need to be expanded.
+   */
    template <typename Set>
    bool replaceMin(const GenericSet<Set, int, operations::cmp>& f)
    {
@@ -1482,10 +1444,9 @@ public:
          if (!set_within_range(f.top(), this->cols()))
             throw std::runtime_error("FacetList::replaceMin - invalid face");
       }
-      return table->insertMin(f, black_hole<int>(), False());
+      return table->insertMin(f, black_hole<int>(), False()) != NULL;
    }
 
-  /// ... with output consumer
    template <typename Set, typename Consumer>
    bool replaceMax(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
    {
@@ -1493,10 +1454,9 @@ public:
          if (!set_within_range(f.top(), this->cols()))
             throw std::runtime_error("FacetList::replaceMax - invalid face");
       }
-      return table->insertMax(f, consumer, False());
+      return table->insertMax(f, consumer, False()) != NULL;
    }
 
-  /// ... with output consumer
    template <typename Set, typename Consumer>
    bool replaceMin(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
    {
@@ -1504,15 +1464,14 @@ public:
          if (!set_within_range(f.top(), this->cols()))
             throw std::runtime_error("FacetList::replaceMin - invalid face");
       }
-      return table->insertMin(f, consumer, False());
+      return table->insertMin(f, consumer, False()) != NULL;
    }
 
    friend class Cols<FacetList>;
 
 #if POLYMAKE_DEBUG
-   void check() const { table->check(); }
-   ~FacetList() { POLYMAKE_DEBUG_METHOD(FacetList,dump); }
-   void dump() const { cerr << *this << std::flush; }
+   bool sanity_check() const;
+   void dump() const;
 #endif
 };
 
@@ -1521,6 +1480,18 @@ Cols<FacetList>::get_container() const
 {
    return *hidden().table->columns;
 }
+
+template <>
+struct spec_object_traits<FacetList::LexOrdered>
+   : spec_object_traits<is_container> {
+   static const bool is_always_const=true;
+   typedef FacetList masquerade_for;
+};
+
+template <typename Set>
+struct check_iterator_feature<FacetList::subset_iterator<Set>, end_sensitive> : True {};
+template <typename Set>
+struct check_iterator_feature<FacetList::subset_iterator<Set>, indexed> : True {};
 
 } // end namespace pm
 

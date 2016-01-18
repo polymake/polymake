@@ -16,6 +16,7 @@
 
 package de.tuberlin.polymake.polytope;
 
+import java.awt.EventQueue;
 import java.awt.Frame;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -68,28 +69,42 @@ public abstract class PolymakeSchlegelControl extends PolymakeControl {
 			if (!(frameMap.containsKey(geometry.getEmbedding().getName()))
 					|| !(((PolymakeSchlegelFrame) frameMap.get(geometry
 							.getEmbedding().getName())).isDisplayable())) {
-				PolymakeFrame tmpFrame = createFrame(geometry.getEmbedding()
-						.getName());
-				frameMap.put(geometry.getEmbedding().getName(), tmpFrame);
-				tmpFrame.update(geometry.getEmbedding(), parser.getParameters());
-				tmpFrame.encompass();
-				tmpFrame.setVisible(true);
+				Runnable r = new Runnable() {
+					
+					@Override
+					public void run() {
+						PolymakeFrame tmpFrame = createFrame(geometry.getEmbedding()
+								.getName());
+						frameMap.put(geometry.getEmbedding().getName(), tmpFrame);
+						tmpFrame.update(geometry.getEmbedding(), parser.getParameters());
+						tmpFrame.encompass();
+						tmpFrame.setVisible(true);
+					}
+				};
+				
+				EventQueue.invokeLater(r);
 			} else {
-				PolymakeSchlegelFrame tmpFrame = (PolymakeSchlegelFrame) frameMap
+				final PolymakeSchlegelFrame tmpFrame = (PolymakeSchlegelFrame) frameMap
 						.get(geometry.getEmbedding().getName());
-				if (tmpFrame.isVisible()
-						|| tmpFrame.getState() == Frame.ICONIFIED) {
-					tmpFrame.setState(Frame.NORMAL);
-				}
-				tmpFrame.setVisible(true);
-				if (parser.getError() != null) {
-					tmpFrame.setStatus(parser.getError());
-				}
-				if (parser.getWarning() != null) {
-					tmpFrame.setStatus(parser.getWarning());
-				}
-				tmpFrame.update(geometry.getEmbedding(),
-						parser.getParameters(), parser.getError() != null);
+				EventQueue.invokeLater(new Runnable() {
+					@Override
+					public void run() {
+						if (tmpFrame.isVisible()
+								|| tmpFrame.getState() == Frame.ICONIFIED) {
+							tmpFrame.setState(Frame.NORMAL);
+						}
+						tmpFrame.setVisible(true);
+						if (parser.getError() != null) {
+							tmpFrame.setStatus(parser.getError());
+						}
+						if (parser.getWarning() != null) {
+							tmpFrame.setStatus(parser.getWarning());
+						}
+						tmpFrame.update(geometry.getEmbedding(),
+								parser.getParameters(), parser.getError() != null);
+						
+					}
+				});
 			}
 		} catch (SharedMemoryMatrixException e) {
 			e.printStackTrace(SelectorThread.newErr);

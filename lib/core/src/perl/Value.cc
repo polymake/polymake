@@ -591,15 +591,6 @@ void Value::set_perl_type(SV* proto)
 namespace {
 
 inline
-MAGIC* allocate_magic(SV* sv, SV* descr, unsigned int flags, unsigned int n_anchors)
-{
-   dTHX;
-   const glue::base_vtbl* t=(const glue::base_vtbl*)SvPVX(PmArray(descr)[glue::TypeDescr_vtbl_index]);
-   (t->sv_maker)(aTHX_ sv, descr, flags, n_anchors);
-   return SvMAGIC(SvRV(sv));
-}
-
-inline
 Value::Anchor* finalize_primitive_ref(pTHX_ const Value& v, const char* xptr, SV* descr, bool take_ref)
 {
    if (take_ref) {
@@ -629,7 +620,8 @@ Value::Anchor& Value::Anchor::store_anchor(SV* sv)
 
 void* Value::allocate_canned(SV* descr) const
 {
-   return allocate_magic(sv, descr, options | value_alloc_magic, n_anchors)->mg_ptr;
+   dTHX;
+   return glue::allocate_canned_magic(aTHX_ sv, descr, options | value_alloc_magic, n_anchors)->mg_ptr;
 }
 
 Value::Anchor* Value::first_anchor_slot() const
@@ -640,7 +632,8 @@ Value::Anchor* Value::first_anchor_slot() const
 
 Value::Anchor* Value::store_canned_ref(SV* descr, void* val, value_flags flags) const
 {
-   MAGIC* mg=allocate_magic(sv, descr, flags, n_anchors);
+   dTHX;
+   MAGIC* mg=glue::allocate_canned_magic(aTHX_ sv, descr, flags, n_anchors);
    mg->mg_ptr=(char*)val;
    return glue::MagicAnchors::first(mg);
 }

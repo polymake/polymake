@@ -1,6 +1,6 @@
 /* cddlp.c:  dual simplex method c-code
-   written by Komei Fukuda, fukuda@ifor.math.ethz.ch
-   Version 0.94f, February 7, 2008
+   written by Komei Fukuda, fukuda@math.ethz.ch
+   Version 0.94h, April 30, 2015
 */
 
 /* cddlp.c : C-Implementation of the dual simplex method for
@@ -557,8 +557,8 @@ void dd_SelectDualSimplexPivot(dd_rowrange m_size,dd_colrange d_size,
     for (j=1; j<=d_size; j++){ dd_init(rcost[j-1]);}
     set_initialize(&tieset,d_size);
     set_initialize(&stieset,d_size);
+    d_last=d_size;
   }
-  d_last=d_size;
 
   *r=0; *s=0;
   *selected=dd_FALSE;
@@ -1202,8 +1202,8 @@ void dd_FindDualFeasibleBasis(dd_rowrange m_size,dd_colrange d_size,
     rcost=(mytype*) calloc(d_size,sizeof(mytype));
     nbindex_ref=(long*) calloc(d_size+1,sizeof(long));
     for (j=1; j<=d_size; j++){ dd_init(rcost[j-1]);}
+    d_last=d_size;
   }
-  d_last=d_size;
 
   *err=dd_NoError; *lps=dd_LPSundecided; *s=0;
   local_m_size=m_size+1;  /* increase m_size by 1 */
@@ -2570,7 +2570,7 @@ dd_rowset dd_RedundantRows(dd_MatrixPtr M, dd_ErrorType *error)  /* 092 */
   dd_rowset redset;
   dd_MatrixPtr Mcopy;
   dd_Arow cvec; /* certificate */  
-  dd_boolean localdebug=dd_FALSE;
+  dd_boolean localdebug=dd_TRUE;
 
   m=M->rowsize;
   if (M->representation==dd_Generator){
@@ -2583,11 +2583,11 @@ dd_rowset dd_RedundantRows(dd_MatrixPtr M, dd_ErrorType *error)  /* 092 */
   set_initialize(&redset, m);
   for (i=m; i>=1; i--) {
     if (dd_Redundant(Mcopy, i, cvec, error)) {
-      if (localdebug) printf("dd_RedundantRows: the row %ld is redundant.\n", i);
+      if (localdebug) printf("Iteration %ld: the row %ld is redundant.\n",m-i+1,i);
       set_addelem(redset, i);
       dd_MatrixRowRemove(&Mcopy, i);
     } else {
-      if (localdebug) printf("dd_RedundantRows: the row %ld is essential.\n", i);
+      if (localdebug) printf("Iteration %ld: the row %ld is essential.\n",m-i+1, i);
     }
     if (*error!=dd_NoError) goto _L99;
   }
@@ -2874,7 +2874,7 @@ dd_rowset dd_RedundantRowsViaShooting(dd_MatrixPtr M, dd_ErrorType *error)  /* 0
   dd_LPSolutionPtr lps; 
   dd_ErrorType err;
   dd_LPSolverType solver=dd_DualSimplex; 
-  dd_boolean localdebug=dd_FALSE;
+  dd_boolean localdebug=dd_TRUE;
 
   m=M->rowsize;
   d=M->colsize;
@@ -2951,6 +2951,7 @@ dd_rowset dd_RedundantRowsViaShooting(dd_MatrixPtr M, dd_ErrorType *error)  /* 0
     } /* endwhile */
   } else {
     /* No interior point is found.  Apply the standard LP technique.  */
+    if (localdebug) printf("No interior-point is found and thus the standard LP technique will be used.\n", ired);
     redset=dd_RedundantRows(M, error);
   }
 

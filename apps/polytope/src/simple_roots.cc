@@ -293,7 +293,7 @@ SparseMatrix<QE> simple_roots_type_H4()
    return R;
 }
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Produce the simple roots of the Coxeter arrangement of type A"
                   "# Indices are taken w.r.t. the Dynkin diagram  0 ---- 1 ---- ... ---- n-1"
                   "# Note that the roots lie at infinity to facilitate reflecting in them, and are normalized to length sqrt{2}." 
@@ -301,7 +301,7 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @return SparseMatrix",
                   &simple_roots_type_A, "simple_roots_type_A($)");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Produce the simple roots of the Coxeter arrangement of type B"
                   "# Indices are taken w.r.t. the Dynkin diagram  0 ---- 1 ---- ... ---- n-2 --(4)--> n-1"
                   "# Note that the roots lie at infinity to facilitate reflecting in them, and are normalized to length sqrt{2}." 
@@ -309,7 +309,7 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @return SparseMatrix",
                   &simple_roots_type_B, "simple_roots_type_B($)");
  
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Produce the simple roots of the Coxeter arrangement of type C"
                   "# Indices are taken w.r.t. the Dynkin diagram  0 ---- 1 ---- ... ---- n-2 <--(4)-- n-1"
                   "# Note that the roots lie at infinity to facilitate reflecting in them, and are normalized to length sqrt{2}." 
@@ -317,7 +317,7 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @return SparseMatrix",
                   &simple_roots_type_C, "simple_roots_type_C($)");
  
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Produce the simple roots of the Coxeter arrangement of type D"
                   "# Indices are taken w.r.t. the Dynkin diagram"
                   "#                      n-2"
@@ -330,7 +330,7 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @return SparseMatrix",
                   &simple_roots_type_D, "simple_roots_type_D($)");
  
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Produce the simple roots of the Coxeter arrangement of type E6"
                   "# Indices are taken w.r.t. the Dynkin diagram "
                   "#                   3"
@@ -341,7 +341,7 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @return SparseMatrix",
                   &simple_roots_type_E6, "simple_roots_type_E6()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Produce the simple roots of the Coxeter arrangement of type E7"
                   "# Indices are taken w.r.t. the Dynkin diagram "
                   "#                          4"
@@ -352,7 +352,7 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @return SparseMatrix",
                   &simple_roots_type_E7, "simple_roots_type_E7()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Produce the simple roots of the Coxeter arrangement of type E8"
                   "# Indices are taken w.r.t. the Dynkin diagram "
                   "#                                 5"
@@ -363,27 +363,27 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @return SparseMatrix",
                   &simple_roots_type_E8, "simple_roots_type_E8()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Produce the simple roots of the Coxeter arrangement of type F4"
                   "# Indices are taken w.r.t. the Dynkin diagram "
                   "#     0 ---- 1 --(4)--> 2 ---- 3"
                   "# @return SparseMatrix",
                   &simple_roots_type_F4, "simple_roots_type_F4()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Produce the simple roots of the Coxeter arrangement of type G2"
                   "# Indices are taken w.r.t. the Dynkin diagram  0 <--(6)-- 1"
                   "# @return SparseMatrix",
                   &simple_roots_type_G2, "simple_roots_type_G2()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Produce the simple roots of the Coxeter arrangement of type H3"
                   "# Indices are taken w.r.t. the Dynkin diagram  0 --(5)-- 1 ---- 2"
                   "# Note that the roots lie at infinity to facilitate reflecting in them, and are normalized to length 2" 
                   "# @return SparseMatrix",
                   &simple_roots_type_H3, "simple_roots_type_H3()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Produce the simple roots of the Coxeter arrangement of type H4"
                   "# Indices are taken w.r.t. the Dynkin diagram  0 --(5)-- 1 ---- 2 ---- 3"
                   "# Note that the roots lie at infinity to facilitate reflecting in them, and are normalized to length sqrt{2}" 

@@ -16,12 +16,13 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
 #include "polymake/Array.h"
+#include "polymake/client.h"
 #include "polymake/common/boost_dynamic_bitset.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    Class4perl("Polymake::common::Pair_A_Array__boost_dynamic_bitset_I_Array__boost_dynamic_bitset_Z", std::pair< Array< boost_dynamic_bitset >, Array< boost_dynamic_bitset > >);
+   Class4perl("Polymake::common::Pair_A_boost_dynamic_bitset_I_Int_Z", std::pair< boost_dynamic_bitset, int >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

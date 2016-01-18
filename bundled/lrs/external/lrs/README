@@ -2,9 +2,61 @@ README file for lrslib : reverse search vertex enumeration program/CH package
 -----------------------------------------------------------------------------
 Documentation is currently being maintained at the URL:
 
-http://cgm.cs.mcgill.ca/~avis/lrs.html
+http://cgm.cs.mcgill.ca/~avis/C/lrs.html
 -----------------------------------------------------------------------------
+Current version is lrslib-060 contains changes listed below.
+
+2015.7.13
+This a major revision of lrslib which contains mplrs.c, the MPI parallel version of lrs written by Skip Jordan and derived from plrs which was written by Gary Roumanis.
+Tests of mplrs on Tsubame2 with up to 1200 cores by Kazuki Yoshizoe show near linear speedups. lrs has some new options which are primarily for use by mplrs.
+
+To install mplrs see:  http://cgm.cs.mcgill.ca/~avis/C/lrslib/USERGUIDE.html#mplrs
+
+You will need an MPI library and mpic++ installed.
+If you feel lucky try:
+
+% make mplrs
+
+Defalut usage:
+
+% mpirun -np p mplrs  <infile> [ <outfile> ] 
+
+where p>3 is the number of core to be used.
+
+Other options available are described in http://cgm.cs.mcgill.ca/~avis/C/lrslib/USERGUIDE.html#mplrs
+In particular plots can be made during the mplrs run of the job queue length, number of processors active etc.
+
+The makefile was modified by David Bremner. Please direct any complaints to bremner@unb.ca
+
+New option:
+maxcobases n 
+After maxbases have been generated the cobases of the unexplored subtrees are reported.
+Each of these can be restarted as a separate lrs run with suitable mindepth option set
+
+------------------------------------------------------------------------------
+Older versions
+
+2014.12.4
+
+With gcc 4.8 plrs does not compile. Changed memory ordering (plrs.cpp line 168) from
+plrs_output* consume_list = output_list.exchange(0,boost::memory_order_consume);
+to
+plrs_output* consume_list = output_list.exchange(0,boost::memory_order_acquire);
+
+For more details see here:
+https://bitsharestalk.org/index.php?topic=15.msg14109#msg14109
+
+To get plrsmp to compile I converted the length macro to a function call (conflict with str1.length in lrslib.c line 2792)
+
+2014.12.2
+
+From version 1.56.0 the boost library contains the Atomic library, so boost_atomic is no longer included in the lrs distribution. 
+The instructions below for installing plrs are now simpler.
+-----------------------------------------------------------------------------
+
 2014.9.27
+
+lrslib-050 released 
 
 lrslib-050 contains a multi-thread version of lrs called plrs. The input/output files for plrs are the
 same as for lrs, however plrs is intended just for vertex or facet enumeration, and other functionality
@@ -17,22 +69,19 @@ Usage is
 -mt <max threads> specifies the number parallel threads calling lrs (default 12)
 -id <initial depth> specifies the initial depth of the RS tree to generate before parallelization (default 5)
 
-Setup instructions for plrs.
+Setup instructions for plrs. Use version 1.57.0 or later of the boost libary
 
-1. Install boost library from http://www.boost.org/ into prefix/boost151
+1. Install boost library from http://www.boost.org/ into prefix/boost157
 
-If you haver root permission, prefix=/usr/include
+If you have root permission, prefix=/usr/include  (or just do not specify it)
 However you can install boost locally wherever you like.
  
 Instructions for installing the library are located here 
-http://www.boost.org/doc/libs/1_51_0/more/getting_started/unix-variants.html. 
+http://www.boost.org/doc/libs/1_57_0/more/getting_started/unix-variants.html. 
 Look at section 5 for an easy install. 
 ***Important: make a note of the path given at the end of the install process ****
 
-2. After the boost library is installed merge the contents of boost-atomic directory (included in lrslib-050) 
-with the corresponding directories in your boost prefix/include/boost151 directory.
-
-3. Update the makefile to include the paths you recorded in step 1. 
+2. Update the makefile to include the paths you recorded in step 1. 
  "make plrs" will make plrs with the gmp library (assuming the gmp library is already installed on that machine). 
  "make plrsmp" will make plrs with the standard lrsmp arithmetic library and plrs1 with the long integer library. 
 

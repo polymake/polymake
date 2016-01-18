@@ -16,28 +16,33 @@
 
 # A polytope all of whose vertex coordinates are integral.
 
-declare object LatticePolytope : Polytope<Rational>;
+declare object_specialization Lattice = Polytope<Rational> {
 
+    precondition : LATTICE && BOUNDED;
+
+}
+
+# This alias is solely introduced for backward compatibility
+# with some external extensions like polymake-gap interface.
+# It will be removed after some transitional period.
+# Please do not use it in polymake native code!
+declare object LatticePolytope = Polytope<Rational>;
 
 INCLUDE
   lattice_properties.rules
   lattice_visual.rules
-  _4ti2.rules + normaliz2.rules + require_libnormaliz.rules | lattice_missing_hilbert.rules
+  _4ti2.rules + require_libnormaliz.rules | lattice_missing_hilbert.rules
   _4ti2.rules | lattice_missing_hilbert_nonpointed.rules
-  latte.rules + normaliz2.rules + require_libnormaliz.rules | lattice_missing_ehrhart.rules
+  latte.rules + require_libnormaliz.rules | lattice_missing_ehrhart.rules
 
 
 object Polytope<Rational> {
-
-    auto_cast : LatticePolytope;
-    precondition : LATTICE;
-    precondition : BOUNDED;
 
     rule N_LATTICE_POINTS : LATTICE_POINTS_GENERATORS {
         $this->N_LATTICE_POINTS = $this->LATTICE_POINTS_GENERATORS->[0]->rows;
     }
     precondition : BOUNDED;
-    weight 0.10;
+    weight 0.1;
     
     rule BOUNDARY_LATTICE_POINTS, INTERIOR_LATTICE_POINTS : LATTICE_POINTS_GENERATORS , FACETS {
         my $lattice_points = $this->LATTICE_POINTS_GENERATORS->[0];
@@ -66,22 +71,22 @@ object Polytope<Rational> {
     rule N_BOUNDARY_LATTICE_POINTS : N_LATTICE_POINTS , N_INTERIOR_LATTICE_POINTS {
         $this->N_BOUNDARY_LATTICE_POINTS = $this->N_LATTICE_POINTS - $this->N_INTERIOR_LATTICE_POINTS;
     }
-    weight 0.10;
+    weight 0.1;
     
     rule N_BOUNDARY_LATTICE_POINTS : BOUNDARY_LATTICE_POINTS {
         $this->N_BOUNDARY_LATTICE_POINTS = $this->BOUNDARY_LATTICE_POINTS->rows;
     }
-    weight 0.10;
+    weight 0.1;
     
     rule N_INTERIOR_LATTICE_POINTS : INTERIOR_LATTICE_POINTS {
         $this->N_INTERIOR_LATTICE_POINTS = $this->INTERIOR_LATTICE_POINTS->rows;
     }
-    weight 0.10;
+    weight 0.1;
     
     rule N_INTERIOR_LATTICE_POINTS : N_LATTICE_POINTS , N_BOUNDARY_LATTICE_POINTS {
         $this->N_INTERIOR_LATTICE_POINTS = $this->N_LATTICE_POINTS - $this->N_BOUNDARY_LATTICE_POINTS;
     }
-    weight 0.10;
+    weight 0.1;
 
     rule LATTICE_POINTS_GENERATORS : HILBERT_BASIS_GENERATORS {
         $this->LATTICE_POINTS_GENERATORS = [ [ grep { $_->[0] == 1 } @{$this->HILBERT_BASIS_GENERATORS->[0]} ], [], []];
@@ -106,7 +111,7 @@ object Polytope<Rational> {
       $this->N_LATTICE_POINTS = 0;
       $this->N_INTERIOR_LATTICE_POINTS = 0;
     }
-    weight 0.10;
+    weight 0.1;
     precondition : !FEASIBLE;
 
     rule LATTICE_POINTS_GENERATORS : DEGREE_ONE_GENERATORS {
@@ -164,6 +169,7 @@ object Polytope<Rational> {
     rule MONOID_GRADING : CONE_AMBIENT_DIM {
        $this->MONOID_GRADING = unit_vector<Integer>($this->CONE_AMBIENT_DIM,0);
     }
+    precondition : BOUNDED;
     weight 0.10;
 
 
@@ -186,7 +192,7 @@ label bbox
 }
 
 
-object LatticePolytope {
+object_specialization Polytope::Lattice {
 
     rule LATTICE_BASIS : CONE_AMBIENT_DIM {
         $this->LATTICE_BASIS = unit_matrix<Rational>($this->CONE_AMBIENT_DIM-1);
@@ -234,7 +240,7 @@ object LatticePolytope {
         $this->N_LATTICE_POINTS = $this->H_STAR_VECTOR->[1] + scalar(@{$this->H_STAR_VECTOR});
     }
     precondition : CONE_DIM { $this->CONE_DIM > 1; }
-    weight 0.10;
+    weight 0.1;
     
     
     # @category Lattice points in cones
@@ -272,18 +278,16 @@ object LatticePolytope {
     weight 0.10;
     
     rule N_INTERIOR_LATTICE_POINTS : H_STAR_VECTOR {
-        my $h = $this->H_STAR_VECTOR;
-        my $dim = $#$h;
-        $this->N_INTERIOR_LATTICE_POINTS = $h->[$dim];
+        $this->N_INTERIOR_LATTICE_POINTS = $this->H_STAR_VECTOR->[-1];
     }
-    weight 0.10;
+    weight 0.1;
 
     rule EHRHART_POLYNOMIAL_COEFF, N_INTERIOR_LATTICE_POINTS, N_LATTICE_POINTS :  {
       $this->EHRHART_POLYNOMIAL_COEFF=new Vector<Rational>();
       $this->N_LATTICE_POINTS = 0;
       $this->N_INTERIOR_LATTICE_POINTS = 0;
     }
-    weight 0.10;
+    weight 0.1;
     precondition : !FEASIBLE;
     
     # Check, whether the polar dual is also a lattice polytope.
@@ -310,18 +314,10 @@ object LatticePolytope {
     weight 1.10;
     
     rule REFLEXIVE : GORENSTEIN , GORENSTEIN_INDEX {
-        if ($this->GORENSTEIN) {
-            if ($this->GORENSTEIN_INDEX == 1) {
-                $this->REFLEXIVE = 1;
-            } else {
-                $this->REFLEXIVE = 0;
-            }
-        } else {
-            $this->REFLEXIVE = 0;
-        }
+        $this->REFLEXIVE= $this->GORENSTEIN && ($this->GORENSTEIN_INDEX == 1);
     }
     precondition : FULL_DIM;
-    weight 0.10;
+    weight 0.1;
     
     rule REFLEXIVE : H_STAR_VECTOR {
         my $h = $this->H_STAR_VECTOR;
@@ -348,7 +344,7 @@ object LatticePolytope {
         $this->GORENSTEIN_INDEX = 1;
     }
     precondition : REFLEXIVE;
-    weight 0.10;
+    weight 0.1;
     
     rule GORENSTEIN : H_STAR_VECTOR {
         my $h = $this->H_STAR_VECTOR;
@@ -398,19 +394,15 @@ object LatticePolytope {
     rule CANONICAL : N_INTERIOR_LATTICE_POINTS {
         $this->CANONICAL = ($this->N_INTERIOR_LATTICE_POINTS == 1);
     }
-    weight 0.10;
+    weight 0.1;
     
     rule TERMINAL : CANONICAL , N_LATTICE_POINTS , N_VERTICES {
         $this->TERMINAL = ($this->CANONICAL && ($this->N_LATTICE_POINTS == $this->N_VERTICES + 1));
     }
-    weight 0.10;
+    weight 0.1;
     
     rule LATTICE_EMPTY : N_LATTICE_POINTS , N_VERTICES {
-        if ($this->N_LATTICE_POINTS == $this->N_VERTICES) {
-            $this->LATTICE_EMPTY = 1;
-        } else {
-            $this->LATTICE_EMPTY = 0;
-        }
+        $this->LATTICE_EMPTY= ($this->N_LATTICE_POINTS == $this->N_VERTICES);
     }
     weight 0.10;   
     
@@ -444,7 +436,7 @@ object LatticePolytope {
     rule LATTICE_DEGREE : LATTICE_CODEGREE , CONE_DIM {
         $this->LATTICE_DEGREE = $this->CONE_DIM - $this->LATTICE_CODEGREE;
     }
-    weight 0.10;
+    weight 0.1;
     
     rule LATTICE_DEGREE : H_STAR_VECTOR {
         my $h = $this->H_STAR_VECTOR;
@@ -458,25 +450,25 @@ object LatticePolytope {
     
     rule LATTICE_CODEGREE : GORENSTEIN_INDEX {
         my $index = $this->GORENSTEIN_INDEX;
-        if($index > 0) {
+        if ($index > 0) {
             $this->LATTICE_CODEGREE = $index;
         }
     }
     precondition : GORENSTEIN;
-    weight 0.10;
+    weight 0.1;
     
     rule LATTICE_CODEGREE : LATTICE_DEGREE , CONE_DIM {
         $this->LATTICE_CODEGREE = $this->CONE_DIM - $this->LATTICE_DEGREE;
     }
-    weight 0.10;
+    weight 0.1;
 
-    rule EHRHART_POLYNOMIAL_COEFF : H_STAR_VECTOR {
-        $this->EHRHART_POLYNOMIAL_COEFF = binomial_to_power_basis(new Vector<Rational>($this->H_STAR_VECTOR));
+    rule EHRHART_POLYNOMIAL_COEFF : H_STAR_VECTOR , CONE_DIM {
+        $this->EHRHART_POLYNOMIAL_COEFF = binomial_to_power_basis($this->H_STAR_VECTOR->slice(0,$this->CONE_DIM));
     }
     weight 0.10;
 
-    rule H_STAR_VECTOR : EHRHART_POLYNOMIAL_COEFF {
-        $this->H_STAR_VECTOR = power_to_binomial_basis($this->EHRHART_POLYNOMIAL_COEFF);
+    rule H_STAR_VECTOR : EHRHART_POLYNOMIAL_COEFF , CONE_DIM {
+        $this->H_STAR_VECTOR = power_to_binomial_basis($this->EHRHART_POLYNOMIAL_COEFF->slice(0,$this->CONE_DIM));
     }
     weight 0.10;
     
@@ -496,7 +488,7 @@ object LatticePolytope {
     rule NORMAL : N_LATTICE_POINTS , N_HILBERT_BASIS {
         $this->NORMAL = ($this->N_LATTICE_POINTS == $this->N_HILBERT_BASIS);
     }
-    weight 0.10;
+    weight 0.1;
 
     rule FACET_WIDTH : FACET_WIDTHS {
         $this->FACET_WIDTH = maximum($this->FACET_WIDTHS);
@@ -537,7 +529,7 @@ object LatticePolytope {
     rule COMPRESSED : FACET_WIDTH {
         $this->COMPRESSED=($this->FACET_WIDTH==1);
     }
-    weight 0.10;
+    weight 0.1;
 
     rule SMOOTH : N_VERTICES, GRAPH.ADJACENCY, GRAPH.EDGE_DIRECTIONS, SIMPLE {
 
@@ -596,7 +588,7 @@ object LatticePolytope {
             }
             my $p = new Cone<Rational>(INPUT_RAYS=>\@dirs);
             $sched ||= $p->get_schedule("HILBERT_BASIS_GENERATORS")
-                   || die "don't know how to compute HILBERT_BASIS: please install 4ti2 or normaliz2\n";
+                   || die "don't know how to compute HILBERT_BASIS: please install 4ti2 or activate bundled:libnormaliz\n";
             $sched->apply($p);
             foreach my $h (@{$p->HILBERT_BASIS_GENERATORS->[0]}) {
                 next if ($h->[0]==1);
@@ -621,8 +613,12 @@ object LatticePolytope {
     weight 5.50;
 
     rule VERY_AMPLE : { $this->VERY_AMPLE = 1; }
-    precondition : SMOOTH | NORMAL;
-    weight 0.10;
+    precondition : SMOOTH;
+    weight 0.1;
+
+    rule VERY_AMPLE : { $this->VERY_AMPLE = 1; }
+    precondition : NORMAL;
+    weight 0.1;
 
     rule GRAPH.LATTICE_EDGE_LENGTHS : VERTICES, GRAPH.ADJACENCY {
         my $el = new EdgeMap<Undirected, Integer>($this->GRAPH->ADJACENCY);
@@ -648,7 +644,41 @@ object LatticePolytope {
     rule HOMOGENEOUS : {
        $this->HOMOGENEOUS = 1;
     }
-    weight 0.10;
+    weight 0.1;
+
+    rule LATTICE_WIDTH, LATTICE_WIDTH_DIRECTION : VERTICES | POINTS, LINEALITY_SPACE, CONE_AMBIENT_DIM {
+       my $direction = unit_vector($this->CONE_AMBIENT_DIM,1);
+       my $lp=$this->LP(LINEAR_OBJECTIVE=>$direction, temporary);
+       my $sched = $lp->get_schedule("MAXIMAL_VALUE","MINIMAL_VALUE");
+       $sched->apply($lp);
+       my $width=$lp->MAXIMAL_VALUE - $lp->MINIMAL_VALUE;
+
+       # we need LINEALITY_SPACE and VERTICES because of minkowski_sum.
+       my $half_space = unit_vector($this->CONE_AMBIENT_DIM,1) + (0|(ones_vector($this->CONE_AMBIENT_DIM-1)/$width));
+       my $S=new Polytope(INEQUALITIES=>(scale(polarize(minkowski_sum(1,$this, -1,$this)),$width)->FACETS)/$half_space);
+       my $B=$S->LATTICE_POINTS;      
+
+       for(my $i=0; $i<$B->rows(); ++$i){
+	   my $current_direction = (new Integer(0))|primitive($B->row($i)->slice(1));
+	   next if($current_direction == zero_vector($current_direction->dim)); #because 0 is a stupid direction
+	   
+	   $lp=$this->LP(LINEAR_OBJECTIVE=>$current_direction, temporary);
+
+	   $sched->apply($lp);
+
+	   my $current_width=$lp->MAXIMAL_VALUE-$lp->MINIMAL_VALUE;
+
+	   if ($current_width<$width){
+	       $width=$current_width; 
+	       $direction=$current_direction;
+	   }
+       }
+       $this->LATTICE_WIDTH=$width;
+       $this->LATTICE_WIDTH_DIRECTION=$direction;	
+    }
+    precondition : FULL_DIM;
+    weight 5.50;
+
 }
 
 
@@ -672,7 +702,7 @@ object Cone<Rational> {
     $this->N_HILBERT_BASIS = $this->HILBERT_BASIS_GENERATORS->[0]->rows;
   }
   precondition : POINTED;
-  weight 0.10;
+  weight 0.1;
 
   rule SMOOTH_CONE : RAYS, SIMPLICIAL_CONE {
     if ( !$this->SIMPLICIAL_CONE ) {
@@ -706,13 +736,9 @@ object Cone<Rational> {
   precondition : !Q_GORENSTEIN_CONE;
 
   rule GORENSTEIN_CONE : Q_GORENSTEIN_CONE, Q_GORENSTEIN_CONE_INDEX {
-    if ( !$this->Q_GORENSTEIN_CONE ) {
-      $this->GORENSTEIN_CONE = 0;
-    } else {
-      $this->GORENSTEIN_CONE = ( $this->Q_GORENSTEIN_CONE_INDEX == 1 );
-    }
+      $this->GORENSTEIN_CONE = $this->Q_GORENSTEIN_CONE && ( $this->Q_GORENSTEIN_CONE_INDEX == 1 );
   }
-  weight 0.10;
+  weight 0.1;
 
   rule GORENSTEIN_CONE, Q_GORENSTEIN_CONE, Q_GORENSTEIN_CONE_INDEX : { 
     $this->GORENSTEIN_CONE = 1; 
@@ -720,7 +746,7 @@ object Cone<Rational> {
     $this->Q_GORENSTEIN_CONE_INDEX = 1; 
   }
   precondition : SMOOTH_CONE;
-  weight 0.10;
+  weight 0.1;
 
 
 rule HOMOGENEOUS : RAYS, LINEAR_SPAN {

@@ -59,7 +59,7 @@ int main() {
    char* cpath = omStrDup("$libdir/libSingular.$lib_ext");
    siInit(cpath);
 #ifdef HAVE_NTL
-   std::cout << VERSION << std::endl;
+   std::cout << "Version: " << VERSION << std::endl;
    return 0;
 #else
    std::cout << "Your singular installation was not build with NTL support." << std::endl;
@@ -76,7 +76,7 @@ int main() {
              "Please investigate the reasons and fix the installation.\n";
       } else {
          chomp $error;
-         $singular_version = $error;
+         ($singular_version) = $error =~ m/Version: ([\d.]+)/;
          if (Polymake::Configure::v_cmp($singular_version,"4.0.1") < 0) {
             die "Your libsingular version $singular_version is too old, at least 4.0.1 is required.\n";
          }

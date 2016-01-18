@@ -17,6 +17,7 @@
 
 package de.tuberlin.polymake.common;
 
+import java.awt.EventQueue;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.channels.Pipe;
@@ -34,12 +35,18 @@ public abstract class PolymakeStaticControl extends PolymakeControl {
 			GeometryParserIf gp)
 			throws IOException {
 		super(psReader, clientReader, sink, gp);
-
-		PolymakeFrame geomFrame = createFrame(geometry.getName());
-		frameMap.put(geometry.getName(), geomFrame);
-//		System.err.println("encompass");
-		geomFrame.encompass();
-		geomFrame.setVisible(true);
+		EventQueue.invokeLater(new Runnable() {
+			
+			@Override
+			public void run() {
+				PolymakeFrame geomFrame = createFrame(geometry.getName());
+				frameMap.put(geometry.getName(), geomFrame);
+//				System.err.println("encompass");
+				geomFrame.encompass();
+				geomFrame.setVisible(true);
+			}
+		});
+		
 	}
 
 	public void update() throws IOException {

@@ -1,4 +1,4 @@
-#include "polymake/client.h"
+ #include "polymake/client.h"
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
 #include "polymake/polytope/sympol_interface.h"
@@ -7,6 +7,17 @@
 namespace polymake { namespace polytope {
 
    // beware: sympol / permlib only work with Rational coordinates
+     
+   //symmetry group computation vie edge colored graph automorphisms works for non-convex point sets, too. For the proof, see prop. 3.1 in "Polyhedral representation conversion up to symmetries" by Bremner, Sikiric and Schuermann, arxiv 0702239v2.
+   perl::Object linear_symmetries_matrix(const Matrix<Rational> &M)
+   {
+      Matrix<Rational> Mpty;
+      group::PermlibGroup sym_group = sympol_interface::sympol_wrapper::compute_linear_symmetries(M,Mpty);
+      perl::Object g("group::Group");
+      g.set_name("linear_symmetries");
+      g.set_description() << "linear symmetries of some Matrix";
+      return polymake::group::correct_group_from_permlib_group(g, sym_group);
+   } 
 
    perl::Object linear_symmetries(perl::Object p, bool dual)
    {
@@ -60,6 +71,19 @@ namespace polymake { namespace polytope {
 
 UserFunction4perl("# CREDIT sympol\n\n"
                   "# @category Symmetry"
+                  "# Computes the linear symmetries of a matrix //m//"
+                  "# whose rows describe a point configuration via 'sympol'."
+                  "# @param Matrix m holds the points as rows whose linear symmetry group is to be computed"
+                  "# @return group::Group the linear symmetry group of //m//"
+                  "# @example > $ls = linear_symmetries(cube(2)->VERTICES);"
+                  "# > print $ls->GENERATORS;"
+                  "# | 0 2 1 3"
+                  "# | 3 1 2 0"
+                  "# | 2 3 0 1",
+                  &linear_symmetries_matrix,"linear_symmetries(Matrix<Rational>)");
+
+UserFunction4perl("# CREDIT sympol\n\n"
+                  "# @category Symmetry"
                   "# Computes the linear symmetries of a given polytope //p//"
                   "# via 'sympol'. If the input is a cone, it may compute only a subgroup"
                   "# of the linear symmetry group."
@@ -74,8 +98,8 @@ UserFunction4perl("# CREDIT sympol\n\n"
                   "# @param Cone c the cone (or polytope) whose dual description is to be computed"
                   "# @param group::Group a symmetry group of the cone //c// ([[group::GroupOfCone]] or [[group::GroupOfPolytope]])"
                   "# @param Bool dual true if V to H, false if H to V" 
-                  "# @param Bool rayCompMethod specifies sympol's method of ray computation via lrs(0), cdd(1), beneath_and_beyond(2)" 
-                  "# @return perl::ListReturn list which contains success as bool, vertices/inequalities and lineality/equations as [[Matrix<Rational>]]",
+                  "# @param Int rayCompMethod specifies sympol's method of ray computation via lrs(0), cdd(1), beneath_and_beyond(2), ppl(3)" 
+                  "# @return List (Bool success indicator, Matrix<Rational> vertices/inequalities, Matrix<Rational> lineality/equations)",
                   &representation_conversion_up_to_symmetry,"representation_conversion_up_to_symmetry(Cone<Rational>, group::Group $ $)");
 } }
 

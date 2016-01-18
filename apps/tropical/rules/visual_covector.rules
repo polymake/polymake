@@ -1,0 +1,69 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+package Visual::CovectorLattice;
+use Polymake::Struct (
+   [ '@ISA' => 'Container' ],
+   [ '$CovectorLattice' => '#%' ],
+);
+
+options %Visual::CovectorLattice::decorations=(
+	%Visual::Lattice::decorations,
+
+	# String if set to "hidden", the covectors are not displayed.
+	Covectors => enum("hidden"), 
+
+);
+
+object CovectorLattice {
+
+	# @category Visualization
+	# Visualizes the covector lattice. This works the same as a visualization of a Hasse diagram
+	# except that by default, covectors are displayed. This can be turned off by the option Covectors=>"hidden"
+	user_method VISUAL(%Visual::CovectorLattice::decorations, {seed => undef }) {
+		my ($this, $decor, $seed)=@_;
+
+		my $show_covectors = 1;
+		if(defined($$decor{"Covectors"})) {
+			if($$decor{"Covectors"} eq "hidden") {
+				$show_covectors = 0;
+			}
+		}
+		delete($$decor{"Covectors"});
+
+		#Add the covector to the node label
+		if($show_covectors) {
+			$$decor{"LabelAlignment"} = "center";
+			my @s = ();
+			for my $i (0 .. $this->N_NODES-1) {
+				#No label for extreme nodes
+				if($i == 0 || $i == $this->N_NODES-1) {
+					push @s, ""; next;
+				}
+				my @covector_string = map {$_->size() == 0? "-" : join(" ", @{$_})} @{rows($this->COVECTORS->[$i])};
+				push @s, ($this->FACES->[$i])."\\\\( ".join(" , ",@covector_string)." )";
+			}
+			$$decor{"NodeLabels"} = \@s;
+		}
+	
+		$this->SUPER::VISUAL($decor,$seed);
+
+	}
+
+
+}
+
+

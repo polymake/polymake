@@ -14,11 +14,11 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/Rational.h"
-#include "polymake/Matrix.h"
-#include "polymake/IncidenceMatrix.h"
 #include "polymake/Array.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
 #include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
 #include "polymake/SparseMatrix.h"
 
 namespace polymake { namespace polytope { namespace {
@@ -45,5 +45,8 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(representative_max_interior_simplices_T_x_X_X, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< Array< int > > >);
    FunctionInstance4perl(representative_simplices_T_x_X_X, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< Array< int > > >);
    FunctionInstance4perl(representative_simplices_T_x_X_X, QuadraticExtension< Rational >, perl::Canned< const SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >, perl::Canned< const Array< Array< int > > >);
+   FunctionInstance4perl(representative_max_interior_simplices_T_x_X_X, Rational, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >, perl::Canned< const Array< Array< int > > >);
+   FunctionInstance4perl(representative_interior_and_boundary_ridges_T_x_o, QuadraticExtension< Rational >);
+   FunctionInstance4perl(representative_max_interior_simplices_T_x_X_X, QuadraticExtension< Rational >, perl::Canned< const Matrix< QuadraticExtension< Rational > > >, perl::Canned< const Array< Array< int > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -22,7 +22,7 @@
 #include <netinet/in.h>
 #include <sys/poll.h>
 
-#if defined(__GNUC__)
+#if defined(__GLIBCXX__)
 
 # define PM_SET_BUF_GET_CUR(buf,g,e) (buf)->_M_in_cur=(g), (buf)->_M_in_end=(e)
 # define PM_SET_BUF_GET_END(buf,e) (buf)->_M_in_end=(e)

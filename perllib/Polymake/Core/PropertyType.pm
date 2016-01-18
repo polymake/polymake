@@ -182,9 +182,11 @@ sub concrete_typecheck : method {
 
 sub descend_to_generic {
    my ($self, $pkg)=@_;
-   do {
-      return $self if $self->context_pkg eq $pkg || $self->pkg eq $pkg;
-   } while ($self=$self->super);
+   if (defined $pkg) {
+      do {
+         return $self if $self->context_pkg eq $pkg || $self->pkg eq $pkg;
+      } while ($self=$self->super);
+   }
    undef
 }
 
@@ -300,33 +302,26 @@ sub qualified_name {
 #################################################################################
 sub locate_own_help_topic {
    my ($self, $whence, $force)=@_;
+   return if !defined($self->application);
    my $full_name=$self->full_name;
-   my $topic=$self->application->help->find($whence, $full_name);
-   if (!defined($topic)) {
-      if (defined($self->generic)) {
-         # help node of the generic type
-         $topic=$self->application->help->find($whence, $self->generic->name);
-      }
-      if ($force) {
-         # add the specialization topic
-         $topic= defined($topic)
-                 ? $topic->add(['specializations', $full_name]) :
-                 defined($self->generic)
-                 ? $self->application->help->add([$whence, $self->generic->name, 'specializations', $full_name])
-                 : $self->application->help->add([$whence, $full_name]);
-      } else {
-         return $topic;
-      }
+   my $topic=$self->application->help->find($whence, $full_name) //
+             (defined($self->generic)
+              ? ($force ? croak( "internal error: asked to create a help node for a parametrized type instance" )
+                        : $self->application->help->find($whence, $self->generic->name))
+              : ($force ? $self->application->help->add([$whence, $full_name])
+                        : return));
+   if (!exists $topic->annex->{type}) {
+      weak($topic->annex->{type}=$self);
+      push @{$topic->related},
+           uniq( map { ($_, @{$_->related}) } grep { defined and $_ != $topic and !defined($_->spez_topic) } map { $_->help_topic }
+                 $whence eq "property_types" ? defined($self->super) ? $self->super : () : @{$self->super} );
    }
-   push @{$topic->related},
-        uniq( map { ($_, @{$_->related}) } grep { defined and $_ != $topic } map { $_->help_topic }
-              $whence eq "property_types" ? defined($self->super) ? $self->super : () : @{$self->super} );
    $self->help=$topic;
 }
 
 sub help_topic {
    my $self=shift;
-   $self->help || locate_own_help_topic($self, "property_types", @_);
+   $self->help // locate_own_help_topic($self, "property_types", @_);
 }
 #################################################################################
 package Polymake::Core::PropertyParamedType;
@@ -390,8 +385,11 @@ sub new {
 ####################################################################################
 sub concrete_type {
    my ($self, $obj_proto)=@_;
-   $self->abstract->($obj_proto->descend_to_generic($self->context_pkg) ||
-                     croak( $obj_proto->full_name, " is not the parameterization context of the abstract type ", $self->full_name));
+   $self->abstract->($obj_proto->descend_to_generic($self->context_pkg) or
+                     defined($self->context_pkg)
+                     ? croak( "Parameterized type ", $self->full_name, " used in wrong context: ",
+                              $obj_proto->full_name, " instead of ", $self->context_pkg->typeof_gen->full_name )
+                     : croak( "Wrong use of pure abstract type ", $self->full_name ));
 }
 
 sub create_type_instance : method {

@@ -79,7 +79,17 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# @param Vector v the lattice point to use as apex, default is the first vertex of //P//."
                   "# @option Bool relabel copy the original vertex labels,"
                   "#   label the new top vertex with \"Apex\"."
-                  "# @return Polytope",
+                  "# @return Polytope"
+                  "# @example To create the pyramid of height 5 over a square and keep the vertex labels, do this:"
+                  "# > $p = lattice_pyramid(cube(2),5,new Vector(1,0,0),relabel=>1);"
+                  "# > print $p->VERTICES;"
+                  "# | 1 -1 -1 0"
+                  "# | 1 1 -1 0"
+                  "# | 1 -1 1 0"
+                  "# | 1 1 1 0"
+                  "# | 1 0 0 5"
+                  "# > print $p->VERTEX_LABELS;"
+                  "# | 0 1 2 3 Apex",
                   &lattice_pyramid, "lattice_pyramid(Polytope; $=1, Vector<Rational>=$_[0]->VERTICES->row(0), { relabel => undef })");
 } }
 

@@ -394,9 +394,7 @@ namespace polymake {
    using pm::minimal;
    using std::abs;
    using pm::abs;
-   using std::isinf;
    using pm::isinf;
-   using std::isfinite;
    using pm::isfinite;
    using pm::local_epsilon;
 

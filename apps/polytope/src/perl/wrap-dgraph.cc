@@ -33,5 +33,6 @@ namespace polymake { namespace polytope { namespace {
 
    FunctionInstance4perl(dgraph_T_x_x_o, Rational);
    FunctionInstance4perl(objective_values_for_embedding_T_x_x, Rational);
+   FunctionInstance4perl(dgraph_T_x_x_o, double);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

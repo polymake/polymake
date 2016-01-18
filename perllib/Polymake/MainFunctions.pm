@@ -36,8 +36,8 @@ package Polymake::Main;
 # private: only called from import()
 sub _init {
    Core::UserSettings::init(shift);
-   init Core::CPlusPlus(0);
-   init Core::Extension;
+   init Core::CPlusPlus();
+   init Core::Extension();
    $Scope=new Scope();
    add AtEnd "FinalCleanup", sub { undef $Scope }, after => "Object";
 }

@@ -19,10 +19,16 @@ object PointConfiguration {
 file_suffix pc
 
 # @category Input property
-# The Points of the configuration
-property POINTS : Matrix<Scalar> {
-   sub canonical { &canonicalize_point_configuration; }
-}
+# The points of the configuration.  Multiples allowed.
+property POINTS = override VECTORS;
+
+# @category Visualization
+# Unique names assigned to the [[POINTS]].
+property POINT_LABELS = override LABELS;
+
+# @category Geometry
+# Tells if multiple points exist.
+property MULTIPLE_POINTS = override MULTIPLE_VECTORS;
 
 # @category Geometry
 # The polytope being the convex hull of the point configuration.
@@ -38,6 +44,19 @@ property CONVEX_HULL : Polytope<Scalar> {
 
 }
 
+# @category Geometry
+# Affine dimension of the point configuration.
+# Similar to [[Polytope::DIM]].
+user_method DIM() : VECTOR_DIM {
+   return $_[0]->VECTOR_DIM-1;
+}
+
+# @category Geometry
+# Ambient dimension of the point configuration (without the homogenization coordinate).
+# Similar to [[Polytope::AMBIENT_DIM]].
+user_method AMBIENT_DIM() : VECTOR_AMBIENT_DIM {
+   return $_[0]->VECTOR_AMBIENT_DIM-1;
+}
 
 # @category Geometry
 # True if the point configuration is bounded.
@@ -46,7 +65,7 @@ property BOUNDED : Bool;
 
 # @category Geometry
 # Number of [[POINTS]].
-property N_POINTS : Int;
+property N_POINTS = override N_VECTORS;
 
 
 # @category Geometry
@@ -138,10 +157,6 @@ property SPLIT_COMPATIBILITY_GRAPH : objects::Graph;
 # [[Polytope::VIF_CYCLIC_NORMAL]] of the [[CONVEX_HULL]], but with
 # the indices form [[POINTS]] instead of [[Polytope::VERTICES]]
 property PIF_CYCLIC_NORMAL : Array< Array<Int> >;
-
-# @category Geometry
-# Tells if there exists multiple points.
-property MULTIPLE_POINTS : Bool;
 
 }
 

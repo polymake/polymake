@@ -23,6 +23,11 @@
 # @param Array<String> elem_labels  optional labels for elements;
 #  if //data// is an [[IncidenceMatrix]], [[Array<Set>]], or similar, each element will be replaced by its label.
 # @return Array<String> each string ending with end-of-line
+# @example > print rows_labeled(cube(2)->VERTICES,['a','b','c','d']);
+# | a:1 -1 -1
+# | b:1 1 -1
+# | c:1 -1 1
+# | d:1 1 1
 
 user_function rows_labeled($;$$) {
    my ($data, $row_labels, $elem_labels)=@_;
@@ -44,6 +49,11 @@ user_function rows_labeled($;$$) {
 # @param Graph graph to be printed
 # @param Array<String> elem_labels labels for the elements
 # @return Array<String> each string ending with end-of-line
+# @example > print rows_labeled(cycle_graph(4)->ADJACENCY,['a','b','c','d']);
+# | a:b d
+# | b:a c
+# | c:b d
+# | d:a c
 
 user_function rows_labeled(Graph;$) {
    my ($graph, $labels)=@_;
@@ -55,6 +65,11 @@ user_function rows_labeled(Graph;$) {
 # Formerly called "numbered".
 # @param Matrix data to be printed
 # @return Array<String> each string ending with end-of-line
+# @example > print rows_numbered(cube(2)->VERTICES);
+# | 0:1 -1 -1
+# | 1:1 1 -1
+# | 2:1 -1 1
+# | 3:1 1 1
 
 user_function rows_numbered {
    &rows_labeled;
@@ -91,6 +106,9 @@ user_function latex($;$) {
 # @param Array<String> elem_labels  optional labels for elements;
 #  if //data// is a [[Set]], or similar, each element will be replaced by its label.
 # @return String
+# @example > $v = new Vector(0,1,2);
+# > print labeled($v,["zeroth","first","second"]);
+# zeroth:0 first:1 second:2
 
 user_function labeled($;$) {
    my ($data, $elem_labels)=@_;
@@ -109,6 +127,9 @@ user_function labeled($;$) {
 # Equivalent to [[labeled]] with omitted //elem_labels// argument.
 # @param Vector data to be printed
 # @return String
+# @example > $data = new Vector(23,42,666);
+# > print numbered($data);
+# | 0:23 1:42 2:666
 
 user_function numbered {
    &labeled;

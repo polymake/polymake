@@ -41,9 +41,13 @@ public:
    
    virtual int dim() = 0;
 
+   virtual Polynomial<> contains_monomial(const Ring<>& poly_ring) const = 0;
+
+   virtual Array<Polynomial<> > reduce(const Array<Polynomial<> >& ideal, const Ring<>& r) const = 0;
+
    virtual Polynomial<> reduce(const Polynomial<>& p, const Ring<>& r) const = 0;
    
-   virtual Array< Polynomial<> > division(const Polynomial<>& p, const Ring<>& r) const = 0;
+   virtual Array< Polynomial<> > division(const Polynomial<>& p, const Ring<>& r, const bool is_std = 0) const = 0;
 
    virtual SingularIdeal_wrap* radical() const = 0;
 
@@ -87,17 +91,25 @@ public:
    int dim() const  {
       return singIdeal->dim();
    }
+   
+   Polynomial<> contains_monomial(const Ring<>& r) const {
+     return singIdeal->contains_monomial(r);
+   }
 
    void groebner() const  {
       singIdeal->groebner();
+   }
+
+   Array<Polynomial<> > reduce(const Array<Polynomial<> >& ideal, const Ring<>& r) const {
+      return singIdeal->reduce(ideal, r);
    }
 
    Polynomial<> reduce(const Polynomial<>& p, const Ring<>& r) const {
       return singIdeal->reduce(p, r);
    }
 
-   Array< Polynomial<> > division( const Polynomial<>& p, const Ring<>& r) const {
-      return singIdeal->division(p, r);
+   Array< Polynomial<> > division( const Polynomial<>& p, const Ring<>& r, const bool is_std = 0 ) const {
+      return singIdeal->division(p, r, is_std);
    }
 
    SingularIdeal initial_ideal() const  {

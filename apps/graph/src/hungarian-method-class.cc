@@ -28,7 +28,11 @@ namespace polymake { namespace graph {
 UserFunctionTemplate4perl("#@category Other"
                   "# Vector representation of the permutation corresponding to a perfect matching in a weighted bipartite graph."
                   "# @param Matrix weights"
-                  "# @return Array",
+                  "# @return Array"
+                  "# @example The following computes a matching in a small bipartite weighted graph:"
+                  "# > $M = new Matrix(['inf',2,'inf',1],[2,'inf',1,'inf'],['inf',1,'inf',8],[1,'inf',8,'inf']);"
+                  "# > print hungarian_perfect_matching($M);"
+                  "# | 3 2 1 0",
                   "hungarian_perfect_matching(Matrix)");
 }  }
 

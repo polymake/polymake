@@ -59,7 +59,18 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           //FIXME: Implement an option relabel or delete description!"
                           "# @param Polytope P1"
                           "# @param Polytope P2"
-                          "# @return Polytope",
+                          "# @return Polytope"
+                          "# @example The following creates the tensor product polytope of two squares and then prints its vertices."
+                          "# > $p = tensor(cube(2),cube(2));"
+                          "# > print $p->VERTICES;"
+                          "# | 1 1 1 1 1"
+                          "# | 1 -1 1 -1 1"
+                          "# | 1 1 -1 1 -1"
+                          "# | 1 -1 1 1 -1"
+                          "# | 1 1 1 -1 -1"
+                          "# | 1 1 -1 -1 1"
+                          "# | 1 -1 -1 1 1"
+                          "# | 1 -1 -1 -1 -1",
                           "tensor<Scalar>(Polytope<type_upgrade<Scalar>> Polytope<type_upgrade<Scalar>>)");
 } }
 

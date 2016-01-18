@@ -178,7 +178,7 @@ public:
 
       // remove star(apex)
       FacetList real_facets = the_facets;
-      real_facets.eraseMin(scalar2set(apex));
+      real_facets.eraseSupersets(scalar2set(apex));
 
       return real_facets;
    }

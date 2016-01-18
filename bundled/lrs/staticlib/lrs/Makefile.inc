@@ -1,9 +1,9 @@
-OwnLibraries := liblrsgmp
+OwnLibrary := liblrsgmp
 LibModules := lrslib lrsgmp
-src := $(ExtensionTop)/external/lrs
-vpath %.c $(src)
+src := ${ExtensionTop}/external/lrs
+vpath %.c ${src}
 
-liblrsgmp : ExtraCFLAGS := -DGMP -DLRS_QUIET
+ExtraCFLAGS := -DGMP -DLRS_QUIET
 
 # Local Variables:
 # mode: Makefile

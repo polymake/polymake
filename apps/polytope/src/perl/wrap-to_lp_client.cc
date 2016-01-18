@@ -14,15 +14,17 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
+#include "polymake/TropicalNumber.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( to_solve_lp_T_x_x_x_f16, T0 ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      WrapperReturnVoid( (to_solve_lp<T0>(arg0, arg1, arg2)) );
+   FunctionInterface4perl( to_solve_lp_T_x_x_x_o_f16, T0 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
+      WrapperReturnVoid( (to_solve_lp<T0>(arg0, arg1, arg2, arg3)) );
    };
 
    template <typename T0>
@@ -39,9 +41,13 @@ namespace polymake { namespace polytope { namespace {
 
    FunctionInstance4perl(to_input_bounded_T_x, Rational);
    FunctionInstance4perl(to_input_bounded_T_x, QuadraticExtension< Rational >);
-   FunctionInstance4perl(to_solve_lp_T_x_x_x_f16, Rational);
-   FunctionInstance4perl(to_solve_lp_T_x_x_x_f16, QuadraticExtension< Rational >);
    FunctionInstance4perl(to_input_feasible_T_x, Rational);
    FunctionInstance4perl(to_input_feasible_T_x, QuadraticExtension< Rational >);
+   FunctionInstance4perl(to_input_bounded_T_x, PuiseuxFraction< Min, Rational, Rational >);
+   FunctionInstance4perl(to_input_bounded_T_x, PuiseuxFraction< Max, Rational, Rational >);
+   FunctionInstance4perl(to_solve_lp_T_x_x_x_o_f16, Rational);
+   FunctionInstance4perl(to_solve_lp_T_x_x_x_o_f16, QuadraticExtension< Rational >);
+   FunctionInstance4perl(to_solve_lp_T_x_x_x_o_f16, PuiseuxFraction< Min, Rational, Rational >);
+   FunctionInstance4perl(to_solve_lp_T_x_x_x_o_f16, PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

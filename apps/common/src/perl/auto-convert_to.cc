@@ -25,6 +25,8 @@
 #include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/SparseVector.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/Vector.h"
 #include "polymake/client.h"
 
@@ -50,5 +52,8 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(convert_to_T_X, int, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational>&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
    FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
    FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<pm::QuadraticExtension<pm::Rational>, pm::NonSymmetric> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
+   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Array<int, void> const&, pm::all_selector const&> >);
+   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
+   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

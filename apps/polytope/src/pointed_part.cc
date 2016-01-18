@@ -120,7 +120,13 @@ perl::Object pointed_part(perl::Object p_in)
 UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# Produces the pointed part of a polyhedron"
                           "# @param Polytope P"
-                          "# @return Polytope", 
+                          "# @return Polytope"
+                          "# @example > $p = new Polytope(POINTS=>[[1,0,0],[1,0,1],[1,1,0],[1,1,1],[0,1,0],[0,0,1]]);"
+                          "# > $pp = pointed_part($p);"
+                          "# > print $pp->VERTICES;"
+                          "# | 1 0 0"
+                          "# | 0 1 0"
+                          "# | 0 0 1",
                           "pointed_part<Scalar>(Polytope<Scalar>)");
 } }
 

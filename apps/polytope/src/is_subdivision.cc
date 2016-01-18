@@ -114,6 +114,12 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# @param Matrix points"
                           "# @param Array<Set<Int>> faces"
                           "# @option Set<Int> interior_points"
+                          "# @example Two potential subdivisions of the square without innter points:"
+                          "# > $points = cube(2)->VERTICES;"
+                          "# > print is_subdivision($points,[[0,1,3],[1,2,3]],interior_points=>[ ]);"
+                          "# | 1"
+                          "# > print is_subdivision($points,[[0,1,2],[1,2]],interior_points=>[ ]);"
+                          "# | "
                           "# @author Sven Herrmann",
                           "is_subdivision(Matrix,*; {verbose => undef, interior_points => undef})");
 } }

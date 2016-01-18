@@ -14,13 +14,24 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/Rational.h"
+#include "polymake/TropicalNumber.h"
+
 namespace polymake { namespace tropical { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1>
+   FunctionInterface4perl( extract_pseudovertices_T_x_f16, T0,T1 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturnVoid( (extract_pseudovertices<T0,T1>(arg0)) );
+   };
+
    FunctionWrapper4perl( void (perl::Object, perl::Object) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
       IndirectWrapperReturnVoid(arg0, arg1);
    }
    FunctionWrapperInstance4perl( void (perl::Object, perl::Object) );
 
+   FunctionInstance4perl(extract_pseudovertices_T_x_f16, Min, Rational);
+   FunctionInstance4perl(extract_pseudovertices_T_x_f16, Max, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -1,0 +1,47 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+package Visual::Cycle;
+use Polymake::Struct (
+	[ '@ISA' => 'Container' ],
+	[ '$Cycle' => '#%'],
+);
+
+options %Visual::Cycle::decorations=(
+	%Visual::Polygons::decorations,
+
+	# Flexible<Int> The visualization is always a visualization in affine coordinates. This 
+	# chooses the chart
+	Chart => 0,
+);
+
+
+object Cycle {
+
+	# @category Visualization
+	# Visualizes the tropical cycle. The options are more or less the same as for PolyhedralComplex's [[VISUAL]],
+	# except that there is one option for choosing a chart.
+	# @options
+	# @option Int Chart. Which affine chart of the cycle to visualize, i.e. which coordinate should be shifted to 0. This is 0 by default.
+	# @return fan::Visual::PolyhedralFan
+	user_method VISUAL(%Visual::Cycle::decorations, {CutOff => $Visual::Color::cutoff}) {
+		my ($this,$decor, $cutoff_decor) = @_;
+
+		my $chart = $$decor{"Chart"};
+		delete($$decor{"Chart"});
+
+		$this->affine_chart($chart)->VISUAL($decor,$cutoff_decor);
+	}
+}

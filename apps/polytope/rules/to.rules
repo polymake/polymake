@@ -23,24 +23,67 @@ label to
 object Polytope {
 
 rule to.simplex: LP.MAXIMAL_VALUE, LP.MAXIMAL_VERTEX, FEASIBLE : LP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES {
-   to_solve_lp($this, $this->LP, 1);
+    if(defined( my $ov=$this->lookup("ONE_VERTEX") )){
+	my $ineq=$this->FACETS|INEQUALITIES;
+	if( defined( my $eq=$this->lookup("AFFINE_HULL|EQUATIONS") ) ){
+	    $ineq=$ineq / $eq;
+	}
+	my $s = new SparseVector<Scalar>( ( $ineq )*$ov );
+	my $set = sequence( 0, $ineq->rows() )-indices($s);
+	my $ind = basis_rows( $ineq->minor($set,All) );
+	if( $ineq->cols()-1==$ind->size() ){
+	    my $basis = new Set();
+	    my $i = 0;
+	    foreach (@$set){
+		if($ind->contains($i)){
+		    $basis+=$_;}
+		++$i;
+	    }
+	    to_solve_lp($this, $this->LP, 1, initial_basis=>$basis );
+	}else{
+	    to_solve_lp($this, $this->LP, 1);
+	}
+    }else{
+	to_solve_lp($this, $this->LP, 1);
+    }
 }
 weight 3.30;
 
 rule to.simplex: LP.MINIMAL_VALUE, LP.MINIMAL_VERTEX, FEASIBLE : LP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES {
-   to_solve_lp($this, $this->LP, 0);
+    if(defined( my $ov=$this->lookup("ONE_VERTEX") )){
+	my $ineq=$this->FACETS|INEQUALITIES;
+	if( defined( my $eq=$this->lookup("AFFINE_HULL|EQUATIONS") ) ){
+		$ineq=$ineq / $eq;
+	}
+	my $s = new SparseVector<Scalar>( ( $ineq )*$ov );
+	my $set = sequence( 0, $ineq->rows() )-indices($s);
+	my $ind = basis_rows( $ineq->minor($set,All) );
+	if( $ineq->cols()-1==$ind->size() ){
+	    my $basis = new Set();
+	    my $i = 0;
+	    foreach (@$set){
+		if($ind->contains($i)){
+		    $basis+=$_;}
+		++$i;
+	    }
+	    to_solve_lp($this, $this->LP, 0, initial_basis=>$basis );
+	}else{
+	    to_solve_lp($this, $this->LP, 0);
+	}
+    }else{
+	to_solve_lp($this, $this->LP, 0);
+    }
 }
 weight 3.30;
 
-# FIXME #195
-# weight set slightly above the weight of the corresponding cdd rule
-# does not reflect complexity
-rule to.bounded : BOUNDED : FACETS | INEQUALITIES, LINEALITY_SPACE {
-  $this->BOUNDED = to_input_bounded($this);
 }
-weight 1.30;
 
+# this is overridden in bundled:cdd for Rational and Float coordinate types
+function H_input_is_bounded(Polytope) {
+   to_input_bounded($_[0]);
 }
+
+
 
 # Local Variables:
 # mode: perl

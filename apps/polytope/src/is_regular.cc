@@ -133,6 +133,10 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# @option Matrix<Scalar> equations system of linear equation the cone is cut with."
                           "# @option Set<Int> lift_to_zero gives only lifting functions lifting the designated vertices to 0"
                           "# @option Int lift_face_to_zero gives only lifting functions lifting all vertices of the designated face to 0"
+                          "# @example A regular subdivision of the square, with the first cell lifted to zero:"
+                          "# > $points = cube(2)->VERTICES;"
+                          "# > print is_regular($points,[[0,1,3],[1,2,3]],lift_to_zero=>[0,1,3]);"
+                          "# | 1 <0 0 1 0>"
                           "# @author Sven Herrmann fixed by Benjamins with Georg",
                           "is_regular<Scalar>(Matrix<Scalar>,$;{equations => undef, lift_to_zero=>undef, lift_face_to_zero => 0})");
 

@@ -31,6 +31,7 @@ property N_HILBERT_BASIS : Int;
 # the second matrix is a lattice basis of the lineality space
 # note: the pointed part used in this property need not be the same as the one described by [[RAYS]] or [[INPUT_RAYS]]
 #       it will be if the cone is pointed (the polytope is bounded)
+# @depends 4ti2 (unbounded) or libnormaliz (bounded)
 property HILBERT_BASIS_GENERATORS : Array<Matrix<Integer> > {
 
   # FIXME This test is too restrictive
@@ -66,6 +67,7 @@ property N_LATTICE_POINTS : Integer;
 #    p + lambda*R + mu*L
 # where p is a row in P and lambda has only non-negative
 # integral coordinates and mu has arbitrary integral coordinates.
+# @depends 4ti2 for unbounded polytopes
 property LATTICE_POINTS_GENERATORS : Array<Matrix<Integer> >{
 
   sub equal { 
@@ -112,7 +114,7 @@ property MINKOWSKI_CONE : polytope::Cone<Rational>;
 
 }
 
-object LatticePolytope {
+object_specialization Polytope::Lattice {
 
 # @category Lattice points in cones
 # [[VERTICES]] are interpreted as coefficient vectors for this basis
@@ -163,10 +165,12 @@ object LatticePolytope {
 
 # @category Lattice points in cones
 # The coefficients of the Ehrhart polynomial starting at the constant coefficient.
+# @depends latte or libnormaliz
     property EHRHART_POLYNOMIAL_COEFF : Vector<Rational>;
 
 # @category Lattice points in cones
 # The polytope is __normal__ if the cone spanned by P x {1} is generated in height 1.
+# @depends 4ti2 or libnormaliz
     property NORMAL : Bool;
 
 # @category Lattice points in cones
@@ -195,7 +199,16 @@ object LatticePolytope {
 
 # @category Lattice points in cones
 # The polytope is __very ample__ if the Hilbert Basis of the cone spanned by the edge-directions of any vertex lies inside the polytope.
+# @depends 4ti2 or libnormaliz
     property VERY_AMPLE : Bool;
+
+# @category Lattice points in cones
+# One direction which realizes [[LATTICE_WIDTH]] of the polytope.
+    property LATTICE_WIDTH_DIRECTION : Vector<Integer>;
+
+# @category Lattice points in cones
+# The minimal integral width of the polytope.
+    property LATTICE_WIDTH : Integer;
 
 }
 
@@ -222,7 +235,7 @@ declare object GroebnerBasis {
 }
 
 
-object LatticePolytope {
+object_specialization Polytope::Lattice {
 
 # @category Lattice points in cones
 # The Groebner basis for the toric ideal associated to the lattice points in the polytope using any term order.
@@ -287,6 +300,7 @@ object Cone<Rational> {
 # @category Lattice points in cones
 # Hilbert series of the monoid, given by the intersection of the cone with 
 # the lattice Z^d with respect to the [[MONOID_GRADING]]
+# @depends libnormaliz
   property HILBERT_SERIES : RationalFunction;
 
 # @category Lattice points in cones
@@ -294,6 +308,10 @@ object Cone<Rational> {
 # the h^*-polynomial for lattice polytopes, 
 # with respect to the [[MONOID_GRADING]]
 # starting at the constant coefficient.
+# For lattice polytopes the length of this vector is [[CONE_DIM]].
+# In general the length is one less than the degree of the
+# denominator of the [[HILBERT_SERIES]].
+# @depends latte or libnormaliz
   property H_STAR_VECTOR : Vector<Integer>;
 
 }

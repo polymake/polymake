@@ -218,11 +218,19 @@ public:
       _assign_from(attach_converter<int>(s.top()));
    }
 
+   template <typename Container>
+   Bitset(const Container& src,
+       typename enable_if<void**, isomorphic_to_container_of<Container,int,is_set>::value>::type=0)
+   {
+      mpz_init(rep);
+      _assign_from(src);
+   }
+
    template <typename Iterator>
    Bitset(Iterator src, Iterator src_end)
    {
       mpz_init(rep);
-      _assign(src,src_end);
+      _assign_from(attach_converter<int>(src));
    }
 
    template <typename Iterator>

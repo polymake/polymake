@@ -1,0 +1,336 @@
+########################################################################
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#  
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#  
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+#  Boston, MA  02110-1301, USA.
+#  
+#  ---
+#  Copyright (C) 2011-2015, Simon Hampe <simon.hampe@googlemail.com>
+#
+#
+# This file contains methods treating cubic surfaces in R^3 and collections of
+# (families of) lines in this surface, including a data type to represent the result
+# of lines_in_cubic
+########################################################################
+
+
+object LinesInCubic {
+
+	# @topic category properties/Defining properties
+	# The polynomial and the corresponding cubic.
+
+	# @topic category any/Lists of lines
+	# These contain lists of certain (families of) lines.
+
+	# @topic category properties/Counts of lines
+	# These count lines or families of lines in the cubic.# @category Defining properties
+
+	# @category Defining properties
+	# The homogeneous tropical polynomial defining the surface
+	property POLYNOMIAL : Polynomial<TropicalNumber<Addition> >;
+
+	# @category Defining properties
+	# The surface containing the lines
+	property CUBIC : Cycle<Addition>;
+
+	# @category Lists of lines
+	# A list of all isolated lines without a bounded edge
+	property LIST_ISOLATED_NO_EDGE : Cycle<Addition> : multiple {
+	}
+
+	# @category Lists of lines
+	# A list of all isolated lines with bounded edge
+	property LIST_ISOLATED_EDGE : Cycle<Addition> : multiple {
+	}
+
+	# @category Lists of lines
+	# A list of all families of lines without a bounded edge at a fixed vertex
+	property LIST_FAMILY_FIXED_VERTEX : Cycle<Addition> : multiple {
+	}
+
+	# @category Lists of lines
+	# A list of all families of lines without a bounded  edge and a moving vertex.
+	property LIST_FAMILY_MOVING_VERTEX : Cycle<Addition> : multiple {
+	}
+
+	# @category Lists of lines
+	# A list of all families of lines with (part of) the bounded edge fixed
+	property LIST_FAMILY_FIXED_EDGE : Cycle<Addition> : multiple {
+	}
+
+	# @category Lists of lines
+	# A list of all families of lines with the bounded edge moving in transversal direction
+	property LIST_FAMILY_MOVING_EDGE : Cycle<Addition> : multiple {
+	}
+
+	# @category Counts of lines
+	# The total number of elements in [[LIST_ISOLATED_EDGE]] and [[LIST_ISOLATED_NO_EDGE]]
+	property N_ISOLATED : Int;
+
+	# @category Counts of lines
+	# The total number of families in [[LIST_FAMILY_FIXED_EDGE]], [[LIST_FAMILY_FIXED_VERTEX]], 
+	# [[LIST_FAMILY_MOVING_EDGE]] and [[LIST_FAMILY_MOVING_VERTEX]]
+	property N_FAMILIES : Int;
+
+
+	### RULES ################################################
+
+	rule N_ISOLATED : {
+		$this->N_ISOLATED = scalar($this->array_isolated_edge) + scalar($this->array_isolated_no_edge);
+	}
+
+	rule N_FAMILIES : {
+		$this->N_FAMILIES = scalar($this->array_family_fixed_edge) + scalar($this->array_family_fixed_vertex) +
+		scalar($this->array_family_moving_edge) + scalar($this->array_family_moving_vertex);
+	}
+
+	### METHODS ##############################################
+
+	# @category Lists of lines
+	# @return Cycle<Addition> A perl array version of [[LIST_ISOLATED_NO_EDGE]]
+	user_method array_isolated_no_edge {
+		my $this = shift;
+		if(defined($this->lookup("LIST_ISOLATED_NO_EDGE"))) {
+			return @{$this->LIST_ISOLATED_NO_EDGE};
+		}
+		else {
+			my @a = ();
+			return @a;
+		}
+	}
+
+	# @category Lists of lines
+	# @return Cycle<Addition> A perl array version of [[LIST_ISOLATED_EDGE]]
+	user_method array_isolated_edge {
+		my $this = shift;
+		if(defined($this->lookup("LIST_ISOLATED_EDGE"))) {
+			return @{$this->LIST_ISOLATED_EDGE};
+		}
+		else {
+			my @a = ();
+			return @a;
+		}
+	}
+
+	# @category Lists of lines
+	# @return Cycle<Addition> A perl array version of [[LIST_FAMILY_FIXED_VERTEX]]
+	user_method array_family_fixed_vertex {
+		my $this = shift;
+		if(defined($this->lookup("LIST_FAMILY_FIXED_VERTEX"))) {
+			return @{$this->LIST_FAMILY_FIXED_VERTEX};
+		}
+		else {
+			my @a = ();
+			return @a;
+		}
+	}
+
+	# @category Lists of lines
+	# @return Cycle<Addition> A perl array version of [[LIST_FAMILY_MOVING_VERTEX]]
+	user_method array_family_moving_vertex {
+		my $this = shift;
+		if(defined($this->lookup("LIST_FAMILY_MOVING_VERTEX"))) {
+			return @{$this->LIST_FAMILY_MOVING_VERTEX};
+		}
+		else {
+			my @a = ();
+			return @a;
+		}
+	}
+
+	# @category Lists of lines
+	# @return Cycle<Addition> A perl array version of [[LIST_FAMILY_FIXED_EDGE]]
+	user_method array_family_fixed_edge {
+		my $this = shift;
+		if(defined($this->lookup("LIST_FAMILY_FIXED_EDGE"))) {
+			return @{$this->LIST_FAMILY_FIXED_EDGE};
+		}
+		else {
+			my @a = ();
+			return @a;
+		}
+	}
+
+	# @category Lists of lines
+	# @return Cycle<Addition> A perl array version of [[LIST_FAMILY_MOVING_EDGE]]
+	user_method array_family_moving_edge {
+		my $this = shift;
+		if(defined($this->lookup("LIST_FAMILY_MOVING_EDGE"))) {
+			return @{$this->LIST_FAMILY_MOVING_EDGE};
+		}
+		else {
+			my @a = ();
+			return @a;
+		}
+	}
+
+	# @category Lists of lines
+	# @return Cycle<Addition> A perl array containing all isolated solutions
+	user_method all_isolated {
+		my $this = shift;
+		return ($this->array_isolated_edge, $this->array_isolated_no_edge);
+	}
+
+	# @category Lists of lines
+	# @return Cycle<Addition> A perl array containing all families
+	user_method all_families {
+		my $this = shift;
+		return ($this->array_family_fixed_edge, $this->array_family_fixed_vertex,
+			$this->array_family_moving_edge, $this->array_family_moving_vertex);
+	}
+
+}
+
+
+# @category Lines in surfaces
+# This takes either:
+# - A homogeneous polynomial of degree 3 in 4 variables or
+# - A polynomial of degree 3 in 3 variables
+# and computes the corresponding
+# cubic and finds all tropical lines and families thereof in the cubic.
+# The result is returned as a [[LinesInCubic]] object.
+# Note that the function has some heuristics for recognizing families, but might still return
+# a single family as split up into two.
+# @param Polynomial<TropicalNumber<Addition> > p A homogeneous tropical polynomial of degree 3
+# in four variables.
+# @return LinesInCubic<Addition>
+user_function lines_in_cubic<Addition>(Polynomial<TropicalNumber<Addition> >) {
+	my $p = shift;
+
+	#Sanity checks
+	if($p->get_ring()->n_vars() != 4 && $p->get_ring()->n_vars() != 3) {
+		die "Lines in cubic: wrong number of variables.";
+	}
+	if(polynomial_degree($p) != 3) {
+		die "Lines in cubic: Polynomial is not of degree 3.";
+	}
+	if($p->get_ring()->n_vars() == 4 && !is_homogeneous($p)) {
+		die "Lines in cubic: Polynomial has 4 variables but is not homogeneous";
+	}
+
+	#Dehomogenize the polynomial if necessary
+	if($p->get_ring()->n_vars() == 4) {
+		my $r = new Ring<TropicalNumber<Addition> >(3);
+		my $m = $p->monomials_as_matrix()->minor(All,~[0]);
+		$p = new Polynomial<TropicalNumber<Addition> >($m,$p->coefficients_as_vector(), $r);
+	}
+
+	#If necessary, switch to max 
+	if(Addition->orientation() == 1) {
+		$p = dual_addition_version($p);
+	}
+	my $l = linesInCubic($p);
+	#The computation is rigged for max, we need to convert everything, if Min is used
+	if(Addition->orientation() == -1) {
+		return $l;
+	}
+	else {
+		my $minl = new LinesInCubic<Min>(
+			POLYNOMIAL=>dual_addition_version($l->POLYNOMIAL),
+			CUBIC=>dual_addition_version($l->CUBIC));
+		for my $x (toggle_list($l->array_isolated_edge)) {
+			$minl->add("LIST_ISOLATED_EDGE",$x);
+		}
+		for my $x (toggle_list($l->array_isolated_no_edge)) {
+			$minl->add("LIST_ISOLATED_NO_EDGE",$x);
+		}
+		for my $x (toggle_list($l->array_family_fixed_edge)) {
+			$minl->add("LIST_FAMILY_FIXED_EDGE",$x);
+		}
+		for my $x (toggle_list($l->array_family_moving_edge)) {
+			$minl->add("LIST_FAMILY_MOVING_EDGE",$x);
+		}
+		for my $x (toggle_list($l->array_family_fixed_vertex)) {
+			$minl->add("LIST_FAMILY_FIXED_VERTEX",$x);
+		}
+		for my $x (toggle_list($l->array_family_moving_vertex)) {
+			$minl->add("LIST_FAMILY_MOVING_VERTEX",$x);
+		}
+		return $minl;
+	}
+}
+
+sub toggle_list {
+	my @list = @_;
+	return map { dual_addition_version($_);} @list;
+}
+
+# @category Visualization
+# This visualizes a surface in R^3 and an arbitrary list of (possibly non-pure)
+# Cycle objects. A common bounding box is computed for all objects and a 
+# random color is chosen for each object (except the surface)
+user_function visualize_in_surface<Addition>(Cycle<Addition>;@) {
+	my ($X,@p) = @_;
+
+
+
+	#First determine bounding box
+	my $bb = $X->bounding_box(1);
+	my $xmax = $bb->row(1)->[0];
+	for my $i (1 .. $bb->cols()-1) {
+		if($bb->row(1)->[$i] > $xmax) {$xmax = $bb->row(1)->[$i];}
+	}
+
+
+#   my @minv = @{$bb->row(0)};
+#   my @maxv = @{$bb->row(1)};
+	for my $p ( @p) {
+		my $pb = $p->bounding_box(1);
+		$bb = new Matrix<Rational>($bb / $pb);
+	}
+	$bb = boundingBox($bb,0);
+
+
+
+	my @vis = ();
+	if($X->PROJECTIVE_DIM == 2) {
+		@vis = (@vis, $X->BB_VISUAL(WeightLabels=>"hidden",VertexStyle=>"hidden",BoundingMode=>"absolute",BoundingBox=>$bb,FacetTransparency=>0.7));}
+	if($X->PROJECTIVE_DIM == 1) {
+	@vis = (@vis, $X->BB_VISUAL(WeightLabels=>"hidden",VertexStyle=>"hidden",BoundingMode=>"absolute",BoundingBox=>$bb));
+	}
+
+
+	#Then produce visuals
+	for my $p (@p) {
+		my $r = randomInteger(255,3);
+		my @ra = @{$r};
+		my $color = new RGB(@ra);
+
+		#Subdivide p into pure parts
+		my $points = new Set<Int>();
+		my $edges = new Set<Int>();
+		my $cells = new Set<Int>();
+		for my $mc (0 .. $p->MAXIMAL_POLYTOPES->rows()-1) {
+			if($p->MAXIMAL_POLYTOPES->row($mc)->size() == 1) { $points = $points + $mc;}
+			if($p->MAXIMAL_POLYTOPES->row($mc)->size() == 2) { $edges = $edges + $mc;}
+			if($p->MAXIMAL_POLYTOPES->row($mc)->size() > 2) { $cells = $cells + $mc;}
+
+		}#END iterate cells of p
+		my $ppoints = new Cycle<Addition>(VERTICES=>$p->RAYS,MAXIMAL_POLYTOPES=>$p->MAXIMAL_POLYTOPES->minor($points,All));
+		my $pedges = new Cycle<Addition>(VERTICES=>$p->RAYS,MAXIMAL_POLYTOPES=>$p->MAXIMAL_POLYTOPES->minor($edges,All));
+		my $pcells  = new Cycle<Addition>(VERTICES=>$p->RAYS,MAXIMAL_POLYTOPES=>$p->MAXIMAL_POLYTOPES->minor($cells,All));
+		if($points->size() > 0) {
+			@vis = (@vis, $ppoints->BB_VISUAL(VertexThickness=>2,VertexColor=>$color, BoundingMode=>"absolute",BoundingBox=>$bb));
+		}
+		if($edges->size() > 0) {
+			@vis = (@vis,$pedges->BB_VISUAL(EdgeThickness=>2,EdgeColor=>$color,VertexStyle=>"hidden", BoundingMode=>"absolute",BoundingBox=>$bb));
+		}
+		if($cells->size() > 0) {
+			@vis = (@vis,$pcells->BB_VISUAL(EdgeColor=>$color,EdgeThickness=>2,FacetColor=>$color, BoundingMode=>"absolute",BoundingBox=>$bb));
+		}
+	}#END iterate p's
+
+	compose(@vis);
+
+}#END visualize_in_surface
+

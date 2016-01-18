@@ -1,0 +1,25 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object CovectorLattice {
+
+	#@category Combinatorics
+	# Each node in the face lattice is a cell of a covector decomposition (of either the tropical torus
+	# or the tropical span of some points). This property maps each cell to the corresponding covector.
+	# A covector is encoded as an IncidenceMatrix, where rows correspond to coordinates and columns to 
+	# [[POINTS]].
+	property COVECTORS : NodeMap<Directed,IncidenceMatrix> : construct(ADJACENCY);
+
+}

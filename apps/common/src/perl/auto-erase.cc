@@ -16,13 +16,21 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
+#include "polymake/FacetList.h"
 #include "polymake/Map.h"
-#include "polymake/Vector.h"
 #include "polymake/Matrix.h"
+#include "polymake/Set.h"
+#include "polymake/Vector.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1>
+   FunctionInterface4perl( erase_X_f1, T0,T1 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      WrapperReturn( arg0.get<T0>().erase(arg1.get<T1>()) );
+   };
+
    template <typename T0, typename T1>
    FunctionInterface4perl( erase_X_f17, T0,T1 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
@@ -31,5 +39,6 @@ namespace polymake { namespace common { namespace {
 
    FunctionInstance4perl(erase_X_f17, perl::Canned< Map< Vector< double >, int > >, perl::Canned< const Vector< double > >);
    FunctionInstance4perl(erase_X_f17, perl::Canned< Map< Vector< double >, int > >, perl::Canned< const pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>, void> const&, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(erase_X_f1, perl::Canned< FacetList >, perl::Canned< const Set< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

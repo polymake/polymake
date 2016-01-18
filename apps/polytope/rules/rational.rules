@@ -25,35 +25,28 @@ rule TRIANGULATION.WEIGHTS : RAYS, TRIANGULATION.FACETS {
    $this->TRIANGULATION->WEIGHTS=is_regular($this->RAYS,$this->TRIANGULATION->FACETS);
 }
 
-
-rule TRIANGULATION.GKZ_VECTOR : RAYS, TRIANGULATION.FACETS {
-   $this->TRIANGULATION->GKZ_VECTOR=gkz_vector($this->RAYS,$this->TRIANGULATION->FACETS);
-}
-precondition : FULL_DIM;
-
-# FIXME
-# the following rule should not be there (or only triggered by hand);
-# but a user_function must not write data to Polytope object
-
-precondition : POINTED;
-
 }
 
 object Polytope<Rational> {
 
 # @category Geometry
-# This is the defining property: A polytope is lattice if each vertex has integer coordinates.
-
+# A polytope is lattice if each vertex has integer coordinates.
 property LATTICE : Bool;
 
 rule LATTICE : VERTICES {
    $this->LATTICE=is_integral($this->VERTICES);
 }
 
+rule TRIANGULATION.GKZ_VECTOR : RAYS, TRIANGULATION.FACETS {
+   $this->TRIANGULATION->GKZ_VECTOR=gkz_vector($this->RAYS,$this->TRIANGULATION->FACETS);
+}
+precondition : FULL_DIM;
+precondition : BOUNDED;
+
 
 # @category Geometry
 # Number of points with 0/1-coordinates in a polytope.
-
+# @depends azove
 property N_01POINTS : Int;
 
 
@@ -67,14 +60,16 @@ property N_01POINTS : Int;
 # The value is encoded as a map collecting the coefficients of various roots encountered in the sum.
 # For example, {(3 1/2),(5 7)} represents sqrt{3}/2 + 7 sqrt{5}.
 # If the output is not satisfactory, please use a symbolic algebra package.
-
+# @example The following prints the 2-dimensional volume of a centered square with side length 2 embedded in the 3-space (the result is 4):
+# > $M = new Matrix([1,-1,1,0],[1,-1,-1,0],[1,1,-1,0],[1,1,1,0]);
+# > $p = new Polytope<Rational>(VERTICES=>$M);
+# > print $p->RELATIVE_VOLUME;
+# | {(1 4)}
 property RELATIVE_VOLUME : Map<Rational, Rational>;
-
 
 rule RELATIVE_VOLUME : SQUARED_RELATIVE_VOLUMES {
     $this->RELATIVE_VOLUME = sum_of_square_roots_naive($this->SQUARED_RELATIVE_VOLUMES);
 }
-
 
 }
 
@@ -87,7 +82,6 @@ INCLUDE
 #  and convert it to a [[Polytope<Rational>]] object
 # @param String file filename of a porta file (.ieq or .poi)
 # @return Polytope<Rational>
-
 user_function porta2poly($) {
    require PortaParser;
    my $parser=new PortaParser(shift);

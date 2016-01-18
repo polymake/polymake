@@ -55,7 +55,7 @@ void ran_array(aa,n)    /* put n new random numbers in aa */
   int n;      /* array length (must be at least KK) */
 #endif
 {
-  register int i,j;
+  int i,j;
   for (j=0;j<KK;j++) aa[j]=ran_x[j];
   for (;j<n;j++) aa[j]=mod_diff(aa[j-KK],aa[j-LL]);
   for (i=0;i<LL;i++,j++) ran_x[i]=mod_diff(aa[j-KK],aa[j-LL]);
@@ -66,8 +66,8 @@ void ran_array(aa,n)    /* put n new random numbers in aa */
 /* after calling ran_start, get new randoms by, e.g., "x=ran_arr_next()" */
 
 #define QUALITY 1009 /* recommended quality level for high-res use */
-long ran_arr_buf[QUALITY];
-long ran_arr_dummy=-1, ran_arr_started=-1;
+static long ran_arr_buf[QUALITY];
+static long ran_arr_dummy=-1, ran_arr_started=-1;
 long *ran_arr_ptr=&ran_arr_dummy; /* the next random number, or -1 */
 
 #define TT  70   /* guaranteed separation between streams */
@@ -80,9 +80,9 @@ void ran_start(seed)    /* do this before using ran_array */
   long seed;            /* selector for different streams */
 #endif
 {
-  register int t,j;
+  int t,j;
   long x[KK+KK-1];              /* the preparation buffer */
-  register long ss=(seed+2)&(MM-2);
+  long ss=(seed+2)&(MM-2);
   for (j=0;j<KK;j++) {
     x[j]=ss;                      /* bootstrap the buffer */
     ss<<=1; if (ss>=MM) ss-=MM-2; /* cyclic shift 29 bits */
@@ -110,7 +110,7 @@ void
 ran_init(long seed)    /* Added by BDM: use instead of ran_start. */
                        /*  But this is less important with this version */
 {
-    ran_start(seed % (MM-2));
+    ran_start((unsigned long)seed % (MM-2));
 }
 
 #define ran_arr_next() (*ran_arr_ptr>=0? *ran_arr_ptr++: ran_arr_cycle())
@@ -125,7 +125,7 @@ ran_arr_cycle(void)
 
   ran_array(ran_arr_buf,QUALITY);
 
-  ran_arr_buf[100]=-1;
+  ran_arr_buf[KK]=-1;
   ran_arr_ptr=ran_arr_buf+1;
   return ran_arr_buf[0];
 }

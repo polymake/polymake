@@ -228,6 +228,11 @@ weight 1.10;
 
 property INPUT_RAY_LABELS : Array<String> : mutable;
 
+# @category Visualization
+# Unique names assigned to the [[MAXIMAL_CONES]].  Similar to [[RAY_LABELS]] for [[RAYS]].
+
+property MAXIMAL_CONE_LABELS : Array<String> : mutable;
+
 # @category Combinatorics
 # The poset of subcones of the polyhedral fan organized as a directed graph.
 # Each node corresponds to some proper subcone of the fan.

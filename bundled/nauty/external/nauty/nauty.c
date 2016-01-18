@@ -1,8 +1,8 @@
 /*****************************************************************************
 *                                                                            *
-*  Main source file for version 2.2 of nauty.                                *
+*  Main source file for version 2.5 of nauty.                                *
 *                                                                            *
-*   Copyright (1984-2004) Brendan McKay.  All rights reserved.  Permission   *
+*   Copyright (1984-2013) Brendan McKay.  All rights reserved.  Permission   *
 *   Subject to the waivers and disclaimers in nauty.h.                       *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
@@ -54,11 +54,21 @@
 *       17-Nov-03 : changed INFINITY to NAUTY_INFINITY                       *
 *       14-Sep-04 : extended prototypes even to recursive functions          *
 *       16-Oct-04 : disallow NULL dispatch vector                            *
+*       11-Nov-05 : changes for version 2.3:                                 *
+*                   - init() and cleanup() optional calls                    *
+*       23-Nov-06 : changes for version 2.4:                                 *
+*                   - use maketargetcell() instead of tcellproc()            *
+*       29-Nov-06 : add extra_autom, extra_level, extra_options              *
+*       10-Dec-06 : remove BIGNAUTY                                          *
+*       10-Nov-09 : remove shortish and permutation types                    *
+*       16-Nov-11 : added Shreier option                                     *
+*       15-Jan012 : added TLS_ATTR to static declarations                    *
 *                                                                            *
 *****************************************************************************/
 
 #define ONE_WORD_SETS
 #include "nauty.h"
+#include "schreier.h"
 
 #ifdef NAUTY_IN_MAGMA
 #include "cleanup.e"
@@ -67,8 +77,8 @@
 
 typedef struct tcnode_struct
 {
-	struct tcnode_struct *next;
-	set *tcellptr;
+    struct tcnode_struct *next;
+    set *tcellptr;
 } tcnode;
 
 /* aproto: header new_nauty_protos.h */
@@ -81,9 +91,9 @@ static int othernode0(int*, int*, int, int, tcnode*);
 static int firstpathnode(int*, int*, int, int);
 static int othernode(int*, int*, int, int);
 #endif
-static void firstterminal(int*, register int);
+static void firstterminal(int*, int);
 static int processnode(int*, int*, int, int);
-static void recover(register int*, register int);
+static void recover(int*, int);
 static void writemarker(int, int, int, int, int, int);
 #endif
 
@@ -95,64 +105,62 @@ static void writemarker(int, int, int, int, int, int);
 
 #define OPTCALL(proc) if (proc != NULL) (*proc)
 
-    /* copies of some of the options: */
-static boolean getcanon,digraph,writeautoms,domarkers,cartesian;
-static int linelength,tc_level,mininvarlevel,maxinvarlevel,invararg;
-static void (*usernodeproc)(graph*,int*,int*,int,int,int,int,int,int);
-static void (*userautomproc)(int,permutation*,int*,int,int,int);
-static void (*userlevelproc)
-              (int*,int*,int,int*,statsblk*,int,int,int,int,int,int);
-static void (*tcellproc)(graph*,int*,int*,int,int,set*,int*,int*,int,int,
-                        int(*)(graph*,int*,int*,int,int,int,int),int,int);
-static void (*invarproc)
-	      (graph*,int*,int*,int,int,int,permutation*,int,boolean,int,int);
-static FILE *outfile;
-static dispatchvec dispatch;
+ /* copies of some of the options: */
+static TLS_ATTR
+   boolean getcanon,digraph,writeautoms,domarkers,cartesian,doschreier;
+static TLS_ATTR int linelength,tc_level,mininvarlevel,maxinvarlevel,invararg;
+static TLS_ATTR void (*usernodeproc)(graph*,int*,int*,int,int,int,int,int,int);
+static TLS_ATTR void (*userautomproc)(int,int*,int*,int,int,int);
+static TLS_ATTR void (*userlevelproc)
+          (int*,int*,int,int*,statsblk*,int,int,int,int,int,int);
+static TLS_ATTR void (*invarproc)
+          (graph*,int*,int*,int,int,int,int*,int,boolean,int,int);
+static TLS_ATTR FILE *outfile;
+static TLS_ATTR dispatchvec dispatch;
 
-    /* local versions of some of the arguments: */
-static int m,n;
-static graph *g,*canong;
-static int *orbits;
-static statsblk *stats;
-    /* temporary versions of some stats: */
-static long invapplics,invsuccesses;
-static int invarsuclevel;
+ /* local versions of some of the arguments: */
+static TLS_ATTR int m,n;
+static TLS_ATTR graph *g,*canong;
+static TLS_ATTR int *orbits;
+static TLS_ATTR statsblk *stats;
+ /* temporary versions of some stats: */
+static TLS_ATTR unsigned long invapplics,invsuccesses;
+static TLS_ATTR int invarsuclevel;
 
-    /* working variables: <the "bsf leaf" is the leaf which is best guess so
-                                far at the canonical leaf>  */
-static int gca_first,     /* level of greatest common ancestor of current
-                                node and first leaf */
-           gca_canon,     /* ditto for current node and bsf leaf */
-           noncheaplevel, /* level of greatest ancestor for which cheapautom
-                                == FALSE */
-           allsamelevel,  /* level of least ancestor of first leaf for
-                             which all descendant leaves are known to be
-                             equivalent */
-           eqlev_first,   /* level to which codes for this node match those
-                                for first leaf */
-           eqlev_canon,   /* level to which codes for this node match those
-                                for the bsf leaf. */
-           comp_canon,    /* -1,0,1 according as code at eqlev_canon+1 is
-                                <,==,> that for bsf leaf.  Also used for
-                                similar purpose during leaf processing */
-           samerows,      /* number of rows of canong which are correct for
-                                the bsf leaf  BDM:correct description? */
-           canonlevel,    /* level of bsf leaf */
-           stabvertex,    /* point fixed in ancestor of first leaf at level
-                                gca_canon */
-           cosetindex;    /* the point being fixed at level gca_first */
+ /* working variables: <the "bsf leaf" is the leaf which is best guess so
+                            far at the canonical leaf>  */
+static TLS_ATTR int gca_first, /* level of greatest common ancestor of
+				  current node and first leaf */
+    gca_canon,     /* ditto for current node and bsf leaf */
+    noncheaplevel, /* level of greatest ancestor for which cheapautom==FALSE */
+    allsamelevel,  /* level of least ancestor of first leaf for
+                      which all descendant leaves are known to be
+                      equivalent */
+    eqlev_first,   /* level to which codes for this node match those
+                      for first leaf */
+    eqlev_canon,   /* level to which codes for this node match those
+                      for the bsf leaf. */
+    comp_canon,    /* -1,0,1 according as code at eqlev_canon+1 is
+                       <,==,> that for bsf leaf.  Also used for
+                       similar purpose during leaf processing */
+    samerows,      /* number of rows of canong which are correct for
+                      the bsf leaf  BDM:correct description? */
+    canonlevel,    /* level of bsf leaf */
+    stabvertex,    /* point fixed in ancestor of first leaf at level
+                      gca_canon */
+    cosetindex;    /* the point being fixed at level gca_first */
 
-static boolean needshortprune;       /* used to flag calls to shortprune */
+static TLS_ATTR boolean needshortprune;  /* used to flag calls to shortprune */
 
 #if !MAXN
 DYNALLSTAT(set,defltwork,defltwork_sz);
-DYNALLSTAT(permutation,workperm,workperm_sz);
+DYNALLSTAT(int,workperm,workperm_sz);
 DYNALLSTAT(set,fixedpts,fixedpts_sz);
-DYNALLSTAT(permutation,firstlab,firstlab_sz);
-DYNALLSTAT(permutation,canonlab,canonlab_sz);
+DYNALLSTAT(int,firstlab,firstlab_sz);
+DYNALLSTAT(int,canonlab,canonlab_sz);
 DYNALLSTAT(short,firstcode,firstcode_sz);
 DYNALLSTAT(short,canoncode,canoncode_sz);
-DYNALLSTAT(shortish,firsttc,firsttc_sz);
+DYNALLSTAT(int,firsttc,firsttc_sz);
 DYNALLSTAT(set,active,active_sz);
 
 /* In the dynamically allocated case (MAXN=0), each level of recursion
@@ -164,27 +172,29 @@ DYNALLSTAT(set,active,active_sz);
    tcnodes and tcells are kept between calls to nauty, except that
    they are freed and reallocated if m gets bigger than alloc_m.  */
 
-static tcnode tcnode0 = {NULL,NULL};
-static int alloc_m = 0;
+static TLS_ATTR tcnode tcnode0 = {NULL,NULL};
+static TLS_ATTR int alloc_m = 0;
 
 #else
-static set defltwork[2*MAXM];        /* workspace in case none provided */
-static permutation workperm[MAXN];   /* various scratch uses */
-static set fixedpts[MAXM];           /* points which were explicitly
-                                        fixed to get current node */
-static permutation firstlab[MAXN],   /* label from first leaf */
-                   canonlab[MAXN];   /* label from bsf leaf */
-static short firstcode[MAXN+2],      /* codes for first leaf */
-             canoncode[MAXN+2];      /* codes for bsf leaf */
-static shortish firsttc[MAXN+2];     /* index of target cell for left path */
-static set active[MAXM];             /* used to contain index to cells now
-                                        active for refinement purposes */
+static TLS_ATTR set defltwork[2*MAXM];   /* workspace in case none provided */
+static TLS_ATTR int workperm[MAXN];   /* various scratch uses */
+static TLS_ATTR set fixedpts[MAXM];      /* points which were explicitly
+                                    fixed to get current node */
+static TLS_ATTR int firstlab[MAXN],   /* label from first leaf */
+               canonlab[MAXN];   /* label from bsf leaf */
+static TLS_ATTR short firstcode[MAXN+2],      /* codes for first leaf */
+         canoncode[MAXN+2];      /* codes for bsf leaf */
+static TLS_ATTR int firsttc[MAXN+2];  /* index of target cell for left path */
+static TLS_ATTR set active[MAXM];     /* used to contain index to cells now
+                                    active for refinement purposes */
 #endif
 
-static set *workspace,*worktop;      /* first and just-after-last addresses of
-                                        work area to hold automorphism data */
-static set *fmptr;                   /* pointer into workspace */
+static TLS_ATTR set *workspace,*worktop;  /* first and just-after-last
+		     addresses of work area to hold automorphism data */
+static TLS_ATTR set *fmptr;                   /* pointer into workspace */
 
+static TLS_ATTR schreier *gp;       /* These two for Schreier computations */
+static TLS_ATTR permnode *gens;
 
 /*****************************************************************************
 *                                                                            *
@@ -235,253 +245,275 @@ nauty(graph *g_arg, int *lab, int *ptn, set *active_arg,
       int *orbits_arg, optionblk *options, statsblk *stats_arg,
       set *ws_arg, int worksize, int m_arg, int n_arg, graph *canong_arg)
 {
-        register int i;
-        int numcells;
-	int retval;
+    int i;
+    int numcells;
+    int retval;
+    int initstatus;
 #if !MAXN
-	tcnode *tcp,*tcq;
+    tcnode *tcp,*tcq;
 #endif
 
     /* determine dispatch vector */
 
-	if (options->dispatch == NULL)
-	{
-            fprintf(ERRFILE,">E nauty: null dispatch vector\n");
-	    fprintf(ERRFILE,"Maybe you need to recompile\n");
-            exit(1);
-        }
-	else
-	    dispatch = *(options->dispatch);
+    if (options->dispatch == NULL)
+    {
+        fprintf(ERRFILE,">E nauty: null dispatch vector\n");
+        fprintf(ERRFILE,"Maybe you need to recompile\n");
+        exit(1);
+    }
+    else
+        dispatch = *(options->dispatch);
 
-	if (options->userrefproc) 
-	    dispatch.refine = options->userrefproc;
-	else if (dispatch.refine1 && m_arg == 1)
-            dispatch.refine = dispatch.refine1;
+    if (options->userrefproc) 
+        dispatch.refine = options->userrefproc;
+    else if (dispatch.refine1 && m_arg == 1)
+        dispatch.refine = dispatch.refine1;
 
-	if (dispatch.refine == NULL || dispatch.updatecan == NULL
-		|| dispatch.bestcell == NULL || dispatch.cheapautom == NULL)
-	{
-	    fprintf(ERRFILE,">E bad dispatch vector\n");
-	    exit(1);
-	}
+    if (dispatch.refine == NULL || dispatch.updatecan == NULL
+            || dispatch.targetcell == NULL || dispatch.cheapautom == NULL)
+    {
+        fprintf(ERRFILE,">E bad dispatch vector\n");
+        exit(1);
+    }
 
-	if (options->usertcellproc) tcellproc = options->usertcellproc;
-        else                        tcellproc = targetcell;
- 
     /* check for excessive sizes: */
 
 #if !MAXN
-        if (m_arg > NAUTY_INFINITY/WORDSIZE+1)
-        {
-            stats_arg->errstatus = MTOOBIG;
-            fprintf(ERRFILE,"nauty: need m <= %d, but m=%d\n\n",
-		    NAUTY_INFINITY/WORDSIZE+1,m_arg);
-            return;
-        }
-        if (n_arg > NAUTY_INFINITY-2 || n_arg > WORDSIZE * m_arg)
-        {
-            stats_arg->errstatus = NTOOBIG;
-            fprintf(ERRFILE,"nauty: need n <= min(%d,%d*m), but n=%d\n\n",
-		    NAUTY_INFINITY-2,WORDSIZE,n_arg);
-            return;
-        }
+    if (m_arg > NAUTY_INFINITY/WORDSIZE+1)
+    {
+        stats_arg->errstatus = MTOOBIG;
+        fprintf(ERRFILE,"nauty: need m <= %d, but m=%d\n\n",
+                NAUTY_INFINITY/WORDSIZE+1,m_arg);
+        return;
+    }
+    if (n_arg > NAUTY_INFINITY-2 || n_arg > WORDSIZE * m_arg)
+    {
+        stats_arg->errstatus = NTOOBIG;
+        fprintf(ERRFILE,"nauty: need n <= min(%d,%d*m), but n=%d\n\n",
+                NAUTY_INFINITY-2,WORDSIZE,n_arg);
+        return;
+    }
 #else
-        if (m_arg > MAXM)
-        {
-            stats_arg->errstatus = MTOOBIG;
-            fprintf(ERRFILE,"nauty: need m <= %d\n\n",MAXM);
-            return;
-        }
-        if (n_arg > MAXN || n_arg > WORDSIZE * m_arg)
-        {
-            stats_arg->errstatus = NTOOBIG;
-            fprintf(ERRFILE,
-                    "nauty: need n <= min(%d,%d*m)\n\n",MAXM,WORDSIZE);
-            return;
-        }
+    if (m_arg > MAXM)
+    {
+        stats_arg->errstatus = MTOOBIG;
+        fprintf(ERRFILE,"nauty: need m <= %d\n\n",MAXM);
+        return;
+    }
+    if (n_arg > MAXN || n_arg > WORDSIZE * m_arg)
+    {
+        stats_arg->errstatus = NTOOBIG;
+        fprintf(ERRFILE,
+                "nauty: need n <= min(%d,%d*m)\n\n",MAXM,WORDSIZE);
+        return;
+    }
 #endif
-	if (n_arg == 0)   /* Special code for Wendy */
-	{
-	    stats_arg->grpsize1 = 1.0;
-	    stats_arg->grpsize2 = 0;
-	    stats_arg->numorbits = 0;
-	    stats_arg->numgenerators = 0;
-	    stats_arg->errstatus = 0;
-	    stats_arg->numnodes = 1;
-	    stats_arg->numbadleaves = 0;
-	    stats_arg->maxlevel = 1;
-	    stats_arg->tctotal = 0;
-	    stats_arg->canupdates = (options->getcanon != 0);
-	    stats_arg->invapplics = 0;
-	    stats_arg->invsuccesses = 0;
-	    stats_arg->invarsuclevel = 0;
-	    return;
-	}
+    if (n_arg == 0)   /* Special code for zero-sized graph */
+    {
+        stats_arg->grpsize1 = 1.0;
+        stats_arg->grpsize2 = 0;
+        stats_arg->numorbits = 0;
+        stats_arg->numgenerators = 0;
+        stats_arg->errstatus = 0;
+        stats_arg->numnodes = 1;
+        stats_arg->numbadleaves = 0;
+        stats_arg->maxlevel = 1;
+        stats_arg->tctotal = 0;
+        stats_arg->canupdates = (options->getcanon != 0);
+        stats_arg->invapplics = 0;
+        stats_arg->invsuccesses = 0;
+        stats_arg->invarsuclevel = 0;
+        return;
+    }
 
     /* take copies of some args, and options: */
-        m = m_arg;
-        n = n_arg;
+    m = m_arg;
+    n = n_arg;
 
-	nautil_check(WORDSIZE,m,n,NAUTYVERSIONID);
-	OPTCALL(dispatch.check)(WORDSIZE,m,n,NAUTYVERSIONID);
+    nautil_check(WORDSIZE,m,n,NAUTYVERSIONID);
+    OPTCALL(dispatch.check)(WORDSIZE,m,n,NAUTYVERSIONID);
 
 #if !MAXN
-	DYNALLOC1(set,defltwork,defltwork_sz,2*m,"nauty");
-	DYNALLOC1(set,fixedpts,fixedpts_sz,m,"nauty");
-	DYNALLOC1(set,active,active_sz,m,"nauty");
-	DYNALLOC1(permutation,workperm,workperm_sz,n,"nauty");
-	DYNALLOC1(permutation,firstlab,firstlab_sz,n,"nauty");
-	DYNALLOC1(permutation,canonlab,canonlab_sz,n,"nauty");
-	DYNALLOC1(short,firstcode,firstcode_sz,n+2,"nauty");
-	DYNALLOC1(short,canoncode,canoncode_sz,n+2,"nauty");
-	DYNALLOC1(shortish,firsttc,firsttc_sz,n+2,"nauty");
-        if (m > alloc_m)
+    DYNALLOC1(set,defltwork,defltwork_sz,2*m,"nauty");
+    DYNALLOC1(set,fixedpts,fixedpts_sz,m,"nauty");
+    DYNALLOC1(set,active,active_sz,m,"nauty");
+    DYNALLOC1(int,workperm,workperm_sz,n,"nauty");
+    DYNALLOC1(int,firstlab,firstlab_sz,n,"nauty");
+    DYNALLOC1(int,canonlab,canonlab_sz,n,"nauty");
+    DYNALLOC1(short,firstcode,firstcode_sz,n+2,"nauty");
+    DYNALLOC1(short,canoncode,canoncode_sz,n+2,"nauty");
+    DYNALLOC1(int,firsttc,firsttc_sz,n+2,"nauty");
+    if (m > alloc_m)
+    {
+        tcp = tcnode0.next;
+        while (tcp != NULL)
         {
-            tcp = tcnode0.next;
-            while (tcp != NULL)
-            {
-                tcq = tcp->next;
-                FREES(tcp->tcellptr);
-                FREES(tcp);
-                tcp = tcq;
-            }
-            alloc_m = m;
-            tcnode0.next = NULL;
+            tcq = tcp->next;
+            FREES(tcp->tcellptr);
+            FREES(tcp);
+            tcp = tcq;
         }
+        alloc_m = m;
+        tcnode0.next = NULL;
+    }
 #endif
 
-        g = g_arg;
-        orbits = orbits_arg;
-        stats = stats_arg;
+       /* OLD g = g_arg; */
+    orbits = orbits_arg;
+    stats = stats_arg;
 
-        getcanon = options->getcanon;
-        digraph = options->digraph;
-        writeautoms = options->writeautoms;
-        domarkers = options->writemarkers;
-        cartesian = options->cartesian;
-        linelength = options->linelength;
-        if (digraph) tc_level = 0;
-        else         tc_level = options->tc_level;
-        outfile = (options->outfile == NULL ? stdout : options->outfile);
-        usernodeproc = options->usernodeproc;
-        userautomproc = options->userautomproc;
-        userlevelproc = options->userlevelproc;
+    getcanon = options->getcanon;
+    digraph = options->digraph;
+    writeautoms = options->writeautoms;
+    domarkers = options->writemarkers;
+    cartesian = options->cartesian;
+    doschreier = options->schreier;
+    if (doschreier) schreier_check(WORDSIZE,m,n,NAUTYVERSIONID);
+    linelength = options->linelength;
+    if (digraph) tc_level = 0;
+    else         tc_level = options->tc_level;
+    outfile = (options->outfile == NULL ? stdout : options->outfile);
+    usernodeproc = options->usernodeproc;
+    userautomproc = options->userautomproc;
+    userlevelproc = options->userlevelproc;
 
-        invarproc = options->invarproc;
-        if (options->mininvarlevel < 0 && options->getcanon)
-            mininvarlevel = -options->mininvarlevel;
-        else
-            mininvarlevel = options->mininvarlevel;
-        if (options->maxinvarlevel < 0 && options->getcanon)
-            maxinvarlevel = -options->maxinvarlevel;
-        else
-            maxinvarlevel = options->maxinvarlevel;
-        invararg = options->invararg;
+    invarproc = options->invarproc;
+    if (options->mininvarlevel < 0 && options->getcanon)
+        mininvarlevel = -options->mininvarlevel;
+    else
+        mininvarlevel = options->mininvarlevel;
+    if (options->maxinvarlevel < 0 && options->getcanon)
+        maxinvarlevel = -options->maxinvarlevel;
+    else
+        maxinvarlevel = options->maxinvarlevel;
+    invararg = options->invararg;
 
-        if (getcanon)
-            if (canong_arg == NULL)
-            {
-                stats_arg->errstatus = CANONGNIL;
-                fprintf(ERRFILE,
-                      "nauty: canong=NULL but options.getcanon=TRUE\n\n");
-                return;
-            }
-            else
-                canong = canong_arg;
+    if (getcanon)
+        if (canong_arg == NULL)
+        {
+            stats_arg->errstatus = CANONGNIL;
+            fprintf(ERRFILE,
+                  "nauty: canong=NULL but options.getcanon=TRUE\n\n");
+            return;
+        }
 
     /* initialize everything: */
-        if (options->defaultptn)
+
+    if (options->defaultptn)
+    {
+        for (i = 0; i < n; ++i)   /* give all verts same colour */
         {
-            for (i = 0; i < n; ++i)   /* give all verts same colour */
-            {
-                lab[i] = i;
-                ptn[i] = NAUTY_INFINITY;
-            }
-            ptn[n-1] = 0;
+            lab[i] = i;
+            ptn[i] = NAUTY_INFINITY;
+        }
+        ptn[n-1] = 0;
+        EMPTYSET(active,m);
+        ADDELEMENT(active,0);
+        numcells = 1;
+    }
+    else
+    {
+        ptn[n-1] = 0;
+        numcells = 0;
+        for (i = 0; i < n; ++i)
+            if (ptn[i] != 0) ptn[i] = NAUTY_INFINITY;
+            else             ++numcells;
+        if (active_arg == NULL)
+        {
             EMPTYSET(active,m);
-            ADDELEMENT(active,0);
-            numcells = 1;
-        }
-        else
-        {
-            ptn[n-1] = 0;
-            numcells = 0;
             for (i = 0; i < n; ++i)
-                if (ptn[i] != 0) ptn[i] = NAUTY_INFINITY;
-                else             ++numcells;
-            if (active_arg == NULL)
             {
-                EMPTYSET(active,m);
-                for (i = 0; i < n; ++i)
-                {
-                    ADDELEMENT(active,i);
-                    while (ptn[i]) ++i;
-                }
+                ADDELEMENT(active,i);
+                while (ptn[i]) ++i;
             }
-            else
-                for (i = 0; i < M; ++i) active[i] = active_arg[i];
         }
-
-        for (i = 0; i < n; ++i) orbits[i] = i;
-        stats->grpsize1 = 1.0;
-        stats->grpsize2 = 0;
-        stats->numgenerators = 0;
-        stats->numnodes = 0;
-        stats->numbadleaves = 0;
-        stats->tctotal = 0;
-        stats->canupdates = 0;
-        stats->numorbits = n;
-        EMPTYSET(fixedpts,m);
-        noncheaplevel = 1;
-        eqlev_canon = -1;       /* needed even if !getcanon */
-
-        if (worksize >= 2 * m)
-            workspace = ws_arg;
         else
-        {
-            workspace = defltwork;
-            worksize = 2 * m;
-        }
-        worktop = workspace + (worksize - worksize % (2 * m));
-        fmptr = workspace;
+            for (i = 0; i < M; ++i) active[i] = active_arg[i];
+    }
+
+    g = canong = NULL;
+    initstatus = 0;
+    OPTCALL(dispatch.init)(g_arg,&g,canong_arg,&canong,
+            lab,ptn,active,options,&initstatus,m,n);
+    if (initstatus)
+    {
+        stats->errstatus = initstatus;
+        return;
+    }
+
+    if (g == NULL) g = g_arg;
+    if (canong == NULL) canong = canong_arg;
+
+    if (doschreier) newgroup(&gp,&gens,n);
+
+    for (i = 0; i < n; ++i) orbits[i] = i;
+    stats->grpsize1 = 1.0;
+    stats->grpsize2 = 0;
+    stats->numgenerators = 0;
+    stats->numnodes = 0;
+    stats->numbadleaves = 0;
+    stats->tctotal = 0;
+    stats->canupdates = 0;
+    stats->numorbits = n;
+    EMPTYSET(fixedpts,m);
+    noncheaplevel = 1;
+    eqlev_canon = -1;       /* needed even if !getcanon */
+
+    if (worksize >= 2 * m)
+        workspace = ws_arg;
+    else
+    {
+        workspace = defltwork;
+        worksize = 2 * m;
+    }
+    worktop = workspace + (worksize - worksize % (2 * m));
+    fmptr = workspace;
 
     /* here goes: */
-        stats->errstatus = 0;
-        needshortprune = FALSE;
-        invarsuclevel = NAUTY_INFINITY;
-        invapplics = invsuccesses = 0;
+    stats->errstatus = 0;
+    needshortprune = FALSE;
+    invarsuclevel = NAUTY_INFINITY;
+    invapplics = invsuccesses = 0;
 
 #if !MAXN
-        retval = firstpathnode0(lab,ptn,1,numcells,&tcnode0);
+    retval = firstpathnode0(lab,ptn,1,numcells,&tcnode0);
 #else   
-        retval = firstpathnode(lab,ptn,1,numcells);
+    retval = firstpathnode(lab,ptn,1,numcells);
 #endif  
 
 #ifdef NAUTY_IN_MAGMA
-	if (retval != NAUTY_ABORT)
+    if (retval != NAUTY_ABORT)
 #endif
-	{
-            if (getcanon)
-            {
-                (*dispatch.updatecan)(g,canong,canonlab,samerows,M,n);
-                for (i = 0; i < n; ++i) lab[i] = canonlab[i];
-            }
-            stats->invarsuclevel =
-                 (invarsuclevel == NAUTY_INFINITY ? 0 : invarsuclevel);
-            stats->invapplics = invapplics;
-            stats->invsuccesses = invsuccesses;
-	}
+    {
+        if (getcanon)
+        {
+            (*dispatch.updatecan)(g,canong,canonlab,samerows,M,n);
+            for (i = 0; i < n; ++i) lab[i] = canonlab[i];
+        }
+        stats->invarsuclevel =
+             (invarsuclevel == NAUTY_INFINITY ? 0 : invarsuclevel);
+        stats->invapplics = invapplics;
+        stats->invsuccesses = invsuccesses;
+    }
 
 #if !MAXN
 #ifndef NAUTY_IN_MAGMA
-        if (n >= 320)
+    if (n >= 320)
 #endif
-        {   
-	    nautil_freedyn();
-	    OPTCALL(dispatch.freedyn)();
-	    nauty_freedyn();
-        }
+    {   
+        nautil_freedyn();
+        OPTCALL(dispatch.freedyn)();
+        nauty_freedyn();
+    }
 #endif  
+    OPTCALL(dispatch.cleanup)(g_arg,&g,canong_arg,&canong,
+                                           lab,ptn,options,stats,m,n);
+
+    if (doschreier)
+    {
+	freeschreier(&gp,&gens);
+	if (n >= 320) schreier_freedyn();
+    }
 }
 
 /*****************************************************************************
@@ -506,132 +538,132 @@ nauty(graph *g_arg, int *lab, int *ptn, set *active_arg,
 static int
 #if !MAXN
 firstpathnode0(int *lab, int *ptn, int level, int numcells,
-              tcnode *tcnode_parent)
+          tcnode *tcnode_parent)
 #else
 firstpathnode(int *lab, int *ptn, int level, int numcells)
 #endif
 {
-        register int tv;
-        int tv1,index,rtnlevel,tcellsize,tc,childcount,qinvar,refcode;
+    int tv;
+    int tv1,index,rtnlevel,tcellsize,tc,childcount,qinvar,refcode;
 #if !MAXN
-        set *tcell;
-        tcnode *tcnode_this;
+    set *tcell;
+    tcnode *tcnode_this;
 
-        tcnode_this = tcnode_parent->next;
-        if (tcnode_this == NULL)
-        {
-            if ((tcnode_this = (tcnode*)ALLOCS(1,sizeof(tcnode))) == NULL ||
-                (tcnode_this->tcellptr
-                             = (set*)ALLOCS(alloc_m,sizeof(set))) == NULL)
-                alloc_error("tcell");
-            tcnode_parent->next = tcnode_this;
-            tcnode_this->next = NULL;
-        }
-        tcell = tcnode_this->tcellptr;
+    tcnode_this = tcnode_parent->next;
+    if (tcnode_this == NULL)
+    {
+        if ((tcnode_this = (tcnode*)ALLOCS(1,sizeof(tcnode))) == NULL ||
+            (tcnode_this->tcellptr
+                         = (set*)ALLOCS(alloc_m,sizeof(set))) == NULL)
+            alloc_error("tcell");
+        tcnode_parent->next = tcnode_this;
+        tcnode_this->next = NULL;
+    }
+    tcell = tcnode_this->tcellptr;
 #else
-        set tcell[MAXM];
+    set tcell[MAXM];
 #endif
 
-        ++stats->numnodes;
+    ++stats->numnodes;
 
     /* refine partition : */
-        doref(g,lab,ptn,level,&numcells,&qinvar,workperm,
-              active,&refcode,dispatch.refine,invarproc,
-              mininvarlevel,maxinvarlevel,invararg,digraph,M,n);
-        firstcode[level] = (short)refcode;
-        if (qinvar > 0)
+    doref(g,lab,ptn,level,&numcells,&qinvar,workperm,
+          active,&refcode,dispatch.refine,invarproc,
+          mininvarlevel,maxinvarlevel,invararg,digraph,M,n);
+    firstcode[level] = (short)refcode;
+    if (qinvar > 0)
+    {
+        ++invapplics;
+        if (qinvar == 2)
         {
-            ++invapplics;
-            if (qinvar == 2)
-            {
-                ++invsuccesses;
-                if (mininvarlevel < 0) mininvarlevel = level;
-                if (maxinvarlevel < 0) maxinvarlevel = level;
-                if (level < invarsuclevel) invarsuclevel = level;
-            }
+            ++invsuccesses;
+            if (mininvarlevel < 0) mininvarlevel = level;
+            if (maxinvarlevel < 0) maxinvarlevel = level;
+            if (level < invarsuclevel) invarsuclevel = level;
         }
+    }
 
-        tc = -1;
-        if (numcells != n)
-        {
+    tc = -1;
+    if (numcells != n)
+    {
      /* locate new target cell, setting tc to its position in lab, tcell
-                          to its contents, and tcellsize to its size: */
-            (*tcellproc)(g,lab,ptn,level,numcells,tcell,&tcellsize,
-                                        &tc,tc_level,-1,dispatch.bestcell,M,n);
-            stats->tctotal += tcellsize;
-        }
-        firsttc[level] = tc;
+                      to its contents, and tcellsize to its size: */
+        maketargetcell(g,lab,ptn,level,tcell,&tcellsize,
+                        &tc,tc_level,digraph,-1,dispatch.targetcell,M,n);
+        stats->tctotal += tcellsize;
+    }
+    firsttc[level] = tc;
 
     /* optionally call user-defined node examination procedure: */
-        OPTCALL(usernodeproc)
-                       (g,lab,ptn,level,numcells,tc,(int)firstcode[level],M,n);
+    OPTCALL(usernodeproc)
+                   (g,lab,ptn,level,numcells,tc,(int)firstcode[level],M,n);
 
-        if (numcells == n)      /* found first leaf? */
-        {
-            firstterminal(lab,level);
-            OPTCALL(userlevelproc)(lab,ptn,level,orbits,stats,0,1,1,n,0,n);
-            return level-1;
-        }
+    if (numcells == n)      /* found first leaf? */
+    {
+        firstterminal(lab,level);
+        OPTCALL(userlevelproc)(lab,ptn,level,orbits,stats,0,1,1,n,0,n);
+        return level-1;
+    }
 
-        if (noncheaplevel >= level
-                             && !(*dispatch.cheapautom)(ptn,level,digraph,n))
-            noncheaplevel = level + 1;
+    if (noncheaplevel >= level
+                         && !(*dispatch.cheapautom)(ptn,level,digraph,n))
+        noncheaplevel = level + 1;
 
     /* use the elements of the target cell to produce the children: */
-        index = 0;
-        for (tv1 = tv = nextelement(tcell,M,-1); tv >= 0;
-                                        tv = nextelement(tcell,M,tv))
+    index = 0;
+    for (tv1 = tv = nextelement(tcell,M,-1); tv >= 0;
+                                    tv = nextelement(tcell,M,tv))
+    {
+        if (orbits[tv] == tv)   /* ie, not equiv to previous child */
         {
-            if (orbits[tv] == tv)   /* ie, not equiv to previous child */
+            breakout(lab,ptn,level+1,tc,tv,active,M);
+            ADDELEMENT(fixedpts,tv);
+            cosetindex = tv;
+            if (tv == tv1)
             {
-                breakout(lab,ptn,level+1,tc,tv,active,M);
-                ADDELEMENT(fixedpts,tv);
-                cosetindex = tv;
-                if (tv == tv1)
-                {
 #if !MAXN
-                    rtnlevel = firstpathnode0(lab,ptn,level+1,numcells+1,
-                                             tcnode_this);
-#else
-                    rtnlevel = firstpathnode(lab,ptn,level+1,numcells+1);
-#endif
-                    childcount = 1;
-                    gca_first = level;
-                    stabvertex = tv1;
-                }
-                else
-                {
-#if !MAXN
-                    rtnlevel = othernode0(lab,ptn,level+1,numcells+1,
+                rtnlevel = firstpathnode0(lab,ptn,level+1,numcells+1,
                                          tcnode_this);
 #else
-                    rtnlevel = othernode(lab,ptn,level+1,numcells+1);
+                rtnlevel = firstpathnode(lab,ptn,level+1,numcells+1);
 #endif
-                    ++childcount;
-                }
-                DELELEMENT(fixedpts,tv);
-                if (rtnlevel < level)
-                    return rtnlevel;
-                if (needshortprune)
-                {
-                    needshortprune = FALSE;
-                    shortprune(tcell,fmptr-M,M);
-                }
-                recover(ptn,level);
+                childcount = 1;
+                gca_first = level;
+                stabvertex = tv1;
             }
-            if (orbits[tv] == tv1)  /* ie, in same orbit as tv1 */
-                ++index;
+            else
+            {
+#if !MAXN
+                rtnlevel = othernode0(lab,ptn,level+1,numcells+1,
+                                     tcnode_this);
+#else
+                rtnlevel = othernode(lab,ptn,level+1,numcells+1);
+#endif
+                ++childcount;
+            }
+            DELELEMENT(fixedpts,tv);
+            if (rtnlevel < level)
+                return rtnlevel;
+            if (needshortprune)
+            {
+                needshortprune = FALSE;
+                shortprune(tcell,fmptr-M,M);
+            }
+            recover(ptn,level);
         }
-        MULTIPLY(stats->grpsize1,stats->grpsize2,index);
+        if (orbits[tv] == tv1)  /* ie, in same orbit as tv1 */
+            ++index;
+    }
+    MULTIPLY(stats->grpsize1,stats->grpsize2,index);
 
-        if (tcellsize == index && allsamelevel == level + 1)
-            --allsamelevel;
+    if (tcellsize == index && allsamelevel == level + 1)
+        --allsamelevel;
 
-        if (domarkers)
-            writemarker(level,tv1,index,tcellsize,stats->numorbits,numcells);
-        OPTCALL(userlevelproc)(lab,ptn,level,orbits,stats,tv1,index,tcellsize,
-                                                        numcells,childcount,n);
-        return level-1;
+    if (domarkers)
+        writemarker(level,tv1,index,tcellsize,stats->numorbits,numcells);
+    OPTCALL(userlevelproc)(lab,ptn,level,orbits,stats,tv1,index,tcellsize,
+                                                    numcells,childcount,n);
+    return level-1;
 }
 
 /*****************************************************************************
@@ -650,135 +682,139 @@ firstpathnode(int *lab, int *ptn, int level, int numcells)
 static int
 #if !MAXN
 othernode0(int *lab, int *ptn, int level, int numcells,
-          tcnode *tcnode_parent)
+      tcnode *tcnode_parent)
 #else
 othernode(int *lab, int *ptn, int level, int numcells)
 #endif
 {
-        register int tv;
-        int tv1,refcode,rtnlevel,tcellsize,tc,qinvar;
-        short code;
+    int tv;
+    int tv1,refcode,rtnlevel,tcellsize,tc,qinvar;
+    short code;
 #if !MAXN
-        set *tcell;
-        tcnode *tcnode_this;
+    set *tcell;
+    tcnode *tcnode_this;
 
-        tcnode_this = tcnode_parent->next;
-        if (tcnode_this == NULL)
-        {
-            if ((tcnode_this = (tcnode*)ALLOCS(1,sizeof(tcnode))) == NULL ||
-                (tcnode_this->tcellptr
-                         = (set*)ALLOCS(alloc_m,sizeof(set))) == NULL)
-                alloc_error("tcell");
-            tcnode_parent->next = tcnode_this;
-            tcnode_this->next = NULL;
-        }
-        tcell = tcnode_this->tcellptr;
+    tcnode_this = tcnode_parent->next;
+    if (tcnode_this == NULL)
+    {
+        if ((tcnode_this = (tcnode*)ALLOCS(1,sizeof(tcnode))) == NULL ||
+            (tcnode_this->tcellptr
+                     = (set*)ALLOCS(alloc_m,sizeof(set))) == NULL)
+            alloc_error("tcell");
+        tcnode_parent->next = tcnode_this;
+        tcnode_this->next = NULL;
+    }
+    tcell = tcnode_this->tcellptr;
 #else
-        set tcell[MAXM];
+    set tcell[MAXM];
 #endif
 
 #ifdef NAUTY_IN_MAGMA
-        if (main_seen_interrupt) return NAUTY_ABORT;
+    if (main_seen_interrupt) return NAUTY_ABORT;
 #endif
 
-        ++stats->numnodes;
+    ++stats->numnodes;
 
     /* refine partition : */
-        doref(g,lab,ptn,level,&numcells,&qinvar,workperm,active,
-              &refcode,dispatch.refine,invarproc,mininvarlevel,maxinvarlevel,
-              invararg,digraph,M,n);
-        code = (short)refcode;
-        if (qinvar > 0)
+    doref(g,lab,ptn,level,&numcells,&qinvar,workperm,active,
+          &refcode,dispatch.refine,invarproc,mininvarlevel,maxinvarlevel,
+          invararg,digraph,M,n);
+    code = (short)refcode;
+    if (qinvar > 0)
+    {
+        ++invapplics;
+        if (qinvar == 2)
         {
-            ++invapplics;
-            if (qinvar == 2)
+            ++invsuccesses;
+            if (level < invarsuclevel) invarsuclevel = level;
+        }
+    }
+
+    if (eqlev_first == level - 1 && code == firstcode[level])
+        eqlev_first = level;
+    if (getcanon)
+    {
+        if (eqlev_canon == level - 1)
+        {
+            if (code < canoncode[level])
+                comp_canon = -1;
+            else if (code > canoncode[level])
+                comp_canon = 1;
+            else
             {
-                ++invsuccesses;
-                if (level < invarsuclevel) invarsuclevel = level;
+                comp_canon = 0;
+                eqlev_canon = level;
             }
         }
+        if (comp_canon > 0) canoncode[level] = code;
+    }
 
-        if (eqlev_first == level - 1 && code == firstcode[level])
-            eqlev_first = level;
-        if (getcanon)
-        {
-            if (eqlev_canon == level - 1)
-            {
-                if (code < canoncode[level])
-                    comp_canon = -1;
-                else if (code > canoncode[level])
-                    comp_canon = 1;
-                else
-                {
-                    comp_canon = 0;
-                    eqlev_canon = level;
-                }
-            }
-            if (comp_canon > 0) canoncode[level] = code;
-        }
-
-        tc = -1;
+    tc = -1;
    /* If children will be required, find new target cell and set tc to its
       position in lab, tcell to its contents, and tcellsize to its size: */
 
-        if (numcells < n && (eqlev_first == level ||
-                             getcanon && comp_canon >= 0))
+    if (numcells < n && (eqlev_first == level ||
+                         (getcanon && comp_canon >= 0)))
+    {
+        if (!getcanon || comp_canon < 0)
         {
-            if (!getcanon || comp_canon < 0)
-            {
-                (*tcellproc)(g,lab,ptn,level,numcells,tcell,&tcellsize,
-                            &tc,tc_level,firsttc[level],dispatch.bestcell,M,n);
-                if (tc != firsttc[level]) eqlev_first = level - 1;
-            }
-            else
-                (*tcellproc)(g,lab,ptn,level,numcells,tcell,&tcellsize,
-                                        &tc,tc_level,-1,dispatch.bestcell,M,n);
-            stats->tctotal += tcellsize;
+            maketargetcell(g,lab,ptn,level,tcell,&tcellsize,&tc,
+                  tc_level,digraph,firsttc[level],dispatch.targetcell,M,n);
+            if (tc != firsttc[level]) eqlev_first = level - 1;
         }
+        else
+            maketargetcell(g,lab,ptn,level,tcell,&tcellsize,&tc,
+                  tc_level,digraph,-1,dispatch.targetcell,M,n);
+        stats->tctotal += tcellsize;
+    }
 
     /* optionally call user-defined node examination procedure: */
-        OPTCALL(usernodeproc)(g,lab,ptn,level,numcells,tc,(int)code,M,n);
+    OPTCALL(usernodeproc)(g,lab,ptn,level,numcells,tc,(int)code,M,n);
 
     /* call processnode to classify the type of this node: */
 
-        rtnlevel = processnode(lab,ptn,level,numcells);
-        if (rtnlevel < level)   /* keep returning if necessary */
-            return rtnlevel;
+    rtnlevel = processnode(lab,ptn,level,numcells);
+    if (rtnlevel < level)   /* keep returning if necessary */
+        return rtnlevel;
+    if (needshortprune)
+    {
+        needshortprune = FALSE;
+        shortprune(tcell,fmptr-M,M);
+    }
+
+    if (!(*dispatch.cheapautom)(ptn,level,digraph,n))
+        noncheaplevel = level + 1;
+
+    /* use the elements of the target cell to produce the children: */
+    for (tv1 = tv = nextelement(tcell,M,-1); tv >= 0;
+                                    tv = nextelement(tcell,M,tv))
+    {
+        breakout(lab,ptn,level+1,tc,tv,active,M);
+        ADDELEMENT(fixedpts,tv);
+#if !MAXN   
+        rtnlevel = othernode0(lab,ptn,level+1,numcells+1,tcnode_this);
+#else
+        rtnlevel = othernode(lab,ptn,level+1,numcells+1);
+#endif
+        DELELEMENT(fixedpts,tv);
+
+        if (rtnlevel < level) return rtnlevel;
+    /* use stored automorphism data to prune target cell: */
         if (needshortprune)
         {
             needshortprune = FALSE;
             shortprune(tcell,fmptr-M,M);
         }
-
-        if (!(*dispatch.cheapautom)(ptn,level,digraph,n))
-            noncheaplevel = level + 1;
-
-    /* use the elements of the target cell to produce the children: */
-        for (tv1 = tv = nextelement(tcell,M,-1); tv >= 0;
-                                        tv = nextelement(tcell,M,tv))
+        if (tv == tv1)
         {
-            breakout(lab,ptn,level+1,tc,tv,active,M);
-            ADDELEMENT(fixedpts,tv);
-#if !MAXN   
-            rtnlevel = othernode0(lab,ptn,level+1,numcells+1,tcnode_this);
-#else
-            rtnlevel = othernode(lab,ptn,level+1,numcells+1);
-#endif
-            DELELEMENT(fixedpts,tv);
+	    longprune(tcell,fixedpts,workspace,fmptr,M);
+	    if (doschreier) pruneset(fixedpts,gp,&gens,tcell,M,n);
+	}
 
-            if (rtnlevel < level) return rtnlevel;
-    /* use stored automorphism data to prune target cell: */
-            if (needshortprune)
-            {
-                needshortprune = FALSE;
-                shortprune(tcell,fmptr-M,M);
-            }
-            if (tv == tv1) longprune(tcell,fixedpts,workspace,fmptr,M);
+        recover(ptn,level);
+    }
 
-            recover(ptn,level);
-        }
-
-        return level-1;
+    return level-1;
 }
 
 /*****************************************************************************
@@ -792,25 +828,25 @@ othernode(int *lab, int *ptn, int level, int numcells)
 static void
 firstterminal(int *lab, int level)
 {
-        register int i;
+    int i;
 
-        stats->maxlevel = level;
-        gca_first = allsamelevel = eqlev_first = level;
-        firstcode[level+1] = 077777;
-        firsttc[level+1] = -1;
+    stats->maxlevel = level;
+    gca_first = allsamelevel = eqlev_first = level;
+    firstcode[level+1] = 077777;
+    firsttc[level+1] = -1;
 
-        for (i = 0; i < n; ++i) firstlab[i] = lab[i];
+    for (i = 0; i < n; ++i) firstlab[i] = lab[i];
 
-        if (getcanon)
-        {
-            canonlevel = eqlev_canon = gca_canon = level;
-            comp_canon = 0;
-            samerows = 0;
-            for (i = 0; i < n; ++i) canonlab[i] = lab[i];
-            for (i = 0; i <= level; ++i) canoncode[i] = firstcode[i];
-            canoncode[level+1] = 077777;
-            stats->canupdates = 1;
-        }
+    if (getcanon)
+    {
+        canonlevel = eqlev_canon = gca_canon = level;
+        comp_canon = 0;
+        samerows = 0;
+        for (i = 0; i < n; ++i) canonlab[i] = lab[i];
+        for (i = 0; i <= level; ++i) canoncode[i] = firstcode[i];
+        canoncode[level+1] = 077777;
+        stats->canupdates = 1;
+    }
 }
 
 /*****************************************************************************
@@ -848,125 +884,129 @@ firstterminal(int *lab, int level)
 static int
 processnode(int *lab, int *ptn, int level, int numcells)
 {
-        register int i,code,save,newlevel;
-        boolean ispruneok;
-        int sr;
+    int i,code,save,newlevel;
+    boolean ispruneok;
+    int sr;
 
-        code = 0;
-        if (eqlev_first != level && (!getcanon || comp_canon < 0))
-            code = 4;
-        else if (numcells == n)
+    code = 0;
+    if (eqlev_first != level && (!getcanon || comp_canon < 0))
+        code = 4;
+    else if (numcells == n)
+    {
+        if (eqlev_first == level)
         {
-            if (eqlev_first == level)
-            {
-                for (i = 0; i < n; ++i) workperm[firstlab[i]] = lab[i];
+            for (i = 0; i < n; ++i) workperm[firstlab[i]] = lab[i];
 
-                if (gca_first >= noncheaplevel ||
-                                   (*dispatch.isautom)(g,workperm,digraph,M,n))
-                    code = 1;
-            }
-            if (code == 0)
-                if (getcanon)
+            if (gca_first >= noncheaplevel ||
+                               (*dispatch.isautom)(g,workperm,digraph,M,n))
+                code = 1;
+        }
+        if (code == 0)
+        {
+            if (getcanon)
+            {
+                sr = 0;
+                if (comp_canon == 0)
                 {
-                    sr = 0;
-                    if (comp_canon == 0)
-                    {
-                        if (level < canonlevel)
-                            comp_canon = 1;
-                        else
-                        {
-                            (*dispatch.updatecan)
-                                              (g,canong,canonlab,samerows,M,n);
-                            samerows = n;
-                            comp_canon
-                                = (*dispatch.testcanlab)(g,canong,lab,&sr,M,n);
-                        }
-                    }
-                    if (comp_canon == 0)
-                    {
-                        for (i = 0; i < n; ++i) workperm[canonlab[i]] = lab[i];
-                        code = 2;
-                    }
-                    else if (comp_canon > 0)
-                        code = 3;
+                    if (level < canonlevel)
+                        comp_canon = 1;
                     else
-                        code = 4;
+                    {
+                        (*dispatch.updatecan)
+                                          (g,canong,canonlab,samerows,M,n);
+                        samerows = n;
+                        comp_canon
+                            = (*dispatch.testcanlab)(g,canong,lab,&sr,M,n);
+                    }
                 }
+                if (comp_canon == 0)
+                {
+                    for (i = 0; i < n; ++i) workperm[canonlab[i]] = lab[i];
+                    code = 2;
+                }
+                else if (comp_canon > 0)
+                    code = 3;
                 else
                     code = 4;
-        }
-
-        if (code != 0 && level > stats->maxlevel) stats->maxlevel = level;
-
-        switch (code)
-        {
-        case 0:                 /* nothing unusual noticed */
-            return level;
-
-        case 1:                 /* lab is equivalent to firstlab */
-            if (fmptr == worktop) fmptr -= 2 * M;
-            fmperm(workperm,fmptr,fmptr+M,M,n);
-            fmptr += 2 * M;
-            if (writeautoms)
-                writeperm(outfile,workperm,cartesian,linelength,n);
-            stats->numorbits = orbjoin(orbits,workperm,n);
-            ++stats->numgenerators;
-            OPTCALL(userautomproc)(stats->numgenerators,workperm,orbits,
-                                        stats->numorbits,stabvertex,n);
-            return gca_first;
-
-        case 2:                 /* lab is equivalent to canonlab */
-            if (fmptr == worktop) fmptr -= 2 * M;
-            fmperm(workperm,fmptr,fmptr+M,M,n);
-            fmptr += 2 * M;
-            save = stats->numorbits;
-            stats->numorbits = orbjoin(orbits,workperm,n);
-            if (stats->numorbits == save)
-            {
-                if (gca_canon != gca_first) needshortprune = TRUE;
-                return gca_canon;
             }
-            if (writeautoms)
-                writeperm(outfile,workperm,cartesian,linelength,n);
-            ++stats->numgenerators;
-            OPTCALL(userautomproc)(stats->numgenerators,workperm,orbits,
-                                        stats->numorbits,stabvertex,n);
-            if (orbits[cosetindex] < cosetindex)
-                return gca_first;
-            if (gca_canon != gca_first)
-                needshortprune = TRUE;
+            else
+                code = 4;
+        }
+    }
+
+    if (code != 0 && level > stats->maxlevel) stats->maxlevel = level;
+
+    switch (code)
+    {
+    case 0:                 /* nothing unusual noticed */
+        return level;
+
+    case 1:                 /* lab is equivalent to firstlab */
+        if (fmptr == worktop) fmptr -= 2 * M;
+        fmperm(workperm,fmptr,fmptr+M,M,n);
+        fmptr += 2 * M;
+        if (writeautoms)
+            writeperm(outfile,workperm,cartesian,linelength,n);
+        stats->numorbits = orbjoin(orbits,workperm,n);
+        ++stats->numgenerators;
+        OPTCALL(userautomproc)(stats->numgenerators,workperm,orbits,
+                                    stats->numorbits,stabvertex,n);
+        if (doschreier) addgenerator(&gp,&gens,workperm,n);
+        return gca_first;
+
+    case 2:                 /* lab is equivalent to canonlab */
+        if (fmptr == worktop) fmptr -= 2 * M;
+        fmperm(workperm,fmptr,fmptr+M,M,n);
+        fmptr += 2 * M;
+        save = stats->numorbits;
+        stats->numorbits = orbjoin(orbits,workperm,n);
+        if (stats->numorbits == save)
+        {
+            if (gca_canon != gca_first) needshortprune = TRUE;
             return gca_canon;
+        }
+        if (writeautoms)
+            writeperm(outfile,workperm,cartesian,linelength,n);
+        ++stats->numgenerators;
+        OPTCALL(userautomproc)(stats->numgenerators,workperm,orbits,
+                                    stats->numorbits,stabvertex,n);
+        if (doschreier) addgenerator(&gp,&gens,workperm,n);
+        if (orbits[cosetindex] < cosetindex)
+            return gca_first;
+        if (gca_canon != gca_first)
+            needshortprune = TRUE;
+        return gca_canon;
 
-        case 3:                 /* lab is better than canonlab */
-            ++stats->canupdates;
-            for (i = 0; i < n; ++i) canonlab[i] = lab[i];
-            canonlevel = eqlev_canon = gca_canon = level;
-            comp_canon = 0;
-            canoncode[level+1] = 077777;
-            samerows = sr;
-            break;
+    case 3:                 /* lab is better than canonlab */
+        ++stats->canupdates;
+        for (i = 0; i < n; ++i) canonlab[i] = lab[i];
+        canonlevel = eqlev_canon = gca_canon = level;
+        comp_canon = 0;
+        canoncode[level+1] = 077777;
+        samerows = sr;
+        break;
 
-        case 4:                /* non-automorphism terminal node */
-            ++stats->numbadleaves;
-            break;
-        }  /* end of switch statement */
+    case 4:                /* non-automorphism terminal node */
+        ++stats->numbadleaves;
+        break;
+    }  /* end of switch statement */
 
     /* only cases 3 and 4 get this far: */
-        if (level != noncheaplevel)
-        {
-            ispruneok = TRUE;
-            if (fmptr == worktop) fmptr -= 2 * M;
-            fmptn(lab,ptn,noncheaplevel,fmptr,fmptr+M,M,n);
-            fmptr += 2 * M;
-        }
-        else
-            ispruneok = FALSE;
+    if (level != noncheaplevel)
+    {
+        ispruneok = TRUE;
+        if (fmptr == worktop) fmptr -= 2 * M;
+        fmptn(lab,ptn,noncheaplevel,fmptr,fmptr+M,M,n);
+        fmptr += 2 * M;
+    }
+    else
+        ispruneok = FALSE;
 
-        save = (allsamelevel > eqlev_canon ? allsamelevel-1 : eqlev_canon);
-        newlevel = (noncheaplevel <= save ? noncheaplevel-1 : save);
+    save = (allsamelevel > eqlev_canon ? allsamelevel-1 : eqlev_canon);
+    newlevel = (noncheaplevel <= save ? noncheaplevel-1 : save);
 
-        if (ispruneok && newlevel != gca_first) needshortprune = TRUE;
-        return newlevel;
+    if (ispruneok && newlevel != gca_first) needshortprune = TRUE;
+    return newlevel;
  }
 
 /*****************************************************************************
@@ -981,22 +1021,22 @@ processnode(int *lab, int *ptn, int level, int numcells)
 static void
 recover(int *ptn, int level)
 {
-        register int i;
+    int i;
 
-        for (i = 0; i < n; ++i)
-            if (ptn[i] > level) ptn[i] = NAUTY_INFINITY;
+    for (i = 0; i < n; ++i)
+        if (ptn[i] > level) ptn[i] = NAUTY_INFINITY;
 
-        if (level < noncheaplevel) noncheaplevel = level + 1;
-        if (level < eqlev_first) eqlev_first = level;
-        if (getcanon)
+    if (level < noncheaplevel) noncheaplevel = level + 1;
+    if (level < eqlev_first) eqlev_first = level;
+    if (getcanon)
+    {
+        if (level < gca_canon) gca_canon = level;
+        if (level <= eqlev_canon)
         {
-            if (level < gca_canon) gca_canon = level;
-            if (level <= eqlev_canon)
-            {
-                eqlev_canon = level;
-                comp_canon = 0;
-            }
+            eqlev_canon = level;
+            comp_canon = 0;
         }
+    }
 }
 
 /*****************************************************************************
@@ -1023,36 +1063,36 @@ recover(int *ptn, int level)
 
 static void
 writemarker(int level, int tv, int index, int tcellsize,
-            int numorbits, int numcells)
+        int numorbits, int numcells)
 {
-        char s[30];
+    char s[30];
 
 #define PUTINT(i) itos(i,s); putstring(outfile,s)
 #define PUTSTR(x) putstring(outfile,x)
 
-        PUTSTR("level ");
-        PUTINT(level);
-        PUTSTR(":  ");
-        if (numcells != numorbits)
-        {
-            PUTINT(numcells);
-            PUTSTR(" cell");
-            if (numcells == 1) PUTSTR("; ");
-            else               PUTSTR("s; ");
-        }
-        PUTINT(numorbits);
-        PUTSTR(" orbit");
-        if (numorbits == 1) PUTSTR("; ");
-        else                PUTSTR("s; ");
-        PUTINT(tv+labelorg);
-        PUTSTR(" fixed; index ");
-        PUTINT(index);
-        if (tcellsize != index)
-        {
-            PUTSTR("/");
-            PUTINT(tcellsize);
-        }
-        PUTSTR("\n");
+    PUTSTR("level ");
+    PUTINT(level);
+    PUTSTR(":  ");
+    if (numcells != numorbits)
+    {
+        PUTINT(numcells);
+        PUTSTR(" cell");
+        if (numcells == 1) PUTSTR("; ");
+        else               PUTSTR("s; ");
+    }
+    PUTINT(numorbits);
+    PUTSTR(" orbit");
+    if (numorbits == 1) PUTSTR("; ");
+    else                PUTSTR("s; ");
+    PUTINT(tv+labelorg);
+    PUTSTR(" fixed; index ");
+    PUTINT(index);
+    if (tcellsize != index)
+    {
+        PUTSTR("/");
+        PUTINT(tcellsize);
+    }
+    PUTSTR("\n");
 }
 
 /*****************************************************************************
@@ -1065,45 +1105,66 @@ writemarker(int level, int tv, int index, int tcellsize,
 void
 nauty_check(int wordsize, int m, int n, int version)
 {
-        if (wordsize != WORDSIZE)
-        {
-            fprintf(ERRFILE,"Error: WORDSIZE mismatch in nauty.c\n");
-            exit(1);
-        }
+    if (wordsize != WORDSIZE)
+    {
+        fprintf(ERRFILE,"Error: WORDSIZE mismatch in nauty.c\n");
+        exit(1);
+    }
 
 #if MAXN
-        if (m > MAXM)
-        {
-            fprintf(ERRFILE,"Error: MAXM inadequate in nauty.c\n");
-            exit(1);
-        }
+    if (m > MAXM)
+    {
+        fprintf(ERRFILE,"Error: MAXM inadequate in nauty.c\n");
+        exit(1);
+    }
 
-        if (n > MAXN)
-        {
-            fprintf(ERRFILE,"Error: MAXN inadequate in nauty.c\n");
-            exit(1);
-        }
+    if (n > MAXN)
+    {
+        fprintf(ERRFILE,"Error: MAXN inadequate in nauty.c\n");
+        exit(1);
+    }
 #endif
 
-#ifdef BIGNAUTY
-        if ((version & 1) == 0)
-        {   
-            fprintf(ERRFILE,"Error: BIGNAUTY mismatch in nauty.c\n");
-            exit(1);
-        }
-#else
-        if ((version & 1) == 1)
-        {   
-            fprintf(ERRFILE,"Error: BIGNAUTY mismatch in nauty.c\n");
-            exit(1);
-        }
-#endif
+    if (version < NAUTYREQUIRED)
+    {
+        fprintf(ERRFILE,"Error: nauty.c version mismatch\n");
+        exit(1);
+    }
+}
 
-	if (version < NAUTYREQUIRED)
-	{
-	    fprintf(ERRFILE,"Error: nauty.c version mismatch\n");
-	    exit(1);
-	}
+/*****************************************************************************
+*                                                                            *
+*  extra_autom(p,n)  - add an extra automophism, hard to do correctly        *
+*                                                                            *
+*****************************************************************************/
+
+void
+extra_autom(int *p, int n)
+{
+    if (writeautoms)
+        writeperm(outfile,p,cartesian,linelength,n);
+    stats->numorbits = orbjoin(orbits,p,n);
+    ++stats->numgenerators;
+    OPTCALL(userautomproc)(stats->numgenerators,p,orbits,
+                                    stats->numorbits,stabvertex,n);
+}
+
+/*****************************************************************************
+*                                                                            *
+*  extra_level(level,lab,ptn,numcells,tv1,index,tcellsize,childcount)        *
+*     creates an artificial level in the search.  This is dangerous.         *
+*                                                                            *
+*****************************************************************************/
+
+void
+extra_level(int level, int *lab, int *ptn, int numcells, int tv1, int index,
+        int tcellsize, int childcount, int n)
+{
+    MULTIPLY(stats->grpsize1,stats->grpsize2,index);
+    if (domarkers)
+        writemarker(level,tv1,index,tcellsize,stats->numorbits,numcells);
+    OPTCALL(userlevelproc)(lab,ptn,level,orbits,stats,tv1,index,tcellsize,
+                                                    numcells,childcount,n);
 }
 
 /*****************************************************************************
@@ -1116,26 +1177,26 @@ void
 nauty_freedyn(void)
 {
 #if !MAXN
-	tcnode *tcp,*tcq;
+    tcnode *tcp,*tcq;
 
-        tcp = tcnode0.next;
-        while (tcp != NULL)
-        {   
-            tcq = tcp->next;
-            FREES(tcp->tcellptr);
-            FREES(tcp);
-            tcp = tcq;
-        }
-        alloc_m = 0;
-        tcnode0.next = NULL;
-        DYNFREE(firsttc,firsttc_sz);
-        DYNFREE(canoncode,canoncode_sz);
-        DYNFREE(firstcode,firstcode_sz);
-        DYNFREE(workperm,workperm_sz);
-        DYNFREE(canonlab,canonlab_sz);
-        DYNFREE(firstlab,firstlab_sz);
-        DYNFREE(defltwork,defltwork_sz);
-	DYNFREE(fixedpts,fixedpts_sz);
-	DYNFREE(active,active_sz);
+    tcp = tcnode0.next;
+    while (tcp != NULL)
+    {   
+        tcq = tcp->next;
+        FREES(tcp->tcellptr);
+        FREES(tcp);
+        tcp = tcq;
+    }
+    alloc_m = 0;
+    tcnode0.next = NULL;
+    DYNFREE(firsttc,firsttc_sz);
+    DYNFREE(canoncode,canoncode_sz);
+    DYNFREE(firstcode,firstcode_sz);
+    DYNFREE(workperm,workperm_sz);
+    DYNFREE(canonlab,canonlab_sz);
+    DYNFREE(firstlab,firstlab_sz);
+    DYNFREE(defltwork,defltwork_sz);
+    DYNFREE(fixedpts,fixedpts_sz);
+    DYNFREE(active,active_sz);
 #endif  
 }

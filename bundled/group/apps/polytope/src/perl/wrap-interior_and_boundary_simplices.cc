@@ -14,10 +14,17 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0>
+   FunctionInterface4perl( interior_and_boundary_ridges_T_x_o, T0 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      WrapperReturn( (interior_and_boundary_ridges<T0>(arg0, arg1)) );
+   };
+
    template <typename T0>
    FunctionInterface4perl( max_interior_simplices_impl_T_x_o, T0 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
@@ -25,5 +32,7 @@ namespace polymake { namespace polytope { namespace {
    };
 
    FunctionInstance4perl(max_interior_simplices_impl_T_x_o, Rational);
+   FunctionInstance4perl(interior_and_boundary_ridges_T_x_o, Rational);
+   FunctionInstance4perl(max_interior_simplices_impl_T_x_o, QuadraticExtension< Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

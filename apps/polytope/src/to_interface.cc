@@ -18,12 +18,23 @@
 
 #include <polymake/Rational.h>
 #include <polymake/QuadraticExtension.h>
+#include <polymake/PuiseuxFraction.h>
 
 namespace polymake { namespace polytope { namespace to_interface {
 
 template class solver<Rational>;
 template class solver<double>;
 template class solver<QuadraticExtension<Rational> >;
+template class solver< PuiseuxFraction<Min,Rational,Rational> >;
+template class solver< PuiseuxFraction<Max,Rational,Rational> >;
+template class solver< PuiseuxFraction<Min,Rational,int> >;
+template class solver< PuiseuxFraction<Max,Rational,int> >;
+template class solver< PuiseuxFraction<Min,Rational,Integer> >;
+template class solver< PuiseuxFraction<Max,Rational,Integer> >;
+template class solver< PuiseuxFraction<Min,PuiseuxFraction<Min,Rational,Rational>,Rational> >;
+template class solver< PuiseuxFraction<Min,PuiseuxFraction<Max,Rational,Rational>,Rational> >;
+template class solver< PuiseuxFraction<Max,PuiseuxFraction<Min,Rational,Rational>,Rational> >;
+template class solver< PuiseuxFraction<Max,PuiseuxFraction<Max,Rational,Rational>,Rational> >;
 
 
 } } }

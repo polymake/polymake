@@ -34,7 +34,7 @@ Array<SetType> max_interior_simplices_impl(perl::Object p, perl::OptionSet optio
    const bool is_config = p.isa("PointConfiguration");
 
    const int d = is_config 
-      ? p.give("DIM")
+      ? ((int) p.give("VECTOR_DIM"))-1
       : p.give("COMBINATORIAL_DIM");
 
    const std::string points = is_config
@@ -52,8 +52,7 @@ Array<SetType> max_interior_simplices_impl(perl::Object p, perl::OptionSet optio
    Set<SetType> interior_simplices;
    for (Entire<Subsets_of_k<const sequence&> >::const_iterator fit = entire(all_subsets_of_k(sequence(0,n), d+1)); !fit.at_end(); ++fit) {
        const SetType sigma(*fit);
-       if (is_interior(sigma, VIF) && rank(V.minor(sigma, All)) == d+1 
-           && is_empty(sigma, V))
+       if (is_interior(sigma, VIF) && rank(V.minor(sigma, All)) == d+1)
            interior_simplices += sigma;
    }
    return interior_simplices;
@@ -65,7 +64,7 @@ std::pair< Array<SetType>, Array<SetType> > interior_and_boundary_ridges(perl::O
    const bool is_config = p.isa("PointConfiguration");
 
    const int d = is_config 
-      ? p.give("DIM")
+      ? ((int) p.give("VECTOR_DIM"))-1
       : p.give("COMBINATORIAL_DIM");
 
    std::string vif_property = options["vif_property"];
@@ -75,7 +74,7 @@ std::pair< Array<SetType>, Array<SetType> > interior_and_boundary_ridges(perl::O
    const IncidenceMatrix<> VIF = p.give(vif_property.c_str());
 
    const Matrix<Scalar> V = is_config
-      ? p.give("CONVEX_HULL.VERTICES")
+      ? p.give("POINTS")
       : p.give("RAYS");
 
    const int n = V.rows();
@@ -83,23 +82,28 @@ std::pair< Array<SetType>, Array<SetType> > interior_and_boundary_ridges(perl::O
    Set<SetType> interior_ridges, boundary_ridges;
    for (Entire<Subsets_of_k<const sequence&> >::const_iterator fit = entire(all_subsets_of_k(sequence(0,n), d)); !fit.at_end(); ++fit) {
        const SetType sigma(*fit);
-       if (rank(V.minor(sigma,All)) < d-1) continue;
+       if (rank(V.minor(sigma,All)) < d) continue;
        if (is_in_boundary(sigma, VIF)) boundary_ridges += sigma;
        else interior_ridges += sigma;
    }
    return std::make_pair<Array<SetType>, Array<SetType> >(interior_ridges, boundary_ridges);
 }
 
-UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
-                          "# Find the interior //d//-dimensional simplices of a polytope or cone of combinatorial dimension //d//"
-                          "# @param Polytope P the input polytope or cone"
-                          "# @return Array<Set>",
-                          "max_interior_simplices_impl<Scalar=Rational>($ { VIF_property=>'CONVEX_HULL.VERTICES_IN_FACETS' })");
+FunctionTemplate4perl("max_interior_simplices_impl<Scalar=Rational>($ { VIF_property=>'CONVEX_HULL.VERTICES_IN_FACETS' })");
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# Find the (//d//-1)-dimensional simplices in the interior and in the boundary of a //d//-dimensional polytope or cone"
                           "# @param Polytope P the input polytope or cone"
-                          "# @return Pair<Array<Set>,Array<Set>>",
+                          "# @return Pair<Array<Set>,Array<Set>>"
+                          "# @example > print interior_and_boundary_ridges(cube(2));"
+                          "# | <{0 3}"
+                          "# | {1 2}"
+                          "# | >"
+                          "# | <{0 1}"
+                          "# | {0 2}"
+                          "# | {1 3}"
+                          "# | {2 3}"
+                          "# | >",
                           "interior_and_boundary_ridges<Scalar=Rational>($ { VIF_property=>'CONVEX_HULL.VERTICES_IN_FACETS' })");
 } }
 

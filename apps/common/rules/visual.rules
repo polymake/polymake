@@ -124,6 +124,25 @@ property_type RGB {
 # subroutine arguments used for retrieval of the attribute values are just the zero-based ordinal numbers of the elements.
 
 
+# @topic property_types/Color
+# @category Visualization
+# This is a pseudo-type for documentation purposes only.
+# A function expecting an argument or option of type //Color// can digest an object of type [[RGB]] or [[HSV]]
+# as well as a string with an RGB value in hex notation "#RRGGBB" or a symbolic color name.
+
+
+# @topic objects/Visual::Object
+# @category Visualization
+# The common base class of all visualization artifacts produced by various user methods
+# like VISUAL, VISUAL_GRAPH, SCHLEGEL, etc.  Visual objects can be passed to functions
+# explicitly calling visualization software like //jreality()// or //povray()//.
+
+# @topic objects/Visual::Container
+# @category Visualization
+# The common base class of all visual objects composed of several simpler objects.
+# Instances of such classes can carry default decoration attributes applied to all contained objects.
+# @super Visual::Object
+
 # @category Visualization
 # Common attributes modifying the appearance of PointSets and all visual objects derived thereof.
 # Please be aware that no one visualization program interfaced to polymake supports all of them.
@@ -146,10 +165,10 @@ options %Visual::PointSet::decorations=(
    # String  alias for PointLabels
    VertexLabels => undef, #enum("hidden"),
 
-   # Flexible<RGB>  color of the spheres or rectangles representing the points
+   # Flexible<Color>  color of the spheres or rectangles representing the points
    PointColor => undef,
 
-   # Flexible<RGB>  alias for PointColor
+   # Flexible<Color>  alias for PointColor
    VertexColor => undef,
 
    # Flexible<Float>  scaling factor for the size of the spheres or rectangles representing the points
@@ -158,7 +177,7 @@ options %Visual::PointSet::decorations=(
    # Flexible<Float>  alias for PointThickness
    VertexThickness => undef,
 
-   # Flexible<RGB>  color of the border line of rectangles representing the points
+   # Flexible<Color>  color of the border line of rectangles representing the points
    PointBorderColor => undef,
 
    # Flexible<Float>  alias for PointBorderColor
@@ -187,6 +206,9 @@ options %Visual::PointSet::decorations=(
 
    # Float  scale for Sketch visualization
    Scale => undef,
+
+   # Flexible<String>  Defines the alignment of the vertex labels: left, right or center
+   LabelAlignment => undef,
 );
 
 # @category Visualization
@@ -196,7 +218,7 @@ options %Visual::PointSet::decorations=(
 options %Visual::Wire::decorations=(
    %Visual::PointSet::decorations,
 
-   # Flexible<RGB>  color of the lines representing the edges
+   # Flexible<Color>  color of the lines representing the edges
    EdgeColor => undef,
 
    # Flexible<Float>  scaling factor for the thickness of the lines representing the edges
@@ -216,7 +238,7 @@ options %Visual::Wire::decorations=(
 options %Visual::Polygon::decorations=(
    %Visual::PointSet::decorations,
 
-   # RGB  filling color of the polygon
+   # Color  filling color of the polygon
    FacetColor => undef,
 
    # Float  transparency factor of the polygon between 0 (opaque) and 1 (completely translucent)
@@ -225,7 +247,7 @@ options %Visual::Polygon::decorations=(
    # String  if set to "hidden", the inner area of the polygon is not rendered
    FacetStyle => enum("hidden"),
 
-   # RGB  color of the boundary lines
+   # Color  color of the boundary lines
    EdgeColor => undef,
 
    # Float  scaling factor for the thickness of the boundary lines
@@ -242,7 +264,7 @@ options %Visual::Polygon::decorations=(
 options %Visual::Polygons::decorations=(
    %Visual::PointSet::decorations,
 
-   # Flexible<RGB>  filling color of the polygons
+   # Flexible<Color>  filling color of the polygons
    FacetColor => undef,
 
    # Flexible<Float>  transparency factor of the polygons between 0 (opaque) and 1 (completely translucent)
@@ -254,7 +276,7 @@ options %Visual::Polygons::decorations=(
    # String  if set to "hidden", the facet labels are not displayed (in the most cases this is the default behavior)
    FacetLabels => enum("hidden"),
 
-   # RGB  color of the boundary lines
+   # Color  color of the boundary lines
    EdgeColor => undef,
 
    # Float  scaling factor for the thickness of the boundary lines
@@ -274,8 +296,10 @@ options %Visual::Polygons::decorations=(
 # Create a composite drawing of several objects.
 # @param Visual::Object vis_obj ... objects to be drawn together
 # @option String Title name of the whole drawing; per default the name of the first Object is taken.
-# @option any decorations to be applied to all components as default values.
+# @options %Visual::Polygons::decorations
 # @return Visual::Container if called in void context, immediately starts the preferred rendering program.
+# @example Draw a pretty 8-pointed star:
+# > compose(cube(2)->VISUAL,cross(2,sqrt(2))->VISUAL,Title=>"A pretty star.",VertexLabels=>"hidden");
 
 user_function compose(Visual::Object+, %) {
    my ($obj_list, $decor)=@_;

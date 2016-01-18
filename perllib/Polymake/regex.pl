@@ -23,17 +23,20 @@ declare $id_re=qr{(?> (?!\d)\w+ )}x;
 # a list of identifiers (separated by commas)
 declare $ids_re=qr{(?> $id_re (?: \s*,\s* $id_re)* )}xo;
 
-# hierarchical identifier (identifiers connected with dots)
+# an identifier with optional attributes
+declare $id_attrs_re=qr{(?> $id_re (?: \( \s* $ids_re \s* \) )? )}xo;
+
+# a hierarchical identifier (identifiers connected with dots)
 declare $hier_id_re=qr{(?> $id_re (?: \. $id_re)* )}xo;
 
 # a list of hierarchical identifiers (separated by commas)
 declare $hier_ids_re=qr{(?> $hier_id_re (?: \s*,\s* $hier_id_re)* )}xo;
 
-# a list of hierarchical identifiers (separated by bars)
-declare $hier_id_alt_re=qr{(?> $hier_id_re (?: \s*\|\s* $hier_id_re)* )}xo;
+# a hierarchical identifier with trailing alternatives (separated by bars)
+declare $hier_id_alt_re=qr{(?> $hier_id_re (?: \s*\|\s* $id_re)* )}xo;
 
-# a list of alternatives (separated by commas)
-declare $hier_id_alts_re=qr{(?> $hier_id_alt_re (?: \s*,\s* $hier_id_alt_re)* )}xo;
+# an element of a rule header: hierarchical identifier with optional attributes
+declare $hier_id_attrs_re=qr{(?> $id_attrs_re (?: \. $id_attrs_re)* )}xo;
 
 # a lone identifier
 declare $id_only_re=qr{ ($id_re) \s*$ }xo;

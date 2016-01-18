@@ -655,6 +655,9 @@ public:
    /// Make the set empty.
    void clear() { tree.apply(shared_clear()); }
 
+   /// For compatibility with common::boost_dynamic_bitset, add a trivial method
+   void resize(int) {}
+
    /** @brief Swap the content with another Set.
        @param s the other Set
    */

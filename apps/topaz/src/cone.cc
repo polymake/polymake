@@ -92,7 +92,7 @@ perl::Object cone(perl::Object p_in, int k, perl::OptionSet options)
 UserFunction4perl("# @category Producing a new simplicial complex from others"
                   "# Produce the //k//-cone over a given simplicial complex."
                   "# @param SimplicialComplex complex"
-                  "# @param int k default is 1"
+                  "# @param Int k default is 1"
                   "# @option Array<String> apex_labels labels of the apex vertices."
                   "#  Default labels have the form ''apex_0, apex_1, ...''."
                   "#  In the case the input complex has already vertex labels of this kind,"

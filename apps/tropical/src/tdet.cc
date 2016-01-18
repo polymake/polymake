@@ -23,11 +23,9 @@ namespace polymake { namespace tropical {
   
 UserFunctionTemplate4perl("# @category Tropical operations"
                           "# The __tropical determinant__ of a matrix."
-                          "# @param Matrix<Scalar> matrix"
-                          "# @tparam Addition [[Min]] or [[Max]], default [[Min]]"
-                          "# @tparam Scalar"
-                          "# @return Scalar" ,
-                          "tdet<Dir=Min,Scalar>(Matrix<Scalar>)");
+                          "# @param Matrix<TropicalNumber<Addition,Scalar> > matrix"
+                          "# @return TropicalNumber<Addition,Scalar>" ,
+                          "tdet(Matrix)");
 } }
 
 // Local Variables:

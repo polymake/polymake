@@ -144,7 +144,7 @@ install-shared:
 	$(call _InstallSubdir,scripts)
 	$(call _InstallSubdir,xml)
 	$(call _InstallSubdir,support,$(foreach f, ${InstHelpers}, -X $f))
-	@+$(call _MakeInBundledExtensions,install-arch)
+	@+$(call _MakeInBundledExtensions,install-shared)
 
 ifdef DeveloperMode
 
@@ -152,7 +152,7 @@ ifdef DeveloperMode
 
 test : compile
 	$(if $(filter y% Y%,${Debug}),POLYMAKE_CLIENT_SUFFIX=-d) ${CallPolymake} \
-	  --script run_testcases $(if $(filter k,$(MAKEFLAGS)),--keep-going) $(if ${Shuffle},--shuffle $(filter-out y% Y%,${Shuffle})) --applications ${Apps}
+	  --script run_testcases $(if ${Shuffle},--shuffle $(filter-out y% Y%,${Shuffle})) --applications ${Apps}
 
 ### maintenance
 

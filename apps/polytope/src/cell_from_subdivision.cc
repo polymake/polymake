@@ -93,16 +93,40 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# @param Polytope P"
                           "# @param Int cell"
                           "# @option Bool relabel copy the vertex labels from the original polytope"
-                          "# @return Polytope",
+                          "# @return Polytope"
+                          "# @example First we create a nice subdivision for our favourite 2-polytope, the square:"
+                          "# > $p = cube(2);"
+                          "# > $p->POLYTOPAL_SUBDIVISION(MAXIMAL_CELLS=>[[0,1,3],[1,2,3]]);"
+                          "# Then we extract the 0-th cell, copying the vertex labels."
+                          "# > $c = cell_from_subdivision($p,0,relabel=>1);"
+                          "# > print $c->VERTICES;"
+                          "# | 1 1 -1"
+                          "# | 1 -1 1"
+                          "# | 1 1 1"
+                          "# > print $c->VERTEX_LABELS;"
+                          "# | 1 2 3",
                           "cell_from_subdivision<Scalar>(Polytope<Scalar> $ { relabel => 0})");
 
 UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
-                          "# Extract the given //cells// of the subdivision of a polyhedron and write their union"
-                          "# as a new polyhedron."
+                          "# Extract the given //cells// of the subdivision of a polyhedron and create a"
+                          "# new polyhedron that has as vertices the vertices of the cells."
                           "# @param Polytope<Scalar> P"
                           "# @param Set<Int> cells"
                           "# @option Bool relabel copy the vertex labels from the original polytope"
-                          "# @return Polytope<Scalar>",
+                          "# @return Polytope<Scalar>"
+                          "# @example First we create a nice subdivision for a small polytope:"
+                          "# > $p = new Polytope(VERTICES=>[[1,0,0],[1,0,1],[1,1,0],[1,1,1],[1,3/2,1/2]]);"
+                          "# > $p->POLYTOPAL_SUBDIVISION(MAXIMAL_CELLS=>[[0,1,3],[1,2,3],[2,3,4]]);"
+                          "# Then we create the polytope that has as vertices the vertices from cell 1 and 2,"
+                          "# while keeping their labels."
+                          "# > $c = cells_from_subdivision($p,[1,2],relabel=>1);"
+                          "# > print $c->VERTICES;"
+                          "# | 1 0 1"
+                          "# | 1 1 0"
+                          "# | 1 1 1"
+                          "# | 1 3/2 1/2"
+                          "# > print $c->VERTEX_LABELS;"
+                          "# | 1 2 3 4",
                           "cells_from_subdivision<Scalar>(Polytope<Scalar> $ { relabel => 0})");
 } }
 

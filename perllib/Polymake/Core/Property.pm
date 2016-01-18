@@ -20,15 +20,15 @@ package Polymake::Core::Property;
 
 #  Constructor
 #
-#  new Property(ObjectType, 'Name', $type, options);
+#  new Property('Name', $type, ObjectType, options);
 
 use Polymake::Struct (
    [ 'new' => '$$$%' ],
-   [ '$name' => '#2' ],           # 'property name'
-   [ '$belongs_to' => '#1' ],     # ObjectType
+   [ '$name' => '#1' ],           # 'property name'
+   [ '$belongs_to' => '#3' ],     # ObjectType
    [ '$application' => 'undef' ], # Application where it's defined (if != belongs_to->application)
-   [ '$extension' => '$Polymake::Core::Application::extension' ],
-   [ '$type' => '#3' ],           # PropertyType | ObjectType
+   [ '$extension' => '$Application::extension' ],
+   [ '$type' => '#2' ],           # PropertyType | ObjectType
    [ '$flags' => '#%', default => '0' ],
 
                                   # the following fields contain \&sub or "method name",
@@ -61,26 +61,32 @@ use Polymake::Struct (
                                   # such that the list $ObjectType_O->producers->{$H} contains $Rule_R.
 
    [ '$mixin' => 'undef' ],       # for locally derived subobjects: parent ObjectType => LocalDerivationMixin
+
+   [ '$new_instance_deputy' => 'undef' ],
 );
 
 # Property->flags
-use Polymake::Enum qw( is: mutable=1 locally_derived=2 multiple=4 produced_as_whole=8 permutation=16 non_storable=32 subobject_array=64 );
+use Polymake::Enum qw( is: mutable=1 subobject=2 locally_derived=4 multiple=8 multiple_new=16
+                           permutation=32 non_storable=64 subobject_array=128 produced_as_whole=256 restricted_spez=512 );
 
 sub new {
    my $self=&_new;
+   if (instanceof ObjectType($self->type)) {
+      $self->flags |= $is_subobject;
+      if ($self->flags & $is_multiple) {
+         $self->new_instance_deputy=new NewMultiInstance($self);
+      }
+   }
    if ($Application::plausibility_checks) {
-      if ($self->flags & $is_multiple && !instanceof ObjectType($self->type)) {
+      if (($self->flags & ($is_multiple | $is_subobject)) == $is_multiple) {
          croak( "an atomic property may not be declared multiple" );
       }
-      if ($self->flags & $is_non_storable && instanceof ObjectType($self->type)) {
+      if (($self->flags & ($is_non_storable | $is_subobject)) == ($is_non_storable | $is_subobject)) {
          croak( "only atomic properties can be declared non-storable" );
       }
    }
-   if (is_object($INC[0]) && $INC[0] != $self->belongs_to->application) {
-      $self->application=$INC[0];
-   }
 
-   $self->construct &&= $self->belongs_to->encode_read_request($self->construct);
+   $self->construct &&= [ $self->belongs_to->encode_property_list($self->construct) ];
 
    if ($self->type->abstract) {
       $self->inst_cache={ };
@@ -97,6 +103,16 @@ sub new {
       };
    } else {
       ($self->accept, $self->copy)=choose_methods($self);
+   }
+
+   if ($self->flags & $is_multiple) {
+      my $spez_type=$self->belongs_to;
+      while ($spez_type->enclosed_in_restricted_spez) {
+         $spez_type=$spez_type->belongs_to;
+      }
+      if (defined $spez_type->preconditions) {
+         $self->flags |= $is_restricted_spez;
+      }
    }
 
    $self;
@@ -124,7 +140,7 @@ sub upcast {
 ####################################################################################
 sub analyze {
    my ($self, $pkg)=@_;
-   if (instanceof ObjectType($self->type)) {
+   if ($self->flags & $is_subobject) {
       create_local_derivation_mixin($self, $self->belongs_to);
    } else {
       namespaces::using($pkg, $self->type->pkg);
@@ -252,7 +268,7 @@ sub concrete {
 }
 ####################################################################################
 sub declared {
-   my $self=shift;
+   my ($self)=@_;
    $self->cloned_from // $self
 }
 ####################################################################################
@@ -276,7 +292,7 @@ sub specialization {
 ####################################################################################
 sub choose_methods {
    my ($self)=@_;
-   $self->flags & $is_locally_derived || instanceof ObjectType($self->type)
+   $self->flags & $is_subobject
    ? (\&accept_subobject, undef) :
    ($self->type->super == typeof BigObjectArray)
    ? do {
@@ -311,7 +327,6 @@ sub accept_subobject : method {
 
    if (defined($value->parent) || defined($value->persistent)) {
       $value=Object::new_copy($subobj_type, $value, $obj);
-      defined(wantarray) or $_[1]=$value;       # replace the subobject in the caller
    } else {
       weak($value->parent=$obj);
       if ($self->flags & $is_locally_derived) {
@@ -345,7 +360,7 @@ sub accept_subobject : method {
          }
       }
    }
-   defined(wantarray) and $self->flags & $is_multiple ? new PropertyMultipleValue($self, [ $value ]) : $value;
+   $value
 }
 
 # parent Object, temporary flag => empty Object
@@ -355,7 +370,7 @@ sub create_subobject : method {
 }
 
 sub subobject_type {
-   my $self=shift;
+   my ($self)=@_;
    $self->flags & $is_subobject_array ? $self->type->params->[0] : $self->type;
 }
 ####################################################################################
@@ -366,10 +381,8 @@ sub accept_subobject_array : method {
    } elsif (!$trusted && !$self->type->isa->($value)) {
       croak( ref($value) || "'$value'", " passed as property ", $self->name, " while ", $self->type->full_name, " expected" );
    }
-   my $index=-1;
    foreach my $subobj (@$value) {
       accept_subobject($self, $subobj, $obj, $trusted, $temp);
-      $subobj->parent_index=++$index;
    }
    new PropertyValue($self, $value, $temp);
 }
@@ -377,11 +390,7 @@ sub accept_subobject_array : method {
 sub copy_subobject_array : method {
    my ($self, $value)=splice @_, 0, 2;
    my $index=-1;
-   new PropertyValue($self, bless([ map {
-                                       my $subcopy=$_->copy(@_);
-                                       $subcopy->parent_index=++$index;
-                                       $subcopy
-                                    } @$value ], $self->type->pkg));
+   new PropertyValue($self, bless([ map { $_->copy(@_) } @$value ], $self->type->pkg));
 }
 ####################################################################################
 sub accept_composite : method {
@@ -419,11 +428,11 @@ sub accept_special_constructed : method {
           !$self->type->isa->($value) or
           $self->type->cppoptions && !$self->type->cppoptions->builtin &&
           CPlusPlus::must_be_copied($value,$temp,$needs_canonicalization)) {
-         if (defined (my $construct_arg=$obj->_lookup_pv($self->construct))) {
+         if (my $construct_arg=$obj->lookup_request($self->construct)) {
             local $PropertyType::trusted_value=$trusted;
             $value=$self->type->construct->($construct_arg->value, $value);
          } else {
-            croak( "can't add property ", $self->name, " because of lacking prerequisite ", join(".", map { $_->name } @{$self->construct->[0]}) );
+            croak( "can't add property ", $self->name, " because of lacking prerequisite ", print_path($self->construct) );
          }
       }
       if ($needs_canonicalization) {
@@ -435,10 +444,10 @@ sub accept_special_constructed : method {
 
 sub copy_special_constructed : method {
    my ($self, $value, $obj)=@_;
-   if (defined (my $construct_arg=$obj->_lookup_pv($self->construct))) {
+   if (my $construct_arg=$obj->lookup_request($self->construct)) {
       new PropertyValue($self, $self->type->construct->($construct_arg->value, $value));
    } else {
-      croak( "can't copy property ", $self->name, " because of lacking prerequisite ", join(".", map { $_->name } @{$self->construct->[0]}) );
+      croak( "can't copy property ", $self->name, " because of lacking prerequisite ", print_path($self->construct) );
    }
 }
 ####################################################################################
@@ -459,25 +468,61 @@ sub copy_builtin : method {
    new PropertyValue($self, $value);
 }
 ####################################################################################
-# ancestor_prop, ... => last key
-# arguments come in reverse (bottom-up) order!
-sub get_prod_key {
-   my $self=shift;
-   my $hash=$self->key;
-   my $perm_seen;
-   foreach (@_) {
-      $perm_seen ||= $_->flags & $is_permutation;
-      $hash=($hash->{$_->key} ||= new SubobjKey($self,$_,$perm_seen));
-   }
-   $hash
-}
-####################################################################################
 sub qual_name {
-   my $self=shift;
+   my ($self)=@_;
    defined($self->application) ? $self->application->name . "::" . $self->name : $self->name
 }
+sub print_path {
+   join(".", map { $_->name } @{$_[0]})
+}
 ####################################################################################
-package Polymake::Core::Property::SubobjKey;
+# [ Property ], flag => index of a first property with given flag; -1 if not found
+sub find_first_in_path {
+   my ($path, $flag)=@_;
+   my $i=0;
+   foreach (@$path) {
+      return $i if $_->flags & $flag;
+      ++$i;
+   }
+   -1
+}
+
+sub find_last_in_path {
+   my ($path, $flag)=@_;
+   my $i=$#$path;
+   foreach (reverse @$path) {
+      return $i if $_->flags & $flag;
+      --$i;
+   }
+   -1
+}
+####################################################################################
+package _::SelectMultiInstance;
+
+# used only in requests and 'down' paths processed by Scheduler
+
+use Polymake::Struct (
+   [ new => '$$' ],
+   [ '$property' => '#1' ],
+   [ '$index' => '#2' ],
+);
+
+sub key { $_[0]->property->key }
+*property_key=\&key;
+sub flags { $is_multiple }
+
+sub name {
+   my ($self)=@_;
+   $self->property->name . "[" . (is_object($self->index) ? $self->index->header : $self->index) . "]"
+}
+
+package __;
+
+sub index { 0 }           # by default, the 0-th multiple subobject instance is selected
+sub property { $_[0] }
+
+####################################################################################
+package _::SubobjKey;
 RefHash::allow(__PACKAGE__);
 
 my $prop_key=\(1);
@@ -497,6 +542,100 @@ sub subobject_property { $_[0]->{$subobj_key} }
 sub property_key { (&property)->key }
 sub belongs_to { (&subobject_property)->belongs_to }
 sub on_permutation_path { $_[0]->{$perm_key} }
+
+####################################################################################
+package __;
+
+# protected: used solely from Rule::finalize
+# ancestor Properties come in reverse (bottom-up) order!
+sub get_prod_key {
+   my $self=shift;
+   my $hash=$self->key;
+   my $perm_seen;
+   foreach (@_) {
+      $perm_seen ||= $_->flags & $is_permutation;
+      $hash=($hash->{$_->key} //= new SubobjKey($self, $_, $perm_seen));
+   }
+   $hash
+}
+####################################################################################
+package _::NewMultiInstance;
+
+# used only in 'out' paths of Rules creating new instances of multiple subobjects
+
+use Polymake::Struct (
+   [ new => '$' ],
+   [ '$property' => 'weak( #1 )' ],
+   '%key',
+   [ '$name' => '#1 ->name . "(new)"' ],
+   [ '$flags' => '#1 ->flags | $is_multiple_new' ],
+   [ '$belongs_to' => '#1 ->belongs_to' ],
+   [ '$property_key' => '#1 ->property_key' ],
+);
+
+sub index { 0 }
+
+*get_prod_key=\&Property::get_prod_key;
+
+sub create_subobject : method {
+   my ($self, $parent_obj, $temp)=@_;
+   my $prop=$self->property;
+   my $subobj=$prop->create_subobject($parent_obj, $temp);
+   my $pv=new PropertyMultipleValue($subobj->property, [ $subobj ]);
+   $pv->created_by_rule={ ($parent_obj->transaction->rule, 0) };
+   $pv->ensure_unique_name($subobj, $temp);
+   $pv;
+}
+
+####################################################################################
+package __;
+
+# for compatibility with WithAlternatives
+sub first_choice { $_[0] }
+sub alternatives { undef }
+sub all_choices { $_[0] }
+
+sub lookup_in_object {
+   my ($self, $obj)=@_;
+   my $content_index=$obj->dictionary->{$self->key};
+   defined($content_index)
+   ? $obj->contents->[$content_index]
+   : undef
+}
+
+sub matches { $_[0]->key == $_[1]->key }
+
+####################################################################################
+#
+#  Used in rule input lists, give() requests, and similar
+#
+package _::WithAlternatives;
+
+sub name { join(" | ", map { $_->name } @{$_[0]}) }
+sub first_choice { $_[0]->[0] }
+sub all_choices { @{$_[0]} }
+sub alternatives { my ($self)=@_; @$self[1..$#$self] }
+sub flags { 0 }  # the only relevant flag here is multiple_new, but multiple subobjects can't occur among the alternatives
+
+sub lookup_in_object {
+   my ($self, $obj)=@_;
+   my ($content_index, $pv);
+   foreach my $prop ($self->all_choices) {
+      if (defined ($content_index=$obj->dictionary->{$prop->key}) &&
+          defined ($pv=$obj->contents->[$content_index])) {
+         last;
+      }
+   }
+   $pv
+}
+
+sub matches {
+   my ($self, $other_prop)=@_;
+   foreach my $prop ($self->all_choices) {
+      return 1 if $prop->key eq $other_prop->key;
+   }
+   0
+}
 
 1
 

@@ -8,7 +8,7 @@ Procedures for handling groups found by nauty.
 typedef struct perm_struct
 {
     struct perm_struct *ptr;   /* general-purpose pointer */
-    permutation p[2];          /* extendable section */
+    int p[2];          /* extendable section */
 } permrec;
 
 typedef struct coset_struct
@@ -40,13 +40,13 @@ extern "C" {
 extern void freepermrec(permrec*, int);
 extern grouprec *groupptr(boolean);
 extern permrec *newpermrec(int);
-extern void groupautomproc(int,permutation*,int*,int,int,int);
+extern void groupautomproc(int,int*,int*,int,int,int);
 extern void
    grouplevelproc(int*,int*,int,int*,statsblk*,int,int,int,int,int,int);
 extern void makecosetreps(grouprec*);
-extern int permcycles(permutation*,int,int*,boolean);
-extern void allgroup(grouprec*,void(*)(permutation*,int));
-extern int allgroup2(grouprec*,void(*)(permutation*,int,int*));
+extern int permcycles(int*,int,int*,boolean);
+extern void allgroup(grouprec*,void(*)(int*,int));
+extern int allgroup2(grouprec*,void(*)(int*,int,int*));
 
 #ifdef __cplusplus
 }

@@ -35,7 +35,21 @@ UserFunctionTemplate4perl("# @category Transformations"
                           "# "
                           "# Applying revert to the transformed polytope reconstructs the original polytope."
                           "# @param Polytope P a (transformed) polytope"
-                          "# @return Polytope the original polytope",
+                          "# @return Polytope the original polytope"
+                          "# @example The following translates the square and then reverts the transformation:"
+                          "# > $v = new Vector(1,2);"
+                          "# > $p = translate(cube(2),$v);"
+                          "# > print $p->VERTICES;"
+                          "# | 1 0 1"
+                          "# | 1 2 1"
+                          "# | 1 0 3"
+                          "# | 1 2 3"
+                          "# > $q = revert($p);"
+                          "# > print $q->VERTICES;"
+                          "# | 1 -1 -1"
+                          "# | 1 1 -1"
+                          "# | 1 -1 1"
+                          "# | 1 1 1",
                           "revert<Scalar> (Polytope<Scalar>)");
 } }
 

@@ -47,7 +47,7 @@ user_function r10_matroid() {
 }
 
 # @category Producing a matroid from scratch
-# A smallest non-representable matroid.
+# A minimal non-representable matroid.
 # An excluded minor for all finite fields with more than four elements.
 # Non-algebraic.
 # @return Matroid
@@ -70,7 +70,7 @@ user_function non_vamos_matroid() {
 }
 
 # @category Producing a matroid from scratch
-# The only other ternary 3-spike apart from the non-fano matroid.
+# The only other ternary 3-spike apart from the non-Fano matroid.
 # Non binary. Algebraic over all fields.
 # @return Matroid
 user_function p7_matroid() {
@@ -80,13 +80,11 @@ user_function p7_matroid() {
 }
 
 # @category Producing a matroid from scratch
-# The repesentaion over the reals is obtained from a 3-cube where one face is rotated by 45°. 
-# Non represetable if and only if the characeristic of the field is 2. Algebraic over all fields.
+# The repesentation over the reals is obtained from a 3-cube where one face is rotated by 45°. 
+# Non-representable if and only if the characeristic of the field is 2. Algebraic over all fields.
 # @return Matroid
 user_function p8_matroid() {
-    return new Matroid(BASES=>[[0, 1, 2, 3], [0, 1, 2, 5], [0, 1, 2, 6], [0, 1, 2, 7], [0, 1, 3, 4], [0, 1, 3, 6], [0, 1, 3, 7], [0, 1, 4, 5], [0, 1, 4, 6], [0, 1, 4, 7], [0, 1, 5, 6], [0, 1, 5, 7], [0, 1, 6, 7], [0, 2, 3, 4], [0, 2, 3, 5], [0, 2, 3, 7], [0, 2, 4, 5], [0, 2, 4, 6], [0, 2, 4, 7], [0, 2, 5, 6], [0, 2, 5, 7], [0, 2, 6, 7], [0, 3, 4, 5], [0, 3, 4, 6], [0, 3, 5, 6], [0, 3, 5, 7], [0, 3, 6, 7], [0, 4, 5, 6], [0, 4, 5, 7], [0, 4, 6, 7], [1, 2, 3, 4], [1, 2, 3, 5], [1, 2, 3, 6], [1, 2, 4, 5], [1, 2, 4, 6], [1, 2, 4, 7], [1, 2, 5, 7], [1, 2, 6, 7], [1, 3, 4, 5], [1, 3, 4, 6], [1, 3, 4, 7], [1, 3, 5, 6], [1, 3, 5, 7], [1, 3, 6, 7], [1, 4, 5, 6], [1, 4, 5, 7], [1, 5, 6, 7], [2, 3, 4, 5], [2, 3, 4, 6], [2, 3, 4, 7], [2, 3, 5, 6], [2, 3, 5, 7], [2, 3, 6, 7], [2, 4, 5, 6], [2, 4, 6, 7], [2, 5, 6, 7], [3, 4, 5, 7], [3, 4, 6, 7], [3, 5, 6, 7], [4, 5, 6, 7]],
-                       N_ELEMENTS=>8,
-                       RANK=>4);
+    return new Matroid(TERNARY_VECTORS=>[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1],[0,1,1,2],[1,0,1,1],[1,1,0,1],[2,1,1,0]]);
 }
 
 # @category Producing a matroid from scratch
@@ -99,7 +97,7 @@ user_function non_p8_matroid() {
 }
 
 # @category Producing a matroid from scratch
-# A excluded minor for some properties (see [Oxley:matroid theory (2nd ed.) page 650]).
+# An excluded minor for some properties (see [Oxley:matroid theory (2nd ed.) page 650]).
 # Non binary. Algebraic over all fields.
 # @return Matroid
 user_function j_matroid() {
@@ -172,7 +170,7 @@ user_function r8_matroid() {
 }
 
 # @category Producing a matroid from scratch
-# A smallest non-represtable matroid.
+# A minimal non-representable matroid.
 # Non-algebraic.
 # @return Matroid
 user_function f8_matroid() {
@@ -182,8 +180,8 @@ user_function f8_matroid() {
 }
 
 # @category Producing a matroid from scratch
-# A smallest non-represtable matroid.
-# A excluded minor for fields that are not of characteristic 2 or have 3 elements.  Non-algebraic.
+# A minimal non-representable matroid.
+# An excluded minor for fields that are not of characteristic 2 or have 3 elements.  Non-algebraic.
 # @return Matroid
 user_function q8_matroid() {
     return new Matroid(BASES=>[[0, 1, 2, 3], [0, 1, 2, 4], [0, 1, 2, 5], [0, 1, 2, 6], [0, 1, 3, 5], [0, 1, 3, 6], [0, 1, 3, 7], [0, 1, 4, 5], [0, 1, 4, 6], [0, 1, 4, 7], [0, 1, 5, 7], [0, 1, 6, 7], [0, 2, 3, 4], [0, 2, 3, 6], [0, 2, 3, 7], [0, 2, 4, 5], [0, 2, 4, 6], [0, 2, 4, 7], [0, 2, 5, 6], [0, 2, 5, 7], [0, 2, 6, 7], [0, 3, 4, 5], [0, 3, 4, 6], [0, 3, 4, 7], [0, 3, 5, 6], [0, 3, 5, 7], [0, 4, 5, 6], [0, 4, 6, 7], [0, 5, 6, 7], [1, 2, 3, 4], [1, 2, 3, 5], [1, 2, 3, 7], [1, 2, 4, 6], [1, 2, 4, 7], [1, 2, 5, 6], [1, 2, 5, 7], [1, 2, 6, 7], [1, 3, 4, 5], [1, 3, 4, 6], [1, 3, 4, 7], [1, 3, 5, 6], [1, 3, 5, 7], [1, 3, 6, 7], [1, 4, 5, 6], [1, 4, 5, 7], [1, 4, 6, 7], [1, 5, 6, 7], [2, 3, 4, 5], [2, 3, 4, 6], [2, 3, 5, 6], [2, 3, 5, 7], [2, 3, 6, 7], [2, 4, 5, 6], [2, 4, 5, 7], [2, 4, 6, 7], [3, 4, 5, 7], [3, 4, 6, 7], [3, 5, 6, 7], [4, 5, 6, 7]],
@@ -192,8 +190,8 @@ user_function q8_matroid() {
 }
 
 # @category Producing a matroid from scratch
-# Represtable if and only if the field has characteristic 3.
-# A excluded minor for fields that are not of characteristic 2 or 3.
+# Representable if and only if the field has characteristic 3.
+# An excluded minor for fields that are not of characteristic 2 or 3.
 # @return Matroid
 user_function t8_matroid() {
     return new Matroid(BASES=>[[0, 1, 2, 3], [0, 1, 2, 4], [0, 1, 2, 5], [0, 1, 2, 6], [0, 1, 3, 4], [0, 1, 3, 5], [0, 1, 3, 7], [0, 1, 4, 6], [0, 1, 4, 7], [0, 1, 5, 6], [0, 1, 5, 7], [0, 1, 6, 7], [0, 2, 3, 4], [0, 2, 3, 6], [0, 2, 3, 7], [0, 2, 4, 5], [0, 2, 4, 7], [0, 2, 5, 6], [0, 2, 5, 7], [0, 2, 6, 7], [0, 3, 4, 5], [0, 3, 4, 6], [0, 3, 5, 6], [0, 3, 5, 7], [0, 3, 6, 7], [0, 4, 5, 6], [0, 4, 5, 7], [0, 4, 6, 7], [0, 5, 6, 7], [1, 2, 3, 5], [1, 2, 3, 6], [1, 2, 3, 7], [1, 2, 4, 5], [1, 2, 4, 6], [1, 2, 4, 7], [1, 2, 5, 7], [1, 2, 6, 7], [1, 3, 4, 5], [1, 3, 4, 6], [1, 3, 4, 7], [1, 3, 5, 6], [1, 3, 6, 7], [1, 4, 5, 6], [1, 4, 5, 7], [1, 4, 6, 7], [1, 5, 6, 7], [2, 3, 4, 5], [2, 3, 4, 6], [2, 3, 4, 7], [2, 3, 5, 6], [2, 3, 5, 7], [2, 4, 5, 6], [2, 4, 5, 7], [2, 4, 6, 7], [2, 5, 6, 7], [3, 4, 5, 6], [3, 4, 5, 7], [3, 4, 6, 7], [3, 5, 6, 7]],
@@ -220,14 +218,16 @@ user_function ag23_matroid() {
 }
 
 # @category Producing a matroid from scratch
+# The rank-3-ternary Dowling Geometry.
+# Representable if and only if the field has not characteristic 2.
 # @return Matroid
 user_function q3_gf3_star_matroid() {
-    return new Matroid(BASES=>[[0, 1, 2], [0, 1, 5], [0, 1, 6], [0, 1, 7], [0, 1, 8], [0, 2, 3], [0, 2, 4], [0, 2, 5], [0, 2, 6], [0, 3, 5], [0, 3, 6], [0, 3, 7], [0, 3, 8], [0, 4, 5], [0, 4, 6], [0, 4, 7], [0, 4, 8], [0, 5, 6], [0, 5, 7], [0, 5, 8], [0, 6, 7], [0, 6, 8], [1, 2, 3], [1, 2, 4], [1, 2, 7], [1, 2, 8], [1, 3, 5], [1, 3, 6], [1, 3, 7], [1, 3, 8], [1, 4, 5], [1, 4, 6], [1, 4, 7], [1, 4, 8], [1, 5, 7], [1, 5, 8], [1, 6, 7], [1, 6, 8], [1, 7, 8], [2, 3, 4], [2, 3, 5], [2, 3, 6], [2, 3, 7], [2, 3, 8], [2, 4, 5], [2, 4, 6], [2, 4, 7], [2, 4, 8], [2, 5, 7], [2, 5, 8], [2, 6, 7], [2, 6, 8], [3, 4, 5], [3, 4, 6], [3, 4, 7], [3, 4, 8], [3, 5, 6], [3, 5, 8], [3, 6, 7], [3, 7, 8], [4, 5, 6], [4, 5, 7], [4, 6, 8], [4, 7, 8], [5, 6, 7], [5, 6, 8], [5, 7, 8], [6, 7, 8]],
-                       N_ELEMENTS=>9,
-                       RANK=>3);
+    return new Matroid(VECTORS=> transpose(new Matrix([[1,-1,1,1,0,0,1,1,0],[0,0,2,0,0,1,1,1,1],[1,1,1,0,1,1,0,1,0]])));
 }
 
 # @category Producing a matroid from scratch
+# Not representable over any field.
+# Taken from http://doc.sagemath.org/html/en/reference/matroids/sage/matroids/catalog.html
 # @return Matroid
 user_function r9a_matroid() {
     return new Matroid(BASES=>[[0, 1, 2, 3], [0, 1, 2, 4], [0, 1, 2, 5], [0, 1, 2, 6], [0, 1, 2, 8], [0, 1, 3, 5], [0, 1, 3, 6], [0, 1, 3, 7], [0, 1, 3, 8], [0, 1, 4, 5], [0, 1, 4, 6], [0, 1, 4, 7], [0, 1, 4, 8], [0, 1, 5, 6], [0, 1, 5, 7], [0, 1, 6, 7], [0, 1, 6, 8], [0, 1, 7, 8], [0, 2, 3, 4], [0, 2, 3, 5], [0, 2, 3, 6], [0, 2, 3, 7], [0, 2, 4, 5], [0, 2, 4, 7], [0, 2, 4, 8], [0, 2, 5, 6], [0, 2, 5, 7], [0, 2, 5, 8], [0, 2, 6, 7], [0, 2, 6, 8], [0, 2, 7, 8], [0, 3, 4, 5], [0, 3, 4, 6], [0, 3, 4, 7], [0, 3, 4, 8], [0, 3, 5, 6], [0, 3, 5, 7], [0, 3, 5, 8], [0, 3, 6, 8], [0, 3, 7, 8], [0, 4, 5, 6], [0, 4, 5, 8], [0, 4, 6, 7], [0, 4, 6, 8], [0, 4, 7, 8], [0, 5, 6, 7], [0, 5, 6, 8], [0, 5, 7, 8], [0, 6, 7, 8], [1, 2, 3, 4], [1, 2, 3, 6], [1, 2, 3, 7], [1, 2, 3, 8], [1, 2, 4, 5], [1, 2, 4, 6], [1, 2, 4, 7], [1, 2, 4, 8], [1, 2, 5, 6], [1, 2, 5, 7], [1, 2, 5, 8], [1, 2, 6, 7], [1, 2, 6, 8], [1, 2, 7, 8], [1, 3, 4, 5], [1, 3, 4, 6], [1, 3, 4, 7], [1, 3, 4, 8], [1, 3, 5, 6], [1, 3, 5, 7], [1, 3, 5, 8], [1, 3, 6, 7], [1, 3, 6, 8], [1, 4, 5, 6], [1, 4, 5, 7], [1, 4, 5, 8], [1, 4, 6, 7], [1, 4, 7, 8], [1, 5, 6, 7], [1, 5, 6, 8], [1, 5, 7, 8], [1, 6, 7, 8], [2, 3, 4, 5], [2, 3, 4, 6], [2, 3, 4, 7], [2, 3, 4, 8], [2, 3, 5, 6], [2, 3, 5, 7], [2, 3, 5, 8], [2, 3, 6, 7], [2, 3, 6, 8], [2, 3, 7, 8], [2, 4, 5, 6], [2, 4, 5, 7], [2, 4, 5, 8], [2, 4, 6, 7], [2, 4, 6, 8], [2, 5, 6, 7], [2, 5, 6, 8], [2, 5, 7, 8], [2, 6, 7, 8], [3, 4, 5, 6], [3, 4, 5, 7], [3, 4, 6, 7], [3, 4, 6, 8], [3, 4, 7, 8], [3, 5, 6, 7], [3, 5, 6, 8], [3, 5, 7, 8], [3, 6, 7, 8], [4, 5, 6, 7], [4, 5, 6, 8], [4, 5, 7, 8], [4, 6, 7, 8]],
@@ -236,6 +236,8 @@ user_function r9a_matroid() {
 }
 
 # @category Producing a matroid from scratch
+# Not representable over any field.
+# Taken from http://doc.sagemath.org/html/en/reference/matroids/sage/matroids/catalog.html
 # @return Matroid
 user_function r9b_matroid() {
     return new Matroid(BASES=>[[0, 1, 2, 3], [0, 1, 2, 4], [0, 1, 2, 5], [0, 1, 2, 6], [0, 1, 2, 8], [0, 1, 3, 5], [0, 1, 3, 6], [0, 1, 3, 7], [0, 1, 3, 8], [0, 1, 4, 5], [0, 1, 4, 6], [0, 1, 4, 7], [0, 1, 4, 8], [0, 1, 5, 6], [0, 1, 5, 7], [0, 1, 5, 8], [0, 1, 6, 7], [0, 1, 7, 8], [0, 2, 3, 4], [0, 2, 3, 5], [0, 2, 3, 6], [0, 2, 3, 7], [0, 2, 3, 8], [0, 2, 4, 5], [0, 2, 4, 7], [0, 2, 4, 8], [0, 2, 5, 6], [0, 2, 5, 7], [0, 2, 5, 8], [0, 2, 6, 7], [0, 2, 6, 8], [0, 2, 7, 8], [0, 3, 4, 5], [0, 3, 4, 6], [0, 3, 4, 7], [0, 3, 4, 8], [0, 3, 5, 6], [0, 3, 5, 7], [0, 3, 6, 7], [0, 3, 6, 8], [0, 3, 7, 8], [0, 4, 5, 6], [0, 4, 5, 7], [0, 4, 5, 8], [0, 4, 6, 7], [0, 4, 6, 8], [0, 5, 6, 7], [0, 5, 6, 8], [0, 5, 7, 8], [0, 6, 7, 8], [1, 2, 3, 4], [1, 2, 3, 6], [1, 2, 3, 7], [1, 2, 3, 8], [1, 2, 4, 5], [1, 2, 4, 6], [1, 2, 4, 7], [1, 2, 5, 6], [1, 2, 5, 7], [1, 2, 5, 8], [1, 2, 6, 7], [1, 2, 6, 8], [1, 2, 7, 8], [1, 3, 4, 5], [1, 3, 4, 6], [1, 3, 4, 7], [1, 3, 4, 8], [1, 3, 5, 6], [1, 3, 5, 7], [1, 3, 5, 8], [1, 3, 6, 7], [1, 3, 6, 8], [1, 4, 5, 6], [1, 4, 5, 8], [1, 4, 6, 7], [1, 4, 6, 8], [1, 4, 7, 8], [1, 5, 6, 7], [1, 5, 6, 8], [1, 5, 7, 8], [1, 6, 7, 8], [2, 3, 4, 5], [2, 3, 4, 6], [2, 3, 4, 7], [2, 3, 4, 8], [2, 3, 5, 6], [2, 3, 5, 7], [2, 3, 5, 8], [2, 3, 6, 8], [2, 3, 7, 8], [2, 4, 5, 6], [2, 4, 5, 7], [2, 4, 5, 8], [2, 4, 6, 7], [2, 4, 6, 8], [2, 4, 7, 8], [2, 5, 6, 7], [2, 5, 6, 8], [2, 5, 7, 8], [2, 6, 7, 8], [3, 4, 5, 6], [3, 4, 5, 7], [3, 4, 5, 8], [3, 4, 6, 7], [3, 4, 7, 8], [3, 5, 6, 7], [3, 5, 6, 8], [3, 5, 7, 8], [3, 6, 7, 8], [4, 5, 6, 7], [4, 5, 6, 8], [4, 5, 7, 8], [4, 6, 7, 8]],
@@ -251,6 +253,16 @@ user_function pg23_matroid() {
                        N_ELEMENTS=>13,
                        RANK=>3);
 }
+
+
+# @category Producing a matroid from scratch
+# The embedding into the reals of the seven points that define the Fano matroid.
+# Representable if and only if the field has not characteristic 2.
+# @return Matroid
+user_function non_fano_matroid() {
+    return new Matroid(VECTORS=>[[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]]);
+}
+
 
 # @category Producing a matroid from scratch
 # Produces many oxley matroids:
@@ -286,7 +298,8 @@ user_function oxley_matroids() {
         t8_matroid(),
         vamos_matroid(),
         non_vamos_matroid(),
-        wheel4_matroid()
+        wheel4_matroid(),
+        non_fano_matroid()
                               ]);
 }
 

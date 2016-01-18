@@ -32,11 +32,30 @@ HELP
 # 
 declare object Group;
 
+# A template parameter used by [[action]] and [[orbit]] specifying that
+# the permutation acts on the given container. It will permute the order of
+# the elements
+declare property_type on_container : c++ (special => 'on_container', include => "polymake/group/orbit.h");
+
+# A template parameter used by [[action]] and [[orbit]] specifying that
+# the permutation acts on the deepest elements inside a given container,
+# which should be of type [[Int]].
+declare property_type on_elements: c++ (special => 'on_elements', include => "polymake/group/orbit.h");
+
+# A template parameter used by [[action]] and [[orbit]] specifying that
+# the permutation acts on the rows of a matrix.
+declare property_type on_rows: c++ (special => 'on_rows', include => "polymake/group/orbit.h");
+
+# A template parameter used by [[action]] and [[orbit]] specifying that
+# the permutation acts on the columns of a matrix.
+declare property_type on_cols: c++ (special => 'on_cols', include => "polymake/group/orbit.h");
+
 INCLUDE
   group_properties.rules
   group_of_cone.rules
   group_of_polytope.rules
   group.rules
+  representations.rules
 
 # Local Variables:
 # mode: perl

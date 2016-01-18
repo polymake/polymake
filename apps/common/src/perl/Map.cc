@@ -1,12 +1,12 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2014
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
-
+   
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
    Free Software Foundation; either version 2, or (at your option) any
    later version: http://www.gnu.org/licenses/gpl.txt.
-
+   
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -29,6 +29,12 @@
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1>
+   FunctionInterface4perl( new_X, T0,T1 ) {
+      perl::Value arg0(stack[1]);
+      WrapperReturnNew(T0, (arg0.get<T1>()) );
+   };
+
    template <typename T0>
    FunctionInterface4perl( new, T0 ) {
       WrapperReturnNew(T0, () );
@@ -47,10 +53,29 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary_brk, perl::Canned< Map< Set< int >, Vector< Rational > > >, perl::Canned< const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&> >);
    OperatorInstance4perl(Binary_brk, perl::Canned< const Map< Set< int >, Vector< Rational > > >, perl::Canned< const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&> >);
    Class4perl("Polymake::common::Map_A_Set__Int_I_Polynomial_A_Rational_I_Int_Z_Z", Map< Set< int >, Polynomial< Rational, int > >);
-   Class4perl("Polymake::common::Map_A_Int_I_Map_A_Int_I_Vector__Integer_Z_Z", Map< int, Map< int, Vector< Integer > > >);
-   Class4perl("Polymake::common::Map_A_Int_I_Vector__Rational_Z", Map< int, Vector< Rational > >);
-   Class4perl("Polymake::common::Map_A_Int_I_Map_A_Int_I_Vector__Rational_Z_Z", Map< int, Map< int, Vector< Rational > > >);
-   Class4perl("Polymake::common::Map_A_Set__Int_I_Set__Int_Z", Map< Set< int >, Set< int > >);
+   Class4perl("Polymake::common::Map_A_Pair_A_Int_I_Int_Z_I_Vector__Integer_Z", Map< std::pair< int, int >, Vector< Integer > >);
+   Class4perl("Polymake::common::Map_A_Pair_A_Int_I_Int_Z_I_Int_Z", Map< std::pair< int, int >, int >);
+   Class4perl("Polymake::common::Map_A_Pair_A_Int_I_Int_Z_I_Vector__Rational_Z", Map< std::pair< int, int >, Vector< Rational > >);
+   FunctionInstance4perl(new, Map< std::pair< int, int >, int >);
    Class4perl("Polymake::common::Map_A_Int_I_Vector__Integer_Z", Map< int, Vector< Integer > >);
+   Class4perl("Polymake::common::Map_A_Int_I_Vector__Rational_Z", Map< int, Vector< Rational > >);
+   Class4perl("Polymake::common::Map_A_Int_I_Map_A_Int_I_Vector__Integer_Z_Z", Map< int, Map< int, Vector< Integer > > >);
+   Class4perl("Polymake::common::Map_A_Set__Int_I_Set__Int_Z", Map< Set< int >, Set< int > >);
+   Class4perl("Polymake::common::Map_A_Int_I_Map_A_Int_I_Vector__Rational_Z_Z", Map< int, Map< int, Vector< Rational > > >);
+   FunctionInstance4perl(new, Map< std::pair< int, int >, Vector< Integer > >);
+   FunctionInstance4perl(new, Map< std::pair< int, int >, Vector< Rational > >);
+   FunctionInstance4perl(new_X, Map< std::pair< int, int >, int >, perl::Canned< const Map< std::pair< int, int >, int > >);
+   FunctionInstance4perl(new_X, Map< std::pair< int, int >, Vector< Integer > >, perl::Canned< const Map< std::pair< int, int >, Vector< Integer > > >);
+   FunctionInstance4perl(new_X, Map< std::pair< int, int >, Vector< Rational > >, perl::Canned< const Map< std::pair< int, int >, Vector< Rational > > >);
+   FunctionInstance4perl(new, Map< Set< int >, int >);
+   OperatorInstance4perl(Binary_brk, perl::Canned< Map< Set< int >, int > >, perl::Canned< const Set< int > >);
+   Class4perl("Polymake::common::Map_A_Array__Int_I_Int_Z", Map< Array< int >, int >);
+   FunctionInstance4perl(new, Map< Array< int >, int >);
+   Class4perl("Polymake::common::Map_A_Matrix_A_Rational_I_NonSymmetric_Z_I_Int_Z", Map< Matrix< Rational >, int >);
+   Class4perl("Polymake::common::Map_A_Pair_A_Vector__Rational_I_Vector__Rational_Z_I_Matrix_A_Rational_I_NonSymmetric_Z_Z", Map< std::pair< Vector< Rational >, Vector< Rational > >, Matrix< Rational > >);
+   Class4perl("Polymake::common::Map_A_Vector__Rational_I_Int_Z", Map< Vector< Rational >, int >);
+   OperatorInstance4perl(Binary_brk, perl::Canned< Map< Vector< double >, int > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(new, Map< Vector< Rational >, int >);
+   OperatorInstance4perl(Binary_brk, perl::Canned< Map< Vector< Rational >, int > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, void> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -24,10 +24,10 @@ $Carp::Internal{'Polymake::Overload::Node'}=1;
 
 package Polymake::Overload;
 use Polymake::Ext;
-use Polymake::Enum qw( has_trailing_list=1<<48
-                       has_keywords=1<<47
-                       has_repeated=1<<31
-                       num_args_mask=(1<<31)-1
+use Polymake::Enum qw( has_trailing_list=1<<30
+                       has_keywords=1<<29
+                       has_repeated=1<<28
+                       num_args_mask=(1<<28)-1
                        has_final_typecheck_sub=1
                        has_typecheck_object=2
                        has_typecheck_sub=4

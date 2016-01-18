@@ -1493,6 +1493,15 @@ public:
    }
 };
 
+template<typename Vector>
+typename enable_if<Indices<SelectedSubset<const GenericVector<Vector>&, BuildUnary<operations::non_zero> > >, !Vector::is_sparse>::type
+indices(const GenericVector<Vector>& v) 
+{ 
+   return indices(attach_selector(v, BuildUnary<operations::non_zero>())); 
+}
+
+
+
 } // end namespace pm
 
 namespace polymake {

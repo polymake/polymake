@@ -61,7 +61,7 @@ rule LP.MINIMAL_VERTEX : VERTICES, FAR_FACE, LP.MINIMAL_FACE {
 }
 weight 0.10;
 
-rule ONE_VERTEX : LP.MINIMAL_VERTEX | LP.MAXIMAL_VERTEX {
+rule ONE_VERTEX : LP.MINIMAL_VERTEX | MAXIMAL_VERTEX {
   $this->ONE_VERTEX=$this->LP->MINIMAL_VERTEX | MAXIMAL_VERTEX;
 }
 precondition : POINTED;
@@ -87,19 +87,19 @@ rule RANDOM_EDGE_EPL : DIRECTED_GRAPH.ADJACENCY {
 
 # @category Optimization
 # Read a linear programming problem given in LP-Format (as used by cplex & Co.)
-# and convert it to a [[Polytope<Scalar=Rational>]] object. By default [[Rational]] is used as coordinate type,
-# but [[lp2poly<Float>("filename.lp")]] can be used to create a [[Polytope]] with [[Float]] coordinates.
+# and convert it to a [[Polytope<Scalar>]] object.
 #
 # **WARNING** The property FEASIBLE is **NOT** computed upon creation.
 # This is done to avoid possibly long computation times before the object becomes available to the caller.
 # This is **NOT** in keeping with standard practice in polymake, but after, all, these are linear programs
 # and not polytopes.
 #
+# @tparam Scalar coordinate type of the resulting polytope; default is [[Rational]].
 # @param String file filename of a linear programming problem in LP-Format
 # @param Vector testvec If present, after reading in each line of the LP it is checked whether testvec fulfills it
 # @param String prefix If testvec is present, all variables in the LP file are assumed to have the form $prefix$i
 # @option Int nocheck Do not automatically compute [[FEASIBLE]] for the polytope (recommended for very large LPs)
-# @return Polytope<Scalar=Rational>
+# @return Polytope<Scalar>
 
 user_function lp2poly<Scalar=Rational>(String; Vector, String, {nocheck => 0}) {
    require LPparser;

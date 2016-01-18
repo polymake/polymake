@@ -24,6 +24,7 @@
 #define POLYMAKE_TROPICALNUMBER_H
 
 #include "polymake/internal/converters.h"
+#include "polymake/Polynomial.h"
 #include "polymake/Integer.h"
 
 namespace pm {
@@ -65,7 +66,7 @@ class TropicalNumber : public Scalar {
   
   friend struct spec_object_traits<TropicalNumber<Addition,Scalar> >;
   
-  friend struct std::numeric_limits<TropicalNumber<Addition,Scalar> >;
+  friend class std::numeric_limits<TropicalNumber<Addition,Scalar> >;
 
   
 public:
@@ -77,13 +78,19 @@ public:
 
    // *** ZERO ***
    
-   static const TropicalNumber<Addition, Scalar> zero() {
+   static const TropicalNumber<Addition, Scalar>& zero() {
       return spec_object_traits<TropicalNumber<Addition,Scalar> >::zero();
+   }
+
+   // *** DUAL_ZERO ***
+
+   static const TropicalNumber<Addition, Scalar>& dual_zero() {
+      return spec_object_traits<TropicalNumber<Addition,Scalar> >::dual_zero();
    }
    
    // *** ONE ***
    
-   static const TropicalNumber<Addition, Scalar> one() {
+   static const TropicalNumber<Addition, Scalar>& one() {
       return spec_object_traits<TropicalNumber<Addition,Scalar> >::one();
    }
    
@@ -112,6 +119,11 @@ public:
      Scalar::operator=(a);
      return *this;
    }
+
+	TropicalNumber<Addition,Scalar>& operator= (const Scalar &a) {
+		Scalar::operator=(a);
+		return *this;
+	}
    
    // -- binary --
    
@@ -130,17 +142,22 @@ public:
       return TropicalNumber<Addition,Scalar>( convert_to<Scalar>(a) - convert_to<Scalar>(b));
    }
    
+   
    // The following are disallowed. We overload them to prevent calling any version
-   // Scalar may have overloaded.
+   // Scalar may have overloaded. The complicated templating takes care that only 
+   // operations with scalar types are blocked (i.e. polynomials and vectors, matrices are
+   // allowed)
    
    template <typename T>
-   friend TropicalNumber<Addition,Scalar> operator+(const TropicalNumber<Addition,Scalar> &a,
+   friend typename 
+   enable_if<TropicalNumber<Addition,Scalar>,identical<typename object_traits<T>::model, is_scalar>::value>::type operator+(const TropicalNumber<Addition,Scalar> &a,
 						    const T& b){
       throw std::runtime_error("Tropical addition is only applicable to explicitly declared TropicalNumbers");
    }
    
    template <typename T>
-   friend TropicalNumber<Addition,Scalar> operator+(const T& b, 
+   friend typename 
+   enable_if<TropicalNumber<Addition,Scalar>,identical<typename object_traits<T>::model, is_scalar>::value>::type operator+(const T& b, 
 						    const TropicalNumber<Addition,Scalar> &a){
       throw std::runtime_error("Tropical addition is only applicable to explicitly declared TropicalNumbers");
    }
@@ -163,25 +180,29 @@ public:
    }
  
    template <typename T>
-   friend TropicalNumber<Addition,Scalar> operator*(const TropicalNumber<Addition,Scalar> &a,
+   friend typename 
+   enable_if<TropicalNumber<Addition,Scalar>,identical<typename object_traits<T>::model, is_scalar>::value>::type operator*(const TropicalNumber<Addition,Scalar> &a,
 						    const T& b){
       throw std::runtime_error("Tropical multiplication  only applicable to explicitly declared TropicalNumbers");
    } 
    
    template <typename T>
-   friend TropicalNumber<Addition,Scalar> operator*(const T& b, 
+   friend typename 
+   enable_if<TropicalNumber<Addition,Scalar>,identical<typename object_traits<T>::model, is_scalar>::value>::type operator*(const T& b, 
 						    const TropicalNumber<Addition,Scalar> &a){
       throw std::runtime_error("Tropical multiplication  only applicable to explicitly declared TropicalNumbers");
    }
    
    template <typename T>
-   friend TropicalNumber<Addition,Scalar> operator/(const TropicalNumber<Addition,Scalar> &a,
+   friend typename 
+   enable_if<TropicalNumber<Addition,Scalar>,identical<typename object_traits<T>::model, is_scalar>::value>::type operator/(const TropicalNumber<Addition,Scalar> &a,
 						    const T& b){
       throw std::runtime_error("Tropical division is only applicable to explicitly declared TropicalNumbers");
    }
    
    template <typename T>
-   friend TropicalNumber<Addition,Scalar> operator/(const T&b, const TropicalNumber<Addition,Scalar> &a){
+   friend typename 
+   enable_if<TropicalNumber<Addition,Scalar>,identical<typename object_traits<T>::model, is_scalar>::value>::type operator/(const T&b, const TropicalNumber<Addition,Scalar> &a){
       throw std::runtime_error("Tropical division is only applicable to explicitly declared TropicalNumbers");
    }
  
@@ -276,6 +297,7 @@ public:
 
 template <typename Addition, typename Scalar>
 class conv<TropicalNumber<Addition,Scalar>, Integer> : public conv_by_cast<TropicalNumber<Addition,Scalar>, Integer> {};
+
    
 
 /**
@@ -304,6 +326,12 @@ struct spec_object_traits<TropicalNumber<Addition, Scalar> > : spec_object_trait
       return t_zero;
    }
 
+   static const TropicalNumber<Addition,Scalar>& dual_zero()
+   {
+      static const TropicalNumber<Addition,Scalar> t_d_zero(-Addition::orientation() * std::numeric_limits<Scalar>().infinity());
+      return t_d_zero;
+   }
+
    static const TropicalNumber<Addition,Scalar>& one()
    {
      static const TropicalNumber<Addition,Scalar> t_one(spec_object_traits<Scalar>::zero());
@@ -312,16 +340,22 @@ struct spec_object_traits<TropicalNumber<Addition, Scalar> > : spec_object_trait
 
 };
 
-
 }
 
 namespace std {
 
 template <typename Addition, typename Scalar>
-struct numeric_limits<pm::TropicalNumber<Addition, Scalar> > : numeric_limits<Scalar> {
-   static pm::TropicalNumber<Addition,Scalar> min() throw() { return pm::TropicalNumber<Addition,Scalar>(pm::maximal<Scalar>(),-1); }
-   static pm::TropicalNumber<Addition,Scalar> infinity() throw() { return pm::TropicalNumber<Addition,Scalar>(pm::maximal<Scalar>()); }
-   static pm::TropicalNumber<Addition,Scalar> max() throw() { return pm::TropicalNumber<Addition,Scalar>(pm::maximal<Scalar>()); }
+class numeric_limits<pm::TropicalNumber<Addition, Scalar> > : public numeric_limits<Scalar> {
+public:
+   static pm::TropicalNumber<Addition,Scalar> min() throw() {
+      return pm::TropicalNumber<Addition,Scalar>(std::numeric_limits<Scalar>::min());
+   }
+   static pm::TropicalNumber<Addition,Scalar> infinity() throw() {
+      return pm::TropicalNumber<Addition,Scalar>(std::numeric_limits<Scalar>::infinity());
+   }
+   static pm::TropicalNumber<Addition,Scalar> max() throw() {
+      return pm::TropicalNumber<Addition,Scalar>(std::numeric_limits<Scalar>::max());
+   }
 };
 
 }

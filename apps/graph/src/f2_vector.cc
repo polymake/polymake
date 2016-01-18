@@ -27,6 +27,7 @@ Matrix<Integer> f2_vector(perl::Object p)
    const int d=HD.dim();
 
    Matrix<Integer> F2(d,d);
+   if(d == 0) return F2;
    F2(0,0) = HD.node_range_of_dim(0).size();
    if (d>1) {
       Graph<Directed> G(HD.graph());

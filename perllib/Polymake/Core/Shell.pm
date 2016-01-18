@@ -429,6 +429,7 @@ sub display_help_topics {
    my $full_text=$self->help_repeat_cnt>0;
    my ($tell_about_full, $pos);
    my $n=0;
+
    foreach (@{$self->help_topics}) {
       next if is_object($_) && $_->annex->{display} =~ /^\s*noshow\s*$/;
       print "-------------------\n" if $User::help_delimit && $n++;
@@ -586,14 +587,17 @@ sub Polymake::User::save_history {
 sub Polymake::User::help {
    my ($subject)=@_;
    my $help_delim=$User::help_delimit ? "-------------------\n" : '';
-   my $app_name= $subject =~ s/^($id_re):://o && $1;
-   my $app= $app_name ? (eval { User::application($app_name) } // return err_print("unknown application $app_name")) : $User::application;
+   my $app=$User::application;
+   if ($subject =~ /^($id_re)::/o && $app->used->{$1}) {
+      $subject=$';
+      $app=$app->used->{$1};
+   }
    if (my @topics=uniq( $app->help->get_topics($subject || "top") )) {
       my (@subcats, @subtopics, $need_delim);
       foreach my $topic (@topics) {
          my $text=$topic->display_text;
          if (length($text)) {
-            print $help_delim if $need_delim++;
+             print $help_delim if $need_delim++;
             print $text, "\n";
          }
          foreach (@{$topic->toc}) {

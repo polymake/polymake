@@ -48,7 +48,7 @@ use Polymake::Struct (
    [ '$pkg' => '"Polymake::" . #1' ],
    [ '$top' => 'undef' ],         # application top directory (beneath apps/)
    [ '$installTop' => 'undef' ],  # installation directory
-   '@myINC',                      # directories with perl modules
+   '@myINC',                      # [ directory with perl modules, optional preamble lines ]
    '@scriptpath',                 # directories with scripts
    '@object_types',               # ObjectType
    [ '$default_type' => 'undef' ],
@@ -133,7 +133,7 @@ sub new {
 
    my $dir;
    if (-d ($dir=$self->top."/perllib")) {
-      push @{$self->myINC}, $dir;
+      push @{$self->myINC}, [ $dir ];
    }
    if (-d ($dir=$self->top."/scripts")) {
       push @{$self->scriptpath}, $dir;
@@ -182,7 +182,7 @@ sub load_extension {
    my ($self, $app_dir)=@_;
    my $dir;
    if (-d ($dir="$app_dir/perllib")) {
-      push @{$self->myINC}, $dir;
+      push @{$self->myINC}, [ $dir ];
    }
    if (-d ($dir="$app_dir/scripts")) {
       push @{$self->scriptpath}, $dir;
@@ -404,56 +404,6 @@ sub set_file_suffix {
    my ($self, $suffix)=@_;
    ($self->default_file_suffix &&= croak("multiple definition of default file suffix")) ||= $suffix;
    push @{$self->file_suffixes}, $suffix;
-}
-#################################################################################
-sub add_production_rule {
-   my $self=shift;
-   my $rule=new Rule(@_);
-   push @{$self->rules}, $rule;
-   push @{$self->rules_to_finalize}, $rule->needs_finalization;
-}
-
-sub add_default_value_rule {
-   my $self=shift;
-   my $rule=new Rule(@_);
-   $rule->append_weight(0,0);
-   $rule->flags=$Rule::is_default_value;
-   push @{$self->rules}, $rule;
-   push @{$self->rules_to_finalize}, $rule;
-}
-
-sub append_rule_precondition {
-   my ($self, $header, $code, $proto, $checks_definedness)=@_;
-   $self->rules->[-1]->append_precondition(special Rule($header, $code, $proto), $checks_definedness);
-}
-
-sub append_rule_existence_check {
-   my $self=shift;
-   $self->rules->[-1]->append_existence_check(@_);
-}
-
-sub append_rule_weight {
-   my ($self, $major, $minor, $header, $code, $proto)=@_;
-   $self->rules->[-1]->append_weight($major, $minor, defined($header) && special Rule($header, $code, $proto));
-}
-
-sub append_rule_permutation {
-   my ($self, $perm_name, $proto)=@_;
-   my $perm=$proto->property($perm_name);
-   unless ($perm->flags & $Property::is_permutation) {
-      croak( "$perm_name is not declared as a permutation" );
-   }
-   $self->rules->[-1]->append_permutation($perm);
-}
-
-sub append_overridden_rule {
-   my ($self, $proto, $super_proto, $label)=@_;
-   if ($plausibility_checks && is_object($super_proto)) {
-      $proto->isa($super_proto) or croak( "Invalid override: ", $proto->full_name, " is not derived from ", $super_proto->full_name );
-   }
-   $label=$self->prefs->find_label($label)
-          || croak( "Unknown label $label" );
-   push @{$self->rules->[-1]->overridden_in ||= [ ]}, [ $super_proto, $label, $plausibility_checks ? (caller)[1,2] : () ];
 }
 #################################################################################
 sub lookup_credit {

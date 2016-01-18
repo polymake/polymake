@@ -76,11 +76,7 @@ $title
 
 <div id="model"></div>
 
-<script src="js/three.js"></script>
-<script src="js/Detector.js"></script>
-<script src="js/controls/TrackballControls.js"></script>
-<script src="js/renderers/CanvasRenderer.js"></script>
-<script src="js/renderers/Projector.js"></script>
+<script src="js/three.polymake.js"></script>
 
 
 <script>

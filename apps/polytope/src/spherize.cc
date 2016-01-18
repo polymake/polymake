@@ -48,9 +48,18 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# Project all vertices of a polyhedron //P// on the unit sphere."
                           "# //P// must be [[CENTERED]] and [[BOUNDED]]."
                           "# @param Polytope P"
-                          "# @return Polytope",
+                          "# @return Polytope"
+                          "# @example The following scales the 2-dimensional cross polytope by 23 and"
+                          "# then projects it back onto the unit circle."
+                          "# > $p = scale(cross(2),23);"
+                          "# > $s = spherize($p);"
+                          "# > print $s->VERTICES;"
+                          "# | 1 1 0"
+                          "# | 1 -1 0"
+                          "# | 1 0 1"
+                          "# | 1 0 -1",
                           "spherize<Scalar>(Polytope<Scalar>)");
-   
+
 } }
 
 // Local Variables:

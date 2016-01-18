@@ -97,6 +97,14 @@ div.author {
 	margin-top: .5em;
 }
 
+code {
+	font-size: 12px;
+	margin-top: .4em;
+	margin-left: 1em;
+	margin-bottom: .2em;
+	display: block;
+}
+
 
 /* -------- Unfolding -------- */
 
@@ -169,6 +177,10 @@ table.args td{
 	padding: 3px;
 }
 
+/* option list */
+div.descr dt {
+	font-family: Monospace;
+}
 
 
 
@@ -181,18 +193,6 @@ h2 a, h2 a:visited, a.javalink {
 }
 h2 a:hover, a.javalink:hover {
 	color: #4671D5 !important;
-}
-
-a.ambiguous:before {
-        font-weight: bold;
-        color: rgb(255, 0, 0);
-        content: "AMBIGUOUS REF: "
-}
-
-a.invalid:before {
-        font-weight: bold;
-        color: rgb(255, 0, 0);
-        content: "INVALID REF: "
 }
 
 

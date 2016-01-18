@@ -17,6 +17,7 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/Integer.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/RationalFunction.h"
@@ -38,5 +39,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(unit_matrix_T_x, int);
    FunctionInstance4perl(unit_matrix_T_x, Integer);
    FunctionInstance4perl(unit_matrix_T_x, TropicalNumber< Min, Rational >);
+   FunctionInstance4perl(unit_matrix_T_x, PuiseuxFraction< Max, Rational, Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

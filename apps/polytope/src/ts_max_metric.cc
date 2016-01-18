@@ -46,7 +46,7 @@ perl::Object ts_max_metric(const int n)
    return p;
 }
 
-UserFunction4perl("# @category Triangulations, subdivisions and volume"
+UserFunction4perl("# @category Finite metric spaces"
                   "# Computes the tight span of a metric such that its f-vector is maximal among all metrics with //n// points."
                   "#\t S. Herrmann and M. Joswig: Bounds on the f-vectors of tight spans."
                   "#\t Contrib. Discrete Math., Vol.2, 2007 161-184"
@@ -54,12 +54,17 @@ UserFunction4perl("# @category Triangulations, subdivisions and volume"
                   "# @return TightSpan",
                   &ts_max_metric, "ts_max_metric");
 
-UserFunction4perl("# @category Triangulations, subdivisions and volume"
+UserFunction4perl("# @category Finite metric spaces"
                   "# Compute a metric such that the f-vector of its tight span is maximal among all metrics with //n// points."
                   "#\t S. Herrmann and M. Joswig: Bounds on the f-vectors of tight spans."
                   "#\t Contrib. Discrete Math., Vol.2, 2007 161-184"
                   "# @param Int n the number of points"
-                  "# @return Matrix",
+                  "# @return Matrix"
+                  "# @example To compute the max-metric of four points and display the f-vector of its tight span, do this:"
+                  "# > $M = max_metric(5);"
+                  "# > $w = new Vector(1,1,1,2,3);"
+                  "# > print tight_span($M,$w)->F_VECTOR;"
+                  "# | 6 15 20 15 6",
                   &max_metric, "max_metric");
 } }
 

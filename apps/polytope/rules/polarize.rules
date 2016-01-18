@@ -34,18 +34,13 @@ rule FAR_HYPERPLANE : CONE_AMBIENT_DIM {
 }
 weight 0.10;
 
-rule REL_INT_POINT : VERTEX_BARYCENTER {
-   $this->REL_INT_POINT=$this->VERTEX_BARYCENTER;
-}
+rule REL_INT_POINT = VERTEX_BARYCENTER;
 precondition : BOUNDED;
-weight 0.10;
 
 
-rule REL_INT_POINT : CENTROID {
-   $this->REL_INT_POINT=$this->CENTROID;
-}
+rule REL_INT_POINT = CENTROID;
 precondition : BOUNDED;
-weight 0.10;
+
 
 rule REL_INT_POINT : VERTICES | POINTS {
    $this->REL_INT_POINT=inner_point($this->VERTICES | POINTS);

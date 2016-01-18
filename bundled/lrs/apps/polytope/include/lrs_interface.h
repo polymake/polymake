@@ -21,7 +21,7 @@
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
 #include "polymake/Bitset.h"
-#include "polymake/polytope/linsolver.h"
+#include "polymake/polytope/lpch_dispatcher.h"
 
 namespace polymake { namespace polytope { namespace lrs_interface {
 

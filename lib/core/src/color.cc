@@ -74,7 +74,11 @@ HSV::HSV(const RGB& rgb)
    assign_min_max(min,max,G);
    assign_min_max(min,max,B);
 
-   saturation=(max-min)/max;
+   if (max == 0)
+      saturation = 0;
+   else
+      saturation=(max-min)/max;
+   
    value=max;
 
    if (saturation) {

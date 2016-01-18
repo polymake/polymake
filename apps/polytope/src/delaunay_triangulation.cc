@@ -79,12 +79,18 @@ Array<Set<int> > delaunay_triangulation(perl::Object p)
 }
 
 UserFunction4perl("# @category Triangulations, subdivisions and volume"
-                  "# Compute the (a) Delaunay triangulation of the given [[SITES]] of a VoronoiDiagram //V//. If the sites are"
+                  "# Compute the Delaunay triangulation of the given [[SITES]] of a VoronoiDiagram //V//. If the sites are"
                   "# not in general position, the non-triangular facets of the Delaunay subdivision are"
-
                   "# triangulated (by applying the beneath-beyond algorithm)."
                   "# @param VoronoiDiagram V"
                   "# @return Array<Set<Int>>"
+                  "# @example > $VD = new VoronoiDiagram(SITES=>[[1,1,1],[1,0,1],[1,-1,1],[1,1,-1],[1,0,-1],[1,-1,-1]]);"
+                  "# > $D = delaunay_triangulation($VD);"
+                  "# > print $D;"
+                  "# | {1 2 4}"
+                  "# | {2 4 5}"
+                  "# | {0 1 3}"
+                  "# | {1 3 4}"
                   "# @author Sven Herrmann",
                   &delaunay_triangulation,"delaunay_triangulation(VoronoiDiagram)");
 } }

@@ -1,0 +1,18 @@
+#ifndef NMZ_VERSION_H
+#define NMZ_VERSION_H
+
+#define NMZ_VERSION_MAJOR  @LIBNORMALIZ_VERSION_MAJOR@
+#define NMZ_VERSION_MINOR  @LIBNORMALIZ_VERSION_MINOR@
+#define NMZ_VERSION_PATCH  @LIBNORMALIZ_VERSION_PATCH@
+#define NMZ_VERSION        @LIBNORMALIZ_VERSION_STRING@
+#define NMZ_RELEASE (NMZ_VERSION_MAJOR * 10000 + NMZ_VERSION_MINOR * 100 + NMZ_VERSION_PATCH)
+
+namespace libnormaliz {
+inline unsigned int getVersion()
+{
+    return NMZ_RELEASE;
+}
+
+} //end namespace libnormaliz
+
+#endif // NMZ_VERSION_H

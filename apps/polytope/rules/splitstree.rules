@@ -44,7 +44,7 @@ object TightSpan {
 
 # @category Visualization
 # Visualize the splits of a finite metric space (that is, a planar image of a tight span).  Calls SplitsTree.
-# @return Visual::FiniteMetricSpace
+# @return Visual::Object
 
 user_method VISUAL_SPLITS () {
    my $this=shift;

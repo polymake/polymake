@@ -1,5 +1,5 @@
 /*****************************************************************************
-* This is the header file for versions 2.2 of naututil.c and dreadnaut.c.    *
+* This is the header file for versions 2.5 of naututil.c and dreadnaut.c.    *
 * @configure_input@
 *****************************************************************************/
 
@@ -20,7 +20,7 @@ used, it is necessary to check they are correct.
 
 /*****************************************************************************
 *                                                                            *
-*   Copyright (1984-2002) Brendan McKay.  All rights reserved.               *
+*   Copyright (1984-2013) Brendan McKay.  All rights reserved.               *
 *   Subject to the waivers and disclaimers in nauty.h.                       *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
@@ -93,10 +93,27 @@ used, it is necessary to check they are correct.
 *                   - revised for autoconf                                   *
 *       17-Nov-02 : added explicit "extern" where it was implicit before     *
 *       11-Apr-02 : added rangraph2()                                        *
+*       10-Sep-07 : Define CPUTIME=0.0 for hosts that don't provide it       *
+*        4-Nov-09 : added readgraph_sg(), putgraph_sg(), putcanon_sg()       *
+*       10-Nov-09 : removed types shortish and permutation                   *
+*       14-Nov-09 : added relabel_sg(), copy_sg(), putdegs_sg(),             *
+*                    sublabel_sg()                                           *
+*       19-Nov-09 : added individualise()                                    *
+*       20-Nov-09 : added hashgraph_sg(), listhash(), hashgraph()            *
+*       19-Dec-09 : added ranreg(), rangraph2_sg()                           *
+*        5-Jun-10 : added mathon_sg() and converse_sg()                      *
+*       10-Jun-10 : added putquotient_sg() and complement_sg()               *
+*       15-Jan-12 : added TLS_ATTR to static declarations                    *
+*        3-Mar-12 : added putorbitsplus() and putset_firstbold()             *
+*       17-Mar-12 : include naurng.h and remove redundant lines              *
+*                                                                            *
+* @edit_msg@
 *                                                                            *
 *****************************************************************************/
 
 #include "nauty.h"              /* which includes stdio.h */
+#include "nausparse.h"
+#include "naurng.h"
 /* At this point we can assume that <sys/types.h>, <unistd.h>, <stddef.h>,
    <stdlib.h>, <string.h> or <strings.h> and <malloc.h> if necessary have
    been included if they exist. */
@@ -107,43 +124,61 @@ extern "C" {
 
 extern void complement(graph*,int,int);
 extern void converse(graph*,int,int);
+extern void converse_sg(sparsegraph*, sparsegraph*);
 extern void copycomment(FILE*,FILE*,int);
+extern void complement_sg(sparsegraph*, sparsegraph*);
 extern void flushline(FILE*);
 extern void fixit(int*,int*,int*,int,int);
 extern int getint(FILE*);
 extern long hash(set*,long,int);
+extern long hashgraph(graph*,int,int,long);
+extern long hashgraph_sg(sparsegraph*,long);
+extern void individualise(int*,int*,int,int,int*,int*,int);
+extern long listhash(int*,int,long);
 extern void mathon(graph*,int,int,graph*,int,int);
+extern void mathon_sg(sparsegraph*,sparsegraph*);
 extern void naututil_check(int,int,int,int);
+extern void naututil_freedyn(void);
 extern void putcanon(FILE*,int*,graph*,int,int,int);
+extern void putcanon_sg(FILE*,int*,sparsegraph*,int);
 extern void putdegs(FILE*,graph*,int,int,int);
+extern void putdegs_sg(FILE*,sparsegraph*,int);
 extern void putgraph(FILE*,graph*,int,int,int);
+extern void putgraph_sg(FILE*,sparsegraph*,int);
 extern void putmapping(FILE*,int*,int,int*,int,int,int);
 extern void putorbits(FILE*,int*,int,int);
+extern void putorbitsplus(FILE*,int*,int,int);
 extern void putptn(FILE*,int*,int*,int,int,int);
 extern void putquotient(FILE*,graph*,int*,int*,int,int,int,int);
+extern void putquotient_sg(FILE*,sparsegraph*,int*,int*,int,int);
 extern void putset(FILE*,set*,int*,int,int,boolean);
-extern long ran_arr_cycle(void);
-extern void ran_array(long*,int);
-extern void ran_init(long);
+extern void putset_firstbold(FILE*,set*,int*,int,int,boolean);
 extern void rangraph(graph*,boolean,int,int,int);
 extern void rangraph2(graph*,boolean,int,int,int,int);
-extern void ranperm(permutation*,int);
+extern void rangraph2_sg(sparsegraph*,boolean,int,int,int);
+extern void ranreg_sg(sparsegraph *sg, int degree, int n);
+extern void ranperm(int*,int);
 extern void readgraph(FILE*,graph*,boolean,boolean,boolean,int,int,int);
+extern void readgraph_sg(FILE*,sparsegraph*,boolean,boolean,int,int);
 extern boolean readinteger(FILE*,int*);
-extern void readperm(FILE*,permutation*,boolean,int);
+extern void readperm(FILE*,int*,boolean,int);
 extern void readptn(FILE*,int*,int*,int*,boolean,int);
-extern void readvperm(FILE*,permutation*,boolean,int,int*);
+extern void readvperm(FILE*,int*,boolean,int,int*);
 extern boolean readstring(FILE*,char*,int);
-extern void relabel(graph*,int*,permutation*,graph*,int,int);
+extern void relabel(graph*,int*,int*,graph*,int,int);
+extern void relabel_sg(sparsegraph*,int*,int*,sparsegraph*);
 extern long sethash(set*,int,long,int);
 extern int setinter(set*,set*,int);
 extern int setsize(set*,int);
-extern void sublabel(graph*,permutation*,int,graph*,int,int);
+extern void sublabel(graph*,int*,int,graph*,int,int);
+extern void sublabel_sg(sparsegraph*,int*,int,sparsegraph*);
 extern void unitptn(int*,int*,int*,int);
 
 #ifdef __cplusplus
 }
 #endif
+
+#define MAXREG 8    /* Used to limit ranreg_sg() degree */
 
 #define PROMPTFILE stdout    /* where to write prompts */
 #ifndef ERRFILE
@@ -152,11 +187,6 @@ extern void unitptn(int*,int*,int*,int);
 #define MAXIFILES 10         /* how many input files can be open at once */
 #define EXIT exit(0)         /* how to stop normally */
 #define DEFEXT ".dre"        /* extension for dreadnaut files */
-
-extern long *ran_arr_ptr;       /* declared in rng.c */
-extern long seed;               /* declared in naututil.c */
-#define NEXTRAN (*ran_arr_ptr>=0 ? *ran_arr_ptr++ : ran_arr_cycle())
-#define KRAN(k) (NEXTRAN%(k))
 
 /*************************************************************************
  The following macros may represent differences between system.  This
@@ -198,7 +228,7 @@ extern long seed;               /* declared in naututil.c */
 #ifndef NAUTY_CPU_DEFINED
 #if HAVE_TIMES
 #include <sys/times.h>
-#define CPUDEFS static struct tms timebuffer;
+#define CPUDEFS static TLS_ATTR struct tms timebuffer;
 #ifndef CLK_TCK
 #include <time.h>
 #endif
@@ -220,6 +250,11 @@ extern long seed;               /* declared in naututil.c */
   1e-6 * (ruse.ru_utime.tv_usec + ruse.ru_stime.tv_usec))
 #endif
 #endif
+
+#ifndef CPUTIME
+#define CPUTIME 0.0
+#endif
+
 #endif /*NAUTY_CPU_DEFINED*/
 
 /*************************************************************************/
@@ -231,11 +266,13 @@ extern long seed;               /* declared in naututil.c */
 {struct timeval nauty_tv; \
  struct timezone nauty_tz; \
  gettimeofday(&nauty_tv,&nauty_tz); \
- seed = (nauty_tv.tv_sec<<10) + (nauty_tv.tv_usec>>10) & 017777777777L;}
+ seed = ((nauty_tv.tv_sec<<10) + (nauty_tv.tv_usec>>10)) & 0x7FFFFFFFL;}
 #else
 #if HAVE_TIME
 #include <time.h>
-#define INITSEED  seed = ((time((time_t*)NULL)<<1) | 1) & 017777777777L
+#define INITSEED  seed = ((time((time_t*)NULL)<<1) | 1) & 0x7FFFFFFFL
 #endif
 #endif
 #endif /*NAUTY_SEED_DEFINED*/
+
+/* @edit_msg@ */

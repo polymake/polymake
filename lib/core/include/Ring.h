@@ -165,6 +165,22 @@ public:
 template <typename Something>
 struct matching_ring : False {};
 
+template <typename ring_type, bool requires_coeff_ring=matching_ring<typename ring_type::coefficient_type>::value>
+struct ring_var_name;
+
+template <typename ring_type>
+struct ring_var_name<ring_type, false> {
+   static const int depth = 0;
+   static const char name = 'x';
+};
+
+template <typename ring_type>
+struct ring_var_name<ring_type, true> {
+   static const int depth = ring_var_name<typename ring_type::coefficient_ring_type>::depth + 1;
+   // x y z u v w t
+   static const char name = depth < 3 ? 'x' + depth : depth < 6 ? 'u' + depth - 3 : 't';
+};
+
 template <typename Coefficient=Rational, typename Exponent=int,
           bool requires_coeff_ring=matching_ring<Coefficient>::value>
 class Ring
@@ -193,7 +209,7 @@ public:
       : super(typename super::ring_key_type(Array<std::string>(n, names), NULL)) {}
 
    // construct with standard variable names x1, x2, ...
-   explicit Ring(int n, const std::string& name="x")
+   explicit Ring(int n, const std::string& name=std::string(1,ring_var_name<Ring>::name))
       : super(n, name, NULL) {}
 
    // construct a univariate ring
@@ -222,10 +238,16 @@ class Ring<Coefficient, Exponent, true>
 
    explicit Ring(const typename super::id_type* id_ptr_arg)
       : super(id_ptr_arg) {}
+
 public:
    typedef typename matching_ring<Coefficient>::type coefficient_ring_type;
    typedef typename coefficient_ring_type::scalar_ring_type scalar_ring_type;
 
+private:
+   // cache a copy of the coefficient ring, also makes it live long enough for serialization
+   mutable coefficient_ring_type coeff_ring;
+
+public:
    // undefined object - to be read later from perl::Value
    Ring() {}
 
@@ -240,7 +262,7 @@ public:
    Ring(const coefficient_ring_type& coeff_ring, const char* (&names)[n])
       : super(typename super::ring_key_type(Array<std::string>(n, names), coeff_ring.id_ptr)) {}
 
-   Ring(const coefficient_ring_type& coeff_ring, int n, const std::string& name="x")
+   Ring(const coefficient_ring_type& coeff_ring, int n, const std::string& name=std::string(1,ring_var_name<Ring>::name))
       : super(n, name, coeff_ring.id_ptr) {}
 
    Ring(const coefficient_ring_type& coeff_ring, const std::string& name)
@@ -257,15 +279,17 @@ public:
    explicit Ring(const char* (&names)[n])
       : super(typename super::ring_key_type(Array<std::string>(n, names), default_coefficient_ring().id_ptr)) {}
 
-   explicit Ring(int n, const std::string& name="x") :
+   explicit Ring(int n, const std::string& name=std::string(1,ring_var_name<Ring>::name)) :
       super(n, name, default_coefficient_ring().id_ptr) {}
 
    explicit Ring(const std::string& name)
       : super(1, name, default_coefficient_ring().id_ptr) {}
 
-   coefficient_ring_type get_coefficient_ring() const
+   const coefficient_ring_type& get_coefficient_ring() const
    {
-      return coefficient_ring_type(this->get_repo_key(this->id_ptr).second);
+      if (coeff_ring.id_ptr == NULL)
+         this->coeff_ring = coefficient_ring_type(this->get_repo_key(this->id_ptr).second);
+      return coeff_ring;
    }
 
    const Coefficient& zero_coef() const

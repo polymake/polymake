@@ -17,15 +17,22 @@
 #ifndef POLYMAKE_HASH_SET_
 #define POLYMAKE_HASH_SET_
 
+#if defined(__cplusplus) && __cplusplus >= 201103L && !defined(PM_FORCE_TR1)
+#include <unordered_set>
+#define PmTr1NS std
+#else
 #include <tr1/unordered_set>
+#define PmTr1NS std::tr1
+#endif
+
 #include "polymake/internal/hash_iterators.h"
 
 namespace pm {
 
 template <typename Key, typename Params=void>
 class hash_set
-   : public std::tr1::unordered_set<Key, hash_func<Key>, typename hash_table_cmp_adapter<Key,Params>::type> {
-   typedef std::tr1::unordered_set<Key, hash_func<Key>, typename hash_table_cmp_adapter<Key,Params>::type> _super;
+   : public PmTr1NS::unordered_set<Key, hash_func<Key>, typename hash_table_cmp_adapter<Key,Params>::type> {
+   typedef PmTr1NS::unordered_set<Key, hash_func<Key>, typename hash_table_cmp_adapter<Key,Params>::type> _super;
 public:
    hash_set() {}
    explicit hash_set(size_t start_cap) : _super(start_cap) {}

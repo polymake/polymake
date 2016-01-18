@@ -42,7 +42,6 @@ my ($verbose, $script, $iscript, $mscript, $connect, $touch, $help, $tell_versio
 my $config_path=$ENV{POLYMAKE_CONFIG_PATH} || "user";
 
 if ( ! GetOptions( 'v+' => \$verbose, 'd+' => \$DebugLevel,
-                   'n' => \$Polymake::Core::Scheduler::dry_run,
                    'A=s' => \$start_application,
                    'T=f' => \$Polymake::Core::Rule::timeout,
                    'script=s' => sub { $script=$_[1]; die "!FINISH\n" },
@@ -58,16 +57,13 @@ if ( ! GetOptions( 'v+' => \$verbose, 'd+' => \$DebugLevel,
      #  --*script --connect --touch --help --version are mutually exclusive
      or defined($script)+defined($iscript)+defined($mscript)+defined($connect)+(@ARGV==1 && $ARGV[0] eq "-")+$touch+$help+$tell_version > 1
      #  --help --version do not consume any additional args
-     or $help+$tell_version && @ARGV
-     #  -n is only applicable in compatibility mode
-     or $Polymake::Core::Scheduler::dry_run && (defined($script) || @ARGV<2) ) {
-
+     or $help+$tell_version && @ARGV) {
    $!=1;
    die <<'.';
 usage: polymake [-dv] [-A <application>] [-T <timeout>]
                 [--reconfigure] [--config-path "DIR;..." | --no-config | --ignore-config]
                 [ --script | --iscript | --mscript <script_file> arg ... ] | '<code>' | --connect SOCKETFILE || HOST:PORT | -
-                [-n] <file> <property|method> ... |
+                <file> <property|method> ... |
                 --touch <file> ... | --help | --version
 .
 }
@@ -195,7 +191,7 @@ if ($reconfigure) {
    $Core::Application::configured_at=time;
 }
 
-init Core::CPlusPlus(1);
+init Core::CPlusPlus();
 
 if ($touch) {
    if (Main::load_apps()) {

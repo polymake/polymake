@@ -82,7 +82,7 @@ rule initial : SCHLEGEL_DIAGRAM.FACET, N_FACETS {
    }
 }
 
-rule SCHLEGEL_DIAGRAM.INNER_POINT = VERTEX_BARYCENTER;
+rule SCHLEGEL_DIAGRAM(any).INNER_POINT = VERTEX_BARYCENTER;
 
 rule SCHLEGEL_DIAGRAM.TRANSFORM, SCHLEGEL_DIAGRAM.VIEWPOINT : VERTICES, FACETS, DUAL_GRAPH.ADJACENCY, \
      SCHLEGEL_DIAGRAM.FACET, SCHLEGEL_DIAGRAM.ZOOM, SCHLEGEL_DIAGRAM.FACET_POINT, SCHLEGEL_DIAGRAM.INNER_POINT {
@@ -295,15 +295,15 @@ user_method SOLID(%Visual::Polygons::decorations) {
       my $F=facet($P,$i,relabel=>1);
       push @facets,
            new Visual::Polygons( Name => "Facet #$i of ".$P->name,
-				 Vertices => $G->Coord->minor($P->VERTICES_IN_FACETS->[$i],All),
-				 VertexLabels => $F->VERTEX_LABELS,
-				 Facets => $F->VIF_CYCLIC_NORMAL,
-				 FacetNeighbors => $F->NEIGHBOR_FACETS_CYCLIC_NORMAL,
-				 FacetColor => $solid_color,
-				 Closed => 1,
-				 NEdges => $F->N_EDGES,
-				 $decor,
-			       );
+                                 Vertices => $G->Coord->minor($P->VERTICES_IN_FACETS->[$i],All),
+                                 VertexLabels => $F->VERTEX_LABELS,
+                                 Facets => $F->VIF_CYCLIC_NORMAL,
+                                 FacetNeighbors => $F->NEIGHBOR_FACETS_CYCLIC_NORMAL,
+                                 FacetColor => $solid_color,
+                                 Closed => 1,
+                                 NEdges => $F->N_EDGES,
+                                 $decor,
+                               );
    }
    push @{$self->elements}, \@facets;
    visualize($self);
@@ -402,6 +402,7 @@ method minor($ all_rows_or_cols) { pop; new Minor(@_) }
 
 method add_points(Visual::SchlegelTransform) {
    my ($self, $other)=@_;
+   return if $other==$self;
    if ($other->source != $self->source) {
       croak( "Can't mix two different Schlegel projections in one drawing" );
    }
@@ -416,14 +417,13 @@ method add_points(Visual::SchlegelTransform) {
 method add_points(Visual::SchlegelTransform::Minor) {
    my ($self, $other)=@_;
    my $other_source=$other->source;
-   if ($other_source != $self) {
-      if ($other_source->source != $self) {
-         croak( "Can't mix two different Schlegel projections in one drawing" );
-      }
-      my $offset=$other_source->points->[0];
-      $other->source=$self;
-      $other->points=[ map { $offset+$_ } @{$other->points} ];
+   return if $other_source==$self;
+   if ($other_source->source != $self) {
+      croak( "Can't mix two different Schlegel projections in one drawing" );
    }
+   my $offset=$other_source->points->[0];
+   $other->source=$self;
+   $other->points=[ map { $offset+$_ } @{$other->points} ];
 }
 
 package Visual::SchlegelTransform::Minor;
@@ -451,7 +451,7 @@ method cols { $_[0]->source->cols }
 object SchlegelDiagram {
 
 # Draw the Schlegel diagram.
-# @option pm::perl::Hash proj_facet decoration for the edges of the projection face
+# @option Visual::Graph::decorations proj_facet decorations for the edges of the projection face
 # @options %Visual::Graph::decorations
 # @return Visual::SchlegelDiagram
 
@@ -507,16 +507,16 @@ options %schlegel_init=(
 # @category Visualization
 # Create a Schlegel diagram and draw it.
 # @options %schlegel_init
-# @option FIXME proj_facet decorations for the Edges of the projection face 
+# @option Visual::Graph::decorations proj_facet decorations for the edges of the projection face 
 # @options %Visual::Wire::decorations
 # @return Visual::SchlegelDiagram
 
 user_method SCHLEGEL(%schlegel_init,  { proj_facet => undef },  %Visual::Wire::decorations) : VERTICES, VERTICES_IN_FACETS, N_FACETS, GRAPH {
    my ($this, $schlegel_init, $proj_facet_decor, $decor)=@_;
    if (!defined(wantarray) && !keys %$schlegel_init and my @SD=@{$this->lookup("SCHLEGEL_DIAGRAM")}) {
-      $_->VISUAL($proj_facet_decor,$decor) for @SD;
+      $_->VISUAL($proj_facet_decor, $decor) for @SD;
    } else {
-      $this->SCHLEGEL_DIAGRAM($schlegel_init, temporary)->VISUAL($proj_facet_decor,$decor);
+      $this->SCHLEGEL_DIAGRAM($schlegel_init, temporary)->VISUAL($proj_facet_decor, $decor);
    }
 }
 

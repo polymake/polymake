@@ -34,8 +34,8 @@ rule INTERIOR_RIDGE_SIMPLICES, MAX_BOUNDARY_SIMPLICES : COMBINATORIAL_DIM, RAYS,
 # @category Combinatorics
 # A matrix whose rows contain the cocircuit equations of a cone C
 # symmetries of the cone are NOT taken into account
-rule COCIRCUIT_EQUATIONS : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, MAX_INTERIOR_SIMPLICES {
-    $this->COCIRCUIT_EQUATIONS = cocircuit_equations($this->COMBINATORIAL_DIM, $this->RAYS, $this->RAYS_IN_FACETS, $this->MAX_INTERIOR_SIMPLICES);
+rule COCIRCUIT_EQUATIONS : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, INTERIOR_RIDGE_SIMPLICES, MAX_INTERIOR_SIMPLICES {
+    $this->COCIRCUIT_EQUATIONS = cocircuit_equations($this->COMBINATORIAL_DIM, $this->RAYS, $this->RAYS_IN_FACETS, $this->INTERIOR_RIDGE_SIMPLICES, $this->MAX_INTERIOR_SIMPLICES);
 }
 
 # @category Combinatorics
@@ -52,6 +52,12 @@ rule FOLDABLE_COCIRCUIT_EQUATIONS : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, INT
 # Symmetries of P are NOT taken into account.
 # @param Polytope P the input polytope
 # @return Array<Set>
+# @example > print max_interior_simplices(cube(2));
+# | {0 1 2}
+# | {0 1 3}
+# | {0 2 3}
+# | {1 2 3}
+
 user_function max_interior_simplices<Scalar>(Cone<Scalar>) {
     max_interior_simplices_impl<Scalar>(@_);
 }

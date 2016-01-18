@@ -1,0 +1,77 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+object Cone{
+
+	#rule PSEUDOVERTEX_LABELS : PSEUDOVERTEX_COVECTORS {
+	#	$this->PSEUDOVERTEX_LABELS(temporary)=[ map { join("", @$_) } @{$this->PSEUDOVERTEX_COVECTORS} ];
+	#}
+
+	rule PROJECTIVE_AMBIENT_DIM : PSEUDOVERTICES | POINTS {
+		$this->PROJECTIVE_AMBIENT_DIM=($this->PSEUDOVERTICES | POINTS)->cols-1;
+	}
+	weight 0.1;
+
+	rule VERTICES, VERTICES_IN_POINTS : POINTS {
+		discard_non_vertices($this);
+	}
+	weight 1.20;
+
+	rule ENVELOPE.INEQUALITIES, ENVELOPE.EQUATIONS : POINTS{
+		$this->ENVELOPE = envelope($this->POINTS);
+	}
+
+	rule DOME : POINTS {
+		$this->DOME = dome_hyperplane_arrangement($this->POINTS);
+	}
+
+	rule PSEUDOVERTICES, MAXIMAL_COVECTOR_CELLS : DOME {
+		extract_pseudovertices($this);
+	}
+
+	rule TORUS_COVECTOR_DECOMPOSITION, CONE_COVECTOR_DECOMPOSITION, CONE_MAXIMAL_COVECTOR_CELLS, MAXIMAL_COVECTORS, CONE_MAXIMAL_COVECTORS : POINTS, PSEUDOVERTICES, PSEUDOVERTEX_COVECTORS, MAXIMAL_COVECTOR_CELLS {
+		compute_covector_decomposition($this,0);
+	}
+	weight 6.20;
+
+	rule CONE_COVECTOR_DECOMPOSITION, CONE_MAXIMAL_COVECTOR_CELLS, CONE_MAXIMAL_COVECTORS : POINTS, PSEUDOVERTICES, PSEUDOVERTEX_COVECTORS, MAXIMAL_COVECTOR_CELLS {
+		compute_covector_decomposition($this,1);
+	}
+	weight 6.10;
+
+	rule MAXIMAL_COVECTORS : MAXIMAL_COVECTOR_CELLS, PSEUDOVERTICES, POINTS {
+		compute_maximal_covectors($this);
+	}	
+	weight 2.10;
+
+	rule PSEUDOVERTEX_COVECTORS : PSEUDOVERTICES, POINTS {
+		$this->PSEUDOVERTEX_COVECTORS=covectors_of_scalar_vertices($this->PSEUDOVERTICES, $this->POINTS);
+	}
+	weight 1.10;
+
+	rule PSEUDOVERTEX_COARSE_COVECTORS : PSEUDOVERTICES, POINTS {
+		$this->PSEUDOVERTEX_COARSE_COVECTORS=coarse_covectors_of_scalar_vertices($this->PSEUDOVERTICES, $this->POINTS);
+	}
+	weight 1.10;
+
+
+}
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

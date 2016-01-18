@@ -38,25 +38,7 @@ void relocate(std::list<Value,Alloc>* from, std::list<Value,Alloc>* to)
    _Destroy(from);
 }
 
-template <typename Value, typename Alloc=std::allocator<Value> >
-class std_list_traits : public std::list<Value,Alloc> {
-protected:
-   std_list_traits();
-   ~std_list_traits();
-public:
-   typedef typename std::list<Value,Alloc>::_Node Node;
-
-#if defined(__GNUC__)
-   static Node* to_node(Value* data)
-   {
-      return reverse_cast(data, &Node::_M_data);
-   }
-   static const Node* to_node(const Value* data)
-   {
-      return reverse_cast(data, &Node::_M_data);
-   }
-#endif
-};
+#if defined(__GLIBCXX__)
 
 #ifndef _GLIBCXX_STD
 #define _GLIBCXX_STD _GLIBCXX_STD_A
@@ -73,6 +55,22 @@ struct iterator_cross_const_helper<_GLIBCXX_STD::_List_const_iterator<Value>, tr
    typedef _GLIBCXX_STD::_List_iterator<Value> iterator;
    typedef _GLIBCXX_STD::_List_const_iterator<Value> const_iterator;
 };
+
+#elif defined(_LIBCPP_VERSION)
+
+template <typename Value>
+struct iterator_cross_const_helper<std::__1::__list_iterator<Value,void*>,true>{
+   typedef std::__1::__list_iterator<Value,void*> iterator;
+   typedef std::__1::__list_const_iterator<Value,void*> const_iterator;
+};
+
+template <typename Value>
+struct iterator_cross_const_helper<std::__1::__list_const_iterator<Value,void*>,true>{
+   typedef std::__1::__list_iterator<Value,void*> iterator;
+   typedef std::__1::__list_const_iterator<Value,void*> const_iterator;
+};
+
+#endif
 
 } // end namespace pm
 

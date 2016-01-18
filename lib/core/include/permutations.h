@@ -53,6 +53,16 @@ int permutation_sign(const Permutation& v)
    return sign;
 }
 
+template <typename Permutation>
+int n_fixed_points(const Permutation& p)
+{
+   int i(0), n(0);
+   for (typename Entire<Permutation>::const_iterator pit = entire(p); !pit.at_end(); ++pit, ++i)
+      if (*pit == i)
+         ++n;
+   return n;
+}
+
 template <typename Permutation, typename InvPermutation> inline
 void inverse_permutation(const Permutation& perm, InvPermutation& inv_perm)
 {

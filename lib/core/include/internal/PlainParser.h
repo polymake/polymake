@@ -45,7 +45,8 @@ public:
 protected:
    ostream* os;
 public:
-   PlainPrinter(ostream& os_arg) : os(&os_arg) { }
+   explicit PlainPrinter(ostream& os_arg)
+      : os(&os_arg) { }
 
    template <typename Data>
    void fallback(const Data& x) { *os << x; }
@@ -156,7 +157,7 @@ public:
 template <typename Traits> inline
 PlainPrinter<void,Traits> wrap(std::basic_ostream<char,Traits>& os)
 {
-   return os;
+   return PlainPrinter<void,Traits>(os);
 }
 
 extern PlainPrinter<> cout;
@@ -668,6 +669,13 @@ template <> class conv<int, std::string> : public convToString<int> {};
 template <> class conv<long, std::string> : public convToString<long> {};
 template <> class conv<float, std::string> : public convToString<float> {};
 template <> class conv<double, std::string> : public convToString<double> {};
+
+namespace perl {
+
+// loop through perl STDOUT
+extern std::ostream cout;
+
+}
 
 } // end namespace pm
 

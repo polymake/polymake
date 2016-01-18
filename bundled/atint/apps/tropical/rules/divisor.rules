@@ -1,0 +1,85 @@
+########################################################################
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#  
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#  
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+#  Boston, MA  02110-1301, USA.
+#  
+#  ---
+#  Copyright (C) 2011-2015, Simon Hampe <simon.hampe@googlemail.com>
+#
+#
+#	This file contains wrappers for divisor computation 
+#
+########################################################################
+
+# @category Divisor computation
+# This function computes the divisor of one or more rational functions on a tropical cycle.
+# @param Cycle C A tropical cycle
+# @param RationalFunction F An arbitrary list of rational functions (r_1,...r_n). The [[DOMAIN]]
+# of r_i should contain the support of r_{i-1} * ... * r_1 * C. Note that using the ^-operator
+# on these rational functions is allowed and will result in applying the corresponding function several times.
+# @return Cycle The divisor r_n * ... * r_1 * C
+user_function divisor<Addition>(Cycle<Addition>;@) {
+	my ($cycle, @functions) = @_;
+	
+	if(scalar(@functions) == 0) { return $cycle;}
+
+	if(scalar(@functions) > $cycle->PROJECTIVE_DIM) {
+		return empty_cycle<Addition>($cycle->PROJECTIVE_AMBIENT_DIM);
+	}
+
+	for my $f (@functions) {
+		if(!is_compatible($cycle,$f)) {
+			die "Tropical addition of cycle and function are not compatible.";
+		}
+		$cycle = divisor_with_refinement($cycle,$f);
+	}	
+
+	return $cycle;
+}
+
+# @category Divisor computation
+# This function computes the divisor of one or more rational functions on a tropical cycle.
+# It should only be called, if the [[DOMAIN]] of all occuring cycles is the cycle itself. 
+# This function will be faster than [[divisor]], since it computes no refinements.
+# @param Cycle C A tropical cycle
+# @param RationalFunction F An arbitrary list of rational functions (r_1,...r_n). The [[DOMAIN]]
+# of each function should be equal (in terms of [[VERTICES]] and [[MAXIMAL_POLYTOPES]]) to the cycle.
+# Note that using the ^-operator on these rational functions is allowed and will result in 
+# applying the corresponding function several times.
+# @return Cycle The divisor r_n * ... * r_1 * C
+user_function divisor_nr<Addition>(Cycle<Addition>;@) {
+	my ($cycle,@functions) = @_;
+	if(scalar(@functions) == 0) { return $cycle;}
+	if(scalar(@functions) > $cycle->PROJECTIVE_DIM) {
+		return empty_cycle<Addition>($cycle->PROJECTIVE_AMBIENT_DIM);
+	}
+
+	my $value_matrix = new Matrix<Rational>(0,$cycle->SEPARATED_VERTICES->rows() + $cycle->LINEALITY_SPACE->rows());
+	for my $f (@functions) {
+		if(!is_compatible($cycle,$f)) {
+			die "Tropical addition of cycle and function are not compatible.";
+		}
+		my $vertex_values = $f->VERTEX_VALUES;
+		my $lineality_values = $f->LINEALITY_VALUES;
+		my $full_values = $vertex_values | $lineality_values;
+		for my $i (1 .. $f->POWER) {
+			$value_matrix /= $full_values;
+		}
+	}
+
+	return divisorByValueMatrix($cycle,$value_matrix);
+
+}
+
+

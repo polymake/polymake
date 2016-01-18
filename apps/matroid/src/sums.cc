@@ -324,37 +324,37 @@ UserFunction4perl("# @category Producing a matroid from matroids"
 UserFunction4perl("# @category Producing a matroid from matroids"
                   "# The series extension of matroids m1 and m2 with basepoints e1 and e2"
                   "# @param Matroid m_1"
-                  "# @param int e_1"
+                  "# @param Int e_1"
                   "# @param Matroid m_2"
-                  "# @param int e_2"
+                  "# @param Int e_2"
                   "# @return Matroid",
                   &series_extension,"series_extension(Matroid $ Matroid $)");
 UserFunction4perl("# @category Producing a matroid from matroids"
                   "# The series extension of a matroid m and uniform(2,4) with basepoint e"
                   "# @param Matroid m"
-                  "# @param int e"
+                  "# @param Int e"
                   "# @return Matroid",
                   &single_element_series_extension,"series_extension(Matroid $)");
 UserFunction4perl("# @category Producing a matroid from matroids"
                   "# The parallel extension of matroids m1 and m2 with basepoints e1 and e2"
                   "# @param Matroid m_1"
-                  "# @param int e_1"
+                  "# @param Int e_1"
                   "# @param Matroid m_2"
-                  "# @param int e_2"
+                  "# @param Int e_2"
                   "# @return Matroid",
                   &parallel_extension,"parallel_extension(Matroid $ Matroid $)");
 UserFunction4perl("# @category Producing a matroid from matroids"
                   "# The parallel extension of a matroid m and uniform(2,4) with basepoint e"
                   "# @param Matroid m"
-                  "# @param int e"
+                  "# @param Int e"
                   "# @return Matroid",
                   &single_element_parallel_extension,"parallel_extension(Matroid $)");
 UserFunction4perl("# @category Producing a matroid from matroids"
                   "# The 2-sum of matroids m1 and m2  with basepoints e1 and e2"
                   "# @param Matroid m_1"
-                  "# @param int e_1"
+                  "# @param Int e_1"
                   "# @param Matroid m_2"
-                  "# @param int e_2"
+                  "# @param Int e_2"
                   "# @return Matroid",
                   &two_sum,"two_sum");
 } }

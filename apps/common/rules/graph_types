@@ -235,7 +235,7 @@ user_function adjacency_matrix(Graph:lvalue_opt:anchor) : c++;
 
 function permuted_nodes(Graph, *) : c++;
 
-function renumber_nodes(Graph) : c++;
+function renumber_nodes(Graph:anchor) : c++;
 
 
 # @category Graph Operations
@@ -274,6 +274,9 @@ declare property_type NodeIterator<*> : Iterator : c++ {
 # Returns the sequence of all valid nodes of a graph.
 # @param Graph graph
 # @return NodeSet
+# @example > print nodes(cycle_graph(5)->ADJACENCY);
+# {0 1 2 3 4}
+
 user_function nodes(Graph:anchor) : c++ : returns(NodeSet);
 
 function entire(NodeSet:anchor) : c++ : returns(NodeIterator);
@@ -322,7 +325,7 @@ declare property_type EdgeMap<Dir,Element> : GraphMap<Dir,Element> \
    # Access the data associated with an edge between two given nodes.
    # @param Int from source node
    # @param Int to target node
-   method operator(Int,Int) : lvalue_opt : wary : c++;
+   user_method edge(Int,Int) : lvalue_opt : wary : c++(name => '()');
 }
 
 # @category Graph Types
@@ -343,18 +346,18 @@ declare property_type EdgeHashMap<Dir,Element> : GraphMap<Dir,Element> \
    # The new data element is created on demand.
    # @param Int from source node
    # @param Int to target node
-   method operator(Int,Int) : lvalue : wary : c++;
+   user_method edge(Int,Int) : lvalue : wary : c++(name => '()');
 
    # Access the data associated with an edge between two given nodes.
    # @param Int from source node
    # @param Int to target node
    # @return Iterator pointing to the data element (must be dereferenced as ${...}) or undef if the element does not exist.
-   method find(Int,Int) : wary : c++;
+   user_method find(Int,Int) : wary : c++;
 
    # Delete the data associated with an edge between two given nodes.
    # @param Int from source node
    # @param Int to target node
-   method erase(Int,Int) : non_const : void : wary : c++;
+   user_method erase(Int,Int) : non_const : void : wary : c++;
 }
 
 function createNodeMap<Element,Dir>(Graph<Dir>) { new NodeMap<Dir,Element>(@_) }
@@ -371,7 +374,14 @@ function createEdgeHashMap<Element,Dir>(Graph<Dir>) { new EdgeHashMap<Dir,Elemen
 # @param Graph graph
 # @param Set set indices of selected nodes
 # @return Graph
-user_function induced_subgraph(Graph:wary:anchor, *) : c++ ( include => "polymake/IndexedSubgraph.h" );
+# @example $g = new props::Graph(cycle_graph(5)->ADJACENCY);
+# > $s1 = new Set(1,2,3);
+# > print induced_subgraph($g,$s1);
+# | {2}
+# | {1 3}
+# | {2}
+
+user_function induced_subgraph(Graph:wary:anchor, *:anchor) : c++ ( include => "polymake/IndexedSubgraph.h" );
 
 
 # @category Graph Operations
@@ -379,6 +389,13 @@ user_function induced_subgraph(Graph:wary:anchor, *) : c++ ( include => "polymak
 # @param Graph graph
 # @tparam Coord coordinate type for the resulting matrix, default: [[Int]]
 # @return SparseMatrix<Coord>
+# @example > print node_edge_incidences(cycle_graph(5)->ADJACENCY);
+# | (5) (0 1) (3 1)
+# | (5) (0 1) (1 1)
+# | (5) (1 1) (2 1)
+# | (5) (2 1) (4 1)
+# | (5) (3 1) (4 1)
+
 user_function node_edge_incidences<Coord=Int>(Graph) : c++ ( include => "polymake/node_edge_incidences.h" );
 
 

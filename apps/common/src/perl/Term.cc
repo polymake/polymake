@@ -41,5 +41,6 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary_mul, perl::Canned< const Term< Rational, int > >, perl::Canned< const Term< Rational, int > >);
    OperatorInstance4perl(Unary_neg, perl::Canned< const Term< Rational, int > >);
    Class4perl("Polymake::common::Term_A_TropicalNumber_A_Min_I_Rational_Z_I_Int_Z", Term< TropicalNumber< Min, Rational >, int >);
+   Class4perl("Polymake::common::Term_A_TropicalNumber_A_Max_I_Rational_Z_I_Int_Z", Term< TropicalNumber< Max, Rational >, int >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

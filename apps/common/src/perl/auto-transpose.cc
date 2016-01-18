@@ -16,15 +16,15 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Integer.h"
 #include "polymake/Matrix.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
-#include "polymake/IncidenceMatrix.h"
-#include "polymake/Integer.h"
-#include "polymake/SparseMatrix.h"
 #include "polymake/Set.h"
+#include "polymake/SparseMatrix.h"
 #include "polymake/Vector.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -40,5 +40,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(transpose_X8, perl::Canned< const Matrix< Integer > >);
    FunctionInstance4perl(transpose_X8, perl::Canned< const SparseMatrix< int, NonSymmetric > >);
    FunctionInstance4perl(transpose_X8, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
+   FunctionInstance4perl(transpose_X8, perl::Canned< const pm::ColChain<pm::Matrix<pm::Rational> const&, pm::SingleCol<pm::Vector<pm::Rational> const&> > >);
+   FunctionInstance4perl(transpose_X8, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

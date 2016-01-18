@@ -16,68 +16,51 @@
 use strict;
 use namespaces;
 
+package Polymake::Core::Scheduler::Debug;
+
+use Polymake::Struct (
+   [ '$id' => 'undef' ],        # unique identifier
+   [ '$children' => '0' ],      # number of variants derived from this chain
+);
+
+sub clone {
+   my ($self)=@_;
+   Struct::make_body(
+      (defined($self->id) ? $self->id."." : "").(++$self->children),
+      0,
+      $self);
+}
+
 package Polymake::Core::Scheduler::TentativeRuleChain;
 
 my @textual_code=qw( OK RETRY FAILED INFEASIBLE );
 
-sub dump {
-   my $self=shift;
+sub describe_rule {
+   my ($rule)=@_;
+   $rule->header . "   (" . $rule->rgr_node . ")=>[" . join(" ", map { "[@$_]" } @{$rule->prop_vertex_sets}) . "]\n"
+}
+
+sub debug_print {
+   my ($self, $opname, $heap, $with_graph)=@_;
    local $dbg_prefix="";
-   dbg_print( "weight=", $self->weight );
-   dbg_print( map { $_->header, "\n" } @{$self->rules} );
-   dbg_print( "ready:\n", map { $_->header, "\n" } @{$self->ready} );
-   if (keys %{$self->pending_perms}) {
-      dbg_print( "pending:\n", map { map { $_->header, "\n" } keys %$_ } values %{$self->pending_perms} );
-   }
-
-   return if $DebugLevel<=2;
-
-   if (!is_hash($self->supplier)) {
-      dbg_print( "invalid field 'supplier': ", $self->supplier );
-      return;
-   }
-
-   if (!is_hash($self->consumer)) {
-      dbg_print( "invalid field 'consumer': ", $self->consumer );
-      return;
-   }
-
-   while (my ($rule, $supp_list)=each %{$self->supplier}) {
-      if (is_object($rule)) {
-         if (!is_ARRAY($supp_list)) {
-            if ($supp_list ne '0') {
-               dbg_print( "invalid supplier list of ", $rule->header, ": $supp_list" );
-            }
-            next;
-         }
-         dbg_print( "supplier of ", $rule->header, ":\n" );
-         foreach my $supp_group (@$supp_list) {
-            if (!is_hash($supp_group)) {
-               dbg_print( "invalid element in supplier list: $supp_group\n" );
-               next;
-            }
-            dbg_print( (map { ("   ", $_->header, "\n") } keys %$supp_group),
-                       "---" );
-         }
-      } else {
-         if (ref($supp_list) ne "ARRAY") {
-            dbg_print( "invalid multiple chooser mask for ", @$rule ? $rule->[0]->header : " EMPTY chooser bag" );
-            next;
-         }
-         dbg_print( "multiple chooser bag\n",
-                    (map { ("   ", $_->header, "\n") } @$rule),
-                    "   common mask: (", join(",", @$supp_list), ")\n---" );
+   dbg_print( "======= $opname ", $self->debug->id, " ======" );
+   if (defined $heap) {
+      if (my @weight=tell_weight($self, $heap)) {
+         dbg_print( "weight=", @weight);
+      }
+      if (my ($facet_id, @vertices)=$heap->describe_facet($self)) {
+         dbg_print( "facet #$facet_id=[@vertices]" );
       }
    }
+   dbg_print( "scheduled:\n", map { describe_rule($_) } @{$self->rules} );
+   dbg_print( "ready:\n", map { describe_rule($_) } @{$self->ready} );
 
-   while (my ($rule, $cons)=each %{$self->consumer}) {
-      if (!is_hash($cons)) {
-	 dbg_print( "invalid consumer list of ", $rule->header, ": $cons" );
-	 next;
-      }
-      dbg_print( "consumer of ", $rule->header, ":\n",
-		 (map { ("   ", $_->header, "\n") } keys %$cons), "---" );
-   }
+   return if !$with_graph || $DebugLevel<=2;
+
+   dbg_print( "graph:\n", map { describe_rule($_),
+                                "    supp: ", join(", ", $self->get_active_supplier_nodes($_)), "\n",
+                                "    cons: ", join(", ", $self->get_active_consumer_nodes($_)), "\n"
+                          } get_active_rules($self) );
 
    return unless instanceof InitRuleChain($self);
 
@@ -86,8 +69,8 @@ sub dump {
    } else {
       dbg_print( "exec codes:\n" );
       while (my ($rule, $code)=each %{$self->run}) {
-	 dbg_print( $rule->header, " -> ",
-		    is_object($code) ? $code : $textual_code[$code] );
+         dbg_print( $rule->header, " -> ",
+                    is_object($code) ? $code : $textual_code[$code] );
       }
    }
 }
@@ -101,49 +84,16 @@ sub dump_list($) {
    }
 }
 
-####################################################################################
-
-package Polymake::Core::Scheduler::VerboseHeap;
-@ISA=( 'Polymake::Core::Scheduler::Heap' );
-
-sub reset {
-   my ($self, $chain)=@_;
-   if (defined $chain) {
-      dbg_print( "====== reset ", $chain->debug->id, " ======" );
-      $chain->dump;
-   }
-   &Heap::reset;
+sub tell_dropped {
+   my ($self)=@_;
+   local $dbg_prefix="";
+   dbg_print( "======= drop ", $self->debug->id, " ======" );
 }
 
-sub push {
-   my ($self, $chain)=@_;
-   dbg_print( "======= push ", $chain->debug->id, " ======" );
-   $chain->dump;
-   @{$chain->ready} or die "attempt to push a dead variant to heap!\n";
-   &Heap::push;
-}
-
-sub pop {
-   if (defined (my $chain=&Heap::pop)) {
-      dbg_print( "======= pop ", $chain->debug->id, " =======" );
-      $chain->dump;
-      defined($chain->final) or die "dead variant popped off from heap!\n";
-      $chain;
-   } else {
-      dbg_print( "======= Heap is empty =======" );
-      undef;
-   }
-}
-
-sub find {
-   my ($self, $id)=@_;
-   foreach my $chain (@$self) {
-      return $chain if $chain->debug->id eq $id;
-   }
-}
 
 1
 
 # Local Variables:
-# c-basic-offset:3
+# cperl-indent-level:3
+# indent-tabs-mode:nil
 # End:

@@ -153,7 +153,7 @@ user_method VISUAL(%Visual::Polygon::decorations, %Visual::Graph::decorations, {
                      # the following check is needed because of our object / property semantics
                      defined($this->parent) && $this->parent->isa("Cone") && defined($this->parent->give("RAYS"))
                   ) && $this->G_DIM <= 3) {
-         convert_to<Float>($this->COORDINATES);
+          convert_to<Float>((defined($this->lookup("VERTEX_INDICES"))) ? $this->COORDINATES->minor($this->VERTEX_INDICES,All) : $this->COORDINATES);
       } else {
          spring_embedding_3d($this->GRAPH->ADJACENCY, $seed)->compute;
       }
@@ -289,7 +289,7 @@ user_method FACES($ %Visual::Polygon::decorations) {
    compose($self, vis_facets($faces, $self->elements->[0]->Coord, $labels, $facet_decor, \%edge_decor, \%point_decor));
 }
 
-# Add the [[SimplicialComplex.MORSE_MATCHING|MORSE_MATCHING]] to the visualization of the [[SimplicialComplex]].
+# Add the [[SimplicialComplex::MORSE_MATCHING|MORSE_MATCHING]] to the visualization of the [[SimplicialComplex]].
 user_method MORSE_MATCHING(%Visual::Graph::decorations) {
    my ($this, $decor)=@_;
    my $complex = $this->SimplicialComplex;

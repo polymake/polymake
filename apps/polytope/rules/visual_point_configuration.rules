@@ -29,7 +29,7 @@ method basis_solid { $_[0]->elements->[0] }
 # @return Visual::PointConfiguration
 user_method TRIANGULATION(;%Visual::Polygons::decorations) {
    my ($self, $decor)=@_;
-   my $d=$self->PointConfiguration->AMBIENT_DIM;
+   my $d=$self->PointConfiguration->VECTOR_AMBIENT_DIM-1;
    if ($d > 3) {
       die "don't know how to visualize the triangulation of a $d-d configuration\n";
    }
@@ -76,18 +76,19 @@ user_method TRIANGULATION_BOUNDARY(%Visual::Graph::decorations) {
    visualize($self);
 }
 
-# Visualize the [[POLYTOPAL_SUBDIVISION]] of a point configuration.
+# Visualize a [[POLYTOPAL_SUBDIVISION]] of a point configuration.
+# @param Int index Index of the subdivision to visualize
 # @options %Visual::Polygons::decorations
 # @return Visual::PointConfiguration
-user_method POLYTOPAL_SUBDIVISION(;%Visual::Polygons::decorations) {
-    my ($self, $decor)=@_;
-    my $d=$self->PointConfiguration->AMBIENT_DIM;
+user_method POLYTOPAL_SUBDIVISION(;$=0,%Visual::Polygons::decorations) {
+    my ($self, $index, $decor)=@_;
+    my $d=$self->PointConfiguration->VECTOR_AMBIENT_DIM-1;
     if ($d > 3) {
         die "don't know how to visualize the polytopal subdivision of a $d-d configuration\n";
     }
     $self->Name="Polytopal subdivision of ".$self->PointConfiguration->name;
     my $pc=$self->PointConfiguration->POINTS;
-    my $psd=$self->PointConfiguration->POLYTOPAL_SUBDIVISION->MAXIMAL_POLYTOPES;
+    my $psd=$self->PointConfiguration->POLYTOPAL_SUBDIVISION->[$index]->MAXIMAL_CELLS;
     my @faces=();
 
     my $skeleton=$self->basis_solid;
@@ -138,7 +139,7 @@ object PointConfiguration {
 # @category Visualization
 # Visualize the [[POINTS]] of a point configuration.
 # @options %Visual::Polygons::decorations
-# @return Visual::PointSet
+# @return Visual::Object
 user_method VISUAL_POINTS(%Visual::Polygons::decorations) : POINTS, NON_VERTICES, N_POINTS {
    my ($this, $decor)=@_;
    my @colors = map { exists $this->NON_VERTICES->{$_} ? $Visual::Color::non_vertices : $Visual::Color::vertices } @{range(0,$this->N_POINTS-1)};
@@ -159,10 +160,10 @@ user_method VISUAL_POINTS(%Visual::Polygons::decorations) : POINTS, NON_VERTICES
 user_method VISUAL(%Visual::Polygons::decorations) : POINTS, NON_VERTICES, N_POINTS, PIF_CYCLIC_NORMAL {
    my ($this, $decor)=@_;
    my @colors = map { exists $this->NON_VERTICES->{$_} ? $Visual::Color::non_vertices : $Visual::Color::vertices } @{range(0,$this->N_POINTS-1)};
-   my $P= $this->DIM==2
+   my $P= $this->VECTOR_DIM==3
 	  ? new Visual::Polygon( Name => $this->name,
 				 Points => dehomogenize(convert_to<Float>($this->POINTS)),
-				 PointLabels =>$this->lookup("LABELS") ,
+				 PointLabels =>$this->lookup("POINT_LABELS") ,
 				 PointColor => \@colors,
 				 Facet => $this->PIF_CYCLIC_NORMAL->[0],
 				 FacetTransparency => 0.5,
@@ -171,7 +172,7 @@ user_method VISUAL(%Visual::Polygons::decorations) : POINTS, NON_VERTICES, N_POI
 			       )
 	  : new Visual::Polygons( Name => $this->name,
 				  Points => dehomogenize(convert_to<Float>($this->POINTS)),
-				  PointLabels => $this->lookup("LABELS"),
+				  PointLabels => $this->lookup("POINT_LABELS"),
 				  PointColor => \@colors,
 				  Facets => $this->PIF_CYCLIC_NORMAL,
 				  FacetNeighbors => $this->CONVEX_HULL->NEIGHBOR_FACETS_CYCLIC_NORMAL,
@@ -183,8 +184,8 @@ user_method VISUAL(%Visual::Polygons::decorations) : POINTS, NON_VERTICES, N_POI
 				);
    visualize( new Visual::PointConfiguration(Name => $this->name, PointConfiguration => $this, $P));
 }
-precondition : DIM { $this->DIM>=2 }
-precondition : AMBIENT_DIM { $this->AMBIENT_DIM<=3 }
+precondition : VECTOR_DIM { $this->VECTOR_DIM>=3 }
+precondition : VECTOR_AMBIENT_DIM { $this->VECTOR_AMBIENT_DIM<=4 }
 precondition : BOUNDED;
 
 # @hide
@@ -194,8 +195,8 @@ user_method VISUAL(%Visual::Polygons::decorations) : POINTS, GRAPH.ADJACENCY {
    my $G=$this->GRAPH->VISUAL(Name=>$this->name, Coord=>dehomogenize(convert_to<Float>($this->POINTS)), $decor);
    visualize( new Visual::PointConfiguration(Name => $this->name, PointConfiguration => $this, $G, $pc) );
 }
-precondition : DIM { $this->DIM==1 }
-precondition : AMBIENT_DIM { $this->AMBIENT_DIM<=3 }
+precondition : VECTOR_DIM { $this->VECTOR_DIM==2 }
+precondition : VECTOR_AMBIENT_DIM { $this->VECTOR_AMBIENT_DIM<=4 }
 precondition : BOUNDED;
 
 }

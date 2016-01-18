@@ -21,7 +21,6 @@ rule HILBERT_BASIS_GENERATORS , N_HILBERT_BASIS : {
 *** Missing external software:
 *** To compute Hilbert bases you need to have one of the following:
 ***    - bundled:libnormaliz enabled (requires boost, rerun configure)
-***    - normaliz2 installed and configured (check 'show_unconfigured;')
 ***    - 4ti2 installed and configured (check 'show_unconfigured;')
 ---
 }

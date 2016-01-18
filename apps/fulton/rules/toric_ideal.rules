@@ -1,0 +1,108 @@
+#  Copyright (c) 2012
+#  by authors as mentioned on:
+#  https://github.com/lkastner/polymake_toric/wiki/Authors
+#  
+#  Project home:
+#  https://github.com/lkastner/polymake_toric
+#
+#  For licensing we cite the original Polymake code:
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+
+REQUIRE polytope::_4ti2.rules
+
+
+# path to groebner
+# custom $groebner;
+# Note: This is already declared in the _4ti2 file from Polymake.
+
+
+declare object BinomialIdeal : Ideal {
+   
+   property BINOMIAL_GENERATORS : Matrix<Int>;
+
+   rule RING : BINOMIAL_GENERATORS {
+      my $n = $this->BINOMIAL_GENERATORS->cols;
+      my @vars = map("x(".$_.")", 0..($n-1));
+      $this->RING = new Ring(\@vars);
+   }
+
+   rule GENERATORS : RING, BINOMIAL_GENERATORS {
+      my $ring = $this->RING;
+      my $binomials = $this->BINOMIAL_GENERATORS;
+      $ring->n_vars == $binomials->cols or die "Wrong number of variables.";
+      my @gens;
+      my $coef = new Vector<Rational>(1, -1);
+      foreach my $binomial (@$binomials){
+         my $positivePart = new Vector<Int>(map($_>0 ? $_ : 0, @$binomial));
+         my $negativePart = new Vector<Int>(map($_<0 ? -$_ : 0, @$binomial));
+         my $expmat = new Matrix<Int>([$positivePart, $negativePart]);
+         push @gens, new Polynomial($expmat, $coef, $ring);
+      }
+      $this->GENERATORS = \@gens;
+   }
+
+}
+
+object polytope::Cone<Rational> {
+
+   # @category Algebraic Geometry
+   # The matrix containing the exponent vectors of the binomials whose
+   # vanishing set is the affine toric variety given by the cone.
+   # In other words the rows of this matrix give the relations between the
+   # Hilbert basis elements.
+   # @depends 4ti2
+   property TORIC_IDEAL : BinomialIdeal;
+
+   rule _4ti2.toric_ideal : TORIC_IDEAL.BINOMIAL_GENERATORS : HILBERT_BASIS_GENERATORS {
+      my $H = $this->HILBERT_BASIS_GENERATORS->[0];
+      
+      # Creating temporary file for input.
+      my $temp = new Tempfile;
+      open(my $input, ">$temp.mat")
+         or die "Kill all humans.";
+
+      # Printing Hilbert basis to file.
+      print $input $H->cols, " ", $H->rows, "\n";
+      print $input new Matrix<Integer>(transpose($H));
+      close $input;
+
+      # Running 4ti2.
+      open(my $P, "$groebner $temp 2>&1 |")
+         or die "couldn't run 4ti2's 'groebner': $!";
+      local $_;
+      while(<$P>) {
+         # print $_;
+      }
+      close $P;
+
+      # Parsing output.
+      open(my $output, "<$temp.gro")
+         or die "Humans not found.";
+      local $_;
+      my @ti = ();
+      while(<$output>) {   
+         if(/^$/) {
+            next;
+         }
+         # print "line: ".$_;
+         my @p = split;
+         push @ti, \@p;
+      }
+      my $size = @ti;
+      @ti = @ti[1..($size-1)];
+
+      close $output;
+      $this->TORIC_IDEAL->BINOMIAL_GENERATORS = new Matrix<Integer>(\@ti);
+   }
+
+}
+

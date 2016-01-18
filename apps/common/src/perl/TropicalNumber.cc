@@ -45,5 +45,14 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary_mul, perl::Canned< const TropicalNumber< Max, Integer > >, perl::Canned< const TropicalNumber< Max, Integer > >);
    FunctionInstance4perl(new, TropicalNumber< Min, Rational >);
    FunctionInstance4perl(new, TropicalNumber< Max, Integer >);
+   OperatorInstance4perl(Binary_add, perl::Canned< const TropicalNumber< Min, Rational > >, perl::Canned< const Rational >);
+   Class4perl("Polymake::common::TropicalNumber_A_Max_I_Rational_Z", TropicalNumber< Max, Rational >);
+   FunctionInstance4perl(new_X, TropicalNumber< Max, Rational >, int);
+   FunctionInstance4perl(new_X, TropicalNumber< Max, Rational >, perl::Canned< const Rational >);
+   FunctionInstance4perl(new_X, TropicalNumber< Min, Rational >, perl::Canned< const Rational >);
+   OperatorInstance4perl(BinaryAssign_mul, perl::Canned< TropicalNumber< Min, Rational > >, perl::Canned< const TropicalNumber< Min, Rational > >);
+   OperatorInstance4perl(BinaryAssign_mul, perl::Canned< TropicalNumber< Max, Rational > >, perl::Canned< const TropicalNumber< Max, Rational > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const TropicalNumber< Min, Rational > >, perl::Canned< const TropicalNumber< Min, Rational > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const TropicalNumber< Max, Rational > >, perl::Canned< const TropicalNumber< Max, Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

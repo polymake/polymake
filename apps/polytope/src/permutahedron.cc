@@ -120,8 +120,13 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# Produce a //d//-dimensional permutahedron."
                   "# The vertices correspond to the elements of the symmetric group of degree //d//+1."
                   "# @param Int d the dimension"
-		  "# @option Bool group"
-                  "# @return Polytope",
+                  "# @option Bool group"
+                  "# @return Polytope"
+                  "# @example To create the 3-permutahedron and also compute its symmetry group, do this:"
+                  "# > $p = permutahedron(3,group=>1);"
+                  "# > print $p->GROUP->GENERATORS;"
+                  "# | 1 0 2 3"
+                  "# | 3 0 1 2",
                   &permutahedron, "permutahedron($,{group=>undef})");
 
 UserFunction4perl("# @category Producing a polytope from scratch"

@@ -21,8 +21,10 @@ package Polymake::Core::Permutation;
 use Polymake::Struct (
    [ '@ISA' => 'Property' ],
    [ new => '$$' ],
-   [ '$flags' => '$is_locally_derived | $is_permutation' ],
+   [ '$flags' => '$is_subobject | $is_locally_derived | $is_permutation' ],
    [ '$type' => '#1' ],
+   [ '$name' => '#2' ],
+   [ '$belongs_to' => '#1' ],
 
    '%sensitive_props',                  # Property->key => [ Rule ]  or  { $sub_key }->{ Property }-> ... ->[ Rule ]
                                         # rules transferring Property from the permuted subobject back into the basis
@@ -63,50 +65,47 @@ sub analyze_rule {
    my ($self, $rule)=@_;
    my ($regular_out_seen, $perm_out_seen);
    foreach my $output (@{$rule->output}) {
-      if (is_object($output)) {
+      if (@$output == 1) {
+         my $prop=$output->[0];
          if ($rule->code==\&Rule::nonexistent) {
-            if ($Application::plausibility_checks && ref($self->sensitive_props->{$output->key})) {
-               croak( "recovery of property ", $output->name, " was enabled prior to this rule definition" );
+            if ($Application::plausibility_checks && ref($self->sensitive_props->{$prop->key})) {
+               croak( "recovery of property ", $prop->name, " was enabled prior to this rule definition" );
             }
-            $self->sensitive_props->{$output->key}=[ ];
+            $self->sensitive_props->{$prop->key}=[ ];
          } else {
-            if ($Application::plausibility_checks && exists($self->sensitive_props->{$output->key}) &&
-                @{$self->sensitive_props->{$output->key}}==0) {
-               croak( "recovery of property ", $output->name, " was disabled prior to this rule definition" );
+            if ($Application::plausibility_checks && exists($self->sensitive_props->{$prop->key}) &&
+                @{$self->sensitive_props->{$prop->key}}==0) {
+               croak( "recovery of property ", $prop->name, " was disabled prior to this rule definition" );
             }
-            push @{$self->sensitive_props->{$output->key}}, $rule;
+            push @{$self->sensitive_props->{$prop->key}}, $rule;
          }
          $regular_out_seen=1;
-      } elsif (defined (my $ppos=permutation_pos_in_path($output))) {
-         if ($ppos==0) {
-            if ($Application::plausibility_checks && $output->[0] != $self) {
-               croak( "dependence between two different permutation subobjects on the same level is not allowed" );
-            }
-            $perm_out_seen=1;
-         } else {
-            add_sub_permutation($self, @$output[0..$ppos]);
-            $perm_out_seen=1;
-         }
       } else {
-         add_sensitive_sub_property($self, @$output, $rule);
-         $regular_out_seen=1;
+         if ($Application::plausibility_checks && get_array_flags($output) & $is_multiple_new) {
+            croak( "Rule dealing with permutations may not create new multiple subobjects" );
+         }
+         my $perm_pos=find_first_in_path($output, $is_permutation);
+         if ($perm_pos>=0) {
+            if ($perm_pos==0) {
+               if ($Application::plausibility_checks && $output->[0] != $self) {
+                  croak( "dependence between two different permutation subobjects on the same level is not allowed" );
+               }
+            } else {
+               add_sub_permutation($self, @$output[0..$perm_pos]);
+            }
+            $perm_out_seen=1;
+         } else {
+            add_sensitive_sub_property($self, @$output, $rule);
+            $regular_out_seen=1;
+         }
       }
    }
-   if ($Application::plausibility_checks && $perm_out_seen && $regular_out_seen) {
-      croak( "Creating properties in the base object and permutation subobject in the same rule is not allowed" );
+   if ($perm_out_seen && $regular_out_seen) {
+      croak( "A production rule can't create properties in the base object and permutation subobject at the same time" );
    }
    $regular_out_seen
 }
 
-# private:
-sub permutation_pos_in_path {
-   my $i=0;
-   foreach (@{$_[0]}) {
-      return $i if $_->flags & $is_permutation;
-      ++$i;
-   }
-   undef;
-}
 ####################################################################################
 # private:
 sub add_sensitive_sub_property {

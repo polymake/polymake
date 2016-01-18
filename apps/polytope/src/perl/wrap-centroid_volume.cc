@@ -21,6 +21,8 @@
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/PuiseuxFraction.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -34,5 +36,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(centroid_volume_x_X_X_f16, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >, perl::Canned< const Array< Set< int > > >);
    FunctionInstance4perl(centroid_volume_x_X_X_f16, perl::Canned< const SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >, perl::Canned< const Array< Set< int > > >);
    FunctionInstance4perl(centroid_volume_x_X_X_f16, perl::Canned< const Matrix< QuadraticExtension< Rational > > >, perl::Canned< const Array< Set< int > > >);
+   FunctionInstance4perl(centroid_volume_x_X_X_f16, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, Rational > > >, perl::Canned< const Array< Set< int > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -21,7 +21,10 @@ declare object LinearProgram<Scalar=Rational> {
 
 # Linear objective function. In d-space a linear objective function is given by a (d+1)-vector. 
 # The first coordinate specifies a constant that is added to the resulting value.
-
+# @example The following creates a new LinearProgram object and assigns a linear objective to it:
+# > $l = cube(2)->LP(LINEAR_OBJECTIVE=>[0,1,1]);
+# > print $l->LINEAR_OBJECTIVE;
+# | 0 1 1
 property LINEAR_OBJECTIVE : Vector<Scalar>;
 
 
@@ -29,30 +32,105 @@ property LINEAR_OBJECTIVE : Vector<Scalar>;
 # face has a unique source and a unique sink. 
 # The i-th element is the value of the objective function at vertex number i.
 # Only defined for bounded polytopes.
-
+# @example The following creates a new LinearProgram object and assigns an abstract objective to it:
+# > $l = cube(2)->LP(ABSTRACT_OBJECTIVE=>[1,2,3,4]);
+# > print $l->ABSTRACT_OBJECTIVE;
+# | 1 2 3 4
 property ABSTRACT_OBJECTIVE : Vector<Scalar>;
 
 
 # Indices of vertices at which the maximum of the objective function is attained.
+# @example The following defines a LinearProgram together with a linear objective for the centered square with side length 2 and asks
+# for the maximal face:
+# > $c = new Vector([0, 1, 0]);
+# > $p = cube(2);
+# > $p->LP(LINEAR_OBJECTIVE=>$c);
+# > print $p->LP->MAXIMAL_FACE;
+# | {1 3}
 property MAXIMAL_FACE : Set;
 
 # Similar to [[MAXIMAL_FACE]].
+# @example The following defines a LinearProgram together with a linear objective for the centered square with side length 2 and asks
+# for the minimal face:
+# > $c = new Vector([0, 1, 0]);
+# > $p = cube(2);
+# > $p->LP(LINEAR_OBJECTIVE=>$c);
+# > print $p->LP->MINIMAL_FACE;
+# | {0 2}
 property MINIMAL_FACE : Set;
 
 
 # Coordinates of a (possibly not unique) affine vertex at which the maximum of the objective function is attained.
+# @example The following defines a LinearProgram together with a linear objective for the centered square with side length 2 and asks
+# for a maximal vertex:
+# > $c = new Vector([0, 1, 0]);
+# > $p = cube(2);
+# > $p->LP(LINEAR_OBJECTIVE=>$c);
+# > print $p->LP->MAXIMAL_VERTEX;
+# | 1 1 -1
 property MAXIMAL_VERTEX : Vector<Scalar>;
 
 # Similar to [[MAXIMAL_VERTEX]].
+# @example The following defines a LinearProgram together with a linear objective for the centered square with side length 2 and asks
+# for a minimal vertex:
+# > $c = new Vector([0, 1, 0]);
+# > $p = cube(2);
+# > $p->LP(LINEAR_OBJECTIVE=>$c);
+# > print $p->LP->MINIMAL_VERTEX;
+# | 1 -1 -1
 property MINIMAL_VERTEX : Vector<Scalar>;
 
 # Maximum value of the objective function. Negated if linear problem is unbounded.
+# @example The following defines a LinearProgram together with a linear objective for the centered square with side length 2 and asks
+# for the maximal value:
+# > $c = new Vector([0, 1, 0]);
+# > $p = cube(2);
+# > $p->LP(LINEAR_OBJECTIVE=>$c);
+# > print $p->LP->MAXIMAL_VALUE;
+# | 1
+# @example The following defines a LinearProgram together with a linear objective with bias 3 for the centered square with side length 4 and asks
+# for the maximal value:
+# > $c = new Vector([3, 1, 0]);
+# > $p = cube(2,2);
+# > $p->LP(LINEAR_OBJECTIVE=>$c);
+# > print $p->LP->MAXIMAL_VALUE;
+# | 5
+# @example The following defines a LinearProgram together with a linear objective for the positive quadrant (unbounded) and asks
+# for the maximal value:
+# > $c = new Vector([0, 1, 1]);
+# > $p = facet_to_infinity(simplex(2),0);
+# > $p->LP(LINEAR_OBJECTIVE=>$c);
+# > print $p->LP->MAXIMAL_VALUE;
+# | inf
 property MAXIMAL_VALUE : Scalar;
 
 # Similar to [[MAXIMAL_VALUE]].
+# @example The following defines a LinearProgram together with a linear objective for the centered square with side length 2 and asks
+# for the minimal value:
+# > $c = new Vector([0, 1, 0]);
+# > $p = cube(2);
+# > $p->LP(LINEAR_OBJECTIVE=>$c);
+# > print $p->LP->MINIMAL_VALUE;
+# | -1
+# @example The following defines a LinearProgram together with a linear objective with bias 3 for the centered square with side length 4 and asks
+# for the minimal value:
+# > $c = new Vector([3, 1, 0]);
+# > $p = cube(2,2);
+# > $p->LP(LINEAR_OBJECTIVE=>$c);
+# > print $p->LP->MINIMAL_VALUE;
+# | 1
 property MINIMAL_VALUE : Scalar;
 
 # Subgraph of [[Polytope::GRAPH]]. Consists only of directed arcs along which the value of the objective function increases.
+# @example The following defines a LinearProgram together with a linear objective for the centered square with side length 2. The directed
+# graph according to the linear objective is stored in a new variable and the corresponding edges are printend.
+# > $c = new Vector([0, 1, 0]);
+# > $p = cube(2);
+# > $p->LP(LINEAR_OBJECTIVE=>$c);
+# > $g = $p->LP->DIRECTED_GRAPH;
+# > print $g->EDGES;
+# | {0 1}
+# | {2 3}
 property DIRECTED_GRAPH : Graph<Directed>;
 
 # methods for backward compatibility

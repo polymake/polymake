@@ -19,13 +19,9 @@ Packages/rpm/RPMS/x86_64/*.rpm
 Packages/rpm/SOURCES/polymake-*.tar.bz2
 Packages/rpm/SOURCES/polymake-*.diff
 Packages/rpm/SRPMS/*.rpm
+testscenarios/*/polymake-pico
+testscenarios/*/userdir/*
 testscenarios/config_bundled/installed
-testscenarios/config_bundled/polymake-pico
-testscenarios/config_bundled/userdir/*
 testscenarios/extensions/compares
 testscenarios/extensions/installed
 testscenarios/extensions/private*
-testscenarios/extensions/polymake-pico
-testscenarios/extensions/userdir/*
-testscenarios/big_objects_within_data/polymake-pico
-testscenarios/big_objects_within_data/userdir/*

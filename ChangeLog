@@ -1,20 +1,107 @@
 Changelog
 
-=== Polymake 2.14r1 ===
+=== Polymake 3.0 ===
 
--- general --
- * support for perl 5.22
+-- distribution --
+ * support for libc++
+ * better support for compiling on MacOS X
+ * support compilation with C++11 enabled
  * fix for gcc-5.x
  * fix rare build issues
+ * support for perl 5.22
+ * fix build issue with gmp-6.1
+ * fixes for build-reproducibility
+
+-- general --
+ * significant improvement in rule scheduling
+ * examples for various properties and clients:
+     - in online help
+     - in HTML documentation
+     - focused on application polytope
+ * various bugfixes and improvements, especially in documentation and visualization
  * fixes and improvements in TAB-completion and F1-help
  * merge github pull #2 (fix -Werror=format-security issues)
- * various other bug fixes
+ * fix jReality visualization on various Intel HD Graphics (updated jogl)
+ * fix jReality startup issues
+
+-- common --
+ * add new coordinate type PuiseuxFraction
+ * new client for Hermite normal form
+ * basic numerical linear algebra for double coordinates:
+     - new client for QR-decomposition
+     - new client for singular value decomposition
+     - better solving of linear systems with double coordinates
+ * improvements for FacetList type
+ * matrix element access now via ->elem(,)
+
+-- fan --
+ * new client planar_net, including visualization and flaps generation
+ * new clients for dual fans of graph associahedra and manipulating tubings
+ * new objects SubdivisionOfPoints and -Vectors:
+	  - some refactoring of related properties
+
+-- group --
+ * refactored orbit and group action
+ * new client for generic orbit computations
+ * improvements / fixes for linear symmetries computation
+
+-- matroid --
+ * new client for rank of arbitrary sets
+ * new client for minimum weight bases
+ * new client for free extensions
+ * new property transversal_presentation
+ * new property splitting_flacets
+ * fixed bug in check_basis_exchange_axiom
 
 -- polytope --
- * several fixes in minkowski_sum_fukuda
+ * clients for all Johnson solids:
+     - with correct combinatorics
+     - many with exact QuadraticExtension or Rational coordinates
+ * clients and wrappers for Platonic, Archimedean and Catalan solids
+ * new client to count triangulations for 2-dim. point configurations (Alvarez,Seidel)
+ * new client long_and_winding
+ * new client goldfarb_sit
+ * new client for lattice width
+ * new client for decomposing a polytope into direct summands
+ * LatticePolytope is now a specialization of Polytope instead of a separate type
+ * renamed several integer programming related clients to fractional_
+ * fixed some problems with Minkowski sum client
+ * wythoff client now produces maximally symmetric polytopes whenever possible, i.e. except for G2
+ * fixes for h^*-vector and Ehrhart polynomial computation
 
--- visualization --
- * update to jogl to fix issues on intel graphics
+-- topaz --
+ * new client random_discrete_morse, used for improved heuristic sphere recognition
+ * new header tools for dealing with posets (construction, homomorphisms, etc)
+ * new properties UNIMODULAR and  N_UNIMODULAR for GeomertricSimplicialComplex
+ * renamed P_sum_triangulation client to sum_triangulation and improved functionality
+ * new auxiliary clients for supporting sum-triangulations
+
+-- tropical --
+ * Major refactoring:
+     - new object type Cycle, based on polyhedral complex
+     - templated hypersurface client for Min/Max
+     - renamed TropicalPolytope to Cone
+ * added atint as a bundled extension for tropical intersection theory
+ * added support for infinite coordinates
+ * new client covector
+ * new data type CovectorLattice
+ * cleanup of obsolete functionality
+
+-- interfaces --
+ * new interface to LP-solver SoPlex 2.2.0
+ * update lrs to 6.0
+ * update cdd to 094h
+ * update nauty to 2.5r9
+ * update libnormaliz to 3.0.90
+ * update threejs to 73
+ * singular:
+     - division of polynomials by ideals
+     - contains monomial test
+     - access to singular polynomials as matrix / vector pair
+ * sympol:
+     - convex hull computation up to symmetry now supports ppl
+ * improvements in TOPCOM interface
+ * normaliz2 file based interface removed
 
 
 === Polymake 2.14 ===

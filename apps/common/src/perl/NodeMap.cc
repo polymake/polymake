@@ -16,12 +16,13 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
 #include "polymake/Graph.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/Vector.h"
-#include "polymake/Rational.h"
-#include "polymake/QuadraticExtension.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -40,5 +41,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, NodeMap< Undirected, Vector< Rational > >, perl::Canned< const Graph< Undirected > >);
    Class4perl("Polymake::common::NodeMap_A_Undirected_I_Vector__QuadraticExtension__Rational_Z", NodeMap< Undirected, Vector< QuadraticExtension< Rational > > >);
    FunctionInstance4perl(new_X, NodeMap< Undirected, Vector< QuadraticExtension< Rational > > >, perl::Canned< const Graph< Undirected > >);
+   Class4perl("Polymake::common::NodeMap_A_Directed_I_IncidenceMatrix__NonSymmetric_Z", NodeMap< Directed, IncidenceMatrix< NonSymmetric > >);
+   FunctionInstance4perl(new_X, NodeMap< Directed, IncidenceMatrix< NonSymmetric > >, perl::Canned< const Graph< Directed > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

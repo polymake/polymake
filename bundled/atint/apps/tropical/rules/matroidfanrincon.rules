@@ -1,0 +1,55 @@
+########################################################################
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#  
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#  
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+#  Boston, MA  02110-1301, USA.
+#  
+#  ---
+#  Copyright (C) 2011-2015, Simon Hampe <simon.hampe@googlemail.com>
+#
+#
+#  This file contains the perl side wrappers for the bergman fan algorithms
+#  by Felipe Rincón. 
+#
+########################################################################
+
+
+CREDIT TropLi
+  Algorithms for computation of bergman fans taken from the program "TropLi" by
+  Felipe Rincón
+  http://math.berkeley.edu/~felipe/tropli/ 
+  See also: Felipe Rincón, "Computing tropical linear spaces", arXiv:1109.4130
+
+# @category Matroids
+# Uses an algorithm by Felipe Rincón to compute the matroidal fan of a given matroid.
+# If you have a matrix at hand that represents this matroid, it is recommended to call
+# this function with that matrix as an argument - it is significantly faster.
+# @param matroid::Matroid m A matroid
+# @tparam Addition Min or Max - determines the coordinates.
+# @return Cycle The matroidal fan or Bergman fan of the matroid.
+user_function matroid_fan<Addition>(matroid::Matroid) {
+	my $matroid = shift;
+	return prepareBergmanMatroid<Addition>($matroid);
+}
+
+# @category Matroids
+# Uses an algorithm by Felipe Rincón to compute the bergman fan of the column matroid
+# of the given matrix. Calling the function in this manner is significantly faster than calling it
+# on the matroid.
+# @param Matrix<Rational> m A matrix, whose column matroid is considered.
+# @tparam Addition Min or Max - determines the coordinates.
+# @return Cycle The matroidal fan or Bergman fan of the matroid.
+user_function matroid_fan<Addition>($) {
+	my $matrix = shift;
+		return prepareBergmanMatrix<Addition>(new Matrix<Rational>($matrix));
+}
