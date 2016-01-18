@@ -158,24 +158,35 @@ perl::Object wedge(perl::Object p_in, const int wedge_facet, const Scalar& z, co
    return p_out;    
 }
 
+// TODO: replace Rational with Scalar in @params when templatification is accomplished
 UserFunction4perl("# @category Producing a polytope from polytopes"
-                          "# Make a wedge from a polytope over the given //facet//.  The polytope must be bounded."
-                          "# The inclination of the bottom and top side facet is controlled by //z// and //z_prime//,"
-                          "# which are heights of the projection of the old vertex barycenter"
-                          "# on the bottom and top side facet respectively."
-                          "# @param Polytope P, must be bounded"
-                          "# @param Int facet the `cutting edge'."
-                          "# @param Scalar z default value is 0."
-                          "# @param Scalar z_prime default value is -//z//, or 1 if //z//==0."
-                          "# @option Bool no_coordinates don't compute coordinates, pure combinatorial description is produced."
-                          "# @option Bool relabel create vertex labels:"
-                          "#  The bottom facet vertices obtain the labels from the original polytope;"
-                          "#  the labels of their clones in the top facet get a tick (') appended."
-                          "# @return Polytope"
-                          "# @author Kerstin Fritzsche (initial version)",
+                  "# Make a wedge from a polytope over the given //facet//.  The polytope must be bounded."
+                  "# The inclination of the bottom and top side facet is controlled by //z// and //z_prime//,"
+                  "# which are heights of the projection of the old vertex barycenter"
+                  "# on the bottom and top side facet respectively."
+                  "# @param Polytope P, must be bounded"
+                  "# @param Int facet the `cutting edge'."
+                  "# @param Rational z default value is 0."
+                  "# @param Rational z_prime default value is -//z//, or 1 if //z//==0."
+                  "# @option Bool no_coordinates don't compute coordinates, pure combinatorial description is produced."
+                  "# @option Bool relabel create vertex labels:"
+                  "#  The bottom facet vertices obtain the labels from the original polytope;"
+                  "#  the labels of their clones in the top facet get a tick (') appended."
+                  "# @return Polytope"
+                  "# @author Kerstin Fritzsche (initial version)"
+                  "# @example This produces the wedge from a square (over the facet 0), which yields a prism over a triangle:"
+                  "# > $p = wedge(cube(2),0);"
+                  "# > print $p->VERTICES;"
+                  "# | 1 -1 -1 0"
+                  "# | 1 1 -1 0"
+                  "# | 1 -1 1 0"
+                  "# | 1 1 1 0"
+                  "# | 1 1 -1 2"
+                  "# | 1 1 1 2",
                   &wedge,
-                          "wedge(Polytope, $; $=0, $=($_[2]==0 ? 1 : -$_[2]), { no_coordinates => undef, relabel => undef})");
-//                          "wedge<Scalar>(Polytope<type_upgrade<Scalar>>, Int; type_upgrade<Scalar>=0, type_upgrade<Scalar>=($_[2]==0 ? 1 : -$_[2]), { no_coordinates => undef, relabel => undef})");
+                  "wedge(Polytope, $; $=0, $=($_[2]==0 ? 1 : -$_[2]), { no_coordinates => undef, relabel => undef})");
+
+//                "wedge<Scalar>(Polytope<type_upgrade<Scalar>>, Int; type_upgrade<Scalar>=0, type_upgrade<Scalar>=($_[2]==0 ? 1 : -$_[2]), { no_coordinates => undef, relabel => undef})");
 } }
 
 // Local Variables:

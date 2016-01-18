@@ -88,7 +88,7 @@ perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
          Scalar t_max = Scalar(3);
 
          Set<int> star_facets;
-         for (FacetList::iteratorMax incid_facets=VIF.findMax(face); !incid_facets.at_end(); ++incid_facets)
+         for (FacetList::superset_iterator incid_facets=VIF.findSupersets(face); !incid_facets.at_end(); ++incid_facets)
             star_facets += incid_facets.index();
 
          for (Entire< Set<int> >::iterator st_it=entire(star_facets); !st_it.at_end(); ++st_it) {

@@ -21,6 +21,18 @@ custom $graph="0 0 0";
 require Visual::Graph;
 require Visual::Lattice;
 
+# @topic objects/Visual::Graph
+# @category Visualization
+# Collection of nodes and edges of an abstract graph amended with visual decoration attributes
+# and an optional embedding in 3-d.
+# @super Visual::Object
+
+# @topic objects/Visual::Lattice
+# @category Visualization
+# Collection of nodes (representing faces of a face lattice) and edges (representing the inclusion relation)
+# amended with visual decoration attributes and an optional embedding in 2-d.
+# @super Visual::Graph
+
 # @category Visualization
 # Attributes modifying the appearance of graphs
 
@@ -99,11 +111,29 @@ sub compute {
 # run interactive embedder
 sub run {
    my ($self, $window)=@_;
+   my $n=$self->source->nodes;
+   
    $self->merge_options(\%graph_parameters);
    $self->merge_options(\%interactive_parameters);
-   $self->coord=[ 0..$self->source->nodes-1 ];
+   if (!is_connected($self->source)) { 
+      $self->source=component_connector($self->source);
+   }    
+   $self->coord=[0..$n-1];
    $self->client_object=interactive_spring_embedder($self->source, $self->options);
    $window->client_port=$self->client_object->port;
+}
+
+# copy a graph and add a fully connected vertex to it
+sub component_connector {
+   my ($self)=@_;
+   $self=new props::Graph($self);
+   $self->squeeze;
+   $self->add_node;
+   my $n=$self->nodes-1;
+      for (my $v=0; $v<$n; ++$v) {
+         $self->add_edge($v,$n);
+      }
+   return ($self);
 }
 
 sub cols { 3 }

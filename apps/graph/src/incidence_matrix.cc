@@ -48,15 +48,29 @@ SparseMatrix<int> signed_incidence_matrix(perl::Object p)
 
 
 UserFunction4perl("# @category Combinatorics"
-		  "# Compute the unsigned vertex-edge incidence matrix of the graph."
-		  "# @return SparseMatrix<Int>",
+                  "# Compute the unsigned vertex-edge incidence matrix of the graph."
+                  "# @param Graph G"
+                  "# @return SparseMatrix<Int>"
+                  "# @example > $I = incidence_matrix(cycle_graph(4));"
+                  "# > print $I;"
+                  "# | 1 0 1 0"
+                  "# | 1 1 0 0"
+                  "# | 0 1 0 1"
+                  "# | 0 0 1 1",
                   &incidence_matrix, "incidence_matrix($)");
 
 UserFunction4perl("# @category Combinatorics"
-		  "# Compute the signed vertex-edge incidence matrix of the graph."
-		  "# in case of undirected graphs, the orientation of the edges is induced by the order of the nodes."
-		  "# @return SparseMatrix<Int>",
-                  &signed_incidence_matrix, "signed_incidence_matrix($)");
+                  "# Compute the signed vertex-edge incidence matrix of the graph."
+                  "# in case of undirected graphs, the orientation of the edges is induced by the order of the nodes."
+                  "# @param Graph G"
+                  "# @return SparseMatrix<Int>"
+                  "# @example > $I = signed_incidence_matrix(cycle_graph(4));"
+                  "# > print $I;"
+                  "# | 1 0 1 0"
+                  "# | -1 1 0 0"
+                  "# | 0 -1 0 1"
+                  "# | 0 0 -1 -1",
+                   &signed_incidence_matrix, "signed_incidence_matrix($)");
 } }
 
 // Local Variables:

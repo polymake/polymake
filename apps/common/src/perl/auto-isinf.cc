@@ -16,16 +16,16 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
-#include "polymake/Rational.h"
 #include "polymake/Integer.h"
+#include "polymake/Rational.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
    FunctionInterface4perl( isinf_X, T0 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturn( isinf(arg0.get<T0>()) );
+      WrapperReturn( (isinf(arg0.get<T0>())) );
    };
 
    FunctionInstance4perl(isinf_X, double);

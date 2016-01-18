@@ -38,7 +38,7 @@ use Polymake::Ext;
 # Global variables
 #
 
-declare $Version="2.14";
+declare $Version="3.0";
 declare $VersionNumber=eval "v$Version";        # for string comparisons with vM.N literals
 
 declare ($Scope,                # Scope object for the current cycle

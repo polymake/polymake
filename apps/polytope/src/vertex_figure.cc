@@ -105,7 +105,13 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "#   Default value is 1/2."
                           "# @option Bool no_coordinates skip the coordinates computation, producing a pure combinatorial description."
                           "# @option Bool relabel inherit vertex labels from the corresponding neighbor vertices of the original polytope."
-                          "# @return Polytope",
+                          "# @return Polytope"
+                          "# @example This produces a vertex figure of one vertex of a 3-dimensional cube with the origin as its center"
+                          "# and side length 2. The result is a 2-simplex."
+                          "# > $p = vertex_figure(cube(3),5);"
+                          "# > print $p->VERTICES;"
+                          "# | 1 1 -1 0"
+                          "# | 1 1 0 1",
                           "vertex_figure<Scalar>(Polytope<Scalar> $ {cutoff => undef, no_coordinates => undef, relabel => 0})");
 } }
 

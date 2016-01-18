@@ -114,5 +114,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new, SparseVector< PuiseuxFraction< Min, Rational, Rational > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< SparseVector< PuiseuxFraction< Min, Rational, Rational > > > >, perl::Canned< const SparseVector< PuiseuxFraction< Min, Rational, Rational > > >);
    FunctionInstance4perl(new_X, SparseVector< PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >, perl::Canned< const Vector< PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > > >);
+   FunctionInstance4perl(new, SparseVector< int >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< SparseVector< int > > >, perl::Canned< const SparseVector< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -249,7 +249,7 @@ Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s, Co
     if(potentially_unimodular){ // very likely unimodular, Indicator computed first, uses transpose of Gen
         RS_pointers.clear();    
         RS_pointers.push_back(&(C.Order_Vector));
-        LinSys.solve_system_submatrix_trans(Generators,id_key, RS_pointers,volume,0,1);        
+        LinSys.solve_system_submatrix_trans(Generators,id_key, RS_pointers,volume,0,1);    // 1: replace components of solution by sign   
         for (i=0; i<dim; i++)
             Indicator[i]=LinSys[i][dim];  // extract solution
 
@@ -282,7 +282,7 @@ Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s, Co
         if(Ind0_key.size()>0){            
             RS_pointers=unit_matrix.submatrix_pointers(Ind0_key);
             LinSys.solve_system_submatrix(Generators,id_key,RS_pointers,GDiag,volume,0,RS_pointers.size());
-            
+                               // RS_pointers.size(): all columns of solution replaced by sign vevctors
             for(size_t i=0;i<dim;++i)
                 for(size_t j=dim;j<dim+Ind0_key.size();++j) 
                     InvGenSelCols[i][Ind0_key[j-dim]]=LinSys[i][j];       
@@ -330,19 +330,20 @@ Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s, Co
         }
         
         // LinSys.solve_destructive(volume);
-        
         LinSys.solve_system_submatrix_trans(Generators,id_key,RS_pointers,volume,Last_key.size(),RS_pointers.size()-Last_key.size());
-        for(i=0;i<Last_key.size();i++) // extract solutions as selected rows of InvGen
+                                         // Last_key.dize(): these columns of solution reduced by volume
+        for(i=0;i<Last_key.size();i++){ // extract solutions as selected rows of InvGen
             for(j=0;j<dim;j++){
-                InvGenSelRows[Last_key[i]][j]=LinSys[j][dim+i]%volume; //makes reduction mod volume easier
-                if(InvGenSelRows[Last_key[i]][j] <0)
-                    InvGenSelRows[Last_key[i]][j]+=volume;
+                InvGenSelRows[Last_key[i]][j]=LinSys[j][dim+i]; // %volume; //makes reduction mod volume easier
+                /* if(InvGenSelRows[Last_key[i]][j] <0)         //   Now in matrix.cpp
+                    InvGenSelRows[Last_key[i]][j]+=volume;*/
             }
+        }
         if(!potentially_unimodular){ // extract Indicator
             for (i=0; i<dim; i++)
                 Indicator[i]=LinSys[i][dim+Last_key.size()];
         }
-    }
+    } 
     
     // if not potentially unimodular we must still take care of the 0 ntries of the indicator
 
@@ -352,7 +353,7 @@ Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s, Co
                 Ind0_key.push_back(i);
         if(Ind0_key.size()>0){
             RS_pointers=unit_matrix.submatrix_pointers(Ind0_key);
-            LinSys.solve_system_submatrix(Generators,id_key,RS_pointers,volume,RS_pointers.size(),0);
+            LinSys.solve_system_submatrix(Generators,id_key,RS_pointers,volume,0,RS_pointers.size());
             for(size_t i=0;i<dim;++i)
                 for(size_t j=dim;j<dim+Ind0_key.size();++j)
                     InvGenSelCols[i][Ind0_key[j-dim]]=LinSys[i][j]; 
@@ -574,7 +575,7 @@ void SimplexEvaluator<Integer>::evaluate_element(const vector<Integer>& element,
 
     if (C.do_Hilbert_basis) {
         vector<Integer> candi = v_merge(element,norm);
-        if (!is_reducible(candi, Hilbert_Basis)) {
+        if ( C_ptr->do_module_gens_intcl || !is_reducible(candi, Hilbert_Basis)){
             Coll.Candidates.push_back(candi);
             Coll.candidates_size++;
             if (Coll.candidates_size >= 1000 && sequential_evaluation) {
@@ -591,54 +592,19 @@ void SimplexEvaluator<Integer>::evaluate_element(const vector<Integer>& element,
     }
 }
 
-
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void SimplexEvaluator<Integer>::conclude_evaluation(Collector<Integer>& Coll) {
-
+void SimplexEvaluator<Integer>::reduce_against_global(Collector<Integer>& Coll) {
+//inverse transformation and reduction against global reducers    
+    
     Full_Cone<Integer>& C = *C_ptr;
-
-    if(C.do_h_vector) {
-        if(C.inhomogeneous){
-            Coll.Hilbert_Series.add(Coll.inhom_hvector,level0_gen_degrees);
-            for (size_t i=0; i<Coll.inhom_hvector.size(); i++)
-                Coll.inhom_hvector[i]=0;
-            // cout << "WAU " << endl;
-            }
-        else{
-            Coll.Hilbert_Series.add(Coll.hvector,gen_degrees);
-            for (size_t i=0; i<Coll.hvector.size(); i++)
-                Coll.hvector[i]=0;
-            if(C.do_excluded_faces)
-                for(size_t i=0;i<nrInExSimplData;++i){
-                    Coll.Hilbert_Series.add(Coll.InEx_hvector[i],InExSimplData[i].gen_degrees);
-                    for(size_t j=0;j<Coll.InEx_hvector[i].size();++j)
-                        Coll.InEx_hvector[i][j]=0;
-                    
-                }
-        }
-    }
-    
-    // cout << Coll.Hilbert_Series << endl;
-
-
-    if(volume==1 || !C.do_Hilbert_basis || !sequential_evaluation)
-        return;  // no further action in this case
-
-    // cout << "Starting local reduction" << endl;
-        
-    local_reduction(Coll);
-
-    // cout << "local HB " << Hilbert_Basis.size() << endl;
-    
-    //inverse transformation and reduction against global reducers
-    //some test for arithmetic overflow may be implemented here
     bool inserted;
     typename list< vector<Integer> >::iterator jj = Hilbert_Basis.begin();
     for(;jj != Hilbert_Basis.end();++jj) {
+        jj->pop_back(); //remove the norm entry at the end
         if (!isDuplicate(*jj)) { //skip the element
-            jj->pop_back(); //remove the norm entry at the end
+            
             // cout << "Vor " << *jj;
             // transform to global coordinates
             vector<Integer> help=*jj; // we need a copy
@@ -653,10 +619,76 @@ void SimplexEvaluator<Integer>::conclude_evaluation(Collector<Integer>& Coll) {
             }
             else
                 inserted=Coll.HB_Elements.reduce_by_and_insert(*jj,C,C.OldCandidates);                
-            if(inserted)
+            if (inserted) {
                 Coll.collected_elements_size++;
+                if (C.do_integrally_closed) {
+                    #pragma omp critical
+                    {
+                        C.do_Hilbert_basis = false;
+                        C.Witness = *jj;
+                        C.is_Computed.set(ConeProperty::WitnessNotIntegrallyClosed);
+                    }
+                    if (!C.do_triangulation) {
+                        throw NotIntegrallyClosedException();
+                    }
+                }
+            }
         }
     }
+    // Coll.HB_Elements.search();
+}
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+void SimplexEvaluator<Integer>::add_hvect_to_HS(Collector<Integer>& Coll) {
+
+    Full_Cone<Integer>& C = *C_ptr;
+    
+    if(C.do_h_vector) {
+        if(C.inhomogeneous){
+            Coll.Hilbert_Series.add(Coll.inhom_hvector,level0_gen_degrees);
+            for (size_t i=0; i<Coll.inhom_hvector.size(); i++)
+                Coll.inhom_hvector[i]=0;
+            // cout << "WAU " << endl;
+        }
+        else{
+            Coll.Hilbert_Series.add(Coll.hvector,gen_degrees);
+            for (size_t i=0; i<Coll.hvector.size(); i++)
+                Coll.hvector[i]=0;
+            if(C.do_excluded_faces)
+                for(size_t i=0;i<nrInExSimplData;++i){
+                    Coll.Hilbert_Series.add(Coll.InEx_hvector[i],InExSimplData[i].gen_degrees);
+                    for(size_t j=0;j<Coll.InEx_hvector[i].size();++j)
+                        Coll.InEx_hvector[i][j]=0;
+                    
+                }
+        }
+    }
+    
+    // cout << Coll.Hilbert_Series << endl;       
+}
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+void SimplexEvaluator<Integer>::conclude_evaluation(Collector<Integer>& Coll) {
+
+    Full_Cone<Integer>& C = *C_ptr;
+
+    add_hvect_to_HS(Coll);
+
+    if(volume==1 || !C.do_Hilbert_basis || !sequential_evaluation)
+        return;  // no further action in this case
+
+    // cout << "Starting local reduction" << endl;
+        
+    local_reduction(Coll);
+
+    // cout << "local HB " << Hilbert_Basis.size() << endl;
+    
+    reduce_against_global(Coll);
+    
 	// cout << "local reduction finished " << Coll.collected_elements_size << endl;
 
     Hilbert_Basis.clear(); // this is not a local variable !!    
@@ -735,7 +767,9 @@ void SimplexEvaluator<Integer>::evaluation_loop_parallel() {
         progess_report=1;
     
     bool skip_remaining;
+#ifndef NCATCH
     std::exception_ptr tmp_exception;
+#endif
 
     deque<bool> done(actual_nr_blocks,false);
     
@@ -777,7 +811,9 @@ void SimplexEvaluator<Integer>::evaluation_loop_parallel() {
     
     } // parallel
 
+#ifndef NCATCH
     if (!(tmp_exception == 0)) std::rethrow_exception(tmp_exception);
+#endif
 
     if(skip_remaining){
             
@@ -891,7 +927,8 @@ void SimplexEvaluator<Integer>::Simplex_parallel_evaluation(){
         verboseOutput() << "simplex volume " << volume << endl;
     }
     if (C_ptr->use_bottom_points && volume >= SimplexParallelEvaluationBound
-        && C_ptr->approx_level==1)
+        && C_ptr->approx_level == 1
+        && (!C_ptr->deg1_triangulation || !C_ptr->isComputed(ConeProperty::Grading)))
     {
 
         Full_Cone<Integer>& C = *C_ptr;
@@ -933,19 +970,14 @@ void SimplexEvaluator<Integer>::Simplex_parallel_evaluation(){
             addMult(-volume,C.Results[0]);
             // delete this large simplex
             C.totalNrSimplices--;
-            list < SHORTSIMPLEX<Integer> > tmp_triang;
-            size_t tmp_triang_size = 0;
             if (C.keep_triangulation) {
-                tmp_triang.splice(tmp_triang.begin(), C.Triangulation);
-                typename list < SHORTSIMPLEX<Integer> >::iterator it = tmp_triang.begin();
-                for (; it != tmp_triang.end(); ++it) {
+                typename list < SHORTSIMPLEX<Integer> >::iterator it = C.Triangulation.begin();
+                for (; it != C.Triangulation.end(); ++it) {
                     if (it->key == key) {
-                        tmp_triang.erase(it);
+                        C.Triangulation.erase(it);
                         break;
                     }
                 }
-                tmp_triang_size = C.TriangulationSize - 1;
-                C.TriangulationSize = 0;
             }
 
             // create subcone key
@@ -1005,21 +1037,16 @@ void SimplexEvaluator<Integer>::Simplex_parallel_evaluation(){
                     new_simplex.height = bottom_it->vol; // best replacement for height
                     new_simplex.vol    = bottom_it->vol;
                     //cout << "new " << new_simplex.key;
-                    C.Triangulation.push_back(new_simplex);
-                    C.TriangulationSize++;
+                    C.TriangulationBuffer.push_back(new_simplex);
+                    C.TriangulationBufferSize++;
                 }
             }
 
             // evaluate created triangulation
-            C.evaluate_triangulation();
+            if (C.check_evaluation_buffer())
+                C.evaluate_triangulation();
 
-
-            if (C.keep_triangulation) {
-                C.Triangulation.splice(C.Triangulation.begin(), tmp_triang);
-                C.TriangulationSize += tmp_triang_size;
-            }
             if (C_ptr->verbose) {
-				
 				verboseOutput() << "**************************************************" << endl;
 			}
 
@@ -1034,7 +1061,7 @@ void SimplexEvaluator<Integer>::Simplex_parallel_evaluation(){
 
     collect_vectors();   // --> Results[0]
     for(size_t i=1;i<C_ptr->Results.size();++i)  // takes care of h-vectors
-        conclude_evaluation(C_ptr->Results[i]);
+        add_hvect_to_HS(C_ptr->Results[i]);
     sequential_evaluation=true;   
     conclude_evaluation(C_ptr->Results[0]);  // h-vector in Results[0] and collected elements
 
@@ -1118,16 +1145,19 @@ void SimplexEvaluator<Integer>::addMult(Integer multiplicity, Collector<Integer>
 template<typename Integer>
 void SimplexEvaluator<Integer>::local_reduction(Collector<Integer>& Coll) {
     // reduce new against old elements
-    //now done directly    reduce(Coll.Candidates, Hilbert_Basis);
     
-    if(C_ptr->do_module_gens_intcl){
-        Hilbert_Basis.merge(Coll.Candidates,compare_last<Integer>);
+    assert(sequential_evaluation);
+    Coll.Candidates.sort(compare_last<Integer>);
+    
+    if(C_ptr->do_module_gens_intcl){  // in this case there is no local reduction
+        Hilbert_Basis.splice(Hilbert_Basis.begin(),Coll.Candidates); // but direct reduction against global old candidates
+        reduce_against_global(Coll);
+        Hilbert_Basis.clear();
         Coll.candidates_size = 0;
         return;
     }
 
     // interreduce
-    Coll.Candidates.sort(compare_last<Integer>);
     reduce(Coll.Candidates, Coll.Candidates,Coll.candidates_size);
 
     // reduce old elements by new ones

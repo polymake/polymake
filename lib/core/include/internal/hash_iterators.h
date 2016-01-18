@@ -21,7 +21,22 @@
 
 namespace pm {
 
-#if defined(__GNUC__)
+#if defined(__GLIBCXX__) && defined(__cplusplus) && __cplusplus >= 201103L && !defined(PM_FORCE_TR1)
+
+template <typename Value, bool __constant_iterators, bool __cache>
+struct iterator_cross_const_helper< std::__detail::_Node_iterator<Value,__constant_iterators,__cache>, true> {
+   typedef std::__detail::_Node_iterator<Value,__constant_iterators,__cache> iterator;
+   typedef std::__detail::_Node_const_iterator<Value,__constant_iterators,__cache> const_iterator;
+};
+
+template <typename Value, bool __constant_iterators, bool __cache>
+struct iterator_cross_const_helper< std::__detail::_Node_const_iterator<Value,__constant_iterators,__cache>, true> {
+   typedef std::__detail::_Node_iterator<Value,__constant_iterators,__cache> iterator;
+   typedef std::__detail::_Node_const_iterator<Value,__constant_iterators,__cache> const_iterator;
+};
+
+#elif defined(__GLIBCXX__)
+
    template <typename Value, bool __constant_iterators, bool __cache>
    struct iterator_cross_const_helper< std::tr1::__detail::_Hashtable_iterator<Value,__constant_iterators,__cache>, true> {
       typedef std::tr1::__detail::_Hashtable_iterator<Value,__constant_iterators,__cache> iterator;
@@ -33,6 +48,31 @@ namespace pm {
       typedef std::tr1::__detail::_Hashtable_iterator<Value,__constant_iterators,__cache> iterator;
       typedef std::tr1::__detail::_Hashtable_const_iterator<Value,__constant_iterators,__cache> const_iterator;
    };
+
+#elif defined(_LIBCPP_VERSION)
+
+template <typename Iterator>
+struct iterator_cross_const_helper<std::__1::__hash_map_iterator<Iterator>,true> {
+   typedef std::__1::__hash_map_iterator<typename iterator_traits<Iterator>::iterator> iterator;
+   typedef std::__1::__hash_map_const_iterator<typename iterator_traits<Iterator>::const_iterator> const_iterator;
+};
+template <typename Iterator>
+struct iterator_cross_const_helper<std::__1::__hash_map_const_iterator<Iterator>,true> {
+   typedef std::__1::__hash_map_iterator<typename iterator_traits<Iterator>::iterator> iterator;
+   typedef std::__1::__hash_map_const_iterator<typename iterator_traits<Iterator>::const_iterator> const_iterator;
+};
+
+template <typename Iterator>
+struct iterator_cross_const_helper<std::__1::__hash_iterator<Iterator>,true> {
+   typedef std::__1::__hash_iterator<typename iterator_traits<Iterator>::iterator> iterator;
+   typedef std::__1::__hash_const_iterator<typename iterator_traits<Iterator>::const_iterator> const_iterator;
+};
+template <typename Iterator>
+struct iterator_cross_const_helper<std::__1::__hash_const_iterator<Iterator>,true> {
+   typedef std::__1::__hash_iterator<typename iterator_traits<Iterator>::iterator> iterator;
+   typedef std::__1::__hash_const_iterator<typename iterator_traits<Iterator>::const_iterator> const_iterator;
+};
+
 #endif
 
    template <typename Key, typename Params>

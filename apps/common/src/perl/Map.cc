@@ -71,5 +71,11 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary_brk, perl::Canned< Map< Set< int >, int > >, perl::Canned< const Set< int > >);
    Class4perl("Polymake::common::Map_A_Array__Int_I_Int_Z", Map< Array< int >, int >);
    FunctionInstance4perl(new, Map< Array< int >, int >);
+   Class4perl("Polymake::common::Map_A_Matrix_A_Rational_I_NonSymmetric_Z_I_Int_Z", Map< Matrix< Rational >, int >);
+   Class4perl("Polymake::common::Map_A_Pair_A_Vector__Rational_I_Vector__Rational_Z_I_Matrix_A_Rational_I_NonSymmetric_Z_Z", Map< std::pair< Vector< Rational >, Vector< Rational > >, Matrix< Rational > >);
+   Class4perl("Polymake::common::Map_A_Vector__Rational_I_Int_Z", Map< Vector< Rational >, int >);
+   OperatorInstance4perl(Binary_brk, perl::Canned< Map< Vector< double >, int > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(new, Map< Vector< Rational >, int >);
+   OperatorInstance4perl(Binary_brk, perl::Canned< Map< Vector< Rational >, int > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, void> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

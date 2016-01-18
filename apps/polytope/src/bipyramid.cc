@@ -32,7 +32,7 @@ perl::Object bipyramid(perl::Object p_in, const Scalar& z, const Scalar& z_prime
    perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
    p_out.set_description() << "Bipyramid over " << p_in.name() << endl;
 
-   const bool noc = options["noc"],
+   const bool noc = options["no_coordinates"],
           relabel = options["relabel"];
 
    int n_vertices=0;
@@ -85,10 +85,14 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "#  default value is 1."
                           "# @param Scalar z_prime distance between the vertex barycenter and the second apex,"
                           "#  default value is -//z//."
-                          "# @option Bool noc : don't compute the coordinates, purely combinatorial description is produced."
+                          "# @option Bool no_coordinates : don't compute the coordinates, purely combinatorial description is produced."
                           "# @option Bool relabel copy the vertex labels from the original polytope,"
-                          "#  label the new vertices with \"Apex\" and \"Apex'\".",
-                          "bipyramid<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=1, type_upgrade<Scalar>=(-$_[1]), {noc => undef, relabel => undef})");
+                          "#  label the new vertices with \"Apex\" and \"Apex'\"."
+                          "# @example Here's a way to construct the 3-dimensional cross polytope:"
+                          "# > $p = bipyramid(bipyramid(cube(1)));"
+                          "# > print equal_polyhedra($p,cross(3));"
+                          "# | 1",
+                          "bipyramid<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=1, type_upgrade<Scalar>=(-$_[1]), {no_coordinates => undef, relabel => undef})");
 } }
 
 // Local Variables:

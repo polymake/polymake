@@ -16,35 +16,9 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/IncidenceMatrix.h"
-#include "polymake/Integer.h"
-#include "polymake/Matrix.h"
-#include "polymake/Rational.h"
-#include "polymake/SparseMatrix.h"
-#include "polymake/TropicalNumber.h"
 #include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0>
-   FunctionInterface4perl( operator_x_x_f5, T0 ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      WrapperReturnLvalueAnch( 1, (arg0), T0, arg0.get<T0>()(arg1, arg2) );
-   };
-
-   FunctionInstance4perl(operator_x_x_f5, perl::Canned< Wary< IncidenceMatrix< NonSymmetric > > >);
-   FunctionInstance4perl(operator_x_x_f5, perl::Canned< Wary< Matrix< Rational > > >);
-   FunctionInstance4perl(operator_x_x_f5, perl::Canned< Wary< Matrix< double > > >);
-   FunctionInstance4perl(operator_x_x_f5, perl::Canned< Wary< SparseMatrix< double, NonSymmetric > > >);
-   FunctionInstance4perl(operator_x_x_f5, perl::Canned< Wary< SparseMatrix< Rational, NonSymmetric > > >);
-   FunctionInstance4perl(operator_x_x_f5, perl::Canned< const Wary< Matrix< Integer > > >);
-   FunctionInstance4perl(operator_x_x_f5, perl::Canned< const Wary< Matrix< Rational > > >);
-   FunctionInstance4perl(operator_x_x_f5, perl::Canned< const Wary< Matrix< double > > >);
-   FunctionInstance4perl(operator_x_x_f5, perl::Canned< const Wary< IncidenceMatrix< NonSymmetric > > >);
-   FunctionInstance4perl(operator_x_x_f5, perl::Canned< Wary< Matrix< Integer > > >);
-   FunctionInstance4perl(operator_x_x_f5, perl::Canned< const Wary< Matrix< int > > >);
-   FunctionInstance4perl(operator_x_x_f5, perl::Canned< Wary< Matrix< TropicalNumber< Min, Rational > > > >);
-   FunctionInstance4perl(operator_x_x_f5, perl::Canned< Wary< Matrix< int > > >);
-   FunctionInstance4perl(operator_x_x_f5, perl::Canned< const Wary< SparseMatrix< Rational, NonSymmetric > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

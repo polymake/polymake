@@ -270,7 +270,7 @@ namespace polymake { namespace tropical {
 			"# @param Cycle<Addition> F  A simplicial fan without lineality space"
 			"# @return Matrix<Rational> The above mentioned linear system. The rows "
 			"# are equations, the columns correspond to d-dimensional cones of FxF in the order given "
-			"# by skeleton_complex(simplicial_with_diagonal(F), d,TRUE)",
+			"# by skeleton_complex(simplicial_with_diagonal(F), d, 1)",
 			"simplicial_piecewise_system<Addition>(Cycle<Addition>)");
 
 	UserFunctionTemplate4perl("# @category Inverse problems"

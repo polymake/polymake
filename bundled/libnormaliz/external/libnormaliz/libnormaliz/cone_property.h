@@ -25,7 +25,7 @@
 #define CONE_PROPERTY_H_
 
 #include <bitset>
-#include <iostream>
+#include <ostream>
 
 namespace libnormaliz {
 
@@ -35,6 +35,7 @@ namespace libnormaliz {
  */
 namespace ConeProperty {
     enum Enum {
+        // goals that can be computed
         Generators,
         ExtremeRays,
         VerticesOfPolyhedron,
@@ -43,7 +44,6 @@ namespace ConeProperty {
         TriangulationDetSum,
         Triangulation,
         Multiplicity,
-        Shift,
         RecessionRank,
         AffineDim,
         ModuleRank,
@@ -56,6 +56,7 @@ namespace ConeProperty {
         IsDeg1ExtremeRays,
         IsDeg1HilbertBasis,
         IsIntegrallyClosed,
+        WitnessNotIntegrallyClosed,
         OriginalMonoidGenerators,
         IsReesPrimary,
         ReesPrimaryMultiplicity,
@@ -66,12 +67,14 @@ namespace ConeProperty {
         Sublattice,
         ClassGroup,
         ModuleGeneratorsOverOriginalMonoid,
-        // the following are more compute options than real properties of the cone
+        // compute options
         Approximate,
         BottomDecomposition,
         DefaultMode,
         DualMode,
         KeepOrder,
+        IntegerHull,
+        MaximalSubspace,
         EnumSize // this has to be the last entry, to get the number of entries in the enum
     }; // remember to change also the string conversion function if you change this enum
 }
@@ -103,9 +106,13 @@ public:
     bool none() const;
     size_t count () const;
 
+    /* return the restriction of this to the goals / options */
+    ConeProperties goals();
+    ConeProperties options();
+
     /* the following methods are used internally */
     void set_preconditions();    // activate properties which are needed implicitly
-    void prepare_compute_options();
+    void prepare_compute_options(bool inhomogeneous);
     void check_sanity(bool inhomogeneous);
 
     /* print it in a nice way */

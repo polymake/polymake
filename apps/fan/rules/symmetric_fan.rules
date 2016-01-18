@@ -154,9 +154,7 @@ rule MAXIMAL_CONES_REPS_DIMS : RAYS, MAXIMAL_CONES_REPS, LINEALITY_SPACE {
 weight 1.50;
 
 rule MAXIMAL_CONES_REPS_DIMS : FAN_DIM, N_MAXIMAL_CONE_ORBITS {
-   my @dims;
-   for (my $i=0;$i<$this->N_MAXIMAL_CONE_ORBITS;++$i) { push @dims, $this->FAN_DIM;}
-   $this->MAXIMAL_CONES_REPS_DIMS(temporary)=\@dims;
+   $this->MAXIMAL_CONES_REPS_DIMS(temporary)=[ ( $this->FAN_DIM ) x $this->N_MAXIMAL_CONE_ORBITS ];
 }
 precondition : PURE;
 weight 0.10;
@@ -170,7 +168,7 @@ weight 0.10;
 rule N_MAXIMAL_CONE_ORBITS : MAXIMAL_CONES_REPS {
    $this->N_MAXIMAL_CONE_ORBITS=scalar(@{$this->MAXIMAL_CONES_REPS});
 }
-weight 0.10;
+weight 0.1;
 
 rule F_VECTOR, ORBITS_F_VECTOR, CONES_REPS, CONES_ORBIT_SIZES : RAYS, MAXIMAL_CONES_REPS, RAYS_IMAGES, COMBINATORIAL_DIM, LINEALITY_SPACE {
     all_cones_symmetry($this,$this->COMBINATORIAL_DIM);

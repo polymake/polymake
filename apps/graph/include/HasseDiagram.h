@@ -95,9 +95,10 @@ public:
    const sequence node_range_of_dim(int d) const
    {
       const int D=dim();
-      if (d>=std::numeric_limits<int>::max()-D)
+		if (d>=std::numeric_limits<int>::max()-D)
          throw std::runtime_error("HasseDiagram::nodes_of_dim - dimension out of range");
       if (d<0) d+=D;
+      if (D == 0 && d == -1) d = 0;
       if (d<0 || d>D)
          throw std::runtime_error("HasseDiagram::nodes_of_dim - dimension out of range");
       if (d==D)
@@ -115,7 +116,7 @@ public:
    const sequence node_range_of_dim(int d1, int d2) const
    {
       const int D=dim();
-      if (d1<0) d1+=D;
+		if (d1<0) d1+=D;
       if (d2<0) d2+=D;
       if (d1<0 || d2>D || d1>d2)
          throw std::runtime_error("HasseDiagram::nodes_of_dim - dimension out of range");
@@ -159,8 +160,9 @@ public:
 
    bool proper_top_node() const
    {
-      const size_t d=dim_map.size()-1;
-      return d==0 || dim_map[d]-dim_map[d-1]==1 && dim_map[d-1]==top_node();
+      const int d=dim_map.size()-1;
+		if(d <= 0) return false;
+      return dim_map[d]-dim_map[d-1]==1 && dim_map[d-1]==top_node();
    }
 
    typedef ContainerUnion< pm::cons< IndexedSubset<const faces_map_type&, const graph_type::in_adjacent_node_list&>,

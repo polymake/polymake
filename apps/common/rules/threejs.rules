@@ -90,7 +90,7 @@ sub command {
 	my $polydir = $Polymake::InstallTop;
 
    my $outdir = $self->tempfile->dir;
-	"cp -r -L $polydir/resources/threejs/js $outdir; $webbrowser $filename 1>/dev/null 2>&1";
+	"cp -R -L $polydir/resources/threejs/js $outdir; $webbrowser $filename 1>/dev/null 2>&1";
 }
 
 sub new_drawing {

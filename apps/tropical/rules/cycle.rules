@@ -15,6 +15,11 @@
 
 object Cycle {
 
+	#Any cycle is pure-dimensional by default.
+	rule initial : PURE : {
+           $this->PURE = 1;
+	}
+
 	# @category Input property
 	# A list of (non-redundant) vertices and rays of the complex. Note that [[VERTICES]]
 	# are supposed to be normalized to a leading 0. If you want to input non-normalized vertices,
@@ -145,7 +150,7 @@ object Cycle {
 	rule PROJECTIVE_DIM : FAN_DIM {
 		$this->PROJECTIVE_DIM = $this->FAN_DIM-1;
 	}
-	weight 0.10;
+	weight 0.1;
 
 	# @Category Affine and projective coordinates
 	# This is the ambient projective dimension, i.e. it is
@@ -155,7 +160,7 @@ object Cycle {
 	rule PROJECTIVE_AMBIENT_DIM : FAN_AMBIENT_DIM {
 		$this->PROJECTIVE_AMBIENT_DIM = $this->FAN_AMBIENT_DIM-2;
 	}
-	weight 0.10;
+	weight 0.1;
 
 	label with_new_properties
 
@@ -182,7 +187,7 @@ object Cycle {
 	rule PROJECTIVE_CODIMENSION : PROJECTIVE_AMBIENT_DIM, PROJECTIVE_DIM {
 		$this->PROJECTIVE_CODIMENSION = $this->PROJECTIVE_AMBIENT_DIM - $this->PROJECTIVE_DIM;
 	}
-	weight 0.10;
+	weight 0.1;
 
 	# @category Affine and projective coordinates
 	# This produces a version of the cycle in the coordinates of a standard

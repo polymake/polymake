@@ -21,9 +21,10 @@ require Cwd;
 
 use strict;
 use namespaces;
+use feature 'state';
 
 my $pmns="http://www.math.tu-berlin.de/polymake/#3";
-my $xml_id_attr="{$XML::NamespaceSupport::NS_XML}id";
+# not needed yet # my $xml_id_attr="{".XML::LibXML::XML_XML_NS."}id";
 
 my ($rngschema, $DOMparser, $XSLT, $XPath, $suppress_auto_save);
 
@@ -46,7 +47,8 @@ use Polymake::Struct (
    '@cur_proto',
    '@cur_property',
    '@cur_value',
-   [ '$cols' => 'undef' ],
+   '@cols',
+   [ '$depth' => '0' ],
    '$text',
    '@instance_by_id',
    [ '$last_id' => 'undef' ],
@@ -59,6 +61,7 @@ use Polymake::Struct (
 );
 
 declare $force_verification;
+declare $reject_unknown_properties=0;
 
 #############################################################################################
 sub gather_transforms {
@@ -209,7 +212,8 @@ sub provide_ext {
          @{$self->cur_value}=();
          @{$self->instance_by_id}=();
          undef $self->nsprefix;
-         undef $self->cols;
+         @{$self->cols}=();
+         $self->depth=0;
          undef $self->last_id;
          undef $self->chk;
          initiate_transform;
@@ -243,6 +247,7 @@ sub verify_integrity : method {
 sub start_element : method {
    my ($self, $elem)=@_;
    my $tag="start_".$elem->{LocalName};
+   $self->depth++;
    if (!defined($self->nsprefix)) {
       if ($elem->{NamespaceURI} ne $pmns) {
          die "file ", $self->filename, " is not encoded in the current polymake XML namespace\n";
@@ -328,6 +333,7 @@ sub start_element : method {
 
 sub end_element : method {
    my ($self, $elem)=@_;
+   $self->depth--;
    my $etag="end_".$elem->{LocalName};
    $self->$etag();
 }
@@ -394,8 +400,6 @@ sub end_object : method {
    }
 }
 
-my $warn_about_unknown_props;
-
 sub start_property : method {
    my ($self, $elem)=@_;
    my $attrs=$elem->{Attributes};
@@ -409,8 +413,12 @@ sub start_property : method {
    }
    my $prop=$self->cur_proto->[-1]->lookup_property($prop_name);
    unless (defined $prop) {
-      warn_print( "encountered unknown property '$prop_name' in object ", $self->cur_proto->[-1]->full_name );
-      $warn_about_unknown_props ||= print <<'.';
+      my @message=("encountered unknown property '$prop_name' in object ", $self->cur_proto->[-1]->full_name);
+      if ($reject_unknown_properties) {
+         die @message, "\n";
+      } else {
+         warn_print(@message);
+         state $tell_once= print <<'.';
 
 Please be aware that all unknown properties are automatically removed
 from the data files.
@@ -418,8 +426,9 @@ If you want to supply additional information with the objects, please use
 attachments or declare new properties in extension rules.
 
 .
-      skip_subtree_mode($self, 1);
-      return;
+         skip_subtree_mode($self, 1);
+         return;
+      }
    }
    my $type=extract_type($self, $attrs, 0);
    push @{$self->cur_property}, [ $prop->concrete($self->cur_object->[-1]), $type ];
@@ -517,8 +526,8 @@ sub start_v : method {
    my $value=[ ];
    if (exists $attrs->{"{}dim"}) {
       set_array_flags($value, $attrs->{"{}dim"}->{Value});
-   } elsif (defined($self->cols)) {
-      set_array_flags($value, $self->cols);
+   } elsif (defined($self->cols->[$self->depth-1])) {
+      set_array_flags($value, $self->cols->[$self->depth-1]);
    }
    if (exists $attrs->{"{}i"}) {
       push @{$self->cur_value->[-1]}, $attrs->{"{}i"}->{Value}+0;
@@ -550,9 +559,10 @@ sub start_m : method {
    my $attrs=$elem->{Attributes};
    my $value=[ ];
    if (exists $attrs->{"{}cols"}) {
-      $self->cols=$attrs->{"{}cols"}->{Value}+0;
+      $self->cols->[$self->depth] = $attrs->{"{}cols"}->{Value}+0;
    } elsif (exists $attrs->{"{}dim"}) {
-      set_array_flags($value, $self->cols=$attrs->{"{}dim"}->{Value});
+      $self->cols->[$self->depth] = $attrs->{"{}dim"}->{Value};
+      set_array_flags($value, $attrs->{"{}dim"}->{Value});
    }
    push @{$self->cur_value}, $value;
 }
@@ -560,8 +570,8 @@ sub start_m : method {
 sub end_m : method {
    my ($self)=@_;
    my $list=pop @{$self->cur_value};
+   undef $self->cols->[$self->depth+1];
    push @{$self->cur_value->[-1]}, $list;
-   undef $self->cols;
 }
 
 sub start_e : method {
@@ -703,17 +713,24 @@ sub layer_for_compression {
 #############################################################################################
 # to be used in the test suite driver and other exotic circumstances
 sub suppress_validation {
-   my $scope=shift;
+   my ($scope)=@_;
    $scope->begin_locals;
    local_sub(\&XMLhandler::verify_integrity, sub : method { $_[0]->trusted=1 });
    $scope->end_locals;
 }
 
 sub enforce_validation {
-   my $scope=shift;
+   my ($scope)=@_;
    $scope->begin_locals;
    local_sub(\&XMLhandler::verify_integrity, sub : method { $_[0]->trusted=0 });
    local_incr($suppress_auto_save);
+   $scope->end_locals;
+}
+
+sub reject_unknown_properties {
+   my ($scope)=@_;
+   $scope->begin_locals;
+   local_incr($XMLhandler::reject_unknown_properties);
    $scope->end_locals;
 }
 #############################################################################################

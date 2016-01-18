@@ -56,18 +56,18 @@ weight 1.10;
 rule N_FACETS : FACETS {
    $this->N_FACETS=$this->FACETS->size();
 }
-weight 0.10;
+weight 0.1;
 
 rule N_MINIMAL_NON_FACES : MINIMAL_NON_FACES {
    $this->N_MINIMAL_NON_FACES=$this->MINIMAL_NON_FACES->size();
 }
-weight 0.10;
+weight 0.1;
 
 rule DIM : FACETS {
    $this->DIM=$this->FACETS->[0]->size()-1;
 }
 precondition : PURE;
-weight 0.10;
+weight 0.1;
 
 rule GRAPH.ADJACENCY : FACETS {
    $this->GRAPH->ADJACENCY=vertex_graph($this->FACETS);
@@ -157,7 +157,7 @@ rule FOLDABLE : PROJ_ORBITS, DIM {
     $this->FOLDABLE = ($this->PROJ_ORBITS->size() == $this->DIM+1);
 }
 precondition : DUAL_GRAPH.CONNECTED;
-weight 0.10;
+weight 0.1;
 
 rule F_VECTOR : FACETS, DIM, PURE {
   $this->F_VECTOR=f_vector($this->FACETS,$this->DIM,$this->PURE);
@@ -259,7 +259,7 @@ weight 2.10;
 rule SURFACE : DIM, GRAPH.CONNECTED, MANIFOLD {
    $this->SURFACE= $this->GRAPH->CONNECTED && $this->MANIFOLD && $this->DIM==2;
 }
-weight 0.10;
+weight 0.1;
 
 rule GENUS : ORIENTED_PSEUDO_MANIFOLD, EULER_CHARACTERISTIC {
   my $euler_char = $this->EULER_CHARACTERISTIC;
@@ -274,8 +274,12 @@ precondition : CLOSED_PSEUDO_MANIFOLD;
 weight 0.20;
 
 rule MANIFOLD : { $this->MANIFOLD=1; }
-precondition : BALL | SPHERE;
-weight 0.10;
+precondition : BALL;
+weight 0.1;
+
+rule MANIFOLD : { $this->MANIFOLD=1; }
+precondition : SPHERE;
+weight 0.1;
 
 # deterministic
 rule MANIFOLD : FACETS, DIM, N_VERTICES {
@@ -293,8 +297,16 @@ precondition : PSEUDO_MANIFOLD;
 weight 4.50;
 
 rule PSEUDO_MANIFOLD : {  $this->PSEUDO_MANIFOLD=1; }
-precondition : MANIFOLD | CLOSED_PSEUDO_MANIFOLD | ORIENTED_PSEUDO_MANIFOLD;
-weight 0.10;
+precondition : MANIFOLD;
+weight 0.1;
+
+rule PSEUDO_MANIFOLD : {  $this->PSEUDO_MANIFOLD=1; }
+precondition : CLOSED_PSEUDO_MANIFOLD;
+weight 0.1;
+
+rule PSEUDO_MANIFOLD : {  $this->PSEUDO_MANIFOLD=1; }
+precondition : ORIENTED_PSEUDO_MANIFOLD;
+weight 0.1;
 
 rule PSEUDO_MANIFOLD : HASSE_DIAGRAM {
    is_pseudo_manifold($this);
@@ -307,7 +319,7 @@ rule MANIFOLD, PSEUDO_MANIFOLD : {
    $this->PSEUDO_MANIFOLD=0;
 }
 precondition : !PURE;
-weight 0.10;
+weight 0.1;
 
 rule CLOSED_PSEUDO_MANIFOLD : HASSE_DIAGRAM {
    is_closed_pseudo_manifold($this);
@@ -319,7 +331,7 @@ rule CLOSED_PSEUDO_MANIFOLD : {
    $this->CLOSED_PSEUDO_MANIFOLD=0;
 }
 precondition : !PURE;
-weight 0.10;
+weight 0.1;
 
 rule ORIENTED_PSEUDO_MANIFOLD, ORIENTATION : FACETS, DUAL_GRAPH, PSEUDO_MANIFOLD {
    orientation($this);
@@ -336,7 +348,7 @@ rule BALL : {
    $this->BALL=0;
 }
 precondition : CLOSED_PSEUDO_MANIFOLD;
-weight 0.10;
+weight 0.1;
 
 rule SPHERE : FACETS, DIM, N_VERTICES, HASSE_DIAGRAM {
    $this->SPHERE=ternary_to_bool(is_ball_or_sphere($this,1));
@@ -348,7 +360,7 @@ rule SPHERE : {
    $this->SPHERE=0;
 }
 precondition : !CLOSED_PSEUDO_MANIFOLD;
-weight 0.10;
+weight 0.1;
 
 
 rule HASSE_DIAGRAM : FACETS, PURE, DIM {
@@ -379,7 +391,7 @@ rule LOCALLY_STRONGLY_CONNECTED : {
    $this->LOCALLY_STRONGLY_CONNECTED=1;
 }
 precondition : MANIFOLD;
-weight 0.10;
+weight 0.1;
 
 rule LOCALLY_STRONGLY_CONNECTED : HASSE_DIAGRAM {
    $this->LOCALLY_STRONGLY_CONNECTED=is_locally_strongly_connected($this);

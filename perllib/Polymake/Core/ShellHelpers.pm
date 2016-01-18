@@ -61,7 +61,7 @@ my $meth_args_start_re=qr{(?'args_start' \s*\(\s* )}x;
 my (%popular_perl_keywords, %object_methods);
 @popular_perl_keywords{qw( local print require chdir rename unlink mkdir rmdir declare exit )}=();
 @object_methods{qw( name description give take add remove type provide lookup list_properties properties schedule list_names
-                    get_attachment remove_attachment list_attachments attach )}=();
+                    set_as_default set_as_default_now get_attachment remove_attachment list_attachments attach )}=();
 
 
 # The order is important: more specific patterns must precede more generic ones.
@@ -347,6 +347,7 @@ declare @list=(
                $shell->try_filename_completion($word, $quote, $prefix, 0);
             } else {
                my @proposals=$shell->term->completion_matches($prefix, $shell->term->Attribs->{filename_completion_function});
+               shift @proposals if $#proposals;
                foreach my $dir ((map { @{$_->scriptpath} } $User::application, values %{$User::application->imported}),
                                 @User::lookup_scripts, "$InstallTop/scripts") {
                   if (my @sublist=$shell->term->completion_matches("$dir/$prefix", $shell->term->Attribs->{filename_completion_function})) {
@@ -386,7 +387,7 @@ declare @list=(
 
             if (defined( my $type=retrieve_method_owner_type($var, $app_name, $func, $intermed) )) {
                if (instanceof ObjectType($type)) {
-                  $shell->completion_words=[ try_property_completion($type, $prefix, 1) ];
+                  $shell->completion_words=[ try_property_completion($type, $prefix) ];
                   $shell->term->Attribs->{completion_append_character}=$quote;
                }
             }
@@ -403,7 +404,7 @@ declare @list=(
          if (length($prefix)) {
             if (defined( my $type=retrieve_method_owner_type($var, $app_name, $func, $intermed) )) {
                if (instanceof ObjectType($type)) {
-                  @proposals=fetch_property_help($type, $prefix, 1)
+                  @proposals=fetch_property_help($type, $prefix)
                     or
                   @proposals=sub { print "object type ", $type->full_name, " does not have a property $prefix\n" };
                }
@@ -587,13 +588,13 @@ declare @list=(
          my ($quote, $path, $prefix)=@+{qw(quote path prefix)};
 
          if (defined $quote) {
+            my $app=$User::application;
             my $app_name;
-            if ($path =~ s/^($id_re):://o) {
+            if (($path // $prefix) =~ /^($id_re)::/o && $app->used->{$1}) {
                $app_name=$1;
-            } elsif (!defined($path) && $prefix =~ s/^($id_re):://o) {
-               $app_name=$1;
+               $app=$app->used->{$1};
+               if (defined($path)) { $path=$'; } else { $prefix=$'; }
             }
-            my $app= defined($app_name) ? (eval { User::application($app_name) } // return) : $User::application;
             my @proposals= sorted_uniq(sort( defined($path)
                                              ? map { $_->list_toc_completions($prefix) } $app->help->get_topics($path) :
                                              defined($app_name)
@@ -811,14 +812,16 @@ declare @list=(
 
       sub : method {
          my ($self, $shell, $word)=@_;
-         my ($stmt, $var, $type, $app, $app_name, $func, $tparams, $intermed, $last_method_name, $args_start, $preceding_args, $prefix, @func_names);
+         my ($stmt, $var, $type, $app, $app_name, $func, $method_owner, $tparams, $intermed, $last_method_name, $args_start, $preceding_args, $prefix, @func_names);
+         my $prefix_start=0;
 
          do {
-            ($stmt, $var, $app_name, $func, $tparams, $intermed, $last_method_name, $args_start, $preceding_args, $prefix)=@+{qw(
-              stmt   var   app_name   func   tparams   intermed   last_method_name   args_start   preceding_args   prefix)   };
-
+            ($stmt, $var, $app_name, $func, $method_owner, $tparams, $intermed, $last_method_name, $args_start, $preceding_args, $prefix)=@+{qw(
+              stmt   var   app_name   func   method_owner   tparams   intermed   last_method_name   args_start   preceding_args   prefix)   };
+            my $func_start = (capturing_group_boundaries('func'))[0]+$prefix_start;
+            $prefix_start += (capturing_group_boundaries('prefix'))[0];
             my @proposals;
-            if (defined $+{method_owner}) {
+            if (defined $method_owner) {
                # a method
                if (($var, $type)=retrieve_method_owner_type($var, $app_name, $func, $intermed)) {
                   if (defined $args_start) {
@@ -866,7 +869,7 @@ declare @list=(
                            # TODO: describe all common methods in help.rules and discard %object_methods
                            if (my @common_methods=grep { index($_, $last_method_name)==0 } keys %object_methods) {
                               if (@common_methods==1 && !@proposals &&
-                                  $common_methods[0] !~ /^(?:name|description|list_attachments)$/) {
+                                  $common_methods[0] !~ /^(?:name|description|list_attachments|set_as_default)/) {
                                  $shell->term->Attribs->{completion_append_character}="(";
                               }
                               push @proposals, @common_methods;
@@ -897,6 +900,11 @@ declare @list=(
                      if (defined $app_name) {
                         @proposals=map { "$app_name\::$_" } $app->help->list_completions("!rel", "functions", $func);
                      } else {
+                        # Here we can erroneously recognize a function name in a file path.
+                        # Stop here and proceed with filename completion if the apparent function name occurs in an open quoted string
+                        if (substr($shell->partial_input, 0, $func_start) =~ m{^ $quote_balanced_re $anon_quote_re $non_quote_space_re* $}xo) {
+                           return 0;
+                        }
                         @proposals=$app->help->list_completions("functions", $func);
                         if (defined $stmt) {
                            push @proposals, grep { index($_, $func)==0 } keys %popular_perl_keywords;
@@ -997,34 +1005,35 @@ sub try_label_completion {
 }
 
 sub prepare_property_lookup {
-   my ($type, $prefix, $allow_auto_cast)=@_;
+   my ($type, $prefix)=@_;
    my @path=split /\./, $prefix;
    $prefix= substr($prefix,-1,1) eq "." ? "" : pop @path;
    foreach (@path) {
-      my $prop=$type->lookup_property($_) || ($allow_auto_cast && $type->lookup_auto_cast($_)) or return;
-      instanceof ObjectType($type=$prop->specialization($type)->type) or return;
+      my $prop=$type->lookup_property($_) or return;
+      $prop->flags & $Property::is_subobject or return;
+      $type=$prop->specialization($type)->type;
    }
    ($type, $prefix);
 }
 
 sub try_property_completion {
-   my ($type, $prefix, $allow_auto_cast)=@_;
+   my ($type, $prefix)=@_;
    if (($type, $prefix)=&prepare_property_lookup) {
-      sorted_uniq(sort( grep { !$type->is_overridden($_) } grep { /^$prefix/ } map { keys %{$_->properties} }
-                        map { ($_, $allow_auto_cast ? keys %{$_->auto_casts} : ()) } $type, @{$type->super} ))
+      sorted_uniq(sort( grep { !$type->is_overridden($_) } grep { /^$prefix/ }
+                        map { keys %{$_->properties} } $type, @{$type->super} ))
    } else {
       ()
    }
 }
 
 sub fetch_property_help {
-   my ($type, $prefix, $allow_auto_cast)=@_;
+   my ($type, $prefix)=@_;
    $prefix =~ s/\.$//;
    if (($type, $prefix)=&prepare_property_lookup) {
       my $topic;
       uniq( grep { !$type->is_overridden($_->name) }
                  map { defined($topic=$_->help_topic) ? $topic->find("!rel", "properties", $prefix) : () }
-                     map { ($_, $allow_auto_cast ? keys %{$_->auto_casts} : ()) } $type, @{$type->super} )
+                     $type, @{$type->super} )
    } else {
       ()
    }
@@ -1177,8 +1186,7 @@ sub retrieve_method_topics {
    if (ref($type)) {
       if (instanceof ObjectType($type)) {
          return map { $_->$help_method("!rel", "properties", "methods", $name) }
-                    ( grep { defined } map { $_->help_topic }
-                      ($type, @{$type->super}, keys %{$type->auto_casts}) ),
+                    ( grep { defined } map { $_->help_topic } $type, @{$type->super} ),
                     $type->application->help->find(qw(objects Core::Object));
       }
 

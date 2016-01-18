@@ -76,15 +76,14 @@ rule to.simplex: LP.MINIMAL_VALUE, LP.MINIMAL_VERTEX, FEASIBLE : LP.LINEAR_OBJEC
 }
 weight 3.30;
 
-# FIXME #195
-# weight set slightly above the weight of the corresponding cdd rule
-# does not reflect complexity
-rule to.bounded : BOUNDED : FACETS | INEQUALITIES, LINEALITY_SPACE {
-  $this->BOUNDED = to_input_bounded($this);
 }
-weight 1.30;
 
+# this is overridden in bundled:cdd for Rational and Float coordinate types
+function H_input_is_bounded(Polytope) {
+   to_input_bounded($_[0]);
 }
+
+
 
 # Local Variables:
 # mode: perl

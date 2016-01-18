@@ -35,8 +35,8 @@
 #define SUBLATTICE_REPRESENTATION_H
 
 #include <vector>
-#include "libnormaliz/libnormaliz.h"
-#include "libnormaliz/matrix.h"
+#include <libnormaliz/libnormaliz.h>
+#include <libnormaliz/matrix.h>
 
 //---------------------------------------------------------------------------
 
@@ -53,10 +53,10 @@ class Sublattice_Representation {
     template<typename> friend class Sublattice_Representation;
     
 	size_t dim, rank;
+    bool is_identity;
 	Matrix<Integer> A;
 	Matrix<Integer> B;
 	Integer c;
-	mpz_class index;
     mutable mpz_class external_index;
     mutable Matrix<Integer> Equations;
     mutable bool Equations_computed;
@@ -91,6 +91,8 @@ public:
 	Sublattice_Representation(const Matrix<Integer>& M, bool take_saturation);
 	// Sublattice_Representation(const Lineare_Transformation<Integer>& LT, bool take_saturation);
 
+    template<typename IntegerFC>
+    Sublattice_Representation(const Sublattice_Representation<IntegerFC>& Original);
 //---------------------------------------------------------------------------
 //                       Manipulation operations
 //---------------------------------------------------------------------------	
@@ -100,6 +102,9 @@ public:
 
 	/* first this then SR when going from Z^n to Z^r */
 	void compose(const Sublattice_Representation<Integer>& SR);
+    
+    /* compose with the dual of SR */
+    void compose_dual(const Sublattice_Representation<Integer>& SR);
 
 //---------------------------------------------------------------------------
 //                       Transformations
@@ -149,10 +154,8 @@ public:
 	/* returns the rank of the sublattice */
 	size_t getRank() const;
 
-	/* returns the index of the sublattice */
-	// mpz_class get_index() const;
-
 	Integer getAnnihilator() const;
+    bool IsIdentity()const; 
 
     const Matrix<Integer>& getEquationsMatrix() const;
     const vector<vector<Integer> >& getEquations() const;

@@ -114,24 +114,40 @@ perl::Object lex_extension(const perl::Object N, const Array<Set<int> >& modular
    return E;
 }
 
+perl::Object free_extension(const perl::Object N)
+{
+   int n = N.give("N_ELEMENTS");
+   Array<Set<int> > flat(1);
+   flat[0]=Set<int>(range(0,n-1));
+   perl::OptionSet options;
+   return lex_extension(N, flat, options);
+}
+
 UserFunction4perl("# @category Other"
                   "# Check if a subset of the lattice of flats of a matroid is a modular cut"
                   "# @param Matroid M the matroid"
                   "# @param Array<Set> C a list of flats to check if they form a modular cut in M"
-                  "# @option Bool verbose print diagnostic message in case C is not a modular cut; default 1"
+                  "# @option Bool verbose print diagnostic message in case C is not a modular cut; default is true"
                   "# @return Bool",
                   &is_modular_cut,
                   "is_modular_cut(Matroid Array<Set> { verbose => 1 })");
 
-UserFunction4perl("# @category Other"
+UserFunction4perl("# @category Producing a matroid from matroids"
                   "# Calculate the lexicographic extension of a matroid in a modular cut"
                   "# @param Matroid M the original matroid to be extended"
                   "# @param Array<Set> C a list of flats that form a modular cut in M"
-                  "# @option check_modular_cut whether to check if C in fact is a modular cut; default 1"
-                  "# @option Bool verbose print diagnostic message in case C is not a modular cut; default 1"
+                  "# @option Bool check_modular_cut whether to check if C in fact is a modular cut; default is true"
+                  "# @option Bool verbose print diagnostic message in case C is not a modular cut; default is true"
                   "# @return Matroid",
                   &lex_extension,
                   "lex_extension(Matroid Array<Set> { check_modular_cut => 1, verbose => 1 })");
+
+UserFunction4perl("# @category Producing a matroid from matroids"
+                  "# Calculate the free extension of a matroid"
+                  "# @param Matroid M the original matroid to be extended"
+                  "# @return Matroid",
+                  &free_extension,
+                  "free_extension(Matroid)");
 
 
 } }

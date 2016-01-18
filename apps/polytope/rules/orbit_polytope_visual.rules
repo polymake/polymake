@@ -125,8 +125,8 @@ user_function visualizeNOPGraph (OrbitPolytope,$) {
 # Visualizes all (nested) orbit polytopes contained in 
 # //orb// in one picture.
 # @param OrbitPolytope orb the orbit polytope
-# @param Scalar colors_ref the reference to an array of colors
-# @param Scalar trans_ref the reference to an array of transparency values
+# @param ARRAY colors_ref the reference to an array of colors
+# @param ARRAY trans_ref the reference to an array of transparency values
 
 user_function visualizeNOP (OrbitPolytope,$,$) {
     my ($orb, $colors_ref, $trans_ref) = @_;

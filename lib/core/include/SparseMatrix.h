@@ -779,23 +779,23 @@ public:
    }
 
    template <typename row_number_consumer, typename col_number_consumer>
-   void squeeze(row_number_consumer rnc, col_number_consumer cnc) { this->data->squeeze(rnc,cnc); }
+   void squeeze(const row_number_consumer& rnc, const col_number_consumer& cnc) { this->data->squeeze(rnc,cnc); }
 
    template <typename row_number_consumer>
-   void squeeze(row_number_consumer rnc) { this->data->squeeze(rnc); }
+   void squeeze(const row_number_consumer& rnc) { this->data->squeeze(rnc); }
 
-   /** Remove all empty (i.e., consisting entirely of implicit zeroes,) rows, renumber the rest, and reduce the dimensions. If you need to know the exact mapping between the old and new row indices, you can supply output iterators (e.g., back_inserter of a std::list.) They will get the old indices of non-empty rows assigned in the ascending order. */
+   /// Remove all empty (i.e., consisting entirely of implicit zeroes,) rows, renumber the rest, and reduce the dimensions.
    void squeeze() { this->data->squeeze(); }
 
    template <typename row_number_consumer>
-   void squeeze_rows(row_number_consumer rnc) { this->data->squeeze_rows(rnc); }
+   void squeeze_rows(const row_number_consumer& rnc) { this->data->squeeze_rows(rnc); }
 
    void squeeze_rows() { this->data->squeeze_rows(); }
 
    template <typename col_number_consumer>
-   void squeeze_cols(col_number_consumer cnc) { this->data->squeeze_cols(cnc); }
+   void squeeze_cols(const col_number_consumer& cnc) { this->data->squeeze_cols(cnc); }
 
-   /** Remove all empty (i.e., consisting entirely of implicit zeroes,) columns, renumber the rest, and reduce the dimensions. If you need to know the exact mapping between the old and new column indices, you can supply output iterators (e.g., back_inserter of a std::list.) They will get the old indices of non-empty columns assigned in the ascending order. */
+   /// Remove all empty (i.e., consisting entirely of implicit zeroes,) columns, renumber the rest, and reduce the dimensions.
    void squeeze_cols() { this->data->squeeze_cols(); }
 
    /**

@@ -169,7 +169,7 @@ user_function toTropicalPolynomial(String; @) {
 		my $hashref = $monomial_maps[$func];
 		my %monmap = %$hashref;
 		for my $v (0 .. scalar(@vars)-1) {
-			$monom_matrix->($func,$v) = defined($monmap{$vars[$v]})? $monmap{$vars[$v]} : 0;
+			$monom_matrix->elem($func,$v) = defined($monmap{$vars[$v]})? $monmap{$vars[$v]} : 0;
 		}
 	}
 
@@ -189,7 +189,7 @@ user_function toTropicalPolynomial(String; @) {
 # @param Ring<TropicalNumber<Addition,Rational> > r The polynomial ring in which the result will live.
 # By default, all variables in s must match variables of the ring (this can be changed with the next argument)
 # and the ring must be over the TropicalNumbers.
-# @param bool match_variables_by_order Optional and false by default. If true, variables in s can be arbitrary,
+# @param Bool match_variables_by_order Optional and false by default. If true, variables in //s// can be arbitrary,
 # though their total number has to match the total number of ring variables. The variables of the string
 # will be assigned to ring variables in alphabetical order.
 # @return Polynomial<TropicalNumber<Addition,Rational> >

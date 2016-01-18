@@ -25,10 +25,20 @@ INCLUDE
 
 object VectorConfiguration {
 
+method construct(polytope::Cone) {
+  my $cone=$_[1];
+  return new VectorConfiguration(VECTORS=>$cone->RAYS/$cone->LINEALITY_SPACE/-$cone->LINEALITY_SPACE);
+}
+
+rule MULTIPLE_VECTORS : VECTORS {
+   $this->MULTIPLE_VECTORS=detect_multiple($this->VECTORS); 
+}
+weight 1.10;
+
 rule N_VECTORS : VECTORS {
     $this->N_VECTORS=$this->VECTORS->rows;
 }
-weight 0.10;
+weight 0.1;
 
 rule LABELS : N_VECTORS {
    my @labels = (0..$this->N_VECTORS-1);
@@ -38,29 +48,29 @@ weight 4.10;
 
 # The purpose of the following rule is to have simpler preconditions in subsequent rules.
 # The scheduler efficiently handles preconditions which amount to checking a boolean.
-rule FULL_DIM : AMBIENT_DIM, DIM {
-  $this->FULL_DIM=($this->AMBIENT_DIM==$this->DIM);
+rule FULL_DIM : VECTOR_AMBIENT_DIM, VECTOR_DIM {
+  $this->FULL_DIM=($this->VECTOR_AMBIENT_DIM==$this->VECTOR_DIM);
 }
-weight 0.10;
+weight 0.1;
 
-rule AMBIENT_DIM : VECTORS {
-   $this->AMBIENT_DIM=$this->VECTORS->cols;
+rule VECTOR_AMBIENT_DIM : VECTORS {
+   $this->VECTOR_AMBIENT_DIM=$this->VECTORS->cols;
 }
-weight 0.10;
+weight 0.1;
 
-rule DIM : AMBIENT_DIM, LINEAR_SPAN {
-   $this->DIM= $this->AMBIENT_DIM - $this->LINEAR_SPAN->rows;
+rule VECTOR_DIM : VECTOR_AMBIENT_DIM, LINEAR_SPAN {
+   $this->VECTOR_DIM = $this->VECTOR_AMBIENT_DIM - $this->LINEAR_SPAN->rows;
 }
-weight 0.10;
+weight 0.1;
 
 rule LINEAR_SPAN : {
    $this->LINEAR_SPAN=new Matrix<Scalar>;
 }
 precondition : FULL_DIM;
-weight 0.10;
+weight 0.1;
 
-rule DIM : VECTORS {
-   $this->DIM=rank($this->VECTORS);
+rule VECTOR_DIM : VECTORS {
+   $this->VECTOR_DIM=rank($this->VECTORS);
 }
 weight 1.10;
 
@@ -139,6 +149,32 @@ user_function deletion(VectorConfiguration $) {
    my @labels = @{$vc->LABELS};
    splice @labels, $index, 1;
    return new VectorConfiguration(VECTORS => $vc->VECTORS->minor(~[$index],All), LABELS => "@labels");
+}
+
+# @category Producing a vector configuration
+# Orthogonally project a vector configuration to a coordinate subspace.
+# 
+# The subspace the VectorConfiguration //P// is projected on is given by indices in the set //indices//.
+# The option //revert// inverts the coordinate list.
+# @param VectorConfiguration P
+# @param Array<Int> indices
+# @option Bool revert inverts the coordinate list
+# @return VectorConfiguration
+user_function projection<Scalar>(VectorConfiguration<Scalar>; $=[ ], { revert=>0 }) {
+   my ($P, $indices, $options) = @_;
+   my $first_coord = ($P->isa("PointConfiguration") ? 1 : 0);
+   projection_impl($P, "VECTOR", "AFFINE_HULL", $first_coord, $indices, $options);
+}
+
+
+# @category Producing a vector configuration
+# Orthogonally project a vector configuration to a coordinate subspace such that redundant columns are omitted,
+# i.e., the projection becomes full-dimensional without changing the combinatorial type.
+# @param VectorConfiguration P
+# @option Bool relabel copy labels to projection
+# @return VectorConfiguration
+user_function projection_full<Scalar>(VectorConfiguration<Scalar>; {relabel=>0}) { 
+   projection(@_); 
 }
 
 # Local Variables:

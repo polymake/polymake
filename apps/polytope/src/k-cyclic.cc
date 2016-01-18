@@ -90,10 +90,12 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# "
                   "#\t Z. Smilansky: \"Bi-cyclic 4-polytopes\","
                   "#\t Isr. J. Math. 70, 1990, 82-92"
-                  "# @param Int n"
+                  "# @param Int n the number of points"
                   "# @param Vector s s=(s_1,...,s_k)"
-                  "# @return Polytope",
-                  &k_cyclic, "k_cyclic($@)");
+                  "# @return Polytope"
+                  "# @example To produce a (not exactly) regular pentagon, type this:"
+                  "# > $p = k_cyclic(5,[1]);",
+                  &k_cyclic, "k_cyclic($ $)");
 } }
 
 // Local Variables:

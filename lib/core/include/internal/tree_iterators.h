@@ -20,7 +20,8 @@
 #include "polymake/internal/iterators.h"
 
 namespace pm {
-#if defined(__GNUC__)
+
+#if defined(__GLIBCXX__)
 
 template <typename Tp>
 struct iterator_cross_const_helper< std::_Rb_tree_iterator<Tp>, true> {
@@ -34,7 +35,22 @@ struct iterator_cross_const_helper< std::_Rb_tree_const_iterator<Tp>, true> {
    typedef std::_Rb_tree_const_iterator<Tp> const_iterator;
 };
 
+#elif defined(_LIBCPP_VERSION)
+
+template <typename Tp, typename NodePtr, typename DiffType>
+struct iterator_cross_const_helper< std::__tree_iterator<Tp,NodePtr,DiffType>, true> {
+   typedef std::__tree_iterator<Tp,NodePtr,DiffType> iterator;
+   typedef std::__tree_const_iterator<Tp,NodePtr,DiffType> const_iterator;
+};
+
+template <typename Tp, typename NodePtr, typename DiffType>
+struct iterator_cross_const_helper< std::__tree_const_iterator<Tp,NodePtr,DiffType>, true> {
+   typedef std::__tree_iterator<Tp,NodePtr,DiffType> iterator;
+   typedef std::__tree_const_iterator<Tp,NodePtr,DiffType> const_iterator;
+};
+
 #endif
+
 }
 #endif // POLYMAKE_INTERNAL_TREE_ITERATORS_H
 

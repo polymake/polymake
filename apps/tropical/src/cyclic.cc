@@ -42,8 +42,8 @@ namespace polymake { namespace tropical {
 			"# Produces a tropical cyclic //d//-polytope with //n// vertices."
 			"# Cf."
 			"# \t Josephine Yu & Florian Block, arXiv: math.MG/0503279."
-			"# @param int d the dimension"
-			"# @param int n the number of generators"
+			"# @param Int d the dimension"
+			"# @param Int n the number of generators"
 			"# @tparam Addition Min or Max."
 			"# @return Cone<Addition>",
 			"cyclic<Addition>($,$)");

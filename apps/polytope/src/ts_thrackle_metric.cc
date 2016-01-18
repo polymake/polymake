@@ -41,7 +41,7 @@ perl::Object ts_thrackle_metric(const int n)
    return p;
 }
 
-UserFunction4perl("# @category Triangulations, subdivisions and volume"
+UserFunction4perl("# @category Finite metric spaces"
                   "# Compute a metric such that the f-vector of its tight span is maximal among all metrics with //n// points."
                   "# This metric can be interpreted as a lifting function for the thrackle triangulation (see de Loera,"
                   "# Sturmfels and Thomas: Groebner Basis and triangultaions of the second hypersimplex)"
@@ -49,7 +49,7 @@ UserFunction4perl("# @category Triangulations, subdivisions and volume"
                   "# @return Matrix",
                   &thrackle_metric,"thrackle_metric");
 
-UserFunction4perl("# @category Triangulations, subdivisions and volume"
+UserFunction4perl("# @category Finite metric spaces"
                   "# Compute a tight span of a metric such that its f-vector is maximal among all metrics with //n// points."
                   "# This metric can be interpreted as a lifting function for the thrackle triangulation (see de Loera,"
                   "# Sturmfels and Thomas: Groebner Basis and triangultaions of the second hypersimplex)"

@@ -36,19 +36,19 @@ void compute_lattice_of_flats(const GenericIncidenceMatrix<MatrixTop>& VIF, Diag
       HD.add_node(sequence(0,R));
    else if(C==0){
       HD.add_node(Set<int>());
-      return;
    }
 
-   if ( C == 0 )  // the empty matroid
+   if ( C == 0 )  // the empty matroid or rank 0 matroid
       return; 
 
    HD.increase_dim();
    int n, end_this_dim=0, d=0;
+	const Set<int> loops = dual? accumulate( cols(VIF), operations::mul()) :
+										  accumulate( rows(VIF), operations::mul());
 
-   if (__builtin_expect(C>1, 1)) {
+   if (__builtin_expect(C>0, 1)) {
       if(!dual){
       // The level: rank = 0 (loops)
-         const Set<int> loops=accumulate(rows(VIF), operations::mul());
          n=HD.add_node(loops);
          Q.push_back(loops);
          end_this_dim=1;
@@ -65,7 +65,7 @@ void compute_lattice_of_flats(const GenericIncidenceMatrix<MatrixTop>& VIF, Diag
       }
       int end_next_dim=end_this_dim;
 
-      if (__builtin_expect(C>1 && dim_upper_bound, 1)) {
+      if (__builtin_expect(C>0 && dim_upper_bound, 1)) {
          int old_n=n;
          for (;;) {
             Set<int> H = Q.front(); Q.pop_front();
@@ -83,7 +83,7 @@ void compute_lattice_of_flats(const GenericIncidenceMatrix<MatrixTop>& VIF, Diag
                   // The top node: whole matroid (or dual: empty set)
                   if (end_this_dim == end_next_dim) {
                      if(dual && n==old_n+1) break; // there are loops 
-                     n= dual ? HD.add_node(Set<int>()) : HD.add_node(sequence(0,C));
+                     n= dual ? HD.add_node(loops) : HD.add_node(sequence(0,C));
                      for (int i=old_n ; i<n; ++i)
                         add_edge(HD,i,n,Dual);
                   }

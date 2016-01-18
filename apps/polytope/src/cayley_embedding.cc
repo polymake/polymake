@@ -33,6 +33,16 @@ perl::Object cayley_embedding(const perl::Object& p_in1, const perl::Object& p_i
    return cayley_embedding(p_array, t_array, options);
 }
 
+template<typename Scalar>
+perl::Object cayley_embedding(const Array<perl::Object>& p_array,
+                              perl::OptionSet options)
+{
+   Array<Scalar> t_array;
+   if (options.exists("factors"))
+      t_array = options["factors"];
+
+   return cayley_embedding(p_array, t_array, options);
+}
 
 UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# Create a Cayley embedding of two polytopes (one of them must be pointed)."
@@ -61,10 +71,10 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# "
                           "# The option //relabel// creates an additional section [[VERTEX_LABELS]]."
                           "# @param Polytope A the input polytopes"
-                          "# @option Array t array of scaling factors for the Cayley embedding; defaults to the all-1 vector"
+                          "# @option Array<Scalar> factors array of scaling factors for the Cayley embedding; defaults to the all-1 vector"
                           "# @option Bool relabel"
                           "# @return Polytope",
-                          "cayley_embedding<Scalar>(Polytope<type_upgrade<Scalar>>+; Array<type_upgrade<Scalar>>=[], { relabel => undef })");
+                          "cayley_embedding<Scalar>(Polytope<type_upgrade<Scalar>>+; { factors => [], relabel => undef })");
 } }
 
 // Local Variables:

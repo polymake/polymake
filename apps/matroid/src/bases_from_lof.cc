@@ -26,7 +26,9 @@ void bases_from_lof(perl::Object M)
    const graph::HasseDiagram LF = M.give("LATTICE_OF_FLATS");
    const int n = M.give("N_ELEMENTS");
    const Array<Set<int> > bases = bases_from_lof_impl(LF, n);
-   M.take("RANK") << LF.dim();
+	int LF_dim = LF.dim();
+	if(LF_dim == -1) LF_dim = 0;
+   M.take("RANK") << LF_dim; //Hasse diagram has a shift for lattice with just one node
    M.take("BASES") << bases;
    M.take("N_BASES") << bases.size();
 }

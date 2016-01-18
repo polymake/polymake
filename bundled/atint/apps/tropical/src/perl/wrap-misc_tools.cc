@@ -22,17 +22,5 @@ namespace polymake { namespace tropical { namespace {
    }
    FunctionWrapperInstance4perl( bool (perl::Object, pm::Vector<pm::Rational>) );
 
-   FunctionWrapper4perl( pm::Array<pm::Integer, void> (int const&, int const&) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturn( arg0, arg1 );
-   }
-   FunctionWrapperInstance4perl( pm::Array<pm::Integer, void> (int const&, int const&) );
-
-   FunctionWrapper4perl( pm::perl::ListReturn (perl::Object, pm::Matrix<pm::Rational>, pm::Matrix<pm::Rational>, bool) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
-      IndirectWrapperReturnVoid( arg0, arg1.get< perl::TryCanned< const Matrix< Rational > > >(), arg2.get< perl::TryCanned< const Matrix< Rational > > >(), arg3 );
-   }
-   FunctionWrapperInstance4perl( pm::perl::ListReturn (perl::Object, pm::Matrix<pm::Rational>, pm::Matrix<pm::Rational>, bool) );
-
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -14,7 +14,7 @@
 #-------------------------------------------------------------------------------
 
 # @topic application
-# This application concentrates on [[Hypersurface|tropical hypersurfaces]] and [[TropicalPolytope|tropical polytopes]].
+# This application concentrates on [[Hypersurface|tropical hypersurfaces]] and [[Cone|tropical cones]].
 # It provides the functionality for the computation of basic properties. Visualization and various constructions are possible.
 
 IMPORT common graph
@@ -24,8 +24,7 @@ USE polytope fan graph
 file_suffix trop
 
 
-HELP
-	help.rules
+HELP help.rules
 
 
 ##################################################################################
@@ -37,21 +36,21 @@ declare object CovectorLattice : FaceLattice;
 # A tropical cone is the tropical convex hull of finitely many points in tropical projective space.
 # It should always be defined via [[POINTS]] instead of [[VERTICES]], as those define the combinatorics
 # of the induced subdivision.
-# @tparam Addition Either Min or Max. There is NO default for this, you have to choose!
+# @tparam Addition Either [[Min]] or [[Max]]. There is NO default for this, you have to choose!
 # @tparam Scalar Rational by default. The underlying type of ordered group.
 declare object Cone<Addition, Scalar=Rational> [ is_ordered_field_with_unlimited_precision(Scalar) ];
 
 # A tropical cycle is a weighted, balanced, pure polyhedral complex.
 # It is given as a polyhedral complex in tropical projective coordinates.
-# To be precise: Each row of [[VERTICES]] and [[LINEALITY_SPACE]] 
-# has a leading 1 or 0, depending on whether it is a vertex or a ray. 
+# To be precise: Each row of [[VERTICES]] and [[LINEALITY_SPACE]]
+# has a leading 1 or 0, depending on whether it is a vertex or a ray.
 # The remaining n coordinates are interpreted as an element of
 # R<sup>n</sup> modulo (1,..,1).
-# IMPORTANT NOTE: [[VERTICES]] are assumed to be normalized such that the first coordinate (i.e. 
+# IMPORTANT NOTE: VERTICES are assumed to be normalized such that the first coordinate (i.e.
 # column index 1) is 0. If your input is not of that form, use [[PROJECTIVE_VERTICES]].
-# Note that there is a convenience method [[thomog]], which converts affine coordinates 
+# Note that there is a convenience method [[thomog]], which converts affine coordinates
 # into projective coordinates.
-# @tparam Addition The tropical addition. Warning: There is NO default for this, you have to choose either Max or Min.
+# @tparam Addition The tropical addition. Warning: There is NO default for this, you have to choose either [[Max]] or [[Min]].
 declare object Cycle<Addition> : fan::PolyhedralComplex<Rational>;
 
 # This is a special instance of a Cycle: It is the tropical locus of a 

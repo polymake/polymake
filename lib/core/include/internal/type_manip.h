@@ -19,13 +19,18 @@
 
 #include "polymake/internal/pool_allocator.h"
 
+#if __cplusplus >= 201103L && !defined(PM_FORCE_TR1)
+#include <type_traits>
+#else
 #include <tr1/type_traits>
+#endif
+
 #include <new>
 #include <memory>
 #include <limits>
 #include <cstddef>
 
-#if defined(__GNUC__)
+#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
 #  define POLYMAKE_ALIGN(what,n) what __attribute__ ((aligned (n)))
 #elif defined(__INTEL_COMPILER)
 #  define POLYMAKE_ALIGN(what,n) __declspec(align(n)) what
@@ -137,12 +142,23 @@ template <typename T>
 struct identical<T,T> : True {
    typedef T type;
 };
-
+
+#if __cplusplus >= 201103L && !defined(PM_FORCE_TR1)
+template <typename T>
+struct is_pod : bool2type<std::is_pod<T>::value> {};
+template <typename T>
+struct is_enum : bool2type<std::is_enum<T>::value> {};
+template <typename T>
+struct has_trivial_destructor : bool2type<std::is_trivially_destructible<T>::value> {};
+#else
 template <typename T>
 struct is_pod : bool2type<std::tr1::is_pod<T>::value> {};
 template <typename T>
+struct is_enum : bool2type<std::tr1::is_enum<T>::value> {};
+template <typename T>
 struct has_trivial_destructor : bool2type<std::tr1::has_trivial_destructor<T>::value> {};
-
+#endif
+
 /** Definition of the input argument type
 
     For a given type, a suitable type of the function input argument is defined.
@@ -1373,7 +1389,7 @@ namespace object_classifier {
    template <typename T, typename _disable=void> struct kind_of;
 
    template <typename T>
-   struct kind_of<T, typename disable_if<void, std::tr1::is_enum<T>::value || is_pointer<T>::value>::type>
+   struct kind_of<T, typename disable_if<void, is_enum<T>::value || is_pointer<T>::value>::type>
    {
       static const int value=sizeof(analyzer_f((const T*)0, bait(0)));
    };
@@ -1385,7 +1401,7 @@ namespace object_classifier {
    };
 
    template <typename T>
-   struct kind_of<T, typename enable_if<void, std::tr1::is_enum<T>::value>::type>
+   struct kind_of<T, typename enable_if<void, is_enum<T>::value>::type>
    {
       static const int check_numeric=sizeof(analyzer_f((const T*)0, bait(0)));
       static const int value= check_numeric==is_scalar ? is_scalar : is_not_object;
@@ -1438,7 +1454,10 @@ protected:
    ~Serialized() throw();
 };
 
-#if defined(__GLIBCXX__) && !defined(_GLIBCXX_TR1_TYPE_TRAITS)
+
+#if __cplusplus >= 201103L && !defined(PM_FORCE_TR1)
+#  define POLYMAKE_IsClass std::is_class
+#elif defined(__GLIBCXX__) && !defined(_GLIBCXX_TR1_TYPE_TRAITS)
 #  define POLYMAKE_IsClass std::tr1::__is_union_or_class
 #else
 #  define POLYMAKE_IsClass std::tr1::is_class

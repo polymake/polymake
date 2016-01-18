@@ -51,10 +51,12 @@ perl::Object birkhoff(int n, bool even)
 
 
 UserFunction4perl("# @category Producing a polytope from scratch"
-                  "# Constructs the Birkhoff polytope of dimension //n//<sup>2</sup> (also called the"
-                  "# assignment polytope, the polytope of doubly stochastic matrices, or the perfect matching polytope)."
+                  "# Constructs the Birkhoff polytope of dimension //n//<sup>2</sup>. It is the polytope of"
+                  "# //n//x//n// stochastic matrices (encoded as //n//<sup>2</sup> row vectors), thus matrices"
+                  "# with non-negative entries whose row and column entries sum up to one."
+                  "# Its vertices are the permutation matrices."
                   "# @param Int n"
-                  "# @param Bool even"
+                  "# @param Bool even Defaults to '0'. Set this to '1' to get vertices only for even permutation matrices."
                   "# @return Polytope",
                   &birkhoff, "birkhoff($;$=0)");
 } }

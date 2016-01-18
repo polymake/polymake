@@ -139,7 +139,9 @@ namespace polymake { namespace tropical {
 	template <typename Addition>
 		void computeDomainFromMatrix(perl::Object morphism) {
 			Matrix<Rational> mat = morphism.give("MATRIX");
-			morphism.take("DOMAIN") << projective_torus<Addition>(mat.cols()-1,1);
+			perl::Object pt = projective_torus<Addition>(mat.cols()-1,1);
+			pt.give("PURE");
+			morphism.take("DOMAIN") << pt;
 		}
 
 	/*

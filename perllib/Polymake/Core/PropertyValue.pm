@@ -20,9 +20,9 @@ package Polymake::Core::PropertyValue;
 
 use Polymake::Struct (
    [ new => '$;$$' ],
-   [ '$property' => '#1' ],	# Property
+   [ '$property' => '#1' ],     # Property
    [ '$value' => '#2' ],
-   [ '$flags' => '#3' ],	# *ref flags
+   [ '$flags' => '#3' ],        # *ref flags
 );
 
 use Polymake::Enum qw( is: temporary=1024 strong_ref=1 weak_ref=2 ref=3 );
@@ -53,11 +53,11 @@ declare $UNDEF="==UNDEF==\n";
 declare $UNDEF_re=qr/^\s*==UNDEF==\s*$/;
 
 sub toString {
-   my $self=shift;
+   my ($self)=@_;
    defined($self->value) ? $self->property->type->toString->($self->value) : $UNDEF;
 }
 
-sub is_temporary { (shift)->flags & $is_temporary }
+sub is_temporary { $_[0]->flags & $is_temporary }
 
 sub delete_from_subobjects {
    my ($self, $trans)=@_;
@@ -81,56 +81,75 @@ use Polymake::Struct (
    [ new => '$$' ],
    [ '$property' => '#1' ],
    [ '$values' => '#2' ],
-   '$has_gaps',
+   [ '$created_by_rule' => 'undef' ],
 );
 
-sub new {
-   my $self=&_new;
-   my $i=0;
-   $_->parent_index=$i++ for @{$self->values};
-   $self;
-}
-
 sub value : method {
+   my ($self)=@_;
    if (Object::_expect_array_access()) {
-      &defined_values;
-   } else {
-      my $self=shift;
-      if ($self->has_gaps) {
-	 foreach (@{$self->values}) {
-	    defined($_) and return $_;
-	 }
-	 undef
-      } else {
-	 $self->values->[0];
-      }
-   }
-}
-
-sub defined_values {
-   my $self=shift;
-   if ($self->has_gaps) {
-      [ grep { defined } @{$self->values} ]
-   } else {
       $self->values;
+   } else {
+      $self->values->[0];
    }
 }
 
 sub toString {
-   my $self=shift;
+   my ($self)=@_;
    @{$self->values} ? $self->property->type->toString->($self->value) : $PropertyValue::UNDEF;
 }
 
 sub flags { 0 }
 sub is_temporary { 0 }
 
+sub select_now {
+   my ($self, $index)=@_;
+   if (is_object($index)) {
+      defined($self->created_by_rule) && defined($index=$self->created_by_rule->{$index})
+        or return;
+   }
+   if ($index && @_==3) {
+      my $scope=($_[2] //= new Scope());
+      $scope->begin_locals;
+      local_swap($self->values, 0, $index);
+      $scope->end_locals;
+      $index=0;
+   }
+   $self->values->[$index]
+}
+
+####################################################################################
+sub ensure_unique_name {
+   my ($self, $subobj, $temp)=@_;
+   my ($found, $next);
+   if (defined $subobj->name) {
+      foreach my $sibling (@{$self->values}) {
+         if ($sibling != $subobj && $sibling->name eq $subobj->name) {
+            $found=$subobj->name;
+            last;
+         }
+      }
+      return unless defined($found);
+      $next=2;
+   } else {
+      $found= $temp ? "temp" : "unnamed";
+      $next=0;
+   }
+   foreach my $sibling (@{$self->values}) {
+      if ($sibling != $subobj && $sibling->name =~ m/^\Q$found\E\#(\d+)$/) {
+         assign_max($next, $1+1);
+      }
+   }
+   if (defined $subobj->name) {
+      warn_print( "The subobject name ", $subobj->name, " already occurs among other instances of ", $self->property->name, ".\n",
+                  "Replaced with a unique name '$found#$next'." );
+   }
+   $subobj->set_name_trusted("$found#$next");
+}
 ######################################################################
 sub copy {
    my $self=shift;
-   my $i=-1;
    if (my @subobjs=map {
-         if (defined($_) && !$_->is_temporary && defined (my $subcopy=$_->copy(@_))) {
-            $subcopy->parent_index=++$i;
+         if (!$_->is_temporary && defined (my $subcopy=$_->copy(@_))) {
             $subcopy
          } else {
             ()
@@ -143,25 +162,35 @@ sub copy {
 }
 
 sub delete_from_subobjects {
-   my ($self, $trans)=@_;
-   delete @{$trans->subobjects}{@{$self->values}};
+   my ($self, $trans, $old_pv)=@_;
+   if (defined $old_pv) {
+      delete @{$trans->subobjects}{ grep { !contains($old_pv->values, $_) } @{$self->values}};
+   } else {
+      delete @{$trans->subobjects}{@{$self->values}};
+   }
+}
+
+# create a shallow copy for transaction backup
+sub backup {
+   my ($self)=@_;
+   inherit_class([ $self->property, [ @{$self->values} ], undef ], $self)
 }
 ######################################################################
 # private:
-sub _find_index {
+sub find_instance {
    my $self=shift; shift; # parent
    my $proto=$self->property->type;
    my (@props, @values);
    if (is_string($_[0])) {
       for (my $i=0; $i<$#_; ++$i) {
-	 push @props, $proto->property($_[$i]);
-	 push @values, $_[++$i];
+         push @props, $proto->property($_[$i]);
+         push @values, $_[++$i];
       }
    } elsif (is_hash($_[0])) {
       my $list=shift;
       while (my ($prop, $value)=each %$list) {
-	 push @props, $proto->property($prop);
-	 push @values, $value;
+         push @props, $proto->property($prop);
+         push @values, $value;
       }
    } else {
       croak( "PROPERTY => value or { PROPERTY => value, ... } are allowed as multiple property filter expression" );
@@ -170,63 +199,55 @@ sub _find_index {
  OBJ:
    foreach my $obj (@{$self->values}) {
       ++$index;
-      if (defined($obj)) {
-	 my ($i,$content_index,$pv)=(0);
-	 foreach my $prop (@props) {
-	    defined ($content_index=$obj->dictionary->{$prop->key})  &&
-	    defined ($pv=$obj->contents->[$content_index]) &&
-	    !$obj->diff_properties($pv,$values[$i++])
-	    or next OBJ;
-	 }
-	 return $index;
+      my ($i, $content_index, $pv)=(0);
+      foreach my $prop (@props) {
+         defined ($content_index=$obj->dictionary->{$prop->key})  &&
+         defined ($pv=$obj->contents->[$content_index]) &&
+         !$obj->diff_properties($pv, $values[$i++])
+           or next OBJ;
       }
+      return ($index, $obj);
    }
-   undef
+   ()
 }
 
 sub find {
-   my $self=$_[0];
    if ($#_==1 && $_[1] eq '*') {
-      &defined_values;
-   } elsif (defined (my $index=&_find_index)) {
-      $self->values->[$index];
+      &value;
    } else {
-      undef;
+      scalar(&find_instance);
    }
 }
 
 sub find_by_name {
    my ($self, $name)=@_;
    foreach (@{$self->values}) {
-      return $_ if defined($_->name) && $_->name eq $name;
+      return $_ if $_->name eq $name;
    }
    undef
 }
 
 sub find_or_create {
    my ($self, $parent, $filter)=@_;
-   if (defined (my $index=&_find_index)) {
-      $self->values->[$index];
-   } else {
+   &find_instance // do {
       my $need_commit;
-      if (!defined ($parent->transaction)) {
-	 $need_commit=1;
-	 $parent->begin_transaction;
+      if (!defined($parent->transaction)) {
+         $need_commit=1;
+         $parent->begin_transaction;
       }
       if (!@{$self->values}) {
-	 push @{$parent->contents}, $self;
-	 $parent->dictionary->{$self->property->key}=$#{$parent->contents};
+         push @{$parent->contents}, $self;
+         $parent->dictionary->{$self->property->key}=$#{$parent->contents};
       }
       my $temp= @_%2 && pop;
-      my $obj=$self->property->type->pure_type->construct->(is_hash($filter) ? (%$filter) : (), @_);
-      $self->property->accept->($obj,$parent,0,$temp);
-      $obj->parent_index=0+@{$self->values};
+      my $obj=$self->property->accept->($self->property->type->pure_type->construct->(is_hash($filter) ? (%$filter) : (), @_), $parent, 0, $temp);
+      ensure_unique_name($self, $obj, $temp);
       push @{$self->values}, $obj;
       if ($temp) {
-	 assign_max($#{$parent->transaction->temporaries},0);
-	 push @{$parent->transaction->temporaries}, [ $self->property, $obj ];
+         assign_max($#{$parent->transaction->temporaries}, 0);
+         push @{$parent->transaction->temporaries}, [ $self->property, $obj ];
       } else {
-	 $parent->transaction->changed=1;
+         $parent->transaction->changed=1;
       }
       $parent->transaction->commit($parent) if $need_commit;
       $obj;
@@ -236,42 +257,37 @@ sub find_or_create {
 sub replace_or_add {
    my $obj=pop;
    my ($self, $parent, $filter)=@_;
-   $self->property->accept->($obj,$parent);
-   if (defined (my $index=&_find_index)) {
-      $obj->parent_index=$index;
-      my ($old)=splice @{$self->values}, $index, 1, $obj;
+   $obj=$self->property->accept->($obj, $parent);
+   ensure_unique_name($self, $obj);
+   if (my ($index, $old)=&find_instance) {
+      splice @{$self->values}, $index, 1, $obj;
       if ($old->is_temporary) {
-	 $parent->transaction->drop_temp_mark($parent,$obj);
+         $parent->transaction->forget_temporary_subobject($old);
       }
       if (defined($old->transaction)) {
-	 delete $parent->transaction->subobjects->{$old};
-	 undef $old->transaction;
+         delete $parent->transaction->subobjects->{$old};
+         undef $old->transaction;
       }
-      undef $old->parent_index;		# but preserve property (for destructor)
       undef $old->parent;
       undef $old->is_temporary;
    } else {
-      $obj->parent_index=0+@{$self->values};
       push @{$self->values}, $obj;
    }
 }
 
-sub squeeze {
-   my $self=shift;
-   my $gap=0;
-   for (my ($i, $last)=(0, $#{$self->values}); $i<=$last; ++$i) {
-      if (defined($self->values->[$i])) {
-	 $gap and ($self->values->[$i-$gap]=$self->values->[$i])->parent_index-=$gap;
-      } else {
-	 ++$gap;
-      }
+sub remove_instance {
+   my ($self, $sub_obj)=@_;
+   my $sub_index=list_index($self->values, $sub_obj);
+   if ($sub_index>=0) {
+      splice @{$self->values}, $sub_index, 1;
+   } else {
+      die( "internal inconsistency: multiple subobject instance does not occur in the parent property\n" );
    }
-   $self->has_gaps=0;
-   ($#{$self->values}-=$gap)>=0
 }
 
 1
 
 # Local Variables:
-# c-basic-offset:3
+# cperl-indent-level:3
+# indent-tabs-mode:nil
 # End:

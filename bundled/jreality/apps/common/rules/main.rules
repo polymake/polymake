@@ -169,14 +169,19 @@ sub launch {
 ###########################################################################################
 package JReality::default;
 
+# color for points
 custom $points_color = "140 140 140";
 
+# color for faces
 custom $faces_color = "119 236 158";
 
+# color for edges
 custom $lines_color = "70 70 70";
 
+# point thickness
 custom $points_thickness = 1;
 
+# edge thickness
 custom $lines_thickness = 0.5;
 
 ###########################################################################################

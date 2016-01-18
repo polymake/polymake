@@ -27,12 +27,9 @@ HELP help.rules
 # A normal toric variety given by a fan.
 declare object NormalToricVariety : PolyhedralFan<Rational>; 
 
-# A normal toric variety that is affine, i.e., given by a cone.
-declare object AffineNormalToricVariety : NormalToricVariety;
-
 # An affine normal toric variety given by a two-dimensional cone in
 # two-dimensional space.
-declare object CyclicQuotient : AffineNormalToricVariety;
+declare object CyclicQuotient : NormalToricVariety;
 
 INCLUDE
    toric_ideal.rules

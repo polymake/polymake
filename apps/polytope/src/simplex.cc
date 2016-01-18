@@ -169,11 +169,27 @@ perl::Object lecture_hall_simplex(int d, perl::OptionSet options)
 }
 
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Produce a regular //d//-simplex embedded in R^d with edge length sqrt(2)."
                   "# @param Int d the dimension"
                   "# @option Bool group"
-                  "# @return Polytope",
+                  "# @return Polytope"
+                  "# @example To print the vertices (in homogeneous coordinates) of the regular"
+                  "# 2-simplex, i.e. an equilateral triangle, type this:"
+                  "# > print regular_simplex(2)->VERTICES;"
+                  "# | 1 1 0"
+                  "# | 1 0 1"
+                  "# | 1 1/2-1/2r3 1/2-1/2r3"
+                  "# The polytopes cordinate type is QuadraticExtension<Rational>, thus numbers that can"
+                  "# be represented as a + b*sqrt(c) with Rational numbers a, b and c. The last row vectors"
+                  "# entrys thus represent the number 1/2*(1-sqrt(3))."
+                  "# @example To store a regular 3-simplex in the variable $s and also calculate its"
+                  "# symmetry group, type this:"
+                  "# > $s = regular_simplex(3,group=>1);"
+                  "# You can then print the groups generators like so:"
+                  "# > print $s->GROUP->GENERATORS;"
+                  "# | 1 0 2"
+                  "# | 2 0 1",
                   &regular_simplex, "regular_simplex(Int; { group => undef } )");
 
 UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
@@ -183,21 +199,41 @@ UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
                           "# @param Int d the dimension"
                           "# @param Scalar scale default value: 1"
                           "# @option Bool group"
-                          "# @return Polytope",
+                          "# @return Polytope"
+                          "# @example To print the vertices (in homogeneous coordinates) of the standard"
+                          "# 2-simplex, i.e. a right-angled isoceles triangle, type this:"
+                          "# > print simplex(2)->VERTICES;"
+                          "# | (3) (0 1)"
+                          "# | 1 1 0"
+                          "# | 1 0 1"
+                          "# The first row vector is sparse and encodes the origin."
+                          "# @example To create a 3-simplex and also calculate its symmetry group, type this:"
+                          "# > simplex(3,group=>1);",
                           "simplex<Scalar> [ is_ordered_field(type_upgrade<Scalar, Rational>) ] (Int; type_upgrade<Scalar>=1, { group => undef } )");
 
 UserFunction4perl("# @category Producing a polytope from scratch"
                   "# Produce a Fano //d//-simplex."
                   "# @param Int d the dimension"
                   "# @option Bool group"
-                  "# @return Polytope",
+                  "# @return Polytope"
+                  "# @example To create the 2-dimensional fano simplex and compute its symmetry group, type this:"
+                  "# and print ints generators, do this:"
+                  "# > fano_simplex(2,group=>1);"
+                  "# > print $p->GROUP->GENERATORS;"
+                  "# | 1 0 2"
+                  "# | 2 0 1",
                   &fano_simplex, "fano_simplex(Int; { group => undef } )");
 
 UserFunction4perl("# @category Producing a polytope from scratch"
                   "# Produce a lecture hall //d//-simplex."
                   "# @param Int d the dimension"
                   "# @option Bool group"
-                  "# @return Polytope",
+                  "# @return Polytope"
+                  "# @example To create the 2-dimensional lecture hall simplex and compute its symmetry group, type this:"
+                  "# > $p = lecture_hall_simplex(2,group=>1);"
+                  "# > print $p->GROUP->GENERATORS;"
+                  "# | 1 0 2"
+                  "# | 2 0 1",
                   &lecture_hall_simplex, "lecture_hall_simplex(Int; { group => undef } )");
 
 } }

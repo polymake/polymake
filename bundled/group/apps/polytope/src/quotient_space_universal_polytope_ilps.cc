@@ -159,8 +159,12 @@ perl::Object quotient_space_simplexity_ilp(int d
    const std::string filename = options["filename"];
 
    if (filename.size()) {
-      std::ofstream os(filename.c_str());
-      print_lp(q, lp, false, os);
+      if (filename == "-") {
+         print_lp(q, lp, false, perl::cout);
+      } else {
+         std::ofstream os(filename.c_str());
+         print_lp(q, lp, false, os);
+      }
    }
    return q;
 }
@@ -191,8 +195,8 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# @param Matrix V the input points or vertices "
                           "# @param Scalar volume the volume of the convex hull "
                           "# @param SparseMatrix cocircuit_equations the matrix of cocircuit equations "
-                          "# @option filename a name for a file in .lp format to store the linear program"
-                          "# @return an LP that provides a lower bound",
+                          "# @option String filename a name for a file in .lp format to store the linear program"
+                          "# @return LinearProgram an LP that provides a lower bound",
                           "quotient_space_simplexity_ilp<Scalar>($ Matrix<Scalar> IncidenceMatrix Array<Set> Array<Set> $ SparseMatrix Array<Array<Int>> Array<Array<Int>> { filename=>'' })");
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
@@ -201,7 +205,7 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# @param Matrix V the input points or vertices "
                           "# @param Scalar volume the volume of the convex hull "
                           "# @param SparseMatrix cocircuit_equations the matrix of cocircuit equations "
-                          "# @return the optimal value of an LP that provides a lower bound",
+                          "# @return Integer the optimal value of an LP that provides a lower bound",
                           "quotient_space_simplexity_lower_bound<Scalar>($ Matrix<Scalar> IncidenceMatrix Array<Set> Array<Set> $ SparseMatrix Array<Array<Int>> Array<Array<Int>> { filename=>'' })");
 
 } }
@@ -211,4 +215,3 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
 // c-basic-offset:3
 // indent-tabs-mode:nil
 // End:
-

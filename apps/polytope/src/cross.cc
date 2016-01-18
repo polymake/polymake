@@ -107,7 +107,7 @@ perl::Object cross(int d, const Scalar& s, perl::OptionSet options)
    return p;
 }
 
-UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
+UserFunctionTemplate4perl("# @category Producing regular polytopes and their generalizations"
                           "# Produce a //d//-dimensional cross polytope."
                           "# Regular polytope corresponding to the Coxeter group of type B<sub>//d//-1</sub> = C<sub>//d//-1</sub>."
                           "# "
@@ -116,7 +116,30 @@ UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
                           "# @param Int d the dimension"
                           "# @param Scalar scale the absolute value of each non-zero vertex coordinate. Needs to be positive. The default value is 1."
                           "# @option Bool group add a symmetry group description to the resulting polytope"
-                          "# @return Polytope<Scalar>",
+                          "# @return Polytope<Scalar>"
+                          "# @example To create the 3-dimensional cross polytope, type"
+                          "# > $p = cross(3);"
+                          "# Check out it's vertices and volume:"
+                          "# > print $p->VERTICES;"
+                          "# | 1 1 0 0"
+                          "# | 1 -1 0 0"
+                          "# | 1 0 1 0"
+                          "# | 1 0 -1 0"
+                          "# | 1 0 0 1"
+                          "# | 1 0 0 -1"
+                          "# > print cross(3)->VOLUME;"
+                          "# | 4/3"
+                          "# If you rather had a bigger one, type"
+                          "# > $p_scaled = cross(3,2);"
+                          "# > print $p_scaled->VOLUME;"
+                          "# | 32/3"
+                          "# To also calculate the symmetry group, do this:"
+                          "# > $p = cross(3,group=>1);"
+                          "# You can then print the generators of this group like this:"
+                          "# > print $p->GROUP->GENERATORS;"
+                          "# | 1 0 2 3 4 5"
+                          "# | 2 3 0 1 4 5"
+                          "# | 0 1 4 5 2 3",
                           "cross<Scalar> [ is_ordered_field(type_upgrade<Scalar, Rational>) ] (Int; type_upgrade<Scalar>=1, { group => undef } )");
 
 } }

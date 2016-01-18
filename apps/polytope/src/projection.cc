@@ -142,10 +142,12 @@ void process_facets(perl::Object& p_in, const Array<int>& indices, perl::OptionS
 
 template <typename Scalar>
 perl::Object projection_impl(perl::Object p_in, const std::string object_prefix, const std::string linear_span_name, int first_coord, const Array<int> indices, perl::OptionSet options) {
-   if (!p_in.exists("RAYS | INPUT_RAYS") &&
-       ! (object_prefix=="CONE" && p_in.exists("FACETS | INEQUALITIES") ) )
-      throw std::runtime_error("projection is not defined for combinatorially given objects");
 
+
+   if ( (object_prefix=="CONE" || object_prefix=="FAN") && !p_in.exists("RAYS | INPUT_RAYS") &&
+        ! (object_prefix=="CONE" && p_in.exists("FACETS | INEQUALITIES") ) )
+      throw std::runtime_error("projection is not defined for combinatorially given objects");
+   
    const int ambient_dim = p_in.give((object_prefix + "_AMBIENT_DIM").c_str());
    const int dim = p_in.give((object_prefix + "_DIM").c_str());
    const int codim = ambient_dim-dim;
@@ -159,8 +161,13 @@ perl::Object projection_impl(perl::Object p_in, const std::string object_prefix,
 
    perl::Object p_out(p_in.type());
 
-   if (p_in.exists("RAYS | INPUT_RAYS"))
+   if ((object_prefix=="CONE" || object_prefix=="FAN") && p_in.exists("RAYS | INPUT_RAYS"))
       process_rays(p_in, first_coord, indices, options, linear_span, coords_to_eliminate, p_out);
+
+   if (object_prefix=="VECTOR" && p_in.exists("VECTORS")){
+      const Matrix<Scalar> vec = p_in.give("VECTORS") ;
+      p_out.take("VECTORS") <<  vec.minor(All,~coords_to_eliminate);
+   }
 
    if (object_prefix=="CONE" && p_in.exists("FACETS | INEQUALITIES"))
       process_facets(p_in, indices, options, linear_span, coords_to_eliminate, p_out);
@@ -170,7 +177,6 @@ perl::Object projection_impl(perl::Object p_in, const std::string object_prefix,
       if (p_in.lookup("MAXIMAL_CONES") >> MC)
          p_out.take("MAXIMAL_CONES") << MC;
    }
-
    return p_out;
 }
 

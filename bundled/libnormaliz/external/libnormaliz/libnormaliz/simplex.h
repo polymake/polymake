@@ -140,6 +140,8 @@ class SimplexEvaluator {
     void evaluation_loop_parallel();
     void evaluate_block(long block_start, long block_end, Collector<Integer>& Coll);
     void collect_vectors();
+    void add_hvect_to_HS(Collector<Integer>& Coll);
+    void reduce_against_global(Collector<Integer>& Coll);
     
     // void insert_gens();
     // void insert_gens_transpose();

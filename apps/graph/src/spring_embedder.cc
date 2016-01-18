@@ -16,27 +16,35 @@
 
 #include "polymake/client.h"
 #include "polymake/graph/SpringEmbedder.h"
+#include "polymake/graph/connected.h"
 
 namespace polymake { namespace graph {
 
 Matrix<double> spring_embedder(const Graph<>& G, perl::OptionSet options)
-{
-   SpringEmbedder SE(G,options);
-
+{ 
+   Graph<> H(G);
+   int n=G.nodes()-1;
+   bool con=is_connected<>(G);
+   if (!con) {
+      H.squeeze();
+      n=H.add_node();
+      for (int i=0;i<n;++i)
+         H.add_edge(i,n);
+   }
+   SpringEmbedder SE(H,options);
    const RandomSeed seed(options["seed"]);
 #if POLYMAKE_DEBUG
    if (SE.debug_print_enabled())
       cout << "initial random seed=" << seed.get() << endl;
 #endif
    RandomSpherePoints<double> random_points(3, seed);
-   Matrix<double> X(G.nodes(),3);
+   Matrix<double> X(n+1,3);
    SE.start_points(X,random_points.begin());
-
    int max_iter;
    if (!(options["max-iterations"] >> max_iter)) max_iter=10000;
    if (! SE.calculate(X,random_points,max_iter))
       cerr << "WARNING: spring_embedder not converged after " << max_iter << " iterations" << endl;
-   return X;
+   return con ? X : X.minor(~scalar2set(n),All);
 }
 
 UserFunction4perl("# @category Visualization"

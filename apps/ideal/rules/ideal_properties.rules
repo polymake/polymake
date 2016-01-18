@@ -21,18 +21,25 @@ object Ideal {
 
    # @category Commutative algebra
    # The depth of the ideal.
+   # @depends singular
    property DEPTH : Int;
 
    # @category Commutative algebra
    # The dimension of the ideal, i.e. the Krull dimension of [[RING]]/Ideal.
+   # @depends singular
    property DIM : Int;
 
    # @category Input properties
    # A set of generators usually given by the user and not unique.
-   property GENERATORS : Array<Polynomial>;
-   
+   property GENERATORS : Array<Polynomial> {
+      sub equal {
+         defined(eval { find_permutation(@_) })
+      }
+   }
+
    # @category Commutative algebra
    # Subobject containing properties that depend on the monomial ordering of the ring.
+   # @depends singular
    property GROEBNER : Groebner : multiple;
 
    # @category Commutative algebra
@@ -60,10 +67,12 @@ object Ideal {
    # @category Commutative algebra
    # An array containing the primary decomposition of the given ideal, i.e. the
    # contained ideals are [[PRIMARY]] and their intersection is the given ideal.
+   # @depends singular
    property PRIMARY_DECOMPOSITION : Array<Ideal>;
 
    # @category Commutative algebra
    # The radical of the ideal.
+   # @depends singular
    property RADICAL : Ideal;
 
    # @category Commutative algebra
@@ -81,12 +90,14 @@ object Groebner {
    # @category Commutative algebra
    # The elements of the Groebner basis corresponding to the given order. This
    # may vary for different algorithms, even if the order stays the same.
+   # @depends singular
    property BASIS : Array<Polynomial>;
 
    # @category Commutative algebra
    # The initial order corresponding to the given order. This is always a
    # [[ideal::Ideal::MONOMIAL|MONOMIAL]] ideal, even if only a weight vector is provided. Internally this
    # weight vector will be concatenated with a total order.
+   # @depends singular
    property INITIAL_IDEAL : Ideal;
 
    # @category Input properties

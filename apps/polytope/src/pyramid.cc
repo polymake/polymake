@@ -85,7 +85,19 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# @option Bool no_coordinates don't compute new coordinates, produce purely combinatorial description."
                           "# @option Bool relabel copy vertex labels from the original polytope,"
                           "#   label the new top vertex with \"Apex\"."
-                          "# @return Polytope",
+                          "# @return Polytope"
+                          "# @example The following saves the pyramid of height 2 over the square to the variable $p."
+                          "# The vertices are relabeled."
+                          "# > $p = pyramid(cube(2),2,relabel=>1);"
+                          "# To print the vertices and vertex labels of the newly generated pyramid, do this:"
+                          "# > print $p->VERTICES;"
+                          "# | 1 -1 -1 0"
+                          "# | 1 1 -1 0"
+                          "# | 1 -1 1 0"
+                          "# | 1 1 1 0"
+                          "# | 1 0 0 2"
+                          "# > print $p->VERTEX_LABELS;"
+                          "# | 0 1 2 3 Apex",
                           "pyramid<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=1, { no_coordinates => 0, relabel => undef })");
 } }
 

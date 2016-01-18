@@ -685,7 +685,7 @@ public:
 
 protected:
    template <typename _ruler, typename number_consumer>
-   static void _squeeze(_ruler* &R, number_consumer nc)
+   static void _squeeze(_ruler* &R, const number_consumer& nc)
    {
       typedef typename _ruler::value_type tree_type;
       int i=0, inew=0;
@@ -697,7 +697,7 @@ protected:
                   e->key -= idiff;
                relocate_tree(t, t-idiff, True());
             }
-            ++inew; *nc++=i;
+            nc(i, inew);  ++inew;
          } else {
             std::_Destroy(t);
          }
@@ -709,39 +709,39 @@ public:
        The remaining rows and columns are renumbered without gaps.
    */
    template <typename row_number_consumer, typename col_number_consumer>
-   void squeeze(row_number_consumer rnc, col_number_consumer cnc)
+   void squeeze(const row_number_consumer& rnc, const col_number_consumer& cnc)
    {
-      if (restriction != only_cols) _squeeze(R,rnc);
-      if (restriction != only_rows) _squeeze(C,cnc);
+      if (restriction != only_cols) _squeeze(R, rnc);
+      if (restriction != only_rows) _squeeze(C, cnc);
       if (!restricted) R->prefix()=C, C->prefix()=R;
    }
 
    template <typename row_number_consumer>
-   void squeeze(row_number_consumer rnc) { squeeze(rnc,black_hole<int>()); }
+   void squeeze(const row_number_consumer& rnc) { squeeze(rnc, operations::binary_noop()); }
 
-   void squeeze() { squeeze(black_hole<int>(), black_hole<int>()); }
+   void squeeze() { squeeze(operations::binary_noop(), operations::binary_noop()); }
 
    template <typename number_consumer>
-   void squeeze_rows(number_consumer nc)
+   void squeeze_rows(const number_consumer& nc)
    {
       if (restriction==only_cols)
          throw std::runtime_error("squeeze_rows not allowed in restricted-to-columns mode");
-      _squeeze(R,nc);
+      _squeeze(R, nc);
       if (!restricted) R->prefix()=C, C->prefix()=R;
    }
 
-   void squeeze_rows() { squeeze_rows(black_hole<int>()); }
+   void squeeze_rows() { squeeze_rows(operations::binary_noop()); }
 
    template <typename number_consumer>
-   void squeeze_cols(number_consumer nc)
+   void squeeze_cols(const number_consumer& nc)
    {
       if (restriction==only_rows)
          throw std::runtime_error("squeeze_rows not allowed in restricted-to-rows mode");
-      _squeeze(C,nc);
+      _squeeze(C, nc);
       if (!restricted) R->prefix()=C, C->prefix()=R;
    }
 
-   void squeeze_cols() { squeeze_cols(black_hole<int>()); }
+   void squeeze_cols() { squeeze_cols(operations::binary_noop()); }
 
    template <typename Iterator, typename _inverse>
    void permute_rows(Iterator perm, _inverse)
@@ -931,7 +931,7 @@ public:
    void resize(int r, int=0) { resize_rows(r); }
 
    template <typename row_number_consumer>
-   void squeeze(row_number_consumer rnc)
+   void squeeze(const row_number_consumer& rnc)
    {
       int r=0, rnew=0;
       for (row_tree_type *t=R->begin(), *end=R->end(); t!=end; ++t, ++r) {
@@ -945,7 +945,7 @@ public:
                t->line_index=rnew;
                relocate_tree(t, t-rdiff, True());
             }
-            ++rnew; *rnc++=r;
+            rnc(r, rnew);  ++rnew;
          } else {
             std::_Destroy(t);
          }
@@ -953,15 +953,15 @@ public:
       if (rnew < this->rows()) R=row_ruler::resize(R,rnew,false);
    }
 
-   void squeeze() { squeeze(black_hole<int>()); }
+   void squeeze() { squeeze(operations::binary_noop()); }
 
    template <typename row_number_consumer>
-   void squeeze_rows(row_number_consumer rnc) { squeeze(rnc); }
+   void squeeze_rows(const row_number_consumer& rnc) { squeeze(rnc); }
 
    void squeeze_rows() { squeeze(); }
 
    template <typename row_number_consumer>
-   void squeeze_cols(row_number_consumer rnc) { squeeze(rnc); }
+   void squeeze_cols(const row_number_consumer& rnc) { squeeze(rnc); }
 
    void squeeze_cols() { squeeze(); }
 

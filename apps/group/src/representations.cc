@@ -41,6 +41,16 @@ Array<int> irreducible_decomposition(const Array<int>& character, perl::Object G
    return irr_dec_i;
 }
 
+namespace {
+
+inline
+bool orbit_ordering(const std::string &ordering) {
+   if (ordering == "orbit") return true;
+   else if (ordering == "lex") return false;
+   else throw std::runtime_error("Unsupported domain ordering");
+}
+
+} // end anonymous namespace
 
 SparseMatrix<Rational> rep(perl::Object R, const Array<int>& perm) {
    const int degree = R.give("DEGREE");
@@ -49,10 +59,15 @@ SparseMatrix<Rational> rep(perl::Object R, const Array<int>& perm) {
    return InducedAction<Set<int> >(degree, domain, index_of).rep(perm);
 }
 
-SparseMatrix<Rational> isotypic_projector(perl::Object R, int irred_index) {
+SparseMatrix<Rational> isotypic_projector(perl::Object R, int irred_index, perl::OptionSet options) {
    const int degree = R.give("DEGREE");
-   const Array<Set<int> > domain = R.give("DOMAIN");
-   const Map<Set<int>,int> index_of = R.give("INDEX_OF");
+   const std::string ordering = options["domain_ordering"];
+   const Array<Set<int> > domain = R.give(orbit_ordering(ordering) 
+                                          ? "DOMAIN_IN_ORBIT_ORDER"
+                                          : "DOMAIN");
+   const Map<Set<int>,int> index_of = R.give(orbit_ordering(ordering)
+                                             ? "INDEX_IN_ORBIT_ORDER_OF"
+                                             : "INDEX_OF");
    const int order = R.give("GROUP.ORDER");
    const Matrix<Rational> character_table = R.give("GROUP.CHARACTER_TABLE");
    const Array<Set<Array<int> > > conjugacy_classes = R.give("GROUP.CONJUGACY_CLASSES");
@@ -63,12 +78,36 @@ SparseMatrix<Rational> isotypic_projector(perl::Object R, int irred_index) {
    return isotypic_projector_impl(character_table[irred_index], InducedAction<Set<int> >(degree, domain, index_of), degree, conjugacy_classes, order);
 }
 
+SparseMatrix<Rational> isotypic_basis(perl::Object R, int irred_index, perl::OptionSet options) {
+   const int degree = R.give("DEGREE");
+   const std::string ordering = options["domain_ordering"];
+   const Array<Set<int> > domain = R.give(orbit_ordering(ordering) 
+                                          ? "DOMAIN_IN_ORBIT_ORDER"
+                                          : "DOMAIN");
+   const Map<Set<int>,int> index_of = R.give(orbit_ordering(ordering)
+                                             ? "INDEX_IN_ORBIT_ORDER_OF"
+                                             : "INDEX_OF");
+   const int order = R.give("GROUP.ORDER");
+   const Matrix<Rational> character_table = R.give("GROUP.CHARACTER_TABLE");
+   const Array<Set<Array<int> > > conjugacy_classes = R.give("GROUP.CONJUGACY_CLASSES");
 
-IncidenceMatrix<> isotypic_supports_array(perl::Object R, const Array<Set<int> >& candidates)
+   if (irred_index<0 || irred_index >= character_table.rows())
+      throw std::runtime_error("The given index does not refer to an irreducible representation.");
+
+   return isotypic_basis_impl(character_table[irred_index], InducedAction<Set<int> >(degree, domain, index_of), degree, conjugacy_classes, order);
+}
+
+
+IncidenceMatrix<> isotypic_supports_array(perl::Object R, const Array<Set<int> >& candidates, perl::OptionSet options)
 {
    const int degree = R.give("DEGREE");
-   const Array<Set<int> > domain = R.give("DOMAIN");
-   const Map<Set<int>,int> index_of = R.give("INDEX_OF");
+   const std::string ordering = options["domain_ordering"];
+   const Array<Set<int> > domain = R.give(orbit_ordering(ordering) 
+                                          ? "DOMAIN_IN_ORBIT_ORDER"
+                                          : "DOMAIN");
+   const Map<Set<int>,int> index_of = R.give(orbit_ordering(ordering)
+                                             ? "INDEX_IN_ORBIT_ORDER_OF"
+                                             : "INDEX_OF");
    const int order = R.give("GROUP.ORDER");
    const Matrix<Rational> character_table = R.give("GROUP.CHARACTER_TABLE");
    const Array<Set<Array<int> > > conjugacy_classes = R.give("GROUP.CONJUGACY_CLASSES");
@@ -81,11 +120,16 @@ IncidenceMatrix<> isotypic_supports_array(perl::Object R, const Array<Set<int> >
    return isotypic_supports_impl(S, character_table, IA, conjugacy_classes, order, degree);
 }
 
-IncidenceMatrix<> isotypic_supports_matrix(perl::Object R, const SparseMatrix<Rational>& S)
+IncidenceMatrix<> isotypic_supports_matrix(perl::Object R, const SparseMatrix<Rational>& S, perl::OptionSet options)
 {
    const int degree = R.give("DEGREE");
-   const Array<Set<int> > domain = R.give("DOMAIN");
-   const Map<Set<int>,int> index_of = R.give("INDEX_OF");
+   const std::string ordering = options["domain_ordering"];
+   const Array<Set<int> > domain = R.give(orbit_ordering(ordering) 
+                                          ? "DOMAIN_IN_ORBIT_ORDER"
+                                          : "DOMAIN");
+   const Map<Set<int>,int> index_of = R.give(orbit_ordering(ordering)
+                                             ? "INDEX_IN_ORBIT_ORDER_OF"
+                                             : "INDEX_OF");
    const int order = R.give("GROUP.ORDER");
    const Matrix<Rational> character_table = R.give("GROUP.CHARACTER_TABLE");
    const Array<Set<Array<int> > > conjugacy_classes = R.give("GROUP.CONJUGACY_CLASSES");
@@ -120,23 +164,34 @@ UserFunction4perl("# @category Other"
 		  "# Calculate the projector into the isotypic component given by the i-th irrep"
 		  "# @param PermutationRepresentationOnSets the representation in question"
                   "# @param Int the index of the sought irrep"
+                  "# @option String domain_ordering the domain ordering to use: lex (default) or orbit"
                   "# @return SparseMatrix",
-                  &isotypic_projector, "isotypic_projector(PermutationRepresentationOnSets Int)");
+                  &isotypic_projector, "isotypic_projector(PermutationRepresentationOnSets Int { domain_ordering => 'lex' })");
+
+UserFunction4perl("# @category Other"
+		  "# Calculate a basis of the isotypic component given by the i-th irrep"
+		  "# @param PermutationRepresentationOnSets the representation in question"
+                  "# @param Int the index of the sought irrep"
+                  "# @option String domain_ordering the domain ordering to use: lex (default) or orbit"
+                  "# @return SparseMatrix a matrix whose rows form a basis of the i-th irrep",
+                  &isotypic_basis, "isotypic_basis(PermutationRepresentationOnSets Int { domain_ordering => 'lex' })");
 
 UserFunction4perl("# @category Other"
 		  "# For each isotypic component, which of a given array of sets are supported on it?"
 		  "# @param PermutationRepresentationOnSets the representation in question"
                   "# @param Array<Set> the given array of sets"
+                  "# @option String domain_ordering the domain ordering to use: lex (default) or orbit"
                   "# @return IncidenceMatrix",
-                  &isotypic_supports_array, "isotypic_supports(PermutationRepresentationOnSets Array<Set>)");
+                  &isotypic_supports_array, "isotypic_supports(PermutationRepresentationOnSets Array<Set> { domain_ordering => 'lex' })");
 
 UserFunction4perl("# @category Other"
 		  "# For each row of a given SparseMatrix, to which isotypic components does it have a non-zero projection?"
                   "# The columns of the SparseMatrix correspond, in order, to the sets of the representation."
 		  "# @param PermutationRepresentationOnSets the representation in question"
                   "# @param SparseMatrix the given matrix"
+                  "# @option String domain_ordering the domain ordering to use: lex (default) or orbit"
                   "# @return IncidenceMatrix",
-                  &isotypic_supports_matrix, "isotypic_supports(PermutationRepresentationOnSets SparseMatrix)");
+                  &isotypic_supports_matrix, "isotypic_supports(PermutationRepresentationOnSets SparseMatrix { domain_ordering => 'lex' })");
 
 UserFunction4perl("# @category Other"
 		  "# How many non-zero entries are there in each row of a SparseMatrix?"

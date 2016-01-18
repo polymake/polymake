@@ -19,6 +19,8 @@ package Visual::Polytope;
 # Visualize the [[LATTICE_POINTS]] of a polytope
 # @options %Visual::PointSet::decorations
 # @return Visual::Polytope
+# @example Visualizes the lattice points of the threedimensional cube.
+# > cube(3)->VISUAL->LATTICE;
 
 user_method LATTICE(%Visual::PointSet::decorations) {
     my ($self, $decor)=@_;
@@ -60,6 +62,8 @@ user_method LATTICE(%Visual::PointSet::decorations) {
 # Visualize the [[LATTICE_POINTS]] of a polytope in different colors (interior / boundary / vertices)
 # @options %Visual::PointSet::decorations
 # @return Visual::Polytope
+# @example Creates the threedimensional unit cube scaled by 1.5 and displays the colored version of its lattice points
+# > cube(3,(3/2),0)->VISUAL->LATTICE_COLORED;
 
 user_method LATTICE_COLORED(%Visual::PointSet::decorations) {
     my ($self, $decor)=@_;

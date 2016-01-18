@@ -18,32 +18,41 @@ object Cone {
 rule N_INPUT_RAYS : INPUT_RAYS {
     $this->N_INPUT_RAYS=$this->INPUT_RAYS->rows;
 }
-weight 0.10;
+weight 0.1;
 
 rule N_INPUT_LINEALITY : INPUT_LINEALITY {
     $this->N_INPUT_LINEALITY=$this->INPUT_LINEALITY->rows;
 }
-weight 0.10;
+weight 0.1;
 
 rule N_RAYS : RAYS {
     $this->N_RAYS=$this->RAYS->rows;
 }
-weight 0.10;
+weight 0.1;
 
 rule N_RAYS : F_VECTOR {
     $this->N_RAYS=$this->F_VECTOR->[0];
 }
-weight 0.10;
+precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM >= 1 }
+weight 0.1;
 
 rule N_FACETS : FACETS {
     $this->N_FACETS=$this->FACETS->rows;
 }
-weight 0.10;
+weight 0.1;
 
 rule N_FACETS : F_VECTOR, COMBINATORIAL_DIM {
-   $this->N_FACETS=$this->F_VECTOR->[$this->COMBINATORIAL_DIM-1];
+   if ($this->COMBINATORIAL_DIM>0) {
+      $this->N_FACETS=$this->F_VECTOR->[$this->COMBINATORIAL_DIM-1];
+   } else {
+      if (COMBINATORIAL_DIM==0) {
+	 $this->N_FACETS=1; # a vertex or just a ray
+      } else {
+	 $this->N_FACETS=0; # empty polytope or trivial cone
+      }
+   }
 }
-weight 0.10;
+weight 0.1;
 
 rule RAY_LABELS : FACET_LABELS, FACETS_THRU_RAYS {
    $this->RAY_LABELS=induced_labels($this->FACET_LABELS, $this->FACETS_THRU_RAYS);
@@ -66,24 +75,24 @@ rule FACET_LABELS : RAY_LABELS, RAYS_IN_FACETS {
 rule FULL_DIM : CONE_AMBIENT_DIM, CONE_DIM {
   $this->FULL_DIM=($this->CONE_AMBIENT_DIM==$this->CONE_DIM);
 }
-weight 0.10;
+weight 0.1;
 
 rule CONE_AMBIENT_DIM : {
   $this->CONE_AMBIENT_DIM=$this->lookup_ambient_dim(undef) // 0;
 }
 precondition : defined(RAYS | INPUT_RAYS | LINEALITY_SPACE | INPUT_LINEALITY | INEQUALITIES | FACETS | EQUATIONS | LINEAR_SPAN);
-weight 0.10;
+weight 0.1;
 
 rule CONE_DIM : CONE_AMBIENT_DIM, LINEAR_SPAN {
    $this->CONE_DIM= $this->CONE_AMBIENT_DIM - $this->LINEAR_SPAN->rows;
 }
-weight 0.10;
+weight 0.1;
 
 rule LINEAR_SPAN : {
    $this->LINEAR_SPAN=new Matrix<Scalar>;
 }
 precondition : FULL_DIM;
-weight 0.10;
+weight 0.1;
 
 rule CONE_DIM : RAYS | INPUT_RAYS {
    my $cmp=$this->prepare_computations;
@@ -105,44 +114,45 @@ weight 0.10;
 rule COMBINATORIAL_DIM : F_VECTOR {
    $this->COMBINATORIAL_DIM = $this->F_VECTOR->dim;
 }
-weight 0.10;
+weight 0.1;
 
 rule CONE_DIM : COMBINATORIAL_DIM, LINEALITY_DIM {
    $this->CONE_DIM = $this->COMBINATORIAL_DIM + $this->LINEALITY_DIM+1;
 }
-weight 0.10;
+weight 0.1;
 
 rule LINEALITY_DIM : COMBINATORIAL_DIM, CONE_DIM {
    $this->LINEALITY_DIM = $this->CONE_DIM - $this->COMBINATORIAL_DIM-1;
 }
-weight 0.10;
+weight 0.1;
 
 rule LINEALITY_DIM : LINEALITY_SPACE {
    $this->LINEALITY_DIM=$this->LINEALITY_SPACE->rows;
 }
-weight 0.10;
+weight 0.1;
 
 rule POINTED : LINEALITY_DIM {
-   $this->POINTED=!$this->LINEALITY_DIM;
+   $this->POINTED= $this->LINEALITY_DIM == 0;
 }
-weight 0.10;
+weight 0.1;
 
 rule POINTED : RAYS {
   if ( defined(my $l=$this->lookup("INPUT_LINEALITY | LINEALITY_SPACE") ) ) {
-    $this->POINTED=$l->rows ? 0 : 1;
+    $this->POINTED= $l->rows==0;
   } else {
     $this->POINTED=1;
   }
 }
-weight 0.10;
+weight 0.1;
 
+# FIXME #195
 # caution: rule weight set to 0.10 to allow immediate execution of rule
 # independent of actual complexity of the computation
 rule POINTED : INPUT_RAYS {
     if ( defined(my $l=$this->lookup("INPUT_LINEALITY | LINEALITY_SPACE") ) ) {
         if (  $l->rows>0 ) { $this->POINTED=0; return; }
-    } 
-      
+    }
+
     my $v=$this->INPUT_RAYS;
     $v=(zero_vector<Scalar>($v->rows))|((ones_vector<Scalar>($v->rows))|$v);
     my $w=new Vector<Scalar>($v->cols); $w->[0]=1; $w->[1]=-1;
@@ -181,12 +191,12 @@ rule LINEALITY_DIM, LINEALITY_SPACE : {
    $this->LINEALITY_SPACE=new Matrix<Scalar>;
 }
 precondition : POINTED;
-weight 0.10;
+weight 0.1;
 
 rule ONE_RAY : RAYS, N_RAYS {
   $this->ONE_RAY= $this->N_RAYS ? $this->RAYS->[0] : undef;
 }
-weight 0.10;
+weight 0.1;
 
 rule cone_only : REL_INT_POINT : RAYS {
    $this->REL_INT_POINT=barycenter($this->RAYS);
@@ -198,17 +208,17 @@ rule cone_only : REL_INT_POINT : LINEALITY_DIM, CONE_AMBIENT_DIM {
    $this->REL_INT_POINT=$this->LINEALITY_DIM ? (zero_vector<Scalar>($this->CONE_AMBIENT_DIM)) : undef;
 }
 precondition : !N_RAYS;
-weight 0.10;
+weight 0.1;
 
 rule N_RAYS : RAYS_IN_FACETS {
    $this->N_RAYS = $this->RAYS_IN_FACETS->cols;
 }
-weight 0.10;
+weight 0.1;
 
 rule N_FACETS : RAYS_IN_FACETS {
    $this->N_FACETS=$this->RAYS_IN_FACETS->rows;
 }
-weight 0.10;
+weight 0.1;
 
 
 rule GRAPH.NODE_LABELS = RAY_LABELS;
@@ -224,9 +234,8 @@ weight 1.10;
 
 rule SIMPLICIAL : { $this->SIMPLICIAL=1 }
 precondition : ESSENTIALLY_GENERIC;
-weight 0.10;
+weight 0.1;
 
-# FIXME no testcases
 rule SIMPLICIAL_CONE : N_RAYS, LINEALITY_DIM, COMBINATORIAL_DIM {
    if ( $this->LINEALITY_DIM > 0 ) {
       $this->SIMPLICIAL_CONE = 0;
@@ -234,7 +243,7 @@ rule SIMPLICIAL_CONE : N_RAYS, LINEALITY_DIM, COMBINATORIAL_DIM {
       $this->SIMPLICIAL_CONE = ( $this->N_RAYS == $this->COMBINATORIAL_DIM+1 );
    }
 }
-weight 0.10;
+weight 0.1;
 
 rule SIMPLICIAL : COMBINATORIAL_DIM, RAYS_IN_FACETS {
    foreach (@{$this->RAYS_IN_FACETS}) {
@@ -270,7 +279,7 @@ user_method VERTEX_DEGREES = GRAPH.NODE_DEGREES;
 user_method FACET_DEGREES = DUAL_GRAPH.NODE_DEGREES;
 
 # @category Backward compatibility
-# The diameter of the [[GRAPH]] of the polytope
+# The diameter of the [[GRAPH]] of the cone
 user_method DIAMETER = GRAPH.DIAMETER;
 
 # @category Backward compatibility
@@ -317,27 +326,22 @@ user_method DUAL_CONNECTIVITY = DUAL_GRAPH.CONNECTIVITY;
 rule GRAPH.CONNECTED : {
   $this->GRAPH->CONNECTED = 1;
 }
-weight 0.10;
+weight 0.1;
 
 rule DUAL_GRAPH.CONNECTED : {
   $this->DUAL_GRAPH->CONNECTED = 1;
 }
-weight 0.10;
+weight 0.1;
 
 rule N_RAY_FACET_INC : F2_VECTOR {
    $this->N_RAY_FACET_INC=$this->F2_VECTOR->[0]->[-1];
 }
-weight 0.10;
+weight 0.1;
 
 rule F2_VECTOR : HASSE_DIAGRAM, COMBINATORIAL_DIM {
-# FIXME temporary fix for #322: HASSE_DIAGRAM has wrong dimensions for points and empty polytopes
   my $d=$this->COMBINATORIAL_DIM;
-  if ( $d <= 0 ) {  # polytope empty or point
-    if ( $d == 0 ) {
-      $this->F2_VECTOR=new Matrix<Integer>();
-    } else {
-      $this->F2_VECTOR=undef;
-    }
+  if ( $d < 0 ) {  # polytope empty or point
+     $this->F2_VECTOR=undef;
   } else {
    $this->F2_VECTOR=f2_vector($this->HASSE_DIAGRAM);
   }
@@ -353,20 +357,47 @@ precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM >= 1 }
 weight 0.10;
 
 rule F_VECTOR : HASSE_DIAGRAM {
-  # FIXME temporary fix for #322: HASSE_DIAGRAM has wrong dimensions for points and empty polytopes
   my $n=$this->HASSE_DIAGRAM->N_NODES;
-  if ( $n >= 3 ) {
+  if ( $n >= 2 ) {
       my @d=@{$this->HASSE_DIAGRAM->DIMS};
       my @f=map { $d[$_]-$d[$_-1] } 1..$#d;
       $this->F_VECTOR= $this->HASSE_DIAGRAM->top_node ? \@f : [ reverse @f ];
-  } else {  # polytope empty or point
-    if ( $n == 2 ) {
-      $this->F_VECTOR=new Vector<Integer>();
-    } else {
-      $this->F_VECTOR=undef;
-    }
   }
 }
+weight 0.10;
+
+rule F_VECTOR : N_FACETS, N_RAYS, COMBINATORIAL_DIM {
+   my $dim = $this->COMBINATORIAL_DIM;
+   if ($dim>=0) {
+      my $vec = new Vector<Integer>($dim);
+      if ($dim>0) {
+	 $vec->[0] = $this->N_RAYS;
+	 if ($dim>1) {
+	    $vec->[$dim-1] = $this->N_FACETS;
+	 }
+	 if ($dim==3) {
+	    $vec->[1] = $vec->[0]+$vec->[2]-2; # euler
+	 }
+      }
+      $this->F_VECTOR=$vec;
+   }
+}
+precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM < 4 }
+weight 0.10;
+
+rule F_VECTOR : N_FACETS, N_RAYS, GRAPH.N_EDGES, DUAL_GRAPH.N_EDGES, COMBINATORIAL_DIM {
+    my $dim =  $this->COMBINATORIAL_DIM;
+    my $vec = new Vector<Integer>($dim);
+    $vec->[0] = $this->N_RAYS;
+    $vec->[$dim-1] = $this->N_FACETS;
+    $vec->[1] = $this->GRAPH->N_EDGES;
+    $vec->[$dim-2] = $this->DUAL_GRAPH->N_EDGES;
+    if ($dim==5) {
+       $vec->[2] = -$vec->[0]+$vec->[1]+$vec->[3]-$vec->[4]+2 ; # euler
+    }
+    $this->F_VECTOR=$vec;
+}
+precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM == 4 || $this->COMBINATORIAL_DIM == 5 }
 weight 0.10;
 
 rule GRAPH.ADJACENCY : RAYS_IN_FACETS {
@@ -392,19 +423,15 @@ weight 3.10;
 rule COMBINATORIAL_DIM : HASSE_DIAGRAM {
    $this->COMBINATORIAL_DIM=$this->HASSE_DIAGRAM->dim;
 }
-weight 0.10;
+weight 0.1;
 
-# FIXME DIM : check dependence on dim in client
 rule cone_only : GRAPH.ADJACENCY : HASSE_DIAGRAM {
    $this->GRAPH->ADJACENCY=vertex_graph($this->HASSE_DIAGRAM);
 }
-precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM>=2 };
 
-# FIXME DIM : check dependence on dim in client
 rule cone_only : DUAL_GRAPH.ADJACENCY : HASSE_DIAGRAM {
    $this->DUAL_GRAPH->ADJACENCY=facet_graph($this->HASSE_DIAGRAM);
 }
-precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM>=2 };
 
 rule RAY_SIZES : RAYS_IN_FACETS {
    $this->RAY_SIZES(temporary)=[ map { scalar(@$_) } @{transpose($this->RAYS_IN_FACETS)} ];
@@ -579,31 +606,25 @@ user_method face {
 # Each vertex in the new complex corresponds to a face in the old complex.
 # @param Cone c input cone or polytope
 # @option Bool relabel generate vertex labels from the faces of the original complex; default true
-# @option Bool geometric_realization read [[RAYS]] of the input complex,
-#  compute the coordinates of the new vertices and store them as
-#  [[RAYS]] of the produced complex; default true
-# @return SimplicialComplex or GeometricSimplicialComplex
+# @option Bool geometric_realization create a [[topaz::GeometricSimplicialComplex]]; default is true
+# @return topaz::SimplicialComplex
 user_function barycentric_subdivision<Scalar>(Cone<Scalar> { relabel=>1, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", geometric_realization=>1, coord_section=>"RAYS" }) {
   topaz::barycentric_subdivision_impl<Scalar>(@_);
 }
 
-# 
 
 # @category Triangulations, subdivisions and volume
 # Create a simplicial complex as an iterated barycentric subdivision of a given cone or polytope.
 # @param Cone c input cone or polytope
-# @param Int how many times to subdivide
-# @option Bool relabel write labels of new points; default don't write labels
-# @option Bool geometric_realization read [[RAYS]] of the input complex,
-#  compute the coordinates of the new vertices and store them as
-#  [[RAYS]] of the produced complex; default false
-# @return SimplicialComplex
+# @param Int n how many times to subdivide
+# @option Bool relabel write labels of new points; default is false
+# @option Bool geometric_realization create a [[topaz::GeometricSimplicialComplex]]; default is false
+# @return topaz::SimplicialComplex
 user_function iterated_barycentric_subdivision<Scalar>(Cone<Scalar> $ { relabel=>1, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", pout_section=>"TRIANGULATION.FACETS", geometric_realization=>0, coord_section=>"RAYS" }) {
     topaz::iterated_barycentric_subdivision_impl<Scalar>(@_);
 }
 
 
-user_function lawrence_matrix<Scalar>(Matrix<Scalar>) {
 # @category Other
 # @param Matrix M
 # Create the Lawrence matrix Lambda(M) corresponding to M.
@@ -611,6 +632,7 @@ user_function lawrence_matrix<Scalar>(Matrix<Scalar>) {
 # ( //M//       //I_n// )
 # ( //0_{n,d}// //I_n// ).
 # @return Matrix
+user_function lawrence_matrix<Scalar>(Matrix<Scalar>) {
     my $m = shift;
     my $n = $m->rows();
     my $d = $m->cols();
@@ -622,7 +644,7 @@ user_function lawrence_matrix<Scalar>(Matrix<Scalar>) {
 
 # @category Producing a polytope from polytopes
 # Create the Lawrence polytope Lambda(P) corresponding to P.
-# Lambda(P) has the property that 
+# Lambda(P) has the property that
 # Gale(Lambda(P)) = Gale(P) union -Gale(P).
 # @param Cone P an input cone or polytope
 # @return Cone the Lawrence cone or polytope to P

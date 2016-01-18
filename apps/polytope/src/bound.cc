@@ -43,12 +43,19 @@ perl::Object bound(perl::Object p_in)
 UserFunctionTemplate4perl("# @category Transformations"
                           "# Make a positive polyhedron bounded."
                           "# Apply a projective linear transformation to a polyhedron mapping the far hyperplane"
-                          "# to the hyperplane spanned by the points (1,0,...,0,1,0,...)."
+                          "# to the hyperplane spanned by the unit vectors."
                           "# The origin (1,0,...,0) is fixed."
                           "# "
                           "# The input polyhedron should be [[POSITIVE]]; i.e. no negative coordinates."
                           "# @param Polytope P a positive polyhedron"
-                          "# @return Polytope",
+                          "# @return Polytope"
+                          "# @example Observe the transformation of a simple unbounded 2-polyhedron:"
+                          "# > $P = new Polytope(VERTICES=>[[1,0,0],[0,1,1],[0,0,1]]);"
+                          "# > print bound($P)->VERTICES;"
+                          "# | 1 0 0"
+                          "# | 1 1/2 1/2"
+                          "# | 1 0 1"
+                          "# As you can see, the far points are mapped to the hyperplane spanned by (1,1,0) and (1,0,1).",
                           "bound<Scalar> (Polytope<Scalar>)");
 } }
 

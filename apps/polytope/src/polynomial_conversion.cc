@@ -21,22 +21,25 @@
 
 namespace polymake { namespace polytope {
 
-template <typename E>
-Vector<E> power_to_binomial_basis(const Vector<E>& PB)
+template <typename VectorTop, typename E>
+typename GenericVector<VectorTop, typename pm::algebraic_traits<E>::field_type>::persistent_type
+power_to_binomial_basis(const GenericVector<VectorTop,E>& PB)
 {
-  int d = PB.size()-1;
+  typedef typename pm::algebraic_traits<E>::field_type Ef;
+  typedef typename GenericVector<VectorTop, Ef>::persistent_type Vec;
+  int d = PB.top().dim()-1;
   if ( d <= -1 ) {  // trivial case
-   return Vector<E>();
+   return Vec();
   }
 
-  Vector<E> BB(1);
+  Vec BB(1);
   BB[0] = 1;
 
   for ( int k = 1; k <= d; ++k ) {
-    E l = 0;
+    Ef l = 0;
     for ( int i = 0; i <=d; ++i )
-      l += PB[i] * Integer::pow(k,i);
-    for ( int j = 0; j < BB.size(); ++j ) 
+      l += PB.top()[i] * Integer::pow(k,i);
+    for ( int j = 0; j < BB.dim(); ++j ) 
       l -= Integer::binom(d+k-j,d) * BB[j];
     BB |= l;
   }
@@ -44,11 +47,15 @@ Vector<E> power_to_binomial_basis(const Vector<E>& PB)
   return BB;
 }
 
-template <typename E>
-Vector<E> binomial_to_power_basis(const Vector<E>& BB)
+template <typename VectorTop, typename E>
+typename GenericVector<VectorTop, typename pm::algebraic_traits<E>::field_type>::persistent_type
+binomial_to_power_basis(const GenericVector<VectorTop,E>& BB)
 {
-  int d = BB.size()-1;
-  Vector<E> PB(d+1);
+  typedef typename pm::algebraic_traits<E>::field_type Ef;
+  typedef typename GenericVector<VectorTop, Ef>::persistent_type Vec;
+
+  int d = BB.top().dim()-1;
+  Vec PB(d+1);
   if ( d <= 0 ) {  // trivial case
      if ( d == 0 ) 
         PB[0] = 1;
@@ -56,14 +63,14 @@ Vector<E> binomial_to_power_basis(const Vector<E>& BB)
   }
 
   for ( int k = 0; k <= d; ++k ) {
-    Vector<E> a(2);
+    Vec a(2);
     a[0] = d-k; a[1] = 1;
-    for (int j = 1; j < d; j++ ) 
+    for (int j = 1; j < d; j++ )
       a = (0|a) + (d-k-j) * (a|0); 
-    PB += BB[k] * a;
+    PB += BB.top()[k] * a;
   }
 
-  return 1/(E)(Integer::fac(d)) * PB;
+  return 1/(Ef)(Integer::fac(d)) * PB;
 }
 
 FunctionTemplate4perl("binomial_to_power_basis(Vector)");

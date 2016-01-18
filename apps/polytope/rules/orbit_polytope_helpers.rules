@@ -124,7 +124,7 @@ user_function nestedOPGraph (Vector, Matrix, Matrix, group::GroupOfPolytope, $){
 
 #    # construct orbit polytope orb_\Gamma($gen_point)
 #    my $p = orbitPolytope($gen_point,$group); 
-#    $p = new LatticePolytope(VERTICES=>$p->POINTS,LINEALITY_SPACE=>[]);
+#    $p = new Polytope(VERTICES=>$p->POINTS, LINEALITY_SPACE=>[], LATTICE=>1, BOUNDED=>1);
 #    #$p->VERTICES; # just to help the scheduler
 #    prefer_now "normaliz2"; $p->LATTICE_POINTS;
 #    my $lattice_points=$p->LATTICE_POINTS;
@@ -242,7 +242,12 @@ user_function ortho_project (Polytope) {
 # or included (0) in the label string." 
 # @param Matrix vertices the vertices of the polytope
 # @param Bool wo_zero includes (0) or omits (1) the entry at position 0
-# @return arrayref a reference to an array of vertex label strings
+# @return ARRAY a reference to an array of vertex label strings
+# @example This prints the vertex labels for the square with the origin as its center and 
+# side length 2, where we omit the leading 1:
+# > $l = vlabels(cube(2)->VERTICES,1);
+# > print join(', ', @{$v});
+# | (-1,-1), (1,-1), (-1,1), (1,1)
 
 user_function vlabels (Matrix,$) {
     my ($vertices, $wo_zero) = @_;

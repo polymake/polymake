@@ -439,17 +439,10 @@ property N_UNIMODULAR : Int;
 property SIGNATURE : Int;
 
 
-rule COORDINATES, G_DIM : N_VERTICES {
-   my $nv=$this->N_VERTICES;
-   $this->COORDINATES=unit_matrix<Rational>($nv);
-   $this->G_DIM=$nv;
-}
-weight 1.10;
-
 rule G_DIM : COORDINATES {
    $this->G_DIM=$this->COORDINATES->cols;
 }
-weight 0.10;
+weight 0.1;
 
 
 rule SIGNATURE : DUAL_GRAPH.ADJACENCY, COORDINATES, FACETS {
@@ -462,7 +455,7 @@ precondition : DIM, G_DIM {
 rule DUAL_GRAPH.BIPARTITE : SIGNATURE {
   $this->DUAL_GRAPH->BIPARTITE = $this->SIGNATURE >= 0;
 }
-weight 0.10;
+weight 0.1;
 
 rule VOLUME : FACETS, COORDINATES, DIM {
   $this->VOLUME=volume($this);

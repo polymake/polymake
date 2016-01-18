@@ -95,11 +95,11 @@ int isinf(const Integer& a);
 namespace std {
 
 template <>
-struct numeric_limits<pm::Integer>;
+class numeric_limits<pm::Integer>;
 template <>
-struct numeric_limits<pm::Rational>;
+class numeric_limits<pm::Rational>;
 template <>
-struct numeric_limits<pm::AccurateFloat>;
+class numeric_limits<pm::AccurateFloat>;
 
 }
 namespace pm {
@@ -994,7 +994,7 @@ public:
 
    friend class Rational;
    friend struct spec_object_traits<Integer>;
-   template <typename> friend struct std::numeric_limits;
+   template <typename> friend class std::numeric_limits;
 
    mpz_srcptr get_rep() const { return rep; }
 
@@ -1025,7 +1025,8 @@ namespace std {
 inline void swap(pm::Integer& i1, pm::Integer& i2) { i1.swap(i2); }
 
 template <>
-struct numeric_limits<pm::Integer> : numeric_limits<long> {
+class numeric_limits<pm::Integer> : public numeric_limits<long> {
+public:
    static const bool has_infinity=true;
    static pm::Integer min() throw() { return pm::Integer(pm::maximal<pm::Integer>(),-1); }
    static pm::Integer infinity() throw() { return pm::Integer(pm::maximal<pm::Integer>()); }

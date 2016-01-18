@@ -31,14 +31,12 @@ rule STEINER_POINTS : HASSE_DIAGRAM, GRAPH.ADJACENCY, VERTICES, CONE_DIM {
 precondition : BOUNDED;
 weight 6.10;
 
-# @notest
 rule STEINER_POINT : GRAPH.ADJACENCY, VERTICES, CONE_DIM {
    $this->STEINER_POINT=steiner_point($this);
 }
 precondition : BOUNDED;
 weight 5.10;
 
-# @notest
 rule STEINER_POINT : STEINER_POINTS {
    $this->STEINER_POINT=$this->STEINER_POINTS->[0];
 }
@@ -67,6 +65,8 @@ package Visual::Polytope;
 # The facets become transparent.
 # @options %Visual::PointSet::decorations
 # @return Visual::Polytope
+# @example Displays the Steiner points of a random threedimensional sphere with 20 vertices. The labels of the vertices are turned off.
+# > rand_sphere(3,20)->VISUAL(VertexLabels=>"hidden")->STEINER;
 
 user_method STEINER(%Visual::PointSet::decorations) {
    my ($self, $decor)=@_;

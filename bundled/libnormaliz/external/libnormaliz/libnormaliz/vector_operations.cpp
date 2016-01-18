@@ -150,26 +150,6 @@ Integer v_scalar_product_unequal_vectors_end(const vector<Integer>& a,const vect
 
 //---------------------------------------------------------------------------
 
-/* 
- * template<typename Integer>
-vector<Integer> v_add_overflow_check(const vector<Integer>& a,const vector<Integer>& b){
-    size_t i,s=a.size();
-    Integer test;
-    vector<Integer> d(s);
-    for (i = 0; i <s; i++) {
-        d[i]=a[i]+b[i];
-        test=(a[i]%overflow_test_modulus + b[i]%overflow_test_modulus); // %overflow_test_modulus;
-        if((d[i]-test) % overflow_test_modulus !=0){
-            errorOutput()<<"Arithmetic failure in vector addition. Moat likely arithmetic overflow.\n";
-            throw ArithmeticException();
-        }
-    }
-    return d;
-}
-*/
-
-//---------------------------------------------------------------------------
-
 template<typename Integer>
 vector<Integer> v_add(const vector<Integer>& a,const vector<Integer>& b){
    assert(a.size() == b.size());
@@ -240,7 +220,7 @@ Integer v_gcd(const vector<Integer>& v){
     size_t i, size=v.size();
     Integer g=0;
     for (i = 0; i < size; i++) {
-        g=gcd(g,v[i]);
+        g = libnormaliz::gcd(g,v[i]);
         if (g==1) {
             return 1;
         }
@@ -255,7 +235,7 @@ Integer v_lcm(const vector<Integer>& v){
     size_t i,size=v.size();
     Integer g=1;
     for (i = 0; i < size; i++) {
-        g=lcm(g,v[i]);
+        g = libnormaliz::lcm(g,v[i]);
         if (g==0) {
             return 0;
         }
@@ -680,6 +660,15 @@ void order_by_perm(vector<bool>& v, const vector<key_t>& permfix){
         swap(perm[i],perm[inv[i]]);        
         swap(inv[i],inv[j]);                
     }
+}
+
+// make random vector of length n with entries between -m and m
+template <typename Integer>
+vector<Integer> v_random(size_t n, long m){
+    vector<Integer> result(n);
+    for(size_t i=0;i<n;++i)
+        result[i]=rand()%(2*m+1)-m;
+    return result;    
 }
 
 

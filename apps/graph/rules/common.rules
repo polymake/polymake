@@ -18,7 +18,7 @@ object Graph {
 rule N_NODES : ADJACENCY {
    $this->N_NODES=$this->ADJACENCY->nodes;
 }
-weight 0.10;
+weight 0.1;
 
 rule N_EDGES : ADJACENCY {
    $this->N_EDGES=$this->ADJACENCY->edges;
@@ -47,12 +47,12 @@ rule CONNECTED_COMPONENTS : ADJACENCY {
 rule N_CONNECTED_COMPONENTS : CONNECTED_COMPONENTS {
    $this->N_CONNECTED_COMPONENTS=@{$this->CONNECTED_COMPONENTS};
 }
-weight 0.10;
+weight 0.1;
 
 rule CONNECTED : N_CONNECTED_COMPONENTS {
    $this->CONNECTED = $this->N_CONNECTED_COMPONENTS <= 1;
 }
-weight 0.10;
+weight 0.1;
 
 
 # Explore the graph as a sequence of its edges.
@@ -84,7 +84,7 @@ rule TRIANGLE_FREE : ADJACENCY {
 
 rule TRIANGLE_FREE : { $this->TRIANGLE_FREE=1 }
 precondition : BIPARTITE;
-weight 0.10;
+weight 0.1;
 
 rule CONNECTIVITY : ADJACENCY {
    $this->CONNECTIVITY=connectivity($this->ADJACENCY);
@@ -138,6 +138,14 @@ weight 1.10;
 # Creates a graph from a given list of //edges//.
 # @param Array<Set<Int>> edges
 # @return Graph
+# @example > $g = graph_from_edges([[1,2],[1,3],[1,4]]);
+# > print $g->ADJACENCY;
+# | {}
+# | {2 3 4}
+# | {1}
+# | {1}
+# | {1}
+
 user_function graph_from_edges($) {
    my $edges = shift;
    my $max = 0;
@@ -159,6 +167,13 @@ user_function graph_from_edges($) {
 # Creates the __Laplacian matrix__ of a graph.
 # @param Graph G
 # @return Matrix
+# @example > $M = laplacian(cycle_graph(4));
+# > print $M;
+# | 2 -1 0 -1
+# | -1 2 -1 0
+# | 0 -1 2 -1
+# | -1 0 -1 2
+
 user_function laplacian($) {
     my $g = shift;
     my $e = new Matrix<Rational>(signed_incidence_matrix($g));

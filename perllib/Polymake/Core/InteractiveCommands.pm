@@ -15,6 +15,8 @@
 
 #  Application methods and user commands available in interactive mode
 
+use Term::Cap;
+
 use strict;
 use namespaces;
 
@@ -23,7 +25,6 @@ package Polymake::Core::InteractiveCommands;
 my ($termcap, $bold, $boldoff, $under, $underoff);
 
 sub init_termcap {
-   require Term::Cap;
    my $tc=Term::Cap->Tgetent;
    $bold=$tc->Tputs('md');
    $boldoff=$tc->Tputs('me');

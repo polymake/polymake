@@ -86,10 +86,11 @@ rule GEN_POINTS : GEN_POINT {
     $this->GEN_POINTS = vector2row($this->GEN_POINT);
 } 
 
+# TODO: the following claim is not true anymore
 #rule NOP_GRAPH : LATTICE_POINTS, GENERATING_GROUP { #FIXME: normaliz kann nicht verwendet werden, da der cast von OrbitPolytope nach LatticePolytope nicht funktioniert!
 rule NOP_GRAPH, REPRESENTATIVE_CERTIFIERS, REPRESENTATIVE_CORE_POINTS, CP_INDICES : GEN_POINT, POINTS, GENERATING_GROUP {
     
-    my $lattice_poly = new LatticePolytope(VERTICES=>$this->POINTS, LINEALITY_SPACE=>[]); 
+    my $lattice_poly = new Polytope(VERTICES=>$this->POINTS, LINEALITY_SPACE=>[], LATTICE=>1, BOUNDED=>1); 
     my @res=nestedOPGraph($this->GEN_POINT, $this->POINTS, $lattice_poly->LATTICE_POINTS, $this->GENERATING_GROUP, 0);
     $this->NOP_GRAPH = $res[0];
     $this->REPRESENTATIVE_CERTIFIERS = $res[1];
@@ -113,6 +114,7 @@ rule N_REPRESENTATIVE_CORE_POINTS : REPRESENTATIVE_CORE_POINTS {
 
 
 package Visual::Color;
+
 # Color for the visualization of core points
 custom $CorePointColor="236 101 0"; #tud8b
 

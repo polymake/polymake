@@ -13,7 +13,7 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-object LatticePolytope {
+object_specialization Polytope::Lattice {
 
 rule H_STAR_VECTOR , EHRHART_POLYNOMIAL_COEFF : {
    die <<"---";
@@ -21,7 +21,6 @@ rule H_STAR_VECTOR , EHRHART_POLYNOMIAL_COEFF : {
 *** Missing external software:
 *** To compute Ehrhart polynomials or h^*-vectors you need to have one of the following:
 ***    - bundled:libnormaliz enabled (requires boost, rerun configure)
-***    - normaliz2 installed and configured (check 'show_unconfigured;')
 ***    - latte installed and configured (check 'show_unconfigured;')
 ---
 }

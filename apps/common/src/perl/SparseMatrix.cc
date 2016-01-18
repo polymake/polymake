@@ -19,6 +19,7 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
 #include "polymake/PuiseuxFraction.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
@@ -47,5 +48,6 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::SparseMatrix_A_PuiseuxFraction_A_Max_I_Rational_I_Rational_Z_I_NonSymmetric_Z", SparseMatrix< PuiseuxFraction< Max, Rational, Rational >, NonSymmetric >);
    FunctionInstance4perl(new, SparseMatrix< PuiseuxFraction< Max, Rational, Rational >, NonSymmetric >);
    Class4perl("Polymake::common::SparseMatrix_A_PuiseuxFraction_A_Max_I_Rational_I_Rational_Z_I_Symmetric_Z", SparseMatrix< PuiseuxFraction< Max, Rational, Rational >, Symmetric >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > > >, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

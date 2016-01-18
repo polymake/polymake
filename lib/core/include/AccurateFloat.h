@@ -26,7 +26,7 @@ namespace pm {
 /// minimalistic wrapper for MPFR numbers
 class AccurateFloat {
    friend class Integer;  friend class Rational;
-   template <typename> friend struct std::numeric_limits;
+   template <typename> friend class std::numeric_limits;
 protected:
    mpfr_t rep;
 public:
@@ -807,7 +807,8 @@ namespace std {
 inline void swap(pm::AccurateFloat& a, pm::AccurateFloat& b) { a.swap(b); }
 
 template <>
-struct numeric_limits<pm::AccurateFloat> : numeric_limits<pm::Rational> {
+class numeric_limits<pm::AccurateFloat> : public numeric_limits<pm::Rational> {
+public:
    static const bool is_exact = false;
    static pm::AccurateFloat min() throw() { return pm::AccurateFloat(pm::maximal<pm::AccurateFloat>(),-1); }
    static pm::AccurateFloat infinity() throw() { return pm::AccurateFloat(pm::maximal<pm::AccurateFloat>()); }

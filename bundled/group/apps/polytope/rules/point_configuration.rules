@@ -18,7 +18,7 @@ object PointConfiguration {
 
 # @category Combinatorics
 # The full-dimensional simplices that contain no points except for the vertices.
-rule MAX_INTERIOR_SIMPLICES : DIM, POINTS, CONVEX_HULL.VERTICES_IN_FACETS {
+rule MAX_INTERIOR_SIMPLICES : VECTOR_DIM, POINTS, CONVEX_HULL.VERTICES_IN_FACETS {
     $this->MAX_INTERIOR_SIMPLICES = max_interior_simplices($this);
 }
 
@@ -30,7 +30,7 @@ rule N_MAX_INTERIOR_SIMPLICES : MAX_INTERIOR_SIMPLICES {
 
 # @category Combinatorics
 # The full-dimensional simplices on the boundary that contain no points except for the vertices.
-rule MAX_BOUNDARY_SIMPLICES : DIM, POINTS, CONVEX_HULL.VERTICES_IN_FACETS {
+rule MAX_BOUNDARY_SIMPLICES : VECTOR_DIM, POINTS, CONVEX_HULL.VERTICES_IN_FACETS {
     $this->MAX_BOUNDARY_SIMPLICES = max_boundary_simplices($this);
 }
 
@@ -43,7 +43,7 @@ rule N_MAX_BOUNDARY_SIMPLICES : MAX_BOUNDARY_SIMPLICES {
 # @category Combinatorics
 # The interior //d-1//-dimensional simplices of a cone of combinatorial dimension //d//
 # symmetries of the cone are NOT taken into account
-rule INTERIOR_RIDGE_SIMPLICES, MAX_BOUNDARY_SIMPLICES : DIM, POINTS, CONVEX_HULL.VERTICES_IN_FACETS {
+rule INTERIOR_RIDGE_SIMPLICES, MAX_BOUNDARY_SIMPLICES : VECTOR_DIM, POINTS, CONVEX_HULL.VERTICES_IN_FACETS {
     my $pair=interior_and_boundary_ridges($this);
     $this->INTERIOR_RIDGE_SIMPLICES = $pair->first;
     $this->MAX_BOUNDARY_SIMPLICES = $pair->second;
@@ -51,15 +51,15 @@ rule INTERIOR_RIDGE_SIMPLICES, MAX_BOUNDARY_SIMPLICES : DIM, POINTS, CONVEX_HULL
 
 # @category Combinatorics
 # A matrix whose rows contain the cocircuit equations of C
-rule COCIRCUIT_EQUATIONS : DIM, POINTS, CONVEX_HULL.VERTICES_IN_FACETS, MAX_INTERIOR_SIMPLICES {
-    $this->COCIRCUIT_EQUATIONS = cocircuit_equations($this->DIM, $this->POINTS, $this->CONVEX_HULL->VERTICES_IN_FACETS, $this->MAX_INTERIOR_SIMPLICES);
+rule COCIRCUIT_EQUATIONS : VECTOR_DIM, POINTS, CONVEX_HULL.VERTICES_IN_FACETS, INTERIOR_RIDGE_SIMPLICES, MAX_INTERIOR_SIMPLICES {
+    $this->COCIRCUIT_EQUATIONS = cocircuit_equations($this->VECTOR_DIM-1, $this->POINTS, $this->CONVEX_HULL->VERTICES_IN_FACETS, $this->INTERIOR_RIDGE_SIMPLICES, $this->MAX_INTERIOR_SIMPLICES);
 }
 
 # @category Combinatorics
 # A lower bound for the number of simplices needed to triangulate the convex hull
 # Symmetries are NOT taken into account
-rule SIMPLEXITY_LOWER_BOUND : CONVEX_HULL.VOLUME, MAX_INTERIOR_SIMPLICES, POINTS, DIM, COCIRCUIT_EQUATIONS {
-    $this->SIMPLEXITY_LOWER_BOUND = simplexity_lower_bound($this->DIM, $this->POINTS, $this->MAX_INTERIOR_SIMPLICES, $this->CONVEX_HULL->VOLUME, $this->COCIRCUIT_EQUATIONS);
+rule SIMPLEXITY_LOWER_BOUND : CONVEX_HULL.VOLUME, MAX_INTERIOR_SIMPLICES, POINTS, VECTOR_DIM, COCIRCUIT_EQUATIONS {
+    $this->SIMPLEXITY_LOWER_BOUND = simplexity_lower_bound($this->VECTOR_DIM-1, $this->POINTS, $this->MAX_INTERIOR_SIMPLICES, $this->CONVEX_HULL->VOLUME, $this->COCIRCUIT_EQUATIONS);
 }
 
 

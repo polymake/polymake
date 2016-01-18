@@ -117,7 +117,15 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @param Int n the number of points"
                   "# @option Int start defaults to 0 (or to 1 if spherical)"
                   "# @option Bool spherical defaults to false"
-                  "# @return Polytope",
+                  "# @return Polytope"
+                  "# @example To create the 2-dimensional cyclic polytope with 6 points on the sphere, starting at 3:"
+                  "# > $p = cyclic(2,6,start=>3,spherical=>1);"
+                  "# > print $p->VERTICES;"
+                  "# | 1 1/10 3/10"
+                  "# | 1 1/26 5/26"
+                  "# | 1 1/37 6/37"
+                  "# | 1 1/50 7/50"
+                  "# | 1 1/65 8/65",
                   &cyclic, "cyclic($$ { start => 0, spherical => 0})");
 } }
 

@@ -53,8 +53,8 @@ namespace polymake { namespace tropical {
 			"# Cf." 
 			"# \t M. Joswig math/0312068v3, Ex. 2.10."
 			"# The value of //k// defaults to 1, yielding a tropical standard simplex."
-			"# @param int d the dimension"
-			"# @param int k the number of +/-1 entries"
+			"# @param Int d the dimension"
+			"# @param Int k the number of +/-1 entries"
 			"# @tparam Addition Max or Min"
 			"# @return Cone<Addition>",
 			"hypersimplex<Addition>($;$=1)");

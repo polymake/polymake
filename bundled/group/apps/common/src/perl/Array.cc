@@ -34,7 +34,6 @@ namespace polymake { namespace common { namespace {
       WrapperReturnNew(T0, () );
    };
 
-   FunctionInstance4perl(new_X, Array< Set< int > >, perl::Canned< const Set< Set< int > > >);
    Class4perl("Polymake::common::Array__Array__boost_dynamic_bitset", Array< Array< boost_dynamic_bitset > >);
    Class4perl("Polymake::common::Array__boost_dynamic_bitset", Array< boost_dynamic_bitset >);
    FunctionInstance4perl(new_X, Array< Array< Set< int > > >, perl::Canned< const Array< Array< boost_dynamic_bitset > > >);

@@ -168,11 +168,15 @@ public:
    {
       if (__builtin_expect(!rf.num.trivial(), 1)) {
          ExtGCD<polynomial_type> x = ext_gcd(den, rf.den, false);
+         x.p = x.k1 * x.k2; // x.p is used as dummy variable
+         den.swap(x.p);
          x.k1 *= rf.num;  x.k1 += num * x.k2;
-         x.k2 *= den;
-         x = ext_gcd(x.k1, x.k2);
+         if( !is_one(x.g) ){
+            x = ext_gcd(x.k1, x.g);
+            x.k2 *= den;
+            den.swap(x.k2);
+         }
          num.swap(x.k1);
-         den.swap(x.k2);
          normalize_lc();
       }
       return *this;
@@ -191,11 +195,15 @@ public:
    {
       if (__builtin_expect(!rf.num.trivial(), 1)) {
          ExtGCD<polynomial_type> x = ext_gcd(den, rf.den, false);
+         x.p = x.k1 * x.k2; // x.p is used as dummy variable
+         den.swap(x.p);
          x.k1 *= rf.num;  x.k1.negate();  x.k1 += num * x.k2;
-         x.k2 *= den;
-         x = ext_gcd(x.k1, x.k2);
+         if( !is_one(x.g) ){
+            x = ext_gcd(x.k1, x.g);
+            x.k2 *= den;
+            den.swap(x.k2);
+         }
          num.swap(x.k1);
-         den.swap(x.k2);
          normalize_lc();
       }
       return *this;
@@ -246,8 +254,18 @@ public:
       } else if (__builtin_expect(rf2.num.trivial(), 0)) {
          return rf1;
       } else {
-         const ExtGCD<polynomial_type> x = ext_gcd(rf1.den, rf2.den, false);
-         return RationalFunction(rf1.num * x.k2 + rf2.num * x.k1, rf1.den * x.k2);
+         ExtGCD<polynomial_type> x = ext_gcd(rf1.den, rf2.den, false);
+         RationalFunction rf(rf1.num * x.k2 + rf2.num * x.k1,x.k1 * x.k2,True());
+         if( is_one(x.g) ){
+            rf.normalize_lc();
+            return rf;
+         }
+         x = ext_gcd(rf.num, x.g);
+         x.k2 *= rf.den;
+         rf.den.swap(x.k2);
+         rf.num.swap(x.k1);
+         rf.normalize_lc();
+         return rf;
       }
    }
 
@@ -259,8 +277,18 @@ public:
       } else if (__builtin_expect(rf2.num.trivial(), 0)) {
          return rf1;
       } else {
-         const ExtGCD<polynomial_type> x = ext_gcd(rf1.den, rf2.den, false);
-         return RationalFunction(rf1.num * x.k2 - rf2.num * x.k1, rf1.den * x.k2);
+         ExtGCD<polynomial_type> x = ext_gcd(rf1.den, rf2.den, false);
+         RationalFunction rf(rf1.num * x.k2 - rf2.num * x.k1,x.k1 * x.k2,True());
+         if( is_one(x.g) ){
+            rf.normalize_lc();
+            return rf;
+         }
+         x = ext_gcd(rf.num, x.g);
+         x.k2 *= rf.den;
+         rf.den.swap(x.k2);
+         rf.num.swap(x.k1);
+         rf.normalize_lc();
+         return rf;
       }
    }
 
@@ -345,6 +373,8 @@ public:
          return rf1;
       } else if (__builtin_expect(rf2.num.trivial(), 0)) {
          return rf2;
+      } else if(rf1.den==rf2.den || rf1.num==rf2.num){
+         return RationalFunction(rf1.num*rf2.num, rf1.den*rf2.den, True());
       } else {
          const ExtGCD<polynomial_type> x = ext_gcd(rf1.num, rf2.den, false),
                                        y = ext_gcd(rf1.den, rf2.num, false);
@@ -387,6 +417,8 @@ public:
          throw GMP::ZeroDivide();
       } else if (__builtin_expect(rf1.num.trivial(), 0)) {
          return rf1;
+      } else if (rf1.den==rf2.num || rf1.num==rf2.den){
+         return RationalFunction(rf1.num*rf2.den, rf1.den*rf2.num, True()); 
       } else {
          const ExtGCD<polynomial_type> x = ext_gcd(rf1.num, rf2.num, false),
                                        y = ext_gcd(rf1.den, rf2.den, false);

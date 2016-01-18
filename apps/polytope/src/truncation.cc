@@ -41,14 +41,14 @@ void assign_facet_through_points(const GenericMatrix<Matrix,E>& M,
 template <typename Scalar, typename SetTop>
 perl::Object truncation(perl::Object p_in, const GenericSet<SetTop>& trunc_vertices, perl::OptionSet options)
 {
-   if (options.exists("cutoff") && options.exists("noc")) 
-      throw std::runtime_error("truncation: cannot specify cutoff and noc options simultaneously");
+   if (options.exists("cutoff") && options.exists("no_coordinates")) 
+      throw std::runtime_error("truncation: cannot specify cutoff and no_coordinates options simultaneously");
    
    const bool pointed = p_in.give("POINTED");
    if (!pointed)
       throw std::runtime_error("truncation: input should be pointed");
       
-   const bool noc = options["noc"],
+   const bool noc = options["no_coordinates"],
       relabel = options["relabel"];
 
    const IncidenceMatrix<> VIF=p_in.give("VERTICES_IN_FACETS");
@@ -270,7 +270,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# When //cutoff//=0, the hyperplane would go through the chosen vertex, thus cutting off nothing."
                           "# When //cutoff//=1, the hyperplane touches the nearest neighbor vertex of a polyhedron."
                           "# "
-                          "# Alternatively, the option //noc// (no coordinates) can be specified to produce a"
+                          "# Alternatively, the option //no_coordinates// can be specified to produce a"
                           "# pure combinatorial description of the resulting polytope, which corresponds to"
                           "# the cutoff factor 1/2."
                           "# @param Polytope P"
@@ -280,13 +280,21 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "#   Special keyword __All__ means that all vertices are to be cut off."
                           "# @option Scalar cutoff controls the exact location of the cutting hyperplane(s);"
                           "#   rational number between 0 and 1; default value: 1/2"
-                          "# @option Bool noc produces a pure combinatorial description (in contrast to //cutoff//)"
+                          "# @option Bool no_coordinates produces a pure combinatorial description (in contrast to //cutoff//)"
                           "# @option Bool relabel creates an additional section [[VERTEX_LABELS]];"
                           "#   New vertices get labels of the form 'LABEL1-LABEL2', where LABEL1 is the original label"
                           "#   of the truncated vertex, and LABEL2 is the original label of its neighbor."
                           "# @return Polytope"
+                          "# @example To truncate the second vertex of the square at 1/4, try this:"
+                          "# > $p = truncation(cube(2),2,cutoff=>1/4);"
+                          "# > print $p->VERTICES;"
+                          "# | 1 -1 -1"
+                          "# | 1 1 -1"
+                          "# | 1 1 1"
+                          "# | 1 -1 1/2"
+                          "# | 1 -1/2 1"
                           "# @author Kerstin Fritzsche (initial version)",
-                          "truncation<Scalar>(Polytope<Scalar> * {cutoff=>undef, noc=>undef, relabel=>undef})");
+                          "truncation<Scalar>(Polytope<Scalar> * {cutoff=>undef, no_coordinates=>undef, relabel=>undef})");
 } }
 
 // Local Variables:

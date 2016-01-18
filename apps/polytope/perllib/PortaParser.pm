@@ -138,37 +138,39 @@ package Polymake::polytope::PortaConverter;
 use Polymake::Struct (
    [ new => '$' ],
    [ '$out' => '#1' ],
+   '$must_close',
 );
 
 sub new {
    my $self=&_new;
-   my $out;
-   if ( $self->out eq "STDOUT" ) {
-       $out = *STDOUT;
-   } else {
-       open $out, ">", $self->out
+   if (is_string($self->out)) {
+      if ($self->out eq "STDOUT" or $self->out eq "-") {
+         $self->out = *STDOUT;
+      } else {
+         open my $out, ">", $self->out
            or die "Can't create output file ", $self->out, "\n";
+         $self->out=$out;
+         $self->must_close=1;
+      }
+   } elsif (ref($self->out) ne "GLOB") {
+      croak( "usage: new PortaConverter('filename' || *IOHANDLE)" );
    }
-   $self->out=$out;
    $self;
 }
 
 sub print_dim {
    my ($self, $dim)=@_;
-   my $out=$self->out;
-   print $out "DIM=$dim\n";
+   $self->out->print("DIM=$dim\n");
 }
 
 sub print_valid_point {
    my ($self, $V)=@_;
-   my $out=$self->out;
-   print $out "VALID\n", $V->slice(1), "\n";
+   $self->out->print("VALID\n", $V->slice(1), "\n");
 }
 
 sub print_points {
    my ($self, $Points, $Lin)=@_;
    my (@conv, @cone);
-   my $out=$self->out;
    foreach my $p (@$Points) {
       if (!$p->[0]) {
          push @cone, join(" ", $p->slice(1))."\n";
@@ -182,8 +184,8 @@ sub print_points {
          push @cone, join(" ", -$p->slice(1))."\n";
       }
    }
-   print $out "CONV_SECTION\n", @conv if @conv;
-   print $out "CONE_SECTION\n", @cone if @cone;
+   $self->out->print("CONV_SECTION\n", @conv) if @conv;
+   $self->out->print("CONE_SECTION\n", @cone) if @cone;
 }
 
 sub print_ineq_matrix {
@@ -200,18 +202,16 @@ sub print_ineq_matrix {
 
 sub print_inequalities {
    my ($self, $Ineq, $Eq)=@_;
-   my $out=$self->out;
-   print $out "INEQUALITIES_SECTION\n";
-   print_ineq_matrix($Ineq, $out, ">=");
-   print_ineq_matrix($Eq, $out, "==") if defined($Eq);
+   $self->out->print("INEQUALITIES_SECTION\n");
+   print_ineq_matrix($Ineq, $self->out, ">=");
+   print_ineq_matrix($Eq, $self->out, "==") if defined($Eq);
 }
 
-sub DESTROY {
-   my $self=shift;
-   my $out=$self->out;
-   print $out "END\n";
-   if ( fileno($out) != fileno(STDOUT) ) {
-       close $out;
+sub finish {
+   my ($self)=@_;
+   $self->out->print("END\n");
+   if ($self->must_close) {
+      close $self->out;
    }
 }
 

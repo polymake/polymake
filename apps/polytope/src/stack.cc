@@ -257,7 +257,9 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# @option Bool relabel creates an additional section [[VERTEX_LABELS]];"
                           "#   New vertices get labels 'f(FACET_LABEL)' in the simplicial case,"
                           "#   and 'f(FACET_LABEL)-NEIGHBOR_VERTEX_LABEL' in the cubical case."
-                          "# @return Polytope",
+                          "# @return Polytope"
+                          "# @example To generate a cubical polytope by stacking all facets of the 3-cube to height 1/4, do this:"
+                          "#  > $p = stack(cube(3),All,lift=>1/4);",
                           "stack(Polytope * {lift=>undef, no_coordinates=>undef, relabel=>undef})");
 } }
 

@@ -1,4 +1,4 @@
-#  copyright (c) 1997-2014
+#  copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -18,14 +18,21 @@
 
 object PolyhedralFan {
 
-	rule FACET_NORMALS , MAXIMAL_CONES_FACETS , LINEAR_SPAN_NORMALS , MAXIMAL_CONES_LINEAR_SPAN_NORMALS : RAYS , MAXIMAL_CONES , FAN_AMBIENT_DIM  {
-		raysToFacetNormals($this);
-	}
-	weight 4.10;
+   rule FACET_NORMALS, MAXIMAL_CONES_FACETS, LINEAR_SPAN_NORMALS, MAXIMAL_CONES_LINEAR_SPAN_NORMALS : \
+        RAYS, MAXIMAL_CONES, FAN_AMBIENT_DIM, LINEALITY_SPACE | INPUT_LINEALITY {
+      raysToFacetNormals($this);
+   }
+   weight 4.10;
 
-	rule RAYS, MAXIMAL_CONES, LINEALITY_SPACE : FACET_NORMALS , MAXIMAL_CONES_FACETS , FAN_AMBIENT_DIM {
-		facetsToRays($this);
-	}
-	weight 4.10;
-	permutation : RaysPerm;
+   rule RAYS, MAXIMAL_CONES, LINEALITY_SPACE : FACET_NORMALS, MAXIMAL_CONES_FACETS, FAN_AMBIENT_DIM {
+      facetsToRays($this);
+   }
+   weight 4.10;
+   permutation : RaysPerm;
 }
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

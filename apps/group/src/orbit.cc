@@ -22,7 +22,7 @@ namespace polymake { namespace group {
 
 UserFunctionTemplate4perl("# @category Utilities\n"
                          "# The image of an object //O// under a group element //g//."
-                         "# @param element g Group element"
+                         "# @param Any g Group element"
                          "# @param Object O"
 			 "# @tparam action_type one of: [[on_container]], [[on_elements]], [[on_rows]], [[on_cols]]"
                          "# @return Object",
@@ -48,7 +48,7 @@ UserFunctionTemplate4perl("# @category Orbits\n"
 InsertEmbeddedRule("# @category Orbits\n"
                   "# The orbit of an container //C// under a group//G//.\n"
                   "# @param Group G\n"
-                  "# @param container C\n"
+                  "# @param Any C\n"
                   "# @return Set<container>\n"
                    "user_function orbit<action_type=on_container>(Group, $) {\n"
                    "   orbit<action_type>($_[0]->GENERATORS, $_[1]);\n"

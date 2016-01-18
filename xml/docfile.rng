@@ -147,9 +147,9 @@
         <optional>
           <ref name="Description" />
         </optional>
-        <oneOrMore>
+        <zeroOrMore>
           <ref name="Function" />
-        </oneOrMore>
+        </zeroOrMore>
       </element>
     </zeroOrMore>
     <zeroOrMore>
@@ -212,9 +212,18 @@
         </element>
       </optional>
       <optional>
+        <element name="depends">
+          <attribute name="name" />
+        </element>
+      </optional>
+      <optional>
+        <ref name="Examples" />
+      </optional>
+      <optional>
       	<element name="only">
       		<attribute name="name" />
       		<attribute name="href" />
+      		<attribute name="class" />
       	</element>
       </optional>
       <optional>
@@ -322,9 +331,20 @@
       	<element name="only">
       		<attribute name="name" />
       		<attribute name="href" />
+      		<attribute name="class" />
       	</element>
       </optional>
       <ref name="Description" />
+
+      <optional>
+        <element name="depends">
+          <attribute name="name" />
+        </element>
+      </optional>
+
+      <optional>
+        <ref name="Examples" />
+      </optional>
 
       <optional>
         <ref name="Properties" />
@@ -438,6 +458,11 @@
       <optional>
         <ref name="Permutations" />
       </optional>
+
+      <optional>
+        <ref name="Examples" />
+      </optional>
+
       <optional>
 	<ref name="UserMethods" />
       </optional>
@@ -468,6 +493,18 @@
       <optional>
         <ref name="Description" />
       </optional>
+    </element>
+  </define>
+
+  <define name="Examples">
+    <element name="examples">
+      <oneOrMore>
+        <element name="example">
+          <oneOrMore>
+            <ref name="Description" />
+          </oneOrMore>
+        </element>
+      </oneOrMore>
     </element>
   </define>
 

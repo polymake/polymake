@@ -102,7 +102,7 @@ int BistellarComplex::find_move(const int dim_min, const int dim_max)
 
       for (RandomPermutation< Array<option> >::const_iterator opt=P.begin(); !opt.at_end(); ++opt)
          if ( (allow_rev_move || incl(opt->first,rev_move)!=0) &&
-              (d==dim || the_facets.findMax(opt->second).at_end()) ) {
+              (d==dim || the_facets.findSupersets(opt->second).at_end()) ) {
             next_move = *opt;
             return opt->first.size() - 1;
          }
@@ -116,7 +116,7 @@ bool BistellarComplex::is_option(const Set<int>& f, Set<int>& V) const
    if (!closed && f.size()==1 && f.front()==apex)  // apex is not an option
       return false;
 
-   for (FacetList::iteratorMax star = the_facets.findMax(f);
+   for (FacetList::superset_iterator star = the_facets.findSupersets(f);
         !star.at_end(); ++star)
       V += *star;
    V -= f;
@@ -147,7 +147,7 @@ void BistellarComplex::execute_move()
 
    // remove star(face) from raw_options and the_facets
    std::list< Set<int> > star;
-   the_facets.eraseMin(face, std::back_inserter(star));
+   the_facets.eraseSupersets(face, std::back_inserter(star));
 
    HasseDiagram star_HD = polymake::topaz::pure_hasse_diagram(star);
    for (int d=0; d<=dim; ++d)

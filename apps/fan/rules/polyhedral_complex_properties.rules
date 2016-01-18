@@ -66,11 +66,6 @@ property MAXIMAL_POLYTOPES_AFFINE_HULL_NORMALS = override MAXIMAL_CONES_LINEAR_S
 # @category Geometry
 property MAXIMAL_POLYTOPES_FACETS = override MAXIMAL_CONES_FACETS;
 
-# @category Combinatorics
-# Maximal cells of the polyhedral complex.
-# Indices refer to [[POINTS]]. Points do not have to be vertices of the cells.
-property MAXIMAL_CELLS : IncidenceMatrix;
-
 # @category Geometry
 # True if each object in [[MAXIMAL_POLYTOPES]] is [[Polytope::BOUNDED|bounded]].
 property BOUNDED : Bool;
@@ -79,13 +74,6 @@ property BOUNDED : Bool;
 # Indices of vertices that are rays.
 
 property FAR_VERTICES : Set;
-
-# @category Geometry
-# True if [[POINTS]] are in convex position.
-# In this case [[POINTS]] and [[RAYS]], and [[MAXIMAL_CELLS]] and [[MAXIMAL_POLYTOPES]]
-# are equal.
-# FIXME: This should possibly either go or be duplicated in application polytope.  Keep an eye on it!
-property CONVEX : Bool;
 
 
 # @category Geometry
@@ -118,56 +106,6 @@ user_method DIM {
 }
 
 }
-
-object polytope::Polytope {
-
-# @category Triangulation and volume
-# Polytopal Subdivision of the polytope using only its vertices.
-property POLYTOPAL_SUBDIVISION : PolyhedralComplex<Scalar> : multiple {
-
-  # The splits that are coarsenings of the subdivision.
-  # If the subdivision is regular these form the unique split decomposition of
-  # the corresponding weight function.
-  property REFINED_SPLITS : Set<Int>;
-
-  # Vector assigning a weight to each vertex to get a regular subdivision.
-  property WEIGHTS : Vector<Scalar>;
-
-}
-
-
-rule POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS : VertexPerm.POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS, VertexPerm.PERMUTATION {
-   $this->POLYTOPAL_SUBDIVISION->MAXIMAL_CELLS=permuted_cols($this->VertexPerm->POLYTOPAL_SUBDIVISION->MAXIMAL_CELLS, $this->VertexPerm->PERMUTATION);
-}
-weight 1.20;
-
-}
-
-
-
-object polytope::PointConfiguration {
-
-
-# @category Triangulation and volume
-#Polytopal Subdivision of the point configuration
-property POLYTOPAL_SUBDIVISION : PolyhedralComplex<Scalar> : multiple {
-
-  # The splits that are coarsenings of the subdivision.
-  # If the subdivision is regular these form the unique split decomposition of
-  # the corresponding weight function.
-  property REFINED_SPLITS : Set<Int>;
-
-
-  # Vector assigning a weight to each point to get a regular subdivision.
-  property WEIGHTS : Vector<Scalar>;
-
-}
-
-
-}
-
-
-
 
 # Local Variables:
 # mode: perl

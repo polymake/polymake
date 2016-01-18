@@ -50,18 +50,19 @@ namespace polymake { namespace tropical {
 			return t;
 		}
 
-	InsertEmbeddedRule("REQUIRE_APPLICATION matroid\n\n");
+InsertEmbeddedRule("REQUIRE_APPLICATION matroid\n\n");
 
-	UserFunctionTemplate4perl("# @category Producing a tropical polytope"
-			"# Produce the tropical matroid polytope from a matroid //m//."
-			"# Each vertex corresponds to a basis of the matroid,"
-			"# the non-bases coordinates get value 0, the bases coordinates"
-			"# get value //v//, default is -orientation."
-			"# @param matroid::Matroid m"
-			"# @param Scalar v value for the bases"
-			"# @tparam Addition Min or Max"
-			"# @return Cone<Addition,Scalar>",
-			"matroid_polytope<Addition,Scalar=Rational>(matroid::Matroid; $ = -Addition->orientation())");
+UserFunctionTemplate4perl("# @category Producing a tropical polytope"
+                          "# Produce the tropical matroid polytope from a matroid //m//."
+                          "# Each vertex corresponds to a basis of the matroid,"
+                          "# the non-bases coordinates get value 0, the bases coordinates"
+                          "# get value //v//, default is -orientation."
+                          "# @param matroid::Matroid m"
+                          "# @param Scalar v value for the bases"
+                          "# @tparam Addition Min or Max"
+                          "# @tparam Scalar coordinate type"
+                          "# @return Cone<Addition,Scalar>",
+                          "matroid_polytope<Addition,Scalar> [ is_ordered_field_with_unlimited_precision(type_upgrade<Scalar, Rational>) ](matroid::Matroid; type_upgrade<Scalar> = -Addition->orientation())");
 } }
 
 // Local Variables:

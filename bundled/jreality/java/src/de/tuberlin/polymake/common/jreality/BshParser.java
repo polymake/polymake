@@ -54,12 +54,10 @@ public class BshParser implements GeometryParserIf {
 				}
 			};
 
-			Thread bshThread = new Thread(runner);
+			Thread bshThread = new Thread(runner,"BSH Reader thread");
 
-			synchronized (sgc) {
-				bshThread.start();
-				sgc.wait();
-			}
+			bshThread.start();
+			bshThread.join();
 
 			sgc = sgc.getChildComponent(0);
 			title = sgc.getName();

@@ -42,15 +42,30 @@ SetType lex_min_representative(perl::Object G, const SetType& S)
    return R;
 }
 
-template <typename SetType>
-Array<SetType> orbit_representatives(perl::Object G, const Array<SetType>& domain)
+int write_orbit_reps_and_sizes(perl::Object R)
 {
-   const PermlibGroup group = group::group_from_perlgroup(G);
-   Set<SetType> reps;
-   for (typename Entire<Array<SetType> >::const_iterator dit = entire(domain); !dit.at_end(); ++dit) {
-      reps += group.lex_min_representative(*dit);
+   const Array<Array<int> > generators = R.give("GROUP.GENERATORS");
+   const PermlibGroup group(generators);
+   const Array<Set<int> > domain = R.give("DOMAIN");
+
+   Map<Set<int>, int> orbit_size;
+   for (Entire<Array<Set<int> > >::const_iterator dit = entire(domain); !dit.at_end(); ++dit)
+      ++orbit_size[group.lex_min_representative(*dit)];
+
+   Array<Set<int> > reps(orbit_size.size());
+   Array<int> size(orbit_size.size());
+   Entire<Array<Set<int> > >::iterator rit = entire(reps);
+   Entire<Array<int> >::iterator sit = entire(size);
+
+   for (Entire<Map<Set<int>,int> >::const_iterator oit = entire(orbit_size); !oit.at_end(); ++oit, ++rit, ++sit) {
+      *rit = oit->first;
+      *sit = oit->second;
    }
-   return Array<SetType>(reps.size(), entire(reps));
+
+   R.take("ORBIT_REPRESENTATIVES") << reps;
+   R.take("ORBIT_SIZES") << size;
+   
+   return 1;
 }
 
 template <typename E, typename Matrix>
@@ -101,12 +116,7 @@ UserFunctionTemplate4perl("# @category Symmetry"
                           "# @return Set the lex-min representative of S",
                           "lex_min_representative<SetType>(group::Group SetType)");
 
-UserFunctionTemplate4perl("# @category Symmetry"
-                          "# Computes the lexicographically smallest representatives of a given array of sets with respect to a group"
-                          "# @param Group G a symmetry group"
-                          "# @param Array<Set> A an array of sets" 
-                          "# @return Array<Set> the lex-min representatives of the members of A",
-                          "orbit_representatives<SetType>(group::Group Array<SetType>)");
+Function4perl(&write_orbit_reps_and_sizes, "write_orbit_reps_and_sizes(PermutationRepresentationOnSets)");
 
 UserFunctionTemplate4perl("# @category Symmetry"
                           "# For each non-zero entry of a SparseMatrix whose columns are indexed by the domain of a representation,"

@@ -13,9 +13,12 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+# A normal toric variety that is affine, i.e., given by a cone.
 
-object AffineNormalToricVariety {
+declare object_specialization AffineNormalToricVariety = NormalToricVariety {
    
+   precondition : AFFINE;
+
    # @category Combinatorics
    # The weight cone of the algebra yielding the affine normal toric variety.
    # I.e., intersect this cone with the lattice, take the semigroup algebra over
@@ -27,6 +30,7 @@ object AffineNormalToricVariety {
       # @category Combinatorics
       # Exponents of the fractional ideal of global sections. This property only
       # makes sense for affine toric varieties.
+      # @depends 4ti2 or libnormaliz
       property MODULE_GENERATORS : Matrix<Integer> {
 
          sub equal { &equal_up_to_row_permutation; }
@@ -34,7 +38,6 @@ object AffineNormalToricVariety {
       }
 
    }
-
 
    rule WEIGHT_CONE.INEQUALITIES : RAYS {
       $this->WEIGHT_CONE->INEQUALITIES = $this->RAYS;
@@ -48,12 +51,6 @@ object AffineNormalToricVariety {
 
 }
 
-object NormalToricVariety {
-
-   auto_cast : AffineNormalToricVariety;
-   precondition : AFFINE;
-
-}
 
 # @category Commutative Algebra
 # Find all lattice points of a polytope P that are not reachable

@@ -18,8 +18,16 @@ INCLUDE
 
 # @topic category functions/Producing a polytope from scratch
 # With these clients you can create polytopes belonging to various parameterized
-# families which occur frequently in polytope theory, as well as random
-# polytopes with different models of randomness.
+# families which occur frequently in polytope theory, as well as several kinds
+# of random polytopes.
+# Regular polytopes and their friends are listed separately.
+
+
+# @topic category functions/Producing regular polytopes and their generalizations
+# This includes the Platonic solids and their generalizations into two directions.
+# In dimension 3 there are the Archimedean, Catalan and Johnson solids.
+# In higher dimensions there are the simplices, the cubes, the cross polytopes and
+# three other regular 4-polytopes.
 
 
 # @topic category functions/Producing a polytope from polytopes
@@ -33,6 +41,9 @@ INCLUDE
 # or constrain themselves on the purely combinatorial description of the
 # resulting polytope.
 
+# @topic category functions/Producing a vector configuration
+# A way of constructing vector configurations is to modify an 
+# already existing vector configuration.
 
 # @topic category functions/Transformations
 # These functions take a realized polytope and produce a new one by applying a
@@ -60,6 +71,9 @@ INCLUDE
 # @topic category functions/Producing a polytope from graphs
 # Polytope constructions which take graphs as input.
 
+# @topic category functions/Producing a polytope from other objects
+# Polytope constructions which take other big objects as input.
+
 # @topic category functions/Producing a point configuration
 # Constructing a point configuration, either from scratch or from existing objects.
 
@@ -70,6 +84,9 @@ INCLUDE
 
 # @topic category functions/Quotient spaces
 # Topologic cell complexes defined as quotients over polytopes modulo a discrete group.
+
+# @topic category functions/Finite metric spaces
+# Tight spans and their conections to polyhedral geometry
 
 # @topic category preferences/Convex hull computation
 # descriptions of various convex hull algorithms available in polymake

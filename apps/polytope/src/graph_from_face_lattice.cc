@@ -38,7 +38,9 @@ Graph<> vertex_graph_from_face_lattice(perl::Object HD_obj)
 
    // vertex sets stored by the polytope edge faces (dim==1)
    // are exactly the vertex pairs we need for the graph
-   fill_graph(G, entire(select(HD.faces(), HD.nodes_of_dim(1))), 0);
+   if(HD.dim() > 0) {
+      fill_graph(G, entire(select(HD.faces(), HD.nodes_of_dim(1))), 0);
+   }
    return G;
 }
 
@@ -51,7 +53,9 @@ Graph<> facet_graph_from_face_lattice(perl::Object HD_obj)
 
    // the node numbers of the polytope facets (which are neighbors of the ridge faces, dim==-2)
    // relate to the whole Hasse diagram graph!
-   fill_graph(G, entire(select(rows(adjacency_matrix(HD.graph())), HD.nodes_of_dim(-2))), facet_nodes.front());
+   if(HD.dim() > 0) {
+      fill_graph(G, entire(select(rows(adjacency_matrix(HD.graph())), HD.nodes_of_dim(-2))), facet_nodes.front());
+   }
    return G;
 }
 

@@ -20,8 +20,8 @@ _list2path = $(subst ${.blank},:,$(strip $(1)))
 
 PERL ?= perl
 _LocateBuildDir = $(shell $(if $(filter command, $(origin Arch)), Arch=${Arch}) ${PERL} -e '\
-    do "${ProjectTop}/support/locate_build_dir"; \
-    if ($$_=eval { locate_build_dir($(if $(1),"$(1)")) }) { print } else { print STDERR $$@ }')
+    do '"'${ProjectTop}/support/locate_build_dir'"'; \
+    if ($$_=eval { locate_build_dir($(if $(1),'"'$(1)'"')) }) { print } else { print STDERR $$@ }')
 
 MV := mv -f
 

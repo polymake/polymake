@@ -90,7 +90,17 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# Works only if all [[CONE_AMBIENT_DIM]] values are equal."
                           "# If the input contains both cones and polytopes, the output will be a polytope."
                           "# @param Cone C ... polyhedra and cones to be intersected"
-                          "# @return Cone",
+                          "# @return Cone"
+                          "# @example > $p = intersection(cube(2),cross(2,3/2));"
+                          "# > print $p->VERTICES;"
+                          "# | 1 1 1/2 -1"
+                          "# | 1 1 1/2"
+                          "# | 1 1/2 1"
+                          "# | 1 1 -1/2"
+                          "# | 1 -1/2 1"
+                          "# | 1 -1 1/2"
+                          "# | 1 -1 -1/2"
+                          "# | 1 -1/2 -1",
                           "intersection<Scalar>(Cone<type_upgrade<Scalar>> +)");
 } }
 

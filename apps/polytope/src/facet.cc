@@ -75,7 +75,9 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# @param Int facet"
                   "# @option Bool no_coordinates don't copy the coordinates, produce purely combinatorial description."
                   "# @option Bool relabel copy the vertex labels from the original polytope."
-                  "# @return Cone",
+                  "# @return Cone"
+                  "# @example To create a cone from the vertices of the zeroth facet of the 3-cube, type this:"
+                  "# > $p = facet(cube(3),0);",
                   &facet,"facet(Cone $ {no_coordinates => 0, relabel => 0})");
 } }
 

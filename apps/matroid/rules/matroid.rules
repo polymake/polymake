@@ -1,0 +1,385 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @category Other
+# calculate the internal activity of a base with respect to a given ordering of all bases.
+# Let the given base B = B_j be the j-th one in the given ordering B_1, B_2, ...
+# The internal activity of B_j is the number of "necessary" elements in B_j, 
+# i.e., the number of elements i in B_j such that B_j - {i} is not a subset of any B_k, k<j.
+# @return Int
+user_function internal_activity(Set<Int>, Array<Set<Int>>) {
+   my ($B, $bases) = @_;
+   my $activity = $B->size();
+   foreach my $r (all_subsets_of_k($B->size()-1, @{$B})) {
+      my $ridge = new Set($r);
+      foreach my $basis (@{$bases}) {
+         if ($basis == $B) {
+            last;
+         }
+         if (incl($ridge,$basis) < 0) {
+            $activity--;
+            last;
+         }
+      }
+   }
+   return $activity;
+}
+
+object Matroid {
+
+rule RANK : BASES {
+  $this->RANK = $this->BASES->[0]->size();
+} 
+weight 0.1;
+
+rule BASES, N_BASES, RANK, N_ELEMENTS : VECTORS {
+  bases_from_points($this)
+}
+weight 4.50;
+
+rule BASES, N_BASES, RANK, N_ELEMENTS : BINARY_VECTORS {
+  bases_from_points($this,2)
+}
+weight 4.51;
+
+rule BASES, N_BASES, RANK, N_ELEMENTS : TERNARY_VECTORS {
+  bases_from_points($this,3)
+}
+weight 4.51;
+
+rule BASES, N_BASES, RANK : LATTICE_OF_FLATS, N_ELEMENTS {
+  bases_from_lof($this)
+}
+weight 4.50;
+
+rule POLYTOPE.VERTICES, POLYTOPE.CONE_AMBIENT_DIM : BASES, N_ELEMENTS {
+   polytope::matroid_polytope($this)
+}
+weight 1.12;
+
+rule POLYTOPE.VERTICES, POLYTOPE.CONE_AMBIENT_DIM, POLYTOPE.INEQUALITIES, POLYTOPE.EQUATIONS : BASES, N_ELEMENTS, RANK, CONNECTED, LATTICE_OF_FLATS {
+   polytope::matroid_polytope($this, inequalities=>1)
+}
+precondition : CONNECTED;
+weight 1.10;
+
+rule RANK : NON_BASES { # should be more expensive than the computation from BASES
+   $this->RANK=$this->NON_BASES->[0]->size();
+}
+precondition : NON_BASES {
+   $this->NON_BASES->size() > 0;
+}
+weight 0.1;
+
+rule BASES : RANK, N_ELEMENTS {
+   $this->BASES=new Set<Set>(all_subsets_of_k($this->RANK, 0..$this->N_ELEMENTS-1));
+}
+precondition : NON_BASES {
+   $this->NON_BASES->size() == 0;
+}
+weight 0.10;
+
+rule BASES : NON_BASES, N_ELEMENTS {
+   $this->BASES = invert_bases($this->NON_BASES, $this->N_ELEMENTS);
+}
+precondition : NON_BASES {
+   $this->NON_BASES->size() > 0;
+}
+weight 3.10;
+
+rule NON_BASES : BASES, N_ELEMENTS {
+  $this->NON_BASES = invert_bases($this->BASES, $this->N_ELEMENTS)
+}
+weight 3.10;
+
+rule CIRCUITS : BASES, N_ELEMENTS {
+   $this->CIRCUITS = bases_to_circuits($this->BASES, $this->N_ELEMENTS);
+}
+weight 4.10;
+
+rule COCIRCUITS : BASES, N_ELEMENTS {
+   $this->COCIRCUITS = bases_to_cocircuits($this->BASES, $this->N_ELEMENTS);
+}
+weight 4.10;
+
+
+rule BASES : CIRCUITS, N_ELEMENTS {
+   $this->BASES = circuits_to_bases($this->CIRCUITS, $this->N_ELEMENTS);
+}
+weight 4.10;
+
+rule BASES : COCIRCUITS, N_ELEMENTS {
+   $this->BASES = cocircuits_to_bases($this->COCIRCUITS, $this->N_ELEMENTS);
+}
+weight 4.10;
+
+rule BASES : CIRCUITS, N_ELEMENTS, RANK {
+   $this->BASES = circuits_to_bases_rank($this->CIRCUITS, $this->N_ELEMENTS, $this->RANK);
+}
+weight 3.10;
+
+rule MATROID_HYPERPLANES : CIRCUITS, N_ELEMENTS, RANK {
+   $this->MATROID_HYPERPLANES = circuits_to_hyperplanes($this->CIRCUITS, $this->N_ELEMENTS, $this->RANK);
+}
+weight 3.10;
+
+rule BASES : COCIRCUITS, N_ELEMENTS, RANK {
+   $this->BASES = cocircuits_to_bases_rank($this->COCIRCUITS, $this->N_ELEMENTS, $this->RANK);
+}
+weight 3.10;
+
+rule LOOPS, COLOOPS : BASES, N_ELEMENTS {
+    loops_coloops($this);
+}
+weight 1.10;
+
+rule N_BASES : BASES {
+   $this->N_BASES = $this->BASES->size();
+}
+weight 0.1;
+
+rule N_CIRCUITS : CIRCUITS {
+   $this->N_CIRCUITS = $this->CIRCUITS->size();
+}
+weight 0.1;
+
+rule N_COCIRCUITS : COCIRCUITS {
+   $this->N_COCIRCUITS = $this->COCIRCUITS->size();
+}
+weight 0.1;
+
+rule N_LOOPS : LOOPS {
+   $this->N_LOOPS = $this->LOOPS->size();
+}
+weight 0.1;
+
+rule N_COLOOPS : COLOOPS {
+   $this->N_COLOOPS = $this->COLOOPS->size();
+}
+weight 0.1;
+
+rule BASES, MAXIMAL_TRANSVERSAL_PRESENTATION : N_ELEMENTS, TRANSVERSAL_PRESENTATION {
+   #Create bipartite graph from edges
+   # Elements from the ground set are nodes 0,..,n-1. 
+   # Sets from the set system are nodes n,..,n+k
+   my @edges = ();
+   my $n = $this->N_ELEMENTS;
+   my $tp = $this->TRANSVERSAL_PRESENTATION;
+   for my $i (0 .. $tp->size()-1) {
+      for my $x (@{$tp->[$i]}) {
+         push @edges, new Set<Int>($x, $n + $i);
+      }
+   }
+   my $g = graph_from_edges(\@edges);
+   my $p = polytope::fractional_matching_polytope($g->ADJACENCY);
+   $p->LP = new polytope::LinearProgram(LINEAR_OBJECTIVE=>ones_vector<Rational>(scalar(@edges)+1));
+   my $maxverts = new Matrix<Rational>($p->VERTICES->minor($p->LP->MAXIMAL_FACE,~[0]));
+   my @basislist = map { new Set<Int>(map {  min(@{$g->EDGES->[$_]}) } @{support($_)}) } @{rows($maxverts)};
+   #Need to make the list of bases irredundant, some might occur multiple times
+   $this->BASES = new Array<Set<Int> >( new Set<Set<Int> >(\@basislist));
+   if($maxverts->rows() > 0) {
+      my $one_matching = new Set<Int>( map { max(@{$g->EDGES->[$_]}) - $n} @{support($maxverts->row(0))});
+      $this->MAXIMAL_TRANSVERSAL_PRESENTATION = 
+      maximal_transversal_presentation($n,$this->BASES,$tp, $one_matching); 
+   }
+   else {
+      $this->MAXIMAL_TRANSVERSAL_PRESENTATION = new IncidenceMatrix(0,$this->N_ELEMENTS);
+   }
+}
+weight 2.10;
+
+rule PAVING : CIRCUITS, RANK {
+    $this->PAVING=($this->RANK<=minimum([map{$_->size()}@{$this->CIRCUITS}]));
+}
+weight 1.10;
+
+rule BINARY, BINARY_VECTORS, TERNARY, TERNARY_VECTORS : BASES, NON_BASES, N_ELEMENTS, RANK {
+    finite_representation($this);
+}
+weight 2.10;
+
+rule REGULAR : BINARY, TERNARY {
+    $this->REGULAR=$this->BINARY && $this->TERNARY; # See [Oxley:matroid theory (2nd ed.) Thm. 6.6.3]
+}
+precondition :  defined(TERNARY);
+weight 0.1;
+
+rule VECTORS : BINARY_VECTORS, TERNARY_VECTORS {
+    $this->VECTORS=3*($this->BINARY_VECTORS)-2*($this->TERNARY_VECTORS); #this rule is based on the specific computation in finite_representation
+}
+precondition : REGULAR;
+weight 0.1;
+
+rule TUTTE_POLYNOMIAL: LOOPS, COLOOPS, BASES, N_ELEMENTS {
+    my $ring=new Ring(qw(x y));
+    my $n=$this->N_ELEMENTS;
+    my $tutte=new Polynomial($ring,"1");
+    my $matroid=$this;
+    if($this->LOOPS->size()>0){
+        $tutte=new Polynomial($ring,"x^".$this->LOOPS->size());
+        $n=$n-$this->LOOPS->size();
+        my @temp=@{$this->LOOPS};
+        for(my $i=$this->LOOPS->size()-1;$i>=0;--$i){
+            $matroid=deletion($matroid,$temp[$i]);
+        }
+    }
+    my $newthis=$matroid;
+    if($this->COLOOPS->size()>0){
+            $tutte=$tutte*new Polynomial($ring,"y^".$this->COLOOPS->size());
+        $n=$n-$this->COLOOPS->size();
+        my @temp=@{$newthis->COLOOPS};
+        for(my $i=$this->COLOOPS->size()-1;$i>=0;--$i){
+            $matroid=contraction($matroid,$temp[$i]);
+        }
+    }
+    if($n>0){
+        $tutte=$tutte*(deletion($matroid,0)->TUTTE_POLYNOMIAL+contraction($matroid,0)->TUTTE_POLYNOMIAL);
+    }
+    $this->TUTTE_POLYNOMIAL=$tutte;
+}
+weight 5.10;
+
+
+rule BETA_INVARIANT : TUTTE_POLYNOMIAL {
+    my $beta=0;
+    for(my $i=0;$i<$this->TUTTE_POLYNOMIAL->monomials_as_matrix->rows();++$i){
+        if($this->TUTTE_POLYNOMIAL->monomials_as_matrix->row($i)==new Vector("1 0")){
+           $beta = new Integer($this->TUTTE_POLYNOMIAL->coefficients_as_vector->[$i]);
+        }
+    }
+    $this->BETA_INVARIANT=$beta;
+}
+precondition :  N_ELEMENTS { $this->N_ELEMENTS>1 };
+weight 1.10;
+
+rule SERIES_PARALLEL, CONNECTED : BETA_INVARIANT { # See [David Speyer:tropical linear spaces prop. 6.3]
+   if ($this->BETA_INVARIANT==0) {
+      $this->CONNECTED=0;
+      $this->SERIES_PARALLEL=0;
+   } else {
+      $this->CONNECTED=1;
+      if ($this->BETA_INVARIANT==1) {
+         $this->SERIES_PARALLEL=1;
+      } else {
+         $this->SERIES_PARALLEL=0;
+      }
+   }
+}
+weight 0.1;
+
+rule LATTICE_OF_FLATS : MATROID_HYPERPLANES, N_ELEMENTS {
+	my $hy;
+	#A rank-0-matroid has no hyperplanes, so we need to treat this separately
+	if($this->MATROID_HYPERPLANES->size() == 0) {
+		$hy = new IncidenceMatrix(0,$this->N_ELEMENTS);
+	}
+	else {
+		#If the empty set is a hyperplane, we need to tell the incidence matrix its dimension.
+		$hy=new IncidenceMatrix<NonSymmetric>(@{$this->MATROID_HYPERPLANES}, $this->N_ELEMENTS);
+	}
+	$this->LATTICE_OF_FLATS = lattice_of_flats($hy);
+}
+weight 6.20;
+
+rule SPLITTING_FLACETS : N_ELEMENTS, RANK, POLYTOPE.FACETS {
+    splitting_flacets($this);
+}
+precondition : CONNECTED;
+
+rule CONNECTED_COMPONENTS : CIRCUITS, N_ELEMENTS{
+    $this->CONNECTED_COMPONENTS = connected_components_from_circuits($this->CIRCUITS, $this->N_ELEMENTS);
+}
+weight 1.10;
+
+rule CONNECTED_COMPONENTS : COCIRCUITS, N_ELEMENTS{
+    $this->CONNECTED_COMPONENTS = connected_components_from_circuits($this->COCIRCUITS, $this->N_ELEMENTS);
+}
+weight 1.10;  
+
+rule CONNECTED : CONNECTED_COMPONENTS {
+   $this->CONNECTED= ($this->CONNECTED_COMPONENTS->size() <= 1);
+}
+weight 0.1;
+
+rule H_VECTOR : BASES, RANK {
+   my $bases = $this->BASES;
+   my $r = $this->RANK;
+   my $h_vector = new Vector<Integer>($r+1);
+   foreach (@{$bases}) {
+      $h_vector->[$r-internal_activity($_, $bases)]++;
+   }
+   $this->H_VECTOR=$h_vector;
+}
+
+rule F_VECTOR : H_VECTOR {
+    my $h = $this->H_VECTOR;
+    my $d = $h->dim() - 1;
+    my $f = new Vector<Integer>($d);
+    for (my $j=1; $j<=$d; $j++) {
+        for (my $i=0; $i<=$j; $i++) {
+            $f->[$j-1] += binomial($d-$i, $j-$i) * $h->[$i];
+        }
+    }
+    $this->F_VECTOR = $f;
+}
+
+rule H_VECTOR : F_VECTOR {
+    my $f = $this->F_VECTOR;
+    my $d = $f->dim();
+    my $h = new Vector<Integer>($d+1);
+    $h->[0] = 1;
+    for (my $j=1; $j<=$d; $j++) {
+        for (my $i=0; $i<=$j; $i++) {
+            my $c = binomial($d-$i, $j-$i);
+            if ($i>0) {
+                $c *= $f->[$i-1];
+            }
+            if (($j-$i)%2 == 0) {
+                $h->[$j] += $c;
+            } else {
+                $h->[$j] -= $c;
+            }
+        }
+    }
+    $this->H_VECTOR = $h;
+}
+
+rule REVLEX_BASIS_ENCODING : BASES, RANK, N_ELEMENTS {
+    $this->REVLEX_BASIS_ENCODING = bases_to_revlex_encoding($this->BASES, $this->RANK, $this->N_ELEMENTS);
+}
+
+rule BASES : REVLEX_BASIS_ENCODING, RANK, N_ELEMENTS {
+    $this->BASES = bases_from_revlex_encoding($this->REVLEX_BASIS_ENCODING, $this->RANK, $this->N_ELEMENTS);
+}
+
+# calculate the rank of a set with respect to a given matroid
+# @return Int
+user_method rank(Set) {
+   my ($self,$S) = @_;
+   my $rk=0;
+   for (my $i=0; $i<$self->N_BASES; ++$i) {
+       my $inter = $S * $self->BASES->[$i];
+       $rk = max($rk, $inter->size());
+   }
+   return $rk;
+}
+
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

@@ -18,6 +18,7 @@
 # @category Visualization
 # Visualization of a polytope as a graph (if 1d), or as a solid object (if 2d or 3d),
 # or as a Schlegel diagram (4d).
+# @super Visual::Container
 # @relates Polytope
 
 package Visual::Polytope;
@@ -69,6 +70,10 @@ method add_faces {
 # @option Color min minimal face decoration (default: yellow vertices and/or facets)
 # @option Color max maximal face decoration (default: red vertices and/or facets)
 # @return Visual::Polytope
+# @example Attaches a linear program to the threedimensional cube and displays the minimal/maximal faces in a different color, choosing purple instead of the default red for the maximal face
+# > $p = cube(3);
+# > $p->LP = new LinearProgram(LINEAR_OBJECTIVE=>[0,1,0,0]);
+# > $p->VISUAL->MIN_MAX_FACE(max=>"purple");
 
 user_method MIN_MAX_FACE(; LinearProgram { min => $Visual::Color::min, max => $Visual::Color::max }) {
    my ($self, $lp, $decor)=@_;
@@ -97,6 +102,10 @@ user_method MIN_MAX_FACE(; LinearProgram { min => $Visual::Color::min, max => $V
 # @option Color min minimal vertex color (default: yellow)
 # @option Color max maximal vertex color (default: red)
 # @return Visual::Polytope
+# @example Attaches a linear program to the threedimensional cube and displays the minimal/maximal vertices in a different color, choosing purple instead of the default red for the maximal vertices
+# > $p = cube(3);
+# > $p->LP = new LinearProgram(LINEAR_OBJECTIVE=>[0,1,0,0]);
+# > $p->VISUAL->VERTEX_COLORS(max=>"purple");
 
 user_method VERTEX_COLORS(; LinearProgram { min => $Visual::Color::min, max => $Visual::Color::max }) {
    my ($self, $lp, $decor)=@_;
@@ -117,6 +126,10 @@ user_method VERTEX_COLORS(; LinearProgram { min => $Visual::Color::min, max => $
 # Superpose the drawing with the directed graph induced by the objective function.
 # @param LinearProgram lp a Linear Program object attached to the polytope
 # @return Visual::Polytope
+# @example Attaches a linear program to the 3-dimensional cube and visualizes the directed graph, giving the cube a blue facet color
+# > $p = cube(3);
+# > $p->LP = new LinearProgram(LINEAR_OBJECTIVE=>[0,0,0,1]);
+# > $p->VISUAL(FacetColor=>"blue")->DIRECTED_GRAPH;
 
 user_method DIRECTED_GRAPH(; LinearProgram) {
    my ($self, $lp)=@_;
@@ -142,7 +155,7 @@ user_method DIRECTED_GRAPH(; LinearProgram) {
 #  Triangulation as supplement
 
 
-# Add the triangulation to the drawing.  The facets of the whole polytope become transparent.
+# Add the triangulation to the drawing.  
 #
 # You may specify any triangulation of the current polytope.
 # Per default, the [[Cone::TRIANGULATION|TRIANGULATION]] property is taken.
@@ -153,6 +166,8 @@ user_method DIRECTED_GRAPH(; LinearProgram) {
 # @param Array<Set<Int>> t facets of the triangulation
 # @options %Visual::Polygons::decorations
 # @return Visual::Polytope
+# @example Displays a triangulation of the threedimensional cube. Facets are made transparent and vertices are hidden.
+# > cube(3)->VISUAL->TRIANGULATION(FacetTransparency=>0.7,VertexStyle=>"hidden");
 
 user_method TRIANGULATION(; $=$_[0]->Polytope->TRIANGULATION->FACETS, %Visual::Polygons::decorations) {
    my ($self, $TR, $decor)=@_;
@@ -194,6 +209,8 @@ user_method TRIANGULATION(; $=$_[0]->Polytope->TRIANGULATION->FACETS, %Visual::P
 # The facets are made transparent.
 # @options %Visual::Graph::decorations
 # @return Visual::Polytope
+# @example Displays the boundary triangulation of the threedimensional cube.
+# > cube(3)->VISUAL->TRIANGULATION_BOUNDARY;
 
 user_method TRIANGULATION_BOUNDARY(%Visual::Graph::decorations) {
    my ($self, $decor)=@_;
@@ -270,16 +287,12 @@ sub apply_bounding_box($;$) {
         $bbox_facets+=$i unless exists $original_facets->{$bounded->FACETS->[$i]};
     }
 
-    my $vertex_map=new Map<Vector<Scalar>, String>;
+    my $vertex_map=new Map<Vector<Scalar>, Int>;
     my $f=0;
-    if (defined (my $labels=$this->lookup("VERTEX_LABELS"))) {
-        $vertex_map->{$_}=$labels->[$f++] for @{$this->VERTICES};
-    } else {
-        $vertex_map->{$_}=$f++ for @{$this->VERTICES};
-    }
-    
+    $vertex_map->{$_}=$f++ for @{$this->VERTICES};
+
     return [ $bounded, $bbox_facets, $vertex_map ];
-    #        Polytope  Set<Int>      Map<Vector<Scalar>, String>
+    #        Polytope  Set<Int>      Map<Vector<Scalar>, Int>
 }
 
 # @category Visualization
@@ -372,21 +385,34 @@ user_method VISUAL(%Visual::Polygons::decorations, %geometric_options) : CONE_DI
 
    # since we are unbounded we have to cut off somewhere
    my ($bounded, $bbox_facets, $vertex_map) = @{apply_bounding_box($this,$geom->{BoundingBox})};
-   my @vertex_labels=map { $vertex_map->{$_} // " " } @{$bounded->VERTICES};
+
+   my @vertex_labels;
+   if (defined (my $labels=$this->lookup("VERTEX_LABELS"))) {
+       @vertex_labels=map { $labels->[$vertex_map->{$_}] // " " } @{$bounded->VERTICES};
+   } else {
+       @vertex_labels=map { $vertex_map->{$_} // " " } @{$bounded->VERTICES};
+   }
    $bounded->VERTEX_LABELS=\@vertex_labels;
+
+   my $dv = $decor->{VertexColor};
+   my @vertex_colors;
+   if (defined($dv) and ref($dv) eq "ARRAY") {
+       my @original_colors = @$dv;
+       @vertex_colors = map{$original_colors[$vertex_map->{$_}] // Visual::Color::cutoff } @{$bounded->VERTICES};
+   }
+   my %to_merge=();
+   my $bv;
 
    # now call VISUAL for bounded polyhedra
    if ($bounded->CONE_DIM==4)  {
-      my %to_merge=();
-      map { $to_merge{FacetColor}->{$_}=$Visual::Color::cutoff } @$bbox_facets;
-      my $bv=$bounded->VISUAL($decor,VertexThickness => sub { $vertex_labels[$_[0]] ne " " });
-      $bv->basis_solid->merge(%to_merge);
-      visualize($bv);
+       map { $to_merge{FacetColor}->{$_}=$Visual::Color::cutoff } @$bbox_facets;
    }
-   else {
-      visualize($bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " },
-                                 $decor));
+   if (scalar(@vertex_colors)>0) {
+       $decor->{VertexColor} = \@vertex_colors;
    }
+   $bv = $bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " }, $decor);
+   $bv->basis_solid->merge(%to_merge);
+   visualize($bv);
 }
 precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM<=4 }
 precondition : !BOUNDED;
@@ -408,7 +434,7 @@ precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM >= 6 }
 # @category Visualization
 # Visualize the dual polytope as a solid 3-d object. The polytope must be [[BOUNDED]] and [[CENTERED]].
 # @options %Visual::Polygons::decorations
-# @return Visual::Polygons
+# @return Visual::Object
 user_method VISUAL_DUAL(%Visual::Polygons::decorations) : FACETS, FTV_CYCLIC_NORMAL {
    my ($this, $decor)=@_;
    my $P= $this->CONE_AMBIENT_DIM==3
@@ -455,13 +481,11 @@ precondition : CENTERED;
 # @category Visualization
 # Visualize the [[Visual::Polytope::TRIANGULATION_BOUNDARY|TRIANGULATION_BOUNDARY]] of the polytope.
 # **Obsolete:** the preferred procedure is to create a [[topaz::SimplicialComplex|SimplicialComplex]] using
-# the [[boundary_complex]] client of the application 
-# topaz
+# the boundary_complex client of the application topaz
 # and call its [[topaz::SimplicialComplex::VISUAL|VISUAL]] method.
 # FIXME: There is no boundary_complex in topaz.
 # @options %Visual::Polygon::decorations
-# @return Visual::Polygons
-# @notest
+# @return Visual::Object
 
 user_method VISUAL_TRIANGULATION_BOUNDARY(%Visual::Polygon::decorations) : TRIANGULATION.BOUNDARY.FACETS {
    my ($this, $decor)=@_;

@@ -63,7 +63,7 @@ perl::Object k_skeleton(perl::Object p_in, const int k, perl::OptionSet options)
 UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# Produce the //k//-skeleton.\n"
                   "# @param SimplicialComplex complex"
-                  "# @param int k"
+                  "# @param Int k"
                   "# @option Bool vertex_labels whether to create [[VERTEX_LABELS]]"
                   "# @return SimplicialComplex",
                   &combinatorial_k_skeleton, "k_skeleton(SimplicialComplex $ { vertex_labels=>0 })");
@@ -71,7 +71,7 @@ UserFunction4perl("# @category Producing a new simplicial complex from others\n"
 UserFunctionTemplate4perl("# @category Producing a new simplicial complex from others\n"
                           "# Produce the //k//-skeleton.\n"
                           "# @param GeometricSimplicialComplex complex"
-                          "# @param int k"
+                          "# @param Int k"
                           "# @option Bool vertex_labels whether to create [[VERTEX_LABELS]]"
                           "# @return GeometricSimplicialComplex",
                           "k_skeleton<Scalar>(GeometricSimplicialComplex<Scalar> $ { vertex_labels=>0 })");

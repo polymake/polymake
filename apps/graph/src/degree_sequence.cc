@@ -34,12 +34,8 @@ void degree_sequence(perl::Object G)
    G.take("AVERAGE_DEGREE") << Rational(sum_degree, g.nodes());
 }
 
-UserFunction4perl("# @category Combinatorics"
-                  "# Calculate the degree sequence and the average degree."
-                  "# The degree sequence is encoded as a map with entries (degree, multiplicity)"
-                  "# @param Graph G",
-                  &degree_sequence, "degree_sequence($)");
-      
+Function4perl(&degree_sequence, "degree_sequence($)");
+
 } }
 
 

@@ -19,7 +19,7 @@
 # @param Matrix<Int> M points (in homogeneous coordinates); affinely span the space
 # @param Vector<Int> lambda height function on lattice points
 # @param Array<Rational> coeff coefficients
-# @param Scalar<Rational> s additional Parameter in the polynomial
+# @param Rational s additional Parameter in the polynomial
 # @option topaz::SimplicialComplex triangulation The triangulation of the pointset corresponding to the lifting function
 # @option Ring ring the ring in which the polynomial should be
 user_function wronski_polynomial(Matrix, Vector, Array<Rational>, $; {triangulation => undef,  ring => undef }) {
@@ -53,7 +53,7 @@ user_function wronski_polynomial(Matrix, Vector, Array<Rational>, $; {triangulat
 # @param Matrix<Int> M points (in homogeneous coordinates); affinely span the space
 # @param Vector<Int> lambda height function on lattice points
 # @param Array<Array<Rational>> coeff_array coefficients
-# @param Scalar<Rational> s additional Parameter in the polynomial
+# @param Rational s additional Parameter in the polynomial
 # @option topaz::SimplicialComplex triangulation The triangulation of the pointset corresponding to the lifting function
 # @option Ring ring the ring in which the polynomial should be
 user_function wronski_system(Matrix, Vector, Array<Array<Rational> >, $; {triangulation => undef, ring => undef }) {

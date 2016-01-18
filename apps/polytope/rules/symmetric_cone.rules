@@ -179,7 +179,7 @@ sub generateColors{
 
 # Visualizes the graph of a symmetric cone: 
 # All nodes belonging to one orbit get the same color.
-# @return Visual::ConeGraph
+# @return Visual::PolytopeGraph
 user_method VISUAL_ORBIT_COLORED_GRAPH(%Visual::Graph::decorations, { seed => undef }){
     my ($this, $decor, $seed)=@_;
 #    my $symPoly=new Polytope<Rational>($this); #FIXME: just because cones cannot be visualized yet

@@ -21,12 +21,15 @@
 #include "polymake/ListMatrix.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/linalg.h"
-#include "polymake/hash_map"
 #include "polymake/Set.h"
+#include "polymake/hash_set"
+#include "polymake/Map.h"
+#include "polymake/hash_map"
 #include "polymake/PowerSet.h"
 #include "polymake/group/group_domain.h"
 #include "polymake/common/lattice_tools.h"
 #include "polymake/polytope/simplex_tools.h"
+#include "polymake/common/boost_dynamic_bitset.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -34,24 +37,47 @@
 namespace polymake { namespace polytope {
 
 typedef Set<int> SetType;
+typedef common::boost_dynamic_bitset BBitset;
+
+template<typename Scalar, typename MapType>
+SparseVector<int>
+cocircuit_equation_of_impl(const Matrix<Scalar>& points, 
+                           const SetType& ridge,
+                           const MapType& index_of)
+{
+   SparseVector<int> eq(index_of.size());
+   const SparseVector<Scalar> nv = null_space(points.minor(ridge, All)).row(0);
+   int row_index(0); 
+   for (typename Entire<Rows<Matrix<Scalar> > >::const_iterator vit = entire(rows(points)); !vit.at_end(); ++vit, ++row_index) {
+      const int sigma = sign(nv * (*vit));
+      if (sigma != 0) {
+         const SetType s(ridge + scalar2set(row_index));
+         eq[index_of[s]] = sigma;
+      }
+   }
+   return eq;
+}
+
+namespace {
+
+} // end anonymous namespace
 
 template<typename Scalar>
 ListMatrix<SparseVector<int> > 
 cocircuit_equations_impl(int d, 
                          const Matrix<Scalar>& points, 
                          const IncidenceMatrix<>& VIF, 
+                         const Array<Set<int> >& interior_ridge_simplices, 
                          const Array<Set<int> >& interior_simplices, 
-                         perl::OptionSet options,
-                         bool partial_equations)
+                         perl::OptionSet options)
 {
    const bool reduce_rows = options["reduce_rows"];
    const int log_frequency = options["log_frequency"];
    const std::string filename = options["filename"];
    std::ofstream outfile(filename.c_str(), std::ios_base::trunc);
    
-   const int n = points.rows();
    int n_facets = 0;
-   hash_map<SetType,int> index_of;
+   Map<SetType,int> index_of;
    for (Entire<Array<SetType> >::const_iterator iit = entire(interior_simplices); !iit.at_end(); ++iit)
       index_of[*iit] = n_facets++;
 
@@ -60,31 +86,17 @@ cocircuit_equations_impl(int d,
    int ct(0);
    time_t start_time, current_time;
    time(&start_time);
-   for (Entire<Subsets_of_k<const sequence&> >::const_iterator rit = entire(all_subsets_of_k(sequence(0,n), d)); !rit.at_end(); ++rit) {
+   for (Entire<Array<SetType> >::const_iterator rit = entire(interior_ridge_simplices); !rit.at_end(); ++rit) {
       if (log_frequency && (++ct % log_frequency == 0)) {
          time(&current_time);
          cerr << ct << " " << difftime(current_time, start_time) << endl;
       }
-      const SetType rho = *rit;
-      if (rank(points.minor(rho, All)) == rho.size() && is_interior(rho, VIF)) {
-         SparseVector<int> eq(n_facets);
-         const SparseVector<Scalar> nv = null_space(points.minor(*rit, All)).row(0);
-         int row_index(0); 
-         for (typename Entire<Rows<Matrix<Scalar> > >::const_iterator vit = entire(rows(points)); !vit.at_end(); ++vit, ++row_index) {
-            const int sigma = sign(nv * (*vit));
-            if (sigma != 0) {
-               const SetType s(*rit + scalar2set(row_index));
-               if ((!partial_equations || index_of.exists(s))) {
-                  eq[index_of[s]] = sigma;
-               }
-            }
-         }
-         if (eq.size()) {
-            if (reduce_rows) eq = common::divide_by_gcd(eq);
-            cocircuit_eqs /= eq;
-            if (filename.size()) wrap(outfile) << eq << endl;
-         }
-      } 
+      SparseVector<int> eq(cocircuit_equation_of_impl(points, *rit, index_of));
+      if (eq.size()) {
+         if (reduce_rows) eq = common::divide_by_gcd(eq);
+         cocircuit_eqs /= eq;
+         if (filename.size()) wrap(outfile) << eq << endl;
+      }
    }
    return cocircuit_eqs;
 }
@@ -104,7 +116,7 @@ foldable_cocircuit_equations_impl(int d,
    const std::string filename = options["filename"];
    std::ofstream outfile(filename.c_str(), std::ios_base::trunc);
    
-   hash_map<SetType,int> index_of_facet;
+   Map<SetType,int> index_of_facet;
    int n_facets = 0; // number of full-dimensional simplices
    for (Entire<Array<SetType> >::const_iterator iit = entire(facets); !iit.at_end(); ++iit)
       index_of_facet[*iit] = n_facets++;
@@ -124,7 +136,6 @@ foldable_cocircuit_equations_impl(int d,
          time(&current_time);
          cerr << ct << " " << difftime(current_time, start_time) << endl;
       }
-      const SetType rho = *rit;
       eq_0_first = SparseVector<int>(2*n_facets);
       eq_1_first = SparseVector<int>(2*n_facets); 
       const SparseVector<Scalar> nv = null_space(points.minor(*rit, All)).row(0);
@@ -156,6 +167,149 @@ foldable_cocircuit_equations_impl(int d,
       }
    }
    return cocircuit_eqs;
+}
+
+
+namespace {
+
+typedef Array<Array<Array<int> > > ConjugacyClasses;
+typedef Array<Array<int> > ConjugacyClass;
+
+typedef hash_map<BBitset, Rational> EquationAsMap;
+typedef hash_map<BBitset, int> IndexOfOrbit;
+
+inline
+BBitset 
+_apply(const Array<int>& perm,
+       const BBitset& s)
+{
+   BBitset img(s.capacity());
+   for (Entire<BBitset>::const_iterator sit = entire(s); !sit.at_end(); ++sit)
+      img += perm[*sit];
+   return img;
+}
+
+inline
+EquationAsMap _apply(const Array<int>& perm,
+                     const EquationAsMap& equation)
+{
+   EquationAsMap img;
+   for (Entire<EquationAsMap>::const_iterator eit = entire(equation); !eit.at_end(); ++eit)
+      img[_apply(perm, eit->first)] = eit->second;
+   return img;
+}
+
+template<typename Scalar>
+EquationAsMap
+cocircuit_equation_as_map_impl(const Matrix<Scalar>& points, 
+                               const BBitset& ridge)
+{
+   EquationAsMap eq;
+   const SparseVector<Scalar> nv = null_space(points.minor(ridge, All)).row(0);
+   int row_index(0); 
+   for (typename Entire<Rows<Matrix<Scalar> > >::const_iterator vit = entire(rows(points)); !vit.at_end(); ++vit, ++row_index) {
+      const int sigma = sign(nv * (*vit));
+      if (sigma != 0) {
+         BBitset facet(ridge);
+         facet += row_index;
+         eq[facet] = sigma;
+      }
+   }
+   return eq;
+}
+
+void 
+make_index_of_facet (const Set<BBitset>& facets,
+                     IndexOfOrbit& index_of_facet,
+                     const ConjugacyClasses& conjugacy_classes)
+{
+   int index(0);
+   for (Entire<Set<BBitset> >::const_iterator fit = entire(facets); !fit.at_end(); ++fit) {
+      if (index_of_facet.exists(*fit)) continue;
+      for (Entire<ConjugacyClasses>::const_iterator hccit = entire(conjugacy_classes); !hccit.at_end(); ++hccit) {
+         for (Entire<ConjugacyClass>::const_iterator hit = entire(*hccit); !hit.at_end(); ++hit) {
+            const BBitset f_prime = _apply(*hit, *fit);
+            if (index_of_facet.exists(f_prime)) continue;
+            index_of_facet[f_prime] = index++;
+         }
+      }
+   }
+}
+
+ListMatrix<SparseVector<Rational> >
+EquationsAsMap_2_SparseMatrix (const std::vector<EquationAsMap>& eqs,
+                               IndexOfOrbit& index_of_facet)
+{
+   const int n_facets = index_of_facet.size();
+   ListMatrix<SparseVector<Rational> > 
+      pcceqs(0, n_facets),
+      kernel_so_far(unit_matrix<Rational>(n_facets));
+
+   for (Entire<std::vector<EquationAsMap> >::const_iterator eqsit = entire(eqs); !eqsit.at_end(); ++eqsit) {
+      SparseVector<Rational> new_eq(n_facets);
+      for (Entire<EquationAsMap>::const_iterator eit = entire(*eqsit); !eit.at_end(); ++eit) 
+         new_eq[index_of_facet[eit->first]] = eit->second;
+      add_row_if_rowspace_increases(pcceqs, new_eq, kernel_so_far);
+   }
+   return pcceqs;
+}
+
+} // end anonymous namespace
+
+
+template<typename Scalar>
+ListMatrix<SparseVector<Rational> >
+projected_cocircuit_equations_impl(const Matrix<Scalar>& points,
+                                   const Set<int>& _ridge_rep,
+                                   const Set<int>& isotypic_components,
+                                   IndexOfOrbit& index_of_facet,
+                                   const Matrix<Rational>& character_table,
+                                   const ConjugacyClasses& conjugacy_classes)
+{
+   const BBitset ridge_rep(points.rows(), _ridge_rep.begin(), _ridge_rep.end());
+   const EquationAsMap cocircuit_equation = cocircuit_equation_as_map_impl(points, ridge_rep);
+
+   /* 
+      for all h in G, calculate the cocircuit equation 
+
+      |Gamma| kappa^{h tau}
+      =
+       chi_i(id)
+       sum_{ Delta in supp(kappa^ tau)} c_Delta
+       sum_{j in cC(Gamma)} chi_i(j)
+       sum_{g in C} e_{g cdot Delta}
+
+       where  tau = ridge_rep  and  i = *iit, so that  chi_i(j) = character_table(*iit, j)
+   */
+
+   hash_set<BBitset> ridge_orbit;
+   std::vector<EquationAsMap> eqs;
+   Set<BBitset> facets;
+   for (Entire<ConjugacyClasses>::const_iterator hccit = entire(conjugacy_classes); !hccit.at_end(); ++hccit) {
+      for (Entire<ConjugacyClass>::const_iterator hit = entire(*hccit); !hit.at_end(); ++hit) {
+         const BBitset tau_prime = _apply(*hit, ridge_rep);
+         if (ridge_orbit.exists(tau_prime)) continue;
+         ridge_orbit += tau_prime;
+         
+         EquationAsMap new_eq;
+         for (int j=0; j<conjugacy_classes.size(); ++j) {
+            for (Entire<ConjugacyClass>::const_iterator git = entire(conjugacy_classes[j]); !git.at_end(); ++git) {
+               for (Entire<EquationAsMap>::const_iterator eit = entire(cocircuit_equation); !eit.at_end(); ++eit) {
+                  const BBitset Delta_prime = _apply(*git, _apply(*hit, eit->first));
+                  facets += Delta_prime;
+                  Rational coeff(0);
+                  for (Entire<Set<int> >::const_iterator iit = entire(isotypic_components); !iit.at_end(); ++iit)
+                     coeff += character_table(*iit,j) * character_table(*iit,0);
+                  new_eq[Delta_prime] += coeff * eit->second;
+               }
+            }
+         }
+         eqs.push_back(new_eq);
+      }
+   }
+
+   make_index_of_facet(facets, index_of_facet, conjugacy_classes);
+   return EquationsAsMap_2_SparseMatrix(eqs, index_of_facet);
 }
 
 

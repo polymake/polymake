@@ -61,6 +61,7 @@ long lcm_of_keys(const map<long, denom_t>& m){
 HilbertSeries::HilbertSeries() {
     num = vector<mpz_class>(1,0);
     //denom just default constructed
+    is_simplified = false;
     shift = 0;
     verbose = false;
 }
@@ -69,6 +70,7 @@ HilbertSeries::HilbertSeries() {
 HilbertSeries::HilbertSeries(const vector<num_t>& numerator, const vector<denom_t>& gen_degrees) {
     num = vector<mpz_class>(1,0);
     add(numerator, gen_degrees);
+    is_simplified = false;
     shift = 0;
     verbose = false;
 }
@@ -85,6 +87,7 @@ HilbertSeries::HilbertSeries(const vector<mpz_class>& numerator, const map<long,
 // Constructor, string as created by to_string_rep
 HilbertSeries::HilbertSeries(const string& str) {
     from_string_rep(str);
+    is_simplified = false;
     shift = 0;
     verbose = false;
 }
@@ -292,6 +295,7 @@ void HilbertSeries::simplify() const {
     }*/
     is_simplified = true;
     computeDegreeAsRationalFunction();
+    quasi_poly.clear();
 }
 
 void HilbertSeries::computeDegreeAsRationalFunction() const {
@@ -398,7 +402,7 @@ void HilbertSeries::computeHilbertQuasiPolynomial() const {
     //divide by gcd //TODO operate directly on vector
     Matrix<mpz_class> QP(quasi_poly);
     mpz_class g = QP.matrix_gcd();
-    g = gcd(g,quasi_denom);
+    g = libnormaliz::gcd(g,quasi_denom);
     quasi_denom /= g;
     QP.scalar_division(g);
     //we use a normed shift, so that the cylcic shift % period always yields a non-negative integer

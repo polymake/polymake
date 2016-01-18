@@ -180,6 +180,15 @@ struct has_std_output_operator : bool2type< has_output_operator_impl<Data,std::o
 
 template <typename Container>
 struct has_insert {
+// std::<something>::insert takes a const_iterator since C++11, but only rather new stdlibc++ implement this
+// return value is always an iterator
+// see gcc revision 204848
+#if __cplusplus < 201103L || defined(__GLIBCXX__) && __GLIBCXX__ < 20131115
+   typedef typename Container::iterator container_it;
+#else
+   typedef typename Container::const_iterator container_it;
+#endif
+
    struct helper {
       static derivation::yes Test(const typename Container::iterator&);
       static derivation::yes Test(const std::pair<typename Container::iterator, bool>&); 
@@ -189,9 +198,9 @@ struct has_insert {
       mix_in();
       using Container::insert;
       nothing& insert(const fallback&);
-      nothing& insert(typename Container::iterator, const fallback&);
+      nothing& insert(container_it, const fallback&);
    };
-   static typename Container::iterator it();
+   static container_it it();
    static const typename Container::value_type& val();
 
    static const bool without_position= sizeof(helper::Test( mix_in().insert(val()) )) == sizeof(derivation::yes),

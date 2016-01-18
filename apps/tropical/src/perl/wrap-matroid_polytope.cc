@@ -19,10 +19,10 @@
 
 namespace polymake { namespace tropical { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0, typename T1>
-   FunctionInterface4perl( matroid_polytope_A_T_x_x, T0,T1 ) {
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( matroid_polytope_A_T_x_C, T0,T1,T2 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturn( (matroid_polytope<T0,T1>(arg0, arg1)) );
+      WrapperReturn( (matroid_polytope<T0,T1>(arg0, arg1.get<T2, T1>())) );
    };
 
    FunctionWrapper4perl( perl::Object (perl::Object, pm::Rational const&) ) {
@@ -31,6 +31,6 @@ namespace polymake { namespace tropical { namespace {
    }
    FunctionWrapperInstance4perl( perl::Object (perl::Object, pm::Rational const&) );
 
-   FunctionCrossAppInstance4perl(matroid_polytope_A_T_x_x, (1, "matroid"), Min, Rational);
+   FunctionCrossAppInstance4perl(matroid_polytope_A_T_x_C, (1, "matroid"), Min, Rational, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

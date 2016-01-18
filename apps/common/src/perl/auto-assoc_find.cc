@@ -49,5 +49,8 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(assoc_find_X_X, perl::Canned< const Map< Set< int >, Vector< Rational > > >, perl::Canned< const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&> >);
    FunctionInstance4perl(assoc_find_X_X, perl::Canned< const Map< Vector< double >, perl::Array > >, perl::Canned< const Vector< double > >);
    FunctionInstance4perl(assoc_find_X_X, perl::Canned< const Map< std::pair< int, int >, Vector< Integer > > >, perl::Canned< const std::pair< int, int > >);
+   FunctionInstance4perl(assoc_find_X_X, perl::Canned< const Map< std::pair< int, int >, int > >, perl::Canned< const std::pair< int, int > >);
+   FunctionInstance4perl(assoc_find_X_X, perl::Canned< const Map< Vector< double >, int > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(assoc_find_X_X, perl::Canned< const Map< Vector< Rational >, int > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, void> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

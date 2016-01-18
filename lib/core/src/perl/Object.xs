@@ -117,13 +117,18 @@ void
 _get_alternatives(...)
 PPCODE:
 {
-   SV *descend_path= items==1 ? ST(0) : Nullsv;
+   SV* descend_path= items==1 ? ST(0) : Nullsv;
    PERL_CONTEXT *cx_bottom=cxstack, *cx=cx_bottom+cxstack_ix;
    while (cx >= cx_bottom) {
       if (CxTYPE(cx)==CXt_SUB && !SkipDebugFrame(cx,0)) {
          OP* o=cx->blk_sub.retop;
-         if (o == NULL) break;         /* called from call_sv due to some magic: assume no alternatives */
-         if (o->op_type != OP_LEAVESUB && o->op_type != OP_LEAVESUBLV) {
+         if (o == NULL) break;         // called from call_sv due to some magic: assume no alternatives
+
+         if (!(o->op_type==OP_LEAVESUB ||      // not the last operation in a sub (forwarding from get_multi to get)
+               o->op_type==OP_LEAVESUBLV ||
+               (o->op_type==OP_LEAVE &&        // in debug mode spurious intermediate operations may appear
+                (o->op_next->op_type==OP_LEAVESUB ||
+                 o->op_next->op_type==OP_LEAVESUBLV)))) {
             I32 skip=FALSE, push= GIMME_V == G_ARRAY;
 #ifdef USE_ITHREADS
             SV** saved_curpad=NULL;
@@ -161,7 +166,7 @@ PPCODE:
                   }
 #endif
                   if (gvop) {
-                     GV *cgv=cGVOPx_gv(gvop);
+                     GV* cgv=cGVOPx_gv(gvop);
                      XPUSHs(sv_2mortal(newSVpvn(GvNAME(cgv),GvNAMELEN(cgv))));
                   } else {
                      XPUSHs(cSVOPo_sv);

@@ -630,7 +630,7 @@ namespace polymake { namespace tropical {
 			"# and the function computes the subdivision of M_0,n containing the recession fan of H_k(x)"
 			"# @option Bool Verbose If true, the function outputs some progress information. True by default."
 			"# @tparam Addition Min or Max, where the coordinates live."
-			"# @return An array, containing first the subdivision of M_0,n, then the Hurwitz cycle",
+			"# @return List( Cycle subdivision of M_0,n, Cycle Hurwitz cycle )",
 			"hurwitz_pair<Addition>($,Vector<Int>;Vector<Rational> = new Vector<Rational>(),{Verbose=>1})");
 
 	UserFunctionTemplate4perl("# @category Hurwitz cycles"

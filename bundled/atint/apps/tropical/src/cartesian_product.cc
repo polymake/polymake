@@ -27,7 +27,7 @@ namespace polymake { namespace tropical {
 	UserFunctionTemplate4perl("# @category Basic polyhedral operations"
 			"# Computes the cartesian product of a set of cycles. If any of them has weights, so will the product"
 			"# (all non-weighted cycles will be treated as if they had constant weight 1)"
-			"# @param cycles A list of Cycles"
+			"# @param Cycle cycles a list of Cycles"
 			"# @return Cycle The cartesian product. "
 			"# Note that the representation is noncanonical, as it identifies"
 			"# the product of two projective tori of dimensions d and e with a projective torus "

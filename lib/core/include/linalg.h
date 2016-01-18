@@ -39,16 +39,20 @@ class normalize_impl<OpRef, is_vector>
    : public div_impl<OpRef, typename deref<OpRef>::type::element_type, cons<is_vector, is_scalar> > {
 public:
    typedef OpRef argument_type;
-   typedef div_impl<OpRef, typename deref<OpRef>::type::element_type, cons<is_vector, is_scalar> > _super;
+   typedef typename deref<OpRef>::type::element_type scalar_type;
+   typedef div_impl<OpRef, scalar_type, cons<is_vector, is_scalar> > _super;
 
    typename _super::result_type operator() (typename function_argument<OpRef>::const_type v) const
    {
-      return _super::operator()(v, sqrt(sqr(v)));
+      const scalar_type norm=sqrt(sqr(v));
+      return _super::operator()(v, is_zero(norm) ? one_value<scalar_type>() : norm);
    }
 
    void assign(typename lvalue_arg<OpRef>::type v) const
    {
-      v /= sqrt(sqr(v));
+      const scalar_type norm=sqrt(sqr(v));
+      if (!is_zero(norm))
+         v /= norm;
    }
 };
 

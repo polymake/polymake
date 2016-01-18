@@ -1,0 +1,246 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# @category Producing regular polytopes and their generalizations
+# Create Platonic solid of the given name.
+# @param String s the name of the desired Platonic solid
+# @value s 'tetrahedron' Tetrahedron.
+#          Regular polytope with four triangular facets.
+# @value s 'cube' Cube.
+#          Regular polytope with six square facets.
+# @value s 'octahedron' Octahedron.
+#          Regular polytope with eight triangular facets.
+# @value s 'dodecahedron' Dodecahedron.
+#          Regular polytope with 12 pentagonal facets.
+# @value s 'icosahedron' Icosahedron.
+#          Regular polytope with 20 triangular facets.
+# @return Polytope
+
+user_function platonic_solid(String){
+	my $name = shift;
+	if ($name eq "tetrahedron"){ return tetrahedron<QuadraticExtension>(); }
+	if ($name eq "cube"){ return cube<QuadraticExtension>(3); }
+	if ($name eq "octahedron"){ return cross<QuadraticExtension>(3); }
+	if ($name eq "icosahedron"){ return icosahedron(); }
+	if ($name eq "dodecahedron"){ return dodecahedron(); }
+	else{ die "No Platonic solid of given name found."; }
+}
+
+# @category Producing regular polytopes and their generalizations
+# Create Archimedean solid of the given name.
+# Some polytopes are realized with floating point numbers and thus not exact;
+# Vertex-facet-incidences are correct in all cases.
+# @param String s the name of the desired Archimedean solid
+# @value s 'truncated_tetrahedron' Truncated tetrahedron.
+#          Regular polytope with four triangular and four hexagonal facets.
+# @value s 'cuboctahedron' Cuboctahedron.
+#          Regular polytope with eight triangular and six square facets.
+# @value s 'truncated_cube' Truncated cube.
+#          Regular polytope with eight triangular and six octagonal facets.
+# @value s 'truncated_octahedron' Truncated Octahedron.
+#          Regular polytope with six square and eight hexagonal facets.
+# @value s 'rhombicuboctahedron' Rhombicuboctahedron.
+#          Regular polytope with eight triangular and 18 square facets.
+# @value s 'truncated_cuboctahedron' Truncated Cuboctahedron.
+#          Regular polytope with 12 square, eight hexagonal and six octagonal facets.
+# @value s 'snub_cube' Snub Cube.
+#          Regular polytope with 32 triangular and six square facets.
+#          The vertices are realized as floating point numbers.
+#          This is a chiral polytope.
+# @value s 'icosidodecahedron' Icosidodecahedon.
+#          Regular polytope with 20 triangular and 12 pentagonal facets.
+# @value s 'truncated_dodecahedron' Truncated Dodecahedron.
+#          Regular polytope with 20 triangular and 12 decagonal facets.
+# @value s 'truncated_icosahedron' Truncated Icosahedron.
+#          Regular polytope with 12 pentagonal and 20 hexagonal facets.
+# @value s 'rhombicosidodecahedron' Rhombicosidodecahedron.
+#          Regular polytope with 20 triangular, 30 square and 12 pentagonal facets.
+# @value s 'truncated_icosidodecahedron' Truncated Icosidodecahedron.
+#          Regular polytope with 30 square, 20 hexagonal and 12 decagonal facets.
+# @value s 'snub_dodecahedron' Snub Dodecahedron.
+#          Regular polytope with 80 triangular and 12 pentagonal facets.
+#          The vertices are realized as floating point numbers.
+#          This is a chiral polytope.
+# @return Polytope
+# @example To show the mirror image of the snub cube use:
+# > scale(archimedean_solid('snub_cube'),-1)->VISUAL;
+
+user_function archimedean_solid(String){
+	my $name = shift;
+	if ($name eq "truncated_tetrahedron"){ return truncation(tetrahedron(),All,cutoff=>2/3); }
+	if ($name eq "cuboctahedron"){ return cuboctahedron(); }
+	if ($name eq "truncated_cube"){ return truncated_cube(); }
+	if ($name eq "truncated_octahedron"){ return truncated_octahedron(); }
+	if ($name eq "snub_cube"){
+		# coordinates from wikipedia
+		my @a = all_permutations(3);
+		my $M = new Matrix(0,3);
+		my $t = (1 + (19-3*sqrt(33))**(1/3.) + (19+3*sqrt(33))**(1/3.))/3; #FIXME: #830 - cube root in tribonacci constant is inexact
+		my $N_even = new Matrix([[-1,1/$t,$t],[1,-1/$t,$t],[1,1/$t,-$t],[-1,-1/$t,-$t]]);
+		my $N_odd = new Matrix([[-1,-1/$t,$t],[1,-1/$t,-$t],[-1,1/$t,-$t],[1,1/$t,$t]]);
+		foreach(@a){
+			my $P = permutation_matrix($_);
+			if(permutation_sign($_)==1){
+				$M = $M / ($N_even * $P);
+			}else{
+				$M = $M / ($N_odd * $P);
+			}
+		}
+		$M = ones_vector($M->rows) | $M;
+		my $VIF = new IncidenceMatrix(
+			[16,17,20,23],[18,19,21,22],[10,11,13,14],[8,9,12,15],
+			[6,13,20],[3,19,22],[12,18,22],[0,18,21],
+			[3,11,19],[3,5,22],[11,14,19],[4,14,21],
+			[0,9,18],[0,4,21],[5,12,22],[0,1,4,7],
+			[3,6,11],[4,10,14],[5,8,12],[1,4,10],
+			[9,12,18],[7,9,15],[0,7,9],[2,5,8],
+			[2,3,5,6],[6,11,13],[10,13,16],[14,19,21],
+			[7,15,23],[1,10,16],[2,6,20],[13,16,20],
+			[1,7,23],[1,16,23],[8,15,17],[2,17,20],
+			[15,17,23],[2,8,17]);
+		my $P = new Polytope<Float>(VERTICES=>$M, VERTICES_IN_FACETS=>$VIF);
+		$P->description = "Snub cube. An Archimedean solid.";
+		return $P;
+	}
+	if ($name eq "rhombicuboctahedron"){ return rhombicuboctahedron(); }
+	if ($name eq "truncated_cuboctahedron"){ return truncated_cuboctahedron(); }
+	if ($name eq "icosidodecahedron"){ return icosidodecahedron(); }
+	if ($name eq "truncated_dodecahedron"){ return truncated_dodecahedron(); }
+	if ($name eq "truncated_icosahedron"){ return truncated_icosahedron(); }
+	if ($name eq "rhombicosidodecahedron"){ return rhombicosidodecahedron(); }
+	if ($name eq "truncated_icosidodecahedron"){ return truncated_icosidodecahedron(); }
+	if ($name eq "snub_dodecahedron"){
+		#coordinates from wikipedia
+		my $M = new Matrix(0,3);
+		my $phi = (1+sqrt(5))/2;
+		my $cet = (($phi + sqrt($phi-5/27.))/2)**(1/3.) + (($phi - sqrt($phi-5/27.))/2)**(1/3.); #FIXME: #830 - cube root is inexact
+		my $a = $cet - 1/$cet;
+		my $b = $cet*$phi + $phi**2 + $phi/$cet;
+		my $N = new Matrix([
+			[-2*$a,-2,-2*$b],[-2*$a,2,2*$b],[2*$a,-2,2*$b],[2*$a,2,-2*$b],
+			[-($a+$b/$phi+$phi),-(-$a*$phi+$b+1/$phi),-($a/$phi+$b*$phi-1)],
+			[-($a+$b/$phi+$phi),(-$a*$phi+$b+1/$phi),($a/$phi+$b*$phi-1)],
+			[($a+$b/$phi+$phi),-(-$a*$phi+$b+1/$phi),($a/$phi+$b*$phi-1)],
+			[($a+$b/$phi+$phi),(-$a*$phi+$b+1/$phi),-($a/$phi+$b*$phi-1)],
+			[-($a+$b/$phi-$phi),-($a*$phi-$b+1/$phi),-($a/$phi+$b*$phi+1)],
+			[-($a+$b/$phi-$phi),($a*$phi-$b+1/$phi),($a/$phi+$b*$phi+1)],
+			[($a+$b/$phi-$phi),-($a*$phi-$b+1/$phi),($a/$phi+$b*$phi+1)],
+			[($a+$b/$phi-$phi),($a*$phi-$b+1/$phi),-($a/$phi+$b*$phi+1)],
+			[-(-$a/$phi+$b*$phi+1),-(-$a+$b/$phi-$phi),-($a*$phi+$b-1/$phi)],
+			[-(-$a/$phi+$b*$phi+1),(-$a+$b/$phi-$phi),($a*$phi+$b-1/$phi)],
+			[(-$a/$phi+$b*$phi+1),-(-$a+$b/$phi-$phi),($a*$phi+$b-1/$phi)],
+			[(-$a/$phi+$b*$phi+1),(-$a+$b/$phi-$phi),-($a*$phi+$b-1/$phi)],
+			[-(-$a/$phi+$b*$phi-1),-($a-$b/$phi-$phi),-($a*$phi+$b+1/$phi)],
+			[-(-$a/$phi+$b*$phi-1),($a-$b/$phi-$phi),($a*$phi+$b+1/$phi)],
+			[(-$a/$phi+$b*$phi-1),-($a-$b/$phi-$phi),($a*$phi+$b+1/$phi)],
+			[(-$a/$phi+$b*$phi-1),($a-$b/$phi-$phi),-($a*$phi+$b+1/$phi)]
+		]);
+		my @a = all_permutations(3);
+		foreach(@a){
+			my $P = permutation_matrix($_);
+			if(permutation_sign($_)==1){
+				$M = $M / ($N * $P);
+			}
+		}
+		$M = ones_vector($M->rows) | $M;
+		my $VIF = new IncidenceMatrix([
+			[1,5,9,13,17],[40,44,48,52,56],[0,4,8,12,16],[3,7,11,15,19],
+			[42,46,50,54,58],[2,6,10,14,18],[23,27,31,35,39],[41,45,49,53,57],
+			[22,26,30,34,38],[43,47,51,55,59],[21,25,29,33,37],[20,24,28,32,36],
+			[40,43,51],[12,40,51],[17,48,56],[13,17,48],
+			[12,16,51],[16,51,59],[4,12,44],[5,13,47],
+			[17,39,56],[4,24,44],[24,44,52],[26,47,55],
+			[16,37,59],[4,24,32],[5,26,47],[29,55,59],
+			[31,39,56],[31,52,56],[1,5,34],[9,17,39],
+			[5,26,34],[29,37,59],[22,29,55],[40,43,48],
+			[1,10,34],[13,43,48],[8,16,37],[12,40,44],
+			[13,43,47],[0,4,32],[20,24,52],[20,31,52],
+			[22,26,55],[1,2,10],[21,22,29],[9,35,39],
+			[10,34,38],[20,23,31],[0,11,32],[0,3,8],
+			[20,23,28],[1,2,9],[8,33,37],[3,8,33],
+			[2,9,35],[19,36,57],[0,3,11],[6,27,35],
+			[11,32,36],[21,22,30],[23,27,53],[21,25,54],
+			[3,7,33],[11,19,36],[21,30,54],[23,28,53],
+			[6,14,45],[2,6,35],[30,54,58],[10,18,38],
+			[27,45,53],[7,25,33],[30,38,58],[6,27,45],
+			[28,36,57],[28,53,57],[18,38,58],[25,46,54],
+			[19,49,57],[41,42,49],[7,25,46],[15,19,49],
+			[14,41,45],[7,15,46],[15,42,46],[15,42,49],
+			[14,41,50],[41,42,50],[18,50,58],[14,18,50]]);
+		my $P = new Polytope<Float>(VERTICES=>$M, VERTICES_IN_FACETS=>$VIF);
+		$P->description = "Snub dodecahedron. An Archimedean solid.";
+		return $P;
+	}
+	else{ die "No Archimedean solid of given name found."; }
+}
+
+# @category Producing regular polytopes and their generalizations
+# Create Catalan solid of the given name.
+# Some polytopes are realized with floating point numbers and thus not exact;
+# Vertex-facet-incidences are correct in all cases.
+# @param String s the name of the desired Catalan solid
+# @value s 'triakis_tetrahedron' Triakis Tetrahedron.
+#          Dual polytope to the Truncated Tetrahedron, made of 12 isosceles triangular facets.
+# @value s 'triakis_octahedron' Triakis Octahedron.
+#          Dual polytope to the Truncated Cube, made of 24 isosceles triangular facets.
+# @value s 'rhombic_dodecahedron' Rhombic dodecahedron.
+#          Dual polytope to the cuboctahedron, made of 12 rhombic facets.
+# @value s 'tetrakis_hexahedron' Tetrakis hexahedron.
+#          Dual polytope to the truncated octahedron, made of 24 isosceles triangluar facets.
+# @value s 'disdyakis_dodecahedron' Disdyakis dodecahedron.
+#          Dual polytope to the truncated cuboctahedron, made of 48 scalene triangular facets.
+# @value s 'pentagonal_icositetrahedron' Pentagonal Icositetrahedron.
+#          Dual polytope to the snub cube, made of 24 irregular pentagonal facets.
+#          The vertices are realized as floating point numbers.
+# @value s 'pentagonal_hexecontahedron' Pentagonal Hexecontahedron.
+#          Dual polytope to the snub dodecahedron, made of 60 irregular pentagonal facets.
+#          The vertices are realized as floating point numbers.
+# @value s 'rhombic_triacontahedron' Rhombic triacontahedron.
+#          Dual polytope to the icosidodecahedron, made of 30 rhombic facets.
+# @value s 'triakis_icosahedron' Triakis icosahedron.
+#          Dual polytope to the icosidodecahedron, made of 30 rhombic facets.
+# @value s 'deltoidal_icositetrahedron' Deltoidal Icositetrahedron.
+#          Dual polytope to the rhombicubaoctahedron, made of 24 kite facets.
+# @value s 'pentakis_dodecahedron' Pentakis dodecahedron.
+#          Dual polytope to the truncated icosahedron, made of 60 isosceles triangular facets.
+# @value s 'deltoidal_hexecontahedron' Deltoidal hexecontahedron.
+#          Dual polytope to the rhombicosidodecahedron, made of 60 kite facets.
+# @value s 'disdyakis_triacontahedron' Disdyakis triacontahedron.
+#          Dual polytope to the truncated icosidodecahedron, made of 120 scalene triangular facets.
+# @return Polytope
+
+user_function catalan_solid(String){
+my $name = shift;
+	if ($name eq "triakis_tetrahedron"){ my $p = polarize(archimedean_solid('truncated_tetrahedron')); $p->description = "Triakis Tetrahedron. A Catalan solid."; return $p; }
+	if ($name eq "triakis_octahedron"){ my $p = polarize(archimedean_solid('truncated_cube')); $p->description = "Triakis Octahedron. A Catalan solid."; return $p; }
+	if ($name eq "rhombic_dodecahedron"){ my $p = polarize(cuboctahedron()); $p->description = "Rhombic dodecahedron. A Catalan solid."; return $p;}
+	if ($name eq "tetrakis_hexahedron"){ my $p = polarize(truncated_octahedron()); $p->description = "Tetrakis Hexahedron . A Catalan solid."; return $p; }
+	if ($name eq "disdyakis_dodecahedron"){ my $p = polarize(truncated_cuboctahedron()); $p->description = "Disdyakis dodecahedron. A Catalan solid."; return $p; }
+	if ($name eq "pentagonal_icositetrahedron"){ my $p = polarize(archimedean_solid('snub_cube')); $p->description = "Pentagonal Icositetrahedron. A Catalan solid."; return $p; }
+	if ($name eq "pentagonal_hexecontahedron"){ my $p = polarize(archimedean_solid('snub_dodecahedron')); $p->description = "Pentagonal Hexecontahedron. A Catalan solid."; return $p; }
+	if ($name eq "rhombic_triacontahedron"){ my $p = polarize(icosidodecahedron()); $p->description = "Rhombic triacontahedron. A Catalan solid."; return $p; }
+	if ($name eq "triakis_icosahedron"){ my $p = polarize(truncated_dodecahedron()); $p->description = "Triakis icosahedron. A Catalan solid."; return $p; }
+	if ($name eq "deltoidal_icositetrahedron"){ my $p = polarize(rhombicuboctahedron()); $p->description = "Deltoidal icositetrahedron. A Catalan solid."; return $p; }
+	if ($name eq "pentakis_dodecahedron"){ my $p = polarize(truncated_icosahedron()); $p->description = "Pentakis dodecahedron. A Catalan solid."; return $p; }
+	if ($name eq "deltoidal_hexecontahedron"){ my $p = polarize(rhombicosidodecahedron()); $p->description = "Deltoidal hexecontahedron. A Catalan solid."; return $p; }
+	if ($name eq "disdyakis_triacontahedron"){ my $p = polarize(truncated_icosidodecahedron()); $p->description = "Disdyakis triacontahedron. A Catalan solid."; return $p; }
+	else{ die "No Catalan solid of given name found."; }
+}
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

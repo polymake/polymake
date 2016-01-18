@@ -158,7 +158,9 @@ void bottom_points(list< vector<Integer> >& new_points, Matrix<Integer> gens,con
     q_gens.push_back(gens);
     int level = 0;
 
+#ifndef NCATCH
     std::exception_ptr tmp_exception;
+#endif
 
 	// list for the simplices that could not be decomposed
     vector< Matrix<Integer> > big_simplices;
@@ -238,7 +240,9 @@ void bottom_points(list< vector<Integer> >& new_points, Matrix<Integer> gens,con
     }
 #endif
     } // end parallel
+#ifndef NCATCH
     if (!(tmp_exception == 0)) std::rethrow_exception(tmp_exception);
+#endif
 
 	// if we still have big_simplices we approx again
 
@@ -428,9 +432,7 @@ template<typename Integer>
 vector<Integer> opt_sol(SCIP* scip,
                         const Matrix<Integer>& gens, const Matrix<Integer>& SuppHyp,
                         const vector<Integer>& grading) {
-    double SCIPFactor =1.0;
-    double upper_bound = convert_to_double(v_scalar_product(grading,gens[0]))-1;
-    upper_bound*=SCIPFactor;
+    double upper_bound = convert_to_double(v_scalar_product(grading,gens[0]))-0.5;
     // TODO make the test more strict
     long dim = grading.size();
     // create variables
@@ -502,7 +504,7 @@ vector<Integer> opt_sol(SCIP* scip,
 		}
 	}
 	
-	// set objective limit. feasible solution has to have at least this objective value
+	// set objective limit, feasible solution has to have a better objective value
     SCIPsetObjlimit(scip,upper_bound);
 
 

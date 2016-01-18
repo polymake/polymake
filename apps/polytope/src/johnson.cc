@@ -6,6 +6,7 @@
 #include "polymake/Matrix.h"
 #include "polymake/SparseVector.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/hash_map"
 #include <cmath>
 
 namespace polymake { namespace polytope {
@@ -30,7 +31,7 @@ namespace {
 
     u[0]=0; //projection to plane
     u /= norm(u); //unit length vector
-  
+
     Matrix<double> K(3,3); //cross product matrix of axis u
     K(1,0) = u[3];
     K(0,2) = u[2];
@@ -82,8 +83,8 @@ perl::Object exact_octagonal_prism(QE z_1, QE z_2)
   V.col(0).fill(1);
   for (int i=0; i<8; ++i) {
     V(i,3) = z_1;
-		V(i+8,3) = z_2;
-	}
+    V(i+8,3) = z_2;
+  }
 
   QE q(1,1,2);
   V(0,1)=V(1,2)=V(3,1)=V(6,2)=V(8,1)=V(9,2)=V(11,1)=V(14,2)=1;
@@ -96,38 +97,44 @@ perl::Object exact_octagonal_prism(QE z_1, QE z_2)
    return p;
 }
 
-//augments the n-th facet
+//augments the facet given as a vertex index set
 //uses sqrt and cos to calculate height, thus not exact
-perl::Object augment(perl::Object p, int n){
+perl::Object augment(perl::Object p, Set<int> f_vert){
 
-   Matrix<double> V = (p.give("VERTICES"));
-   Matrix<double> F = p.give("FACETS");
+   Matrix<double> V = p.give("VERTICES");
+   IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
+
+   int i = 0;
+   for(; i<VIF.rows(); i++){
+      if(VIF.row(i) == f_vert) break; //find facet index
+   }
+
    Array<Array<int> > c = p.give("VIF_CYCLIC_NORMAL");
-   Array<int> neigh = c[n];
-   int n_vert = neigh.size();
-   
+   Array<int> neigh = c[i];
    double side_length = norm(V[neigh[0]]-V[neigh[1]]);
-   
-   Matrix<double> FV = V.minor(Set<int>(neigh),All);
+
+   Matrix<double> FV = V.minor(f_vert,All);
    Vector<double> bary = average(rows(FV));
-  
-   Vector<double> normal = F.row(n);
+
+   Matrix<double> F = p.give("FACETS");
+   Vector<double> normal = F.row(i);
    normal[0]=0; //project to plane
    normal = normal/norm(normal); //unit facet normal
-      
+
+  int n_vert = f_vert.size();
    if(n_vert == 3 || n_vert == 4 || n_vert == 5){ //pyramid
       double height = side_length*sqrt(1-1/(2-2*cos(2*M_PI/n_vert)));
       normal *= height;
-      V /= (bary - normal); 
+      V /= (bary - normal);
    }else{
-      Matrix<double> trans = zero_vector<double>( V.rows()) | repeat_row(-average(rows(FV)), V.rows()).minor(All,sequence(1,3)); 
+      Matrix<double> trans = zero_vector<double>( V.rows()) | repeat_row(-average(rows(FV)), V.rows()).minor(All,sequence(1,3));
       V += trans; //translate barycentre to zero
       double r = (side_length/(2*sin(M_PI/(n_vert/2)))) ; //circumradius of n-gon with side_length
       Matrix<double> H(0,4);
       Vector<double> v;
-      for(int i = 0; i<n_vert-1; i=i+2){         
-       v = (V.row(neigh[i])+V.row(neigh[i+1]))/2;
-       H /= r*v/norm(v);
+      for(int i = 0; i<n_vert-1; i=i+2){
+         v = (V.row(neigh[i])+V.row(neigh[i+1]))/2;
+         H /= r*v/norm(v);
       }
       H = ones_vector<double>(H.rows()) | H.minor(All,sequence(1,3)); //adjust hom.coords
       V -= trans;
@@ -143,35 +150,31 @@ perl::Object augment(perl::Object p, int n){
 
    return p_out;
 }
-   //augments the facet normal to the given vector.
-perl::Object augment(perl::Object p, Vector<double> normal){
-   Matrix<double> F = p.give("FACETS");
-   int i = 0;
-   for(; i<F.rows(); i++){
-      if(F.row(i) == normal) break; //find facet index
+
+//places a rotunda on a facet given as a vertex index set (must be a decagonal facet)
+//not exact
+perl::Object rotunda(perl::Object p, Set<int> f_vert){
+
+   if(10 != f_vert.size()) throw std::runtime_error("Facet must be decagon.");
+
+   IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
+   int n=0;
+   for (; n<VIF.rows(); n++) {
+      if(VIF.row(n) == f_vert) break;//find facet index
    }
-  if(i == F.rows()) throw std::runtime_error("Facet not found.");
-   return augment(p,i);
-}
-
-//places a rotunda on n-th facet (must be a decagonal facet)
-perl::Object rotunda(perl::Object p, int n){
-
-   Matrix<double> V = (p.give("VERTICES"));
-   Matrix<double> F = p.give("FACETS");
    Array<Array<int> > c = p.give("VIF_CYCLIC_NORMAL");
    Array<int> neigh = c[n];
-   if(10 != neigh.size()) throw std::runtime_error("Facet must be decagon.");
-   
+   Matrix<double> V = p.give("VERTICES");
    double side_length = norm(V[neigh[0]]-V[neigh[1]]);
 
+   Matrix<double> F = p.give("FACETS");
    Vector<double> normal = F.row(n);
    normal[0]=0; //project to plane
    normal = normal/norm(normal); //unit facet normal
 
-   Matrix<double> FV = V.minor(Set<int>(neigh),All);
+   Matrix<double> FV = V.minor(f_vert,All);
    Vector<double> bary = average(rows(FV));
-   Matrix<double> trans = zero_vector<double>( V.rows()) | repeat_row(-average(rows(FV)), V.rows()).minor(All,sequence(1,3)); 
+   Matrix<double> trans = zero_vector<double>( V.rows()) | repeat_row(-average(rows(FV)), V.rows()).minor(All,sequence(1,3));
    V += trans; //translate barycentre to zero
 
    double r_l = (1+sqrt(5))*sqrt(10*(5+sqrt(5)))*side_length/20;
@@ -206,24 +209,28 @@ perl::Object rotunda(perl::Object p, int n){
    return p_out;
 }
 
-//places a rotated rotunda on n-th facet (must be a decagonal facet)
-perl::Object gyrotunda(perl::Object p, int n){
-   
-   Matrix<double> V = (p.give("VERTICES"));
-   Matrix<double> F = p.give("FACETS");
+//places a rotated rotunda on a facet given as vertex index set (must be a decagonal facet)
+//inexact
+perl::Object gyrotunda(perl::Object p, Set<int> f_vert){
+   if(10 != f_vert.size()) throw std::runtime_error("Facet must be decagon.");
+
+   IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
+   int n=0;
+   for(; n<VIF.rows(); n++) if(VIF.row(n)==f_vert) break;//find facet index
+
    Array<Array<int> > c = p.give("VIF_CYCLIC_NORMAL");
    Array<int> neigh = c[n];
-   if(10 != neigh.size()) throw std::runtime_error("Facet must be decagon.");
-   
+   Matrix<double> V = (p.give("VERTICES"));
    double side_length = norm(V[neigh[0]]-V[neigh[1]]);
 
+   Matrix<double> F = p.give("FACETS");
    Vector<double> normal = F.row(n);
    normal[0]=0; //project to plane
    normal = normal/norm(normal); //unit facet normal
-      
-   Matrix<double> FV = V.minor(Set<int>(neigh),All);
+
+   Matrix<double> FV = V.minor(f_vert,All);
    Vector<double> bary = average(rows(FV));
-   Matrix<double> trans = zero_vector<double>( V.rows()) | repeat_row(-average(rows(FV)), V.rows()).minor(All,sequence(1,3)); 
+   Matrix<double> trans = zero_vector<double>( V.rows()) | repeat_row(-average(rows(FV)), V.rows()).minor(All,sequence(1,3));
    V += trans; //translate barycentre to zero
 
    double r_l = (1+sqrt(5))*sqrt(10*(5+sqrt(5)))*side_length/20;
@@ -238,39 +245,29 @@ perl::Object gyrotunda(perl::Object p, int n){
       else v = (V.row(neigh[9])+V.row(neigh[0]))/2;
       H_l /= r_l*v/norm(v);
    }
-   
+
    double r_i = norm(v); //radius of incircle
-      
+
    V -= trans;
    H_l -= trans.minor(sequence(0,H_l.rows()), All);
    H_s -= trans.minor(sequence(0,H_s.rows()), All);
-      
+
    double h_l = sqrt(3*side_length*side_length/4-(r_i-r_l)*(r_i-r_l));
    double h_s =  sqrt(1+2/sqrt(5))*side_length;
    H_l -= repeat_row(h_l*normal, 5);
    H_s -= repeat_row(h_s*normal, 5);
    Matrix<double>H = ones_vector<double>(10) | (H_l.minor(All,sequence(1,3)) / H_s.minor(All,sequence(1,3))); //adjust hom.coords
    V /= H;
-   
+
    perl::Object p_out(perl::ObjectType::construct<double>("Polytope"));
    p_out.take("VERTICES") << V;
 
-   return p_out;   
+   return p_out;
 }
 
-perl::Object gyrotunda(perl::Object p, Vector<double> normal){
-   Matrix<double> F = p.give("FACETS");
-   int i = 0;
-   for(; i<F.rows(); i++){
-      if(F.row(i) == normal) break; //find facet index
-   }
-   if(i == F.rows()) throw std::runtime_error("Facet not found.");
-  return gyrotunda(p,i);
-}
-   
-//elongates the n-th facet
+//elongates the facet given as vertex index set
 //uses sqrt to calculate side length, thus not exact
-perl::Object elongate(perl::Object p, int n){
+perl::Object elongate(perl::Object p, Set<int> f_vert){
 
    Matrix<double> V = (p.give("VERTICES"));
    IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
@@ -278,9 +275,9 @@ perl::Object elongate(perl::Object p, int n){
 
    perl::Object facet(perl::ObjectType::construct<double>("Polytope"));
 
-   Matrix<double> FV = V.minor(VIF.row(n),All);
+   Matrix<double> FV = V.minor(f_vert,All);
    facet.take("VERTICES")<<FV;
- 
+
    IncidenceMatrix<> FVIF = facet.give("VERTICES_IN_FACETS");
    Matrix<double> neighbors = FV.minor(FVIF.row(0),All); //two neighbor vertices
    double side_length = norm(neighbors[0]-neighbors[1]);
@@ -288,36 +285,34 @@ perl::Object elongate(perl::Object p, int n){
 
    perl::Object p_out(perl::ObjectType::construct<double>("Polytope"));
 
+   int n=0;
+   for(; n<VIF.rows(); n++){
+      if(VIF.row(n)==f_vert) break;
+   }
+
    Vector<double> normal = F.row(n);
    normal[0]=0; //project to plane
    normal = side_length*normal/norm(normal); //facet normal of length side_length
    p_out.take("VERTICES") << (V / (FV - repeat_row(normal, n_vert)));
- 
+
    return p_out;
 }
-   //elongates the facet normal to the given vector
-perl::Object elongate(perl::Object p, Vector<double> normal){
-   Matrix<double> F = p.give("FACETS");
-   int i = 0;
-   for(; i<F.rows(); i++){
-      if(F.row(i) == normal) break; //find facet index
-   }
-   if(i == F.rows()) throw std::runtime_error("Facet not found.");
-  return elongate(p,i);
-}
-   
-//rotates the n-th facet by angle a
+
+//rotates the facet given as vertex index set by angle a
 //uses sqrt to calculate side length, thus not exact
-  perl::Object rotate_facet(perl::Object p, int n, double a){
+  perl::Object rotate_facet(perl::Object p, Set<int> f_vert, double a){
 
   Matrix<double> V = (p.give("VERTICES"));
   IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
   Matrix<double> F = p.give("FACETS");
 
-  Matrix<double> FV = V.minor(VIF.row(n),All);
-  
+  Matrix<double> FV = V.minor(f_vert,All);
+
   int nv = p.give("N_VERTICES");
   Matrix<double> W(0,4);
+  int n=0;
+  for(; n<nv; n++) if(VIF.row(n)==f_vert) break; //find facet index
+
   for(int i=0; i<nv; i++){
      if(VIF(n,i)==0){
         W /= V.row(i); //remove facet vertices
@@ -326,69 +321,55 @@ perl::Object elongate(perl::Object p, Vector<double> normal){
 
   Vector<double> normal = F.row(n); //facet normal
   normal[0]=0;
-  
+
   Matrix<double> trans = zero_vector<double>(FV.rows()) | repeat_row(normal - average(rows(FV)), FV.rows()).minor(All,sequence(1,3)); //translate barycentre to axis
-  
+
   Matrix<double> Rot = rotate(FV+trans, normal, a)-trans;
-  
+
   perl::Object p_out(perl::ObjectType::construct<double>("Polytope"));
   p_out.take("VERTICES") << (W/Rot);
 
   return p_out;
 }
 
-   perl::Object rotate_facet(perl::Object p, Vector<double> normal, double a){
-   Matrix<double> F = p.give("FACETS");
-   int i = 0;
-   for(; i<F.rows(); i++){
-      if(F.row(i) == normal) break; //find facet index
-   }
-   if(i == F.rows()) throw std::runtime_error("Facet not found.");
-   return rotate_facet(p,i,a);
-}
-   
-//gyroelongates the n-th facet
+//gyroelongates the facet given as vertex index set
 //uses sqrt to calculate side length, thus not exact
-perl::Object gyroelongate(perl::Object p, int n){
+perl::Object gyroelongate(perl::Object p, Set<int> f_vert){
 
   Matrix<double> V = (p.give("VERTICES"));
   IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
   Matrix<double> F = p.give("FACETS");
-  
+  int n=0;
+  for(; n<VIF.rows(); n++) if(VIF.row(n)==f_vert) break; //find facet index
   Vector<double> normal = F.row(n);
   normal[0]=0; //project to plane
   normal /= norm(normal); //unit facet normal
-     
-  Matrix<double> FV = V.minor(VIF.row(n),All);
+
+  Matrix<double> FV = V.minor(f_vert,All);
   int n_vert = FV.rows();
   Matrix<double> trans = zero_vector<double>(n_vert) | repeat_row(normal - average(rows(FV)), FV.rows()).minor(All,sequence(1,3)); //translate barycentre to axis
   FV = rotate(FV+trans, normal, M_PI/n_vert)-trans; //rotate the facet by pi/n
-  
+
   perl::Object facet(perl::ObjectType::construct<double>("Polytope"));
   facet.take("VERTICES")<<FV;
   IncidenceMatrix<> FVIF = facet.give("VERTICES_IN_FACETS");
   Matrix<double> neighbors = FV.minor(FVIF.row(0),All); //two neighbor vertices
   double side_length = norm(neighbors[0]-neighbors[1]);
 
-  normal = (side_length*sqrt(3)/2)*normal; //facet normal of right length (height of a triangle)
+  // wikipedia seems to be wrong https://en.wikipedia.org/wiki/Antiprism
+  //   double height = 2*sqrt((cos(M_PI/n_vert)-cos(2.0*M_PI/n_vert))/2);
+  //   the reciprocal might be correct
+  // source: http://mathworld.wolfram.com/Antiprism.html
+  double height = sqrt(1-1.0/(4.0*cos(M_PI/(2*n_vert))*cos(M_PI/(2*n_vert))));
+  normal = (side_length*height)*normal; //facet normal of right length (height of a triangle)
 
   perl::Object p_out(perl::ObjectType::construct<double>("Polytope"));
   p_out.take("VERTICES") << (V / (FV - repeat_row(normal, n_vert)));
- 
+
   return p_out;
 }
-   //gyroleongates the facet normal to the given vector   
-perl::Object gyroelongate(perl::Object p, Vector<double> normal){
-   Matrix<double> F = p.give("FACETS");
-   int i = 0;
-   for(; i<F.rows(); i++){
-      if(F.row(i) == normal) break; //find facet index
-   }
-   if(i == F.rows()) throw std::runtime_error("Facet not found.");
-   return gyroelongate(p,i);
-}
-   
-//creates regular n-gonal prism   
+
+//creates regular n-gonal prism
 perl::Object create_prism(int n)
 {
   Matrix<double> V = create_regular_polygon_vertices(n, 1, 0);
@@ -403,129 +384,115 @@ perl::Object create_prism(int n)
   perl::Object p_out(perl::ObjectType::construct<double>("Polytope"));
 
   p_out.take("VERTICES") << (V | zero_vector<double>()) / (V | same_element_vector<double>(side_length, n));
-  
+
   return p_out;
 }
-   
-//removes the n-th facet
-   template <typename T>
-  perl::Object diminish(perl::Object p, int n){
 
-  Matrix<T> V = (p.give("VERTICES"));
-  IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
-  
-  int nv = p.give("N_VERTICES");
-  Matrix<T> W(0,4);
-  for(int i=0; i<nv; i++){
-     if(VIF(n,i)==0){
-        W /= V.row(i); //remove facet vertices
-     }
-  }
-  
+//removes the facet given as vertex index set
+template <typename T>
+perl::Object diminish(perl::Object p, Set<int> f_vert){
+
+  Matrix<T> V = p.give("VERTICES");
+
+  Set<int> v = sequence(0,V.rows());
+  v -= f_vert;
+
   perl::Object p_out(perl::ObjectType::construct<T>("Polytope"));
-  p_out.take("VERTICES") << W;
+  p_out.take("VERTICES") << V.minor(v,All);
 
   return p_out;
 }
-  template <typename T>
-perl::Object diminish(perl::Object p, Vector<T> normal){
- Matrix<T> F = p.give("FACETS");
-   int i = 0;
-   for(; i<F.rows(); i++){
-      if(F.row(i) == normal) break; //find facet index
-   }
-   if(i == F.rows()) throw std::runtime_error("Facet not found.");
-   return diminish<T>(p,i);
-}
-   
+
 Matrix<QE> truncated_cube_vertices()
 {
   Matrix<QE> V = exact_octagonal_prism(QE(0,0,0),QE(2,2,2)).give("VERTICES");
   Matrix<QE> W(8,4);
-	W.col(0).fill(1);
-	W(0,1)=W(1,1)=W(2,2)=W(3,2)=QE(2,1,2);
-	W(4,1)=W(5,1)=W(6,2)=W(7,2)=-QE(2,1,2);
-	W(0,3)=W(2,3)=W(4,3)=W(6,3)=QE(0,1,2);
-	W(1,3)=W(3,3)=W(5,3)=W(7,3)=QE(2,1,2);
+  W.col(0).fill(1);
+  W(0,1)=W(1,1)=W(2,2)=W(3,2)=QE(2,1,2);
+  W(4,1)=W(5,1)=W(6,2)=W(7,2)=-QE(2,1,2);
+  W(0,3)=W(2,3)=W(4,3)=W(6,3)=QE(0,1,2);
+  W(1,3)=W(3,3)=W(5,3)=W(7,3)=QE(2,1,2);
 
   return V / W;
- }
-   //the following functions are for improved readability of VIF
-   Set<int> triangle(int v0, int v1, int v2){
-      Set<int> s;
-      s += v0;
-      s += v1;
-      s += v2;
-      return s;
-   }
-   Set<int> square(int v0, int v1, int v2, int v3){
-      Set<int> s;
-      s += v0;
-      s += v1;
-      s += v2;
-      s += v3;
-      return s;
-   }
-   Set<int> pentagon(int v0, int v1, int v2, int v3, int v4){
-      Set<int> s;
-      s += v0;
-      s += v1;
-      s += v2;
-      s += v3;
-      s += v4;
-      return s;
-   }
-   Set<int> hexagon(int v0, int v1, int v2, int v3, int v4, int v5){
-      Set<int> s;
-      s += v0;
-      s += v1;
-      s += v2;
-      s += v3;
-      s += v4;
-      s += v5;
-      return s;
-   }
-   Set<int> octagon(int v0, int v1, int v2, int v3, int v4, int v5, int v6, int v7){
-      Set<int> s;
-      s += v0;
-      s += v1;
-      s += v2;
-      s += v3;
-      s += v4;
-      s += v5;
-      s += v6;
-      s += v7;
-      return s;
-   }
-   Set<int> decagon(int v0, int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8, int v9){
-      Set<int> s;
-      s += v0;
-      s += v1;
-      s += v2;
-      s += v3;
-      s += v4;
-      s += v5;
-      s += v6;
-      s += v7;
-      s += v8;
-      s += v9;
-      return s;
-   }
+}
 
-   
- template <typename T>
- perl::Object assign_common_props(perl::Object p)
- {
-  p.take("LINEALITY_SPACE") << Matrix<T>();
+//the following functions are for improved readability of VIF
+Set<int> triangle(int v0, int v1, int v2)
+{
+   Set<int> s;
+   s += v0;
+   s += v1;
+   s += v2;
+   return s;
+}
+Set<int> square(int v0, int v1, int v2, int v3)
+{
+   Set<int> s;
+   s += v0;
+   s += v1;
+   s += v2;
+   s += v3;
+   return s;
+}
+Set<int> pentagon(int v0, int v1, int v2, int v3, int v4)
+{
+   Set<int> s;
+   s += v0;
+   s += v1;
+   s += v2;
+   s += v3;
+   s += v4;
+   return s;
+}
+Set<int> hexagon(int v0, int v1, int v2, int v3, int v4, int v5)
+{
+   Set<int> s;
+   s += v0;
+   s += v1;
+   s += v2;
+   s += v3;
+   s += v4;
+   s += v5;
+   return s;
+}
+Set<int> octagon(int v0, int v1, int v2, int v3, int v4, int v5, int v6, int v7)
+{
+   Set<int> s;
+   s += v0;
+   s += v1;
+   s += v2;
+   s += v3;
+   s += v4;
+   s += v5;
+   s += v6;
+   s += v7;
+   return s;
+}
+Set<int> decagon(int v0, int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8, int v9)
+{
+   Set<int> s;
+   s += v0;
+   s += v1;
+   s += v2;
+   s += v3;
+   s += v4;
+   s += v5;
+   s += v6;
+   s += v7;
+   s += v8;
+   s += v9;
+   return s;
+}
+
+template <typename T>
+perl::Object centralize(perl::Object p)
+{
   p.take("AFFINE_HULL") << Matrix<T>();
-  p.take("FEASIBLE") << true;
-  p.take("BOUNDED") << true;
-  p.take("CONE_DIM") << 4;
-  p.take("CONE_AMBIENT_DIM") << 4;
+  p = CallPolymakeFunction("center",p);
   return p;
- }
+}
 
-   
+
 } // end anonymous namespace
 
 perl::Object square_pyramid()
@@ -538,9 +505,9 @@ perl::Object square_pyramid()
   Matrix<QE> V((create_square_vertices<QE>() | zero_vector<QE>(4)) / tip);
 
   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.set_description() << "Johnson solid J1: Square pyramid" << endl;
   p.take("VERTICES") << V;
-  assign_common_props<QE>(p);
+  p = centralize<QE>(p);
+  p.set_description() << "Johnson solid J1: Square pyramid" << endl;
 
   return p;
 }
@@ -550,11 +517,11 @@ perl::Object pentagonal_pyramid()
   perl::Object ico = CallPolymakeFunction("icosahedron");
   Matrix<QE> V = ico.give("VERTICES");
   V = V.minor(sequence(0,6),All);
-  
+
   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.set_description() << "Johnson solid J2: Pentagonal pyramid" << endl;
   p.take("VERTICES") << V;
-  assign_common_props<QE>(p);
+  p = centralize<QE>(p);
+  p.set_description() << "Johnson solid J2: Pentagonal pyramid" << endl;
 
   return p;
 }
@@ -564,16 +531,16 @@ perl::Object triangular_cupola()
   perl::Object cub = CallPolymakeFunction("cuboctahedron");
   Matrix<QE> V = cub.give("VERTICES");
   V = V.minor(sequence(0,9),All);
-  
+
   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.set_description() << "Johnson solid J3: Triangular cupola" << endl;
   p.take("VERTICES") << V;
-  assign_common_props<QE>(p);
+  p = centralize<QE>(p);
+  p.set_description() << "Johnson solid J3: Triangular cupola" << endl;
 
   return p;
 }
 
-perl::Object square_cupola()
+perl::Object square_cupola_impl(bool centered)
 {
   perl::Object base = exact_octagonal_prism(QE(0,0,0),QE(1,0,0));
 
@@ -591,39 +558,45 @@ perl::Object square_cupola()
   V/= W;
 
   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-        p.set_description() << "Johnson solid J4: Square cupola" << endl;
-        p.take("VERTICES") << V;
-        assign_common_props<QE>(p);
+  p.take("VERTICES") << V;
+  if (centered)
+    p = centralize<QE>(p);
+  p.set_description() << "Johnson solid J4: Square cupola" << endl;
 
   return p;
 }
 
+perl::Object square_cupola()
+{
+  return square_cupola_impl(true);
+}
+
 perl::Object pentagonal_cupola()
 {
-   perl::Object rico = CallPolymakeFunction("rhombicosidodecahedron");
-   Matrix<QE> V = rico.give("VERTICES");
-   V= V.minor(sequence(0,7),All) / V.minor(sequence(8,3),All) / V.row(13) / V.row(14) / V.row(18) / V.row(19) / V.row(24);
+  perl::Object rico = CallPolymakeFunction("rhombicosidodecahedron");
+  Matrix<QE> V = rico.give("VERTICES");
+  V= V.minor(sequence(0,7),All) / V.minor(sequence(8,3),All) / V.row(13) / V.row(14) / V.row(18) / V.row(19) / V.row(24);
 
-   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-   p.set_description() << "Johnson solid J5: Pentagonal cupola" << endl;
-   p.take("VERTICES") << V;
-   assign_common_props<QE>(p);
+  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
+  p.take("VERTICES") << V;
+  p = centralize<QE>(p);
+  p.set_description() << "Johnson solid J5: Pentagonal cupola" << endl;
 
-   return p;
+  return p;
 }
 
 perl::Object pentagonal_rotunda()
 {
-   perl::Object ico = CallPolymakeFunction("icosidodecahedron");
-   Matrix<QE> V = ico.give("VERTICES");
-   V= V.minor(sequence(0,17),All) / V.row(18) / V.row(19) / V.row(21);
-   
-   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-   p.set_description() << "Johnson solid J6: Pentagonal rotunda" << endl;
-   p.take("VERTICES") << V;
-   assign_common_props<QE>(p);
+  perl::Object ico = CallPolymakeFunction("icosidodecahedron");
+  Matrix<QE> V = ico.give("VERTICES");
+  V= V.minor(sequence(0,17),All) / V.row(18) / V.row(19) / V.row(21);
 
-   return p;
+  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
+  p.take("VERTICES") << V;
+  p = centralize<QE>(p);
+  p.set_description() << "Johnson solid J6: Pentagonal rotunda" << endl;
+
+  return p;
 }
 
 perl::Object elongated_triangular_pyramid()
@@ -635,14 +608,14 @@ perl::Object elongated_triangular_pyramid()
   Matrix<QE> V( ones_vector<QE>(7) | (same_element_vector<QE>(c,3) / unit_matrix<QE>(3) / (unit_matrix<QE>(3) + same_element_matrix<QE>(s , 3, 3))));
 
   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.set_description() << "Johnson solid J7: Elongated triangular bipyramid" << endl;
   p.take("VERTICES") << V;
-  assign_common_props<QE>(p);
+  p = centralize<QE>(p);
+  p.set_description() << "Johnson solid J7: Elongated triangular bipyramid" << endl;
 
   return p;
 }
 
-perl::Object elongated_square_pyramid()
+perl::Object elongated_square_pyramid_impl(bool centered)
 {
   Matrix<QE> square_vertices =  create_square_vertices<QE>();
 
@@ -654,22 +627,24 @@ perl::Object elongated_square_pyramid()
   Matrix<QE> V( ((square_vertices | zero_vector<QE>(4)) / (square_vertices | -2*ones_vector<QE>(4))) / tip );
 
   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.set_description() << "Johnson solid J8: Elongated square pyramid" << endl;
   p.take("VERTICES") << V;
-  assign_common_props<QE>(p);
+  if (centered)
+    p = centralize<QE>(p);
+  p.set_description() << "Johnson solid J8: Elongated square pyramid" << endl;
 
   return p;
+}
+
+perl::Object elongated_square_pyramid()
+{
+  return elongated_square_pyramid_impl(true);
 }
 
 //FIXME: #830 coordinates
 perl::Object elongated_pentagonal_pyramid()
 {
   perl::Object p = pentagonal_pyramid();
-  Vector<double> normal(4);
-  normal[0] = -(1+sqrt(5))/4;
-  normal[2] = -2*normal[0];
-  normal[3] = 1;
-  p = elongate(p,normal);
+  p = elongate(p,sequence(1,5));
 
   IncidenceMatrix<> VIF(11,11);
   VIF[0]=pentagon(6,7,8,9,10);
@@ -684,9 +659,9 @@ perl::Object elongated_pentagonal_pyramid()
   VIF[9]=square(1,2,6,7);
   VIF[10]=square(2,4,7,9);
 
-  p.set_description() << "Johnson solid J9: Elongated pentagonal pyramid" << endl;
   p.take("VERTICES_IN_FACETS") << VIF;
-  assign_common_props<double>(p);
+  p = centralize<double>(p);
+  p.set_description() << "Johnson solid J9: Elongated pentagonal pyramid" << endl;
 
   return p;
 }
@@ -695,8 +670,8 @@ perl::Object elongated_pentagonal_pyramid()
 perl::Object gyroelongated_square_pyramid()
 {
    perl::Object p = square_pyramid();
-   p = gyroelongate(p,unit_vector<double>(4,3));
-   
+   p = gyroelongate(p,sequence(0,4));
+
    IncidenceMatrix<> VIF(13,9);
    VIF[0] = triangle(1,3,4);
    VIF[1] = triangle(2,3,8);
@@ -712,9 +687,9 @@ perl::Object gyroelongated_square_pyramid()
    VIF[11] = triangle(1,3,6);
    VIF[12] = square(5,6,7,8);
 
-   p.set_description() << "Johnson solid J10: Gyroelongated square pyramid" << endl;
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<double>(p);
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J10: Gyroelongated square pyramid" << endl;
 
    return p;
 }
@@ -726,9 +701,9 @@ perl::Object gyroelongated_pentagonal_pyramid()
    V = V.minor(sequence(0,11),All);
 
    perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-   p.set_description() << "Johnson solid J11: Gyroelongated pentagonal pyramid" << endl;
    p.take("VERTICES") << V;
-   assign_common_props<QE>(p);
+   p = centralize<QE>(p);
+   p.set_description() << "Johnson solid J11: Gyroelongated pentagonal pyramid" << endl;
 
    return p;
 }
@@ -738,12 +713,12 @@ perl::Object triangular_bipyramid()
   Rational c(-1,3);
 
   Matrix<Rational> V( ones_vector<Rational>(5) | unit_matrix<Rational>(3) / ones_vector<Rational>(3) / same_element_vector<Rational>(c,3));
-  
+
   perl::Object p(perl::ObjectType::construct<Rational>("Polytope"));
 
-  p.set_description() << "Johnson solid J12: Triangular bipyramid" << endl;
   p.take("VERTICES") << V;
-  assign_common_props<Rational>(p);
+  p = centralize<Rational>(p);
+  p.set_description() << "Johnson solid J12: Triangular bipyramid" << endl;
 
   return p;
 }
@@ -752,11 +727,7 @@ perl::Object triangular_bipyramid()
 perl::Object pentagonal_bipyramid()
 {
   perl::Object p = pentagonal_pyramid();
-  Vector<double> normal(4);
-  normal[0] = -(1+sqrt(5))/4;
-  normal[2] = -2*normal[0];
-  normal[3] = 1;
-  p = augment(p,normal);
+  p = augment(p,sequence(1,5));
 
   IncidenceMatrix<> VIF(10,7);
   VIF[0] = triangle(0,4,5);
@@ -769,11 +740,11 @@ perl::Object pentagonal_bipyramid()
   VIF[7] = triangle(1,2,6);
   VIF[8] = triangle(2,4,6);
   VIF[9] = triangle(0,2,4);
-  
-  p.take("VERTICES_IN_FACETS") << VIF;
-  p.set_description() << "Johnson solid J13: Pentagonal bipyramid" << endl;
-  assign_common_props<double>(p);
 
+  p.take("VERTICES_IN_FACETS") << VIF;
+  p = centralize<double>(p);
+
+  p.set_description() << "Johnson solid J13: Pentagonal bipyramid" << endl;
   return p;
 
 }
@@ -787,16 +758,16 @@ perl::Object elongated_triangular_bipyramid()
   Matrix<QE> V( ones_vector<QE>(8) | ( same_element_vector<QE>(1+s,3) / same_element_vector<QE>(c,3) / unit_matrix<QE>(3) / (unit_matrix<QE>(3) + same_element_matrix<QE>(s , 3, 3))));
 
   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.set_description() << "Johnson solid J14: Elongated triangular bipyramid" << endl;
   p.take("VERTICES") << V;
-  assign_common_props<QE>(p);
+  p = centralize<QE>(p);
+  p.set_description() << "Johnson solid J14: Elongated triangular bipyramid" << endl;
 
   return p;
 }
 
 perl::Object elongated_square_bipyramid()
 {
-  perl::Object esp = elongated_square_pyramid();
+  perl::Object esp = elongated_square_pyramid_impl(false);
 
   Matrix<QE> esp_vertices =  esp.give("VERTICES");
 
@@ -808,9 +779,9 @@ perl::Object elongated_square_bipyramid()
   Matrix<QE> V = ( esp_vertices / tip);
 
   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.set_description() << "Johnson solid J15: Elongated square bipyramid" << endl;
   p.take("VERTICES") << V;
-  assign_common_props<QE>(p);
+  p = centralize<QE>(p);
+  p.set_description() << "Johnson solid J15: Elongated square bipyramid" << endl;
 
   return p;
 
@@ -821,7 +792,7 @@ perl::Object elongated_pentagonal_bipyramid()
 {
   perl::Object p = elongated_pentagonal_pyramid();
 
-  p = augment(p,0);
+  p = augment(p,sequence(6,5));
 
   IncidenceMatrix<> VIF(15,12);
   VIF[0] = triangle(7,9,11);
@@ -841,9 +812,9 @@ perl::Object elongated_pentagonal_bipyramid()
   VIF[14] = square(2,4,7,9);
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  p.set_description() << "Johnson solid J16: Elongated pentagonal bipyramid" << endl;
-  assign_common_props<QE>(p);
+  p = centralize<QE>(p);
 
+  p.set_description() << "Johnson solid J16: Elongated pentagonal bipyramid" << endl;
   return p;
 
 }
@@ -852,7 +823,7 @@ perl::Object elongated_pentagonal_bipyramid()
 perl::Object gyroelongated_square_bipyramid()
 {
    perl::Object p = gyroelongated_square_pyramid();
-   p = augment(p,12);
+   p = augment(p,sequence(5,4));
 
    IncidenceMatrix<> VIF(16,10);
    VIF[0] = triangle(1,3,4);
@@ -872,9 +843,9 @@ perl::Object gyroelongated_square_bipyramid()
    VIF[14] = triangle(3,6,8);
    VIF[15] = triangle(1,3,6);
 
-   p.set_description() << "Johnson solid J17: Gyroelongated square bipyramid" << endl;
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<double>(p);
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J17: Gyroelongated square bipyramid" << endl;
 
    return p;
 }
@@ -883,7 +854,7 @@ perl::Object gyroelongated_square_bipyramid()
 perl::Object elongated_triangular_cupola()
 {
    perl::Object p = triangular_cupola();
-   p = elongate(p,zero_vector<double>(1) | ones_vector<double>(3));
+   p = elongate(p,sequence(3,6));
 
    IncidenceMatrix<> VIF(14,15);
    VIF[0] = square(1,2,6,8);
@@ -901,36 +872,40 @@ perl::Object elongated_triangular_cupola()
    VIF[12] = square(0,2,4,7);
    VIF[13] = square(0,1,3,5);
 
-   p.set_description() << "Johnson solid J18: Elongated triangular cupola" << endl;
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<QE>(p);
+   p = centralize<QE>(p);
+   p.set_description() << "Johnson solid J18: Elongated triangular cupola" << endl;
 
    return p;
 }
 
 
-perl::Object elongated_square_cupola()
+perl::Object elongated_square_cupola_impl(bool centered)
 {
   perl::Object base = exact_octagonal_prism(QE(-2,0,0),QE(0,0,0));
   Matrix<QE> V =  base.give("VERTICES");
-        Matrix<QE> T = square_cupola().give("VERTICES");
-        V /= T.minor(sequence(8,4),All);
+  Matrix<QE> T = square_cupola_impl(false).give("VERTICES");
+  V /= T.minor(sequence(8,4),All);
 
   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-        p.set_description() << "Johnson solid J19: Elongated square cupola" << endl;
-        p.take("VERTICES") << V;
-        assign_common_props<QE>(p);
+  p.take("VERTICES") << V;
+  if (centered)
+     p = centralize<QE>(p);
+  p.set_description() << "Johnson solid J19: Elongated square cupola" << endl;
 
   return p;
+}
+
+perl::Object elongated_square_cupola()
+{
+   return elongated_square_cupola_impl(true);
 }
 
 //FIXME: coordinates #830
 perl::Object elongated_pentagonal_cupola()
 {
    perl::Object p = pentagonal_cupola();
-   Vector<double> normal(4);
-   normal[0]=(-5-3*sqrt(5))/4; normal[2]=(1+sqrt(5))/2; normal[3]=1;
-   p = elongate(p,normal);
+   p = elongate(p,decagon(2,4,5,7,8,10,11,12,13,14));
 
    IncidenceMatrix<> VIF(22,25);
    VIF[0] = decagon(15,16,17,18,19,20,21,22,23,24);
@@ -956,9 +931,9 @@ perl::Object elongated_pentagonal_cupola()
    VIF[20] = square(7,11,18,21);
    VIF[21] = square(5,7,17,18);
 
-   p.set_description() << "Johnson solid J20: Elongated pentagonal cupola" << endl;
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<QE>(p);
+   p = centralize<QE>(p);
+   p.set_description() << "Johnson solid J20: Elongated pentagonal cupola" << endl;
 
   return p;
 }
@@ -967,9 +942,7 @@ perl::Object elongated_pentagonal_cupola()
 perl::Object elongated_pentagonal_rotunda()
 {
    perl::Object p = pentagonal_rotunda();
-   Vector<double> normal(4);
-   normal[2]=(1+sqrt(5))/2; normal[3]=1;
-   p = elongate(p,normal);
+   p = elongate(p,decagon(7,9,10,12,13,15,16,17,18,19));
 
    IncidenceMatrix<> VIF(27,30);
    VIF[0] = decagon(20,21,22,23,24,25,26,27,28,29);
@@ -1000,9 +973,9 @@ perl::Object elongated_pentagonal_rotunda()
    VIF[25] = square(12,16,23,26);
    VIF[26] = square(10,12,22,23);
 
-   p.set_description() << "Johnson solid J21: Elongated pentagonal rotunda" << endl;
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<double>(p);
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J21: Elongated pentagonal rotunda" << endl;
 
    return p;
 }
@@ -1010,84 +983,81 @@ perl::Object elongated_pentagonal_rotunda()
 //FIXME: coordinates #830
 perl::Object gyroelongated_triangular_cupola()
 {
-   perl::Object p = triangular_cupola();
-  
-   p = gyroelongate(p,zero_vector<double>(1) | ones_vector<double>(3));
-   
-   IncidenceMatrix<> VIF(20,15);
-   VIF[0] = square(1,2,6,8);
-   VIF[1] = triangle(1,5,6);
-   VIF[2] = triangle(5,11,12);
-   VIF[3] = triangle(5,6,12);
-   VIF[4] = triangle(2,7,8);
-   VIF[5] = triangle(6,12,14);
-   VIF[6] = triangle(6,8,14);
-   VIF[7] = triangle(8,13,14);
-   VIF[8] = triangle(7,8,13);
-   VIF[9] = triangle(7,10,13);
-   VIF[10] = triangle(4,7,10);
-   VIF[11] = triangle(4,9,10);
-   VIF[12] = hexagon(9,10,11,12,13,14);
-   VIF[13] = triangle(3,4,9);
-   VIF[14] = triangle(3,9,11);
-   VIF[15] = triangle(3,5,11);
-   VIF[16] = triangle(0,3,4);
-   VIF[17] = triangle(0,1,2);
-   VIF[18] = square(0,2,4,7);
-   VIF[19] = square(0,1,3,5);
+  perl::Object p = triangular_cupola();
 
-   p.take("VERTICES_IN_FACETS") << VIF;
-   p.set_description() << "Johnson solid J22: Gyroelongated triangular cupola" << endl;
-   assign_common_props<QE>(p);
+  p = gyroelongate(p,sequence(3,6));
 
-   return p;
+  IncidenceMatrix<> VIF(20,15);
+  VIF[0] = square(1,2,6,8);
+  VIF[1] = triangle(1,5,6);
+  VIF[2] = triangle(5,11,12);
+  VIF[3] = triangle(5,6,12);
+  VIF[4] = triangle(2,7,8);
+  VIF[5] = triangle(6,12,14);
+  VIF[6] = triangle(6,8,14);
+  VIF[7] = triangle(8,13,14);
+  VIF[8] = triangle(7,8,13);
+  VIF[9] = triangle(7,10,13);
+  VIF[10] = triangle(4,7,10);
+  VIF[11] = triangle(4,9,10);
+  VIF[12] = hexagon(9,10,11,12,13,14);
+  VIF[13] = triangle(3,4,9);
+  VIF[14] = triangle(3,9,11);
+  VIF[15] = triangle(3,5,11);
+  VIF[16] = triangle(0,3,4);
+  VIF[17] = triangle(0,1,2);
+  VIF[18] = square(0,2,4,7);
+  VIF[19] = square(0,1,3,5);
+
+  p.take("VERTICES_IN_FACETS") << VIF;
+  p = centralize<QE>(p);
+
+  p.set_description() << "Johnson solid J22: Gyroelongated triangular cupola" << endl;
+  return p;
 }
 
 //FIXME: coordinates #830
 perl::Object gyroelongated_square_cupola()
 {
-        Matrix<double> V = square_cupola().give("VERTICES");
-        double a = sqrt((1+sqrt(2)/2)/2);
-        double b = sqrt((1-sqrt(2)/2)/2);
-        double c = sqrt(1+sqrt(2));
-        double height = -sqrt(4-pow(c*a-b-c,2)-pow(c*b-a-1,2));
-        Matrix<double> W = create_regular_polygon_vertices(8, sqrt(2)*sqrt(2+sqrt(2)), 0);
+  Matrix<double> V = square_cupola_impl(false).give("VERTICES");
+  const double height = -2*sqrt(1-1.0/(4.0*cos(M_PI/16)*cos(M_PI/16)));
+  Matrix<double> W = create_regular_polygon_vertices(8, sqrt(2)*sqrt(2+sqrt(2)), 0);
 
   perl::Object p(perl::ObjectType::construct<double>("Polytope"));
-        p.set_description() << "Johnson solid J23: Gyroelongated square cupola" << endl;
-        Matrix<double> X = (W.minor(All, sequence(0,3)) | same_element_vector<double>(height,8)) / V;
-        
-        IncidenceMatrix<> VIF(26,20);
-        VIF[0] = triangle(0,1,9);
-        VIF[1] = triangle(1,2,8);
-        VIF[2] = triangle(2,3,15);
-        VIF[3] = triangle(3,4,14);
-        VIF[4] = triangle(4,5,13);
-        VIF[5] = triangle(5,6,12);
-        VIF[6] = triangle(6,7,11);
-        VIF[7] = triangle(0,7,10);
-        VIF[8] = triangle(1,8,9);
-        VIF[9] = triangle(0,9,10);
-        VIF[10] = triangle(7,10,11);
-        VIF[11] = triangle(6,11,12);
-        VIF[12] = triangle(5,12,13);
-        VIF[13] = triangle(4,13,14);
-        VIF[14] = triangle(3,14,15);
-        VIF[15] = triangle(2,8,15);
-        VIF[16] = octagon(0,1,2,3,4,5,6,7);
-        VIF[17] = square(9,10,16,17);
-        VIF[18] = triangle(8,9,16);
-        VIF[19] = square(13,14,18,19);
-        VIF[20] = square(8,15,16,18);
-        VIF[21] = triangle(10,11,17);
-        VIF[22] = square(11,12,17,19);
-        VIF[23] = triangle(14,15,18);
-        VIF[24] = triangle(12,13,19);
-        VIF[25] = square(16,17,18,19);
+  Matrix<double> X = (W.minor(All, sequence(0,3)) | same_element_vector<double>(height,8)) / V;
 
-        p.take("VERTICES") << X;
-        p.take("VERTICES_IN_FACETS") << VIF;
-        assign_common_props<double>(p);
+  p.set_description() << "Johnson solid J23: Gyroelongated square cupola" << endl;
+  IncidenceMatrix<> VIF(26,20);
+  VIF[0] = triangle(0,1,9);
+  VIF[1] = triangle(1,2,8);
+  VIF[2] = triangle(2,3,15);
+  VIF[3] = triangle(3,4,14);
+  VIF[4] = triangle(4,5,13);
+  VIF[5] = triangle(5,6,12);
+  VIF[6] = triangle(6,7,11);
+  VIF[7] = triangle(0,7,10);
+  VIF[8] = triangle(1,8,9);
+  VIF[9] = triangle(0,9,10);
+  VIF[10] = triangle(7,10,11);
+  VIF[11] = triangle(6,11,12);
+  VIF[12] = triangle(5,12,13);
+  VIF[13] = triangle(4,13,14);
+  VIF[14] = triangle(3,14,15);
+  VIF[15] = triangle(2,8,15);
+  VIF[16] = octagon(0,1,2,3,4,5,6,7);
+  VIF[17] = square(9,10,16,17);
+  VIF[18] = triangle(8,9,16);
+  VIF[19] = square(13,14,18,19);
+  VIF[20] = square(8,15,16,18);
+  VIF[21] = triangle(10,11,17);
+  VIF[22] = square(11,12,17,19);
+  VIF[23] = triangle(14,15,18);
+  VIF[24] = triangle(12,13,19);
+  VIF[25] = square(16,17,18,19);
+
+  p.take("VERTICES") << X;
+  p.take("VERTICES_IN_FACETS") << VIF;
+  p = centralize<double>(p);
 
   return p;
 }
@@ -1095,11 +1065,9 @@ perl::Object gyroelongated_square_cupola()
 //FIXME: coordinates #830
 perl::Object gyroelongated_pentagonal_cupola()
 {
-   perl::Object p = pentagonal_cupola();
-   Vector<double> normal(4);
-   normal[0]=(-5-3*sqrt(5))/4; normal[2]=(1+sqrt(5))/2; normal[3]=1;
-   p = gyroelongate(p,normal);
-  
+  perl::Object p = pentagonal_cupola();
+  p = gyroelongate(p,decagon(2,4,5,7,8,10,11,12,13,14));
+
   IncidenceMatrix<> VIF(32,25);
   VIF[0] = decagon(15,16,17,18,19,20,21,22,23,24);
   VIF[1] = triangle(5,17,18);
@@ -1133,9 +1101,9 @@ perl::Object gyroelongated_pentagonal_cupola()
   VIF[29] = triangle(5,7,18);
   VIF[30] = triangle(7,18,21);
   VIF[31] = square(0,3,5,7);
-  p.set_description() << "Johnson solid J24: Gyroelongated pentagonal cupola" << endl;
   p.take("VERTICES_IN_FACETS") << VIF;
-  assign_common_props<double>(p);
+  p = centralize<double>(p);
+  p.set_description() << "Johnson solid J24: Gyroelongated pentagonal cupola" << endl;
 
   return p;
 }
@@ -1144,9 +1112,7 @@ perl::Object gyroelongated_pentagonal_cupola()
 perl::Object gyroelongated_pentagonal_rotunda()
 {
    perl::Object p = pentagonal_rotunda();
-   Vector<double> normal(4);
-   normal[2]=(1+sqrt(5))/2; normal[3]=1;
-   p = gyroelongate(p,normal);
+   p = gyroelongate(p,decagon(7,9,10,12,13,15,16,17,18,19));
 
    IncidenceMatrix<> VIF(37,30);
    VIF[0] = decagon(20,21,22,23,24,25,26,27,28,29);
@@ -1187,9 +1153,9 @@ perl::Object gyroelongated_pentagonal_rotunda()
    VIF[35] = triangle(12,23,26);
    VIF[36] = pentagon(1,3,8,10,12);
 
-   p.set_description() << "Johnson solid J25: Gyroelongated pentagonal rotunda" << endl;
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<QE>(p);
+   p = centralize<QE>(p);
+   p.set_description() << "Johnson solid J25: Gyroelongated pentagonal rotunda" << endl;
 
    return p;
 }
@@ -1204,9 +1170,9 @@ perl::Object gyrobifastigium(){
   Matrix<QE> V = ((create_square_vertices<QE>() | zero_vector<QE>(4)) / (same_element_vector<QE>(QE(1,0,0),4) | ((unit_matrix<QE>(2) | h) / (-unit_matrix<QE>(2) | h))));
 
   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-        p.set_description() << "Johnson solid J26: Gyrobifastigium" << endl;
         p.take("VERTICES") << V;
-        assign_common_props<QE>(p);
+        p = centralize<QE>(p);
+        p.set_description() << "Johnson solid J26: Gyrobifastigium" << endl;
 
   return p;
 }
@@ -1243,52 +1209,49 @@ perl::Object triangular_orthobicupola()
   Matrix<QE> V=( hexagon_V / (triangle_V + repeat_row(6*trans,3)) / (triangle_V - repeat_row(6*trans,3)));
 
   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.set_description() << "Johnson solid J27: Triangular orthobicupola" << endl;
   p.take("VERTICES") << V;
-  assign_common_props<QE>(p);
+  p = centralize<QE>(p);
+  p.set_description() << "Johnson solid J27: Triangular orthobicupola" << endl;
 
   return p;
 }
 
 perl::Object square_orthobicupola()
 {
-        Matrix<QE> V = square_cupola().give("VERTICES");
-        V /= (ones_vector<QE>(4) | (-1)*V.minor(sequence(8,4),sequence(1,3)));
+  Matrix<QE> V = square_cupola_impl(false).give("VERTICES");
+  V /= (ones_vector<QE>(4) | (-1)*V.minor(sequence(8,4),sequence(1,3)));
 
   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-        p.set_description() << "Johnson solid J28: Square orthobicupola" << endl;
-        p.take("VERTICES") << V;
-        assign_common_props<QE>(p);
+  p.take("VERTICES") << V;
+  p = centralize<QE>(p);
+  p.set_description() << "Johnson solid J28: Square orthobicupola" << endl;
 
   return p;
 }
 
 perl::Object square_gyrobicupola()
-{	
-	QE rot(0,Rational(1,2),2);
-	Matrix<QE> R(3,3);
-	R(0,0)=R(1,0)=R(1,1)=rot;
-	R(0,1)=-rot;
-	R(2,2)=1;
-	Matrix<QE> V = square_cupola().give("VERTICES");
-	V /= (ones_vector<QE>(4) | (-1)*(V.minor(sequence(8,4),sequence(1,3))*R));
+{
+  QE rot(0,Rational(1,2),2);
+  Matrix<QE> R(3,3);
+  R(0,0)=R(1,0)=R(1,1)=rot;
+  R(0,1)=-rot;
+  R(2,2)=1;
+  Matrix<QE> V = square_cupola_impl(false).give("VERTICES");
+  V /= (ones_vector<QE>(4) | (-1)*(V.minor(sequence(8,4),sequence(1,3))*R));
 
   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-        p.set_description() << "Johnson solid J29: Square gyrobicupola" << endl;
-        p.take("VERTICES") << V;
-        assign_common_props<QE>(p);
+  p.take("VERTICES") << V;
+  p = centralize<QE>(p);
+  p.set_description() << "Johnson solid J29: Square gyrobicupola" << endl;
 
   return p;
 }
 
-perl::Object pentagonal_orthobicupola()
-{
+perl::Object pentagonal_orthobicupola() {
    perl::Object p = pentagonal_cupola();
-   Vector<double> normal(4);
-   normal[0]=(-5-3*sqrt(5))/4; normal[2]=(1+sqrt(5))/2; normal[3]=1;
-   p = augment(p,normal);   
-   p = rotate_facet(p,2,M_PI/5);
-   
+   p = augment(p,decagon(2,4,5,7,8,10,11,12,13,14));
+   p = rotate_facet(p,pentagon(0,1,3,6,9),M_PI/5);
+
    IncidenceMatrix<> VIF(22,20);
    VIF[0] = square(0,2,10,14);
    VIF[1] = square(0,2,15,16);
@@ -1314,15 +1277,15 @@ perl::Object pentagonal_orthobicupola()
    VIF[21] = square(3,6,10,11);
 
    p.take("VERTICES_IN_FACETS")<<VIF;
-   p.set_description() << "Johnson solid J30: Pentagonal orthobicupola" << endl;
-   assign_common_props<double>(p);
+   p = centralize<double>(p);
 
+   p.set_description() << "Johnson solid J30: Pentagonal orthobicupola" << endl;
    return p;
 }
 
 perl::Object pentagonal_gyrobicupola(){
    perl::Object p = pentagonal_pyramid();
-   p = CallPolymakeFunction("minkowski_sum",1,p,-1,p);   
+   p = CallPolymakeFunction("minkowski_sum",1,p,-1,p);
 
    p.set_description() << "Johnson solid J31: Pentagonal gyrobicupola" << endl;
 
@@ -1333,10 +1296,8 @@ perl::Object pentagonal_gyrobicupola(){
 perl::Object pentagonal_orthocupolarotunda()
 {
    perl::Object p = pentagonal_rotunda();
-   Vector<double> normal(4);
-   normal[2]=(1+sqrt(5))/2; normal[3]=1;
-   p = augment(p,normal);
-  
+   p = augment(p,decagon(7,9,10,12,13,15,16,17,18,19));
+
    IncidenceMatrix<> VIF(27,25);
    VIF[0] = pentagon(4,8,14,16,17);
    VIF[1] = triangle(1,4,8);
@@ -1366,9 +1327,9 @@ perl::Object pentagonal_orthocupolarotunda()
    VIF[25] = square(12,16,23,24);
    VIF[26] = pentagon(1,3,8,10,12);
 
-   p.set_description() << "Johnson solid J32: Pentagonal orthocupolarotunda" << endl;
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<double>(p);
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J32: Pentagonal orthocupolarotunda" << endl;
 
    return p;
 }
@@ -1377,8 +1338,8 @@ perl::Object pentagonal_orthocupolarotunda()
 perl::Object pentagonal_gyrocupolarotunda()
 {
    perl::Object p = pentagonal_orthocupolarotunda();
-   p = rotate_facet(p,18,M_PI/5);
-   
+   p = rotate_facet(p,sequence(20,5),M_PI/5);
+
    IncidenceMatrix<> VIF(27,25);
    VIF[0] = pentagon(4,8,14,16,17);
    VIF[1] = triangle(1,4,8);
@@ -1408,9 +1369,9 @@ perl::Object pentagonal_gyrocupolarotunda()
    VIF[25] = square(10,12,23,24);
    VIF[26] = pentagon(1,3,8,10,12);
 
-   p.set_description() << "Johnson solid J33: Pentagonal gyrocupolarotunda" << endl;
    p.take("VERTICES_IN_FACETS")<<VIF;
-   assign_common_props<double>(p);
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J33: Pentagonal gyrocupolarotunda" << endl;
 
    return p;
 }
@@ -1422,8 +1383,8 @@ perl::Object pentagonal_orthobirotunda()
    Vector<double> normal(4);
    normal[2]=(1+sqrt(5))/2;
    normal[3]=1;
-   p = gyrotunda(p,normal);
-   
+   p = gyrotunda(p,decagon(7,9,10,12,13,15,16,17,18,19));
+
    IncidenceMatrix<> VIF(32,30);
    VIF[0] = pentagon(4,8,14,16,17);
    VIF[1] = triangle(1,4,8);
@@ -1458,9 +1419,9 @@ perl::Object pentagonal_orthobirotunda()
    VIF[30] = pentagon(10,12,22,23,28);
    VIF[31] = pentagon(1,3,8,10,12);
 
-   p.set_description() << "Johnson solid J34: Pentagonal orthobirotunda" << endl;
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<double>(p);
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J34: Pentagonal orthobirotunda" << endl;
 
    return p;
 }
@@ -1469,9 +1430,9 @@ perl::Object pentagonal_orthobirotunda()
 perl::Object elongated_triangular_orthobicupola()
 {
    perl::Object p = elongated_triangular_cupola();
-   p = augment(p,7);
-   p = rotate_facet(p,6,M_PI/3);
-   
+   p = augment(p,hexagon(9,10,11,12,13,14));
+   p = rotate_facet(p,triangle(15,16,17),M_PI/3);
+
    IncidenceMatrix<> VIF(20,18);
    VIF[0] = square(1,2,6,8);
    VIF[1] = triangle(1,5,6);
@@ -1494,9 +1455,9 @@ perl::Object elongated_triangular_orthobicupola()
    VIF[18] = square(0,2,4,7);
    VIF[19] = square(0,1,3,5);
 
-   p.set_description() << "Johnson solid J35: Elongated triangular orthobicupola" << endl;
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<double>(p);
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J35: Elongated triangular orthobicupola" << endl;
 
    return p;
 }
@@ -1505,7 +1466,7 @@ perl::Object elongated_triangular_orthobicupola()
 perl::Object elongated_triangular_gyrobicupola()
 {
    perl::Object p = elongated_triangular_cupola();
-   p = augment(p,7);
+   p = augment(p,sequence(9,6));
 
    IncidenceMatrix<> VIF(20,18);
    VIF[0] = square(1,2,6,8);
@@ -1529,34 +1490,34 @@ perl::Object elongated_triangular_gyrobicupola()
    VIF[18] = square(0,2,4,7);
    VIF[19] = square(0,1,3,5);
 
-   p.set_description() << "Johnson solid J36: Elongated triangular gyrobicupola" << endl;
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<double>(p);
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J36: Elongated triangular gyrobicupola" << endl;
 
   return p;
 }
-  
+
 perl::Object elongated_square_gyrobicupola()
 {
-  Matrix<QE> V = elongated_square_cupola().give("VERTICES");
-	Matrix<QE> W = square_gyrobicupola().give("VERTICES");
-	V /= W.minor(sequence(12,4),All);
-	V(20,3)=V(21,3)=V(22,3)=V(23,3)= V(20,3)-2;
+  Matrix<QE> V = elongated_square_cupola_impl(false).give("VERTICES");
+  Matrix<QE> W = square_gyrobicupola().give("VERTICES");
+  V /= W.minor(sequence(12,4),All);
+  V(20,3)=V(21,3)=V(22,3)=V(23,3)= V(20,3)-2;
 
   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-	p.set_description() << "Johnson solid J37: Elongated square gyrobicupola" << endl;  
-	p.take("VERTICES") << V;
-	assign_common_props<QE>(p);
+  p.take("VERTICES") << V;
+  p = centralize<QE>(p);
+  p.set_description() << "Johnson solid J37: Elongated square gyrobicupola" << endl;
 
-  return p;  
+  return p;
 }
 
 //FIXME: coordinates #830
 perl::Object elongated_pentagonal_orthobicupola()
 {
    perl::Object p = elongated_pentagonal_cupola();
-   p = augment(p,0);
-   p = rotate_facet(p,4,M_PI/5);
+   p = augment(p,sequence(15,10));
+   p = rotate_facet(p,sequence(25,5),M_PI/5);
 
    IncidenceMatrix<> VIF(32,30);
    VIF[0] = square(17,18,27,28);
@@ -1592,10 +1553,10 @@ perl::Object elongated_pentagonal_orthobicupola()
    VIF[30] = square(7,11,18,21);
    VIF[31] = square(5,7,17,18);
 
-   p.set_description() << "Johnson solid J38: Elongated pentagonal orthobicupola" << endl;
     p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<double>(p);
-  
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J38: Elongated pentagonal orthobicupola" << endl;
+
    return p;
 }
 
@@ -1603,7 +1564,7 @@ perl::Object elongated_pentagonal_orthobicupola()
 perl::Object elongated_pentagonal_gyrobicupola()
 {
    perl::Object p = elongated_pentagonal_cupola();
-   p = augment(p,0);
+   p = augment(p,sequence(15,10));
 
    IncidenceMatrix<> VIF(32,30);
    VIF[0] = square(18,21,27,28);
@@ -1639,20 +1600,20 @@ perl::Object elongated_pentagonal_gyrobicupola()
    VIF[30] = square(7,11,18,21);
    VIF[31] = square(5,7,17,18);
 
-   p.set_description() << "Johnson solid J39: Elongated pentagonal gyrobicupola" << endl;
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<double>(p);
-  
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J39: Elongated pentagonal gyrobicupola" << endl;
+
    return p;
 }
-      
+
 //FIXME: coordinates #830
 perl::Object elongated_pentagonal_orthocupolarotunda()
-{ 
+{
    perl::Object p = elongated_pentagonal_rotunda();
-   p = augment(p,0);
-   p = rotate_facet(p,7,M_PI/5);
-   
+   p = augment(p,sequence(20,10));
+   p = rotate_facet(p,sequence(30,5),M_PI/5);
+
    IncidenceMatrix<> VIF(37,35);
    VIF[0] = square(23,26,31,32);
    VIF[1] = triangle(22,23,31);
@@ -1692,19 +1653,19 @@ perl::Object elongated_pentagonal_orthocupolarotunda()
    VIF[35] = square(12,16,23,26);
    VIF[36] = square(10,12,22,23);
 
-   p.set_description() << "Johnson solid J40: Elongated pentagonal orthocupolarotunda" << endl;
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<QE>(p);
-  
+   p = centralize<QE>(p);
+   p.set_description() << "Johnson solid J40: Elongated pentagonal orthocupolarotunda" << endl;
+
    return p;
 }
-    
+
       //FIXME: coordinates #830
 perl::Object elongated_pentagonal_gyrocupolarotunda()
 {
    perl::Object p = elongated_pentagonal_rotunda();
-   p = augment(p,0);
-   
+   p = augment(p,sequence(20,10));
+
    IncidenceMatrix<> VIF(37,35);
    VIF[0] = square(22,23,30,31);
    VIF[1] = triangle(23,26,31);
@@ -1744,19 +1705,19 @@ perl::Object elongated_pentagonal_gyrocupolarotunda()
    VIF[35] = square(12,16,23,26);
    VIF[36] = square(10,12,22,23);
 
-   p.set_description() << "Johnson solid J41: Elongated pentagonal gyrocupolarotunda" << endl;
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<double>(p);
-  
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J41: Elongated pentagonal gyrocupolarotunda" << endl;
+
    return p;
 }
-    
+
 //FIXME: coordinates #830
 perl::Object elongated_pentagonal_orthobirotunda()
 {
    perl::Object p = elongated_pentagonal_rotunda();
-   p = rotunda(p,0);
-   
+   p = rotunda(p,sequence(20,10));
+
    IncidenceMatrix<> VIF(42,40);
    VIF[0] = pentagon(22,23,30,31,35);
    VIF[1] = triangle(23,26,31);
@@ -1800,20 +1761,20 @@ perl::Object elongated_pentagonal_orthobirotunda()
    VIF[39] = pentagon(1,3,8,10,12);
    VIF[40] = square(12,16,23,26);
    VIF[41] = square(10,12,22,23);
- 
-   p.set_description() << "Johnson solid J42: Elongated pentagonal orthobirotunda" << endl;
+
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<double>(p);
-  
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J42: Elongated pentagonal orthobirotunda" << endl;
+
    return p;
 }
-    
+
       //FIXME: coordinates #830
 perl::Object elongated_pentagonal_gyrobirotunda()
-{   
+{
    perl::Object p = elongated_pentagonal_rotunda();
-   p = gyrotunda(p,0);
-    
+   p = gyrotunda(p,sequence(20,10));
+
    IncidenceMatrix<> VIF(42,40);
    VIF[0] = pentagon(23,26,30,31,36);
    VIF[1] = triangle(22,23,30);
@@ -1858,10 +1819,10 @@ perl::Object elongated_pentagonal_gyrobirotunda()
    VIF[40] = square(12,16,23,26);
    VIF[41] = square(10,12,22,23);
 
-   p.set_description() << "Johnson solid J43: Elongated pentagonal gyrobirotunda" << endl;
    p.take("VERTICES_IN_FACETS") << VIF;
-  assign_common_props<double>(p);
-  
+  p = centralize<double>(p);
+   p.set_description() << "Johnson solid J43: Elongated pentagonal gyrobirotunda" << endl;
+
   return p;
 }
 
@@ -1869,8 +1830,8 @@ perl::Object elongated_pentagonal_gyrobirotunda()
 perl::Object gyroelongated_triangular_bicupola()
 {
    perl::Object p = gyroelongated_triangular_cupola();
-   p = augment(p,12);
-   
+   p = augment(p,sequence(9,6));
+
    IncidenceMatrix<> VIF(26,18);
    VIF[0] = square(1,2,6,8);
    VIF[1] = triangle(1,5,6);
@@ -1899,10 +1860,10 @@ perl::Object gyroelongated_triangular_bicupola()
    VIF[24] = square(0,2,4,7);
    VIF[25] = square(0,1,3,5);
 
-   p.set_description() << "Johnson solid J44: Gyroelongated triangular bicupola" << endl;
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<double>(p);
-  
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J44: Gyroelongated triangular bicupola" << endl;
+
    return p;
 }
 
@@ -1910,8 +1871,8 @@ perl::Object gyroelongated_triangular_bicupola()
 perl::Object gyroelongated_square_bicupola()
 {
    perl::Object p = gyroelongated_square_cupola();
-   p = augment(p,16);
-        
+   p = augment(p,sequence(0,8));
+
    IncidenceMatrix<> VIF(34,24);
    VIF[0] = square(9,10,16,17);
    VIF[1] = triangle(1,8,9);
@@ -1948,19 +1909,19 @@ perl::Object gyroelongated_square_bicupola()
    VIF[32] = triangle(0,9,10);
    VIF[33] = square(0,7,20,21);
 
-   p.set_description() << "Johnson solid J45: Gyroelongated square bicupola" << endl;  
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<double>(p);
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J45: Gyroelongated square bicupola" << endl;
 
-   return p;  
+   return p;
 }
 
       //FIXME: coordinates #830
 perl::Object gyroelongated_pentagonal_bicupola()
 {
    perl::Object p = gyroelongated_pentagonal_cupola();
-   p = augment(p,0);
-      
+   p = augment(p,sequence(15,10));
+
    IncidenceMatrix<> VIF(42,30);
    VIF[0] = square(18,21,25,26);
    VIF[1] = triangle(17,18,25);
@@ -2005,17 +1966,17 @@ perl::Object gyroelongated_pentagonal_bicupola()
    VIF[40] = triangle(7,18,21);
    VIF[41] = square(0,3,5,7);
 
-    p.set_description() << "Johnson solid J46: Gyroelongated pentagonal bicupola" << endl;
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<double>(p);
-  
+   p = centralize<double>(p);
+    p.set_description() << "Johnson solid J46: Gyroelongated pentagonal bicupola" << endl;
+
    return p;
 }
       //FIXME: coordinates #830
 perl::Object gyroelongated_pentagonal_cupolarotunda()
 {
    perl::Object p = gyroelongated_pentagonal_rotunda();
-   p = augment(p,0);
+   p = augment(p,sequence(20,10));
 
    IncidenceMatrix<> VIF(47,35);
    VIF[0] = square(23,26,30,31);
@@ -2067,9 +2028,9 @@ perl::Object gyroelongated_pentagonal_cupolarotunda()
    VIF[46] = pentagon(1,3,8,10,12);
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p.set_description() << "Johnson solid J47: Gyroelongated pentagonal cupolarotunda" << endl; 
-   assign_common_props<double>(p);
-  
+   p = centralize<double>(p);
+
+   p.set_description() << "Johnson solid J47: Gyroelongated pentagonal cupolarotunda" << endl;
    return p;
 }
 
@@ -2077,8 +2038,8 @@ perl::Object gyroelongated_pentagonal_cupolarotunda()
 perl::Object gyroelongated_pentagonal_birotunda()
 {
    perl::Object p = gyroelongated_pentagonal_rotunda();
-   p = rotunda(p,0);
-   
+   p = rotunda(p,sequence(20,10));
+
    IncidenceMatrix<> VIF(52,40);
    VIF[0] = pentagon(23,26,30,31,35);
    VIF[1] = triangle(10,22,23);
@@ -2133,13 +2094,13 @@ perl::Object gyroelongated_pentagonal_birotunda()
    VIF[50] = triangle(12,23,26);
    VIF[51] = pentagon(1,3,8,10,12);
 
-   p.set_description() << "Johnson solid J48: Gyroelongated pentagonal birotunda" << endl; 
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<double>(p);
-  
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J48: Gyroelongated pentagonal birotunda" << endl;
+
    return p;
 }
-      
+
 //FIXME: coordinates 830. this could be done exactly if QE was more powerful
 perl::Object augmented_triangular_prism(){
 
@@ -2169,16 +2130,16 @@ perl::Object augmented_triangular_prism(){
 
 
   perl::Object p(perl::ObjectType::construct<double>("Polytope"));
-        p.set_description() << "Johnson solid J49: augmented triangular prism" << endl;
         p.take("VERTICES") << V;
         p.take("VERTICES_IN_FACETS") << VIF;
-        assign_common_props<QE>(p);
+        p.set_description() << "Johnson solid J49: augmented triangular prism" << endl;
+        p = centralize<QE>(p);
 
   return p;
 }
 
 perl::Object biaugmented_triangular_prism(){
-   
+
   QE height(0,1,3);
   Matrix<QE> ledge(2,4);
   ledge.col(0).fill(1);
@@ -2187,16 +2148,17 @@ perl::Object biaugmented_triangular_prism(){
   ledge[1][1]=-1;
 
   Matrix<QE> V = ((create_square_vertices<QE>() | zero_vector<QE>(4)) / ledge );
-  
+
   perl::Object p(perl::ObjectType::construct<double>("Polytope"));
   p.take("VERTICES") << V;
-        
-  p = augment(p,0);
-  p = augment(p,6);
-  
-  p.set_description() << "Johnson solid J50: biaugmented triangular prism" << endl;
+
+  p = augment(p,square(0,1,4,5));
+
+  p = augment(p,sequence(0,4));
+
 
   IncidenceMatrix<> VIF(11,8);
+  p.set_description() << "Johnson solid J50: biaugmented triangular prism" << endl;
   VIF[0] = triangle(1,4,6);
   VIF[1] = triangle(4,5,6);
   VIF[2] = triangle(0,2,7);
@@ -2210,22 +2172,22 @@ perl::Object biaugmented_triangular_prism(){
   VIF[10] = square(2,3,4,5);
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  assign_common_props<double>(p);
+  p = centralize<double>(p);
 
   return p;
 }
-      
+
 perl::Object triaugmented_triangular_prism(){
 
   perl::Object p = create_prism(3);
-        
-  p = augment(p,0);
-  p = augment(p,6);
-  p = augment(p,10);
-  
-  p.set_description() << "Johnson solid J51: triaugmented triangular prism" << endl;
+
+  p = augment(p,square(1,2,4,5));
+  p = augment(p,square(0,2,3,5));
+  p = augment(p,square(0,1,3,4));
+
 
   IncidenceMatrix<> VIF(14,9);
+  p.set_description() << "Johnson solid J51: triaugmented triangular prism" << endl;
   VIF[0] = triangle(0,1,8);
   VIF[1] = triangle(0,2,7);
   VIF[2] = triangle(0,1,2);
@@ -2243,20 +2205,20 @@ perl::Object triaugmented_triangular_prism(){
 
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  assign_common_props<QE>(p);
+  p = centralize<QE>(p);
 
   return p;
 }
-      
+
 perl::Object augmented_pentagonal_prism(){
 
   perl::Object p = create_prism(5);
-        
-  p = augment(p,1);
-  
-  p.set_description() << "Johnson solid J52: augmented pentagonal prism" << endl;
+
+  p = augment(p,square(2,3,7,8));
+
 
   IncidenceMatrix<> VIF(10,11);
+  p.set_description() << "Johnson solid J52: augmented pentagonal prism" << endl;
   VIF[0] = pentagon(0,1,2,3,4);
   VIF[1] = triangle(2,3,10);
   VIF[2] = triangle(3,8,10);
@@ -2270,21 +2232,21 @@ perl::Object augmented_pentagonal_prism(){
 
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  assign_common_props<double>(p);
+  p = centralize<double>(p);
 
   return p;
 }
-      
+
 perl::Object biaugmented_pentagonal_prism(){
 
   perl::Object p = create_prism(5);
-        
-  p = augment(p,1);
-  p = augment(p,8);
-  
-  p.set_description() << "Johnson solid J53: biaugmented pentagonal prism" << endl;
+
+  p = augment(p,square(2,3,7,8));
+  p = augment(p,square(0,4,5,9));
+
 
   IncidenceMatrix<> VIF(13,12);
+  p.set_description() << "Johnson solid J53: biaugmented pentagonal prism" << endl;
   VIF[0] = square(0,1,5,6);
   VIF[1] = pentagon(5,6,7,8,9);
   VIF[2] = square(1,2,6,7);
@@ -2300,21 +2262,21 @@ perl::Object biaugmented_pentagonal_prism(){
   VIF[12] = triangle(0,5,11);
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  assign_common_props<double>(p);
+  p = centralize<double>(p);
 
   return p;
 }
-      
-      
+
+
 perl::Object augmented_hexagonal_prism(){
 
   perl::Object p = create_prism(6);
-        
-  p = augment(p,1);
-  
-  p.set_description() << "Johnson solid J54: augmented hexagonal prism" << endl;
+
+  p = augment(p,square(3,4,9,10));
+
 
   IncidenceMatrix<> VIF(11,13);
+  p.set_description() << "Johnson solid J54: augmented hexagonal prism" << endl;
   VIF[0] = hexagon(0,1,2,3,4,5);
   VIF[1] = triangle(3,4,12);
   VIF[2] = triangle(3,9,12);
@@ -2328,21 +2290,20 @@ perl::Object augmented_hexagonal_prism(){
   VIF[10] = square(0,1,6,7);
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  assign_common_props<double>(p);
+  p = centralize<double>(p);
 
   return p;
 }
-      
+
 perl::Object parabiaugmented_hexagonal_prism(){
 
-  perl::Object p = create_prism(6);
-        
-  p = augment(p,1);
-  p = augment(p,10);
-  
-  p.set_description() << "Johnson solid J55: parabiaugmented hexagonal prism" << endl;
+  perl::Object p = augmented_hexagonal_prism();
+
+  p = augment(p,square(0,1,6,7));
+
 
   IncidenceMatrix<> VIF(14,14);
+  p.set_description() << "Johnson solid J55: parabiaugmented hexagonal prism" << endl;
   VIF[0] = square(0,5,6,11);
   VIF[1] = hexagon(6,7,8,9,10,11);
   VIF[2] = square(1,2,7,8);
@@ -2357,24 +2318,23 @@ perl::Object parabiaugmented_hexagonal_prism(){
   VIF[11] = triangle(0,1,13);
   VIF[12] = triangle(6,7,13);
   VIF[13] = triangle(0,6,13);
-  
+
   p.take("VERTICES_IN_FACETS") << VIF;
-  assign_common_props<double>(p);
+  p = centralize<double>(p);
 
   return p;
-  
+
 }
 
 perl::Object metabiaugmented_hexagonal_prism(){
 
-  perl::Object p = create_prism(6);
-        
-  p = augment(p,1);
-  p = augment(p,7);
-  
-  p.set_description() << "Johnson solid J56: metabiaugmented hexagonal prism" << endl;
+  perl::Object p = augmented_hexagonal_prism();
+
+  p = augment(p,square(1,2,7,8));
+
 
   IncidenceMatrix<> VIF(14,14);
+  p.set_description() << "Johnson solid J56: metabiaugmented hexagonal prism" << endl;
   VIF[0] = hexagon(0,1,2,3,4,5);
   VIF[1] = triangle(1,2,13);
   VIF[2] = square(2,3,8,9);
@@ -2390,24 +2350,22 @@ perl::Object metabiaugmented_hexagonal_prism(){
   VIF[12] = square(0,5,6,11);
   VIF[13] = square(0,1,6,7);
 
-  
+
   p.take("VERTICES_IN_FACETS") << VIF;
-  assign_common_props<double>(p);
+  p = centralize<double>(p);
 
   return p;
 }
 
 perl::Object triaugmented_hexagonal_prism(){
 
-  perl::Object p = create_prism(6);
-        
-  p = augment(p,1);
-  p = augment(p,7);
-  p = augment(p,12);
-  
-  p.set_description() << "Johnson solid J57: triaugmented hexagonal prism" << endl;
+  perl::Object p = metabiaugmented_hexagonal_prism();
+
+  p = augment(p,square(0,5,6,11));
+
 
   IncidenceMatrix<> VIF(17,15);
+  p.set_description() << "Johnson solid J57: triaugmented hexagonal prism" << endl;
   VIF[0] = square(0,1,6,7);
   VIF[1] = hexagon(6,7,8,9,10,11);
   VIF[2] = triangle(1,7,13);
@@ -2427,21 +2385,19 @@ perl::Object triaugmented_hexagonal_prism(){
   VIF[16] = triangle(0,6,14);
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  assign_common_props<double>(p);
+  p = centralize<double>(p);
 
   return p;
 }
-     
+
 perl::Object augmented_dodecahedron(){
 
   perl::Object p = CallPolymakeFunction("dodecahedron");
-  Vector<double> normal(4);
-  normal[0]=(2+sqrt(5))/2; normal[1]=-(1+sqrt(5))/2; normal[2]=-1;   
-  p = augment(p,normal);
-  
-  p.set_description() << "Johnson solid J58: augmented dodecahedron" << endl;
+  p = augment(p,pentagon(0,2,4,8,9));
+
 
   IncidenceMatrix<> VIF(16,21);
+  p.set_description() << "Johnson solid J58: augmented dodecahedron" << endl;
   VIF[0] = pentagon(8,9,13,16,18);
   VIF[1] = pentagon(2,5,8,12,13);
   VIF[2] = pentagon(0,1,2,3,5);
@@ -2458,22 +2414,22 @@ perl::Object augmented_dodecahedron(){
   VIF[13] = triangle(4,9,20);
   VIF[14] = triangle(2,8,20);
   VIF[15] = triangle(8,9,20);
-    
+
   p.take("VERTICES_IN_FACETS") << VIF;
-  assign_common_props<double>(p);
+  p = centralize<double>(p);
 
   return p;
 }
-      
+
 perl::Object parabiaugmented_dodecahedron(){
 
   perl::Object p = augmented_dodecahedron();
-        
-  p = augment(p,6);
-  
-  p.set_description() << "Johnson solid J59: parabiaugmented dodecahedron" << endl;
+
+  p = augment(p,pentagon(10,11,15,17,19));
+
 
   IncidenceMatrix<> VIF(20,22);
+  p.set_description() << "Johnson solid J59: parabiaugmented dodecahedron" << endl;
   VIF[0] = pentagon(8,9,13,16,18);
   VIF[1] = pentagon(2,5,8,12,13);
   VIF[2] = pentagon(0,1,2,3,5);
@@ -2496,20 +2452,20 @@ perl::Object parabiaugmented_dodecahedron(){
   VIF[19] = triangle(8,9,20);
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  assign_common_props<double>(p);
+  p = centralize<double>(p);
 
   return p;
 }
-      
+
 perl::Object metabiaugmented_dodecahedron(){
 
   perl::Object p = augmented_dodecahedron();
-        
-  p = augment(p,3);
-  
-  p.set_description() << "Johnson solid J60: metabiaugmented dodecahedron" << endl;
+
+  p = augment(p,pentagon(12,13,15,18,19));
+
 
   IncidenceMatrix<> VIF(20,22);
+  p.set_description() << "Johnson solid J60: metabiaugmented dodecahedron" << endl;
   VIF[0] = pentagon(8,9,13,16,18);
   VIF[1] = pentagon(2,5,8,12,13);
   VIF[2] = pentagon(0,1,2,3,5);
@@ -2530,22 +2486,22 @@ perl::Object metabiaugmented_dodecahedron(){
   VIF[17] = triangle(4,9,20);
   VIF[18] = triangle(2,8,20);
   VIF[19] = triangle(8,9,20);
-  
+
   p.take("VERTICES_IN_FACETS") << VIF;
-  assign_common_props<double>(p);
+  p = centralize<double>(p);
 
   return p;
 }
-      
+
 perl::Object triaugmented_dodecahedron(){
 
   perl::Object p = metabiaugmented_dodecahedron();
 
-  p = augment(p,9);
-  
-  p.set_description() << "Johnson solid J61: triaugmented dodecahedron" << endl;
+  p = augment(p,pentagon(1,3,6,10,11));
+
 
   IncidenceMatrix<> VIF(24,23);
+  p.set_description() << "Johnson solid J61: triaugmented dodecahedron" << endl;
   VIF[0] = pentagon(8,9,13,16,18);
   VIF[1] = pentagon(2,5,8,12,13);
   VIF[2] = pentagon(0,1,2,3,5);
@@ -2572,11 +2528,11 @@ perl::Object triaugmented_dodecahedron(){
   VIF[23] = triangle(8,9,20);
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  assign_common_props<double>(p);
+  p = centralize<double>(p);
 
   return p;
 }
-    
+
 perl::Object metabidiminished_icosahedron(){
 
   perl::Object ico = CallPolymakeFunction("icosahedron");
@@ -2584,40 +2540,38 @@ perl::Object metabidiminished_icosahedron(){
   Matrix<QE> V = ico.give("VERTICES");
 
   V = ((V.minor(sequence(1,5),All)) / (V.minor(sequence(7,5),All)));
-  
+
   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
   p.take("VERTICES") << V;
-  p.set_description() << "Johnson solid J62: metabidiminished icosahedron" << endl;
-  assign_common_props<QE>(p);
+  p = centralize<QE>(p);
 
+  p.set_description() << "Johnson solid J62: metabidiminished icosahedron" << endl;
   return p;
 }
-      
+
 perl::Object tridiminished_icosahedron(){
 
    perl::Object dimico = metabidiminished_icosahedron();
 
   Matrix<QE> V = dimico.give("VERTICES");
   V = ((V.minor(sequence(0,7),All)) / (V.minor(sequence(8,2),All)));
-  
+
   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
   p.take("VERTICES") << V;
-  p.set_description() << "Johnson solid J63: tridiminished icosahedron" << endl;
-  assign_common_props<QE>(p);
+  p = centralize<QE>(p);
 
+  p.set_description() << "Johnson solid J63: tridiminished icosahedron" << endl;
   return p;
 }
-      
+
 perl::Object augmented_tridiminished_icosahedron(){
 
   perl::Object p = tridiminished_icosahedron();
-  Vector<double> normal(4);
-  normal[0] = (3+sqrt(5))/4; normal[1]=normal[3]=1; normal[2]=-1;
-  p = augment(p,normal);
-  
-  p.set_description() << "Johnson solid J64: augmented_tridiminished icosahedron" << endl;
+  p = augment(p,triangle(0,2,5));
+
 
   IncidenceMatrix<> VIF(10,10);
+  p.set_description() << "Johnson solid J64: augmented_tridiminished icosahedron" << endl;
   VIF[0] = triangle(3,6,7);
   VIF[1] = triangle(6,7,8);
   VIF[2] = triangle(0,5,9);
@@ -2631,69 +2585,68 @@ perl::Object augmented_tridiminished_icosahedron(){
 
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  assign_common_props<double>(p);
+  p = centralize<double>(p);
 
   return p;
 }
-     
-     
+
+
 perl::Object augmented_truncated_tetrahedron()
 {
- 	Rational r(1,3);
-	Rational s(1,9);
+  Rational r(1,3);
+  Rational s(1,9);
   Matrix<Rational> V(15,4);
- 	V.col(0).fill(1);
- 	V(0,1)=V(1,2)=V(2,3)=V(3,1)=V(6,2)=V(10,3)=1;  
- 	V(4,2)=V(5,3)=V(7,3)=V(8,1)=V(9,1)=V(11,2)=-1;
- 	V(0,2)=V(0,3)=V(1,1)=V(1,3)=V(2,1)=V(2,2)=V(4,1)=V(5,1)=V(7,2)=V(8,2)=V(9,3)=V(11,3)=r;
- 	V(3,2)=V(3,3)=V(4,3)=V(5,2)=V(6,1)=V(6,3)=V(7,1)=V(8,3)=V(9,2)=V(10,1)=V(10,2)=V(11,1)=-r;
-	V(12,1)=-11*s; V(12,2)=V(12,3)=5*s; 
-	V(13,1)=-5*s; V(13,2)=11*s; V(13,3)=5*s;
-	V(14,1)=V(13,1); V(14,2)=V(13,3); V(14,3)=V(13,2);
- 
-   perl::Object p(perl::ObjectType::construct<Rational>("Polytope"));
-   p.set_description() << "Johnson solid J65: Augmented truncated tetrahedron" << endl;
-   p.take("VERTICES") << V;
-   assign_common_props<Rational>(p);        
+  V.col(0).fill(1);
+  V(0,1)=V(1,2)=V(2,3)=V(3,1)=V(6,2)=V(10,3)=1;
+  V(4,2)=V(5,3)=V(7,3)=V(8,1)=V(9,1)=V(11,2)=-1;
+  V(0,2)=V(0,3)=V(1,1)=V(1,3)=V(2,1)=V(2,2)=V(4,1)=V(5,1)=V(7,2)=V(8,2)=V(9,3)=V(11,3)=r;
+  V(3,2)=V(3,3)=V(4,3)=V(5,2)=V(6,1)=V(6,3)=V(7,1)=V(8,3)=V(9,2)=V(10,1)=V(10,2)=V(11,1)=-r;
+  V(12,1)=-11*s; V(12,2)=V(12,3)=5*s;
+  V(13,1)=-5*s; V(13,2)=11*s; V(13,3)=5*s;
+  V(14,1)=V(13,1); V(14,2)=V(13,3); V(14,3)=V(13,2);
+
+  perl::Object p(perl::ObjectType::construct<Rational>("Polytope"));
+  p.take("VERTICES") << V;
+  p = centralize<Rational>(p);
+  p.set_description() << "Johnson solid J65: Augmented truncated tetrahedron" << endl;
 
   return p;
 }
 
 perl::Object augmented_truncated_cube()
 {
-  Matrix<QE> V = truncated_cube_vertices();
-  Matrix<QE> W = square_cupola().give("VERTICES");
-  W.col(3) += same_element_vector(QE(2,2,2),12);
+   Matrix<QE> V = truncated_cube_vertices();
+   Matrix<QE> W = square_cupola_impl(false).give("VERTICES");
+   W.col(3) += same_element_vector(QE(2,2,2),12);
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.set_description() << "Johnson solid J66: Augmented truncated cube" << endl;
-  p.take("VERTICES") << V / W.minor(sequence(8,4),All);
-  assign_common_props<QE>(p);
+   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
+   p.take("VERTICES") << V / W.minor(sequence(8,4),All);
+   p = centralize<QE>(p);
+   p.set_description() << "Johnson solid J66: Augmented truncated cube" << endl;
 
-  return p;
+   return p;
 }
-      
+
 perl::Object biaugmented_truncated_cube()
 {
-  Matrix<QE> V = augmented_truncated_cube().give("VERTICES");
-	Matrix<QE> W = square_cupola().give("VERTICES");
+   Matrix<QE> V = truncated_cube_vertices();
+   Matrix<QE> W = square_cupola_impl(false).give("VERTICES");
+   W = W.minor(sequence(8,4),sequence(1,3));
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-	p.set_description() << "Johnson solid J67: Biaugmented truncated cube" << endl;  
-	p.take("VERTICES") << V / (ones_vector<QE>(4) | (-1)*W.minor(sequence(8,4),sequence(1,3)));
-	assign_common_props<QE>(p);
+   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
+   p.take("VERTICES") << V / (ones_vector<QE>(8) |
+                              ((W + repeat_row(QE(2,2,2)*unit_vector<QE>(3,2),4)) / -W));
+   p = centralize<QE>(p);
+   p.set_description() << "Johnson solid J67: Biaugmented truncated cube" << endl;
 
-  return p;  
+   return p;
 }
-      
+
 perl::Object augmented_truncated_dodecahedron()
 {
    perl::Object p = CallPolymakeFunction("truncated_dodecahedron");
-   Vector<double> normal(4);
-   normal[0]=(4+sqrt(5))/2;
-   normal[1]=(6-sqrt(5))/2;
-   normal[2]=-1;
-   p = augment(p,2);
+
+   p = augment(p,decagon(0,1,5,7,9,11,13,16,18,21));
 
    IncidenceMatrix<> VIF(42,65);
    VIF[0] = triangle(22,27,38);
@@ -2739,18 +2692,18 @@ perl::Object augmented_truncated_dodecahedron()
    VIF[40] = decagon(24,27,31,34,38,41,49,51,52,54);
    VIF[41] = decagon(2,3,5,7,14,17,19,22,24,27);
 
-   p.set_description() << "Johnson solid J68: Augmented truncated dodecahedron" << endl;
    p.take("VERTICES_IN_FACETS") << VIF;
-   assign_common_props<double>(p);
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J68: Augmented truncated dodecahedron" << endl;
 
-  return p;  
+  return p;
 }
 
-      
+
 perl::Object parabiaugmented_truncated_dodecahedron()
 {
    perl::Object p = augmented_truncated_dodecahedron();
-   p = augment(p,34);
+   p = augment(p,decagon(36,39,42,45,49,51,53,55,58,59));
 
    IncidenceMatrix<> VIF(52,70);
    VIF[0] = triangle(22,27,38);
@@ -2807,17 +2760,17 @@ perl::Object parabiaugmented_truncated_dodecahedron()
    VIF[51] = decagon(2,3,5,7,14,17,19,22,24,27);
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p.set_description() << "Johnson solid J69: Parabiaugmented truncated dodecahedron" << endl;
-   assign_common_props<double>(p);
+   p = centralize<double>(p);
 
-   return p;  
+   p.set_description() << "Johnson solid J69: Parabiaugmented truncated dodecahedron" << endl;
+   return p;
 }
-     
+
 perl::Object metabiaugmented_truncated_dodecahedron()
 {
    perl::Object p = augmented_truncated_dodecahedron();
-   p = augment(p,6);
-   
+   p = augment(p,decagon(43,46,48,50,52,54,56,57,58,59));
+
    IncidenceMatrix<> VIF(52,70);
    VIF[0] = triangle(22,27,38);
    VIF[1] = decagon(13,16,19,22,32,35,38,41,43,46);
@@ -2871,20 +2824,20 @@ perl::Object metabiaugmented_truncated_dodecahedron()
    VIF[49] = triangle(17,24,31);
    VIF[50] = decagon(24,27,31,34,38,41,49,51,52,54);
    VIF[51] = decagon(2,3,5,7,14,17,19,22,24,27);
- 
-   p.take("VERTICES_IN_FACETS") << VIF;
- 
-   p.set_description() << "Johnson solid J70: Metabiaugmented truncated dodecahedron" << endl;
-   assign_common_props<double>(p);
 
-  return p;  
-} 
-      
+   p.take("VERTICES_IN_FACETS") << VIF;
+
+   p = centralize<double>(p);
+
+   p.set_description() << "Johnson solid J70: Metabiaugmented truncated dodecahedron" << endl;
+  return p;
+}
+
 perl::Object triaugmented_truncated_dodecahedron()
 {
    perl::Object p = metabiaugmented_truncated_dodecahedron();
-   p = augment(p,18);
-   
+   p = augment(p,decagon(12,15,20,23,26,29,37,40,42,45));
+
    IncidenceMatrix<> VIF(62,75);
    VIF[0] = triangle(22,27,38);
    VIF[1] = decagon(13,16,19,22,32,35,38,41,43,46);
@@ -2950,25 +2903,18 @@ perl::Object triaugmented_truncated_dodecahedron()
    VIF[61] = decagon(2,3,5,7,14,17,19,22,24,27);
 
    p.take("VERTICES_IN_FACETS") << VIF;
- 
-   p.set_description() << "Johnson solid J71: Triaugmented truncated dodecahedron" << endl;
-   assign_common_props<double>(p);
 
-   return p;  
+   p = centralize<double>(p);
+
+   p.set_description() << "Johnson solid J71: Triaugmented truncated dodecahedron" << endl;
+   return p;
 }
-      
+
 perl::Object gyrate_rhombicosidodecahedron()
 {
   perl::Object p = CallPolymakeFunction("rhombicosidodecahedron");
-  Vector<double> normal(4);
-  normal[0]=(9+3*sqrt(5))/4;
-  normal[1]=-(1+sqrt(5))/2;
-  normal[2]=-1;
-  p = rotate_facet(p,normal,M_PI/5);
+  p = rotate_facet(p,pentagon(5,8,12,16,21),M_PI/5);
 
-  p.set_description() << "Johnson solid J72: Gyrate rhombicosidodecahedron" << endl; 
-  assign_common_props<double>(p);
-  
   IncidenceMatrix<> VIF(62,60);
   VIF[0] = pentagon(27,32,37,41,45);
   VIF[1] = square(18,27,28,37);
@@ -3034,17 +2980,15 @@ perl::Object gyrate_rhombicosidodecahedron()
   VIF[61] = square(18,27,58,59);
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  return p;  
+  p = centralize<double>(p);
+  p.set_description() << "Johnson solid J72: Gyrate rhombicosidodecahedron" << endl;
+  return p;
 }
-      
+
 perl::Object parabigyrate_rhombicosidodecahedron()
 {
    perl::Object p = gyrate_rhombicosidodecahedron();
-
-  p = rotate_facet(p,26,M_PI/5);
-  p.set_description() << "Johnson solid J73: Parabigyrate rhombicosidodecahedron" << endl; 
-  assign_common_props<double>(p);
-  
+   p = rotate_facet(p,pentagon(33,38,42,46,49),M_PI/5);
   IncidenceMatrix<> VIF(62,60);
   VIF[0] = pentagon(27,32,36,39,42);
   VIF[1] = square(18,27,28,36);
@@ -3110,17 +3054,16 @@ perl::Object parabigyrate_rhombicosidodecahedron()
   VIF[61] = square(18,27,53,54);
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  return p;  
+  p = centralize<double>(p);
+
+  p.set_description() << "Johnson solid J73: Parabigyrate rhombicosidodecahedron" << endl;
+  return p;
 }
-      
+
 perl::Object metabigyrate_rhombicosidodecahedron()
 {
    perl::Object p = gyrate_rhombicosidodecahedron();
-
-  p = rotate_facet(p,13,M_PI/5);
-  p.set_description() << "Johnson solid J74: Metabigyrate rhombicosidodecahedron" << endl; 
-  assign_common_props<double>(p);
-  
+  p = rotate_facet(p,pentagon(44,48,51,53,54),M_PI/5);
   IncidenceMatrix<> VIF(62,60);
   VIF[0] = pentagon(27,32,37,41,44);
   VIF[1] = square(18,27,28,37);
@@ -3185,19 +3128,17 @@ perl::Object metabigyrate_rhombicosidodecahedron()
   VIF[60] = pentagon(50,51,52,53,54);
   VIF[61] = square(18,27,53,54);
 
-  
+
   p.take("VERTICES_IN_FACETS") << VIF;
-  return p;  
+  p = centralize<double>(p);
+  p.set_description() << "Johnson solid J74: Metabigyrate rhombicosidodecahedron" << endl;
+  return p;
 }
-      
+
 perl::Object trigyrate_rhombicosidodecahedron()
 {
    perl::Object p = metabigyrate_rhombicosidodecahedron();
-
-  p = rotate_facet(p,38,M_PI/5);
-  p.set_description() << "Johnson solid J75: trigyrate rhombicosidodecahedron" << endl; 
-  assign_common_props<double>(p);
-  
+  p = rotate_facet(p,pentagon(15,19,24,29,34),M_PI/5);
   IncidenceMatrix<> VIF(62,60);
   VIF[0] = pentagon(24,28,32,36,39);
   VIF[1] = square(17,24,25,32);
@@ -3262,33 +3203,28 @@ perl::Object trigyrate_rhombicosidodecahedron()
   VIF[60] = pentagon(45,46,47,48,49);
   VIF[61] = square(17,24,48,49);
 
+
   p.take("VERTICES_IN_FACETS") << VIF;
-  return p;  
+  p = centralize<double>(p);
+  p.set_description() << "Johnson solid J75: trigyrate rhombicosidodecahedron" << endl;
+  return p;
 }
-      
-  perl::Object diminished_rhombicosidodecahedron()
+
+perl::Object diminished_rhombicosidodecahedron()
 {
    perl::Object p = CallPolymakeFunction("rhombicosidodecahedron");
-   Vector<QE> normal(4);
-   normal[0]=QE(Rational(9,4),Rational(3,4),5);
-   normal[1]=-QE(Rational(1,2),Rational(1,2),5);
-   normal[2]=-1;
-   
-   p = diminish<QE>(p,normal);
-   p.set_description() << "Johnson solid J76: diminished rhombicosidodecahedron" << endl; 
-   assign_common_props<QE>(p);
-  
-   return p;  
+   p = diminish<QE>(p,pentagon(5,8,12,16,21));
+   p = centralize<QE>(p);
+
+   p.set_description() << "Johnson solid J76: diminished rhombicosidodecahedron" << endl;
+   return p;
 }
-      
+
   perl::Object paragyrate_diminished_rhombicosidodecahedron()
 {
    perl::Object p = gyrate_rhombicosidodecahedron();
 
-   p = diminish<double>(p,26);
-   p.set_description() << "Johnson solid J77: paragyrate diminished rhombicosidodecahedron" << endl; 
-   assign_common_props<double>(p);
-   
+   p = diminish<double>(p,pentagon(33,38,42,46,49));
    IncidenceMatrix<> VIF(52,55);
    VIF[0] = pentagon(27,32,36,39,42);
    VIF[1] = square(18,27,28,36);
@@ -3344,17 +3280,16 @@ perl::Object trigyrate_rhombicosidodecahedron()
    VIF[51] = square(18,27,53,54);
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   return p;  
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J77: paragyrate diminished rhombicosidodecahedron" << endl;
+   return p;
 }
-      
+
   perl::Object metagyrate_diminished_rhombicosidodecahedron()
 {
    perl::Object p = gyrate_rhombicosidodecahedron();
 
-   p = diminish<double>(p,13);
-   p.set_description() << "Johnson solid J78: metagyrate diminished rhombicosidodecahedron" << endl; 
-   assign_common_props<double>(p);
-   
+   p = diminish<double>(p,pentagon(44,48,51,53,54));
    IncidenceMatrix<> VIF(52,55);
    VIF[0] = pentagon(27,32,37,41,44);
    VIF[1] = square(18,27,28,37);
@@ -3410,17 +3345,16 @@ perl::Object trigyrate_rhombicosidodecahedron()
    VIF[51] = square(18,27,53,54);
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   return p;  
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J78: metagyrate diminished rhombicosidodecahedron" << endl;
+   return p;
 }
-      
+
   perl::Object bigyrate_diminished_rhombicosidodecahedron()
 {
    perl::Object p = metabigyrate_rhombicosidodecahedron();
 
-   p = diminish<double>(p,38);
-   p.set_description() << "Johnson solid J79: bigyrate diminished rhombicosidodecahedron" << endl; 
-   assign_common_props<double>(p);
-   
+   p = diminish<double>(p,pentagon(15,19,24,29,34));
    IncidenceMatrix<> VIF(52,55);
    VIF[0] = pentagon(24,28,32,36,39);
    VIF[1] = square(17,24,25,32);
@@ -3476,48 +3410,35 @@ perl::Object trigyrate_rhombicosidodecahedron()
    VIF[51] = square(17,24,48,49);
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   return p;  
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J79: bigyrate diminished rhombicosidodecahedron" << endl;
+   return p;
 }
-     
+
   perl::Object parabidiminished_rhombicosidodecahedron()
 {
    perl::Object p = diminished_rhombicosidodecahedron();
-   Vector<QE> normal(4);
-   normal[0]=QE(Rational(9,4),Rational(3,4),5);
-   normal[1]=QE(Rational(1,2),Rational(1,2),5);
-   normal[2]=1;
-   p = diminish<QE>(p,normal);
-   p.set_description() << "Johnson solid J80: parabidiminished rhombicosidodecahedron" << endl; 
-   assign_common_props<QE>(p);
-  
-   return p;  
+   p = diminish<QE>(p,pentagon(33,38,42,46,49));
+   p = centralize<QE>(p);
+
+   p.set_description() << "Johnson solid J80: parabidiminished rhombicosidodecahedron" << endl;
+   return p;
 }
-      
+
   perl::Object metabidiminished_rhombicosidodecahedron()
 {
    perl::Object p = diminished_rhombicosidodecahedron();
-   Vector<QE> normal(4);
-   normal[0]=QE(Rational(9,4),Rational(3,4),5);
-   normal[1]=QE(Rational(1,2),Rational(1,2),5);
-   normal[2]=-1;
-   p = diminish<QE>(p,normal);
-   p.set_description() << "Johnson solid J81: metabidiminished rhombicosidodecahedron" << endl; 
-   assign_common_props<QE>(p);
-  
-   return p;  
+   p = diminish<QE>(p,pentagon(7,10,13,17,22));
+   p = centralize<QE>(p);
+
+   p.set_description() << "Johnson solid J81: metabidiminished rhombicosidodecahedron" << endl;
+   return p;
 }
-  
+
 perl::Object gyrate_bidiminished_rhombicosidodecahedron()
 {
    perl::Object p = metabidiminished_rhombicosidodecahedron();
-   Vector<double> normal(4);
-   normal[0]=(9+3*sqrt(5))/4;
-   normal[2]=(1+sqrt(5))/2;
-   normal[3]=-1;
-   p = rotate_facet(p,normal,M_PI/5);
-   p.set_description() << "Johnson solid J82: gyrate parabidiminished rhombicosidodecahedron" << endl; 
-   assign_common_props<double>(p);
-   
+   p = rotate_facet(p,pentagon(34,38,42,45,47),M_PI/5);
    IncidenceMatrix<> VIF(42,50);
    VIF[0] = square(20,27,30,35);
    VIF[1] = pentagon(13,16,20,25,30);
@@ -3564,127 +3485,126 @@ perl::Object gyrate_bidiminished_rhombicosidodecahedron()
 
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   
-   return p;  
+   p = centralize<double>(p);
+   p.set_description() << "Johnson solid J82: gyrate parabidiminished rhombicosidodecahedron" << endl;
+   return p;
 }
-      
+
   perl::Object tridiminished_rhombicosidodecahedron()
 {
    perl::Object p = metabidiminished_rhombicosidodecahedron();
-   Vector<QE> normal(4);
-   normal[0]=QE(Rational(9,4),Rational(3,4),5);
-   normal[2]=QE(Rational(1,2),Rational(1,2),5);
-   normal[3]=1;
-   p = diminish<QE>(p,normal);
-   p.set_description() << "Johnson solid J83: tridiminished rhombicosidodecahedron" << endl; 
-   assign_common_props<QE>(p);
-  
-   return p;  
+   p = diminish<QE>(p,pentagon(39,43,46,48,49));
+   p = centralize<QE>(p);
+
+   p.set_description() << "Johnson solid J83: tridiminished rhombicosidodecahedron" << endl;
+   return p;
 }
 
 
 perl::Object snub_disphenoid()
 {
-	//coordinates calculated according to https://de.wikipedia.org/wiki/Trigondodekaeder
-	double r = -sqrt(28.0/3)*cos(acos(-sqrt(27.0/343)/3))+1;
-	double p1 = (sqrt(3+2*r-pow(r,2))+sqrt(3-pow(r,2)))/2;
-	double p2 = (sqrt(3+2*r-pow(r,2))-sqrt(3-pow(r,2)))/2;
-	Matrix<double> V(8,4);
-	V.col(0).fill(1);
-	V(0,2)=1; V(0,3)=p1;
-	V(1,2)=-1; V(1,3)=p1;
-	V(2,1)=r; V(2,3)=p2;
-	V(3,1)=-r; V(3,3)=p2; 
-	V(4,2)=r; V(4,3)=-p2;
-	V(5,2)=-r; V(5,1)=-p2;
-	V(6,1)=1; V(6,3)=-p1;
-	V(7,1)=-1; V(7,3)=-p1;
+  //coordinates calculated according to https://de.wikipedia.org/wiki/Trigondodekaeder
+  //double r = -sqrt(28.0/3)*cos(acos(-sqrt(27.0/343)/3))+1;
+  const double r = 1.289169;
+  const double p1 = (sqrt(3.0+2.0*r-pow(r,2))+sqrt(3.0-pow(r,2)))/2;
+  const double p2 = (sqrt(3.0+2.0*r-pow(r,2))-sqrt(3.0-pow(r,2)))/2;
+  Matrix<double> V(8,4);
+  V.col(0).fill(1);
+  V(0,2)=1; V(0,3)=p1;
+  V(1,2)=-1; V(1,3)=p1;
+  V(2,1)=r; V(2,3)=p2;
+  V(3,1)=-r; V(3,3)=p2;
+  V(4,2)=r; V(4,3)=-p2;
+  V(5,2)=-r; V(5,3)=-p2;
+  V(6,1)=1; V(6,3)=-p1;
+  V(7,1)=-1; V(7,3)=-p1;
 
-	IncidenceMatrix<> VIF(12,10);
+  IncidenceMatrix<> VIF(12,8);
   VIF[0] = triangle(4,6,7);
-	VIF[1] = triangle(5,6,7);
-	VIF[2] = triangle(0,1,3);
-	VIF[3] = triangle(1,3,5);
-	VIF[4] = triangle(3,5,7);
-	VIF[5] = triangle(3,4,7);
-	VIF[6] = triangle(0,3,4);
-	VIF[7] = triangle(0,2,4);
-	VIF[8] = triangle(1,2,5);
-	VIF[9] = triangle(0,1,2);
-	VIF[10] = triangle(2,5,6);
-	VIF[11] = triangle(2,4,6);
+  VIF[1] = triangle(5,6,7);
+  VIF[2] = triangle(0,1,3);
+  VIF[3] = triangle(1,3,5);
+  VIF[4] = triangle(3,5,7);
+  VIF[5] = triangle(3,4,7);
+  VIF[6] = triangle(0,3,4);
+  VIF[7] = triangle(0,2,4);
+  VIF[8] = triangle(1,2,5);
+  VIF[9] = triangle(0,1,2);
+  VIF[10] = triangle(2,5,6);
+  VIF[11] = triangle(2,4,6);
 
-	perl::Object p(perl::ObjectType::construct<double>("Polytope"));
-	p.set_description() << "Johnson solid J84: snub disphenoid" << endl;  
-	p.take("VERTICES") << V;
-	p.take("VERTICES_IN_FACETS") << VIF;
-	assign_common_props<double>(p);
+  perl::Object p(perl::ObjectType::construct<double>("Polytope"));
+  p.take("VERTICES") << V;
+  p.take("VERTICES_IN_FACETS") << VIF;
+  p = centralize<double>(p);
+  p.set_description() << "Johnson solid J84: snub disphenoid" << endl;
 
-  return p;  
+  return p;
 }
 
 perl::Object snub_square_antiprism()
 {
-	//coordinates from:  Weisstein, Eric W. "Snub Square Antiprism." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/SnubSquareAntiprism.html 
-	Matrix<double> V(16,4);
-	V.col(0).fill(1);
-	V(0,1)=-1.09317; V(0,2)=0.431565; V(0,3)=-0.353606;
-	V(1,1)=-1.0057; V(1,2)=-0.562189; V(1,3)=-0.422883;
-	V(2,1)=-0.859633; V(2,2)=-0.107437; V(2,3)=0.455675;
-	V(3,1)=-0.719877; V(3,2)=0.882748; V(3,3)=0.457; 
-	V(4,1)=-0.363678; V(4,2)=0.0313033; V(4,3)=-0.908245;
-	V(5,1)=-0.309622; V(5,2)=-0.905009; V(5,3)=0.207952;
-	V(6,1)=-0.197089; V(6,2)=0.873473; V(6,3)=-0.395412;
-	V(7,1)=-0.149505; V(7,2)=-0.936855; V(7,3)=-0.778632;
-	V(8,1)=-0.0740301; V(8,2)=0.286; V(8,3)=0.933206;
-  V(9,1)=0.254708; V(9,2)=1.1066; V(9,3)=0.46571; 
-	V(10,1)=0.475981; V(10,2)=-0.511572; V(10,3)=0.685483; 
-	V(11,1)=0.580742; V(11,2)=-0.254465; V(11,3)=-0.745746;
+  //coordinates from:  Weisstein, Eric W. "Snub Square Antiprism." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/SnubSquareAntiprism.html
+  Matrix<double> V(16,4);
+  V.col(0).fill(1);
+  V(0,1)=-1.09317; V(0,2)=0.431565; V(0,3)=-0.353606;
+  V(1,1)=-1.0057; V(1,2)=-0.562189; V(1,3)=-0.422883;
+  V(2,1)=-0.859633; V(2,2)=-0.107437; V(2,3)=0.455675;
+  V(3,1)=-0.719877; V(3,2)=0.882748; V(3,3)=0.457;
+  V(4,1)=-0.363678; V(4,2)=0.0313033; V(4,3)=-0.908245;
+  V(5,1)=-0.309622; V(5,2)=-0.905009; V(5,3)=0.207952;
+  V(6,1)=-0.197089; V(6,2)=0.873473; V(6,3)=-0.395412;
+  V(7,1)=-0.149505; V(7,2)=-0.936855; V(7,3)=-0.778632;
+  V(8,1)=-0.0740301; V(8,2)=0.286; V(8,3)=0.933206;
+  V(9,1)=0.254708; V(9,2)=1.1066; V(9,3)=0.46571;
+  V(10,1)=0.475981; V(10,2)=-0.511572; V(10,3)=0.685483;
+  V(11,1)=0.580742; V(11,2)=-0.254465; V(11,3)=-0.745746;
   V(12,1)=0.614674; V(12,2)=-1.05249; V(12,3)=-0.144078;
-	V(13,1)=0.747332; V(13,2)=0.587705; V(13,3)=-0.232913; 
-	V(14,1)=0.900495; V(14,2)=0.392448; V(14,3)=0.735804;
+  V(13,1)=0.747332; V(13,2)=0.587705; V(13,3)=-0.232913;
+  V(14,1)=0.900495; V(14,2)=0.392448; V(14,3)=0.735804;
   V(15,1)=1.19838; V(15,2)=-0.261824; V(15,3)=0.0406841;
 
-	IncidenceMatrix<> VIF(26,16);
+  IncidenceMatrix<> VIF(26,16);
   VIF[0] = triangle(9,13,14);
-	VIF[1] = triangle(8,10,14);
-	VIF[2] = triangle(8,9,14);
-	VIF[3] = triangle(7,11,12);
-	VIF[4] = triangle(5,10,12);
-	VIF[5] = triangle(5,7,12);
-	VIF[6] = square(2,5,8,10);
-	VIF[7] = triangle(2,3,8);	
-	VIF[8] = triangle(0,4,6);
-	VIF[9] = triangle(0,3,6);
-	VIF[10] = triangle(0,1,4);
-	VIF[11] = triangle(0,2,3);	
-	VIF[12] = triangle(0,1,2);
-	VIF[13] = triangle(1,2,5);
-	VIF[14] = triangle(1,4,7);
-	VIF[15] = triangle(1,5,7);
-	VIF[16] = triangle(3,6,9);
-	VIF[17] = triangle(3,8,9);
-	VIF[18] = triangle(4,7,11);
-	VIF[19] = triangle(6,9,13);
-	VIF[20] = square(4,6,11,13);
-	VIF[21] = triangle(11,12,15);
-	VIF[22] = triangle(11,13,15);
-	VIF[23] = triangle(10,12,15);
-	VIF[24] = triangle(10,14,15);
-	VIF[25] = triangle(13,14,15);
+  VIF[1] = triangle(8,10,14);
+  VIF[2] = triangle(8,9,14);
+  VIF[3] = triangle(7,11,12);
+  VIF[4] = triangle(5,10,12);
+  VIF[5] = triangle(5,7,12);
+  VIF[6] = square(2,5,8,10);
+  VIF[7] = triangle(2,3,8);
+  VIF[8] = triangle(0,4,6);
+  VIF[9] = triangle(0,3,6);
+  VIF[10] = triangle(0,1,4);
+  VIF[11] = triangle(0,2,3);
+  VIF[12] = triangle(0,1,2);
+  VIF[13] = triangle(1,2,5);
+  VIF[14] = triangle(1,4,7);
+  VIF[15] = triangle(1,5,7);
+  VIF[16] = triangle(3,6,9);
+  VIF[17] = triangle(3,8,9);
+  VIF[18] = triangle(4,7,11);
+  VIF[19] = triangle(6,9,13);
+  VIF[20] = square(4,6,11,13);
+  VIF[21] = triangle(11,12,15);
+  VIF[22] = triangle(11,13,15);
+  VIF[23] = triangle(10,12,15);
+  VIF[24] = triangle(10,14,15);
+  VIF[25] = triangle(13,14,15);
 
-	perl::Object p(perl::ObjectType::construct<double>("Polytope"));
-	p.set_description() << "Johnson solid J85: snub square antiprism" << endl;  
-	p.take("VERTICES") << V;
-	p.take("VERTICES_IN_FACETS") << VIF;
-	assign_common_props<double>(p);
+  perl::Object p(perl::ObjectType::construct<double>("Polytope"));
+  p.take("VERTICES") << V;
+  p.take("VERTICES_IN_FACETS") << VIF;
+  p = centralize<double>(p);
+  p.set_description() << "Johnson solid J85: snub square antiprism" << endl;
 
-  return p;  
+  return p;
 }
 
 //FIXME: coordinates #830
-perl::Object sphenocorona(){
-//coordinates from:		Weisstein, Eric W. "Sphenocorona." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/Sphenocorona.html 
+perl::Object sphenocorona()
+{
+  //coordinates from:  Weisstein, Eric W. "Sphenocorona." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/Sphenocorona.html
 
   double a = (-6-sqrt(6)-2*sqrt(213-57*sqrt(6)))/30;
   double b = sqrt(1/6+6*sqrt(6)-sqrt(538+18*sqrt(6))/3)/5;
@@ -3692,7 +3612,7 @@ perl::Object sphenocorona(){
   double d = (9-sqrt(6)+2*sqrt(213-57*sqrt(6)))/30;
   double e = sqrt((1+sqrt(6))/2);
   double f = 0.5;
-   
+
   Matrix<double> V(10,3);
   V(0,1) = V(3,0) = V(4,1) = V(7,1) = -f;
   V(1,1) = V(2,1) = V(5,1) = V(6,0) = f;
@@ -3704,17 +3624,17 @@ perl::Object sphenocorona(){
   V(8,2) = V(9,2) = c;
   V(9,1) = -d;
 
-   // {0, -f, 0},
-   // {0, f, 0},
-   // {a, f, b},
-   // {-f, 0, e}, 
-   // {a, -f, b}, 
-   // {-a, f, b}, 
-   // {f, 0, e},
-   // {-a, -f, b},
-   // {0, d, c},
-   // {0,-d, c}
- 
+  // {0, -f, 0},
+  // {0, f, 0},
+  // {a, f, b},
+  // {-f, 0, e},
+  // {a, -f, b},
+  // {-a, f, b},
+  // {f, 0, e},
+  // {-a, -f, b},
+  // {0, d, c},
+  // {0,-d, c}
+
   V = ones_vector<double>(10) | V;
 
   IncidenceMatrix<> VIF(14,10);
@@ -3734,497 +3654,433 @@ perl::Object sphenocorona(){
   VIF[13] = square(0,1,5,7);
 
   perl::Object p(perl::ObjectType::construct<double>("Polytope"));
-	p.set_description() << "Johnson solid J86: Sphenocorona" << endl;  
-	p.take("VERTICES") << V;
+  p.take("VERTICES") << V;
   p.take("VERTICES_IN_FACETS") << VIF;
 
-	assign_common_props<double>(p);
+  p = centralize<double>(p);
+  p.set_description() << "Johnson solid J86: Sphenocorona" << endl;
 
-  return p;  
+  return p;
 }
 
 //FIXME: coordinates #830
 perl::Object augmented_sphenocorona()
 {
-	perl::Object p = sphenocorona();
-  p = augment(p,7);
+  perl::Object p = sphenocorona();
+  p = augment(p,square(0,1,2,4));
 
-	IncidenceMatrix<> VIF(17,11);
+  IncidenceMatrix<> VIF(17,11);
   VIF[0] = triangle(6,7,9);
-	VIF[1] = triangle(0,7,9);
-	VIF[2] = triangle(1,2,8);
-	VIF[3] = triangle(2,3,8);
-	VIF[4] = triangle(0,4,9);
-	VIF[5] = triangle(0,4,10);
-	VIF[6] = triangle(2,4,10);
-	VIF[7] = triangle(2,3,4);
-	VIF[8] = triangle(3,4,9);
-	VIF[9] = triangle(1,2,10);
-	VIF[10] = triangle(0,1,10);
-	VIF[11] = triangle(3,6,9);
-	VIF[12] = triangle(3,6,8);
-	VIF[13] = triangle(5,6,8);
-	VIF[14] = triangle(1,5,8);
-	VIF[15] = triangle(5,6,7);
-	VIF[16] = square(0,1,5,7);
+  VIF[1] = triangle(0,7,9);
+  VIF[2] = triangle(1,2,8);
+  VIF[3] = triangle(2,3,8);
+  VIF[4] = triangle(0,4,9);
+  VIF[5] = triangle(0,4,10);
+  VIF[6] = triangle(2,4,10);
+  VIF[7] = triangle(2,3,4);
+  VIF[8] = triangle(3,4,9);
+  VIF[9] = triangle(1,2,10);
+  VIF[10] = triangle(0,1,10);
+  VIF[11] = triangle(3,6,9);
+  VIF[12] = triangle(3,6,8);
+  VIF[13] = triangle(5,6,8);
+  VIF[14] = triangle(1,5,8);
+  VIF[15] = triangle(5,6,7);
+  VIF[16] = square(0,1,5,7);
 
-	p.set_description() << "Johnson solid J87: Augmented sphenocorona" << endl;  
-	p.take("VERTICES_IN_FACETS") << VIF;
-	assign_common_props<double>(p);
+  p.take("VERTICES_IN_FACETS") << VIF;
+  p = centralize<double>(p);
+  p.set_description() << "Johnson solid J87: Augmented sphenocorona" << endl;
 
-  return p;  
+  return p;
 }
 
 perl::Object sphenomegacorona()
 {
-	//coordinates from:  Weisstein, Eric W. "Sphenomegacorona." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/Sphenomegacorona.html 
-	Matrix<double> V(12,4);
-	V.col(0).fill(1);
-	V(0,1)=-0.707414; V(0,2)=-0.299887; V(0,3)=-0.154794; 
-	V(1,1)=-0.648093; V(1,2)=-0.108705; V(1,3)=0.824966; 
-	V(2,1)=-0.61836; V(2,2)=0.643014; V(2,3)=0.166154; 
-	V(3,1)=-0.611207; V(3,2)=-1.05253; V(3,3)=0.496573;  
-	V(4,1)=-0.164695; V(4,2)=0.357205; V(4,3)=-0.677944; 
-	V(5,1)=-0.000816218; V(5,2)=-0.993806; V(5,3)=-0.293348; 
-	V(6,1)=0.166715; V(6,2)=0.46752; V(6,3)=0.760172; 
-	V(7,1)=0.22644; V(7,2)=-0.509058; V(7,3)=0.551267; 
-	V(8,1)=0.279678; V(8,2)=1.01458; V(8,3)=-0.0693509; 
-  V(9,1)=0.541903; V(9,2)=-0.336714; V(9,3)=-0.816498;  
-	V(10,1)=0.769159; V(10,2)=0.148034; V(10,3)=0.0281172; 
-	V(11,1)=0.781521; V(11,2)=0.633707; V(11,3)=-0.845936;
+  //coordinates from:  Weisstein, Eric W. "Sphenomegacorona." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/Sphenomegacorona.html
+  Matrix<double> V(12,4);
+  V.col(0).fill(1);
+  V(0,1)=-0.707414; V(0,2)=-0.299887; V(0,3)=-0.154794;
+  V(1,1)=-0.648093; V(1,2)=-0.108705; V(1,3)=0.824966;
+  V(2,1)=-0.61836; V(2,2)=0.643014; V(2,3)=0.166154;
+  V(3,1)=-0.611207; V(3,2)=-1.05253; V(3,3)=0.496573;
+  V(4,1)=-0.164695; V(4,2)=0.357205; V(4,3)=-0.677944;
+  V(5,1)=-0.000816218; V(5,2)=-0.993806; V(5,3)=-0.293348;
+  V(6,1)=0.166715; V(6,2)=0.46752; V(6,3)=0.760172;
+  V(7,1)=0.22644; V(7,2)=-0.509058; V(7,3)=0.551267;
+  V(8,1)=0.279678; V(8,2)=1.01458; V(8,3)=-0.0693509;
+  V(9,1)=0.541903; V(9,2)=-0.336714; V(9,3)=-0.816498;
+  V(10,1)=0.769159; V(10,2)=0.148034; V(10,3)=0.0281172;
+  V(11,1)=0.781521; V(11,2)=0.633707; V(11,3)=-0.845936;
 
-	IncidenceMatrix<> VIF(18,12);
+  IncidenceMatrix<> VIF(18,12);
   VIF[0] = square(5,7,9,10);
-	VIF[1] = triangle(6,7,10);
-	VIF[2] = triangle(6,8,10);
-	VIF[3] = triangle(2,6,8);
-	VIF[4] = triangle(2,4,8);
-	VIF[5] = triangle(1,2,6);
-	VIF[6] = triangle(0,2,4);
-	VIF[7] = triangle(0,1,3);	
-	VIF[8] = triangle(0,1,2);
-	VIF[9] = triangle(0,3,5);
-	VIF[10] = square(0,4,5,9);
-	VIF[11] = triangle(1,3,7);	
-	VIF[12] = triangle(3,5,7);
-	VIF[13] = triangle(1,6,7);
-	VIF[14] = triangle(4,8,11);
-	VIF[15] = triangle(4,9,11);
-	VIF[16] = triangle(8,10,11);
-	VIF[17] = triangle(9,10,11);	
-	
-	perl::Object p(perl::ObjectType::construct<double>("Polytope"));
-	p.set_description() << "Johnson solid J88: Sphenomegacorona" << endl;  
-	p.take("VERTICES") << V;
-	p.take("VERTICES_IN_FACETS") << VIF;
-	assign_common_props<double>(p);
+  VIF[1] = triangle(6,7,10);
+  VIF[2] = triangle(6,8,10);
+  VIF[3] = triangle(2,6,8);
+  VIF[4] = triangle(2,4,8);
+  VIF[5] = triangle(1,2,6);
+  VIF[6] = triangle(0,2,4);
+  VIF[7] = triangle(0,1,3);
+  VIF[8] = triangle(0,1,2);
+  VIF[9] = triangle(0,3,5);
+  VIF[10] = square(0,4,5,9);
+  VIF[11] = triangle(1,3,7);
+  VIF[12] = triangle(3,5,7);
+  VIF[13] = triangle(1,6,7);
+  VIF[14] = triangle(4,8,11);
+  VIF[15] = triangle(4,9,11);
+  VIF[16] = triangle(8,10,11);
+  VIF[17] = triangle(9,10,11);
 
-  return p;  
+  perl::Object p(perl::ObjectType::construct<double>("Polytope"));
+  p.take("VERTICES") << V;
+  p.take("VERTICES_IN_FACETS") << VIF;
+  p = centralize<double>(p);
+  p.set_description() << "Johnson solid J88: Sphenomegacorona" << endl;
+
+  return p;
 }
 
 perl::Object hebesphenomegacorona()
 {
-	//coordinates from:   Weisstein, Eric W. "Hebesphenomegacorona." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/Hebesphenomegacorona.html 
-	Matrix<double> V(14,4);
-	V.col(0).fill(1);
-	V(0,1)=-0.871506; V(0,2)=0.140534; V(0,3)=-0.0100135;  
-	V(1,1)=-0.734052; V(1,2)=-0.844455; V(1,3)=-0.114409; 
-	V(2,1)=-0.661763; V(2,2)=-0.422531; V(2,3)=0.789335;  
-	V(3,1)=-0.604133; V(3,2)=-0.235754; V(3,3)=-0.897098;   
-	V(4,1)=-0.468061; V(4,2)=0.558417; V(4,3)=0.803993; 
-	V(5,1)=-0.181065; V(5,2)=0.857521; V(5,3)=-0.106046; 
-	V(6,1)=0.086308; V(6,2)=0.481232; V(6,3)=-0.99313;  
-	V(7,1)=0.110015; V(7,2)=-0.89019; V(7,3)=-0.64869; 
-	V(8,1)=0.152357; V(8,2)=-0.797719; V(8,3)=0.346125; 
-  V(9,1)=0.246082; V(9,2)=-0.0960143; V(9,3)=1.0524; 
-	V(10,1)=0.492183; V(10,2)=0.77578; V(10,3)=0.628835; 
-	V(11,1)=0.786706; V(11,2)=0.734773; V(11,3)=-0.325928; 
-	V(12,1)=0.800456; V(12,2)=-0.173203; V(12,3)=-0.744722; 
-	V(13,1)=0.842797; V(13,2)=-0.0807329; V(13,3)=0.250093;
+  //coordinates from:   Weisstein, Eric W. "Hebesphenomegacorona." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/Hebesphenomegacorona.html
+  Matrix<double> V(14,4);
+  V.col(0).fill(1);
+  V(0,1)=-0.871506; V(0,2)=0.140534; V(0,3)=-0.0100135;
+  V(1,1)=-0.734052; V(1,2)=-0.844455; V(1,3)=-0.114409;
+  V(2,1)=-0.661763; V(2,2)=-0.422531; V(2,3)=0.789335;
+  V(3,1)=-0.604133; V(3,2)=-0.235754; V(3,3)=-0.897098;
+  V(4,1)=-0.468061; V(4,2)=0.558417; V(4,3)=0.803993;
+  V(5,1)=-0.181065; V(5,2)=0.857521; V(5,3)=-0.106046;
+  V(6,1)=0.086308; V(6,2)=0.481232; V(6,3)=-0.99313;
+  V(7,1)=0.110015; V(7,2)=-0.89019; V(7,3)=-0.64869;
+  V(8,1)=0.152357; V(8,2)=-0.797719; V(8,3)=0.346125;
+  V(9,1)=0.246082; V(9,2)=-0.0960143; V(9,3)=1.0524;
+  V(10,1)=0.492183; V(10,2)=0.77578; V(10,3)=0.628835;
+  V(11,1)=0.786706; V(11,2)=0.734773; V(11,3)=-0.325928;
+  V(12,1)=0.800456; V(12,2)=-0.173203; V(12,3)=-0.744722;
+  V(13,1)=0.842797; V(13,2)=-0.0807329; V(13,3)=0.250093;
 
-	IncidenceMatrix<> VIF(21,14);
-	VIF[0] = triangle(6,11,12);
-	VIF[1] = triangle(4,9,10);
-	VIF[2] = square(7,8,12,13);
-	VIF[3] = triangle(4,5,10);
-	VIF[4] = triangle(1,7,8);
-	VIF[5] = triangle(1,2,8);
-	VIF[6] = triangle(0,2,4);
-	VIF[7] = triangle(0,1,3);	
-	VIF[8] = triangle(0,1,2);
-	VIF[9] = triangle(0,4,5);
-	VIF[10] = triangle(1,3,7);
-	VIF[11] = triangle(2,4,9);	
-	VIF[12] = triangle(2,8,9); 
-	VIF[13] = triangle(5,10,11);
-	VIF[14] = triangle(10,11,13);
-	VIF[15] = triangle(8,9,13);
-	VIF[16] = triangle(9,10,13);
-	VIF[17] = triangle(11,12,13);	
+  IncidenceMatrix<> VIF(21,14);
+  VIF[0] = triangle(6,11,12);
+  VIF[1] = triangle(4,9,10);
+  VIF[2] = square(7,8,12,13);
+  VIF[3] = triangle(4,5,10);
+  VIF[4] = triangle(1,7,8);
+  VIF[5] = triangle(1,2,8);
+  VIF[6] = triangle(0,2,4);
+  VIF[7] = triangle(0,1,3);
+  VIF[8] = triangle(0,1,2);
+  VIF[9] = triangle(0,4,5);
+  VIF[10] = triangle(1,3,7);
+  VIF[11] = triangle(2,4,9);
+  VIF[12] = triangle(2,8,9);
+  VIF[13] = triangle(5,10,11);
+  VIF[14] = triangle(10,11,13);
+  VIF[15] = triangle(8,9,13);
+  VIF[16] = triangle(9,10,13);
+  VIF[17] = triangle(11,12,13);
   VIF[18] = square(3,6,7,12);
-	VIF[19] = square(0,3,5,6);
-	VIF[20] = triangle(5,6,11);
+  VIF[19] = square(0,3,5,6);
+  VIF[20] = triangle(5,6,11);
 
-	perl::Object p(perl::ObjectType::construct<double>("Polytope"));
-	p.set_description() << "Johnson solid J89: Hebesphenomegacorona" << endl;  
-	p.take("VERTICES") << V;
-	p.take("VERTICES_IN_FACETS") << VIF;
-	assign_common_props<double>(p);
+  perl::Object p(perl::ObjectType::construct<double>("Polytope"));
+  p.take("VERTICES") << V;
+  p.take("VERTICES_IN_FACETS") << VIF;
+  p = centralize<double>(p);
+  p.set_description() << "Johnson solid J89: Hebesphenomegacorona" << endl;
 
-  return p;  
+  return p;
 }
 
 perl::Object disphenocingulum()
 {
-	//coordinates from:    Weisstein, Eric W. "Disphenocingulum." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/Disphenocingulum.html 
-	Matrix<double> V(16,4);
-	V.col(0).fill(1);
-	V(0,1)=-1.17114; V(0,2)=0.293688; V(0,3)=0.109312;  
-	V(1,1)=-0.83877; V(1,2)=-0.457649; V(1,3)=0.679417; 
-	V(2,1)=-0.814439; V(2,2)=-0.537542; V(2,3)=-0.317089;  
-	V(3,1)=-0.666585; V(3,2)=0.849234; V(3,3)=-0.551588;   
-	V(4,1)=-0.46044; V(4,2)=0.461075; V(4,3)=0.792599; 
-	V(5,1)=-0.30988; V(5,2)=0.0180037; V(5,3)=-0.977988; 
-	V(6,1)=-0.117267; V(6,2)=-0.991154; V(6,3)=0.238053;  
-	V(7,1)=0.0104825; V(7,2)=-0.901367; V(7,3)=-0.749679; 
-	V(8,1)=0.0441194; V(8,2)=1.01662; V(8,3)=0.131699; 
-  V(9,1)=0.113461; V(9,2)=-0.340277; V(9,3)=0.961325; 
-	V(10,1)=0.297985; V(10,2)=0.793976; V(10,3)=-0.809566; 
-	V(11,1)=0.530305; V(11,2)=0.56504; V(11,3)=0.879827; 
-	V(12,1)=0.656861; V(12,2)=-0.138802; V(12,3)=-0.775936; 
-	V(13,1)=0.803499; V(13,2)=-0.896901; V(13,3)=-0.140495;
-	V(14,1)=0.887588; V(14,2)=0.512075; V(14,3)=-0.0526646; 
-	V(15,1)=1.03423; V(15,2)=-0.246023; V(15,3)=0.582777;
+  //coordinates from:    Weisstein, Eric W. "Disphenocingulum." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/Disphenocingulum.html
+  Matrix<double> V(16,4);
+  V.col(0).fill(1);
+  V(0,1)=-1.17114; V(0,2)=0.293688; V(0,3)=0.109312;
+  V(1,1)=-0.83877; V(1,2)=-0.457649; V(1,3)=0.679417;
+  V(2,1)=-0.814439; V(2,2)=-0.537542; V(2,3)=-0.317089;
+  V(3,1)=-0.666585; V(3,2)=0.849234; V(3,3)=-0.551588;
+  V(4,1)=-0.46044; V(4,2)=0.461075; V(4,3)=0.792599;
+  V(5,1)=-0.30988; V(5,2)=0.0180037; V(5,3)=-0.977988;
+  V(6,1)=-0.117267; V(6,2)=-0.991154; V(6,3)=0.238053;
+  V(7,1)=0.0104825; V(7,2)=-0.901367; V(7,3)=-0.749679;
+  V(8,1)=0.0441194; V(8,2)=1.01662; V(8,3)=0.131699;
+  V(9,1)=0.113461; V(9,2)=-0.340277; V(9,3)=0.961325;
+  V(10,1)=0.297985; V(10,2)=0.793976; V(10,3)=-0.809566;
+  V(11,1)=0.530305; V(11,2)=0.56504; V(11,3)=0.879827;
+  V(12,1)=0.656861; V(12,2)=-0.138802; V(12,3)=-0.775936;
+  V(13,1)=0.803499; V(13,2)=-0.896901; V(13,3)=-0.140495;
+  V(14,1)=0.887588; V(14,2)=0.512075; V(14,3)=-0.0526646;
+  V(15,1)=1.03423; V(15,2)=-0.246023; V(15,3)=0.582777;
 
-	IncidenceMatrix<> VIF(24,16);
-	VIF[0] = triangle(10,12,14);
-	VIF[1] = triangle(8,11,14);
-	VIF[2] = triangle(8,10,14);
-	VIF[3] = triangle(5,10,12);
-	VIF[4] = triangle(5,7,12);
-	VIF[5] = triangle(3,8,10);
-	VIF[6] = triangle(3,5,10);
-	VIF[7] = triangle(0,1,2);	
-	VIF[8] = triangle(1,2,6);
-	VIF[9] = triangle(0,1,4);
-	VIF[10] = square(0,3,4,8);
-	VIF[11] = square(0,2,3,5);	
-	VIF[12] = triangle(2,5,7); 
-	VIF[13] = triangle(2,6,7);
-	VIF[14] = triangle(1,4,9);
-	VIF[15] = triangle(1,6,9);
-	VIF[16] = triangle(4,8,11);
-	VIF[17] = triangle(4,9,11);	
+  IncidenceMatrix<> VIF(24,16);
+  VIF[0] = triangle(10,12,14);
+  VIF[1] = triangle(8,11,14);
+  VIF[2] = triangle(8,10,14);
+  VIF[3] = triangle(5,10,12);
+  VIF[4] = triangle(5,7,12);
+  VIF[5] = triangle(3,8,10);
+  VIF[6] = triangle(3,5,10);
+  VIF[7] = triangle(0,1,2);
+  VIF[8] = triangle(1,2,6);
+  VIF[9] = triangle(0,1,4);
+  VIF[10] = square(0,3,4,8);
+  VIF[11] = square(0,2,3,5);
+  VIF[12] = triangle(2,5,7);
+  VIF[13] = triangle(2,6,7);
+  VIF[14] = triangle(1,4,9);
+  VIF[15] = triangle(1,6,9);
+  VIF[16] = triangle(4,8,11);
+  VIF[17] = triangle(4,9,11);
   VIF[18] = triangle(6,7,13);
-	VIF[19] = triangle(7,12,13);
-	VIF[20] = square(6,9,13,15);
-	VIF[21] = triangle(9,11,15);
-	VIF[22] = square(12,13,14,15);
-	VIF[23] = triangle(11,14,15);
+  VIF[19] = triangle(7,12,13);
+  VIF[20] = square(6,9,13,15);
+  VIF[21] = triangle(9,11,15);
+  VIF[22] = square(12,13,14,15);
+  VIF[23] = triangle(11,14,15);
 
+  perl::Object p(perl::ObjectType::construct<double>("Polytope"));
+  p.take("VERTICES") << V;
+  p.take("VERTICES_IN_FACETS") << VIF;
+  p = centralize<double>(p);
+  p.set_description() << "Johnson solid J90: Disphenocingulum" << endl;
 
-	perl::Object p(perl::ObjectType::construct<double>("Polytope"));
-	p.set_description() << "Johnson solid J90: Disphenocingulum" << endl;  
-	p.take("VERTICES") << V;
-	p.take("VERTICES_IN_FACETS") << VIF;
-	assign_common_props<double>(p);
-
-  return p;  
+  return p;
 }
 
 
 perl::Object bilunabirotunda()
-{	
-	//coordiantes from https://en.wikipedia.org/wiki/Bilunabirotunda
-	Rational s(1,2);
-	QE r(s,s,5);
+{
+  //coordiantes from https://en.wikipedia.org/wiki/Bilunabirotunda
+  Rational s(1,2);
+  QE r(s,s,5);
   Matrix<QE> V(14,4);
-	V.col(0).fill(1);
-	V(0,3)=s*r;
-	V(1,3)=-s*r;
-	V(2,1)=s*(r+1); V(2,2)=s;
-	V(3,1)=s*(r+1); V(3,2)=-s;
-	V(4,1)=-s*(r+1); V(4,2)=s;
-	V(5,1)=-s*(r+1); V(5,2)=-s;
-	V(6,1)=s; V(6,2)=s*r; V(6,3)=s;
-	V(7,1)=s; V(7,2)=s*r; V(7,3)=-s;
-	V(8,1)=s; V(8,2)=-s*r; V(8,3)=s;
-	V(9,1)=s; V(9,2)=-s*r; V(9,3)=-s;
-	V(10,1)=-s; V(10,2)=s*r; V(10,3)=s;
-	V(11,1)=-s; V(11,2)=s*r; V(11,3)=-s;
-	V(12,1)=-s; V(12,2)=-s*r; V(12,3)=s;
-	V(13,1)=-s; V(13,2)=-s*r; V(13,3)=-s;
+  V.col(0).fill(1);
+  V(0,3)=s*r;
+  V(1,3)=-s*r;
+  V(2,1)=s*(r+1); V(2,2)=s;
+  V(3,1)=s*(r+1); V(3,2)=-s;
+  V(4,1)=-s*(r+1); V(4,2)=s;
+  V(5,1)=-s*(r+1); V(5,2)=-s;
+  V(6,1)=s; V(6,2)=s*r; V(6,3)=s;
+  V(7,1)=s; V(7,2)=s*r; V(7,3)=-s;
+  V(8,1)=s; V(8,2)=-s*r; V(8,3)=s;
+  V(9,1)=s; V(9,2)=-s*r; V(9,3)=-s;
+  V(10,1)=-s; V(10,2)=s*r; V(10,3)=s;
+  V(11,1)=-s; V(11,2)=s*r; V(11,3)=-s;
+  V(12,1)=-s; V(12,2)=-s*r; V(12,3)=s;
+  V(13,1)=-s; V(13,2)=-s*r; V(13,3)=-s;
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));   
-	p.set_description() << "Johnson solid J91: bilunabirotunda" << endl;  
-	p.take("VERTICES") << V;
-	assign_common_props<QE>(p);
+  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
+  p.take("VERTICES") << V;
+  p = centralize<QE>(p);
+  p.set_description() << "Johnson solid J91: bilunabirotunda" << endl;
 
-  return p;  
+  return p;
 }
 
 //FIXME: coordinates #830
 perl::Object triangular_hebesphenorotunda()
-{ 
-	//coordiantes from https://en.wikipedia.org/wiki/Triangular_hebesphenorotunda
-	Rational s(1,2);
-	double r = QE(s,s,5).to_double();
-	double t = QE(0,1,3).to_double();
+{
+  //coordiantes from https://en.wikipedia.org/wiki/Triangular_hebesphenorotunda
+  Rational s(1,2);
+  const double r = QE(s,s,5).to_double();
+  const double t = QE(0,1,3).to_double();
   Matrix<QE> V(18,4);
-	V.col(0).fill(1);
-	V(0,1)=1; V(0,2)=t;
-	V(1,1)=1; V(1,2)=-t;
-	V(2,1)=-1; V(2,2)=t;
-	V(3,1)=-1; V(3,2)=-t; 
-	V(4,1)=2; 
-	V(5,1)=-2;
-	V(6,1)=pow(r,2); V(6,2)=pow(r,2)/t; V(6,3)=2/t;
-	V(7,1)=-pow(r,2); V(7,2)=pow(r,2)/t; V(7,3)=2/t;
-	V(8,2)=-2*pow(r,2)/t; V(8,3)=2/t;
-	V(9,1)=1; V(9,2)=pow(r,3)/t; V(9,3)=2*r/t;
-	V(10,1)=-1; V(10,2)=pow(r,3)/t; V(10,3)=2*r/t;
-	V(11,1)=pow(r,2); V(11,2)=-1/(r*t); V(11,3)=2*r/t;
-	V(12,1)=-pow(r,2); V(12,2)=-1/(r*t); V(12,3)=2*r/t;
-	V(13,1)=r; V(13,2)=-(r+2)/t; V(13,3)=2*r/t;
-	V(14,1)=-r; V(14,2)=-(r+2)/t; V(14,3)=2*r/t;
-	V(15,2)=2/t; V(15,3)=2*pow(r,2)/t;
-	V(16,1)=1; V(16,2)=-1/t; V(16,3)=2*pow(r,2)/t;
-	V(17,1)=-1; V(17,2)=-1/t; V(17,3)=2*pow(r,2)/t;
+  V.col(0).fill(1);
+  V(0,1)=1; V(0,2)=t;
+  V(1,1)=1; V(1,2)=-t;
+  V(2,1)=-1; V(2,2)=t;
+  V(3,1)=-1; V(3,2)=-t;
+  V(4,1)=2;
+  V(5,1)=-2;
+  V(6,1)=pow(r,2); V(6,2)=pow(r,2)/t; V(6,3)=2/t;
+  V(7,1)=-pow(r,2); V(7,2)=pow(r,2)/t; V(7,3)=2/t;
+  V(8,2)=-2*pow(r,2)/t; V(8,3)=2/t;
+  V(9,1)=1; V(9,2)=pow(r,3)/t; V(9,3)=2*r/t;
+  V(10,1)=-1; V(10,2)=pow(r,3)/t; V(10,3)=2*r/t;
+  V(11,1)=pow(r,2); V(11,2)=-1/(r*t); V(11,3)=2*r/t;
+  V(12,1)=-pow(r,2); V(12,2)=-1/(r*t); V(12,3)=2*r/t;
+  V(13,1)=r; V(13,2)=-(r+2)/t; V(13,3)=2*r/t;
+  V(14,1)=-r; V(14,2)=-(r+2)/t; V(14,3)=2*r/t;
+  V(15,2)=2/t; V(15,3)=2*pow(r,2)/t;
+  V(16,1)=1; V(16,2)=-1/t; V(16,3)=2*pow(r,2)/t;
+  V(17,1)=-1; V(17,2)=-1/t; V(17,3)=2*pow(r,2)/t;
 
-	IncidenceMatrix<> VIF(20,18);
-	VIF[0] = triangle(11,13,16);  
-	VIF[1] = triangle(1,8,13);
-	VIF[2] = triangle(1,3,8);
-	VIF[3] = triangle(3,8,14);
-	VIF[4] = triangle(2,5,7);
-	VIF[5] = triangle(5,7,12);
-	VIF[6] = triangle(12,14,17);
-	VIF[7] = triangle(2,7,10);
-	VIF[8] = triangle(15,16,17);
-	VIF[9] = triangle(9,10,15);
-	VIF[10] = triangle(0,6,9);
-	VIF[11] = triangle(0,4,6);
-	VIF[12] = triangle(4,6,11);
-	VIF[13] = square(1,4,11,3);
-	VIF[14] = square(3,5,12,14);
-	VIF[15] = square(0,2,9,10);
-	VIF[16] = pentagon(8,13,14,16,17);
-	VIF[17] = pentagon(7,10,12,15,17);
-	VIF[18] = pentagon(6,9,11,15,16);
-	VIF[19] = hexagon(0,1,2,3,4,5);
+  IncidenceMatrix<> VIF(20,18);
+  VIF[0] = triangle(11,13,16);
+  VIF[1] = triangle(1,8,13);
+  VIF[2] = triangle(1,3,8);
+  VIF[3] = triangle(3,8,14);
+  VIF[4] = triangle(2,5,7);
+  VIF[5] = triangle(5,7,12);
+  VIF[6] = triangle(12,14,17);
+  VIF[7] = triangle(2,7,10);
+  VIF[8] = triangle(15,16,17);
+  VIF[9] = triangle(9,10,15);
+  VIF[10] = triangle(0,6,9);
+  VIF[11] = triangle(0,4,6);
+  VIF[12] = triangle(4,6,11);
+  VIF[13] = square(1,4,11,13);
+  VIF[14] = square(3,5,12,14);
+  VIF[15] = square(0,2,9,10);
+  VIF[16] = pentagon(8,13,14,16,17);
+  VIF[17] = pentagon(7,10,12,15,17);
+  VIF[18] = pentagon(6,9,11,15,16);
+  VIF[19] = hexagon(0,1,2,3,4,5);
 
   perl::Object p(perl::ObjectType::construct<double>("Polytope"));
-	p.set_description() << "Johnson solid J92: triangular hebesphenorotunda" << endl;  
-	p.take("VERTICES") << V;
-	assign_common_props<double>(p);
+  p.take("VERTICES") << V;
+  p.take("VERTICES_IN_FACETS") << VIF;
+  p = centralize<double>(p);
+  p.set_description() << "Johnson solid J92: triangular hebesphenorotunda" << endl;
 
-  return p;  
+  return p;
 }
-       
-perl::Object johnson_dispatcher(std::string s, int n){
-  if(s=="square_pyramid" || n==1)
-    return square_pyramid();
-  if(s=="pentagonal_pyramid" || n==2)
-    return pentagonal_pyramid();
-  if(s=="triangular_cupola" || n==3)
-    return triangular_cupola();
-  if(s=="square_cupola" || n==4)
-    return square_cupola();
-  if(s=="pentagonal_cupola" || n==5)
-    return pentagonal_cupola();
-  if(s=="pentagonal_rotunda" || n==6)
-    return pentagonal_rotunda();
-  if(s=="elongated_triangular_pyramid" || n==7)
-    return elongated_triangular_pyramid();
-  if(s=="elongated_square_pyramid" || n==8)
-    return elongated_square_pyramid();
-  if(s=="elongated_pentagonal_pyramid" || n==9) //inexact
-    return elongated_pentagonal_pyramid();
-  if(s=="gyroelongated_square_pyramid" || n==10) //inexact
-    return gyroelongated_square_pyramid();
-  if(s=="gyroelongated_pentagonal_pyramid" || n==11)
-    return gyroelongated_pentagonal_pyramid();
-  if(s=="triangular_bipyramid" || n==12)
-    return triangular_bipyramid();
-  if(s=="pentagonal_bipyramid" || n==13) //inexact
-    return pentagonal_bipyramid();
-  if(s=="elongated_triangular_bipyramid" || n==14)
-    return elongated_triangular_bipyramid();
-  if(s=="elongated_square_bipyramid" || n==15)
-    return elongated_square_bipyramid();
-  if(s=="elongated_pentagonal_bipyramid" || n==16) //inexact
-    return elongated_pentagonal_bipyramid();
-  if(s=="gyroelongated_square_bipyramid" || n==17) //inexact
-    return gyroelongated_square_bipyramid();
-  if(s=="elongated_triangular_cupola" || n==18) //inexact
-    return elongated_triangular_cupola();
-  if(s=="elongated_square_cupola" || n==19)
-    return elongated_square_cupola();
-  if(s=="elongated_pentagonal_cupola" || n==20) //inexact
-    return elongated_pentagonal_cupola();
-  if(s=="elongated_pentagonal_rotunda" || n==21) //inexact
-    return elongated_pentagonal_rotunda();
-  if(s=="gyroelongated_triangular_cupola" || n==22) //inexact
-    return gyroelongated_triangular_cupola();
-  if(s=="gyroelongated_square_cupola" || n==23) //inexact
-    return gyroelongated_square_cupola();
-  if(s=="gyroelongated_pentagonal_cupola" || n==24) //inexact
-    return gyroelongated_pentagonal_cupola();
-  if(s=="gyroelongated_pentagonal_rotunda" || n==25) //inexact
-    return gyroelongated_pentagonal_rotunda();
-  if(s=="gyrobifastigium" || n==26)
-    return gyrobifastigium();
-  if(s=="triangular_orthobicupola" || n==27)
-    return triangular_orthobicupola();
-  if(s=="square_orthobicupola" || n==28)
-    return square_orthobicupola();
-  if(s=="square_gyrobicupola" || n==29)
-    return square_gyrobicupola();
-  if(s=="pentagonal_orthobicupola" || n==30) //inexact
-    return pentagonal_orthobicupola();
-  if(s=="pentagonal_gyrobicupola" || n==31)
-    return pentagonal_gyrobicupola();
-  if(s=="pentagonal_orthocupolarotunda" || n==32) //inexact
-    return pentagonal_orthocupolarotunda();
-  if(s=="pentagonal_gyrocupolarotunda" || n==33) //inexact
-    return pentagonal_gyrocupolarotunda();
-  if(s=="pentagonal_orthobirotunda" || n==34) //inexact
-    return pentagonal_orthobirotunda();
-  if(s=="elongated_triangular_orthobicupola" || n==35) //inexact
-    return elongated_triangular_orthobicupola();
-  if(s=="elongated_triangular_gyrobicupola" || n==36) //inexact
-    return elongated_triangular_gyrobicupola();
-  if(s=="elongated_square_gyrobicupola" || n==37) 
-    return elongated_square_gyrobicupola();
-  if(s=="elongated_pentagonal_orthobicupola" || n==38) //inexact
-    return elongated_pentagonal_orthobicupola();
-  if(s=="elongated_pentagonal_gyrobicupola" || n==39) //inexact
-    return elongated_pentagonal_gyrobicupola();
-  if(s=="elongated_pentagonal_orthocupolarotunda" || n==40) //inexact
-    return elongated_pentagonal_orthocupolarotunda();
-  if(s=="elongated_pentagonal_gyrocupolarotunda" || n==41) //inexact
-    return elongated_pentagonal_gyrocupolarotunda();
-  if(s=="elongated_pentagonal_orthobirotunda" || n==42) //inexact
-    return elongated_pentagonal_orthobirotunda();
-  if(s=="elongated_pentagonal_gyrobirotunda" || n==43) //inexact
-    return elongated_pentagonal_gyrobirotunda();
-  if(s=="gyroelongated_triangular_bicupola" || n==44) //inexact
-    return gyroelongated_triangular_bicupola();
-  if(s=="gyroelongated_square_bicupola" || n==45) //inexact
-    return gyroelongated_square_bicupola();
-  if(s=="gyroelongated_pentagonal_bicupola" || n==46) //inexact
-    return gyroelongated_pentagonal_bicupola();
-  if(s=="gyroelongated_pentagonal_cupolarotunda" || n==47) //inexact
-    return gyroelongated_pentagonal_cupolarotunda();
-  if(s=="gyroelongated_pentagonal_birotunda" || n==48) //inexact
-    return gyroelongated_pentagonal_birotunda();
-  if(s=="augmented_triangular_prism" || n==49) //inexact
-    return augmented_triangular_prism();
-  if(s=="biaugmented_triangular_prism" || n==50) //inexact
-    return biaugmented_triangular_prism();
-  if(s=="triaugmented_triangular_prism" || n==51) //inexact
-    return triaugmented_triangular_prism();
-  if(s=="augmented_pentagonal_prism" || n==52) //inexact
-    return augmented_pentagonal_prism();
-  if(s=="biaugmented_pentagonal_prism" || n==53) //inexact
-    return biaugmented_pentagonal_prism();
-  if(s=="augmented_hexagonal_prism" || n==54) //inexact
-    return augmented_hexagonal_prism();
-  if(s=="parabiaugmented_hexagonal_prism" || n==55) //inexact
-    return parabiaugmented_hexagonal_prism();
-  if(s=="metabiaugmented_hexagonal_prism" || n==56) //inexact
-    return metabiaugmented_hexagonal_prism();
-  if(s=="triaugmented_hexagonal_prism" || n==57) //inexact
-    return triaugmented_hexagonal_prism();
-  if(s=="augmented_dodecahedron" || n==58) //inexact
-    return augmented_dodecahedron();
-  if(s=="parabiaugmented_dodecahedron" || n==59) //inexact
-    return parabiaugmented_dodecahedron();
-  if(s=="metabiaugmented_dodecahedron" || n==60) //inexact
-    return metabiaugmented_dodecahedron();
-  if(s=="triaugmented_dodecahedron" || n==61) //inexact
-    return triaugmented_dodecahedron();
-  if(s=="metabidiminished_icosahedron" || n==62)
-     return metabidiminished_icosahedron();
-  if(s=="tridiminished_icosahedron" || n==63)
-     return tridiminished_icosahedron();
-  if(s=="augmented_tridiminished_icosahedron" || n==64) //inexact
-     return augmented_tridiminished_icosahedron();
-  if(s=="augmented truncated tetrahedron" || n==65)
-    return augmented_truncated_tetrahedron();
-  if(s=="augmented truncated cube" || n==66) 
-    return augmented_truncated_cube();
-  if(s=="biaugmented truncated cube" || n==67) 
-    return biaugmented_truncated_cube();
-  if(s=="augmented_truncated_dodecahedron" || n==68)  //inexact
-    return augmented_truncated_dodecahedron();
-  if(s=="parabiaugmented_truncated_dodecahedron" || n==69)  //inexact
-    return parabiaugmented_truncated_dodecahedron();
-  if(s=="metabiaugmented_truncated_dodecahedron" || n==70)  //inexact
-    return metabiaugmented_truncated_dodecahedron();
-  if(s=="triaugmented_truncated_dodecahedron" || n==71)  //inexact
-    return triaugmented_truncated_dodecahedron();
-  if(s=="gyrate_rhombicosidodecahedron" || n==72) //inexact
-    return gyrate_rhombicosidodecahedron(); 
-  if(s=="parabigyrate_rhombicosidodecahedron" || n==73) //inexact
-    return parabigyrate_rhombicosidodecahedron(); 
-  if(s=="metabigyrate_rhombicosidodecahedron" || n==74) //inexact
-    return metabigyrate_rhombicosidodecahedron(); 
-  if(s=="trigyrate_rhombicosidodecahedron" || n==75) //inexact
-    return trigyrate_rhombicosidodecahedron();
-  if(s=="diminished_rhombicosidodecahedron" || n==76)
-    return diminished_rhombicosidodecahedron(); 
-  if(s=="paragyrate_diminished_rhombicosidodecahedron" || n==77) //inexact
-    return paragyrate_diminished_rhombicosidodecahedron(); 
-  if(s=="metagyrate_diminished_rhombicosidodecahedron" || n==78) //inexact
-    return metagyrate_diminished_rhombicosidodecahedron(); 
-  if(s=="bigyrate_diminished_rhombicosidodecahedron" || n==79) //inexact
-    return bigyrate_diminished_rhombicosidodecahedron(); 
-  if(s=="parabidiminished_rhombicosidodecahedron" || n==80)
-    return parabidiminished_rhombicosidodecahedron(); 
-  if(s=="metabidiminished_rhombicosidodecahedron" || n==81)
-    return metabidiminished_rhombicosidodecahedron(); 
-  if(s=="gyrate_bidiminished_rhombicosidodecahedron" || n==82) //inexact
-    return gyrate_bidiminished_rhombicosidodecahedron();
-  if(s=="tridiminished_rhombicosidodecahedron" || n==83)
-    return tridiminished_rhombicosidodecahedron(); 
-  if(s=="snub_disphenoid" || n==84)	//inexact
-    return snub_disphenoid(); 
-  if(s=="snub_square_antisprism" || n==85)	//inexact
-    return snub_square_antiprism(); 
-  if(s=="sphenocorona" || n==86)	//inexact
-    return sphenocorona(); 
-  if(s=="augmented_sphenocorona" || n==87)	//inexact
-    return augmented_sphenocorona();
-  if(s=="sphenomegacorona" || n==88)	//inexact
-    return sphenomegacorona();
-	if(s=="hebesphenomegacorona" || n==89)	//inexact
-    return hebesphenomegacorona();
-  if(s=="disphenocingulum" || n==90)	//inexact
-    return disphenocingulum();
-  if(s=="bilunabirotunda" || n==91)
-    return bilunabirotunda(); 
-  if(s=="triangular_hebesphenorotunda" || n==92)	//inexact
-    return triangular_hebesphenorotunda();   
+
+namespace {
+
+struct dispatcher_t {
+   typedef perl::Object (*fptr)();
+
+   const char* name;
+   fptr func;
+
+   struct to_map_value {
+      typedef dispatcher_t argument_type;
+      typedef std::pair<const std::string, fptr> result_type;
+      result_type operator() (const argument_type& f) const { return result_type(f.name, f.func); }
+   };
+};
+
+dispatcher_t dispatcher[]={
+   { "square_pyramid",                    &square_pyramid },
+   { "pentagonal_pyramid",                &pentagonal_pyramid },
+   { "triangular_cupola",                 &triangular_cupola },
+   { "square_cupola",                     &square_cupola },
+   { "pentagonal_cupola",                 &pentagonal_cupola },
+   { "pentagonal_rotunda",                &pentagonal_rotunda },
+   { "elongated_triangular_pyramid",      &elongated_triangular_pyramid },
+   { "elongated_square_pyramid",          &elongated_square_pyramid },
+   { "elongated_pentagonal_pyramid",      &elongated_pentagonal_pyramid },    //inexact
+   { "gyroelongated_square_pyramid",      &gyroelongated_square_pyramid },    //inexact
+   { "gyroelongated_pentagonal_pyramid",  &gyroelongated_pentagonal_pyramid },
+   { "triangular_bipyramid",              &triangular_bipyramid },
+   { "pentagonal_bipyramid",              &pentagonal_bipyramid },            //inexact
+   { "elongated_triangular_bipyramid",    &elongated_triangular_bipyramid },
+   { "elongated_square_bipyramid",        &elongated_square_bipyramid },
+   { "elongated_pentagonal_bipyramid",    &elongated_pentagonal_bipyramid },  //inexact
+   { "gyroelongated_square_bipyramid",    &gyroelongated_square_bipyramid },  //inexact
+   { "elongated_triangular_cupola",       &elongated_triangular_cupola },     //inexact
+   { "elongated_square_cupola",           &elongated_square_cupola },
+   { "elongated_pentagonal_cupola",       &elongated_pentagonal_cupola },     //inexact
+   { "elongated_pentagonal_rotunda",      &elongated_pentagonal_rotunda },    //inexact
+   { "gyroelongated_triangular_cupola",   &gyroelongated_triangular_cupola }, //inexact
+   { "gyroelongated_square_cupola",       &gyroelongated_square_cupola },     //inexact
+   { "gyroelongated_pentagonal_cupola",   &gyroelongated_pentagonal_cupola },  //inexact
+   { "gyroelongated_pentagonal_rotunda",  &gyroelongated_pentagonal_rotunda }, //inexact
+   { "gyrobifastigium",                   &gyrobifastigium },
+   { "triangular_orthobicupola",          &triangular_orthobicupola },
+   { "square_orthobicupola",              &square_orthobicupola },
+   { "square_gyrobicupola",               &square_gyrobicupola },
+   { "pentagonal_orthobicupola",          &pentagonal_orthobicupola },       //inexact
+   { "pentagonal_gyrobicupola",           &pentagonal_gyrobicupola },
+   { "pentagonal_orthocupolarotunda",     &pentagonal_orthocupolarotunda },  //inexact
+   { "pentagonal_gyrocupolarotunda",      &pentagonal_gyrocupolarotunda },   //inexact
+   { "pentagonal_orthobirotunda",         &pentagonal_orthobirotunda },      //inexact
+   { "elongated_triangular_orthobicupola",      &elongated_triangular_orthobicupola },      //inexact
+   { "elongated_triangular_gyrobicupola",       &elongated_triangular_gyrobicupola },       //inexact
+   { "elongated_square_gyrobicupola",           &elongated_square_gyrobicupola },
+   { "elongated_pentagonal_orthobicupola",      &elongated_pentagonal_orthobicupola },      //inexact
+   { "elongated_pentagonal_gyrobicupola",       &elongated_pentagonal_gyrobicupola },       //inexact
+   { "elongated_pentagonal_orthocupolarotunda", &elongated_pentagonal_orthocupolarotunda }, //inexact
+   { "elongated_pentagonal_gyrocupolarotunda",  &elongated_pentagonal_gyrocupolarotunda },  //inexact
+   { "elongated_pentagonal_orthobirotunda",     &elongated_pentagonal_orthobirotunda },     //inexact
+   { "elongated_pentagonal_gyrobirotunda",      &elongated_pentagonal_gyrobirotunda },      //inexact
+   { "gyroelongated_triangular_bicupola",       &gyroelongated_triangular_bicupola },       //inexact
+   { "gyroelongated_square_bicupola",           &gyroelongated_square_bicupola },           //inexact
+   { "gyroelongated_pentagonal_bicupola",       &gyroelongated_pentagonal_bicupola },       //inexact
+   { "gyroelongated_pentagonal_cupolarotunda",  &gyroelongated_pentagonal_cupolarotunda },  //inexact
+   { "gyroelongated_pentagonal_birotunda",      &gyroelongated_pentagonal_birotunda },      //inexact
+   { "augmented_triangular_prism",              &augmented_triangular_prism },       //inexact
+   { "biaugmented_triangular_prism",            &biaugmented_triangular_prism },     //inexact
+   { "triaugmented_triangular_prism",           &triaugmented_triangular_prism },    //inexact
+   { "augmented_pentagonal_prism",              &augmented_pentagonal_prism },       //inexact
+   { "biaugmented_pentagonal_prism",            &biaugmented_pentagonal_prism },     //inexact
+   { "augmented_hexagonal_prism",               &augmented_hexagonal_prism },        //inexact
+   { "parabiaugmented_hexagonal_prism",         &parabiaugmented_hexagonal_prism },  //inexact
+   { "metabiaugmented_hexagonal_prism",         &metabiaugmented_hexagonal_prism },  //inexact
+   { "triaugmented_hexagonal_prism",            &triaugmented_hexagonal_prism },     //inexact
+   { "augmented_dodecahedron",                  &augmented_dodecahedron },           //inexact
+   { "parabiaugmented_dodecahedron",            &parabiaugmented_dodecahedron },     //inexact
+   { "metabiaugmented_dodecahedron",            &metabiaugmented_dodecahedron },     //inexact
+   { "triaugmented_dodecahedron",               &triaugmented_dodecahedron },        //inexact
+   { "metabidiminished_icosahedron",            &metabidiminished_icosahedron },
+   { "tridiminished_icosahedron",               &tridiminished_icosahedron },
+   { "augmented_tridiminished_icosahedron",     &augmented_tridiminished_icosahedron },  //inexact
+   { "augmented truncated tetrahedron",         &augmented_truncated_tetrahedron },
+   { "augmented truncated cube",                &augmented_truncated_cube },
+   { "biaugmented truncated cube",              &biaugmented_truncated_cube },
+   { "augmented_truncated_dodecahedron",        &augmented_truncated_dodecahedron },       //inexact
+   { "parabiaugmented_truncated_dodecahedron",  &parabiaugmented_truncated_dodecahedron }, //inexact
+   { "metabiaugmented_truncated_dodecahedron",  &metabiaugmented_truncated_dodecahedron }, //inexact
+   { "triaugmented_truncated_dodecahedron",     &triaugmented_truncated_dodecahedron },    //inexact
+   { "gyrate_rhombicosidodecahedron",           &gyrate_rhombicosidodecahedron },          //inexact
+   { "parabigyrate_rhombicosidodecahedron",     &parabigyrate_rhombicosidodecahedron },    //inexact
+   { "metabigyrate_rhombicosidodecahedron",     &metabigyrate_rhombicosidodecahedron },    //inexact
+   { "trigyrate_rhombicosidodecahedron",        &trigyrate_rhombicosidodecahedron },       //inexact
+   { "diminished_rhombicosidodecahedron",       &diminished_rhombicosidodecahedron },
+   { "paragyrate_diminished_rhombicosidodecahedron",  &paragyrate_diminished_rhombicosidodecahedron },  //inexact
+   { "metagyrate_diminished_rhombicosidodecahedron",  &metagyrate_diminished_rhombicosidodecahedron },  //inexact
+   { "bigyrate_diminished_rhombicosidodecahedron",    &bigyrate_diminished_rhombicosidodecahedron },    //inexact
+   { "parabidiminished_rhombicosidodecahedron",       &parabidiminished_rhombicosidodecahedron },
+   { "metabidiminished_rhombicosidodecahedron",       &metabidiminished_rhombicosidodecahedron },
+   { "gyrate_bidiminished_rhombicosidodecahedron",    &gyrate_bidiminished_rhombicosidodecahedron },    //inexact
+   { "tridiminished_rhombicosidodecahedron",          &tridiminished_rhombicosidodecahedron },
+   { "snub_disphenoid",              &snub_disphenoid }, //inexact
+   { "snub_square_antisprism",       &snub_square_antiprism },  //inexact
+   { "sphenocorona",                 &sphenocorona },  //inexact
+   { "augmented_sphenocorona",       &augmented_sphenocorona },  //inexact
+   { "sphenomegacorona",             &sphenomegacorona },  //inexact
+   { "hebesphenomegacorona",         &hebesphenomegacorona }, //inexact
+   { "disphenocingulum",             &disphenocingulum },   //inexact
+   { "bilunabirotunda",              &bilunabirotunda },
+   { "triangular_hebesphenorotunda", &triangular_hebesphenorotunda } //inexact
+};
+
+}
+
+perl::Object johnson_int(int n)
+{
+  const size_t index(n-1);
+  if (index < sizeof(dispatcher)/sizeof(dispatcher[0]))
+    return dispatcher[index].func();
   else
-    throw std::runtime_error("No Johnson polytope of given name/index found.");
+    throw std::runtime_error("invalid index of Johnson polytope");
 }
 
-perl::Object johnson_int(int n){
-  return johnson_dispatcher("",n);
+perl::Object johnson_str(std::string s)
+{
+  typedef hash_map<std::string, dispatcher_t::fptr> func_map_t;
+  static const func_map_t func_map(attach_operation(array2container(dispatcher), dispatcher_t::to_map_value()).begin(),
+                                   attach_operation(array2container(dispatcher), dispatcher_t::to_map_value()).end());
+  const func_map_t::const_iterator it=func_map.find(s);
+  if (it != func_map.end())
+    return (it->second)();
+  else
+    throw std::runtime_error("unknown name of Johnson polytope");
 }
 
-perl::Object johnson_str(std::string s){
-  return johnson_dispatcher(s,0);
-}
-
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Create Johnson solid number n."
                   "# @param Int n the index of the desired Johnson polytope"
                   "# @return Polytope",
-                  &johnson_int, "johnson(Int)");
+                  &johnson_int, "johnson_solid(Int)");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Create Johnson solid with the given name."
                   "# Some polytopes are realized with floating point numbers and thus not exact;"
                   "# Vertex-facet-incidences are correct in all cases."
@@ -4297,7 +4153,7 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "#          The vertices are realized as floating point numbers."
                   "# @value s 'elongated_pentagonal_gyrobirotunda' Elongated pentagonal gyrobirotunda with regular facets. Johnson solid J43."
                   "#          The vertices are realized as floating point numbers."
-                  "# @value s 'gyroelongated_triangluar_bicupola' Gyroelongated triangular bicupola with regular facets. Johnson solid J43."
+                  "# @value s 'gyroelongated_triangular_bicupola' Gyroelongated triangular bicupola with regular facets. Johnson solid J44."
                   "#          The vertices are realized as floating point numbers."
                   "# @value s 'elongated_square_bicupola' Elongated square bicupola with regular facets. Johnson solid J45."
                   "#          The vertices are realized as floating point numbers."
@@ -4378,19 +4234,19 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "#          The vertices are realized as floating point numbers."
                   "# @value s 'sphenomegacorona' Sphenomegacorona with regular facets. Johnson solid J88."
                   "#          The vertices are realized as floating point numbers."
-									"# @value s 'hebesphenomegacorona' Hebesphenomegacorona with regular facets. Johnson solid J89."
+                  "# @value s 'hebesphenomegacorona' Hebesphenomegacorona with regular facets. Johnson solid J89."
                   "#          The vertices are realized as floating point numbers."
-									"# @value s 'disphenocingulum' Disphenocingulum with regular facets. Johnson solid J90."
+                  "# @value s 'disphenocingulum' Disphenocingulum with regular facets. Johnson solid J90."
                   "#          The vertices are realized as floating point numbers."
                   "# @value s 'bilunabirotunda' Bilunabirotunda with regular facets. Johnson solid J91."
                   "# @value s 'triangular_hebesphenorotunda' Triangular hebesphenorotunda with regular facets. Johnson solid J92."
                   "# @return Polytope",
-                  &johnson_str, "johnson(String)");
+                  &johnson_str, "johnson_solid(String)");
 } }
 
 
 // Local Variables:
 // mode:C++
-// c-basic-offset:3
+// c-basic-offset:2
 // indent-tabs-mode:nil
 // End:

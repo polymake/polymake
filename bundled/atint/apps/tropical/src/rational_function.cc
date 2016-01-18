@@ -55,6 +55,7 @@ namespace polymake { namespace tropical {
 			perl::Object domain_den = computePolynomialDomain(den);
 
 			RefinementResult r = refinement(domain_num, domain_den, false,false,false,true,false);
+			r.complex.give("PURE");
 			function.take("DOMAIN") << r.complex;
 		}//END computeDomain
 

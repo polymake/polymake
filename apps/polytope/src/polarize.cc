@@ -144,7 +144,14 @@ UserFunctionTemplate4perl("# @category Transformations"
                           "# use the [[pointed_part]] client afterwards."
                           "# @param Cone C"
                           "# @option Bool no_coordinates only combinatorial information is handled"
-                          "# @return Cone",
+                          "# @return Cone"
+                          "# @example To save the polar of the square in the variable $p and then print its vertices, do this:"
+                          "# > $p = polarize(cube(2));"
+                          "# > print $p->VERTICES;"
+                          "# | 1 1 0"
+                          "# | 1 -1 0"
+                          "# | 1 0 1"
+                          "# | 1 0 -1",
                           "polarize<Scalar> (Cone<Scalar>, { no_coordinates => 0 })");
 } }
 

@@ -21,6 +21,7 @@
 
 #include "polymake/ideal/singularInit.h"
 #include "polymake/ideal/internal/singularUtils.h"
+#include "polymake/ideal/internal/singularConvertTypes.h"
 
 namespace polymake {
 namespace ideal {
@@ -66,10 +67,16 @@ perl::ListReturn singular_get_var(const std::string varname){
             res << pmmat;
             break;
          }
-      /* case POLY_CMD:
+      case POLY_CMD:
          {
+            //int n = r.n_vars();
+            const poly q = (poly) IDDATA(var);
+            std::pair<ListMatrix<Vector<int> >, std::vector<Rational> > decomposed = convert_poly_to_matrix_and_vector(q);
+            res << decomposed.first;
+            res << decomposed.second;
             break;
          }
+      /*
       case STRING_CMD:
          break;*/
       default:
@@ -125,7 +132,7 @@ UserFunction4perl("# @category Singular interface"
 UserFunction4perl("# @category Singular interface"
                   "# Retrieves a variable from 'Singular'"
                   "# @param String s variable name"
-                  "# @return perl::ListReturn",
+                  "# @return List( Matrix polynomial exponents Vector polynomial coefficients )",
                   &singular::singular_get_var, "singular_get_var($)");
 
 } // end namespace ideal

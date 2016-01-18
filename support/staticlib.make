@@ -22,35 +22,16 @@ include ${SourceDir}/Makefile.inc
 Cflags += ${CflagsSuppressWarnings}
 CXXflags += ${CflagsSuppressWarnings}
 
-ifeq ($(words ${OwnLibraries}),1)
-  Archive := $(addsuffix $A, ${OwnLibraries})
-  LibObjects := $(addsuffix $O, ${LibModules})
+Archive := $(addsuffix $A, ${OwnLibrary})
+LibObjects := $(addsuffix $O, ${LibModules})
 
-  .PHONY: ${OwnLibraries}
-  .PRECIOUS: ${LibObjects}
-  .INTERMEDIATE: ${LibObjects}
+.INTERMEDIATE: ${LibObjects}
 
-  ${OwnLibraries} : % : %$A(${LibObjects})
-	@NewObjects=`for o in $?; do [ -f $$o ] && echo $$o; done`; \
-	[ -z "$$NewObjects" ] || { \
-	  set -x; \
-	  ${AR} -rc $@$A $$NewObjects; \
-	  rm $$NewObjects; \
-	  ${RANLIB} $@$A; \
-	}
+${Archive} : ${LibObjects}
+	${AR} -rc $@ $^
+	${RANLIB} $@
 
-  (%.o) : %.o ;
-
-  _archive_member = ${Archive}($(1))
-
-  ${OwnLibraries} : lib_dep_target = $(call _archive_member,$@)
-
-  compile : ${OwnLibraries}
-
-else
-  compile :
-	+@$(foreach l,${OwnLibraries},$(MAKE) --no-print-directory compile OwnLibraries=$l Debug=${Debug};)
-endif
+compile : ${Archive}
 
 clean::
-	rm -f *$A ${ExtraCLEAN}
+	rm -f *$A *$O ${ExtraCLEAN}

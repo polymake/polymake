@@ -47,7 +47,8 @@ perl::Object crosscut_complex(perl::Object p_in, perl::OptionSet options)
 UserFunctionTemplate4perl("# @category Producing other objects"
                           "# Produce the __crosscut complex__ of the boundary of a polytope.\n"
                           "# @param Polytope p"
-                          "# @return SimplicialComplex",
+                          "# @option Bool geometric_realization create a [[topaz::GeometricSimplicialComplex]]; default is true"
+                          "# @return topaz::SimplicialComplex",
                           "crosscut_complex<Scalar>(Polytope<Scalar> { geometric_realization => 1 } )");
 } }
 

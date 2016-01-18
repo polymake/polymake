@@ -9,6 +9,7 @@
 #include "libnormaliz/vector_operations.h"
 #include "libnormaliz/my_omp.h"
 #include "libnormaliz/HilbertSeries.h"
+#include <cstream> // for strcpy
 #include <iostream>
 #include <fstream>
 

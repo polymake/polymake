@@ -24,7 +24,7 @@ sub pairwise_dist {
     for (my $j=0; $j<$i; ++$j) {
       my $diff_ij=$M->row($i)-$M->row($j);
       my $dist_ij=sqrt(convert_to<Float>($diff_ij*$diff_ij));
-      $dist->($j,$i) = $dist->($i,$j)=$dist_ij;
+      $dist->elem($j,$i) = $dist->elem($i,$j)=$dist_ij;
     }
   }
   return new TightSpan<Rational>(METRIC=>$dist);

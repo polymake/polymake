@@ -55,6 +55,7 @@ sub doc_namespace { $pmdocns }
 
 # InteractiveHelp => [ 'ID', Application ]
 my %topic2id;
+my %bare_names_by_app;
 
 sub assign_ids {
    my $app=shift;
@@ -62,16 +63,13 @@ sub assign_ids {
    my @queue=($app->help);
    while (my $help=shift @queue) {
       $topic2id{$help}=[ id_mangled($help, $app, $id++), $app ];
-#      $topic2id{$help}=[ 'i'.$id++, $app ];
       push @queue, values %{$help->topics};
    }
 }
 
 #create an id as a mangling of the name
 sub id_mangled {
-   my $help = shift;
-   my $app = shift;
-   my $id = shift;
+   my ($help, $app, $id) = @_;
    my $r = $help->name;
 
    if (defined($help->topics->{"overload#0"}) && defined(my $params = $help->topics->{"overload#0"}->annex->{param})) {
@@ -91,8 +89,8 @@ sub id_mangled {
       $r=$p->parent->name."__".$r;
    }
 
-   # append the name of the parent (unless it is a category or property_types, objects, ...
-   while ($p = $p->parent){
+   # append the name of the parent unless it is a category or property_types, objects, ...
+   while ($p = $p->parent) {
       my $name = $p->name;
       if ($name && $name ne "property_types" && $name ne "objects" && $name ne "properties" && $name ne "methods" && $name ne "functions" && !$p->category) {
          $r = $name."__".$r;
@@ -120,13 +118,27 @@ sub id_mangled {
    # functions with name overload#0 won't have their real name in the mangling,
    # to make them unique append the old consecutive number (doesn't look nice but they don't occur in the documentation anyway)
    if ($help->name eq "overload#0") {
-      $r = $r."__".$id;
+      $r .= "__$id";
    }
+
+   if ($r eq $help->name) {
+      # overloaded functions instances may appear in different categories, escaping the "overload#X" adornments
+      if (my $repeated=($bare_names_by_app{$app->name} //= { })->{$r}++) {
+         $r .= "__INST$repeated";
+      }
+   }
+
    return $r;
 }
 
 # InteractiveHelp => WORD => [ InteractiveHelp ... ]
 my %searchTree;
+
+sub matching_topic {
+   my ($topic, $word)=@_;
+   $topic->name eq $word and
+   length($topic->text) || grep { exists $topic->annex->{$_} } qw(param tparam return options property)
+}
 
 sub search_in_tree {
    my ($help, $word)=@_;
@@ -134,7 +146,7 @@ sub search_in_tree {
 
    do {
       foreach my $topic ($help, @{$help->related}) {
-         if ($topic->name eq $word && length($topic->text)) {
+         if (matching_topic($topic, $word)) {
             my $me=[ $topic ];
             $searchTree{$_}->{$word}=$me for @ancestors;
             return $topic;
@@ -143,13 +155,20 @@ sub search_in_tree {
             $searchTree{$_}->{$word}=$cached for @ancestors;
             return @$cached;
          }
-         if (my @found=uniq( map { $_->find($word) } grep { !exists $taboo{$_} } values %{$topic->topics} )) {
-            @found=select_closest($help, @found) if @found>1;
+      }
+      if (my @found=uniq( map { matching_topic($_, $word) ? ($_) : $_->find("!rel", $word) } grep { !exists $taboo{$_} } values %{$help->topics})) {
+         @found=select_closest($_[0], @found) if @found>1;
+         $searchTree{$_}->{$word}=\@found for @ancestors;
+         return @found;
+      }
+      foreach my $topic (@{$help->related}) {
+         if (my @found=$topic->find("!rel", $word)) {
+            @found=select_closest($_[0], @found) if @found>1;
             $searchTree{$_}->{$word}=\@found for @ancestors;
             return @found;
          }
-         $taboo{$topic}=1;
       }
+      $taboo{$help}=1;
       push @ancestors, $help if $help != $_[0];
       $help=$help->parent;
    } while (defined $help);
@@ -190,25 +209,33 @@ sub search {
    }
 
    my (@topics, $obj_help);
-   if ($what =~ /\./ && $what =~ /^ $hier_id_re $/xo) {
-      # SUBOBJECT.PROPERTY
-      @topics=uniq( grep { defined } map { $_->help_topic } @{$application->object_types} );
-      foreach my $prop_name (split /\./, $what) {
-         @topics=uniq( grep { defined } map { $_->find("properties", $prop_name) } @topics );
+   if ($what =~ /[.:]/ && $what =~ /^ (?: ($id_re)::)? ($hier_id_re) $/xo) {
+      if ($1 eq "Core" || $1 eq "Visual") {
+         @topics=@how ? $app->help->find(@how, $what) : search_in_tree($help, $what);
+      } elsif ($1 eq "props") {
+         @topics=$app->help->find(@how, "property_types", $2);
+      } else {
+         # (ObjectType::)SUBOBJECT.PROPERTY
+         @topics= defined($1) ? $app->help->find(@how, "objects", $1) : uniq( grep { defined } map { $_->help_topic } @{$app->object_types} );
+         foreach my $prop_name (split /\./, $2) {
+            @topics=uniq( grep { defined } map { $_->find("?rel", "properties", $prop_name) } @topics );
+         }
+         @topics=select_closest($app->help, @topics) if @topics>1;
       }
-
-   } elsif ($what =~ /^(?: # qual_id_re is greedy, it would swallow the method name
-                           (?'objtype' $id_re (?: ::$id_re)* )::(?'method' [^:]+) $
-                           # match parametrized types
-                         | (?'objtype' $type_re)::(?'method' [^:]+) $
-                       ) /xo
-            && defined ($obj_help=$app->help->find(@how, "objects", $+{objtype}))) {
+   }
+   if (!@topics  &&
+       $what =~ /^(?: # qual_id_re is greedy, it would swallow the method name
+                      (?'objtype' $id_re (?: ::$id_re)* )::(?'method' [^:]+) $
+                      # match parametrized types
+                    | (?'objtype' $type_re)::(?'method' [^:]+) $
+                  ) /xo  &&
+       defined ($obj_help=$app->help->find(@how, "objects", "property_types", $+{objtype}))) {
       # Qualified::Type::METHOD
-      @topics=$obj_help->find("?rel", $+{method})
-
-   } else {
-      # single WORD
-      @topics=@how ? $app->help->find(@how,$what) : search_in_tree($help, $what)
+      @topics=$obj_help->find("?rel", $+{method});
+   }
+   if (!@topics) {
+      # try as a single term
+      @topics=@how ? $app->help->find(@how, $what) : search_in_tree($help, $what);
    }
 
    if (@topics==1) {
@@ -219,34 +246,72 @@ sub search {
          "#"
       }
    } elsif (@topics) {
-      ("#", class => "ambiguous")
+      die "Ambiguous reference to $_[1] from ", $application->name, "::", $help->full_path, "; candidates are:\n",
+          (map { "    ".$_->full_path."\n" } @topics),
+          "Please disambiguate by qualification with application name and/or object type at ", $help->defined_at, "\n";
 
+   } elsif ($_[1] =~ /^($qual_id_re) \s*<\s* $types_re \s*>$/xo) {
+      search($help, $1);
    } else {
-      if ($_[1] =~ /^($qual_id_re)</o) {
-         search($help, $1);
-      } else {
-         ("#", class => "invalid")
-      }
+      die "Unresolved reference to $_[1] from ", $application->name, "::", $help->full_path, "\n",
+          $_[1] =~ /[<>]/ ? "Please remove the type parameters, because help topics are not stored with specializations"
+                          : "Please double-check the spelling and/or qualify with application name or object type",
+          " at ", $help->defined_at, "\n";
    }
 }
 
-sub search_type {
-   my ($type)=@_;
+sub ref_to_type {
+   my ($referrer, $type)=@_;
    if (defined (my $help=$type->help_topic)) {
       if (defined (my $id_app=$topic2id{$help})) {
          return ($type->application != $application && $type->application->name.$outsuffix) . '#' . $id_app->[0];
       }
    }
-   ("#", class => "invalid")
+   if ($type->abstract) {
+      return '#';
+   }
+   die "Help topic ", $referrer->full_path, " defined at ", $referrer->defined_at, " refers to a ",
+       (instanceof Core::ObjectType::Specialization($type) ? ("specialization ", $type->full_name) :
+        instanceof Core::ObjectType($type) ? ("big object type ", $type->full_name) :
+        instanceof Core::PropertyType($type) ? ("property type ", $type->full_name) :
+        ("perl class ", ref($type))), " not represented in the help topic tree\n";
 }
 
+sub ref_to_topic {
+   my ($topic)=@_;
+   '#' . $topic2id{$topic}->[0]
+}
+
+my %ignore_types;
+@ignore_types{qw(ARRAY SCALAR HASH Any enum)}=();
+
 sub resolve_ref {
-   my ($help, $ref)=@_;
+   my ($help, $ref, $force)=@_;
    if ($ref =~ m{^ wiki: ([^\s\#]+) (\# \S+)? $}x ) {
       return "$wikiURL/$1".lc($2);
    }
    if ($ref =~ m{^ $id_re :// }xo) {
       return $ref;
+   }
+   if (!$force && $ref =~ /^$id_re$/o) {
+      if (exists $ignore_types{$ref}) {
+         return '#';
+      }
+
+      for (my $topic=$help; defined($topic); $topic=$topic->parent) {
+         if (defined (my $tparams=$topic->annex->{tparam})) {
+            if (grep { $_->[0] eq $ref } @$tparams) {
+               return '#';
+            }
+         }
+         if (defined (my $params=$topic->annex->{param})) {
+            if (grep { $_->[0] =~ /^$id_re<.*\b$ref\b.*>$/ } @$params) {
+               return '#';
+            }
+         }
+      }
+
+      $ref =~ s/^(Object(?:Type)?)$/Core::$1/;
    }
 
    my $func_help;
@@ -302,7 +367,7 @@ sub convertDokuWiki {
       } elsif (defined $4) {
          my ($ref, $text)=($4, $5);
          $ref =~ s/^\s* (.*?) \s*$/$1/x;
-         $writer->startTag([ $xhtmlns, 'a' ], href => resolve_ref($help, $ref));
+         $writer->startTag([ $xhtmlns, 'a' ], href => resolve_ref($help, $ref, 1));
          if (defined $text) {
             convertDokuWiki($writer, $help, $text);
          } else {
@@ -361,30 +426,34 @@ sub writeHTML {
    $writer->setDataMode(1);
 }
 
+sub write_type_params {
+   my ($writer, $help)=@_;
+   if (defined (my $tparams=$help->annex->{tparam})) {
+      foreach (grep { @$_>1 } @$tparams) {
+         $writer->startTag("tparam", name => $_->[0]);
+         write_descr_string($writer, $help, $_->[1]);
+         $writer->endTag;
+      }
+   }
+}
+
 sub write_function {
-   my ($writer, $help, $obj, $ovcnt, @attrs)=@_;
+   my ($writer, $help, $ovcnt, @attrs)=@_;
    if (!@attrs) {
       @attrs=(name => $help->name, $xmlid => $topic2id{$help}->[0]);
       if ($ovcnt=$help->annex->{function}) {
          foreach (0..$ovcnt) {
             my $ov_topic=$help->topics->{"overload#$_"};
             $attrs[-1]=$topic2id{$ov_topic}->[0] if $_;     # the first instance inherits the id of the common parent node
-            write_function($writer, $ov_topic, $obj, $_, @attrs);
+            write_function($writer, $ov_topic, $_, @attrs);
          }
          return 1;
       }
    }
-   my %ext=ext_attr_dir($help);
 
-   $writer->startTag("function", @attrs, %ext);
+   $writer->startTag("function", @attrs, ext_attr_dir($help));
+   write_type_params($writer, $help);
 
-   if (defined (my $tparams=$help->annex->{tparam})) {
-      foreach (@$tparams) {
-         $writer->startTag("tparam", name => $_->[0]);
-         write_descr_string($writer, $help, $_->[1]);
-         $writer->endTag;
-      }
-   }
    if (defined (my $params=$help->annex->{param})) {
       foreach (@$params) {
          $writer->startTag("param", name => $_->[1], type => $_->[0], href => resolve_ref($help, $_->[0]));
@@ -427,7 +496,7 @@ sub write_function {
                write_descr_string($writer, $help, $group_text);
             }
             foreach my $opt (@$opt_group) {
-               $writer->startTag("option", name => $opt->[1], type => $opt->[0], href => resolve_ref($help,$opt->[0]));
+               $writer->startTag("option", name => $opt->[1], type => $opt->[0], href => resolve_ref($help, $opt->[0]));
                write_descr_string($writer, $help, $opt->[2]);
                $writer->endTag;
             }
@@ -438,7 +507,7 @@ sub write_function {
       }
    }
    if (defined (my $return=$help->annex->{return})) {
-      $writer->startTag("return", type => $return->[0], href => resolve_ref($help,$return->[0]));
+      $writer->startTag("return", type => $return->[0], href => resolve_ref($help, $return->[0]));
       write_descr_string($writer, $help, $return->[1]);
       $writer->endTag;
    }
@@ -447,8 +516,18 @@ sub write_function {
       $writer->emptyTag("author", name => $author);
    }
 
-   if (defined $obj && defined($obj->generic)) {
-      $writer->emptyTag("only", name=>$obj->full_name, href => search_type($obj));
+   if (defined (my $spez=$help->annex->{spez})) {
+      $writer->emptyTag("only", name => $spez->name, href => ref_to_topic($spez));
+   }
+
+   if (defined (my $depends=$help->annex->{depends})) {
+      $writer->emptyTag("depends", name => "$depends");
+   }
+
+   if (defined (my $examples=$help->annex->{examples})) {
+      $writer->startTag("examples");
+      write_examples($writer,$help,$examples);
+      $writer->endTag;
    }
 
    write_descr($writer, $help, $ovcnt);
@@ -473,7 +552,7 @@ sub write_option_list {
    }
 
    foreach my $key (@{$help->annex->{keys}}) {
-      $writer->startTag("option", name => $key->[1], type => $key->[0], href => resolve_ref($help,$key->[0]));
+      $writer->startTag("option", name => $key->[1], type => $key->[0], href => resolve_ref($help, $key->[0]));
       write_descr_string($writer, $help, $key->[2]);
       $writer->endTag;
    }
@@ -485,20 +564,13 @@ sub write_property_type {
    my ($writer, $help)=@_;
 
    my $pkg=$application->pkg."::props::".$help->name;
-   my %ext;
+   my @ext;
    if (UNIVERSAL::can($pkg, "self")) {
       my $proto=$pkg->self;
-      %ext = ext_attr($proto);
+      @ext = ext_attr($proto);
    }
-   $writer->startTag("property-type", name => $help->name, %ext, $xmlid => $topic2id{$help}->[0]);
-   if (defined (my $tparams=$help->annex->{tparam})) {
-      foreach (@$tparams) {
-         $writer->startTag("tparam", name => $_->[0]);
-         write_descr_string($writer, $help, $_->[1]);
-         $writer->endTag;
-      }
-   }
-
+   $writer->startTag("property-type", name => $help->name, @ext, $xmlid => $topic2id{$help}->[0]);
+   write_type_params($writer, $help);
    write_descr($writer, $help);
 
    if (UNIVERSAL::can($pkg, "self")) {
@@ -506,7 +578,7 @@ sub write_property_type {
       if (defined($proto->super)) {
          $writer->emptyTag("derived-from",
                            type => ($proto->super->application != $application && $proto->super->application->name."::").$proto->super->full_name,
-                           href => search_type($proto->super));
+                           href => ref_to_type($help, $proto->super));
       }
    }
    if (defined (my $methods=$help->topics->{methods})) {
@@ -518,12 +590,22 @@ sub write_property_type {
 }
 
 sub write_property_contents {
-   my ($writer, $help, $prop, $obj_proto)=@_;
+   my ($writer, $help)=@_;
    write_descr($writer, $help);
+
+   if (defined (my $depends=$help->annex->{depends})) {
+      $writer->emptyTag("depends", name => "$depends");
+   }
+
+   if (defined (my $examples=$help->annex->{examples})) {
+      $writer->startTag("examples");
+      write_examples($writer,$help,$examples);
+      $writer->endTag;
+   }
 
    if (defined (my $properties=$help->topics->{properties})) {
       $writer->startTag("properties");
-      write_categories($writer, $properties, sub { write_property(@_, $prop->specialization($obj_proto, 1)->type, []) });
+      write_categories($writer, $properties, \&write_property);
       $writer->endTag("properties");
    }
    if (defined (my $methods=$help->topics->{methods})) {
@@ -533,198 +615,135 @@ sub write_property_contents {
    }
 }
 
-sub write_property {
-   my ($writer, $help, $obj_proto, $perms)=@_;
-   my $prop=$obj_proto->lookup_property($help->name)
-     or die "Help topic ", $help->full_path, " defined at ", $help->defined_at, " refers to an unknown property ", $obj_proto->full_name, "::", $help->name, "\n";
-   if ($prop->flags & $Core::Property::is_permutation) {
-      push @$perms, $help;
-      return;
+sub write_examples {
+   my ($writer,$help,$examples) = @_;
+   foreach my $ex (@$examples) {
+      $writer->startTag("example");
+      $writer->startTag("description");
+      $writer->setDataMode(0);
+      my @buffer;
+      foreach my $line (split "\n",$ex) {
+         # match > or | at the beginning but check > with lookahead to keep it in $'
+         if ($line =~ /^\s* (?: \| | (?= > ) ) /x) {
+            $line = $';
+            # escapes for html output, we dont want to parse the code sections as descriptions
+            # due to stuff like [[1,2,3]] and to avoid [[]] around all types,...
+            $line =~ s/&/&amp;/g;
+            $line =~ s/</&lt;/g;
+            $line =~ s/>/&gt;/g;
+            if (@buffer > 0) {
+               writeHTMLtext($writer,$help,join("\n",@buffer));
+               @buffer = ();
+            }
+            # empty code tags cause display problems
+            $line = " " if ($line eq "");
+            $writer->startTag([ $xhtmlns, "code" ]);
+            $writer->getOutput->print($line);
+            $writer->endTag;
+         } else {
+            push @buffer,$line;
+         }
+      }
+      writeHTMLtext($writer,$help,join("\n",@buffer)) if (@buffer > 0);
+      $writer->setDataMode(1);
+      $writer->endTag;
+      $writer->endTag;
    }
-   my %ext = ext_attr($prop);
+}
 
-   my $type= $prop->flags & $Core::Property::is_locally_derived ? $prop->type->pure_type : $prop->type;
+sub write_property {
+   my ($writer, $help)=@_;
+   my $prop=$help->annex->{property};
+   my $type=$prop->type;
+
    $writer->startTag("property", name => $help->name,
                      type => ($type->application != $application && $type->application->name."::").$type->full_name,
-                     href => search_type($type),
-                     %ext,
+                     href => ref_to_type($help, $type),
+                     ext_attr($prop),
                      $xmlid => $topic2id{$help}->[0]);
-   if (defined($obj_proto->generic)) {
-      $writer->emptyTag("only", name=>$obj_proto->full_name, href=>search_type($obj_proto));
+
+   if (defined (my $spez=$help->annex->{spez})) {
+      $writer->emptyTag("only", name => $spez->name, href => ref_to_topic($spez));
    }
-   write_property_contents($writer, $help, $prop, $obj_proto);
+   write_property_contents($writer, $help);
    $writer->endTag("property");
    1
 }
 
 sub write_permutation {
-   my ($writer, $help, $obj_proto)=@_;
-   my $prop=$obj_proto->property($help->name)
-     or die "Help topic ", $help->full_path, " defined at ", $help->defined_at, " refers to an unknown property ", $obj_proto->full_name, "::", $help->name, "\n";
+   my ($writer, $help)=@_;
    $writer->startTag("permutation", name => $help->name, $xmlid => $topic2id{$help}->[0]);
-   write_property_contents($writer, $help, $prop, $obj_proto);
+   write_property_contents($writer, $help);
    $writer->endTag("permutation");
 }
 
 sub write_object {
    my ($writer, $help)=@_;
+   my $obj_proto=$help->annex->{type};
 
-   my @specializations;
-   if (defined (my $s=$help->topics->{specializations})) {
-      @specializations=@{$s->topics}{@{$s->toc}};
-   }
+   $writer->startTag("object", name => $help->name, $xmlid => $topic2id{$help}->[0],
+                               defined($obj_proto) ? ext_attr($obj_proto) : ());
+   write_type_params($writer, $help);
 
-   # get extension attribute of object
-   my %ext;
-   if (my ($obj_proto)=grep { $_->help_topic == $help } @{$application->object_types}) {
-      %ext = ext_attr($obj_proto);
-   }
-   $writer->startTag("object", name => $help->name, %ext, $xmlid => $topic2id{$help}->[0]);
-
-   if (defined (my $tparams=$help->annex->{tparam})) {
-      foreach (@$tparams) {
-         $writer->startTag("tparam", name => $_->[0]);
-         write_descr_string($writer, $help, $_->[1]);
+   if (defined (my $spezs=$help->topics->{specializations})) {
+      foreach my $s (@{$spezs->topics}{@{$spezs->toc}}) {
+         $writer->startTag("specialization", name => $s->name, $xmlid => $topic2id{$s}->[0]);
+         write_descr($writer, $s, 1);
          $writer->endTag;
       }
    }
 
-   foreach my $s (@specializations) {
-      $writer->startTag("specialization", name=> $s->name, $xmlid => $topic2id{$s}->[0]);
-      write_descr($writer, $s, 1);
-      $writer->endTag;
-   }
-
-   # gather properties of all related objects
-   my %properties=();
-   if (defined (my $properties=$help->topics->{properties})) {
-      $properties{$help->name}=$properties;
-   }
-   foreach my $s (@specializations) {
-      if (defined (my $properties=$s->topics->{properties})) {
-         $properties{$s->name}=$properties;
-      }
-   }
-
-   my ($obj_proto)=(grep { $_->help_topic == $help } @{$application->object_types});
-
-   my %obj_protos = ();
-   if ($obj_proto) {
-      # gather object protos
-      $obj_protos{$obj_proto->full_name} = $obj_proto;
-      foreach my $s (@specializations) {
-         if ($s->name =~ /<.*>/) {
-            if (defined (my $spec_proto=$application->eval_type($s->name))) {
-               $obj_protos{$spec_proto->full_name} = $spec_proto;
-            }
-         } elsif (defined ($obj_proto->specializations)) {
-            if (my ($spez_proto)=grep { $_->name eq $s->name } @{$obj_proto->specializations}) {
-               $obj_protos{$spez_proto->full_name} = $spez_proto;
-            }
-         }
-      }
-   }
-
-   if ($obj_proto) {
+   if (defined $obj_proto) {
       write_descr($writer, $help, defined($obj_proto->generic));
       my %shown_super_types;
       foreach my $super (@{$obj_proto->super}) {
-         if (defined($super->help_topic) && !$shown_super_types{$obj_proto->name}++) {
+         if (defined($super->help_topic) && !instanceof Core::ObjectType::Specialization($super) && !$shown_super_types{$obj_proto->name}++) {
             $writer->emptyTag("derived-from",
                               object => ($super->application != $obj_proto->application && $super->application->name."::").$super->full_name,
-                              href => search_type($super));
+                              href => ref_to_type($help, $super));
          }
       }
 
-      if (%properties) {
-         my @perms;
+      if (defined (my $properties=$help->topics->{properties})) {
          $writer->startTag("properties");
-         write_object_categories($writer, \%properties, \%obj_protos, sub { write_property(@_, \@perms) });
+         write_categories($writer, $properties, \&write_property);
          $writer->endTag("properties");
+      }
 
-         if (@perms) {
-            $writer->startTag("permutations");
-            write_permutation($writer, $_, $obj_proto) for @perms;
-            $writer->endTag("permutations");
-         }
+      if (defined (my $perms=$help->topics->{permutations})) {
+         $writer->startTag("permutations");
+         write_categories($writer, $perms, \&write_permutation);
+         $writer->endTag("permutations");
       }
    } else {
+      if (defined (my $super=$help->annex->{super})) {
+         $writer->emptyTag("derived-from",
+                           object => $super,
+                           href => resolve_ref($help, $super));
+      }
       write_descr($writer, $help, 1);
    }
 
-   # gather methods of all related objects
-   my %methods=();
-   if (defined (my $methods=$help->topics->{methods})) {
-      $methods{$help->name}=$methods;
-   }
-   foreach my $s (@specializations) {
-      if (defined (my $methods=$s->topics->{methods})) {
-         $methods{$s->name}=$methods;
-      }
+   if (defined (my $examples=$help->annex->{examples})) {
+      $writer->startTag("examples");
+      write_examples($writer,$help,$examples);
+      $writer->endTag;
    }
 
-   if (%methods) {
+   if (defined (my $methods=$help->topics->{methods})) {
       $writer->startTag("user-methods");
-      write_object_categories($writer, \%methods, \%obj_protos, \&write_function);
+      write_categories($writer, $methods, \&write_function);
       $writer->endTag("user-methods");
    }
    $writer->endTag("object");
 }
-
-sub write_object_categories {
-   my ($writer, $helps, $obj_protos, $write_sub)=@_;
-   my $has_categories;
-
-   # gather categories
-   my @cats = Polymake::uniq(map {$_->name} grep { $_->category } map {values %{$_->topics}}  values %$helps);
-
-   foreach my $cat (@cats) {
-      $has_categories=1;
-      my %ext;
-
-      foreach (values %$helps) {
-         if (defined (my $topic = $_->topics->{$cat})) {
-            %ext = ext_attr_dir($topic);
-            $writer->startTag("category", name => $topic->name, %ext, $xmlid => $topic2id{$topic}->[0]);
-            write_descr($writer, $topic);
-            unless (@{$topic->toc}) {
-               warn_print( "Category without items: ", $application->name, "::", $topic->full_path );
-            }
-
-            last;
-         }
-      }
-
-      while (my ($obj_name, $obj_topic) = each %$helps) {
-         if (defined(my $topic = $obj_topic->topics->{$cat})) {
-            foreach (@{$topic->toc}) {
-               $write_sub->($writer, $topic->topics->{$_}, $obj_protos->{$obj_name});
-            }
-         }
-      }
-      $writer->endTag("category");
-   }
-
-   while (my ($obj_name, $obj_topic) = each %$helps) {
-      foreach (@{$obj_topic->toc}) {
-         my $topic=$obj_topic->topics->{$_};
-         if (!$topic->category &&
-             $write_sub->($writer, $topic, $obj_protos->{$obj_name}) &&
-             $has_categories) {
-            warn_print( "Item without category: ", $application->name, "::", $topic->full_path);
-         }
-      }
-   }
-}
-
 
 sub write_categories {
    my ($writer, $help, $write_sub, %taboo)=@_;
    my $has_categories;
    foreach my $topic (grep { $_->category && !$taboo{$_->name} } values %{$help->topics}) {
       $has_categories=1;
-      my %ext = ext_attr_dir($topic);
-      $writer->startTag("category", name => $topic->name, %ext, $xmlid => $topic2id{$topic}->[0]);
+      $writer->startTag("category", name => $topic->name, ext_attr_dir($topic), $xmlid => $topic2id{$topic}->[0]);
       write_descr($writer, $topic);
       unless (@{$topic->toc}) {
          warn_print( "Category without items: ", $application->name, "::", $topic->full_path );
@@ -747,33 +766,34 @@ sub write_categories {
 }
 
 sub ext_attr {
-   my $thing = shift;
-   my %ext;
+   my ($thing)=@_;
    if (defined $thing->extension) {
-      %ext = (ext=>$thing->extension->URI, ext_name=>$thing->extension->short_name);
+      (ext=>$thing->extension->URI, ext_name=>$thing->extension->short_name)
+   } else {
+      ()
    }
-   return %ext;
 }
+
 sub ext_attr_dir {
-   my $help = shift;
-   my %ext;
+   my ($help)=@_;
    my $dir = $help->defined_at;
-   $dir =~ s@/apps/$id_re/(:?rules|src)/\S+, line \d+$@@o;
+   $dir =~ s@/apps/$id_re/(?:rules|src)/\S+, line \d+$@@o;
    if (my $e = $Core::Extension::registered_by_dir{$dir}) {
-      %ext = (ext=>$e->URI, ext_name=>$e->short_name);
+      (ext => $e->URI, ext_name => $e->short_name)
+   } else {
+      ()
    }
-   return %ext;
 }
 
 sub ext_attr_app {
-   my $app = shift;
-   my %ext;
+   my ($app)=@_;
    my $dir = $app->top;
    $dir =~ s@/apps/$id_re$@@o;
    if (my $e = $Core::Extension::registered_by_dir{$dir}) {
-      %ext = (ext=>$e->URI, ext_name=>$e->short_name);
+      (ext => $e->URI, ext_name => $e->short_name)
+   } else {
+      ()
    }
-   return %ext;
 }
 
 sub open_doc_file {
@@ -807,8 +827,7 @@ foreach my $app (@ARGV) {
   %HTMLsymbol; %HTMLlat1;
 ]>
 .
-   my %ext = ext_attr_app($application);
-   $writer->startTag( [ $pmdocns, "application" ], name => $application->name, %ext );
+   $writer->startTag( [ $pmdocns, "application" ], name => $application->name, ext_attr_app($application) );
 
    write_descr($writer, $application->help);
 
@@ -866,8 +885,7 @@ Core functionality available in all applications.
       if (@{$functions->toc}) {
          $writer->startTag("user-functions");
          foreach my $topic (grep { defined } @{$functions->topics}{qw(Basic Interactive)}) {
-                my %ext = ext_attr_dir($topic);
-            $writer->startTag("category", name => $topic->name, %ext, $xmlid => $topic2id{$topic}->[0]);
+            $writer->startTag("category", name => $topic->name, ext_attr_dir($topic), $xmlid => $topic2id{$topic}->[0]);
             write_descr($writer, $topic, 1);
             foreach (@{$topic->toc}) {
                write_function($writer, $topic->topics->{$_});

@@ -24,5 +24,6 @@
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    Class4perl("Polymake::common::Pair_A_Pair_A_Int_I_Int_Z_I_Vector__Rational_Z", std::pair< std::pair< int, int >, Vector< Rational > >);
+   Class4perl("Polymake::common::Pair_A_Vector__Rational_I_Vector__Rational_Z", std::pair< Vector< Rational >, Vector< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

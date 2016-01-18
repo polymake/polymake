@@ -17,13 +17,22 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
 #include "polymake/Rational.h"
+#include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/TropicalNumber.h"
 #include "polymake/client.h"
+#include "polymake/linalg.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0>
+   FunctionInterface4perl( rows_X, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturn( (rows(arg0.get<T0>())) );
+   };
+
    template <typename T0>
    FunctionInterface4perl( rows_f1, T0 ) {
       perl::Value arg0(stack[0]);
@@ -32,5 +41,14 @@ namespace polymake { namespace common { namespace {
 
    FunctionInstance4perl(rows_f1, perl::Canned< const SparseMatrix< TropicalNumber< Min, Rational >, Symmetric > >);
    FunctionInstance4perl(rows_f1, perl::Canned< const SparseMatrix< TropicalNumber< Max, Rational >, Symmetric > >);
+   FunctionInstance4perl(rows_f1, perl::Canned< const pm::RowChain<pm::RowChain<pm::RowChain<pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&> const&, pm::Matrix<pm::Rational> const&> const&, pm::Matrix<pm::Rational> const&> >);
+   FunctionInstance4perl(rows_f1, perl::Canned< const pm::RowChain<pm::RowChain<pm::RowChain<pm::RowChain<pm::RowChain<pm::RowChain<pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&> const&, pm::Matrix<pm::Rational> const&> const&, pm::Matrix<pm::Rational> const&> const&, pm::Matrix<pm::Rational> const&> const&, pm::Matrix<pm::Rational> const&> const&, pm::Matrix<pm::Rational> const&> >);
+   FunctionInstance4perl(rows_X, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Set<int, pm::operations::cmp> const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
+   FunctionInstance4perl(rows_f1, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Set<int, pm::operations::cmp> const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
+   FunctionInstance4perl(rows_f1, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >);
+   FunctionInstance4perl(rows_X, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<pm::Rational const&> const&>, pm::Matrix<pm::Rational> const&> >);
+   FunctionInstance4perl(rows_f1, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> >);
+   FunctionInstance4perl(rows_f1, perl::Canned< const Matrix< TropicalNumber< Max, Rational > > >);
+   FunctionInstance4perl(rows_f1, perl::Canned< const pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

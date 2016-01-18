@@ -289,7 +289,7 @@ user_method FACES($ %Visual::Polygon::decorations) {
    compose($self, vis_facets($faces, $self->elements->[0]->Coord, $labels, $facet_decor, \%edge_decor, \%point_decor));
 }
 
-# Add the [[SimplicialComplex.MORSE_MATCHING|MORSE_MATCHING]] to the visualization of the [[SimplicialComplex]].
+# Add the [[SimplicialComplex::MORSE_MATCHING|MORSE_MATCHING]] to the visualization of the [[SimplicialComplex]].
 user_method MORSE_MATCHING(%Visual::Graph::decorations) {
    my ($this, $decor)=@_;
    my $complex = $this->SimplicialComplex;

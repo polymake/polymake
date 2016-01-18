@@ -85,17 +85,22 @@ bool val_compare(const Candidate<Integer>& a, const Candidate<Integer>& b);
 
 template <typename Integer>
 ostream& operator<< (ostream& out, const Candidate<Integer>& c) {
+    cout << "-------------" << endl;
     out << "cand=" << c.cand;
-    out << ", values=" << c.values;
-    out << ", sort_deg=" << c.sort_deg;
+    out << "values=" << c.values;
+    out << "sort_deg=" << c.sort_deg;
     out << ", reducible=" << c.reducible;
     out << ", original_generator=" << c.original_generator;
 //    out << ", generation=" << c.generation;
     out << ", mother=" << c.mother;
-    out << ", old_tot_deg=" << c.old_tot_deg;
+    out << ", old_tot_deg=" << c.old_tot_deg << endl;
     // out << ", in_HB=" << c.in_HB;
     return out;
 }
+
+// adds two candidates and returns the sum
+template<typename Integer>
+Candidate<Integer> sum(const Candidate<Integer>& C,const Candidate<Integer>& D);
 
 template<typename Integer>
 class CandidateList {
@@ -155,6 +160,7 @@ class CandidateList {
   void clear();
   size_t size();
   bool empty();
+  void search();
 
 }; // end class
 
@@ -173,7 +179,7 @@ class CandidateTable {  // for parallelized reduction with moving of reducer to 
 
   public:
 
-  list < pair< size_t, vector<Integer>* > > ValPointers;
+  list < std::pair< size_t, vector<Integer>* > > ValPointers;
   bool dual;
   size_t last_hyp;
 

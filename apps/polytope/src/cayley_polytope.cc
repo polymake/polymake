@@ -80,7 +80,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# where e<sub>1</sub>, ...,e<sub>k</sub> are the standard unit vectors in R<sup>k</sup>."
                           "# In this representation the last k coordinates always add up to 1."
                           "# The option //proj// projects onto the complement of the last coordinate."
-                          "# @param Array<LatticePolytope> P_Array  an array containing the lattice polytopes P<sub>1</sub>,...,P<sub>k</sub>"
+                          "# @param Array<Polytope> P_Array  an array containing the lattice polytopes P<sub>1</sub>,...,P<sub>k</sub>"
                           "# @option Bool proj"
                           "# @return Polytope",
                           "cayley_polytope(Polytope<Rational> +; {proj => 0} )");

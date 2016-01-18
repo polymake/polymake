@@ -15,9 +15,6 @@
    $Project: polymake $$Id$
 */
 
-
-
-
 #include "polymake/client.h"
 #include "polymake/graph/HasseDiagram.h"
 #include "polymake/topaz/complex_tools.h"
@@ -27,13 +24,11 @@
 
 namespace polymake { namespace topaz {
 
-
 //////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////
 ///////////      L E X - F I R S T / L E X - L A S T     /////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////
-
 
 
 /* *@class CompareByHasseDiagram
@@ -83,8 +78,7 @@ void lex_free_faces(const HasseDiagram& newHD,
 			   const int& max_d, 
 			   Set< int,CompareByHasseDiagram >& free_face_list)
 {
-   for (Entire<graph::HasseDiagram::nodes_of_dim_set>::const_iterator 
-        n = entire(newHD.nodes_of_dim(max_d-1)); !n.at_end(); ++n) {
+   for (Entire<graph::HasseDiagram::nodes_of_dim_set>::const_iterator n=entire(newHD.nodes_of_dim(max_d-1)); !n.at_end(); ++n) {
       const int this_index = *n;
       if( newHD.out_degree(this_index) == 1) {
 	 free_face_list += this_index;
@@ -131,9 +125,8 @@ void lex_collapse(HasseDiagram& newHD, Set<int,CompareByHasseDiagram>& free_face
    
    
    // faces that were on the boundary of remove_face are no longer free
-   for (Entire< Set<int> >::iterator s = entire(bdy_of_remove_face); !s.at_end();++s) {
+   for (Entire< Set<int> >::iterator s = entire(bdy_of_remove_face); !s.at_end(); ++s) {
       const int this_bdy_face = *s;
-      
       free_face_list.erase(this_bdy_face);   
    }
 
@@ -143,8 +136,7 @@ void lex_collapse(HasseDiagram& newHD, Set<int,CompareByHasseDiagram>& free_face
 
    
    // deletion of remove_face may add new free faces
-   for (Entire< Set<int> >::iterator it=entire(bdy_of_remove_face); 
-	!it.at_end(); ++it) {
+   for (Entire< Set<int> >::iterator it=entire(bdy_of_remove_face); !it.at_end(); ++it) {
       const int this_index = *it;
       if ( newHD.out_degree(this_index) == 1) {
 	 free_face_list += this_index;
@@ -212,24 +204,19 @@ Array<int> lex_discMorse(const int& strategy, graph::HasseDiagram newHD, const p
 	    // otherwise, remove a face of maximal dimension
 	    if(print_collapsed)
             if (!first_removed_face && save_remaining_faces) {
-	       for(Entire<graph::HasseDiagram::nodes_of_dim_set>::const_iterator n 
-		    = entire(newHD.nodes_of_dim(0,max_d)); !n.at_end(); ++n)
+	       for(Entire<graph::HasseDiagram::nodes_of_dim_set>::const_iterator n=entire(newHD.nodes_of_dim(0,max_d)); !n.at_end(); ++n)
 		  remaining_facets.push_back(newHD.face(*n));
 	       save_remaining_faces=false;
 	    }
 	    
 	    Set<int, CompareByHasseDiagram> faces_of_maximal_dim(cmp);
-	    for(Entire<HasseDiagram::nodes_of_dim_set>::const_iterator n=entire(newHD.nodes_of_dim(max_d));
-		!n.at_end();++n) {
+	    for(Entire<HasseDiagram::nodes_of_dim_set>::const_iterator n=entire(newHD.nodes_of_dim(max_d)); !n.at_end(); ++n) {
 	       const int node_of_max_d(*n);
 	       faces_of_maximal_dim += node_of_max_d;
 	    }
 	    
 	    const int critical_face( strategy==1 ? faces_of_maximal_dim.front() : faces_of_maximal_dim.back() );
-	    
 	    Set<int> bdy_of_critical_face(newHD.in_adjacent_nodes(critical_face));
-
-	    
 	    
 	    // remove critical face from Hasse
 	    newHD.delete_node(critical_face);
@@ -243,7 +230,7 @@ Array<int> lex_discMorse(const int& strategy, graph::HasseDiagram newHD, const p
 	       }
 	    }
 
-	    morse_vector[max_d]++;
+	    ++(morse_vector[max_d]);
 
 	 }
       }
@@ -283,8 +270,7 @@ void rand_free_faces(const HasseDiagram& newHD,
 		const int& max_d, 
 		Set<int>& free_face_list)
 {
-   for (Entire<graph::HasseDiagram::nodes_of_dim_set>::const_iterator 
-        n = entire(newHD.nodes_of_dim(max_d-1)); !n.at_end(); ++n) {
+   for (Entire<graph::HasseDiagram::nodes_of_dim_set>::const_iterator n = entire(newHD.nodes_of_dim(max_d-1)); !n.at_end(); ++n) {
       const int this_index = *n;
       if( newHD.out_degree(this_index) == 1) {
 	 free_face_list += this_index;
@@ -319,7 +305,6 @@ void rand_collapse(HasseDiagram& newHD, Set<int>& free_face_list,
    if(newHD.dim_of_node(remove_this)+1 != newHD.dim_of_node(remove_face)) {
       throw std::runtime_error("random_discrete_morse::collapse: dimensions of Hasse messed up");
    }
-   
 
    // keep the nodes of boundary faces of remove_face for later use
    Set<int> bdy_of_remove_face=newHD.in_adjacent_nodes(remove_face);
@@ -330,18 +315,15 @@ void rand_collapse(HasseDiagram& newHD, Set<int>& free_face_list,
    // first remove remove_this from free_face_list
    free_face_list-=remove_this;
    
-   
    // faces that were on the boundary of remove_face are no longer free
-   for (Entire< Set<int> >::iterator s = entire(bdy_of_remove_face); !s.at_end();++s) {
+   for (Entire< Set<int> >::iterator s = entire(bdy_of_remove_face); !s.at_end(); ++s) {
       const int this_bdy_face = *s;
-
       free_face_list-=this_bdy_face;   
    }
 
    // remove the nodes from the Hasse diagram
    newHD.delete_node(remove_this);
    newHD.delete_node(remove_face);
-
    
    // deletion of remove_face may add new free faces
    for (Entire< Set<int> >::iterator it=entire(bdy_of_remove_face); 
@@ -382,8 +364,7 @@ Array<int> rand_discMorse(graph::HasseDiagram newHD, const pm::SharedRandomState
 	 long r_long(random.get());
 	 
 	 Set<int>::const_iterator elem=free_face_list.begin();
-	 for(int elem_i=0; elem_i<r_long;++elem_i)
-	    ++elem;
+	 for (int elem_i=0; elem_i<r_long; ++elem_i) ++elem;
 	 const int remove_this=*elem;
 
 	 if(!newHD.node_exists(remove_this))
@@ -391,17 +372,15 @@ Array<int> rand_discMorse(graph::HasseDiagram newHD, const pm::SharedRandomState
 	    
 	 rand_collapse(newHD,free_face_list,remove_this);
 	 first_removed_face=false;
-	 n_max_d_faces--;
+	 --n_max_d_faces;
 
       }
       else {
 	 if (n_max_d_faces==0) {
 	    // if there are no more max_d faces move on to next dimension
-	    
-	    max_d--;
+	    --max_d;
 
 	    if(max_d>0) {
-               
 	       n_max_d_faces = newHD.nodes_of_dim(max_d).size();
 	       
 	       // reinitialize max_face_list and free_face_list
@@ -414,8 +393,7 @@ Array<int> rand_discMorse(graph::HasseDiagram newHD, const pm::SharedRandomState
 	    const Set<int> faces_of_maximal_dim = newHD.nodes_of_dim(max_d);
 	    
 	    if (!first_removed_face && save_remaining_faces) {
-	       for(Entire<graph::HasseDiagram::nodes_of_dim_set>::const_iterator n 
-		    = entire(newHD.nodes_of_dim(0,max_d)); !n.at_end(); ++n)
+	       for(Entire<graph::HasseDiagram::nodes_of_dim_set>::const_iterator n=entire(newHD.nodes_of_dim(0,max_d)); !n.at_end(); ++n)
 	          remaining_facets.push_back(newHD.face(*n));
 	       
 	       save_remaining_faces=false;
@@ -425,8 +403,7 @@ Array<int> rand_discMorse(graph::HasseDiagram newHD, const pm::SharedRandomState
 	    UniformlyRandomRanged<long> rand(faces_of_maximal_dim.size(),random_source);
 	    long r_long(rand.get());
 	    Set<int>::const_iterator elem=faces_of_maximal_dim.begin();
-	    for(int elem_i=0; elem_i<r_long; ++elem_i)
-	       ++elem;
+	    for (int elem_i=0; elem_i<r_long; ++elem_i) ++elem;
 	    const int critical_face(*elem);
 
 	    Set<int> bdy_of_critical_face(newHD.in_adjacent_nodes(critical_face));
@@ -434,18 +411,17 @@ Array<int> rand_discMorse(graph::HasseDiagram newHD, const pm::SharedRandomState
 	    // remove critical face from Hasse
 	    newHD.delete_node(critical_face);
 	    first_removed_face=false;
-	    n_max_d_faces--;
+	    --n_max_d_faces;
 
-	    //update free_face_list
+	    // update free_face_list
 	    for(Entire< Set<int> >::iterator it=entire(bdy_of_critical_face); !it.at_end(); ++it) {
 	       const int this_index(*it);
-	       if ( newHD.out_degree(this_index) == 1) {
+	       if (newHD.out_degree(this_index) == 1) {
 		  free_face_list+=this_index;
 	       }
 	    }
 
-	    morse_vector[max_d]++;
-
+	    ++(morse_vector[max_d]);
 	 }
       }
    }
@@ -465,54 +441,22 @@ Array<int> rand_discMorse(graph::HasseDiagram newHD, const pm::SharedRandomState
 //////////////////////////////////////////////////////////////////////////////////////
 
    
-Map< Array<int>,int > random_discrete_morse(const perl::Object& p_in, perl::OptionSet options)
+Map< Array<int>,int > random_discrete_morse(const HasseDiagram orig_HD, UniformlyRandom<long> random_source , const int strategy, const bool verbose, const int rounds, const Array<int> try_until_reached,  const Array<int> try_until_exception,  std::string save_to_filename)
 {
-   
-   const int verbose = options["verbose"];
-   
- 
-   
-   
-   
-   
-   // these variables will be options that can be changed by user from outside
-   const int strategy = options["strategy"];
-   if (!(strategy ==0 || strategy ==1 || strategy == 2)) throw std::runtime_error("random_discrete_morse::Invalid strategy type.");
-   
-   const int rounds = options["rounds"];
+   if (strategy<0 || strategy>2) throw std::runtime_error("random_discrete_morse::Invalid strategy type.");
 
    bool reached = false;
 
-   Array<int> try_until_reached;
-   const bool tries = (options["try_until_reached"] >> try_until_reached);
+   const bool tries = !try_until_reached.empty();
+   const bool try_exception = !try_until_exception.empty();
 
-   Array<int> try_until_exception;
-   const bool try_exception = (options["try_until_exception"] >> try_until_exception);
-   
    if (tries && try_exception) throw std::runtime_error("random_discrete_morse::Can't run both try_until_reached and try_until_exception");
-   
-   
-   const RandomSeed seed = options["seed"];
-   UniformlyRandom<long> random_source(seed);
-   
-   std::string save_to_filename;
-   const bool save_collapsed = (options["save_collapsed"] >> save_to_filename);
-   
+
+   const bool save_collapsed = (save_to_filename.length() != 0);
+
    if (verbose) {
-
       cout<<"random_discrete_morse version 02.02.2015"<<endl;
-   
-      const Array<int> fvec = p_in.give("F_VECTOR");
-      const bool is_pure = p_in.give("PURE");
-      const bool is_closed = p_in.give("CLOSED_PSEUDO_MANIFOLD");
-      const bool is_pmf = p_in.give("PSEUDO_MANIFOLD");
 
-      cout<< "A brief description of the input SimplicialComplex:"  << endl;
-      cout<< "  f-vector:        " << fvec <<endl;
-      cout<< "  pure:            " << (is_pure?"true":"false" ) <<endl;
-      cout<< "  closed:          " << (is_closed?"true":"false" ) <<endl;
-      cout<< "  pseudo-manifold: " << (is_pmf?"true":"false" ) <<endl<<endl;
-   
       cout<<"Options:"<<endl;
       cout<<"   strategy            = "<<strategy<<endl;
       cout<<"   rounds              = "<<rounds<<endl;
@@ -520,47 +464,21 @@ Map< Array<int>,int > random_discrete_morse(const perl::Object& p_in, perl::Opti
       cout<<"   try_until_reached   = "<<try_until_reached<<endl;
       if (try_exception)
       cout<<"   try_until_exception = "<<try_until_exception<<endl;
-      cout<<"   seed                = "<<seed.get()<<endl;
+      cout<<"   seed                = "<< random_source.get() <<endl;
       if (save_collapsed)
       cout<<"   save collapsed to   = "<<save_to_filename<<endl;
       cout<<endl;
    }
-   
 
-   timeval start_hasse_timing;
-   timeval end_hasse_timing;
-
-   gettimeofday(&start_hasse_timing,NULL);
-
-   const graph::HasseDiagram orig_HD = p_in.give("HASSE_DIAGRAM");
-
-   gettimeofday(&end_hasse_timing,NULL);
-   
-   const int vert_label_chk=p_in.give("N_VERTICES");
-   
-   if (vert_label_chk!=orig_HD.nodes_of_dim(0).size())
-      cout<<"random_discrete_morse::Vertex labels in FACETS not nice. Try using INPUT_FACES instead.";
-   
-   const long int hasse_timing(end_hasse_timing.tv_sec - start_hasse_timing.tv_sec);
-
-   if (verbose) {
-      cout<<"Hasse Diagram computed in "<< hasse_timing <<" secs" << endl;
-      const Array<int> f = p_in.give("F_VECTOR");
-      cout<<"  f-vector = "<<f<<endl;
-   }
-   
    Map< Array<int>,int > morse_table;
-
    long int avg_morse_vec_timing(0);
-   
-   for (int this_round=0; this_round<rounds && !reached ; this_round++) {
 
+   for (int this_round=0; this_round<rounds && !reached ; ++this_round) {
       std::list< Set<int> > remaining_facets;
-      
+
       timeval start_morse_vec_timing;
       timeval end_morse_vec_timing;
 
-     
       if (verbose) gettimeofday(&start_morse_vec_timing,NULL);
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -596,15 +514,14 @@ Map< Array<int>,int > random_discrete_morse(const perl::Object& p_in, perl::Opti
 	 }
       }
       
-      (morse_table[morse_vec])++;
+      ++(morse_table[morse_vec]);
       
       if (!remaining_facets.empty()) { 
            perl::Object save_complex("SimplicialComplex");
-	   save_complex.set_description()    << "Simplicial complex obtained from " << p_in.name()
-                                             << " by a sequence of random collapses."
+	   save_complex.set_description()    << "Simplicial complex obtained by a sequence of random collapses."
                                              << "\nparameters for the random_discrete_morse function:"
                                              << "\nstrategy:       " << strategy
-                                             << "\nseed:           " << seed.get()
+                                             << "\nseed:           " << random_source.get()
                                              << "\nfound on round: " << this_round
                                              << endl;
           save_complex.take("INPUT_FACES")   << remaining_facets;
@@ -620,21 +537,73 @@ Map< Array<int>,int > random_discrete_morse(const perl::Object& p_in, perl::Opti
    return morse_table;
 }
 
-UserFunction4perl(
-		  "# Implementation of random discrete Morse algorithms by Lutz and Benedetti"
-                  "# Returns a map of the number of occurrences of different reduction results indexed by the corresponding discrete Morse vectors (comtaining the number of critical cells per dimension)"
-		  "# @param SimplicialComplex complex"
+Map< Array<int>,int > random_discrete_morse_sc(const perl::Object& p_in, perl::OptionSet options){
+
+   const bool verbose = options["verbose"];
+
+   if (verbose){
+      const Array<int> fvec = p_in.give("F_VECTOR");
+      const bool is_pure = p_in.give("PURE");
+      const bool is_closed = p_in.give("CLOSED_PSEUDO_MANIFOLD");
+      const bool is_pmf = p_in.give("PSEUDO_MANIFOLD");
+
+      cout<< "A brief description of the input SimplicialComplex:"  << endl;
+      cout<< "  f-vector:        " << fvec <<endl;
+      cout<< "  pure:            " << (is_pure?"true":"false" ) <<endl;
+      cout<< "  closed:          " << (is_closed?"true":"false" ) <<endl;
+      cout<< "  pseudo-manifold: " << (is_pmf?"true":"false" ) <<endl<<endl;
+   }
+
+   timeval start_hasse_timing;
+   timeval end_hasse_timing;
+
+   gettimeofday(&start_hasse_timing,NULL);
+
+   const graph::HasseDiagram orig_HD = p_in.give("HASSE_DIAGRAM");
+
+   gettimeofday(&end_hasse_timing,NULL);
+
+   const int vert_label_chk=p_in.give("N_VERTICES");
+   if (vert_label_chk!=orig_HD.nodes_of_dim(0).size())
+      cout<<"random_discrete_morse::Vertex labels in FACETS not nice. Try using INPUT_FACES instead.";
+
+   const long int hasse_timing(end_hasse_timing.tv_sec - start_hasse_timing.tv_sec);
+
+   if (verbose) {
+      cout<<"Hasse Diagram computed in "<< hasse_timing <<" secs" << endl;
+   }
+
+   // use of seperate parameters for options is necessary as OptionSets are read-only
+
+   RandomSeed seed = options["seed"];
+   UniformlyRandom<long> random_source(seed);
+   int str = options["strategy"];
+   bool ver = options["verbose"];
+   int r = options["rounds"];
+   Array<int> tur = options["try_until_reached"];
+   Array<int> tue = options["try_until_exception"];
+   std::string sc = options["save_collapsed"];
+
+   return random_discrete_morse(orig_HD, random_source, str,ver,r,tur,tue,sc);
+
+}
+
+
+UserFunction4perl("# @category Other"
+                  "# Implementation of random discrete Morse algorithms by Lutz and Benedetti"
+                  "# Returns a map of the number of occurrences of different reduction results indexed by the corresponding discrete Morse vectors (containing the number of critical cells per dimension)"
+                  "# @param SimplicialComplex complex"
                   "# @option Int rounds Run for //r// rounds"
-		  "# @option Int seed Set seed number for random number generator"
-		  "# @option Int strategy Set //strategy//=>0 (default) for random-random: uniformly random selecting of a face to collapse or as critical face"
-		  "#               Set //strategy//=>1 for random-lex-first: uniformly random relabeling of vertices, then selecting lexicographically first face for collapse or as a critical face"
-		  "#               Set //strategy//=>2 for random-lex-last: uniformly random relabeling of vertices, then selecting lexicographically last face for collapse or as a critical face"
-		  "# @option Int verbose //v// Prints message after running every //v// rounds"
-		  "# @option Array<Int> try_until_reached Used together with //rounds//=>r; When //try_until_reached//=>[a,...,b], runs for //r// rounds or until [a,...,b] is found"
-		  "# @option Array<Int> try_until_exception Used together with //rounds//=>r; When //try_until_exception//=>[a,...,b], runs for //r// rounds or until anything other than [a,...,b] is found"
-		  "# @option String save_collapsed Save all facets that remain after initial collapse to an XML file of a Simplicial Complex. Rounds that have Morse vector [1,0,...,0] or [1,0,...,0,1] will save nothing. Filename must have quotation marks: //save_collapsed//=>\"path/to/filename\". The XML files are saved as \"path/to/filename_currentround.top\"."
+                  "# @option Int seed Set seed number for random number generator"
+                  "# @option Int strategy Set //strategy//=>0 (default) for random-random: uniformly random selecting of a face to collapse or as critical face"
+                  "#               Set //strategy//=>1 for random-lex-first: uniformly random relabeling of vertices, then selecting lexicographically first face for collapse or as a critical face"
+                  "#               Set //strategy//=>2 for random-lex-last: uniformly random relabeling of vertices, then selecting lexicographically last face for collapse or as a critical face"
+                  "# @option Int verbose //v// Prints message after running every //v// rounds"
+                  "# @option Array<Int> try_until_reached Used together with //rounds//=>r; When //try_until_reached//=>[a,...,b], runs for //r// rounds or until [a,...,b] is found"
+                  "# @option Array<Int> try_until_exception Used together with //rounds//=>r; When //try_until_exception//=>[a,...,b], runs for //r// rounds or until anything other than [a,...,b] is found"
+                  "# @option String save_collapsed Save all facets that remain after initial collapse to an XML file of a Simplicial Complex. Rounds that have Morse vector [1,0,...,0] or [1,0,...,0,1] will save nothing. Filename must have quotation marks: //save_collapsed//=>\"path/to/filename\". The XML files are saved as \"path/to/filename_currentround.top\"."
 		  "# @return Map< Array<Int>, Int >",
-		  &random_discrete_morse, 
+		   &random_discrete_morse_sc, 
 		  "random_discrete_morse(SimplicialComplex { seed=> undef, strategy => 0, verbose => 0, rounds => 1, try_until_reached => undef, try_until_exception => undef, save_collapsed => undef })");
 
 } }

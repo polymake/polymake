@@ -25,6 +25,7 @@ polymake application.
 	xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 	xmlns:html="http://www.w3.org/1999/xhtml"
 	xmlns:pm="http://www.polymake.org/ns/docs#3"
+	xmlns="http://www.w3.org/1999/xhtml"
 >
 
 <xsl:include href="macros.xsl" />
@@ -201,7 +202,7 @@ polymake application.
 	<xsl:if test="pm:specialization">
 	<h4>Specializations of <xsl:value-of select="@name"/></h4>
 
-		<ul>
+		<ul class="unfoldable">
 			<xsl:apply-templates select="pm:specialization"/>
 		</ul>
 	</xsl:if>
@@ -347,7 +348,9 @@ polymake application.
 				<xsl:apply-templates select="@ext"/>
 			</xsl:when>
 			</xsl:choose>
-	
+
+			<xsl:apply-templates select="pm:examples"/>
+
 			<xsl:call-template name="derived-from"/>		
 
 			<div class="level3">
@@ -409,8 +412,9 @@ polymake application.
 			<xsl:call-template name="unfoldspan"/>
 
 			<xsl:apply-templates select="pm:only"/>
-
 			<xsl:apply-templates select="pm:description"/>
+			<xsl:apply-templates select="pm:examples"/>
+			<xsl:apply-templates select="pm:depends"/>
 			<xsl:apply-templates select="@ext"/>
 			<xsl:apply-templates select="pm:properties"/>
 		</div>
@@ -478,29 +482,31 @@ polymake application.
 			<xsl:apply-templates select="pm:description"/>
 			<xsl:apply-templates select="@ext"/>
 			
-			<ul>
+			<xsl:if test="pm:object|pm:property|pm:property-type|pm:function|pm:common-option-list">
+				<ul class="unfoldable">
 
-				<xsl:apply-templates select="pm:object">
-					<xsl:sort select="@name"/>
-				</xsl:apply-templates>
+					<xsl:apply-templates select="pm:object">
+						<xsl:sort select="@name"/>
+					</xsl:apply-templates>
 
-				<xsl:apply-templates select="pm:property">
-					<xsl:sort select="@name"/>
-				</xsl:apply-templates>
-				
-				<xsl:apply-templates select="pm:property-type">
-					<xsl:sort select="translate(@name,'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ')"/>
-				</xsl:apply-templates>
-				
-				<xsl:apply-templates select="pm:function">
-					<xsl:sort select="translate(@name,'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ')"/>
-				</xsl:apply-templates>
-				
-				<xsl:apply-templates select="pm:common-option-list">
-					<xsl:sort select="translate(@name,'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ')"/>			
-				</xsl:apply-templates>
+					<xsl:apply-templates select="pm:property">
+						<xsl:sort select="@name"/>
+					</xsl:apply-templates>
 
-			</ul>
+					<xsl:apply-templates select="pm:property-type">
+						<xsl:sort select="translate(@name,'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ')"/>
+					</xsl:apply-templates>
+
+					<xsl:apply-templates select="pm:function">
+						<xsl:sort select="translate(@name,'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ')"/>
+					</xsl:apply-templates>
+
+					<xsl:apply-templates select="pm:common-option-list">
+						<xsl:sort select="translate(@name,'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ')"/>
+					</xsl:apply-templates>
+
+				</ul>
+			</xsl:if>
 		</div>
 	</div>
 
@@ -576,6 +582,7 @@ polymake application.
 				
 			<br />
 			<div class="descr_func">
+                                <xsl:apply-templates select="pm:only"/>
 				<xsl:apply-templates select="pm:description"/>
 				<xsl:apply-templates select="@ext"/>
 			</div>
@@ -614,6 +621,8 @@ polymake application.
 			</xsl:if>
 			</div>
 			
+			<xsl:apply-templates select="pm:examples"/>
+			<xsl:apply-templates select="pm:depends"/>
 		</div>	
 	</div>
 	
@@ -663,7 +672,35 @@ polymake application.
 	<div class="author"><b>Author(s): </b><xsl:value-of select="@name"/></div>
 </xsl:template>
 
+<xsl:template match="pm:depends">
+	<div class="depends"><b>Depends on: </b><xsl:value-of select="@name"/></div>
+</xsl:template>
 
+<xsl:template match="pm:examples">
+	<br/>
+	<div class="examples">
+		<xsl:choose>
+			<xsl:when test="count(pm:example)=1">
+				<b>Example:</b>
+				<ul style="list-style-type:none">
+					<xsl:apply-templates select="pm:example"/>
+				</ul>
+			</xsl:when>
+			<xsl:otherwise>
+				<b>Examples:</b>
+				<ul>
+					<xsl:apply-templates select="pm:example"/>
+				</ul>
+			</xsl:otherwise>
+		</xsl:choose>
+	</div>
+</xsl:template>
+
+<xsl:template match="pm:example">
+	<li>
+		<xsl:apply-templates select="pm:description"/>
+	</li>
+</xsl:template>
 
 <xsl:template match="html:a">
 	<a>

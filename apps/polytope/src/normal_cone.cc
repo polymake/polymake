@@ -45,7 +45,13 @@ UserFunctionTemplate4perl("# @category Producing a cone"
                           "# @param Polytope p"
                           "# @param Int v vertex number which is not contained in the far face"
                           "# @param Bool outer asks for outer normal cone.  Default value is 0 (= inner)"
-                          "# @return Cone",
+                          "# @return Cone"
+                          "# @example To compute the outer normal cone of the 3-cube, do this:"
+                          "# > $c = normal_cone(cube(3),0,1);"
+                          "# > print $c->RAYS;"
+                          "# | -1 0 0"
+                          "# | 0 -1 0"
+                          "# | 0 0 -1",
                           "normal_cone<Scalar>(polytope::Polytope<Scalar> $; $=0)");
 } }
 

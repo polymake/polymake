@@ -122,16 +122,16 @@ int main() {
                    "Please investigate the reasons and fix the installation.\n";
          } else {
             my ($ddver,$ddfver) = $message =~ /dd Version ([0-9a-z.]+) .*\nddf Version ([0-9a-z.]+) /;
-            if (($ddver cmp "0.94f") < 0) {
-               check_bundled() and !defined($cdd_path) or 
-                  die "Your cddlib version $ddver is too old, at least version 0.94f is required.\n";
-            } elsif ($ddver ne $ddfver) {
+            if ($ddver ne $ddfver) {
                check_bundled() and !defined($cdd_path) or 
                   die "Your cddlib installation does not seem to contain the floating-point arithmetic version.\n",
                       "Reported versions: dd_DDVERSION=$ddver and ddf_DDVERSION=$ddfver\n";
-            } else {
+            } elsif (($ddver cmp "0.94f") >= 0) {
                $BundledCdd = undef;
                $cddversion = $ddver;
+            } else {
+               check_bundled() and !defined($cdd_path) or
+                  die "Your cddlib version $ddver is too old, at least version 0.94f is required.\n";
             }
          }
       } else {

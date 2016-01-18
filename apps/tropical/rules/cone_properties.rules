@@ -92,7 +92,7 @@ object Cone {
 	property TORUS_COVECTOR_DECOMPOSITION : CovectorLattice;
 
 	# @category Combinatorics
-	# This is a sublattice of [[FULL_COVECTOR_DECOMPOSITION]], containing only the cells that belong to the tropical span
+	# This is a sublattice of [[TORUS_COVECTOR_DECOMPOSITION]], containing only the cells that belong to the tropical span
 	# of [[POINTS]].
 	property CONE_COVECTOR_DECOMPOSITION : CovectorLattice;
 
@@ -202,3 +202,24 @@ object Cone {
 user_function dual_addition_version<Addition,Scalar>(Cone<Addition,Scalar>;$=1) {
 	return dual_addition_version_cone(@_);
 }
+
+# @category Other
+# This function takes a Matrix of tropical vectors in projective coordinates 
+# (e.g. the [[POINTS]] of a [[Cone]]) and a Matrix of Scalar vectors in extended tropical projective
+# coordinates (e.g. the [[PSEUDOVERTICES]] of a tropical [[Cone]]).
+# It returns the set of row indices of the second matrix such that the corresponding row 
+# starts with a 1 and the remaining vector occurs in the first matrix.
+# @param Matrix<TropicalNumber<Addition, Scalar>> points 
+# @param Matrix<Scalar> pseudovertices
+# @return Set<Int>
+user_function points_in_pseudovertices<Addition,Scalar>(Matrix<TropicalNumber<Addition, Scalar>>, Matrix<Scalar>) {
+  my ($points,$pseudovertices)=@_;
+  $points = (ones_vector<Scalar>($points->rows())) | (new Matrix<Scalar>($points));
+  my $generators=new HashSet<Vector<Scalar>>(rows($points));
+
+  my $result = new Set<Int>();
+  for my $i (0..$pseudovertices->rows()-1) {
+  if (exists $generators->{$pseudovertices->row($i)}) {$result += $i;}
+  }  
+  return $result;
+} 

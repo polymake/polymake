@@ -67,12 +67,15 @@ struct edge_agent_base {
 template <typename dir>
 struct edge_agent : edge_agent_base {
    Table<dir>* table;
-   edge_agent() : table(0) {}
+   edge_agent() : table(NULL) {}
 
    typedef sparse2d::cell<int> Cell;
 
    template <bool for_copy>
    void init(Table<dir> *t, bool2type<for_copy>);
+
+   template <typename NumberConsumer>
+   void renumber(const NumberConsumer& nc);
 
    void reset() { n_alloc=0; table=NULL; }
 
@@ -472,6 +475,7 @@ struct EdgeMapBase {
 
    EdgeMapBase() : refc(1), _table(0)  {}
    virtual ~EdgeMapBase() {}
+   virtual bool is_detachable() const = 0;
    virtual void reset()=0;
 
    virtual void revive_entry(int e)=0;
@@ -489,15 +493,15 @@ struct EdgeMapDenseBase : public EdgeMapBase {
    {
       n_alloc=n;
       buckets=new void*[n];
-      std::memset(buckets,0,n*sizeof(void*));
+      std::memset(buckets, 0, n*sizeof(void*));
    }
    void realloc(size_t new_n_alloc)
    {
       if (new_n_alloc > n_alloc) {
          void **old_buckets=buckets;
          buckets=new void*[new_n_alloc];
-         std::memcpy(buckets,old_buckets,n_alloc*sizeof(void*));
-         std::memset(buckets+n_alloc,0,(new_n_alloc-n_alloc)*sizeof(void*));
+         std::memcpy(buckets, old_buckets, n_alloc*sizeof(void*));
+         std::memset(buckets+n_alloc, 0, (new_n_alloc-n_alloc)*sizeof(void*));
          delete[] old_buckets;
          n_alloc=new_n_alloc;
       }
@@ -617,18 +621,28 @@ public:
          init_delete_nodes(sequence(0,n_nodes)-s);
    }
 
-   ~Table()
+protected:
+   void detach_node_maps()
    {
       for (Entire<node_map_list>::iterator it=entire(node_maps); !it.at_end(); ) {
          NodeMapBase *m=it.operator->();  ++it;
          m->reset(); m->_table=NULL;
          detach(*m);
       }
+   }
+   void detach_edge_maps()
+   {
       for (Entire<edge_map_list>::iterator it=entire(edge_maps); !it.at_end(); ) {
          EdgeMapBase *m=it.operator->();  ++it;
          m->reset(); m->_table=NULL;
          detach(*m);
       }
+   }
+public:
+   ~Table()
+   {
+      detach_node_maps();
+      detach_edge_maps();
       typedef typename node_entry<dir,dying>::ruler dying_ruler;
       dying_ruler::destroy(reinterpret_cast<dying_ruler*>(R));
    }
@@ -817,7 +831,7 @@ protected:
    };
 
    template <typename NumberConsumer, typename NodeChooser>
-   void squeeze(NumberConsumer nc, NodeChooser to_delete)
+   void squeeze_nodes(const NumberConsumer& nc, NodeChooser to_delete)
    {
       int n=0, nnew=0;
       for (entry *t=R->begin(), *end=R->end(); t!=end; ++t, ++n) {
@@ -830,7 +844,7 @@ protected:
                relocate(t, t-diff);
                for (Entire<node_map_list>::iterator it=entire(node_maps); !it.at_end(); ++it) it->move_entry(n,nnew);
             }
-            ++nnew; *nc++=n;
+            nc(n, nnew);  ++nnew;
          } else {
             if (what>0) {
                for (Entire<node_map_list>::iterator it=entire(node_maps); !it.at_end(); ++it) it->delete_entry(n);
@@ -848,22 +862,33 @@ protected:
 
 public:
    template <typename NumberConsumer>
-   void squeeze(NumberConsumer nc)
+   void squeeze_nodes(const NumberConsumer& nc)
    {
-      squeeze(nc, squeeze_node_chooser<false>());
+      squeeze_nodes(nc, squeeze_node_chooser<false>());
+   }
+
+   template <typename NumberConsumer>
+   void squeeze_edges(const NumberConsumer& nc)
+   {
+      for (Entire<edge_map_list>::iterator it=entire(edge_maps); !it.at_end(); ++it) {
+         if (!it->is_detachable())
+            throw std::runtime_error("can't renumber edge IDs - non-trivial data attached");
+      }
+      R->prefix().renumber(nc);
+      detach_edge_maps();
    }
 
    void resize(int n)
    {
-      if (n>n_nodes) {
+      if (n > n_nodes) {
          while (free_node_id!=std::numeric_limits<int>::min()) {
             revive_node();
             if (n==n_nodes) return;
          }
          _resize(n);
-      } else if (n<n_nodes) {
-         if (free_node_id!=std::numeric_limits<int>::min())
-            squeeze(black_hole<int>(), resize_node_chooser(n));
+      } else if (n < n_nodes) {
+         if (free_node_id != std::numeric_limits<int>::min())
+            squeeze_nodes(operations::binary_noop(), resize_node_chooser(n));
          else
             _resize(n);
       }
@@ -1571,7 +1596,7 @@ public:
 
 template <typename dir>
 template <bool for_copy> inline
-void edge_agent<dir>::init(Table<dir> *t, bool2type<for_copy>)
+void edge_agent<dir>::init(Table<dir>* t, bool2type<for_copy>)
 {
    table=t;
    n_alloc=min_buckets(n_edges+bucket_mask>>bucket_shift);
@@ -1581,6 +1606,18 @@ void edge_agent<dir>::init(Table<dir> *t, bool2type<for_copy>)
       for (typename edge_container<dir>::iterator e=reinterpret_cast<edge_container<dir>*>(t)->begin(); !e.at_end(); ++e, ++id)
          e.edge_id()=id;
    }
+}
+
+template <typename dir>
+template <typename NumberConsumer> inline
+void edge_agent<dir>::renumber(const NumberConsumer& nc)
+{
+   int id=0;
+   for (typename edge_container<dir>::iterator e=reinterpret_cast<edge_container<dir>*>(table)->begin(); !e.at_end(); ++e, ++id) {
+      nc(e.edge_id(), id);
+      e.edge_id()=id;
+   }
+   assert(id == n_edges);
 }
 
 } // end namespace graph
@@ -1773,26 +1810,37 @@ public:
    }
 
    template <typename NumberConsumer>
-   void squeeze(NumberConsumer nc)
+   void squeeze(const NumberConsumer& nc)
    {
-      data->squeeze(nc);
+      data->squeeze_nodes(nc);
    }
       
    /// force renumbering of the nodes in consecutive order
    void squeeze()
    {
-      data->squeeze(black_hole<int>());
+      data->squeeze_nodes(operations::binary_noop());
    }
 
    template <typename NumberConsumer>
-   void squeeze_isolated(NumberConsumer nc)
+   void squeeze_isolated(const NumberConsumer& nc)
    {
-      data->squeeze(nc, typename table_type::template squeeze_node_chooser<true>());
+      data->squeeze_nodes(nc, typename table_type::template squeeze_node_chooser<true>());
    }
 
    void squeeze_isolated()
    {
-      data->squeeze(black_hole<int>(), typename table_type::template squeeze_node_chooser<true>());
+      data->squeeze_nodes(operations::binary_noop(), typename table_type::template squeeze_node_chooser<true>());
+   }
+
+   template <typename NumberConsumer>
+   void squeeze_edges(const NumberConsumer& nc)
+   {
+      data->squeeze_edges(nc);
+   }
+
+   void squeeze_edges()
+   {
+      data->squeeze_edges(operations::binary_noop());
    }
 
    /// delete a node
@@ -2323,6 +2371,11 @@ public:
          EdgeMapDenseBase::destroy();
       }
 
+      bool is_detachable() const
+      {
+         return has_trivial_destructor<E>::value;
+      }
+
       void clear()
       {
          if (!is_pod<E>::value) {
@@ -2395,6 +2448,7 @@ public:
       hash_map<int, E, Params> data;
 
       void reset() { data.clear(); }
+      bool is_detachable() const { return true; }
       void clear() { data.clear(); }
       void revive_entry(int) {}
       void realloc(size_t) {}

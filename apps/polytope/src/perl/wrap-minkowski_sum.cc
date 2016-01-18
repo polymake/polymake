@@ -31,5 +31,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(minkowski_sum_client_T_C_X_C_X, Rational, int, perl::Canned< const Matrix< Rational > >, int, perl::Canned< const Matrix< Rational > >);
    FunctionInstance4perl(minkowski_sum_client_T_C_X_C_X, double, int, perl::Canned< const Matrix< double > >, int, perl::Canned< const Matrix< double > >);
    FunctionInstance4perl(minkowski_sum_client_T_C_X_C_X, QuadraticExtension< Rational >, int, perl::Canned< const Matrix< QuadraticExtension< Rational > > >, int, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
+   FunctionInstance4perl(minkowski_sum_client_T_C_X_C_X, Rational, int, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >, int, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

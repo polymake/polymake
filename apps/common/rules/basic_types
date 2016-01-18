@@ -214,6 +214,9 @@ user_function denominator(Rational:lvalue_opt:anchor) : c++;
 # The __floor function__. Returns the smallest integral number not larger than //a//.
 # @param Rational a
 # @return Rational
+# @example > print floor(1.8);
+# | 1
+
 user_function floor(*) : c++ (include => "polymake/Rational.h");
 
 
@@ -228,6 +231,11 @@ user_function ceil(*) : c++ (include => "polymake/Rational.h");
 # Check whether the given number has a finite value.
 # @param Integer a
 # @return Bool
+# @example > print isfinite('inf');
+# | 0
+# > print isfinite(23);
+# | 1
+
 user_function isfinite(*) : c++ (include => "polymake/Integer.h");
 
 
@@ -235,6 +243,10 @@ user_function isfinite(*) : c++ (include => "polymake/Integer.h");
 # Check whether the given number has an infinite value.  Return -1/+1 for infinity and 0 for all finite values.
 # @param Integer a
 # @return Bool
+# @example > print isinf('inf');
+# | 1
+# > print isinf(23);
+# | 0
 user_function isinf(*) : c++ (include => "polymake/Integer.h");
 
 
@@ -243,6 +255,8 @@ user_function isinf(*) : c++ (include => "polymake/Integer.h");
 # @param Int a
 # @param Int b a divisor of //a//
 # @return Int
+# @example  > print div_exact(10,5);
+# | 2
 user_function div_exact(*:int, *:int) : c++ (include => "polymake/numerical_functions.h");
 
 
@@ -267,6 +281,12 @@ declare property_type Div<Scalar> : c++ (include => "polymake/numerical_function
 # @param Int a
 # @param Int b
 # @return Div
+# @example $d = div(10,3);
+# > print $d->quot;
+# | 3
+# > print $d->rem;
+# | 1
+
 user_function div(*,*) : c++ (include => "polymake/numerical_functions.h");
 
 
@@ -275,6 +295,8 @@ user_function div(*,*) : c++ (include => "polymake/numerical_functions.h");
 # @param Int a
 # @param Int b
 # @return Int
+# @example > print gcd(6,9);
+# | 3
 user_function gcd(*:int, *:int) : c++ (include => "polymake/numerical_functions.h");
 
 # @category Arithmetic
@@ -311,6 +333,21 @@ declare property_type ExtGCD<Scalar> : c++ (include => "polymake/numerical_funct
 # @param Int a
 # @param Int b
 # @return ExtGCD
+# @example > $GCD = ext_gcd(15,6);
+# The GCD of the numbers can then be accessed like this:
+# > print $GCD->g;
+# | 3
+# The ExtGCD type also stores the Bezout coefficients (thus integers p and q such that g=a*p+b*q)...
+# > print $GCD->p;
+# | 1
+# print $GCD->q;
+# | -2
+# ...and the quotients k1 of a and k2 of b by g.
+# > print $GCD->k1;
+# | 5
+# > print $GCD->k2;
+# | 2
+
 user_function ext_gcd(*:int, *:int) : c++ (include => "polymake/numerical_functions.h");
 
 
@@ -319,6 +356,9 @@ user_function ext_gcd(*:int, *:int) : c++ (include => "polymake/numerical_functi
 # @param Int a
 # @param Int b
 # @return Int
+# @example > print lcm(6,9);
+# | 18
+
 user_function lcm(*:int, *:int) : c++ (include => "polymake/numerical_functions.h");
 
 
@@ -347,23 +387,23 @@ function is_ordered_field(Float) { 1 }
 
 # @category Arithmetic
 # Compare with the zero (0) value of the corresponding data type.
-# @param Scalar s
+# @param SCALAR s
 # @return Bool
 user_function is_zero(*) : c++ (include => "polymake/internal/comparators.h");
 
 # @category Arithmetic
 # Compare with the one (1) value of the corresponding data type.
-# @param Scalar s
+# @param SCALAR s
 # @return Bool
 user_function is_one(*) : c++ (include => "polymake/internal/comparators.h");
 
 
 # Explicit conversion to different scalar type.
 # @tparam Target
-# @param Scalar s
+# @param SCALAR s
 # @return Target
-user_function convert_to<Element>($) {
-   my $target_type=typeof Element;
+user_function convert_to<Target>($) {
+   my $target_type=typeof Target;
    if ($target_type->isa->($_[0])) {
       $_[0]
    } else {
@@ -479,6 +519,10 @@ function permuted_elements(Array, $) {
 # @param Array a
 # @param Array b
 # @return Array<Int>
+# @example > $p = find_permutation([1,8,3,4],[3,8,4,1]);
+# > print $p;
+# 2 1 3 0
+
 user_function find_permutation(*,*) : c++ (include => "polymake/permutations.h");
 
 
@@ -486,24 +530,47 @@ user_function find_permutation(*,*) : c++ (include => "polymake/permutations.h")
 # Returns the __cycles__ of a permutation given by //p//.
 # @param Array<Int> p
 # @return Array<List<Int>>
+# @example > print permutation_cycles([1,0,3,2]);
+# | {0 1}{2 3}
+
 user_function permutation_cycles(*) : c++ (include => "polymake/permutations.h") : returns(@);
 
 # @category Combinatorics
 # Returns the __sign__ of the permutation given by //p//.
 # @param Array<Int> p
 # @return Int +1 or -1
+# @example > print permutation_sign([1,0,3,2]);
+# | 1
+
 user_function permutation_sign(*) : c++ (include => "polymake/permutations.h");
 
 #FIXME: ticket 725 and 727 return type should be masqueraded Array<Array <Int> > instead of perl-Array
 
 # @category Combinatorics
-# Returns a list of all permutations as a perl-array
+# Returns a list of all permutations of the set {0...n-1} as a perl-array
+# @param Int n
+# @return ARRAY
+# @example To store the result in the perl array @a, type this:
+# > @a = all_permutations(3);
+# The array contains pointers to arrays. To access the 0-th pointer, do this:
+# > $a0 = $a[0];
+# To print the 0-th array itself, you have to dereference it as follows:
+# > print @{ $a0 };
+# | 012
+# You can loop through @a by using foreach. The print statement gets the string obtained by dereferencing
+# the current entry concatenated with the string " ".
+# > foreach( @a ){
+# > print @{ $_ }," ";
+# > }
+# | 012 102 201 021 120 210
+
 user_function all_permutations($) : c++  (include => "polymake/permutations.h") : returns(@);
 
 ##################################################################################
 
 # @category Artificial
-# An iterator over a container object.
+# An iterator over a sequence of objects.
+# The objects may be stored in a container or be generated on the fly.
 # @tparam Element
 declare property_type Iterator<*> : c++ {
 
@@ -513,6 +580,16 @@ declare property_type Iterator<*> : c++ {
 
 # Create an iterator visiting all elements in a container implemented as a C++ object.
 function entire(*:anchor) : c++ : returns(Iterator);
+
+# @category Artificial
+# Iterator over a sequence of objects having indexes.
+# Examples are non-zero elements of a [[SparseVector]] or of a row/column of a [[SparseMatrix]].
+declare property_type SparseIterator<*> : Iterator : c++ {
+
+   # The index of the current element.
+   # @return Int
+   method index() : c++;
+}
 
 ##################################################################################
 
@@ -530,6 +607,22 @@ declare property_type Pair<First,Second> \
 declare property_type Serialized<X> : c++ (name => "pm::Serialized", include => "polymake/client.h");
 
 ##################################################################################
+
+# backward compatibility, see issue #864
+sub deprecated_elem_access {
+   my $obj=shift;
+   (undef, my ($file, $line))=caller;
+   if ($file eq "input") {
+      warn_print("Matrix element access via function call operator is deprecated.\nPlease use method `elem' instead: \$Matrix->elem(\$i,\$j)");
+   } else {
+      state %told;
+      $told{"$file#$line"} //=
+        warn_print("Deprecated matrix element access operator still in use at $file, line $line.\nPlease replace with method `elem': \$Matrix->elem(\$i,\$j)");
+   }
+   my $closure=sub { $obj->elem(@_) };
+   declare_lvalue($closure, 1);
+   $closure;
+}
 
 INCLUDE
   set_types

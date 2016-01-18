@@ -29,6 +29,9 @@
 #ifdef random
 #undef random
 #endif
+#ifdef seed
+#undef seed
+#endif
 
 #define PmStartFuncall \
    dSP; \
@@ -180,28 +183,31 @@ struct MagicAnchors {
    }
 };
 
-int destroy_canned(pTHX_ SV *sv, MAGIC* mg);
-int destroy_canned_container(pTHX_ SV *sv, MAGIC* mg);
-int destroy_canned_assoc_container(pTHX_ SV *sv, MAGIC* mg);
-int clear_canned_container(pTHX_ SV *sv, MAGIC* mg);
-int clear_canned_assoc_container(pTHX_ SV *sv, MAGIC* mg);
-int assigned_to_primitive_lvalue(pTHX_ SV *sv, MAGIC* mg);
-U32 canned_container_size(pTHX_ SV *sv, MAGIC* mg);
-int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy, PM_svt_copy_klen_arg index);
-int canned_assoc_container_access(pTHX_ SV *sv, MAGIC* mg, SV *val_sv, const char *key, PM_svt_copy_klen_arg klen);
-U32 canned_composite_size(pTHX_ SV *sv, MAGIC* mg);
-int canned_composite_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy, PM_svt_copy_klen_arg index);
+MAGIC* allocate_canned_magic(pTHX_ SV* sv, SV* descr, unsigned int flags, unsigned int n_anchors);
+int destroy_canned(pTHX_ SV* sv, MAGIC* mg);
+int destroy_canned_container(pTHX_ SV* sv, MAGIC* mg);
+int destroy_canned_assoc_container(pTHX_ SV* sv, MAGIC* mg);
+int clear_canned_container(pTHX_ SV* sv, MAGIC* mg);
+int clear_canned_assoc_container(pTHX_ SV* sv, MAGIC* mg);
+int assigned_to_primitive_lvalue(pTHX_ SV* sv, MAGIC* mg);
+U32 canned_container_size(pTHX_ SV* sv, MAGIC* mg);
+int canned_container_access(pTHX_ SV* sv, MAGIC* mg, SV* nsv, const char* dummy, PM_svt_copy_klen_arg index);
+int canned_assoc_container_access(pTHX_ SV* sv, MAGIC* mg, SV* val_sv, const char* key, PM_svt_copy_klen_arg klen);
+U32 canned_composite_size(pTHX_ SV* sv, MAGIC* mg);
+int canned_composite_access(pTHX_ SV* sv, MAGIC* mg, SV* nsv, const char *dummy, PM_svt_copy_klen_arg index);
 MAGIC* upgrade_to_builtin_magic_sv(pTHX_ SV* sv, SV* descr_ref, unsigned int n_anchors);
 SV* create_builtin_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int flags, unsigned int n_anchors);
 SV* create_scalar_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int flags, unsigned int n_anchors);
 SV* create_container_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int flags, unsigned int n_anchors);
 SV* create_assoc_container_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int flags, unsigned int n_anchors);
 SV* create_composite_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int flags, unsigned int n_anchors);
-SV* clone_builtin_magic_sv(pTHX_ SV *src);
-SV* clone_scalar_magic_sv(pTHX_ SV *src);
-SV* clone_container_magic_sv(pTHX_ SV *src);
-SV* clone_assoc_container_magic_sv(pTHX_ SV *src);
-SV* clone_composite_magic_sv(pTHX_ SV *src);
+SV* clone_builtin_magic_sv(pTHX_ SV* src);
+SV* clone_scalar_magic_sv(pTHX_ SV* src);
+SV* clone_container_magic_sv(pTHX_ SV* src);
+SV* clone_assoc_container_magic_sv(pTHX_ SV* src);
+SV* clone_composite_magic_sv(pTHX_ SV* src);
+
+void connect_cout(pTHX);
 
 extern SV *cur_wrapper_cv,
           *negative_indices_key;

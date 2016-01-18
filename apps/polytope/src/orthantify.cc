@@ -77,7 +77,14 @@ UserFunctionTemplate4perl("# @category Transformations"
                           "# @param Polytope P"
                           "# @param Int v vertex to be moved to the origin."
                           "#   By default it is the first affine vertex of the polyhedron."
-                          "# @return Polytope",
+                          "# @return Polytope"
+                          "# @example To orthantify the square, moving its first vertex to the origin, do this:"
+                          "# > $p = orthantify(cube(2),1);"
+                          "# > print $p->VERTICES;"
+                          "# | 1 2 0"
+                          "# | 1 0 0"
+                          "# | 1 2 2"
+                          "# | 1 0 2",
                           "orthantify<Scalar> (Polytope<Scalar>; $=-1)");
 } }
 

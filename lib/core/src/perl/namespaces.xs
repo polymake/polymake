@@ -18,7 +18,8 @@
 
 struct ToRestore;
 
-static Perl_check_t def_ck_CONST, def_ck_ENTERSUB, def_ck_LEAVESUB, def_ck_LEAVEEVAL, def_ck_GLOB, def_ck_READLINE;
+static Perl_check_t def_ck_CONST, def_ck_ENTERSUB, def_ck_LEAVESUB, def_ck_LEAVEEVAL, def_ck_GLOB, def_ck_READLINE,
+                    def_ck_GV, def_ck_RV2SV, def_ck_RV2AV, def_ck_RV2HV;
 static Perl_ppaddr_t def_pp_GV, def_pp_GVSV, def_pp_AELEMFAST, def_pp_PADAV, def_pp_SPLIT, def_pp_LEAVESUB,
                      def_pp_ENTEREVAL, def_pp_REGCOMP, def_pp_RV2GV, def_pp_NEXTSTATE, def_pp_DBSTATE, def_pp_ANONLIST, def_pp_SASSIGN;
 
@@ -34,7 +35,7 @@ static FILE* covfile=NULL;
 #endif
 
 #define LexCtxAutodeclare    0x80000000
-#define LexCtxDestroyDeclare 0x40000000
+#define LexCtxAllowReDeclare 0x40000000
 #define LexCtxIndex          0x3fffffff
 
 // compilation state to be saved during BEGIN processing
@@ -56,7 +57,7 @@ static AV *last_dotLOOKUP;
 static CV *declare_cv;
 static ToRestore* active_begin=NULL;
 static const char instanceof[]="instanceof";
-static SV *dot_lookup_key, *dot_import_key, *dot_subst_op_key, *dot_subs_key, *declare_key;
+static SV *dot_lookup_key, *dot_import_key, *dot_subst_op_key, *dot_subs_key, *declare_key, *dot_dummy_pkg_key;
 static SV *lex_imp_key, *sub_type_params_key, *scope_type_params_key, *iv_hint, *uv_hint;
 static const char TypeExpression_pkg[]="namespaces::TypeExpression";
 static const char BeginAV_pkg[]="namespaces::BeginAV";
@@ -87,9 +88,9 @@ static
 void establish_lex_imp_ix(pTHX_ int new_ix, int new_mode);
 
 static
-int destroy_declare(pTHX_ SV *sv, MAGIC *mg);
+int clear_imported_flag(pTHX_ SV* sv, MAGIC* mg);
 
-static MGVTBL destroy_declare_vtab = { 0, 0, 0, 0, &destroy_declare };
+static MGVTBL clear_imported_flag_vtab = { 0, 0, 0, 0, &clear_imported_flag };
 
 static inline
 void set_lexical_scope_hint(pTHX)
@@ -292,11 +293,12 @@ GV* get_dotIMPORT_GV(pTHX_ HV *stash)
       dotIMPORT=GvAV(imp_gv);
 
    if (!dotIMPORT) {
-      GV *declare_gv=(GV*)HeVAL(hv_fetch_ent(stash, declare_key, TRUE, SvSHARED_HASH(declare_key)));
-      if (SvTYPE(declare_gv)!=SVt_PVGV)
+      GV* declare_gv=(GV*)HeVAL(hv_fetch_ent(stash, declare_key, TRUE, SvSHARED_HASH(declare_key)));
+      if (SvTYPE(declare_gv) != SVt_PVGV)
          gv_init(declare_gv, stash, SvPVX(declare_key), SvCUR(declare_key), GV_ADDMULTI);
       sv_setsv((SV*)declare_gv, sv_2mortal(newRV((SV*)declare_cv)));
       GvAV(imp_gv)=dotIMPORT=newAV();
+      hv_delete_ent(stash, dot_dummy_pkg_key, G_DISCARD, SvSHARED_HASH(dot_dummy_pkg_key));
    }
 
    return imp_gv;
@@ -311,9 +313,27 @@ AV* get_dotIMPORT(pTHX_ HV* stash)
 static
 void set_dotIMPORT(pTHX_ HV *stash, AV *dotIMPORT)
 {
-   GV *imp_gv=(GV*)HeVAL(hv_fetch_ent(stash, dot_import_key, TRUE, SvSHARED_HASH(dot_import_key)));
+   GV* imp_gv=(GV*)HeVAL(hv_fetch_ent(stash, dot_import_key, TRUE, SvSHARED_HASH(dot_import_key)));
    gv_init(imp_gv, stash, SvPVX(dot_import_key), SvCUR(dot_import_key), GV_ADDMULTI);
    GvAV(imp_gv)=(AV*)SvREFCNT_inc_simple_NN((SV*)dotIMPORT);
+}
+
+static
+void set_dotDUMMY_PKG(pTHX_ HV *stash)
+{
+   GV* dummy_gv=(GV*)HeVAL(hv_fetch_ent(stash, dot_dummy_pkg_key, TRUE, SvSHARED_HASH(dot_dummy_pkg_key)));
+   if (SvTYPE(dummy_gv) != SVt_PVGV) {
+      gv_init(dummy_gv, stash, SvPVX(dot_dummy_pkg_key), SvCUR(dot_dummy_pkg_key), dot_dummy_pkg_key);
+      sv_setiv(GvSVn(dummy_gv), 1);
+   }
+}
+
+static
+int is_dummy_pkg(pTHX_ HV *stash)
+{
+   HE* dummy_he=hv_fetch_ent(stash, dot_dummy_pkg_key, FALSE, SvSHARED_HASH(dot_dummy_pkg_key));
+   SV* sv;
+   return dummy_he && (sv=GvSV((GV*)HeVAL(dummy_he))) && SvIOK(sv) ? SvIV(sv) : 0;
 }
 
 static
@@ -382,7 +402,7 @@ void import_dotSUBS(pTHX_ HV *stash, AV *imp_dotSUBS)
 static inline
 AV* get_dotARRAY(pTHX_ HV *stash, SV *arr_name_sv, I32 create)
 {
-   HE *arr_gve=hv_fetch_ent(stash,arr_name_sv,create,SvSHARED_HASH(arr_name_sv));
+   HE* arr_gve=hv_fetch_ent(stash,arr_name_sv,create,SvSHARED_HASH(arr_name_sv));
    if (create) {
       GV *arr_gv=(GV*)HeVAL(arr_gve);
       if (SvTYPE(arr_gv) != SVt_PVGV)
@@ -1078,7 +1098,7 @@ void lookup(pTHX_ pMultiDerefItem_ GV* var_gv, I32 type, OP** pnext_op, OP* acce
       STRLEN varnamelen=GvNAMELEN(var_gv);
       OP* assign_op=NULL;
       OP* declare_op=NULL;
-      int defer_defuse_declare=FALSE, ignore_methods=FALSE;
+      int defer_defuse_declare=FALSE, ignore_methods=FALSE, declare_local=FALSE;
       int lex_imp_ix=0;
       GV* imp_gv;
 
@@ -1112,15 +1132,26 @@ void lookup(pTHX_ pMultiDerefItem_ GV* var_gv, I32 type, OP** pnext_op, OP* acce
          }
       }
       if (!pnext_op || CopSTASH_eq(PL_curcop, stash)) {
-         /* unqualified */
+         // unqualified
          if (declare_op) {
+            int allow_redeclare=get_lex_flags(aTHX) & LexCtxAllowReDeclare;
+
             if ((imp_gv=try_stored_package_gv(aTHX_ var_gv, type, FALSE))) {
                *pnext_op=die("declaration conflicts with imported variable %c%s::%.*s at %s line %d.\n",
                              type==SVt_PV ? '$' : type==SVt_PVAV ? '@' : '%',
                              HvNAME(GvSTASH(imp_gv)), (int)varnamelen, varname, CopFILE(PL_curcop), (int)CopLINE(PL_curcop));
                return;
             }
-            if (get_lex_flags(aTHX) & LexCtxDestroyDeclare) {
+            if (access_op->op_type == OP_GVSV || access_op->op_type==OP_RV2SV || access_op->op_type==OP_RV2AV || access_op->op_type==OP_RV2HV) {
+               declare_local= access_op->op_private & OPpLVAL_INTRO;
+               if (declare_local && allow_redeclare) {
+                  *pnext_op=die("declare local %c%s::%.*s is not allowed in the scope of allow_redeclare at %s line %d.",
+                                type==SVt_PV ? '$' : type==SVt_PVAV ? '@' : '%',
+                                HvNAME(GvSTASH(imp_gv)), (int)varnamelen, varname, CopFILE(PL_curcop), (int)CopLINE(PL_curcop));
+                  return;
+               }
+            }
+            if (allow_redeclare || declare_local) {
                SV *guard;
                OP *guard_op=declare_op->op_sibling;
                if (guard_op) {
@@ -1130,7 +1161,7 @@ void lookup(pTHX_ pMultiDerefItem_ GV* var_gv, I32 type, OP** pnext_op, OP* acce
                   guard_op=Perl_newSVOP(aTHX_ OP_CONST, 0, guard);
                   declare_op->op_sibling=guard_op;
                }
-               sv_magicext(guard, (SV*)var_gv, PERL_MAGIC_ext, &destroy_declare_vtab, Nullch, type);
+               sv_magicext(guard, (SV*)var_gv, PERL_MAGIC_ext, &clear_imported_flag_vtab, Nullch, type);
             }
             switch (type) {
             case SVt_PV:
@@ -1144,8 +1175,11 @@ void lookup(pTHX_ pMultiDerefItem_ GV* var_gv, I32 type, OP** pnext_op, OP* acce
                break;
             }
             if (!defer_defuse_declare) {
-               if (assign_op) /* change to void context */
-                  assign_op->op_flags ^= OPf_WANT_LIST ^ OPf_WANT_VOID;
+               if (assign_op) {
+                  /* change to void context */
+                  assign_op->op_flags &= ~OPf_WANT;
+                  assign_op->op_flags |= OPf_WANT_VOID;
+               }
                declare_op->op_ppaddr=&pp_popmark;
                declare_op->op_next=declare_op->op_next->op_next;        /* skip entersub */
             }
@@ -1284,28 +1318,32 @@ void lookup(pTHX_ pMultiDerefItem_ GV* var_gv, I32 type, OP** pnext_op, OP* acce
             }
          }
 
-         if (type != SVt_PVCV && hv_exists_ent(stash, dot_import_key, SvSHARED_HASH(dot_import_key)))
+         if (type != SVt_PVCV &&
+             (hv_exists_ent(stash, dot_import_key, SvSHARED_HASH(dot_import_key)) ||
+              is_dummy_pkg(aTHX_ stash))) {
             /* complain now if the addressed package is compiled with namespace mode
                and we are not looking for a subroutine (otherwise OP_ENTERSUB makes a nicer message) */
             *pnext_op=die("reference to an undeclared variable %c%s::%.*s at %s line %d.\n",
                           type==SVt_PV ? '$' : type==SVt_PVAV ? '@' : '%',
                           HvNAME(stash), (int)varnamelen, varname, CopFILE(PL_curcop), (int)CopLINE(PL_curcop));
+         }
       }
    }
 }
 
-int destroy_declare(pTHX_ SV *sv, MAGIC *mg)
+int clear_imported_flag(pTHX_ SV* sv, MAGIC* mg)
 {
-   switch(mg->mg_len)
+   GV* gv=(GV*)mg->mg_obj;
+   switch (mg->mg_len)
    {
    case SVt_PV:
-      GvIMPORTED_SV_off(mg->mg_obj);
+      GvIMPORTED_SV_off(gv);
       break;
    case SVt_PVAV:
-      GvIMPORTED_AV_off(mg->mg_obj);
+      GvIMPORTED_AV_off(gv);
       break;
    case SVt_PVHV:
-      GvIMPORTED_HV_off(mg->mg_obj);
+      GvIMPORTED_HV_off(gv);
       break;
    }
    return 0;
@@ -1397,23 +1435,30 @@ static
 OP* intercept_pp_gv(pTHX)
 {
    OP* next_op=def_pp_GV(aTHX);
+   OP* orig_next_op=next_op;
    dSP;
    GV* var_gv=(GV*)TOPs;
    CV* cv;
    OP* this_op=PL_op;
-   this_op->op_ppaddr=def_pp_GV;
 
    switch (next_op->op_type) {
    case OP_RV2SV:
       resolve_scalar_gv(aTHX_ nullMultiDerefItem_ var_gv, &next_op, next_op);
+      if (next_op == orig_next_op && this_op->op_ppaddr == &intercept_pp_gv)  // not died
+         this_op->op_ppaddr=def_pp_GV;
       break;
    case OP_RV2AV:
       resolve_array_gv(aTHX_ nullMultiDerefItem_ var_gv, &next_op, next_op);
+      if (next_op == orig_next_op && this_op->op_ppaddr == &intercept_pp_gv)  // not died
+         this_op->op_ppaddr=def_pp_GV;
       break;
    case OP_RV2HV:
       resolve_hash_gv(aTHX_ nullMultiDerefItem_ var_gv, &next_op, next_op);
+      if (next_op == orig_next_op && this_op->op_ppaddr == &intercept_pp_gv)  // not died
+         this_op->op_ppaddr=def_pp_GV;
       break;
    case OP_RV2CV:
+      this_op->op_ppaddr=def_pp_GV;  // lookup() never dies on unknown CVs
 #if PerlVersion >= 2200
       if (SvROK(var_gv)) break;
 #endif
@@ -1422,6 +1467,7 @@ OP* intercept_pp_gv(pTHX)
       lookup(aTHX_ nullMultiDerefItem_ var_gv, SVt_PVCV, &next_op, Null(OP*));
       break;
    case OP_ENTERSUB:
+      this_op->op_ppaddr=def_pp_GV;  // lookup() never dies on unknown CVs
 #if PerlVersion >= 2200
       if (SvROK(var_gv)) break;
 #endif
@@ -1470,7 +1516,7 @@ static
 OP* intercept_pp_rv2gv(pTHX)
 {
    OP* next_op=def_pp_RV2GV(aTHX);
-   OP* declare_op=NULL;
+   OP* declare_op=Nullop;
    I32 defuse=FALSE;
    
    if (next_op->op_type==OP_SASSIGN) {
@@ -1505,7 +1551,8 @@ OP* intercept_pp_rv2gv(pTHX)
    if (defuse) {
       if (declare_op->op_ppaddr != &pp_popmark) {
          /* change to void context */
-         next_op->op_flags ^= OPf_WANT_LIST ^ OPf_WANT_VOID;
+         next_op->op_flags &= ~OPf_WANT;
+         next_op->op_flags |= OPf_WANT_VOID;
          /* skip entersub */
          declare_op->op_ppaddr=&pp_popmark;
          declare_op->op_next=declare_op->op_next->op_next;
@@ -1520,17 +1567,19 @@ static
 OP* intercept_pp_gvsv(pTHX)
 {
    GV* var_gv=cGVOP_gv;
-   OP* next_op=PL_op;
-   next_op->op_ppaddr=def_pp_GVSV;
+   OP* this_op=PL_op;
+   OP* next_op=this_op;
    resolve_scalar_gv(aTHX_ nullMultiDerefItem_ var_gv, &next_op, next_op);
+   if (next_op == this_op && this_op->op_ppaddr == &intercept_pp_gvsv)  // not died
+      this_op->op_ppaddr=def_pp_GVSV;
    return next_op;
 }
 
 static
 OP* intercept_pp_aelemfast(pTHX)
 {
-   OP* next_op=PL_op;
-   next_op->op_ppaddr=def_pp_AELEMFAST;
+   OP* this_op=PL_op;
+   OP* next_op=this_op;
 #if PerlVersion >= 5160
    // since perl 5.16 AELEMFAST_LEX is a separate op, but implemented via the same pp subroutine
    if (next_op->op_type != OP_AELEMFAST_LEX)
@@ -1540,6 +1589,8 @@ OP* intercept_pp_aelemfast(pTHX)
    {
       resolve_array_gv(aTHX_ nullMultiDerefItem_ cGVOP_gv, &next_op, Null(OP*));
    }
+   if (next_op == this_op && this_op->op_ppaddr == &intercept_pp_aelemfast)  // not died
+      this_op->op_ppaddr=def_pp_AELEMFAST;
    return next_op;
 }
 
@@ -1548,8 +1599,8 @@ OP* intercept_pp_split(pTHX)
 {
    PMOP* pushre=cPMOPx(cUNOP->op_first);
    GV* var_gv;
-   OP* next_op=PL_op;
-   next_op->op_ppaddr=def_pp_SPLIT;
+   OP* this_op=PL_op;
+   OP* next_op=this_op;
 #ifdef USE_ITHREADS
    if (pushre->op_pmreplrootu.op_pmtargetoff) {
       var_gv=(GV*)PAD_SVl(pushre->op_pmreplrootu.op_pmtargetoff);
@@ -1564,6 +1615,8 @@ OP* intercept_pp_split(pTHX)
    // to calm down emacs
    }
 #endif
+   if (next_op == this_op && this_op->op_ppaddr == &intercept_pp_split)  // not died
+      this_op->op_ppaddr=def_pp_SPLIT;
    return next_op;
 }
 
@@ -1632,6 +1685,57 @@ void import_subs_into_pkg(pTHX_ HV *stash, GV *imp_gv, int lex_imp_ix)
       }
    }
    SvPVX(imp_sv)[offset] |= bit;
+}
+
+static inline
+void check_explicit_pkg(pTHX_ GV* gv)
+{
+   HV* stash=GvSTASH(gv);
+   if (stash != PL_curstash && stash != PL_defstash && HvTOTALKEYS(stash)==1) {
+      set_dotDUMMY_PKG(aTHX_ stash);
+   }
+}
+
+static inline
+void check_explicit_pkg_in_kid(pTHX_ OP* o)
+{
+   if (o->op_flags & OPf_KIDS) {
+      o=cUNOPo->op_first;
+      if (o->op_type == OP_GV)
+         check_explicit_pkg(aTHX_ cGVOPo_gv);
+   }
+}
+
+static
+OP* intercept_ck_gv(pTHX_ OP* o)
+{
+   o=def_ck_GV(aTHX_ o);
+   check_explicit_pkg(aTHX_ cGVOPo_gv);
+   return o;
+}
+
+static
+OP* intercept_ck_rv2sv(pTHX_ OP* o)
+{
+   o=def_ck_RV2SV(aTHX_ o);
+   check_explicit_pkg_in_kid(aTHX_ o);
+   return o;
+}
+
+static
+OP* intercept_ck_rv2av(pTHX_ OP* o)
+{
+   o=def_ck_RV2AV(aTHX_ o);
+   check_explicit_pkg_in_kid(aTHX_ o);
+   return o;
+}
+
+static
+OP* intercept_ck_rv2hv(pTHX_ OP* o)
+{
+   o=def_ck_RV2HV(aTHX_ o);
+   check_explicit_pkg_in_kid(aTHX_ o);
+   return o;
 }
 
 static inline
@@ -2574,7 +2678,7 @@ HV* pm_perl_namespace_lookup_class(pTHX_ HV* stash, const char* class_name, STRL
    HV* pkgLOOKUP=last_pkgLOOKUP;
    if (pkgLOOKUP == NULL) return gv_stashpvn(class_name, class_namelen, FALSE);
 
-   cached_stash=*hv_fetch(pkgLOOKUP,class_name,class_namelen,TRUE);
+   cached_stash=*hv_fetch(pkgLOOKUP, class_name, class_namelen, TRUE);
    if (SvROK(cached_stash))
       return (HV*)SvRV(cached_stash);
    if (SvIOK(cached_stash)) {
@@ -2582,7 +2686,7 @@ HV* pm_perl_namespace_lookup_class(pTHX_ HV* stash, const char* class_name, STRL
                            : pm_perl_namespace_lookup_class(aTHX_ (HV*)SvRV(AvARRAY(lexical_imports)[lex_imp_ix]), class_name, class_namelen, -1);
    }
    {
-      const char *first_colon=memchr(class_name, ':', class_namelen);
+      const char* first_colon=memchr(class_name, ':', class_namelen);
       size_t l=class_namelen+2;
       char smallbuf[64];
       char *buf;
@@ -2605,8 +2709,8 @@ HV* pm_perl_namespace_lookup_class(pTHX_ HV* stash, const char* class_name, STRL
       if (!imp_class && lex_imp_ix>=0) {
          if (lex_imp_ix>0)
             imp_class=pm_perl_namespace_lookup_class(aTHX_ (HV*)SvRV(AvARRAY(lexical_imports)[lex_imp_ix]), class_name, class_namelen, -1);
-         if ((glob_class=gv_stashpvn(class_name, class_namelen, FALSE)) != NULL &&
-             first_colon == NULL && HvTOTALKEYS(glob_class)==0) glob_class=NULL;
+         if ((glob_class=gv_stashpvn(class_name, class_namelen, FALSE)) != NULL && is_dummy_pkg(aTHX_ glob_class))
+            glob_class=NULL;
          if (imp_class) {
             if (!glob_class || glob_class!=imp_class) {
                // lexical scope prevails over global lookup
@@ -2671,7 +2775,7 @@ void switch_check_const_op(pTHX_ AV* dotSUBST_OP, I32 enable)
 static
 void establish_lex_imp_ix(pTHX_ int new_ix, int new_mode)
 {
-   cur_lexical_flags |= new_mode & (LexCtxAutodeclare | LexCtxDestroyDeclare);
+   cur_lexical_flags |= new_mode & (LexCtxAutodeclare | LexCtxAllowReDeclare);
    if (!current_mode()) {
       cur_lexical_import_ix=new_ix;
       catch_ptrs(aTHX_ NULL);
@@ -2780,6 +2884,10 @@ void catch_ptrs(pTHX_ void* to_restore)
       PL_check[OP_LEAVEEVAL] =&intercept_ck_leaveeval;
       PL_check[OP_GLOB]      =&intercept_ck_glob;
       PL_check[OP_READLINE]  =&intercept_ck_readline;
+      PL_check[OP_GV]        =&intercept_ck_gv;
+      PL_check[OP_RV2SV]     =&intercept_ck_rv2sv;
+      PL_check[OP_RV2AV]     =&intercept_ck_rv2av;
+      PL_check[OP_RV2HV]     =&intercept_ck_rv2hv;
 #if defined(PMCollectCoverage)
       if (cov_stats) {
          PL_peepp               =&intercept_peep;
@@ -2828,6 +2936,10 @@ void reset_ptrs(pTHX_ void* to_restore)
       PL_check[OP_LEAVEEVAL] =def_ck_LEAVEEVAL;
       PL_check[OP_GLOB]      =def_ck_GLOB;
       PL_check[OP_READLINE]  =def_ck_READLINE;
+      PL_check[OP_GV]        =def_ck_GV;
+      PL_check[OP_RV2SV]     =def_ck_RV2SV;
+      PL_check[OP_RV2AV]     =def_ck_RV2AV;
+      PL_check[OP_RV2HV]     =def_ck_RV2HV;
 #if defined(PMCollectCoverage)
       if (cov_stats) {
          PL_peepp               =def_peep;
@@ -2920,8 +3032,8 @@ PPCODE:
 
    if (items>=1 && (arg=ST(1), SvIOK(arg))) {
       // special call from another import routine: skip that many stack frames
-      flags=SvIVX(arg) & (LexCtxAutodeclare | LexCtxDestroyDeclare);
-      skip_frames=SvIVX(arg) & ~(LexCtxAutodeclare | LexCtxDestroyDeclare);
+      flags=SvIVX(arg) & (LexCtxAutodeclare | LexCtxAllowReDeclare);
+      skip_frames=SvIVX(arg) & ~(LexCtxAutodeclare | LexCtxAllowReDeclare);
       ++i;
    }
    if (cur_lexical_import_ix<0) {
@@ -3250,7 +3362,7 @@ PPCODE:
       }
    }
    class_stash=gv_stashpvn(classn, classl, FALSE);
-   if (class_stash && HvTOTALKEYS(class_stash)) {
+   if (class_stash && !is_dummy_pkg(aTHX_ class_stash)) {
       ST(0)=ST(items-1);
       XSRETURN(1);
    }
@@ -3274,11 +3386,20 @@ PPCODE:
       XSRETURN(1);
    }
    class_stash=gv_stashpvn(classn, classl, FALSE);
-   if (class_stash != NULL && HvTOTALKEYS(class_stash)) {
+   if (class_stash != NULL && !is_dummy_pkg(aTHX_ class_stash)) {
       ST(0)=ST(1);
       XSRETURN(1);
    }
    XSRETURN_UNDEF;
+}
+
+void
+create_dummy_pkg(pkg_name)
+   SV* pkg_name;
+PPCODE:
+{
+   HV* stash=gv_stashsv(pkg_name, TRUE);
+   set_dotDUMMY_PKG(aTHX_ stash);
 }
 
 void
@@ -3287,7 +3408,46 @@ PPCODE:
 {
    PERL_UNUSED_VAR(items);
    if (!(get_lex_flags(aTHX) & LexCtxAutodeclare))
-      Perl_croak(aTHX_ "multiple declaration of a variable");
+   {
+      // detect declare local with optional enclosed assigment and defuse it,
+      // otherwise complain
+      OP* o=PL_op;
+      OP* assign_op=Nullop;
+      OP* first_arg=Nullop;
+      o=cUNOPo->op_first;
+      if (o->op_type==OP_NULL) o=cLISTOPo->op_first;
+      assert(o->op_type==OP_PUSHMARK);
+      o=o->op_sibling;
+      if ((o->op_type==OP_SASSIGN || o->op_type==OP_AASSIGN) && !(o->op_private & OPpASSIGN_BACKWARDS)) {
+         assign_op=o;
+         first_arg=cBINOPo->op_last;
+         if (o->op_type==OP_AASSIGN) {
+            if (first_arg->op_type==OP_NULL) first_arg=cUNOPx(first_arg)->op_first;
+            assert(first_arg->op_type==OP_PUSHMARK);
+            first_arg=first_arg->op_sibling;
+         }
+      } else {
+         first_arg=o;
+      }
+      if (first_arg->op_type==OP_NULL) first_arg=cUNOPx(first_arg)->op_first;
+      if ((first_arg->op_type==OP_GVSV || first_arg->op_type==OP_RV2AV || first_arg->op_type == OP_RV2HV)
+          && (first_arg->op_private & OPpLVAL_INTRO)) {
+
+         if (assign_op) {
+            /* change to void context */
+            assign_op->op_flags &= ~OPf_WANT;
+            assign_op->op_flags |= OPf_WANT_VOID;
+         }
+         while (o->op_sibling) o=o->op_sibling;
+         if (o->op_type==OP_NULL) o=cUNOPo->op_first;
+         assert(o->op_type == OP_GV && GvCV(cGVOPo_gv) == declare_cv && o->op_next == PL_op);
+         /* skip entersub */
+         o->op_ppaddr=&pp_popmark;
+         o->op_next=o->op_next->op_next;
+         XSRETURN_EMPTY;
+      }
+   }
+   Perl_croak(aTHX_ "multiple declaration of a variable");
 }
 
 void
@@ -3734,8 +3894,8 @@ BOOT:
    cvar=get_sv("namespaces::auto_declare", TRUE);
    sv_setiv(cvar, LexCtxAutodeclare);
    SvREADONLY_on(cvar);
-   cvar=get_sv("namespaces::destroy_declare", TRUE);
-   sv_setiv(cvar, LexCtxDestroyDeclare);
+   cvar=get_sv("namespaces::allow_redeclare", TRUE);
+   sv_setiv(cvar, LexCtxAllowReDeclare);
    SvREADONLY_on(cvar);
    TypeExpression_stash=gv_stashpvn(TypeExpression_pkg, sizeof(TypeExpression_pkg)-1, TRUE);
    args_lookup_stash=gv_stashpvn("args", 4, TRUE);
@@ -3816,6 +3976,10 @@ BOOT:
    def_ck_LEAVEEVAL=PL_check[OP_LEAVEEVAL];
    def_ck_GLOB     =PL_check[OP_GLOB];
    def_ck_READLINE =PL_check[OP_READLINE];
+   def_ck_GV       =PL_check[OP_GV];
+   def_ck_RV2SV    =PL_check[OP_RV2SV];
+   def_ck_RV2AV    =PL_check[OP_RV2AV];
+   def_ck_RV2HV    =PL_check[OP_RV2HV];
    if (PL_beginav_save == NULL)
    {
       PL_beginav_save=newAV();
@@ -3848,6 +4012,7 @@ BOOT:
 #endif
    dot_lookup_key=newSVpvn_share(".LOOKUP",7,0);
    dot_import_key=newSVpvn_share(".IMPORT",7,0);
+   dot_dummy_pkg_key=newSVpvn_share(".DUMMY_PKG",10,0);
    dot_subst_op_key=newSVpvn_share(".SUBST_OP",9,0);
    dot_subs_key=newSVpvn_share(".SUBS",5,0);
    declare_key=newSVpvn_share("declare",7,0);

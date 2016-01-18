@@ -23,6 +23,11 @@ int FuncDescr_func_ptr_index, FuncDescr_name_index,
     CPP_assoc_helem_index, CPP_assoc_find_index, CPP_assoc_exists_index,
     CPP_assoc_delete_void_index, CPP_assoc_delete_ret_index;
 
+// don't report C++ exceptions as coming from these files - go deeper down the call stack
+const char* skip_contexts[]={ "/Polymake/Core/CPlusPlus.pm",
+                              "/Polymake/Core/PropertyType.pm",
+                              "/Polymake/Overload.pm"
+                            };
 }
 
 // had to be copied from mg.c
@@ -32,12 +37,6 @@ struct magic_state {
     I32 mgs_ss_ix;
 };
 
-// don't report C++ exceptions as coming from these files - go deeper down the call stack
-static const char* skip_contexts[]={ "/Polymake/Core/CPlusPlus.pm",
-                                     "/Polymake/Core/PropertyType.pm",
-                                     "/Polymake/Overload.pm"
-                                   };
-                                     
 inline
 bool report_position(pTHX_ COP* o)
 {
@@ -131,6 +130,13 @@ int Object_name_index, Object_description_index,
     CPP_auto_convert_constructor_index, CPP_auto_assignment_index, CPP_auto_conversion_index,
     CPP_auto_assoc_methods_index, CPP_auto_set_methods_index,
     FuncDescr_fill, TypeDescr_fill;
+
+MAGIC* allocate_canned_magic(pTHX_ SV* sv, SV* descr, unsigned int flags, unsigned int n_anchors)
+{
+   const base_vtbl* t=(const base_vtbl*)SvPVX(PmArray(descr)[TypeDescr_vtbl_index]);
+   (t->sv_maker)(aTHX_ sv, descr, flags, n_anchors);
+   return SvMAGIC(SvRV(sv));
+}
 
 int destroy_canned(pTHX_ SV* sv, MAGIC* mg)
 {
@@ -651,7 +657,7 @@ SV** call_function(pTHX_ SV *cur_wrapper, SV *wrap_sv, SV *func_ptr_sv, SV** SP)
    return SP;
 }
 
-} } } // end namespace pm::perl
+} } } // end namespace pm::perl::glue
 
 using namespace pm::perl;
 using namespace pm::perl::glue;
@@ -1181,7 +1187,6 @@ PPCODE:
 void
 classify_scalar(x,...)
    SV *x;
-PROTOTYPE: $
 PPCODE:
 {
    // @retval: 0 - string, 1 - float, 2 - long, 3 - int, 4 - boolean, undef - the rest
@@ -1211,7 +1216,6 @@ PPCODE:
 void
 is_container(x)
    SV *x;
-PROTOTYPE: $
 PPCODE:
 {
    PUSHs(&PL_sv_no);
@@ -1231,7 +1235,6 @@ PPCODE:
 void
 demangle(sym)
    const char* sym;
-PROTOTYPE: $
 PPCODE:
 {
    int status;
@@ -1455,6 +1458,8 @@ BOOT:
    }
 
    negative_indices_key=newSVpvn_share(NEGATIVE_INDICES_VAR,16,0);
+
+   connect_cout(aTHX);
 }
 
 =pod

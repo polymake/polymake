@@ -17,7 +17,14 @@
 #ifndef POLYMAKE_HASH_MAP_
 #define POLYMAKE_HASH_MAP_
 
+#if defined(__cplusplus) && __cplusplus >= 201103L && !defined(PM_FORCE_TR1)
+#include <unordered_map>
+#define PmTr1NS std
+#else
 #include <tr1/unordered_map>
+#define PmTr1NS std::tr1
+#endif
+
 #include "polymake/internal/assoc.h"
 #include "polymake/internal/hash_iterators.h"
 
@@ -25,8 +32,8 @@ namespace pm {
 
 template <typename Key, typename Value, typename Params=void>
 class hash_map
-   : public std::tr1::unordered_map<Key, Value, hash_func<Key>, typename hash_table_cmp_adapter<Key,Params>::type> {
-   typedef std::tr1::unordered_map<Key, Value, hash_func<Key>, typename hash_table_cmp_adapter<Key,Params>::type> _super;
+   : public PmTr1NS::unordered_map<Key, Value, hash_func<Key>, typename hash_table_cmp_adapter<Key,Params>::type> {
+   typedef PmTr1NS::unordered_map<Key, Value, hash_func<Key>, typename hash_table_cmp_adapter<Key,Params>::type> _super;
 
    typedef typename extract_type_param<Params, DefaultValue, operations::clear<Value> >::type default_value_supplier;
    default_value_supplier dflt;
@@ -45,7 +52,7 @@ public:
    template <typename Iterator>
    hash_map(Iterator first, Iterator last, const default_value_supplier& dflt_arg) : _super(first,last), dflt(dflt_arg) {}
 
-   bool exists(typename function_argument<Key>::type k)
+   bool exists(typename function_argument<Key>::type k) const
    {
       return _super::find(k) != _super::end();
    }
@@ -134,8 +141,8 @@ struct spec_object_traits< hash_map<Key,Value,Params> >
 // FIXME: soon deprecated
 template <typename Key, typename Value, typename HashFcn=hash_func<Key>, typename EqualKey=std::equal_to<Key> >
 class hash_map_as_property_map
-   : public std::tr1::unordered_map<Key, Value, HashFcn, EqualKey> {
-   typedef std::tr1::unordered_map<Key, Value, HashFcn, EqualKey> _super;
+   : public PmTr1NS::unordered_map<Key, Value, HashFcn, EqualKey> {
+   typedef PmTr1NS::unordered_map<Key, Value, HashFcn, EqualKey> _super;
 public:
    hash_map_as_property_map() {}
 

@@ -148,7 +148,7 @@ inline int isinf(const Rational& a);
 /// @brief A class for rational numbers.
 class Rational {
    friend class Integer;
-   template <typename> friend struct std::numeric_limits;
+   template <typename> friend class std::numeric_limits;
    friend struct spec_object_traits<Rational>;
    template <GMP::proxy_kind, bool> friend class GMP::Proxy;
 protected:
@@ -1422,7 +1422,8 @@ namespace std {
 inline void swap(pm::Rational& a, pm::Rational& b) { a.swap(b); }
 
 template <>
-struct numeric_limits<pm::Rational> : numeric_limits<pm::Integer> {
+class numeric_limits<pm::Rational> : public numeric_limits<pm::Integer> {
+public:
    static const bool is_integer=false;
    static pm::Rational min() throw() { return pm::Rational(pm::maximal<pm::Rational>(),-1); }
    static pm::Rational infinity() throw() { return pm::Rational(pm::maximal<pm::Rational>()); }

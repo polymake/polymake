@@ -29,11 +29,10 @@
 //---------------------------------------------------------------------------
 
 //#include <ostream>
-#include "libnormaliz/normaliz_exception.h"
-#include "libnormaliz/integer.h"
+#include <libnormaliz/normaliz_exception.h>
+#include <libnormaliz/integer.h>
 
 namespace libnormaliz {
-//using std::ostream;
 
 // conversion for integers, throws ArithmeticException if conversion fails
 template<typename ToType, typename FromType>

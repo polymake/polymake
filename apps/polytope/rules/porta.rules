@@ -41,7 +41,7 @@ rule porta.convex_hull.primal: FACETS, AFFINE_HULL : CONE_AMBIENT_DIM, CONE_DIM,
    my $converter=new PortaConverter("$tempname.poi");
    $converter->print_dim($this->CONE_AMBIENT_DIM-1);
    $converter->print_points($this->VERTICES | POINTS);
-   undef $converter;
+   $converter->finish;
 
    my $command="$xporta -l -T $tempname.poi";
    $command.=" >/dev/null 2>&1" unless $DebugLevel;
@@ -67,7 +67,7 @@ rule porta.convex_hull.dual: VERTICES, LINEALITY_SPACE : CONE_AMBIENT_DIM, FACET
    $converter->print_dim($this->CONE_AMBIENT_DIM-1);
    $converter->print_valid_point($this->VALID_POINT);
    $converter->print_inequalities($this->FACETS | INEQUALITIES, $this->lookup("AFFINE_HULL | EQUATIONS"));
-   undef $converter;
+   $converter->finish;
 
    my $command="$xporta -l -T $tempname.ieq";
    $command.=" >/dev/null 2>&1" unless $DebugLevel;
@@ -88,10 +88,10 @@ permutation : VertexPerm;
 # @category Optimization
 # take a rational polytope and write a porta input file (.ieq or .poi)
 # @param Polytope<Rational> p
-# @param String file filename for the porta file (.ieq or .poi)
+# @param String file filename for the porta file (.ieq or .poi) or an open IO handle
 # @option Bool primal true if points should be written, false if inequalities should be written (default is true)
 
-user_function poly2porta(Polytope<Rational>, String, {primal=>1} ) {
+user_function poly2porta(Polytope<Rational>, $, {primal=>1} ) {
     
     require PortaParser;
 
@@ -106,8 +106,7 @@ user_function poly2porta(Polytope<Rational>, String, {primal=>1} ) {
 	$converter->print_valid_point($p->VALID_POINT);
 	$converter->print_inequalities($p->FACETS | INEQUALITIES, $p->lookup("AFFINE_HULL | EQUATIONS"));
     }
-    undef $converter;    
-    
+    $converter->finish;    
 }
 
 

@@ -83,7 +83,7 @@ namespace polymake { namespace tropical {
 			"# codimension one face"
 			"# @return Matrix<Rational> The space of rational functions defined on this "
 			"# particular subdivision. Each row is a generator. The columns correspond to "
-			"# values on [[SEPARATED_VERTICES]] and [[LINEALITY_SPACE]], except the last one,"
+			"# values on [[SEPARATED_VERTICES]] and [[Cycle::LINEALITY_SPACE|LINEALITY_SPACE]], except the last one,"
 			"# which is either 0 (then this "
 			"# function cuts out zero and can be added to any solution) or non-zero (then "
 			"# normalizing this entry to -1 gives a function cutting out the desired weights "

@@ -24,7 +24,7 @@
 object Cycle {
 
 	#Operator overload 
-	use overload('*' => 'mult',"fallback" => TRUE);
+	use overload('*' => 'mult', fallback => 1);
 
 	## PROPERTIES ###########################################
 	
@@ -193,7 +193,6 @@ object Cycle {
 		codim_one_with_locality($this);
 	}
 	weight 2.5;
-	precondition : exists(LOCAL_RESTRICTION);
 	
 	rule WEIGHT_SPACE : VERTICES, LINEALITY_SPACE, MAXIMAL_POLYTOPES, CODIMENSION_ONE_POLYTOPES, MAXIMAL_AT_CODIM_ONE, LATTICE_NORMALS, PROJECTIVE_DIM, PROJECTIVE_AMBIENT_DIM {
 		$this->WEIGHT_SPACE = cycle_weight_space($this);

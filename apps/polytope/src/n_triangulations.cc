@@ -27,7 +27,6 @@
 #include "polymake/pair.h"
 #include "polymake/numerical_functions.h"
 #include <algorithm>
-#include <boost/concept_check.hpp>
 
 namespace polymake { namespace polytope {
   
@@ -374,9 +373,12 @@ Integer n_triangulations(const Matrix<Scalar>& points, perl::OptionSet options)
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# Calculates the number of triangulations of the input points given as rows of a matrix. This can be space intensive."
-                          "# @param Matrix M points in the projective plane"	
+                          "# @param Matrix M points in the projective plane"
                           "# @param Bool optimization defaults to 1, where 1 includes optimization and 0 excludes it"
-                          "# @return Integer number of triangulations","n_triangulations(Matrix { optimization => 1})");
+                          "# @return Integer number of triangulations"
+                          "# @example To print the number of possible triangulations of a square, do this:"
+                          "# > print n_triangulations(cube(2)->VERTICES);"
+                          "# | 2","n_triangulations(Matrix { optimization => 1})");
 
 } }
 

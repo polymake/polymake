@@ -118,7 +118,12 @@ UserFunctionTemplate4perl("# @category  Producing a polytope from polytopes"
                           "# @option Bool relabel creates an additional section [[VERTEX_LABELS]];"
                           "#   the bottom facet vertices get the labels from the original polytope;"
                           "#   the labels of their clones in the top facet get a tick (') appended."
-                          "# @return Polytope",
+                          "# @return Polytope"
+                          "# @example The following saves the prism over the square and the interval [-2,2] to the"
+                          "# variable $p while relabeling, and then prints a nice representation of its vertices."
+                          "# > $p = prism(cube(2),-2,relabel=>1);"
+                          "# > print labeled($p->VERTICES,$p->VERTEX_LABELS);"
+                          "# | 0:1 -1 -1 -2 1:1 1 -1 -2 2:1 -1 1 -2 3:1 1 1 -2 0':1 -1 -1 2 1':1 1 -1 2 2':1 -1 1 2 3':1 1 1 2",
                           "prism<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=-1, type_upgrade<Scalar>=-$_[1], { no_coordinates => undef, relabel => undef})");
 } }
 

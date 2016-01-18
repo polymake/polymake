@@ -16,6 +16,7 @@
 
 package de.tuberlin.polymake.graph;
 
+import java.awt.EventQueue;
 import java.awt.Frame;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -75,30 +76,38 @@ public abstract class PolymakeSpringEmbedderControl extends PolymakeControl {
 			if (!(frameMap.containsKey(geometry.getEmbedding().getName()))
 					|| !(((PolymakeSpringEmbedderFrame) frameMap.get(geometry
 							.getEmbedding().getName())).isDisplayable())) {
-				PolymakeFrame tmpFrame = createFrame(geometry.getEmbedding()
-						.getName());
-				tmpFrame
-						.update(geometry.getEmbedding(), parser.getParameters());
-				frameMap.put(geometry.getName(), tmpFrame);
-				tmpFrame.encompass();
-				tmpFrame.setVisible(true);
-			} else {
-				PolymakeSpringEmbedderFrame tmpFrame = (PolymakeSpringEmbedderFrame) frameMap
-						.get(geometry.getName());
-				if (tmpFrame.isVisible()
-						|| tmpFrame.getState() == Frame.ICONIFIED) {
-					tmpFrame.setState(Frame.NORMAL);
-				}
-				tmpFrame.setVisible(true);
-				if (parser.getWarning() != null) {
-					tmpFrame.setStatus(parser.getWarning());
-				} else {
-					if (parser.getError() != null) {
-						tmpFrame.setStatus(parser.getError());
+				EventQueue.invokeLater(new Runnable() {
+					
+					@Override
+					public void run() {
+						PolymakeFrame tmpFrame = createFrame(geometry.getEmbedding().getName());
+						tmpFrame.update(geometry.getEmbedding(), parser.getParameters());
+						frameMap.put(geometry.getName(), tmpFrame);
+						tmpFrame.encompass();
+						tmpFrame.setVisible(true);
 					}
-				}
-				tmpFrame.update(geometry.getEmbedding(), parser.getParameters());
-				
+				});
+			} else {
+				final PolymakeSpringEmbedderFrame tmpFrame = (PolymakeSpringEmbedderFrame) frameMap.get(geometry.getName());
+				EventQueue.invokeLater(new Runnable() {
+
+					@Override
+					public void run() {
+						if (tmpFrame.isVisible()
+								|| tmpFrame.getState() == Frame.ICONIFIED) {
+							tmpFrame.setState(Frame.NORMAL);
+						}
+						tmpFrame.setVisible(true);
+						if (parser.getWarning() != null) {
+							tmpFrame.setStatus(parser.getWarning());
+						} else {
+							if (parser.getError() != null) {
+								tmpFrame.setStatus(parser.getError());
+							}
+						}
+						tmpFrame.update(geometry.getEmbedding(), parser.getParameters());
+					}
+				});
 			}
 		} catch (SharedMemoryMatrixException e) {
 			e.printStackTrace(SelectorThread.newErr);

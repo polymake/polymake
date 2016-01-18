@@ -39,87 +39,37 @@ custom $_4ti2_groebner_param="";
 
 label _4ti2
 
-object LatticePolytope {
+object_specialization Polytope::Lattice {
 
-    rule GROEBNER_BASIS.BASIS : CONE_AMBIENT_DIM , LATTICE_POINTS_GENERATORS {
-        my $dim = $this->CONE_AMBIENT_DIM-1;
-        my $lp = $this->LATTICE_POINTS_GENERATORS->[0]->rows;
+    rule GROEBNER_BASIS.BASIS : LATTICE_POINTS_GENERATORS, GROEBNER_BASIS.TERM_ORDER_MATRIX | TERM_ORDER_NAME {
         my $tempname=new Tempfile;
+        my $lp = $this->LATTICE_POINTS_GENERATORS->[0]->rows;
+        my ($term_order, $given) = $this->GROEBNER_BASIS->give_with_name("TERM_ORDER_MATRIX | TERM_ORDER_NAME");
 
-        # write all lattice points into $tempname.mat
-	groebner_write( $tempname,'mat',transpose($this->LATTICE_POINTS_GENERATORS->[0]) );
-
-	# check whether a term order is defined
-	# otherwise take 4ti2's default
-        if (defined (my $tom = $this->lookup("GROEBNER_BASIS.TERM_ORDER_MATRIX") ) ) {
-          # write all lattice points into $tempname.cost
-	  groebner_write( $tempname,'cost', $tom );
-        } elsif (defined (my $ton = $this->lookup("GROEBNER_BASIS.TERM_ORDER_NAME") ) ) {
-	  if ( $ton eq 'lex' ) {
-	    groebner_write( $tempname,'cost', unit_matrix<Int>($lp) );
-	  } elsif ( $ton eq 'degrevlex' ) {
-	    my $tom = new Matrix<Int>($lp,$lp);
-	    $tom->row(0) = ones_vector<Int>($lp);
-            foreach (1..$lp-1) { $tom->[$_][$lp-$_] = -1; }
-	    groebner_write( $tempname,'cost', $tom );
-	  } elsif ( $ton eq 'deglex' ) {
-	    my $tom = new Matrix<Int>($lp,$lp);
-	    $tom->row(0) = ones_vector<Int>($lp);
-            foreach (1..$lp-1) { $tom->[$_][$_-1] = 1; }
-	    groebner_write( $tempname,'cost', $tom );
-	  } else {
-	    die "unknown term order";
-	  }
-	}
-        
-        # run groebner with standard precision
-        my $runarb = 0;
-        if ($Verbose::external) {
-            dbg_print( "running 4ti2's groebner: $groebner $_4ti2_groebner_param $tempname" );
-        }
-        open(my $P, "$groebner $_4ti2_groebner_param $tempname 2>&1 |")
-            or die "couldn't run 4ti2's 'groebner': $!";
-
-        local $_;
-        while(<$P>) {
-            if (/ERROR: Try running 4ti2 with arbitrary precision/) {
-                $runarb = 1;
+        if ($given eq "TERM_ORDER_NAME") {
+            if ($term_order eq 'lex') {
+                $term_order=unit_matrix<Int>($lp);
+            } elsif ($term_order eq 'deglex') {
+                $term_order = new Matrix<Int>($lp,$lp);
+                $term_order->row(0) = ones_vector<Int>($lp);
+                foreach (1..$lp-1) { $term_order->elem($_, $_-1) = 1; }
+            } else {
+                ## must be 'degrevlex', otherwise the initial rule had fired alarm
+                $term_order = new Matrix<Int>($lp,$lp);
+                $term_order->row(0) = ones_vector<Int>($lp);
+                foreach (1..$lp-1) { $term_order->elem($_, $lp-$_) = -1; }
             }
         }
-        close $P;
-        open($P, "<$tempname.gro")
-            or $runarb = 1;
-        
-        close $P;
+        # write all lattice points into $tempname.cost
+        groebner_write($tempname, 'cost', $term_order);
+        groebner_run($this, $tempname);
+    }
+    precondition : BOUNDED;
+    weight 5.10;
 
-        # run groebner with arbitrary precision if necessary
-        if ($runarb == 1) {
-            if ($Verbose::external) {
-               dbg_print( "running 4ti2's groebner: $groebner -parb $_4ti2_groebner_param $tempname" );
-            }
-            open(my $P, "$groebner -parb $_4ti2_groebner_param $tempname 2>&1 |")
-                or die "couldn't run 4ti2's 'groebner': $!";
 
-            while(<$P>) {
-            }
-            close $P;
-        }
-
-        # read groebner basis
-        open(my $outfile, "<$tempname.gro")
-            or die "can't open output file $tempname.gro: $!";
-        my $dimline = <$outfile>;
-        my @gromat=();
-        my $i;
-        while (<$outfile>) {
-            my @vec = split;
-            push @gromat, \@vec;
-            $i++;
-        }
-        if ($i > 0) {
-            $this->GROEBNER_BASIS->BASIS = \@gromat;
-        }
-        close $outfile;
+    rule GROEBNER_BASIS(new).BASIS : LATTICE_POINTS_GENERATORS {
+        groebner_run($this, new Tempfile);
     }
     precondition : BOUNDED;
     weight 5.10;
@@ -183,14 +133,68 @@ object Polytope<Rational> {
 }
 
 sub groebner_write {
-  my ($filebase,$suffix,$m) = @_;
+    my ($filebase, $suffix, $m) = @_;
 
-  open(my $M, ">$filebase.$suffix")
-    or die "can't create temporary file $filebase.$suffix: $!";
-  #header
-  print $M $m->rows, " ", $m->cols, "\n";
-  print $M new Matrix<Integer>($m);
-  close $M;
+    open(my $M, ">$filebase.$suffix")
+      or die "can't create temporary file $filebase.$suffix: $!";
+    #header
+    print $M $m->rows, " ", $m->cols, "\n";
+    print $M dense($m);
+    close $M;
+}
+
+sub groebner_run {
+    my ($this, $tempname)=@_;
+
+    # write all lattice points into $tempname.mat
+    groebner_write($tempname, 'mat', transpose($this->LATTICE_POINTS_GENERATORS->[0]));
+
+    # run groebner with standard precision
+    my $runarb = 0;
+    if ($Verbose::external) {
+        dbg_print( "running 4ti2's groebner: $groebner $_4ti2_groebner_param $tempname" );
+    }
+    open(my $P, "$groebner $_4ti2_groebner_param $tempname 2>&1 |")
+      or die "couldn't run 4ti2's 'groebner': $!";
+
+    local $_;
+    while (<$P>) {
+        if (/ERROR: Try running 4ti2 with arbitrary precision/) {
+            $runarb = 1;
+        }
+    }
+    close $P;
+    open($P, "<$tempname.gro")
+      or $runarb = 1;
+    close $P;
+
+    # run groebner with arbitrary precision if necessary
+    if ($runarb == 1) {
+        if ($Verbose::external) {
+            dbg_print( "running 4ti2's groebner: $groebner -parb $_4ti2_groebner_param $tempname" );
+        }
+        open(my $P, "$groebner -parb $_4ti2_groebner_param $tempname 2>&1 |")
+          or die "couldn't run 4ti2's 'groebner': $!";
+
+        while(<$P>) {}
+        close $P;
+    }
+
+    # read groebner basis
+    open(my $outfile, "<$tempname.gro")
+      or die "can't open output file $tempname.gro: $!";
+    my $dimline = <$outfile>;
+    my @gromat=();
+    my $i;
+    while (<$outfile>) {
+        my @vec = split;
+        push @gromat, \@vec;
+        $i++;
+    }
+    if ($i > 0) {
+        $this->GROEBNER_BASIS->BASIS = \@gromat;
+    }
+    close $outfile;
 }
 
 sub _4ti2_run {
@@ -344,4 +348,5 @@ sub zsolve_parse {
 # Local Variables:
 # mode: perl
 # cperl-indent-level:4
+# indent-tabs-mode:nil
 # End:

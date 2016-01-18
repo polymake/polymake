@@ -313,6 +313,12 @@ perl::Object tetrahedron()
 }
 
 // wythoff_dispatcher("B3", Set<int>(0)) gives octahedron
+//
+perl::Object truncated_cube() {
+   perl::Object p(wythoff_dispatcher("B3", sequence(1,2)));
+   p.set_description("= truncated cube",true);
+   return p;
+}
 
 perl::Object cuboctahedron() {
    perl::Object p(wythoff_dispatcher("B3", Set<int>(1)));
@@ -331,6 +337,14 @@ perl::Object truncated_octahedron() {
 perl::Object truncated_cuboctahedron() {
    perl::Object p(wythoff_dispatcher("B3", range(0,2)));
    p.set_description("= truncated cuboctahedron",true);
+   return p;
+}
+
+perl::Object rhombicuboctahedron() {
+   Set<int> rings;
+   rings+=0; rings+=2;
+   perl::Object p(wythoff_dispatcher("B3", rings));
+   p.set_description("= rhombicuboctahedron",true);
    return p;
 }
 
@@ -397,7 +411,7 @@ perl::Object truncated_icosidodecahedron() {
 }
 
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Produce the orbit polytope of a point under a Coxeter arrangement"
                   "# with exact coordinates, possibly in a qudratic extension field of the rationals"
                   "# @param String   type   single letter followed by rank representing the type of the arrangement"
@@ -406,77 +420,88 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @return Polytope",
                   &wythoff_dispatcher, "wythoff($ Set<Int>)");
 
-UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
+UserFunctionTemplate4perl("# @category Producing regular polytopes and their generalizations"
                           "# Create regular tetrahedron.  A Platonic solid."
                           "# @return Polytope",
                           "tetrahedron<Scalar=Rational>()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
+                  "# Create truncated cube.  An Archimedean solid."
+                  "# @return Polytope",
+                  &truncated_cube, "truncated_cube()");
+
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Create cuboctahedron.  An Archimedean solid."
                   "# @return Polytope",
                   &cuboctahedron, "cuboctahedron()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Create truncated cuboctahedron.  An Archimedean solid."
                   "# This is actually a misnomer.  The actual truncation of a cuboctahedron"
                   "# is normally equivalent to this construction, "
                   "# but has two different edge lengths. This construction has regular 2-faces."
                   "# @return Polytope",
+
                   &truncated_cuboctahedron, "truncated_cuboctahedron()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
+                  "# Create rhombicuboctahedron.  An Archimedean solid."
+                  "# @return Polytope",
+                  &rhombicuboctahedron, "rhombicuboctahedron()");
+
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Create truncated octahedron.  An Archimedean solid."
                   "# Also known as the 3-permutahedron."
                   "# @return Polytope",
                   &truncated_octahedron, "truncated_octahedron()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Create regular 24-cell."
                   "# @return Polytope",
                   &regular_24_cell, "regular_24_cell()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Create exact regular 120-cell in Q(sqrt{5})."
                   "# @return Polytope",
                   &regular_120_cell, "regular_120_cell()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Create exact regular 600-cell in Q(sqrt{5})."
                   "# @return Polytope",
                   &regular_600_cell, "regular_600_cell()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Create exact regular dodecahedron in Q(sqrt{5}).  A Platonic solid."
                   "# @return Polytope",
                   &dodecahedron, "dodecahedron()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Create exact icosidodecahedron in Q(sqrt{5}).  An Archimedean solid."
                   "# @return Polytope",
                   &icosidodecahedron, "icosidodecahedron()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Create exact regular icosahedron in Q(sqrt{5}).  A Platonic solid."
                   "# @return Polytope",
                   &icosahedron, "icosahedron()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Create exact truncated dodecahedron in Q(sqrt{5}).  An Archimedean solid."
                   "# @return Polytope",
                   &truncated_dodecahedron, "truncated_dodecahedron()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Create exact rhombicosidodecahedron in Q(sqrt{5}).  An Archimedean solid."
                   "# @return Polytope",
                   &rhombicosidodecahedron, "rhombicosidodecahedron()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Create exact truncated icosahedron in Q(sqrt{5}).  An Archimedean solid."
                   "# Also known as the soccer ball."
                   "# @return Polytope",
                   &truncated_icosahedron, "truncated_icosahedron()");
 
-UserFunction4perl("# @category Producing a polytope from scratch"
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Create exact truncated icosidodecahedron in Q(sqrt{5}).  An Archimedean solid."
                   "# @return Polytope",
                   &truncated_icosidodecahedron, "truncated_icosidodecahedron()");

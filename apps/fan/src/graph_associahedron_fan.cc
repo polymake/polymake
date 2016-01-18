@@ -23,8 +23,9 @@
 #include "polymake/Graph.h"
 #include "polymake/Bitset.h"
 #include "polymake/graph/connected.h"
-#include <list>
-#include <map>
+#include "polymake/vector"
+#include "polymake/map"
+#include "polymake/list"
 
 namespace polymake { namespace fan {
 
@@ -224,7 +225,7 @@ perl::Object graph_associahedron_fan(const perl::Object& g)
          const Tubing flipped(G, tubing_list[Tind], i);
          const std::string flipped_rep(flipped.representation());
          if (seen.contains(flipped_rep)) {
-            dual_graph_edges.push_back(std::make_pair<int,int>(Tind, index_of_tubing[flipped_rep]));
+            dual_graph_edges.push_back(std::make_pair(Tind, index_of_tubing[flipped_rep]));
             continue;
          }
          seen += flipped_rep;
@@ -232,7 +233,7 @@ perl::Object graph_associahedron_fan(const perl::Object& g)
          tubing_queue.push_back(max_tubing_index);
          index_of_tubing[flipped_rep] = max_tubing_index;
          process_tubing(flipped, index_of_ray, max_ray_index, VIF_list, cone_label_list);
-         dual_graph_edges.push_back(std::make_pair<int,int>(Tind, max_tubing_index));
+         dual_graph_edges.push_back(std::make_pair(Tind, max_tubing_index));
          max_tubing_index++;
       }
    }
@@ -325,7 +326,7 @@ Set<Set<int> > tubing_of_graph(const perl::Object& g)
 UserFunction4perl("# @category Producing a fan"
                   "# Produce the dual fan of a graph associahedron."
                   "# @param Graph G the input graph"
-                  "# @return Fan",
+                  "# @return PolyhedralFan",
                   &graph_associahedron_fan, "graph_associahedron_fan(Graph)");
 
 UserFunction4perl("# @category Other"

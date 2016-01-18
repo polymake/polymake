@@ -227,8 +227,8 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# @param Array<Set> the (representative) maximal interior simplices "
                           "# @param Scalar volume the volume of the convex hull "
                           "# @param SparseMatrix cocircuit_equations the matrix of cocircuit equations "
-                          "# @option filename a name for a file in .lp format to store the linear program"
-                          "# @return an LP that provides a lower bound",
+                          "# @option String filename a name for a file in .lp format to store the linear program"
+                          "# @return LinearProgram an LP that provides a lower bound",
                           "simplexity_ilp_with_angles<Scalar>($ Matrix<Scalar> Array<Set> $ SparseMatrix SparseMatrix<Float> { filename=>'' })");
 
 
@@ -239,5 +239,3 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
 // c-basic-offset:3
 // indent-tabs-mode:nil
 // End:
-
- 

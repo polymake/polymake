@@ -113,12 +113,7 @@ void rel_int_point(perl::Object p)
    p.take("REL_INT_POINT") << (v0+(0|average(rows(verts/zero_vector<Coord>(n)))));
 }
 
-UserFunctionTemplate4perl("# @category Optimization"
-                          "# Computes a relative interior point of a polyhedron //P// and stores it in //P//->[[REL_INT_POINT]]."
-                          "# The //unbounded// flag needs to be set to true if the polyhedron could be unbounded."
-                          "# @param Polytope P"
-                          "# @author Sven Herrmann (initial version)",
-                          "rel_int_point<Coords>(Polytope<Coords>) : void");
+FunctionTemplate4perl("rel_int_point<Coords>(Polytope<Coords>) : void");
 } }
 
 // Local Variables:

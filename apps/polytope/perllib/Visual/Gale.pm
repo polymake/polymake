@@ -48,7 +48,7 @@ sub new {
       push @{$self->points}, $point;
       if ($color) {
          if ($self->dim==1) {
-            my $angle=atan2($Transform->($v,1), $Transform->($v,0));
+            my $angle=atan2($Transform->elem($v,1), $Transform->elem($v,0));
             push @{$self->different_angles->{$angle}}, $v;
          }
          push @{$self->different_x_y->{$point}}, $v;

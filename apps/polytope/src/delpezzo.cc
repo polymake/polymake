@@ -67,8 +67,8 @@ perl::Object pseudo_delpezzo(const int d, const Scalar& s)
 }
 
 UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
-                          "# Produce a //d//-dimensional del-Pezzo polytope."
-                          "# Del-Pezzo polytope which is the convex hull of the cross polytope together with the all-ones and minus all-ones vector."
+                          "# Produce a //d//-dimensional del-Pezzo polytope, which is the convex hull of"
+                          "# the cross polytope together with the all-ones and minus all-ones vector."
                           "# "
                           "# All coordinates are +/- //scale// or 0."
                           "# @param Int d the dimension"
@@ -78,8 +78,8 @@ UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
 
 
 UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
-                          "# Produce a //d//-dimensional del-Pezzo polytope."
-                          "# Del-Pezzo polytope which is the convex hull of the cross polytope together with the all-ones and minus all-ones vector."
+                          "# Produce a //d//-dimensional del-Pezzo polytope, which is the convex hull of"
+                          "# the cross polytope together with the all-ones vector."
                           "# "
                           "# All coordinates are +/- //scale// or 0."
                           "# @param Int d the dimension"

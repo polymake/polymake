@@ -52,5 +52,23 @@ namespace polymake { namespace group { namespace {
    }
    FunctionWrapperInstance4perl( pm::Array<int, void> (pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&) );
 
+   FunctionWrapper4perl( pm::SparseMatrix<pm::Rational, pm::NonSymmetric> (perl::Object, int, perl::OptionSet) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      IndirectWrapperReturn( arg0, arg1, arg2 );
+   }
+   FunctionWrapperInstance4perl( pm::SparseMatrix<pm::Rational, pm::NonSymmetric> (perl::Object, int, perl::OptionSet) );
+
+   FunctionWrapper4perl( pm::IncidenceMatrix<pm::NonSymmetric> (perl::Object, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, perl::OptionSet) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      IndirectWrapperReturn( arg0, arg1.get< perl::TryCanned< const Array< Set< int > > > >(), arg2 );
+   }
+   FunctionWrapperInstance4perl( pm::IncidenceMatrix<pm::NonSymmetric> (perl::Object, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, perl::OptionSet) );
+
+   FunctionWrapper4perl( pm::IncidenceMatrix<pm::NonSymmetric> (perl::Object, pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, perl::OptionSet) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      IndirectWrapperReturn( arg0, arg1.get< perl::TryCanned< const SparseMatrix< Rational, NonSymmetric > > >(), arg2 );
+   }
+   FunctionWrapperInstance4perl( pm::IncidenceMatrix<pm::NonSymmetric> (perl::Object, pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, perl::OptionSet) );
+
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -108,10 +108,10 @@ void print_lp(perl::Object p, perl::Object lp, const bool maximize, std::ostream
 void poly2lp(perl::Object p, perl::Object lp, const bool maximize, const std::string& file)
 {
    if (file.empty() || file=="-") {
-      print_lp(p,lp,maximize,std::cout);
+      print_lp(p, lp, maximize, perl::cout);
    } else {
       std::ofstream os(file.c_str());
-      print_lp(p,lp,maximize,os);
+      print_lp(p, lp, maximize, os);
    }
 }
 

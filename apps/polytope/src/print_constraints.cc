@@ -50,9 +50,15 @@ UserFunctionTemplate4perl("# @category Optimization"
            "# of a polytope //P// or cone //C// in a readable way."
            "# [[COORDINATE_LABELS]] are adopted if present."
            "# @param Cone<Scalar> C the given polytope or cone"
-			  "# @option Array<String> ineq_labels changes the labels of the inequality rows"
-			  "# @option Array<String> eq_labels changes the labels of the equation rows"
-           "# @return Bool",
+           "# @option Array<String> ineq_labels changes the labels of the inequality rows"
+           "# @option Array<String> eq_labels changes the labels of the equation rows"
+           "# @example The following prints the facet inequalities of the square, changing the labels."
+           "# > print_constraints(cube(2),ineq_labels=>['zero','one','two','three']);"
+           "# | Facets:"
+           "# | zero: x1 >= -1"
+           "# | one: -x1 >= -1"
+           "# | two: x2 >= -1"
+           "# | three: -x2 >= -1",
            "print_constraints<Scalar>(Cone<Scalar>; { ineq_labels => undef, eq_labels => undef }) : void");
 
 

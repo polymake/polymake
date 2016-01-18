@@ -15,6 +15,11 @@
 
 use Visual::Gale;
 
+# @topic objects/Visual::Gale
+# @category Visualization
+# A gale diagram prepared for drawing.
+# @super Visual::Object
+
 object Polytope {
 
 # @category Geometry

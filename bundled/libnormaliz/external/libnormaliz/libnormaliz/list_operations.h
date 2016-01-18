@@ -30,23 +30,26 @@
                   
 #include <vector>
 #include <list>
+#include <ostream>
 
 #include "libnormaliz/libnormaliz.h"
 #include "libnormaliz/simplex.h"
 
 namespace libnormaliz {
+using std::vector;
+using std::list;
 
 //---------------------------------------------------------------------------
 //                          Data access
 //---------------------------------------------------------------------------
 
 template <typename T>
-ostream& operator<< (ostream& out, const list<T>& l) {
+std::ostream& operator<< (std::ostream& out, const list<T>& l) {
     typename list<T>::const_iterator i;
     for (i =l.begin(); i != l.end(); i++) {
         out << *i << " ";
     }
-    out << endl;
+    out << std::endl;
     return out;
 }
 

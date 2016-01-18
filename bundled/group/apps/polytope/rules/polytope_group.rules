@@ -34,21 +34,26 @@ rule GROUP.SIMPLEXITY_LOWER_BOUND : VOLUME, GROUP.REPRESENTATIVE_MAX_INTERIOR_SI
 
 }
 
-sub universal_polytope;
+
 # @category Triangulations, subdivisions and volume
-# Calculate the universal polytope of a polytope, point configuration or quotient manifold
-# @param Int d the dimension of the input polytope, point configuration or quotient manifold 
-# @param Matrix points the input points or vertices 
-# @param Array<Set> the representatives of maximal interior simplices 
-# @param Scalar volume the volume of the convex hull 
-# @param SparseMatrix cocircuit_equations the matrix of cocircuit equations 
+# Calculate the universal polytope of a polytope
+# @param Polytope P the input polytope
 # @return Polytope
 user_function universal_polytope<Scalar>(Polytope<Scalar>) {
     my $p = shift;
-    return universal_polytope($p->COMBINATORIAL_DIM, $p->VERTICES, $p->MAX_INTERIOR_SIMPLICES, $p->VOLUME, $p->COCIRCUIT_EQUATIONS);
+    return universal_polytope_impl($p->COMBINATORIAL_DIM, $p->VERTICES, $p->MAX_INTERIOR_SIMPLICES, $p->VOLUME, $p->COCIRCUIT_EQUATIONS);
 }                      
 
-sub write_simplexity_ilp;
+# @category Triangulations, subdivisions and volume
+# Calculate the universal polytope of a polytope, point configuration or quotient manifold
+# @param Polytope P the input polytope
+# @param Array<Set> reps the representatives of maximal interior simplices 
+# @param SparseMatrix cocircuit_equations the matrix of cocircuit equations 
+# @return Polytope
+user_function universal_polytope<Scalar>(Polytope<Scalar>, Array<Set>, SparseMatrix) {
+    my ($p, $simplices, $cocircuit_equations) = @_;
+    return universal_polytope_impl($p->COMBINATORIAL_DIM, $p->VERTICES, $simplices, $p->VOLUME, new SparseMatrix<Rational>($cocircuit_equations));
+}                      
 
 # @category Optimization
 # construct a linear program whose optimal value is a lower bound for the minimal number of simplices
@@ -56,8 +61,18 @@ sub write_simplexity_ilp;
 # @param Polytope P
 # @param String outfile_name 
 user_function write_simplexity_ilp<Scalar>(Polytope<Scalar> $) {
-    my $p = shift;
-    my $outfilename = shift;
+    my ($p, $outfilename) = @_;
+    my $rmis = new Array<Set>($p->MAX_INTERIOR_SIMPLICES);
+    return simplexity_ilp($p->COMBINATORIAL_DIM, $p->VERTICES, $rmis, $p->VOLUME, $p->COCIRCUIT_EQUATIONS, filename => $outfilename);
+}
+
+# @category Optimization
+# construct a linear program whose optimal value is a lower bound for the minimal number of simplices
+# in a triangulation of P.
+# @param Polytope P
+# @param String outfile_name 
+user_function write_symmetrized_simplexity_ilp<Scalar>(Polytope<Scalar> $) {
+    my ($p, $outfilename) = @_;
     my $rmis = new Array<Set>($p->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES);
     return simplexity_ilp($p->COMBINATORIAL_DIM, $p->VERTICES, $rmis, $p->VOLUME, $p->GROUP->SYMMETRIZED_COCIRCUIT_EQUATIONS, filename => $outfilename);
 }

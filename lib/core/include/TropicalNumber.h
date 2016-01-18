@@ -66,7 +66,7 @@ class TropicalNumber : public Scalar {
   
   friend struct spec_object_traits<TropicalNumber<Addition,Scalar> >;
   
-  friend struct std::numeric_limits<TropicalNumber<Addition,Scalar> >;
+  friend class std::numeric_limits<TropicalNumber<Addition,Scalar> >;
 
   
 public:
@@ -119,6 +119,11 @@ public:
      Scalar::operator=(a);
      return *this;
    }
+
+	TropicalNumber<Addition,Scalar>& operator= (const Scalar &a) {
+		Scalar::operator=(a);
+		return *this;
+	}
    
    // -- binary --
    
@@ -340,10 +345,17 @@ struct spec_object_traits<TropicalNumber<Addition, Scalar> > : spec_object_trait
 namespace std {
 
 template <typename Addition, typename Scalar>
-struct numeric_limits<pm::TropicalNumber<Addition, Scalar> > : numeric_limits<Scalar> {
-   static pm::TropicalNumber<Addition,Scalar> min() throw() { return pm::TropicalNumber<Addition,Scalar>(pm::maximal<Scalar>(),-1); }
-   static pm::TropicalNumber<Addition,Scalar> infinity() throw() { return pm::TropicalNumber<Addition,Scalar>(pm::maximal<Scalar>()); }
-   static pm::TropicalNumber<Addition,Scalar> max() throw() { return pm::TropicalNumber<Addition,Scalar>(pm::maximal<Scalar>()); }
+class numeric_limits<pm::TropicalNumber<Addition, Scalar> > : public numeric_limits<Scalar> {
+public:
+   static pm::TropicalNumber<Addition,Scalar> min() throw() {
+      return pm::TropicalNumber<Addition,Scalar>(std::numeric_limits<Scalar>::min());
+   }
+   static pm::TropicalNumber<Addition,Scalar> infinity() throw() {
+      return pm::TropicalNumber<Addition,Scalar>(std::numeric_limits<Scalar>::infinity());
+   }
+   static pm::TropicalNumber<Addition,Scalar> max() throw() {
+      return pm::TropicalNumber<Addition,Scalar>(std::numeric_limits<Scalar>::max());
+   }
 };
 
 }

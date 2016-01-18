@@ -81,7 +81,7 @@ namespace object_classifier {
          ? alias_temporary :
          attrib<ObjectRef>::is_reference
          ? alias_ref :
-         std::tr1::is_enum<T>::value || (is_pod<T>::value && sizeof(T) <= 2 * sizeof(T*))
+         is_enum<T>::value || (is_pod<T>::value && sizeof(T) <= 2 * sizeof(T*))
          ? alias_primitive
          : alias_obj;
    };

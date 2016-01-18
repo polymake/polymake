@@ -279,7 +279,7 @@ sub write_conf_vars {
    }
 
    if (my @export=grep { defined(${"$pkg\::$_"}) } @{"$pkg\::make_export_vars"}) {
-      print $conf "export ", join(" ", @export), "\n";
+      print $conf "export @export\n";
    }
 }
 ###############################################################################################
@@ -288,13 +288,15 @@ sub write_config_command_line {
    my ($conf, $options, $allowed_with, $vars, $ext_failed)=@_;
 
    if (defined $vars) {
-      while (my ($item, $value)=each %$vars) {
+      foreach my $item (sort keys %$vars) {
+         my $value = $vars->{$item};
          $value="'$value'" if $value =~ /[\s(){}\[\]\$]/;
          print $conf " $item=$value";
       }
    }
 
-   while (my ($item, $value)=each %$options) {
+   foreach my $item (sort keys %$options) {
+      my $value = $options->{$item};
       if ($value eq ".none.") {
          unless ($ext_failed && $ext_failed->{$item}) {
             print $conf " --without-$item";

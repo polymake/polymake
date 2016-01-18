@@ -102,7 +102,15 @@ UserFunctionTemplate4perl("# @category Consistency check"
                   "# @param String sign composed of one or two characters from [-+0], representing the"
                   "#  allowed domain of the vector inner products."
                   "# @param Bool verbose print all products violating the required relation"
-                  "# @return Bool 'true' if all relations are satisfied, 'false' otherwise",
+                  "# @return Bool 'true' if all relations are satisfied, 'false' otherwise"
+                  "# @example Let's check which vertices of the square lie in its zeroth facet:"
+                  "# > $H = cube(2)->FACETS->minor([0],All);"
+                  "# > print check_inc(cube(2)->VERTICES,$H,'0',1);"
+                  "# | <1,0>   ( 1 1 -1 ) * [ 1 1 0 ] == 2"
+                  "# | <3,0>   ( 1 1 1 ) * [ 1 1 0 ] == 2"
+                  "# | number of points==4, number of hyperplanes==1, -:0, 0:2, +:2, total:4"
+                  "# Thus, the first and third vertex don't lie on the hyperplane defined by the facet"
+                  "# but on the positive side of it, and the remaining two lie on the hyperplane.",
                   "check_inc<Scalar>(Matrix<type_upgrade<Scalar>> Matrix<type_upgrade<Scalar>> $; $=0)");
 } }
 

@@ -62,7 +62,13 @@ UserFunctionTemplate4perl("# @category Other"
                           "# @param Vector q"
                           "# @option String section Which section of P to test against q"
                           "# @option Int violating_criterion has the options: +1 (positive values violate; this is the default), 0 (*non*zero values violate), -1 (negative values violate)"
-                          "# @return Set",
+                          "# @return Set"
+                          "# @example This calculates and prints the violated equations defining a square with the origin as its center and side length 2 with respect to a certain point:"
+                          "# > $p = cube(2);"
+                          "# > $v = new Vector([1,2,2]);"
+                          "# > $S = violations($p,$v);"
+                          "# > print $S;"
+                          "# | {1 3}", 
                           "violations<Scalar> (Polytope<Scalar> Vector<Scalar> { section => FACETS, violating_criterion => 1 } )");
 
 } }

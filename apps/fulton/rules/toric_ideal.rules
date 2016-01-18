@@ -25,9 +25,7 @@ REQUIRE polytope::_4ti2.rules
 # Note: This is already declared in the _4ti2 file from Polymake.
 
 
-declare object BinomialIdeal : Ideal;
-
-object BinomialIdeal {
+declare object BinomialIdeal : Ideal {
    
    property BINOMIAL_GENERATORS : Matrix<Int>;
 
@@ -54,13 +52,14 @@ object BinomialIdeal {
 
 }
 
-object polytope::Cone<Rational>{
+object polytope::Cone<Rational> {
 
    # @category Algebraic Geometry
    # The matrix containing the exponent vectors of the binomials whose
    # vanishing set is the affine toric variety given by the cone.
    # In other words the rows of this matrix give the relations between the
    # Hilbert basis elements.
+   # @depends 4ti2
    property TORIC_IDEAL : BinomialIdeal;
 
    rule _4ti2.toric_ideal : TORIC_IDEAL.BINOMIAL_GENERATORS : HILBERT_BASIS_GENERATORS {

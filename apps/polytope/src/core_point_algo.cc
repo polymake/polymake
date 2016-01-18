@@ -221,7 +221,7 @@ UserFunction4perl("# @category Optimization"
                   "# @param Polytope p"
                   "# @param Rational optLPvalue optimal value of LP approximation"
                   "# @option Bool verbose"
-                  "# @return perl::ListReturn (optimal solution, optimal value) or empty",
+                  "# @return List (Vector<Rational> optimal solution, Rational optimal value) may be empty",
                   &core_point_algo, "core_point_algo(Polytope, $; {verbose => undef})");
 
 UserFunction4perl("# @category Optimization"
@@ -235,7 +235,7 @@ UserFunction4perl("# @category Optimization"
                   "# @param Polytope p"
                   "# @param Rational optLPvalue optimal value of LP approximation"
                   "# @option Bool verbose"
-                  "# @return perl::ListReturn (optimal solution, optimal value) or empty",
+                  "# @return List (Vector<Rational> optimal solution, Rational optimal value) may be empty",
                   &core_point_algo_Rote, "core_point_algo_Rote(Polytope, $; {verbose => undef})");
 
 UserFunction4perl("# @category Optimization"
@@ -246,7 +246,11 @@ UserFunction4perl("# @category Optimization"
                   "# on the coordinate directions."
                   "# "
                   "# @param Matrix Inequalities the inequalities describing the feasible region"
-                  "# @return perl::ListReturn (optLPsolution,optLPvalue,feasible,max_bounded)",
+                  "# @return List (Vector<Rational> optimal solution, Rational optimal value, Bool feasible, Bool max_bounded)"
+                  "# @example Consider the LP described by the facets of the 3-cube:"
+                  "# > print find_transitive_lp_sol(cube(3)->FACETS);"
+                  "# | 1 1 1 1311"
+                  "# The optimal solution is [1,1,1,1], its value under c is 3, and the LP is feasible and bounded in direction of c.",
                   &find_transitive_lp_sol, "find_transitive_lp_sol(Matrix)");
 } }
 

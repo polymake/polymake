@@ -127,6 +127,7 @@ namespace polymake { namespace tropical {
 		d_complex.take("VERTICES") << thomog(d_rays);
 		d_complex.take("MAXIMAL_POLYTOPES") << d_cone_list;
 		d_complex.take("LINEALITY_SPACE") << thomog(d_lineality);
+		d_complex.take("PURE") << false;
 		d_complex = CallPolymakeFunction("intersect_container",d_complex,lindom);
 
 		//dbgtrace << "Projecting vertices " << endl;
@@ -195,6 +196,7 @@ namespace polymake { namespace tropical {
 		d_vert_complex.take("VERTICES") << thomog(d_rays);
 		d_vert_complex.take("MAXIMAL_POLYTOPES") << d_cone_list;
 		d_vert_complex.take("LINEALITY_SPACE") << thomog(d_lineality);
+		d_vert_complex.take("PURE") << false;
 		//dbgtrace << "Intersecting..." << endl;
 		//dbgtrace << "Vertices: " << thomog(d_rays) << endl;
 		//dbgtrace << "Cones: " << d_cone_list << endl;

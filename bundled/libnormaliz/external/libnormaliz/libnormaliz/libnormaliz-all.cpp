@@ -36,4 +36,5 @@
 #include "libnormaliz/HilbertSeries.cpp"
 
 #include "libnormaliz/bottom.cpp"
+#include "libnormaliz/cone_helper.cpp"
 #include "libnormaliz/offload_handler.cpp"

@@ -16,12 +16,12 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Integer.h"
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
+#include "polymake/client.h"
 #include "polymake/linalg.h"
-#include "polymake/Integer.h"
-#include "polymake/IncidenceMatrix.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -33,5 +33,6 @@ namespace polymake { namespace common { namespace {
 
    FunctionInstance4perl(repeat_row_X8_x, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void> >);
    FunctionInstance4perl(repeat_row_X8_x, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer> const&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(repeat_row_X8_x, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer>&>, pm::Series<int, true>, void> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

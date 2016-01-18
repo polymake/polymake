@@ -47,7 +47,11 @@ UserFunction4perl("# @category Comparing\n"
                   "# If the complexes are not isomorphic, an exception is thrown.\n"
                   "# @param SimplicialComplex complex1"
                   "# @param SimplicialComplex complex2"
-                  "# @return Pair<Array<Int>, Array<int>>",
+                  "# @return Pair<Array<Int>, Array<int>>"
+                  "# @example To print the vertex permutation that maps the 3-simplex to its mirror image, type this:"
+                  "# > $p = find_facet_vertex_permutations(simplex(3),scale(simplex(3),-1));"
+                  "# > print $p->first;"
+                  "# | 3 2 1 0",
                   &find_facet_vertex_permutations, "find_facet_vertex_permutations(SimplicialComplex,SimplicialComplex)");
 } }
 

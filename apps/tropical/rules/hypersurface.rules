@@ -47,15 +47,15 @@ property REGIONS : IncidenceMatrix;
 
 
 rule MONOMIALS, COEFFICIENTS : POLYNOMIAL {
-    my $p=$this->POLYNOMIAL;
-    $this->MONOMIALS=$p->monomials_as_matrix();
-    $this->COEFFICIENTS=$p->coefficients_as_vector();
+   my $p=$this->POLYNOMIAL;
+   $this->MONOMIALS=$p->monomials_as_matrix();
+   $this->COEFFICIENTS=$p->coefficients_as_vector();
 }
 weight 0.10;
 
 rule POLYNOMIAL : MONOMIALS, COEFFICIENTS {
-	my $ring = new Ring<TropicalNumber<Addition> >($this->MONOMIALS->cols());
-	$this->POLYNOMIAL = new Polynomial<TropicalNumber<Addition> >($this->MONOMIALS, $this->COEFFICIENTS,$ring);
+   my $ring = new Ring<TropicalNumber<Addition> >($this->MONOMIALS->cols());
+   $this->POLYNOMIAL = new Polynomial<TropicalNumber<Addition> >($this->MONOMIALS, $this->COEFFICIENTS,$ring);
 }
 weight 0.10;
 

@@ -103,7 +103,12 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @param Int n the number of vertices"
                   "# @param Rational r the radius"
                   "# @option Bool group"
-                  "# @return Polytope",
+                  "# @return Polytope"
+                  "# @example To store the regular pentagon in the variable $p and calculate its symmetry group, do this:"
+                  "# > $p = n_gon(5,group=>1);"
+                  "# > print $p->GROUP->GENERATORS;"
+                  "# | 0 4 3 2 1"
+                  "# | 1 2 3 4 0",
                   &n_gon,"n_gon($;$=1, {group=>undef})");
 
 } }

@@ -200,14 +200,14 @@ object Polytope {
 
    method upgrade_plain_MAXIMAL_VALUE {
       my ($this, $value)=@_;
-      if ($value !~ $PropertyValue::UNDEF_re) {
+      if ($value !~ $Core::PropertyValue::UNDEF_re) {
 	 $this->take("LP.MAXIMAL_VALUE", $value);
       }
    }
 
    method upgrade_plain_MINIMAL_VALUE {
       my ($this, $value)=@_;
-      if ($value !~ $PropertyValue::UNDEF_re) {
+      if ($value !~ $Core::PropertyValue::UNDEF_re) {
 	 $this->take("LP.MINIMAL_VALUE", $value);
       }
    }

@@ -98,12 +98,15 @@ sub prepare {
    my $cpp_arg_index=0;
    my ($arg_for_lvalue_opt, @anchor_args);
 
-   if ($self->perl_name ne "operator" && $self->perl_name ne "construct") {
+   if ($self->perl_name ne "construct") {
       $self->name ||= $self->perl_name;
       if (defined $self->cross_apps) {
          $self->wrapper_name.="_A";
       }
       if ($tpcount > $tpcount_before_explicit) {
+         if ($self->name eq '()') {
+            croak( "method mapped to a function-call-operator in C++ can't have explicit type parameters" );
+         }
          $self->wrapper_name.="_T";
          $self->name .= "<" . join(",", map { "T$_" } $tpcount_before_explicit..$tpcount-1) . ">";
       }
@@ -147,6 +150,9 @@ sub prepare {
          }
       }
       if ($self->flags & $func_is_static) {
+         if ($self->name eq '()') {
+            croak( "method mapped to a function-call-operator in C++ can't be declared static" );
+         }
          # @note supposing that explicit_template_params is empty here, so that $tpcount==0;
          # revise this code when methods with explicit template parameters are allowed
          my $pkg_qual="";
@@ -156,7 +162,7 @@ sub prepare {
          push @{$self->all_args}, $pkg_qual;
          push @{$self->explicit_template_params}, $perl_arg_index;
       } else {
-         push @{$self->all_args}, "arg0.get<T$tpcount>()".($self->perl_name ne 'operator' && ".");
+         push @{$self->all_args}, "arg0.get<T$tpcount>()".($self->name ne '()' ? '.' : ($self->name=''));
          push @{$self->template_params}, [ $perl_arg_index, $self->flags & $func_is_non_const ? $func_is_lvalue : $self->flags & ($func_is_lvalue|$func_is_lvalue_opt) ];
          $self->arg_flags->[$perl_arg_index]=$self->flags & $func_is_wary;
          $arg_for_lvalue_opt=$tpcount if $self->flags & ($func_is_lvalue | $func_is_lvalue_opt);
@@ -546,6 +552,10 @@ sub analyze_provenience {
    while (defined ($file=(caller(++$depth))[1])) {
       if ($file =~ m{Core/XMLfile\.pm$}) {
          $is_saving=1 if (caller($depth))[3] =~ /::save(?:_data)?$/;
+      }
+      if ($file =~ m{^\Q${InstallTop}/perllib/Polymake/Test/\E}o) {
+         # most probably a comparison operator needed for a unit test
+         return;
       }
       if ($file !~ $skip_core_functions_re) {
          if ($file =~ $called_from_app_tree) {
@@ -1583,43 +1593,21 @@ sub add_auto_function {
       }
       check_twins($auto_func);
 
-      if ($flags & $func_is_method and $name eq 'operator') {
-         my $obj;
-         my $closure= defined($ext_code)
-                      ? (defined($returns)
-                         ? sub { return &$ext_code;
-                                 unshift @_, $returns, $obj;
-                                 &{resolve_auto_function($auto_func, \@_)}
-                               }
-                         : sub { return &$ext_code;
-                                 unshift @_, $obj;
-                                 &{resolve_auto_function($auto_func, \@_)}
-                               })
-                      : (defined($returns)
-                         ? sub { unshift @_, $returns, $obj;
-                                 &{resolve_auto_function($auto_func, \@_)}
-                               }
-                         : sub { unshift @_, $obj;
-                                 &{resolve_auto_function($auto_func, \@_)}
-                               });
-         $code=sub { $obj=shift; $closure };
-         declare_lvalue($closure, 1) if $flags & ($func_is_lvalue|$func_is_lvalue_opt);
-      } else {
-         $code= defined($ext_code)
-                ? (defined($returns)
-                   ? sub { return &$ext_code;
-                           unshift @_, $returns;
-                           &{resolve_auto_function($auto_func, \@_)}
-                         }
-                   : sub { return &$ext_code;
-                           &{resolve_auto_function($auto_func, \@_)}
-                         })
-                : (defined($returns)
-                         ? sub { unshift @_, $returns;
-                                 &{resolve_auto_function($auto_func, \@_)}
-                               }
-                         : sub { &{resolve_auto_function($auto_func, \@_)} });
-      }
+      $code= defined($ext_code)
+             ? (defined($returns)
+                ? sub { return &$ext_code;
+                        unshift @_, $returns;
+                        &{resolve_auto_function($auto_func, \@_)}
+                      }
+                : sub { return &$ext_code;
+                        &{resolve_auto_function($auto_func, \@_)}
+                      })
+             : (defined($returns)
+                ? sub { unshift @_, $returns;
+                        &{resolve_auto_function($auto_func, \@_)}
+                      }
+                : sub { &{resolve_auto_function($auto_func, \@_)} });
+
       set_method($code) if $flags & $func_is_method;
       declare_lvalue($code, 1) if $auto_func->flags & ($func_is_lvalue|$func_is_lvalue_opt);
    }
@@ -1629,12 +1617,7 @@ sub add_auto_function {
    }
 
    if (defined $arg_types) {
-      if ($name eq "operator") {
-         overload::OVERLOAD($pkg, '&{}' => $code);
-         ()
-      } else {
-         ( $name, $code, $arg_types )
-      }
+      ( $name, $code, $arg_types )
    } else {
       define_function($pkg, $name, $code);
       ()
@@ -2168,7 +2151,6 @@ my $binary_op_signature=[[2, 2, qw($ $)], [qw(* *)]];
 
 sub init {
    $root=&_new;
-   my $standalone=shift;
 
    if ($ENV{POLYMAKE_DEBUG_CLIENTS}) {
       die <<".";
@@ -2181,8 +2163,6 @@ Note that debug output in some clients only appears at high debug levels (-dd an
    my $suffix=$ENV{POLYMAKE_CLIENT_SUFFIX};
    $debug= $suffix eq "-d";
    $dl_suffix="$suffix.$DynaLoader::dl_dlext";
-
-   load_shared_module("$InstallArch/lib/core$dl_suffix") if $standalone;
 
    # create the standard constructors right now
    my $dc=new Constructor;

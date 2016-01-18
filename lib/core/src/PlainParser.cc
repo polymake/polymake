@@ -234,9 +234,6 @@ void PlainParserCommon::get_string (std::string& s, char delim)
       is->setstate(is->eofbit | is->failbit);
 }
 
-PlainPrinter<> cout(std::cout);
-PlainPrinter<> cerr(std::cerr);
-
 void complain_no_serialization(const char* text, const std::type_info& ti)
 {
    std::string errmsg(text);
@@ -250,6 +247,9 @@ void complain_no_serialization(const char* text, const std::type_info& ti)
    }
    throw std::invalid_argument(errmsg);
 }
+
+PlainPrinter<> cout(perl::cout);
+PlainPrinter<> cerr(std::cerr);
 
 } // end namespace pm
 

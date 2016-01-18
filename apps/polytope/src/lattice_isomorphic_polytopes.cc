@@ -90,16 +90,23 @@ Array< Array<int> > lattice_automorphisms_smooth_polytope(perl::Object p)
 UserFunction4perl("# @category Comparing"
                   "# Tests whether two smooth lattice polytopes are lattice equivalent"
                   "# by comparing lattice distances between vertices and facets. "
-                  "# @param LatticePolytope P1 the first lattice polytope"
-                  "# @param LatticePolytope P2 the second lattice polytope"
-                  "# @return Bool 'true' if the polytopes are lattice equivalent, 'false' otherwise",
+                  "# @param Polytope P1 the first lattice polytope"
+                  "# @param Polytope P2 the second lattice polytope"
+                  "# @return Bool 'true' if the polytopes are lattice equivalent, 'false' otherwise"
+                  "# @example > $t = new Vector(2,2);"
+                  "# > print lattice_isomorphic_smooth_polytopes(cube(2),translate(cube(2),$t));"
+                  "# | 1",
                   &lattice_isomorphic_smooth_polytopes, "lattice_isomorphic_smooth_polytopes(Polytope,Polytope)");
 
 UserFunction4perl("# @category Symmetry"
                   "# Returns a generating set for the lattice automorphism group of a smooth polytope //P//"
                   "# by comparing lattice distances between vertices and facets. "
-                  "# @param LatticePolytope P the given polytope"
-                  "# @return Array<Array<Int>> the generating set for the lattice automorphism group",
+                  "# @param Polytope P the given polytope"
+                  "# @return Array<Array<Int>> the generating set for the lattice automorphism group"
+                  "# @example > print lattice_automorphisms_smooth_polytope(cube(2));"
+                  "# | 2 3 0 1"
+                  "# | 1 0 3 2"
+                  "# | 0 2 1 3",
                   &lattice_automorphisms_smooth_polytope, "lattice_automorphisms_smooth_polytope(Polytope)");
 } }
 

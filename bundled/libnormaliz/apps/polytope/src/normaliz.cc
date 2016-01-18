@@ -134,7 +134,7 @@ namespace polymake { namespace polytope {
       // create libnormaliz cone object based on given type
       //  from rays or inequalities
       template <typename Scalar>
-      libnormaliz::Cone<Scalar> libnormaliz_create_cone(perl::Object c, bool from_ineq, bool compute_facets)
+      libnormaliz::Cone<Scalar> libnormaliz_create_cone(perl::Object c, bool from_ineq, bool compute_facets, bool with_grading)
       {
          std::map< libnormaliz::InputType , std::vector< std::vector<Scalar> > > inputmap;
          Matrix<Rational> data;
@@ -154,6 +154,8 @@ namespace polymake { namespace polytope {
                   inputmap[libnormaliz::Type::equations]=pmMatrix_to_stdvectorvector<Scalar>(data);
             }
          }
+         if (with_grading)
+            inputmap[libnormaliz::Type::grading] = std::vector< std::vector<Scalar> >(1, pmVector_to_stdvector<Scalar>(c.lookup("MONOID_GRADING")));
          return libnormaliz::Cone<Scalar>(inputmap);
       }
 
@@ -178,7 +180,7 @@ namespace polymake { namespace polytope {
    }
 
    perl::ListReturn normaliz_compute(perl::Object c, perl::OptionSet options) {
-      bool withgrading = c.exists("MONOID_GRADING");
+      bool with_grading = c.exists("MONOID_GRADING");
       libnormaliz::verbose=options["verbose"];
 
       libnormaliz::ConeProperties todo;
@@ -200,16 +202,15 @@ namespace polymake { namespace polytope {
          try
          {
             // try with long first
-            libnormaliz::Cone<long> nmzCone = libnormaliz_create_cone<long>(c, options["from_facets"] , options["facets"] );
-            if (withgrading)
-               nmzCone.setGrading(pmVector_to_stdvector<long>(c.lookup("MONOID_GRADING")));
+            libnormaliz::Cone<long> nmzCone = libnormaliz_create_cone<long>(c, options["from_facets"] , options["facets"], with_grading );
             nmzCone.compute(todo);
             if (options["degree_one_generators"])
                result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getDeg1Elements()));
             if (options["hilbert_basis"])
                result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getHilbertBasis()));
             if (options["h_star_vector"])
-               result << convert_to<Integer>(Vector<mpz_class>(nmzCone.getHilbertSeries().getNum()));
+               // adjust to correct length, especially for non-full-dimensional polytopes
+               result << (convert_to<Integer>(Vector<mpz_class>(nmzCone.getHilbertSeries().getNum())) | zero_vector<Integer>(-1-nmzCone.getHilbertSeries().getDegreeAsRationalFunction()));
             if (options["hilbert_series"])
                result << nmz_convert_HS(nmzCone.getHilbertSeries());
             if (options["facets"]) {
@@ -232,16 +233,14 @@ namespace polymake { namespace polytope {
          }
       }
 
-      libnormaliz::Cone<Integer> nmzCone = libnormaliz_create_cone<Integer>(c, options["from_facets"] , options["facets"] );
-      if (withgrading)
-         nmzCone.setGrading(pmVector_to_stdvector<Integer>(c.lookup("MONOID_GRADING")));
+      libnormaliz::Cone<Integer> nmzCone = libnormaliz_create_cone<Integer>(c, options["from_facets"] , options["facets"], with_grading );
       nmzCone.compute(todo);
       if (options["degree_one_generators"])
          result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getDeg1Elements()));
       if (options["hilbert_basis"])
          result << Matrix<Integer>(stdvectorvector_to_pmListMatrix(nmzCone.getHilbertBasis()));
       if (options["h_star_vector"])
-         result << convert_to<Integer>(Vector<mpz_class>(nmzCone.getHilbertSeries().getNum()));
+         result << (convert_to<Integer>(Vector<mpz_class>(nmzCone.getHilbertSeries().getNum())) | zero_vector<Integer>(-1-nmzCone.getHilbertSeries().getDegreeAsRationalFunction()));
       if (options["hilbert_series"])
          result << nmz_convert_HS(nmzCone.getHilbertSeries());
       if (options["facets"]) {
@@ -268,7 +267,7 @@ UserFunction4perl("# @category Geometry"
                   "# @option Bool dual_algorithm use the dual algorithm by Pottier"
                   "# @option Bool skip_long do not try to use long coordinates first"
                   "# @option Bool verbose libnormaliz debug output"
-                  "# @return perl::ListReturn (degree one generators, Hilbert basis, Hilbert h-vector, Hilbert series, facets, linear_span, rays) (if they are requested)",
+                  "# @return List (Matrix<Integer> degree one generators, Matrix<Integer> Hilbert basis, Vector<Integer> Hilbert h-vector, RationalFunction Hilbert series, Matrix<Rational> facets, Matrix<Rational> linear_span, Matrix<Rational> rays) (only requested items)",
                   &normaliz_compute, "normaliz_compute(Cone { from_facets => 0, degree_one_generators=>0, hilbert_basis=>0, h_star_vector=>0, hilbert_series=>0, facets=>0, rays=>0, dual_algorithm=>0, skip_long=>0, verbose => 0 })");
 
 }

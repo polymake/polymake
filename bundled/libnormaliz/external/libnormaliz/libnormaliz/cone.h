@@ -29,11 +29,11 @@
 #include <utility> //for pair
 //#include <boost/dynamic_bitset.hpp>
 
-#include "libnormaliz/libnormaliz.h"
-#include "libnormaliz/cone_property.h"
-#include "libnormaliz/sublattice_representation.h"
-#include "libnormaliz/matrix.h"
-#include "libnormaliz/HilbertSeries.h"
+#include <libnormaliz/libnormaliz.h>
+#include <libnormaliz/cone_property.h>
+#include <libnormaliz/sublattice_representation.h>
+#include <libnormaliz/matrix.h>
+#include <libnormaliz/HilbertSeries.h>
 
 namespace libnormaliz {
 using std::vector;
@@ -81,6 +81,12 @@ public:
 
     /* give multiple input */
     Cone(const map< InputType , vector< vector<Integer> > >& multi_input_data);
+    
+//---------------------------------------------------------------------------
+//                                Destructor
+//---------------------------------------------------------------------------
+
+    ~Cone();
 
 //---------------------------------------------------------------------------
 //                          give additional data
@@ -93,16 +99,6 @@ public:
     bool setVerbose (bool v);
 
     void deactivateChangeOfPrecision();
-
-    /* Sets the linear form which is used to grade.
-     * It has to be an N-grading, i.e. all generators must have a value >=1.
-     * If it is not, a subclass of NormalizException will be thrown at the
-     * time of detection which can be in this method or later!
-     * It will delete all data from the cone that depend on the grading!
-     */
-    void setGrading (const vector<Integer>& lf);
-    void setDehomogenization (const vector<Integer>& lf);
-
 
 //---------------------------------------------------------------------------
 //                           make computations
@@ -137,6 +133,8 @@ public:
     size_t getRecessionRank();
     long getAffineDim();
     size_t getModuleRank();
+    
+    Cone<Integer>& getIntHullCone() const;
 
     const Matrix<Integer>& getGeneratorsMatrix();
     const vector< vector<Integer> >& getGenerators();
@@ -153,6 +151,10 @@ public:
     const Matrix<Integer>& getSupportHyperplanesMatrix();
     const vector< vector<Integer> >& getSupportHyperplanes();
     size_t getNrSupportHyperplanes();
+    
+    const Matrix<Integer>& getMaximalSubspaceMatrix();
+    const vector< vector<Integer> >& getMaximalSubspace();
+    size_t getDimMaximalSubspace();
 
     // depends on the ConeProperty::s SupportHyperplanes and Sublattice
     map< InputType, vector< vector<Integer> > > getConstraints();
@@ -163,6 +165,8 @@ public:
 
     size_t getTriangulationSize();
     Integer getTriangulationDetSum();
+
+    vector<Integer> getWitnessNotIntegrallyClosed();
 
     const Matrix<Integer>& getHilbertBasisMatrix();
     const vector< vector<Integer> >& getHilbertBasis();
@@ -197,7 +201,6 @@ public:
     bool isIntegrallyClosed();
     bool isReesPrimary();
     Integer getReesPrimaryMultiplicity();
-    Integer getShift();
     const Matrix<Integer>& getOriginalMonoidGeneratorsMatrix();
     const vector< vector<Integer> >& getOriginalMonoidGenerators();
     size_t getNrOriginalMonoidGenerators();
@@ -221,6 +224,7 @@ private:
     size_t dim;
 
     Sublattice_Representation<Integer> BasisChange;  //always use compose_basis_change() !
+    Sublattice_Representation<Integer> BasisChangePointed; // to the pointed cone
     bool BC_set;
     bool verbose;
     ConeProperties is_Computed;
@@ -241,7 +245,9 @@ private:
     vector< pair<vector<key_t>, long> > InExData;
     list< STANLEYDATA<Integer> > StanleyDec;
     mpq_class multiplicity;
+    vector<Integer> WitnessNotIntegrallyClosed;
     Matrix<Integer> HilbertBasis;
+    Matrix<Integer> BasisMaxSubspace;
     Matrix<Integer> ModuleGeneratorsOverOriginalMonoid;
     Matrix<Integer> Deg1Elements;
     HilbertSeries HSeries;
@@ -257,7 +263,6 @@ private:
     bool integrally_closed;
     bool rees_primary;
     Integer ReesPrimaryMultiplicity;
-    Integer shift; // needed in the inhomogeneous case to make degrees positive
     int affine_dim; //dimension of polyhedron
     size_t recession_rank; // rank of recession monoid
     size_t module_rank; // for the inhomogeneous case
@@ -272,6 +277,8 @@ private:
 
     // if this is true we allow to change to a smaller integer type in the computation
     bool change_integer_type;
+    
+    Cone<Integer>* IntHullCone;
 
     void compose_basis_change(const Sublattice_Representation<Integer>& SR); // composes SR
 
@@ -285,6 +292,13 @@ private:
     void homogenize_input(map< InputType, vector< vector<Integer> > >& multi_input_data);
     void check_precomputed_support_hyperplanes();
     void check_excluded_faces();
+    
+    void setGrading (const vector<Integer>& lf);
+    void setWeights ();
+    void setDehomogenization (const vector<Integer>& lf);
+    void checkGrading();
+    void checkDehomogenization();
+    void check_vanishing_of_grading_and_dehom();
     void process_lattice_data(const Matrix<Integer>& LatticeGenerators, Matrix<Integer>& Congruences, Matrix<Integer>& Equations);
 
     Matrix<Integer> prepare_input_type_2(const vector< vector<Integer> >& Input);
@@ -317,7 +331,11 @@ private:
     /* set ExtremeRays, in inhomogeneous case also VerticesOfPolyhedron */
     void set_extreme_rays(const vector<bool>&);
 
+    /* If the Hilbert basis and the original monoid generators are computed,
+     * use them to check whether the original monoid is integrally closed. */
     void check_integrally_closed();
+    /* try to find a witness for not integrally closed in the Hilbert basis */
+    void find_witness();
 
     /* set this object to the zero cone */
     void set_zero_cone();
@@ -325,6 +343,8 @@ private:
     Integer compute_primary_multiplicity();
     template<typename IntegerFC>
     Integer compute_primary_multiplicity_inner();
+    
+    void compute_integer_hull();
 
 };
 

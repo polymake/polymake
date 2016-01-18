@@ -111,7 +111,13 @@ UserFunction4perl("# @category Optimization"
                   "# @param LinearProgram LP"
                   "# @option RGB min the minimal RGB value"
                   "# @option RGB max the maximal RGB value"
-                  "# @return Array<RGB>",
+                  "# @return Array<RGB>"
+                  "# @example This calculates a vertex coloring with respect to a linear program. For a better visualization,"
+                  "# we also set the vertex thickness to 2."
+                  "# > $p = cube(3);"
+                  "# > $p->LP(LINEAR_OBJECTIVE=>[0,1,2,3]);"
+                  "# > $v = vertex_colors($p,$p->LP);"
+                  "# > $p->VISUAL(VertexColor=>$v,VertexThickness=>2);",
                   &vertex_colors, "vertex_colors(Polytope LinearProgram { min => undef, max => undef })");
 } }
 

@@ -17,7 +17,10 @@
 #ifndef POLYMAKE_INTERNAL_POOL_ALLOCATOR_H
 #define POLYMAKE_INTERNAL_POOL_ALLOCATOR_H
 
-// This file is a wrapper for gcc >= 3.4
+// make sure macros for version library tests are loaded
+#include <cstddef>
+
+#if defined(__GLIBCXX__)
 
 #include <ext/pool_allocator.h>
 
@@ -25,11 +28,35 @@ namespace std {
 template <typename T> class allocator;
 }
 
+#elif defined(_LIBCPP_VERSION)
+
+#include <memory>
+
+namespace std {
+
+template <typename T>
+inline void _Destroy(T* p) {
+   p->~T();
+}
+
+template<typename _ForwardIterator>
+inline void _Destroy(_ForwardIterator __first, _ForwardIterator __last)
+{
+  for (; __first != __last; ++__first)
+    std::_Destroy(&*__first);
+}
+
+}
+
+#endif
+
 namespace pm {
 typedef std::allocator<char[1]> allocator;
 }
 
+#ifdef __GLIBCXX__
 #define __glibcxx_base_allocator __gnu_cxx::__pool_alloc
+#endif
 
 #endif // POLYMAKE_INTERNAL_POOL_ALLOCATOR_H
 

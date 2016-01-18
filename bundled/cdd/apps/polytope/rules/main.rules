@@ -13,8 +13,6 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-
-# these rules are intrinsic: they don't depend on any external software to be installed separately
 INCLUDE
   initial.rules
   rational.rules

@@ -46,6 +46,7 @@ using pm::perl::load_data;
 using pm::perl::save_data;
 using pm::perl::get_custom;
 using pm::perl::get_debug_level;
+using pm::perl::cout;
 
 } }
 

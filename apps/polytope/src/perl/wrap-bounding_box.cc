@@ -14,13 +14,13 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/Rational.h"
-#include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/Set.h"
-#include "polymake/linalg.h"
+#include "polymake/Matrix.h"
 #include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
+#include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
+#include "polymake/linalg.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -34,5 +34,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(bounding_box_T_X_x_x, Rational, perl::Canned< const Matrix< Rational > >);
    FunctionInstance4perl(bounding_box_T_X_x_x, double, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<double const&> const&>, pm::Matrix<double> const&> >);
    FunctionInstance4perl(bounding_box_T_X_x_x, Rational, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
+   FunctionInstance4perl(bounding_box_T_X_x_x, double, perl::Canned< const Matrix< double > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

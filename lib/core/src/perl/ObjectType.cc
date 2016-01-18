@@ -317,7 +317,7 @@ bool Object::_exists(const char* name, size_t nl) const
    XPUSHs(obj_ref);
    mXPUSHp(name, nl);
    PUTBACK;
-   return glue::call_func_bool(aTHX_ lookup_cv, false);
+   return glue::call_func_bool(aTHX_ lookup_cv, true);
 }
 
 SV* Object::_add(const char* name, size_t nl, SV* sub_obj, property_type t) const

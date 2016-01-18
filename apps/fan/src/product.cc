@@ -25,7 +25,7 @@ namespace polymake { namespace fan {
 
     perl::Object product(perl::Object f_in1, perl::Object f_in2, perl::OptionSet options)
     {
-      const bool noc=options["noc"];
+      const bool noc=options["no_coordinates"];
 
       perl::Object f_out("PolyhedralFan<Rational>");
       f_out.set_description() << "Product of " << f_in1.name() << " and " << f_in2.name() << endl;
@@ -65,9 +65,9 @@ namespace polymake { namespace fan {
 		      "# Construct a new polyhedral fan as the __product__ of two given polyhedral fans //F1// and //F2//."
 		      "# @param PolyhedralFan F1"
 		      "# @param PolyhedralFan F2"
-		      "# @option Bool noc only combinatorial information is handled"
+		      "# @option Bool no_coordinates only combinatorial information is handled"
 		      "# @return PolyhedralFan",
-		      &product, "product(PolyhedralFan PolyhedralFan { noc => 0, relabel => 0 })");
+		      &product, "product(PolyhedralFan PolyhedralFan { no_coordinates => 0, relabel => 0 })");
   } }
 
 // Local Variables:

@@ -43,5 +43,6 @@ namespace polymake { namespace polytope { namespace {
    }
    FunctionWrapperInstance4perl( perl::Object (perl::OptionSet) );
 
+   FunctionInstance4perl(tetrahedron_T, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

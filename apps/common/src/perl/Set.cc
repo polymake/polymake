@@ -16,9 +16,17 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
+#include "polymake/Rational.h"
+#include "polymake/Set.h"
+#include "polymake/Vector.h"
 #include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   OperatorInstance4perl(BinaryAssign_add, perl::Canned< Set< Vector< double > > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>, void> >);
+   OperatorInstance4perl(BinaryAssign_add, perl::Canned< Set< Vector< double > > >, perl::Canned< const Vector< double > >);
+   OperatorInstance4perl(BinaryAssign_add, perl::Canned< Set< Vector< Rational > > >, perl::Canned< const Vector< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

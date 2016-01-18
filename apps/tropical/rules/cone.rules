@@ -23,7 +23,7 @@ object Cone{
 	rule PROJECTIVE_AMBIENT_DIM : PSEUDOVERTICES | POINTS {
 		$this->PROJECTIVE_AMBIENT_DIM=($this->PSEUDOVERTICES | POINTS)->cols-1;
 	}
-	weight 0.10;
+	weight 0.1;
 
 	rule VERTICES, VERTICES_IN_POINTS : POINTS {
 		discard_non_vertices($this);

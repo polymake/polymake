@@ -16,13 +16,19 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
-#include "polymake/list"
 #include "polymake/Integer.h"
 #include "polymake/Set.h"
+#include "polymake/client.h"
+#include "polymake/list"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1>
+   FunctionInterface4perl( new_X, T0,T1 ) {
+      perl::Value arg0(stack[1]);
+      WrapperReturnNew(T0, (arg0.get<T1>()) );
+   };
+
    ClassTemplate4perl("Polymake::common::List");
    Class4perl("Polymake::common::List__Pair_A_Integer_I_Int_Z", std::list< std::pair< Integer, int > >);
    Class4perl("Polymake::common::List__Set__Int", std::list< Set< int > >);
@@ -31,5 +37,6 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::List__List__Pair_A_Int_I_Int_Z", std::list< std::list< std::pair< int, int > > >);
    Class4perl("Polymake::common::List__Pair_A_Int_I_Int_Z", std::list< std::pair< int, int > >);
    Class4perl("Polymake::common::List__Int", std::list< int >);
+   FunctionInstance4perl(new_X, std::list< int >, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

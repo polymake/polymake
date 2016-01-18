@@ -35,7 +35,7 @@ object Cycle {
 	# except that there is one option for choosing a chart.
 	# @options
 	# @option Int Chart. Which affine chart of the cycle to visualize, i.e. which coordinate should be shifted to 0. This is 0 by default.
-	# @return Visual::PolyhedralComplex
+	# @return fan::Visual::PolyhedralFan
 	user_method VISUAL(%Visual::Cycle::decorations, {CutOff => $Visual::Color::cutoff}) {
 		my ($this,$decor, $cutoff_decor) = @_;
 

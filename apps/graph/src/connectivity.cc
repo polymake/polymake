@@ -111,6 +111,11 @@ UserFunctionTemplate4perl("# @category Combinatorics"
                           "# Compute the [[CONNECTIVITY]] of a given //graph// using the Ford-Fulkerson flow algorithm."
                           "# @param props::Graph<Undirected> graph"
                           "# @return Int"
+                          "# @example Compute the connectivity of the vertex-edge graph of the square:"
+                          "# > print connectivity(cube(2)->GRAPH->ADJACENCY);"
+                          "# | 2"
+                          "# This means that at least two nodes or edges need to be removed in order"
+                          "# for the resulting graoh not to be connected anymore."
                           "# @author Nikolaus Witte",
                           "connectivity(props::Graph<Undirected>)");
 } }

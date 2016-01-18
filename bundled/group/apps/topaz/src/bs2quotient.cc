@@ -111,7 +111,7 @@ perl::Object bs2quotient(perl::Object p, perl::Object bs)
    perl::Object q("topaz::SimplicialComplex");
    q.take("FACETS") << identified_facets;
    q.take("VERTEX_LABELS") << identified_labels;
-   q.take("PURE") << 1;
+   q.take("PURE") << true;
    q.take("DIM") << d;
    return q;
 }
@@ -121,7 +121,7 @@ InsertEmbeddedRule("REQUIRE_APPLICATION polytope\n\n");
 UserFunction4perl("# @category Producing a new simplicial complex from others"
                   "# Create a simplicial complex from a simplicial subdivision of a given complex"
                   "# by identifying vertices on the boundary of the original complex according to a group that acts on vertices." 
-                  "# @param Polytope P the underlying polytope"
+                  "# @param polytope::Polytope P the underlying polytope"
                   "# @param SimplicialComplex complex a sufficiently fine subdivision of P, for example the second barycentric subdivision"
                   "# @return SimplicialComplex",
                   &bs2quotient,

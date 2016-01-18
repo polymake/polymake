@@ -24,40 +24,21 @@ INCLUDE
 
 object PointConfiguration {
 
+
+method construct(polytope::Polytope) {
+  my $polytope=$_[1];
+  if($polytope->LINEALITY_DIM!=0){ die "The polytope has non trivial lineality." }
+  return new PointConfiguration(POINTS=>$polytope->VERTICES);
+}
+
 rule CONVEX_HULL.POINTS = POINTS;
 
 rule AFFINE_HULL = CONVEX_HULL.AFFINE_HULL;
 
-rule DIM : CONVEX_HULL.CONE_DIM {
-   $this->DIM=($this->CONVEX_HULL->CONE_DIM) - 1;
-}
-
-rule AMBIENT_DIM : POINTS {
-   $this->AMBIENT_DIM=($this->POINTS)->cols-1;
-}
-weight 0.10;
-
-rule AMBIENT_DIM : CONVEX_HULL.CONE_AMBIENT_DIM {
-    $this->AMBIENT_DIM=$this->CONVEX_HULL->CONE_AMBIENT_DIM-1;
-}
-
-# The purpose of the following rule is to have simpler preconditions in subsequent rules.
-# The scheduler efficiently handles preconditions which amount to checking a boolean.
-rule FULL_DIM : AMBIENT_DIM, DIM {
-  $this->FULL_DIM=($this->AMBIENT_DIM==$this->DIM);
-}
-weight 0.10;
-
-
-rule N_POINTS : POINTS {
-   $this->N_POINTS=$this->POINTS->rows;
-}
-weight 0.10;
-
 rule BOUNDED : FAR_POINTS {
    $this->BOUNDED= !@{$this->FAR_POINTS};
 }
-weight 0.10;
+weight 0.1;
 
 
 rule BOUNDED : POINTS {
@@ -76,9 +57,9 @@ rule BOUNDED = CONVEX_HULL.BOUNDED;
 rule CONVEX_HULL.BOUNDED = BOUNDED;
 
 rule CONVEX : N_POINTS, CONVEX_HULL.N_VERTICES {
-   $this->CONVEX=$this->N_POINTS==$this->CONVEX_HULL->N_VERTICES;
+   $this->CONVEX= $this->N_POINTS==$this->CONVEX_HULL->N_VERTICES;
 }
-weight 0.10;
+weight 0.1;
 
 
 rule CONVEX_HULL.VERTICES = POINTS;
@@ -96,10 +77,10 @@ rule NON_VERTICES : POINTS, CONVEX_HULL.VERTICES {
 }
 weight 2.10;
 
-rule GRAPH.ADJACENCY : CONVEX_HULL.POINTS_IN_FACETS, CONVEX_HULL.FACETS, POINTS, DIM{
-   $this->GRAPH->ADJACENCY=points_graph_from_incidence($this->POINTS,$this->CONVEX_HULL->POINTS_IN_FACETS,$this->CONVEX_HULL->FACETS,$this->DIM);
+rule GRAPH.ADJACENCY : CONVEX_HULL.POINTS_IN_FACETS, CONVEX_HULL.FACETS, POINTS, VECTOR_DIM {
+   $this->GRAPH->ADJACENCY=points_graph_from_incidence($this->POINTS,$this->CONVEX_HULL->POINTS_IN_FACETS,$this->CONVEX_HULL->FACETS,$this->VECTOR_DIM-1);
 }
-precondition : DIM { $this->DIM>1 } 
+precondition : VECTOR_DIM { $this->VECTOR_DIM>2 }
 weight 3.10;
 
 rule GRAPH.ADJACENCY : N_POINTS, VERTEX_POINT_MAP {
@@ -107,14 +88,14 @@ rule GRAPH.ADJACENCY : N_POINTS, VERTEX_POINT_MAP {
    $g->edge($this->VERTEX_POINT_MAP->[0],$this->VERTEX_POINT_MAP->[1]);
    $this->GRAPH->ADJACENCY = $g;
 }
-precondition : DIM { $this->DIM==1 } 
+precondition : VECTOR_DIM { $this->VECTOR_DIM==2 }
 weight 1.10;
 
 rule GRAPH.ADJACENCY : N_POINTS {
    my $g = new common::Graph($this->N_POINTS);
    $this->GRAPH->ADJACENCY = $g;
 }
-precondition : DIM { $this->DIM==0 } 
+precondition : VECTOR_DIM { $this->VECTOR_DIM==1 }
 weight 1.10;
 
 rule GRAPH.ADJACENCY = CONVEX_HULL.GRAPH.ADJACENCY;
@@ -132,12 +113,13 @@ rule BARYCENTER : POINTS {
 precondition : BOUNDED;
 weight 1.10;
 
+
 rule TRIANGULATION.GKZ_VECTOR : POINTS, TRIANGULATION.FACETS {
    $this->TRIANGULATION->GKZ_VECTOR=gkz_vector($this->POINTS,$this->TRIANGULATION->FACETS);
 }
 
-rule SPLITS : POINTS, GRAPH.ADJACENCY, CONVEX_HULL.FACETS, DIM{
-   $this->SPLITS = splits($this->POINTS,$this->GRAPH->ADJACENCY,$this->CONVEX_HULL->FACETS,$this->DIM);
+rule SPLITS : POINTS, GRAPH.ADJACENCY, CONVEX_HULL.FACETS, VECTOR_DIM {
+   $this->SPLITS = splits($this->POINTS,$this->GRAPH->ADJACENCY,$this->CONVEX_HULL->FACETS,$this->VECTOR_DIM-1);
 }
 
 rule SPLIT_COMPATIBILITY_GRAPH.ADJACENCY : CONVEX_HULL.FACETS, CONVEX_HULL.AFFINE_HULL, SPLITS {
@@ -161,6 +143,7 @@ rule LABELS : N_POINTS {
 }
 weight 0.10;
 
+
 #Visualization
 
 rule PIF_CYCLIC_NORMAL : CONVEX_HULL.VIF_CYCLIC_NORMAL, VERTEX_POINT_MAP{
@@ -176,51 +159,50 @@ rule PIF_CYCLIC_NORMAL : CONVEX_HULL.VIF_CYCLIC_NORMAL, VERTEX_POINT_MAP{
 
 # Triangulation
 
-rule TRIANGULATION.VERTEX_LABELS = LABELS;
+rule TRIANGULATION(any).VERTEX_LABELS = LABELS;
 
-rule TRIANGULATION.COORDINATES : POINTS {
+rule TRIANGULATION(any).COORDINATES : POINTS {
    $this->TRIANGULATION->COORDINATES(temporary)=$this->POINTS->minor(All,~[0]);
 }
 weight 0.10;
 
-rule TRIANGULATION.BALL : {
+rule TRIANGULATION(any).BALL : {
    $this->TRIANGULATION->BALL=1;
 }
+weight 0.1;
 
-rule TRIANGULATION.VOLUME = CONVEX_HULL.VOLUME;
+rule TRIANGULATION(any).VOLUME = CONVEX_HULL.VOLUME;
 
-rule TRIANGULATION.G_DIM = AMBIENT_DIM;
+rule TRIANGULATION(any).G_DIM : VECTOR_AMBIENT_DIM {
+   $this->TRIANGULATION->G_DIM = $this->VECTOR_AMBIENT_DIM-1;
+}
+weight 0.1;
 
-#rule TRIANGULATION.BOUNDARY.COORDINATES : POINTS {
+#rule TRIANGULATION(any).BOUNDARY.COORDINATES : POINTS {
 #   $this->TRIANGULATION->BOUNDARY->COORDINATES(temporary)=$this->POINTS->minor(All,~[0]);
 #}
 #weight 0.10;
 
-rule TRIANGULATION.BOUNDARY.SPHERE : {
+rule TRIANGULATION(any).BOUNDARY.SPHERE : {
    $this->TRIANGULATION->BOUNDARY->SPHERE=1;
 }
-weight 0.10;
+weight 0.1;
 
-#rule TRIANGULATION.BOUNDARY.G_DIM = AMBIENT_DIM;
-
-rule MULTIPLE_POINTS : POINTS {
-   $this->MULTIPLE_POINTS=detect_multiple($this->POINTS); 
-}
-weight 1.10;   
-
+#rule TRIANGULATION(any).BOUNDARY.G_DIM = AMBIENT_DIM;
 }
 
 # A point configuration with an exact coordinate type, like Rational.
 declare object_specialization ExactCoord<Scalar> = PointConfiguration<Scalar> [is_ordered_field_with_unlimited_precision(Scalar)] {
 
-rule TRIANGULATION.FACETS : POINTS {
-   if ( defined(my $weights=$this->lookup("TRIANGULATION.WEIGHTS") ) ) {
-      $this->TRIANGULATION->FACETS=regular_subdivision($this->POINTS, $weights);
-   } else {
-      $this->TRIANGULATION->FACETS=placing_triangulation($this->POINTS);
-   }
+rule default.triangulation.pc: TRIANGULATION(new).FACETS : POINTS {
+   $this->TRIANGULATION->FACETS=placing_triangulation($this->POINTS);
 }
 weight 4.10;
+
+rule TRIANGULATION.FACETS : POINTS, TRIANGULATION.WEIGHTS {
+   $this->TRIANGULATION->FACETS=regular_subdivision($this->POINTS, $this->TRIANGULATION->WEIGHTS);
+}
+weight 3.10;
 
 }
 
@@ -254,6 +236,26 @@ user_function stellar_subdivision(PointConfiguration, Array<Set<Int>>, { no_labe
 # @param PointConfiguration P1
 # @param PointConfiguration P2
 # @return PointConfiguration
+# @example > $P1 = new PointConfiguration(POINTS=>simplex(2)->VERTICES);
+# > $P2 = new PointConfiguration(POINTS=>[[1,1,1],[1,-1,1],[1,1,-1],[1,-1,-1],[1,0,0]]);
+# > $m = minkowski_sum($P1,$P2);
+# > print $m->POINTS;
+# | 1 1 1
+# | 1 -1 1
+# | 1 1 -1
+# | 1 -1 -1
+# | 1 0 0
+# | 1 2 1
+# | 1 0 1
+# | 1 2 -1
+# | 1 0 -1
+# | 1 1 0
+# | 1 1 2
+# | 1 -1 2
+# | 1 1 0
+# | 1 -1 0
+# | 1 0 1
+
 user_function minkowski_sum<Scalar> (PointConfiguration<type_upgrade<Scalar>>, PointConfiguration<type_upgrade<Scalar>> ) {
     my ($p1,$p2) = @_;
     return minkowski_sum(1,$p1,1,$p2);
@@ -267,6 +269,26 @@ user_function minkowski_sum<Scalar> (PointConfiguration<type_upgrade<Scalar>>, P
 # @param Scalar mu
 # @param PointConfiguration P2
 # @return PointConfiguration
+# @example > $P1 = new PointConfiguration(POINTS=>simplex(2)->VERTICES);
+# > $P2 = new PointConfiguration(POINTS=>[[1,1,1],[1,-1,1],[1,1,-1],[1,-1,-1],[1,0,0]]);
+# > $m = minkowski_sum($P1,$P2);
+# > print $m->POINTS;
+# | 1 3 3
+# | 1 -3 3
+# | 1 3 -3
+# | 1 -3 -3
+# | 1 0 0
+# | 1 4 3
+# | 1 -2 3
+# | 1 4 -3
+# | 1 -2 -3
+# | 1 1 0
+# | 1 3 4
+# | 1 -3 4
+# | 1 3 -2
+# | 1 -3 -2
+# | 1 0 1
+
 user_function minkowski_sum<Scalar> (type_upgrade<Scalar>, PointConfiguration<type_upgrade<Scalar>>, type_upgrade<Scalar>, PointConfiguration<type_upgrade<Scalar>> ) {
     my ($l1,$p1,$l2,$p2) = @_;
     my $v1=$p1->give("POINTS");
@@ -280,5 +302,6 @@ user_function minkowski_sum<Scalar> (type_upgrade<Scalar>, PointConfiguration<ty
 
 # Local Variables:
 # mode: perl
-# c-basic-offset:4
+# cperl-indent-level:3
+# indent-tabs-mode:nil
 # End:

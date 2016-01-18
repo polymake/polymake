@@ -101,7 +101,7 @@ namespace polymake { namespace tropical {
 
 	UserFunctionTemplate4perl("# @category Hurwitz cycles"
 			"# Computes the marked k-dimensional tropical Hurwitz cycle H_k(degree)"
-			"# @param int k The dimension of the Hurwitz cycle"
+			"# @param Int k The dimension of the Hurwitz cycle"
 			"# @param Vector<Int> degree The degree of the covering. The sum over all entries should "
 			"# be 0 and if n := degree.dim, then 0 <= k <= n-3"
 			"# @param Vector<Rational> pullback_points The points p_i that should be pulled back to "

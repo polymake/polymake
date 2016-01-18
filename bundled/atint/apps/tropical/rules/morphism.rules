@@ -23,7 +23,7 @@
 
 object Morphism {
 
-	use overload('*' => 'mult','""' => 'to_string', 'bool' => 'bool', '+' => 'sum','-' => 'minus','neg'=>'neg', "fallback" => TRUE);
+	use overload('*' => 'mult', '""' => 'to_string', bool => 'bool', '+' => 'sum', '-' => 'minus', 'neg'=>'neg', fallback => 1);
 
 	# @category Defining morphisms and functions
 	# This property describes the domain of the morphism. I.e. the morphism is
@@ -95,10 +95,10 @@ object Morphism {
 	}
 
 	rule IS_GLOBALLY_AFFINE_LINEAR : {
-		$this->IS_GLOBALLY_AFFINE_LINEAR = FALSE;
+		$this->IS_GLOBALLY_AFFINE_LINEAR = 0;
 	}
 	precondition : defined(DOMAIN);
-	weight 0.10;
+	weight 0.1;
 
 	rule VERTEX_VALUES, LINEALITY_VALUES : MATRIX, TRANSLATE, DOMAIN {
 		computeValuesFromMatrix($this);
@@ -130,7 +130,7 @@ object Morphism {
 	# Computes the composition of another morphism g and this morphism.
 	# This morphism comes after g.
 	# @param Morphism g
-	# @return this after g
+	# @return Morphism this after g
 	user_method after(Morphism<Addition>) {
 		my ($this, $g) = @_;
 		return morphism_composition($g,$this);
@@ -140,7 +140,7 @@ object Morphism {
 	# Computes the composition of this morphism and another morphism g.
 	# This morphism comes before g.
 	# @param Morphism g
-	# @return g after f
+	# @return Morphism g after f
 	user_method before(Morphism<Addition>) {
 		my ($this,$g) = @_;
 		return morphism_composition($this,$g);
@@ -152,7 +152,7 @@ object Morphism {
 	# the restriction will be computed on the intersection.
 	# @param Cycle Some cycle living in the same ambient space as the [[DOMAIN]]
 	# @return Morphism The restriction of the morphism to the cycle (or its
-	# intersection with [[DOMAIN]].
+	#   intersection with [[DOMAIN]].
 	user_method restrict(Cycle<Addition>) {
 		my ($f,$X) = @_;
 

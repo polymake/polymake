@@ -38,7 +38,11 @@ Vector<Coord> inner_point(const GenericMatrix<Matrix, Coord>& V)
 
 UserFunctionTemplate4perl("# @category Optimization"
                           "# Compute a true inner point of a convex hull of the given set of //points//."
-                          "# @param Matrix points",
+                          "# @param Matrix points"
+                          "# @return Vector"
+                          "# @example To print an inner point of the square, do this:"
+                          "# > print inner_point(cube(2)->VERTICES);"
+                          "# |1 -1/3 -1/3",
                           "inner_point(Matrix)");
 } }
 

@@ -2,8 +2,8 @@
 **********             The easiest way to use libnormaliz            **********
 *******************************************************************************
 
-This is an early version of libnormaliz. It may very well happen that the interface changes in the future!
-Please contact us if you want to use the normaliz library.
+This version of libnormaliz is considered to be stable. We would be happy to
+hear from you if you are using libnormaliz (mailto: normaliz@uos.de).
 
 More information on normaliz:
 http://www.mathematik.uni-osnabrueck.de/normaliz/
@@ -11,9 +11,6 @@ http://www.mathematik.uni-osnabrueck.de/normaliz/
 Preperation:
 
 Check the compile instructions in ../INSTALL
-
-To use libnormaliz link libnormaliz.a in. It might be necessary to activate compilation with OpenMP (in g++ use the -fopenmp flag).
-
 
 Quick workflow overview:
 
@@ -23,6 +20,8 @@ Quick workflow overview:
 4) check if the desired data is computed: isComputed( X )
 5) get the data: getX()
 6) repeat 4+5 or 3+4+5
+
+Then link against libnormaliz. It might be necessary to activate compilation with OpenMP (in g++ use the -fopenmp flag).
 
 
 In version 3.0 the default template parameter should be mpz_class.
@@ -45,7 +44,7 @@ Wanted.set(libnormaliz::ConeProperty::Triangulation, libnormaliz::ConeProperty::
 MyCone.compute(Wanted);
 
 // or just
-//MyCone.compute(libnormaliz::ConeProperty::Triangulation, libnormaliz::ConeProperty::HilbertBasis);
+MyCone.compute(libnormaliz::ConeProperty::Triangulation, libnormaliz::ConeProperty::HilbertBasis);
 
 if (MyCone.isComputed(libnormaliz::ConeProperty::HilbertBasis)) {
 	std::vector< std::vector< Integer> > HB& = MyCone.getHilbertBasis();
@@ -75,7 +74,14 @@ Possible InputTypes (from libnormaliz.h):
     inhom_congruences,
     lattice_ideal,
     grading,
-    excluded_faces
+    excluded_faces,
+    lattice,
+    saturation,
+    cone,
+    offset,
+    vertices,
+    support_hyperplanes,
+    cone_and_lattice
 
 You can give up to 3 input type/matrix combinations directly in the constructor.
 To combine more input types, build a
@@ -103,5 +109,5 @@ bool libnormaliz::try_convert(TypeA, TypeB); // converts TypeB to TypeA, returns
 where one type is your type and the other is long or long long (and maybe mpz_class?).
 Additionally if your type uses arbritary precision (i.e. it is some wrapper for mpz) also implement
 
-template<> inline bool using_GMP<YourType>() { return true; }
+template<> inline bool libnormaliz::using_GMP<YourType>() { return true; }
 

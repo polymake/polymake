@@ -50,15 +50,20 @@ perl::Object ts_min_metric(const int n)
    return p;
 }
 
-UserFunction4perl("# @category Triangulations, subdivisions and volume"
+UserFunction4perl("# @category Finite metric spaces"
                   "# Compute a metric such that the f-vector of its tight span is minimal among all metrics with //n// points."
                   "#\t S. Herrmann and M. Joswig: Bounds on the f-vectors of tight spans."
                   "#\t Contrib. Discrete Math., Vol.2, 2007 161-184"
                   "# @param Int n the number of points"
-                  "# @return Matrix",
+                  "# @return Matrix"
+                  "# @example To compute the min-metric of four points and display the f-vector of its tight span, do this:"
+                  "# > $M = min_metric(5);"
+                  "# > $w = new Vector(1,1,1,2,3);"
+                  "# > print tight_span($M,$w)->F_VECTOR;"
+                  "# | 6 15 20 15 6",
                   &min_metric, "min_metric");
 
-UserFunction4perl("# @category Triangulations, subdivisions and volume"
+UserFunction4perl("# @category Finite metric spaces"
                   "# Compute the tight span of a metric such its f-vector is minimal among all metrics with //n// points."
                   "#\t S. Herrmann and M. Joswig: Bounds on the f-vectors of tight spans."
                   "#\t Contrib. Discrete Math., Vol.2, 2007 161-184"

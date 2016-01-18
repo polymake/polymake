@@ -140,17 +140,37 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# @param Polytope P1"
                           "# @param Polytope P2"
                           "# @option Bool no_coordinates produces a pure combinatorial description."
-                          "# @return Polytope",
+                          "# @return Polytope"
+                          "# @example To join two squares, use this:"
+                          "# > $p = join_polytopes(cube(2),cube(2));"
+                          "# > print $p->VERTICES;"
+                          "# | 1 -1 -1 -1 0 0"
+                          "# | 1 1 -1 -1 0 0"
+                          "# | 1 -1 1 -1 0 0"
+                          "# | 1 1 1 -1 0 0"
+                          "# | 1 0 0 1 -1 -1"
+                          "# | 1 0 0 1 1 -1"
+                          "# | 1 0 0 1 -1 1"
+                          "# | 1 0 0 1 1 1",
                           "join_polytopes<Scalar>(Polytope<Scalar> Polytope<Scalar>, {no_coordinates => 0})");
 
 UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# Construct a new polyhedron as the free sum of two given bounded ones."
                           "# @param Polytope P1"
                           "# @param Polytope P2"
-                          "# @option bool force_centered if the input polytopes must be centered."
-                          "# @option Bool no_coordinates produces a pure combinatorial description."
-                          "# Default is set to true."
-                          "# @return Polytope",
+                          "# @option Bool force_centered if the input polytopes must be centered. Defaults to true."
+                          "# @option Bool no_coordinates produces a pure combinatorial description. Defaluts to false."
+                          "# @return Polytope"
+                          "# @example > $p = free_sum(cube(2),cube(2));"
+                          "# > print $p->VERTICES;"
+                          "# | 1 -1 -1 0 0"
+                          "# | 1 1 -1 0 0"
+                          "# | 1 -1 1 0 0"
+                          "# | 1 1 1 0 0"
+                          "# | 1 0 0 -1 -1"
+                          "# | 1 0 0 1 -1"
+                          "# | 1 0 0 -1 1"
+                          "# | 1 0 0 1 1",
                           "free_sum<Scalar>(Polytope<Scalar> Polytope<Scalar>, {force_centered=>1, no_coordinates=> 0})");
 } }
 

@@ -16,7 +16,9 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/Rational.h"
+#include "polymake/RationalFunction.h"
 #include "polymake/Ring.h"
 #include "polymake/TropicalNumber.h"
 #include "polymake/client.h"
@@ -33,5 +35,8 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(id_f1, perl::Canned< const Ring< TropicalNumber< Max, Rational >, int > >);
    FunctionInstance4perl(id_f1, perl::Canned< const Ring< TropicalNumber< Min, Rational >, int > >);
    FunctionInstance4perl(id_f1, perl::Canned< const Ring< Rational, Rational > >);
+   FunctionInstance4perl(id_f1, perl::Canned< const Ring< PuiseuxFraction< Min, Rational, Rational >, Rational > >);
+   FunctionInstance4perl(id_f1, perl::Canned< const Ring< PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational >, Rational > >);
+   FunctionInstance4perl(id_f1, perl::Canned< const Ring< UniPolynomial< Rational, int >, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

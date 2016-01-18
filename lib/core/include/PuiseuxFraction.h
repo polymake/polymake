@@ -67,7 +67,7 @@ public:
 
    template <typename> friend struct spec_object_traits;
    template <typename,bool,bool> friend struct choose_generic_object_traits;
-   template <typename> friend struct std::numeric_limits;
+   template <typename> friend class std::numeric_limits;
 
    /// Construct a zero value.
    PuiseuxFraction() : rf() {}
@@ -793,7 +793,8 @@ namespace std {
    void swap(pm::PuiseuxFraction<MinMax,Coefficient,Exponent>& x1, pm::PuiseuxFraction<MinMax,Coefficient,Exponent>& x2) { x1.swap(x2); }
 
    template <typename MinMax, typename Coefficient, typename Exponent>
-   struct numeric_limits<pm::PuiseuxFraction<MinMax,Coefficient,Exponent> > : numeric_limits<Coefficient> {
+   class numeric_limits<pm::PuiseuxFraction<MinMax,Coefficient,Exponent> > : public numeric_limits<Coefficient> {
+   public:
       static const bool is_integer=false;
       static pm::PuiseuxFraction<MinMax,Coefficient,Exponent> min() throw() { return pm::PuiseuxFraction<MinMax,Coefficient,Exponent>(numeric_limits<Coefficient>::min()); }
       static pm::PuiseuxFraction<MinMax,Coefficient,Exponent> infinity() throw() { return pm::PuiseuxFraction<MinMax,Coefficient,Exponent>(numeric_limits<Coefficient>::infinity()); }

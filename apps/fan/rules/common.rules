@@ -32,53 +32,65 @@ weight 0.10;
 rule N_RAYS : RAYS {
    $this->N_RAYS=$this->RAYS->rows;
 }
-weight 0.10;
+weight 0.1;
 
 rule N_INPUT_RAYS : INPUT_RAYS {
    $this->N_INPUT_RAYS=$this->INPUT_RAYS->rows;
 }
-weight 0.10;
+weight 0.1;
 
 rule N_MAXIMAL_CONES : MAXIMAL_CONES {
    $this->N_MAXIMAL_CONES=$this->MAXIMAL_CONES->rows;
 }
-weight 0.10;
+weight 0.1;
 
 rule N_FACET_NORMALS : FACET_NORMALS {
    $this->N_FACET_NORMALS=$this->FACET_NORMALS->rows;
 }
-weight 0.10;
+weight 0.1;
 
 rule COMBINATORIAL_DIM : FAN_DIM, LINEALITY_DIM {
    $this->COMBINATORIAL_DIM = $this->FAN_DIM - $this->LINEALITY_DIM - 1;
 }
-weight 0.10;
+weight 0.1;
 
 rule FAN_DIM : COMBINATORIAL_DIM, LINEALITY_DIM {
    $this->FAN_DIM = $this->COMBINATORIAL_DIM + $this->LINEALITY_DIM + 1;
 }
-weight 0.10;
+weight 0.1;
+
+#If we know beforehand that the fan is pure, we don't have to compute individual cone dimensions.
+rule FAN_DIM : RAYS, MAXIMAL_CONES, LINEALITY_SPACE {
+   if ($this->MAXIMAL_CONES->rows() == 0) {
+      $this->FAN_DIM = $this->LINEALITY_SPACE->rows();
+   }
+   else {
+      $this->FAN_DIM = (new polytope::Cone(RAYS=>$this->RAYS->minor($this->MAXIMAL_CONES->row(0),All),LINEALITY_SPACE=>$this->LINEALITY_SPACE))->CONE_DIM;
+   }
+}
+precondition : PURE;
+weight 2.10;
 
 rule LINEALITY_DIM : COMBINATORIAL_DIM, FAN_DIM {
    $this->LINEALITY_DIM = $this->FAN_DIM - $this->COMBINATORIAL_DIM - 1;
 }
-weight 0.10;
+weight 0.1;
 
 rule LINEALITY_DIM : LINEALITY_SPACE {
    $this->LINEALITY_DIM=$this->LINEALITY_SPACE->rows;
 }
-weight 0.10;
+weight 0.1;
 
 rule POINTED : LINEALITY_DIM {
-   $this->POINTED=!$this->LINEALITY_DIM;
+   $this->POINTED= $this->LINEALITY_DIM==0;
 }
-weight 0.10;
+weight 0.1;
 
 
 rule FULL_DIM : FAN_DIM, FAN_AMBIENT_DIM {
-  $this->FULL_DIM=($this->FAN_DIM==$this->FAN_AMBIENT_DIM);
+  $this->FULL_DIM= ($this->FAN_DIM==$this->FAN_AMBIENT_DIM);
 }
-weight 0.10;
+weight 0.1;
 
 
 # If no [[LINEALITY_SPACE]] is given, it is assumed to be trivial.
@@ -199,14 +211,20 @@ rule COMPLETE, REGULAR :  {
    $this->COMPLETE=0;
 }
 precondition : !DUAL_GRAPH.CONNECTED;
-weight 0.10;
+weight 0.1;
 
 rule COMPLETE, REGULAR :  {
    $this->REGULAR=0;   
    $this->COMPLETE=0;
 }
 precondition : !FULL_DIM;
-weight 0.10;
+weight 0.1;
+
+rule REGULAR : {
+   $this->REGULAR=0;
+}
+precondition : !COMPLETE;
+weight 0.1;
 
 rule INTERSECTION_COMPLEX.FACETS : MAXIMAL_CONES {
   $this->INTERSECTION_COMPLEX->FACETS(temporary)=new Array<Set<Int> >(rows($this->MAXIMAL_CONES));
@@ -214,20 +232,16 @@ rule INTERSECTION_COMPLEX.FACETS : MAXIMAL_CONES {
 weight 1.10;
 
 rule COMPLETE : FULL_DIM, INTERSECTION_COMPLEX.SPHERE {
-   unless ($this->FULL_DIM)  {
-      $this->COMPLETE=0;
-      return;
-   }
-   $this->COMPLETE=$this->INTERSECTION_COMPLEX->SPHERE;
+   $this->COMPLETE=$this->FULL_DIM && $this->INTERSECTION_COMPLEX->SPHERE;
 }
 precondition : SIMPLICIAL;
-weight 0.10;
+weight 0.1;
 
 rule COMPLETE : MAXIMAL_CONES_FACETS, DUAL_GRAPH.NODE_DEGREES, N_MAXIMAL_CONES {
    for (my $i=0; $i<$this->N_MAXIMAL_CONES; ++$i)  {
       if ($this->MAXIMAL_CONES_FACETS->row($i)->size!=$this->DUAL_GRAPH->NODE_DEGREES->[$i]) {
-      $this->COMPLETE=0;
-      return;
+         $this->COMPLETE=0;
+         return;
       }
    }
    $this->COMPLETE=1;
@@ -261,30 +275,30 @@ rule GRAPH.ADJACENCY : HASSE_DIAGRAM {
    $this->GRAPH->ADJACENCY=vertex_graph($this->HASSE_DIAGRAM);
 }
 precondition : FAN_DIM { $this->FAN_DIM>=2 };
+weight 1.20;
 
 rule DUAL_GRAPH.ADJACENCY : HASSE_DIAGRAM {
    $this->DUAL_GRAPH->ADJACENCY=facet_graph($this->HASSE_DIAGRAM);
 }
 precondition : FAN_DIM, PURE { $this->PURE && $this->FAN_DIM>=2 };
+weight 1.20;
 
-rule FAN_DIM : FAN_AMBIENT_DIM {
-   $this->FAN_DIM=$this->FAN_AMBIENT_DIM;
-}
+rule FAN_DIM = FAN_AMBIENT_DIM;
 precondition : FULL_DIM;
-weight 0.10;
 
-rule FULL_DIM : {
+rule FULL_DIM, DUAL_GRAPH.CONNECTED : {
    $this->FULL_DIM=1;
-}
-precondition : COMPLETE | REGULAR;
-weight 0.10;
-
-
-rule DUAL_GRAPH.CONNECTED : {
    $this->DUAL_GRAPH->CONNECTED=1;
 }
-precondition : COMPLETE | REGULAR;
-weight 0.10;
+precondition : COMPLETE;
+weight 0.1;
+
+rule FULL_DIM, DUAL_GRAPH.CONNECTED : {
+   $this->FULL_DIM=1;
+   $this->DUAL_GRAPH->CONNECTED=1;
+}
+precondition : REGULAR;
+weight 0.1;
 
 rule SIMPLICIAL : MAXIMAL_CONES, COMBINATORIAL_DIM {
    my $d=$this->COMBINATORIAL_DIM+1;
@@ -295,9 +309,9 @@ rule SIMPLICIAL : MAXIMAL_CONES, COMBINATORIAL_DIM {
    $this->SIMPLICIAL=$simplicial;
 }
 precondition : PURE;
-weight 0.10;
+weight 1.10;
 
-rule SIMPLICIAL : MAXIMAL_CONES_COMBINATORIAL_DIMS, MAXIMAL_CONES{
+rule SIMPLICIAL : MAXIMAL_CONES_COMBINATORIAL_DIMS, MAXIMAL_CONES {
    my $i=0;
    my $simplicial=1;
    foreach (@{$this->MAXIMAL_CONES}) {

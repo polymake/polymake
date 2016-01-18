@@ -139,6 +139,32 @@ perl::Object hypersimplex(int k, int d, perl::OptionSet options)
    return p;
 }
 
+Set<int> matroid_indices_of_hypersimplex_vertices(perl::Object m)
+{
+   const Array< Set<int> > bases=m.give("BASES");
+   const int n=m.give("N_ELEMENTS");
+   const int d=m.give("RANK");
+   Set<int> set;
+   int temp_d;
+   int temp;
+   for (Entire< Array< Set<int> > >::const_iterator b=entire(bases); !b.at_end(); ++b){
+      int sum=0;
+      temp_d=d;
+      temp=0;
+      for (Entire< Set<int> >::const_iterator i=entire(*b); !i.at_end(); ++i){
+         if(temp_d==d && *i!=0)
+            sum+=Integer::binom(n-1,d-1).to_int();
+         --temp_d;
+         for(int k=1;k<=*i-temp-1;++k)
+            sum+=Integer::binom(n-temp-1-k,temp_d).to_int();
+         temp=*i;
+      }
+      set+=sum;
+   }
+   return set;
+}
+
+
 UserFunction4perl("# @category Producing a polytope from scratch"
                   "# Produce the hypersimplex &Delta;(//k//,//d//), that is the the convex hull of all 0/1-vector in R<sup>//d//</sup>"
                   "# with exactly //k// 1s."
@@ -149,8 +175,21 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @option Bool no_vertices do not compute vertices"
                   "# @option Bool no_facets do not compute facets"
                   "# @option Bool no_vif do not compute vertices in facets"
-                  "# @return Polytope",
+                  "# @return Polytope"
+                  "# @example This creates the hypersimplex in dimension 4 with vertices with exactly two 1-entries"
+                  "# and computes its symmetry group:"
+                  "# > $h = hypersimplex(2,4,group=>1);",
                   &hypersimplex, "hypersimplex($,$;{group=>undef,no_vertices=>0,no_facets=>0,no_vif=>0})");
+
+InsertEmbeddedRule("REQUIRE_APPLICATION matroid\n\n");
+
+UserFunction4perl("# @category Other"
+                  "# For a given matroid return the bases as a"
+                  "# subset of the vertices of the hypersimplex"
+                  "# @option matroid::Matroid m the matroid"
+                  "# @return Set<Int>",
+                  &matroid_indices_of_hypersimplex_vertices, "matroid_indices_of_hypersimplex_vertices(matroid::Matroid)");
+
 } }
 
 // Local Variables:

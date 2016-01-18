@@ -47,7 +47,14 @@ perl::Object integer_hull(perl::Object p_in)
 UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# Produces the integer hull of a polyhedron"
                   "# @param Polytope P"
-                  "# @return Polytope", 
+                  "# @return Polytope"
+                  "# @example > $p = new Polytope(VERTICES=>[[1,1.3,0.5],[1,0.2,1.2],[1,0.1,-1.5],[1,-1.4,0.2]]);"
+                  "# > $ih = integer_hull($p);"
+                  "# > print $ih->VERTICES;"
+                  "# | 1 -1 0"
+                  "# | 1 0 -1"
+                  "# | 1 0 1"
+                  "# | 1 1 0",
                   &integer_hull, "integer_hull(Polytope)");
 } }
 

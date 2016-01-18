@@ -41,15 +41,13 @@ perl::Object mixed_integer_hull(perl::Object p_in, const Array<int>& int_coords)
   if ( (d==1) || (int_coords.empty()))
     return p_in;
   
-  perl::Object p_project;
-  perl::Object p_out(perl::ObjectType::construct<Rational>("Polytope"));
+  // project to the integral coordinates and  take the convex hull   
+  perl::Object p_project = CallPolymakeFunction("projection", p_in, int_coords);
+  Matrix<Rational> proj_lattice_points = p_project.CallPolymakeMethod("LATTICE_POINTS");
+  
   ListMatrix<Vector<Rational> > out_points, temp_points;
   Matrix<Rational> temp_ineq(unit_matrix<Rational>(d).minor(scalar2set(0), All));
 
-  // project to the integral coordinates and  take the convex hull   
-  p_project = CallPolymakeFunction("projection", p_in, int_coords);
-  Matrix<Rational> proj_lattice_points = p_project.CallPolymakeMethod("LATTICE_POINTS");
-  
   // for every lattice point in the projected polyhedron compute the intersection
   // between P and a proper affine linear space which goes through the lattice point
   for (int i=0; i<proj_lattice_points.rows(); ++i)
@@ -59,20 +57,20 @@ perl::Object mixed_integer_hull(perl::Object p_in, const Array<int>& int_coords)
     right_side = proj_lattice_points.row(i).slice(~scalar2set(0));    
     Matrix<Rational> temp_eq(-right_side | unit_matrix<Rational>(d).minor(int_coords, ~scalar2set(0)));
 
-    perl::Object p_fiber(perl::ObjectType::construct<Rational>("Polytope"));
+    perl::Object p_fiber("Polytope<Rational>");
     p_fiber.take("INEQUALITIES") << temp_ineq;
     p_fiber.take("EQUATIONS") << temp_eq;
 
     // intersecting it with P
-    perl::Object p_intersection;
-    p_intersection = CallPolymakeFunction("intersection", p_in,p_fiber);
+    perl::Object p_intersection = CallPolymakeFunction("intersection", p_in,p_fiber);
 
     // remembering the vertices
     p_intersection.give("VERTICES") >> temp_points;
     out_points /= temp_points;
-  }  
+  }
   
   // convex hull of all vertices computed before
+  perl::Object p_out("Polytope<Rational>");
   p_out.take("POINTS") << out_points;
 
   return p_out;	

@@ -19,7 +19,7 @@
 
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
-#include "polymake/polytope/linsolver.h"
+#include "polymake/polytope/lpch_dispatcher.h"
 #include "polymake/Set.h"
 
 namespace polymake { namespace polytope { namespace to_interface {

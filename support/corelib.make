@@ -13,7 +13,7 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-#  Building core and callable libraries
+#  Building perl extensions and callable library
 
 .PHONY: compile-xs
 
@@ -30,12 +30,9 @@ CallableSourceDir := ${ProjectTop}/lib/callable/src
 PerlExtDir := ${BuildDir}/perlx-${PERLversion}-${PERLarchname}
 ObjectsAlso := ${PerlExtDir}
 
-StandaloneModules     := standalone_init
-
 SharedModules         := $(basename $(call _list_CXX_sources,${SourceDir}))
 CallableSharedModules := $(basename $(call _list_CXX_sources,${CallableSourceDir}))
-SharedObjects         := $(patsubst %,%$O, $(filter-out ${StandaloneModules}, ${SharedModules}))
-StandaloneObjects     := $(patsubst %,%$O, ${StandaloneModules})
+SharedObjects         := $(patsubst %,%$O, ${SharedModules})
 CallableSharedObjects := $(patsubst %,${PerlExtDir}/%$O, ${CallableSharedModules})
 
 GlueModules         := $(basename $(call _list_CXX_sources,${SourceDir}/perl))
@@ -59,7 +56,6 @@ ${CallableGlueObjects}       : ExtraCXXFLAGS := -I${ProjectTop}/include/callable
 
 ${CallableGlueObjects} : ${BuildDir}/conf.make
 
-CoreLib := ${BuildDir}/lib/core$S
 ifneq (${LDcallableFlags},none)
   ifndef LDsonameFlag
     $(error Can't create callable library: LDsonameFlag is not set.  Please rerun the configuration script)
@@ -77,8 +73,8 @@ else
   CallableLib := no-callable-lib
 endif
 
-# compile perl modules for debugging if we are using a debugging perl build, even if clients are optimized.
-${GlueObjects} ${XXSObjects} ${CallableGlueObjects} : doOPT := $(if $(filter-out opt,${Debug}),,$(filter -O%,${PERLoptimize}))
+# compile the core library and extension modules for debugging if we are using a debugging perl build, even if clients are optimized.
+${SharedObjects} ${GlueObjects} ${XXSObjects} ${CallableGlueObjects} : doOPT := $(if $(filter-out opt,${Debug}),,$(filter -O%,${PERLoptimize}))
 
 ${GlueObjects} ${CallableGlueObjects} : ${PerlExtDir}/%.o : %.cc
 	$(_CXX_compile)
@@ -88,18 +84,16 @@ ${XXSObjects} : ${PerlExtDir}/%.o : ${PerlExtDir}/%.cc
 	$(_CXX_compile)
 	@$(_do_deps)
 
-${CoreLib} : ${SharedObjects} ${StandaloneObjects}
-	${CXX} ${LDsharedFlags} -o $@ $^ ${LDFLAGS} -lmpfr -lgmp -lpthread ${LIBS}
-
 ifneq (${LDcallableFlags},none)
   ${CallableLib} : ${SharedObjects} ${CallableSharedObjects} ${GlueObjects} ${CallableGlueObjects} ${XXSObjects} ${XSObjects}
 	${CXX} ${LDcallableFlags} ${LDsonameFlag}${CallableSoName} -o $@ $^ ${LDFLAGS} ${PERLccdlflags} \
 	       -lmpfr -lgmp -lpthread ${LIBXML2_LIBS} ${LIBS} -L${PERLarchlib}/CORE -lperl
 	ln -s -f ${CallableSoName} ${PerlExtDir}/${CallableName}
 else
-  ${CallableLib} : ${GlueObjects} ${XXSObjects}
+  ${CallableLib} : ${SharedObjects} ${GlueObjects} ${XXSObjects}
 endif
-	@$(MAKE) -C ${PerlExtDir} all LD=${CXX} OTHERLDFLAGS="${LDFLAGS}" GlueObjects="$(notdir ${GlueObjects} ${XXSObjects})"
+	@$(MAKE) -C ${PerlExtDir} all LD=${CXX} OTHERLDFLAGS="${LDFLAGS}" \
+				  CXXObjects="$(notdir ${GlueObjects} ${XXSObjects}) $(patsubst %,../lib/core/%,${SharedObjects})"
 	@$(MAKE) -C ${PerlExtDir} pure_install InstallDir=.. DESTDIR=
 
 compile-xs : ${PerlExtDir}/Makefile
@@ -108,10 +102,11 @@ compile-xs : ${PerlExtDir}/Makefile
 ${PerlExtDir}/Makefile : ${SourceDir}/perl/Makefile.PL
 	@mkdir -p $(@D)
 	cd $(@D); ${PERL} $< TOP=${ProjectTop} SourceDir=${SourceDir}/perl CxxOpt="${CXXOPT}" CxxDebug="${CXXDEBUG}" \
-			     libxml2Cflags="${LIBXML2_CFLAGS}" libxml2Libs="${LIBXML2_LIBS}"
+			     libxml2Cflags="${LIBXML2_CFLAGS}" AddLibs=" -lmpfr -lgmp -lpthread ${LIBS} ${LIBXML2_LIBS}" \
+			     AddLDflags="${LDFLAGS}"
 
 compile : compile-xs
-	@$(MAKE) --no-print-directory ${CoreLib} ${CallableLib}
+	@$(MAKE) --no-print-directory ${CallableLib}
 
 install : compile
 	[ -d ${InstallLib} ] || ${PERL} ${INSTALL_PL} -d -m ${DirMask} ${InstallLib}
@@ -123,7 +118,6 @@ ifneq (${LDcallableFlags},none)
 	ln -s -f ${CallableSoName} ${InstallLib}/${CallableName}
 endif
 	${PERL} ${INSTALL_PL} -d -m ${DirMask} ${InstallArch}/lib
-	${PERL} ${INSTALL_PL} -m 555 ${CoreLib} ${InstallArch}/lib
 	@$(MAKE) -C ${PerlExtDir} pure_install InstallDir=$(if ${DESTDIR},${FinalInstallArch},${InstallArch})
 
 install-src:
@@ -132,7 +126,7 @@ install-src:
 	${PERL} ${INSTALL_PL} -m ${DirMask} ${ProjectTop}/lib/core/skel ${InstallTop}/lib/core/skel
 
 clean::
-	rm -rf ${CoreLib} ${BuildDir}/perlx/${PERLversion}/${PERLarchname} \
+	rm -rf ${BuildDir}/perlx/${PERLversion}/${PERLarchname} \
 	       $(if $(filter-out none,${LDcallableFlags}), ${PerlExtDir}/${CallableName} ${CallableLib} ${FakeApplib} ${StubApplib} applib_*.c)
 	@[ ! -f ${PerlExtDir}/Makefile ] || \
 	 if [ -f ${PerlExtDir}/Makefile.PL ]; then \

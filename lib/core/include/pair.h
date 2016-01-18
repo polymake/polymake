@@ -65,6 +65,10 @@ struct isomorphic_to_second : False {};
 
 template <typename Data, typename T1, typename T2>
 struct isomorphic_to_second< Data, pair<T1,T2> > : isomorphic_types<typename deref<T2>::type, Data> {};
+
+template<typename T1, typename T2>
+struct is_ordered< std::pair<T1,T2> >  : bool2type<is_ordered_impl<T1>::value && is_ordered_impl<T2>::value> {};
+
 }
 namespace std {
 

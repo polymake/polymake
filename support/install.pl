@@ -206,6 +206,9 @@ sub make_dir {
          return 0;
       }
       unless (mkdir $accumulated, $mode) {
+         # some other process might have created the folder in the meantime
+         # and we got a 'file exists' error
+         next if -d $accumulated;
          warn "$0: can't create $accumulated: $!\n";
          return 0;
       }

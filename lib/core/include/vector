@@ -34,6 +34,21 @@ void relocate(std::vector<Value,Alloc>* from, std::vector<Value,Alloc>* to)
    std::memcpy(to, from, sizeof(*from));
 }
 
+#if defined(_LIBCPP_VERSION)
+
+template <typename Iterator>
+struct iterator_cross_const_helper<std::__1::__bit_iterator<Iterator,true>, true>{
+   typedef std::__1::__bit_iterator<Iterator, false> iterator;
+   typedef std::__1::__bit_iterator<Iterator, true> const_iterator;
+};
+template <typename Iterator>
+struct iterator_cross_const_helper<std::__1::__bit_iterator<Iterator,false>, true>{
+   typedef std::__1::__bit_iterator<Iterator, false> iterator;
+   typedef std::__1::__bit_iterator<Iterator, true> const_iterator;
+};
+
+#endif
+
 template <typename IteratorRef, typename Container>
 struct random_iterator_assoc_adapter {
    typedef IteratorRef argument_type;

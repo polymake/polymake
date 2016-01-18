@@ -15,14 +15,16 @@
 
 use Cwd;
 
-use vars qw($TOP $SourceDir $CxxOpt $CxxDebug $libxml2Cflags $libxml2Libs);
+use vars qw($TOP $SourceDir $CxxOpt $CxxDebug $libxml2Cflags $AddLibs $AddLDflags);
 
 my @args=splice @ARGV;
 foreach (@args) {
    /^(\w+)=(.*)/ and ${$1}=$2;
 }
 
-my @sources=map { m{([^/]+)$} } glob "$SourceDir/*.{xs,xxs,PL}";
+my @sources=qw{ Makefile.PL CPlusPlus.xxs RuleGraph.xxs SchedulerHeap.xxs
+                Customize.xs Ext.xs Object.xs Overload.xs Poly.xs
+                RefHash.xs Scope.xs Shell.xs Struct.xs XMLfile.xs namespaces.xs };
 
 my $changed=!-f "Makefile";
 opendir D, ".";
@@ -56,7 +58,7 @@ sub MY::makefile {
    $text =~ m{\$\(PERLRUN\) +Makefile\.PL};
    substr($text,$+[0],0) .= join("", map { /=/; " $`='$''"} @args);
    $text .= <<'.';
-	$(NOECHO) $(MAKE) $(MAKECMDGOALS) GlueObjects="$(GlueObjects)"
+	$(NOECHO) $(MAKE) $(MAKECMDGOALS) CXXObjects="$(CXXObjects)"
 .
 }
 
@@ -118,15 +120,19 @@ if ($coverage) {
    $otherLDflags = $coverage;
 }
 
+# We need to add all library search paths to LIBS, otherwise MakeMaker removes them if they
+# cannot be found in the system library paths.
+my $libpaths = join " ", grep { /^-L/ } split(/\s+(?=-)/,$AddLDflags);
+
 WriteMakefile(
     NAME        => 'Polymake::Ext',
     macro       => { InstallTop => $TOP, SourceDir => $SourceDir, CC_FILES => "@CCFiles" },
     C           => \@CFiles,
     H           => [ map { "\$(InstallTop)/include/core/polymake/perl/$_" } qw(Ext.h constants.h) ],
-    LDFROM      => '$(O_FILES) $(GlueObjects)',
+    LDFROM      => '$(O_FILES) $(CXXObjects)',
     clean       => { FILES => '$(CC_FILES)'.($coverage && ' *.gcno *.gcda') },
     dynamic_lib => { INST_DYNAMIC_DEP => '$(LDFROM)', defined($otherLDflags) ? (OTHERLDFLAGS => $otherLDflags) : () },
-    LIBS        => [ $libxml2Libs ],
+    LIBS        => "$libpaths $AddLibs",
     DEFINE      => "-DPerlVersion=$numvers -Wno-nonnull".($coverage && ' -DPMCollectCoverage=1'),
     INC         => "-I$TOP/include/core",
     LIB         => "\$(InstallDir)/perlx/$Config::Config{version}",

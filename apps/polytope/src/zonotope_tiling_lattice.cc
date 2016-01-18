@@ -61,12 +61,19 @@ perl::Object zonotope_tiling_lattice(perl::Object P, perl::OptionSet options)
 }
 
 UserFunctionTemplate4perl("# @category Geometry"
-			  "# Calculates a generating set for a tiling lattice for P, "
+                          "# Calculates a generating set for a tiling lattice for P, "
                           "# i.e., a lattice L such that P + L tiles the affine span of P. "
-			  "# @param Polytope P the zonotope"
-                          "# @option lattice_origin_is_vertex Bool true if the origin of the tiling lattice should be a vertex of P; default false, ie, the origin will be the barycenter of P"
-			  "# @return AffineLattice",
-			  "zonotope_tiling_lattice<E>(Polytope<E> { lattice_origin_is_vertex => 0  } )");
+                          "# @param Polytope P the zonotope"
+                          "# @option Bool lattice_origin_is_vertex true if the origin of the tiling lattice should be a vertex of P; default false, ie, the origin will be the barycenter of P"
+                          "# @return AffineLattice"
+                          "# @example This determines a tiling lattice for a parallelogram with the origin as its vertex barycenter and prints it base vectors:"
+                          "# > $M = new Matrix([[1,1,0],[1,1,1]]);"
+                          "# > $p = zonotope($M);"
+                          "# > $A = zonotope_tiling_lattice($p);"
+                          "# > print $A->BASIS;"
+                          "# | 0 -1 -1"
+                          "# | 0 0 1",
+                          "zonotope_tiling_lattice<E>(Polytope<E> { lattice_origin_is_vertex => 0  } )");
     } }
 
 // Local Variables:

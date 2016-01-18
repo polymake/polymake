@@ -500,8 +500,7 @@ INCLUDE
 # @topic objects/Core::Object/methods/apply_rule ($)
 # Executes the specified production rule.
 # If the object does not possess enough initial properties to provide all required
-# rule sources, or any of its preconditions are not satisfied, an exception is
-# raised.
+# rule sources, or any of its preconditions are not satisfied, an exception is raised.
 # @param String pattern : either a label (see [[prefer]]) or a rule header.
 #        The rule header must exactly match the definition in the rulefile,
 #        up to white spaces around property names.
@@ -510,12 +509,44 @@ INCLUDE
 #        (including the rules supplying the source properties) is chosen.
 
 
+# @topic objects/Core::Object/methods/set_as_default ()
+# Makes the multiple subobject instance the default one.
+# Physically this means moving it at the 0-th position in the instance list.
+#
+# The instance can be selected by give() or PROPERTY_NAME access method, e.g.:
+#
+#   by current position:
+#   > $p->TRIANGULATION->[$i]->set_as_default;
+#
+#   by subobject name:
+#   > $p->TRIANGULATION("placing")->set_as_default;
+#
+#   by checking for a specific property:
+#   > $p->TRIANGULATION(sub { defined($_->lookup("WEIGHTS")) })->set_as_default;
+#
+#   by analyzing all instances and picking the best one:
+#   > for (@{$p->TRIANGULATION}) { assign_min($min_facets, $_->N_FACETS) and $t=$_ } $t->set_as_default;
 
-# @topic objects/Core::Object/methods/list_properties
-# List all known properties.
+# @topic objects/Core::Object/methods/set_as_default_now ()
+# Temporarily make the multiple subobject instance the default one.
+# The change is automatically reverted at the end of the current user cycle.
+# Usage as [[set_as_default]].
+
+# @topic objects/Core::Object/methods/list_names ()
+# Returns the list of names of multiple subobject instances.
+# This method can be applied to any instance.
+# For a normal (non-multiple) subobject or a top-level object just returns its name.
+
+
+# @topic objects/Core::Object/methods/list_properties (;$)
+# Returns the list of names of all properties kept in the object.
+# @param Bool deep : recursively descend in all subobjects
+#                    and list their properties in dotted notation.
+
 
 # @topic objects/Core::Object/methods/remove (String+)
-# Remove the property //prop// from the object.  The property must be //mutable//, //multiple//,
+# Remove the property //prop// from the object.
+# The property must be //mutable//, //multiple//,
 # or unambiguously reconstructible from the remaining properties.
 # @param String prop : property name or a path to a property in a subobject in dotted notation,
 #                      Several properties may be removed at once.

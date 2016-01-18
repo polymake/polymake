@@ -88,9 +88,7 @@ object Polytope {
 # A topological quotient space obtained from a polytope by identifying faces.
 property QUOTIENT_SPACE : QuotientSpace : multiple;
 
-rule QUOTIENT_SPACE.DIM : COMBINATORIAL_DIM {
-    $this->QUOTIENT_SPACE->DIM = $this->COMBINATORIAL_DIM;
-}
+rule QUOTIENT_SPACE(any).DIM = COMBINATORIAL_DIM;
 
 }
 
@@ -163,8 +161,10 @@ rule QUOTIENT_SPACE.F_VECTOR : QUOTIENT_SPACE.FACES {
     $this->QUOTIENT_SPACE->F_VECTOR = \@n_vector;
 }
 
-rule QUOTIENT_SPACE.SIMPLICIAL_COMPLEX : VERTICES_IN_FACETS, HASSE_DIAGRAM, QUOTIENT_SPACE.IDENTIFICATION_GROUP {
-    my $bs = iterated_barycentric_subdivision($this, 2, geometric_realization=>0 );
+rule QUOTIENT_SPACE.SIMPLICIAL_COMPLEX(new).FACETS, QUOTIENT_SPACE.SIMPLICIAL_COMPLEX(new).VERTEX_LABELS, \
+     QUOTIENT_SPACE.SIMPLICIAL_COMPLEX(new).PURE,  QUOTIENT_SPACE.SIMPLICIAL_COMPLEX(new).DIM \
+     : VERTICES_IN_FACETS, HASSE_DIAGRAM, QUOTIENT_SPACE.IDENTIFICATION_GROUP {
+    my $bs = iterated_barycentric_subdivision($this, 2, geometric_realization=>0);
     $this->QUOTIENT_SPACE->SIMPLICIAL_COMPLEX = topaz::bs2quotient($this, $bs); 
 }
 
@@ -174,7 +174,8 @@ rule QUOTIENT_SPACE.SIMPLICES : COMBINATORIAL_DIM, VERTICES, QUOTIENT_SPACE.SYMM
 
 # @category Combinatorics
 # The equivalence classes of maximal-dimensional simplices in the interior and boundary under a symmetry group 
-rule QUOTIENT_SPACE.REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, QUOTIENT_SPACE.REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES : COMBINATORIAL_DIM, RAYS_IN_FACETS, RAYS, QUOTIENT_SPACE.SYMMETRY_GROUP.GENERATORS {
+rule QUOTIENT_SPACE.REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, QUOTIENT_SPACE.REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES \
+     : COMBINATORIAL_DIM, RAYS_IN_FACETS, RAYS, QUOTIENT_SPACE.SYMMETRY_GROUP.GENERATORS {
     my $pair = representative_interior_and_boundary_ridges($this);
     $this->QUOTIENT_SPACE->REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES = $pair->first;
     $this->QUOTIENT_SPACE->REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES = $pair->second;
@@ -210,20 +211,18 @@ rule QUOTIENT_SPACE.SIMPLEXITY_LOWER_BOUND : COMBINATORIAL_DIM, RAYS, RAYS_IN_FA
 
 }
 
-sub write_quotient_space_simplexity_ilp;
-
 # @category Quotient spaces
 # outputs a linear program whose optimal value is a lower bound for the number of simplices 
 # necessary to triangulate the polytope in such a way that its symmetries respect the triangulation
 # of the boundary.
 user_function write_quotient_space_simplexity_ilp<Scalar>(Polytope<Scalar> $) {
-    my $q = shift;
-    my $outfilename = shift;
+    my ($q, $outfilename) = @_;
     return quotient_space_simplexity_ilp($q->COMBINATORIAL_DIM, $q->VERTICES, $q->VERTICES_IN_FACETS, $q->QUOTIENT_SPACE->REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES, $q->QUOTIENT_SPACE->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, $q->VOLUME, $q->QUOTIENT_SPACE->COCIRCUIT_EQUATIONS, $q->QUOTIENT_SPACE->SYMMETRY_GROUP->GENERATORS, $q->QUOTIENT_SPACE->IDENTIFICATION_GROUP->GENERATORS, filename => $outfilename);
 }
 
 
 # Local Variables:
 # mode: perl
-# c-basic-offset:3
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
 # End:

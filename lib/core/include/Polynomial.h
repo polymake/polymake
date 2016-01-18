@@ -1218,7 +1218,7 @@ public:
    monomial_type lm() const
    {
       if (trivial())
-         return monomial_type(monomial_type::empty_value(data->ring));
+         return monomial_type(monomial_type::empty_value(data->ring), data->ring);
       else
          return monomial_type(find_lex_lm()->first, data->ring);
    }
@@ -1227,7 +1227,7 @@ public:
    monomial_type lm(const GenericMatrix<Matrix, exponent_type>& order) const
    {
       if (trivial())
-         return monomial_type(monomial_type::empty_value(data->ring));
+         return monomial_type(monomial_type::empty_value(data->ring),data->ring);
       else
          return monomial_type(find_lm(cmp_monomial_ordered<Matrix>(order.top()))->first, data->ring);
    }

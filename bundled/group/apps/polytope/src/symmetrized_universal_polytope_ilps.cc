@@ -89,11 +89,11 @@ perl::Object symmetrized_foldable_max_signature_ilp(int d,
    }
    cerr << "volume_vect: " << volume_vect << endl;
    
-   perl::Object lp(perl::ObjectType::construct<Rational>("LinearProgram"));
+   perl::Object lp("LinearProgram<Rational>");
    lp.attach("INTEGER_VARIABLES") << Array<bool>(n2,true);
    lp.take("LINEAR_OBJECTIVE") << Vector<Rational>(0|volume_vect.slice(1));
 
-   perl::Object q(perl::ObjectType::construct<Rational>("Polytope"));
+   perl::Object q("Polytope<Rational>");
    q.take("FEASIBLE") << true;
    q.take("INEQUALITIES") << Inequalities;
    q.take("EQUATIONS") << Equations;
@@ -131,8 +131,8 @@ UserFunction4perl("# @category Triangulations, subdivisions and volume"
                   "# @param Rational volume the volume of the convex hull "
                   "# @param Array<Array<Int>> generators the generators of the symmetry group "
                   "# @param SparseMatrix symmetrized_foldable_cocircuit_equations the matrix of symmetrized cocircuit equations "
-                  "# @option filename a name for a file in .lp format to store the linear program"
-                  "# @return an ILP that provides the result",
+                  "# @option String filename a name for a file in .lp format to store the linear program"
+                  "# @return LinearProgram<Rational> an ILP that provides the result",
                   &symmetrized_foldable_max_signature_ilp,
                   "symmetrized_foldable_max_signature_ilp($ Matrix Array<boost_dynamic_bitset> $ Array<Array<Int>> SparseMatrix { filename=>'' })");
 
@@ -142,7 +142,7 @@ UserFunction4perl("# @category Triangulations, subdivisions and volume"
                   "# @param Matrix points the input points or vertices "
                   "# @param Rational volume the volume of the convex hull "
                   "# @param SparseMatrix cocircuit_equations the matrix of cocircuit equations "
-                  "# @return the optimal value of an LP that provides a bound",
+                  "# @return Integer the optimal value of an LP that provides a bound",
                   &symmetrized_foldable_max_signature_upper_bound,
                   "symmetrized_foldable_max_signature_upper_bound($ Matrix Array<boost_dynamic_bitset> $ Array<Array<Int>> SparseMatrix { filename=>'' })");
 

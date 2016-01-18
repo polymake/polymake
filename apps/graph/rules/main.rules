@@ -16,17 +16,14 @@
 # @topic application
 #
 # The application graph deals with directed and undirected graphs. They can be
-# defined abstractly as a set of nodes and [[EDGES]] or for instance as the [[polytope::Polytope::GRAPH|vertex-edge
-# graph]] of a polytope.
+# defined abstractly as a set of nodes and [[EDGES]] or as part of a larger structure
+# for instance as the [[polytope::Polytope::GRAPH|vertex-edge graph]] of a polytope.
 
 IMPORT common
 
-
 file_suffix poly
 
-
-HELP
-	help.rules
+HELP help.rules
 
 
 # these rules are intrinsic: they don't depend on any external software to be installed separately

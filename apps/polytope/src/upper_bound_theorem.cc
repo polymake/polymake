@@ -45,7 +45,11 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# Essentially this lets you read off all possible entries of the [[H_VECTOR]] and the [[F_VECTOR]]."
                   "# @param Int d the dimension"
                   "# @param Int n the number of points"
-                  "# @return Polytope",
+                  "# @return Polytope"
+                  "# @example This produces the combinatorial data as mentioned above for 5 points in dimension 3 and prints the h-vector:" 
+                  "# > $p = upper_bound_theorem(3,5);"
+                  "# > print $p->H_VECTOR;"
+                  "# | 1 2 2 1",
                   &upper_bound_theorem, "upper_bound_theorem($$)");
 } }
 

@@ -57,9 +57,7 @@ object Cone<Rational> {
 
    rule libnormaliz.ehrhartpoly: H_STAR_VECTOR, HILBERT_SERIES : RAYS | INPUT_RAYS {
       my @list = normaliz_compute($this,h_star_vector=>1,hilbert_series=>1);
-      $this->H_STAR_VECTOR = $list[0]->dim < $this->RAYS->cols ? 
-         $list[0] | zero_vector<Integer>($this->RAYS->cols - $list[0]->dim) :
-         $list[0];
+      $this->H_STAR_VECTOR = $list[0];
       $this->HILBERT_SERIES = $list[1];
    }
    precondition : defined(MONOID_GRADING);
@@ -68,9 +66,7 @@ object Cone<Rational> {
    
    rule libnormaliz.ehrhartpoly: H_STAR_VECTOR, HILBERT_SERIES : FACETS | INEQUALITIES , LINEAR_SPAN | EQUATIONS {
       my @list = normaliz_compute($this,from_facets=>1,dual_algorithm=>1,h_star_vector=>1,hilbert_series=>1);
-      $this->H_STAR_VECTOR = $list[0]->dim < $this->FACETS->cols ? 
-         $list[0] | zero_vector<Integer>($this->FACETS->cols - $list[0]->dim) :
-         $list[0];
+      $this->H_STAR_VECTOR = $list[0];
       $this->HILBERT_SERIES = $list[1];
    }
    precondition : defined(MONOID_GRADING);

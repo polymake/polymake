@@ -43,7 +43,7 @@ declare $separator="-----\n";
 declare $store_provenience=0;
 
 sub full_path {
-   my $self=shift;
+   my ($self)=@_;
    my $path=$self->name;
    while (defined ($self=$self->parent)) {
       $path=$self->name."/$path";
@@ -55,12 +55,14 @@ sub full_path {
 sub help_topic { shift }
 
 sub top {
-   my $self=shift;
+   my ($self)=@_;
    while (defined ($self->parent)) {
       $self=$self->parent;
    }
    $self
 }
+
+sub spez_topic { undef }
 
 #################################################################################
 my $stripped=qr{ [ \t]* (.*(?<!\s)) [ \t]*\n }xm;
@@ -69,6 +71,14 @@ sub add {
    my ($self, $path, $text, $signature)=@_;
    unless (is_ARRAY($path)) {
       $path=[ split m'/', $path ];
+   }
+   my $defined_at;
+   if ($store_provenience) {
+      my @where=(caller)[1,2];
+      if ($where[0] =~ /InteractiveHelp\.pm/) {
+         @where=(caller(1))[1,2];
+      }
+      $defined_at=join(", line ", @where);
    }
 
    my ($cat, @related, %annex, $top);
@@ -104,8 +114,15 @@ sub add {
             my ($tag, $value)=(lc($1), $2);
             sanitize_help($value);
 
-            if ($tag eq "author" or $tag eq "display") {
+            if ($tag eq "author" or $tag eq "display" or $tag eq "header") {
                $annex{$tag}=$value;
+
+            } elsif ($tag eq "super") {
+               if ($value =~ /^\s* ($type_re) \s*$/xo) {
+                  $annex{$tag}=$1;
+               } else {
+                  croak( "help tag \@super '$value' does not refer to a valid type" );
+               }
 
             } elsif ($tag eq "return") {
                if ($value =~ s/^\s* ($type_re) \s*//xos) {
@@ -122,7 +139,6 @@ sub add {
                } else {
                   croak( "help tag \@tparam '$value' does not start with a valid name" );
                }
-               $annex{function}=0;
 
             } elsif ($tag eq "options") {
                if ($value =~ /^\s* %($qual_id_re) \s*$/xo) {
@@ -165,9 +181,10 @@ sub add {
                   croak( "help tag \@$tag '$value' does not start with valid type and name" );
                }
                $annex{function}=0 if $tag eq "option";
-
             } elsif ($tag eq "depends") {
-               push @{$annex{$tag}}, $value;
+               $annex{$tag}= $value;
+            } elsif ($tag eq "example") {
+               push @{$annex{"examples"}}, $value;
             } else {
                croak( "unknown help tag \@$tag" );
             }
@@ -206,9 +223,7 @@ sub add {
          } else {
             push @{$self->toc}, $_;
             $self=$self->topics->{$_}=new Help($self, $_);
-            if ($store_provenience) {
-               $self->defined_at=join(", line ", (caller)[1,2]);
-            }
+            $self->defined_at=$defined_at;
          }
       }
 
@@ -220,8 +235,12 @@ sub add {
          if (length($self->text)==0) {
             # the category has not been introduced so far, let's look in the global items...
             $top ||= $self->top;
+            my @app_being_loaded;
+            if (is_object($INC[0]) && instanceof Application($INC[0]) && $INC[0]->help != $top) {
+               push @app_being_loaded, $INC[0]->help;
+            }
             my ($specific_cat_group, $any_node, $matching_cat);
-            foreach my $app_top_help ($top, @{$top->related}) {
+            foreach my $app_top_help ($top, @app_being_loaded, @{$top->related}) {
                if ($specific_cat_group=$app_top_help->topics->{$self->parent->name} and
                    $any_node=$specific_cat_group->topics->{any} and
                    $matching_cat=$any_node->topics->{$self->name}) {
@@ -235,7 +254,7 @@ sub add {
                }
             }
             if (length($self->text)==0) {
-               warn_print("undocumented category ", $self->full_path, " at ", join(", line ", (caller)[1,2]));
+               croak( "undocumented category ", $self->full_path );
             }
          }
 
@@ -272,6 +291,7 @@ sub add {
             $self=$self->topics->{$topic}=new Help($self, $topic);
             $h->name="overload#0";
             $self->topics->{$h->name}=$h;
+            weak($h->parent=$self);
             $self->text=$h->text;
             $self->annex->{function}=delete $h->annex->{function};
             $topic="overload#1";
@@ -283,9 +303,8 @@ sub add {
 
       $self=($self->topics->{$topic}=new Help($self, $topic, $text));
       $self->category= $signature eq "category";
-      if ($store_provenience) {
-         $self->defined_at=join(", line ", (caller)[1,2]);
-      }
+      $self->defined_at=$defined_at;
+
    } else {
       if (length($self->text)) {
          $self->text .= $separator . $text;
@@ -299,6 +318,11 @@ sub add {
    $self;
 }
 #################################################################################
+sub add_tparams {
+   my $self=shift;
+   $self->annex->{tparam} //= [ map { [ $_ ] } @_ ];
+}
+#################################################################################
 *clean_text=\&InteractiveCommands::clean_text;
 
 sub cleaned_text {
@@ -310,11 +334,16 @@ sub cleaned_text {
 # for functions
 sub display_function_text {
    my ($self, $parent, $full)=@_;
-   my ($tparams, $params, $options, $mandatory, $ellipsis, $return, $depends)=@{$self->annex}{qw(tparam param options mandatory ellipsis return depends)};
+   my ($tparams, $params, $options, $mandatory, $ellipsis, $return, $depends, $examples)=@{$self->annex}{qw(tparam param options mandatory ellipsis return depends examples)};
 
    my $text=($parent // $self)->name;
    if (defined $tparams) {
-      $text .= "<" . join(", ", map { $_->[0] } @$tparams) . ">";
+      if (@{$tparams->[0]} > 1) {
+         $text .= "<" . join(", ", map { $_->[0] } @$tparams) . ">";
+      } else {
+         # undescribed type parameters just for checking purposes
+         undef $tparams;
+      }
    }
    $text .= "(";
    if (defined $params) {
@@ -341,7 +370,7 @@ sub display_function_text {
    $text .= "\n\n";
    
    if ($full) {
-      my $comment=$self->text || $parent->text;
+      my $comment=display_spez($self) . ($self->text || $parent->text);
       clean_text($comment);
       $text .= $comment;
 
@@ -411,19 +440,16 @@ sub display_function_text {
          $comment =~ s/\n[ \t]*(?=\S)/\n    /g;
          $text .= "\nReturns $return->[0] $comment\n";
       }
+
       if (defined $depends) {
-        $text .= "Depends on:\n  ";
-        my $i = @$depends;
-        foreach (@$depends) { 
-          if(@$depends > 1) {$text .= "(";}
-          clean_text($_);
-          $text .= join(", ", split(/\s+/, $_));
-          if($i >= 1 && @$depends > 1) {$text .= ")"};
-          if($i > 1 ) {$text .= "  or  "};
-          --$i
-        }
-      $text .= "\n";
+         clean_text($depends);
+         $text .= "Depends on:\n  $depends\n";
       }
+
+      if (defined $examples) {
+         $text .= display_examples_text($examples);
+      }
+
    } else {
       # brief
       if (defined $options) {
@@ -466,42 +492,70 @@ sub display_keys_text {
 
 sub display_text {
    my $self=shift;
+   my $full;
+   if (@_) {
+      $full=shift;
+      $_[0]=!$full;
+   } else {
+      $full=1;
+   }
    if (defined (my $ovcnt=$self->annex->{function})) {
-      my $full;
-      if (@_) {
-         $full=shift;
-         $_[0]=!$full;
-      } else {
-         $full=1;
-      }
       if ($ovcnt) {
          join($separator, map { $self->topics->{"overload#$_"}->display_function_text($self,$full) } 0..$ovcnt);
       } else {
          display_function_text($self,$self,$full);
       }
    } else {
-      my $text=$self->annex->{header} . $self->text;
+      my $text=$self->annex->{header} . display_spez($self) . $self->text;
       if (length($text)) {
          clean_text($text);
       }
       if (exists $self->annex->{keys}) {
          $text .= "\n" . display_keys_text($self);
       }
-      if (defined (my $depends=$self->annex->{depends})) {
-         $text .= "Depends on:\n  ";
-         my $i = @$depends;
-         foreach (@$depends) { 
-            if (@$depends > 1) {$text .= "(";}
-            clean_text($_);
-            $text .= join(", ", split(/\s+/, $_));
-            if ($i >= 1 && @$depends > 1) {$text .= ")"};
-            if ($i > 1 ) {$text .= "  or  "};
-            --$i
+
+      if ($full) {
+         if (defined (my $depends=$self->annex->{depends})) {
+            clean_text($depends);
+            $text .= "Depends on:\n  $depends\n";
+         }
+
+         if (defined (my $examples=$self->annex->{examples})) {
+            $text .= display_examples_text($examples);
          }
       }
       $text
    }
 }
+
+sub display_spez {
+   my ($self)=@_;
+   if (defined (my $spez=$self->annex->{spez})) {
+      " Only defined for [[" . $spez->name . "]].\n"
+   }
+}
+
+sub display_examples_text {
+   my ($examples) = @_;
+   my $text = @$examples > 1 ? "Examples:\n" : "Example:\n";
+   my $prefix = @$examples > 1 ? "*) " : "   ";
+   foreach (@$examples) {
+      my $i = 0;
+      foreach my $line (split(/\n/, $_)) {
+         $text .= $i++ ? "  " : $prefix ;
+         if ($line =~ /^\s*\|/) {
+            $text .= " ".$'."\n";
+         } elsif ($line =~ /^\s*>/) {
+            $text .= " ".$line."\n";
+         } else {
+            clean_text($line);
+            $text .= $line;
+         }
+      }
+   }
+   $text
+}
+
 #################################################################################
 sub descend {
    my $self=shift;
@@ -683,8 +737,35 @@ sub proximity {
 }
 
 #################################################################################
+sub new_specialization {
+   my ($self, $spez)=@_;
+   my $spez_topic=$self->find("specializations", $spez->name) //
+                  $self->add([ "specializations", $spez->name ], "Unnamed ".($spez->full_spez_for ? "full" : "partial")." specialization of ".$self->name."\n");
+   new Specialization($self, $spez_topic);
+}
+#################################################################################
 
 redefine Help;
+
+#################################################################################
+
+package _::Specialization;
+
+use Polymake::Struct (
+   [ new => '$$' ],
+   [ '$generic_topic' => '#1' ],
+   [ '$spez_topic' => '#2' ],
+);
+
+sub add {
+   my $self=shift;
+   my $topic=$self->generic_topic->add(@_);
+   $topic->annex->{spez}=$self->spez_topic;
+   $topic
+}
+
+sub find { () }
+sub list_completions { () }
 
 1
 

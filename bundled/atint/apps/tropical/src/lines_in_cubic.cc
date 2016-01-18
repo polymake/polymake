@@ -50,9 +50,9 @@ namespace polymake { namespace tropical {
 		//First, we compute the divisor of f
 		perl::Object r3 = projective_torus<Max>(3,1); 
 		perl::Object ratfct = CallPolymakeFunction("rational_fct_from_affine_numerator",f);	
-		dbgtrace << "Computing divisor" << endl;
+		//dbgtrace << "Computing divisor" << endl;
 		perl::Object X = CallPolymakeFunction("divisor",r3,ratfct);
-		dbgtrace << "Done." << endl;
+		//dbgtrace << "Done." << endl;
 		perl::Object lindom = ratfct.give("DOMAIN");
 		Matrix<Rational> lindom_rays = lindom.give("VERTICES");
 			lindom_rays = tdehomog(lindom_rays);
@@ -372,7 +372,7 @@ namespace polymake { namespace tropical {
 					bool isCompatibleAtZero = false;
 					Vector<Rational> vertexAtZero;
 					Vector<Rational> mdistAtZero;
-					bool spanAtZero;
+					bool spanAtZero = false;
 					if(approved_elfamilies[el].vertexAtZero == fam.vertexAtZero) {
 						isCompatibleAtZero = true;
 						vertexAtZero = fam.vertexAtZero;
@@ -407,7 +407,7 @@ namespace polymake { namespace tropical {
 					bool isCompatibleAwayZero = false;
 					Vector<Rational> vertexAwayZero;
 					Vector<Rational> mdistAwayZero;
-					bool spanAwayZero;
+					bool spanAwayZero = false;
 					if(approved_elfamilies[el].vertexAwayZero == fam.vertexAwayZero) {
 						isCompatibleAwayZero = true;
 						vertexAwayZero = fam.vertexAwayZero;
@@ -607,7 +607,7 @@ namespace polymake { namespace tropical {
 		// If all of it lies in X, the 2-dim cell is just the vertex + the two rays. If not, let
 		// w be the end vertex of the line. Then we have two 2-dim. cells: conv(vertex,w) + each of the rays
 		for(int ivert = 0; ivert < vertex_line.dim(); ivert++) {
-			perl::Object var(perl::ObjectType::construct<Max>("Cycle"));
+			perl::Object var("Cycle<Max>");
 			Matrix<Rational> var_rays = degree / vertex_line[ivert].vertex ;
 			Vector<Set<int> > var_cones;
 			//Find all rays that are NOT involved in a 2-dim cell
@@ -642,8 +642,10 @@ namespace polymake { namespace tropical {
 				var.take("WEIGHTS") << ones_vector<Integer>(var_cones.dim());
 				result.add("LIST_ISOLATED_NO_EDGE",var);
 			}
-			else 
+			else { 
+				var.take("PURE") << false;
 				result.add("LIST_FAMILY_FIXED_VERTEX", var);
+			}
 		}
 
 		//Create vertex_family objects: Find the direction spanned by the family and only add the remaining three
@@ -655,9 +657,10 @@ namespace polymake { namespace tropical {
 			for(int r = 2; r < 5; r++) {
 				var_cones |= (sequence(0,2) + r);
 			}
-			perl::Object var(perl::ObjectType::construct<Max>("Cycle"));
+			perl::Object var("Cycle<Max>");
 			var.take("VERTICES") << thomog(var_rays);
 			var.take("MAXIMAL_POLYTOPES") << var_cones;
+			var.take("PURE") << false;
 			result.add("LIST_FAMILY_MOVING_VERTEX", var);
 
 		}
@@ -667,7 +670,7 @@ namespace polymake { namespace tropical {
 		//Create edge_lines
 		// Two-dimensional cells at each end are computed as for vertex_line
 		for(int el = 0; el < edge_line.dim(); el++) {
-			perl::Object var(perl::ObjectType::construct<Max>("Cycle"));
+			perl::Object var("Cycle<Max>");
 			Matrix<Rational> var_rays = edge_line[el].vertexAtZero / edge_line[el].vertexAwayZero / degree;
 			Vector<Set<int> > var_cones;
 			var_cones |= sequence(0,2);
@@ -709,8 +712,10 @@ namespace polymake { namespace tropical {
 
 			var.take("VERTICES") << thomog(var_rays);
 			var.take("MAXIMAL_POLYTOPES") << var_cones;
-			if(edge_line[el].spanAtZero || edge_line[el].spanAwayZero) 
+			if(edge_line[el].spanAtZero || edge_line[el].spanAwayZero) {
+				var.take("PURE") << false;
 				result.add("LIST_FAMILY_FIXED_EDGE",var);
+			}
 			else {
 				var.take("WEIGHTS") << ones_vector<Integer>(var_cones.dim());
 				result.add("LIST_ISOLATED_EDGE",var);
@@ -720,7 +725,7 @@ namespace polymake { namespace tropical {
 
 		//Created edge families
 		for(int ef = 0; ef < edge_family.dim(); ef++) {
-			perl::Object var(perl::ObjectType::construct<Max>("Cycle"));
+			perl::Object var("Cycle<Max>");
 			Matrix<Rational> var_rays = degree;
 			Vector<Set<int> > var_cones(0);
 			for(int eg = 0; eg < edge_family[ef].edgesAtZero.dim(); eg++) {
@@ -751,7 +756,7 @@ namespace polymake { namespace tropical {
 
 			var.take("VERTICES") << thomog(var_rays);
 			var.take("MAXIMAL_POLYTOPES") << var_cones;
-
+			var.take("PURE") << false;
 			result.add("LIST_FAMILY_MOVING_EDGE",var);
 		}
 

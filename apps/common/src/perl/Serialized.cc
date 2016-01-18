@@ -17,12 +17,12 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/Polynomial.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/RationalFunction.h"
 #include "polymake/Ring.h"
 #include "polymake/TropicalNumber.h"
-#include "polymake/PuiseuxFraction.h"
 #include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
@@ -43,5 +43,8 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::Serialized__PuiseuxFraction_A_Max_I_Rational_I_Rational_Z", pm::Serialized< PuiseuxFraction< Max, Rational, Rational > >);
    Class4perl("Polymake::common::Serialized__RationalFunction_A_Rational_I_Rational_Z", pm::Serialized< RationalFunction< Rational, Rational > >);
    Class4perl("Polymake::common::Serialized__Monomial_A_Rational_I_Int_Z", pm::Serialized< Monomial< Rational, int > >);
+   Class4perl("Polymake::common::Serialized__Ring_A_PuiseuxFraction_A_Min_I_Rational_I_Rational_Z_I_Rational_Z", pm::Serialized< Ring< PuiseuxFraction< Min, Rational, Rational >, Rational > >);
+   Class4perl("Polymake::common::Serialized__Ring_A_PuiseuxFraction_A_Min_I_PuiseuxFraction_A_Min_I_Rational_I_Rational_Z_I_Rational_Z_I_Rational_Z", pm::Serialized< Ring< PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational >, Rational > >);
+   Class4perl("Polymake::common::Serialized__Ring_A_UniPolynomial_A_Rational_I_Int_Z_I_Int_Z", pm::Serialized< Ring< UniPolynomial< Rational, int >, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -14,6 +14,16 @@
 #-------------------------------------------------------------------------------
 
 
+# creates an array of colors to distinguish generators and
+# pseudo-vertices of a tropical cone
+sub choose_colors($$$$) {
+  my ($points,$pseudovertices,$p_color,$pv_color)=@_;
+  my $indices = points_in_pseudovertices($points,$pseudovertices);
+   
+  my @pseudovertex_colors = map {$indices->contains($_) ? $pv_color : $p_color} (0..$pseudovertices->rows()-1);
+  return @pseudovertex_colors;
+} 
+
 package Visual::TropicalCone;
 use Polymake::Struct (
 	[ '@ISA' => 'Container' ],
@@ -22,19 +32,28 @@ use Polymake::Struct (
 
 package Visual::Color;
 
+custom $conegenerators="255 255 0"; 
+
 options %Visual::TropicalCone::decorations=(
 	%Visual::Polygons::decorations,
-
+    
 	# Flexible<Int> The visualization is always in affine coordinates. This chooses the chart.
 	Chart => 0,
+    
+    # Flexible<Color> color of the finite [[POINTS]] of a cone
+    GeneratorColor => $Visual::Color::conegenerators,
+
+    # Flexible<Color> color of the finite [[PSEUDOVERTICES]] of a cone
+    PseudovertexColor => $Visual::Color::vertices,
 );
 
 object Cone {
 
+
 # @category Visualization
 # Visualize the subdivision of the cone induced by [[POINTS]].
 # @options %Visual::TropicalCone::decorations
-# @return Visual::TropicalCone
+# @return fan::Visual::PolyhedralFan
 
 	user_method VISUAL(%Visual::TropicalCone::decorations) {
 		my ($this, $decor)=@_;
@@ -47,17 +66,23 @@ object Cone {
 			$used_pvs += $this->CONE_MAXIMAL_COVECTOR_CELLS->row($i);
 		}
 
-		my $vertices = tdehomog( $this->PSEUDOVERTICES->minor($used_pvs,All),$chart);
+		my $vertices = new Matrix<Scalar>($this->PSEUDOVERTICES->minor($used_pvs,All));
 		my $cells = $this->CONE_MAXIMAL_COVECTOR_CELLS->minor(All, $used_pvs);
 
+                my @pseudovertex_colors=choose_colors($this->POINTS,$vertices,$$decor{"PseudovertexColor"},$$decor{"GeneratorColor"});
+
+                $vertices = tdehomog($vertices,$chart);
+
+                delete $$decor{"GeneratorColor"};
+                delete $$decor{"PseudovertexColor"};
 		my $p = new fan::PolyhedralComplex(VERTICES=>$vertices, MAXIMAL_POLYTOPES=>$cells);
-		$p->VISUAL($decor);
+		$p->VISUAL(VertexColor=>\@pseudovertex_colors,$decor);
 	}
 
 # @category Visualization
 # Visualize the subdivision of the torus induced by [[POINTS]]. 
 # @options %Visual::TropicalCone::decorations
-# @return Visual::TropicalCone
+# @return fan::Visual::PolyhedralFan
 	user_method VISUAL_SUBDIVISION(%Visual::TropicalCone::decorations) {
 		my ($this,$decor) = @_;
 
@@ -66,15 +91,17 @@ object Cone {
 
 		my $vertices = tdehomog($this->PSEUDOVERTICES,$chart);
 		my $cells = $this->MAXIMAL_COVECTOR_CELLS;
-
+                my @pseudovertex_colors=choose_colors($this->POINTS,$this->PSEUDOVERTICES,$$decor{"PseudovertexColor"},$$decor{"GeneratorColor"});
+                delete $$decor{"GeneratorColor"};
+                delete $$decor{"PseudovertexColor"};
 		my $p = new fan::PolyhedralComplex(VERTICES=>$vertices, MAXIMAL_POLYTOPES=>$cells);
-		$p->VISUAL($decor);
+		$p->VISUAL(VertexColor=>\@pseudovertex_colors,$decor);
 
 	}
 
 # @category Visualization
 # Visualize the arrangement of hyperplanes with apices in the [[POINTS]] of the tropical polytope.
-# @return Visual::PolyhedralComplex
+# @return fan::Visual::PolyhedralFan
 	user_method VISUAL_HYPERPLANE_ARRANGEMENT(%Visual::Polygons::decorations) : VERTICES, PROJECTIVE_AMBIENT_DIM {
 		my ($this,$decor) = @_;	
 		points2hypersurface($this->POINTS)->VISUAL($decor);

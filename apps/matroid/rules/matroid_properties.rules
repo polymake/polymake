@@ -16,12 +16,13 @@
 
 object Matroid {
 
-
+# @category Enumerative properties
 # Size of the ground set.  The ground set itself always consists of the first integers starting with zero.
 
 property N_ELEMENTS : Int;
 
 
+# @category Other
 # Unique names assigned to the elements of the matroid.
 #
 # For a matroid build from scratch, you should create this property by yourself.
@@ -30,138 +31,171 @@ property N_ELEMENTS : Int;
 
 property LABELS : Array<String> : mutable;
 
+# @category Axiom systems
 # Subsets of the ground set which form the bases of the matroid.
 # Note that if you want to define a matroid via its bases, you should also specify [[N_ELEMENTS]], because
 # we allow matroids with loops.
 
 property BASES : Array<Set>;
 
-
+# @category Axiom systems
 # All subsets of the ground sets with cardinality [[RANK]] that are not bases.
 
 property NON_BASES : Array<Set>;
 
 
+# @category Enumerative properties
 # The number of [[BASES]].
 
 property N_BASES : Int;
 
-
+# @category Enumerative properties
 # Rank of the matroid, i.e., number of elements in each basis.
 
 property RANK : Int;
 
 
+# @category Axiom systems
 # Circuits, i.e., minimal dependent sets.
 
 property CIRCUITS : Array<Set>;
 
+# @category Axiom systems
 # Hyperplanes, i.e. flats of rank RANK-1.
 
 property MATROID_HYPERPLANES : Array<Set>;
 
+# @category Enumerative properties
 # The number of [[CIRCUITS]].
 
 property N_CIRCUITS : Int;
 
 
+# @category Axiom systems
 # Cocircuits (or bonds) of the matroid, i.e., minimal sets intersecting every basis.
 
 property COCIRCUITS : Array<Set>;
 
 
+# @category Enumerative properties
 # The number of [[COCIRCUITS]].
 
 property N_COCIRCUITS : Int;
 
-
+# @category Advanced properties
 # Loops
 
 property LOOPS : Set;
 
+# @category Enumerative properties
 # The number of [[LOOPS]].
 
 property N_LOOPS : Int;
 
+# @category Advanced properties
 # Coloops
 
 property COLOOPS : Set;
 
+# @category Enumerative properties
 # The number of [[COLOOPS]].
 
 property N_COLOOPS : Int;
 
+# @category Advanced properties
 # Polytope whose vertices are the characteristic vectors of the bases.
 
 property POLYTOPE : polytope::Polytope;
 
 
+# @category Input properties 
 # If the matroid is realizable over the rationals, this property contains
 # coordinates for some realization. Specifying coordinates is one way
 # to define a matroid.
 
 property VECTORS : Matrix;
 
+# @category Input properties
+# A transversal matroid can be defined via a multiset of subsets of the ground set (0,...,n-1)
+# (i.e. [[N_ELEMENTS]] needs to be specified).
+# Its bases are the maximal matchings of the bipartite incidence graph.
+property TRANSVERSAL_PRESENTATION : Array<Set<Int> >;
 
+# @category Advanced properties
+# If the matroid is transversal (which usually means it was defined with a [[TRANSVERSAL_PRESENTATION]]), 
+# this is the unique maximal presentation. I.e. the set system consists of [[RANK]] many sets and none of the 
+# sets can be increased without changing the matroid.
+property MAXIMAL_TRANSVERSAL_PRESENTATION : IncidenceMatrix;
+
+# @category Advanced properties
 # Whether the matroid is paving
 property PAVING : Bool;
 
+# @category Advanced properties
 # Whether the matroid is representable over GF(2)
 property BINARY : Bool;
 
+# @category Advanced properties
 # If the matroid is realizable over the field GF(2) with two elements, this property contains
 # coordinates for some realization.
 property BINARY_VECTORS : Matrix<Int>;
 
+# @category Advanced properties
 # Whether the matroid is representable over GF(3)
 # NOTE: the property may be 'undef' if the current implementation cannot decide. 
 property TERNARY : Bool;
 
+# @category Advanced properties
 # If the matroid is realizable over the field GF(3) with three elements, this property contains
 # coordinates for some realization.
 property TERNARY_VECTORS : Matrix<Int>;
 
+# @category Advanced properties
 # Whether the matroid is representable over every field, that is the repesentation is unimodular.
 # NOTE: the property is 'undef' when its hard to decide, whether the matroid is ternary. 
 property REGULAR : Bool;
 
+# @category Advanced properties
 # The Tutte polynomial of a matroid
 property TUTTE_POLYNOMIAL : common::Polynomial;
 
+# @category Advanced properties
 # The linear coefficient of the Tutte polynomial
 property BETA_INVARIANT : Integer;
 
+# @category Advanced properties
 # Whether the matroid is connected
 property CONNECTED : Bool;
 
+# @category Advanced properties
 # The connected componets
-property CONNECTED_COMPONENTS : Array<Set>{
-    sub equal {
-        my ($M1,$M2)=@_;
-        eval {
-            find_permutation($M1,$M2);
-            1;
-        } or do {
-            0;
-        }
-    }
+property CONNECTED_COMPONENTS : Array<Set> {
+   sub equal {
+      defined(eval { find_permutation(@_) })
+   }
 }
 
+# @category Advanced properties
 # Whether the matroid is series-parallel
 property SERIES_PARALLEL : Bool;
 
+# @category Axiom systems
 # The lattice of flats, this is a graph with all closed sets as nodes
 property LATTICE_OF_FLATS : FaceLattice;
 
+# @category Advanced properties
 # The facets of the matroid [[POLYTOPE]] are either hypersimplex facets or splits induced by flats
 property SPLITTING_FLACETS : Array<Set>;
 
+# @category Advanced properties
 # The h-vector of a matroid
 property H_VECTOR : Vector<Integer>;
 
+# @category Advanced properties
 # The f-vector of a matroid
 property F_VECTOR : Vector<Integer>;
 
+# @category Advanced properties
 # A string listing the bases in revlex order. A '*' means the basis is present, a '0' that it is absent
 property REVLEX_BASIS_ENCODING : String;
 }

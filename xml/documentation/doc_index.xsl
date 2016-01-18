@@ -23,6 +23,7 @@
 	xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 	xmlns:html="http://www.w3.org/1999/xhtml"
 	xmlns:pm="http://www.polymake.org/ns/docs#3"
+	xmlns="http://www.w3.org/1999/xhtml"
 >
 
 <xsl:include href="macros.xsl" />

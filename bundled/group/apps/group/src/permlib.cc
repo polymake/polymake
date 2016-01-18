@@ -358,8 +358,7 @@ UserFunctionTemplate4perl("# @category Orbits"
             "# The set of vectors does not have to be complete."
             "# @param Group group a group of coordinate permutations"
             "# @param Matrix<Scalar> mat some input vectors"
-            "# @return ListReturn a matrix containing all generated vectors"
-            "#    , and an array containing the orbits of generated vectors.",
+            "# @return List( Matrix all generated vectors, Array orbits of generated vectors)",
             "orbits_coord_action_complete(Group,Matrix)");
 
 

@@ -39,10 +39,10 @@ CONFIGURE {
 package application;
 
 # @category Producing a fan
-# Call [[wiki:external_software#gfan]] to compute the secondary cone of a vector configuration.
+# Call [[wiki:external_software#gfan]] to compute the secondary fan of a point configuration.
 #
 # @param Matrix M whose rows are the vectors in the configuration
-
+# @return SymmetricFan
 user_function secondary_fan(Matrix) {
   my ($M)=@_;
   my $tempfile=new Tempfile;
@@ -51,6 +51,15 @@ user_function secondary_fan(Matrix) {
   my $gfan_out= User::load("$tempfile.fan");
   # WARNING: file automatically converted via XSLT to correct F_VECTOR
   return $gfan_out;
+}
+
+# @category Producing a fan
+# Call [[wiki:external_software#gfan]] to compute the secondary fan of a point configuration.
+#
+# @param polytope::PointConfiguration P
+# @return SymmetricFan
+user_function secondary_fan(polytope::PointConfiguration) {
+   return secondary_fan(shift->POINTS);
 }
 
 sub gfan_print_matrix {
@@ -67,7 +76,7 @@ sub gfan_print_matrix {
     print $infile "(";
     for (my $j=0; $j<$c; ++$j) {
       print $infile "," unless $j==0;
-      print $infile $M->($i,$j);
+      print $infile $M->elem($i,$j);
     }
       print $infile ")";
   }
@@ -79,8 +88,8 @@ sub gfan_print_matrix {
 # @category Producing a fan
 # Call [[wiki:external_software#gfan]] to compute the greobner fan of an ideal.
 #
-# @param Ideal I
-
+# @param ideal::Ideal I input ideal
+# @return SymmetricFan
 user_function groebner_fan(ideal::Ideal) {
   my ($I)=@_;
   my $tempfile=new Tempfile;

@@ -24,7 +24,7 @@ namespace polymake { namespace polytope {
 template <typename Coefficient, typename Exponent>
 perl::Object newton(const Polynomial<Coefficient,Exponent>& p)
 {
-   perl::Object np("LatticePolytope");
+   perl::Object np("Polytope<Rational>");
    np.set_description() << "Newton polytope of " << p << endl;
 
    const Matrix<Exponent> exps(p.template monomials_as_matrix< Matrix<Exponent> >());
@@ -33,6 +33,7 @@ perl::Object newton(const Polynomial<Coefficient,Exponent>& p)
 
    np.take("POINTS") << (same_element_vector(1,n) | exps);
    np.take("CONE_AMBIENT_DIM") << d+1;
+   np.take("LATTICE") << true;
    np.take("BOUNDED") << true;
 
    return np;
@@ -41,7 +42,16 @@ perl::Object newton(const Polynomial<Coefficient,Exponent>& p)
 UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
                           "# Produce the Newton polytope of a polynomial //p//."
                           "# @param Polynomial p"
-                          "# @return LatticePolytope",
+                          "# @return Polytope<Rational>"
+                          "# @example Create the newton polytope of 1+x^2+y like so:"
+                          "# > $r=new Ring(qw(x y));"
+                          "# > ($x,$y)=$r->variables;"
+                          "# > $p=1+($x^2)+$y;"
+                          "# > $n = newton($p);"
+                          "# > print $n->VERTICES;"
+                          "# | 1 0 0"
+                          "# | 1 0 1"
+                          "# | 1 2 0",
                           "newton(Polynomial)");
 } }
 

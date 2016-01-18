@@ -38,6 +38,10 @@ UserFunctionTemplate4perl("# @category Formatting"
 			  "# @option Array<String> coord_labels changes the labels of the coordinates"
 			  "# @option Array<String> row_labels changes the labels of the rows"
 			  "# @option Bool homogeneous false if the first coordinate should be interpreted as right hand side"
-			  "# @option Bool equations true if the rows represent equations instead of inequalities",
+			  "# @option Bool equations true if the rows represent equations instead of inequalities"
+              "# @example > $M = new Matrix([1,2,3],[4,5,23]);"
+              "# > print_constraints($M,equations=>1);"
+              "# | 0: 2 x1 + 3 x2 = -1"
+              "# | 1: 5 x1 + 23 x2 = -4",
 			  "print_constraints<Scalar>(Matrix<Scalar>; { equations => 0, homogeneous => 0, coord_labels => undef, row_labels => undef }) : void");
 } }

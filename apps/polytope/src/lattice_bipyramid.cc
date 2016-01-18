@@ -134,7 +134,18 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# @param Rational z_prime height for the second apex, default value is -//z//"
                   "# @option Bool relabel copy the vertex labels from the original polytope,"
                   "# label the new vertices with \"Apex\" and \"Apex'\"."
-                  "# @return Polytope",
+                  "# @return Polytope"
+                  "# @example To create the bipyramid over a square and keep the vertex labels, do this:"
+                  "# > $p = lattice_bipyramid(cube(2),new Vector(1,0,0),relabel=>1);"
+                  "# > print $p->VERTICES;"
+                  "# | 1 -1 -1 0"
+                  "# | 1 1 -1 0"
+                  "# | 1 -1 1 0"
+                  "# | 1 1 1 0"
+                  "# | 1 0 0 1"
+                  "# | 1 0 0 -1"
+                  "# > print $p->VERTEX_LABELS;"
+                  "# | 0 1 2 3 Apex Apex'",
                   &lattice_bipyramid_vv, "lattice_bipyramid(Polytope, Vector, Vector; $=1, $=-$_[3], {relabel => 0})");
 
 Function4perl(&lattice_bipyramid_v, "lattice_bipyramid(Polytope, Vector; $=1, $=-$_[2], {relabel => 0})");

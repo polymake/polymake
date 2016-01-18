@@ -105,12 +105,18 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# Produce a polytope with //n// random points that are"
                   "# uniformly distributed within the given polytope //P//."
                   "# //P// must be bounded and full-dimensional."
-                  "# @param P Polytope"
+                  "# @param Polytope P"
                   "# @param Int n the number of random points"
                   "# @option Bool boundary forces the points to lie on the boundary of the given polytope"
                   "# @option Int seed controls the outcome of the random number generator;"
                   "#   fixing a seed number guarantees the same outcome."
-                  "# @return Polytope",
+                  "# @return Polytope"
+                  "# @example This produces a polytope as the convex hull of 5 random points in the square with the origin as"
+                  "# its center and side length 2:"
+                  "# > $p = unirand(cube(2),5);"
+                  "# @example This produces a polytope as the convex hull of 5 random points on the boundary of the square with the origin as"
+                  "# its center and side length 2:"
+                  "# > $p = unirand(cube(2),5,boundary=>1);",
                   &unirand,"unirand(Polytope $ {seed => undef, boundary => 0})");
 } }
 

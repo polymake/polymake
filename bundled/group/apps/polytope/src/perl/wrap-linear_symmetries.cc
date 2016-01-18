@@ -16,29 +16,11 @@
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::Matrix<pm::Rational> (perl::Object, bool) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturn( arg0, arg1 );
+   FunctionWrapper4perl( perl::Object (pm::Matrix<pm::Rational> const&) ) {
+      perl::Value arg0(stack[0]);
+      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Matrix< Rational > > >() );
    }
-   FunctionWrapperInstance4perl( pm::Matrix<pm::Rational> (perl::Object, bool) );
-
-   FunctionWrapper4perl( pm::perl::ListReturn (perl::Object, bool) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturnVoid( arg0, arg1 );
-   }
-   FunctionWrapperInstance4perl( pm::perl::ListReturn (perl::Object, bool) );
-
-   FunctionWrapper4perl( pm::perl::ListReturn (perl::Object, perl::Object, bool) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      IndirectWrapperReturnVoid( arg0, arg1, arg2 );
-   }
-   FunctionWrapperInstance4perl( pm::perl::ListReturn (perl::Object, perl::Object, bool) );
-
-   FunctionWrapper4perl( pm::perl::ListReturn (perl::Object, perl::Object, bool, bool) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
-      IndirectWrapperReturnVoid( arg0, arg1, arg2, arg3 );
-   }
-   FunctionWrapperInstance4perl( pm::perl::ListReturn (perl::Object, perl::Object, bool, bool) );
+   FunctionWrapperInstance4perl( perl::Object (pm::Matrix<pm::Rational> const&) );
 
    FunctionWrapper4perl( pm::perl::ListReturn (perl::Object, perl::Object, bool, int) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);

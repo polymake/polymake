@@ -26,7 +26,7 @@ object RationalFunction {
 	
 	#Operator overload
 	#Fallback=> TRUE is needed to that perl can implement missing operators such as == in the usual manner.
-	use overload('*' => 'mult','""' => 'to_string', 'bool' => 'bool','^' => 'power_operator', '+' => 'sum','-' => 'minus','neg'=>'neg', "fallback" => TRUE);
+	use overload('*' => 'mult', '""' => 'to_string', bool => 'bool', '^' => 'power_operator', '+' => 'sum', '-' => 'minus', 'neg'=>'neg', fallback => 1);
 
 	# @category Defining morphisms and functions
 	# This property describes the affine linearity domains of the function. I.e. the function is
@@ -85,10 +85,10 @@ object RationalFunction {
 	#FIXME: THis property should maybe be used in some arithmetic functions...
 
 	rule IS_GLOBALLY_DEFINED : {
-		$this->IS_GLOBALLY_DEFINED = FALSE;
+		$this->IS_GLOBALLY_DEFINED = 0;
 	}
-	precondition : defined(DOMAIN);  
-	weight 0.10;
+	precondition : defined(DOMAIN);
+	weight 0.1;
 	#If a domain has been defined and this property is not true, it is false.
 
 	rule LINEALITY_VALUES : {		

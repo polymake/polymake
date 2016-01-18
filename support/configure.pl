@@ -317,7 +317,7 @@ while (-l $absCXX) {
 }
 $CCache= $absCXX =~ /\bccache$/;
 
-if (my $build_error = build_test_program(<<".")) {
+my $build_error = build_test_program(<<".");
 #include <iostream>
 int main() {
 #if defined(__clang__)
@@ -338,6 +338,7 @@ int main() {
 #endif
 }
 .
+if ($? != 0) {
    die "C++ compiler $CXX could not compile a test program for version recognition:\n",
        $build_error,
        "\nPlease investigate and reconfigure with CXX=<appropriate C++ compiler>\n";
@@ -397,6 +398,50 @@ $Libs     =$vars{LIBS}     || "";
 
 $LDsharedFlags=$Config::Config{lddlflags};
 $LDcallableFlags= $options{callable} eq ".none." ? "none" : "$LDsharedFlags $Config::Config{ldflags}";
+
+print "checking C++ library ... ";
+
+my $build_error = build_test_program(<<".");
+#include <iostream>
+int main() {
+#if defined(_LIBCPP_VERSION)
+   std::cout << "libc++ " << _LIBCPP_VERSION << std::endl;
+   return 0;
+#elif defined(__GLIBCXX__)
+   std::cout << "GNU stdlibc++ " << __GLIBCXX__ << std::endl;
+   return 0;
+#elif defined(__INTEL_CXXLIB_ICC)
+   std::cout << "Intel " << __INTEL_CXXLIB_ICC << std::endl;
+   return 0;
+#else
+   return 1;
+#endif
+}
+.
+if ($? != 0) {
+   die "C++ compiler $CXX could not compile a test program for C++ library recognition:\n",
+       $build_error,
+       "\nPlease investigate and reconfigure\n";
+} else {
+   local $_=run_test_program();  chomp;
+   # see http://sourceforge.net/p/predef/wiki/Libraries/
+   if (/^GNU stdlibc\+\+ /) {
+      my $stdlibversion=$';
+      # this is some more or less useful date
+      print "ok ($_)\n";
+   } elsif (/^libc\+\+ /) {
+      my $libcxxversion=$';
+      $CXXflags .= " -std=c++11 ";
+      print "ok ($_)\n";
+   } elsif (/^Intel /) {
+      my $intelcxxversion=$';
+      print "warning: probably unsupported C++ library Intel $intelcxxversion.\n";
+      # not tested in a long time
+   } else {
+      die "Unsupported C++ library, use -stdlib to specify libstdc++ or libc++.\n";
+   }
+}
+
 
 my $GMP=$options{gmp};
 
@@ -468,7 +513,7 @@ if ($^O eq "darwin") {
       } else { # choose i386 for 10.5 and x86_64 for all others
          `sw_vers | grep ProductVersion` =~ /(10.*)/;
          my $Version=$1;
-         if ( $Version =~ /10.5/ ) { 
+         if ( $Version =~ /^10.5/ ) { 
             $Platform="i386";
          } else {
             $Platform="x86_64";
@@ -532,9 +577,9 @@ if (defined($GCCversion)) {
 } elsif (defined($CLANGversion)) {
    $CsharedFlags="-fPIC";
    $CXXDEBUG .= " -g";
-   $CXXflags .= " -Wall -Wno-logical-op-parentheses -Wno-shift-op-parentheses -Wno-duplicate-decl-specifier";
+   $CXXflags .= " -Wall -Wno-logical-op-parentheses -Wno-shift-op-parentheses -Wno-duplicate-decl-specifier -Wno-reserved-user-defined-literal -Wno-mismatched-tags";
    $CflagsSuppressWarnings="-Wno-uninitialized -Wno-unused -Wno-unused-variable -Wno-enum-compare -Wno-sign-compare -Wno-switch -Wno-format -Wno-write-strings -Wno-empty-body -Wno-logical-op-parentheses -Wno-shift-op-parentheses -Wno-dangling-else";
-   if (v_cmp($CLANGversion, "3.6") >=0 and v_cmp($CLANGversion, "3.7") < 0) {
+   if (v_cmp($CLANGversion, "3.6") >= 0 and v_cmp($CLANGversion, "3.8") < 0 || ($^O eq "darwin" && v_cmp($CLANGversion, "7.0.0") <= 0) ) {
       $CXXflags .= " -Wno-unused-local-typedef";
    }
 }
@@ -600,6 +645,7 @@ if ($check_prereq) {
    print "checking gmp installation ... ";
    # check GMP installation
    my $build_error=build_test_program(<<'---', Libs => "$ARCHFLAGS -lgmp");
+#include <cstddef>
 #include <gmp.h>
 #include <iostream>
 int main() {
@@ -632,6 +678,7 @@ int main() {
    # check MPFR installation
    print "checking mpfr installation ... ";
    my $build_error=build_test_program(<<'---', Libs => "$ARCHFLAGS -lmpfr -lgmp");
+#include <cstddef>
 #include <mpfr.h>
 #include <iostream>
 int main() {
@@ -873,7 +920,7 @@ my @ext_ordered;
 my %ext_unordered=map { ($_ => 1) } grep { $options{$_} ne ".none." } @ext;
 while (keys %ext_unordered) {
    my $progress=@ext_ordered;
-   while ((my $ext, undef)=each %ext_unordered) {
+   foreach my $ext (sort keys %ext_unordered) {
       unless (grep { $ext_unordered{$_} } @{$ext_requires{$ext}}
                 or
               grep { $ext_unordered{$_} } @{$ext_conflicts{$ext}}) {

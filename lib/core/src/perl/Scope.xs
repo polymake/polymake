@@ -72,18 +72,18 @@ typedef struct local_scalar_ptrs {
 } local_scalar_ptrs;
 
 static
-local_scalar_ptrs* do_local_scalar(pTHX_ SV* var, SV* value, I32 tmp_refcnt)
+local_scalar_ptrs* do_local_scalar(pTHX_ SV* var, SV* value)
 {
    local_scalar_ptrs* ptrs;
    New(0, ptrs, 1, local_scalar_ptrs);
    ptrs->var=var;
    ptrs->orig.sv_any=var->sv_any;
-   ptrs->orig.sv_refcnt=var->sv_refcnt-tmp_refcnt;
+   ptrs->orig.sv_refcnt=var->sv_refcnt;
    ptrs->orig.sv_flags=var->sv_flags;
    ptrs->orig.sv_u.svu_pv=var->sv_u.svu_pv;
    var->sv_any=NULL;
    var->sv_flags=0;
-   var->sv_refcnt=1+tmp_refcnt;
+   var->sv_refcnt=1;
    sv_setsv(var,value);
    return ptrs;
 }
@@ -108,7 +108,7 @@ void undo_local_scalar(pTHX_ void* p)
 void
 pm_perl_localize_scalar(pTHX_ SV* var)
 {
-   save_destructor_x(&undo_local_scalar, do_local_scalar(aTHX_ var, sv_mortalcopy(var), 0));
+   save_destructor_x(&undo_local_scalar, do_local_scalar(aTHX_ var, sv_mortalcopy(var)));
 }
 
 void
@@ -257,31 +257,52 @@ void undo_local_shift(pTHX_ void* p)
 }
 
 static
-local_incr_ptrs* do_local_shorten(pTHX_ AV* av, int n)
+local_incr_ptrs* do_local_clip(pTHX_ AV* av, int store_incr)
 {
    local_incr_ptrs* ptrs;
-   I32 store_incr;
-   if (n>=0) {
-      if (AvFILLp(av)<n)
-         Perl_croak(aTHX_ "local_shorten: array has less than %d elements", n);
-      store_incr=AvFILLp(av)-n;
-   } else {
-      if (AvFILLp(av)<-n)
-         Perl_croak(aTHX_ "local_shorten: array has less than %d elements", -n);
-      AvARRAY(av)-=n;
-      store_incr=n;
-      n+=AvFILLp(av);
-   }
    SvREFCNT_inc_simple_void_NN(av);
    New(0, ptrs, 1, local_incr_ptrs);
    ptrs->var=(SV*)av;
    ptrs->incr=store_incr;
-   AvFILLp(av)=n;
    return ptrs;
 }
 
 static
-void undo_local_shorten(pTHX_ void* p)
+local_incr_ptrs* do_local_clip_front(pTHX_ AV* av, int n)
+{
+   if (n>=0) {
+      if (AvFILLp(av)+1 < n)
+         Perl_croak(aTHX_ "local_clip_front: array has less than %d elements", n);
+   } else {
+      if (AvFILLp(av)+1 < -1-n)
+         Perl_croak(aTHX_ "local_clip_front: array has less than %d elements", -n);
+      n+=AvFILLp(av)+1;
+   } 
+   AvARRAY(av)+=n;
+   AvFILLp(av)-=n;
+   return do_local_clip(aTHX_ av, -n);
+}
+
+static
+local_incr_ptrs* do_local_clip_back(pTHX_ AV* av, int n)
+{
+   int store_incr;
+   if (n>=0) {
+      if (AvFILLp(av)+1 < n)
+         Perl_croak(aTHX_ "local_clip_back: array has less than %d elements", n);
+      store_incr=AvFILLp(av)-n;
+      AvFILLp(av)=n;
+   } else {
+      if (AvFILLp(av)+1 < -1-n)
+         Perl_croak(aTHX_ "local_clip_back: array has less than %d elements", -n);
+      store_incr=-1-n;
+      AvFILLp(av)+=1+n;
+   }
+   return do_local_clip(aTHX_ av, store_incr);
+}
+
+static
+void undo_local_clip(pTHX_ void* p)
 {
    local_incr_ptrs* ptrs=(local_incr_ptrs*)p;
    AV* av=(AV*)ptrs->var;
@@ -444,7 +465,7 @@ PPCODE:
         SvTYPE(value) >= SVt_PVAV )
       croak_xs_usage(cv, "*glob || $var, value");
    LEAVE;
-   save_destructor_x(&undo_local_scalar, do_local_scalar(aTHX_ var, value, 0));
+   save_destructor_x(&undo_local_scalar, do_local_scalar(aTHX_ var, value));
    ENTER;
    ++SP;
 }
@@ -459,7 +480,7 @@ PPCODE:
                   : SvTYPE(var) >= SVt_PVAV )
       croak_xs_usage(cv, "*glob || $var");
    LEAVE;
-   save_destructor_x(&undo_local_scalar, do_local_scalar(aTHX_ var, sv_mortalcopy(var), 0));
+   save_destructor_x(&undo_local_scalar, do_local_scalar(aTHX_ var, sv_mortalcopy(var)));
    ENTER;
    ++SP;
 }
@@ -597,7 +618,7 @@ PPCODE:
    LEAVE;
    save_destructor_x(&undo_local_pop, do_local_pop(aTHX_ av));
    ENTER;
-   if (ret) PUSHs(sv_mortalcopy(ret));
+   if (ret) PUSHs(ret);
 }
 
 void
@@ -618,24 +639,46 @@ PPCODE:
    LEAVE;
    save_destructor_x(&undo_local_shift, do_local_shift(aTHX_ av));
    ENTER;
-   if (ret) PUSHs(sv_mortalcopy(ret));
+   if (ret) PUSHs(ret);
 }
 
 void
-local_shorten(avref, n)
+local_clip_front(avref, n)
    SV* avref;
    I32 n;
-PROTOTYPE: $$$
+PROTOTYPE: $$
 PPCODE:
 {
    AV* av=NULL;
    if (isGV(avref)
        ? (av=GvAV(avref)) == NULL
        : !SvROK(avref) || (av=(AV*)SvRV(avref), SvTYPE(av) != SVt_PVAV || SvGMAGICAL(av)))
-      croak_xs_usage(cv, "*glob || \\@array, last_elem");
-   LEAVE;
-   save_destructor_x(&undo_local_shorten, do_local_shorten(aTHX_ av, n));
-   ENTER;
+      croak_xs_usage(cv, "*glob || \\@array, new_first_pos");
+   if (n != 0) {
+      LEAVE;
+      save_destructor_x(&undo_local_clip, do_local_clip_front(aTHX_ av, n));
+      ENTER;
+   }
+   ++SP;
+}
+
+void
+local_clip_back(avref, n)
+   SV* avref;
+   I32 n;
+PROTOTYPE: $$
+PPCODE:
+{
+   AV* av=NULL;
+   if (isGV(avref)
+       ? (av=GvAV(avref)) == NULL
+       : !SvROK(avref) || (av=(AV*)SvRV(avref), SvTYPE(av) != SVt_PVAV || SvGMAGICAL(av)))
+      croak_xs_usage(cv, "*glob || \\@array, new_last_pos");
+   if (n != -1) {
+      LEAVE;
+      save_destructor_x(&undo_local_clip, do_local_clip_back(aTHX_ av, n));
+      ENTER;
+   }
    ++SP;
 }
 
@@ -697,7 +740,8 @@ BOOT:
       CvNODEBUG_on(get_cv("Polymake::local_unshift", FALSE));
       CvNODEBUG_on(get_cv("Polymake::local_pop", FALSE));
       CvNODEBUG_on(get_cv("Polymake::local_shift", FALSE));
-      CvNODEBUG_on(get_cv("Polymake::local_shorten", FALSE));
+      CvNODEBUG_on(get_cv("Polymake::local_clip_front", FALSE));
+      CvNODEBUG_on(get_cv("Polymake::local_clip_back", FALSE));
       CvNODEBUG_on(get_cv("Polymake::local_swap", FALSE));
       CvNODEBUG_on(get_cv("Polymake::local_bless", FALSE));
       CvNODEBUG_on(get_cv("Polymake::propagate_match", FALSE));

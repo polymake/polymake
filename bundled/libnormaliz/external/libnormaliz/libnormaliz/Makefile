@@ -24,13 +24,16 @@ offload_handler.o: $(LIBHEADERS) offload_handler.cpp
 bottom.o: $(LIBHEADERS) bottom.cpp
 	$(CXX) $(CXXFLAGS) $(NORMFLAGS) -c bottom.cpp -o $@
 
+cone_helper.o: $(LIBHEADERS) cone_helper.cpp
+	$(CXX) $(CXXFLAGS) $(NORMFLAGS) -c cone_helper.cpp -o $@
+
 hilbert_series.o: $(LIBHEADERS) HilbertSeries.cpp
 	$(CXX) $(CXXFLAGS) $(NORMFLAGS) -c HilbertSeries.cpp -o $@
 
 libnormaliz-templated.o: $(LIBHEADERS) $(LIBSOURCES) libnormaliz-templated.cpp
 	$(CXX) $(CXXFLAGS) $(NORMFLAGS) -c libnormaliz-templated.cpp -o $@
 
-libnormaliz.a: cone_property.o hilbert_series.o libnormaliz-templated.o bottom.o offload_handler.o
+libnormaliz.a: cone_property.o cone_helper.o hilbert_series.o libnormaliz-templated.o bottom.o offload_handler.o
 	ar -cr $@ $^
 
 clean:

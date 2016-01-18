@@ -220,7 +220,7 @@ void Matrix<Integer>::print(ostream& out) const{
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void Matrix<Integer>::pretty_print(ostream& out, bool with_row_nr) const{
+void Matrix<Integer>::pretty_print(ostream& out, bool with_row_nr) const{    
     size_t i,j,k;
     vector<size_t> max_length = maximal_decimal_length_columnwise();
     size_t max_index_length = decimal_length(nr);
@@ -406,7 +406,7 @@ Matrix<Integer>& Matrix<Integer>::remove_zero_rows() {
     while (from < nr && v_is_zero(elem[from])) from++; //skip zero rows
     while (from < nr) {  // go over matrix
         // now from is a non-zero row
-        if (to != from) swap(elem[to],elem[from]);
+        if (to != from) elem[to].swap(elem[from]);
         ++to; ++from;
         while (from < nr && v_is_zero(elem[from])) from++; //skip zero rows
     }
@@ -415,6 +415,14 @@ Matrix<Integer>& Matrix<Integer>::remove_zero_rows() {
     return *this;
 }
 
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+void Matrix<Integer>::swap(Matrix<Integer>& x) {
+    size_t tmp = nr; nr = x.nr; x.nr = tmp;
+    tmp = nc; nc = x.nc; x.nc = tmp;
+    elem.swap(x.elem);
+}
 
 //---------------------------------------------------------------------------
 
@@ -735,7 +743,7 @@ Integer Matrix<Integer>::matrix_gcd() const{
     Integer g=0,h;
     for (size_t i = 0; i <nr; i++) {
         h = v_gcd(elem[i]);
-        g = gcd<Integer>(g, h);
+        g = libnormaliz::gcd<Integer>(g, h);
         if (g==1) return g;
     }
     return g;
@@ -750,6 +758,24 @@ vector<Integer> Matrix<Integer>::make_prime() {
         g[i] = v_make_prime(elem[i]);
     }
     return g;
+}
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+void Matrix<Integer>::make_cols_prime(size_t from_col, size_t to_col) {
+
+    for (size_t k = from_col; k <= to_col; k++) {
+        Integer g=0;
+        for (size_t i = 0; i < nr; i++){
+            g = libnormaliz::gcd(g,elem[i][k]);
+            if (g==1) {
+                break;
+            }
+        }
+        for (size_t i = 0; i < nr; i++)
+            elem[i][k]/=g;
+    }
 }
 
 //---------------------------------------------------------------------------
@@ -1108,6 +1134,7 @@ size_t Matrix<Integer>::row_echelon_inner_elem(bool& success){
 
 //---------------------------------------------------------------------------
 
+/*
 template<typename Integer>
 size_t Matrix<Integer>::row_echelon_inner_bareiss(bool& success, Integer& det){
 // no overflow checks since this is supposed to be only used with GMP
@@ -1211,7 +1238,7 @@ size_t Matrix<Integer>::row_echelon_inner_bareiss(bool& success, Integer& det){
     
     return rk;
 }
-
+*/
 
 //---------------------------------------------------------------------------
 
@@ -1262,15 +1289,15 @@ Matrix<Integer> Matrix<Integer>::row_column_trigonalize(size_t& rk, bool& succes
 template<typename Integer>
 size_t Matrix<Integer>::row_echelon(bool& success, bool do_compute_vol, Integer& det){
     
-    if(using_GMP<Integer>()){
+/*    if(using_GMP<Integer>()){
         return row_echelon_inner_bareiss(success,det);;
     }
-    else{ 
+    else{ */
         size_t rk=row_echelon_inner_elem(success);
         if(do_compute_vol)
             det=compute_vol(success);
         return rk;
-    }
+//    }
 }
 
 //---------------------------------------------------------------------------
@@ -1524,70 +1551,89 @@ bool Matrix<Integer>::solve_destructive_inner(bool ZZinvertible,Integer& denom) 
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void Matrix<Integer>::solve_system_submatrix_outer(const Matrix<Integer>& mother, const vector<key_t>& key, const vector<vector<Integer>* >& RS,
-         Integer& denom, bool ZZ_invertible, bool transpose, size_t red_col, size_t sign_col) {
-         
-        size_t dim=mother.nc;
-        assert(key.size()==dim);
-        assert(nr==dim);
-        assert(dim+RS.size()<=nc);
-        size_t save_nc=nc;
-        nc=dim+RS.size();
-        
-        if(transpose)
-           select_submatrix_trans(mother,key);           
-        else
-           select_submatrix(mother,key);
-                   
-        for(size_t i=0;i<dim;++i)
-           for(size_t k=0;k<RS.size();++k)
-               elem[i][k+dim]= (*RS[k])[i];
-        
-        if(!solve_destructive_inner(ZZ_invertible,denom)){
-		   #pragma omp atomic
-		   GMP_mat++;
-		
-           Matrix<mpz_class> mpz_this(nr,nc);
-           mpz_class mpz_denom;
-           if(transpose)
-               mpz_submatrix_trans(mpz_this,mother,key);
-           else            
-               mpz_submatrix(mpz_this,mother,key);
-               
-           for(size_t i=0;i<dim;++i)
-               for(size_t k=0;k<RS.size();++k)
-                   convert(mpz_this[i][k+dim], (*RS[k])[i]);
-           mpz_this.solve_destructive_inner(ZZ_invertible,mpz_denom);            
-                      
-           for(size_t j=0;j<red_col;++j)  // reduce first red_col columns of solution mod denom
-               for(size_t k=0;k<dim;++k)
-                  mpz_this[k][dim+j]%=mpz_denom;
-                
-           for(size_t j=0;j<sign_col;++j)   // replace entries in the next sign_col columns by their signs
-              for(size_t k=0;k<dim;++k){
-                if(mpz_this[k][dim+red_col+j]>0){
-                    mpz_this[k][dim+red_col+j]=1;
-                    continue;
-                } 
-                if(mpz_this[k][dim+red_col+j]<0){
-                    mpz_this[k][dim+red_col+j]=-1;
-                    continue;
-                }       
-              }
-              
-           for(size_t i=0;i<dim;++i)  // replace left side by 0, except diagonal if ZZ_invetible
-              for(size_t j=0;j<dim;++j){
-                if(i!=j || !ZZ_invertible)
-                    mpz_this[i][j]=0;              
-              }
-                  
-           mat_to_Int(mpz_this,*this);
-           convert(denom, mpz_denom);
-                
-        }
-        
-        nc=save_nc;            
+void Matrix<Integer>::customize_solution(size_t dim, Integer& denom, size_t red_col, 
+                     size_t sign_col, bool make_sol_prime) {
+                         
+    assert(!(make_sol_prime && (sign_col>0 || red_col>0)));
 
+    for(size_t j=0;j<red_col;++j){  // reduce first red_col columns of solution mod denom
+        for(size_t k=0;k<dim;++k){
+          elem[k][dim+j]%=denom;
+          if(elem[k][dim+j]<0)
+              elem[k][dim+j]+=Iabs(denom);
+       }
+    }
+        
+    for(size_t j=0;j<sign_col;++j)   // replace entries in the next sign_col columns by their signs
+      for(size_t k=0;k<dim;++k){
+        if(elem[k][dim+red_col+j]>0){
+            elem[k][dim+red_col+j]=1;
+            continue;
+        } 
+        if(elem[k][dim+red_col+j]<0){
+            elem[k][dim+red_col+j]=-1;
+            continue;
+        }       
+      }
+      
+    if(make_sol_prime) // make columns of solution coprime if wanted
+        make_cols_prime(dim,nc-1);
+}
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+void Matrix<Integer>::solve_system_submatrix_outer(const Matrix<Integer>& mother, const vector<key_t>& key, const vector<vector<Integer>* >& RS,
+        Integer& denom, bool ZZ_invertible, bool transpose, size_t red_col, size_t sign_col, 
+        bool compute_denom, bool make_sol_prime) {
+     
+    size_t dim=mother.nc;
+    assert(key.size()==dim);
+    assert(nr==dim);
+    assert(dim+RS.size()<=nc);
+    size_t save_nc=nc;
+    nc=dim+RS.size();
+    
+    if(transpose)
+       select_submatrix_trans(mother,key);           
+    else
+       select_submatrix(mother,key);
+               
+    for(size_t i=0;i<dim;++i)
+       for(size_t k=0;k<RS.size();++k)
+           elem[i][k+dim]= (*RS[k])[i];
+    
+    if(solve_destructive_inner(ZZ_invertible,denom)){
+        customize_solution(dim, denom,red_col,sign_col,make_sol_prime);        
+    }
+    else{          
+       #pragma omp atomic
+       GMP_mat++;
+    
+       Matrix<mpz_class> mpz_this(nr,nc);
+       mpz_class mpz_denom;
+       if(transpose)
+           mpz_submatrix_trans(mpz_this,mother,key);
+       else            
+           mpz_submatrix(mpz_this,mother,key);
+           
+       for(size_t i=0;i<dim;++i)
+           for(size_t k=0;k<RS.size();++k)
+               convert(mpz_this[i][k+dim], (*RS[k])[i]);
+       mpz_this.solve_destructive_inner(ZZ_invertible,mpz_denom);
+       mpz_this.customize_solution(dim, mpz_denom,red_col,sign_col,make_sol_prime);           
+          
+       for(size_t i=0;i<dim;++i)  // replace left side by 0, except diagonal if ZZ_invetible
+          for(size_t j=0;j<dim;++j){
+            if(i!=j || !ZZ_invertible)
+                mpz_this[i][j]=0;              
+          }
+              
+       mat_to_Int(mpz_this,*this);
+       if(compute_denom)
+           convert(denom, mpz_denom);                
+    }    
+    nc=save_nc;         
 }
 
 //---------------------------------------------------------------------------
@@ -1596,7 +1642,7 @@ template<typename Integer>
 void Matrix<Integer>::solve_system_submatrix(const Matrix<Integer>& mother, const vector<key_t>& key, const vector<vector<Integer>* >& RS,
          vector< Integer >& diagonal, Integer& denom, size_t red_col, size_t sign_col) {
 
-    solve_system_submatrix_outer(mother,key,RS,denom,true,false,0,0);
+    solve_system_submatrix_outer(mother,key,RS,denom,true,false,red_col,sign_col);
     assert(diagonal.size()==nr);
     for(size_t i=0;i<nr;++i)
         diagonal[i]=elem[i][i];
@@ -1605,12 +1651,13 @@ void Matrix<Integer>::solve_system_submatrix(const Matrix<Integer>& mother, cons
 
 
 //---------------------------------------------------------------------------
-
+// the same without diagonal
 template<typename Integer>
 void Matrix<Integer>::solve_system_submatrix(const Matrix<Integer>& mother, const vector<key_t>& key, const vector<vector<Integer>* >& RS,
-         Integer& denom, size_t red_col, size_t sign_col) {
+         Integer& denom, size_t red_col, size_t sign_col, bool compute_denom, bool make_sol_prime) {
 
-    solve_system_submatrix_outer(mother,key,RS,denom,false,false,0,0);
+    solve_system_submatrix_outer(mother,key,RS,denom,false,false,red_col,sign_col, 
+                compute_denom, make_sol_prime);
 }
 
 //---------------------------------------------------------------------------
@@ -1619,7 +1666,7 @@ template<typename Integer>
 void Matrix<Integer>::solve_system_submatrix_trans(const Matrix<Integer>& mother, const vector<key_t>& key, const vector<vector<Integer>* >& RS,
          Integer& denom, size_t red_col, size_t sign_col) {
          
-    solve_system_submatrix_outer(mother,key,RS,denom,false,true,0,0);
+    solve_system_submatrix_outer(mother,key,RS,denom,false,true,red_col,sign_col);
 }
 
 //---------------------------------------------------------------------------
@@ -1722,23 +1769,23 @@ Matrix<Integer> Matrix<Integer>::invert_unprotected(Integer& denom, bool& succes
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void Matrix<Integer>::invert_submatrix(const vector<key_t>& key, Integer& denom, Matrix<Integer>& Inv) const{
+void Matrix<Integer>::invert_submatrix(const vector<key_t>& key, Integer& denom, Matrix<Integer>& Inv, bool compute_denom, bool make_sol_prime) const{
     assert(key.size() == nc);
     Matrix<Integer> unit_mat(key.size());
     Matrix<Integer> M(key.size(),2*key.size());        
     vector<vector<Integer>* > RS_pointers=unit_mat.row_pointers();
-    M.solve_system_submatrix(*this,key,RS_pointers,denom,0,0);
+    M.solve_system_submatrix(*this,key,RS_pointers,denom,0,0, compute_denom, make_sol_prime);
     Inv=M.extract_solution();;
 }
 
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void Matrix<Integer>::simplex_data(const vector<key_t>& key, Integer& vol, Matrix<Integer>& Supp) const{
+void Matrix<Integer>::simplex_data(const vector<key_t>& key, Matrix<Integer>& Supp, Integer& vol, bool compute_vol) const{
     assert(key.size() == nc);
-    invert_submatrix(key,vol,Supp);
+    invert_submatrix(key,vol,Supp,compute_vol,true);
     Supp=Supp.transpose();
-    Supp.make_prime();
+    // Supp.make_prime(); now done internally
 }
 //---------------------------------------------------------------------------
 
@@ -1766,7 +1813,7 @@ vector<Integer> Matrix<Integer>::solve_rectangular(const vector<Integer>& v, Int
             return vector<Integer>();
         }
     }
-    Integer total_gcd =gcd(denom,v_gcd(Linear_Form)); // extract the gcd of denom and solution
+    Integer total_gcd = libnormaliz::gcd(denom,v_gcd(Linear_Form)); // extract the gcd of denom and solution
     denom/=total_gcd;
     v_scalar_division(Linear_Form,total_gcd);
     return Linear_Form;
@@ -1816,17 +1863,22 @@ vector<Integer> Matrix<Integer>::find_linear_form_low_dim () const{
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void Matrix<Integer>::row_echelon_reduce(){
-    
+size_t Matrix<Integer>::row_echelon_reduce(){
+
+    size_t rk;
     Matrix<Integer> Copy(*this);
     bool success;
-    row_echelon_reduce(success);
-    if(success)
-        return;
+    rk=row_echelon_reduce(success);
+    if(success){
+        Shrink_nr_rows(rk);
+        return rk;
+    }
     Matrix<mpz_class> mpz_Copy(nr,nc);
     mat_to_mpz(Copy,mpz_Copy);
-    mpz_Copy.row_echelon_reduce(success);
-    mat_to_Int(mpz_Copy,*this);     
+    rk=mpz_Copy.row_echelon_reduce(success);
+    mat_to_Int(mpz_Copy,*this);
+    Shrink_nr_rows(rk); 
+    return rk;
 }
 //---------------------------------------------------------------------------
 
@@ -1855,13 +1907,16 @@ size_t Matrix<Integer>::row_echelon(){
     bool success;
     size_t rk;
     rk=row_echelon(success);
-    if(success)
+    if(success){
+        Shrink_nr_rows(rk);
         return rk;
+    }
     Matrix<mpz_class> mpz_Copy(nr,nc);
     mat_to_mpz(Copy,mpz_Copy);
-    rk=mpz_Copy.row_echelon_reduce(success);
+    rk=mpz_Copy.row_echelon_reduce(success); // reduce to make entries small
     mat_to_Int(mpz_Copy,*this);
-        return rk;
+    Shrink_nr_rows(rk);  
+    return rk;
 }
 
 //---------------------------------------------------------------------------
@@ -2212,6 +2267,130 @@ template<typename Integer>
 void Matrix<Integer>::saturate(){
     
     *this=kernel().kernel();    
+}
+
+//---------------------------------------------------
+
+template<typename Integer>
+vector<key_t> Matrix<Integer>::max_and_min(const vector<Integer>& L, const vector<Integer>& norm) const{
+
+    vector<key_t> result(2,0);
+    if(nr==0)
+        return result;
+    key_t maxind=0,minind=0;
+    Integer maxval=v_scalar_product(L,elem[0]);
+    Integer maxnorm=1,minnorm=1;
+    if(norm.size()>0){
+        maxnorm=v_scalar_product(norm,elem[0]);
+        minnorm=maxnorm;              
+    }
+    Integer minval=maxval;
+    for(key_t i=0;i<nr;++i){
+        Integer val=v_scalar_product(L,elem[i]);
+        if(norm.size()==0){
+            if(val>maxval){
+                maxind=i;
+                maxval=val;            
+            }
+            if(val<minval){
+                minind=i;
+                minval=val;            
+            }
+        }
+        else{
+            Integer nm=v_scalar_product(norm,elem[i]);
+            if(maxnorm*val>nm*maxval){
+                maxind=i;
+                maxval=val;            
+            }
+            if(minnorm*val<nm*minval){
+                minind=i;
+                minval=val;            
+            }
+        }            
+    }
+    result[0]=maxind;
+    result[1]=minind;
+    return result;
+}
+
+template<typename Integer>
+size_t Matrix<Integer>::extreme_points_first(const vector<Integer> norm){
+    
+    if(nr==0)
+        return 1;
+    
+    vector<long long> norm_copy;
+    
+    size_t nr_extr=0;
+    Matrix<long long> HelpMat(nr,nc);
+    try{
+        convert(HelpMat,*this);
+        convert(norm_copy,norm);
+    }
+    catch(ArithmeticException){
+        return nr_extr;        
+    }
+
+    HelpMat.sort_lex();
+    
+    vector<bool> marked(nr,false);
+    size_t no_success=0;
+    // size_t nr_attempt=0;
+    while(true){
+        // nr_attempt++; cout << nr_attempt << endl;
+        vector<long long> L=v_random<long long>(nc,10);
+        vector<key_t> max_min_ind;
+        max_min_ind=HelpMat.max_and_min(L,norm_copy);
+            
+        if(marked[max_min_ind[0]] && marked[max_min_ind[1]])
+            no_success++;
+        else
+            no_success=0;
+        if(no_success > 1000)
+            break;
+        marked[max_min_ind[0]]=true;
+        marked[max_min_ind[1]]=true;
+    }
+    Matrix<long long> Extr(nr_extr,nc);  // the recognized extreme rays
+    Matrix<long long> NonExtr(nr_extr,nc); // the other generators
+    size_t j=0;
+    vector<key_t> perm(nr);
+    for(size_t i=0;i<nr;++i) {
+        if(marked[i]){
+            perm[j]=i;;
+            j++;
+        }
+    }
+    nr_extr=j;
+    for(size_t i=0;i<nr;++i) {
+        if(!marked[i]){
+            perm[j]=i;;
+            j++;
+        }
+    }
+    order_rows_by_perm(perm);    
+    // cout << nr_extr << "extreme points found"  << endl;
+    return nr_extr;
+    // exit(0);
+}
+
+template<typename Integer>
+vector<Integer> Matrix<Integer>::find_inner_point(){
+    vector<key_t> simplex=max_rank_submatrix_lex();
+    vector<Integer> point(nc);
+    for(size_t i=0;i<simplex.size();++i)
+        point=v_add(point,elem[simplex[i]]);
+   return point;    
+}
+
+template<typename Integer>
+void Matrix<Integer>::Shrink_nr_rows(size_t new_nr_rows){
+
+    if(new_nr_rows>=nr)
+        return;
+    nr=new_nr_rows;
+    elem.resize(nr);
 }
 
 }  // namespace

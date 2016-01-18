@@ -22,8 +22,8 @@
 user_function hirzebruch_surface( $ ) {
   my $r=shift;
   $r >= 0 or die "hirzebruch_surface: index must be non-negative\n";
-  my $m=new Matrix<Rational>((unit_matrix<Rational>(2))/(-(unit_matrix<Rational>(2))));
-  $m->(2,1)=$r;
+  my $m=new Matrix<Rational>((unit_matrix<Rational>(2))/-(unit_matrix<Rational>(2)));
+  $m->elem(2,1)=$r;
   my $f=new NormalToricVariety(RAYS=>$m, MAXIMAL_CONES=>[[0,1],[1,2],[2,3],[0,3]],COMPLETE=>1,PROJECTIVE=>1,SIMPLICIAL=>1,DEGENERATE=>0);
   return $f;
 }

@@ -1,11 +1,10 @@
-OwnLibraries := libcddgmp
+OwnLibrary := libcddgmp
 LibModules := cddio cddmp cddlib cddcore cddlp cddproj setoper
-LibModules := $(LibModules) $(patsubst cdd%,cdd%_f,$(LibModules))
+LibModules := $(sort ${LibModules} $(patsubst cdd%,cdd%_f,${LibModules}))
 
-ExtraCFLAGS := -fvisibility=hidden
+ExtraCFLAGS := -fvisibility=hidden -DGMPRATIONAL
 
-src := $(ExtensionTop)/external/cdd/lib-src-gmp
-libcddgmp : ExtraCFLAGS += -DGMPRATIONAL
+src := ${ExtensionTop}/external/cdd/lib-src-gmp
 
 vpath %.c $(src)
 

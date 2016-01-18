@@ -77,7 +77,7 @@ weight 0.10;
 rule BOUNDED : {
     $this->BOUNDED=0;
 }
-weight 0.10;
+weight 0.1;
 
 }
 

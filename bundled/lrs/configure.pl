@@ -77,12 +77,12 @@ int main() {
                    "Please investigate the reasons and fix the installation.\n";
          } else {
             my ($lrsver) = $message =~ /version v\.([0-9.]+)[a-z]? [0-9.]+/;
-            if (Polymake::Configure::v_cmp($lrsver,"5.1") < 0) {
-               check_bundled() and !defined($lrs_path) or
-                  die "Your lrslib version $lrsver is too old, at least version 5.1 is required.\n";
-            } else {
+            if (Polymake::Configure::v_cmp($lrsver,"5.1") >= 0) {
                $BundledLrs = undef;
                $lrsversion = $lrsver;
+            } else {
+               check_bundled() and !defined($lrs_path) or
+                  die "Your lrslib version $lrsver is too old, at least version 5.1 is required.\n";
             }
          }
       } else {

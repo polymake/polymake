@@ -27,18 +27,18 @@ sub fill_inequalities_cpp($) {
     my $m = new Matrix<ValuatedRationalFunction<Max, Rational, Rational> >(3*$r+4, 2*$r+3);
     my $t=new UniMonomial<Rational,Rational>(1);
     
-    $m->(0,0)=$t;    $m->(0,1)   =-1; # u_0 =< t
-    $m->(1,0)=$t*$t; $m->(1,2) = -1;  # v_0 =< t^2
+    $m->elem(0,0)=$t;    $m->elem(0,1)   =-1; # u_0 =< t
+    $m->elem(1,0)=$t*$t; $m->elem(1,2) = -1;  # v_0 =< t^2
 
-    for(my $i=1; $i < $r+1; ++$i){
+    for (my $i=1; $i < $r+1; ++$i) {
 	my $s = new UniMonomial<Rational,Rational>(1-1/(2**$i));
-	$m->(3*$i-1,2*$i-1) = $t; $m->(3*$i-1,2*$i+1) = -1;                        # u_i =< t*u_(i-1)
-	$m->(3*$i,2*$i) = $t; $m->(3*$i,2*$i+1) = -1;                              # u_i =< t*v_(i-1)
-	$m->(3*$i+1,2*$i+2) = -1; $m->(3*$i+1,2*$i-1)= $s; $m->(3*$i+1,2*$i) = $s; # v_i =< s*( u_(i-1)+v_(i-1) )
+	$m->elem(3*$i-1,2*$i-1) = $t; $m->elem(3*$i-1,2*$i+1) = -1;                            # u_i =< t*u_(i-1)
+	$m->elem(3*$i,2*$i) = $t;     $m->elem(3*$i,2*$i+1) = -1;                              # u_i =< t*v_(i-1)
+	$m->elem(3*$i+1,2*$i+2) = -1; $m->elem(3*$i+1,2*$i-1)= $s; $m->elem(3*$i+1,2*$i) = $s; # v_i =< s*( u_(i-1)+v_(i-1) )
     }
     
-    $m->(3*$r+2, 2*$r+1) = 1; # u_r >= 0
-    $m->(3*$r+3, 2*$r+2) = 1; # v_r >= 0
+    $m->elem(3*$r+2, 2*$r+1) = 1; # u_r >= 0
+    $m->elem(3*$r+3, 2*$r+2) = 1; # v_r >= 0
 
     return new Polytope<ValuatedRationalFunction<Max, Rational, Rational> >(INEQUALITIES=>$m);
 }

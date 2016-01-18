@@ -48,7 +48,24 @@ UserFunctionTemplate4perl("# @category Transformations"
                           "# Apply a linear transformation to a polyhedron //P// such that a relatively interior point"
                           "# (preferably the vertex barycenter) is moved to the origin (1,0,...,0)."
                           "# @param Polytope P"
-                          "# @return Polytope",
+                          "# @return Polytope"
+                          "# @example Consider this triangle not containing the origin:"
+                          "# > $P = new Polytope(VERTICES => [[1,1,1],[1,2,1],[1,1,2]]);"
+                          "# > $origin = new Vector([1,0,0]);"
+                          "# > print $PC->contains_in_interior($origin);"
+                          "# | "
+                          "# To create a translate that contains the origin, do this:"
+                          "# > $PC = center($P);"
+                          "# > print $PC->contains_in_interior($origin);"
+                          "# | 1"
+                          "# This is what happened to the vertices:"
+                          "# > print $PC->VERTICES;"
+                          "# | 1 -1/3 -1/3"
+                          "# | 1 2/3 -1/3"
+                          "# | 1 -1/3 2/3"
+                          "# There also exists a property to check whether a polytope is centered:"
+                          "# > print $PC->CENTERED;"
+                          "# | 1",
                           "center<Scalar> (Polytope<Scalar>)");
 } }
 

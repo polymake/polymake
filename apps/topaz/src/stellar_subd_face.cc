@@ -26,21 +26,12 @@
 
 namespace polymake { namespace topaz {
 
-
-
 perl::Object stellar_subdivision(perl::Object p_in, const Array<Set<int> >& subd_faces, perl::OptionSet options)
 {
    const bool is_PC= !p_in.isa("topaz::SimplicialComplex");
-
   
-   Array< Set<int> > C_in;
-   if (is_PC)  p_in.give("TRIANGULATION.FACETS")>>C_in;
-   else 
-      p_in.give("FACETS")>>C_in;
-   int n_vert;
-   if (is_PC)p_in.give("N_POINTS")>>n_vert;
-   else
-      p_in.give("N_VERTICES")>>n_vert;
+   Array< Set<int> > C_in = p_in.give(is_PC ? "TRIANGULATION.FACETS" : "FACETS");
+   int n_vert             = p_in.give(is_PC ? "N_POINTS"             : "N_VERTICES");
   
    // compute new complex
    std::list< Set<int> > C;
@@ -75,11 +66,8 @@ perl::Object stellar_subdivision(perl::Object p_in, const Array<Set<int> >& subd
    }
 
    perl::Object p_out(p_in.type());
-   p_out.set_description()<<"Obtained from " << p_in.name() << " by barycentric subdivision of the "
-      "faces"<<endl<< subd_faces<<"."<<endl;
-   if (is_PC) p_out.take("TRIANGULATION.FACETS") << as_array(C_in);
-   else 
-      p_out.take("FACETS") << as_array(C_in);
+   p_out.set_description()<<"Obtained from " << p_in.name() << " by barycentric subdivision of the faces\n" << subd_faces << ".\n";
+   p_out.take(is_PC ? "TRIANGULATION.FACETS" : "FACETS") << as_array(C_in);
   
    // compute new coordinates
    if (is_PC) {
@@ -102,10 +90,7 @@ perl::Object stellar_subdivision(perl::Object p_in, const Array<Set<int> >& subd
    
    // compute new label
    if (!options["no_labels"]) {
-      Array<std::string> L;
-      if (is_PC) p_in.give("LABELS")>>L;
-      else 
-         p_in.give("VERTEX_LABELS")>>L;
+      Array<std::string> L = p_in.give(is_PC ? "LABELS" : "VERTEX_LABELS");
       hash_set<std::string> old_L(n_vert);
       for (Entire< Array<std::string> >::const_iterator l=entire(L); !l.at_end(); ++l)
          old_L.insert(*l);
@@ -131,9 +116,7 @@ perl::Object stellar_subdivision(perl::Object p_in, const Array<Set<int> >& subd
       
          L[n_vert+i] = ll;
       }
-      if (is_PC) p_out.take("LABELS") << L;
-      else
-         p_out.take("VERTEX_LABELS") << L;
+      p_out.take(is_PC ? "LABELS" : "VERTEX_LABELS") << L;
    }
    return p_out;
 }
@@ -145,7 +128,7 @@ UserFunction4perl("# @category  Producing a new simplicial complex from others"
                   "# @option Bool no_labels"
                   "# @option Bool geometric_realization default 0"
                   "# @return SimplicialComplex",
-                  &stellar_subdivision,"stellar_subdivision($,Array<Set<Int> > { no_labels => 0, geometric_realization => 0})"); 
+                  &stellar_subdivision, "stellar_subdivision($,Array<Set<Int> > { no_labels => 0, geometric_realization => 0})"); 
 
 InsertEmbeddedRule("# @category  Producing a new simplicial complex from others"
                    "# Computes the complex obtained by stellar subdivision of the given //face// of the //complex//."

@@ -59,11 +59,9 @@ number convert_Rational_to_number(const Rational& r)
    return res;
 }
 
-
-Polynomial<> convert_poly_to_Polynomial(const poly q, const Ring<>& r){
-   int n = r.n_vars();
+std::pair<ListMatrix<Vector<int> >, std::vector<Rational> > convert_poly_to_matrix_and_vector(const poly q){
    poly p = pCopy(q);
-   poly pp = p;
+   int n = rVar(currRing);
    ListMatrix<Vector<int> > exponents(0,n);
    std::vector<Rational> coefficients;
    while(p != NULL){
@@ -76,8 +74,13 @@ Polynomial<> convert_poly_to_Polynomial(const poly q, const Ring<>& r){
       exponents /= monomial;
       pIter(p);
    }
-   p_Delete(&pp,currRing);
-   return Polynomial<>(exponents, coefficients, r);
+   p_Delete(&p,currRing);
+   return std::pair<ListMatrix<Vector<int> >, std::vector<Rational> >(exponents, coefficients);
+}
+
+Polynomial<> convert_poly_to_Polynomial(const poly q, const Ring<>& r){
+   std::pair<ListMatrix<Vector<int> >, std::vector<Rational> > decomposed = convert_poly_to_matrix_and_vector(q);
+   return Polynomial<>(decomposed.first, decomposed.second, r);
 }
 
 

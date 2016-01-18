@@ -43,7 +43,7 @@
 namespace libnormaliz {
 using std::list;
 using std::vector;
-//using std::set;
+using std::map;
 using std::pair;
 using boost::dynamic_bitset;
 
@@ -88,6 +88,7 @@ public:
     bool do_partial_triangulation;
     bool do_determinants;
     bool do_multiplicity;
+    bool do_integrally_closed;
     bool do_Hilbert_basis;
     bool do_deg1_elements;
     bool do_h_vector;
@@ -100,6 +101,7 @@ public:
 	bool keep_order;
     bool do_class_group;
     bool do_module_gens_intcl;
+    bool do_module_rank;
     
     bool do_extreme_rays;
     bool do_pointed;
@@ -126,6 +128,8 @@ public:
     Matrix<Integer> Support_Hyperplanes;
     size_t nrSupport_Hyperplanes;
     list<vector<Integer> > Hilbert_Basis;
+    vector<Integer> Witness;    // for not integrally closed
+    Matrix<Integer> Basis_Max_Subspace; // a basis of the maximal linear subspace of the cone --- only used in connection with dual mode
     list<vector<Integer> > ModuleGeneratorsOverOriginalMonoid;
     CandidateList<Integer> OldCandidates,NewCandidates;   // for the Hilbert basis
     size_t CandidatesSize;
@@ -134,8 +138,9 @@ public:
     vector<long> gen_degrees;  // will contain the degrees of the generators
     Integer shift; // needed in the inhomogeneous case to make degrees positive
     vector<long> gen_levels;  // will contain the levels of the generators (in the inhomogeneous case)
-    size_t TriangulationSize;          // number of elements in Triangulation, for efficiency
-    list < SHORTSIMPLEX<Integer> > Triangulation; // triangulation of cone
+    size_t TriangulationBufferSize;          // number of elements in Triangulation, for efficiency
+    list< SHORTSIMPLEX<Integer> > Triangulation;       // triangulation of cone
+    list< SHORTSIMPLEX<Integer> > TriangulationBuffer; // simplices to evaluate
     list< SimplexEvaluator<Integer> > LargeSimplices; // Simplices for internal parallelization
     Integer detSum;                  // sum of the determinants of the simplices
     list< STANLEYDATA<Integer> > StanleyDec; // Stanley decomposition
@@ -262,7 +267,7 @@ public:
     void compute_deg1_elements_via_approx_simplicial(const vector<key_t>& key); // the same for a simplicial subcone
     void compute_sub_div_elements(const Matrix<Integer>& gens,list<vector<Integer> >& sub_div_elements); //computes subdividing elements via approximation
     void select_deg1_elements(const Full_Cone& C);
-    void select_Hilbert_Basis(const Full_Cone& C);
+//    void select_Hilbert_Basis(const Full_Cone& C); //experimental, unused
     
     void build_top_cone(); 
     void build_cone();
@@ -282,6 +287,7 @@ public:
     void extreme_rays_and_deg1_check();
     void find_grading();
     void find_grading_inhom();
+    void check_given_grading();
     void disable_grading_dep_comp();
     void set_degrees();
     void set_levels(); // for truncation in the inhomogeneous case
@@ -301,9 +307,12 @@ public:
     void primal_algorithm_initialize();
     void primal_algorithm_finalize();
     void primal_algorithm_set_computed();
+    void make_module_gens();
+    void make_module_gens_and_extract_HB();
     void remove_duplicate_ori_gens_from_HB();
     void compute_class_group();
     void compose_perm_gens(const vector<key_t>& perm);
+    void check_grading_after_dual_mode();
 
     void minimize_support_hyperplanes();   
     void compute_extreme_rays();
@@ -318,6 +327,7 @@ public:
 
     void compute_multiplicity();
     
+    void minimize_excluded_faces();
     void prepare_inclusion_exclusion();
 
     void do_vars_check(bool with_default);
@@ -339,8 +349,8 @@ public:
  *                      Constructors
  *---------------------------------------------------------------------------
  */
-Full_Cone(Matrix<Integer> M, bool do_make_prime=true);            //main constructor
-    Full_Cone(const Cone_Dual_Mode<Integer> &C);
+    Full_Cone(Matrix<Integer> M, bool do_make_prime=true);            //main constructor
+    Full_Cone(Cone_Dual_Mode<Integer> &C);            // removes data from the argument!
     Full_Cone(Full_Cone<Integer>& C, const vector<key_t>& Key); // for pyramids
 
 /*---------------------------------------------------------------------------
@@ -360,7 +370,6 @@ Full_Cone(Matrix<Integer> M, bool do_make_prime=true);            //main constru
     const Matrix<Integer>& getGenerators() const;
     vector<bool> getExtremeRays() const;
     Matrix<Integer> getSupportHyperplanes() const;
-    void getTriangulation(list< vector<key_t> >& Triang, list<Integer>& TriangVol) const;
     Matrix<Integer> getHilbertBasis() const;
     Matrix<Integer> getModuleGeneratorsOverOriginalMonoid()const;
     Matrix<Integer> getDeg1Elements() const;
@@ -381,10 +390,6 @@ Full_Cone(Matrix<Integer> M, bool do_make_prime=true);            //main constru
 
     /* adds generators, they have to lie inside the existing cone */
     void add_generators(const Matrix<Integer>& new_points);
-
-    /* computes the multiplicity of the ideal in case of a Rees algebra
-     * (not the same as the multiplicity of the semigroup) */
-    // Integer primary_multiplicity() const;  // replaced by function in cone.cpp
 
     void dual_mode();
 

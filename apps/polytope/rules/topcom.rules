@@ -34,18 +34,30 @@ require Polymake::ProgramPipe;
 
 label topcom
 
-sub call_topcom_chiro($$) {
-   my $P=new ProgramPipe($DebugLevel ? () : ("2>/dev/null"), "$topcom/points2chiro", (defined $_[1] ? "" : "--nosymmetries"));
-   print $P "[", join(",", map { "[".join(",", @{$_})."]" } @{$_[0]}), "]";
-   if (!defined $_[1]) { 
+#Converts an Array<Array<Int> > of symmetries into a text that TOPCOM understands
+sub symmetry_to_text {
+   return "[[".join("],[", map { join(",", @{$_}) } @{ $_[0]})."]]";
+}
+
+# @category Triangulations, subdivisions and volume
+# This computes the chirotope of a point or vector configuration.
+# @param Matrix V The points or vectors, given as rows.
+# @option Array<Array<Int> > symmetry A list of generators of a symmetry group of the points, given as permutations on the indices. If specified, the chirotope is only computed up to symmetry.
+# @return String
+user_function chirotope(Matrix; {symmetry=>undef}) {
+   my ($matrix, $symmetry_options) = @_;
+   my $P=new ProgramPipe($DebugLevel ? () : ("2>/dev/null"), "$topcom/points2chiro", (defined $$symmetry_options{"symmetry"} ? "" : "--nosymmetries"));
+   print $P "[", join(",", map { "[".join(",", @{$_})."]" } @{$matrix}), "]";
+   if (!defined $$symmetry_options{"symmetry"}) { 
       print $P "[]\n";
    } else {
-      print $P "\n[[".join("],[", map { join(",", @{$_}) } @{$_[1]})."]]\n";
+      print $P "\n".symmetry_to_text($$symmetry_options{"symmetry"})."\n";
    }
    local $/;
    local $_=<$P>;
    s/\[\]\n$//s;
-   $_
+   my @result = split("\n",$_);
+   return join("\n",@result[0..1])."\n";#TOPCOM appends the symmetry generators as text, which we forget here.
 }
 
 sub call_topcom_co_or_circuits {
@@ -86,7 +98,7 @@ sub call_topcom_cocircuits($)
    call_topcom_co_or_circuits($_[0], "$topcom/chiro2cocircuits");
 }
 
-sub call_topcom_triang($) {
+sub call_topcom_chiro2placingtriang($) {
    my $P=new ProgramPipe($DebugLevel ? () : ("2>/dev/null"), "$topcom/chiro2placingtriang");
    print $P $_[0], "\n";
    local $/;
@@ -96,9 +108,9 @@ sub call_topcom_triang($) {
    [ split /\n/, $_ ];
 }
 
-sub call_topcom_alltriangs($) {
+sub call_topcom_chiro2triangs {
    my $P=new ProgramPipe($DebugLevel ? () : ("2>/dev/null"), "$topcom/chiro2triangs");
-   print $P $_[0], "\n";
+   print $P $_[0],"\n";
    local $_;
    my @triangs=();
    while (<$P>) {
@@ -110,7 +122,7 @@ sub call_topcom_alltriangs($) {
 }
 
 
-sub call_topcom_finetriangs($) {
+sub call_topcom_chiro2finetriangs($) {
    my $P=new ProgramPipe($DebugLevel ? () : ("2>/dev/null"), "$topcom/chiro2finetriangs");
    print $P $_[0], "\n";
    local $_;
@@ -123,22 +135,60 @@ sub call_topcom_finetriangs($) {
    \@triangs;
 }
 
-# @category Triangulations, subdivisions and volume
-# Compute all triangulations of a point configuration via its chirotope.
-# @param PointConfiguration pc input point configuration
-# @return Array<Array<Set<Int>>>
-user_function topcom_all_triangulations {
-    my $self=shift;
-    return new Array<Array<Set<Int>>>(call_topcom_alltriangs($self->CHIROTOPE));
+sub call_topcom_chiro2alltriangs($) {
+   my $P=new ProgramPipe($DebugLevel ? () : ("2>/dev/null"), "$topcom/chiro2alltriangs");
+   print $P $_[0], "\n";
+   local $_;
+   my @triangs=();
+   while (<$P>) {
+     s/T.*://; s/\];//; s/^\{//; s/\}$//; s/\},\{/}\n{/g; tr/,/ /;
+     my @e =( split /\n/, $_ );     
+     push @triangs, \@e;
+   }
+   \@triangs;
 }
 
 # @category Triangulations, subdivisions and volume
-# Compute all fine triangulations of a point configuration via its chirotope.
+# Computes all triangulations of a point configuration that are connected by bistellar 
+# flips to the regular triangulations. The triangulations are computed via the chirotope.
+# @param PointConfiguration pc input point configuration
+# @option Array<Array<int> > symmetry A list of generators of a symmetry group of the points. If specified, only triangulations up to symmetry will be computed.
+# @return Array<Array<Set<Int>>>
+user_function topcom_regular_and_connected_triangulations(PointConfiguration; {symmetry=>undef} ) {
+    my ($self, $symmetry_options) = @_;
+    if(!defined $$symmetry_options{"symmetry"}) {
+       return new Array<Array<Set<Int>>>(call_topcom_chiro2triangs($self->CHIROTOPE));
+    }
+    else {
+       my $chiro = chirotope($self->POINTS,symmetry=>$$symmetry_options{"symmetry"});
+       return new Array<Array<Set<Int>>>(call_topcom_chiro2triangs($chiro."\n".symmetry_to_text($$symmetry_options{"symmetry"})."\n"));
+    }
+}
+
+# @category Triangulations, subdivisions and volume
+# Computes all fine triangulations of a point configuration that are connected by bistellar flips 
+# to a fine seed triangulation. The triangulations are computed via the chirotope.
+# @option Array<Array<int> > symmetry A list of generators of a symmetry group of the points. If specified, only triangulations up to symmetry will be computed.
 # @param PointConfiguration pc input point configuration
 # @return Array<Array<Set<Int>>>
-user_function topcom_all_fine_triangulations {
-    my $self=shift;
-    return new Array<Array<Set<Int>>>(call_topcom_finetriangs($self->CHIROTOPE));
+user_function topcom_fine_and_connected_triangulations(PointConfiguration; {symmetry=>undef} ){
+    my ($self, $symmetry_options) = @_;
+    if(!defined $$symmetry_options{"symmetry"}) {
+      return new Array<Array<Set<Int>>>(call_topcom_chiro2finetriangs($self->CHIROTOPE));
+    }
+    else {
+       my $chiro = chirotope($self->POINTS,symmetry=>$$symmetry_options{"symmetry"});
+      return new Array<Array<Set<Int>>>(call_topcom_chiro2finetriangs($chiro."\n".symmetry_to_text($$symmetry_options{"symmetry"})."\n"));
+    }
+}
+
+# @category Triangulations, subdivisions and volume
+# Computes all triangulations of a point configuration via its chirotope.
+# @param PointConfiguration pc input point configuration
+# @return Array<Array<Set<Int>>>
+user_function topcom_all_triangulations {
+   my $self=shift;
+   return new Array<Array<Set<Int>>>(call_topcom_chiro2alltriangs($self->CHIROTOPE));
 }
 
 # @category Triangulations, subdivisions and volume
@@ -167,15 +217,13 @@ user_function positive_circuits {
 object Polytope {
 
 rule CHIROTOPE : VERTICES {
-   $this->CHIROTOPE=call_topcom_chiro($this->VERTICES, $this->lookup("GROUP.GENERATORS"));
+   $this->CHIROTOPE=chirotope($this->VERTICES);
 }
 weight 6.10;
 
 
-rule topcom.triangulation.poly: TRIANGULATION : CHIROTOPE {
-    my $facets = new Array<Set<Int>>(call_topcom_triang($this->CHIROTOPE));
-    my $triang = new topaz::GeometricSimplicialComplex(FACETS=>$facets);
-    $this->TRIANGULATION = $triang;
+rule topcom.triangulation.poly: TRIANGULATION(new).FACETS : CHIROTOPE {
+    $this->TRIANGULATION->FACETS = call_topcom_chiro2placingtriang($this->CHIROTOPE);
 }
 
 } # end object Polytope
@@ -184,7 +232,7 @@ rule topcom.triangulation.poly: TRIANGULATION : CHIROTOPE {
 object VectorConfiguration {
 
 rule CHIROTOPE : VECTORS {
-   $this->CHIROTOPE=call_topcom_chiro($this->VECTORS, $this->lookup("GROUP.GENERATORS"));
+   $this->CHIROTOPE=chirotope($this->VECTORS);
 }
 weight 6.10;
 precondition : FULL_DIM;
@@ -206,16 +254,8 @@ precondition : FULL_DIM;
 
 object PointConfiguration {
 
-rule CHIROTOPE : POINTS {
-   $this->CHIROTOPE=call_topcom_chiro($this->POINTS, $this->lookup("GROUP.GENERATORS"));
-}
-weight 6.10;
-precondition : FULL_DIM;
-
-rule topcom.triangulation.pc : TRIANGULATION : CHIROTOPE {
-    my $facets = new Array<Set<Int>>(call_topcom_triang($this->CHIROTOPE));
-    my $triang = new topaz::GeometricSimplicialComplex(FACETS=>$facets);
-    $this->TRIANGULATION = $triang;
+rule topcom.triangulation.pc : TRIANGULATION(new).FACETS : CHIROTOPE {
+    $this->TRIANGULATION->FACETS = call_topcom_chiro2placingtriang($this->CHIROTOPE);
 }
 precondition : FULL_DIM;
 
@@ -227,4 +267,5 @@ precondition : FULL_DIM;
 # Local Variables:
 # mode: perl
 # cperl-indent-level:3
+# indent-tabs-mode:nil
 # End:

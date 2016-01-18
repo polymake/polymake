@@ -18,16 +18,26 @@
 #include "polymake/internal/comparators_ops.h"
 #include "polymake/internal/type_union.h"
 #include "polymake/internal/shared_object.h"
+#include "polymake/FacetList.h"
 #include <sys/types.h>
 #include <unistd.h>
 
 namespace pm {
-   namespace virtuals {
-      void _nop() {}
-   }
-   shared_object_secrets::rep<> shared_object_secrets::empty_rep;
-   shared_pointer_secrets::rep shared_pointer_secrets::null_rep;
-   double spec_object_traits<double>::global_epsilon=1e-7;
+namespace virtuals {
+
+void _nop() {}
+
+}
+namespace fl_internal {
+
+const facet superset_iterator::empty_facet(0);
+
+}
+
+shared_object_secrets::rep<> shared_object_secrets::empty_rep;
+shared_pointer_secrets::rep shared_pointer_secrets::null_rep;
+double spec_object_traits<double>::global_epsilon=1e-7;
+
 }
 
 namespace std {

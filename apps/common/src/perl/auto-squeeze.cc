@@ -16,6 +16,7 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/Graph.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/client.h"
 
@@ -28,5 +29,6 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(squeeze_f17, perl::Canned< IncidenceMatrix< NonSymmetric > >);
+   FunctionInstance4perl(squeeze_f17, perl::Canned< Graph< Undirected > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -27,6 +27,15 @@
 
 namespace polymake { namespace graph {
 
+      //The implementation is adapted to Figure 11-2 in
+      //Papadimitriou, Christos H.; Steiglitz, Kenneth
+      //Combinatorial optimization: algorithms and complexity. Prentice-Hall, Inc., Englewood Cliffs, N.J., 1982. xvi+496 pp. ISBN: 0-13-152462-3 
+      //
+      //Corrections of the algorithms in this book can be found at
+      //www.cs.princeton.edu/~ken/latest.pdf
+      //
+      //We fixed the algorithm independently of those errata.
+
 
 template <typename E>
 class HungarianMethod;

@@ -29,9 +29,9 @@ sub And($$$$) {
   my $m = new Matrix(3,$d+1);
   my ($ain1,$ain2)=(abs($in1),abs($in2));
   # 1 + out - in1 - in 2 >= 0
-  $m->(0,0) = 1; $m->(0,$out) = 1; $m->(0,$ain1) = -1; $m->(0,$ain2) = -1;
-  $m->(1,0) = 0; $m->(1,$out) = -1, $m->(1,$ain1) = 1;
-  $m->(2,0) = 0; $m->(2,$out) = -1, $m->(2,$ain2) = 1;
+  $m->elem(0,0) = 1; $m->elem(0,$out) = 1; $m->elem(0,$ain1) = -1; $m->elem(0,$ain2) = -1;
+  $m->elem(1,0) = 0; $m->elem(1,$out) = -1, $m->elem(1,$ain1) = 1;
+  $m->elem(2,0) = 0; $m->elem(2,$out) = -1, $m->elem(2,$ain2) = 1;
   if ($in1<0) { # subs in1 -> (1-in1)
       $m->col(0) += new Vector([-1,1,0]);
       $m->col($ain1) *= -1;
@@ -48,9 +48,9 @@ sub Or($$$$) {
   my $m = new Matrix(3,$d+1);
   my ($ain1,$ain2)=(abs($in1),abs($in2));
   # - out + in1 + in 2 >= 0
-  $m->(0,0) = 0; $m->(0,$out) = -1; $m->(0,$ain1) = 1; $m->(0,$ain2) = 1;
-  $m->(1,0) = 0; $m->(1,$out) = 1, $m->(1,$ain1) = -1;
-  $m->(2,0) = 0; $m->(2,$out) = 1, $m->(2,$ain2) = -1;
+  $m->elem(0,0) = 0; $m->elem(0,$out) = -1; $m->elem(0,$ain1) = 1; $m->elem(0,$ain2) = 1;
+  $m->elem(1,0) = 0; $m->elem(1,$out) = 1, $m->elem(1,$ain1) = -1;
+  $m->elem(2,0) = 0; $m->elem(2,$out) = 1, $m->elem(2,$ain2) = -1;
   if ($in1<0) { # subs in1 -> (1-in1)
       $m->col(0) += new Vector([1,-1,0]);
       $m->col($ain1) *= -1;

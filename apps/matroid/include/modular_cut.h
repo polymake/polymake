@@ -76,13 +76,19 @@ bool is_modular_cut_impl(const Array<SetType>& C, const graph::HasseDiagram& LF,
 
    Set<int> Cset;
    for (typename Entire<Array<SetType> >::const_iterator cit = entire(C); !cit.at_end(); ++cit) {
-      Cset += index_of[*cit];
+      Map<Set<int>, int>::const_iterator tmp = index_of.find(*cit);
+      if(tmp == index_of.end()){
+         if (verbose) cout << "The given array is not a modular cut because "
+                           << *cit << " is  not a flat of the given matroid."
+                           << endl;
+         return false;
+      }
+      Cset += tmp->second;
    }
 
-   const int n = LF.nodes_of_dim(1).size();
-   if (!Cset.contains(index_of[sequence(0,n)])) {
+   if (!Cset.contains(LF.top_node())) {
       if (verbose) cout << "The given set is not a modular cut because "
-                        << "it does not contain the set {0,1,...,n-1}." 
+                        << "it does not contain the set " << LF.face(LF.top_node()) << "." 
                         << endl;
       return false;
    }

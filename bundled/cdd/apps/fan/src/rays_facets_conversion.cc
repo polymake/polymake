@@ -57,7 +57,7 @@ void raysToFacetNormals(perl::Object f)
    const int ambientDim = f.give("FAN_AMBIENT_DIM");
    const Matrix<Coord> rays = f.give("RAYS");
    const IncidenceMatrix<> incidence = f.give("MAXIMAL_CONES");
-   const Matrix<Coord> linealitySpace = f.lookup("LINEALITY_SPACE|INPUT_LINEALITY");
+   const Matrix<Coord> linealitySpace = f.give("LINEALITY_SPACE|INPUT_LINEALITY");
 
    int facetcounter = 0;
    Map< Vector<Coord>, int > facetmap;
@@ -73,7 +73,7 @@ void raysToFacetNormals(perl::Object f)
    Matrix<Coord> fanLinearSpan;
    Set<int> fanLinearSpanIndices;
     
-	polytope::cdd_interface::solver<Coord> sv;
+   polytope::cdd_interface::solver<Coord> sv;
 
    // find linear span of the whole fan
    if (fanDim < ambientDim)
@@ -133,7 +133,7 @@ void raysToFacetNormals(perl::Object f)
          continue;
       }
 
-		const Matrix<Coord> cfacets = sv.enumerate_facets(rays.minor(coneSet,All), linealitySpace,true,false).first;
+      const Matrix<Coord> cfacets = sv.enumerate_facets(rays.minor(coneSet,All), linealitySpace,true,false).first;
 
       for (typename Entire< Rows< Matrix<Coord> > >::const_iterator facet = entire(rows(cfacets)); !facet.at_end(); ++facet)
       {

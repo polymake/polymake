@@ -14,8 +14,8 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/Rational.h"
 #include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -25,6 +25,7 @@ namespace polymake { namespace polytope { namespace {
       WrapperReturn( (polarize<T0>(arg0, arg1)) );
    };
 
+   FunctionInstance4perl(polarize_T_x_o, QuadraticExtension< Rational >);
    FunctionInstance4perl(polarize_T_x_o, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

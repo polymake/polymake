@@ -81,7 +81,16 @@ UserFunction4perl("# @category Geometry"
                   "# Write the face lattice of a vertex-facet incidence matrix //VIF// to stdout."
                   "# If //dual// is set true the face lattice of the dual is printed."
                   "# @param IncidenceMatrix VIF"
-                  "# @param Bool dual",
+                  "# @param Bool dual"
+                  "# @example To get a nice representation of the squares face lattice, do this:"
+                  "# > print_face_lattice(cube(2)->VERTICES_IN_FACETS);"
+                  "# | FACE_LATTICE"
+                  "# | "
+                  "# | [ -1 : 4 ]"
+                  "# | {{0 1} {0 2} {1 3} {2 3}}"
+                  "# | "
+                  "# | [ -2 : 4 ]"
+                  "# | {{0} {1} {2} {3}}",
                   &print_face_lattice, "print_face_lattice(IncidenceMatrix;$=0)");
 } }
 

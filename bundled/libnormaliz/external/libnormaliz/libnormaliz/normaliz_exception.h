@@ -25,8 +25,8 @@
 #define NORMALIZ_EXEPTION_H_
 
 #include <exception>
-#include "libnormaliz/libnormaliz.h"
-#include "libnormaliz/cone_property.h"
+#include <libnormaliz/libnormaliz.h>
+#include <libnormaliz/cone_property.h>
 
 namespace libnormaliz {
 
@@ -39,6 +39,20 @@ class ArithmeticException: public NormalizException {
     public:
 	virtual const char* what() const throw() {
 		return "Arithmetic Overflow detected, try a bigger integer type!";
+	}
+};
+
+class NonpointedException: public NormalizException {
+    public:
+	virtual const char* what() const throw() {
+		return "Cone is not pointed.";
+	}
+};
+
+class NotIntegrallyClosedException: public NormalizException {
+    public:
+	virtual const char* what() const throw() {
+		return "Original monoid is not integrally closed.";
 	}
 };
 

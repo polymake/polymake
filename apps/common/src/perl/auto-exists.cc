@@ -28,6 +28,7 @@
 #include "polymake/Vector.h"
 #include "polymake/client.h"
 #include "polymake/hash_set"
+#include "polymake/linalg.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -58,5 +59,8 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< std::string > >, std::string);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Map< Vector< double >, bool > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>, void> >);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< Vector< double > > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< Vector< Rational > > >, perl::Canned< const pm::SameElementVector<pm::Rational const&> >);
+   FunctionInstance4perl(exists_X_f1, perl::Canned< const hash_set< Vector< Rational > > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(exists_X_f1, perl::Canned< const hash_set< Vector< Rational > > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -32,10 +32,11 @@
 #include <ostream>
 
 namespace libnormaliz {
-using std::ostream;
+using std::map;
+using std::vector;
 
 template<typename key, typename T>
-ostream& operator<< (ostream& out, const map<key, T> M) {
+std::ostream& operator<< (std::ostream& out, const map<key, T> M) {
     typename map<key, T>::const_iterator it;
     for (it = M.begin(); it != M.end(); ++it) {
         out << it->first << ": " << it-> second << "  ";

@@ -1,6 +1,6 @@
-OwnLibraries := libnauty
+OwnLibrary := libnauty
 LibModules := nauty naututil nautil nautinv naugraph rng naurng schreier nausparse nautaux
-src := $(ExtensionTop)/external/nauty
+src := ${ExtensionTop}/external/nauty
 vpath %.c $(src)
 
 # We need to disable avx2 for some gcc versions as it produces invalid relocations
@@ -18,10 +18,10 @@ ifeq "$(wildcard nauty.h)" ""
     override _restore := ;mv Makefile.hidden Makefile
   endif
 
-  override _dummy := $(shell $(_hide) CC=$(CC) CFLAGS="$(Cflags)" $(src)/configure --quiet 2>/dev/null; rm makefile $(_restore))
+  override _dummy := $(shell ${_hide} CC=${CC} CFLAGS="${Cflags}" ${src}/configure --quiet 2>/dev/null; rm makefile ${_restore})
 endif
 
-ExtraCFLAGS := -DBIGNAUTY -I. -I$(src)
+ExtraCFLAGS := -DBIGNAUTY -I. -I${src}
 ExtraCLEAN := nauty.h naututil.h gtools.h config.*
 
 # Local Variables:

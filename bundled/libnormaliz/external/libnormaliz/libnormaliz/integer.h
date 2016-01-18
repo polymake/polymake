@@ -24,7 +24,7 @@
 #ifndef INTEGER_H_
 #define INTEGER_H_
 
-#include "libnormaliz/general.h"
+#include <libnormaliz/general.h>
 
 #include <list>
 #include <vector>

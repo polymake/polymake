@@ -63,25 +63,27 @@ void beneath_beyond(perl::Object p, bool take_VERTICES, bool dual)
 
 template <typename Scalar>
 Array< Set<int> >
-placing_triangulation(const Matrix<Scalar>& Points, const Array<int>& permutation)
+placing_triangulation(const Matrix<Scalar>& Points, perl::OptionSet options)
 {
-   beneath_beyond_algo<Scalar> algo(Points, false);
-   if (permutation.empty()) {
-      algo.compute(entire(sequence(0,Points.rows())));
-   } else {
+   const bool already_VERTICES = options["non_redundant"];
+   beneath_beyond_algo<Scalar> algo(Points, already_VERTICES);
+   Array<int> permutation;
+   if (options["permutation"] >> permutation) {
       if (permutation.size() != Points.rows())
          throw std::runtime_error("placing_triangulation: wrong permutation");
       algo.compute(entire(permutation));
+   } else {
+      algo.compute(entire(sequence(0,Points.rows())));
    }
    return algo.getTriangulation();
 }
 
 template <typename Scalar>
 Array< Set<int> >
-placing_triangulation(const SparseMatrix<Scalar>& Points, const Array<int>& permutation)
+placing_triangulation(const SparseMatrix<Scalar>& Points, perl::OptionSet options)
 {
    const Matrix<Scalar> full_points(Points);
-   return placing_triangulation(full_points, permutation);
+   return placing_triangulation(full_points, options);
 }
 
 FunctionTemplate4perl("beneath_beyond<Scalar> (Cone<Scalar>; $=1, $=0) : void");
@@ -89,9 +91,16 @@ FunctionTemplate4perl("beneath_beyond<Scalar> (Cone<Scalar>; $=1, $=0) : void");
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# Compute the placing triangulation of the given point set using the beneath-beyond algorithm."
                           "# @param Matrix Points the given point set"
-                          "# @param Array<Int> permutation"
-                          "# @return Array<Set<Int>>",
-                          "placing_triangulation(Matrix; $=[ ])");
+                          "# @option Bool non_redundant whether it's already known that //Points// are non-redundant"
+                          "# @option Array<Int> permutation placing order of //Points//, must be a valid permutation of (0..Points.rows()-1)"
+                          "# @return Array<Set<Int>>"
+                          "# @example To compute the placing triangulation of the square (of whose vertices we know that"
+                          "# they're non-redundant), do this:"
+                          "# > $t = placing_triangulation(cube(2)->VERTICES,non_redundant=>1);"
+                          "# > print $t;"
+                          "# | {0 1 2}"
+                          "# | {1 2 3}",
+                          "placing_triangulation(Matrix, { non_redundant => 0, permutation => undef })");
 } }
 
 // Local Variables:

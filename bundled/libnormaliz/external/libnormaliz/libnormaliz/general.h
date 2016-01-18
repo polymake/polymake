@@ -27,6 +27,7 @@
 
 #include <iostream>
 #include <assert.h>
+#include <cstddef>
 
 #ifdef _WIN32 //for 32 and 64 bit windows
     #define NMZ_MPIR //always use MPIR
@@ -49,8 +50,8 @@ typedef long long MachineInteger;
 
 } /* end namespace libnormaliz */
 
-#include "libnormaliz/libnormaliz.h"
-#include "libnormaliz/normaliz_exception.h"
-#include "libnormaliz/cone_property.h"
+#include <libnormaliz/libnormaliz.h>
+#include <libnormaliz/normaliz_exception.h>
+#include <libnormaliz/cone_property.h>
 
 #endif /* GENERAL_H_ */

@@ -120,7 +120,7 @@ user_function gfan_tropicalvariety_of_prime(ideal::Ideal) {
 # Calls gfan_tropicalbruteforce for a homogeneous ideal.
 # If the ideal contains a monomial, gfan will return an empty object and the xslt parsing fails. We do not catch this for you.
 # @param ideal::Ideal I homogeneous ideal
-# @return SymmetricFan
+# @return fan::SymmetricFan
 user_function gfan_tropicalbruteforce(ideal::Ideal) {
    my ($I) = @_;
    my $tempfile=new Tempfile;

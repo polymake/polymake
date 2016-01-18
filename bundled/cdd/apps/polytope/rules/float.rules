@@ -64,23 +64,8 @@ rule cdd.convex_hull.linear_span : LINEAR_SPAN : INEQUALITIES {
 }
 weight 3.10;
 
-
 }
 
-object Polytope<Float> {
-
-# FIXME #195
-# see also corresponding rule in rational.rules
-# caution: rule weight set to 1.20 to allow immediate execution of rule
-# independent of actual complexity of the computation
-rule BOUNDED : FACETS | INEQUALITIES, LINEALITY_SPACE {
-    $this->BOUNDED = cdd_input_bounded($this);
-}
-weight 1.20;
-
-}
-
-# intrinsic rules
 INCLUDE
   lp_float.rules
 

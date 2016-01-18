@@ -94,8 +94,6 @@ Vector<E> components2vector(const Array<int>& components, const Array<Matrix<E> 
 
 /* computes a canonical vector in the relative interior of the normal cone N(v,P)
  * (can also return a vector [v,w], where w is a slightly perturbed variant of v)
- *
- * TODO: comment
  */
 template<typename E>
 Vector<E> canonical_vector(const int k, const Array<int>& components, const Array<Matrix<E> >& polytopes, const graph_list& graphs) {
@@ -215,9 +213,7 @@ Vector<E> search_direction(const int k, const Vector<E>& c_st1, const Vector<E>&
    return best_hyperplane;
 }
 
-/*
- * TODO: comment
- */
+
 template <class E>
 Vector<E> local_search(const int k, const Vector<E>& c_st, const Vector<E>& c_st2, Array<int>& components, const Array<Matrix<E> >& polytopes, const graph_list& graphs) 
 {
@@ -301,7 +297,8 @@ bool Adj(const int k, Array<int>& next_components, const Array<int>& components,
  * called by minkowski_sum_fukuda
  */
 template<typename E>
-void addition(const int k, const Vector<E>& v_st, const Vector<E>& c_st, const Vector<E>& c_st2, hash_set<Vector<E> >& vertices, Array<int>& components, const graph_list& graphs, Array<Matrix<E> >& polytopes){
+hash_set<Vector<E> > addition(const int k, const Vector<E>& v_st, const Vector<E>& c_st, const Vector<E>& c_st2, Array<int>& components, const graph_list& graphs, Array<Matrix<E> >& polytopes){
+   hash_set<Vector<E> > vertices; //return value
    Vector<E> next;
    Array<int> next_components(k), u_components(k);
    Vector<E> v = v_st;
@@ -354,12 +351,11 @@ void addition(const int k, const Vector<E>& v_st, const Vector<E>& c_st, const V
          }
       }
    }
+   return vertices;
 }
 
 /* computes the maximal face of polytope
  * (the code is essentially borrowed from apps/polytope/src/pseudo_simplex.cc)
- *
- * TODO: comment
  */
 template<typename E>
 Set<int> find_max_face(const Matrix<E>& V, const Graph<Undirected>& G, const Vector<E>& objective) {
@@ -452,17 +448,36 @@ void initialize(const Array<perl::Object>& summands, const int k, graph_list& gr
    }
 
    //initialize components and v_st:
-   const Vector<E> obj = ones_vector<E>(polytopes[0].row(0).size()); //LP Vector; TODO: good direction
+   Vector<E> obj = ones_vector<E>(polytopes[0].row(0).size()); //LP Vector;
+   bool find_new_direction = false;
    for (int i=0; i<k; ++i) {
       Set<int> max_face = find_max_face(polytopes[i], graphs[i], obj);  //solves LP over P_j
-      while (max_face.size()>1) {
-         Set<int>::iterator SetIterator=max_face.begin();
-         ++SetIterator;
-         max_face.erase(lex_max(*(max_face.begin()),*SetIterator, polytopes[i])); //delete some, chosen by lex. order)
+      if(max_face.size()>1){
+         if(find_new_direction){
+            for(int j=1;j<polytopes[0].row(0).size();++j){
+               if(obj[j]<3001){
+                  obj[j]*=j;
+               } else {
+                  obj[j]-=3000;
+               }
+            }
+            i=0;
+            max_face = find_max_face(polytopes[0], graphs[0], obj);
+            if(max_face.size()==1)
+               find_new_direction = false;
+         }else{
+            find_new_direction = true;
+         }
+         while (max_face.size()>1) {
+            Set<int>::iterator SetIterator=max_face.begin();
+            ++SetIterator;
+            max_face.erase(lex_max(*(max_face.begin()),*SetIterator, polytopes[i])); //delete some, chosen by lex. order)
+         }
       }
       components[i]=*(max_face.begin());        //to find v_st
    }
    v_st=components2vector(components, polytopes);
+
 
    //initialize c_st and c_st2 (canonical Vectors in N(P,v_st)):
    const Vector<E> c = canonical_vector(k, components, polytopes, graphs);
@@ -478,13 +493,13 @@ Matrix<E> minkowski_sum_vertices_fukuda(const Array<perl::Object>& summands)
    Vector<E> v_st;      // Root Vertex v*
    Vector<E> c_st;      // Canonical Vector c*
    Vector<E> c_st2;     // alternative for c* (if c is parallel to c_st)
-   hash_set<Vector<E> > vertices;               // Output = listed coordinates of the vertices of P, (the first vertex will be v*)
    Array<int> components(k);    // j-th entry will contain the number of a vertex in P_j  s.t. v = v(1)+v(2)+...+v(k) where v(j)= P_j(comp(j))
    graph_list graphs(k);                // stores all Graphs from the input Polytopes P_j
    Array<Matrix<E> > polytopes(k);      // stores matrices s.t. the i-th entry is a discribtion of P_j by vertices
 
    initialize(summands, k, graphs, polytopes, components, v_st, c_st, c_st2);
-   addition(k, v_st, c_st, c_st2, vertices, components, graphs, polytopes);
+   hash_set<Vector<E> > vertices = addition(k, v_st, c_st, c_st2, components, graphs, polytopes);
+   // Output = listed coordinates of the vertices of P, (the first vertex will be v*)
    return list2matrix(vertices);
 }
 
@@ -540,14 +555,31 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# Computes the ([[VERTICES]] of the) __Minkowski sum__ of a list of polytopes using the algorithm by Fukuda described in"
                           "#\t   Komei Fukuda, From the zonotope construction to the Minkowski addition of convex polytopes, J. Symbolic Comput., 38(4):1261-1272, 2004."
                           "# @param Array<Polytope<Scalar>> summands"
-                          "# @return Polytope<Scalar>",
+                          "# @return Polytope<Scalar>"
+                          "# @example > $p = minkowski_sum_fukuda([cube(2),simplex(2),cross(2)]);"
+                          "# > print $p->VERTICES;"
+                          "# | 1 -2 -1"
+                          "# | 1 -1 -2"
+                          "# | 1 3 -1"
+                          "# | 1 3 1"
+                          "# | 1 2 -2"
+                          "# | 1 -2 2"
+                          "# | 1 -1 3"
+                          "# | 1 1 3",
                           "minkowski_sum_fukuda<E>(Polytope<type_upgrade<E>> +)");
 
 UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
                           "# Create the vertices of a zonotope from a matrix whose rows are input points or vectors."
                           "# @param Matrix<Scalar> M"
                           "# @option Bool centered_zonotope default 1"
-                          "# @return Matrix<Scalar>",
+                          "# @return Matrix<E>"
+                          "# @example The following stores the vertices of a parallelogram with the origin as its vertex barycenter and prints them:"
+                          "# > $M = new Matrix([[1,1,0],[1,1,1]]);"
+                          "# > print zonotope_vertices_fukuda($M);"
+                          "# | 1 0 -1/2"
+                          "# | 1 0 1/2"
+                          "# | 1 -1 -1/2"
+                          "# | 1 1 1/2",
                           "zonotope_vertices_fukuda<E>(Matrix<E> { centered_zonotope => 1 })");
 
 } }

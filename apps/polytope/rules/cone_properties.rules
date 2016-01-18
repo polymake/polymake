@@ -331,7 +331,7 @@ rule FACETS_THRU_INPUT_RAYS : INPUT_RAYS_IN_FACETS{
 # @category Geometry
 # Ray-inequality incidence matrix, with rows corresponding to facets and columns
 # to rays. Rays and inequalities are numbered from 0 to [[N_RAYS]]-1 rsp.
-# [[N_INEQUALITIES]]-1, according to their order in [[RAYS]]
+# number of [[INEQUALITIES]]-1, according to their order in [[RAYS]]
 # rsp. [[INEQUALITIES]].
 property RAYS_IN_INEQUALITIES : IncidenceMatrix;
 
@@ -415,13 +415,6 @@ property TRIANGULATION : topaz::GeometricSimplicialComplex<Scalar> : multiple {
    # the corresponding weight function.
    property REFINED_SPLITS : Set<Int>;
 
-   # @category Combinatorics
-   # GKZ-vector 
-   # 	See Chapter 7 in Gelfand, Kapranov, and Zelevinsky:
-   #	Discriminants, Resultants and Multidimensional Determinants, Birkhäuser 1994
-   property GKZ_VECTOR : Vector<Scalar>;
-
-  
    # @category Geometry
    # Weight vector to construct a regular [[TRIANGULATION]].
    # Must be generic.
@@ -436,7 +429,7 @@ property TRIANGULATION : topaz::GeometricSimplicialComplex<Scalar> : multiple {
 }
 
 
-rule TRIANGULATION.VertexPerm.PERMUTATION = VertexPerm.PERMUTATION;
+rule TRIANGULATION(any).VertexPerm.PERMUTATION = VertexPerm.PERMUTATION;
 
 rule TRIANGULATION.BOUNDARY.FACET_TRIANGULATIONS : FacetPerm.TRIANGULATION.BOUNDARY.FACET_TRIANGULATIONS, FacetPerm.PERMUTATION {
    $this->TRIANGULATION->BOUNDARY->FACET_TRIANGULATIONS=permuted($this->FacetPerm->TRIANGULATION->BOUNDARY->FACET_TRIANGULATIONS, $this->FacetPerm->PERMUTATION);
@@ -453,7 +446,12 @@ property SIMPLICIAL : Bool;
 property SIMPLICIAL_CONE : Bool; 
 
 # @category Triangulation and volume
-# Similar to [[TRIANGULATION]], but using [[POINTS]].
+# Conceptually, similar to [[TRIANGULATION]], but using [[INPUT_RAYS]].
+# However, here we use a small object type.  The main reason for the existence of this property
+# (in this form) is the [[beneath_beyond]] algorithm, which automatically produces this data as
+# a by-product of the conversion from [[INPUT_RAYS]] to [[FACETS]].  And that data is too valuable
+# to throw away.  Use big objects of type [[VectorConfiguration]] if you want to work with
+# triangulations using redundant points.
 property TRIANGULATION_INT : Array<Set>;
 
 # @category Combinatorics
@@ -480,6 +478,9 @@ rule RAY_LABELS : VertexPerm.RAY_LABELS, VertexPerm.PERMUTATION {
 }
 weight 1.10;
 
+# @category Visualization
+# Unique names assigned to the [[INPUT_RAYS]], analogous to [[RAY_LABELS]].
+property INPUT_RAY_LABELS : Array<String> : mutable;
 
 # @category Visualization
 # Unique names assigned to the [[FACETS]], analogous to [[RAY_LABELS]].
@@ -489,6 +490,10 @@ rule FACET_LABELS : FacetPerm.FACET_LABELS, FacetPerm.PERMUTATION {
    $this->FACET_LABELS=permuted($this->FacetPerm->FACET_LABELS, $this->FacetPerm->PERMUTATION);
 }
 weight 1.10;
+
+# @category Visualization
+# Unique names assigned to the [[INEQUALITIES]], analogous to [[RAY_LABELS]].
+property INEQUALITY_LABELS : Array<String> : mutable;
 
 # @category Visualization
 # Unique names assigned to the coordinate directions, analogous to [[RAY_LABELS]].
@@ -525,15 +530,15 @@ property RIF_CYCLIC_NORMAL : Array< Array<Int> >;
 # The neighbor facets are listed in the order corresponding to [[RIF_CYCLIC_NORMAL]],
 # so that the first two vertices in RIF_CYCLIC_NORMAL make up the ridge to the first neighbor
 # facet and so on.
-property NEIGHBOR_FACETS_CYCLIC_NORMAL : Array< List<Int> >;
+property NEIGHBOR_FACETS_CYCLIC_NORMAL : Array< Array<Int> >;
 
 # @category Visualization
-# Reordered transposed [[RAYS_IN_FACETS]]. Dual to [[VIF_CYCLIC_NORMAL]].
-property FTR_CYCLIC_NORMAL : Array< List<Int> >;
+# Reordered transposed [[RAYS_IN_FACETS]]. Dual to [[RIF_CYCLIC_NORMAL]].
+property FTR_CYCLIC_NORMAL : Array< Array<Int> >;
 
 # @category Visualization
 # Reordered [[GRAPH]]. Dual to [[NEIGHBOR_FACETS_CYCLIC_NORMAL]].
-property NEIGHBOR_RAYS_CYCLIC_NORMAL : Array< List<Int> >;
+property NEIGHBOR_RAYS_CYCLIC_NORMAL : Array< Array<Int> >;
 
 
 }

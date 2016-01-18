@@ -81,7 +81,7 @@ sub printable {
 
    my $thing=shift;
    if (is_object($thing)) {
-      if (my $proto=UNIVERSAL::can($thing, "typeof")) {
+      if (my $proto=UNIVERSAL::can($thing, ".type")) {
 	 # it is one of declared complex types
 	 (&$proto)->toString->($thing);
 
@@ -183,15 +183,6 @@ affect anything.
 	 }
       };
 
-      if ($Core::Scheduler::dry_run) {
-	 if (defined (my $chain=$this->get_schedule(@request))) {
-	    print $schedule->report, "\n";
-	 } else {
-	    err_print( "no suitable rules found\n" );
-	 }
-	 return;
-      }
-
       $this->provide(@request) if @request;
 
       while (my ($func, $attr)=each %{$application->EXPORT}) {
@@ -232,9 +223,6 @@ foreach ($exprs) {
 	 }
       }
       if ($func) {
-	 if ($Core::Scheduler::dry_run) {
-	    die "can't call function $file in dry run mode\n";
-	 }
 	 my $pr=namespaces::lookup($app->pkg, "printable");
 	 if (my @pr=$pr->($func->(@_))) {
 	    enforce_nl($pr[-1]);

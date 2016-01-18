@@ -61,7 +61,7 @@ INCLUDE
   arbitrary_coords.rules
   rational.rules
   float.rules
-  quadratic_extension.rules
+  solids.rules
   flag_vector.rules
   lattice.rules
   vector_configuration.rules

@@ -153,19 +153,25 @@ struct alt_constructor {
       arg_type;
 };
 
-#if defined(__GNUC__)
-
+#if defined(__GLIBCXX__)
 template <typename Iterator, typename Container>
 struct iterator_cross_const_helper<__gnu_cxx::__normal_iterator<Iterator, Container>, true> {
    typedef __gnu_cxx::__normal_iterator<typename iterator_traits<Iterator>::iterator, Container> iterator;
    typedef __gnu_cxx::__normal_iterator<typename iterator_traits<Iterator>::const_iterator, Container> const_iterator;
 };
+#elif defined(_LIBCPP_VERSION)
 
-#endif // __GNUC__
+template <typename Iterator>
+struct iterator_cross_const_helper<std::__1::__wrap_iter<Iterator>,true>{
+   typedef std::__1::__wrap_iter<typename iterator_traits<Iterator>::iterator> iterator;
+   typedef std::__1::__wrap_iter<typename iterator_traits<Iterator>::const_iterator> const_iterator;
+};
+
+#endif
 
 } // end namespace pm
 
-#if defined(__GNUC__)
+#if defined(__GLIBCXX__)
 namespace std {
    struct _Bit_iterator;
    struct _Bit_const_iterator;

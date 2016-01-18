@@ -480,7 +480,7 @@ namespace polymake { namespace tropical{
 
 		UserFunction4perl("# @category Moduli of rational curves"
 				"# Computes the number of rays of the tropical moduli space M_0,n"
-				"# @param int n The number of leaves. Should be >= 3"
+				"# @param Int n The number of leaves. Should be >= 3"
 				"# @return Integer The number of rays",
 				&count_mn_rays,"count_mn_rays($)");
 
