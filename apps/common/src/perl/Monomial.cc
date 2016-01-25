@@ -19,6 +19,7 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
 #include "polymake/Polynomial.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/Rational.h"
 #include "polymake/Ring.h"
 #include "polymake/SparseMatrix.h"
@@ -54,5 +55,8 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new, Monomial< Rational, int >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Monomial< Rational, int > >, perl::Canned< const Monomial< Rational, int > >);
    OperatorInstance4perl(Binary_sub, perl::Canned< const Monomial< Rational, int > >, perl::Canned< const Monomial< Rational, int > >);
+   Class4perl("Polymake::common::Monomial_A_PuiseuxFraction_A_Min_I_Rational_I_Rational_Z_I_Int_Z", Monomial< PuiseuxFraction< Min, Rational, Rational >, int >);
+   OperatorInstance4perl(Binary_xor, perl::Canned< const Monomial< PuiseuxFraction< Min, Rational, Rational >, int > >, int);
+   OperatorInstance4perl(Binary_mul, int, perl::Canned< const Monomial< PuiseuxFraction< Min, Rational, Rational >, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

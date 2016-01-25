@@ -16,9 +16,21 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/PuiseuxFraction.h"
+#include "polymake/Rational.h"
+#include "polymake/RationalFunction.h"
+#include "polymake/TropicalNumber.h"
 #include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1>
+   FunctionInterface4perl( new_X, T0,T1 ) {
+      perl::Value arg0(stack[1]);
+      WrapperReturnNew(T0, (arg0.get<T1>()) );
+   };
+
+   FunctionInstance4perl(new_X, UniPolynomial< PuiseuxFraction< Min, Rational, Rational >, Rational >, perl::Canned< const UniPolynomial< PuiseuxFraction< Min, Rational, Rational >, Rational > >);
+   Class4perl("Polymake::common::UniPolynomial_A_PuiseuxFraction_A_Min_I_Rational_I_Rational_Z_I_Rational_Z", UniPolynomial< PuiseuxFraction< Min, Rational, Rational >, Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

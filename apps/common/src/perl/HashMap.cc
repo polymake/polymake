@@ -19,6 +19,7 @@
 #include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/Rational.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/SparseVector.h"
@@ -34,5 +35,7 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::HashMap_A_SparseVector__Int_I_TropicalNumber_A_Max_I_Rational_Z_Z", hash_map< SparseVector< int >, TropicalNumber< Max, Rational > >);
    Class4perl("Polymake::common::HashMap_A_SparseVector__Int_I_TropicalNumber_A_Min_I_Rational_Z_Z", hash_map< SparseVector< int >, TropicalNumber< Min, Rational > >);
    Class4perl("Polymake::common::HashMap_A_Rational_I_Rational_Z", hash_map< Rational, Rational >);
+   Class4perl("Polymake::common::HashMap_A_SparseVector__Int_I_PuiseuxFraction_A_Min_I_Rational_I_Rational_Z_Z", hash_map< SparseVector< int >, PuiseuxFraction< Min, Rational, Rational > >);
+   Class4perl("Polymake::common::HashMap_A_Rational_I_PuiseuxFraction_A_Min_I_Rational_I_Rational_Z_Z", hash_map< Rational, PuiseuxFraction< Min, Rational, Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

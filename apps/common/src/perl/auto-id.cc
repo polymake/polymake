@@ -38,5 +38,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(id_f1, perl::Canned< const Ring< PuiseuxFraction< Min, Rational, Rational >, Rational > >);
    FunctionInstance4perl(id_f1, perl::Canned< const Ring< PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational >, Rational > >);
    FunctionInstance4perl(id_f1, perl::Canned< const Ring< UniPolynomial< Rational, int >, int > >);
+   FunctionInstance4perl(id_f1, perl::Canned< const Ring< PuiseuxFraction< Min, Rational, Rational >, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

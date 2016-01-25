@@ -19,6 +19,7 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
 #include "polymake/Polynomial.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/Rational.h"
 #include "polymake/Ring.h"
 #include "polymake/Set.h"
@@ -29,6 +30,11 @@
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0>
+   FunctionInterface4perl( new, T0 ) {
+      WrapperReturnNew(T0, () );
+   };
+
    template <typename T0, typename T1>
    FunctionInterface4perl( new_X, T0,T1 ) {
       perl::Value arg0(stack[1]);
@@ -54,5 +60,9 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, Polynomial< TropicalNumber< Min, Rational >, int >, perl::Canned< const Monomial< TropicalNumber< Min, Rational >, int > >);
    OperatorInstance4perl(Binary_add, perl::Canned< const Polynomial< TropicalNumber< Max, Rational >, int > >, perl::Canned< const Monomial< TropicalNumber< Max, Rational >, int > >);
    FunctionInstance4perl(new_X, Polynomial< TropicalNumber< Max, Rational >, int >, perl::Canned< const Monomial< TropicalNumber< Max, Rational >, int > >);
+   OperatorInstance4perl(Binary_add, perl::Canned< const Polynomial< PuiseuxFraction< Min, Rational, Rational >, int > >, perl::Canned< const Polynomial< PuiseuxFraction< Min, Rational, Rational >, int > >);
+   FunctionInstance4perl(new, Polynomial< PuiseuxFraction< Min, Rational, Rational >, int >);
+   Class4perl("Polymake::common::Polynomial_A_PuiseuxFraction_A_Min_I_Rational_I_Rational_Z_I_Int_Z", Polynomial< PuiseuxFraction< Min, Rational, Rational >, int >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Polynomial< PuiseuxFraction< Min, Rational, Rational >, int > >, perl::Canned< const Polynomial< PuiseuxFraction< Min, Rational, Rational >, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

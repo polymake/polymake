@@ -526,7 +526,7 @@ Ring_impl<Coefficient, Exponent>::Monomial_constructor::operator() (int i) const
       if (i<0 || i >= ring.n_vars())
          throw std::runtime_error("Ring::variables - index out of range");
    }
-   return result_type(unit_vector<Exponent>(ring.n_vars(), i), static_cast<const Ring<Coefficient, Exponent>&>(ring));
+   return result_type(unit_vector<Exponent>(ring.n_vars(), i), Ring<Coefficient,Exponent>(ring));
 }
 
 template <typename Coefficient, typename Exponent> inline
@@ -534,9 +534,9 @@ UniMonomial<Coefficient, Exponent>
 Ring_impl<Coefficient, Exponent>::variable() const
 {
    assert(n_vars()==1);
-   return UniMonomial<Coefficient, Exponent>(1, static_cast<const Ring<Coefficient, Exponent>&>(*this));
+   return UniMonomial<Coefficient, Exponent>(1, Ring<Coefficient, Exponent>(*this));
 }
-
+
 // how to reconstruct the type of the Term or Polynomial from its Monomial type
 
 template <typename Monomial> struct Term_result {};

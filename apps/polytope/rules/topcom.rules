@@ -55,9 +55,9 @@ user_function chirotope(Matrix; {symmetry=>undef}) {
    }
    local $/;
    local $_=<$P>;
-   s/\[\]\n$//s;
    my @result = split("\n",$_);
-   return join("\n",@result[0..1])."\n";#TOPCOM appends the symmetry generators as text, which we forget here.
+   return join("\n",@result[0..(scalar(@result)-2)])."\n";#TOPCOM appends the symmetry generators as text, which we forget here.
+   #Note: While TOPCOM returns the chirotope with line breaks (I guess for readability), it does not actually need them as input. One could, theoretically, do the join above with ""..
 }
 
 sub call_topcom_co_or_circuits {

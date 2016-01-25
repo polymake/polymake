@@ -87,6 +87,7 @@ class Ring_impl :
    public Ring_base {
 protected:
    const id_type* id_ptr;
+   const id_type* coeff_id_ptr;
 
    static repo_by_key_type& repo_by_key()
    {
@@ -112,17 +113,19 @@ protected:
    };
 
    Ring_impl(const id_type* id_ptr_arg=NULL) :
-      id_ptr(id_ptr_arg) {}
+      id_ptr(id_ptr_arg), coeff_id_ptr(NULL) {}
 
    Ring_impl(const ring_key_type& key) :
-      id_ptr(find_by_key(repo_by_key(), key)) {}
+      id_ptr(find_by_key(repo_by_key(), key)), coeff_id_ptr(key.second) {}
 
    Ring_impl(const simplified_ring_key& s_key) :
-      id_ptr(find_by_arity(repo_by_key(), repo_by_arity(), s_key)) {}
+      id_ptr(find_by_arity(repo_by_key(), repo_by_arity(), s_key)),
+      coeff_id_ptr(s_key.coeff_ring_id) {}
 
    Ring_impl(int n, const std::string& name, const id_type* coeff_ring_id) :
       id_ptr(n>1 ? find_by_arity(repo_by_key(), repo_by_arity(), simplified_ring_key(name, n, coeff_ring_id))
-                 : find_by_key(repo_by_key(), ring_key_type(Array<std::string>(1, name), coeff_ring_id))) {}
+                 : find_by_key(repo_by_key(), ring_key_type(Array<std::string>(1, name), coeff_ring_id))),
+      coeff_id_ptr(coeff_ring_id) {}
 public:
    class Variables;
 
@@ -132,6 +135,7 @@ public:
    void swap(Ring_impl& other)
    {
       std::swap(id_ptr, other.id_ptr);
+      std::swap(coeff_id_ptr, other.coeff_id_ptr);
    }
 
    int n_vars() const
@@ -187,10 +191,14 @@ class Ring
    : public Ring_impl<Coefficient, Exponent> {
    typedef Ring_impl<Coefficient, Exponent> super;
    template <typename, typename, bool> friend class Ring;
+   template <typename, typename> friend class Ring_impl;
    template <typename> friend struct spec_object_traits;
 
    explicit Ring(const typename super::id_type* id_ptr_arg)
       : super(id_ptr_arg) {}
+
+   explicit Ring(const super ring_impl)
+      : super(ring_impl) {}
 public:
    typedef Ring scalar_ring_type;
 
@@ -234,18 +242,21 @@ class Ring<Coefficient, Exponent, true>
    : public Ring_impl<Coefficient, Exponent> {
    typedef Ring_impl<Coefficient, Exponent> super;
    template <typename, typename, bool> friend class Ring;
+   template <typename, typename> friend class Ring_impl;
    template <typename> friend struct spec_object_traits;
 
    explicit Ring(const typename super::id_type* id_ptr_arg)
       : super(id_ptr_arg) {}
 
+   explicit Ring(const super& ring_impl)
+      : super(ring_impl) {}
 public:
    typedef typename matching_ring<Coefficient>::type coefficient_ring_type;
    typedef typename coefficient_ring_type::scalar_ring_type scalar_ring_type;
 
 private:
    // cache a copy of the coefficient ring, also makes it live long enough for serialization
-   mutable coefficient_ring_type coeff_ring;
+   mutable coefficient_ring_type coeff_ring_cache;
 
 public:
    // undefined object - to be read later from perl::Value
@@ -287,9 +298,11 @@ public:
 
    const coefficient_ring_type& get_coefficient_ring() const
    {
-      if (coeff_ring.id_ptr == NULL)
-         this->coeff_ring = coefficient_ring_type(this->get_repo_key(this->id_ptr).second);
-      return coeff_ring;
+      if (this->coeff_id_ptr == NULL)
+         throw std::runtime_error("internal Ring error: invalid coefficient ring id");
+      if (coeff_ring_cache.id_ptr == NULL)
+         coeff_ring_cache = coefficient_ring_type(this->coeff_id_ptr);
+      return coeff_ring_cache;
    }
 
    const Coefficient& zero_coef() const
@@ -356,6 +369,7 @@ struct spec_object_traits< Serialized< Ring<Coefficient, Exponent, true> > >
       Array<std::string> names;
       v << coeff_ring << names;
       me.id_ptr=me.find_by_key(me.repo_by_key(), typename masquerade_for::ring_key_type(names, coeff_ring.id_ptr));
+      me.coeff_id_ptr = coeff_ring.id_ptr;
    }
 
    template <typename Visitor>

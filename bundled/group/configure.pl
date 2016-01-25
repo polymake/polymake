@@ -57,6 +57,7 @@ int main() {
 
    # check GMP C++ bindings (for sympol)
    my $build_error=Polymake::Configure::build_test_program(<<'---', Libs => "$Polymake::Configure::ARCHFLAGS -lgmpxx -lgmp");
+#include <cstddef>
 #include <gmpxx.h>
 #include <iostream>
 int main() {

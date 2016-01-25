@@ -404,6 +404,7 @@ print "checking C++ library ... ";
 my $build_error = build_test_program(<<".");
 #include <iostream>
 int main() {
+   std::cout << "cplusplus " << __cplusplus << std::endl;
 #if defined(_LIBCPP_VERSION)
    std::cout << "libc++ " << _LIBCPP_VERSION << std::endl;
    return 0;
@@ -424,17 +425,21 @@ if ($? != 0) {
        "\nPlease investigate and reconfigure\n";
 } else {
    local $_=run_test_program();  chomp;
+   my ($cppver, $cpplib) = $_ =~ m/^cplusplus (\d+)\n(.+)$/;
    # see http://sourceforge.net/p/predef/wiki/Libraries/
-   if (/^GNU stdlibc\+\+ /) {
-      my $stdlibversion=$';
+   if ($cpplib =~ /^GNU stdlibc\+\+ /) {
       # this is some more or less useful date
-      print "ok ($_)\n";
-   } elsif (/^libc\+\+ /) {
+      my $stdlibversion=$';
+      $CPPStd = $cppver;
+      print "ok ($cpplib, C++ $CPPStd)\n";
+   } elsif ($cpplib =~ /^libc\+\+ /) {
       my $libcxxversion=$';
       $CXXflags .= " -std=c++11 ";
-      print "ok ($_)\n";
-   } elsif (/^Intel /) {
+      $CPPStd = 201103;
+      print "ok ($cpplib, C++ $CPPStd)\n";
+   } elsif ($cpplib =~ /^Intel /) {
       my $intelcxxversion=$';
+      $CPPStd = $cppver;
       print "warning: probably unsupported C++ library Intel $intelcxxversion.\n";
       # not tested in a long time
    } else {

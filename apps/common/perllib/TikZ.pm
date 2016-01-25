@@ -205,9 +205,20 @@ sub drawPoint {
     return $text;
 }
 
+sub drawAllPoints {
+    my ($self, $trans, $pointset) = @_;
+    my $npoints = $self->source->Vertices->rows;
+    my @idlist = defined($pointset) ? @$pointset : (0..$npoints-1);
+    if ($self->source->Vertices->cols == 3) {
+        my $z = (defined($trans) ? $self->source->Vertices * $trans->minor(~[0],~[0]) : $self->source->Vertices)->col(2);
+        @idlist = sort { $z->[$b] <=> $z->[$a] } @idlist;
+    }
+    return join "\n", map {$self->drawPoint($_)} @idlist;
+}
+
 sub toString {
     my ($self, $trans)=@_;
-    $self->header . $self->pointsToString . $self->trailer;
+    $self->header . $self->pointsToString . $self->drawAllPoints . $self->trailer;
 }
 
 ##############################################################################################
@@ -379,21 +390,25 @@ sub facesToString {
     my @sorted_facets =();
     my @vertex_count=();
     my $facets = new Array<Array<Int>>($self->source->Facets);
-    
+
     my $vif = new IncidenceMatrix($facets);
     map { push @vertex_count, $vif->col($_)->size } (0..$vif->cols()-1);
+
+    my $nonfacetverts = new Set(sequence(0,$vif->cols));
+    $nonfacetverts -= new Set($_) foreach (@$facets);
+
+    my $max_back_facet = $vif->rows-1;
 
     if (defined($self->source->FacetNormals)){
       my $f = convert_to<Float>(-$self->source->FacetNormals) if defined($self->source->FacetNormals);
       my $m = $f*inv($trans);
 
       my %hash = ();
-      map { push @{$hash{$m->row($_)->[$m->cols()-1]}},$_; } (0..$m->rows()-1);
-      map { push @sorted_facets, @{$hash{$_}}; } sort keys %hash;
+      push @{$hash{$m->row($_)->[$m->cols()-1]}},$_ foreach (0..$m->rows()-1);
+      @sorted_facets = map { $max_back_facet = $hash{$_}->[-1] if ($_ < 0); @{$hash{$_}}; } sort keys %hash;
     } else {
       @sorted_facets = (0..$vif->rows()-1);
     }
-
 
     my $text = "";
 
@@ -467,6 +482,13 @@ sub facesToString {
                 $text .= $self->drawPoint($i);
             }
             $text.="\n\n  %FACETS\n";
+        }
+        if ($max_back_facet == $facet && $nonfacetverts->size > 0) {
+            my $allpoints = $self->drawAllPoints($trans,$nonfacetverts);
+            if ($allpoints !~ /^\s*$/) {
+                $text .= "\n%ALL NON-VERTICES\n";
+                $text .= $allpoints."\n";
+            }
         }
     }
     return $text;
