@@ -16,11 +16,19 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/Rational.h"
+#include "polymake/TropicalNumber.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0>
+   FunctionInterface4perl( denominator_X, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturn( (denominator(arg0.get<T0>())) );
+   };
+
    template <typename T0>
    FunctionInterface4perl( denominator_X12_f4, T0 ) {
       perl::Value arg0(stack[0]);
@@ -28,5 +36,6 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(denominator_X12_f4, perl::Canned< Rational >);
+   FunctionInstance4perl(denominator_X, perl::Canned< const PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -72,6 +72,7 @@ sub proceed {
    
    if ($cdd_path ne "bundled") {
       my $testcode = <<"---";
+#include <cstddef>
 #include <iostream>
 #include <gmp.h>
 

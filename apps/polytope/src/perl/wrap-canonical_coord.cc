@@ -120,5 +120,7 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(orthogonalize_subspace_X2_f16, perl::Canned< Matrix< PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > > >);
    FunctionInstance4perl(find_representation_permutation_X_X_X_x, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
    FunctionInstance4perl(dehomogenize_X, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
+   FunctionInstance4perl(dehomogenize_X, perl::Canned< const pm::RowChain<pm::RowChain<pm::Matrix<double> const&, pm::Matrix<double> const&> const&, pm::Matrix<double> const&> >);
+   FunctionInstance4perl(dehomogenize_X, perl::Canned< const pm::RowChain<pm::Matrix<double> const&, pm::Matrix<double> const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

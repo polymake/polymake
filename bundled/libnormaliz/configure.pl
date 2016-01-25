@@ -81,6 +81,7 @@ int main() {
 
    # check GMP C++ bindings
    my $build_error=Polymake::Configure::build_test_program(<<'---', Libs => "-lgmpxx -lgmp");
+#include <cstddef>
 #include <gmpxx.h>
 int main() {
    mpz_class z(7);

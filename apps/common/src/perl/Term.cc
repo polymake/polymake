@@ -17,6 +17,7 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/Polynomial.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/Rational.h"
 #include "polymake/TropicalNumber.h"
 #include "polymake/client.h"
@@ -42,5 +43,8 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Unary_neg, perl::Canned< const Term< Rational, int > >);
    Class4perl("Polymake::common::Term_A_TropicalNumber_A_Min_I_Rational_Z_I_Int_Z", Term< TropicalNumber< Min, Rational >, int >);
    Class4perl("Polymake::common::Term_A_TropicalNumber_A_Max_I_Rational_Z_I_Int_Z", Term< TropicalNumber< Max, Rational >, int >);
+   Class4perl("Polymake::common::Term_A_PuiseuxFraction_A_Min_I_Rational_I_Rational_Z_I_Int_Z", Term< PuiseuxFraction< Min, Rational, Rational >, int >);
+   OperatorInstance4perl(Binary_add, perl::Canned< const Term< PuiseuxFraction< Min, Rational, Rational >, int > >, perl::Canned< const Monomial< PuiseuxFraction< Min, Rational, Rational >, int > >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const Term< PuiseuxFraction< Min, Rational, Rational >, int > >, perl::Canned< const Monomial< PuiseuxFraction< Min, Rational, Rational >, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -358,7 +358,7 @@ sub draw_facet {
    my ($facet_color, $facet_style, $edge_color, $edge_thickness, $edge_style, $points)=@_;
    my $lw;
    if ($facet_style =~ $Visual::hidden_re) {
-      $edge_color ||= $facet_color;
+      $edge_color //= $facet_color;
       undef $facet_color;
    } elsif (defined $facet_color) {
       $facet_color=$facet_color->toFloat;

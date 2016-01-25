@@ -1,5 +1,21 @@
 Changelog
 
+=== Polymake 3.0r1 ===
+
+-- distribution --
+ * fix incompatibility of the Integer type with libnormaliz on 32bit platforms
+ * fix several other minor compilation issues
+
+-- general
+ * fixes for the TikZ visualization of pointsets:
+     - for drawing PointConfigurations
+     - for drawing lattice points in polytopes
+ * fixes in handling of nested Ring types
+
+-- polytope --
+ * fixes in TOPCOM interface
+
+
 === Polymake 3.0 ===
 
 -- distribution --

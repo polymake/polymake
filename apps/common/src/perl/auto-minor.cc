@@ -42,5 +42,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(minor_X8_X8_f5, perl::Canned< const Wary< Matrix< PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > > > >, perl::Canned< const Set< int > >, perl::Enum<pm::all_selector>);
    FunctionInstance4perl(minor_X8_X8_f5, perl::Canned< const Wary< Matrix< double > > >, perl::Canned< const Array< int > >, perl::Enum<pm::all_selector>);
    FunctionInstance4perl(minor_X8_X8_f5, perl::Canned< Wary< Matrix< Integer > > >, perl::Canned< const pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> >, perl::Enum<pm::all_selector>);
+   FunctionInstance4perl(minor_X8_X8_f5, perl::Canned< Wary< Matrix< double > > >, perl::Canned< const pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> >, perl::Canned< const pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

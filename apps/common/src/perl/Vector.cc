@@ -20,6 +20,7 @@
 #include "polymake/Matrix.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
+#include "polymake/SparseMatrix.h"
 #include "polymake/Vector.h"
 #include "polymake/client.h"
 
@@ -36,5 +37,7 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary_add, perl::Canned< const Wary< Vector< double > > >, perl::Canned< const Vector< double > >);
    OperatorInstance4perl(Binary_sub, perl::Canned< const Wary< Vector< double > > >, perl::Canned< const Vector< double > >);
    OperatorInstance4perl(Binary_mul, int, perl::Canned< const Wary< Vector< double > > >);
+   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double>&>, pm::Series<int, true>, void>, perl::Canned< const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::Rational, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric> >);
+   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double>&>, pm::Series<int, true>, void>, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, void> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -17,6 +17,7 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/Integer.h"
+#include "polymake/Polynomial.h"
 #include "polymake/PuiseuxFraction.h"
 #include "polymake/Rational.h"
 #include "polymake/RationalFunction.h"
@@ -25,6 +26,12 @@
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( new_X_X, T0,T1,T2 ) {
+      perl::Value arg0(stack[1]), arg1(stack[2]);
+      WrapperReturnNew(T0, (arg0.get<T1>(), arg1.get<T2>()) );
+   };
+
    template <typename T0>
    FunctionInterface4perl( new, T0 ) {
       WrapperReturnNew(T0, () );
@@ -54,5 +61,15 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, PuiseuxFraction< Max, Rational, Rational >, perl::Canned< const UniPolynomial< Rational, Rational > >);
    FunctionInstance4perl(new_X, PuiseuxFraction< Min, Rational, Rational >, perl::Canned< const UniPolynomial< Rational, Rational > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const TropicalNumber< Min, Rational > >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const Monomial< PuiseuxFraction< Min, Rational, Rational >, int > >);
+   Class4perl("Polymake::common::PuiseuxFraction_A_Min_I_PuiseuxFraction_A_Min_I_Rational_I_Rational_Z_I_Rational_Z", PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational >);
+   FunctionInstance4perl(new_X_X, PuiseuxFraction< Min, Rational, Rational >, perl::Canned< const UniPolynomial< Rational, Rational > >, perl::Canned< const UniPolynomial< Rational, Rational > >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const UniMonomial< PuiseuxFraction< Min, Rational, Rational >, Rational > >);
+   FunctionInstance4perl(new_X, PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational >, perl::Canned< const UniPolynomial< PuiseuxFraction< Min, Rational, Rational >, Rational > >);
+   OperatorInstance4perl(BinaryAssign_div, perl::Canned< PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >, perl::Canned< const UniPolynomial< PuiseuxFraction< Min, Rational, Rational >, Rational > >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >, perl::Canned< const PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >);
+   OperatorInstance4perl(Binary_add, perl::Canned< const PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >, perl::Canned< const PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >);
+   FunctionInstance4perl(new, PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >, perl::Canned< const PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

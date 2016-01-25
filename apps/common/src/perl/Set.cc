@@ -16,6 +16,7 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
@@ -25,8 +26,16 @@
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1>
+   FunctionInterface4perl( new_X, T0,T1 ) {
+      perl::Value arg0(stack[1]);
+      WrapperReturnNew(T0, (arg0.get<T1>()) );
+   };
+
    OperatorInstance4perl(BinaryAssign_add, perl::Canned< Set< Vector< double > > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>, void> >);
    OperatorInstance4perl(BinaryAssign_add, perl::Canned< Set< Vector< double > > >, perl::Canned< const Vector< double > >);
    OperatorInstance4perl(BinaryAssign_add, perl::Canned< Set< Vector< Rational > > >, perl::Canned< const Vector< Rational > >);
+   FunctionInstance4perl(new_X, Set< int >, perl::Canned< const Array< int > >);
+   OperatorInstance4perl(BinaryAssign_sub, perl::Canned< Set< int > >, perl::Canned< const Set< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

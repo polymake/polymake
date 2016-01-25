@@ -176,6 +176,7 @@ user_method VISUAL(%Visual::Polygons::decorations) : POINTS, NON_VERTICES, N_POI
 				  PointColor => \@colors,
 				  Facets => $this->PIF_CYCLIC_NORMAL,
 				  FacetNeighbors => $this->CONVEX_HULL->NEIGHBOR_FACETS_CYCLIC_NORMAL,
+				  FacetNormals => $this->CONVEX_HULL->FACETS,
 				  FacetLabels => $this->CONVEX_HULL->lookup("FACET_LABELS") || "hidden",
 				  FacetTransparency => 0.5,
 				  Closed => 1,

@@ -18,6 +18,7 @@
 
 #include "polymake/Array.h"
 #include "polymake/Polynomial.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/Rational.h"
 #include "polymake/Ring.h"
 #include "polymake/TropicalNumber.h"
@@ -59,5 +60,8 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, Ring< TropicalNumber< Max, Rational >, int >, int);
    FunctionInstance4perl(new_std__string_P, Ring< TropicalNumber< Max, Rational >, int >, perl::Canned< const Array< std::string > >);
    FunctionInstance4perl(new_X, Ring< Rational, Rational >, int);
+   Class4perl("Polymake::common::Ring_A_PuiseuxFraction_A_Min_I_Rational_I_Rational_Z_I_Int_Z", Ring< PuiseuxFraction< Min, Rational, Rational >, int >);
+   FunctionInstance4perl(new_X, Ring< PuiseuxFraction< Min, Rational, Rational >, int >, int);
+   Class4perl("Polymake::common::Ring_A_PuiseuxFraction_A_Min_I_Rational_I_Rational_Z_I_Rational_Z", Ring< PuiseuxFraction< Min, Rational, Rational >, Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

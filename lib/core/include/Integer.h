@@ -165,6 +165,12 @@ public:
    }
 
    /// conversion
+   Integer(unsigned int i)
+   {
+      mpz_init_set_ui(rep, i);
+   }
+
+   /// conversion
    Integer(double d)
    {
       const int is=isinf(d);

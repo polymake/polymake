@@ -54,6 +54,7 @@ sub proceed {
 
    if ($lrs_path ne "bundled") {
       my $error=Polymake::Configure::build_test_program(<<'---', Libs => "-llrsgmp -lgmp", CXXflags => "$CXXflags", LDflags => "$LDflags");
+#include <cstddef>
 #include <iostream>
 #include <gmp.h>
 #define GMP

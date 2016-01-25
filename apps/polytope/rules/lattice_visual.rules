@@ -32,30 +32,18 @@ user_method LATTICE(%Visual::PointSet::decorations) {
     }
     my $vert = $P->VERTICES;
     my $lp = $P->LATTICE_POINTS;
-    my @nlv = ();
-    foreach (@$vert) {
-        if (!is_integral($_)) {
-            push @nlv, new Vector<Rational>($_);
-        }
-    }
-    if (@nlv != 0) {
-        my $V = new Visual::PointSet(Name => "Vertices of ". $P->name,
-                                    Points => dehomogenize(new Matrix<Float>(\@nlv)),
-                                    PointColor => $Visual::Color::vertices,
-                                    PointLabels => "hidden",
-                                    $decor,
+    my $nlv = new Matrix<Float>([grep {!is_integral($_)} @$vert]);
+    my $points = new Matrix<Float>(0,$P->CONE_DIM);
+    $points /= convert_to<Float>($P->LATTICE_POINTS) if ($P->N_LATTICE_POINTS);
+    $points /= $nlv if ($nlv->rows);
+    push @{$self->elements} , new Visual::PointSet(
+                                 Name => "Lattice points and vertices of ". $P->name,
+                                 Points => dehomogenize($points),
+                                 PointLabels => "hidden",
+                                 PointColor => sub { $_[0] < $P->N_LATTICE_POINTS ? $Visual::Color::LatticePointColor :
+                                                     $Visual::Color::vertices },
+                                 $decor,
                                 );
-        push @{$self->elements}, $V;
-    }
-    if ($P->N_LATTICE_POINTS > 0) {
-        my $LP=new Visual::PointSet( Name => "Lattice points of " . $P->name,
-                                  Points => dehomogenize(convert_to<Float>($lp)),
-                                  PointColor => $Visual::Color::LatticePointColor,
-                                  PointLabels => "hidden",
-                                  $decor,
-                                );
-        push @{$self->elements}, $LP;
-    }
     visualize($self);
 }
 
@@ -75,39 +63,20 @@ user_method LATTICE_COLORED(%Visual::PointSet::decorations) {
     }
     $P->provide("LATTICE_POINTS_GENERATORS");
     my $vert = $P->VERTICES;
-    my @nlv = ();
-    foreach (@$vert) {
-        if (!is_integral($_)) {
-            push @nlv, new Vector<Rational>($_);
-        }
-    }
-    if (@nlv != 0) {
-        my $V = new Visual::PointSet(Name => "Vertices of ". $P->name,
-                                    Points => dehomogenize(new Matrix<Float>(\@nlv)),
-                                    PointColor => $Visual::Color::vertices,
-                                    PointLabels => "hidden",
-                                    $decor,
+    my $nlv = new Matrix<Float>([grep {!is_integral($_)} @$vert]);
+    my $points = new Matrix<Float>(0,$P->CONE_DIM);
+    $points /= convert_to<Float>($P->INTERIOR_LATTICE_POINTS) if ($P->N_INTERIOR_LATTICE_POINTS);
+    $points /= convert_to<Float>($P->BOUNDARY_LATTICE_POINTS) if ($P->N_BOUNDARY_LATTICE_POINTS);
+    $points /= $nlv if ($nlv->rows);
+    push @{$self->elements} , new Visual::PointSet(
+                                 Name => "Lattice points and vertices of ". $P->name,
+                                 Points => dehomogenize($points),
+                                 PointLabels => "hidden",
+                                 PointColor => sub { $_[0] < $P->N_INTERIOR_LATTICE_POINTS ? $Visual::Color::InteriorLatticePointColor :
+                                                     $_[0] < $P->N_LATTICE_POINTS ? $Visual::Color::BoundaryLatticePointColor :
+                                                     $Visual::Color::vertices },
+                                 $decor,
                                 );
-        push @{$self->elements}, $V;
-    }
-    if ($P->N_INTERIOR_LATTICE_POINTS>0) {
-        my $ILP=new Visual::PointSet( Name => "Interior lattice points of " . $P->name,
-                                    Points => dehomogenize(convert_to<Float>($P->INTERIOR_LATTICE_POINTS)),
-                                    PointColor => $Visual::Color::InteriorLatticePointColor,
-                                    PointLabels => "hidden",
-                                    $decor,
-                                );
-        push @{$self->elements}, $ILP;
-    }
-    if ($P->N_BOUNDARY_LATTICE_POINTS>0) {
-        my $BLP=new Visual::PointSet( Name => "Boundary lattice points of " . $P->name,
-                                    Points => dehomogenize(convert_to<Float>($P->BOUNDARY_LATTICE_POINTS)),
-                                    PointColor => $Visual::Color::BoundaryLatticePointColor,
-                                    PointLabels => "hidden",
-                                    $decor,
-                                );
-        push @{$self->elements}, $BLP;
-    }
     visualize($self);
 }
 

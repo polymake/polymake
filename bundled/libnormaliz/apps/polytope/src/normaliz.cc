@@ -65,12 +65,16 @@ namespace libnormaliz {
       return a.to_double();
    }
 
-   pm::Integer operator%(size_t a, const pm::Integer& b) {
+   inline pm::Integer operator%(size_t a, const pm::Integer& b) {
       return pm::Integer((unsigned long int) a) % b;
    }
 
-   pm::Integer operator*(size_t a, const pm::Integer& b) {
-      return pm::Integer((unsigned long int) a) * b;
+   inline pm::Integer operator*(unsigned long a, const pm::Integer& b) {
+      return pm::Integer(a) * b;
+   }
+
+   inline pm::Integer operator*(unsigned int a, const pm::Integer& b) {
+      return pm::Integer(a) * b;
    }
 }
 

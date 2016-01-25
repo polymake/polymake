@@ -28,7 +28,7 @@ BEGIN {
    # variables used in the Makefiles
 
    @make_vars=qw( CC CXX Cflags CXXflags CsharedFlags CXXOPT CXXDEBUG CflagsSuppressWarnings
-                  GCCversion ICCversion CLANGversion CCache
+                  GCCversion ICCversion CLANGversion CCache CPPStd
                   LDflags LDsharedFlags LDcallableFlags LDsonameFlag Libs
                   LIBXML2_CFLAGS LIBXML2_LIBS
                   Arch FinkBase BundledExts );

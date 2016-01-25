@@ -20,6 +20,7 @@ GNU General Public License for more details.
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
+#include "polymake/Set.h"
 #include "polymake/client.h"
 #include "polymake/linalg.h"
 
@@ -42,5 +43,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, Matrix< double >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<pm::Rational const&> const&>, pm::RowChain<pm::RowChain<pm::RowChain<pm::RowChain<pm::RowChain<pm::RowChain<pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&> const&, pm::Matrix<pm::Rational> const&> const&, pm::Matrix<pm::Rational> const&> const&, pm::Matrix<pm::Rational> const&> const&, pm::Matrix<pm::Rational> const&> const&, pm::Matrix<pm::Rational> const&> const&> >);
    OperatorInstance4perl(Binary_sub, perl::Canned< const Wary< Matrix< Integer > > >, perl::Canned< const pm::RepeatedRow<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer>&>, pm::Series<int, true>, void> const&> >);
    FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::RowChain<pm::RowChain<pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&> const&, pm::Matrix<pm::Rational> const&> >);
+   OperatorInstance4perl(Binary_diva, perl::Canned< const Wary< pm::RowChain<pm::Matrix<double> const&, pm::Matrix<double> const&> > >, perl::Canned< const Matrix< double > >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< Matrix< double > > >, perl::Canned< const pm::MatrixMinor<pm::Matrix<double>&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }
