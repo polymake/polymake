@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -31,8 +31,7 @@ USE ideal
 
 file_suffix top
 
-HELP
-	help.rules
+HELP help.rules
 
 # An abstract simplicial complex represented by its facets.
 declare object SimplicialComplex;
@@ -43,10 +42,6 @@ INCLUDE
    common.rules
    visual.rules
    gap.rules
-
-# self-configuring rules
-# INCLUDE
-#   homology.rules -- FIXME: interface to homology not migrated
 
 
 # Local Variables:

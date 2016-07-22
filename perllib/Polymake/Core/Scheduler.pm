@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -82,11 +82,18 @@ use Polymake::Struct (
    '$temp_state',     # scratch variable for temporary states
 );
 
+use Polymake::Struct (
+   [ 'alt.constructor' => 'new_precondition' ],
+   [ new => '$$' ],
+   [ '$multi_selector' => '#2->multi_selector && multi_selector_for_precondition(#2->multi_selector, #1)' ],
+   [ '$perm_trigger' => 'weak(#2->perm_trigger)' ],
+);
+
 sub new {
    my $cache=pop;
    my $self=&_new;
    my $obj=$_[1];
-   @{$self->preconditions}=map { _new($self, $_, $obj, $self->perm_trigger) } @{$self->rule->preconditions};
+   @{$self->preconditions}=map { new_precondition($self, $_, $self) } @{$self->rule->preconditions};
    if (defined $self->rule->dyn_weight) {
       ($self->dyn_weight)=grep { $_->rule == $self->rule->dyn_weight } @{$self->preconditions};
    }
@@ -109,19 +116,44 @@ sub new {
    $self;
 }
 
+# decide whether the given precondition should inherit the multiple subobject selector from its master rule
+sub multi_selector_for_precondition {
+   my ($selector, $precond)=@_;
+   my $new_subobj_pos;
+   my $i=0;
+   foreach (@$selector) {
+      if (is_object($_->index)) {
+         $new_subobj_pos=$i;  last;
+      }
+      ++$i;
+   }
+   if (defined $new_subobj_pos) {
+      foreach my $input (@{$precond->input}) {
+         foreach my $input_path (@$input) {
+            if ($#$input_path > $new_subobj_pos && Property::equal_path_prefixes($input_path, $selector)>=$new_subobj_pos) {
+               return $selector;
+            }
+         }
+      }
+      # none of the input paths has matched the selector - the precondition does not need it
+      undef $selector;
+   }
+   $selector;
+}
+
 sub copy4schedule {
    my ($self, $chain)=@_;
    my $copy=_new($self, $self->rule, $self);
    if (defined $self->with_permutation) {
       my $subobj=$chain->deputy_root->navigate_to_rule_owner($self);
       if (defined $subobj->real_object) {
-         return (_new($self, $self->rule->checking_precondition, $self), $copy);
+         return (_new($self, $self->rule->sensitivity_check, $self), $copy);
       }
    }
    $copy
 }
 
-sub permutation { $_[0]->rule->permutation }
+sub perm_path { $_[0]->rule->perm_path }
 
 sub without_permutation {
    my ($self)=@_;
@@ -467,13 +499,21 @@ sub has_sensitive_to {
 }
 
 sub lookup_rule_input {
-   my ($self, $init_chain, $prod_rule, $path)=@_;
+   my ($self, $init_chain, $prod_rule, $input)=@_;
    defined($self->real_object) or return;
-   my $prop=local_pop($path);
-   if (@$path) {
-      ($self)=navigate_down($self, $init_chain, $prod_rule, 2, @$path) or return;
+   my ($obj, $real_obj, $content_index, $pv);
+   foreach my $path (@$input) {
+      my $prop=local_pop($path);
+      if (@$path) {
+         ($obj)=navigate_down($self, $init_chain, $prod_rule, 2, @$path) or next;
+      } else {
+         $obj=$self;
+      }
+      last if defined($real_obj=$obj->real_object) &&
+              defined($content_index=$real_obj->dictionary->{$prop->key}) &&
+              defined($pv=$real_obj->contents->[$content_index]);
    }
-   defined($self->real_object) ? $prop->lookup_in_object($self->real_object) : undef
+   $pv
 }
 
 ####################################################################################
@@ -706,7 +746,7 @@ sub producers_of_property {
             $self->rgr->add_arc($rule, $prop_node, $source_arc);
          }
          if (defined($object->valid_for_perm_trigger)
-             and not($object->property->flags & $Property::is_permutation && $prop->belongs_to==$object)) {
+             and not($object->property->flags & $Property::is_permutation && $object->type->isa($prop->belongs_to))) {
 
             push @{$object->navigate_to_non_permuted->prop_vertex_sets->{$prop->key} //= [ $self->last_prop_vertex++ ]}, @$vertex_set;
          }
@@ -723,54 +763,53 @@ sub rule_status {
    my $input_arc=$rgr_source_arc;
 
    foreach my $input (@{$rule->input}) {
-      my $path_flags=get_array_flags($input);
-      if ($path_flags != $Property::is_permutation &&
+      my $input_flags=get_array_flags($input);
+      if ($input_flags != $Property::is_permutation &&
           defined (my $pv=$object->lookup_rule_input($self, $rule, $input))) {
          if (defined($pv->value) || $rule->flags & $Rule::is_definedness_check) {
             next;
          } else {
-            return $Verbose::scheduler>=2 && "undefined input property " . Property::print_path($input);
+            return $Verbose::scheduler>=2 && "undefined source " . Property::print_path($input);
          }
       }
 
       my $input_can_be_supplied;
-      {
-         my $last_item=local_pop($input);
-         foreach my $subobj ($object->navigate_down($self, $rule, 2, @$input)) {
-            foreach my $prop ($last_item->flags & $Property::is_multiple ? $last_item->new_instance_deputy : $last_item->all_choices) {
-               my $prop_can_be_produced;
-               foreach my $prod_rule (@{ producers_of_property($self, $subobj, $prop, $rgr_source_arc) }) {
-                  unless (defined($self->cur_perm_trigger)  &&
-                          (# the "variant without permutation" can't serve as a supplier as we are building the permutation subtree here
-                           $prod_rule==$self->cur_perm_trigger
-                             or
-                           # prevent a loop where a rule working on a permutation subobject tries to compute something
-                           # using the property from the main object, but this property moves back to the main object
-                           # after the the processing of the permutation has been finished
-                           $prod_rule->flags & $Rule::is_perm_action        &&
-                           $path_flags != $Property::is_permutation         &&
-                           $rule->perm_trigger == $prod_rule->perm_trigger  &&
-                           grep { get_array_flags($_) == $Property::is_permutation &&
-                                  list_index($_, $prod_rule->permutation)>=0
-                           } @{$rule->input})) {
+      foreach my $input_path (@$input) {
+         my $prop=local_pop($input_path);
+         foreach my $subobj ($object->navigate_down($self, $rule, 2, @$input_path)) {
+            $prop=$prop->new_instance_deputy if $prop->flags & $Property::is_multiple;
+            my $prop_can_be_produced;
+            foreach my $prod_rule (@{ producers_of_property($self, $subobj, $prop, $rgr_source_arc) }) {
+               unless (defined($self->cur_perm_trigger)  &&
+                       (# the "variant without permutation" can't serve as a supplier as we are building the permutation subtree here
+                        $prod_rule==$self->cur_perm_trigger
+                          or
+                        # prevent a loop where a rule working on a permutation subobject tries to compute something
+                        # using the property from the main object, but this property moves back to the main object
+                        # after the the processing of the permutation has been finished
+                        $prod_rule->flags & $Rule::is_perm_action        &&
+                        $input_flags != $Property::is_permutation        &&
+                        $rule->perm_trigger == $prod_rule->perm_trigger  &&
+                        grep { get_array_flags($_) == $Property::is_permutation &&
+                               list_index($_->[0], $prod_rule->perm_path->[-1])>=0
+                        } @{$rule->input})) {
 
-                     $prop_can_be_produced=1;
-                     last;
-                  }
+                  $prop_can_be_produced=1;
+                  last;
                }
-               if ($prop_can_be_produced) {
-                  my $prop_owner=$subobj;
-                  while ($prop_owner->is_sibling_ancestor) {
-                     $prop_owner=$prop_owner->sibling_of;
-                  }
-                  my $vertex_set=$prop_owner->prop_vertex_sets->{$prop->key};
-                  my $prop_node=$self->prop_nodes->[$vertex_set->[0]];
-                  $self->rgr->add_arc($prop_node, $rule, $input_arc);
-                  if (defined (my $perm_deputy=$rule->with_permutation)) {
-                     $self->rgr->add_arc($prop_node, $perm_deputy, $input_arc);
-                  }
-                  $input_can_be_supplied=1;
+            }
+            if ($prop_can_be_produced) {
+               my $prop_owner=$subobj;
+               while ($prop_owner->is_sibling_ancestor) {
+                  $prop_owner=$prop_owner->sibling_of;
                }
+               my $vertex_set=$prop_owner->prop_vertex_sets->{$prop->key};
+               my $prop_node=$self->prop_nodes->[$vertex_set->[0]];
+               $self->rgr->add_arc($prop_node, $rule, $input_arc);
+               if (defined (my $perm_deputy=$rule->with_permutation)) {
+                  $self->rgr->add_arc($prop_node, $perm_deputy, $input_arc);
+               }
+               $input_can_be_supplied=1;
             }
          }
       }
@@ -804,7 +843,6 @@ sub gather_permutation_rules {
    my $perm_deputy=$perm_trigger->with_permutation;
    $perm_deputy->created_multi_instances=$perm_trigger->created_multi_instances;
    my $prod_rule=$perm_trigger->rule;
-   my $basis_perm_subobj=$object->navigate_down($self, $perm_trigger, 1, $perm_deputy->permutation);
    my $permutation_possible;
 
    # The fake rule created for Object::copy_permuted does not have body;
@@ -815,14 +853,16 @@ sub gather_permutation_rules {
       my $out_path=$prod_rule->output->[$action_deputy->output];
       # Prepare for property restoring unless it already exists in the real object
       my $action_depth=$action_deputy->rule->depth;
-      my $perm_obj= $action_depth ? $object->navigate_down($self, $perm_trigger, 1, @$out_path[0..$action_depth-1], $action_deputy->rule->sub_permutation) : $basis_perm_subobj;
+      my $perm_obj=$object->navigate_down($self, $perm_trigger, 1,
+                                          $action_depth ? (@$out_path[0..$action_depth-1], $action_deputy->rule->sub_permutation)
+                                                        : @{$perm_deputy->perm_path});
       my ($object_for_restoring_rules, $final_vertex_set);
       {
          local_clip_front($out_path, $action_depth);
          $object_for_restoring_rules=$perm_obj->parent;
          --$remaining_actions;
          if (defined($object_for_restoring_rules->real_object) &&
-             is_object($object_for_restoring_rules->real_object->lookup_request($out_path, 1)) &&
+             is_object($object_for_restoring_rules->real_object->lookup_property_path($out_path, 1)) &&
              $remaining_actions) {
             undef $object_for_restoring_rules;
          }
@@ -992,7 +1032,7 @@ sub gather_more_rules {
                   if (($self->run->{$precond_rule}=$rc) != $Rule::exec_OK) {
                      if ($@) {
                         chomp $@;
-                        warn_print( "precondition ", $precond_rule->header, " failed: $@" );
+                        warn_print( $precond_rule->header, " failed: $@" );
                         undef $@;
                      }
                      dbg_print( "  infeasible: ", $rule->header, " due to precondition above" )
@@ -1128,20 +1168,32 @@ sub find_relative_path {
    ($diff, @path);
 }
 
+sub compare_permutations {
+   my ($perm_path_upper, $perm_path_lower, @path_between)=@_;
+   if (equal_list_prefixes($perm_path_upper, \@path_between) == $#$perm_path_upper) {
+      splice @path_between, 0, $#$perm_path_upper;
+      my $perm=local_pop($perm_path_lower);
+      $perm_path_upper->[-1]->find_sub_permutation(@path_between, @$perm_path_lower)==$perm;
+   }
+}
+
 sub creating_related_permutation {
    my ($self, $rule)=splice @_,0,2;
-   my $permutation=$rule->with_permutation->permutation;
+   my $perm_path=$rule->with_permutation->perm_path;
+
    foreach my $prev_rule (@_) {
-      return 1 if $prev_rule->with_permutation->permutation == $permutation;
+      my $prev_perm_path=$prev_rule->with_permutation->perm_path;
+      return 1 if equal_lists($perm_path, $prev_perm_path);
+
       if (my $dep=($self->depending_on_perms->{$rule}->{$prev_rule} //= do {
             my $result=0;
-            if (my ($rel_pos, @path)=find_relative_path($self->deputy_root, $rule, $prev_rule)) {
+            if (my ($rel_pos, @path_between)=find_relative_path($self->deputy_root, $rule, $prev_rule)) {
                if ($rel_pos<0) {
                   # must ascend from $rule's object to $prev_rule's object
-                  $result= $prev_rule->with_permutation->permutation->find_sub_permutation(@path)==$permutation;
+                  $result=compare_permutations($prev_perm_path, $perm_path, @path_between);
                } else {
                   # must descend from $rule's object to $prev_rule's object
-                  $result= $permutation->find_sub_permutation(@path)==$prev_rule->with_permutation->permutation;
+                  $result=compare_permutations($perm_path, $prev_perm_path, @path_between);
                }
             }
             $self->depending_on_perms->{$prev_rule}->{$rule}=$result
@@ -1158,7 +1210,11 @@ sub add_ready_rule {
    my $perm_deputy=$rule->with_permutation;
    if (defined($perm_deputy) && $self->rule_is_alive($perm_deputy)) {
       my $subobj=$self->deputy_root->navigate_to_rule_owner($rule);
-      if ($subobj->has_sensitive_to($perm_deputy->permutation)
+      my $perm_path=$perm_deputy->perm_path;
+      if (@$perm_path>1) {
+         $subobj=$subobj->navigate_down(undef, $rule, 0, @$perm_path[0..$#$perm_path-1]);
+      }
+      if ($subobj->has_sensitive_to($perm_path->[-1])
           || creating_related_permutation($self, $rule, grep { defined $_->with_permutation } @{$var->rules})) {
 
          # must create permutation subobject: check whether its further processing is still possible
@@ -1573,7 +1629,11 @@ sub resolve_permutation {
    my ($object, $rule)=@_;
    my $self=new InitRuleChain($object);
    $rule=$self->deputy_root->rule_instance($rule);
-   $self->deputy_root->sensitive_to->{$rule->with_permutation->permutation->key}=1;
+   {
+      my $perm_path=$rule->with_permutation->perm_path;
+      my $perm=local_pop($perm_path);
+      $self->deputy_root->navigate_down($self, $rule, 1, @$perm_path)->sensitive_to->{$perm->key}=1;
+   }
    $self->consider_rules($self->deputy_root, $rule);
    $self->rgr->add_arc($rule, $self->final, $rgr_source_arc);
    $self->rgr->add_arc($rule->with_permutation, $self->final, $rgr_source_arc);
@@ -1633,18 +1693,20 @@ sub resolve_request {
 sub shorten_input {
    my ($obj, $input, $scope)=@_;
    my ($pv, $content_index);
-   for (my $i=0; $i<$#$input; ++$i) {
-      next if defined ($obj) &&
-              defined ($content_index=$obj->dictionary->{$input->[$i]->key}) &&
-              defined ($pv=$obj->contents->[$content_index]) &&
-              defined ($obj=$pv->value);
+   foreach my $input_path (@$input) {
+      for (my $i=0; $i<$#$input_path; ++$i) {
+         next if defined ($obj) &&
+                 defined ($content_index=$obj->dictionary->{$input_path->[$i]->key}) &&
+                 defined ($pv=$obj->contents->[$content_index]) &&
+                 defined ($obj=$pv->value);
 
-      if ($input->[$i]->flags & $Property::is_produced_as_whole) {
-         $scope //= ($_[2]=new Scope());
-         $scope->begin_locals;
-         local_clip_back($input, $i);
-         $scope->end_locals;
-         last;
+         if ($input_path->[$i]->flags & $Property::is_produced_as_whole) {
+            $scope //= ($_[2]=new Scope());
+            $scope->begin_locals;
+            local_clip_back($input_path, $i);
+            $scope->end_locals;
+            last;
+         }
       }
    }
 }

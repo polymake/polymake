@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -41,7 +41,7 @@ label _4ti2
 
 object_specialization Polytope::Lattice {
 
-    rule GROEBNER_BASIS.BASIS : LATTICE_POINTS_GENERATORS, GROEBNER_BASIS.TERM_ORDER_MATRIX | TERM_ORDER_NAME {
+    rule GROEBNER_BASIS.BASIS : LATTICE_POINTS_GENERATORS, GROEBNER_BASIS.TERM_ORDER_MATRIX | GROEBNER_BASIS.TERM_ORDER_NAME {
         my $tempname=new Tempfile;
         my $lp = $this->LATTICE_POINTS_GENERATORS->[0]->rows;
         my ($term_order, $given) = $this->GROEBNER_BASIS->give_with_name("TERM_ORDER_MATRIX | TERM_ORDER_NAME");

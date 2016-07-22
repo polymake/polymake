@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -30,7 +30,6 @@ use Polymake::Struct (
                                         # rules transferring Property from the permuted subobject back into the basis
    '%sub_permutations',                 # Property->key (subobject) => Property (permutation)
    '%parent_permutations',              # Property->key (parent object) => ... => $sub_key => [ Property (permutation) ]
-   [ '$sensitivity_check' => 'undef' ], # pseudo-rule for canned schedules
 );
 
 sub new {
@@ -105,18 +104,21 @@ sub analyze_rule {
    }
    $regular_out_seen
 }
-
+####################################################################################
+sub descend_and_create {
+   my $hash=shift;
+   my $prop=pop;
+   foreach $prop (@_) {
+      $hash=($hash->{$sub_key}->{$prop->key} //= { });
+   }
+   ($hash, $prop)
+}
 ####################################################################################
 # private:
 sub add_sensitive_sub_property {
    my $self=shift;
    my $rule=pop;
-   my $prop=pop;
-   my $hash=$self->sensitive_props;
-   foreach $prop (@_) {
-      $hash=($hash->{$sub_key} ||= { });
-      $hash=($hash->{$prop->key} ||= { });
-   }
+   my ($hash, $prop)=descend_and_create($self->sensitive_props, @_);
    if ($rule->code==\&Rule::nonexistent) {
       if ($Application::plausibility_checks && ref($hash->{$prop->key})) {
          croak( "recovery of property ", $prop->name, " was enabled prior to this rule definition" );
@@ -134,12 +136,7 @@ sub add_sensitive_sub_property {
 sub add_sub_permutation {
    my $self=shift;
    my $sub_permutation=pop;
-   my $prop=pop;
-   my $hash=$self->sub_permutations;
-   foreach $prop (@_) {
-      $hash=($hash->{$sub_key} ||= { });
-      $hash=($hash->{$prop->key} ||= { });
-   }
+   my ($hash, $prop)=descend_and_create($self->sub_permutations, @_);
    if (exists $hash->{$prop->key}) {
       $hash->{$prop->key}==$sub_permutation or
       croak( "ambiguous permutation propagation into ", join(".", map { $_->name } @_,$prop), " : ",
@@ -148,15 +145,12 @@ sub add_sub_permutation {
 
    $hash->{$prop->key}=$sub_permutation;
    # provide for transitive closure
-   my $deeper_sub_perms=$sub_permutation->sub_permutations;
-   if (keys %$deeper_sub_perms) {
-      $hash=($hash->{$sub_key} ||= { });
-      $hash->{$prop->key}=$deeper_sub_perms;
-   }
+   $hash->{$sub_key}->{$prop->key}=$sub_permutation->sub_permutations;
+
    # establish reversed relation
    $hash=$sub_permutation->parent_permutations;
    foreach my $parent_prop ($prop, reverse @_) {
-      $hash=($hash->{$parent_prop->key} ||= { });
+      $hash=($hash->{$parent_prop->key} //= { });
    }
    push @{$hash->{$sub_key}}, $self;
 }

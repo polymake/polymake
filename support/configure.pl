@@ -573,6 +573,9 @@ if (defined($GCCversion)) {
       $CXXflags .= " -D__C99FEATURES__ -D_GLIBCXX_USE_C99_MATH";
    }
 
+   if (v_cmp($GCCversion, "6.0") >= 0) {
+      $CXXflags .= " -fno-delete-null-pointer-checks";
+   }
 } elsif (defined($ICCversion)) {
    $CsharedFlags="-fPIC";
    $CXXDEBUG .= " -g -Ob0";
@@ -1017,6 +1020,13 @@ $warning .= <<"EOF" unless exists $ext_survived{"cdd"};
 
 WARNING: The bundled extension for cdd was either disabled or failed to configure.
          Running polymake without cdd is deprecated and not supported!
+         Please recheck your configuration (and build.${Arch}/bundled.log).
+EOF
+
+$warning .= <<"EOF" unless (exists $ext_survived{"nauty"} or exists $ext_survived{"bliss"});
+
+WARNING: The bundled extensions for bliss and nauty were both either disabled or failed to configure.
+         Running polymake without a tool for graph-isomorphism tests is not supported!
          Please recheck your configuration (and build.${Arch}/bundled.log).
 EOF
 

@@ -55,80 +55,23 @@ sub doc_namespace { $pmdocns }
 
 # InteractiveHelp => [ 'ID', Application ]
 my %topic2id;
-my %bare_names_by_app;
 
 sub assign_ids {
    my $app=shift;
    my $id=0;
    my @queue=($app->help);
    while (my $help=shift @queue) {
-      $topic2id{$help}=[ id_mangled($help, $app, $id++), $app ];
+      $topic2id{$help}=[ generate_id($help, $app, $id++), $app ];
       push @queue, values %{$help->topics};
    }
 }
 
-#create an id as a mangling of the name
-sub id_mangled {
-   my ($help, $app, $id) = @_;
-   my $r = $help->name;
-
-   if (defined($help->topics->{"overload#0"}) && defined(my $params = $help->topics->{"overload#0"}->annex->{param})) {
-      foreach (@$params) { $r .= "__".$_->[0]; }
-   }
-
-   if (index($r, "overload") != -1) {
-      $r="";
-      if (defined(my $params = $help->annex->{param})) {
-         foreach (@$params) { $r .= "__".$_->[0]; }
-      }
-   }
-
-   # in case of a category we have to append the parent (methods, properties, property_types, objects or functions) to keep it unique
-   my $p = $help;
-   if ($p->category) {
-      $r=$p->parent->name."__".$r;
-   }
-
-   # append the name of the parent unless it is a category or property_types, objects, ...
-   while ($p = $p->parent) {
-      my $name = $p->name;
-      if ($name && $name ne "property_types" && $name ne "objects" && $name ne "properties" && $name ne "methods" && $name ne "functions" && !$p->category) {
-         $r = $name."__".$r;
-      }
-   }
-
-   # people are using strange symbols...
-   $r =~ s/\?/_questionmark/g;
-   $r =~ s/\!/_exclamationmark/g;
-   # spaces, # and :: are replaced by _
-   # <...> is replaced by _...
-   $r =~ s/[ #<]|::/_/g;
-   $r =~ s/[>,\/]//g;
-   # (...) is replaced by ...
-   $r =~ s/\(.*\)//g;
-   # we don't want more than two consecutive underscores
-   $r =~ s/____/__/g;
-
-
-   # if $r is empty, we are at the root
-   unless ($r) {
-      $r = $app->name;
-   }
-
-   # functions with name overload#0 won't have their real name in the mangling,
-   # to make them unique append the old consecutive number (doesn't look nice but they don't occur in the documentation anyway)
-   if ($help->name eq "overload#0") {
-      $r .= "__$id";
-   }
-
-   if ($r eq $help->name) {
-      # overloaded functions instances may appear in different categories, escaping the "overload#X" adornments
-      if (my $repeated=($bare_names_by_app{$app->name} //= { })->{$r}++) {
-         $r .= "__INST$repeated";
-      }
-   }
-
-   return $r;
+sub generate_id {
+   my ($help, $app, $ord) = @_;
+   my $id=$app->name . "__" . $help->name . "__$ord";
+   $id =~ s/\W/_/g;
+   $id =~ s/_{3,}/__/g;
+   return $id;
 }
 
 # InteractiveHelp => WORD => [ InteractiveHelp ... ]
@@ -822,8 +765,8 @@ foreach my $app (@ARGV) {
    my $writer=open_doc_file($application->name.".xml", $xhtmlns=>"html");
    $writer->getOutput->print(<<'.');
 <!DOCTYPE application [
-  <!ENTITY % HTMLsymbol PUBLIC "-//W3C//ENTITIES Symbols for XHTML//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml-symbol.ent">
-  <!ENTITY % HTMLlat1   PUBLIC "-//W3C//ENTITIES Latin 1 for XHTML//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml-lat1.ent">
+  <!ENTITY % HTMLsymbol PUBLIC "-//W3C//ENTITIES Symbols for XHTML//EN" "xhtml-symbol.ent">
+  <!ENTITY % HTMLlat1   PUBLIC "-//W3C//ENTITIES Latin 1 for XHTML//EN" "xhtml-lat1.ent">
   %HTMLsymbol; %HTMLlat1;
 ]>
 .

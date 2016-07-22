@@ -914,7 +914,7 @@ PPCODE:
          CopFILE_free(c);
          CopFILE_setn(c,n,l);
       }
-      c=(COP*)c->op_sibling;
+      c=(COP*)OpSIBLING(c);
    }
 }
 
@@ -1067,9 +1067,9 @@ first(...)
 PPCODE:
 {
    OP *o=cUNOP->op_first, *kid;
-   if (!o->op_sibling)
+   if (!OpHAS_SIBLING(o))
       o=cUNOPo->op_first;
-   while ((kid=o->op_sibling)) o=kid;
+   while ((kid=OpSIBLING(o))) o=kid;
    if (o->op_type==OP_NULL)
       o=cUNOPo->op_first;
    o->op_next=PL_op->op_next;
@@ -1213,7 +1213,7 @@ PPCODE:
          OP *o=cx->blk_oldcop->op_next;
          if (o->op_type == OP_PUSHMARK) {
             do {
-               o=o->op_sibling;
+               o=OpSIBLING(o);
                if (!o) goto Leave;
             } while (--arg_no>=0);
             if (o->op_type == OP_NULL) o=cUNOPo->op_first;
@@ -1246,25 +1246,25 @@ PPCODE:
 {
    PERL_CONTEXT *cx_bottom=cxstack, *cx=cx_bottom+cxstack_ix;
 
-   /* to keep things easier, only recognize assignments to whole arrays/hashes and hash element with literally given keys */
+   // to keep things easier, only recognize assignments to whole arrays/hashes and hash element with literally given keys
 
    while (cx >= cx_bottom) {
       if (CxTYPE(cx)==CXt_SUB && !SkipDebugFrame(cx,0)) {
          OP *o=cx->blk_oldcop->op_next;
          if (o->op_type == OP_PUSHMARK) {
-            o=o->op_sibling;
+            o=OpSIBLING(o);
             if (o) {
                int allow_scalar=FALSE, allow_list=FALSE;
                if (expect_assignment) {
                   switch (o->op_type) {
                   case OP_SASSIGN:
-                     o=cBINOPo->op_last;                        /* descend to the last SASSIGN operand = lhs term */
+                     o=cBINOPo->op_last;                        // descend to the last SASSIGN operand = lhs term
                      allow_scalar=TRUE;
                      break;
                   case OP_AASSIGN:
-                     o=cLISTOPo->op_last;                       /* descend to the last AASSIGN operand = lhs list */
-                     o=cUNOPo->op_first->op_sibling;            /* pushmark, then lhs item: must be alone */
-                     allow_list= o && !o->op_sibling;
+                     o=cLISTOPo->op_last;                       // descend to the last AASSIGN operand = lhs list
+                     o=OpSIBLING(cUNOPo->op_first);             // pushmark, then lhs item: must be alone
+                     allow_list= o && !OpHAS_SIBLING(o);
                      break;
                   }
                } else {
@@ -1297,9 +1297,9 @@ PPCODE:
                case OP_HELEM:
                   if (allow_scalar) {
                      OP *key_op;
-                     o=cUNOPo->op_first;                        /* hash element: hash reference comes first */
+                     o=cUNOPo->op_first;                        // hash element: hash reference comes first
                      if (o->op_type == OP_RV2HV) {
-                        key_op=o->op_sibling;
+                        key_op=OpSIBLING(o);
                         if (key_op && key_op->op_type == OP_CONST) {
                            SV *key_sv;
                            XPUSHs(compose_varname(aTHX_ cUNOPo->op_first, key_op, &key_sv, '%', cx, cx_bottom));
@@ -1414,32 +1414,6 @@ PPCODE:
 }
 
 void
-delete_array_flags(avref)
-   SV *avref;
-PPCODE:
-{
-   SV* av;
-   if (SvROK(avref) && (av=SvRV(avref), SvTYPE(av)==SVt_PVAV)) {
-      MAGIC* prev_mg=NULL;
-      MAGIC* mg;
-      for (mg=SvMAGIC(av); mg != NULL; prev_mg=mg, mg=mg->mg_moremagic) {
-         if (mg->mg_virtual == &array_flags_vtbl) {
-            if (prev_mg != NULL) {
-               prev_mg->mg_moremagic=mg->mg_moremagic;
-            } else {
-               SvMAGIC_set(av, mg->mg_moremagic);
-            }
-            Safefree(mg);
-            mg_magical(av);
-            break;
-         }
-      }
-   } else {
-      croak_xs_usage(cv, "\\@array");
-   }
-}
-
-void
 compiling_in(...)
 PPCODE:
 if (items==0) {
@@ -1485,6 +1459,7 @@ PPCODE:
       3. Store the root operation (LEAVEEVAL) and increase its refcount,
          otherwise get destroyed in pp_require
       4. Provide CvDEPTH be decreased on exit, since LEAVEEVAL doesn't care about it.
+         At least this was the case until 5.23.8: see 9d876b687d and 4f12ed775a
    */
    OP *start=PL_op, *tmp_start=cUNOPx(start)->op_first, *root=PL_eval_root;
    PERL_CONTEXT *cx=cxstack+cxstack_ix;
@@ -1504,7 +1479,7 @@ PPCODE:
    /* 2. */
    CvSTART(script_cv)=tmp_start;
    CvANON_on(script_cv);
-   CvGV_set(script_cv, (GV*)&PL_sv_undef);
+   CvGV_set(script_cv, (PerlVersion < 5200 ? (GV*)&PL_sv_undef : Nullgv));
    tmp_start->op_next=start;
    tmp_start->op_ppaddr=&convert_eval_to_sub;
    /* 3. */
@@ -1515,11 +1490,13 @@ PPCODE:
    CvROOT(script_cv)=root;
    PUSHs(sv_2mortal(newRV((SV*)script_cv)));
    /* 4. */
+#if PerlVersion < 5238
    LEAVE;
    CvDEPTH(script_cv)=0;
    SAVELONG(CvDEPTH(script_cv));
    CvDEPTH(script_cv)=1;
    ENTER;
+#endif
 }
 
 

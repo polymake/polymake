@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -60,17 +60,17 @@ my $i=0;
 for (@Core::Extension::active) {
   $writer->startTag("extension");
   if ($i>= $Core::Extension::num_bundled) {
-		$writer->dataElement("non_bundled",1);
+     $writer->dataElement("non_bundled",1);
   }
   ++$i;
   $writer->dataElement("URI", $_->URI);
   unless ($noExt) {
-	  $writer->dataElement("name", $_->short_name) if ($_->short_name);
-	  $writer->dataElement("text", $_->credit->text) if ($_->credit);
-	  my $ext_file = $_->URI;
-	  $ext_file =~ s|http://||og;
-	  $ext_file =~ s|[/:.]|_|og;
-	  $writer->dataElement("file", $ext_file);
+     $writer->dataElement("name", $_->short_name) if ($_->short_name);
+     $writer->dataElement("text", $_->credit->text) if ($_->credit);
+     my $ext_file = $_->URI;
+     $ext_file =~ s|http://||og;
+     $ext_file =~ s|[/:.]|_|og;
+     $writer->dataElement("file", $ext_file);
   }
   $writer->endTag;
 }
@@ -82,13 +82,16 @@ close_doc_file($writer);
 
 sub run_xsltproc {
    my ($out, $stylesheet, $in, $ext_name)=@_;
-   if (system("xsltproc", "--path", $tmpdir, "--stringparam", "Wiki", $Wiki, "--stringparam", "ext_name", $ext_name, "-o", $out, "$docdir/$stylesheet.xsl", "$in")) {
+   if (system("xsltproc", "--path", "$tmpdir $docdir/entities",
+                          "--nonet",
+                          "--stringparam", "Wiki", $Wiki,
+                          "--stringparam", "ext_name", $ext_name,
+                          "-o", $out,
+                          "$docdir/$stylesheet.xsl", "$in")) {
       die "Command 'xsltproc @_' returned with error code $?\n",
           "Temporary files preserved in $tmpdir\n";
    }
 }
-
-system("cp -p $docdir/entities/* $tmpdir/");
 
 push(@Apps, "core") if -f "$tmpdir/core.xml";
 foreach (@Apps) {
@@ -106,17 +109,17 @@ run_xsltproc("$tmpdir/all.xml",           "all",       "applications.xml");
 run_xsltproc("$outdir/inc/doc_index.inc", "doc_index", "all.xml");
 
 unless ($noExt) {
-	foreach (@Core::Extension::active) {
-		my $ext_name = $_->URI;
-		my $ext_file = $_->URI;
-		$ext_file =~ s|http://||og;
-		$ext_file =~ s|[/:.]|_|og;
-		run_xsltproc("$tmpdir/$ext_file.xml",		"extension", 	"all.xml", $ext_name);
-		run_xsltproc("$outdir/inc/$ext_file.inc",	"doc", 	   		"$ext_file.xml", $ext_name);
-		 run_xsltproc("$outdir/$ext_file.html", 		"export", "$outdir/inc/$ext_file.inc") unless ($noHTML);
-	}
-	run_xsltproc("$outdir/inc/extensions.inc",     "ext_list",     "applications.xml");
-	run_xsltproc("$outdir/extensions.html",     "export",     "$outdir/inc/extensions.inc") unless ($noHTML);
+   foreach (@Core::Extension::active) {
+      my $ext_name = $_->URI;
+      my $ext_file = $_->URI;
+      $ext_file =~ s|http://||og;
+      $ext_file =~ s|[/:.]|_|og;
+      run_xsltproc("$tmpdir/$ext_file.xml",     "extension", "all.xml", $ext_name);
+      run_xsltproc("$outdir/inc/$ext_file.inc", "doc",       "$ext_file.xml", $ext_name);
+      run_xsltproc("$outdir/$ext_file.html",    "export",    "$outdir/inc/$ext_file.inc") unless ($noHTML);
+   }
+   run_xsltproc("$outdir/inc/extensions.inc",  "ext_list",   "applications.xml");
+   run_xsltproc("$outdir/extensions.html",     "export",     "$outdir/inc/extensions.inc") unless ($noHTML);
 }
 
 unless ($noHTML) {

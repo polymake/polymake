@@ -1,12 +1,37 @@
 Changelog
 
+
+=== Polymake 3.0r2 ===
+
+-- distribution --
+ * support for perl 5.24
+ * support for gcc 6 (add no-delete-null-pointer-checks)
+ * workaround for compile error under clang 3.8 / xcode 7.3
+ * warn when neither bliss nor nauty are enabled
+ * include nauty interface in minimal tarball
+
+-- general --
+ * several small fixes in handling of subobjects and specializations
+ * several other minor bugfixes
+
+-- fan --
+ * fix in regularity client (thanks: Sebastian Gutsche)
+
+-- matroid --
+ * fix in dual matroid client
+
+-- polytope --
+ * fix for degenerate hypersimplices (thanks: Charles Wang)
+ * fix in separating hyperplane client
+
+
 === Polymake 3.0r1 ===
 
 -- distribution --
  * fix incompatibility of the Integer type with libnormaliz on 32bit platforms
  * fix several other minor compilation issues
 
--- general
+-- general --
  * fixes for the TikZ visualization of pointsets:
      - for drawing PointConfigurations
      - for drawing lattice points in polytopes

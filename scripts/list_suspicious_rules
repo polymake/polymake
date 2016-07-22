@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -34,11 +34,11 @@ foreach my $rule (@{$application->rules}) {
 
    my (%seen_in, %seen_out);
    foreach (@{$rule->input}) {
-      possible_permutations($_,\%seen_in) for @$_;
+      possible_permutations($_, \%seen_in) for @$_;
    }
-   possible_permutations($_,\%seen_out) for @{$rule->output};
+   possible_permutations($_, \%seen_out) for @{$rule->output};
    delete @seen_out{keys %seen_in};
-   delete $seen_out{$rule->with_permutation->permutation} if defined $rule->with_permutation;
+   delete $seen_out{$rule->with_permutation->perm_path->[-1]} if defined $rule->with_permutation;
 
    if (keys %seen_out) {
       print '"', sub_file($rule->code), '", line ', sub_firstline($rule->code), ": rule ", $rule->header, "\n";
@@ -52,10 +52,11 @@ foreach my $rule (@{$application->rules}) {
 
 sub possible_permutations {
    my ($path, $seen)=@_;
-   if (is_object($path)) {
+   if (@$path==1) {
+      my $prop=$path->[0];
       foreach my $permutation (@perms) {
-         if (defined $permutation->sensitive_props->{$path->key}) {
-            push @{$seen->{$permutation}}, $path;
+         if (defined $permutation->sensitive_props->{$prop->key}) {
+            push @{$seen->{$permutation}}, $prop;
          }
       }
    } else {

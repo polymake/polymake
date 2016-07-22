@@ -107,8 +107,6 @@ sub vis_facets($$$$$$) {
 }
 
 
-# An abstract simplicial complex represented by its facets.
-
 object SimplicialComplex {
 
 # @category Visualization
@@ -142,22 +140,14 @@ rule MIXED_GRAPH.ADJACENCY, MIXED_GRAPH.EDGE_WEIGHTS : FACETS, GRAPH.ADJACENCY, 
 # @option Int seed  random seed value for the string embedder
 # @return Visual::SimplicialComplex
 
-user_method VISUAL(%Visual::Polygon::decorations, %Visual::Graph::decorations, { mixed_graph => 0 }, { seed => undef }) {
+user_method VISUAL(%Visual::Polygon::decorations, %Visual::Graph::decorations, { mixed_graph => 0, coord => undef }, { seed => undef }) {
    my ($this, $face_decor, $graph_decor, $options, $seed)=@_;
 
-   my $coord=do {
-      if ( $options->{mixed_graph} ) {
-         spring_embedding_3d($this->MIXED_GRAPH->ADJACENCY,'edge-weights' => $this->MIXED_GRAPH->EDGE_WEIGHTS, $seed)->compute->minor(sequence(0,$this->N_VERTICES),All);
-      } elsif ($this->isa("GeometricSimplicialComplex") && (
-                     defined($this->lookup("COORDINATES")) ||
-                     # the following check is needed because of our object / property semantics
-                     defined($this->parent) && $this->parent->isa("Cone") && defined($this->parent->give("RAYS"))
-                  ) && $this->G_DIM <= 3) {
-          convert_to<Float>((defined($this->lookup("VERTEX_INDICES"))) ? $this->COORDINATES->minor($this->VERTEX_INDICES,All) : $this->COORDINATES);
-      } else {
-         spring_embedding_3d($this->GRAPH->ADJACENCY, $seed)->compute;
-      }
-   };
+   my $coord=$options->{coord} //
+             ( $options->{mixed_graph}
+               ? spring_embedding_3d($this->MIXED_GRAPH->ADJACENCY, 'edge-weights' => $this->MIXED_GRAPH->EDGE_WEIGHTS, $seed)
+                 ->compute->minor(sequence(0, $this->N_VERTICES), All)
+               : spring_embedding_3d($this->GRAPH->ADJACENCY, $seed)->compute);
 
    my $labels=$this->lookup("VERTEX_LABELS");
    my $graph= new Visual::Graph( Name => 'GRAPH of '.$this->name,
@@ -237,6 +227,21 @@ user_method VISUAL_MIXED_GRAPH(%Visual::Graph::decorations, { seed => undef }) {
 
 }
 
+object GeometricSimplicialComplex {
+
+# TODO: consider all inherited user methods; then: user_method ... : COORDINATES ... 
+
+user_method VISUAL(%Visual::Polygon::decorations, %Visual::Graph::decorations, { mixed_graph => 0 }, { seed => undef }) {
+   my ($this, $face_decor, $graph_decor, $options, $seed)=@_;
+   if (!$options->{mixed_graph} && defined($this->G_DIM) && $this->G_DIM<=3) {
+      $options->{coord}=convert_to<Float>(defined($this->lookup("VERTEX_INDICES")) ? $this->COORDINATES->minor($this->VERTEX_INDICES, All) : $this->COORDINATES);
+   }
+   $this->SUPER::VISUAL($face_decor, $graph_decor, $options, $seed);
+}
+
+# TODO: precondition : G_DIM { $this->G_DIM <= 3 }
+
+}
 
 package Visual::SimplicialComplex;
 

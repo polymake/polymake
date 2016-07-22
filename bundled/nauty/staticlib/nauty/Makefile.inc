@@ -1,6 +1,10 @@
 OwnLibrary := libnauty
 LibModules := nauty naututil nautil nautinv naugraph rng naurng schreier nausparse nautaux
-src := ${ExtensionTop}/external/nauty
+ifeq (${NautySrc},)
+  src := ${ExtensionTop}/external/nauty
+else
+  src := ${NautySrc}
+endif
 vpath %.c $(src)
 
 # We need to disable avx2 for some gcc versions as it produces invalid relocations

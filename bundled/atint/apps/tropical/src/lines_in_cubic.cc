@@ -331,10 +331,10 @@ namespace polymake { namespace tropical {
 						(fam.edge(0,0) + fam.edge(1,0) == 2) ) {
 					int avf_equal = -1;
 					int fam_equal = -1;
-					if(approved_vfamilies[vf].edge.row(0) == fam.edge.row(0)) avf_equal = 0; fam_equal = 0;
-					if(approved_vfamilies[vf].edge.row(0) == fam.edge.row(1)) avf_equal = 0; fam_equal = 1;
-					if(approved_vfamilies[vf].edge.row(1) == fam.edge.row(0)) avf_equal = 1; fam_equal = 0;
-					if(approved_vfamilies[vf].edge.row(1) == fam.edge.row(1)) avf_equal = 1; fam_equal = 1;
+					if(approved_vfamilies[vf].edge.row(0) == fam.edge.row(0)) { avf_equal = 0; fam_equal = 0;} 
+					if(approved_vfamilies[vf].edge.row(0) == fam.edge.row(1)) { avf_equal = 0; fam_equal = 1;} 
+					if(approved_vfamilies[vf].edge.row(1) == fam.edge.row(0)) { avf_equal = 1; fam_equal = 0;} 
+					if(approved_vfamilies[vf].edge.row(1) == fam.edge.row(1)) { avf_equal = 1; fam_equal = 1;} 
 
 					if(avf_equal != -1) {
 						int other_avf = avf_equal == 0? 1 : 0;

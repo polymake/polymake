@@ -107,6 +107,12 @@ perl::Object cross(int d, const Scalar& s, perl::OptionSet options)
    return p;
 }
 
+perl::Object octahedron() 
+{
+   const perl::OptionSet no_options;
+   return cross(3,one_value<Rational>(),no_options);
+}
+
 UserFunctionTemplate4perl("# @category Producing regular polytopes and their generalizations"
                           "# Produce a //d//-dimensional cross polytope."
                           "# Regular polytope corresponding to the Coxeter group of type B<sub>//d//-1</sub> = C<sub>//d//-1</sub>."
@@ -141,6 +147,12 @@ UserFunctionTemplate4perl("# @category Producing regular polytopes and their gen
                           "# | 2 3 0 1 4 5"
                           "# | 0 1 4 5 2 3",
                           "cross<Scalar> [ is_ordered_field(type_upgrade<Scalar, Rational>) ] (Int; type_upgrade<Scalar>=1, { group => undef } )");
+
+UserFunction4perl("# @category Producing regular polytopes and their generalizations"
+                  "# Produce a regular octahedron, which is the same as the 3-dimensional cross polytope."
+                  "# @return Polytope",
+                  &octahedron, "octahedron");
+
 
 } }
 

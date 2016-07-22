@@ -20,10 +20,15 @@ object Cone{
 	#	$this->PSEUDOVERTEX_LABELS(temporary)=[ map { join("", @$_) } @{$this->PSEUDOVERTEX_COVECTORS} ];
 	#}
 
-	rule PROJECTIVE_AMBIENT_DIM : PSEUDOVERTICES | POINTS {
-		$this->PROJECTIVE_AMBIENT_DIM=($this->PSEUDOVERTICES | POINTS)->cols-1;
+	rule PROJECTIVE_AMBIENT_DIM : POINTS {
+		$this->PROJECTIVE_AMBIENT_DIM=$this->POINTS->cols-1;
 	}
 	weight 0.1;
+
+   rule PROJECTIVE_AMBIENT_DIM : PSEUDOVERTICES {
+      $this->PROJECTIVE_AMBIENT_DIM=$this->PSEUDOVERTICES->cols-2;
+   }
+   weight 0.1;
 
 	rule VERTICES, VERTICES_IN_POINTS : POINTS {
 		discard_non_vertices($this);

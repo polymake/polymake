@@ -29,10 +29,10 @@ namespace polymake { namespace polytope {
 
 perl::Object hypersimplex(int k, int d, perl::OptionSet options)
 {
-   if (d < 1)
-      throw std::runtime_error("hypersimplex: dimension >= 1 required");
-   if (k < 0 || k > d)
-      throw std::runtime_error("hypersimplex: 0 <= k <= d required");
+   if (d < 2)
+      throw std::runtime_error("hypersimplex: dimension >= 2 required");
+   if (k <= 0 || k >= d)
+      throw std::runtime_error("hypersimplex: 0 < k < d required");
 
    perl::Object p("Polytope<Rational>");
    p.set_description() << "(" << k << "," << d << ")-hypersimplex" << endl;
@@ -41,16 +41,20 @@ perl::Object hypersimplex(int k, int d, perl::OptionSet options)
    p.take("CONE_DIM") << d;
    p.take("BOUNDED") << true;
 
-
    // we already know the number of vertices
    const int n=Integer::binom(d,k).to_int();
    p.take("N_VERTICES") << n;
 
    const bool group_flag = options["group"];
    const bool nov_flag = options["no_vertices"];
-   const bool nof_flag = options["no_facets"];
-   const bool novif_flag = options["no_vif"];
+   bool nof_flag = options["no_facets"];
+   bool novif_flag = options["no_vif"];
 
+   // if the hypersimplex degenerates to a simplex the formula for the facets below don't work
+   if ( k==1 || k==d-1 ) {
+      nof_flag = novif_flag = true;
+   }
+   
    if ( !nov_flag ) {
    Array<std::string> labels(n);
    int i(0);

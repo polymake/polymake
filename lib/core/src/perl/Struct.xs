@@ -255,16 +255,16 @@ OP* pp_method_call(pTHX)
 static
 OP* intercept_ck_aassign(pTHX_ OP* o)
 {
-   OP *lhs;
+   OP* lhs;
    o=def_ck_AASSIGN(aTHX_ o);
-   lhs=cUNOPo->op_first->op_sibling;
+   lhs=OpSIBLING(cUNOPo->op_first);
    if (lhs->op_type == OP_NULL) lhs=cUNOPx(lhs)->op_first;
    while (lhs) {
       if (lhs->op_type == OP_ENTERSUB) {
          OP* meth_op=method_named_op(lhs);
          if (meth_op) meth_op->op_private |= MethodIsCalledOnLeftSideOfArrayAssignment;
       }
-      lhs=lhs->op_sibling;
+      lhs=OpSIBLING(lhs);
    }
    return o;
 }
@@ -368,7 +368,7 @@ PPCODE:
       }
 
       if (filter) {
-         OP *prev=cUNOP->op_first->op_sibling;
+         OP* prev=OpSIBLING(cUNOP->op_first);
          while (prev->op_next != o) prev=prev->op_next;
          PL_op=prev;
          PUSHMARK(SP);  // restore the mark
