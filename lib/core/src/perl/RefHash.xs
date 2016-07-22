@@ -652,7 +652,7 @@ static
 OP* intercept_pp_padrange_unknown(pTHX)
 {
    OP* o=PL_op;
-   OP* sib=o->op_sibling;
+   OP* sib=OpSIBLING(o);
    OP* next=Perl_pp_padrange(aTHX);
    if (next->op_type == OP_AASSIGN) {
       while (sib) {
@@ -661,7 +661,7 @@ OP* intercept_pp_padrange_unknown(pTHX)
             PL_op=next;
             return ref_assign(aTHX);
          }
-         sib=sib->op_sibling;
+         sib=OpSIBLING(sib);
       }
    }
    o->op_ppaddr=def_pp_PADRANGE;
@@ -709,7 +709,7 @@ OP* check_pushhv(pTHX_ OP *o)
       OP *kid=cLISTOPo->op_first;
       if (kid->op_type == OP_PUSHMARK ||
           (kid->op_type == OP_NULL && kid->op_targ == OP_PUSHMARK))
-         kid = kid->op_sibling;
+         kid = OpSIBLING(kid);
       if (kid->op_type == OP_RV2HV || kid->op_type == OP_PADHV) {
          int arg_cnt=2;
 #if PerlVersion >= 5160
@@ -717,7 +717,7 @@ OP* check_pushhv(pTHX_ OP *o)
 #else
          Perl_mod(aTHX_ kid, o->op_type);
 #endif
-         while ((kid=kid->op_sibling)) {
+         while ((kid=OpSIBLING(kid))) {
             if (kid->op_type == OP_RV2HV || kid->op_type == OP_PADHV) {
                Perl_list(aTHX_ kid);
             } else {

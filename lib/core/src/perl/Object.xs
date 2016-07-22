@@ -26,6 +26,17 @@ OP* pp_reveal_args(pTHX)
    RETURN;
 }
 
+static
+OP* pp_move_lhs_to_rhs(pTHX)
+{
+   dSP;
+   // the value returned from put/put_multi is on the stack top:
+   // insert it into the corresponding slot of the rhs list and replace it with undef here
+   SP[PL_markstack_ptr[-1]-PL_markstack_ptr[0]]=TOPs;
+   SETs(&PL_sv_undef);
+   RETURN;
+}
+
 MODULE = Polymake::Core::Object                 PACKAGE = Polymake::Core::Object
 
 PROTOTYPES: DISABLE
@@ -39,13 +50,15 @@ PPCODE:
    SV *prop=AvARRAY(descr)[0], *rhs;
    OP *o=PL_op->op_next;
    I32 hide_args = GIMME_V != G_ARRAY ? 1 : 0;
+   I32 assign=0;
 
    if (o && o->op_type == OP_SASSIGN && !(o->op_private & OPpASSIGN_BACKWARDS)) {
-      EXTEND(SP,items+3+hide_args);
+      // setting a property: $this->PROP=value;
+      EXTEND(SP, items+3+hide_args);
       rhs=*SP;
       PUSHMARK(SP);
       if (hide_args) {
-        *(++SP)=NUM2PTR(SV*,items+2);
+        *(++SP)=NUM2PTR(SV*, items+2);
         SP[items]=prop;
         SP[items+1]=rhs;
         SP[items+2]=AvARRAY(descr)[2];
@@ -61,12 +74,14 @@ PPCODE:
       /* remove the LVALUE flag */
       PL_op->op_private &= ~OPpLVAL_INTRO;
 #endif
+      assign=OP_SASSIGN;
 
    } else if ((o=method_named_op(PL_op), o && (o->op_private & MethodIsCalledOnLeftSideOfArrayAssignment))) {
+      // setting a property in a list assignment: (..., $this->PROP, ... )=(..., value, ...);
       if (hide_args) Perl_croak(aTHX_ "unexpected scalar context within list assignment");
-      EXTEND(SP,items+3);
-      /* AASSIGN expects two marks: the topmost delimits the lvalues, the next below it - the rvalues */
-      rhs=PL_stack_base[++PL_markstack_ptr[-1]];
+      EXTEND(SP, items+3);
+      // AASSIGN expects two marks: the topmost delimits the lvalues, the next below it - the rvalues
+      rhs=SP[PL_markstack_ptr[-1]-PL_markstack_ptr[0]+1];
       PUSHMARK(SP);
       SP+=items;
       PUSHs(prop);
@@ -76,12 +91,14 @@ PPCODE:
       /* remove the LVALUE flag */
       PL_op->op_private &= ~OPpLVAL_INTRO;
 #endif
+      assign=OP_AASSIGN;
 
    } else {
-      EXTEND(SP,items+2+hide_args);
+      // retrieving a property
+      EXTEND(SP, items+2+hide_args);
       PUSHMARK(SP);
       if (hide_args) {
-        *(++SP)=NUM2PTR(SV*,items+1);
+        *(++SP)=NUM2PTR(SV*, items+1);
         SP[items]=prop;
         SP[items+1]=AvARRAY(descr)[1];
         SP[items+2]=self;
@@ -92,22 +109,61 @@ PPCODE:
       }
    }
 
+   // We must repeat OP_ENTERSUB in order to execute the get or put method
+   // Depending on context, an auxiliary operation can be added.
    if ((o=cUNOP->op_first)->op_type != OP_CUSTOM) {
-      OP *reveal_op=newOP(OP_CUSTOM, 0);
-      reveal_op->op_ppaddr=&pp_reveal_args;
-      reveal_op->op_next=PL_op;
+      OP* reveal_op=newOP(OP_CUSTOM, 0);
+      OP* last_new_op=reveal_op;
+      OP* dummy_op=o;
+
+      // we need a dummy operation ponting to the next op to be executed
       if (o->op_type == OP_NULL) {
          o->op_type = OP_CUSTOM;
-         o->op_next=reveal_op;
-         reveal_op->op_sibling=o->op_sibling;
-         o->op_sibling=reveal_op;
       } else {
-         OP *dummy_op=newOP(OP_CUSTOM, 0);
-         dummy_op->op_sibling=reveal_op;
-         dummy_op->op_next=reveal_op;
-         reveal_op->op_sibling=o;
-         o=cUNOP->op_first=dummy_op;
+         dummy_op=newOP(OP_CUSTOM, 0);
       }
+
+      reveal_op->op_ppaddr=&pp_reveal_args;
+      dummy_op->op_next=reveal_op;
+
+      if (assign) {
+         OP* sub_op=newOP(OP_CUSTOM, 0);
+         PL_op->op_private &= ~OPpLVAL_INTRO;
+         sub_op->op_ppaddr=PL_op->op_ppaddr;
+         sub_op->op_flags=PL_op->op_flags & ~OPf_KIDS;
+         sub_op->op_private=PL_op->op_private;
+         reveal_op->op_next=sub_op;
+         if (assign==OP_SASSIGN) {
+            // Now we've hidden the arguments for put/put_multi from the current OP_ENTERSUB
+            // which would destroy all but the last one because of sacalar context.
+            // They must be revealed before put/put_multi is called.
+            sub_op->op_next=PL_op->op_next->op_next;  // skip OP_SASSIGN
+            last_new_op=sub_op;
+         } else {
+            // Value returned from put/put_lvalue must be moved from the left to the right hand side of the list assignment
+            // TODO: try to recognize list assignments in void context and skip this
+            OP* move_op=newOP(OP_CUSTOM, 0);
+            move_op->op_ppaddr=&pp_move_lhs_to_rhs;
+            sub_op->op_next=move_op;
+            move_op->op_next=PL_op->op_next;
+            OpMORESIB_set(sub_op, move_op);
+            last_new_op=move_op;
+         }
+         OpMORESIB_set(reveal_op, sub_op);
+      } else {
+         reveal_op->op_next=PL_op;
+      }
+
+      // include new OPs into the tree at places having further siblings (would have to deal with PERL_OP_PARENT otherwise...)
+      if (dummy_op==o) {
+         OpMORESIB_set(last_new_op, cUNOPo->op_first);
+         cUNOPo->op_first=reveal_op;
+      } else {
+         OpMORESIB_set(last_new_op, o);
+         OpMORESIB_set(dummy_op, reveal_op);
+         cUNOP->op_first=dummy_op;
+      }
+      o=dummy_op;
    }
    PL_op= hide_args ? o : o->op_next;
 }

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -63,6 +63,7 @@ use Polymake::Struct (
    '@production_rules',            # ( Rule ) all production rules directly applicable to this object type and descendants (for search by header)
 #
    [ '$specializations' => 'undef' ],  # ( Specialization ) for parameterized types with partial specializations: the abstract objects
+   [ '$borrowed_from' => 'undef' ],    # other Specializations defining properties this Specialization or generic type refers to
 #
    [ '$help' => 'undef' ],         # InteractiveHelp (in interactive mode, when comments are supplied for properties, user methods, etc.)
 );
@@ -129,26 +130,18 @@ sub new {
       if (defined $generic_type) {
          $self->generic=$generic_type;
 
+         my %required_spezs;
+         if (defined $generic_type->borrowed_from) {
+            $required_spezs{$_}=1 for keys %{$generic_type->borrowed_from};
+         }
          if (defined $generic_type->specializations) {
             my @matching_spezs=map { pick_specialization($_, $self) } @{$generic_type->specializations};
 
-            # verify the consistency of relations between specializations
-            my %required_spezs;
             foreach my $spez (@matching_spezs) {
                my $gen_spez=$spez->generic;
                $required_spezs{$gen_spez} |= 2;
-               $required_spezs{$_} |= 1 for keys %{$gen_spez->borrowed_from};
-            }
-            while (my ($gen_spez, $status)=each %required_spezs) {
-               if ($status == 1) {
-                  foreach my $spez (@matching_spezs) {
-                     my $bad_spez=$spez->generic;
-                     if (exists $bad_spez->borrowed_from->{$gen_spez}) {
-                        die "Invalid inheritance: ", $bad_spez->full_name,
-                            "\n refers to properties defined in ", $gen_spez->full_name,
-                            "\n but only the former matches the object type ", $self->full_name, "\n";
-                     }
-                  }
+               if (defined $gen_spez->borrowed_from) {
+                  $required_spezs{$_} |= 1 for keys %{$gen_spez->borrowed_from};
                }
             }
 
@@ -157,6 +150,16 @@ sub new {
             no strict 'refs';
             unshift @{$self->pkg."::ISA"}, @spez_pkgs;
             update_inheritance($self);
+         }
+
+         # verify correctness of inheritance relationship between specializations
+         while (my ($spez, $status)=each %required_spezs) {
+            if ($status == 1 && list_index($self->super, $spez)<0) {
+               my @bad=grep { defined($_->borrowed_from) && $_->borrowed_from->{$spez} } @{$self->super};
+               die "Invalid inheritance: ", join(", ", map { $_->full_name } @bad),
+                            "\n refer", @bad==1 && "s", " to properties defined in ", $spez->full_name,
+                            "\n which does not match the object type ", $self->full_name, "\n";
+            }
          }
       }
    } else {
@@ -176,8 +179,11 @@ sub pick_specialization {
 }
 
 sub all_partial_specializations {
-   my ($self)=@_;
-   map { defined($_->specializations) ? @{$_->specializations} : () } $self, @{$self->super}
+   my ($self, $for_spez)=@_;
+   ( ($self != $for_spez && defined($self->specializations)
+      ? (grep { $_ != $for_spez } @{$self->specializations}) : () ),
+     map { defined($_->specializations) ? @{$_->specializations} : () } @{$self->super}
+   )
 }
 ####################################################################################
 sub full_specialization {
@@ -250,9 +256,31 @@ sub lookup_property {
    my ($self, $prop_name)=@_;
    # don't cache negative results
    $self->properties->{$prop_name} // do {
+      my $prop;
       foreach (@{$self->super}) {
-         if (defined (my $prop=$_->properties->{$prop_name})) {
+         if (defined ($prop=$_->properties->{$prop_name})) {
             return $self->properties->{$prop_name}=$prop;
+         }
+      }
+      if ($self->abstract) {
+         my $gen_proto=$self->generic // $self;
+         foreach my $spez ($gen_proto->all_partial_specializations($self)) {
+            if ($spez != $self &&
+                defined ($prop=$spez->properties->{$prop_name})) {
+
+               ($self->borrowed_from //= { })->{$spez} ||= do {
+                  # verify the correctness of borrowing
+                  foreach my $proto (grep { $_->generic==$gen_proto } $self->derived) {
+                     if (list_index($proto->super, $spez)<0) {
+                        die "Invalid inheritance: ", $self->full_name,
+                        "\n refers to property $prop_name defined in ", $spez->full_name,
+                        "\n which does not match the object type ", $proto->full_name, "\n";
+                     }
+                  }
+                  1
+               };
+               return $self->properties->{$prop_name}=$prop;
+            }
          }
       }
       undef
@@ -291,17 +319,6 @@ sub property_name {
 sub list_permutations {
    my $self=shift;
    (values %{$self->permutations}), (map { values %{$_->permutations} } @{$self->super})
-}
-
-sub lookup_permutation {
-   my ($self, $name)=@_;
-   $self->permutations->{$name} || do {
-      my $perm;
-      foreach my $super_proto (@{$self->super}) {
-         $perm=$super_proto->permutations->{$name} and last;
-      }
-      $perm;
-   };
 }
 ####################################################################################
 # private:
@@ -351,15 +368,6 @@ sub add_property_alias {        # "new name", "old name", Help, override => Prop
 ####################################################################################
 sub add_permutation {
    add_property($_[0], new Permutation(@_));
-}
-
-# create a temporary permutation type ostensibly working on an ancestor
-# of the object to be really permuted
-sub create_permutation_for_ancestor {
-   my ($self, $perm, @descend)=@_;
-   my $prop=new Permutation($self, 'PermuteAncestor');
-   $prop->add_sub_permutation(@descend, $perm);
-   $prop
 }
 ####################################################################################
 # protected:
@@ -446,12 +454,12 @@ sub add_rule_labels {
 # protected:
 # "NAME.NAME" => (Property)
 sub encode_property_list {
-   my ($self, $req, $obj, $replace_self)=@_;
+   my ($self, $req, $obj)=@_;
    my $prop;
+   my $allow_abstract=!defined($obj) && $self->abstract;
    map {
       if (defined($prop)) {
-         $self=$prop->specialization($self, !defined($obj) && $self->abstract)->type;
-         $_[0]=$self if $replace_self;
+         $self=$prop->specialization($self, $allow_abstract)->type;
       }
       $prop=$self->lookup_property($_)
         or
@@ -459,25 +467,20 @@ sub encode_property_list {
    } split /\./, $req;
 }
 
-# 'NAME.NAME ... NAME | NAME ...' => [ Property, ... Property || Property::WithAlternatives ]
-# flags(RETVAL)==$Property::is_permutation if the path descends into a permutation subobject
+# 'NAME.NAME | ...' => [ [ Property, ... ] ]
+# flags(RETVAL)==$Property::is_permutation if the paths descend into a permutation subobject
 sub encode_read_request {
    my ($self, $req, $obj)=@_;
-   my ($path, @alternatives)=split /\s*\|\s*/, $req;
-   my @path=encode_property_list($self, $path, $obj, 1);
-   if (@path>1 && Property::find_first_in_path(\@path, $Property::is_permutation)>=0) {
-      set_array_flags(\@path, $Property::is_permutation);
+   my $perm_seen;
+   my @alternatives=map {
+      my @path=encode_property_list($self, $_, $obj);
+      $perm_seen ||= Property::find_first_in_path(\@path, $Property::is_permutation)>=0;
+      \@path
+   } split /\s*\|\s*/, $req;
+   if ($perm_seen) {
+      set_array_flags(\@alternatives, $Property::is_permutation);
    }
-   if (@alternatives) {
-      $path[-1]=bless [ $path[-1],
-                        map {
-                           $self->lookup_property($_)
-                             or
-                           croak( "unknown property ", $self->full_name, "::$_" );
-                        } @alternatives
-                      ], "Polymake::Core::Property::WithAlternatives";
-   }
-   \@path
+   \@alternatives
 }
 ####################################################################################
 # for compatibility with LocallyDerived types, e.g. when only derived owner types define some additional properties
@@ -867,7 +870,6 @@ use Polymake::Struct (
    [ '$application' => '#3 ->application' ],
    [ '$match_node' => 'undef' ],
    [ '$preconditions' => 'undef' ],
-   '%borrowed_from',             # other Specializations defining properties this Specializations refers to
    [ '$full_spez_for' => 'undef' ],
 );
 
@@ -950,28 +952,7 @@ sub lookup_property {
       # the final object type contain this among its super types, it will find any property defined here
       $self->full_spez_for->lookup_property($prop_name)
    } else {
-      &ObjectType::lookup_property // do {
-         my $prop;
-         foreach my $other_spez ($gen_proto->all_partial_specializations) {
-            if ($other_spez != $self &&
-                defined ($prop=$other_spez->properties->{$prop_name})) {
-               $self->properties->{$prop_name}=$prop;
-               $self->borrowed_from->{$other_spez} ||= do {
-                  # verify the correctness of borrowing
-                  foreach my $proto (grep { $_->generic==$gen_proto } $self->derived) {
-                     if (list_index($proto->super, $other_spez)<0) {
-                        die "Invalid inheritance: ", $self->full_name,
-                        "\n refers to properties defined in ", $other_spez->full_name,
-                        "\n but only the former matches the object type ", $proto->full_name, "\n";
-                     }
-                  }
-                  1
-               };
-               last;
-            }
-         }
-         $prop
-      }
+      &ObjectType::lookup_property
    }
 }
 ####################################################################################

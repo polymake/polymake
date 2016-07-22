@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -774,10 +774,10 @@ my %rule_subheaders=(
    permutation => sub {
       my ($self, $header, $after_rule)=@_;
       if ($after_rule==1 &&
-          $header =~ s/^ :\s* ($id_re) \s*; $//xo) {
+          $header =~ s/^ :\s* ($hier_id_re) \s*; $//xo) {
          $self->after_rule=1;
          push @{$self->buffer},
-              "application::self()->append_rule_permutation('$1', self(1));\n";
+              "application::self()->append_rule_permutation('$1');\n";
       } else {
          push @{$self->buffer}, "BEGIN { die 'invalid rule header' }\n";
       }
@@ -2272,12 +2272,8 @@ sub append_rule_weight {
 }
 
 sub append_rule_permutation {
-   my ($self, $perm_name, $proto)=@_;
-   my $perm=$proto->property($perm_name);
-   unless ($perm->flags & $Property::is_permutation) {
-      croak( "$perm_name is not declared as a permutation" );
-   }
-   $self->rules->[-1]->append_permutation($perm);
+   my ($self, $perm_name)=@_;
+   $self->rules->[-1]->append_permutation($perm_name);
 }
 
 sub append_overridden_rule {

@@ -2465,7 +2465,14 @@ public:
       ~EdgeHashMapData() { if (_table) table().detach(*this); }
    };
 
+// Due to a bug in clang >=3.8 (https://llvm.org/bugs/show_bug.cgi?id=26938), the SharedMap
+// class template cant be resolved in the definition of NodeMap if this forward declaration
+// and the friend declaration in map2graph_connector exist at the same time.
+// The friend statement suffices as forward declaration.
+// TODO: An upper limit on the version will be set depending on the bug resolution.
+#if !(defined(__clang__) && ((!defined(__APPLE__) && __clang_major__ == 3 && __clang_minor__ >= 8) || ( defined(__APPLE__) && __clang_major__ == 7 && __clang_minor__ >= 3)))
    template <typename BaseMap> class SharedMap;
+#endif
 
 protected:
    template <typename E, typename Params, bool for_copy> static

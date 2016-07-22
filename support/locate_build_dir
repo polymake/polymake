@@ -16,10 +16,7 @@
 sub platform_name {
    my $platform;
    if ($^O !~ /aix|rs6000|ibm/i) {
-      ($platform)= `uname -p` =~ /(\w+)/;
-      if ($platform eq "unknown") {
-         ($platform)= `uname -m` =~ /(\w+)/;
-      }
+      ($platform)= `uname -m` =~ /(\w+)/;
    }
    $platform || $Config{archname};
 }

@@ -13,6 +13,9 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+REQUIRE
+   common::main.rules
+
 package JavaView::Viewer;
 
 global_method javaview.graph: draw(Visual::Graph, @) {

@@ -203,6 +203,7 @@ rule TRIANGULATION.FACETS : POINTS, TRIANGULATION.WEIGHTS {
    $this->TRIANGULATION->FACETS=regular_subdivision($this->POINTS, $this->TRIANGULATION->WEIGHTS);
 }
 weight 3.10;
+permutation : TRIANGULATION.FacetPerm;
 
 }
 

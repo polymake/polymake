@@ -122,10 +122,10 @@ public:
       do
       {
          ::ideal Jstd = kStd(J,NULL,testHomog,NULL);
-         for (int i=0; i<idSize(Jstd); i++)
+         for (int i=0; i<IDELEMS(Jstd); i++)
          {
             poly g = Jstd->m[i];
-            if (pNext(g)==NULL)
+            if (g != NULL && pNext(g) == NULL)
             {
                for (int j=1; j<=rVar(r); j++)
                   p_AddExp(g,j,k,r);

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,15 +15,20 @@
 
 use strict;
 use namespaces;
+use feature 'state';
 
 require 'Polymake/file_utils.pl';
 
 package Polymake::Tempfile;
 use POSIX ':errno_h';
 
-my $dir;
-
-sub dir { defined($ {$_[0]}) and &dirname or $dir ||= find_writable_dir($PrivateDir); }
+sub dir {
+   if (@_ && defined($ {$_[0]})) {
+      &dirname
+   } else {
+      state $dir=find_writable_dir($PrivateDir);
+   }
+}
 
 sub new {
    dir();
@@ -32,11 +37,11 @@ sub new {
 
 my $cnt="aaaa0000";
 my $rename_cnt=0;
-my ($registered_temp_dir, @to_delete);
+my @to_delete;
 
 sub unique_name { "poly".$$."T".(++$cnt) }
 
-use overload '""' => sub { $ {$_[0]} ||= "$dir/".unique_name; };
+use overload '""' => sub { $ {$_[0]} ||= dir()."/".unique_name(); };
 
 sub basename { $ {$_[0]} =~ m|/(poly[^/]+)$|; $1 }
 sub dirname { $ {$_[0]} =~ m|(.*)/poly[^/]+$|; $1 }
@@ -71,7 +76,7 @@ sub new_dir {
       $!==EEXIST or die "could not create temporary directory $path: $!\n";
    }
    push @to_delete, $path;
-   unless ($registered_temp_dir) {
+   state $register_temp_dir //= do {
       add AtEnd("tempdir", sub {
                    if ($DebugLevel) {
                       warn_print( "preserving temporary directories", map{ (" ", $_) } @to_delete );
@@ -81,8 +86,7 @@ sub new_dir {
                       }
                    }
                 });
-      $registered_temp_dir=1;
-   }
+      1 };
    $path
 }
 

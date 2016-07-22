@@ -234,6 +234,7 @@ sub copy_dir {
          while (<$noexport>) {
             if (my ($file, $status)= /^(?!\#)(\S+)\s+(\S+)$/) {
                if ($file =~ /[?*\[\]]/) {
+                  $file =~ s/./\\./g;
                   $file =~ tr/?/./;
                   $file =~ s/\*/.*/g;
                   push @noexport_patterns, [ qr{^$file$}, $status ];

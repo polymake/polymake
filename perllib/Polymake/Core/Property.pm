@@ -283,7 +283,10 @@ sub specialization {
       } else {
          &clone_locally_derived
       }
-   } elsif ($self->type->abstract && !$parent_proto->abstract) {
+   } elsif ($self->type->abstract && !$allow_abstract) {
+      $parent_proto->abstract
+        and croak( "internal error: attempt to construct the concrete specialization of property ", $self->name,
+                   " for an abstract parent object type ", $parent_proto->full_name );
       $self->inst_cache->{$parent_proto} ||= _clone($self, $self->type->concrete_type($parent_proto));
    } else {
       $self
@@ -428,7 +431,7 @@ sub accept_special_constructed : method {
           !$self->type->isa->($value) or
           $self->type->cppoptions && !$self->type->cppoptions->builtin &&
           CPlusPlus::must_be_copied($value,$temp,$needs_canonicalization)) {
-         if (my $construct_arg=$obj->lookup_request($self->construct)) {
+         if (my $construct_arg=$obj->lookup_property_path($self->construct)) {
             local $PropertyType::trusted_value=$trusted;
             $value=$self->type->construct->($construct_arg->value, $value);
          } else {
@@ -444,7 +447,7 @@ sub accept_special_constructed : method {
 
 sub copy_special_constructed : method {
    my ($self, $value, $obj)=@_;
-   if (my $construct_arg=$obj->lookup_request($self->construct)) {
+   if (my $construct_arg=$obj->lookup_property_path($self->construct)) {
       new PropertyValue($self, $self->type->construct->($construct_arg->value, $value));
    } else {
       croak( "can't copy property ", $self->name, " because of lacking prerequisite ", print_path($self->construct) );
@@ -473,7 +476,8 @@ sub qual_name {
    defined($self->application) ? $self->application->name . "::" . $self->name : $self->name
 }
 sub print_path {
-   join(".", map { $_->name } @{$_[0]})
+   my ($path)=@_;
+   is_object($path->[0]) ? join(".", map { $_->name } @$path) : join(" | ", map { join(".", map { $_->name } @$_) } @$path)
 }
 ####################################################################################
 # [ Property ], flag => index of a first property with given flag; -1 if not found
@@ -585,56 +589,6 @@ sub create_subobject : method {
    $pv->created_by_rule={ ($parent_obj->transaction->rule, 0) };
    $pv->ensure_unique_name($subobj, $temp);
    $pv;
-}
-
-####################################################################################
-package __;
-
-# for compatibility with WithAlternatives
-sub first_choice { $_[0] }
-sub alternatives { undef }
-sub all_choices { $_[0] }
-
-sub lookup_in_object {
-   my ($self, $obj)=@_;
-   my $content_index=$obj->dictionary->{$self->key};
-   defined($content_index)
-   ? $obj->contents->[$content_index]
-   : undef
-}
-
-sub matches { $_[0]->key == $_[1]->key }
-
-####################################################################################
-#
-#  Used in rule input lists, give() requests, and similar
-#
-package _::WithAlternatives;
-
-sub name { join(" | ", map { $_->name } @{$_[0]}) }
-sub first_choice { $_[0]->[0] }
-sub all_choices { @{$_[0]} }
-sub alternatives { my ($self)=@_; @$self[1..$#$self] }
-sub flags { 0 }  # the only relevant flag here is multiple_new, but multiple subobjects can't occur among the alternatives
-
-sub lookup_in_object {
-   my ($self, $obj)=@_;
-   my ($content_index, $pv);
-   foreach my $prop ($self->all_choices) {
-      if (defined ($content_index=$obj->dictionary->{$prop->key}) &&
-          defined ($pv=$obj->contents->[$content_index])) {
-         last;
-      }
-   }
-   $pv
-}
-
-sub matches {
-   my ($self, $other_prop)=@_;
-   foreach my $prop ($self->all_choices) {
-      return 1 if $prop->key eq $other_prop->key;
-   }
-   0
 }
 
 1

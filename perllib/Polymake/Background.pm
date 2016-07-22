@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -41,7 +41,7 @@ sub add_process {
    if ($init) {
       gather_zombies(WNOHANG);
    } else {
-      add AtEnd("Background", \&gather_zombies);
+      add AtEnd("Background", \&gather_zombies, before => "tempdir");
       $init=1;
    }
    $active{$_[0]}=$_[1];

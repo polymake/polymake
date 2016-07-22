@@ -97,6 +97,7 @@ rule jarvis.convex_hull.primal : VERTICES : POINTS {
 }
 precondition : BOUNDED, CONE_AMBIENT_DIM { $this->BOUNDED and $this->CONE_AMBIENT_DIM==3 }
 weight 1.50;
+permutation : VertexPerm;
 
 
 rule VERTICES, AFFINE_HULL, FEASIBLE, LINEALITY_SPACE : ZONOTOPE_INPUT_POINTS, CENTERED_ZONOTOPE {

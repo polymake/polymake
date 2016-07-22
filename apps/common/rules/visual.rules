@@ -160,10 +160,10 @@ options %Visual::PointSet::decorations=(
    Hidden => 0,
 
    # String  if set to "hidden", no point labels are displayed
-   PointLabels => undef, #enum("hidden"),
+   PointLabels => undef,
 
    # String  alias for PointLabels
-   VertexLabels => undef, #enum("hidden"),
+   VertexLabels => undef,
 
    # Flexible<Color>  color of the spheres or rectangles representing the points
    PointColor => undef,

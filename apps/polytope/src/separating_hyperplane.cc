@@ -74,14 +74,17 @@ Vector<Scalar> separating_hyperplane_poly(perl::Object p1, perl::Object p2)
    if ( L1.rows() + L2.rows() > 0)
       throw std::runtime_error("separating_hyperplane: could not handle linealities");
       
-   Matrix<Scalar> ineqs(V.rows()+W.rows()+1,V.cols()+1);
+   //origin needs to be on the positive side of the separating plane in order for the LP to work.
+   //translate the whole thing s.t. v_0 is the origin
+   Vector<Scalar> t = V[0];
+   t[0]=0;
+
+   const Matrix<Scalar> ineqs( ( ((V-repeat_row(t,V.rows())) / -(W-repeat_row(t,W.rows()))) | //V is on the positive, W on the negative side of the hyperplane
+               ( -ones_vector<Scalar>(V.rows()) | zero_vector<Scalar>(W.rows()) ) ) //vz - z_d >= 0 and wz <= 0
+           /  unit_vector<Scalar>(V.cols()+1, V.cols()) //z_d >=0
+           / (unit_vector<Scalar>(V.cols()+1, 0) - unit_vector<Scalar>(V.cols()+1, V.cols()))); //z_d <= v_0[0] to ensure boundedness
    Matrix<Scalar> eqs(0,V.cols()+1);
    Vector<Scalar> obj = unit_vector<Scalar>(V.cols()+1, V.cols());
-   ineqs = (V/-W) | ( -ones_vector<Scalar>( V.rows() ) | zero_vector<Scalar>( W.rows()) );
-   ineqs /= unit_vector<Scalar>( V.cols()+1,V.cols() );
-   Vector<Scalar> upper_bound_eps = -unit_vector<Scalar>(V.cols()+1,V.cols());
-   upper_bound_eps[0]=1;
-   ineqs /= upper_bound_eps;
 
    to_interface::solver<Scalar> S;
    Vector<Scalar> P;
@@ -102,6 +105,16 @@ Vector<Scalar> separating_hyperplane_poly(perl::Object p1, perl::Object p2)
    catch (unbounded) {
       throw std::runtime_error("separating_hyperplane: the given polytopes cannot be separated");
       }*/
+   //translate sol back to the original polytope position
+   for(int i=1;i<sep_hyp.dim(); ++i){
+       if(sep_hyp[i] != 0){
+           t[i] -= sep_hyp[0]/sep_hyp[i];
+           break;
+       }
+   }
+   t[0]=1;
+   sep_hyp[0] = -(sep_hyp * t - sep_hyp[0]*t[0]);
+
    return sep_hyp;
 }
       

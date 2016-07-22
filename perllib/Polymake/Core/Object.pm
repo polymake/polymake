@@ -403,35 +403,32 @@ use Polymake::Struct (
 sub commit {
    my ($self, $object)=@_;
    my $prod_rule=$self->rule->rule;
-   my $perm_object=$object->add_perm($self->rule->permutation);
-   undef $perm_object->transaction;
 
    # transfer the sensitive properties created by prod_rule into the permutation subobjects
    foreach my $action (@{$self->rule->actions}) {
       my $output=$prod_rule->output->[$action->output];
-      my ($base_obj, $sub_perm_obj, $prop);
+      my ($base_obj, $perm_obj, $prop);
       if ($action->depth) {
          {  # must create an additional permutation object in the sub-object
             local_clip_back($output, $action->depth);
             ($base_obj)=$object->descend($output);
          }
-         if (defined (my $base_content_index=$base_obj->dictionary->{$prod_rule})) {
-            $sub_perm_obj=$base_obj->contents->[$base_content_index]->value;
-         } else {
-            $sub_perm_obj=$base_obj->add_perm($action->sub_permutation);
-            undef $sub_perm_obj->transaction;
-         }
+         $perm_obj=$base_obj->add_perm($action->sub_permutation, $prod_rule);
+         undef $perm_obj->transaction;
          local_clip_front($output, $action->depth);
          ($base_obj)=$base_obj->descend($output);
-         ($sub_perm_obj, $prop)=$sub_perm_obj->descend_and_create($output);
+         ($perm_obj, $prop)=$perm_obj->descend_and_create($output);
       } else {
          # the property is transferred into the base permutation object
+         @{$self->rule->perm_path}==1 or die "internal error: wrong PermAction::depth==0\n";
+         $perm_obj=$object->add_perm($self->rule->perm_path->[0], $prod_rule);
+         undef $perm_obj->transaction;
          ($base_obj)=$object->descend($output);
-         ($sub_perm_obj, $prop)=$perm_object->descend_and_create($output);
+         ($perm_obj, $prop)=$perm_obj->descend_and_create($output);
       }
       my $base_content_index=$base_obj->dictionary->{$prop->key};
-      push @{$sub_perm_obj->contents}, $base_obj->contents->[$base_content_index];
-      $sub_perm_obj->dictionary->{$prop->key}=$#{$sub_perm_obj->contents};
+      push @{$perm_obj->contents}, $base_obj->contents->[$base_content_index];
+      $perm_obj->dictionary->{$prop->key}=$#{$perm_obj->contents};
       $base_obj->contents->[$base_content_index]=delete $base_obj->transaction->backup->{$base_content_index};
    }
 
@@ -505,7 +502,7 @@ sub fill_properties {
    my ($self, $proto)=splice @_, 0, 2;
    for (my ($i, $e)=(0, $#_); $i<$e; $i+=2) {
       my ($name, $value)=@_[$i, $i+1];
-      my ($obj, $prop)= $name =~ /\./ ? descend_and_create($self, $proto->encode_read_request($name, $self))
+      my ($obj, $prop)= $name =~ /\./ ? descend_and_create($self, [ $proto->encode_property_list($name, $self) ])
                                       : ($self, $proto->property($name));
       if ($prop->flags & $Property::is_multiple) {
          _add_multi($obj, $prop, $value);
@@ -568,25 +565,35 @@ sub _add_multis {
 ####################################################################################
 # protected:
 sub add_perm {
-   my ($self, $permutation)=@_;
-   my $perm_object=$permutation->create_subobject($self, $PropertyValue::is_temporary);
-   if (defined (my $content_index=$self->dictionary->{$permutation->key})) {
+   my ($self, $permutation, $for_rule)=@_;
+   my ($content_index, $perm_object);
+   if (defined ($content_index=$self->dictionary->{$permutation->key}) &&
+       defined ($perm_object=$self->contents->[$content_index]) &&
+       $perm_object->name == $for_rule) {
+      return $perm_object;
+   }
+
+   $perm_object=$permutation->create_subobject($self, $PropertyValue::is_temporary);
+   $perm_object->name=$for_rule;
+
+   if (defined $content_index) {
       $self->contents->[$content_index]=$perm_object;
    } else {
       push @{$self->contents}, $perm_object;
       $self->dictionary->{$permutation->key}=$#{$self->contents};
    }
+
    assign_max($#{$self->transaction->temporaries}, 0);
    push @{$self->transaction->temporaries}, $permutation;
    $perm_object;
 }
 
 sub add_perm_in_parent {
-   my ($self, $up, $permutation)=@_;
+   my ($self, $up, $permutation, $for_rule)=@_;
    while (--$up >= 0) {
       $self=$self->parent or return;
    }
-   add_perm($self, $permutation);
+   add_perm($self, $permutation, $for_rule);
 }
 ####################################################################################
 sub begin_transaction {
@@ -927,31 +934,31 @@ sub create_undefs {
    my $trans=begin_transaction($self);
    foreach my $out (@_) {
       my ($obj, $prop)=descend_and_create($self, $out);
-      push @{$obj->contents}, new PropertyValue($prop->first_choice);
-      $obj->dictionary->{$prop->first_choice->key}=$#{$obj->contents};
+      push @{$obj->contents}, new PropertyValue($prop);
+      $obj->dictionary->{$prop->key}=$#{$obj->contents};
    }
    $trans->changed=1;
    $trans->commit($self);
 }
 ####################################################################################
-# [ Property ], [for_planning] => PropertyValue || 0 (does not exist) || undef
+# [ Property ], for_planning_flag => PropertyValue || 0 (does not exist) || undef
 # $for_planning = TRUE forbids to apply shortcuts
-sub lookup_request {
-   my ($self, $req, $for_planning)=@_;
-   my (@path, $content_index, $pv, $obj, $props);
-
-   if (($obj, $props)=descend_partially($self, \@path, $req)) {
-      if (defined ($pv=$props->lookup_in_object($obj))) {
+sub lookup_property_path {
+   my ($self, $path, $for_planning)=@_;
+   my (@existing_path, $content_index, $pv, $obj, $prop);
+   if (($obj, $prop)=descend_partially($self, \@existing_path, $path)) {
+      if (defined ($content_index=$obj->dictionary->{$prop->key}) &&
+          defined ($pv=$obj->contents->[$content_index])) {
          if ($Application::plausibility_checks && !$for_planning   # nested scheduler runs should still see this as `undef'
                and
              !defined($pv->value) && defined($obj->transaction)
                and
              defined($obj->transaction->rule)
                and
-             ($content_index=$obj->dictionary->{$pv->property->key}) > $obj->transaction->content_end
+             $content_index > $obj->transaction->content_end
              || exists $obj->transaction->backup->{$content_index}) {
-            die "rule '", $obj->transaction->rule->header, "' attempts to read its output property ", $props->name,
-                " before it is created\n";
+            die "rule '", $obj->transaction->rule->header, "' attempts to read its output property ", $prop->name,
+            " before it is created\n";
          }
          return $pv;
       }
@@ -963,80 +970,87 @@ sub lookup_request {
    return 0 if $for_planning;
 
    # try to find a shortcut
-
    my ($rule, $rc, @types);
-   if (@$req==1) {
-      $path[0]=$self;
+   if (@$path==1) {
+      $existing_path[0]=$self;
       $types[0]=$self->type;
    } else {
-      @types=map { $_->type } @path;
+      @types=map { $_->type } @existing_path;
       # deduce the types of lacking subobjects
-      while (@types < @$req) {
-         my $prop_type=$req->[$#types]->type;
+      while (@types < @$path) {
+         my $prop_type=$path->[$#types]->type;
          push @types, $prop_type->abstract ? $prop_type->concrete_type($types[-1]) : $prop_type;
       }
    }
 
    # iterate for all missing properties in the request path, starting with the last one
-   for (my $depth=$#types; $depth>=$#path; --$depth) {
+   for (my $depth=$#types; $depth>=$#existing_path; --$depth) {
       my $top=$self;
-      $props=$req->[$depth];
+      $prop=$path->[$depth];
+      my $prod_key=$prop->key;
 
-      foreach my $prop ($props->all_choices) {
-         my $prod_key=$prop->key;
-         # ascend in the object hierarchy until a suitable shortcut is found
-         for (my $cur_depth=$depth; ;) {
-            # only look for shortcuts rooted in existing subobjects
-            if ($cur_depth <= $#path) {
-               my ($cur_obj, $cur_obj_type)= $cur_depth>=0 ? ($path[$cur_depth], $types[$cur_depth]) : ($top, $top->type);
-               my $shortcuts=$cur_obj_type->get_shortcuts_for($prop);
-               if ($depth==$#types) {
-                  # consider all shortcuts delivering the requested property directly
-                  # but only those without preconditions as we do not want to check these here!
-                  foreach $rule (@$shortcuts) {
-                     if (@{$rule->preconditions} == 0
-                     	 and ($rc, $pv)=$rule->execute($cur_obj)
-                         and $rc==$Rule::exec_OK) {
-                        return $pv;
-                     }
+      # ascend in the object hierarchy until a suitable shortcut is found
+      for (my $cur_depth=$depth; ;) {
+         # only look for shortcuts rooted in existing subobjects
+         if ($cur_depth <= $#existing_path) {
+            my ($cur_obj, $cur_obj_type)= $cur_depth>=0 ? ($existing_path[$cur_depth], $types[$cur_depth]) : ($top, $top->type);
+            my $shortcuts=$cur_obj_type->get_shortcuts_for($prop);
+            if ($depth==$#types) {
+               # consider all shortcuts delivering the requested property directly
+               # but only those without preconditions as we do not want to check these here!
+               foreach $rule (@$shortcuts) {
+                  if (@{$rule->preconditions} == 0
+                      and ($rc, $pv)=$rule->execute($cur_obj)
+                      and $rc==$Rule::exec_OK) {
+                     return $pv;
                   }
-               } else {
-                  # consider shortcuts for subobjects on the path to the requested property, look there for the rest of the path
-                  # but only those without preconditions as we do not want to check these here!
-                  foreach $rule (@$shortcuts) {
-                     if (@{$rule->preconditions} == 0
-                     	 and ($rc, $pv)=$rule->execute($cur_obj)
-                         and $rc==$Rule::exec_OK) {
-                        local_clip_front($req, $depth+1);
-                        if ($pv=lookup_request($pv->value, $req)) {
-                           return $pv;
-                        }
+               }
+            } else {
+               # consider shortcuts for subobjects on the path to the requested property, look there for the rest of the path
+               # but only those without preconditions as we do not want to check these here!
+               foreach $rule (@$shortcuts) {
+                  if (@{$rule->preconditions} == 0
+                      and ($rc, $pv)=$rule->execute($cur_obj)
+                      and $rc==$Rule::exec_OK) {
+                     local_clip_front($path, $depth+1);
+                     if ($pv=lookup_property_path($pv->value, $path)) {
+                        return $pv;
                      }
                   }
                }
             }
-            if (--$cur_depth>=0) {
-               $prop=$req->[$cur_depth];
-            } elsif (defined $top->parent) {
-               $prop=$top->property;
-               $top=$top->parent;
-            } else {
-               last;  # topmost object reached
-            }
-            if (defined ($prod_key=$prod_key->{$prop->key})) {
-               $prop=$prod_key;
-            } else {
-               last;  # no further production rules or shortcuts for $prop above this level
-            }
+         }
+         if (--$cur_depth>=0) {
+            $prop=$path->[$cur_depth];
+         } elsif (defined $top->parent) {
+            $prop=$top->property;
+            $top=$top->parent;
+         } else {
+            last;  # topmost object reached
+         }
+         if (defined ($prod_key=$prod_key->{$prop->key})) {
+            $prop=$prod_key;
+         } else {
+            last;  # no further production rules or shortcuts for $prop above this level
          }
       }
    }
    0
 }
 
+sub lookup_request {
+   my ($self, $req, $for_planning)=@_;
+   my $pv;
+   foreach my $path (@$req) {
+      $pv=lookup_property_path($self, $path, $for_planning)
+        and last;
+   }
+   $pv
+}
+
 sub lookup_pv {         # 'request' => PropertyValue or Object or 0 or undef
-   my ($self, $req)=@_;
-   lookup_request($self, $self->type->encode_read_request($req, $self));
+   my ($self, $req_string)=@_;
+   lookup_request($self, $self->type->encode_read_request($req_string, $self));
 }
 
 sub lookup {
@@ -1243,7 +1257,7 @@ sub remove {
       my @to_remove=map {
          my @req=$self->type->encode_property_list($_, $self);
          if ($Application::plausibility_checks && $from_production_rule) {
-            $self->transaction->rule->matching_input(\@req)
+            $self->transaction->rule->has_matching_input(\@req)
               or croak( "a production rule can only remove its own source properties" );
          }
          \@req
@@ -1267,7 +1281,7 @@ sub remove {
                if (instanceof Object($pv) && !($prop->flags & $Property::is_produced_as_whole)) {
                   push @reconstruct_request, enumerate_atomic_properties($pv, $req);
                } else {
-                  push @reconstruct_request, $req;
+                  push @reconstruct_request, [ $req ];
                }
             }
             $obj->transaction->backup->{$content_index} ||= $pv;
@@ -1484,12 +1498,13 @@ sub give {
       }
    } else {
       my ($self, $req_string)=splice @_, 0, 2;
-      if (my ($obj, $prop)=descend($self, $self->type->encode_read_request($req_string, $self))) {
-         if (defined $prop->alternatives) {
-            croak( "mixing alternatives with property-based lookup of multiple sub-objects is not allowed" );
-         } elsif (not($prop->flags & $Property::is_multiple)) {
-            croak( "property-based lookup can only be performed on sub-objects with `multiple' attribute" );
-         }
+      my $req=$self->type->encode_read_request($req_string, $self);
+      if (@$req > 1) {
+         croak( "mixing alternatives with property-based lookup of multiple sub-objects is not allowed" );
+      }
+      if (my ($obj, $prop)=descend($self, $req->[0])) {
+         $prop->flags & $Property::is_multiple
+           or croak( "property-based lookup can only be performed on sub-objects with `multiple' attribute" );
          get_multi($obj, @_, $prop);
       } else {
          die "can't create any subobject under a non-existing path $req_string\n";
@@ -1510,17 +1525,30 @@ sub provide_request {
    my ($self, $request)=@_;
    my ($success, $sched)=&Scheduler::resolve_request;
    return 1 if $success>0;
-   my ($obj, $prop, @lacking, @undefs);
+   my ($obj, $prop, $content_index, @lacking, @undefs);
+
    foreach my $input (@$request) {
-      my @existing_path;
-      if (($obj, $prop)=descend_partially($self, \@existing_path, $input)) {
-         next if defined($prop->lookup_in_object($obj));
-      } else {
-         $prop=$input->[scalar @existing_path];
+      my $found;
+      my @undefs_here;
+      foreach my $path (@$input) {
+         my @existing_path;
+         if (($obj, $prop)=descend_partially($self, \@existing_path, $path)
+               and
+             defined($content_index=$obj->dictionary->{$prop->key})
+               and
+             defined($obj->contents->[$content_index])) {
+            $found=1; last;
+         } elsif (not $path->[scalar @existing_path]->flags & $Property::is_multiple) {
+            push @undefs_here, $path;
+         }
       }
-      push @lacking, $input;
-      push @undefs, $input unless $prop->flags & $Property::is_multiple;
+      unless ($found) {
+         push @lacking, $input;
+         push @undefs, @undefs_here;
+      }
    }
+
+   my $lacking=join(", ", map { "'" . Property::print_path($_) . "'" } @lacking);
    if ($success==0) {
       if ($Verbose::rules) {
          my @failed_precond;
@@ -1529,7 +1557,6 @@ sub provide_request {
                push @failed_precond, $rule->header."\n";
             }
          }
-         my $lacking=join(", ", map { "'" . Property::print_path($_) . "'" } @lacking);
          if (@failed_precond) {
             warn_print("could not compute $lacking probably because of unsatisfied preconditions:\n", @failed_precond);
          } else {
@@ -1539,7 +1566,7 @@ sub provide_request {
       create_undefs($self, @undefs);
       0;
    } else {
-      die "no more rules available to compute ", join(", ", map { "'". Property::print_path($_) . "'" } @lacking), "\n";
+      die "no more rules available to compute $lacking\n";
    }
 }
 ####################################################################################
@@ -1624,7 +1651,7 @@ sub enumerate_atomic_properties {
    map {
       if (defined($_) && !($_->property->flags & ($Property::is_multiple | $Property::is_mutable))) {
          if (instanceof PropertyValue($_)) {
-            [ @$descent_path, $_->property->declared ]
+            [ [ @$descent_path, $_->property->declared ] ]
          } else {
             enumerate_atomic_properties($_, local_push($descent_path, $_->property->declared));
          }
@@ -1652,11 +1679,11 @@ sub get {
       _get_alternatives();
    } else {
     TRY_ALT: {
-         my $subtype=$prop->type;
-         my $descend_path;
-         my @alt= ($prop->flags & $Property::is_subobject) ? _get_alternatives($descend_path) : _get_alternatives();
+         my $sub_type=$prop->type;
+         my $sub_prop_names;
+         my @alt= ($prop->flags & $Property::is_subobject) ? _get_alternatives($sub_prop_names) : _get_alternatives();
 
-         if (defined $descend_path) {
+         if (defined $sub_prop_names) {
 
             if (defined($self->transaction)) {
                if (defined($self->transaction->rule)) {
@@ -1665,51 +1692,54 @@ sub get {
                $self->commit;
             }
 
-            my @req=($prop);
-            foreach (@$descend_path) {
-               if (defined (my $subprop=$subtype->lookup_property($_))) {
-                  push @req, $subprop;
-                  last unless $subprop->flags & $Property::is_subobject;
-                  $subtype=$subprop->specialization($subtype)->type;
+            my @req_path=($prop);
+            foreach (@$sub_prop_names) {
+               if (defined (my $sub_prop=$sub_type->lookup_property($_))) {
+                  push @req_path, $sub_prop;
+                  last unless $sub_prop->flags & $Property::is_subobject;
+                  $sub_type=$sub_prop->specialization($sub_type)->type;
                } else {
                   last;
                }
             }
-
-            if (@alt && @$descend_path==$#req) {
-               $req[-1]=bless [ $req[-1], map { $subtype->lookup_property($_) || croak( "unknown property $_" ) } @alt ],
-                              "Polymake::Core::Property::WithAlternatives";
+            my @req=( \@req_path );
+            if (@alt && @$sub_prop_names==$#req_path) {
+               local_pop(\@req_path);
+               push @req, map { [ @req_path,
+                                  $sub_type->lookup_property($_) // croak( "unknown property ", Property::print_path(\@req_path), ".$_" )
+                                ] } @alt;
             }
             provide_request($self, [ \@req ]);
             $content_index=$self->dictionary->{$prop->key};
 
-         } else {
-
+         } elsif (@alt) {
             foreach my $alt_prop (@alt) {
-               $alt_prop=$self->type->lookup_property($alt_prop)
-                         || croak( "unknown property $alt_prop" );
+               $alt_prop=$self->type->lookup_property($alt_prop) // croak( "unknown property $alt_prop" );
                last TRY_ALT if defined ($content_index=$self->dictionary->{$alt_prop->key});
             }
 
+            unshift @alt, $prop;
             if (defined($self->transaction)) {
                if (defined($self->transaction->rule)) {
-                  if (@alt) {
-                     die "attempt to access non-existing properties ", join(" | ", map { $_->name} $prop, @alt), "\n";
-                  } else {
-                     die "attempt to access a non-existing property ", $prop->name, "\n";
-                  }
+                  die "attempt to access non-existing properties ", join(" | ", map { $_->name } @alt), "\n";
+               }
+               $self->commit;
+            }
+            provide_request($self, [ [ map { [ $_ ] } @alt ] ]);
+            foreach $prop (@alt) {
+               last if defined ($content_index=$self->dictionary->{$prop->key});
+            }
+
+         } else {
+            if (defined($self->transaction)) {
+               if (defined($self->transaction->rule)) {
+                  die "attempt to access a non-existing property ", $prop->name, "\n";
                }
                $self->commit;
             }
 
-            if (@alt) {
-               bless \@alt, "Polymake::Core::Property::WithAlternatives";
-            }
-            unshift @alt, $prop;
-            provide_request($self, [ \@alt ]);
-            foreach $prop (@alt) {
-               last if defined ($content_index=$self->dictionary->{$prop->key});
-            }
+            provide_request($self, [ [ [ $prop ] ] ]);
+            $content_index=$self->dictionary->{$prop->key};
          }
       }
       defined($content_index) or die "can't create property ", $prop->name, "\n";
@@ -1857,22 +1887,31 @@ sub copy_permuted {
    if ($self->parent && $self->property->flags & $Property::is_locally_derived) {
       $proto=$proto->pure_type;
    }
-   my (@descend_to_permuted, @perms);
+   my @perms;
    if ($_[0] eq "permutation") {
       my $perm_name=splice @_, 0, 2;
-      $perms[0]= (is_object($perm_name) && instanceof Permutation($perm_name) ? $perm_name : $proto->lookup_permutation($perm_name))
-                 || croak( "unknown permutation $perm_name" );
+      if (ref($perm_name)) {
+         @$perm_name or croak( "invalid option 'permutation => empty ARRAY'" );
+         $perms[0]=$perm_name;
+      } else {
+         $perms[0]=[ $proto->encode_property_list($perm_name, $self) ];
+      }
+      $perms[0]->[-1]->flags & $Property::is_permutation
+        or croak( "invalid option 'permutation => $perm_name' which is not a permutation" );
    } else {
       my @path=$proto->encode_property_list($_[0], $self);
-      @perms=grep { defined($_->find_sensitive_sub_property(@path)) } $proto->list_permutations;
+      @perms = map { bless [ $_ ], "Polymake::Core::Rule::PermutationPath" }
+               grep { defined($_->find_sensitive_sub_property(@path)) }
+                    $proto->list_permutations;
       unless (@perms) {
          my $subobj=$self;
          my ($content_index, $pv);
          for (my $i=0; $i<$#path; ++$i) {
             if (defined ($content_index=$subobj->dictionary->{$path[$i]->key}) &&
                 defined ($pv=$subobj->contents->[$content_index])) {
-               if (@perms=grep { defined($_->find_sensitive_sub_property(@path[$i+1..$#path])) } $pv->property->type->list_permutations) {
-                  @descend_to_permuted=@path[0..$i];
+               if (@perms = map { bless [ @path[0..$i], $_ ], "Polymake::Core::Rule::PermutationPath" }
+                            grep { defined($_->find_sensitive_sub_property(@path[$i+1..$#path])) }
+                                 $pv->property->type->list_permutations) {
                   last;
                }
                $subobj=$pv->value;
@@ -1884,18 +1923,15 @@ sub copy_permuted {
       }
       for (my $i=2; $i<$#_; $i+=2) {
          @path=$proto->encode_property_list($_[$i], $self);
-         if (@descend_to_permuted) {
-            splice @path, 0, scalar @descend_to_permuted;
-         }
          @perms= grep { defined($_->find_sensitive_sub_property(@path)) } @perms
             or croak( "copy_permuted: no permutation type known which would simultaneously affect ", join(", ", map { $_[$_*2] } 0..$i/2));
       }
       if (@perms!=1) {
          croak( "copy_permuted: permutation type can't be unambiguously chosen; permutations in question are ",
-                join(", ", map { $_->name } @perms) );
+                join(", ", map { Property::print_path($_) } @perms) );
       }
    }
-   my ($rule, $filter)=permuting Rule($proto, shift(@perms), @descend_to_permuted);
+   my ($rule, $filter)=permuting Rule($proto, @perms);
    my $copy=new($proto->pkg, $self->name);
    $copy->description=$self->description;
    begin_transaction($copy);

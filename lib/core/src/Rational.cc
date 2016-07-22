@@ -50,23 +50,23 @@ void Rational::_set(const char* s)
       const int before_pt=point-s;
       int after_pt=0;
       ++point;
-      bool trailing=false;
+      int trailing=0;
       while (isdigit(point[after_pt])) {
-         if (point[after_pt]!=0) trailing=true; ++after_pt;
+         if (point[after_pt]!='0') trailing=after_pt+1;
+         ++after_pt;
       }
-      if (!trailing) after_pt=0;
-      char *num=(char*)malloc(before_pt+after_pt+1);
+      char *num=(char*)malloc(before_pt+trailing+1);
       if (!num) throw std::bad_alloc();
       if (before_pt) std::memcpy(num,s,before_pt);
-      if (after_pt) std::memcpy(num+before_pt,point,after_pt);
-      num[before_pt+after_pt]=0;
+      if (trailing) std::memcpy(num+before_pt,point,trailing);
+      num[before_pt+trailing]=0;
       if (mpz_set_str(mpq_numref(rep),num,10) < 0) {
          free(num);
          throw GMP::error("Rational: syntax error");
       }
       free(num);
-      if (after_pt) {
-         mpz_ui_pow_ui(mpq_denref(rep),10,after_pt);
+      if (trailing) {
+         mpz_ui_pow_ui(mpq_denref(rep),10,trailing);
          canonicalize();
       } else {
          mpz_set_ui(mpq_denref(rep),1);
