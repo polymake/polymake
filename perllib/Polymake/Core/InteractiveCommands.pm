@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -603,7 +603,7 @@ sub new_bundled {
 ###############################################################################################
 sub new_standalone {
    my ($pkg, $ext_dir)=@_;
-   if ($ext_dir =~ m/^$InstallTop($|\/)/) {
+   if ($ext_dir =~ m/^\Q${InstallTop}\E($|\/)/) {
       die "A standalone extension can't be created within polymake source tree.\n",
           "If you have had a bundled extension in mind, please specify its location as \"bundled:NAME\",\n",
           "otherwise choose a location outside $InstallTop\n";
@@ -1150,9 +1150,15 @@ sub obliterate_extension {
    }
 }
 ###############################################################################################
-sub reconfigure { $application->reconfigure(@_) }
+sub reconfigure {
+   @_ or die "usage: reconfigure 'rulefile' ...;\n";
+   $application->reconfigure($_) for @_;
+}
 
-sub unconfigure { $application->unconfigure(@_) }
+sub unconfigure {
+   @_ or die "usage: unconfigure 'rulefile' ...;\n";
+   $application->unconfigure($_) for @_;
+}
 ###############################################################################################
 sub show_unconfigured {
    my (%shown_credits, $credit, $shown);

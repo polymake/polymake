@@ -29,7 +29,7 @@ namespace polymake { namespace tropical {
 	 * @param Cycle c The cycle
 	 * @param bool find_non_balanced_faces Optional. If true, the algorithm will not abort when encountering
 	 * a non-balanced face. Instead, it will check all faces and return a full set of indices 
-	 * referring to [[CODIMENSION_ONE_POLYTOPES]], indicating all non-balancied faces. False by default.
+	 * referring to [[CODIMENSION_ONE_POLYTOPES]], indicating all non-balanced faces. False by default.
 	 * @return A pair (bool, Set<int>). The first just tells whether the cycle is balanced. The second is
 	 * either a singleton (if find_non_balanced_faces = false), containing the index of the first non-balanced
 	 * face - or the full set of indices of non-balanced faces (if find_non_balanced_faces = true).
@@ -75,9 +75,9 @@ namespace polymake { namespace tropical {
 			//If it's in the span of the other columns, there must be a kernel element with
 			//nontrivial last entry.
 			Matrix<Rational> kernel = null_space(T(span_matrix));
-			if(kernel.cols() == 0 || kernel.col(kernel.cols()-1) == zero_vector<Rational>(kernel.rows())) {
+			if (kernel.cols() == 0 || is_zero(kernel.col(kernel.cols()-1))) {
 				non_balanced += codim;	
-				if(!find_non_balanced_faces) return std::pair<bool, Set<int> >(false, non_balanced);
+				if (!find_non_balanced_faces) return std::pair<bool, Set<int> >(false, non_balanced);
 			}
 
 

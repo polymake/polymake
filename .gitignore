@@ -21,7 +21,7 @@ Packages/rpm/SOURCES/polymake-*.diff
 Packages/rpm/SRPMS/*.rpm
 testscenarios/*/polymake-pico
 testscenarios/*/userdir/*
-testscenarios/config_bundled/installed
+testscenarios/*/installed
 testscenarios/extensions/compares
 testscenarios/extensions/installed
 testscenarios/extensions/private*

@@ -37,75 +37,33 @@ Map<Container, int> make_index_of(const Array<Container>& A)
 template <typename SetType>
 SetType lex_min_representative(perl::Object G, const SetType& S)
 {
-   const group::PermlibGroup group = group::group_from_perlgroup(G);
+   const group::PermlibGroup group = group::group_from_perl_action(G);
    const SetType R = group.lex_min_representative(S);
    return R;
 }
 
-int write_orbit_reps_and_sizes(perl::Object R)
+template<typename SetType>
+std::pair<Array<SetType>, Array<int> >
+orbit_reps_and_sizes(const Array<Array<int> >& generators,
+                     const Array<SetType>& domain)
 {
-   const Array<Array<int> > generators = R.give("GROUP.GENERATORS");
    const PermlibGroup group(generators);
-   const Array<Set<int> > domain = R.give("DOMAIN");
 
-   Map<Set<int>, int> orbit_size;
-   for (Entire<Array<Set<int> > >::const_iterator dit = entire(domain); !dit.at_end(); ++dit)
+   Map<SetType, int> orbit_size;
+   for (typename Entire<Array<SetType> >::const_iterator dit = entire(domain); !dit.at_end(); ++dit)
       ++orbit_size[group.lex_min_representative(*dit)];
 
-   Array<Set<int> > reps(orbit_size.size());
+   Array<SetType> reps(orbit_size.size());
    Array<int> size(orbit_size.size());
-   Entire<Array<Set<int> > >::iterator rit = entire(reps);
+   typename Entire<Array<SetType> >::iterator rit = entire(reps);
    Entire<Array<int> >::iterator sit = entire(size);
 
-   for (Entire<Map<Set<int>,int> >::const_iterator oit = entire(orbit_size); !oit.at_end(); ++oit, ++rit, ++sit) {
+   for (typename Entire<Map<SetType,int> >::const_iterator oit = entire(orbit_size); !oit.at_end(); ++oit, ++rit, ++sit) {
       *rit = oit->first;
       *sit = oit->second;
    }
 
-   R.take("ORBIT_REPRESENTATIVES") << reps;
-   R.take("ORBIT_SIZES") << size;
-   
-   return 1;
-}
-
-template <typename E, typename Matrix>
-SparseMatrix<int> orbit_supports(perl::Object R, const GenericMatrix<Matrix, E>& M)
-{
-   const Array<Set<int> > domain = R.give("DOMAIN");
-   const Set<int> underlying_set = R.give("UNDERLYING_SET");
-   const Array<Set<int> > reps = R.give("ORBIT_REPRESENTATIVES");
-   const Array<Array<int> > generators = R.give("GROUP.GENERATORS");
-   const PermlibGroup G(generators);
-   const Map<Set<int>, int> index_of = make_index_of(reps);
-   
-   SparseMatrix<int> S(M.rows(), M.cols());
-   for (int i=0; i<M.rows(); ++i) {
-      const Set<int> supp(support(M[i]));
-      for (Entire<Set<int> >::const_iterator sit = entire(supp); !sit.at_end(); ++sit) {
-         S(i,*sit) = index_of[G.lex_min_representative(domain[*sit])];
-      }
-   }
-   return S;
-}
-
-
-template <typename E, typename Matrix>
-Array<Set<int> > orbit_support_sets(perl::Object R, const GenericMatrix<Matrix, E>& M)
-{
-   const Array<Set<int> > domain = R.give("DOMAIN");
-   const Array<Set<int> > reps = R.give("ORBIT_REPRESENTATIVES");
-   const Array<Array<int> > generators = R.give("GROUP.GENERATORS");
-   const PermlibGroup G(generators);
-   const Map<Set<int>, int> index_of = make_index_of(reps);
-   
-   Array<Set<int> > S(M.rows());
-   for (int i=0; i<M.rows(); ++i) {
-      const Set<int> supp(support(M[i]));
-      for (Entire<Set<int> >::const_iterator sit = entire(supp); !sit.at_end(); ++sit) {
-         S[i] += index_of[G.lex_min_representative(domain[*sit])];
-      }
-   }
-   return S;
+   return std::make_pair<Array<SetType>, Array<int> >(reps, size);
 }
 
 
@@ -114,25 +72,9 @@ UserFunctionTemplate4perl("# @category Symmetry"
                           "# @param Group G a symmetry group"
                           "# @param Set S a set" 
                           "# @return Set the lex-min representative of S",
-                          "lex_min_representative<SetType>(group::Group SetType)");
+                          "lex_min_representative<SetType>(group::PermutationAction SetType)");
 
-Function4perl(&write_orbit_reps_and_sizes, "write_orbit_reps_and_sizes(PermutationRepresentationOnSets)");
-
-UserFunctionTemplate4perl("# @category Symmetry"
-                          "# For each non-zero entry of a SparseMatrix whose columns are indexed by the domain of a representation,"
-                          "# compute the index of the orbit representative of the columns of non-zero entries"
-                          "# @param PermutationRepresentationOnSets R a representation"
-                          "# @param Matrix M a matrix" 
-                          "# @return SparseMatrix<Int> the indices of the orbits of the members of A",
-                          "orbit_supports(PermutationRepresentationOnSets Matrix)");
-
-UserFunctionTemplate4perl("# @category Symmetry"
-                          "# For each row of a Matrix whose columns are indexed by the domain of a representation,"
-                          "# collect the indices of the orbit representatives of the columns of non-zero entries"
-                          "# @param PermutationRepresentationOnSets R a representation"
-                          "# @param Matrix M a matrix" 
-                          "# @return Array<Set<Int>> the indices of the orbits of the members of A",
-                          "orbit_support_sets(PermutationRepresentationOnSets Matrix)");
+FunctionTemplate4perl("orbit_reps_and_sizes<SetType>(Array<Array<Int>>, Array<SetType>)");
 
 } }
 

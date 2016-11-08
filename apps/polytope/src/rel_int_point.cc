@@ -73,17 +73,17 @@ void rel_int_point(perl::Object p)
       if (unbounded) {
          if (ah_eq)
             // we need to take care of the restriction that AFFINE_HULL may only be written if F contains the FACETS
-            p_new.take(f=="FACETS" ? "AFFINE_HULL" : "EQUATIONS")<<E;  
+            p_new.take( f=="FACETS" ? Str("AFFINE_HULL") : Str("EQUATIONS") ) << E;
          p_new.take(f)<<F;
       } else {
          if (ah_eq)
-            p_new.take("EQUATIONS")<<E;
-         p_new.take("INEQUALITIES")<<F;
+            p_new.take("EQUATIONS") << E;
+         p_new.take("INEQUALITIES") << F;
       }
 
-      p_new.take("ONE_VERTEX")<<v0;
+      p_new.take("ONE_VERTEX") << v0;
       // Either it was bounded to start, or we forced it to be bounded
-      p_new.take("BOUNDED")<<1;
+      p_new.take("BOUNDED") << true;
 
       // In the bounded case, we have a subset of constraints; in the
       // unbounded case we take care to preserve our one vertex

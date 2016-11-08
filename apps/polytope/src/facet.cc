@@ -59,7 +59,7 @@ perl::Object facet(perl::Object p_in, int facet_number, perl::OptionSet options)
       // p_out.take("LINEAR_SPAN") << AH / F[facet_number];
    }
 
-   if (options["relabel"]) {
+   if (!options["no_labels"]) {
       Array<std::string> labels(n_vertices);
       read_labels(p_in, "RAY_LABELS", labels);
       Array<std::string> labels_out(select(labels,VIF[facet_number]));
@@ -74,11 +74,11 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# @param Cone P"
                   "# @param Int facet"
                   "# @option Bool no_coordinates don't copy the coordinates, produce purely combinatorial description."
-                  "# @option Bool relabel copy the vertex labels from the original polytope."
+                  "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytope. default: 0"
                   "# @return Cone"
                   "# @example To create a cone from the vertices of the zeroth facet of the 3-cube, type this:"
                   "# > $p = facet(cube(3),0);",
-                  &facet,"facet(Cone $ {no_coordinates => 0, relabel => 0})");
+                  &facet,"facet(Cone $ {no_coordinates => 0, no_labels => 0})");
 } }
 
 // Local Variables:

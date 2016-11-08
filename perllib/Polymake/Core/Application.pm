@@ -212,8 +212,16 @@ sub known {
    keys %repository;
 }
 sub delete {
-   my ($self, $name)=@_;
-   delete $repository{$name};
+   delete $repository{$_[1]};
+}
+
+sub try_add {
+   foreach my $dir ($InstallTop, map { $_->dir } @Extension::active[$Extension::num_bundled .. $#Extension::active]) {
+      if (-d "$dir/apps/$_[1]") {
+         return eval { &add };
+      }
+   }
+   undef
 }
 #################################################################################
 # "rulefile" => ( full_path, extension, rule_key, cached_result_code )
@@ -494,7 +502,7 @@ sub use_apps {
       @{$self->import_sorted}=map { $_->name } @import_sorted;
       @{$self->prefs->imported}=map { $_->prefs } @import_sorted;
       if ($Help::gather) {
-         push @{$self->help->related}, map { $_->help } @import_sorted;
+         push @{$self->help->related}, (map { $_->help } @import_sorted), $Help::core;
       }
    }
 

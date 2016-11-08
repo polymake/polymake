@@ -91,7 +91,7 @@ rule GEN_POINTS : GEN_POINT {
 rule NOP_GRAPH, REPRESENTATIVE_CERTIFIERS, REPRESENTATIVE_CORE_POINTS, CP_INDICES : GEN_POINT, POINTS, GENERATING_GROUP {
     
     my $lattice_poly = new Polytope(VERTICES=>$this->POINTS, LINEALITY_SPACE=>[], LATTICE=>1, BOUNDED=>1); 
-    my @res=nestedOPGraph($this->GEN_POINT, $this->POINTS, $lattice_poly->LATTICE_POINTS, $this->GENERATING_GROUP, 0);
+    my @res=nestedOPGraph($this->GEN_POINT, $this->POINTS, $lattice_poly->LATTICE_POINTS, $this->GENERATING_GROUP->COORDINATE_ACTION, 0);
     $this->NOP_GRAPH = $res[0];
     $this->REPRESENTATIVE_CERTIFIERS = $res[1];
     $this->REPRESENTATIVE_CORE_POINTS = $res[3];

@@ -16,11 +16,11 @@
 
 namespace polymake { namespace matroid { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::Array<pm::Set<int, pm::operations::cmp>, void> (polymake::graph::HasseDiagram const&) ) {
+   FunctionWrapper4perl( pm::Array<pm::Set<int, pm::operations::cmp>> (polymake::graph::HasseDiagram const&) ) {
       perl::Value arg0(stack[0]);
       IndirectWrapperReturn( arg0 );
    }
-   FunctionWrapperInstance4perl( pm::Array<pm::Set<int, pm::operations::cmp>, void> (polymake::graph::HasseDiagram const&) );
+   FunctionWrapperInstance4perl( pm::Array<pm::Set<int, pm::operations::cmp>> (polymake::graph::HasseDiagram const&) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

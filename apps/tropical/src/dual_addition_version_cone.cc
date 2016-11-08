@@ -29,7 +29,7 @@ namespace polymake { namespace tropical {
 			Matrix<TropicalNumber<Addition,Scalar> > points = cone.give("POINTS");
 
 			typedef typename pm::concat_list<typename Addition::dual, Scalar>::type cone_type;
-			perl::Object result(perl::ObjectType::construct<cone_type>("Cone"));
+			perl::Object result(perl::ObjectType::construct<cone_type>("Polytope"));
 				result.take("POINTS") << dual_addition_version(points,strong);
 
 			return result;
@@ -39,7 +39,7 @@ namespace polymake { namespace tropical {
 	// perl, as there is some conflict with the Cycle-version. Currently there is a wrapper function
 	// in cone_properties.rules.
 
-	FunctionTemplate4perl("dual_addition_version_cone<Addition,Scalar>(Cone<Addition,Scalar>;$=1)");
+	FunctionTemplate4perl("dual_addition_version_cone<Addition,Scalar>(Polytope<Addition,Scalar>;$=1)");
 
 
 }}

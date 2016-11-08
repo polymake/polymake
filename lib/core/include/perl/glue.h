@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -32,10 +32,14 @@
 #ifdef seed
 #undef seed
 #endif
+#ifdef call_method
+#undef call_method
+#endif
 
-#define PmStartFuncall \
+#define PmStartFuncall(n) \
    dSP; \
    ENTER; SAVETMPS; \
+   if (n) EXTEND(SP,n); \
    PUSHMARK(SP)
 
 #define PmCancelFuncall \
@@ -73,11 +77,11 @@ SV** push_current_application(pTHX_ SV **sp);
 HV*  current_application_pkg(pTHX);
 
 void fill_cached_cv(pTHX_ cached_cv& cv);
-SV*  call_func_scalar(pTHX_ SV* cv, SV** dst=NULL);
+SV*  call_func_scalar(pTHX_ SV* cv, bool undef_to_null=false);
 bool call_func_bool(pTHX_ SV* cv, int boolean_check);
 int  call_func_list(pTHX_ SV* cv);
 void call_func_void(pTHX_ SV* cv);
-SV*  call_method_scalar(pTHX_ const char* method);
+SV*  call_method_scalar(pTHX_ const char* method, bool undef_to_null=false);
 int  call_method_list(pTHX_ const char* method);
 void call_method_void(pTHX_ const char* method);
 
@@ -85,10 +89,10 @@ void call_method_void(pTHX_ const char* method);
 SV* fetch_typeof_gv(pTHX_ const char* class_name, size_t class_namelen);
 
 inline
-SV* call_func_scalar(pTHX_ cached_cv& cv, SV** dst=NULL)
+SV* call_func_scalar(pTHX_ cached_cv& cv, bool undef_to_null=false)
 {
    if (__builtin_expect(!cv.addr, 0)) fill_cached_cv(aTHX_ cv);
-   return call_func_scalar(aTHX_ cv.addr, dst);
+   return call_func_scalar(aTHX_ cv.addr, undef_to_null);
 }
 
 inline
@@ -135,7 +139,7 @@ struct common_vtbl : base_vtbl {
 
 struct scalar_vtbl : common_vtbl {
    conv_to_int_type to_int;
-   conv_to_double_type to_double;
+   conv_to_float_type to_float;
 };
 
 struct container_access_vtbl {
@@ -191,10 +195,10 @@ int clear_canned_container(pTHX_ SV* sv, MAGIC* mg);
 int clear_canned_assoc_container(pTHX_ SV* sv, MAGIC* mg);
 int assigned_to_primitive_lvalue(pTHX_ SV* sv, MAGIC* mg);
 U32 canned_container_size(pTHX_ SV* sv, MAGIC* mg);
-int canned_container_access(pTHX_ SV* sv, MAGIC* mg, SV* nsv, const char* dummy, PM_svt_copy_klen_arg index);
-int canned_assoc_container_access(pTHX_ SV* sv, MAGIC* mg, SV* val_sv, const char* key, PM_svt_copy_klen_arg klen);
+int canned_container_access(pTHX_ SV* sv, MAGIC* mg, SV* nsv, const char* dummy, I32 index);
+int canned_assoc_container_access(pTHX_ SV* sv, MAGIC* mg, SV* val_sv, const char* key, I32 klen);
 U32 canned_composite_size(pTHX_ SV* sv, MAGIC* mg);
-int canned_composite_access(pTHX_ SV* sv, MAGIC* mg, SV* nsv, const char *dummy, PM_svt_copy_klen_arg index);
+int canned_composite_access(pTHX_ SV* sv, MAGIC* mg, SV* nsv, const char *dummy, I32 index);
 MAGIC* upgrade_to_builtin_magic_sv(pTHX_ SV* sv, SV* descr_ref, unsigned int n_anchors);
 SV* create_builtin_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int flags, unsigned int n_anchors);
 SV* create_scalar_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int flags, unsigned int n_anchors);
@@ -213,7 +217,9 @@ extern SV *cur_wrapper_cv,
           *negative_indices_key;
 extern HV *FuncDescr_stash,
           *TypeDescr_stash,
-          *User_stash;
+          *User_stash,
+          *Object_InitTransaction_stash;
+
 extern GV *CPP_root,
           *PropertyType_nesting_level,
           *User_application,
@@ -226,9 +232,9 @@ extern int Object_name_index, Object_description_index,
            TypeDescr_pkg_index, TypeDescr_vtbl_index,
            CPPOptions_builtin_index, CPPOptions_descr_index,
            FuncDescr_wrapper_index,
-           PropertyType_pkg_index, PropertyType_cppoptions_index,
+           PropertyType_pkg_index, PropertyType_cppoptions_index, PropertyType_params_index,
            CPP_functions_index, CPP_regular_functions_index, CPP_embedded_rules_index,
-           CPP_duplicate_class_instances_index, CPP_classes_index, CPP_templates_index, CPP_typeids_index,
+           CPP_duplicate_class_instances_index, CPP_classes_index, CPP_builtins_index, CPP_templates_index, CPP_typeids_index,
            CPP_auto_convert_constructor_index, CPP_auto_assignment_index, CPP_auto_conversion_index,
            CPP_auto_assoc_methods_index, CPP_auto_set_methods_index,
            FuncDescr_fill, TypeDescr_fill;

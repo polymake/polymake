@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,7 +19,7 @@
 
 #include "polymake/Set.h"
 #include "polymake/graph/HasseDiagram.h"
-#include "polymake/graph/BFSiterator.h"
+#include "polymake/graph/graph_iterators.h"
 
 
 namespace polymake { namespace graph {
@@ -79,8 +79,8 @@ public:
    const Set<int>& face(int n) const { return HD->face(n); }
 };
 
-typedef bool2type<true> Down;
-typedef bool2type<false> Up;
+typedef bool_constant<true> Down;
+typedef bool_constant<false> Up;
 
 template<typename Direction>
 Set<int> order_ideal(const Set<int>& generators, const graph::HasseDiagram& LF)
@@ -134,7 +134,7 @@ bool is_convex_subset(const Set<int>& Cset, const HDType& LF, bool verbose) {
 
 namespace pm {
 template <>
-struct check_iterator_feature< polymake::graph::HasseDiagram_facet_iterator, end_sensitive > : True {};
+struct check_iterator_feature<polymake::graph::HasseDiagram_facet_iterator, end_sensitive> : std::true_type {};
 }
 
 #endif // POLYMAKE_GRAPH_HASSE_DIAGRAM_TOOLS_H

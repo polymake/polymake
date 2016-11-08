@@ -2,14 +2,14 @@
 
 #pragma offload_attribute (push, target(mic))
 #include "libnormaliz/offload_handler.h"
-#include "libnormaliz/offload.h"  // offload system header
+#include <offload.h>  // offload system header
 #include "libnormaliz/matrix.h"
 #include "libnormaliz/full_cone.h"
 #include "libnormaliz/list_operations.h"
 #include "libnormaliz/vector_operations.h"
 #include "libnormaliz/my_omp.h"
 #include "libnormaliz/HilbertSeries.h"
-#include <cstream> // for strcpy
+#include <cstring> // for strcpy
 #include <iostream>
 #include <fstream>
 
@@ -173,6 +173,7 @@ void OffloadHandler<Integer>::transfer_bools()
     ofstream *fout = new ofstream(fstr.c_str());
     setVerboseOutput(*fout);
     setErrorOutput(*fout);
+    verboseOutput() << "Start logging" << endl;
   }
 //  cout << "mic " << mic_nr<< ": transfer_bools done" << endl;
 }
@@ -263,13 +264,12 @@ void OffloadHandler<Integer>::transfer_grading()
     delete[] data;
   }
 
-  if (local_fc_ref.isComputed(ConeProperty::Shift))
+  if (local_fc_ref.shift != 0)
   {
     auto shift = local_fc_ref.shift;
     #pragma offload target(mic:mic_nr) in(shift)
     {
       offload_fc_ptr->shift = shift;
-      offload_fc_ptr->is_Computed.set(ConeProperty::Shift);
     }
   }
 
@@ -288,13 +288,13 @@ void OffloadHandler<Integer>::transfer_triangulation_info()
   if (local_fc_ref.isComputed(ConeProperty::ExtremeRays))
   {
     bool *data = new bool[nr_gen];
-    fill_plain(data, nr_gen, local_fc_ref.Extreme_Rays);
+    fill_plain(data, nr_gen, local_fc_ref.Extreme_Rays_Ind);
 
     #pragma offload target(mic:mic_nr) in(nr_gen) in(data: length(nr_gen) ONCE)
     {
 
-      offload_fc_ptr->Extreme_Rays = vector<bool>(nr_gen);
-      fill_vector(offload_fc_ptr->Extreme_Rays, nr_gen, data);
+      offload_fc_ptr->Extreme_Rays_Ind = vector<bool>(nr_gen);
+      fill_vector(offload_fc_ptr->Extreme_Rays_Ind, nr_gen, data);
       offload_fc_ptr->is_Computed.set(ConeProperty::ExtremeRays);
     }
     delete[] data;
@@ -365,14 +365,23 @@ void OffloadHandler<Integer>::transfer_pyramids(const list< vector<key_t> >& pyr
   key_t *data = new key_t[size];
   fill_plain(data, size, pyramids);
 
+  transfer_pyramids_inner(data, size);
+
+  delete[] data;
+  cout << "mic " << mic_nr << ": transfered " << pyramids.size() << " pyramids. avg. key size:" << static_cast<double>(size)/pyramids.size()-1 << endl;
+}
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+void OffloadHandler<Integer>::transfer_pyramids_inner(key_t *data, long size)
+{
   wait();
   #pragma offload target(mic:mic_nr) in(size) in(data: length(size) ONCE)
   {
     fill_list_vector(offload_fc_ptr->Pyramids[0], size, data);
     offload_fc_ptr->nrPyramids[0] = offload_fc_ptr->Pyramids[0].size();
   }
-  delete[] data;
-  cout << "mic " << mic_nr << ": transfered " << pyramids.size() << " pyramids." << endl;
 }
 
 //---------------------------------------------------------------------------
@@ -385,6 +394,7 @@ void OffloadHandler<Integer>::evaluate_pyramids()
   #pragma offload target(mic:mic_nr) signal(&running)
   {
     offload_fc_ptr->evaluate_stored_pyramids(0);
+    offload_fc_ptr->evaluate_triangulation();
   }
   running = true;
 }

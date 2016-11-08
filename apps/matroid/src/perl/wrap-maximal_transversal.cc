@@ -16,11 +16,11 @@
 
 namespace polymake { namespace matroid { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::IncidenceMatrix<pm::NonSymmetric> (int, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, pm::Set<int, pm::operations::cmp> const&) ) {
+   FunctionWrapper4perl( pm::IncidenceMatrix<pm::NonSymmetric> (int, pm::Array<pm::Set<int, pm::operations::cmp>> const&, pm::Array<pm::Set<int, pm::operations::cmp>> const&, pm::Set<int, pm::operations::cmp> const&) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
       IndirectWrapperReturn( arg0, arg1.get< perl::TryCanned< const Array< Set< int > > > >(), arg2.get< perl::TryCanned< const Array< Set< int > > > >(), arg3.get< perl::TryCanned< const Set< int > > >() );
    }
-   FunctionWrapperInstance4perl( pm::IncidenceMatrix<pm::NonSymmetric> (int, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, pm::Set<int, pm::operations::cmp> const&) );
+   FunctionWrapperInstance4perl( pm::IncidenceMatrix<pm::NonSymmetric> (int, pm::Array<pm::Set<int, pm::operations::cmp>> const&, pm::Array<pm::Set<int, pm::operations::cmp>> const&, pm::Set<int, pm::operations::cmp> const&) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

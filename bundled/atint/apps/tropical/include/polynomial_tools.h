@@ -30,7 +30,6 @@
 #include "polymake/Rational.h"
 #include "polymake/Polynomial.h"
 #include "polymake/TropicalNumber.h"
-#include "polymake/tropical/LoggingPrinter.h"
 
 
 namespace polymake { namespace tropical {
@@ -50,7 +49,7 @@ namespace polymake { namespace tropical {
 
 	template <typename Coefficient>
 		Vector<int> degree_vector(const Polynomial<Coefficient> &p){
-			return p.monomials_as_matrix()* ones_vector<int>(p.get_ring().n_vars());
+			return accumulate( cols(p.monomials_as_matrix()), operations::add());
 		}
 
 	template <typename Coefficient>

@@ -91,10 +91,13 @@ Integer v_gcd(const vector<Integer>& v);
 template<typename Integer>
 Integer v_lcm(const vector<Integer>& v);
 
+//returns lcm of the elements of v from index k up to index j
+template<typename Integer>
+Integer v_lcm_to(const vector<Integer>& v,const size_t k, const size_t j);
+
 //divides the elements by their gcd and returns the gcd
 template<typename Integer>
 Integer v_make_prime(vector<Integer>& v);
-
 
 //---------------------------------------------------------------------------
 //							Scalar operations
@@ -162,10 +165,19 @@ bool compare_last (const vector<Integer>& a, const vector<Integer>& b)
 template<typename Integer>
 vector<key_t> v_non_zero_pos(const vector<Integer>& v);
 
+// counts the number of positive entries
+template<typename Integer>
+size_t v_nr_positive(const vector<Integer>& v);
+
 // check whether the vector only contains 0
 template<typename Integer>
 bool v_is_zero(const vector<Integer>& v);
 
+template<typename Integer>
+bool v_is_symmetric(const vector<Integer>& v);
+
+template<typename Integer>
+bool v_is_nonnegative(const vector<Integer>& v);
 
 template<typename Integer>
 Integer v_max_abs(const vector<Integer>& v){
@@ -194,6 +206,10 @@ template<typename Integer>
 void approx_simplex(const vector<Integer>& q, std::list<vector<Integer> >& approx,const long k);
 
 vector<key_t> identity_key(size_t n);
+
+// compute the degree vector of a hsop
+template<typename Integer>
+vector<Integer> degrees_hsop(const vector<Integer> gen_degrees,const vector<size_t> heights);
 
 //---------------------------------------------------------------------------
 //                            Sorting

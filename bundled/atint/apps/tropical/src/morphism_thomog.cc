@@ -36,8 +36,8 @@ namespace polymake { namespace tropical {
 			throw std::runtime_error("Invalid chart coordinate.");
 
 		//Add up columns and compute homogenizing coordinates.
-		Vector<Rational> column_sum = matrix * ones_vector<Rational>(matrix.cols());
-		Rational total_degree = accumulate(column_sum, operations::max());
+		Vector<Rational> column_sum = accumulate(cols(matrix), operations::add());
+      Rational total_degree = accumulate(column_sum, operations::max());
 
 		Vector<Rational> missing_degree = total_degree * ones_vector<Rational>(column_sum.dim()) - column_sum;
 

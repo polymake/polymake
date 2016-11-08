@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,6 +13,7 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+# @category Combinatorics
 # A graph with optional node and edge attributes.
 #
 declare object Graph<Dir=Undirected> {
@@ -22,11 +23,8 @@ file_suffix graph
 # combinatorial description of the Graph in the form of adjacency matrix
 property ADJACENCY : props::Graph<Dir>;
 
-declare permutation NodePerm {
-
-   # Transforming this [[ADJACENCY]] into the basic object
-   property PERMUTATION : Array<Int>;
-}
+# permutation of nodes
+permutation NodePerm : PermBase;
 
 rule ADJACENCY : NodePerm.ADJACENCY, NodePerm.PERMUTATION {
    $this->ADJACENCY=permuted_nodes($this->NodePerm->ADJACENCY, $this->NodePerm->PERMUTATION);
@@ -48,12 +46,6 @@ property DIAMETER : Int;
 # True if the graph is a connected graph.
 property CONNECTED : Bool;
 
-# The connected components, encoded as node sets.
-property CONNECTED_COMPONENTS : PowerSet;
-
-# Number of [[CONNECTED_COMPONENTS]] of the graph.
-property N_CONNECTED_COMPONENTS : Int;
-
 # Labels of the nodes of the graph.
 property NODE_LABELS : Array<String> : mutable;
 
@@ -70,12 +62,32 @@ rule SIGNED_INCIDENCE_MATRIX : ADJACENCY {
     $this->SIGNED_INCIDENCE_MATRIX = signed_incidence_matrix($this);
 }
 
+# eigenvalues of the discrete laplacian operator of a graph
+property EIGENVALUES_LAPLACIAN : Vector<Float>;
+
+rule EIGENVALUES_LAPLACIAN : ADJACENCY {
+    $this->EIGENVALUES_LAPLACIAN = eigenvalues_laplacian($this);
+}
+
+
 # Characteristic polynomial of the adjacency matrix; its roots are the eigenvalues
 property CHARACTERISTIC_POLYNOMIAL : UniPolynomial;
 
 }
 
 object Graph<Undirected> {
+
+# The connected components.
+# Every row contains nodes from a single component.
+property CONNECTED_COMPONENTS : IncidenceMatrix;
+
+# Number of [[CONNECTED_COMPONENTS]] of the graph.
+property N_CONNECTED_COMPONENTS : Int;
+
+# Biconnected components.
+# Every row contains nodes from a single component.
+# Articulation nodes may occur in several rows.
+property BICONNECTED_COMPONENTS : IncidenceMatrix;
 
 # True if the graph is a bipartite.
 property BIPARTITE : Bool;
@@ -104,6 +116,20 @@ property AVERAGE_DEGREE : Rational;
 
 object Graph<Directed> {
 
+# True if the graph is weakly connected
+property WEAKLY_CONNECTED : Bool;
+
+# Weakly connected components.
+# Every row contains nodes from a single component
+property WEAKLY_CONNECTED_COMPONENTS : IncidenceMatrix;
+
+# True if the graph is strongly connected
+property STRONGLY_CONNECTED : Bool;
+
+# Strong components.
+# Every row contains nodes from a single component
+property STRONG_COMPONENTS : IncidenceMatrix;
+
 # The number of outgoing edges of the graph nodes.
 property NODE_OUT_DEGREES : Array<Int>;
 
@@ -113,6 +139,7 @@ property NODE_IN_DEGREES : Array<Int>;
 }
 
 
+# @category Combinatorics
 # A graph with edge weights.
 declare object EdgeWeightedGraph : Graph<Undirected> {
 

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,16 +15,20 @@
 
 require "permlib_helpers.pl";
 
-object Group {
-
 CREDIT permlib
   A callable C++ library for permutation computations. 
   Written by Thomas Rehn.
   http://www.math.uni-rostock.de/~rehn/software/permlib.html 
 
-rule STRONG_GENERATORS, BASE, TRANSVERSALS : GENERATORS{
-    group_from_generators($this->GENERATORS, $this);
+object PermutationAction {
+
+rule STRONG_GENERATORS, BASE, TRANSVERSALS : GENERATORS {
+    action_from_generators($this->GENERATORS, $this);
 } 
+
+rule GENERATORS : STRONG_GENERATORS {
+    $this->GENERATORS = $this->STRONG_GENERATORS;
+}
 
 }
 

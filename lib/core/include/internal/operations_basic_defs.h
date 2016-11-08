@@ -24,10 +24,20 @@
 namespace pm {
 
 template <typename T> inline
-typename enable_if<T, is_pod<T>::value>::type& negate(T& x) { x=-x; return x; }
+typename std::enable_if<std::is_arithmetic<T>::value, T&>::type
+negate(T& x)
+{
+   x=-x;
+   return x;
+}
 
 template <typename T> inline
-typename disable_if<T, is_pod<T>::value>::type& negate(T& x) { x.negate(); return x; }
+typename std::enable_if<is_class_or_union<pure_type_t<T>>::value &&
+                        !std::is_const<std::remove_reference_t<T>>::value, T&&>::type
+negate(T&& x)
+{
+   return std::forward<T>(x.negate());
+}
 
 namespace operations {
 
@@ -51,7 +61,7 @@ template <typename T1, typename T2> \
 struct name##_result { \
    static const T1& op1();  static const T2& op2(); \
    static const bool first=sizeof(analyzer::test_f(op1(),op2(),op1() sign op2()))==sizeof(derivation::yes); \
-   typedef typename if_else<first, T1, T2>::type type; \
+   typedef typename std::conditional<first, T1, T2>::type type; \
 }
 
 GuessResultType(add,+);

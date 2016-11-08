@@ -19,13 +19,12 @@
 #include "polymake/Rational.h"
 #include "polymake/socketstream.h"
 #include <cstdlib>
-#include <cxxabi.h>
 
 namespace pm {
 
 int PlainParserCommon::count_words()
 {
-   std::streambuf *mybuf=is->rdbuf();
+   std::streambuf* mybuf=is->rdbuf();
    if (CharBuffer::skip_ws(mybuf)<0) return 0;
    int cnt=0, offset=0;
    do {
@@ -49,7 +48,7 @@ int PlainParserCommon::count_all_lines()
 
 int PlainParserCommon::count_braced(char opening, char closing)
 {
-   std::streambuf *mybuf=is->rdbuf();
+   std::streambuf* mybuf=is->rdbuf();
    if (CharBuffer::skip_ws(mybuf)<0) return 0;
    int cnt=0, offset=0;
    do {
@@ -87,7 +86,7 @@ bool PlainParserCommon::at_end()
 
 void PlainParserCommon::skip_item()
 {
-   std::streambuf *mybuf=is->rdbuf();
+   std::streambuf* mybuf=is->rdbuf();
    if (CharBuffer::skip_ws(mybuf)<0) return;
 
    int offset=0;
@@ -115,7 +114,7 @@ void PlainParserCommon::skip_rest()
 
 char* PlainParserCommon::set_temp_range(char opening, char closing)
 {
-   std::streambuf *mybuf=is->rdbuf();
+   std::streambuf* mybuf=is->rdbuf();
 
    if (CharBuffer::skip_ws(mybuf)<0) {
       is->setstate(closing == '\n' ? is->eofbit : is->failbit | is->eofbit);
@@ -167,7 +166,7 @@ void PlainParserCommon::restore_input_range(char *egptr)
 
 void PlainParserCommon::discard_range(char closing)
 {
-   std::streambuf *mybuf=is->rdbuf();
+   std::streambuf* mybuf=is->rdbuf();
    if (is->eof())
       is->clear();
    else if (CharBuffer::skip_ws(mybuf) >= 0 ||
@@ -219,7 +218,7 @@ void PlainParserCommon::get_scalar(double& x)
    static std::string text;
    if (*is >> text) {
       if (text.find('/') != std::string::npos) {
-         x=Rational(text.c_str()).to_double();
+         x=double(Rational(text.c_str()));
       } else {
          char *end;
          x=strtod(text.c_str(),&end);
@@ -228,24 +227,37 @@ void PlainParserCommon::get_scalar(double& x)
    }
 }
 
-void PlainParserCommon::get_string (std::string& s, char delim)
+void PlainParserCommon::get_string(std::string& s, char delim)
 {
    if (CharBuffer::get_string(is->rdbuf(),s,delim) < 0)
       is->setstate(is->eofbit | is->failbit);
 }
 
-void complain_no_serialization(const char* text, const std::type_info& ti)
+int PlainParserCommon::probe_inf()
 {
-   std::string errmsg(text);
-   int status;
-   char* type_name=abi::__cxa_demangle(ti.name(), NULL, NULL, &status);
-   if (status==0) {
-      errmsg += type_name;
-      free(type_name);
-   } else {
-      errmsg += ti.name();
+   std::streambuf* mybuf=is->rdbuf();
+   if (CharBuffer::skip_ws(mybuf)<0) return 0;
+   int offset=0;
+   int sgn=1;
+   switch (CharBuffer::seek_forward(mybuf, 0)) {
+   case '-':
+      sgn=-1;
+      // FALLTHRU
+   case '+':
+      ++offset;
+      break;
+   case 'i':
+      break;
+   default:
+      return 0;
    }
-   throw std::invalid_argument(errmsg);
+   if ((offset==0 || CharBuffer::seek_forward(mybuf, offset)=='i') &&
+       CharBuffer::seek_forward(mybuf, offset+1)=='n' &&
+       CharBuffer::seek_forward(mybuf, offset+2)=='f') {
+      CharBuffer::get_bump(mybuf, offset+3);
+      return sgn;
+   }
+   return 0;
 }
 
 PlainPrinter<> cout(perl::cout);

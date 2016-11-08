@@ -25,17 +25,15 @@
 #include "polymake/list"
 #include <cmath>
 
-/* The overall idea is to produce a planar net of a 3-polytope from one spanning tree in the dual graph.
-   Once the spanning tree is chosen and the root facet is drawn the layout is uniquely determined.
-   It is not known if such a planar net always exists.
+/* The overall idea is to produce a planar net of a 3-polytope from one spanning tree in the dual graph.  Once the
+   spanning tree is chosen and the root facet is drawn the layout is uniquely determined.  It is not known if such a
+   planar net always exists.
 
-   The spanning tree is determined as follows.  Starting at the root facet we perform a breadth first search
-   through the dual graph.  New facets are queued in the order in which they appear.  More precisely, the queue
-   members are actually edges, such that one incident facet is already in the layout, while the other one is not.
-   The current heuristic greedily places a facet if it does not overlap with the existing layout.  There is no
-   backtracking (yet).  In our very many experiments so far, such a backtracking was never necessary.
-
-   The current implementation always takes the facet numbered 0 as the root.
+   The spanning tree is determined as follows.  Starting at the root facet we perform a breadth first search through the
+   dual graph.  New facets are queued in the order in which they appear.  More precisely, the queue members are actually
+   edges, such that one incident facet is already in the layout, while the other one is not.  The current heuristic
+   greedily places a facet if it does not overlap with the existing layout.  There is no proper backtracking (yet).
+   However, the current implementation tries all facets as root facet.
 
    This client is meant to be used by non-experts, too.  Therefore, there are more double checks than usual,
    and the code throws (hopefully) meaningful exceptions if something goes wrong.
@@ -118,6 +116,75 @@ namespace {
       return (ccw(a,b,c) * ccw(a,b,d) < 0) && (ccw(c,d,a) * ccw(c,d,b) < 0);
    }
 
+   inline
+   bool point_in_facet(const Vector<double>& point, const int facet,
+                       const Array< Array<int> >& vif, const Matrix<double>& net_vertices, const Map<vertex_facet_pair,int>& vf_map) {
+
+#if PLANAR_NET_DEBUG > 2
+      cerr << " [point=" << point << " in facet " << facet<< ":";
+#endif
+      Entire< Array<int> >::const_iterator iv=entire(vif[facet]);
+      const int first_vertex = vf_map[vertex_facet_pair(*iv,facet)];
+      Vector<double> pvh = net_vertices[first_vertex];
+      Vector<double> nvh;
+      // check each edge in facet
+      for (++iv; !iv.at_end(); ++iv) {
+#if PLANAR_NET_DEBUG > 2
+         cerr << " " << *iv;
+#endif
+         nvh = net_vertices[vf_map[vertex_facet_pair(*iv,facet)]];
+         if (ccw(pvh,nvh,point)<0) {
+            // the point is on the negative side of that edge, hence ...
+#if PLANAR_NET_DEBUG > 2
+            cerr << " *]";
+#endif
+            
+            return false;
+         }
+         pvh = nvh;
+      }
+      // check final edge; pvh is now the last vertex on the facet h
+      nvh = net_vertices[first_vertex];
+      if (ccw(pvh,nvh,point)<0) {
+#if PLANAR_NET_DEBUG > 2
+         cerr << " *]";
+#endif
+         return false;
+      }
+#if PLANAR_NET_DEBUG > 2
+      cerr << "]" << endl;
+#endif
+      return true;
+   }
+
+   inline
+   bool point_versus_edges_of_facet(const Vector<double>& point, const Vector<double>& previous_point, const int facet,
+                                    const Array< Array<int> >& vif, const Matrix<double>& net_vertices, const Map<vertex_facet_pair,int>& vf_map) {
+  
+#if PLANAR_NET_DEBUG > 2
+      cerr << " [point=" << point << " versus edges of facet " << facet<< ":";
+#endif
+      Vector<double> pvh = net_vertices[vf_map[vertex_facet_pair(vif[facet].back(),facet)]];
+      Vector<double> nvh;
+      for (Entire< Array<int> >::const_iterator iv=entire(vif[facet]); !iv.at_end(); ++iv) {
+#if PLANAR_NET_DEBUG > 2
+         cerr << " " << *iv;
+#endif
+         nvh = net_vertices[vf_map[vertex_facet_pair(*iv,facet)]];
+         if (proper_segment_intersection(previous_point,point, pvh,nvh)) {
+#if PLANAR_NET_DEBUG > 2
+            cerr << " *] pp=" << previous_point << " p= " << point << " pvh=" << pvh << " nvh=" << nvh ;
+#endif
+            return true;
+         }
+         pvh=nvh;
+      }
+#if PLANAR_NET_DEBUG > 2
+      cerr << "]" << endl;
+#endif
+      return false;
+   }
+   
    template <typename Coord>
    int overlap(const Vector<double>& point, const Vector<double>& previous_point,
                const Array< Array<int> >& vif, const Set<int>& marked, const Matrix<double>& net_vertices, const Map<vertex_facet_pair,int>& vf_map) {
@@ -125,51 +192,12 @@ namespace {
       for (Entire< Set<int> >::const_iterator h=entire(marked); !h.at_end(); ++h) {
          /* There are two types of overlaps:
             (1) The point to be placed could be contained in the facet h ... */
-         bool h_contained=true;
-         Entire< Array<int> >::const_iterator iv=entire(vif[*h]);
-         const int first_vertex = vf_map[vertex_facet_pair(*iv,*h)];
-         Vector<double> pvh = net_vertices[first_vertex];
-         Vector<double> nvh;
-         // check each edge in h
-         for (++iv; !iv.at_end(); ++iv) {
-            nvh = net_vertices[vf_map[vertex_facet_pair(*iv,*h)]];
-            if (ccw(pvh,nvh,point)<0) {
-               // the point is on the negative side of that edge, hence ...
-               h_contained=false;
-               break;
-            }
-#if PLANAR_NET_DEBUG > 2
-            cerr << " * h=" << *h << " iv=" << *iv << " contained=" << h_contained;
-#endif
-            pvh = nvh;
-         }
-         nvh = net_vertices[first_vertex];
-         if (h_contained) {
-            // check initial edge; pvh is now the last vertex on the facet h
-            if (ccw(pvh,nvh,point)<0)
-               h_contained=false;
-#if PLANAR_NET_DEBUG > 2
-            cerr << " * h=" << *h << " first_vertex=" << first_vertex << " contained=" << h_contained;
-#endif
-         }
-         if (h_contained) {
-#if PLANAR_NET_DEBUG > 2
-            cerr << endl;
-#endif
-            return *h; // overlap with that facet
-         }
-
-         /*  (2) ... or two edges intersect.*/
-         // check each edge in h
-         for (iv=entire(vif[*h]); !iv.at_end(); ++iv) {
-            nvh = net_vertices[vf_map[vertex_facet_pair(*iv,*h)]];
-            if (proper_segment_intersection(previous_point,point, pvh,nvh)) {
-#if PLANAR_NET_DEBUG > 2
-               cerr << " * h=" << *h << " iv" << *iv << " intersection" << endl;
-#endif
-               return *h;
-            }
-         }
+         /* this would also trigger an edge-intersection except for some corner-cases which are ignored for now
+            to deal with these properly the edge-intersection needs to distinguish between neighboring edges
+            and other edges */
+         // if (point_in_facet(point,*h,vif,net_vertices,vf_map)) return *h;
+         /* (2) ... or two edges intersect.*/
+         if (point_versus_edges_of_facet(point,previous_point,*h,vif,net_vertices,vf_map)) return *h;
       }
       return -1; // OK, no overlap
    }
@@ -231,12 +259,25 @@ namespace {
 
       Set<int> this_net_facet; this_net_facet += ja; this_net_facet += jb;
       Vector<double> previous_vertex(net_vertices[jb]); // right vertex on the connecting edge
-      for ( ; vc_it!=vertex_cycle.end(); ++vc_it) {
-         const int idx=*vc_it;
-         const Vector<double>
-            bc(barycentric<Coord>(V[idx],V.minor(FirstThreeOnFacet,All))),
-            next_vertex(bc[0]*a + bc[1]*b + bc[2]*c);
-         
+
+      while (1) {
+         int idx;
+         Vector<double> next_vertex;
+
+         if (vc_it != vertex_cycle.end()) {
+            idx = *vc_it;
+            Vector<double> bc(barycentric<Coord>(V[idx],V.minor(FirstThreeOnFacet,All)));
+            next_vertex = bc[0]*a + bc[1]*b + bc[2]*c;
+         } else {
+            // go back to the first vertex to make sure the last edge is checked
+            idx = ix;
+            next_vertex = a;
+         }
+
+#if PLANAR_NET_DEBUG > 1
+         cerr << " idx=" << idx << " ";
+#endif
+
          /* If some facet contains the point next_vertex in its interior or in its boundary we need a rollback.
             Negative return value signals no overlap, otherwise index of overlapping facet. */
          const int h=overlap<Coord>(next_vertex,previous_vertex,vif,marked,net_vertices,vf_map);
@@ -251,6 +292,12 @@ namespace {
             return false;
          }
 
+         // bail out here to avoid overwriting the information for the first vertex
+         if (ix == idx)
+            break;
+
+         vc_it++;
+
          previous_vertex = net_vertices[cv] = next_vertex;
          this_net_facet += cv;
          vf_map[vertex_facet_pair(idx,f)] = cv;  vf_map_inv[cv] = idx;
@@ -261,13 +308,56 @@ namespace {
       return true;
    }
 
+   template <typename Coord>
+   void initialize_root_facet(const int f, // this will be the root facet
+                              const int ia, const int ib,
+                              const int ja, const int jb, // (indices of) points in the plane where layout starts
+                              std::list<int>& vertex_cycle, // indices of vertices on the facet in cyclic order starting at a and b
+                              const Matrix<Coord>& V, // vertices of the 3-polytope
+                              const Array< Array<int> >& vif, // vertices in facets, cyclically ordered
+                              Set<int>& marked, // facets already layed out; f will be added if successful
+                              int& cv, // number of vertices of the net already computed
+                              Matrix<double>& net_vertices, // vertices of the net
+                              Array< Set<int> >& net_facets, // facets of the net
+                              Map<vertex_facet_pair,int>& vf_map, // which vertex on which facet ends up where
+                              Array<int>& vf_map_inv, // inverse of the previous
+                              tree_type& dual_tree
+                              ) {
+      // initialize data
+      vertex_cycle.clear(); for (int i=0; i<vif[f].size(); ++i) vertex_cycle.push_back(vif[f][i]);
+      marked.clear();
+      vf_map.clear(); vf_map[vertex_facet_pair(ia,f)] = ja; vf_map[vertex_facet_pair(ib,f)] = jb; vf_map_inv[ja] = ia; vf_map_inv[jb] = ib;
+      dual_tree.clear();
+      
+      // true edge length in 3-space
+      double unit_length=dist<Coord>(V[ia],V[ib]);
+
+      const Vector<double>
+         a = zero_vector<double>(2), // first vertex gets mapped to origin
+         b = unit_length * unit_vector<double>(2,0); // second vertex at proper distance
+      net_vertices[ja]=a;
+      net_vertices[jb]=b;
+
+      layout_one_facet(f, ja, jb, vertex_cycle, V, vif, marked, cv, net_vertices, net_facets, vf_map, vf_map_inv);
+   }
+
    // COMBINATORIAL
 
    void queue_neighbors(const int f, const Graph<>& DG, const Set<int>& marked, std::list<directed_edge>& unprocessed_edges) {
-      const Set<int> neighbors = DG.adjacent_nodes(f);  
+      const Set<int> neighbors = DG.adjacent_nodes(f);
+#if PLANAR_NET_DEBUG > 2
+      cerr << "queue_neighbors: f=" << f;
+#endif
       for (Entire< Set<int> >::const_iterator n_it = entire(neighbors); !n_it.at_end(); ++n_it)
-         if (!marked.contains(*n_it))
+         if (!marked.contains(*n_it)) {
+#if PLANAR_NET_DEBUG > 2
+            cerr << " " << *n_it;
+#endif
             unprocessed_edges.push_back(directed_edge(f,*n_it));
+         }
+#if PLANAR_NET_DEBUG > 2
+      cerr << endl;
+#endif
    }
    
 }
@@ -292,109 +382,100 @@ perl::Object planar_net(perl::Object p)
       of the dual graph.  Euler yields f_1 - f_2 + 1 = f_0 - 1. */
    const int n_net_vertices = 2*(V.rows()-1);
    Matrix<double> net_vertices(n_net_vertices,2); // Euclidean
+   int cv=0; // no vertices in the planar net so far
 
    // Recalls which vertex in which facet of the 3-polytope has which row index in the matrix above.
    Map<vertex_facet_pair,int> vf_map;
    Array<int> vf_map_inv(n_net_vertices);
 
    const Graph<> DG=p.give("DUAL_GRAPH.ADJACENCY");
-
-   int f=0; // some arbitrary facet, plays the root of the spanning tree in the dual graph
    tree_type dual_tree;
 
-   int
-      ia=vif[f][0], // indices of first ...
-      ib=vif[f][1]; // ... and second vertex for the layout
-
-   int ja=0, jb=1;
-
-   // true edge length in 3-space
-   double unit_length=dist<Coord>(V[ia],V[ib]);
-
-   const Vector<double>
-      a = zero_vector<double>(2), // first vertex gets mapped to origin
-      b = unit_length * unit_vector<double>(2,0); // second vertex at proper distance
-   net_vertices[ja]=a;
-   net_vertices[jb]=b;
-   int cv=2;
-
-   // keep track where those vertices end up
-   vf_map[vertex_facet_pair(ia,f)] = ja;  vf_map_inv[ja] = ia;
-   vf_map[vertex_facet_pair(ib,f)] = jb;  vf_map_inv[jb] = ib;
-
-   std::list<int> f_vertex_cycle;
-   for (int i=0; i<vif[f].size(); ++i) f_vertex_cycle.push_back(vif[f][i]);
-
-   Set<int> marked;  // no facets processed yet; start with the root facet
-   layout_one_facet(f, ja, jb, f_vertex_cycle, V, vif, marked, cv, net_vertices, net_facets, vf_map, vf_map_inv);
-
-   std::list<directed_edge> unprocessed_edges;
+#if PLANAR_NET_DEBUG
+   cerr << "SEARCHING FOR SPANNING TREE IN DUAL GRAPH"
+        << " n_facets=" << n_facets << " n_net_vertices=" << n_net_vertices << endl;
+#endif
+         
+   // Try each facet as the root of the spanning tree in the dual graph.
+   for (int root_facet=0; root_facet < n_facets && cv < n_net_vertices ; ++root_facet) {
+      int
+         ia=vif[root_facet][0], // indices of first ...
+         ib=vif[root_facet][1], // ... and second polytope vertex for the layout
+         ja=0, jb=1; // corresponding indices of the vertices in the planar net
+      cv=2; // number of vertices in the planar net so far
 
 #if PLANAR_NET_DEBUG
-   cerr << "CONSTRUCTING LAYOUT VIA DUAL TREE\n"
-        << "root facet f=" << f << " {" << vif[f] << "}"
-        << " ia=" << ia << " ib=" << ib
-        << " ja=" << ja << " jb=" << jb
-        << " marked=" << marked << " #=" << marked.size()
-        << " cv=" << cv << " vf_map=" << vf_map << endl;
+      cerr << "*** root_facet=" << root_facet << " {" << vif[root_facet] << "}"
+           << " ia=" << ia << " ib=" << ib
+           << " ja=" << ja << " jb=" << jb << endl;
 #endif
+      
+      std::list<int> f_vertex_cycle;
+      Set<int> marked;  // no facets processed yet; start with the root facet
+      initialize_root_facet(root_facet, ia, ib, ja, jb, f_vertex_cycle, V, vif, marked, cv, net_vertices, net_facets, vf_map, vf_map_inv, dual_tree);
 
-   queue_neighbors(f,DG,marked,unprocessed_edges);
+      std::list<directed_edge> unprocessed_edges;
+      queue_neighbors(root_facet,DG,marked,unprocessed_edges);
 
-   do {
-      // pick next edge, but beware that in the mean time both facets could have been processed
-      int g;
-      bool found=false; // no suitable g found yet
+      int f=root_facet;
+      do {
+         // pick next edge, but beware that in the mean time both facets could have been processed
+         int g;
+         bool found=false; // no suitable g found yet
 #if PLANAR_NET_DEBUG > 1
-      cerr << "searching facet pair";
+         cerr << "searching facet pair";
 #endif
-      while ( !unprocessed_edges.empty() ) {
-         const directed_edge fg_pair=unprocessed_edges.front();
-         unprocessed_edges.pop_front();
+         while ( !unprocessed_edges.empty() ) {
+            const directed_edge fg_pair=unprocessed_edges.front();
+            unprocessed_edges.pop_front();
 #if PLANAR_NET_DEBUG > 1
-         cerr << " (" << fg_pair << ")";
+            cerr << " (" << fg_pair << ")";
 #endif
-         g=fg_pair.second;
-         if (!marked.contains(g)) {
-            f=fg_pair.first;
-            found=true;
+            g=fg_pair.second;
+            if (!marked.contains(g)) {
+               f=fg_pair.first;
+               found=true;
 #if PLANAR_NET_DEBUG > 1
-            cerr << " *" << endl;
+               cerr << " *" << endl;
+#endif
+               break;
+            }
+         }
+         if (!found) { // this root facet does not work with our (deterministic) heuristics
+ #if PLANAR_NET_DEBUG > 1
+            cerr << " failed" << endl;
 #endif
             break;
          }
-      }
-      if (!found)
-         throw std::runtime_error("planar_net: run out of edges, attempt failed"); 
-      // now f has been processed, and its neighbor g is next
+         // now f has been processed, and its neighbor g is next
 
-      const Array<int>& vif_g(vif[g]);
+         const Array<int>& vif_g(vif[g]);
 
-      const Set<int>
-         f_vertex_set(vif[f]),
-         g_vertex_set(vif_g),
-         common_vertices(f_vertex_set * g_vertex_set);
-
-      if (common_vertices.size() != 2)
-         throw std::runtime_error("planar_net: dual edge does not correspond to a primal one");
-
-      // the two common vertices
-      ia=common_vertices.front();
-      ib=common_vertices.back();
-      
-      int i;
-      determine_directed_edge(ia,ib,vif_g,i);
-
-      // vertex_cycle starts with first ia, then ib
-      std::list<int> g_vertex_cycle;
-      for (int k=i; k<vif_g.size(); ++k) g_vertex_cycle.push_back(vif_g[k]);
-      for (int k=0; k<i; ++k) g_vertex_cycle.push_back(vif_g[k]);
-
-      vf_map[vertex_facet_pair(ia,g)] = ja = vf_map[vertex_facet_pair(ia,f)];
-      vf_map[vertex_facet_pair(ib,g)] = jb = vf_map[vertex_facet_pair(ib,f)];
-
+         const Set<int>
+            f_vertex_set(vif[f]),
+            g_vertex_set(vif_g),
+            common_vertices(f_vertex_set * g_vertex_set);
+         
+         if (common_vertices.size() != 2)
+            throw std::runtime_error("planar_net: dual edge does not correspond to a primal one");
+         
+         // the two common vertices
+         ia=common_vertices.front();
+         ib=common_vertices.back();
+         
+         int i;
+         determine_directed_edge(ia,ib,vif_g,i);
+         
+         // vertex_cycle starts with first ia, then ib
+         std::list<int> g_vertex_cycle;
+         for (int k=i; k<vif_g.size(); ++k) g_vertex_cycle.push_back(vif_g[k]);
+         for (int k=0; k<i; ++k) g_vertex_cycle.push_back(vif_g[k]);
+         
+         vf_map[vertex_facet_pair(ia,g)] = ja = vf_map[vertex_facet_pair(ia,f)];
+         vf_map[vertex_facet_pair(ib,g)] = jb = vf_map[vertex_facet_pair(ib,f)];
+         
 #if PLANAR_NET_DEBUG
-      cerr << "processing f=" << f << " g=" << g << " {" << vif_g << "}"
+         cerr << "processing f=" << f << " g=" << g << " {" << vif_g << "}"
            << " ia=" << ia << " ib=" << ib
            << " ja=" << ja << " jb=" << jb
            << " marked=" << marked << " #=" << marked.size()
@@ -403,12 +484,16 @@ perl::Object planar_net(perl::Object p)
            << endl;            
 #endif
 
-      if (layout_one_facet(g, ja, jb, g_vertex_cycle, V, vif, marked, cv, net_vertices, net_facets, vf_map, vf_map_inv)) {
-         dual_tree.push_back(directed_edge(f,g));
-         queue_neighbors(g,DG,marked,unprocessed_edges);
-      }
+         if (layout_one_facet(g, ja, jb, g_vertex_cycle, V, vif, marked, cv, net_vertices, net_facets, vf_map, vf_map_inv)) {
+            dual_tree.push_back(directed_edge(f,g));
+            queue_neighbors(g,DG,marked,unprocessed_edges);
+         }
 
-   } while (cv < n_net_vertices);
+      } while (cv < n_net_vertices);
+   }
+
+   if (cv < n_net_vertices)
+      throw std::runtime_error("planar_net: heuristic failed, all root facets tried. KEEP THIS POLYTOPE!!!");
 
    // compute the primal edges which need flaps
 #if PLANAR_NET_DEBUG
@@ -455,7 +540,7 @@ perl::Object planar_net(perl::Object p)
       flaps.push_back(directed_edge(vf_map[vertex_facet_pair(ia,f)],vf_map[vertex_facet_pair(ib,f)]));
    }
 
-   perl::Object net("PlanarNet");
+   perl::Object net(perl::ObjectType::construct<Coord>("PlanarNet"));
    net.set_description() << "planar net of " << p.name() << endl;
 
    net.take("VERTICES") << (ones_vector<double>(n_net_vertices) | net_vertices);

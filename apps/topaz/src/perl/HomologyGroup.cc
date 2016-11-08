@@ -16,13 +16,13 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
-#include "polymake/topaz/ChainComplex.h"
 #include "polymake/Integer.h"
+#include "polymake/client.h"
+#include "polymake/topaz/HomologyComplex.h"
+
 namespace polymake { namespace topaz { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    Class4perl("Polymake::topaz::HomologyGroup__Integer", HomologyGroup< Integer >);
    ClassTemplate4perl("Polymake::topaz::HomologyGroup");
-   OperatorInstance4perl(Binary__eq, perl::Canned< const HomologyGroup< Integer > >, perl::Canned< const HomologyGroup< Integer > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -62,7 +62,7 @@ bool RayComputationPPL::dualDescription(const Polyhedron & data, std::vector<Fac
 	int i = 0;
 	BOOST_FOREACH(const QArray& r, data.rowPair()) {
 		for (unsigned int j = 0; j < data.dimension(); j++) {
-			points[i][j].set(r[j]);
+			points[i][j].copy_from(r[j]);
 		}
 		++i;
 	}

@@ -1,0 +1,249 @@
+###################################################################
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#  
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#  
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor,
+#  Boston, MA  02110-1301, USA.
+#  
+#  ---
+#  Copyright (C) 2011-2015, Simon Hampe <simon.hampe@googlemail.com>
+#  
+#  This file describes the type MatroidRingCycle.
+#####################################################################
+
+object MatroidRingCycle {
+  
+   #Operator overload 
+   use overload('*' => 'mrc_op_mult', '+' => 'mrc_op_sum', '-' => 'mrc_op_diff', 'neg'=>'mrc_op_neg', fallback => 1);
+
+   # @category Matroid data
+   # Every matroid (and hence every element of the matroid ring) has a presentation 
+   # as a linear combination of nested matroids (which form a basis).
+   # Each entry in this list represents a nested matroid whose coefficient is not 0
+   # in the presentation of this cycle. A nested matroid is represented
+   # by its maximal transversal presentation. You can use the method
+   # [[nested_matroids]] to retrieve them as actual [[matroid::Matroid]] objects.
+   # Note that the implementation will assume that the nested presentations are
+   # each given in such a way that the sets are ordered from smallest to largest.
+   # It is not recommended to specify this property directly. Rather use the
+   # constructor to convert a matroid into a ring cycle, then use the overloaded
+   # operators to construct linear combinations.
+   property NESTED_PRESENTATIONS : Array<IncidenceMatrix>;
+
+   # @category Matroid data
+   # These are the linear coefficients of this cycle in its nested matroids representation.
+   # They correspond to the entries in [[NESTED_PRESENTATIONS]].
+   property NESTED_COEFFICIENTS : Array<Int>;
+
+   # @category Matroid data
+   # The number of entries in [[NESTED_PRESENTATIONS]] (or [[NESTED_COEFFICIENTS]]).
+   property N_NESTED_SUMMANDS : Int;
+
+   # @category Matroid data
+   # Describes the ground set of the matroid ring in which this cycle lives. 
+   # Same as [[PROJECTIVE_AMBIENT_DIM]]+1.
+   property N_ELEMENTS : Int;
+
+   # @category Matroid data
+   # Describes the ranks of the matroids, of which this cycle is a linear combination.
+   # Same as [[PROJECTIVE_DIM]]+1
+   property RANK : Int;
+
+   ## METHODS ########################################
+
+   # @category Matroid data
+   # This returns the nested matroids represented by [[NESTED_PRESENTATIONS]]
+   # as a list of [[matroid::Matroid]] objects.
+   # @example The following computes the matroid ring cycle of the matroid corresponding to 
+   # the complete graph on 4 vertices. It then returns a list of the nested matroids in its
+   # basis presentation.
+   # > $r = new MatroidRingCycle<Max>(matroid::matroid_from_graph(complete(4)));
+   # > @n = $r->nested_matroids();
+   # > print $n[0]->BASES->size;
+   # | 20
+   user_method nested_matroids {
+      my $this = shift;
+      return map { nested_matroid_from_presentation($_, $this->N_ELEMENTS) } @{$this->NESTED_PRESENTATIONS};
+   }
+
+   # Construct a MatroidRingCycle from a matroid. An optional linear coefficient can be 
+   # given and is 1 by default.
+   method construct(matroid::Matroid; $=1) {
+      my ($this, $m, $c) = @_;
+      my @np = matroid_nested_decomposition($m);
+      Polymake::Core::Object::new_filled($this, "", N_ELEMENTS=>$m->N_ELEMENTS, RANK=>$m->RANK, NESTED_PRESENTATIONS=>$np[0], NESTED_COEFFICIENTS=>$c * new Vector<Int>($np[1]));
+   }
+
+   ## RULES ##########################################
+
+   rule N_ELEMENTS, RANK : NESTED_PRESENTATIONS {
+      $this->N_ELEMENTS = $this->NESTED_PRESENTATIONS->[0]->cols();
+      $this->RANK = $this->NESTED_PRESENTATIONS->[0]->rows();
+   }
+   precondition : NESTED_PRESENTATIONS {
+      $this->NESTED_PRESENTATIONS->size() > 0;
+   }
+   weight 0.10;
+
+   rule RANK : {
+      $this->RANK = 0;
+   }
+   precondition : NESTED_PRESENTATIONS {
+      $this->NESTED_PRESENTATIONS->size() == 0;
+   }
+   weight 0.10;
+
+   rule N_NESTED_SUMMANDS : NESTED_PRESENTATIONS {
+      $this->N_NESTED_SUMMANDS = $this->NESTED_PRESENTATIONS->size();
+   }
+
+   rule DEGREE : NESTED_COEFFICIENTS, N_NESTED_SUMMANDS {
+      $this->DEGREE = ( new Vector<Int>($this->NESTED_COEFFICIENTS)) * ones_vector<Int>($this->N_NESTED_SUMMANDS);
+   }
+   weight 1.10;
+
+   rule VERTICES, MAXIMAL_POLYTOPES, WEIGHTS, PROJECTIVE_AMBIENT_DIM : N_ELEMENTS, RANK, NESTED_PRESENTATIONS, NESTED_COEFFICIENTS {
+      my @matroids = $this->nested_matroids();
+      my $coeffs = $this->NESTED_COEFFICIENTS;
+      my $sumcycle;
+      if($coeffs->size() == 0) {
+         $sumcycle = tropical::empty_cycle<Addition>($this->N_ELEMENTS-1);
+      }
+      else {
+         $sumcycle = add_refined_cycles( 
+         map { $coeffs->[$_] * (tropical::matroid_fan_from_flats<Addition>($matroids[$_])) } (0 .. scalar(@matroids)-1));
+   }
+      $this->VERTICES = $sumcycle->VERTICES;
+      $this->MAXIMAL_POLYTOPES = $sumcycle->MAXIMAL_POLYTOPES;
+      $this->WEIGHTS = $sumcycle->WEIGHTS;
+      $this->PROJECTIVE_AMBIENT_DIM = $sumcycle->PROJECTIVE_AMBIENT_DIM;
+   }
+   weight 6.10;
+
+   ## PERMUTATIONS ###################################
+
+   # permuting [[NESTED_PRESENTATIONS]]
+   permutation PresentationPerm : PermBase;
+
+   rule PresentationPerm.PERMUTATION : PresentationPerm.NESTED_PRESENTATIONS, NESTED_PRESENTATIONS {
+      $this->PresentationPerm->PERMUTATION = find_permutation( $this->PresentationPerm->NESTED_PRESENTATIONS, $this->NESTED_PRESENTATIONS);
+   }
+   weight 5.10;
+
+   rule NESTED_PRESENTATIONS : PresentationPerm.NESTED_PRESENTATIONS, PresentationPerm.PERMUTATION {
+      $this->NESTED_PRESENTATIONS = permuted($this->PresentationPerm->NESTED_PRESENTATIONS, $this->PresentationPerm->PERMUTATION);
+   }
+   weight 1.10;
+
+   rule NESTED_COEFFICIENTS : PresentationPerm.NESTED_COEFFICIENTS, PresentationPerm.PERMUTATION {
+      $this->NESTED_COEFFICIENTS = permuted($this->PresentationPerm->NESTED_COEFFICIENTS, $this->PresentationPerm->PERMUTATION);
+   }
+   weight 1.10;
+   
+   ## OVERLOADED OPERATORS ###########################
+
+   sub mrc_op_sum {
+      my ($a,$b) = @_;
+      return matroid_ring_sum($a,$b); 
+   }
+
+   sub mrc_op_diff {
+      my ($a,$b) = @_;
+      return $a + ( (-1) * $b);
+   }
+
+   sub mrc_op_neg {
+      my $a = shift;
+      return (-1)*$a;
+   }
+
+   sub mrc_op_mult {
+      my ($a,$b) = @_;
+      #If it's two ring cycles, compute the product
+      if(ref $a eq ref $b) {
+         return matroid_ring_product($a,$b);
+      }
+      #otherwise assume one is a scalar
+      else {
+         return new MatroidRingCycle<Addition>(N_ELEMENTS=>$a->N_ELEMENTS, RANK=>$a->RANK, 
+                                                NESTED_PRESENTATIONS=>$a->NESTED_PRESENTATIONS,
+                                                NESTED_COEFFICIENTS=>$b * (new Vector<Int>($a->NESTED_COEFFICIENTS)));
+
+      }
+   }
+
+}
+
+# @category Creation functions for specific cycles
+# This creates the cycle corresponding to a given matroid. It automatically computes
+# its representation in the basis of nested matroids.
+# This is equivalent to using the constructor of MatroidRingCycle.
+# @param matroid::Matroid M A matroid
+# @param Int scale An optional linear coefficient. The resulting cycle will be scale*B(M)
+# in the ring of matroids.
+# @tparam Addition The tropical addition. Either Min or Max.
+# @return MatroidRingCycle<Addition>
+# @example Computes the matroid ring cycle of the uniform matroid of rank 2 on 3 elements in two 
+# equivalent ways:
+# > $r = matroid_ring_cycle<Max>(matroid::uniform_matroid(2,3));
+# > $s = new MatroidRingCycle<Max>(matroid::uniform_matroid(2,3));
+user_function matroid_ring_cycle<Addition>(matroid::Matroid; $=1) {
+   return new MatroidRingCycle<Addition>(@_);
+}
+
+# @category Matroid ring cycle arithmetics
+# Constructs the zero element of the matroid ring.
+# @param Int n The size of the ground set.
+# @tparam Addition The tropical Addition, either Min or Max.
+# @return MatroidRingCycle
+# @example Computes the zero element of the matroid ring on 17 elements.
+# > $z = zero_in_matroid_ring<Max>(17);
+# > print $z->RANK;
+# | 0
+user_function zero_in_matroid_ring<Addition>($) {
+   return new MatroidRingCycle<Addition>(N_ELEMENTS=>shift, RANK=>0, NESTED_PRESENTATIONS=>(new Array<IncidenceMatrix>()), NESTED_COEFFICIENTS=>(new Array<Int>()));
+}
+
+
+# @category Matroid ring cycle arithmetics
+# Computes the product of two matroid ring cycles.
+# @param MatroidRingCycle A
+# @param MatroidRingCycle B
+# @return MatroidRingCycle A * B
+user_function matroid_ring_product<Addition>(MatroidRingCycle<Addition>, MatroidRingCycle<Addition>) {
+   my ($A,$B) = @_;
+
+   my $base = zero_in_matroid_ring<Addition>($A->N_ELEMENTS);
+   #Exclude trivial case 
+   if($A->RANK + $B->RANK - $A->N_ELEMENTS <= 0) {
+     return $base;
+   }
+   
+   my @alist = $A->nested_matroids();
+   my @blist = $B->nested_matroids();
+   my $acoeffs = $A->NESTED_COEFFICIENTS;
+   my $bcoeffs = $B->NESTED_COEFFICIENTS;
+
+   for my $i (0 .. scalar(@alist)-1) {
+      for my $j (0 .. scalar(@blist)-1) {
+         my $inter = matroid::intersection($alist[$i], $blist[$j]);
+         if($inter->LOOPS->size() == 0) {
+            $base = $base + (new MatroidRingCycle<Addition>($inter, $acoeffs->[$i] * $bcoeffs->[$j] ));
+         }
+      }
+   }
+   return $base;
+}
+
+
+
+

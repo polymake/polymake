@@ -13,6 +13,7 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+# @category Geometry
 # An object of type VectorConfiguration deals with properties of row vectors,
 # assembled into an n x d matrix called [[VECTORS]]. 
 # The entries of these row vectors are interpreted as non-homogeneous coordinates. 
@@ -63,8 +64,8 @@ rule VECTOR_DIM : VECTOR_AMBIENT_DIM, LINEAR_SPAN {
 }
 weight 0.1;
 
-rule LINEAR_SPAN : {
-   $this->LINEAR_SPAN=new Matrix<Scalar>;
+rule LINEAR_SPAN : VECTOR_AMBIENT_DIM {
+   $this->LINEAR_SPAN=new Matrix<Scalar>(0, $this->VECTOR_AMBIENT_DIM);
 }
 precondition : FULL_DIM;
 weight 0.1;
@@ -171,9 +172,9 @@ user_function projection<Scalar>(VectorConfiguration<Scalar>; $=[ ], { revert=>0
 # Orthogonally project a vector configuration to a coordinate subspace such that redundant columns are omitted,
 # i.e., the projection becomes full-dimensional without changing the combinatorial type.
 # @param VectorConfiguration P
-# @option Bool relabel copy labels to projection
+# @option Bool no_labels Do not copy [[VERTEX_LABELS]] to the projection. default: 0
 # @return VectorConfiguration
-user_function projection_full<Scalar>(VectorConfiguration<Scalar>; {relabel=>0}) { 
+user_function projection_full<Scalar>(VectorConfiguration<Scalar>; {no_labels=>0}) { 
    projection(@_); 
 }
 

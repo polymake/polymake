@@ -16,18 +16,18 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
-#include "polymake/SparseMatrix.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1>
-   FunctionInterface4perl( toMatrix_T_X8, T0,T1 ) {
+   FunctionInterface4perl( toMatrix_T_X32, T0,T1 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturnAnch( 1, (arg0), (same_element_sparse_matrix<T0>(arg0.get<T1>())) );
+      WrapperReturn( (same_element_sparse_matrix<T0>(arg0.get<T1>())), arg0 );
    };
 
-   FunctionInstance4perl(toMatrix_T_X8, int, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
+   FunctionInstance4perl(toMatrix_T_X32, int, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

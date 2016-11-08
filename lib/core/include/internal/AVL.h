@@ -300,8 +300,8 @@ protected:
    typedef AVL::Ptr<Node> Ptr;
 
 private:
-   /// this is private since direct assignment is forbidden
-   void operator= (const tree&);
+   /// direct assignment is forbidden
+   void operator= (const tree&) = delete;
 
    /** Recursive procedure making an exact copy of the tree.
        @param n        root node of the subtree to be cloned
@@ -481,10 +481,10 @@ private:
    }
 
    template <typename Key>
-   void _assign_node(Node&, const Key&, False) {}
+   void assign_node(Node&, const Key&, std::false_type) {}
 
    template <typename Key, typename Data>
-   void _assign_node(Node& n, const pair<Key, Data>& p, True)
+   void assign_node(Node& n, const pair<Key, Data>& p, std::true_type)
    {
       Traits::data(n)=p.second;
    }
@@ -500,7 +500,7 @@ private:
       if (!n_elem) return insert_first(this->create_node(k));
       pair<Ptr,link_index> p=find_descend(k, this->key_comparator);
       if (p.second==P) {
-         _assign_node(*p.first, k, bool2type<isomorphic_to_first<key_type, Key>::value>());
+         assign_node(*p.first, k, bool_constant<isomorphic_to_first<key_type, Key>::value>());
          return p.first;
       }
       ++n_elem;
@@ -515,12 +515,12 @@ private:
       if (!n_elem) return insert_first(this->create_node(k,d));
       pair<Ptr,link_index> p=find_descend(k, this->key_comparator);
       if (p.second==P) {
-         op(Traits::data(*p.first),d);
+         op(Traits::data(*p.first), d);
          return p.first;
       }
       ++n_elem;
       Node *n=this->create_node(k,d);
-      insert_rebalance(n,p.first,p.second);
+      insert_rebalance(n, p.first, p.second);
       return n;
    }
 
@@ -554,15 +554,13 @@ public:
    {
       if (n_elem) {
          if (is_instance_of<Key, maximal>::value) {
-            if (identical<RelOp, polymake::operations::le>::value ||
-                identical<RelOp, polymake::operations::lt>::value)
+            if (is_among<RelOp, polymake::operations::le, polymake::operations::lt>::value)
                return last();
             else
                return end_node();
          }
          if (is_instance_of<Key, minimal>::value) {
-            if (identical<RelOp, polymake::operations::ge>::value ||
-                identical<RelOp, polymake::operations::gt>::value)
+            if (is_among<RelOp, polymake::operations::ge, polymake::operations::gt>::value)
                return first();
             else
                return end_node();
@@ -572,38 +570,28 @@ public:
          switch (p.second) {
          case P:
             if (Traits::allow_multiple) {
-               if (identical<RelOp, last_of_equal>::value ||
-                   identical<RelOp, polymake::operations::ge>::value ||
-                   identical<RelOp, polymake::operations::gt>::value) {
+               if (is_among<RelOp, last_of_equal, polymake::operations::ge, polymake::operations::gt>::value)
                   find_last_equal(p.first, R);
-               }
-               if (identical<RelOp, first_of_equal>::value ||
-                   identical<RelOp, polymake::operations::le>::value ||
-                   identical<RelOp, polymake::operations::lt>::value) {
+               if (is_among<RelOp, first_of_equal, polymake::operations::le, polymake::operations::lt>::value)
                   find_last_equal(p.first, L);
-               }
             }
-            if (identical<RelOp, polymake::operations::gt>::value)
+            if (std::is_same<RelOp, polymake::operations::gt>::value)
                p.first.traverse(*this,R);
-            if (identical<RelOp, polymake::operations::lt>::value)
+            if (std::is_same<RelOp, polymake::operations::lt>::value)
                p.first.traverse(*this,L);
             return p.first;
 
          case R:
-            if (identical<RelOp, polymake::operations::le>::value ||
-                identical<RelOp, polymake::operations::lt>::value)
+            if (is_among<RelOp, polymake::operations::le, polymake::operations::lt>::value)
                return p.first;
-            if (identical<RelOp, polymake::operations::ge>::value ||
-                identical<RelOp, polymake::operations::gt>::value)
+            if (is_among<RelOp, polymake::operations::ge, polymake::operations::gt>::value)
                return p.first.traverse(*this,R);
             break;
 
          case L:
-            if (identical<RelOp, polymake::operations::ge>::value ||
-                identical<RelOp, polymake::operations::gt>::value)
+            if (is_among<RelOp, polymake::operations::ge, polymake::operations::gt>::value)
                return p.first;
-            if (identical<RelOp, polymake::operations::le>::value ||
-                identical<RelOp, polymake::operations::lt>::value)
+            if (is_among<RelOp, polymake::operations::le, polymake::operations::lt>::value)
                return p.first.traverse(*this,L);
             break;
          }
@@ -615,8 +603,7 @@ public:
    Ptr find_nearest_node(const Key& k, const RelOp&, const Comparator& comparator) const
    {
       Ptr found=end_node();
-      const link_index Left= identical<RelOp, polymake::operations::ge>::value ||
-                             identical<RelOp, polymake::operations::gt>::value ? L : R,
+      const link_index Left= is_among<RelOp, polymake::operations::ge, polymake::operations::gt>::value ? L : R,
                        Right=link_index(-Left);
       link_index Down;
       if (n_elem) {
@@ -679,79 +666,79 @@ public:
    }
 
    template <typename Key>
-   iterator _insert(const Key& k, int2type<0>)
+   iterator insert_impl(const Key& k, int_constant<0>)
    {
       return iterator(this->get_it_traits(), find_insert(k));
    }
 
    template <typename Key, typename Data>
-   iterator _insert(const Key& k, const Data& data, int2type<0>)
+   iterator insert_impl(const Key& k, const Data& data, int_constant<0>)
    {
       return iterator(this->get_it_traits(), find_insert(k, data, assign_op()));
    }
 
    template <typename Key, typename Data, typename Operation>
-   iterator _insert(const Key& k, const Data& data, const Operation& op, int2type<0>)
+   iterator insert_impl(const Key& k, const Data& data, const Operation& op, int_constant<0>)
    {
       return iterator(this->get_it_traits(), find_insert(k, data, op));
    }
 
    template <typename Key, typename Data>
-   iterator _insert(const pair<Key, Data>& p, int2type<1>)
+   iterator insert_impl(const pair<Key, Data>& p, int_constant<1>)
    {
       return iterator(this->get_it_traits(), find_insert(p.first, p.second, assign_op()));
    }
 
    template <typename Key, typename Data, typename Operation>
-   iterator _insert(const pair<Key, Data>& p, const Operation& op, int2type<1>)
+   iterator insert_impl(const pair<Key, Data>& p, const Operation& op, int_constant<1>)
    {
       return iterator(this->get_it_traits(), find_insert(p.first, p.second, op));
    }
 
    template <typename Key>
-   iterator _insert(const iterator& pos, const Key& k, int2type<2>)
+   iterator insert_impl(const iterator& pos, const Key& k, int_constant<2>)
    {
       return iterator(this->get_it_traits(), insert_node_at(pos.cur, L, this->create_node(k)));
    }
 
    template <typename Key, typename Data>
-   iterator _insert(const iterator& pos, const Key& k, const Data& data, int2type<2>)
+   iterator insert_impl(const iterator& pos, const Key& k, const Data& data, int_constant<2>)
    {
       return iterator(this->get_it_traits(), insert_node_at(pos.cur, L, this->create_node(k, data)));
    }
 
    template <typename Key>
-   reverse_iterator _insert(const reverse_iterator& pos, const Key& k, int2type<2>)
+   reverse_iterator insert_impl(const reverse_iterator& pos, const Key& k, int_constant<2>)
    {
       return reverse_iterator(this->get_it_traits(), insert_node_at(pos.cur, R, this->create_node(k)));
    }
 
    template <typename Key, typename Data>
-   reverse_iterator _insert(const reverse_iterator& pos, const Key& k, const Data& data, int2type<2>)
+   reverse_iterator insert_impl(const reverse_iterator& pos, const Key& k, const Data& data, int_constant<2>)
    {
       return reverse_iterator(this->get_it_traits(), insert_node_at(pos.cur, R, this->create_node(k, data)));
    }
 
    template <typename Key>
-   iterator _insert_new(const Key& k, int2type<0>)
+   iterator insert_new_impl(const Key& k, int_constant<0>)
    {
       return iterator(this->get_it_traits(), insert_node(this->create_node(k)));
    }
 
    template <typename Key, typename Data>
-   iterator _insert_new(const Key& k, const Data& data, int2type<0>)
+   iterator insert_new_impl(const Key& k, const Data& data, int_constant<0>)
    {
       return iterator(this->get_it_traits(), insert_node(this->create_node(k, data)));
    }
 
    template <typename Key, typename Data>
-   iterator _insert_new(const pair<Key, Data>& p, int2type<1>)
+   iterator insert_new_impl(const pair<Key, Data>& p, int_constant<1>)
    {
       return iterator(this->get_it_traits(), insert_node(this->create_node(p.first, p.second)));
    }
 
    template <typename Key>
-   void _erase(const Key& k, int2type<0>)
+   void erase_impl(const Key& k, int_constant<0>)
    {
       if (empty()) return;
       pair<Ptr,link_index> p=find_descend(k, this->key_comparator);
@@ -760,17 +747,17 @@ public:
       this->destroy_node(p.first);
    }
 
-   void _erase(const iterator& pos, int2type<2>)
+   void erase_impl(const iterator& pos, int_constant<2>)
    {
       this->destroy_node(remove_node(pos.cur));
    }
 
-   void _erase(const reverse_iterator& pos, int2type<2>)
+   void erase_impl(const reverse_iterator& pos, int_constant<2>)
    {
       this->destroy_node(remove_node(pos.cur));
    }
 
-   void _erase(iterator pos, const iterator& end, int2type<2>)
+   void erase_impl(iterator pos, const iterator& end, int_constant<2>)
    {
       while (pos != end) {
          Node *n=pos.cur;  ++pos;
@@ -778,7 +765,7 @@ public:
       }
    }
 
-   void _erase(reverse_iterator pos, const reverse_iterator& end, int2type<2>)
+   void erase_impl(reverse_iterator pos, const reverse_iterator& end, int_constant<2>)
    {
       while (pos != end) {
          Node *n=pos.cur;  ++pos;
@@ -853,47 +840,47 @@ public:
 
    template <typename Arg>
    struct insert_arg_helper {
-      static const bool is_reverse_iterator=derived_from<Arg, reverse_iterator>::value;
-      static const bool is_iterator=derived_from<Arg, iterator>::value || is_reverse_iterator;
+      static const bool is_reverse_iterator=is_derived_from<Arg, reverse_iterator>::value;
+      static const bool is_iterator=is_derived_from<Arg, iterator>::value || is_reverse_iterator;
       static const bool is_pair=isomorphic_to_first<key_type, Arg>::value;
       static const int d=is_iterator*2+is_pair;
-      typedef int2type<d> discr;
-      typedef typename if_else<is_reverse_iterator, reverse_iterator, iterator>::type return_type;
+      typedef int_constant<d> discr;
+      typedef typename std::conditional<is_reverse_iterator, reverse_iterator, iterator>::type return_type;
    };
 
    template <typename First>
    typename insert_arg_helper<First>::return_type
    insert(const First& first_arg)
    {
-      return _insert(first_arg, typename insert_arg_helper<First>::discr());
+      return insert_impl(first_arg, typename insert_arg_helper<First>::discr());
    }
 
    template <typename First, typename Second>
    typename insert_arg_helper<First>::return_type
    insert(const First& first_arg, const Second& second_arg)
    {
-      return _insert(first_arg, second_arg, typename insert_arg_helper<First>::discr());
+      return insert_impl(first_arg, second_arg, typename insert_arg_helper<First>::discr());
    }
 
    template <typename First, typename Second, typename Third>
    typename insert_arg_helper<First>::return_type
    insert(const First& first_arg, const Second& second_arg, const Third& third_arg)
    {
-      return _insert(first_arg, second_arg, third_arg, typename insert_arg_helper<First>::discr());
+      return insert_impl(first_arg, second_arg, third_arg, typename insert_arg_helper<First>::discr());
    }
 
    template <typename First>
-   typename enable_if<typename insert_arg_helper<First>::return_type, Traits::allow_multiple>::type
+   typename std::enable_if<Traits::allow_multiple, typename insert_arg_helper<First>::return_type>::type
    insert_new(const First& first_arg)
    {
-      return _insert_new(first_arg, typename insert_arg_helper<First>::discr());
+      return insert_new_impl(first_arg, typename insert_arg_helper<First>::discr());
    }
 
    template <typename First, typename Second>
-   typename enable_if<typename insert_arg_helper<First>::return_type, Traits::allow_multiple>::type
+   typename std::enable_if<Traits::allow_multiple, typename insert_arg_helper<First>::return_type>::type
    insert_new(const First& first_arg, const Second& second_arg)
    {
-      return _insert_new(first_arg, second_arg, typename insert_arg_helper<First>::discr());
+      return insert_new_impl(first_arg, second_arg, typename insert_arg_helper<First>::discr());
    }
    
 
@@ -937,13 +924,13 @@ public:
    template <typename Key_or_Iterator>
    void erase(const Key_or_Iterator& k_or_it)
    {
-      _erase(k_or_it, typename insert_arg_helper<Key_or_Iterator>::discr());
+      erase_impl(k_or_it, typename insert_arg_helper<Key_or_Iterator>::discr());
    }
 
    template <typename Iterator>
    void erase(const Iterator& pos, const Iterator& last)
    {
-      _erase(pos, last, typename insert_arg_helper<Iterator>::discr());
+      erase_impl(pos, last, typename insert_arg_helper<Iterator>::discr());
    }
 
    /** Remove the node with a given address.
@@ -1082,7 +1069,7 @@ public:
 
 private:
    template <bool force>
-   void destroy_nodes(bool2type<force>)
+   void destroy_nodes(bool_constant<force>)
    {
       Ptr n=last();
       do {
@@ -1098,7 +1085,7 @@ public:
    void clear()
    {
       if (n_elem) {
-         destroy_nodes(True());
+         destroy_nodes(std::true_type());
          init();
       }
    }
@@ -1111,7 +1098,8 @@ public:
    /** Create a copy of another tree.
        The current form (list or tree) is also inherited.
    */
-   tree(const tree& t) : Traits(t)
+   tree(const tree& t)
+      : Traits(t)
    {
       if (t.tree_form()) {
          n_elem=t.n_elem;
@@ -1127,42 +1115,35 @@ public:
 
 private:
    template <typename Iterator>
-   void _fill(Iterator& src, True)
+   void fill_impl(Iterator& src, std::true_type)
    {
       for (; !src.at_end(); ++src)
          push_back(src.index(), *src);
    }
 
    template <typename Iterator>
-   void _fill(Iterator& src, False)
+   void fill_impl(Iterator& src, std::false_type)
    {
       for (; !src.at_end(); ++src)
          push_back(*src);
    }
 
    template <typename Iterator>
-   void _fill(Iterator& src)
+   void fill_impl(Iterator&& src)
    {
-      _fill(src, bool2type< check_iterator_feature<Iterator,indexed>::value &&
-                            isomorphic_types<typename iterator_traits<Iterator>::value_type,
-                                             typename Node::mapped_type>::value >());
+      fill_impl(src, bool_constant< check_iterator_feature<Iterator, indexed>::value &&
+                                    isomorphic_types<typename iterator_traits<Iterator>::value_type, typename Node::mapped_type>::value >());
    }
 public:
    template <typename Iterator>
-   tree(Iterator src, Iterator end)
+   explicit tree(Iterator&& src,
+                 typename std::enable_if<assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value, void**>::type=nullptr)
    {
       init();
-      for (; src != end; ++src)
-         push_back(*src);
+      fill_impl(ensure_private_mutable(std::forward<Iterator>(src)));
    }
 
-   template <typename Iterator>
-   explicit tree(Iterator src, typename enable_if_iterator<Iterator,end_sensitive>::type=0)
-   {
-      init(); _fill(src);
-   }
-
-   ~tree() { if (n_elem) destroy_nodes(False()); }
+   ~tree() { if (n_elem) destroy_nodes(std::false_type()); }
 
    void swap(tree& t)
    {
@@ -1171,11 +1152,11 @@ public:
       std::swap(n_elem, t.n_elem);
    }
 
-   template <bool _with_nodes>
-   friend void relocate_tree(tree* from, tree* to, bool2type<_with_nodes>)
+   template <bool with_nodes>
+   friend void relocate_tree(tree* from, tree* to, bool_constant<with_nodes>)
    {
       relocate(static_cast<Traits*>(from), static_cast<Traits*>(to));
-      if (_with_nodes && from->n_elem) {
+      if (with_nodes && from->n_elem) {
          to->n_elem=from->n_elem;
          to->link(to->first(),L)=to->link(to->last(),R)=to->end_node();
          if (to->tree_form())
@@ -1187,11 +1168,16 @@ public:
 
    friend void relocate(tree* from, tree* to)
    {
-      relocate_tree(from,to,True());
+      relocate_tree(from, to, std::true_type());
    }
 
-   template <typename Iterator>
-   void assign(Iterator src) { clear(); _fill(src); }
+   template <typename Iterator,
+             typename=typename std::enable_if<assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value>::type>
+   void assign(Iterator&& src)
+   {
+      clear();
+      fill_impl(ensure_private_mutable(std::forward<Iterator>(src)));
+   }
 
 #if POLYMAKE_DEBUG
 private:
@@ -1585,7 +1571,7 @@ struct node {
 /** Key-data pair access filter for @c node.
     Key field is referred to as @c first, data field as @c second.
 */
-template <typename NodeRef, bool _no_data=identical<typename deref<NodeRef>::type::mapped_type, nothing>::value>
+template <typename NodeRef, bool no_data=std::is_same<typename deref<NodeRef>::type::mapped_type, nothing>::value>
 struct node_accessor_impl {
    typedef NodeRef argument_type;
    typedef typename inherit_ref<typename deref<NodeRef>::type::value_type, NodeRef>::type result_type;
@@ -1633,21 +1619,21 @@ protected:
    static D& data(Node& n) { return n.key_and_data.second; }
 
    template <typename Key, typename Data>
-   Node* _create_from_pair(const pair<Key,Data>& arg, False)
+   Node* create_from_pair(const pair<Key, Data>& arg, std::false_type)
    {
       return new(node_allocator.allocate(1)) Node(arg.first, arg.second);
    }
 
    template <typename Key1, typename Key2>
-   Node* _create_from_pair(const pair<Key1,Key2>& arg, True)
+   Node* create_from_pair(const pair<Key1, Key2>& arg, std::true_type)
    {
       return new(node_allocator.allocate(1)) Node(arg, nothing());
    }
 
    template <typename Key1, typename Key2>
-   Node* create_node(const pair<Key1,Key2>& arg)
+   Node* create_node(const pair<Key1, Key2>& arg)
    {
-      return _create_from_pair(arg, bool2type<isomorphic_types<pair<Key1,Key2>, key_type>::value>());
+      return create_from_pair(arg, bool_constant<isomorphic_types<pair<Key1, Key2>, key_type>::value>());
    }
 
    template <typename Key>
@@ -1692,7 +1678,7 @@ public:
 } // end namespace AVL
 
 template <typename Traits, AVL::link_index Dir>
-struct check_iterator_feature<AVL::tree_iterator<Traits,Dir>, end_sensitive> : True {};
+struct check_iterator_feature<AVL::tree_iterator<Traits,Dir>, end_sensitive> : std::true_type {};
 
 template <typename Traits, AVL::link_index Dir>
 struct iterator_reversed< AVL::tree_iterator<Traits,Dir> > {

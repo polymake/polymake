@@ -32,13 +32,13 @@ protected:
    PermlibGroup G;
 
    void set_entry(SparseMatrix<Rational>& rep, const SetType& image, int col_index) const {
-      ++rep(index_of[G.lex_min_representative(image)], col_index);
+      ++rep(index_of.at(G.lex_min_representative(image)), col_index);
    }
 
 public:
    QuotientedInducedAction(int degree, 
                            const Array<SetType>& domain,
-                           const Map<SetType, int>& index_of, 
+                           const hash_map<SetType, int>& index_of, 
                            const Array<Array<int> >& generators)
       : InducedAction<SetType>(degree, domain, index_of)
       , G(generators)

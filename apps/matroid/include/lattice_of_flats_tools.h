@@ -24,8 +24,8 @@ namespace polymake { namespace matroid { namespace flat_lattice {
 using namespace polytope::face_lattice;
 
 /// Compute the lattice of flats (modifies compute from 'face_lattice_tools.h')
-template <typename MatrixTop, typename DiagrammFiller, bool dual>
-void compute_lattice_of_flats(const GenericIncidenceMatrix<MatrixTop>& VIF, DiagrammFiller HD, bool2type<dual> Dual, int dim_upper_bound=-1)
+template <typename TMatrix, typename DiagrammFiller, bool dual>
+void compute_lattice_of_flats(const GenericIncidenceMatrix<TMatrix>& VIF, DiagrammFiller HD, bool_constant<dual> Dual, int dim_upper_bound=-1)
 {
    std::list< Set<int> > Q;    // queue of flats, which have been seen but who's flats above have not been computed yet.
    FaceMap<> Faces;            // flates in the matroid world
@@ -47,15 +47,15 @@ void compute_lattice_of_flats(const GenericIncidenceMatrix<MatrixTop>& VIF, Diag
 										  accumulate( rows(VIF), operations::mul());
 
    if (__builtin_expect(C>0, 1)) {
-      if(!dual){
+      if (!dual) {
       // The level: rank = 0 (loops)
          n=HD.add_node(loops);
          Q.push_back(loops);
          end_this_dim=1;
          HD.increase_dim();
-      }else{
+      } else {
       // The first level: rank-1 (hyperplanes)
-         copy(entire(all_subsets_of_1(sequence(0,C))), std::back_inserter(Q));
+         copy_range(entire(all_subsets_of_1(sequence(0,C))), std::back_inserter(Q));
          n= HD.add_nodes(C, cols(VIF).begin());
          end_this_dim=n+C;
 
@@ -69,7 +69,7 @@ void compute_lattice_of_flats(const GenericIncidenceMatrix<MatrixTop>& VIF, Diag
          int old_n=n;
          for (;;) {
             Set<int> H = Q.front(); Q.pop_front();
-            for (faces_one_above_iterator<Set<int>, MatrixTop> faces(H, VIF);  !faces.at_end();  ++faces) {
+            for (faces_one_above_iterator<Set<int>, TMatrix> faces(H, VIF);  !faces.at_end();  ++faces) {
                   int &node_ref = Faces[c(faces->second, VIF)];
                   if (node_ref==-1) {
                      node_ref=HD.add_node(dual ? faces->first : faces->second);

@@ -29,13 +29,13 @@ bool to_input_feasible (perl::Object p) {
 }
 
 
-      // BOUNDED is decided by determining whether [1,0,0,0,...] is a strictly interior point of the cone C spanned by INEQUALITIES and +/-EQUATIONS
-      // to cope for the case that C is low dimensional we ask for lineality space first
-      // the primal linear program is then to determine whether 
-      // max lambda
-      // y^t (F/E/-E)=e_0
-      // y_i >= lambda
-      // has a positive maximal value
+// BOUNDED is decided by determining whether [1,0,0,0,...] is a strictly interior point of the cone C spanned by INEQUALITIES and +/-EQUATIONS
+// to cope for the case that C is low dimensional we ask for lineality space first
+// the primal linear program is then to determine whether 
+// max lambda
+// y^t (F/E/-E)=e_0
+// y_i >= lambda
+// has a positive maximal value
 template <typename Scalar>
 bool to_input_bounded  (perl::Object p) {
    const Matrix<Scalar> L = p.give("LINEALITY_SPACE");

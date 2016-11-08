@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,12 +15,12 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-use v5.10;
+use v5.16;
 
 package Polymake;
 
 # global variables needed for the bootstrap
-use vars qw($InstallTop $InstallArch $Arch $DeveloperMode);
+use vars qw($InstallTop $InstallArch $Arch $DeveloperMode $DebugLevel);
 my @addlibs;
 BEGIN {
    require Cwd;

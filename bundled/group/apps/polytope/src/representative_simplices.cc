@@ -32,22 +32,18 @@
 
 namespace polymake { namespace polytope {
 
-typedef common::boost_dynamic_bitset SetType;
-      //typedef Set<int> SetType;
-typedef Array<SetType> SimplexArray;
+typedef common::boost_dynamic_bitset BBitset;
+typedef Array<BBitset> SimplexArray;
 typedef Array<SimplexArray> RepArray;
-typedef Array<Set<int> > Orbits;
-
-
 
 template<typename Scalar>
-RepArray representative_simplices(int d, const Matrix<Scalar>& V, const Array<Array<int> >& generators)
+RepArray representative_simplices(int d, const Matrix<Scalar>& V, const Array<Array<int>>& generators)
 {
    const group::PermlibGroup sym_group(generators);
    RepArray cds(d+1);
    for (int k=0; k<=d; ++k) {
-      Set<SetType> reps;
-      for (simplex_rep_iterator<Scalar, SetType> sit(V, k, sym_group); !sit.at_end(); ++sit) {
+      Set<BBitset> reps;
+      for (simplex_rep_iterator<Scalar, BBitset> sit(V, k, sym_group); !sit.at_end(); ++sit) {
          reps += *sit; // the iterator may produce isomorphic simplices more than once
       }
       cds[k] = SimplexArray(reps);
@@ -56,20 +52,20 @@ RepArray representative_simplices(int d, const Matrix<Scalar>& V, const Array<Ar
 }
 
 template <typename Scalar>
-Array<SetType>
-representative_max_interior_simplices(int d, const Matrix<Scalar>& V, const Array<Array<int> >& generators)
+Array<BBitset>
+representative_max_interior_simplices(int d, const Matrix<Scalar>& V, const Array<Array<int>>& generators)
 {
    const group::PermlibGroup sym_group(generators);
-   Set<SetType> reps;
-   for (simplex_rep_iterator<Scalar, SetType> sit(V, d, sym_group); !sit.at_end(); ++sit) 
+   Set<BBitset> reps;
+   for (simplex_rep_iterator<Scalar, BBitset> sit(V, d, sym_group); !sit.at_end(); ++sit) 
       reps += *sit;
-   return reps;
+   return Array<BBitset>(reps);
 }
 
 
 
 template <typename Scalar>
-std::pair< Array<SetType>, Array<SetType> >
+std::pair<Array<BBitset>, Array<BBitset>>
 representative_interior_and_boundary_ridges(perl::Object p, perl::OptionSet options)
 {
    const bool is_config = p.isa("PointConfiguration");
@@ -78,25 +74,28 @@ representative_interior_and_boundary_ridges(perl::Object p, perl::OptionSet opti
       ? ((int) p.give("VECTOR_DIM"))-1
       : p.give("COMBINATORIAL_DIM");
 
-   std::string vif_property = options["vif_property"];
-   if (!vif_property.size()) vif_property = is_config
-                                ? std::string("CONVEX_HULL.VERTICES_IN_FACETS")
-                                : std::string("RAYS_IN_FACETS");
-   const IncidenceMatrix<> VIF = p.give(vif_property.c_str());
+   AnyString VIF_property = options["VIF_property"];
+   if (!VIF_property)
+      VIF_property = is_config
+                     ? Str("CONVEX_HULL.VERTICES_IN_FACETS")
+                     : Str("RAYS_IN_FACETS");
+   const IncidenceMatrix<> VIF = p.give(VIF_property);
 
    const Matrix<Scalar> V = is_config
       ? p.give("CONVEX_HULL.VERTICES")
       : p.give("RAYS");
 
-   const Array<Array<int> > generators = p.give("GROUP.GENERATORS");
+   const Array<Array<int>> generators = p.give("GROUP.RAYS_ACTION.GENERATORS");
    const group::PermlibGroup sym_group(generators);
 
-   Set<SetType> interior_ridges, boundary_ridges;
+   Set<BBitset> interior_ridges, boundary_ridges;
    // the iterator may produce isomorphic simplices more than once
-   for (simplex_rep_iterator<Scalar, SetType> sit(V, d-1, sym_group); !sit.at_end(); ++sit) 
-      if (is_in_boundary(*sit, VIF)) boundary_ridges += *sit;
-      else interior_ridges += *sit;
-   return std::make_pair<Array<SetType>, Array<SetType> >(interior_ridges, boundary_ridges);
+   for (simplex_rep_iterator<Scalar, BBitset> sit(V, d-1, sym_group); !sit.at_end(); ++sit) 
+      if (is_in_boundary(*sit, VIF)) 
+         boundary_ridges += *sit;
+      else 
+         interior_ridges += *sit;
+   return { Array<BBitset>(interior_ridges), Array<BBitset>(boundary_ridges) };
 }
 
 
@@ -104,7 +103,7 @@ FunctionTemplate4perl("representative_simplices<Scalar>($ Matrix<Scalar> Array<A
 
 FunctionTemplate4perl("representative_max_interior_simplices<Scalar>($ Matrix<Scalar> Array<Array<Int>>)");
 
-FunctionTemplate4perl("representative_interior_and_boundary_ridges<Scalar>(Polytope<Scalar> { vif_property => '' } )");
+FunctionTemplate4perl("representative_interior_and_boundary_ridges<Scalar>(Polytope<Scalar> { VIF_property=>undef } )");
 
 FunctionTemplate4perl("representative_max_interior_simplices<Scalar>(Polytope<Scalar>)");
 

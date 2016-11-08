@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -51,15 +51,13 @@ struct persistent_set<Set, Comparator, is_set> {
     On the other hand, naked Series don't need any set-theoretical stuff defined there.
  */
 
-template <typename SetTop, typename E=typename SetTop::element_type, typename Comparator=typename SetTop::element_comparator>
-class GenericSet : public Generic<SetTop>, public operators::base {
+template <typename TSet, typename E=typename TSet::element_type, typename Comparator=typename TSet::element_comparator>
+class GenericSet
+   : public Generic<TSet>
+   , public operators::base {
 protected:
    GenericSet() {}
    GenericSet(const GenericSet&) {}
-#if POLYMAKE_DEBUG
-   ~GenericSet();
-   void dump() const;
-#endif
 
 public:
    /// element types
@@ -70,7 +68,7 @@ public:
    /// @ref generic "generic type"
    typedef GenericSet generic_type;
    /// @ref generic "top type"
-   typedef typename Generic<SetTop>::top_type top_type;
+   typedef typename Generic<TSet>::top_type top_type;
 
    template <typename Result>
    struct rebind_generic {
@@ -82,6 +80,10 @@ public:
       typedef binary_op_builder<Comparator, const E1*, const E2*> builder;
       typedef typename builder::operation type;
    };
+
+#if POLYMAKE_DEBUG
+   void dump() const __attribute__((used));
+#endif
 };
 
 template <typename Set, typename E, typename Comparator>
@@ -97,22 +99,23 @@ struct spec_object_traits< GenericSet<Set,E,Comparator> >
 
 template <typename E, bool _step_equal_1> class Series;
 
-template <typename E, bool _forward>
+template <typename E, bool is_forward>
 class sequence_iterator {
    template <typename,bool> friend class sequence_iterator;
 public:
    typedef random_access_iterator_tag iterator_category;
    typedef E value_type;
-   typedef typename if_else<is_pointer<E>::value, typename deref_ptr<E>::minus_const, E>::type mutable_value_type;
-   typedef typename if_else<is_pointer<E>::value, typename deref_ptr<E>::plus_const, E>::type const_value_type;
+   // TODO: check whether these classes are used with pointers at all; if not, remove the precautions here
+   typedef typename std::conditional<std::is_pointer<E>::value, typename deref_ptr<E>::minus_const, E>::type mutable_value_type;
+   typedef typename std::conditional<std::is_pointer<E>::value, typename deref_ptr<E>::plus_const, E>::type const_value_type;
    typedef const E* pointer;
    typedef E reference;
    typedef ptrdiff_t difference_type;
-   typedef sequence_iterator<mutable_value_type, _forward> iterator;
-   typedef sequence_iterator<const_value_type, _forward> const_iterator;
-   typedef typename if_else<is_pointer<E>::value,
-                            const typename if_else<deref_ptr<E>::is_const, iterator, const_iterator>::type,
-                            type2type<sequence_iterator> >::type
+   typedef sequence_iterator<mutable_value_type, is_forward> iterator;
+   typedef sequence_iterator<const_value_type, is_forward> const_iterator;
+   typedef typename std::conditional<std::is_pointer<E>::value,
+                                     const typename std::conditional<deref_ptr<E>::is_const, iterator, const_iterator>::type,
+                                     type2type<sequence_iterator> >::type
       cmp_iterator;
 protected:
    E cur;
@@ -126,49 +129,49 @@ public:
    reference operator* () const { return cur; }
    pointer operator-> () const { return &cur; }
 
-   reference operator[] (int i) const { return _forward ? cur+i : cur-i; }
+   reference operator[] (int i) const { return is_forward ? cur+i : cur-i; }
 
-   sequence_iterator& operator++ () { _forward ? ++cur : --cur; return *this; }
-   sequence_iterator& operator-- () { _forward ? --cur : ++cur; return *this; }
+   sequence_iterator& operator++ () { is_forward ? ++cur : --cur; return *this; }
+   sequence_iterator& operator-- () { is_forward ? --cur : ++cur; return *this; }
    const sequence_iterator operator++ (int) { sequence_iterator copy=*this; operator++(); return copy; }
    const sequence_iterator operator-- (int) { sequence_iterator copy=*this; operator--(); return copy; }
-   sequence_iterator& operator+= (int i) { _forward ? (cur+=i) : (cur-=i); return *this; }
-   sequence_iterator& operator-= (int i) { _forward ? (cur-=i) : (cur+=i); return *this; }
-   const sequence_iterator operator+ (int i) const { return _forward ? cur+i : cur-i; }
-   const sequence_iterator operator- (int i) const { return _forward ? cur-i : cur+i; }
-   friend const sequence_iterator operator+ (int i, const sequence_iterator& it) { return it+i; }
+   sequence_iterator& operator+= (int i) { is_forward ? (cur+=i) : (cur-=i); return *this; }
+   sequence_iterator& operator-= (int i) { is_forward ? (cur-=i) : (cur+=i); return *this; }
+   sequence_iterator operator+ (int i) const { return is_forward ? cur+i : cur-i; }
+   sequence_iterator operator- (int i) const { return is_forward ? cur-i : cur+i; }
+   friend sequence_iterator operator+ (int i, const sequence_iterator& it) { return it+i; }
 
-   template <bool _forward2>
-   bool operator== (const sequence_iterator<E,_forward2>& it) const { return cur==it.cur; }
-   template <bool _forward2>
-   bool operator!= (const sequence_iterator<E,_forward2>& it) const { return cur!=it.cur; }
+   template <bool is_forward2>
+   bool operator== (const sequence_iterator<E, is_forward2>& it) const { return cur==it.cur; }
+   template <bool is_forward2>
+   bool operator!= (const sequence_iterator<E, is_forward2>& it) const { return cur!=it.cur; }
    bool operator== (cmp_iterator& it) const { return cur==it.cur; }
    bool operator!= (cmp_iterator& it) const { return cur!=it.cur; }
-   difference_type operator- (const sequence_iterator& it) const { return _forward ? cur-it.cur : it.cur-cur; }
-   difference_type operator- (cmp_iterator& it) const { return _forward ? cur-it.cur : it.cur-cur; }
-   bool operator< (const sequence_iterator& it) const { return _forward ? cur<it.cur : it.cur<cur; }
+   difference_type operator- (const sequence_iterator& it) const { return is_forward ? cur-it.cur : it.cur-cur; }
+   difference_type operator- (cmp_iterator& it) const { return is_forward ? cur-it.cur : it.cur-cur; }
+   bool operator< (const sequence_iterator& it) const { return is_forward ? cur<it.cur : it.cur<cur; }
    bool operator> (const sequence_iterator& it) const { return it < *this; }
    bool operator<= (const sequence_iterator& it) const { return !(it < *this); }
    bool operator>= (const sequence_iterator& it) const { return !(*this < it); }
-   bool operator< (cmp_iterator& it) const { return _forward ? cur<it.cur : it.cur<cur; }
+   bool operator< (cmp_iterator& it) const { return is_forward ? cur<it.cur : it.cur<cur; }
    bool operator> (cmp_iterator& it) const { return it < *this; }
    bool operator<= (cmp_iterator& it) const { return !(it < *this); }
    bool operator>= (cmp_iterator& it) const { return !(*this < it); }
 };
 
-template <typename E, bool _forward>
-class series_iterator : public sequence_iterator<E,_forward> {
-   typedef sequence_iterator<E,_forward> super;
-   template <typename,bool> friend class series_iterator;
+template <typename E, bool is_forward>
+class series_iterator : public sequence_iterator<E, is_forward> {
+   typedef sequence_iterator<E, is_forward> super;
+   template <typename, bool> friend class series_iterator;
 protected:
-   typedef typename if_else<is_pointer<E>::value, ptrdiff_t, E>::type step_type;
+   typedef typename std::conditional<std::is_pointer<E>::value, ptrdiff_t, E>::type step_type;
    step_type _step;
 public:
-   typedef series_iterator<typename super::mutable_value_type, _forward> iterator;
-   typedef series_iterator<typename super::const_value_type, _forward> const_iterator;
-   typedef typename if_else<is_pointer<E>::value,
-                            const typename if_else<deref_ptr<E>::is_const, iterator, const_iterator>::type,
-                            type2type<series_iterator> >::type
+   typedef series_iterator<typename super::mutable_value_type, is_forward> iterator;
+   typedef series_iterator<typename super::const_value_type, is_forward> const_iterator;
+   typedef typename std::conditional<std::is_pointer<E>::value,
+                                     const typename std::conditional<deref_ptr<E>::is_const, iterator, const_iterator>::type,
+                                     type2type<series_iterator> >::type
       cmp_iterator;
 
    series_iterator() {}
@@ -178,40 +181,40 @@ public:
 
    series_iterator& operator= (const iterator& it) { super::operator=(it); _step=it._step; return *this; }
 
-   typename super::reference operator[] (int i) const { return _forward ? this->cur+i*_step : this->cur-i*_step; }
+   typename super::reference operator[] (int i) const { return is_forward ? this->cur+i*_step : this->cur-i*_step; }
 
    step_type step() const { return _step; }
 
-   series_iterator& operator++ () { _forward ? (this->cur+=_step) : (this->cur-=_step); return *this; }
-   series_iterator& operator-- () { _forward ? (this->cur-=_step) : (this->cur+=_step); return *this; }
+   series_iterator& operator++ () { is_forward ? (this->cur+=_step) : (this->cur-=_step); return *this; }
+   series_iterator& operator-- () { is_forward ? (this->cur-=_step) : (this->cur+=_step); return *this; }
    const series_iterator operator++ (int) { series_iterator copy=*this; operator++(); return copy; }
    const series_iterator operator-- (int) { series_iterator copy=*this; operator--(); return copy; }
-   series_iterator& operator+= (int i) { _forward ? (this->cur+=i*_step) : (this->cur-=i*_step); return *this; }
-   series_iterator& operator-= (int i) { _forward ? (this->cur-=i*_step) : (this->cur+=i*_step); return *this; }
-   const series_iterator operator+ (int i) const { return series_iterator(_forward ? this->cur+i*_step : this->cur-i*_step, _step); }
-   const series_iterator operator- (int i) const { return series_iterator(_forward ? this->cur-i*_step : this->cur+i*_step, _step); }
-   friend const series_iterator operator+ (int i, const series_iterator& it) { return it+i; }
-   ptrdiff_t operator- (const super& it) const { return (_forward ? this->cur-*it : *it-this->cur)/_step; }
-   bool operator< (const series_iterator& it) const { return _forward ^ (_step<0) ? this->cur<it.cur : it.cur<this->cur; }
+   series_iterator& operator+= (int i) { is_forward ? (this->cur+=i*_step) : (this->cur-=i*_step); return *this; }
+   series_iterator& operator-= (int i) { is_forward ? (this->cur-=i*_step) : (this->cur+=i*_step); return *this; }
+   series_iterator operator+ (int i) const { return series_iterator(is_forward ? this->cur+i*_step : this->cur-i*_step, _step); }
+   series_iterator operator- (int i) const { return series_iterator(is_forward ? this->cur-i*_step : this->cur+i*_step, _step); }
+   friend series_iterator operator+ (int i, const series_iterator& it) { return it+i; }
+   ptrdiff_t operator- (const super& it) const { return (is_forward ? this->cur-*it : *it-this->cur)/_step; }
+   bool operator< (const series_iterator& it) const { return is_forward ^ (_step<0) ? this->cur<it.cur : it.cur<this->cur; }
    bool operator> (const series_iterator& it) const { return it < *this; }
    bool operator<= (const series_iterator& it) const { return !(it < *this); }
    bool operator>= (const series_iterator& it) const { return !(*this < it); }
-   bool operator< (cmp_iterator& it) const { return _forward ^ (_step<0) ? this->cur<it.cur : it.cur<this->cur; }
+   bool operator< (cmp_iterator& it) const { return is_forward ^ (_step<0) ? this->cur<it.cur : it.cur<this->cur; }
    bool operator> (cmp_iterator& it) const { return it < *this; }
    bool operator<= (cmp_iterator& it) const { return !(it < *this); }
    bool operator>= (cmp_iterator& it) const { return !(*this < it); }
 };
 
-template <typename E, bool _forward>
-struct accompanying_iterator< series_iterator<E,_forward> > {
-   typedef sequence_iterator<E,_forward> type;
+template <typename E, bool is_forward>
+struct accompanying_iterator< series_iterator<E, is_forward> > {
+   typedef sequence_iterator<E, is_forward> type;
 
-   static void assign(series_iterator<E,_forward>& it, const type& other)
+   static void assign(series_iterator<E, is_forward>& it, const type& other)
    {
       static_cast<type&>(it)=other;
    }
 
-   static void advance(sequence_iterator<E,_forward>& it, const series_iterator<E,_forward>& other, int n)
+   static void advance(sequence_iterator<E, is_forward>& it, const series_iterator<E, is_forward>& other, int n)
    {
       it+=n*other.step();
    }
@@ -229,7 +232,7 @@ public:
 };
 
 template <typename E>
-struct check_iterator_feature<count_down_iterator<E>, end_sensitive> : True {};
+struct check_iterator_feature<count_down_iterator<E>, end_sensitive> : std::true_type {};
 
 template <typename E>
 class Series<E,true> : public GenericSet<Series<E,true>, E, operations::cmp> {
@@ -241,7 +244,7 @@ public:
    typedef E value_type;
    typedef E reference;
    typedef E const_reference;
-   typedef typename if_else<is_pointer<E>::value, ptrdiff_t, E>::type step_type;
+   typedef typename std::conditional<std::is_pointer<E>::value, ptrdiff_t, E>::type step_type;
 
    Series() : _start(0), _size(0) {}
 
@@ -298,7 +301,7 @@ public:
    typedef E value_type;
    typedef E reference;
    typedef E const_reference;
-   typedef typename if_else<is_pointer<E>::value, ptrdiff_t, E>::type step_type;
+   typedef typename std::conditional<std::is_pointer<E>::value, ptrdiff_t, E>::type step_type;
    static const bool step_equal_1=false;
 protected:
    E _start;
@@ -346,9 +349,6 @@ public:
       return k>=_start && k<_start+_size*_step && !((k-_start)%_step);
    }
 };
-
-template <typename E, bool _step_equal_1>
-struct is_pod< Series<E,_step_equal_1> > : is_pod<E> {};
 
 template <typename E, bool _step_equal_1>
 struct spec_object_traits< Series<E,_step_equal_1> > : spec_object_traits<is_container> {
@@ -412,116 +412,111 @@ template <typename E>
 struct spec_object_traits< CountDown<E> >
    : spec_object_traits<is_container> {};
 
-template <typename Iterator, bool _reverse=false>
+template <typename Iterator, bool is_reverse=false>
 class indexed_random_iterator
-   : public iterator_traits<Iterator>::derivable_type {
+   : public Iterator {
 protected:
-   typedef typename iterator_traits<Iterator>::derivable_type super;
-   typename accompanying_iterator<Iterator>::type _begin;
+   typedef Iterator base_t;
+   typename accompanying_iterator<Iterator>::type begin;
 
-   template <typename,bool> friend class indexed_random_iterator;
+   template <typename, bool> friend class indexed_random_iterator;
 public:
-   typedef indexed_random_iterator<typename iterator_traits<Iterator>::iterator, _reverse>
+   typedef indexed_random_iterator<typename iterator_traits<Iterator>::iterator, is_reverse>
       iterator;
-   typedef indexed_random_iterator<typename iterator_traits<Iterator>::const_iterator, _reverse>
+   typedef indexed_random_iterator<typename iterator_traits<Iterator>::const_iterator, is_reverse>
       const_iterator;
 
    indexed_random_iterator() {}
 
-   indexed_random_iterator(const Iterator& cur_arg)
-      : super(cur_arg), _begin(cur_arg) {}
-   indexed_random_iterator(const Iterator& cur_arg, const Iterator& begin_arg)
-      : super(cur_arg), _begin(begin_arg) {}
+   template <typename SourceIterator, typename enable=typename std::enable_if<is_const_compatible_with<SourceIterator, Iterator>::value>::type>
+   indexed_random_iterator(const SourceIterator& cur_arg)
+      : base_t(cur_arg)
+      , begin(cur_arg) {}
 
-   indexed_random_iterator(typename alt_constructor<Iterator>::arg_type& cur_arg)
-      : super(cur_arg), _begin(cur_arg) {}
-   indexed_random_iterator(typename alt_constructor<Iterator>::arg_type& cur_arg,
-                           typename alt_constructor<Iterator>::arg_type& begin_arg)
-      : super(cur_arg), _begin(begin_arg) {}
+   template <typename SourceIterator1, typename SourceIterator2,
+             typename enable=typename std::enable_if<is_const_compatible_with<SourceIterator1, Iterator>::value &&
+                                                     is_const_compatible_with<SourceIterator2, Iterator>::value>::type>
+   indexed_random_iterator(const SourceIterator1& cur_arg, const SourceIterator2& begin_arg)
+      : base_t(cur_arg)
+      , begin(begin_arg) {}
 
    indexed_random_iterator(const iterator& it)
-      : super(static_cast<const typename iterator::super&>(it)), _begin(it._begin) {}
+      : base_t(static_cast<const typename iterator::base_t&>(it))
+      , begin(it.begin) {}
 
    indexed_random_iterator& operator= (const iterator& it)
    {
-      static_cast<super&>(*this)=it;
-      _begin=it._begin;
+      static_cast<base_t&>(*this)=it;
+      begin=it.begin;
       return *this;
    }
 
-   indexed_random_iterator& operator= (const Iterator& cur)
+   template <typename SourceIterator, typename enable=typename std::enable_if<is_const_compatible_with<SourceIterator, Iterator>::value>::type>
+   indexed_random_iterator& operator= (const SourceIterator& cur)
    {
-      static_cast<super&>(*this)=cur;
-      return *this;
-   }
-   indexed_random_iterator& operator= (typename alt_constructor<Iterator>::arg_type& cur)
-   {
-      static_cast<super&>(*this)=cur;
+      static_cast<base_t&>(*this)=cur;
       return *this;
    }
 
-   const indexed_random_iterator operator+ (int i) const
+   indexed_random_iterator operator+ (int i) const
    {
-      return static_cast<const super&>(*this)+i;
+      return static_cast<const base_t&>(*this)+i;
    }
-   const indexed_random_iterator operator- (int i) const
+   indexed_random_iterator operator- (int i) const
    {
-      return static_cast<const super&>(*this)-i;
+      return static_cast<const base_t&>(*this)-i;
    }
-   friend const indexed_random_iterator operator+ (int i, const indexed_random_iterator& me)
+   friend indexed_random_iterator operator+ (int i, const indexed_random_iterator& me)
    {
       return me+i;
    }
 
-   typename super::difference_type operator- (const iterator& it) const
+   template <typename Other>
+   typename std::enable_if<is_among<Other, iterator, const_iterator>::value, typename base_t::difference_type>::type
+   operator- (const Other& it) const
    {
-      return static_cast<const super&>(*this)-it;
-   }
-   typename super::difference_type
-   operator- (typename assign_const<const_iterator, !identical<iterator,const_iterator>::value>::type& it)
-   {
-      return static_cast<const super&>(*this)-it;
+      return static_cast<const base_t&>(*this)-it;
    }
 
    int index() const
    {
-      return _reverse ? _begin-static_cast<const super&>(*this)-1 : static_cast<const super&>(*this)-_begin;
+      return is_reverse ? begin-static_cast<const base_t&>(*this)-1 : static_cast<const base_t&>(*this)-begin;
    }
 
 private:
-   void contract1(int distance_front, int, False)
+   void contract1_impl(int distance_front, int, std::false_type)
    {
-      static_cast<super&>(*this)+=distance_front;
+      static_cast<base_t&>(*this)+=distance_front;
    }
-   void contract1(int distance_front, int distance_back, True)
+   void contract1_impl(int distance_front, int distance_back, std::true_type)
    {
-      super::contract(false, distance_front, distance_back);
+      base_t::contract(false, distance_front, distance_back);
    }
 public:
    void contract(bool renumber, int distance_front, int distance_back=0)
    {
-      contract1(distance_front, distance_back, bool2type<check_iterator_feature<super, contractable>::value>());
+      contract1_impl(distance_front, distance_back, bool_constant<check_iterator_feature<base_t, contractable>::value>());
       if (renumber)
-         accompanying_iterator<Iterator>::advance(_begin, static_cast<const super&>(*this), _reverse ? distance_back : distance_front);
+         accompanying_iterator<Iterator>::advance(begin, static_cast<const base_t&>(*this), is_reverse ? distance_back : distance_front);
    }
 };
 
-template <typename Iterator, bool _reverse, typename Feature>
-struct check_iterator_feature<indexed_random_iterator<Iterator,_reverse>, Feature>
+template <typename Iterator, bool is_reverse, typename Feature>
+struct check_iterator_feature<indexed_random_iterator<Iterator, is_reverse>, Feature>
    : check_iterator_feature<Iterator,Feature> {};
 
-template <typename Iterator, bool _reverse>
-struct check_iterator_feature<indexed_random_iterator<Iterator,_reverse>, indexed> : True {};
+template <typename Iterator, bool is_reverse>
+struct check_iterator_feature<indexed_random_iterator<Iterator, is_reverse>, indexed> : std::true_type {};
 
-template <typename Iterator, bool _reverse>
-struct check_iterator_feature<indexed_random_iterator<Iterator,_reverse>, contractable> : True {};
+template <typename Iterator, bool is_reverse>
+struct check_iterator_feature<indexed_random_iterator<Iterator, is_reverse>, contractable> : std::true_type {};
 
-template <typename Iterator, bool _reverse>
-struct accompanying_iterator< indexed_random_iterator<Iterator,_reverse> >
+template <typename Iterator, bool is_reverse>
+struct accompanying_iterator< indexed_random_iterator<Iterator, is_reverse> >
    : accompanying_iterator<Iterator> {};
 
-template <> struct feature_allow_order<rewindable,indexed> : False {};
-template <> struct feature_allow_order<end_sensitive,indexed> : False {};
+template <> struct feature_allow_order<rewindable, indexed> : std::false_type {};
+template <> struct feature_allow_order<end_sensitive, indexed> : std::false_type {};
 
 template <typename Subset, typename Source,
           typename source_generic=typename object_traits<Source>::generic_type>
@@ -552,6 +547,14 @@ namespace polymake {
    using pm::series;
    using pm::sequence;
    using pm::range;
+}
+
+namespace std {
+
+// TODO: remove this when `alias' starts using perfect forwarding for construction of contained objects
+template <typename E, bool step_equal_1>
+struct is_pod< pm::Series<E, step_equal_1> > : is_pod<E> {};
+
 }
 
 #endif // POLYMAKE_SERIES_H

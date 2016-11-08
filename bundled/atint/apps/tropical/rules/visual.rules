@@ -22,7 +22,10 @@
 ########################################################################
 
 package Visual::Cycle;
-
+use Polymake::Struct (
+	[ '@ISA' => 'Container' ],
+	[ '$Cycle' => '#%'],
+);
 
 options %Visual::Cycle::BoundingDecorations=(
 	%Visual::Polygons::decorations,
@@ -31,8 +34,11 @@ options %Visual::Cycle::BoundingDecorations=(
 	# chooses the chart
 	Chart => 0,
 
-	# String if set to "hidden", the labels indicating the weights are hidden
-	WeightLabels => enum("hidden"),
+	# String if set to "show", the labels indicating the weights are shown
+	WeightLabels => enum("show"),
+
+   # String if set to "show", the lattice lengths of the edges of a one-dimensional cycle are displayed.
+   LengthLabels => enum("show"),
 
 	# String If set to "show", the labels indicating the vertex coordinates are displayed, otherwise they are not. Note that this is expensive and significantly increases computation time.
 	CoordLabels => enum("show"),
@@ -46,7 +52,7 @@ options %Visual::Cycle::BoundingDecorations=(
 	# String If set to "relative", the function determines the smallest possible box containing all affine points of the complex and then enlarges the box by BoundingDistance to all sides. If set to "absolute", BoundingBox must be specified and the complex will be intersected with that box. "cube" does a similar thing as relative, except that the resulting bounding box is always a cube. By default this is set to "cube".
 	BoundingMode => enum("cube","relative","absolute"),
 
-	# Array<String> A list of strings to be displayed as labels for the maximal cones. If this is empty, the weight labels (if present and not suppressed by WeightLabels=>"hidden") are displayed
+	# Array<String> A list of strings to be displayed as labels for the maximal cones. If this is not empty, weight and length labels are suppressed regardless of other options.
 	ConeLabels => undef,
 );
 
@@ -60,30 +66,42 @@ object Cycle {
 	# @option Int Chart Which affine chart to visualize, i.e. which coordinate to shift to 0. This is 0 by default.
 	# @option String WeightLabels If "hidden", no weight labels are displayed. Not hidden by default.
 	# @option String CoordLabels If "show", coordinate labels are displayed at vertices. Hidden by default.
-	# @option String BoundingMode Can be "relative" (intersects with the bounding box returned by the method  boundingBox(BoundingDistance)) or "absolute" (intersects with the given BoundingBox). "relative" by default.
+	# @option String BoundingMode Can be "relative" (intersects with the bounding box returned by the method  boundingBox(BoundingDistance)) or "absolute" (intersects with the given BoundingBox) or "cube" (essentially the same as "relative", but the bounding box is always a cube). "cube" by default.
 	# @option Rational BoundingDistance The distance parameter for relative bounding mode
 	# @option Matrix<Rational> BoundingBox The bounding parameter for absolute bounding mode
-	user_method BB_VISUAL(%Visual::Cycle::BoundingDecorations, {CutOff => $Visual::Color::cutoff}) {
+	user_method VISUAL(%Visual::Cycle::BoundingDecorations, {CutOff => $Visual::Color::cutoff}) {
 		my ($this,$decor,$cutoff_decor)=@_;
 
 		if(is_empty($this)) {
 			die "Cannot draw zero cycle";
 		}
-		#Take care of self-defined decor options and delete them
+		#Take care of custom decor options and delete them
 		my $chart = $$decor{"Chart"};
 		delete($$decor{"Chart"});
 
-		my $showWeights = 1;
+		my $showWeights = 0;
 		if(defined($$decor{"WeightLabels"})) {
-			if($$decor{"WeightLabels"} eq "hidden") {
-				$showWeights = 0;
+			if($$decor{"WeightLabels"} eq "show") {
+				$showWeights = 1;
 			}
 		}
 		if(!defined($this->lookup("WEIGHTS"))) {
 			$showWeights = 0;
 		}
 		delete($$decor{"WeightLabels"});
-		my $showCoordinates = 0;
+      
+      my $showLengths = 0;
+      if(defined($$decor{"LengthLabels"})) {
+         if($$decor{"LengthLabels"} eq "show") {
+            if($this->PROJECTIVE_DIM != 1) {
+               die("Can only display edge lengths for onedimensional cycles");
+            }
+            $showLengths = 1;
+         }
+      }
+		delete($$decor{"LengthLabels"});
+     
+      my $showCoordinates = 0;
 		if(defined($$decor{"CoordLabels"})) {
 			if($$decor{"CoordLabels"} eq "show") {
 				$showCoordinates = 1;
@@ -93,7 +111,8 @@ object Cycle {
 		if($showCoordinates == 0) {
 			$$decor{"VertexLabels"} = "hidden";
 		}
-		my $isRelative = 0;
+		
+      my $isRelative = 0;
 		my $isCube = 1;
 		if(defined($$decor{"BoundingMode"})) {
 			if($$decor{"BoundingMode"} eq "absolute") {
@@ -105,17 +124,20 @@ object Cycle {
 			}
 		}
 		delete($$decor{"BoundingMode"});
-		my $boundingDistance = new Rational(1);
+		
+      my $boundingDistance = new Rational(1);
 		if(defined($$decor{"BoundingDistance"})) {
 			$boundingDistance = $$decor{"BoundingDistance"};
 		}
 		delete($$decor{"BoundingDistance"});
-		my $boundingBox = new Matrix<Rational>();
+		
+      my $boundingBox = new Matrix<Rational>();
 		if(defined($$decor{"BoundingBox"})) {
 			$boundingBox = $$decor{"BoundingBox"};
 		}
 		delete($$decor{"BoundingBox"}); 
-		my $haveConeLabels = 0;
+		
+      my $haveConeLabels = 0;
 		my $clabels = new Array<String>();
 		if(defined($$decor{"ConeLabels"})) {
 			$haveConeLabels = 1;
@@ -124,12 +146,14 @@ object Cycle {
 		}
 		delete($$decor{"ConeLabels"});
 
+      if($clabels->size() == 0) {
+         $clabels = produce_labels( $showWeights?  $this->WEIGHTS : (new Vector<Integer>()),
+                                    $showLengths? $this->CURVE_EDGE_LENGTHS : (new Array<Rational>()),
+                                    $showWeights, $showLengths);    
+      }
 	
 		#Set some default values
 		my $dim = $this->PROJECTIVE_DIM;
-		#if(!defined($$decor{"FacetTransparency"}) && $dim >= 2) {
-		#		$$decor{"FacetTransparency"} = 0.7;
-		#}
 		if(!defined($$decor{"PointThickness"})) {
 			$$decor{"PointThickness"} = 0.1;
 		}
@@ -142,15 +166,13 @@ object Cycle {
 		}	
 		
 		#Make sure that the bounding box has the right dimension, otherwise, we get a segfault
-		if(!$isRelative) {
+		if(not $isRelative and not $isCube) {
 			my $m = new Matrix<Rational>($boundingBox);
 			if($m->rows() < 2 || $m->cols() < $this->PROJECTIVE_AMBIENT_DIM) {
 				die "Bounding box has invalid dimension\n";
 			}
 		}
-		my @result = computeBoundedVisual($this->affine_chart($chart),
-			$showWeights? $this->WEIGHTS : (new Vector<Integer>()),
-			(new Matrix<Rational>($boundingBox)),$clabels);
+		my @result = computeBoundedVisual($this->affine_chart($chart),(new Matrix<Rational>($boundingBox)),$clabels);
 		my @cells_visual;
 		my $weightCenters = pop(@result);
 
@@ -171,11 +193,37 @@ object Cycle {
 
 			push @cells_visual, ($cell->VISUAL( $decor ));
 		}
-		if($showWeights != 0 || $haveConeLabels != 0) {
-			push @cells_visual, $weightCenters->VISUAL_POINTS(PointColor=>'black', PointThickness=>0.2);
+		if($showWeights != 0 || $showLengths != 0 || $haveConeLabels != 0) {
+			push @cells_visual, $weightCenters->VISUAL_POINTS(PointThickness=>0);
 		}
 		visualize(new Visual::Cycle(Name =>$this->name,
 				Cycle=> $this,
 				@cells_visual));
 	}
+
+   # @category Visualization
+   # Same as [[VISUAL]]. Kept for backwards compatibility.
+   user_method BB_VISUAL(%Visual::Cycle::BoundingDecorations, {CutOff => $Visual::Color::cutoff}) { 
+      warn "BB_VISUAL is considered deprecated. Please use VISUAL instead\n";
+      my ($this,@args)=@_;
+      $this->VISUAL(@args);
+   }
+
+   sub produce_labels {
+      my ($wlabels, $llabels, $showWeights, $showLengths) = @_;
+      my $total = max($wlabels->dim(), $llabels->size());
+      my @clabels = ();
+      for my $i (0 .. $total-1) {
+         my $str = "# $i: ";
+         if($showWeights) {
+            $str = $str."weight ".$wlabels->[$i];
+         }
+         if($showLengths) {
+            if($showWeights) { $str = $str." / ";}
+            $str = $str."length ".$llabels->[$i]
+         }
+         push @clabels, $str;
+      }
+      return new Array<String>(\@clabels);
+   }
 }#END object Cycle

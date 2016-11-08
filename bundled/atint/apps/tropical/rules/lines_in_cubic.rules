@@ -56,22 +56,50 @@ object LinesInCubic {
 	# @category Lists of lines
 	# A list of all families of lines without a bounded edge at a fixed vertex
 	property LIST_FAMILY_FIXED_VERTEX : Cycle<Addition> : multiple {
+      
+      # @category Lists of lines
+      # Returns a representative of the family.
+      user_method representative() {
+         return rep_family_fixed_vertex(shift);
+      }
+
 	}
 
 	# @category Lists of lines
 	# A list of all families of lines without a bounded  edge and a moving vertex.
 	property LIST_FAMILY_MOVING_VERTEX : Cycle<Addition> : multiple {
-	}
+	      
+      # @category Lists of lines
+      # Returns a representative of the family.
+      user_method representative() {
+         return rep_family_moving_vertex(shift);
+      }
+
+   }
 
 	# @category Lists of lines
 	# A list of all families of lines with (part of) the bounded edge fixed
 	property LIST_FAMILY_FIXED_EDGE : Cycle<Addition> : multiple {
-	}
+		      
+      # @category Lists of lines
+      # Returns a representative of the family.
+      user_method representative() {
+         return rep_family_fixed_edge(shift);
+      }
+
+   }
 
 	# @category Lists of lines
 	# A list of all families of lines with the bounded edge moving in transversal direction
 	property LIST_FAMILY_MOVING_EDGE : Cycle<Addition> : multiple {
-	}
+			      
+      # @category Lists of lines
+      # Returns a representative of the family.
+      user_method representative() {
+         return rep_family_moving_edge(shift);
+      }
+
+   }
 
 	# @category Counts of lines
 	# The total number of elements in [[LIST_ISOLATED_EDGE]] and [[LIST_ISOLATED_NO_EDGE]]
@@ -294,9 +322,9 @@ user_function visualize_in_surface<Addition>(Cycle<Addition>;@) {
 
 	my @vis = ();
 	if($X->PROJECTIVE_DIM == 2) {
-		@vis = (@vis, $X->BB_VISUAL(WeightLabels=>"hidden",VertexStyle=>"hidden",BoundingMode=>"absolute",BoundingBox=>$bb,FacetTransparency=>0.7));}
+		@vis = (@vis, $X->VISUAL(VertexStyle=>"hidden",BoundingMode=>"absolute",BoundingBox=>$bb,FacetTransparency=>0.7));}
 	if($X->PROJECTIVE_DIM == 1) {
-	@vis = (@vis, $X->BB_VISUAL(WeightLabels=>"hidden",VertexStyle=>"hidden",BoundingMode=>"absolute",BoundingBox=>$bb));
+	@vis = (@vis, $X->VISUAL(VertexStyle=>"hidden",BoundingMode=>"absolute",BoundingBox=>$bb));
 	}
 
 
@@ -320,13 +348,13 @@ user_function visualize_in_surface<Addition>(Cycle<Addition>;@) {
 		my $pedges = new Cycle<Addition>(VERTICES=>$p->RAYS,MAXIMAL_POLYTOPES=>$p->MAXIMAL_POLYTOPES->minor($edges,All));
 		my $pcells  = new Cycle<Addition>(VERTICES=>$p->RAYS,MAXIMAL_POLYTOPES=>$p->MAXIMAL_POLYTOPES->minor($cells,All));
 		if($points->size() > 0) {
-			@vis = (@vis, $ppoints->BB_VISUAL(VertexThickness=>2,VertexColor=>$color, BoundingMode=>"absolute",BoundingBox=>$bb));
+			@vis = (@vis, $ppoints->VISUAL(VertexThickness=>2,VertexColor=>$color, BoundingMode=>"absolute",BoundingBox=>$bb));
 		}
 		if($edges->size() > 0) {
-			@vis = (@vis,$pedges->BB_VISUAL(EdgeThickness=>2,EdgeColor=>$color,VertexStyle=>"hidden", BoundingMode=>"absolute",BoundingBox=>$bb));
+			@vis = (@vis,$pedges->VISUAL(EdgeThickness=>2,EdgeColor=>$color,VertexStyle=>"hidden", BoundingMode=>"absolute",BoundingBox=>$bb));
 		}
 		if($cells->size() > 0) {
-			@vis = (@vis,$pcells->BB_VISUAL(EdgeColor=>$color,EdgeThickness=>2,FacetColor=>$color, BoundingMode=>"absolute",BoundingBox=>$bb));
+			@vis = (@vis,$pcells->VISUAL(EdgeColor=>$color,EdgeThickness=>2,FacetColor=>$color, BoundingMode=>"absolute",BoundingBox=>$bb));
 		}
 	}#END iterate p's
 

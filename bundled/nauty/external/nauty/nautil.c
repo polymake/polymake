@@ -1,6 +1,6 @@
 /*****************************************************************************
 *                                                                            *
-*  Auxiliary source file for version 2.5 of nauty.                           *
+*  Auxiliary source file for version 2.6 of nauty.                           *
 *                                                                            *
 *   Copyright (1984-2013) Brendan McKay.  All rights reserved.               *
 *   Subject to waivers and disclaimers in nauty.h.                           *
@@ -56,6 +56,8 @@
 *       15-Jan-12 : add TLS_ATTR attributes                                  *
 *       16-Sep-12 : small change to objoin(), more efficient for sparse case *
 *       22-Sep-12 : change documentation of orbjoin()                        *
+*       18-Jan-12 : changes for version 2.6 :                                *
+*                 - declare nauty_kill_request                               *
 *                                                                            *
 *****************************************************************************/
 
@@ -89,6 +91,7 @@ static TLS_ATTR int workperm[MAXN];
 #endif
 
 int labelorg = 0;   /* no TLS_ATTR on purpose */
+volatile int nauty_kill_request = 0;   /* no TLS_ATTR on purpose */
 
 /* aproto: header new_nauty_protos.h */
 
@@ -107,7 +110,6 @@ int
 nextelement(set *set1, int m, int pos)
 {
     setword setwd;
-    int w;
 
 #if  MAXM==1
     if (pos < 0) setwd = set1[0];
@@ -116,6 +118,8 @@ nextelement(set *set1, int m, int pos)
     if (setwd == 0) return -1;
     else            return FIRSTBITNZ(setwd);
 #else
+    int w;
+
     if (pos < 0)
     {
         w = 0;
@@ -226,7 +230,7 @@ itos(int i, char *s)
     {
         digit = i % 10;
         i = i / 10;
-        s[++k] = digit + '0';
+        s[++k] = (char)(digit + '0');
     }
     while (i);
 
@@ -722,7 +726,7 @@ nautil_check(int wordsize, int m, int n, int version)
 *****************************************************************************/
 
 void
-alloc_error(char *s)
+alloc_error(const char *s)
 {
     fprintf(ERRFILE,"Dynamic allocation failed: %s\n",s);
     exit(2);

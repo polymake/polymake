@@ -24,18 +24,11 @@
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( numerator_X, T0 ) {
+   FunctionInterface4perl( numerator_X36_f4, T0 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturn( (numerator(arg0.get<T0>())) );
+      WrapperReturnLvalue( T0, (numerator(arg0.get<T0>())), arg0 );
    };
 
-   template <typename T0>
-   FunctionInterface4perl( numerator_X12_f4, T0 ) {
-      perl::Value arg0(stack[0]);
-      WrapperReturnLvalueAnch( 1, (arg0), T0, (numerator(arg0.get<T0>())) );
-   };
-
-   FunctionInstance4perl(numerator_X12_f4, perl::Canned< Rational >);
-   FunctionInstance4perl(numerator_X, perl::Canned< const PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >);
+   FunctionInstance4perl(numerator_X36_f4, perl::Canned< Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

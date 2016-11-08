@@ -38,18 +38,18 @@ namespace {
 typedef Array< std::list<int> > CycleList;
 
 template <typename VMatrix>
-bool reverse_edge(const GenericMatrix<VMatrix>& V, const int (&pts)[4])
+bool reverse_edge(const GenericMatrix<VMatrix>& V, const Array<int>& pts)
 {
-   return det(V.minor(array2container(pts),All)) > 0;
+   return det(V.minor(pts, All)) > 0;
 }
 
 template <typename VMatrix>
-bool reverse_edge(const GenericMatrix<VMatrix>& V, const GenericMatrix<VMatrix>& AH, const int (&pts)[4])
+bool reverse_edge(const GenericMatrix<VMatrix>& V, const GenericMatrix<VMatrix>& AH, const Array<int>& pts)
 {
    VMatrix AHc=AH;
    AHc.col(0).fill(0);
    AHc+=repeat_row(V[pts[0]],AH.rows());
-   return det(V.minor(array2container(pts),All) / AHc) > 0;
+   return det(V.minor(pts, All) / AHc) > 0;
 }
 
 template <typename VMatrix, typename IMatrix>
@@ -73,12 +73,12 @@ void compute_cycles(int dim,
          int v1=ridge.front(), v2=ridge.back();
          const int p1=(VIF[0] - VIF[nf]).front();       // some vertex on the facet 0 but NOT on the ridge
          const int p2=(~VIF)[0].front();                // some vertex NOT on the facet 0
-         int pts[4]={ v1, v2, p1, p2 };
+         Array<int> pts={ v1, v2, p1, p2 };
 
          if (AH.rows()) {
-            if (reverse_edge(V,AH,pts)) std::swap(v1,v2);
+            if (reverse_edge(V, AH, pts)) std::swap(v1,v2);
          } else {
-            if (reverse_edge(V,pts)) std::swap(v1,v2);
+            if (reverse_edge(V, pts)) std::swap(v1,v2);
          }
          VIF_cyclic[0].push_back(v1);
          VIF_cyclic[0].push_back(v2);

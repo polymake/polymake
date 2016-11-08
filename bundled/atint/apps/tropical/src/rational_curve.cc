@@ -28,7 +28,6 @@
 #include "polymake/Vector.h"
 #include "polymake/Set.h"
 #include "polymake/Map.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/PowerSet.h"
 #include "polymake/Array.h"
 #include "polymake/linalg.h"
@@ -38,11 +37,8 @@
 #include "polymake/TropicalNumber.h"
 #include "polymake/tropical/misc_tools.h"
 
-namespace polymake { namespace tropical { 
+namespace polymake { namespace tropical {
 
-	using namespace atintlog::donotlog;
-	//using namespace atintlog::dolog;
-	//   using namespace atintlog::dotrace;
 
 
 
@@ -201,10 +197,10 @@ namespace polymake { namespace tropical {
 		}
 
 		//For simplicity we ignore the first row and column and start counting at 1
-		Matrix<Rational> d(n+1,n+1); 
+		Matrix<Rational> d(n+1, n+1);
 		int mindex = 0;
-		for(int i = 1; i < n; i++) {
-			for(int j = i+1; j <= n; j++) {
+		for (int i = 1; i < n; ++i) {
+			for (int j = i+1; j <= n; ++j) {
 				d(i,j) = metric[mindex];
 				d(j,i) = metric[mindex];
 				mindex++;
@@ -212,7 +208,6 @@ namespace polymake { namespace tropical {
 		}
 
 		//     //Now check for nonpositive entries
-		//dbgtrace << "Distance metric before making positive" << d <<  endl;
 		//     for(int i = 1; i < n; i++) {
 		//       for(int j = i+1; j <= n; j++) {
 		// 	if(d(i,j) <= 0) {
@@ -223,17 +218,15 @@ namespace polymake { namespace tropical {
 		// 	}
 		//       }
 		//     }
-		//dbgtrace << "Positive distance metric: " << d << endl;
 
 
 
 
-		//dbgtrace << "Starting with metric matrix\n" << d << endl;
 
 		//For the graph case, we prepare a graph object
 		Graph<> G(n);
 
-		//To make the order of SETS/COEFFS agree with the order of the edges in graph, 
+		//To make the order of SETS/COEFFS agree with the order of the edges in graph,
 		//we keep track of the original graph edge order.
 		Vector<std::pair<int,int> > edge_order;
 
@@ -243,40 +236,36 @@ namespace polymake { namespace tropical {
 		// So, at position i, it gives the number of the vertex (starting at 1), the virtual vertex i
 		// actually represents. When creating a new vertex, this should be the maximum over the list + 1
 		Vector<int> orig(n+1);
-		for(int i = 1; i <= n; i++) { orig[i] = i;}
+		for (int i = 1; i <= n; ++i) { orig[i] = i; }
 
 		//Result variable
 		Vector<Rational> coeffs;
 		Vector<Set<int> > sets;
-		//Prepare vertex set, leaf map 
-		//dbgtrace << "Moduli dimension is " << n << endl;
-		Set<int> V = sequence(1,n);
+		//Prepare vertex set, leaf map
+		Set<int> V = sequence(1, n);
 		Map<int,Set<int> > leaves;
-		for(int i = 1; i <=n; i++) {
+		for (int i = 1; i <= n; ++i) {
 			Set<int> singleset; singleset += i;
 			leaves[i] = singleset;
 		}
 		//These variables will contain the node data
 		Vector<Set<int> > nodes_by_leaves(n), nodes_by_sets(n);
 
-		//dbgtrace << "Starting with leaf map " << leaves << endl;
 
 		//Now inductively remove pairs of vertices until only 3 are left
-		while(V.size() > 3) {
-			//dbgtrace << "Have " << V.size() << " vertices. Reducing..." << endl;
+		while (V.size() > 3) {
 			//Find the triple (p,q,r) that maximizes the Buneman term
 			int p,q,r;
 			p = q = r = 0;
 			bool init = false;
 			Rational max = 0;
-			for(Entire<Set<int> >::iterator a = entire(V); !a.at_end(); a++) {
-				for(Entire<Set<int> >::iterator b = entire(V); !b.at_end(); b++) {
-					if(*b != *a) { 
-						for(Entire<Set<int> >::iterator c = entire(V); !c.at_end(); c++) {
-							if(*c != *b && *c != *a) {
+			for (auto a = entire(V); !a.at_end(); a++) {
+				for (auto b = entire(V); !b.at_end(); b++) {
+					if (*b != *a) {
+						for (auto c = entire(V); !c.at_end(); c++) {
+							if (*c != *b && *c != *a) {
 								Rational newd = d(*a,*c) + d(*b,*c) - d(*a,*b);
-								//dbgtrace << *a <<","<<*b<<","<<*c<<": " << newd << endl;
-								if(newd > max || !init) {
+								if (newd > max || !init) {
 									max = newd;
 									p = *a; q = *b; r = *c;
 									init = true;
@@ -286,46 +275,41 @@ namespace polymake { namespace tropical {
 					}
 				}
 			} //End find maximal triple
-			//dbgtrace << "Maximal triple is (" << p << "," << q << "," << r << ")" << endl;
 
 			//Compute distances to the new virtual element t
 			Rational dtp = (d(p,q) + d(p,r) - d(q,r));
 			dtp /= Rational(2);
-			//dbgtrace << "dtp: " << dtp << endl;
 			Vector<Rational> dtx(d.cols()); //Again, start counting from 1
 			int x = 0;
-			for(Entire<Set<int> >::iterator i = entire(V); !i.at_end(); i++) {
-				if(*i != p) {
-					//dbgtrace << "Setting distance d(t," << *i << ")" << endl;
+			for (auto i = entire(V); !i.at_end(); ++i) {
+				if (*i != p) {
 					dtx[*i] = d(*i,p) - dtp;
-					if(*i != q && dtx[*i] == 0) {
+					if (*i != q && dtx[*i] == 0) {
 						x = *i;
 					}
 				}
 			}
-			V = V - p; 
-			V = V - q;
-			//dbgtrace << "Computed new distances" << endl;
+			V -= p;
+			V -= q;
 
 			//Now 'add' the new vertex
-			if(x> 0) {
-				//dbgtrace << "Attaching to vertex " << x << endl;
+			if (x> 0) {
 				leaves[x] = leaves[x] + leaves[p] + leaves[q];
-				if(leaves[p].size() > 1 && leaves[p].size() < n-1) {
+				if (leaves[p].size() > 1 && leaves[p].size() < n-1) {
 					coeffs |= d(p,x);
 					sets |= leaves[p];
 					nodes_by_sets[orig[p]-1] += (sets.dim()-1);
 					nodes_by_sets[orig[x]-1] += (sets.dim()-1);
 				}
-				if(leaves[q].size() > 1 && leaves[q].size() < n-1) {
+				if (leaves[q].size() > 1 && leaves[q].size() < n-1) {
 					coeffs |= d(q,x);
 					sets |= leaves[q];
 					nodes_by_sets[orig[q]-1] += (sets.dim()-1);
 					nodes_by_sets[orig[x]-1] += (sets.dim()-1);
 				}
 				//If p or q are leaves, add them to the node leaves of x
-				if(leaves[p].size() == 1) nodes_by_leaves[orig[x]-1] += leaves[p];
-				if(leaves[q].size() == 1) nodes_by_leaves[orig[x]-1] += leaves[q];
+				if (leaves[p].size() == 1) nodes_by_leaves[orig[x]-1] += leaves[p];
+				if (leaves[q].size() == 1) nodes_by_leaves[orig[x]-1] += leaves[q];
 				//Graph case
 				G.edge(orig[p]-1,orig[x]-1);
 				G.edge(orig[q]-1,orig[x]-1);
@@ -335,27 +319,26 @@ namespace polymake { namespace tropical {
 			else {
 				//Note: It can not be possible that t=q and q is a leaf, since the removal
 				//of p would then yield a disconnected graph
-				//dbgtrace << "Creating new vertex" << endl;
 				// Graph case
 				// If d(t,p) or d(t,q) = 0, identify t with p (or q)
 				// Otherwise give t the next available node index
-				if(dtp != 0 && dtx[q] != 0) {
+				if (dtp != 0 && dtx[q] != 0) {
 					int node_number = G.add_node();
 					orig |= (node_number+1);
 					nodes_by_leaves |= Set<int>();
 					nodes_by_sets |= Set<int>();
 				}
-				if(dtp == 0) {
+				if (dtp == 0) {
 					orig |= orig[p];
 				}
-				if(dtx[q] == 0) {
+				if (dtx[q] == 0) {
 					orig |= orig[q];
 				}
 				//We update the distance matrix, since we add a new element
 				d = d | zero_vector<Rational>();
 				d = d / zero_vector<Rational>();
 				int t = d.cols() -1;
-				for(Entire<Set<int> >::iterator i = entire(V); !i.at_end(); i++) {
+				for (auto i = entire(V); !i.at_end(); i++) {
 					d(*i,t) = d(t,*i) = dtx[*i];
 				}
 
@@ -363,16 +346,16 @@ namespace polymake { namespace tropical {
 				V += t;
 				leaves[t] = leaves[p] + leaves[q];
 
-				if(leaves[p].size() > 1 && leaves[p].size() < n-1) {
-					if(dtp != 0) {
+				if (leaves[p].size() > 1 && leaves[p].size() < n-1) {
+					if (dtp != 0) {
 						coeffs |= dtp;
 						sets |= leaves[p];
 						nodes_by_sets[orig[p]-1] += (sets.dim()-1);
 						nodes_by_sets[orig[t]-1] += (sets.dim()-1);
 					}
 				}
-				if(leaves[q].size() > 1 && leaves[q].size() < n-1) {
-					if(dtx[q] != 0) {
+				if (leaves[q].size() > 1 && leaves[q].size() < n-1) {
+					if (dtx[q] != 0) {
 						coeffs |= dtx[q];
 						sets |= leaves[q];
 						nodes_by_sets[orig[q]-1] += (sets.dim()-1);
@@ -381,47 +364,40 @@ namespace polymake { namespace tropical {
 				}
 
 				//Now add the leaves
-				if(leaves[p].size() == 1) nodes_by_leaves[orig[t]-1] += leaves[p];
-				if(leaves[q].size() == 1) nodes_by_leaves[orig[t]-1] += leaves[q];
+				if (leaves[p].size() == 1) nodes_by_leaves[orig[t]-1] += leaves[p];
+				if (leaves[q].size() == 1) nodes_by_leaves[orig[t]-1] += leaves[q];
 
 
-				//dbgtrace << "New orig vertex " << orig << endl;
-				if(dtp != 0) {
+				if (dtp != 0) {
 					G.edge(orig[t]-1,orig[p]-1);
 					edge_order |= std::pair<int,int>(orig[t]-1,orig[p]-1);
 				}
-				if(dtx[q] != 0) {
+				if (dtx[q] != 0) {
 					G.edge(orig[t]-1,orig[q]-1);
 					edge_order |= std::pair<int,int>(orig[t]-1,orig[q]-1);
 				}
 			}
-			//dbgtrace << "Distance matrix\n" << d << endl;
-			//dbgtrace << "Leaf map\n" << leaves << endl;
 		} //End while(>3)
 
 		//Now treat the basic cases of size 2 and 3
 		Vector<int> vAsList(V);
-		//dbgtrace << "G before rest cases: " << G << endl;
-		if(V.size() == 3) {
-			//dbgtrace << "Remaining: " << vAsList << endl;
+		if (V.size() == 3) {
 			//Solve the linear system given by the pairwise distances
 			Matrix<Rational> A(3,3);
 			//Create the inverse matrix of the distance relation and multiply it with the distance vectors
 			A(0,0) = A(0,1) = A(1,0) = A(1,2) = A(2,1) = A(2,2) = 0.5;
 			A(0,2)  = A (1,1) = A(2,0) = -0.5;
 			Vector<Rational> B(3);
-			B[0] = d(vAsList[0],vAsList[1]); 
+			B[0] = d(vAsList[0],vAsList[1]);
 			B[1] = d(vAsList[0],vAsList[2]);
 			B[2] = d(vAsList[1],vAsList[2]);
-			//dbgtrace << "Solving " << A << "," << B << endl;
 			Vector<Rational> a = A * B;
-			//dbgtrace << "Result: " << a << endl;
 			int zeroa = -1;
 			Array<int> setsindices(3); //Indices of partitions in variable sets
-			for(int i = 0; i < 3; i++) {
+			for (int i = 0; i < 3; ++i) {
 				setsindices[i] = -1;
-				if(a[i] != 0) {
-					if(leaves[vAsList[i]].size() > 1 && leaves[vAsList[i]].size() < n-1) {
+				if (a[i] != 0) {
+					if (leaves[vAsList[i]].size() > 1 && leaves[vAsList[i]].size() < n-1) {
 						coeffs |= a[i];
 						sets |= leaves[vAsList[i]];
 						setsindices[i] = sets.dim()-1;
@@ -433,14 +409,14 @@ namespace polymake { namespace tropical {
 			}
 			//Graph case
 			//If all distances are nonzero, we add a vertex
-			if(zeroa == -1) {
+			if (zeroa == -1) {
 				int t = G.add_node();
 				nodes_by_leaves |= Set<int>();
 				nodes_by_sets |= Set<int>();
-				for(int j=0;j<3;j++) { 
+				for (int j=0; j<3; ++j) {
 					G.edge(t,orig[vAsList[j]]-1);
 					edge_order |= std::pair<int,int>(t,orig[vAsList[j]]-1);
-					if(leaves[vAsList[j]].size() == 1) {
+					if (leaves[vAsList[j]].size() == 1) {
 						nodes_by_leaves[t] += leaves[vAsList[j]];
 					}
 					else {
@@ -451,11 +427,11 @@ namespace polymake { namespace tropical {
 			}
 			//Otherwise we add the adjacencies of the two egdes
 			else {
-				for(int j=0; j<3; j++) {
-					if(j != zeroa) {
+				for (int j=0; j<3; ++j) {
+					if (j != zeroa) {
 						G.edge(orig[vAsList[j]]-1,orig[vAsList[zeroa]]-1);
 						edge_order |= std::pair<int,int>(orig[vAsList[j]]-1,orig[vAsList[zeroa]]-1);
-						if(leaves[vAsList[j]].size() ==1) {
+						if (leaves[vAsList[j]].size() == 1) {
 							nodes_by_leaves[orig[vAsList[zeroa]]-1] += leaves[vAsList[j]];
 						}
 						else {
@@ -466,8 +442,7 @@ namespace polymake { namespace tropical {
 				}
 			}
 		}//End case size == 3
-		//dbgtrace << "G after case 3: " << G << endl;
-		if(V.size() == 2) {    
+		if (V.size() == 2) {
 			//Two remaining nodes forming a tree cannot both be leaves of the original tree
 			//If necessary, we swap the list, so that the first element is the non-leaf
 			if(leaves[vAsList[0]].size() == 1) {
@@ -493,31 +468,19 @@ namespace polymake { namespace tropical {
 		//Now we're done, so we create the result
 
 		//Create node labels
-		Vector<std::string> labels(G.nodes());
-		for(int i = 0; i < labels.dim(); i++) {
-			if(i < n) {
-				std::stringstream num;
-				num << (i+1);
-				labels[i] = num.str(); 
-			}
-			else {
-				labels[i] = "";
-			}
+		Array<std::string> labels(G.nodes());
+		for (int i = 0; i < n; ++i) {
+                  labels[i] = std::to_string(i+1);
 		}
 
 		//Compute node degrees
 		nodes_by_leaves = nodes_by_leaves.slice(~sequence(0,n));
 		nodes_by_sets = nodes_by_sets.slice(~sequence(0,n));
 		Vector<int> node_degrees(nodes_by_leaves.dim());
-		for(int n = 0; n < node_degrees.dim(); n++) {
+		for (int n = 0; n < node_degrees.dim(); ++n) {
 			node_degrees[n] = nodes_by_leaves[n].size() + nodes_by_sets[n].size();
 		}
 
-		//dbgtrace << "Graph: " << endl;
-		//dbgtrace << "Nodes. " << G.nodes() << endl;
-		//dbgtrace << "Edges: " << G.edges() << endl;
-		//dbgtrace << "Adjacency: " << G << endl;
-		//dbgtrace << "Labels: " << labels << endl;
 
 		//     pm::cout << "Edge Order: " << edge_order << endl;
 		//     pm::cout << "Sets and coeffs: " << sets << ", " << coeffs << endl;
@@ -530,32 +493,31 @@ namespace polymake { namespace tropical {
 		//The edges in G might now have a different order than the one in which we put it in
 		//Hence we have to make sure, the order of SETS and COEFFS is compatible with the EDGES order
 		//For this we have kept edge_order as a record of the original order of edges.
-		Array<Set<int> > edge_list_array = graph.CallPolymakeMethod("EDGES");
-		Vector<Set<int> > edge_list(edge_list_array);
+		const Array<Set<int>> edge_list = graph.call_method("EDGES");
 		//First we throw out all the edges in the original ordering that are actually leaves
 		Set<int> leaf_edges;
-		for(int oe = 0; oe < edge_order.dim(); oe++) {
+		for (int oe = 0; oe < edge_order.dim(); oe++) {
 			if(edge_order[oe].first < n || edge_order[oe].second < n) leaf_edges += oe;
 		}
 		edge_order = edge_order.slice(~leaf_edges);
 
-		Vector<Set<int> > ordered_sets;
+                // FIXME: misuse of Vector concatenation
+		Vector<Set<int>> ordered_sets;
 		Vector<Rational> ordered_coeffs;
-		for(int e = 0; e < edge_list.dim(); e++) {
-			//First, see if it has an entry < n. Then its actually a leaf, not a bounded edge
-			Vector<int> elist(edge_list[e]);
-			if(elist[0] >= n && elist[1] >= n) {
-				//Check which edge (in the original ordering) agrees with this one
-				int oeindex = -1;
-				for(int oe = 0; oe < edge_order.dim(); oe++) {
-					Set<int> oeset; oeset += edge_order[oe].first; oeset += edge_order[oe].second;
-					if( (oeset * edge_list[e]).size() == 2) {
-						oeindex = oe; break;
-					}
-				}
-				ordered_sets |= sets[oeindex];
-				ordered_coeffs |= coeffs[oeindex];
-			}
+		for (const auto& edge : edge_list) {
+                  //First, see if it has an entry < n. Then its actually a leaf, not a bounded edge
+                  if (edge.front() >= n) {
+                    //Check which edge (in the original ordering) agrees with this one
+                    int oeindex = -1;
+                    for (int oe = 0; oe < edge_order.dim(); ++oe) {
+                      if (edge.contains(edge_order[oe].first) && edge.contains(edge_order[oe].second)) {
+                        oeindex = oe;
+                        break;
+                      }
+                    }
+                    ordered_sets |= sets[oeindex];
+                    ordered_coeffs |= coeffs[oeindex];
+                  }
 		}//END re-order sets and coeffs
 
 
@@ -598,9 +560,8 @@ namespace polymake { namespace tropical {
 	 * the lengths of the bounded edges (in the order they appear in EDGES)
 	 */
 	perl::ListReturn graphFromMetric(Vector<Rational> metric) {
-		//dbgtrace << "Recomputing curve with graph" << endl;
 		perl::Object curve = curveAndGraphFromMetric(metric);
-		perl::Object graph = curve.give("GRAPH"); 
+		perl::Object graph = curve.give("GRAPH");
 		Vector<Rational> lengths = curve.give("COEFFS");
 		perl::ListReturn result;
 		result << graph.copy();
@@ -631,7 +592,6 @@ namespace polymake { namespace tropical {
 			Set<int> complement = completeSet - sset;
 			for(Entire<Set<int> >::iterator selt = entire(sset); !selt.at_end(); selt++) {
 				for(Entire<Set<int> >::iterator celt = entire(complement); !celt.at_end(); celt++) {
-					//dbgtrace << "Adding " << c << " to distance of " << *selt << ", " << *celt << endl;
 					d(*selt,*celt) += c;
 					d(*celt, *selt) += c;
 				}
@@ -681,9 +641,8 @@ namespace polymake { namespace tropical {
 					}
 				}
 			}
-			//dbgtrace << metric << endl;
 
-			return curveFromMetric(metric); 
+			return curveFromMetric(metric);
 		}
 
 	///////////////////////////////////////////////////////////////////////////////////////
@@ -714,12 +673,13 @@ namespace polymake { namespace tropical {
 			int n = curve.give("N_LEAVES");
 
 			//Create edge index map (i,j) -> vector index
-			Matrix<int> E(n,n); int index = 0;
-			for(int i = 1; i < n-1; i++) {
-				for(int j = i+1; j <= n-1; j++) {
-					E(i,j) = E(j,i) = index;
-					index++;
-				}
+			Matrix<int> E(n,n);
+                        int index = 0;
+			for (int i = 1; i < n-1; ++i) {
+                          for (int j = i+1; j <= n-1; ++j) {
+                            E(i,j) = E(j,i) = index;
+                            ++index;
+                          }
 			}
 
 			//Compute ambient dimension of moduli space
@@ -748,6 +708,7 @@ namespace polymake { namespace tropical {
 
 	// A wrapper with an additional unused templated argument, so we can call the function
 	// with CallPolymakeFunction. (We can't move this to the header).
+        // FIXME: support type parameters in call_function
 	template <typename Addition>
 		Vector<Rational> matroid_vector(perl::Object curve,Addition flag) {
 			return matroid_coordinates_from_curve<Addition>(curve);	
@@ -773,15 +734,13 @@ namespace polymake { namespace tropical {
 	  @brief This computes the properties [[NODES_BY_SETS]] and [[NODES_BY_LEAVES]] of a RationalCurve object
 	  */
 	void computeNodeData(perl::Object curve) {
-		Vector<Rational> metric = curve.CallPolymakeMethod("metric_vector");
-		//dbgtrace << "Recomputing curve" << endl;
+		Vector<Rational> metric = curve.call_method("metric_vector");
 		//We recompute the curve to make sure the graph edges have the same order
 		//as the curve sets
 		perl::Object newcurve = curveAndGraphFromMetric(metric);
 
-		//dbgtrace << "Computing sets permutation" << endl;
 
-		//We might have to permute the column indices in the node matrices, since the sets might 
+		//We might have to permute the column indices in the node matrices, since the sets might
 		// be in a different order in the actual curve
 		//For this we have to normalize both set descriptions to contain the element 1
 
@@ -793,12 +752,10 @@ namespace polymake { namespace tropical {
 			if(*(newsets[ns].begin()) != 1) newsets[ns] = all_leaves - newsets[ns];
 		}
 		IncidenceMatrix<>	oldsetsInc = curve.give("SETS");
-		Vector<Set<int> > oldsets = incMatrixToVector(oldsetsInc); 
+		Vector<Set<int> > oldsets = incMatrixToVector(oldsetsInc);
 		for(int os = 0; os < oldsets.dim(); os++) {
 			if(*(oldsets[os].begin()) != 1) oldsets[os] = all_leaves - oldsets[os];
 		}
-		//dbgtrace << "newsets: " << newsets << endl;
-		//dbgtrace << "oldsets: " << oldsets << endl;
 		Array<int> perm(newsets.dim());
 		for(int i = 0; i < perm.size(); i++) {
 			//Find equal set
@@ -808,10 +765,8 @@ namespace polymake { namespace tropical {
 				}
 			}
 		}
-		//dbgtrace << "Permutation: " << perm << endl;
 
 		IncidenceMatrix<> new_node_sets = newcurve.give("NODES_BY_SETS");
-		//dbgtrace << "node sets: " << new_node_sets << endl;
 		IncidenceMatrix<> node_leaves = newcurve.give("NODES_BY_LEAVES");
 		Vector<int> node_degrees = newcurve.give("NODE_DEGREES");
 
@@ -870,7 +825,7 @@ namespace polymake { namespace tropical {
 			"# @return RationalCurve : An array of RationalCurves",
 			&curveFromMetricMatrix, "rational_curve_list_from_metric(Matrix<Rational>)");
 
-	UserFunction4perl("# @category Abstract rational curves" 
+	UserFunction4perl("# @category Abstract rational curves"
 			"# Takes a metric vector in Q^{(n over 2)} and checks whether it fulfills "
 			"# the four-point condition, i.e. whether it lies in M_0,n. More precisely "
 			"# it only needs to be equivalent to such a vector"

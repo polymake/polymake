@@ -1,0 +1,77 @@
+#  Copyright (c) 1997-2016
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @category Symmetry
+declare object SymmetrizedCocircuitEquations {
+
+file_suffix eqs
+
+# the isotypic components that participate
+property ISOTYPIC_COMPONENTS : Set<Int>;
+
+# the ridges indexing the rows of the equations
+property RIDGES : Array<Array<Int>>;
+
+# the equations themselves, projected to the direct sum of ISOTYPIC_COMPONENTS. 
+# The columns are indexed by the concatenation of the BASES of the direct sum of ISOTYPIC_COMPONENTS
+property PROJECTED_EQUATIONS : SparseMatrix<Rational>;
+
+}
+
+
+object group::Group {
+
+
+#*******************************************************
+#* properties related to triangulations
+#*******************************************************
+
+# @category Symmetry
+# The cocircuit equations, projected to a certain direct sum of isotypic components
+property SYMMETRIZED_COCIRCUIT_EQUATIONS : SymmetrizedCocircuitEquations : multiple;
+
+# @category Symmetry
+# The symmetrized version of [[SIMPLEXITY_LOWER_BOUND]].
+property SIMPLEXITY_LOWER_BOUND : Int;
+
+}
+
+
+# @category Symmetry
+# calculate a sparse representation of the cocircuit equations corresponding to a direct sum of isotypic components
+# @param Cone P
+# @param Set<Int> the list of indices of the isotypic components to project to; default [0], which
+# amounts to summing all cocircuit equations corresponding to the orbit of each ridge.
+user_function combinatorial_symmetrized_cocircuit_equations<Scalar>(Cone<Scalar>; Set<Int>=scalar2set(0)) {
+    my ($c, $isotypic_components) = @_;
+    return combinatorial_symmetrized_cocircuit_equations_impl($c, $c->GROUP->REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, $c->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, $isotypic_components);
+}
+
+# @category Symmetry
+# calculate the projection of the cocircuit equations to a direct sum of isotypic components
+# @param Cone P
+# @param Set<Int> the list of indices of the isotypic components to project to; default [0], which
+# amounts to summing all cocircuit equations corresponding to the orbit of each ridge.
+# @option Bool reduce_rows Should we return only linearly independent equations? default: true,                      
+user_function symmetrized_cocircuit_equations<Scalar>(Cone<Scalar>; Set<Int>=scalar2set(0), { reduce_rows => 1 }) {
+    my ($c, $isotypic_components, $options) = @_;
+    return projected_symmetrized_cocircuit_equations_impl($c, $c->GROUP->REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, $c->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, $isotypic_components, $options->{reduce_rows});
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

@@ -17,28 +17,25 @@
 #ifndef POLYMAKE_HASH_MAP_
 #define POLYMAKE_HASH_MAP_
 
-#if defined(__cplusplus) && __cplusplus >= 201103L && !defined(PM_FORCE_TR1)
 #include <unordered_map>
-#define PmTr1NS std
-#else
-#include <tr1/unordered_map>
-#define PmTr1NS std::tr1
-#endif
 
 #include "polymake/internal/assoc.h"
 #include "polymake/internal/hash_iterators.h"
 
 namespace pm {
 
-template <typename Key, typename Value, typename Params=void>
+template <typename Key, typename Value, typename... TParams>
 class hash_map
-   : public PmTr1NS::unordered_map<Key, Value, hash_func<Key>, typename hash_table_cmp_adapter<Key,Params>::type> {
-   typedef PmTr1NS::unordered_map<Key, Value, hash_func<Key>, typename hash_table_cmp_adapter<Key,Params>::type> _super;
+   : public std::unordered_map<Key, Value, hash_func<Key>, typename hash_table_cmp_adapter<Key, TParams...>::type> {
+   typedef std::unordered_map<Key, Value, hash_func<Key>, typename hash_table_cmp_adapter<Key, TParams...>::type> _super;
 
-   typedef typename extract_type_param<Params, DefaultValue, operations::clear<Value> >::type default_value_supplier;
+   typedef typename mlist_wrap<TParams...>::type params;
+   typedef typename mtagged_list_extract<params, DefaultValueTag, operations::clear<Value>>::type default_value_supplier;
    default_value_supplier dflt;
 
 public:
+   typedef operations::cmp key_comparator_type;
+
    hash_map() {}
    explicit hash_map(size_t start_cap) : _super(start_cap) {}
 
@@ -65,7 +62,7 @@ public:
 #if 0
    template <typename Operation>
    typename _super::iterator
-   insert(typename function_argument<Key>::type k, const Operation& op, typename disable_if<void**, identical<Operation,Value>::value>::type=0)
+   insert(typename function_argument<Key>::type k, const Operation& op, typename std::enable_if<!std::is_same<Operation, Value>::value, void**>::type=nullptr)
    {
       std::pair<typename _super::iterator,bool> ret=_super::insert(typename _super::value_type(k, dflt()));
       if (!ret.second) op(ret.first->second);
@@ -100,9 +97,20 @@ public:
    insert(const typename _super::value_type& p) { return _super::insert(p); }
 
    template <typename Iterator>
-   void insert(Iterator first, Iterator last, typename disable_if<void**, identical<Iterator,Key>::value && identical<Iterator,Value>::value>::type=0)
+   void insert(Iterator first, Iterator last, typename std::enable_if<!(std::is_same<Iterator, Key>::value && std::is_same<Iterator, Value>::value), void**>::type=nullptr)
    {
-      _super::insert(first,last);
+      _super::insert(first, last);
+   }
+
+   const Value&
+   at(const typename function_argument<Key>::type& k) const {
+      const typename _super::const_iterator val = _super::find(k);
+      if (val==_super::end()) {
+         std::ostringstream msg;
+         wrap(msg) << "Key " << k << " not found in hash_map";
+         throw no_match(msg.str());
+      } else
+         return val->second;
    }
 
    bool operator== (const hash_map& other) const
@@ -132,17 +140,11 @@ public:
    filler make_filler() { return filler(*this); }
 };
 
-template <typename Key, typename Value, typename Params>
-struct spec_object_traits< hash_map<Key,Value,Params> >
-   : spec_object_traits<is_container> {
-   static const IO_separator_kind IO_separator=IO_sep_inherit;
-};
-
 // FIXME: soon deprecated
 template <typename Key, typename Value, typename HashFcn=hash_func<Key>, typename EqualKey=std::equal_to<Key> >
 class hash_map_as_property_map
-   : public PmTr1NS::unordered_map<Key, Value, HashFcn, EqualKey> {
-   typedef PmTr1NS::unordered_map<Key, Value, HashFcn, EqualKey> _super;
+   : public std::unordered_map<Key, Value, HashFcn, EqualKey> {
+   typedef std::unordered_map<Key, Value, HashFcn, EqualKey> _super;
 public:
    hash_map_as_property_map() {}
 
@@ -172,6 +174,20 @@ public:
    }
 protected:
    Value def_val;
+};
+
+template <typename Key, typename Value, typename... TParams>
+struct spec_object_traits<hash_map<Key, Value, TParams...>>
+   : spec_object_traits<is_container> {
+   static const IO_separator_kind IO_separator=IO_sep_inherit;
+};
+
+template <typename Key, typename Value, typename... TParams>
+struct choose_generic_object_traits<hash_map<Key, Value, TParams...>, false, false>
+   : spec_object_traits<hash_map<Key, Value, TParams...>> {
+   typedef void generic_type;
+   typedef is_map generic_tag;
+   typedef hash_map<Key, Value, TParams...> persistent_type;
 };
 
 } // end namespace pm

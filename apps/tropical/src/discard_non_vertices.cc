@@ -19,6 +19,7 @@ GNU General Public License for more details.
 #include "polymake/Matrix.h"
 #include "polymake/Set.h"
 #include "polymake/Map.h"
+#include "polymake/Array.h"
 #include "polymake/list"
 #include "polymake/TropicalNumber.h"
 #include <string>
@@ -92,7 +93,7 @@ namespace polymake { namespace tropical {
 
 	FunctionTemplate4perl("containing_sectors<Addition,Scalar>(Vector<TropicalNumber<Addition,Scalar> >, Vector<TropicalNumber<Addition,Scalar> >)");
 
-	FunctionTemplate4perl("discard_non_vertices<Addition,Scalar>(Cone<Addition,Scalar>) : void");
+	FunctionTemplate4perl("discard_non_vertices<Addition,Scalar>(Polytope<Addition,Scalar>) : void");
 
 } }
 

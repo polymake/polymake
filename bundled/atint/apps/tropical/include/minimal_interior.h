@@ -34,11 +34,11 @@ namespace polymake { namespace tropical{
 	 * @brief Computes the minimal interior cells of a polyhedral subdivision of a polyhedron.
 	 * @param Matrix<Rational> vertices The vertices of the subdivision.
 	 * @param IncidenceMatrix<> polytopes The subdivision cells 
-	 * @param IncidenceMatrix<> The minimal interior cells of thei subdivision.
 	 * @param solver<Rational> a convex hull solver to compute the facets of the cell
+	 * @return IncidenceMatrix<> The minimal interior cells of the subdivision.
 	 */
 	IncidenceMatrix<> minimal_interior(const Matrix<Rational> &vertices, 
-			const IncidenceMatrix<> &polytopes, solver<Rational> &sv);
+                                           const IncidenceMatrix<>& polytopes, solver<Rational> &sv);
 
 
 	/*

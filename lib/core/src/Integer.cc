@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -22,11 +22,41 @@
 
 namespace pm {
 
+Integer& Integer::operator= (long long b)
+{
+   if (sizeof(long long)==sizeof(long) || (b >= std::numeric_limits<long>::min() && b <= std::numeric_limits<long>::max())) {
+      *this=long(b);
+   } else {
+      typedef std::conditional<sizeof(long long)==sizeof(long), int, long>::type shift_by;
+      if (__builtin_expect(!isfinite(*this), 0))
+         mpz_init2(this, sizeof(long long)*8);
+      mpz_set_si(this, b >> (sizeof(shift_by)*8));
+      mpz_mul_2exp(this, this, sizeof(shift_by)*8);
+      mpz_add_ui(this, this, b & ULONG_MAX);
+   }
+   return *this;
+}
+
+Integer::operator long long() const
+{
+   if (sizeof(long long)==sizeof(long) || !isfinite(*this) || mpz_fits_slong_p(this)) {
+      return long(*this);
+   } else {
+      typedef std::conditional<sizeof(long long)==sizeof(long), int, long>::type shift_by;
+      Integer tmp= *this >> int(sizeof(long)*8);
+      long long result=long(tmp);
+      result <<= (sizeof(shift_by)*8);
+      result += mpz_get_ui(this);
+      return result;
+   }
+}
+
 // fragments borrowed from read_int() of GNU libio
 size_t Integer::strsize(const std::ios::fmtflags flags) const
 {
-   size_t s=1 + ((flags & std::ios::showpos) || (mpz_sgn(rep)<0));      // terminating '\0' and possible sign
-   if (__builtin_expect(!isfinite(*this),0)) return s+3;
+   size_t s=1 + ((flags & std::ios::showpos) || (mpz_sgn(this)<0));      // terminating '\0' and possible sign
+   if (__builtin_expect(!isfinite(*this), 0))
+      return s+3;
    int base;
    switch (flags & (std::ios::basefield | std::ios::showbase)) {
    case int(std::ios::hex) | int(std::ios::showbase):
@@ -42,33 +72,32 @@ size_t Integer::strsize(const std::ios::fmtflags flags) const
    default:
       base=10;
    }
-   return s+mpz_sizeinbase(rep, base);
+   return s+mpz_sizeinbase(this, base);
 }
 
 void Integer::putstr(std::ios::fmtflags flags, char* buf) const
 {
-   const int i=isinf(*this);
-   if (__builtin_expect(i,0)) {
-      if (i<0)
-         strcpy(buf,"-inf");
+   if (__builtin_expect(!isfinite(*this), 0)) {
+      if (isinf(*this)<0)
+         strcpy(buf, "-inf");
       else if (flags & std::ios::showpos)
-         strcpy(buf,"+inf");
+         strcpy(buf, "+inf");
       else
-         strcpy(buf,"inf");
+         strcpy(buf, "inf");
       return;
    }
    int base;
-   const int plus= flags & std::ios::showpos ? mpz_sgn(rep)>0 : 0;
+   const int plus= flags & std::ios::showpos ? mpz_sgn(this)>0 : 0;
    switch (flags & (std::ios::basefield | std::ios::showbase)) {
    case int(std::ios::hex) | int(std::ios::showbase):
-      mpz_get_str(buf+2+plus, 16, rep);
-      if (mpz_sgn(rep)<0) *buf++='-'; else if (plus) *buf++='+';
+      mpz_get_str(buf+2+plus, 16, this);
+      if (mpz_sgn(this)<0) *buf++='-'; else if (plus) *buf++='+';
       *buf++='0';
       *buf='x';
       return;
    case int(std::ios::oct) | int(std::ios::showbase):
-      mpz_get_str(buf+1+plus, 8, rep);
-      if (mpz_sgn(rep)<0) *buf++='-'; else if (plus) *buf++='+';
+      mpz_get_str(buf+1+plus, 8, this);
+      if (mpz_sgn(this)<0) *buf++='-'; else if (plus) *buf++='+';
       *buf='0';
       return;
    case std::ios::hex:
@@ -81,28 +110,28 @@ void Integer::putstr(std::ios::fmtflags flags, char* buf) const
       base=10;
    }
    if (plus) *buf++='+';
-   mpz_get_str(buf, base, rep);
+   mpz_get_str(buf, base, this);
 }
 
-std::string Integer::to_string(int base) const
+Integer::Integer(const char *s)
 {
-   const int i=isinf(*this);
-   if (__builtin_expect(i,0)) {
-      return i>0 ? "inf" : "-inf";
+   mpz_init(this);
+   try {
+      parse(s);
    }
-   std::string s(mpz_sizeinbase(rep,base)+2, '\0');
-   mpz_get_str(const_cast<char*>(s.data()), base, rep); // a nasty cast, I know...
-   s.resize(s.find('\0'));
-   return s;
+   catch (const GMP::error&) {
+      mpz_clear(this);
+      throw;
+   }
 }
 
-void Integer::_set(const char *s)
+void Integer::parse(const char *s)
 {
-   if (mpz_set_str(rep,s,0) < 0) {
-      if (s[0]=='+' ? !strcmp(s+1,"inf") : !strcmp(s,"inf"))
-         _set_inf(rep,1);
-      else if (s[0]=='-' && !strcmp(s+1,"inf"))
-         _set_inf(rep,-1);
+   if (mpz_set_str(this, s, 0) < 0) {
+      if (s[0]=='+' ? !strcmp(s+1, "inf") : !strcmp(s, "inf"))
+         set_inf(this, 1);
+      else if (s[0]=='-' && !strcmp(s+1, "inf"))
+         set_inf(this, -1);
       else
          throw GMP::error("Integer: syntax error");
    }
@@ -164,7 +193,7 @@ void Integer::read(std::istream& is, bool allow_sign)
             is.get();
             if (is.peek()=='f') {
                is.get();
-               _set_inf(rep,sgn);
+               set_inf(this, sgn);
                valid=true;
             } else {
                is.unget();
@@ -187,7 +216,7 @@ void Integer::read(std::istream& is, bool allow_sign)
          }
 
          if (valid)
-            mpz_set_str(rep, text.c_str(), base);
+            mpz_set_str(this, text.c_str(), base);
       }
 
       if (valid)
@@ -200,68 +229,74 @@ void Integer::read(std::istream& is, bool allow_sign)
 
 Integer Integer::binom(const Integer& n, long k)
 {
-   if (k<0) return Integer(0);
-   if (n<0) {
-      const Integer nn=(k-1)-n;
-      if (k%2==0) {
-         return Integer(mpz_bin_ui, nn.rep, (unsigned long)k);
+   Integer result;
+   if (__builtin_expect(k>=0, 1)) {
+      if (__builtin_expect(isfinite(n), 1)) {
+         if (__builtin_expect(n>=0, 1)) {
+            mpz_bin_ui(&result, &n, k);
+         } else {
+            const Integer nn=(k-1)-n;
+            mpz_bin_ui(&result, &nn, k);
+            if (k%2) result.negate();
+         }
       } else {
-         return -Integer(mpz_bin_ui, nn.rep, (unsigned long)k);
+         set_inf(&result, n);
       }
    }
-   if (__builtin_expect(isfinite(n),1))
-      return Integer(mpz_bin_ui, n.rep, (unsigned long)k);
-   return Integer(maximal<Integer>(), 1);
+   return result;
 }
 
 Integer Integer::binom(long n, long k)
 {
-   if (k<0) return Integer(0);
-   if (n<0) {
-      const long nn=k-1-n;
-      if (k%2==0) {
-         return Integer(mpz_bin_uiui, (unsigned long)nn, (unsigned long)k);
+   Integer result;
+   if (__builtin_expect(k>=0, 1)) {
+      if (__builtin_expect(n>=0, 1)) {
+         mpz_bin_uiui(&result, n, k);
       } else {
-         return -Integer(mpz_bin_uiui, (unsigned long)nn, (unsigned long)k);
+         const long nn=k-1-n;
+         mpz_bin_uiui(&result, nn, k);
+         if (k%2) result.negate();
       }
    }
-   return Integer(mpz_bin_uiui, (unsigned long)n, (unsigned long)k);
+   return result;
 }
 
 bool Integer::fill_from_file(int fd)
 {
-   int consumed=0, s, total=rep[0]._mp_alloc * sizeof(mp_limb_t);
-   char* d=reinterpret_cast<char*>(const_cast<mp_limb_t*>(rep[0]._mp_d));
+   int consumed=0, s, total=_mp_alloc * sizeof(mp_limb_t);
+   char* d=reinterpret_cast<char*>(_mp_d);
    do {
       s=::read(fd, d+consumed, total-consumed);
       if (s<0) return false;
    } while ((consumed+=s)<total);
-   rep[0]._mp_size=rep[0]._mp_alloc;
+   _mp_size=_mp_alloc;
    return true;
 }
 
 namespace {
 
 mp_limb_t limb0=0, limb1=1;
-const mpz_t mpz_zero_c={{1, 0, &limb0}};
-const mpz_t mpz_one_c ={{1, 1, &limb1}};
+const __mpz_struct mpz_zero_c{1, 0, &limb0};
+const __mpz_struct mpz_one_c {1, 1, &limb1};
 
 }
 
 const Integer& spec_object_traits<Integer>::zero()
 {
-   return *reverse_cast(mpz_zero_c, 0, &Integer::rep);
+   return static_cast<const Integer&>(mpz_zero_c);
 }
 
 const Integer& spec_object_traits<Integer>::one()
 {
-   return *reverse_cast(mpz_one_c, 0, &Integer::rep);
+   return static_cast<const Integer&>(mpz_one_c);
 }
 
 namespace GMP {
    NaN::NaN() : error("Integer/Rational NaN") {}
 
    ZeroDivide::ZeroDivide() : error("Integer/Rational zero division") {}
+
+   BadCast::BadCast() : error("Integer/Rational number is too big for the cast to long/int") {}
 }
 
 }

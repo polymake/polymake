@@ -19,10 +19,10 @@
 
 namespace polymake { namespace topaz {
   
-Array<Set<int> > boundary_of_pseudo_manifold_client(perl::Object hd)
+Array<Set<int>> boundary_of_pseudo_manifold_client(perl::Object hd)
 {
    HasseDiagram HD(hd);
-   return boundary_of_pseudo_manifold(HD);
+   return Array<Set<int>>{ boundary_of_pseudo_manifold(HD) };
 }
 
 Function4perl(&boundary_of_pseudo_manifold_client, "boundary_of_pseudo_manifold(graph::FaceLattice)");

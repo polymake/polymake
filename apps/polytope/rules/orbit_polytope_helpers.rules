@@ -113,11 +113,11 @@ sub getArrayNumberFromArrayOfSets {
 # @param Vector gen_point the generating point
 # @param Matrix points the vertices of the orbit polytope
 # @param Matrix lattice_points the lattice points of the orbit polytope
-# @param group::GroupOfPolytope group the generating group
+# @param group::Group group the generating group
 # @param Bool verbose print out additional information
 # @return ARRAY ($Graph, $lp_reps, $minInStartOrbit, \@core_point_reps, $CPindices)
 
-user_function nestedOPGraph (Vector, Matrix, Matrix, group::GroupOfPolytope, $){
+user_function nestedOPGraph (Vector, Matrix, Matrix, group::Group, $){
     my ($gen_point, $points, $lattice_points, $group, $verbose) = @_;
     
     my @core_point_reps = ();

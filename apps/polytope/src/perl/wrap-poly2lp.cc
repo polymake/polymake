@@ -14,19 +14,17 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/Rational.h"
+
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( void (perl::Object, perl::Object, std::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      IndirectWrapperReturnVoid(arg0, arg1, arg2);
-   }
-   FunctionWrapperInstance4perl( void (perl::Object, perl::Object, std::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) );
-
-   FunctionWrapper4perl( void (perl::Object, perl::Object, bool, std::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) ) {
+   template <typename T0>
+   FunctionInterface4perl( poly2lp_T_x_x_x_x, T0 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
-      IndirectWrapperReturnVoid( arg0, arg1, arg2, arg3 );
-   }
-   FunctionWrapperInstance4perl( void (perl::Object, perl::Object, bool, std::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) );
+      WrapperReturn( (poly2lp<T0>(arg0, arg1, arg2, arg3)) );
+   };
 
+   FunctionInstance4perl(poly2lp_T_x_x_x_x, Rational);
+   FunctionInstance4perl(poly2lp_T_x_x_x_x, double);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -22,6 +22,9 @@ package Polymake::Core::ObjectType;
 my $construct_node;
 sub construct_node : lvalue { $construct_node }
 
+# outer ObjectType during rulefile loading
+declare $scope_owner;
+
 ##############################################################################
 #  Collection of information common to all Objects of the same type
 #  (such as property names, rules, etc.)
@@ -47,9 +50,18 @@ use Polymake::Struct (
 #
 #  Derivation relations
 #
-   '@super',                       # ( ObjectType )  super classes: transitive closure in MRO C3 order
-   [ '$generic' => 'undef' ],      # for instances of parametrized types: ObjectType of the own generic type
-   [ '$full_spez' => 'undef' ],    # for parametrized types: concrete ObjectType => Specialization of its full specialization
+   '@super',                       # ( ObjectType ) base classes
+                                   #   For non-parametrized and generic types it exactly reflects the object type declaration.
+                                   #   For concrete instances of parametrized types the base classes follow in the order:
+                                   #     - named full specializations (restricted by preconditions)
+                                   #     - anonymous full specialization (w/o preconditions)
+                                   #     - concrete instances of matching partial specializations
+                                   #     - own generic type
+                                   #     - concrete instance(s) of base types
+   '@linear_isa',                  # transitive closure of @super in C3 resolution order
+   [ '$generic' => 'undef' ],      # ObjectType of the own generic type;
+                                   #   for concrete instances of partial specialization: the parametrized specialization
+   [ '$full_spez' => 'undef' ],    # full specializations of parametrized types: concrete ObjectType pkg or spez. name => Specialization
 #
 #  Own components
 #
@@ -111,8 +123,10 @@ sub new {
       $self->params=$tparams;
       PropertyParamedType::scan_params($self);
       if ($self->abstract) {
-         if (defined($self->context_pkg)) {
-            push @{$self->super}, $generic_type, @{$generic_type->super};
+         if (defined $self->context_pkg) {
+            push @{$self->super}, $generic_type;
+            push @{$self->linear_isa}, $generic_type, @{$generic_type->linear_isa};
+            $self->generic=$generic_type;
          }
          return $self;
       }
@@ -126,7 +140,8 @@ sub new {
 
    # proceed with parent classes
    if (@_) {
-      establish_inheritance($self, map { PropertyParamedType::set_extension($self->extension, $_->extension); $_->pkg } @_);
+      set_extension($self->extension, $_->extension) for @_;
+      establish_inheritance($self, 0, @_);
       if (defined $generic_type) {
          $self->generic=$generic_type;
 
@@ -145,16 +160,12 @@ sub new {
                }
             }
 
-            my @spez_pkgs=map { $_->pkg } @matching_spezs;
-            namespaces::using($self->pkg, @spez_pkgs);
-            no strict 'refs';
-            unshift @{$self->pkg."::ISA"}, @spez_pkgs;
-            update_inheritance($self);
+            establish_inheritance($self, 0, @matching_spezs);
          }
 
          # verify correctness of inheritance relationship between specializations
          while (my ($spez, $status)=each %required_spezs) {
-            if ($status == 1 && list_index($self->super, $spez)<0) {
+            if ($status == 1 && list_index($self->linear_isa, $spez)<0) {
                my @bad=grep { defined($_->borrowed_from) && $_->borrowed_from->{$spez} } @{$self->super};
                die "Invalid inheritance: ", join(", ", map { $_->full_name } @bad),
                             "\n refer", @bad==1 && "s", " to properties defined in ", $spez->full_name,
@@ -182,7 +193,7 @@ sub all_partial_specializations {
    my ($self, $for_spez)=@_;
    ( ($self != $for_spez && defined($self->specializations)
       ? (grep { $_ != $for_spez } @{$self->specializations}) : () ),
-     map { defined($_->specializations) ? @{$_->specializations} : () } @{$self->super}
+     map { defined($_->specializations) ? @{$_->specializations} : () } @{$self->linear_isa}
    )
 }
 ####################################################################################
@@ -192,24 +203,49 @@ sub full_specialization {
 }
 ####################################################################################
 sub establish_inheritance {
-   my $self=shift;
-   namespaces::using($self->pkg, @_);
-   { no strict 'refs'; push @{$self->pkg."::ISA"}, @_; }
-   mro::set_mro($self->pkg, "c3");
-   my $linear_isa=mro::get_linear_isa($self->pkg);
-   # ignore the type itself and ubiquitous Object
-   @{$self->super}=map { $_->type } grep { !/^Polymake::Core::/ } @$linear_isa[1..$#$linear_isa];
+   my ($self, $pos, @types)=@_;
+   mro::set_mro($self->pkg, "c3") unless @{$self->super};
+   splice @{$self->super}, $pos, 0, @types;
+   my @pkgs=map { $_->pkg } @types;
+   namespaces::using($self->pkg, @pkgs);
+   no strict 'refs';
+   splice @{$self->pkg."::ISA"}, $pos, 0, @pkgs;
+   update_inheritance($self);
 }
 
 sub update_inheritance {
    my ($self)=@_;
    my $linear_isa=mro::get_linear_isa($self->pkg);
-   @{$self->super}=map { $_->type } grep { !/^Polymake::Core::/ } @$linear_isa[1..$#$linear_isa];
+   # ignore the type itself and ubiquitous Object
+   @{$self->linear_isa}=map { $_->type } grep { !/^Polymake::Core::/ } @$linear_isa[1..$#$linear_isa];
 }
 
 sub derived {
    my ($self)=@_;
    map { $_->type } @{mro::get_isarev($self->pkg)}
+}
+
+sub concrete_instances {
+   my ($self)=@_;
+   grep { $_->generic == $self && !$_->abstract } &derived
+}
+
+sub concrete_super_instances {
+   my ($self)=@_;
+   my @list;
+   foreach my $super (reverse @{$self->super}) {
+      last if $super->abstract || $super->full_spez_for==$self;
+      push @list, $super;
+   }
+   reverse @list
+}
+####################################################################################
+sub isa {
+   my ($self, $other)=@_;
+   if (is_string($other)) {
+      $other=$self->application->eval_type($other, 1) or return;
+   }
+   return $self==$other || list_index($self->linear_isa, $other)>=0;
 }
 ####################################################################################
 # for compatibility with PropertyType:
@@ -220,6 +256,7 @@ sub derived {
 *typecheck=\&PropertyType::typecheck;
 *add_constructor=\&PropertyType::add_constructor;
 *performs_deduction=\&PropertyParamedType::performs_deduction;
+*set_extension=\&PropertyParamedType::set_extension;
 *type_param_index=\&PropertyType::type_param_index;
 define_function(__PACKAGE__, ".type", \&type);
 
@@ -234,21 +271,13 @@ sub concrete_type {
 
 sub descend_to_generic {
    my ($self, $pkg)=@_;
-   if (@{$self->super}) {
+   if (@{$self->linear_isa}) {
       return $self if defined($self->generic) && $self->generic->pkg eq $pkg;
-      foreach my $super_proto (@{$self->super}) {
+      foreach my $super_proto (@{$self->linear_isa}) {
          return $super_proto if defined($super_proto->generic) && $super_proto->generic->pkg eq $pkg;
       }
    }
    undef
-}
-####################################################################################
-sub isa {
-   my ($self, $other)=@_;
-   if (is_string($other)) {
-      $other=$self->application->eval_type($other, 1) or return;
-   }
-   return $self==$other || list_index($self->super, $other)>=0;
 }
 ####################################################################################
 # "property name" => Property or undef
@@ -257,24 +286,28 @@ sub lookup_property {
    # don't cache negative results
    $self->properties->{$prop_name} // do {
       my $prop;
-      foreach (@{$self->super}) {
-         if (defined ($prop=$_->properties->{$prop_name})) {
+      foreach my $super (@{$self->linear_isa}) {
+         if (defined ($prop=$super->properties->{$prop_name})) {
+            if ($prop->flags & $Property::is_permutation) {
+               $prop=instantiate_permutation($self, $prop);
+            } elsif (!$self->abstract && ($prop->flags & $Property::is_subobject || !($prop->flags & $Property::is_concrete))) {
+               $prop=instantiate_property($self, $prop_name, $prop);
+            }
             return $self->properties->{$prop_name}=$prop;
          }
       }
       if ($self->abstract) {
-         my $gen_proto=$self->generic // $self;
-         foreach my $spez ($gen_proto->all_partial_specializations($self)) {
-            if ($spez != $self &&
-                defined ($prop=$spez->properties->{$prop_name})) {
-
-               ($self->borrowed_from //= { })->{$spez} ||= do {
+         foreach my $spez (($self->generic // $self)->all_partial_specializations($self)) {
+            if (defined ($prop=$spez->properties->{$prop_name})) {
+               $spez=$prop->defined_for;
+               my ($borrower, $lender)=($self->outer_object_type, $spez->outer_object_type);
+               ($borrower->borrowed_from //= { })->{$lender} ||= do {
                   # verify the correctness of borrowing
-                  foreach my $proto (grep { $_->generic==$gen_proto } $self->derived) {
-                     if (list_index($proto->super, $spez)<0) {
+                  foreach my $proto ($borrower->concrete_instances) {
+                     if (list_index($proto->linear_isa, $lender)<0) {
                         die "Invalid inheritance: ", $self->full_name,
-                        "\n refers to property $prop_name defined in ", $spez->full_name,
-                        "\n which does not match the object type ", $proto->full_name, "\n";
+                            "\n refers to property $prop_name defined in ", $spez->full_name,
+                            "\n which does not match the derived object type ", $proto->full_name, "\n";
                      }
                   }
                   1
@@ -287,6 +320,75 @@ sub lookup_property {
    }
 }
 
+sub instantiate_property {
+   my ($self, $prop_name, $prop)=@_;
+   my $owner=$prop->belongs_to;
+   if (defined (my $gen_proto=$owner->generic)) {
+      # move from a specialization to the abstract type
+      $owner=$gen_proto;
+   }
+   if ($owner == $self->generic) {
+      unless ($prop->flags & $Property::is_concrete) {
+         $prop=$prop->clone_for_owner($self);
+         create_prop_method($self, $prop);
+      }
+      $prop
+   } else {
+      if ($prop->flags & $Property::is_subobject) {
+         # instantiate the property for each of the concrete ancestors; they are dwelling at the end of the base class list
+         # augmented instances might need to be mixed in the case of multiple inheritance
+         if (my @instances=collect_augmented_super_instances($self, $prop_name)) {
+            if (@instances > 1) {
+               $prop=$prop->clone_for_augmented(new Augmented($prop, $self, map { $_->type } @instances));
+               create_prop_method($self, $prop);
+               return $prop;
+            } else {
+               return $instances[0];
+            }
+         } elsif ($prop->flags & $Property::is_concrete) {
+            return $prop;
+         }
+      }
+
+      # instantiate the property at its birthplace
+      foreach my $super (@{$self->linear_isa}) {
+         # the concrete object type must appear before all specializations and generic types
+         if ($super->generic == $owner) {
+            $prop=$prop->clone_for_owner($super);
+            create_prop_method($super, $prop);
+            return $super->properties->{$prop_name}=$prop;
+         }
+      }
+      croak( "internal error: could not find the concrete instance of ", $owner->full_name, " among ancestors of ", $self->full_name,
+                   " (", join(", ", map { $_->full_name } @{$self->super}), ") while instantiating property ", $prop->name );
+   }
+}
+
+sub instantiate_permutation {
+   my ($self, $prop)=@_;
+   # only a dependent abstract type may inherit the permutation instance from its generic type,
+   # all other types might introduce own properties and therefore need personalized permutation instances
+   if ($self->abstract && defined($self->context_pkg)) {
+      if ($prop->belongs_to != $self->generic) {
+         $prop=$self->generic->lookup_property($prop->name);
+      }
+   } else {
+      $prop=$prop->clone_for_owner($self);
+      create_prop_method($self, $prop);
+   }
+   $prop
+}
+
+sub lookup_overridden_property {
+   my ($self, $prop)=@_;
+   foreach my $super (@{$self->linear_isa}) {
+      if (!$super->isa($prop->overrides_for) && $super->isa($prop->defined_for)) {
+         return $super->lookup_property($prop->overrides);
+      }
+   }
+   undef
+}
+
 sub property {
    my ($self, $prop_name)=@_;
    $self->lookup_property($prop_name) or croak( "unknown property ", $self->full_name, "::$prop_name" );
@@ -296,13 +398,36 @@ sub init_pseudo_prop {
    state $prop=_new Property(".initial", undef, undef);
 }
 
+sub collect_augmented_super_instances {
+   my ($self, $prop_name)=@_;
+   my @list;
+   foreach my $super ($self->concrete_super_instances) {
+      if (defined (my $found_prop=$super->lookup_property($prop_name))) {
+         if ($found_prop->flags & $Property::is_augmented) {
+            if (@list==1 && !($list[0]->flags & $Property::is_augmented)) {
+               $list[0]=$found_prop;
+            } elsif (!@list || list_index(\@list, $found_prop)<0) {
+               push @list, $found_prop;
+            }
+         } elsif (!@list) {
+            push @list, $found_prop;
+         }
+      }
+   }
+   @list
+}
+
+sub help_ref_to_prop {
+   my ($self, $from_app, $prop_name)=@_;
+   ($self->application != $from_app && $self->application->name."::").$self->name."::$prop_name";
+}
 ####################################################################################
 # "property name" => bool
 # Returns TRUE if the property is overridden for this object type or one of its ancestors.
 # Returns undef if the property is not known at all.
 sub is_overridden {
    my ($self, $prop_name)=@_;
-   if (defined (my $prop=&lookup_property)) {
+   if (defined (my $prop=$self->lookup_property($prop_name))) {
       $prop->name ne $prop_name;
    } else {
       undef
@@ -313,14 +438,35 @@ sub is_overridden {
 # Returns the name of the overriding property if appropriate.
 sub property_name {
    my ($self, $prop)=@_;
-   lookup_property($self, $prop->name)->name
+   $self->lookup_property($prop->property_name)->name
 }
 ####################################################################################
 sub list_permutations {
    my $self=shift;
-   (values %{$self->permutations}), (map { values %{$_->permutations} } @{$self->super})
+   (values %{$self->permutations}), (map { values %{$_->permutations} } @{$self->linear_isa})
 }
 ####################################################################################
+# private:
+sub create_prop_method {
+   my ($self, $prop)=@_;
+   define_function($self->pkg, $prop->name,
+                   create_prop_accessor($prop->flags & $Property::is_multiple
+                                        ? [ $prop, \&Object::get_multi, \&Object::put_multi ]
+                                        : [ $prop, \&Object::get,       \&Object::put       ],
+                                        $self->pkg));
+}
+
+sub create_self_method_in_anon_full_spez {
+   my ($self, $prop, $augm)=@_;
+   my $subpkg="::_prop_".$prop->name;
+   while (defined $self->parent_property) {
+      $subpkg="::_prop_".$self->parent_property->name;
+      $self=$self->parent_property->belongs_to;
+   }
+   define_function($scope_owner->pkg.$subpkg, "self",
+                   sub { &check_object_pkg; $augm });
+}
+
 # private:
 sub add_property {      # => Property
    my ($self, $prop)=@_;
@@ -329,45 +475,90 @@ sub add_property {      # => Property
              ? "multiple definition of property '".$prop->name."'"
              : "redefinition of inherited property '".$prop->name."' not allowed" );
    }
-
-   define_function($self->pkg, $prop->name,
-                   create_prop_accessor($prop->flags & $Property::is_multiple
-                                        ? [ $prop, \&Object::get_multi, \&Object::put_multi ]
-                                        : [ $prop, \&Object::get,       \&Object::put       ],
-                                        $self->pkg));
-
-   if ($prop->flags & $Property::is_permutation) {
-      $self->permutations->{$prop->name}=$prop;
-   } else {
-      $self->application->EXPORT->{$prop->name}="prop";
-   }
+   &create_prop_method;
+   # TODO: deprecate this
+   $self->application->EXPORT->{$prop->name}="prop";
    $self->properties->{$prop->name}=$prop;
 }
-####################################################################################
-sub add_property_alias {        # "new name", "old name", Help, override => Property
-   my ($self, $prop_name, $old_prop_name, $help, $override)=@_;
-   my $old_prop=$self->lookup_property($old_prop_name)
-      or croak( "unknown property ", $self->name, "::$old_prop_name" );
-   my $new_prop=add_property($self, $old_prop->create_alias($prop_name, $override && $self));
-   if ($override) {
-      if ($Application::plausibility_checks and
-          $old_prop->belongs_to == $self ||
-          $old_prop->belongs_to == $self->generic) {
-         croak( "only properties inherited from other object types can be overridden" );
-      }
-      $self->properties->{$old_prop_name}=$new_prop;
-      define_function($self->pkg, $old_prop_name, UNIVERSAL::can($self->pkg, $prop_name));
+
+sub add_permutation {
+   my ($self, $name, $pure_prop)=@_;
+   if ($Application::plausibility_checks && defined (my $old_prop=$self->lookup_property($name))) {
+      croak( $old_prop->flags & $Property::is_permutation
+             ? ( $old_prop->belongs_to == $self
+                 ? "multiple definition of permutation '$name'"
+                 : "redefinition of inherited permutation '$name' not allowed" )
+             : "permutation $name conflicts with property ".$old_prop->defined_for->full_name."::$name" );
    }
-   if (defined $help) {
-      $help->annex->{header}="property $prop_name : ".$new_prop->type->full_name."\n";
-      weak($help->annex->{property}=$new_prop);
-      $help->text .= " Alias for property [[" . $old_prop->belongs_to->pure_type->name . "::$old_prop_name]].\n";
-   }
-   $new_prop;
+   my $perm=new Permutation($name, $self->augment($pure_prop), $self);
+   create_prop_method($self, $perm);
+   $pure_prop->name .= ".pure";
+   $self->properties->{$pure_prop->name}=$pure_prop;
+   $self->permutations->{$name}=
+   $self->properties->{$name}=$perm;
 }
 ####################################################################################
-sub add_permutation {
-   add_property($_[0], new Permutation(@_));
+sub override_property {        # "new name", "old name", Help => Property
+   my ($self, $prop_name, $old_prop_name, $help)=@_;
+   if ($Application::plausibility_checks && instanceof Specialization($scope_owner) && !$scope_owner->is_anon_full_spez) {
+      croak( "A property can't be overridden in a partial or conditional specialization" );
+   }
+   my $old_prop;
+   foreach my $super (@{$self->linear_isa}) {
+      # only properties inherited from other types or from other enclosing types may be overridden
+      if ($super != $self->generic && $super->outer_object_type != $scope_owner) {
+         $old_prop=$super->lookup_property($old_prop_name)
+           and last;
+      }
+   }
+   if (!$old_prop) {
+      $old_prop=$self->property($old_prop_name);
+      croak( "Can't override a property $old_prop_name defined in the same class family ", $old_prop_name->defined_for->full_name );
+   }
+   my $prop=$self->properties->{$old_prop_name}=add_property($self, $old_prop->override_by($prop_name, $self));
+   define_function($self->pkg, $old_prop_name, UNIVERSAL::can($self->pkg, $prop_name));
+
+   if (defined $help) {
+      $help->annex->{header}="property $prop_name : ".$prop->type->full_name."\n";
+      weak($help->annex->{property}=$prop);
+      $help->text .= " Alias for property [[" . $old_prop->defined_for->help_ref_to_prop($self->application, $old_prop_name) . "]].\n";
+   }
+   $prop;
+}
+####################################################################################
+sub override_twin_property {
+   my ($self, $prop_name)=@_;
+   if ($Application::plausibility_checks and
+       instanceof Specialization($self) || instanceof Augmented($self)) {
+      croak( "A twin property can only be overridden in a derived object type" );
+   }
+   my $old_prop;
+   foreach my $super (@{$self->linear_isa}) {
+      # only properties inherited from other types may be overridden
+      if ($super != $self->generic) {
+         $old_prop=$super->lookup_property($prop_name)
+           and last;
+      }
+   }
+   if (!$old_prop) {
+      $old_prop=$self->property($prop_name);
+      croak( "Can't override a property $prop_name defined in the same class family ", $prop_name->defined_for->full_name );
+   }
+   if ($Application::plausibility_checks && !($old_prop->flags & $Property::is_twin)) {
+      croak( "Only twin properties can be overridden without name change" );
+   }
+   my $prop=$self->properties->{$prop_name}=$old_prop->clone_for_overridden_twin($self);
+   create_prop_method($self, $prop);
+
+   # derived classes might have cached the original twin property or its concrete instances
+   foreach my $derived ($self->derived) {
+      my $cached_prop=$derived->properties->{$prop_name} or next;
+      if ($cached_prop==$old_prop) {
+         $derived->properties->{$prop_name}=$prop;
+      } elsif ($cached_prop->flags & $Property::is_concrete && $self->isa($cached_prop->belongs_to->generic // $cached_prop->belongs_to)) {
+         delete $derived->properties->{$prop_name};
+      }
+   }
 }
 ####################################################################################
 # protected:
@@ -384,24 +575,26 @@ sub rule_is_applicable {
    my ($self, $rule)=@_;
    if (defined (my $overridden_in=$rule->overridden_in)) {
       foreach my $other (@$overridden_in) {
-         return 0 if $self==$other || list_index($self->super, $other)>=0;
+         return 0 if $self==$other || list_index($self->linear_isa, $other)>=0;
       }
    }
    1
 }
 
 sub get_producers_of {
-   my ($self, $prop)=@_;
+   my ($self, $prop, $stop_after)=@_;
    $self->all_producers->{$prop->key} //= do {
       my @list;
       if (defined (my $own_prod=$self->producers->{$prop->key})) {
          @list=@$own_prod;
       }
-      if ($prop->belongs_to != $self) {
-         foreach my $super_proto (@{$self->super}) {
+      $stop_after //= $prop->defined_for;
+      if ($stop_after != $self) {
+         foreach my $super_proto (@{$self->linear_isa}) {
             if (defined (my $super_prod=$super_proto->producers->{$prop->key})) {
                push @list, grep { rule_is_applicable($self, $_) } @$super_prod;
             }
+            last if $stop_after==$super_proto;
          }
       }
       \@list
@@ -430,8 +623,8 @@ sub get_rules_by_label {
    my ($self, $wildcard)=@_;
    $self->all_rules_by_label->{$wildcard} ||= do {
       # signal for invalidate_label_cache should it happen later
-      $_->all_rules_by_label->{$wildcard} //= 0 for @{$self->super};
-      Preference::merge_controls(grep { defined($_) } map { $_->rules_by_label->{$wildcard} } $self, @{$self->super})
+      $_->all_rules_by_label->{$wildcard} //= 0 for @{$self->linear_isa};
+      Preference::merge_controls(grep { defined($_) } map { $_->rules_by_label->{$wildcard} } $self, @{$self->linear_isa})
    };
 }
 
@@ -453,27 +646,22 @@ sub add_rule_labels {
 ####################################################################################
 # protected:
 # "NAME.NAME" => (Property)
-sub encode_property_list {
-   my ($self, $req, $obj)=@_;
+sub encode_property_path {
+   my ($self, $req)=@_;
    my $prop;
-   my $allow_abstract=!defined($obj) && $self->abstract;
    map {
-      if (defined($prop)) {
-         $self=$prop->specialization($self, $allow_abstract)->type;
-      }
-      $prop=$self->lookup_property($_)
-        or
-      croak( "unknown property ", $self->full_name, "::$_" );
+      $self=$prop->type if $prop;
+      $prop=$self->property($_);
    } split /\./, $req;
 }
 
 # 'NAME.NAME | ...' => [ [ Property, ... ] ]
 # flags(RETVAL)==$Property::is_permutation if the paths descend into a permutation subobject
 sub encode_read_request {
-   my ($self, $req, $obj)=@_;
+   my ($self, $req)=@_;
    my $perm_seen;
    my @alternatives=map {
-      my @path=encode_property_list($self, $_, $obj);
+      my @path=encode_property_path($self, $_);
       $perm_seen ||= Property::find_first_in_path(\@path, $Property::is_permutation)>=0;
       \@path
    } split /\s*\|\s*/, $req;
@@ -483,13 +671,17 @@ sub encode_read_request {
    \@alternatives
 }
 ####################################################################################
-# for compatibility with LocallyDerived types, e.g. when only derived owner types define some additional properties
+# for compatibility with Augmented types, e.g. when only derived owner types define some additional properties
 *pure_type=\&type;
-sub local_type { pop }
+sub final_type { pop }
+sub outer_object_type { shift }
+sub parent_property { undef }
 sub enclosed_in_restricted_spez { 0 }
 
 # for compatibility with Specialization
 sub preconditions { undef }
+sub full_spez_for { undef }
+sub is_anon_full_spez { 0 }
 ####################################################################################
 sub override_rule {
    my ($self, $super, $label)=@_;
@@ -498,7 +690,7 @@ sub override_rule {
       if (is_object($super)) {
          next if !$super->isa($rule->defined_for);
       } else {
-         next if $self==$rule->defined_for || list_index($self->super, $rule->defined_for)<0;
+         next if $self==$rule->defined_for || list_index($self->linear_isa, $rule->defined_for)<0;
       }
       $matched=1;
       if (defined($rule->overridden_in)) {
@@ -528,7 +720,7 @@ sub find_rules_by_pattern {
    } elsif ($pattern =~ /:/) {
       # specified by header:
       Rule::header_search_pattern($pattern);
-      grep { $_->header =~ $pattern } map { @{$_->production_rules} } $self, @{$self->super}
+      grep { $_->header =~ $pattern } map { @{$_->production_rules} } $self, @{$self->linear_isa}
 
    } else {
       die "invalid rule search pattern: expected a label or a complete header in the form \"OUTPUT : INPUT\"\n";
@@ -558,6 +750,108 @@ sub add_method_rule {
    $rule;
 }
 ####################################################################################
+sub augment {
+   my ($self, $prop)=@_;
+   my ($augm, $augm_super, $cloned_prop, $pure_prop, $update_caches);
+
+   if ($prop->flags & $Property::is_permutation) {
+      $pure_prop=$prop->type->pure_property;
+      $augm=$prop->change_to_augmented($self->augment($pure_prop))->type;
+      $update_caches=1;
+
+   } elsif ($prop->belongs_to == $self) {
+      if ($prop->flags & $Property::is_augmented  and
+          !defined($prop->overrides) || $prop->type->parent_property == $self) {
+         return $prop->type;
+      }
+      $augm=new Augmented($prop, $self);
+      $prop->change_to_augmented($augm);
+      create_self_method_in_anon_full_spez($self, $prop, $augm) if $scope_owner->is_anon_full_spez;
+      $update_caches=!$prop->flags & $Property::is_concrete;
+
+   } elsif ($prop->belongs_to == $self->full_spez_for) {
+      return $self->augment_in_full_spez($prop);
+
+   } else {
+      ($augm, $augm_super, $update_caches)=$self->create_augmentation($prop);
+      $cloned_prop=$self->properties->{$prop->name}=$prop->clone_for_augmented($augm, $self);
+      create_prop_method($self, $cloned_prop);
+   }
+
+   if ($update_caches) {
+      # derived classes might have cached the original property; update or delete the cache entries
+      foreach my $derived ($self->derived) {
+         my $cached_prop=$derived->properties->{$prop->name} or next;
+         if ($pure_prop) {
+            # every class has its own permutation instance
+            $cached_prop==$prop
+              and croak( "internal error: permutation ", $prop->name, " instance shared between different types ",
+                         $derived->full_name, " and ", $self->full_name );
+            $cached_prop->update_pure_type($derived->property($pure_prop->name)->type);
+
+         } elsif ($cached_prop==$prop) {
+            if (defined $cloned_prop) {
+               # the derived class has inherited the original property, now it is shadowed by the cloned one
+               if ($cloned_prop->flags & $Property::is_concrete || $derived->abstract) {
+                  $derived->properties->{$prop->name}=$cloned_prop;
+               } else {
+                  # augmentation is parametrized, the concrete instance will be created later on demand
+                  delete $derived->properties->{$prop->name};
+               }
+            } elsif (!($prop->flags & $Property::is_concrete || $derived->abstract) || $prop->flags & $Property::is_permutation) {
+               # augmentation is parametrized, the concrete instance will be created later on demand
+               delete $derived->properties->{$prop->name};
+            }
+
+         } elsif (defined $augm_super) {
+            # other augmentations downstream have already been treated by the new augmentation itself;
+            # only handle classes which inherited a concrete instance of augm_super
+            if ($augm_super == $cached_prop->type->generic) {
+               if ($derived->generic == ($self->generic // $self)) {
+                  # clone the property for this concrete instance;
+                  # the augmentation will propagate itself to all concrete descendants
+                  my $cloned_concrete_prop=$derived->properties->{$prop->name}=
+                    $prop->clone_for_augmented($augm->concrete_type($derived, $cached_prop->type), $derived);
+                  create_prop_method($derived, $cloned_concrete_prop);
+               } else {
+                  # it's an intermediate class without own augmentations
+                  delete $derived->properties->{$prop->name};
+               }
+            }
+         } elsif ($cached_prop->flags & $Property::is_augmented) {
+            # this augmentation was at the root of the hierarchy, now it has to absorb the new one
+            if ($cached_prop->type->super->[0] == $cached_prop->type->pure_type) {
+               $cached_prop->type->inject_inheritance($augm);
+            }
+
+         } else {
+            # cached_prop must be a concrete instance of the generic original property
+            ($cached_prop->flags & $Property::is_concrete) > ($prop->flags & $Property::is_concrete)
+              or croak( "internal error: unexpected property instance of ", $cached_prop->name,
+                        " found in ", $derived->full_name );
+            if (defined($cloned_prop) || $derived->generic != ($self->generic // $self)) {
+               # the derived class has inherited a concrete instance of the original property;
+               # a new concrete instance will be created or fetched later on demand
+               delete $derived->properties->{$prop->name};
+            } else {
+               # we can't delete the property because it's stored in the accessor methods;
+               # this will create a new concrete augmentation which won't have any descendants yet
+               $cached_prop->change_to_augmented($augm->concrete_type($derived));
+            }
+         }
+      }
+   }
+
+   $augm
+}
+
+sub create_augmentation {
+   my ($self, $prop)=@_;
+   my @augm_super= $prop->flags & $Property::is_augmented ? ($prop->type) : ();
+   my $augm=new Augmented($prop, $self, @augm_super);
+   ($augm, $augm_super[0], 1);
+}
+####################################################################################
 sub help_topic {
    my $self=shift;
    $self->help // PropertyType::locate_own_help_topic($self, "objects", @_);
@@ -565,7 +859,7 @@ sub help_topic {
 ####################################################################################
 sub override_help {
    my ($self, $group, $item, $text)=@_;
-   my ($inherited_topic)=map { $_->help_topic(1)->find($group, $item) } @{$self->super}
+   my ($inherited_topic)=map { $_->help_topic(1)->find($group, $item) } @{$self->linear_isa}
      or croak( "help topic $group/$item not found anywhere in base types of ", $self->full_name );
    if ($inherited_topic->parent->category) {
       $text='# @category ' . $inherited_topic->parent->name . "\n" . $text;
@@ -593,10 +887,15 @@ sub reopen_subobject {
    my ($self, $path)=@_;
    foreach my $prop_name (split /\./, $path) {
       my $prop=$self->property($prop_name);
-      $prop->flags & $Property::is_subobject
-         or croak( "can't reopen the definition scope of an atomic property" );
-      $self=$prop->create_local_derivation_mixin($self);
+      if (($prop->flags & ($Property::is_subobject | $Property::is_twin)) == $Property::is_subobject) {
+         $self=$self->augment($prop);
+      } elsif ($prop->flags & $Property::is_twin) {
+         croak( "a twin property cannot be augmented" );
+      } else {
+         croak( "an atomic property definition cannot be augmented" );
+      }
    }
+   $self
 }
 ####################################################################################
 package _::MethodAsRule;
@@ -620,143 +919,332 @@ sub resolve {
 }
 
 ####################################################################################
-package __::LocalDerivationMixin;
+package __::Augmented;
 
 use Polymake::Struct (
    [ '@ISA' => 'ObjectType' ],
-   [ new => '$$' ],
-   [ aliases => (belongs_to => 'params') ],
-   [ '$name' => '#2 ->name ."__". #1 ->name ."__mix_in"' ],
-   [ '$belongs_to' => '#2' ],
-   [ '$application' => '#2 ->application' ],
-   [ '$parent_property' => 'weak( #1 )' ],
-   [ '$enclosed_in_restricted_spez' => '#2 ->enclosed_in_restricted_spez || defined( #2 ->preconditions)' ],
-   '%local_type_cache',                       # (autonomous) ObjectType => LocallyDerived
+   [ new => '$$@' ],
+   [ '$name' => '#2->name ."__". #1->name ."__augmented"' ],
+   [ '$application' => '#2->application' ],
+   [ '$parent_property' => 'undef' ],
+   [ '$outer_object_type' => 'undef' ],
+   [ '$pure_type' => '#1->type->pure_type' ],
+   [ '$enclosed_in_restricted_spez' => '#2->enclosed_in_restricted_spez || defined(#2->preconditions)' ],
+   [ '$full_spez_for' => 'undef' ],
+   '%inst_cache',             # for abstract types: owner ObjectType => concrete instance
+                              # for concrete types: autonomous ObjectType => Augmented
 );
 
-# constructor: (parent) Property, (owner) ObjectType =>
+# constructor: (parent) Property, (owner) ObjectType, super Augmented =>
 sub new {
    my $self=&_new;
-   my $forefather=$self->parent_property->belongs_to;
-   $self->pkg=$self->belongs_to->pkg."::_prop_".$self->parent_property->name;
+   my ($prop, $owner, @super)=@_;
 
+   $self->pkg=$owner->pkg."::_prop_".$prop->name;
    define_function($self->pkg, "type", sub { $self }, 1);
    define_function($self->pkg, "self",  # for the rule parser
                    sub { &check_object_pkg; $self });
 
-   # establish inheritance relations with mixins generated for ascendants and descendants of $parent
+   weak($self->outer_object_type=$owner->outer_object_type);
 
-   unless ($self->parent_property->flags & $Property::is_permutation) {
-      my ($closest_super_mixin, $closest_derived_mixin);
+   if ($self->outer_object_type->abstract) {
+      $self->context_pkg=$self->outer_object_type->context_pkg;
+      $self->abstract=\&type;
+   } elsif ($self->pure_type->abstract) {
+      $self->pure_type=$self->pure_type->concrete_type($self->outer_object_type);
+   }
+   if (!@super && defined($prop->overrides)) {
+      my $overridden=$owner->lookup_overridden_property($prop);
+      if ($overridden->flags & $Property::is_augmented) {
+         push @super, $overridden->type;
+      }
+   }
+   establish_inheritance($self, 0, @super ? @super : $self->pure_type);
 
-      if ($self->belongs_to != $forefather) {
-         foreach my $super_proto (@{$self->belongs_to->super}) {
-            if ($super_proto==$forefather  or
-                list_index($super_proto->super, $forefather)>=0) {
-               if (defined ($closest_super_mixin=$self->parent_property->mixin->{$super_proto})) {
-                  establish_inheritance($self, $closest_super_mixin->pkg);
-                  last;
+   if (instanceof Specialization($scope_owner)) {
+      if ($self->abstract) {
+         my $augm_generic=$super[0];
+         if (instanceof Specialization($augm_generic->outer_object_type)) {
+            # derived augmentation of a property introduced in a partial specialization
+         } else {
+            # introduced a new augmentation in a partial specialization:
+            # inject it into all matching concrete instances
+            weak($self->generic=$augm_generic);
+            push @{$augm_generic->specializations //= [ ]}, $self;
+
+            while (my ($concrete_owner, $concrete_augm)=each %{$augm_generic->inst_cache}) {
+               if ($concrete_owner->isa($owner)) {
+                  (my $pos=list_index($concrete_augm->super, $augm_generic))>=0
+                    or croak( "internal error: super(", $concrete_augm->full_name, ") does not contain the generic augmentation ", $augm_generic->full_name);
+                  establish_inheritance($concrete_augm, $pos, $self);
+                  $_->update_inheritance for $concrete_augm->derived;
                }
             }
          }
       }
-      if (defined $closest_super_mixin) {
-         # prepend that one with the new mixin in all descendants
-         foreach my $derived_proto ($closest_super_mixin->derived) {
-            if ($derived_proto != $self &&
-                $derived_proto->super->[0]==$closest_super_mixin &&
-                instanceof LocalDerivationMixin($derived_proto)) {
-               # this is the closest descendant, it must directly inherit from the new mixin now
-               $closest_derived_mixin=$derived_proto;
-               unshift @{$closest_derived_mixin->super}, $self;
-               no strict 'refs';
-               @{$closest_derived_mixin->pkg."::ISA"}=$self->pkg;
-               last;
-            }
-         }
-      } else {
-         # maybe there are more derived mixins downstream
+      # augmentations in full specializations are included into the concrete instance directly in augment()
 
-         foreach my $derived_proto ($self->belongs_to->derived) {
-            if (defined (my $derived_mixin=$self->parent_property->mixin->{$derived_proto})) {
-               if (@{$derived_mixin->super}==0) {
-                  $closest_derived_mixin=$derived_mixin;
-                  establish_inheritance($closest_derived_mixin, $self->pkg);
-                  last;
-               }
-            }
-         }
-      }
-
-      if (defined $closest_derived_mixin) {
-         foreach my $derived_proto ($closest_derived_mixin->derived) {
-            my $pos=list_index($derived_proto->super, $closest_derived_mixin);
-            splice @{$derived_proto->super}, $pos+1, 0, $self;
-            if (instanceof LocallyDerived($derived_proto)) {
-               ++$derived_proto->pure_type_at;
-            }
-         }
-      }
+   } elsif (@super) {
+      propagate_inheritance($self, $owner, @super);
    }
 
    $self;
 }
+####################################################################################
+use Polymake::Struct (
+   [ 'alt.constructor' => 'new_concrete' ],
+   [ new => '$' ],
+   [ '$name' => '#1->name' ],
+   [ '$application' => '#1->application' ],
+   [ '$extension' => '#1->extension' ],
+   [ '$context_pkg' => '#1->context_pkg' ],
+   [ '$generic' => 'weak(#1)' ],
+   [ '$pure_type' => 'undef' ],
+   [ '$enclosed_in_restricted_spez' => '0' ],
+);
 
-sub local_type {
-   my ($self, $autonomous_type)=@_;
-   my $autonomous_pure_type=$autonomous_type->pure_type;
-   if ($autonomous_type != $autonomous_pure_type &&
-       $autonomous_type->super->[0]->parent_property->key == $self->parent_property->key) {
-      $autonomous_type=$autonomous_pure_type;
+sub concrete_type {
+   my ($src, $owner, @concrete_super)=@_;
+   $src->abstract
+     or croak( "internal error: attempt to construct a concrete instance of non-abstract augmentation ", $src->full_name );
+   if (defined (my $augm_generic=$src->generic)) {
+      $src=$augm_generic;
    }
-   $self->local_type_cache->{$autonomous_type} //= new LocallyDerived($autonomous_type, $self);
+
+   $src->inst_cache->{$owner} //= do {
+      my $self=new_concrete($src, $src);
+      my $prop_name=$src->parent_property->name;
+      $self->pkg=$owner->pkg."::_prop_${prop_name}";
+      define_function($self->pkg, "type", sub { $self }, 1);
+
+      weak($self->outer_object_type=$owner->outer_object_type);
+      if (@concrete_super) {
+         $self->pure_type=$concrete_super[0]->pure_type;
+      } else {
+         $self->pure_type= $src->pure_type->abstract ? $src->pure_type->concrete_type($self->outer_object_type) : $src->pure_type;
+         @concrete_super=map { $_->type } grep { $_->flags & $Property::is_augmented } $owner->collect_augmented_super_instances($prop_name);
+      }
+      establish_inheritance($self, 0, $src->matching_specializations($owner, $self->pure_type), $src,
+                            @concrete_super || $self->pure_type == $src->pure_type ? @concrete_super : $self->pure_type);
+      propagate_inheritance($self, $owner, @concrete_super);
+      $self;
+   };
 }
 
-sub lookup_property {
-   my ($self, $prop_name)=@_;
-   # don't cache properties of the pure type in the mixin
-   $self->SUPER::lookup_property($prop_name) // $self->parent_property->type->pure_type->lookup_property($prop_name);
+sub concrete_specialization {
+   my ($src, $owner, $pure_type)=@_;
+   $src->abstract
+     or croak( "internal error: attempt to construct a concrete instance of non-abstract augmentation ", $src->full_name );
+
+   # find the concrete instance of the enclosing specialization
+   my $owner_spez;
+   my $gen_spez=$src->parent_property->belongs_to;
+   foreach (@{$owner->linear_isa}) {
+      if ($_->generic == $gen_spez) {
+         $owner_spez=$_;
+         last;
+      }
+   }
+
+   $owner_spez
+     or croak( "internal error: could not find a concrete instance of augmentation ", $gen_spez->full_name, " among ancestors of ", $owner->full_name );
+
+   $src->inst_cache->{$owner_spez} //= do {
+      my $self=new_concrete($src, $src);
+      my $prop_name=$src->parent_property->name;
+      $self->pkg=$owner_spez->pkg."::_prop_${prop_name}";
+      define_function($self->pkg, "type", sub { $self }, 1);
+      $self->pure_type=$pure_type;
+      weak($self->outer_object_type=$owner_spez->outer_object_type);
+      if ($src->generic) {
+         # property defined in the generic enclosing type
+         establish_inheritance($self, 0, $src);
+      } else {
+         # property borrowed from another specialization
+         establish_inheritance($self, 0, $src, concrete_specialization($src->super->[0], $owner, $pure_type));
+      }
+      $self;
+   };
 }
 
-sub property {
-   my ($self, $prop_name)=@_;
-   # don't cache properties of the pure type in the mixin
-   $self->SUPER::lookup_property($prop_name) // $self->parent_property->type->pure_type->property($prop_name);
+sub matching_specializations {
+   my ($self, $owner, $pure_type)=@_;
+   if ($self->specializations) {
+      map { concrete_specialization($_, $owner, $pure_type) } grep { $owner->isa($_->parent_property->belongs_to) } @{$self->specializations};
+   } else {
+      ()
+   }
 }
 
+sub inject_inheritance {
+   my ($self, $augm_super)=@_;
+   $self->super->[0]=$augm_super;
+   namespaces::using($self->pkg, $augm_super->pkg);
+   {  no strict 'refs';
+      ${$self->pkg."::ISA"}[0]=$augm_super->pkg;
+   }
+   if ($augm_super->abstract && $self->abstract) {
+      my $super_generic=$augm_super->parent_property->belongs_to;
+      while (my ($concrete_owner, $concrete_augm)=each %{$self->inst_cache}) {
+         foreach my $super_concrete ($concrete_owner->concrete_super_instances) {
+            if ($super_concrete->isa($super_generic)) {
+               # the concrete augmentation can't have any concrete super classes so far
+               establish_inheritance($concrete_augm, -1, $augm_super->concrete_type($super_concrete->descend_to_generic($super_generic->pkg)));
+               last;
+            }
+         }
+      }
+   }
+   $_->update_inheritance for $self, $self->derived;
+}
+
+sub propagate_inheritance {
+   my ($self, $owner, @override)=@_;
+   my %overridden;
+   @overridden{@override}=();
+
+   foreach my $derived (map { $_->derived } @override) {
+      if ($derived != $self &&
+          ($derived->abstract || !$self->abstract) &&
+          $derived->parent_property->belongs_to->isa($owner)) {
+         my $replaced=0;
+         for (my $i=0; $i<=$#{$derived->super}; ) {
+            if (exists $overridden{$derived->super->[$i]}) {
+               if ($replaced) {
+                  splice @{$derived->super}, $i, 1;
+                  no strict 'refs';
+                  splice @{$derived->pkg."::ISA"}, $i, 1;
+               } else {
+                  namespaces::using($derived->pkg, $self->pkg);
+                  $derived->super->[$i]=$self;
+                  no strict 'refs';
+                  ${$derived->pkg."::ISA"}[$i]=$self->pkg;
+                  ++$i;
+                  $replaced=1;
+               }
+            } else {
+               ++$i;
+            }
+         }
+         if ($replaced) {
+            $_->update_inheritance for $derived, $derived->derived;
+         }
+      }
+   }
+}
+
+####################################################################################
+sub final_type {
+   my ($self, $given_type)=@_;
+   $self->abstract || $given_type->abstract
+     and croak( "internal error: attempt to construct a concrete augmented type from ",
+                ($self->abstract && "abstract base "), $self->full_name,
+                " and ", ($autonomous_type->abstract && "abstract autonomous type "), $autonomous_type->full_name );
+   my $autonomous_type=$given_type->pure_type;
+   if ($autonomous_type == $self->pure_type) {
+      $self
+   } else {
+      $self->inst_cache->{$autonomous_type} //= create_derived($self, $self->parent_property, $autonomous_type);
+   }
+}
+####################################################################################
 sub full_name {
-   my $self=shift;
-   $self->belongs_to->full_name . "::" . $self->parent_property->name;
+   my ($self)=@_;
+   (@_==1 && $self->pure_type->full_name . " as ") . $self->parent_property->belongs_to->full_name(0) . "::" . $self->parent_property->name;
 }
 
+sub descend_to_generic {
+   $_[0]->outer_object_type->descend_to_generic($_[1]) // $_[0]->pure_type->descend_to_generic($_[1]);
+}
+
+sub concrete_super_instances {
+   my ($self)=@_;
+   $self->super->[0] == $self->pure_type ? () : &ObjectType::concrete_super_instances;
+}
+####################################################################################
+sub augmentation_path {
+   my ($self)=@_;
+   my ($parent_prop, @path);
+   while (defined ($parent_prop=$self->parent_property)) {
+      push @path, $parent_prop;
+      $self=$parent_prop->belongs_to;
+   }
+   reverse @path;
+}
+
+sub create_augmentation {
+   my ($self, $prop)=@_;
+   if (instanceof Specialization($scope_owner)) {
+      &Specialization::create_augmentation;
+   } else {
+      my ($augm, @augm_super);
+      my @owner_augm_path=augmentation_path($self);
+      my @prop_augm_path=augmentation_path($prop->belongs_to);
+      if (@prop_augm_path==@owner_augm_path) {
+         # there is already another augmentation on the same nesting level
+         push @augm_super, $prop->type;
+      } else {
+         # try to find or establish an augmentation with one or more outer enclosing object types stripped off
+       STRIP_OFF:
+         while (@owner_augm_path) {
+            my $outer=shift(@owner_augm_path)->type->pure_type;
+            if ($outer->abstract && defined $outer->generic) {
+               # pass through dependent abstract types
+               $outer=$outer->generic;
+            }
+            foreach (@owner_augm_path, $prop) {
+               if ($outer->isa($_->defined_for)) {
+                  my $sub_prop=$outer->property($_->name);
+                  $outer=$outer->augment($sub_prop);
+               } else {
+                  next STRIP_OFF;
+               }
+            }
+            push @augm_super, $outer;
+            last;
+         }
+      }
+      $augm=new Augmented($prop, $self, @augm_super);
+      ($augm, $augm_super[0], 1);
+   }
+}
+####################################################################################
+sub find_rule_label {
+   &ObjectType::find_rule_label // do {
+      my $pure_type_app=$_[0]->pure_type->application;
+      if ($pure_type_app != $_[0]->application) {
+         $pure_type_app->prefs->find_label($_[1])
+      } else {
+         undef
+      }
+   }
+}
 ####################################################################################
 # private:
 sub provide_help_topic {
    my ($owner, $force, @descend)=@_;
    my $topic=$owner->help_topic($force) or return;
-   foreach my $mixin (@descend) {
-      my $prop=$mixin->parent_property;
+   foreach my $prop (@descend) {
       my $help_group=$prop->flags & $Property::is_permutation ? "permutations" : "properties";
       $topic=$topic->find("!rel", $help_group, $prop->name) // do {
          $force or return;
          my $text="";
-         if ($owner != $prop->belongs_to) {
+         my $refer_to=$prop->defined_for;
+         if ($owner != $refer_to) {
             if (my $prop_topic=$prop->belongs_to->help_topic->find($help_group, $prop->name)) {
                if ($prop_topic->parent->category) {
                   $text='# @category ' . $prop_topic->parent->name . "\n";
                }
             }
-            my $refer_to=($mixin->super->[0] || $prop)->belongs_to;
-            $text .= "Amendment of [[" . ( $refer_to->application != $mixin->application && $refer_to->application->name . "::" )
-                     . $refer_to->full_name . "::" . $prop->name
-                     . "]] for " . $mixin->full_name . "\n"
+            $text .= "Augmented subobject [[" . ( $refer_to->application != $prop->belongs_to->application && $refer_to->application->name . "::" )
+                     . $refer_to->full_name . "::" . $prop->name . "\n"
                      . "# \@display noshow\n";
          }
          $topic=$topic->add([ $help_group, $prop->name ], $text);
          $topic->annex->{property}=$prop;
          $topic
       };
-      $owner=$mixin;
+      $owner=$prop->belongs_to;
    }
    $topic
 }
@@ -764,113 +1252,99 @@ sub provide_help_topic {
 sub help_topic {
    my ($self, $force)=@_;
    $self->help //= do {
-      my @descend;
-      my $owner=$self;
-      do {
-         push @descend, $owner;
-         $owner=$owner->belongs_to;
-      } while (instanceof LocalDerivationMixin($owner));
-
-      if (instanceof Specialization($owner)) {
-         (provide_help_topic($owner->generic // $owner->full_spez_for, $force, reverse @descend) // return)->new_specialization($owner);
+      if ($scope_owner) {
+         # need a help node during rulefile loading
+         my @descend=augmentation_path($self);
+         if (instanceof Specialization($scope_owner)) {
+            my $gen_topic=provide_help_topic($scope_owner->generic // $scope_owner->full_spez_for, $force, @descend) or return;
+            ($self->generic // $self->full_spez_for)->help //= $gen_topic;
+            $gen_topic->new_specialization($scope_owner);
+         } elsif ($scope_owner != $descend[0]->belongs_to) {
+            $force and die "internal error: augmentation path does not match the compilation scope\n";
+            return;
+         } else {
+            my $topic=provide_help_topic($scope_owner, $force, @descend) or return;
+            push @{$topic->related}, uniq( map { ($_, @{$_->related}) } grep { defined($_) && ref($_) !~ /\bSpecialization$/ }
+                                           map { $_->help_topic } @{$self->linear_isa} );
+            foreach my $other ($self->derived) {
+               if (defined $other->help) {
+                  push @{$other->help->related}, $topic;
+               }
+            }
+            $topic
+         }
       } else {
-         my $topic=provide_help_topic($owner, $force, reverse @descend) or return;
-         push @{$topic->related}, uniq( map { ($_, @{$_->related}) } grep { defined } map { $_->help_topic($force) } @{$self->super} );
-         $topic
+         $self->pure_type->help_topic;
       }
    };
 }
-####################################################################################
-package __::LocallyDerived;
 
+sub help_ref_to_prop {
+   my ($self, $for_app, $prop_name)=@_;
+   $self->outer_object_type->help_ref_to_prop($for_app, join(".", (map { $_->name } augmentation_path($self)), $prop_name));
+}
+####################################################################################
 use Polymake::Struct (
-   [ '@ISA' => 'ObjectType' ],
-   [ new => '$$' ],
-   [ '$name' => '#1 ->name' ],
-   [ '$application' => '#1 ->application' ],
-   [ '$extension' => '#1 ->extension' ],
-   '$pure_type_at',
+   [ 'alt.constructor' => 'new_derived' ],
+   [ new => '$$$' ],
+   [ '$name' => '#1->name' ],
+   [ '$application' => '#1->application' ],
+   [ '$extension' => '#1->extension' ],
+   [ '$parent_property' => 'weak(#2)' ],
+   [ '$outer_object_type' => '#1->outer_object_type' ],
+   [ '$pure_type' => '#3' ],
+   [ '$enclosed_in_restricted_spez' => '#1->enclosed_in_restricted_spez' ],
+   [ '$inst_cache' => 'undef' ],
 );
 
-sub new {
-   my $self=&_new;
-   my ($autonomous_type, $mix_in)=@_;
-   $self->pkg=$autonomous_type->pkg."::__as__".$mix_in->pkg;
+sub create_derived {
+   my ($src, $prop, $autonomous_type)=@_;
+   my $self=new_derived($prop->flags & $Property::is_permutation ? "Polymake::Core::ObjectType::Permuted" : __PACKAGE__, @_);
+   $self->pkg=$autonomous_type->pkg."::__as__".$src->pkg;
+   define_function($self->pkg, "type", sub { $self }, 1);
+   establish_inheritance($self, 0, $src, $autonomous_type);
+   set_extension($self->extension, $autonomous_type->extension);
    if ($autonomous_type->abstract) {
-      $self->context_pkg=$autonomous_type->context_pkg;
-      $self->abstract=sub : method { (&pure_type)->abstract->($_[1]) };
-      @{$self->super}=($mix_in, @{$mix_in->super}, $autonomous_type, @{$autonomous_type->super});
-      $self->pure_type_at=@{$mix_in->super}+1;
-   } else {
-      define_function($self->pkg, "type", sub { $self }, 1);
-      establish_inheritance($self, $mix_in->pkg, $autonomous_type->pkg);
-      $self->pure_type_at=list_index($self->super, $autonomous_type);
+      $self->abstract=\&type;
    }
-   PropertyParamedType::set_extension($self->extension, $mix_in->extension);
    $self;
 }
-
-sub pure_type {
-   my ($self)=@_;
-   $self->super->[$self->pure_type_at]
-}
-
-sub full_name {
-   my ($self)=@_;
-   $self->pure_type->full_name . " as " . $self->super->[0]->full_name;
-}
-
-# independent ObjectType => LocallyDerived
-sub local_type {
-   my ($self, $proto)=@_;
-   if ($proto==&pure_type) {
-      $self
-   } else {
-      $self->super->[0]->local_type($proto);
-   }
-}
-
-sub find_rule_label {
-   &ObjectType::find_rule_label // do {
-      my $mix_in_app=$_[0]->super->[0]->application;
-      if ($mix_in_app != $_[0]->application) {
-         $mix_in_app->prefs->find_label($_[1])
-      } else {
-         undef
-      }
-   }
-}
-
-sub update_inheritance {
-   my ($self)=@_;
-   my $pure_type=&pure_type;
-   &ObjectType::update_inheritance;
-   $self->pure_type_at=list_index($self->super, $pure_type);
-}
-
 ####################################################################################
 package __::Permuted;
 
 use Polymake::Struct (
-   [ '@ISA' => 'LocallyDerived' ],
+   [ '@ISA' => 'Augmented' ],
 );
 
 sub get_producers_of {
-   my ($self, $prop)=@_;
-   # don't inherit any production rule from the basis type, otherwise the scheduler would drive crazy
-   $self->super->[0]->producers->{$prop->key} || [ ];
+   my ($self)=@_;
+   # No production rules should be inherited from the non-permuted type, otherwise the scheduler would drive crazy.
+   # Therefore the collection should stop in the pure permutation type.
+   ObjectType::get_producers_of(@_, $self->super->[0]->pure_type);
 }
 
+sub pure_property { $_[0]->super->[0]->parent_property }
+
+sub concrete_type {
+   my ($self, $owner)=@_;
+   create_derived($owner->property(&pure_property->name)->type, $self->parent_property, $owner);
+}
+
+sub full_name {
+   my ($self)=@_;
+   $self->pure_type->full_name . "::" . $self->parent_property->name
+}
 ####################################################################################
 package __::Specialization;
 
 use Polymake::Struct (
    [ '@ISA' => 'ObjectType' ],
    [ new => '$$$;$' ],
-   [ '$application' => '#3 ->application' ],
+   [ '$application' => '#3->application' ],
    [ '$match_node' => 'undef' ],
    [ '$preconditions' => 'undef' ],
    [ '$full_spez_for' => 'undef' ],
+   '$is_anon_full_spez',
 );
 
 # Constructor: new Specialization('name', 'pkg', generic_ObjectType | generic_Specialization | concrete_ObjectType, [ type params ] )
@@ -901,6 +1375,7 @@ sub new {
          if (defined $self->name) {
             (($gen_proto // $concrete_proto)->full_spez //= { })->{$self->name}=$self;
          } else {
+            $self->is_anon_full_spez=1;
             $self->name=$concrete_proto->full_name;
          }
          $self->params=$concrete_proto->params;
@@ -917,46 +1392,135 @@ sub new {
    $self->generic=$gen_proto;
    if (defined $concrete_proto) {
       define_function($self->pkg, "self", sub { &check_object_pkg; $self });  # for rulefile parser
-      no strict 'refs';
-      my $concrete_ISA=\@{$concrete_proto->pkg."::ISA"};
-      establish_inheritance($self, @$concrete_ISA);
-      unshift @$concrete_ISA, $self->pkg;
-      $_->update_inheritance for $concrete_proto, $concrete_proto->derived;
       weak($self->full_spez_for=$concrete_proto);
+
+      # inherit all the same as the concrete type but restricted full specializations
+      my $pos=position_after_full_spez($concrete_proto);
+      establish_inheritance($self, 0, @{$concrete_proto->super}[$pos..$#{$concrete_proto->super}]);
+      establish_inheritance($concrete_proto, $pos, $self);
+      $_->update_inheritance for $concrete_proto->derived;
+
    } else {
-      establish_inheritance($self, $gen_proto->pkg);
+      establish_inheritance($self, 0, $gen_proto);
    }
    $self;
 }
 
+# inject concrete instances of this specialization into all matching object types
 sub apply_to_existing_types {
    my ($self)=@_;
    my $gen_proto=$self->generic;
-   my @derived_types=grep { !$_->abstract } $gen_proto->derived;
+   my @concrete_types=grep { !$_->abstract } $gen_proto->derived;
    # first update the ISA lists of matching instances of the same generic type
-   foreach my $proto (@derived_types) {
-      if ($proto->generic == $gen_proto and
-          my ($spez)=pick_specialization($self, $proto)) {
-         namespaces::using($proto->pkg, $spez->pkg);
-         no strict 'refs';
-         unshift @{$proto->pkg."::ISA"}, $spez->pkg;
+   foreach my $concrete (@concrete_types) {
+      if ($concrete->generic == $gen_proto and
+          my ($spez)=pick_specialization($self, $concrete)) {
+         # all partial specializations go in front of the generic type
+         establish_inheritance($concrete, list_index($concrete->super, $gen_proto), $spez);
       }
    }
    # then regenerate the super lists of all derived types
-   $_->update_inheritance for @derived_types;
+   $_->update_inheritance for @concrete_types;
 }
 
+sub position_after_full_spez {
+   my ($self)=@_;
+   my $pos=0;
+   foreach my $spez (@{$self->super}) {
+      last if $spez->full_spez_for != $self || $spez->is_anon_full_spez;
+      ++$pos;
+   }
+   $pos
+}
+####################################################################################
 sub lookup_property {
    my ($self, $prop_name)=@_;
    if (defined $self->full_spez_for) {
-      # the final object type contain this among its super types, it will find any property defined here
+      # the final object type contains this among its super types, it will find any property defined here
       $self->full_spez_for->lookup_property($prop_name)
    } else {
       &ObjectType::lookup_property
    }
 }
 ####################################################################################
+sub augment_in_full_spez {
+   my ($self, $prop)=@_;
+   my ($augm, $augm_generic, $augm_concrete);
 
+   if ($prop->flags & $Property::is_augmented) {
+      $augm_concrete=$prop->type;
+      $augm_generic=$augm_concrete->generic;
+   } elsif (defined (my $gen_proto=$self->full_spez_for->generic)) {
+      $augm_generic=$gen_proto->augment($gen_proto->property($prop->name));
+      # $prop must be updated here
+      $prop->flags & $Property::is_augmented
+        or croak( "internal error: property instance ", $prop->name, " for ", $prop->belongs_to->full_name,
+                  " not updated after augment(", $gen_proto->full_name, ")" );
+      $augm_concrete=$prop->type;
+   } else {
+      $augm_concrete=$self->full_spez_for->augment($prop);
+      $prop->flags & $Property::is_augmented
+        or croak( "internal error: property instance ", $prop->name, " for ", $prop->belongs_to->full_name,
+                  " not updated after augment(", $self->full_spez_for->full_name, ")" );
+   }
+
+   if ($scope_owner->is_anon_full_spez) {
+      $augm=$augm_concrete;
+      $self->properties->{$prop->name}=$prop;
+      create_self_method_in_anon_full_spez($self, $prop, $augm);
+   } else {
+      # need a separate augmentation for this specialization
+      # inherit all the same as the concrete type but other restricted full specializations
+      my $pos=position_after_full_spez($augm_concrete);
+      if ($pos>0) {
+         # seen augmentations from some full specializations: maybe the desired one already exists?
+         foreach my $spez (@{$augm_concrete->super}[0..$pos-1]) {
+            if ($spez->parent_property->belongs_to==$self) {
+               return $spez;
+            }
+         }
+      }
+      $augm=new Augmented($prop, $self, @{$augm_concrete->super}[$pos..$#{$augm_concrete->super}]);
+      $self->properties->{$prop->name}=$prop->clone_for_augmented($augm, $self);
+      $augm->generic=$augm_generic;
+      weak($augm->full_spez_for=$augm_concrete);
+      establish_inheritance($augm_concrete, $pos, $augm);
+   }
+
+   $augm
+}
+
+sub create_augmentation {
+   my ($self, $prop)=@_;
+   if (my $concrete_proto=$scope_owner->full_spez_for) {
+      if ($concrete_proto != $self->full_spez_for) {
+         # it's a nested augmentation; redirected here from Augmented::
+         $concrete_proto=$self->full_spez_for // $self;
+      }
+      if ($concrete_proto->generic) {
+         local $scope_owner=$concrete_proto->generic->outer_object_type;
+         $concrete_proto->generic->augment($concrete_proto->generic->property($prop->name));
+         $prop=$concrete_proto->property($prop->name);
+      } else {
+         $prop=$concrete_proto->augment($prop)->parent_property;
+      }
+      augment_in_full_spez($self, $prop);
+   } elsif (instanceof Specialization($prop->belongs_to->outer_object_type) && $prop->belongs_to->abstract) {
+      # The property must have been introduced in another specialization (borrowed from).
+      my $augm_super=$prop->belongs_to->augment($prop);
+      (new Augmented($augm_super->parent_property, $self, $augm_super), $augm_super, 1);
+   } else {
+      # The property is introduced in or inherited by the generic part of the object type:
+      # always make sure there is a generic augmentation for it, even if not explicitly declared in the rules.
+      my $augm_gen=do {
+         # prevent endless recursion when redirected here from Augmented::
+         local $scope_owner=$self->generic->outer_object_type;
+         $self->generic->augment($prop);
+      };
+      new Augmented($augm_gen->parent_property, $self, $augm_gen);
+   }
+}
+####################################################################################
 sub append_precondition {
    my ($self, $header, $code, $checks_definedness)=@_;
    my $precond=special Rule($header, $code, $self);
@@ -966,14 +1530,14 @@ sub append_precondition {
 }
 
 sub add_permutation {
-   croak("A type specialization can't have own permutation types; consider introducing a derived `big' object type for this");
+   croak( "A type specialization can't have own permutation types; consider introducing a derived `big' object type for this" );
 }
 ####################################################################################
 sub full_name {
    my ($self)=@_;
    if (defined $self->full_spez_for) {
       # full specialization
-      $self->name
+      $self->name . " (specialization)"
    } elsif ($self->name =~ / defined at /) {
       # unnamed partial specialization
       "$`<" . join(",", map { $_->full_name } @{$self->params}) . ">$&$'"
@@ -981,6 +1545,11 @@ sub full_name {
       # named partial specialization
       &PropertyParamedType::full_name
    }
+}
+
+sub help_ref_to_prop {
+   my $self=shift;
+   ($self->full_spez_for // $self->generic)->help_ref_to_prop(@_)
 }
 
 sub help_topic {
@@ -1065,7 +1634,24 @@ sub construct_from_list : method {
 
 sub construct_with_size : method {
    my ($self, $n)=@_;
-   bless [ map { Object::new_named($self->params->[0]) } 1..$n ], $self->pkg;
+   my $elem_type=$self->params->[0];
+   bless [ map { Object::new_named($elem_type, $_) } 0..$n-1 ], $self->pkg;
+}
+
+sub resize {
+   my ($self, $n)=@_;
+   my $old_size=@$self;
+   if ($n < $old_size) {
+      $#$self=$n-1;
+   } else {
+      my $elem_type=$self->type->params->[0];
+      push @$self, map { Object::new_named($elem_type, $_) } $old_size..$n-1;
+   }
+}
+
+sub copy {
+   my ($self)=@_;
+   inherit_class([ map { $_->copy } @$self ], $self);
 }
 
 # For the exotic case of size passed in string form.

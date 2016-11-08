@@ -26,36 +26,6 @@
 
 namespace polymake { namespace polytope {
 
-template <typename Scalar>
-perl::Object secondary_cone(const Matrix<Scalar> &verts,const Array<Set <int> >& subdiv,perl::OptionSet options) {
-
-   perl::Object p(perl::ObjectType::construct<Scalar>("Cone"));
-
-  
-   if (subdiv.size()==1 && subdiv[0].size() == verts.rows() && rank(verts) == verts.rows()) {
-      p.take("RAYS")<<Matrix<Scalar>(0,verts.rows());
-      p.take("CONE_AMBIENT_DIM")<<verts.rows();
-      p.take("LINEALITY_SPACE")<<unit_matrix<Scalar>(verts.rows());
-      return p;
-   }
-  
-
-   std::pair<const Matrix<Scalar>, const Matrix<Scalar> > mats = secondary_cone_ineq<Scalar, Set<int> >(verts,subdiv,options);
-
-   p.take("INEQUALITIES")<< mats.first;
-   p.take("EQUATIONS")<< mats.second;
-   
-   if (options["test_regularity"]) {
-      const Vector<Scalar> w=p.give("REL_INT_POINT");
-      const Vector<Scalar> slack= mats.first*w;
-
-      for(typename Entire<Vector<Scalar> >::const_iterator it=entire(slack); !it.at_end();++it){
-         if(*it==0)
-            throw std::runtime_error("Subdivision is non-regular.");   
-      }
-   }
-   return p;
-}
 
 template <typename Scalar>
 perl::Object regularity_lp(const Matrix<Scalar> &verts,const Array<Set <int> >& subdiv,perl::OptionSet options) {
@@ -72,7 +42,8 @@ perl::Object regularity_lp(const Matrix<Scalar> &verts,const Array<Set <int> >& 
    Scalar epsilon = options["epsilon"];
    perl::Object q(perl::ObjectType::construct<Scalar>("Polytope"));
    q.take("FEASIBLE") << true;
-   q.take("EQUATIONS") << (zero_vector<Scalar>(equats.rows()) | equats);
+   if (equats.rows() > 0)
+     q.take("EQUATIONS") << (zero_vector<Scalar>() | equats);
    q.take("INEQUALITIES") << 
       (zero_vector<Scalar>(n_vertices) | unit_matrix<Scalar>(n_vertices)) /
       ((-epsilon * ones_vector<Scalar>(inequs.rows())) | inequs);
@@ -90,10 +61,14 @@ perl::Object regularity_lp(const Matrix<Scalar> &verts,const Array<Set <int> >& 
 template <typename Scalar>
 std::pair<bool,Vector<Scalar> > is_regular(const Matrix<Scalar> &verts,const Array<Set <int> >& subdiv,perl::OptionSet options)
 {
-   perl::Object res=secondary_cone(verts,subdiv,options);
-   const Matrix<Scalar> ineq=res.give("INEQUALITIES");
+   std::pair<const Matrix<Scalar>, const Matrix<Scalar> > mats = secondary_cone_ineq<Scalar, Set<int> >(verts,subdiv,options);
+
+   perl::Object res(perl::ObjectType::construct<Scalar>("Cone"));
+   res.take("INEQUALITIES") << mats.first;
+   res.take("EQUATIONS") << mats.second;
+
    const Vector<Scalar> w=res.give("REL_INT_POINT");
-   const Vector<Scalar> slack= ineq*w;
+   const Vector<Scalar> slack= mats.first*w;
 
    for(typename Entire<Vector<Scalar> >::const_iterator it=entire(slack); !it.at_end();++it){
       if(*it==0)
@@ -103,21 +78,7 @@ std::pair<bool,Vector<Scalar> > is_regular(const Matrix<Scalar> &verts,const Arr
 }
 
 
-UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
-                          "# For a given subdivision //subdiv// of //points// tests"
-                          "# computes the corresponding secondary cone. If the subdivision"
-                          "# is not regular, the cone will be the secondary cone of"
-                          "# the finest regular coarsening of //subdiv//. (See option //test_regularity//)"
-                          "# Options can be used to make the Cone [[POINTED]]."
-                          "# @param Matrix points in homogeneous coordinates"
-                          "# @param Array<Set<Int> > subdiv"
-                          "# @return Cone"
-                          "# @option Matrix<Scalar> equations system of linear equation the cone is cut with."
-                          "# @option Set<Int> lift_to_zero gives only lifting functions lifting the designated vertices to 0"
-                          "# @option Int lift_face_to_zero gives only lifting functions lifting all vertices of the designated face to 0"
-                          "# @option Bool test_regularity throws an exception if the subdivision is not regular"
-                          "# @author Sven Herrmann",
-                          "secondary_cone<Scalar>(Matrix<Scalar> Array<Set>; {equations => undef, lift_to_zero=>undef, lift_face_to_zero => undef, test_regularity=>0})");
+FunctionTemplate4perl("secondary_cone_ineq<Scalar>(Matrix<Scalar> Array<Set>; {equations => undef, lift_to_zero=>undef, lift_face_to_zero => undef, test_regularity=>0})");
 
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"

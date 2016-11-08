@@ -1,0 +1,22 @@
+This file explains how you can locally install the perl driver for MongoDB using cpan.
+
+First you might need to remove the .cpan folder in your home directory.
+
+Now insert the following lines into your .bashrc (or .profile or ...). (Note that you should adapt the path in the first line to your needs.)
+
+MYCPANSTUFF=/some/path/for/cpan/stuff
+export PERL_LOCAL_LIB_ROOT="$PERL_LOCAL_LIB_ROOT:$MYCPANSTUFF";
+export PERL_MB_OPT="--install_base $MYCPANSTUFF";
+export PERL_MM_OPT="INSTALL_BASE=$MYCPANSTUFF";
+export PERL5LIB="$MYCPANSTUFF/lib/perl5:$PERL5LIB";
+export PATH="$MYCPANSTUFF/bin:$PATH";
+
+Now start cpan (answer "yes" everywhere) and enter the following lines:
+o conf build_dir "/tmp/cpanstuff"
+o conf commit
+install CPAN
+reload cpan
+install Params::Validate
+
+Restart cpan and enter:
+install MongoDB

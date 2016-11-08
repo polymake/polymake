@@ -25,28 +25,46 @@ template <typename Coord>
 perl::Object normal_fan(perl::Object p)
 {
    perl::ObjectType t=perl::ObjectType::construct<Coord>("PolyhedralFan");
-   perl::Object f(t); 
+   perl::Object f(t);
+
+   const int dim=p.call_method("AMBIENT_DIM");
+   const int p_dim=p.call_method("DIM");
+   const int ldim=p.give("LINEALITY_DIM");
+
+   if (!p.give("FEASIBLE")) {
+      f.take("FAN_AMBIENT_DIM") << dim;
+      f.take("FAN_DIM") << -1;
+      f.take("RAYS") << Matrix<Coord>(0,dim);
+      f.take("MAXIMAL_CONES") << IncidenceMatrix<>(0,0);
+      f.take("REGULAR") << true;
+
+      f.take("LINEALITY_SPACE") << Matrix<Coord>(0,dim);
+      f.take("COMPLETE") << false;
+      return f;
+   }
    Matrix<Coord> m=p.give("FACETS");
    IncidenceMatrix<> vfi=p.give("FACETS_THRU_VERTICES");
    const Matrix<Coord> ls=p.give("AFFINE_HULL");
    const bool com=p.give("BOUNDED");
-   const int dim=p.CallPolymakeMethod("AMBIENT_DIM");
 
-   int ff = -1;
-   if ( !com ) {   // we have to check whether the far face is a facet
-      const Vector<Coord> far_facet(unit_vector<Coord>(dim+1,0));
-      for (int i = 0; i < m.rows(); ++i) 
-         if ( m.row(i) == far_facet ) {
-            ff = i;
-            break;
-         }
-   }
+   struct id_collector {
+      mutable Set<int> oldids;
+      void operator() (const int& i, const int& j) const {
+         oldids += i;
+      }
+   };
 
-   if ( ff != -1 ) {      
-      m=m.minor(~scalar2set(ff),~scalar2set(0));
-      Set<int> bounded_verts = p.CallPolymakeMethod("BOUNDED_VERTICES");
+   // we remove the rows that correspond to far vertices
+   // then we squeeze the cols to remove the far face
+   // this also removes the facet inequality of polytopes with combinatorial dim zero
+   if (!com || p_dim == 0) {
+      Set<int> bounded_verts = p.call_method("BOUNDED_VERTICES");
       vfi = vfi.minor(bounded_verts,All);
-      vfi.squeeze();
+      // we only squeeze the cols since sometimes we want to keep an empty set
+      // as this might be needed for the {0} cone
+      id_collector coll;
+      vfi.squeeze_cols(coll);
+      m=m.minor(coll.oldids, ~scalar2set(0));
    } else {
       m=m.minor(All,~scalar2set(0));
    }
@@ -58,7 +76,8 @@ perl::Object normal_fan(perl::Object p)
    f.take("LINEALITY_SPACE") << ls.minor(All, ~scalar2set(0));
 
    f.take("COMPLETE") << com;
-   f.take("FAN_DIM") << dim;
+   f.take("FAN_DIM") << dim - ldim;
+   f.take("FAN_AMBIENT_DIM") << dim;
 
    return f;
 }

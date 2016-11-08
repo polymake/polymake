@@ -63,10 +63,10 @@ use Polymake::Struct (
    [ '@ISA' => 'Rule::Deputy' ],
    [ new => '$$;$' ],
    # navigation from the root object to the one the rule refers to
-   [ '$up' => '#2 ->up' ],                             # how many parent levels above the root object
-   [ '@down' => '#2 ->down' ],                         # [ Property | _::SelectMultiInstance ] path descending to the subobject
-   [ '@multi_selector' => '#2 ->multi_selector' ],     # [ Property | _::SelectMultiInstance ] path descending through multiple subobjects
-   [ '$created_multi_instances' => 'undef' ],          # [ DeputyObject ] for multiple subobjects created by this rule
+   [ '$up' => '#2->up' ],                             # how many parent levels above the root object
+   [ '@down' => '#2->down' ],                         # [ Property | _::SelectMultiInstance ] path descending to the subobject
+   [ '@multi_selector' => '#2->multi_selector' ],     # [ Property | _::SelectMultiInstance ] path descending through multiple subobjects
+   [ '$created_multi_instances' => 'undef' ],         # [ DeputyObject ] for multiple subobjects created by this rule
 
    # RuleDeputy objects for associated rules
    [ '$dyn_weight' => 'undef', ],
@@ -74,7 +74,7 @@ use Polymake::Struct (
    [ '$with_permutation' => 'undef' ],     # production rule: RuleDeputy for CreatingPermutation
    [ '$_without_permutation | rules_to_block' => 'undef' ],   # CreatingPermutation: RuleDeputy for production rule
                                                               # PermAction: list of sensitive rules stored in the DeputyObject of permuted subobject
-   [ '$perm_trigger | actions' => 'weak( #3 )' ],
+   [ '$perm_trigger | actions' => 'weak(#3)' ],
 
    '@prop_vertex_sets',         # [ int ... ]  vertices of Scheduler::Heap encoding properties created by this rule
    [ '$rgr_node' => 'undef' ],  # node in RuleGraph corresponding to this rule
@@ -102,7 +102,7 @@ sub new {
       my $spez_type=$self->rule->defined_for;
       while ($spez_type->enclosed_in_restricted_spez) {
          $spez_deputy=$spez_deputy->navigate_up;
-         $spez_type=$spez_type->belongs_to;
+         $spez_type=$spez_type->parent_property->belongs_to;
       }
       push @{$self->preconditions}, map { $spez_deputy->rule_instance($_) } @{$spez_type->preconditions};
    }
@@ -203,6 +203,8 @@ sub execute {
                if ($prop->flags & $Property::is_multiple) {
                   $object=$object->select_now($prop->index)
                     or return $Rule::exec_infeasible;
+               } elsif ($prop->flags & $Property::is_twin) {
+                  $object=$object->value;
                }
             } else {
                return $Rule::exec_infeasible;
@@ -235,9 +237,9 @@ use Polymake::Struct (
    [ new => '$;$$$$' ],
    [ '$real_object' => '#1' ],  # Object  undef if not yet created
    [ '$up' => '#2' ],           # how many levels upwards from root
-   [ '$down' => '#3 && ( #3 ->down ? [ @{ #3 ->down }, #4 ] : [ #4 ] )' ],  # (Property)  path to the subobject
-   [ '$parent' => 'weak( #3 )' ],
-   [ '$property' => '#4 || #1 ->parent && #1 ->property->declared' ],
+   [ '$down' => '#3 && ( #3->down ? [ @{#3->down}, #4 ] : [ #4 ] )' ],  # (Property)  path to the subobject
+   [ '$parent' => 'weak(#3)' ],
+   [ '$property' => '#4 || #1->parent && #1->property' ],
 
    [ '$multi_selector' => 'undef' ],    # (Property | _::SelectMultiInstance)  path to a multiple subobject to select
 
@@ -247,7 +249,7 @@ use Polymake::Struct (
    '$is_sibling_ancestor',              # is an ancestor of a non-default or to-be-created multiple subobject instance
    [ '$rgr_prop_node' => 'undef' ],     # node in RuleGraph corresponding to this instance of a to-be-created multiple subobject
 
-   [ '$type' => 'defined( #1 ) ? #1 ->type : #4 ->concrete( #3 )->type' ],
+   [ '$type' => '(defined(#1) ? #1 : #3->type->property(#4->name))->type' ],
 
    [ '$valid_for_perm_trigger' => '#5' ],       # this deputy or one of its ancestors relates to a permutation subobject:
                                                 # permutation trigger for which rule_cache, prod_cache, and prop_vertex_sets are valid
@@ -268,12 +270,12 @@ use Polymake::Struct (
 use Polymake::Struct (
    [ 'alt.constructor' => 'new_sibling' ],
    [ new => '$$$' ],
-   [ '$up' => '#2 ->up' ],
-   [ '$down' => 'do { local_pop( #2 ->down); [ @{ #2 ->down}, #3 ]}' ],
+   [ '$up' => '#2->up' ],
+   [ '$down' => 'do { local_pop(#2->down); [ @{#2->down}, #3 ]}' ],
    [ '$parent' => 'undef' ],
    [ '$property' => '#3' ],
-   [ '$sibling_of' => 'weak( #2 )' ],
-   [ '$type' => '#2 ->type' ],
+   [ '$sibling_of' => 'weak(#2)' ],
+   [ '$type' => '#2->type' ],
    [ '$valid_for_perm_trigger' => 'undef' ],
    [ '$sensitive_to' => 'undef' ],
 );
@@ -282,18 +284,18 @@ use Polymake::Struct (
 use Polymake::Struct (
    [ 'alt.constructor' => 'new_sibling_ancestor' ],
    [ new => '$' ],
-   [ '$real_object' => '#1 ->real_object' ],
-   [ '$up' => '#1 ->up' ],
-   [ '$down' => '#1 ->down' ],
+   [ '$real_object' => '#1->real_object' ],
+   [ '$up' => '#1->up' ],
+   [ '$down' => '#1->down' ],
    [ '$parent' => 'undef' ],
-   [ '$property' => '#1 ->property' ],
-   [ '$sibling_of' => 'weak( #1 )' ],
+   [ '$property' => '#1->property' ],
+   [ '$sibling_of' => 'weak(#1)' ],
    [ '$is_sibling_ancestor' => 1 ],
-   [ '$type' => '#1 ->type' ],
+   [ '$type' => '#1->type' ],
    [ '$valid_for_perm_trigger' => 'undef' ],
    [ '$prod_cache' => 'undef' ],
    [ '$prop_vertex_sets' => 'undef' ],
-   [ '$sensitive_to' => '#1 ->sensitive_to' ],
+   [ '$sensitive_to' => '#1->sensitive_to' ],
 );
 
 ####################################################################################
@@ -354,8 +356,13 @@ sub navigate_down {
                return if $prod_rule->flags == $Rule::is_initial && $prop->flags & $Property::is_multiple;
             }
          }
-         new DeputyObject($real_subobj, $self->up, $self, $prop->property,
-                          $inherit_trigger ? $perm_trigger : undef);
+         $subobj_deputy=new DeputyObject($real_subobj, $self->up, $self, $prop->property,
+                                         $inherit_trigger ? $perm_trigger : undef);
+
+         if ($prop->flags & $Property::is_twin) {
+            weak($subobj_deputy->subobj_cache->{$prop->property_key}=$self);
+         }
+         $subobj_deputy
       });
       ++$depth;
 
@@ -417,15 +424,17 @@ sub create_sibling_for_new_multi {
       $init_chain->rgr->add_arc($rule, $sibling->rgr_prop_node, $rgr_source_arc);
 
       foreach my $out (grep { get_array_flags($_) & $Property::is_multiple_new } @{$rule->output}) {
-         my $depth=list_index($out, $self->property->new_instance_deputy);
-         if ($depth>=0) {
-            my $subobject= $depth+1==$#$out ? $sibling : navigate_down($sibling, $init_chain, $rule, 0, @$out[$depth+1..$#$out-1]);
-            my $prop_key=$out->[-1]->key;
-            $subobject->prod_cache->{$prop_key}=[ $rule ];
-            my $vertex_set=$subobject->prop_vertex_sets->{$prop_key}=[ $init_chain->last_prop_vertex++ ];
-            push @{$rule->prop_vertex_sets}, $vertex_set;
-            my $prop_node=$init_chain->prop_nodes->[$vertex_set->[0]]=$init_chain->rgr->add_node;
-            $init_chain->rgr->add_arc($sibling->rgr_prop_node, $prop_node, $rgr_unique_arc);
+         for (my ($depth, $last)=(0, $#$out-1);  $depth <= $last;  ++$depth) {
+            if ($out->[$depth]->key == $self->property->new_instance_deputy->key) {
+               my $subobject= $depth==$last ? $sibling : navigate_down($sibling, $init_chain, $rule, 0, @$out[$depth+1..$last]);
+               my $prop_key=$out->[-1]->key;
+               $subobject->prod_cache->{$prop_key}=[ $rule ];
+               my $vertex_set=$subobject->prop_vertex_sets->{$prop_key}=[ $init_chain->last_prop_vertex++ ];
+               push @{$rule->prop_vertex_sets}, $vertex_set;
+               my $prop_node=$init_chain->prop_nodes->[$vertex_set->[0]]=$init_chain->rgr->add_node;
+               $init_chain->rgr->add_arc($sibling->rgr_prop_node, $prop_node, $rgr_unique_arc);
+               last;
+            }
          }
       }
    }
@@ -465,6 +474,7 @@ sub navigate_to_non_permuted {
 
 sub rule_instance {
    my ($self, $rule, $perm_trigger, $cache)=@_;
+   return () if defined($self->property) && $self->property->key == $rule->not_for_twin;
    $cache //= $self->rule_cache;
    $cache->{$rule} //= new RuleDeputy($rule, $self, $perm_trigger // $self->valid_for_perm_trigger, $cache);
 }
@@ -746,7 +756,7 @@ sub producers_of_property {
             $self->rgr->add_arc($rule, $prop_node, $source_arc);
          }
          if (defined($object->valid_for_perm_trigger)
-             and not($object->property->flags & $Property::is_permutation && $object->type->isa($prop->belongs_to))) {
+             and not($object->property->flags & $Property::is_permutation && $object->type->isa($prop->defined_for))) {
 
             push @{$object->navigate_to_non_permuted->prop_vertex_sets->{$prop->key} //= [ $self->last_prop_vertex++ ]}, @$vertex_set;
          }
@@ -972,6 +982,8 @@ sub gather_rules_for_prescribed {
       consider_rules($self, $self->deputy_root, $rule);
       push @{$rule->prop_vertex_sets}, $unique_vertex_set;
       $self->rgr->add_arc($rule, $self->final, $rgr_source_arc);
+      $self->rgr->add_arc($rule->with_permutation, $self->final, $rgr_source_arc)
+         if (defined $rule->with_permutation);
    }
    gather_more_rules($self);
 }
@@ -1170,7 +1182,7 @@ sub find_relative_path {
 
 sub compare_permutations {
    my ($perm_path_upper, $perm_path_lower, @path_between)=@_;
-   if (equal_list_prefixes($perm_path_upper, \@path_between) == $#$perm_path_upper) {
+   if (Property::equal_path_prefixes($perm_path_upper, \@path_between) == $#$perm_path_upper) {
       splice @path_between, 0, $#$perm_path_upper;
       my $perm=local_pop($perm_path_lower);
       $perm_path_upper->[-1]->find_sub_permutation(@path_between, @$perm_path_lower)==$perm;
@@ -1239,7 +1251,7 @@ sub add_ready_rule {
          state $pref_violation=[ $Rule::max_major, 1 ];
          $heap->add_weight($pref_violation);
       }
-      $heap->is_promising($rule_to_add->prop_vertex_sets) or return;
+      $heap->is_promising($rule_to_add->prop_vertex_sets) or return 0;
    }
 
    if ($var->add_scheduled_rule($rule_to_add, $enforced, $rule)) {
@@ -1317,13 +1329,13 @@ sub replay_rules {
       while (defined ($rule=shift @replay_rules) && $self->rule_is_alive($rule)) {
          $i=list_index($self->ready, $rule);
          if ($i>=0) {
-            $heap->add_to_vertex_filter($rule->prop_vertex_sets);
             if ($self->give_schedule) {
                push @{$self->phase2germ->rules}, $rule;
             }
             splice @{$self->ready}, $i, 1;
 
             if (add_ready_rule($self, $self, $rule, 1) and @{$self->ready}) {
+               $heap->add_to_vertex_filter($self->rules->[-1]->prop_vertex_sets);
                last;
             } else {
                die "internal error: progress stopped while replaying rules from the previous run; replay list is:",
@@ -1438,36 +1450,38 @@ sub build_cheapest_chain {
          }
       }
 
-      unless ($self->give_schedule==2) {
-         my $premature_next;
+      my $premature_next;
 
-         # For an initial request, schedule all initial rule in a single batch.
-         # For other requests, unconditionally schedule trivial rules and rules concluding the restoration of permuted properties
-         # (the latter becomes indispensable by definition once activated).
+      # For an initial request, schedule all initial rule in a single batch.
+      # For other requests, unconditionally schedule trivial rules and rules concluding the restoration of permuted properties
+      # (the latter becomes indispensable by definition once activated).
+      #
+      # In the second phase, however, trivial rules must prove their usefulness much like any other production rule.
+      # Preconditions and initial rules cannot occur there.
 
-         for ($i=0; $i<=$#{$top->ready}; ) {
-            $rule=$top->ready->[$i];
-            if ($rule->flags & $Rule::is_precondition) {
-               $premature_next=1;
-               ++$i;
-            } elsif ($self->initial
-                     ? $rule->flags & $Rule::is_initial
-                     : ($rule->flags & $Rule::is_perm_restoring  or
-                        $rule->weight->[0]==0 && $rule->weight->[1]<=1)) {
+      for ($i=0; $i<=$#{$top->ready}; ) {
+         $rule=$top->ready->[$i];
+         if ($rule->flags & $Rule::is_precondition) {
+            $premature_next=1;
+            ++$i;
+         } elsif ($self->initial
+                  ? $rule->flags & $Rule::is_initial
+                  : ($rule->flags & $Rule::is_perm_restoring
+                       or
+                     $self->give_schedule!=2 && $rule->weight->[0]==0 && $rule->weight->[1]<=1)) {
 
-               splice @{$top->ready}, $i, 1;
-               unless (add_ready_rule($self, $top, $rule, 1, $self->initial ? undef : $heap)) {
-                  $#{$top->ready}=-1;
-                  last;
-               }
-               return $top if $top->is_complete;
-               $i=0 unless $self->initial;  # some other ready rules might be deleted as superfluous, must rescan
-            } else {
-               ++$i;
+            splice @{$top->ready}, $i, 1;
+            unless (add_ready_rule($self, $top, $rule, 1, $self->initial ? undef : $heap)) {
+               $#{$top->ready}=-1;
+               last;
             }
+            return $top if $top->is_complete;
+            $i=0 unless $self->initial;  # some other ready rules might be deleted as superfluous, must rescan
+         } else {
+            ++$i;
          }
-         next if $premature_next;
       }
+      next if $premature_next;
 
       # Split off feasible variants for each ready production rule.
       while ((my $more_ready=$#{$top->ready}) >= 0) {
@@ -1737,7 +1751,7 @@ package Polymake::Core::Scheduler::RuleChain;
 
 use Polymake::Struct (
    [ new => '$@' ],
-   [ '$genesis' => 'weak( #1 )' ],
+   [ '$genesis' => 'weak(#1)' ],
    [ '@rules' => '@' ],
 );
 
@@ -1760,7 +1774,7 @@ sub apply {
 }
 
 sub list_new_properties {
-   my $self=shift;
+   my ($self)=@_;
    uniq(map { $_->list_results($self->genesis->type) } @{$self->rules})
 }
 

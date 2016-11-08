@@ -71,7 +71,9 @@ require Visual::Polygons;
 declare property_type RGB : c++ (include=>["polymake/color.h"]) {
 
    type_method parse {
-      if ($_[1] =~ /[^\s\d.]/) {
+      if ($_[1] =~ /^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})/) {
+         $_[0]->construct->(hex($1), hex($2), hex($3));
+      } elsif ($_[1] =~ /[^\s\d.]/) {
          # symbolic color name?
          Visual::get_sym_color($_[1]) // croak("unknown color name '$_[1]'");
       } else {

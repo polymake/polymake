@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -29,6 +29,20 @@ property VECTORS : Matrix<Scalar> {
   }
 }
 
+# permuting [[VECTORS]]
+permutation VectorPerm : PermBase;
+
+rule VectorPerm.PERMUTATION : VectorPerm.VECTORS, VECTORS {
+   $this->VectorPerm->PERMUTATION=find_matrix_row_permutation($this->VectorPerm->VECTORS, $this->VECTORS);
+}
+
+rule VECTORS : VectorPerm.VECTORS, VectorPerm.PERMUTATION {
+   $this->VECTORS=permuted($this->VectorPerm->VECTORS, $this->VectorPerm->PERMUTATION);
+}
+weight 1.10;
+
+
+
 # @category Geometry
 # Dimension of the space in which the vector configuration lives.
 property VECTOR_AMBIENT_DIM : Int;
@@ -58,10 +72,37 @@ property LINEAR_SPAN : Matrix<Scalar>;
 # If specified, they are shown by visualization tools instead of point indices.
 property LABELS : Array<String> : mutable;
 
+rule LABELS : VectorPerm.LABELS, VectorPerm.PERMUTATION {
+   $this->LABELS=permuted($this->VectorPerm->LABELS, $this->VectorPerm->PERMUTATION);
+}
+weight 1.10;
+
 # @category Combinatorics
 # Maximal cells of the polyhedral complex.
 # Indices refer to [[VECTORS]]. Points do not have to be vertices of the cells.
 property MAXIMAL_CELLS : IncidenceMatrix;
+
+# @category Combinatorics
+# The number of [[MAXIMAL_CELLS]]
+property N_MAXIMAL_CELLS : Int;
+
+rule MAXIMAL_CELLS : VectorPerm.MAXIMAL_CELLS, VectorPerm.PERMUTATION {
+   $this->MAXIMAL_CELLS=permuted_cols($this->VectorPerm->MAXIMAL_CELLS, $this->VectorPerm->PERMUTATION);
+}
+weight 1.10;
+
+# permuting [[MAXIMAL_CELLS]]
+permutation CellPerm : PermBase;
+
+rule CellPerm.PERMUTATION : CellPerm.MAXIMAL_CELLS, MAXIMAL_CELLS {
+   $this->CellPerm->PERMUTATION=find_permutation(rows($this->CellPerm->MAXIMAL_CELLS), rows($this->MAXIMAL_CELLS));
+}
+
+rule MAXIMAL_CELLS : CellPerm.MAXIMAL_CELLS, CellPerm.PERMUTATION {
+   $this->MAXIMAL_CELLS=permuted_rows($this->CellPerm->MAXIMAL_CELLS, $this->CellPerm->PERMUTATION);
+}
+weight 1.10;
+
 
 # @category Geometry
 # True if [[VECTORS]] for each maximal cell are in convex position.
@@ -123,6 +164,11 @@ property REFINED_SPLITS : Set<Int>;
 # Vector assigning a weight to each point to get a regular subdivision.
 property WEIGHTS : Vector<Scalar>;
 
+rule WEIGHTS : VectorPerm.WEIGHTS, VectorPerm.PERMUTATION {
+   $this->WEIGHTS=permuted($this->VectorPerm->WEIGHTS, $this->VectorPerm->PERMUTATION);
+}
+weight 1.10;
+
 # @category Geometry
 # Whether the subdivision is regular, i.e. induced by a weight vector.
 property REGULAR : Bool;
@@ -143,7 +189,9 @@ user_method cell($) : MAXIMAL_CELLS , POINTS {
    return $v;
 }
 
-
+# @category Geometry
+# The tight span of the subdivision.
+property TIGHT_SPAN : PolyhedralComplex<Scalar>;
 
 }
 
@@ -172,4 +220,8 @@ property POLYTOPAL_SUBDIVISION : SubdivisionOfPoints<Scalar> : multiple;
 
 }
 
-
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

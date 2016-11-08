@@ -16,23 +16,23 @@
 
 namespace polymake { namespace matroid { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( std::string (pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, int, int) ) {
+   FunctionWrapper4perl( std::string (pm::Array<pm::Set<int, pm::operations::cmp>> const&, int, int) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
       IndirectWrapperReturn( arg0.get< perl::TryCanned< const Array< Set< int > > > >(), arg1, arg2 );
    }
-   FunctionWrapperInstance4perl( std::string (pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, int, int) );
+   FunctionWrapperInstance4perl( std::string (pm::Array<pm::Set<int, pm::operations::cmp>> const&, int, int) );
 
-   FunctionWrapper4perl( pm::Array<pm::Set<int, pm::operations::cmp>, void> (std::string const&, int, int) ) {
+   FunctionWrapper4perl( pm::Array<pm::Set<int, pm::operations::cmp>> (std::string const&, int, int) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
       IndirectWrapperReturn( arg0, arg1, arg2 );
    }
-   FunctionWrapperInstance4perl( pm::Array<pm::Set<int, pm::operations::cmp>, void> (std::string const&, int, int) );
+   FunctionWrapperInstance4perl( pm::Array<pm::Set<int, pm::operations::cmp>> (std::string const&, int, int) );
 
-   FunctionWrapper4perl( pm::Array<pm::Set<int, pm::operations::cmp>, void> (std::string const&, int, int, perl::OptionSet) ) {
+   FunctionWrapper4perl( pm::Array<pm::Set<int, pm::operations::cmp>> (std::string const&, int, int, perl::OptionSet) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
       IndirectWrapperReturn( arg0, arg1, arg2, arg3 );
    }
-   FunctionWrapperInstance4perl( pm::Array<pm::Set<int, pm::operations::cmp>, void> (std::string const&, int, int, perl::OptionSet) );
+   FunctionWrapperInstance4perl( pm::Array<pm::Set<int, pm::operations::cmp>> (std::string const&, int, int, perl::OptionSet) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

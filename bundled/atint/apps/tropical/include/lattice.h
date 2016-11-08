@@ -30,22 +30,6 @@
 namespace polymake { namespace tropical {
 
 	/*
-	 * @brief Takes a rational matrix and makes each row primitive integer.
-	 */
-	Matrix<Integer> makePrimitiveInteger(const Matrix<Rational> &m);
-
-	/*
-	 * @brief Takes a rational vector and makes it primitive integer.
-	 */
-	Vector<Integer> makePrimitiveInteger(const Vector<Rational> &v);
-
-	/*
-	 * @brief Takes a rational matrix and makes each row integer by 
-	 * multiplying it with an appropriate integer
-	 */
-	Matrix<Integer> make_rowwise_integer(const Matrix<Rational> &m); 
-
-	/*
 	 * @brief Computes the lattice basis of a cone (given in not-tropically-homogeneous coordinates 
 	 * without leading coordinate) and whose dimension is known.
 	 * @param Matrix<Rational> A list of rays

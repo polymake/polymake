@@ -28,7 +28,6 @@
 #include "polymake/Array.h"
 #include "polymake/PowerSet.h"
 #include "polymake/tropical/divisor.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/thomog.h"
 #include "polymake/tropical/misc_tools.h"
 #include "polymake/tropical/skeleton.h"
@@ -99,8 +98,7 @@ namespace polymake { namespace tropical {
 					//Now go through all d-dimensional cones in the divisor and insert their weight at the appropriate point
 					for(int rho = 0; rho < div_cones.rows(); rho++) {
 						//Map rho rays to old rays
-						Set<int> rho_old = 
-							attach_operation(div_cones.row(rho), pm::operations::associative_access<Map<int,int>, int>(&div_ray_to_old));
+                                                Set<int> rho_old{ div_ray_to_old.map(div_cones.row(rho)) };
 						//Find the original cone equal to that
 						for(int oc = 0; oc < sk_cones.rows(); oc++) {
 							if( (sk_cones.row(oc) * rho_old).size() == sk_cones.row(oc).size()) {

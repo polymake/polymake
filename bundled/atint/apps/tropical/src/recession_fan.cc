@@ -37,8 +37,8 @@ namespace polymake { namespace tropical {
 	template <typename Addition>
 	perl::Object recession_fan(perl::Object complex) {
 
-		//Special cases 
-		if(CallPolymakeFunction("is_empty", complex)) 
+		//Special cases
+		if (call_function("is_empty", complex))
 			return complex;
 
 		//Extract values
@@ -69,9 +69,8 @@ namespace polymake { namespace tropical {
 
 		//Re-map ray indices
 		Map<int,int> indexMap; int i = 0;
-		for(Entire<Set<int> >::iterator d = entire(directional); !d.at_end(); d++) {
-			indexMap[*d] = i;
-			i++;
+		for (auto d = entire(directional); !d.at_end(); ++d, ++i) {
+                  indexMap[*d] = i;
 		}
 
 		//We compute the recession cone of each cell
@@ -80,14 +79,14 @@ namespace polymake { namespace tropical {
 			Set<int> mcDirectional = directional * cones.row(mc);
 			//Compute that it has the right dimension
 			int mcDim = rank(rays.minor(mcDirectional,All));
-			if(mcDirectional.size() > 0 && mcDim == dim) {
-				Set<int> transformCone = attach_operation(mcDirectional,pm::operations::associative_access<Map<int,int>,int>(&indexMap));
-				rec_cones |= transformCone;	  
-				newweights |= weights[mc];
+			if (mcDirectional.size() > 0 && mcDim == dim) {
+                          Set<int> transformCone{ indexMap.map(mcDirectional) };
+                          rec_cones |= transformCone;
+                          newweights |= weights[mc];
 			}
 		}
 
-		//Add vertex 
+		//Add vertex
 		newrays /= unit_vector<Rational>(newrays.cols(),0);
 		for(int mc = 0; mc < rec_cones.dim(); mc++) {
 			rec_cones[mc] += scalar2set(newrays.rows()-1);

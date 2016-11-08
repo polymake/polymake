@@ -24,8 +24,12 @@ void cdd_solve_lp(perl::Object p, perl::Object lp, bool maximize)
 {
    typedef cdd_interface::solver<Scalar> Solver;
    const Matrix<Scalar> H=p.give("FACETS | INEQUALITIES"),
-      E=p.lookup("AFFINE_HULL | EQUATIONS");
+                        E=p.lookup("AFFINE_HULL | EQUATIONS");
    const Vector<Scalar> Obj=lp.give("LINEAR_OBJECTIVE");
+
+   if (H.cols() != E.cols() &&
+       H.cols() && E.cols())
+      throw std::runtime_error("cdd_solve_lp - dimension mismatch between Inequalities and Equations");
 
    try {
       Solver solver;
@@ -51,11 +55,16 @@ void cdd_solve_lp(perl::Object p, perl::Object lp, bool maximize)
 
 
 template <typename Scalar>
-bool cdd_input_feasible (perl::Object p) {
+bool cdd_input_feasible(perl::Object p)
+{
    Matrix<Scalar> I = p.lookup("FACETS | INEQUALITIES"),
                   E = p.lookup("LINEAR_SPAN | EQUATIONS");
 
-   const int d = std::max(I.cols(),E.cols());
+   if (I.cols() != E.cols() &&
+       I.cols() && E.cols())
+      throw std::runtime_error("cdd_input_feasible - dimension mismatch between Inequalities and Equations");
+
+   const int d = std::max(I.cols(), E.cols());
    if (d == 0)
       return true;
 
@@ -65,7 +74,7 @@ bool cdd_input_feasible (perl::Object p) {
       Solver solver;
       typename Solver::lp_solution S=solver.solve_lp(I, E, obj, true);
    } 
-   catch ( infeasible ) {
+   catch (infeasible) {
       return false;
    }
    catch (unbounded) {
@@ -91,15 +100,22 @@ bool cdd_input_feasible (perl::Object p) {
       //\1^tMx=1
       //Fx\ge 0
 template <typename Scalar>
-bool cdd_input_bounded  (perl::Object p) {
+bool cdd_input_bounded(perl::Object p)
+{
    const Matrix<Scalar> L = p.give("LINEALITY_SPACE");
    if ( L.rows() > 0 ) return false;
 
    Matrix<Scalar> F = p.give("FACETS | INEQUALITIES"),
                   E = p.lookup("AFFINE_HULL | EQUATIONS");
 
-   F = vector2col(zero_vector<Scalar>(F.rows()))|F;
-   E = vector2col(zero_vector<Scalar>(E.rows()))|E;
+   if (F.cols() != E.cols() &&
+       F.cols() && E.cols())
+      throw std::runtime_error("cdd_input_bounded - dimension mismatch between Inequalities and Equations");
+
+   F = zero_vector<Scalar>()|F;
+   if (E.cols())
+      E = zero_vector<Scalar>()|E;
+
    Vector<Scalar> v = (ones_vector<Scalar>(F.rows()))*F;
    v[0]=-1;
    E /= v;
@@ -109,9 +125,9 @@ bool cdd_input_bounded  (perl::Object p) {
       Vector<Scalar> obj = unit_vector<Scalar>(F.cols(),1);
       Solver solver;
       typename Solver::lp_solution S=solver.solve_lp(F, E, obj, false);
-      return S.first > 0 ? true : false;
+      return S.first > 0;
    } 
-   catch ( infeasible ) {
+   catch (infeasible) {
       return true;
    }
    catch (unbounded) {
@@ -120,40 +136,6 @@ bool cdd_input_bounded  (perl::Object p) {
    return true;
 }
 
-      // try to compute a separating hyperplane
-template <typename Scalar>
-bool polytope_contains_point  (perl::Object p, const Vector<Scalar> & v) {
-   
-   Matrix<Scalar> F = p.give("VERTICES | POINTS");
-   Matrix<Scalar> E(0,F.cols());
-   p.lookup("LINEALITY_SPACE | INPUT_LINEALITY") >> E;
-
-   // the lp solver does not check dimensions
-   if (F.cols() != v.dim() )
-      throw std::runtime_error("polytope - point dimension mismatch");
-   
-   F = vector2col(zero_vector<Scalar>(F.rows()))|F;
-   if ( E.rows() > 0 ) { E = vector2col(zero_vector<Scalar>(E.rows()))|E; } else { E.resize(0,F.cols()); }
-   F /= (1|v);
-   Vector<Scalar> c = 0|v;
-   
-   typedef cdd_interface::solver<Scalar> Solver;
-   try {
-      Solver solver;
-      typename Solver::lp_solution S=solver.solve_lp(F, E, c, false);
-      return ( S.first < 0 ) ? false : true;
-   } 
-   catch ( infeasible ) {
-      return true;
-   }
-   catch (unbounded) {
-      return false;
-   } 
-   return true;
-}
-
-
-FunctionTemplate4perl("polytope_contains_point<Scalar> (Polytope<Scalar>, Vector<Scalar>)");
 FunctionTemplate4perl("cdd_input_bounded<Scalar> (Polytope<Scalar>)");
 FunctionTemplate4perl("cdd_input_feasible<Scalar> (Polytope<Scalar>)");
 FunctionTemplate4perl("cdd_solve_lp<Scalar> (Polytope<Scalar>, LinearProgram<Scalar>, $) : void");

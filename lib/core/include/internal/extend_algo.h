@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,36 +20,39 @@
 namespace pm {
 
 template <typename Iterator1, typename Iterator2> inline
-typename enable_if<Iterator2, (check_iterator_feature<Iterator1,end_sensitive>::value &&
-                               !check_iterator_feature<Iterator2,end_sensitive>::value)>::type
-copy(Iterator1 src, Iterator2 dst)
+void copy_range_impl(Iterator1&& src, Iterator2&& dst, std::true_type, std::false_type)
 {
    for (; !src.at_end(); ++src, ++dst) *dst=*src;
-   return dst;
 }
 
 template <typename Iterator1, typename Iterator2> inline
-typename enable_if<Iterator2, (!check_iterator_feature<Iterator1,end_sensitive>::value &&
-                               check_iterator_feature<Iterator2,end_sensitive>::value)>::type
-copy(Iterator1 src, Iterator2 dst)
+void copy_range_impl(Iterator1&& src, Iterator2&& dst, std::false_type, std::true_type)
 {
    for (; !dst.at_end(); ++src, ++dst) *dst=*src;
-   return dst;
 }
 
 template <typename Iterator1, typename Iterator2> inline
-typename enable_if<Iterator2, (check_iterator_feature<Iterator1,end_sensitive>::value &&
-                               check_iterator_feature<Iterator2,end_sensitive>::value)>::type
-copy(Iterator1 src, Iterator2 dst)
+void copy_range_impl(Iterator1&& src, Iterator2&& dst, std::true_type, std::true_type)
 {
    for (; !src.at_end() && !dst.at_end(); ++src, ++dst) *dst=*src;
-   return dst;
 }
 
+template <typename Iterator1, typename Iterator2,
+          typename=typename std::enable_if<check_iterator_feature<Iterator1, end_sensitive>::value ||
+                                           check_iterator_feature<Iterator2, end_sensitive>::value>::type>
+inline
+private_mutable_t<Iterator2> copy_range(Iterator1&& src, Iterator2&& dst)
+{
+   private_mutable_t<Iterator2> dst_it=ensure_private_mutable(std::forward<Iterator2>(dst));
+   copy_range_impl(ensure_private_mutable(std::forward<Iterator1>(src)), dst_it,
+                   bool_constant<check_iterator_feature<Iterator1, end_sensitive>::value>(),
+                   bool_constant<check_iterator_feature<Iterator2, end_sensitive>::value>());
+   return std::move(dst_it);
+}
+
+
 template <typename Iterator1, typename Iterator2> inline
-typename enable_if<bool, (check_iterator_feature<Iterator1,end_sensitive>::value &&
-                          !check_iterator_feature<Iterator2,end_sensitive>::value)>::type
-equal(Iterator1 it1, Iterator2 it2)
+bool equal_ranges_impl(Iterator1&& it1, Iterator2&& it2, std::true_type, std::false_type)
 {
    for (; !it1.at_end(); ++it1, ++it2)
       if (*it1 != *it2) return false;
@@ -57,9 +60,7 @@ equal(Iterator1 it1, Iterator2 it2)
 }
 
 template <typename Iterator1, typename Iterator2> inline
-typename enable_if<bool, (!check_iterator_feature<Iterator1,end_sensitive>::value &&
-                          check_iterator_feature<Iterator2,end_sensitive>::value)>::type
-equal(Iterator1 it1, Iterator2 it2)
+bool equal_ranges_impl(Iterator1&& it1, Iterator2&& it2, std::false_type, std::true_type)
 {
    for (; !it2.at_end(); ++it1, ++it2)
       if (*it1 != *it2) return false;
@@ -67,70 +68,102 @@ equal(Iterator1 it1, Iterator2 it2)
 }
 
 template <typename Iterator1, typename Iterator2> inline
-typename enable_if<bool, (check_iterator_feature<Iterator1,end_sensitive>::value &&
-                          check_iterator_feature<Iterator2,end_sensitive>::value)>::type
-equal(Iterator1 it1, Iterator2 it2)
+bool equal_ranges_impl(Iterator1&& it1, Iterator2&& it2, std::true_type, std::true_type)
 {
    for (; !it1.at_end() && !it2.at_end(); ++it1, ++it2)
       if (*it1 != *it2) return false;
    return it1.at_end() && it2.at_end();
 }
 
-template <typename Iterator1, typename Iterator2> inline
-typename enable_if<void, (check_iterator_feature<Iterator1,end_sensitive>::value &&
-                          !check_iterator_feature<Iterator2,end_sensitive>::value)>::type
-swap_ranges(Iterator1 it1, Iterator2 it2)
+template <typename Iterator1, typename Iterator2,
+          typename=typename std::enable_if<check_iterator_feature<Iterator1, end_sensitive>::value ||
+                                           check_iterator_feature<Iterator2, end_sensitive>::value>::type>
+inline
+bool equal_ranges(Iterator1&& it1, Iterator2&& it2)
 {
-   for (; !it1.at_end(); ++it1, ++it2) std::swap(*it1,*it2);
+   return equal_ranges_impl(ensure_private_mutable(std::forward<Iterator1>(it1)),
+                            ensure_private_mutable(std::forward<Iterator2>(it2)),
+                            bool_constant<check_iterator_feature<Iterator1, end_sensitive>::value>(),
+                            bool_constant<check_iterator_feature<Iterator2, end_sensitive>::value>());
+}
+
+
+template <typename Iterator1, typename Iterator2> inline
+void swap_ranges_impl(Iterator1&& it1, Iterator2&& it2, std::true_type, std::false_type)
+{
+   for (; !it1.at_end(); ++it1, ++it2) std::swap(*it1, *it2);
 }
 
 template <typename Iterator1, typename Iterator2> inline
-typename enable_if<void, (!check_iterator_feature<Iterator1,end_sensitive>::value &&
-                          check_iterator_feature<Iterator2,end_sensitive>::value)>::type
-swap_ranges(Iterator1 it1, Iterator2 it2)
+void swap_ranges_impl(Iterator1&& it1, Iterator2&& it2, std::false_type, std::true_type)
 {
-   for (; !it2.at_end(); ++it1, ++it2) std::swap(*it1,*it2);
+   for (; !it2.at_end(); ++it1, ++it2) std::swap(*it1, *it2);
 }
 
 template <typename Iterator1, typename Iterator2> inline
-typename enable_if<void, (check_iterator_feature<Iterator1,end_sensitive>::value &&
-                          check_iterator_feature<Iterator2,end_sensitive>::value)>::type
-swap_ranges(Iterator1 it1, Iterator2 it2)
+void swap_ranges_impl(Iterator1&& it1, Iterator2&& it2, std::true_type, std::true_type)
 {
-   for (; !it1.at_end() && !it2.at_end(); ++it1, ++it2) std::swap(*it1,*it2);
+   for (; !it1.at_end() && !it2.at_end(); ++it1, ++it2) std::swap(*it1, *it2);
 }
 
-template <typename Iterator> inline
+template <typename Iterator1, typename Iterator2,
+          typename=typename std::enable_if<check_iterator_feature<Iterator1, end_sensitive>::value ||
+                                           check_iterator_feature<Iterator2, end_sensitive>::value>::type>
+inline
+void swap_ranges(Iterator1&& it1, Iterator2&& it2)
+{
+   swap_ranges_impl(ensure_private_mutable(std::forward<Iterator1>(it1)),
+                    ensure_private_mutable(std::forward<Iterator2>(it2)),
+                    bool_constant<check_iterator_feature<Iterator1, end_sensitive>::value>(),
+                    bool_constant<check_iterator_feature<Iterator2, end_sensitive>::value>());
+}
+
+
+template <typename Iterator,
+          typename=typename std::enable_if<check_iterator_feature<Iterator, end_sensitive>::value>::type>
+inline
 typename iterator_traits<Iterator>::value_type
-first_differ(Iterator src, typename function_argument<typename iterator_traits<Iterator>::value_type>::type from)
+first_differ_in_range(Iterator&& src, const typename iterator_traits<Iterator>::value_type& from)
 {
-   for (; !src.at_end(); ++src) {
-      const typename iterator_traits<Iterator>::value_type v=*src;
+   auto&& it=ensure_private_mutable(std::forward<Iterator>(src));
+   for (; !it.at_end(); ++it) {
+      const typename iterator_traits<Iterator>::value_type v=*it;
       if (v != from) return v;
    }
    return from;
 }
 
-template <typename Iterator, typename T> inline
-void fill(Iterator dst, const T& value)
+template <typename Iterator, typename Value,
+          typename=typename std::enable_if<check_iterator_feature<Iterator, end_sensitive>::value>::type>
+inline
+void fill_range(Iterator&& dst, const Value& x)
 {
-   for (; !dst.at_end(); ++dst) *dst=value;
+   auto&& it=ensure_private_mutable(std::forward<Iterator>(dst));
+   for (; !it.at_end(); ++it) *it=x;
 }
 
-template <typename Iterator, typename Value> inline
-Iterator find(Iterator src, const Value x)
+template <typename Iterator, typename Value,
+          typename=typename std::enable_if<check_iterator_feature<Iterator, end_sensitive>::value>::type>
+inline
+private_mutable_t<Iterator>
+find_in_range(Iterator&& src, const Value& x)
 {
-   while (!src.at_end() && *src != x) ++src;
-   return src;
+   private_mutable_t<Iterator> it=ensure_private_mutable(std::forward<Iterator>(src));
+   while (!it.at_end() && *it != x) ++it;
+   return std::move(it);
 }
 
-template <typename Iterator, typename Predicate> inline
-Iterator find_if(Iterator src, const Predicate& pred_arg)
+template <typename Iterator, typename Predicate,
+          typename=typename std::enable_if<check_iterator_feature<Iterator, end_sensitive>::value>::type>
+inline
+private_mutable_t<Iterator>
+find_in_range_if(Iterator&& src, const Predicate& pred_arg)
 {
-   typedef pm::unary_helper<Iterator, Predicate> helper;
+   typedef pm::unary_helper<pure_type_t<Iterator>, Predicate> helper;
    const typename helper::operation& pred=helper::create(pred_arg);
-   while (!src.at_end() && !pred(*helper::get(src))) ++src;
-   return src;
+   private_mutable_t<Iterator> it=ensure_private_mutable(std::forward<Iterator>(src));
+   while (!it.at_end() && !pred(*helper::get(it))) ++it;
+   return std::move(it);
 }
 
 } // end namespace pm

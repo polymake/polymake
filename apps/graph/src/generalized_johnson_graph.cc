@@ -35,10 +35,10 @@ perl::Object generalized_johnson_graph (const int n,const int k,const int i) {
 
    perl::Object JGraph("Graph<Undirected>");
    Map<Set<int>, int> index_of;
-   Array<std::string> labels(Integer::binom(n,k).to_int());
+   Array<std::string> labels(int(Integer::binom(n,k)));
 
    int ct(0);
-   Entire<Array<std::string> >::iterator lit = entire(labels);
+   auto lit = entire(labels);
    std::ostringstream os;
    for (Entire<Subsets_of_k<const sequence&> >::const_iterator sit = entire(all_subsets_of_k(sequence(0,n), k)); !sit.at_end(); ++sit, ++lit) {
       const Set<int> the_set(*sit);
@@ -47,11 +47,11 @@ perl::Object generalized_johnson_graph (const int n,const int k,const int i) {
       *lit = os.str();
       os.str("");
    }
-      
+
    Graph<> jgraph(ct);
-      
-   for(Entire<Map<Set<int>, int> >::const_iterator mit1 = entire(index_of); !mit1.at_end(); ++mit1) 
-      for(Entire<Map<Set<int>, int> >::const_iterator mit2 = mit1; !mit2.at_end(); ++mit2) 
+
+   for (auto mit1 = entire(index_of); !mit1.at_end(); ++mit1)
+      for (auto mit2 = mit1; !mit2.at_end(); ++mit2)
          if ((mit1->first * mit2->first).size()==i)
 	    jgraph.edge(mit1->second, mit2->second);
 

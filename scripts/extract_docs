@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -18,6 +18,8 @@
 
 require Polymake::Core::InteractiveHelp;
 $Polymake::Core::InteractiveHelp::store_provenience=1;
+
+require Polymake::Core::HelpAsHTML;
 
 #############################################################################################
 #
@@ -46,7 +48,7 @@ File::Path::mkpath($outdir);
 #  XML namespace declarations
 
 my $pmdocns="http://www.polymake.org/ns/docs#3";
-my $xhtmlns="http://www.w3.org/1999/xhtml";
+my $xhtmlns=$Core::HelpAsHTML::xhtmlns;
 my $xmlid=[ "http://www.w3.org/XML/1998/namespace", "id" ];
 
 sub doc_namespace { $pmdocns }
@@ -54,21 +56,20 @@ sub doc_namespace { $pmdocns }
 #############################################################################################
 
 # InteractiveHelp => [ 'ID', Application ]
-my %topic2id;
+my %topic2id_appname;
 
 sub assign_ids {
-   my $app=shift;
+   my ($app_name, @queue)=@_;
    my $id=0;
-   my @queue=($app->help);
    while (my $help=shift @queue) {
-      $topic2id{$help}=[ generate_id($help, $app, $id++), $app ];
+      $topic2id_appname{$help}=[ generate_id($help, $app_name, $id++), $app_name ];
       push @queue, values %{$help->topics};
    }
 }
 
 sub generate_id {
-   my ($help, $app, $ord) = @_;
-   my $id=$app->name . "__" . $help->name . "__$ord";
+   my ($help, $app_name, $ord) = @_;
+   my $id=$app_name . "__" . $help->name . "__$ord";
    $id =~ s/\W/_/g;
    $id =~ s/_{3,}/__/g;
    return $id;
@@ -144,26 +145,32 @@ sub search {
 
    my $app=$application;
    my @how;
-   if ($what =~ /^($id_re)::/o && defined (my $other_app=lookup Core::Application($1))) {
-      # [[APPNAME::something]] refers to other application
-      $what=$';
-      $app=$other_app;
-      push @how, "!rel";
+   if ($what =~ /^($id_re)::/o) {
+      if (lc($1) eq "core") {
+         undef $app;
+         push @how, "!rel";
+      } elsif (defined (my $other_app=lookup Core::Application($1))) {
+         # [[APPNAME::something]] refers to other application
+         $app=$other_app;
+         $what=$';
+         push @how, "!rel";
+      }
    }
+   my $top_help=$app ? $app->help : $Core::Help::core;
 
    my (@topics, $obj_help);
    if ($what =~ /[.:]/ && $what =~ /^ (?: ($id_re)::)? ($hier_id_re) $/xo) {
       if ($1 eq "Core" || $1 eq "Visual") {
-         @topics=@how ? $app->help->find(@how, $what) : search_in_tree($help, $what);
+         @topics=@how ? $top_help->find(@how, $what) : search_in_tree($help, $what);
       } elsif ($1 eq "props") {
-         @topics=$app->help->find(@how, "property_types", $2);
+         @topics=$top_help->find(@how, "property_types", $2);
       } else {
          # (ObjectType::)SUBOBJECT.PROPERTY
-         @topics= defined($1) ? $app->help->find(@how, "objects", $1) : uniq( grep { defined } map { $_->help_topic } @{$app->object_types} );
+         @topics= defined($1) ? $top_help->find(@how, "objects", $1) : defined($app) ? uniq( grep { defined } map { $_->help_topic } @{$app->object_types} ) : ();
          foreach my $prop_name (split /\./, $2) {
             @topics=uniq( grep { defined } map { $_->find("?rel", "properties", $prop_name) } @topics );
          }
-         @topics=select_closest($app->help, @topics) if @topics>1;
+         @topics=select_closest($top_help, @topics) if @topics>1;
       }
    }
    if (!@topics  &&
@@ -172,42 +179,46 @@ sub search {
                       # match parametrized types
                     | (?'objtype' $type_re)::(?'method' [^:]+) $
                   ) /xo  &&
-       defined ($obj_help=$app->help->find(@how, "objects", "property_types", $+{objtype}))) {
+       defined ($obj_help=$top_help->find(@how, "objects", "property_types", $+{objtype}))) {
       # Qualified::Type::METHOD
       @topics=$obj_help->find("?rel", $+{method});
    }
    if (!@topics) {
       # try as a single term
-      @topics=@how ? $app->help->find(@how, $what) : search_in_tree($help, $what);
+      @topics=@how ? $top_help->find(@how, $what) : search_in_tree($help, $what);
    }
 
    if (@topics==1) {
-      my $id_app=$topic2id{$topics[0]};
-      if (defined($id_app) && defined (my $app=$id_app->[1])) {
-         ($app != $application && $app->name.$outsuffix) . '#' . $id_app->[0]
-      } else {
-         "#"
-      }
+      ref_to_topic($topics[0]) // '#'
    } elsif (@topics) {
-      die "Ambiguous reference to $_[1] from ", $application->name, "::", $help->full_path, "; candidates are:\n",
+      die "Ambiguous reference to $_[1] from ", ($application ? $application->name : "Core"), "::", $help->full_path, "; candidates are:\n",
           (map { "    ".$_->full_path."\n" } @topics),
           "Please disambiguate by qualification with application name and/or object type at ", $help->defined_at, "\n";
 
    } elsif ($_[1] =~ /^($qual_id_re) \s*<\s* $types_re \s*>$/xo) {
       search($help, $1);
    } else {
-      die "Unresolved reference to $_[1] from ", $application->name, "::", $help->full_path, "\n",
+      die "Unresolved reference to $_[1] from ", ($application ? $application->name : "Core"), "::", $help->full_path, "\n",
           $_[1] =~ /[<>]/ ? "Please remove the type parameters, because help topics are not stored with specializations"
                           : "Please double-check the spelling and/or qualify with application name or object type",
           " at ", $help->defined_at, "\n";
    }
 }
 
+sub ref_to_topic {
+   my ($topic)=@_;
+   if (defined (my $id_appname=$topic2id_appname{$topic})) {
+      ($id_appname->[1] ne ($application ? $application->name : "core") && $id_appname->[1].$outsuffix) . '#' . $id_appname->[0]
+   } else {
+      undef
+   }
+}
+
 sub ref_to_type {
    my ($referrer, $type)=@_;
    if (defined (my $help=$type->help_topic)) {
-      if (defined (my $id_app=$topic2id{$help})) {
-         return ($type->application != $application && $type->application->name.$outsuffix) . '#' . $id_app->[0];
+      if (defined (my $ref=ref_to_topic($help))) {
+         return $ref;
       }
    }
    if ($type->abstract) {
@@ -220,13 +231,8 @@ sub ref_to_type {
         ("perl class ", ref($type))), " not represented in the help topic tree\n";
 }
 
-sub ref_to_topic {
-   my ($topic)=@_;
-   '#' . $topic2id{$topic}->[0]
-}
-
 my %ignore_types;
-@ignore_types{qw(ARRAY SCALAR HASH Any enum)}=();
+@ignore_types{qw(ARRAY SCALAR HASH CODE Any enum)}=();
 
 sub resolve_ref {
    my ($help, $ref, $force)=@_;
@@ -262,15 +268,20 @@ sub resolve_ref {
        ($help->parent->category ? $help->parent->parent : $help->parent)->name ne "methods") {
       $func_help= $ovcnt ? $help->topics->{"overload#0"} : $help;
    }
-   local_array($help->related, $application->help->related_objects($func_help)) if defined($func_help);
+   local_array($help->related, ($application ? $application->help : $Core::Help::core)->related_objects($func_help)) if defined($func_help);
    search($help, $ref);
+}
+
+sub help_text_writer {
+   my ($writer, $help)=@_;
+   new_fragment Core::HelpAsHTML($writer, sub { resolve_ref($help, $_[0], 1) })
 }
 
 sub write_descr {
    my ($writer, $help, $optional)=@_;
    if ($help->text =~ /\S/) {
       $writer->startTag("description");
-      writeHTML($writer, $help, $help->text, "p");
+      help_text_writer($writer, $help)->writeBlock($help->text, "p");
       $writer->endTag("description");
    } elsif (!$optional) {
       $writer->dataElement("description", "UNDOCUMENTED");
@@ -281,92 +292,9 @@ sub write_descr_string {
    my ($writer, $help, $text)=@_;
    if ($text =~ /\S/) {
       $writer->startTag("description");
-      writeHTML($writer, $help, $text, "div");
+      help_text_writer($writer, $help)->writeBlock($text, "div");
       $writer->endTag("description");
    }
-}
-
-sub convertDokuWiki {
-   my ($writer, $help, $text)=@_;
-   while ($text =~ m{\G (.*?) (?: (''|__|\*\*|//) (.*?) \2
-                                | \[\[ (.*?) (?: \| (.*?) )? \]\]
-                                | $ )
-                    }xgs) {
-      $writer->characters($1) if length($1);
-      if (defined $2) {
-         my @decor;
-         if ($2 eq "''") {
-            @decor=('code');
-         } elsif ($2 eq "**") {
-            @decor=('strong');
-         } elsif ($2 eq "//") {
-            @decor=('em', class => 'param');
-         } else {
-            @decor=('em', class => 'u');
-         }
-         $writer->startTag([ $xhtmlns, shift @decor ], @decor);
-         convertDokuWiki($writer, $help, $3);
-         $writer->endTag;
-      } elsif (defined $4) {
-         my ($ref, $text)=($4, $5);
-         $ref =~ s/^\s* (.*?) \s*$/$1/x;
-         $writer->startTag([ $xhtmlns, 'a' ], href => resolve_ref($help, $ref, 1));
-         if (defined $text) {
-            convertDokuWiki($writer, $help, $text);
-         } else {
-            $writer->characters($ref);
-         }
-         $writer->endTag;
-      }
-   }
-}
-
-
-sub writeHTMLtext {
-   my ($writer, $help, $text)=@_;
-   my $verbatim=0;
-   foreach (split m{(&$id_re; | </? (?: su[bp] ) > | </span> | < (?: span (?:\s+ $id_re = ".*")?) > )}ox, $text) {
-      if ($verbatim) {
-         if (substr($_,0,1) eq "&") {
-            $writer->getOutput->print($_);
-         } elsif (substr($_,1,1) eq "/") {
-            $writer->endTag;
-         } else {
-            $_ =~ /<( $id_re )(?:\s? ( $id_re )="(.*)" )?>/xo;
-            #/$id_re/o;
-            if (defined($2)){
-                $writer->startTag([ $xhtmlns, $1 ], $2=>$3);
-            } else {
-                $writer->startTag([ $xhtmlns, $1 ]);
-            }
-         }
-      } elsif (length) {
-         convertDokuWiki($writer, $help, $_);
-      }
-      $verbatim^=1;
-   }
-}
-
-sub writeHTML {
-   my ($writer, $help, $text, $para_tag)=@_;
-   $writer->setDataMode(0);
-   while ($text =~ /\G(.*?)(?:\n\n|\Z|((?=^ *\t)))/msg) {
-      if (length($1)>1) {
-         $writer->startTag([ $xhtmlns, $para_tag ]);
-         writeHTMLtext($writer, $help, $1);
-         $writer->endTag;
-      }
-      if ($para_tag eq "p" && defined $2) {
-         $writer->startTag([ $xhtmlns, "blockquote" ]);
-         while ($text =~ /\G^ *\t(.*)\n/mgc) {
-            $writer->startTag([ $xhtmlns, "div" ]);
-            writeHTMLtext($writer, $help, $1);
-            $writer->endTag;
-         }
-         $writer->endTag;
-      }
-   }
-   $writer->setDataMode(1);
 }
 
 sub write_type_params {
@@ -383,11 +311,11 @@ sub write_type_params {
 sub write_function {
    my ($writer, $help, $ovcnt, @attrs)=@_;
    if (!@attrs) {
-      @attrs=(name => $help->name, $xmlid => $topic2id{$help}->[0]);
+      @attrs=(name => $help->name, $xmlid => $topic2id_appname{$help}->[0]);
       if ($ovcnt=$help->annex->{function}) {
          foreach (0..$ovcnt) {
             my $ov_topic=$help->topics->{"overload#$_"};
-            $attrs[-1]=$topic2id{$ov_topic}->[0] if $_;     # the first instance inherits the id of the common parent node
+            $attrs[-1]=$topic2id_appname{$ov_topic}->[0] if $_;     # the first instance inherits the id of the common parent node
             write_function($writer, $ov_topic, $_, @attrs);
          }
          return 1;
@@ -403,22 +331,11 @@ sub write_function {
          my $descr=$_->[2];
          my $value_list=$_->[3];
          if ($descr =~ /\S/ || defined($value_list)) {
-            $descr .= "\nPossible values:\n" if defined($value_list);
             $writer->startTag("description");
-            writeHTML($writer, $help, $descr, "div");
+            my $text_writer=help_text_writer($writer, $help);
+            $text_writer->writeBlock($descr, "div");
             if (defined $value_list) {
-               $writer->setDataMode(0);
-               $writer->startTag([ $xhtmlns, "dl" ]);
-               foreach my $value (@$value_list) {
-                  $writer->startTag([ $xhtmlns, "dt" ]);
-                  writeHTMLtext($writer, $help, $value->[0]);
-                  $writer->endTag;
-                  $writer->startTag([ $xhtmlns, "dd" ]);
-                  writeHTMLtext($writer, $help, $value->[1]);
-                  $writer->endTag;
-               }
-               $writer->endTag;
-               $writer->setDataMode(1);
+               $text_writer->write_possible_values($value_list);
             }
             $writer->endTag("description");
          }
@@ -428,10 +345,9 @@ sub write_function {
    if (defined (my $options=$help->annex->{options})) {
       foreach my $opt_group (@$options) {
          if (is_object($opt_group)) {
-            my $id_app=$topic2id{$opt_group};
-            $writer->emptyTag("common-option-list", name => $opt_group->name,
-                              href => $id_app ? ($id_app->[1] != $application && $id_app->[1]->name.$outsuffix) . '#' . $id_app->[0]
-                                              : '#', class => "invalid");
+            my $group_ref=ref_to_topic($opt_group)
+                          // die "Internal error: orphaned option group help node ", $opt_group->full_path, "\n";
+            $writer->emptyTag("common-option-list", name => $opt_group->name, href => $group_ref);
          } else {
             my $group_text=local_shift($opt_group);
             if (length($group_text)) {
@@ -469,7 +385,7 @@ sub write_function {
 
    if (defined (my $examples=$help->annex->{examples})) {
       $writer->startTag("examples");
-      write_examples($writer,$help,$examples);
+      write_examples($writer, $help, $examples);
       $writer->endTag;
    }
 
@@ -480,16 +396,15 @@ sub write_function {
 
 sub write_option_list {
    my ($writer, $help)=@_;
-   $writer->startTag("common-option-list", name => $help->name, $xmlid => $topic2id{$help}->[0]);
+   $writer->startTag("common-option-list", name => $help->name, $xmlid => $topic2id_appname{$help}->[0]);
    write_descr($writer, $help);
 
    if (@{$help->related}) {
       $writer->startTag("imports-from");
-      foreach my $topic (@{$help->related}) {
-         my $id_app=$topic2id{$topic};
-         $writer->emptyTag("common-option-list", name => $topic->name,
-                           href => $id_app ? ($id_app->[1] != $application && $id_app->[1]->name.$outsuffix) . '#' . $id_app->[0]
-                                           : '#', class => "invalid");
+      foreach my $rel_topic (@{$help->related}) {
+         my $rel_ref=ref_to_topic($rel_topic)
+                     // die "internal error: orphaned option group help node ", $rel_topic->full_path, "\n";
+         $writer->emptyTag("common-option-list", name => $rel_topic->name, href => $rel_ref);
       }
       $writer->endTag("imports-from");
    }
@@ -512,7 +427,7 @@ sub write_property_type {
       my $proto=$pkg->self;
       @ext = ext_attr($proto);
    }
-   $writer->startTag("property-type", name => $help->name, @ext, $xmlid => $topic2id{$help}->[0]);
+   $writer->startTag("property-type", name => $help->name, @ext, $xmlid => $topic2id_appname{$help}->[0]);
    write_type_params($writer, $help);
    write_descr($writer, $help);
 
@@ -542,7 +457,7 @@ sub write_property_contents {
 
    if (defined (my $examples=$help->annex->{examples})) {
       $writer->startTag("examples");
-      write_examples($writer,$help,$examples);
+      write_examples($writer, $help, $examples);
       $writer->endTag;
    }
 
@@ -559,36 +474,11 @@ sub write_property_contents {
 }
 
 sub write_examples {
-   my ($writer,$help,$examples) = @_;
+   my ($writer, $help, $examples) = @_;
    foreach my $ex (@$examples) {
       $writer->startTag("example");
       $writer->startTag("description");
-      $writer->setDataMode(0);
-      my @buffer;
-      foreach my $line (split "\n",$ex) {
-         # match > or | at the beginning but check > with lookahead to keep it in $'
-         if ($line =~ /^\s* (?: \| | (?= > ) ) /x) {
-            $line = $';
-            # escapes for html output, we dont want to parse the code sections as descriptions
-            # due to stuff like [[1,2,3]] and to avoid [[]] around all types,...
-            $line =~ s/&/&amp;/g;
-            $line =~ s/</&lt;/g;
-            $line =~ s/>/&gt;/g;
-            if (@buffer > 0) {
-               writeHTMLtext($writer,$help,join("\n",@buffer));
-               @buffer = ();
-            }
-            # empty code tags cause display problems
-            $line = " " if ($line eq "");
-            $writer->startTag([ $xhtmlns, "code" ]);
-            $writer->getOutput->print($line);
-            $writer->endTag;
-         } else {
-            push @buffer,$line;
-         }
-      }
-      writeHTMLtext($writer,$help,join("\n",@buffer)) if (@buffer > 0);
-      $writer->setDataMode(1);
+      help_text_writer($writer, $help)->example($ex);
       $writer->endTag;
       $writer->endTag;
    }
@@ -603,7 +493,7 @@ sub write_property {
                      type => ($type->application != $application && $type->application->name."::").$type->full_name,
                      href => ref_to_type($help, $type),
                      ext_attr($prop),
-                     $xmlid => $topic2id{$help}->[0]);
+                     $xmlid => $topic2id_appname{$help}->[0]);
 
    if (defined (my $spez=$help->annex->{spez})) {
       $writer->emptyTag("only", name => $spez->name, href => ref_to_topic($spez));
@@ -615,7 +505,7 @@ sub write_property {
 
 sub write_permutation {
    my ($writer, $help)=@_;
-   $writer->startTag("permutation", name => $help->name, $xmlid => $topic2id{$help}->[0]);
+   $writer->startTag("permutation", name => $help->name, $xmlid => $topic2id_appname{$help}->[0]);
    write_property_contents($writer, $help);
    $writer->endTag("permutation");
 }
@@ -624,13 +514,13 @@ sub write_object {
    my ($writer, $help)=@_;
    my $obj_proto=$help->annex->{type};
 
-   $writer->startTag("object", name => $help->name, $xmlid => $topic2id{$help}->[0],
+   $writer->startTag("object", name => $help->name, $xmlid => $topic2id_appname{$help}->[0],
                                defined($obj_proto) ? ext_attr($obj_proto) : ());
    write_type_params($writer, $help);
 
    if (defined (my $spezs=$help->topics->{specializations})) {
       foreach my $s (@{$spezs->topics}{@{$spezs->toc}}) {
-         $writer->startTag("specialization", name => $s->name, $xmlid => $topic2id{$s}->[0]);
+         $writer->startTag("specialization", name => $s->name, $xmlid => $topic2id_appname{$s}->[0]);
          write_descr($writer, $s, 1);
          $writer->endTag;
       }
@@ -686,10 +576,10 @@ sub write_categories {
    my $has_categories;
    foreach my $topic (grep { $_->category && !$taboo{$_->name} } values %{$help->topics}) {
       $has_categories=1;
-      $writer->startTag("category", name => $topic->name, ext_attr_dir($topic), $xmlid => $topic2id{$topic}->[0]);
+      $writer->startTag("category", name => $topic->name, ext_attr_dir($topic), $xmlid => $topic2id_appname{$topic}->[0]);
       write_descr($writer, $topic);
       unless (@{$topic->toc}) {
-         warn_print( "Category without items: ", $application->name, "::", $topic->full_path );
+         warn_print( "Category without items: ", ($application ? $application->name : "Core"), "::", $topic->full_path );
       }
       foreach (@{$topic->toc}) {
          $write_sub->($writer, $topic->topics->{$_});
@@ -701,7 +591,7 @@ sub write_categories {
       my $topic=$help->topics->{$_};
       unless ($topic->category) {
          if ($has_categories) {
-            warn_print( "Item without category: ", $application->name, "::", $topic->full_path);
+            warn_print( "Item without category: ", ($application ? $application->name : "Core"), "::", $topic->full_path);
          }
          $write_sub->($writer, $topic);
       }
@@ -745,24 +635,18 @@ sub open_doc_file {
    open my $out, ">$outdir/$filename" or die "can't create file $outdir/$filename: $!\n";
    my $writer=new Core::XMLwriter($out, PREFIX_MAP => \%namespaces, FORCED_NS_DECLS => [ keys %namespaces ]);
    $writer->xmlDecl;
-   $writer
+   return $writer;
 }
 
 sub close_doc_file {
-   my $writer=shift;
+   my ($writer)=@_;
    $writer->end;
    close($writer->getOutput);
 }
 
-#############################################################################################
-#
-#  main function goes on
-
-map { assign_ids($_) } map { application($_) } @ARGV;
-
-foreach my $app (@ARGV) {
-   application($app);
-   my $writer=open_doc_file($application->name.".xml", $xhtmlns=>"html");
+sub open_app_doc_file {
+   my ($appname, @attrs)=@_;
+   my $writer=open_doc_file($appname.".xml", $xhtmlns => "html");
    $writer->getOutput->print(<<'.');
 <!DOCTYPE application [
   <!ENTITY % HTMLsymbol PUBLIC "-//W3C//ENTITIES Symbols for XHTML//EN" "xhtml-symbol.ent">
@@ -770,7 +654,26 @@ foreach my $app (@ARGV) {
   %HTMLsymbol; %HTMLlat1;
 ]>
 .
-   $writer->startTag( [ $pmdocns, "application" ], name => $application->name, ext_attr_app($application) );
+   $writer->startTag( [ $pmdocns, "application" ], name => $appname, @attrs);
+   return $writer;
+}
+
+sub close_app_doc_file {
+   my ($writer)=@_;
+   $writer->endTag("application");
+   &close_doc_file;
+}
+
+#############################################################################################
+#
+#  main function goes on
+
+map { assign_ids($_->name, $_->help) } map { application($_) } @ARGV;
+assign_ids("core", $Core::Help::core);
+
+foreach my $app (@ARGV) {
+   application($app);
+   my $writer=open_app_doc_file($application->name, ext_attr_app($application));
 
    write_descr($writer, $application->help);
 
@@ -807,42 +710,40 @@ foreach my $app (@ARGV) {
    if (defined (my $functions=$application->help->topics->{functions})) {
       if (@{$functions->toc}) {
          $writer->startTag("user-functions");
-         write_categories($writer, $functions, \&write_function, Basic => 1, Interactive => 1);
+         write_categories($writer, $functions, \&write_function);
          $writer->endTag("user-functions");
       }
    }
 
-   $writer->endTag("application");
-   close_doc_file($writer);
+   close_app_doc_file($writer);
+}
 
-   if ($app eq "common") {
-      $writer=open_doc_file("core.xml", $xhtmlns=>"html");
-      $writer->startTag( [ $pmdocns, "application" ], name => "core" );
-      write_descr_string($writer, $application->help, <<'.');
+{
+   local $application;
+   local_push($Core::Help::core->related, application("common")->help);
+
+   my $writer=open_app_doc_file("core");
+
+   write_descr_string($writer, $Core::Help::core, <<'.');
 Core functionality available in all applications.
 .
 
-      #TODO: document Core::Object methods and list them here
+   if (defined (my $objects=$Core::Help::core->topics->{objects})) {
+      $writer->startTag("objects");
+      write_categories($writer, $objects, \&write_object);
+      $writer->endTag("objects");
+   }
 
-      my $functions=$application->help->topics->{functions};
+   if (defined (my $functions=$Core::Help::core->topics->{functions})) {
       if (@{$functions->toc}) {
          $writer->startTag("user-functions");
-         foreach my $topic (grep { defined } @{$functions->topics}{qw(Basic Interactive)}) {
-            $writer->startTag("category", name => $topic->name, ext_attr_dir($topic), $xmlid => $topic2id{$topic}->[0]);
-            write_descr($writer, $topic, 1);
-            foreach (@{$topic->toc}) {
-               write_function($writer, $topic->topics->{$_});
-            }
-            $writer->endTag("category");
-         }
+         write_categories($writer, $functions, \&write_function);
          $writer->endTag("user-functions");
       }
-
-      $writer->endTag("application");
-      close_doc_file($writer);
    }
-}
 
+   close_app_doc_file($writer);
+}
 
 # Local Variables:
 # mode: perl

@@ -60,7 +60,7 @@ perl::Object suspension(perl::Object p_in, int k, perl::OptionSet options)
         p_out.set_description() << k << "-suspension of " << p_in.name() << endl;
         p_out.take("FACETS") << C;
 
-        if (!options["nol"]) {
+        if (!options["no_labels"]) {
                 Array<std::string> L = p_in.give("VERTEX_LABELS");
                 hash_set<std::string> old_L(L.begin(), L.end());
 
@@ -112,9 +112,9 @@ UserFunction4perl("# @category Producing a new simplicial complex from others"
                   "#  By default apices are labeled with ''apex_0+'', ''apex_0-'', ''apex_1+'', etc."
                   "#  If one of the specified labels already exists, a unique one is made"
                   "#  by appending ''_i'' where //i// is some small number."
-                  "# @option Bool nol do not produce any labels."
+                  "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @return SimplicialComplex",
-                  &suspension, "suspension(SimplicialComplex; $=0, { apex_labels => undef, nol => 0 })");
+                  &suspension, "suspension(SimplicialComplex; $=0, { apex_labels => undef, no_labels => 0 })");
 } }
 
 // Local Variables:

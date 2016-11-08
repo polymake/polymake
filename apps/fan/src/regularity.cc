@@ -48,10 +48,6 @@ namespace polymake { namespace fan {
        const Matrix<Scalar> rays = fan.give("RAYS");
        const IncidenceMatrix<> max_cones = fan.give("MAXIMAL_CONES");
        const Matrix<Scalar> ker = T(null_space(T(ones_vector<Scalar>() | rays)));
-       const int dim = rays.rows() - rank(rays) + 1;
-       // catch degenerate cases early on to avoid problems with empty matrices
-       if (ker.rows() == 0 || ker.cols() == 0)
-          return true;
 
        perl::Object c(polytope_type);
        const Matrix<Scalar> Pt = ones_vector<Scalar>() | ker.minor(~max_cones[0], All);
@@ -75,18 +71,16 @@ namespace polymake { namespace fan {
           A /= At | -(ones_vector<Scalar>(At.rows()));
        }
 
-       if (L.rows() > 0)
-          L = L | zero_vector<Scalar>();
+       L = L | zero_vector<Scalar>();
 
        perl::Object p(polytope_type);
-       p.take("CONE_AMBIENT_DIM") << dim;
        p.take("INEQUALITIES") << A;
        p.take("EQUATIONS") << L;
 
        bool feasible = p.give("FEASIBLE");
        if (feasible) {
           perl::Object lp(linear_program_type);
-          lp.take("LINEAR_OBJECTIVE") << unit_vector<Scalar>(dim, dim-1);
+          lp.take("LINEAR_OBJECTIVE") << unit_vector<Scalar>(A.cols(), A.cols()-1);
           p.add("LP", lp);
 
           const Scalar max = lp.give("MAXIMAL_VALUE");

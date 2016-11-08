@@ -1,6 +1,6 @@
 /*****************************************************************************
 *                                                                            *
-*  Vertex-invariants source file for nauty 2.5.                              *
+*  Vertex-invariants source file for nauty 2.6.                              *
 *                                                                            *
 *   Copyright (1989-2013) Brendan McKay.  All rights reserved.               *
 *   Subject to waivers and disclaimers in nauty.h.                           *
@@ -37,6 +37,7 @@
 *       12-Jun-10 : fixed identical errors in cellcliq() and cellind()       *
 *       15-Jan-12 : add TLS_ATTR attributes                                  *
 *       23-Aug-12 : fix getbigcells(), thanks to Fatih Demirkale             *
+*       23-Jan-13 : add some parens to satisfy icc                           *
 *                                                                            *
 *****************************************************************************/
 
@@ -1638,7 +1639,7 @@ semirefine(graph *g, int *lab, int *ptn, int level, int *numcells,
 	            set2 = GRAPHROW(g,lab[i],m);
 	            cnt = 0;
 	            for (c1 = m; --c1 >= 0;)
-	                if ((x = (*set1++) & (*set2++)) != 0)
+	                if ((x = ((*set1++) & (*set2++))) != 0)
 	                    cnt += POPCOUNT(x);
 
 	            count[i] = bmin = bmax = cnt;
@@ -1649,7 +1650,7 @@ semirefine(graph *g, int *lab, int *ptn, int level, int *numcells,
 	                set2 = GRAPHROW(g,lab[i],m);
 	                cnt = 0;
 	                for (c1 = m; --c1 >= 0;)
-	                    if ((x = (*set1++) & (*set2++)) != 0)
+	                    if ((x = ((*set1++) & (*set2++))) != 0)
 	                        cnt += POPCOUNT(x);
 
 	                while (bmin > cnt) bucket[--bmin] = 0;

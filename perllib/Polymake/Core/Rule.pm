@@ -61,6 +61,7 @@ use Polymake::Struct (
    [ '$dyn_weight' => 'undef' ],        # Rule  also inserted in preconditions
    [ '$credit' => '#4' ],               # optional Credit from the rule file
    [ '$with_permutation' => 'undef' ],  # CreatingPermutation
+   [ '$not_for_twin' => 'undef' ],      # Property->key of a twin property this rule has been flipped for
 );
 
 #  The ARRAY elements in the input lists may have following array flags (see get_array_flags),
@@ -135,24 +136,17 @@ sub parse_output {
       my ($prop, @out);
       my $array_flag=0;
       my $any_mult_depth=0;
-      my $allow_abstract=$proto->abstract;
 
       foreach (split /\./, $target) {
          if (my ($prop_name, $attrib)= /^($id_re) (?: \(\s* ($id_re) \s*\) )? $/xo) {
-            if (defined $prop) {
-               $proto=$prop->specialization($proto, $allow_abstract)->type;
-            }
-            unless ($prop=$proto->lookup_property($prop_name)) {
-               $proto==$_[0]
-               ? croak( "Unknown property ", $_[0]->full_name, "::$prop_name" )
-               : croak( "Unknown property ", $proto->full_name, "::$_ in path $target" );
-            }
+            $prop=$proto->property($prop_name);
+            $proto=$prop->type;
             push @out, $prop;
             if ($prop->flags & $Property::is_multiple) {
                if (defined $attrib) {
                   if ($Application::plausibility_checks) {
                      foreach my $output (@{$self->output}) {
-                        my $l=equal_list_prefixes(\@out, $output);
+                        my $l=Property::equal_path_prefixes(\@out, $output);
                         if ($l==@out) {
                            $attrib eq "any"
                              or croak( "Contradicting attributes `any' and `new' for multiple subobject $prop_name in rule targets ",
@@ -372,7 +366,7 @@ sub append_weight {
 
 sub append_permutation {
    my ($self, $perm_name)=@_;
-   my @perm_path=$self->defined_for->encode_property_list($perm_name);
+   my @perm_path=$self->defined_for->encode_property_path($perm_name);
    if ($Application::plausibility_checks) {
       if (Property::find_first_in_path(\@perm_path, $Property::is_permutation) != $#perm_path) {
          croak( "$perm_name is not a permutation" );
@@ -390,12 +384,55 @@ sub has_matching_input {
    foreach my $input (@{$self->input}) {
       foreach my $input_path (@$input) {
         if ($lp==@$input_path) {
-           my $match=equal_list_prefixes($path, $input_path);
+           my $match=Property::equal_path_prefixes($path, $input_path);
            return 1 if $match==$lp or $match+1==$lp && $input_path->[-1]->key == $path->[-1]->key;
         }
       }
    }
    0
+}
+####################################################################################
+sub flip_path_for_twin {
+   my ($path, $proto, $twin_prop)=@_;
+   my $result;
+   if ($path->[0]->key == $twin_prop->key) {
+      $result=[ @$path[1..$#$path] ];
+   } elsif ($twin_prop->type->isa($path->[0]->defined_for)) {
+      $result=[ $twin_prop, @$path ];
+   } else {
+      return;
+   }
+   if (is_object($path)) {
+      inherit_class($result, $path);
+   } elsif (my $flags=get_array_flags($path)) {
+      set_array_flags($result, $flags);
+   }
+   $result
+}
+
+sub flip_rule_for_twin {
+   my ($self, $twin_prop)=@_;
+   my $flipped_input=[ map { [ map { flip_path_for_twin($_, $self->defined_for, $twin_prop) // return } @$_ ] } @{$self->input} ];
+   my $flipped_output= defined($self->output) ? [ map { flip_path_for_twin($_, $self->defined_for, $twin_prop) // return } @{$self->output} ] : undef;
+   my $flipped_perm_path= defined($self->with_permutation) ? flip_path_for_twin($self->with_permutation->perm_path, $self->defined_for, $twin_prop) // return : undef;
+   my $descend=[ $twin_prop, undef ];
+   my $code=$self->code;
+   my $flipped_rule=_new($self, $self->header." (applied to ".$twin_prop->name.")",
+                         $code && sub { my ($this)=@_; $code->($this->descend_and_create($descend)) },
+                         $self->defined_for, $self->credit);
+   $flipped_rule->input=$flipped_input;
+   $flipped_rule->output=$flipped_output;
+   $flipped_rule->flags=$self->flags;
+   $flipped_rule->weight=$self->weight;
+   @{$flipped_rule->preconditions}=map { flip_rule_for_twin($_, $twin_prop) } @{$self->preconditions};
+   if (defined($self->dyn_weight)) {
+      $flipped_rule->dyn_weight=$flipped_rule->preconditions->[list_index($self->preconditions, $self->dyn_weight)];
+   }
+   if (defined($flipped_perm_path)) {
+      $flipped_rule->with_permutation=new CreatingPermutation($flipped_rule, $flipped_perm_path);
+   }
+   $flipped_rule->not_for_twin=$twin_prop->key;
+   $flipped_rule;
 }
 ####################################################################################
 sub needs_finalization {
@@ -414,7 +451,7 @@ sub needs_finalization {
                   croak( "A permuted subobject mixed with non-permuted properties in one source group" );
                }
                if (@path_to_perm) {
-                  if (equal_list_prefixes(\@path_to_perm, $path) <= $perm_index) {
+                  if (Property::equal_path_prefixes(\@path_to_perm, $path) <= $perm_index) {
                      croak( "Different permuted subobjects occur as sources in the same rule" );
                   }
                }
@@ -443,7 +480,7 @@ sub needs_finalization {
 }
 ####################################################################################
 sub finalize {
-   my ($self)=@_;
+   my ($self, $for_twin_rule)=@_;
    my $proto=$self->defined_for;
    my $need_invalidate=keys %{$proto->all_producers};
    my $perm_deputy=$self->with_permutation;
@@ -479,7 +516,7 @@ sub finalize {
       return;
    }
 
-   my %created_new_multi;
+   my (%created_new_multi, %twin_targets);
    my $i=0;
    foreach my $output (@{$self->output}) {
       my ($created_prop, @prod);
@@ -500,7 +537,8 @@ sub finalize {
       } else {
          my ($prop, @ancestors)=reverse(@$output);
          $created_prop=$prop;
-         if ($perm_path && equal_list_prefixes($perm_path, $output)==(my $perm_depth=$#$perm_path)) {
+
+         if ($perm_path && Property::equal_path_prefixes($perm_path, $output)==(my $perm_depth=$#$perm_path)) {
             my $permutation=$perm_path->[-1];
             my $sub_perm_hash=$permutation->sub_permutations;
             local_clip_front($output, $perm_depth);
@@ -536,19 +574,26 @@ sub finalize {
          my $flags=get_array_flags($output);
          my $any_mult_depth=$flags >> $any_mult_depth_shift;
          my $common_prefix;  # the longest initial subpath of output occurring among inputs
+         my $bad_twin;
 
          if ($flags & $Property::is_permutation) {
             # rules dealing with permutations may not create new subobjects: pretend a full match
             $common_prefix=$#$output;
          } else {
+            if (!$for_twin_rule && $ancestors[-1]->flags & $Property::is_twin) {
+               $twin_targets{$ancestors[-1]}=1;
+               $bad_twin=1;
+            }
             if ($any_mult_depth==0 || $Application::plausibility_checks) {
                $common_prefix=0;
                foreach my $rule ($self, @{$self->preconditions}) {
                   foreach my $input (@{$rule->input}) {
                      foreach my $input_path (@$input) {
-                        my $l=equal_list_prefixes($output, $input_path);
+                        my $l=Property::equal_path_prefixes($output, $input_path);
                         assign_max($common_prefix, $l);
                         if ($Application::plausibility_checks) {
+                           $bad_twin &&= $l>0 if $rule==$self;
+
                            if ($flags & $Property::is_multiple_new &&
                                $l < $#$output &&
                                $l < $#$input_path &&
@@ -566,6 +611,10 @@ sub finalize {
                      }
                   }
                }
+               if ($Application::plausibility_checks && $bad_twin) {
+                  die "Twin property ", $ancestors[-1]->name, " occurs in all sources and in at least one target - rule should be flipped at ",
+                      $self->source_location, "\n";
+               }
             }
             if ($flags & $Property::is_multiple_new) {
                # strip off all properties below the first new instance,
@@ -579,7 +628,8 @@ sub finalize {
                   foreach ($common_prefix..($any_mult_depth || @$output)-2) {
                      if (($output->[$_]->flags & ($Property::is_multiple | $Property::is_multiple_new)) == $Property::is_multiple) {
                         die "Multiple subobject ", $output->[$_]->name, " in path ", Property::print_path($output),
-                            " must be attributed with `any' or `new' because it does not occur among rule or precondition sources at ", $self->source_location, "\n";
+                            " must be attributed with `any' or `new' because it does not occur among rule or precondition sources at ",
+                            $self->source_location, "\n";
                      }
                   }
                }
@@ -639,6 +689,15 @@ sub finalize {
       $proto->override_rule(@$_) for @{$self->overridden_in};
       undef $self->overridden_in;
    }
+
+   if (!$for_twin_rule && keys %twin_targets) {
+      foreach my $twin_prop (keys %twin_targets) {
+         if (defined (my $flipped_rule=flip_rule_for_twin($self, $twin_prop))) {
+            push @{$proto->production_rules}, $flipped_rule;
+            finalize($flipped_rule, 1);
+         }
+      }
+   }
 }
 
 sub sensitivity_check { $_[0]->with_permutation->perm_path }
@@ -668,8 +727,8 @@ sub header_search_pattern {
 sub create_splitting_filter {
    my ($rule, $permutation, $descend_path, $prop_hash, $sub_perm_hash, $depth)=@_;
    sub {
-      my ($dst, $pv)=@_;
-      my $prop=$pv->property;
+      my ($dst, $pv, $prop)=@_;
+      $prop //= $pv->property;
       if (defined ($prop_hash) &&
           defined (my $prod_list=$prop_hash->{$prop->key})) {
          my $out=[ @$descend_path, $prop ];
@@ -679,14 +738,14 @@ sub create_splitting_filter {
          my $perm_dst=$dst->add_perm_in_parent($#$descend_path-$depth+1, $permutation, $rule);
          local_clip_front($out, $depth) if $depth;
          my ($perm_obj)=$perm_dst->descend_and_create($out);
-         return ($perm_obj, $pv->copy($perm_obj));
+         return ($perm_obj, $pv->copy($perm_obj, $prop));
       }
 
       if (defined ($sub_perm_hash) &&
           defined (my $sub_permutation=$sub_perm_hash->{$prop->key})) {
-         return ($dst, $pv->copy($dst, create_splitting_filter($rule, $sub_permutation, [ @$descend_path, $prop ],
-                                                               $sub_permutation->sensitive_props, $sub_permutation->sub_permutations,
-                                                               $#$descend_path+2)));
+         return ($dst, $pv->copy($dst, $prop, create_splitting_filter($rule, $sub_permutation, [ @$descend_path, $prop ],
+                                                                      $sub_permutation->sensitive_props, $sub_permutation->sub_permutations,
+                                                                      $#$descend_path+2)));
       }
 
       my $down_prop=$prop_hash->{$Permutation::sub_key};
@@ -694,11 +753,11 @@ sub create_splitting_filter {
       my $down_sub=$sub_perm_hash->{$Permutation::sub_key};
       $down_sub &&= $down_sub->{$prop->key};
       if (defined($down_prop) || defined($down_sub)) {
-         return ($dst, $pv->copy($dst, create_splitting_filter($rule, $permutation, [ @$descend_path, $prop ],
-                                                               $down_prop, $down_sub, $depth)));
+         return ($dst, $pv->copy($dst, $prop, create_splitting_filter($rule, $permutation, [ @$descend_path, $prop ],
+                                                                      $down_prop, $down_sub, $depth)));
       }
 
-      return ($dst, $pv->copy($dst));
+      return ($dst, $pv->copy($dst, $prop));
    }
 }
 
@@ -818,19 +877,16 @@ sub _execute {
 }
 ####################################################################################
 sub list_results {
-   my $self=shift;
+   my ($self, $proto)=@_;
    $self->flags & ($is_function | $is_precondition)
      ||
    scalar(grep { get_array_flags($_) & $Property::is_permutation } @{$self->input})
    ? ()
    : map {
-        my $proto=$_[0];
-        my $i=$#$_;
+        my $obj_type=$proto;
         join(".", map {
-           my $name=$proto->property_name($_);
-           if ($i--) {
-              $proto=$_->specialization($proto)->type;
-           }
+           my $name=$obj_type->property_name($_);
+           $obj_type=$_->type;
            $name
         } @$_)
      } @{$self->output}
@@ -919,8 +975,8 @@ package __::Deputy;
 use Polymake::Struct (
    [ new => '$' ],
    [ '$rule' => '#1' ],     # the proper Rule doing the hard job
-   [ '$flags' => '#1 ->flags' ],
-   [ '$weight' => '#1 ->weight' ],
+   [ '$flags' => '#1->flags' ],
+   [ '$weight' => '#1->weight' ],
 );
 
 sub header { $_[0]->rule->header }
@@ -934,13 +990,15 @@ sub overridden_in { $_[0]->rule->overridden_in }
 sub with_permutation { $_[0]->rule->with_permutation }
 sub defined_for { $_[0]->rule->defined_for }
 sub has_matching_input { $_[0]->rule->has_matching_input($_[1]) }
+sub not_for_twin { $_[0]->rule->not_for_twin }
+
 ####################################################################################
 package __::CreatingPermutation;
 
 use Polymake::Struct (
    [ '@ISA' => 'Deputy' ],
    [ new => '$$' ],
-   [ '$rule' => 'weak( #1 )' ], # production Rule
+   [ '$rule' => 'weak(#1)' ], # production Rule
    [ '$perm_path' => '#2' ],    # property path leading to a permutation
    '@actions',                  # PermAction descriptors
 );
@@ -989,7 +1047,7 @@ package __::PermAction;
 
 use Polymake::Struct (
    [ new => '$$$$;$' ],
-   [ '$perm_trigger' => 'weak( #1 )' ], # production rule triggering the permutation
+   [ '$perm_trigger' => 'weak(#1)' ], # production rule triggering the permutation
    [ '$output' => '#2' ],               # index into its output where the sensitive property lies
    [ '$producers' => '#3' ],            # ( Rule ) moving the output property back to the basis
    [ '$depth' => '#4' ],                # how deep to descend in the base object
@@ -1010,6 +1068,7 @@ sub enabled { @{$_[0]->producers}!=0 }
 sub preconditions { [ ] }
 sub with_permutation { undef }
 sub overridden_in { undef }
+sub not_for_twin { $_[0]->perm_trigger->not_for_twin }
 
 ####################################################################################
 package __::PermutationPath;
@@ -1030,7 +1089,7 @@ sub execute {
 
 sub find_sensitive_sub_property {
    my ($self, @path)=@_;
-   if (equal_list_prefixes($self, \@path)==$#$self) {
+   if (Property::equal_path_prefixes($self, \@path)==$#$self) {
       $self->[-1]->find_sensitive_sub_property(splice @path, $#$self)
    } else {
       undef

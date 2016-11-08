@@ -18,7 +18,7 @@ namespace polymake { namespace topaz {
 
 // return values: 1=true, 0=false, -1=undef (does not occur here)
 template <typename Complex, typename VertexSet>
-int is_ball_or_sphere(const Complex& C, const GenericSet<VertexSet>& V, int2type<2>)
+int is_ball_or_sphere(const Complex& C, const GenericSet<VertexSet>& V, int_constant<2>)
 {
    HasseDiagram HD=pure_hasse_diagram(C);
 
@@ -29,7 +29,7 @@ int is_ball_or_sphere(const Complex& C, const GenericSet<VertexSet>& V, int2type
 
    // check whether B is a sphere or empty
    const bool B_is_empty = B.empty();
-   if (!B_is_empty && is_ball_or_sphere(B,int2type<1>())==0) return 0;
+   if (!B_is_empty && is_ball_or_sphere(B, int_constant<1>())==0) return 0;
 
    // S:= C + B*v for a vertex v not contained in C
    // note: S is a sphere <=> C is ball or sphere

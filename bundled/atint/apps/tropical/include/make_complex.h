@@ -31,7 +31,6 @@
 #include "polymake/linalg.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/tropical/thomog.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/solver_def.h"
 
 namespace polymake { namespace tropical {
@@ -50,7 +49,6 @@ namespace polymake { namespace tropical {
 		solver<Rational> sv;
 		rays = tdehomog(rays);
 		//First we compute all the H-representations of the cones
-		//dbgtrace << "Computing H-rep of cones" << endl;
 		Vector<Matrix<Rational> > inequalities(max_cones.dim());
 		Vector<Matrix<Rational> > equalities(max_cones.dim());
 		for(int c = 0; c < max_cones.dim(); c++) {
@@ -82,7 +80,6 @@ namespace polymake { namespace tropical {
 			for(int i = 0; i < max_cones.dim() -1 && !created; i++) {
 				for(int j = i+1; j < max_cones.dim() && !created;j++) {
 					//replacedI = false; replacedJ = false;
-					//dbgtrace << "Refining " << i << " and "<< j << endl;
 					//We only intersect non-marked pairs
 					if(!markedPairs[i][j]) {
 						//Compute an irredundant H-rep of the intersection of cones i and j
@@ -127,18 +124,12 @@ namespace polymake { namespace tropical {
 							else {
 								relevantEquations = hsEquations.minor(~sequence(0,equationsFromI),All);
 							}
-							Array<Set<int> > signChoices = 
-								all_subsets(sequence(0,relevantEquations.rows()));
-							//pm::AllSubsets<Set<int> >(sequence(0,relevantEquations.rows()));
+							Array<Set<int>> signChoices{ all_subsets(sequence(0, relevantEquations.rows())) };
 
-							//dbgtrace << "Relevant equations: " << relevantEquations << endl;
-							//dbgtrace << "Cone index: " << coneindex << " of " << i << ", " << j << endl;
 							for(int s = 0; s < signChoices.size(); s++) {
-								//dbgtrace << "Sign choice: " << signChoices[s] << endl;
 								//If the intersection is full-dimensional and the signs are all +1's, then we
 								//only compute this intersection for coneindex == i
 								if(isDimension == dimension && signChoices[s].size() == relevantEquations.rows() && coneindex == j) {
-									//dbgtrace << "Full-dimension intersection not for " << coneindex << endl;
 									continue;
 								}
 
@@ -152,10 +143,8 @@ namespace polymake { namespace tropical {
 									Matrix<Rational> ref = sv.enumerate_vertices(
 											refineIneqs.minor(All,~scalar2set(0)),
 											equalities[coneindex].minor(All,~scalar2set(0)),false,true).first;
-									//dbgtrace << "Intersection rays: " << ref << endl;
 									//If the refinement is full-dimensional, we get a new cone 
 									if(rank(ref) - 1 == dimension) {
-										//dbgtrace << "is refinement" << endl;
 										//First we canonicalize the directional rays
 										for(int rw = 0; rw < ref.rows(); rw++) {
 											if(ref(rw,0) == 0) {
@@ -186,7 +175,6 @@ namespace polymake { namespace tropical {
 												}
 											}
 										}
-										//dbgtrace << "Cone rays are " << coneRays << endl;
 
 										//We have to check for doubles: If i fulfills one of the relevant equations with
 										//equality, we can change its sign and still get the same refinement cone
@@ -203,14 +191,12 @@ namespace polymake { namespace tropical {
 										int newconeindex = max_cones.dim()-1;
 										if(coneindex == i) newconesI += newconeindex;
 										else newconesJ += newconeindex;
-										//dbgtrace << "Cone gets index " << newconeindex << endl;
 
 										//Weight is the weight of coneindex (or the sum of both, if s is everything)
 										weights |= (isDimension < dimension || 
 												signChoices[s].size() < relevantEquations.rows()? 
 												weights[coneindex] : weights[i] + weights[j]);
 
-										//dbgtrace << "Cone weight is " << weights[weights.dim()-1] << endl;
 
 										inequalities |= (inequalities[coneindex] / refIneqs);
 										equalities |= equalities[coneindex];
@@ -219,7 +205,6 @@ namespace polymake { namespace tropical {
 									} //END if refDimension = dimension
 								}
 								catch(...) {
-									//dbgtrace << "Empty refinement intersection - can be ignored" << endl;
 								}
 							}//END iterate sign choices
 						}//END iterate i and j
@@ -233,9 +218,7 @@ namespace polymake { namespace tropical {
 						//(Except, if the intersection is full-dimensional. In this case i and j agree
 						// and they are replaced by the single new cone with weight the sum of their weights)
 						if(newconesI.size() + newconesJ.size() > 0) {
-							//dbgtrace << "Cleaning up indices and markings" << endl;
 
-							//dbgtrace << "Created cones " << newconesI << " in " << i << " and " << newconesJ << " in " << j << endl;
 
 							created = true;//newconesI.size() >= 2 || newconesJ.size() >= 2;
 							//Will contain the indices of cones to be marked compatible
@@ -281,23 +264,14 @@ namespace polymake { namespace tropical {
 							// 		  Set<int> st = coneindex == i? newconesI : newconesJ;
 							// 		  for(Entire<Set<int> >::iterator ni = entire(st); !ni.at_end(); ni++) {
 							// 		    if(max_cones[*ni].contains(3) && max_cones[*ni].contains(8) && !removedIndices.contains(*ni)) {
-							// 		      dbglog << "Keeping 3,8 cone " << *ni << endl;
-							// 		      dbglog << "Created in intersecting " << i << "," << j << endl;
-							// 		      dbglog << "Cone of " << coneindex << endl;
-							// 		      dbglog << "cones in i: " << newconesI << endl;
-							// 		      dbglog << "cones in j: " << newconesJ << endl;
-							// 		      dbglog << "Created: " << created << endl;
 							// 		      for(int k = 0; k < *ni; k++) {
 							// 			if(max_cones[k] == max_cones[*ni]) {
-							// 			    dbglog << "Same as cone " << k << endl;
-							// 			    dbglog << "Compatible: " << markedPairs(k,*ni) << endl;
 							// 			}
 							// 		      }
 							// 		    }
 							// 		  }
 							// 		}
 
-							//dbgtrace << "Marking indices " << markIndices << " and removing " << removedIndices << endl;
 
 							for(int v = 0; v < markIndices.dim()-1; v++) {
 								for(int w = v+1; w < markIndices.dim(); w++) {
@@ -305,7 +279,6 @@ namespace polymake { namespace tropical {
 								}
 							}
 
-							//dbgtrace << "Done marking" << endl;
 
 							//Now remove them
 							max_cones = max_cones.slice(~removedIndices);
@@ -313,9 +286,6 @@ namespace polymake { namespace tropical {
 							inequalities = inequalities.slice(~removedIndices);
 							equalities = equalities.slice(~removedIndices);
 							markedPairs = markedPairs.minor(~removedIndices,~removedIndices);
-							//dbgtrace << "Done." << endl;
-							//dbgtrace << "Maximal cones: " << endl;
-							//dbgtrace << max_cones.dim() << endl;
 						}
 
 
@@ -325,8 +295,6 @@ namespace polymake { namespace tropical {
 			//       for(int k = 0; k < max_cones.dim();k++) {
 			// 	 for(int l = k+1; l < max_cones.dim(); l++) {
 			// 	    if(max_cones[k] == max_cones[l] && max_cones[k].contains(3) && max_cones[k].contains(8)) {
-			// 	      dbglog << "Cones " << k << " and " << l << " agree. Compatible: " << markedPairs(k,l) << endl;
-			// 	      dbglog << "Restarting: " << created << endl;
 			// 	    }
 			// 	 }
 			//       }

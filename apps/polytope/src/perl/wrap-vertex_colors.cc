@@ -16,11 +16,11 @@
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::Array<pm::RGB, void> (perl::Object, perl::Object, perl::OptionSet) ) {
+   FunctionWrapper4perl( pm::Array<pm::RGB> (perl::Object, perl::Object, perl::OptionSet) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
       IndirectWrapperReturn(arg0, arg1, arg2);
    }
-   FunctionWrapperInstance4perl( pm::Array<pm::RGB, void> (perl::Object, perl::Object, perl::OptionSet) );
+   FunctionWrapperInstance4perl( pm::Array<pm::RGB> (perl::Object, perl::Object, perl::OptionSet) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

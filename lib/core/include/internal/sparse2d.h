@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -77,6 +77,18 @@ struct cell<nothing> {
 
 enum restriction_kind { full, dying, only_rows, only_cols };
 
+template <restriction_kind k>
+using restriction_const = std::integral_constant<restriction_kind, k>;
+
+typedef restriction_const<only_rows> rowwise;
+typedef restriction_const<only_cols> columnwise;
+
+template <typename TMatrix> inline
+decltype(auto) lines(TMatrix& m, rowwise) { return pm::rows(m); }
+
+template <typename TMatrix> inline
+decltype(auto) lines(TMatrix& m, columnwise) { return pm::cols(m); }
+
 template <typename E, bool symmetric=false, restriction_kind restriction=full> class Table;
 template <typename Base, bool symmetric, restriction_kind restriction=full> class traits;
 template <typename,typename,bool> struct asym_permute_entries;
@@ -122,8 +134,8 @@ public:
    typedef E mapped_type;
    typedef AVL::tree< traits<traits_base, symmetric, restriction> > own_tree;
    typedef AVL::tree< traits<traits_base<E,cross_oriented,symmetric,restriction>, symmetric, restriction> > cross_tree;
-   typedef ruler<own_tree, typename if_else<symmetric,nothing,void*>::type> own_ruler;
-   typedef ruler<cross_tree, typename if_else<symmetric,nothing,void*>::type> cross_ruler;
+   typedef ruler<own_tree, typename std::conditional<symmetric, nothing, void*>::type> own_ruler;
+   typedef ruler<cross_tree, typename std::conditional<symmetric, nothing, void*>::type> cross_ruler;
 protected:
    Node* head_node() const
    {
@@ -131,29 +143,29 @@ protected:
                                      - (!symmetric && row_oriented)*sizeof(root_links));
    }
 
-   const own_ruler& get_cross_ruler(True) const
+   const own_ruler& get_cross_ruler(std::true_type) const
    {
       return own_ruler::reverse_cast(static_cast<const own_tree*>(this), this->line_index);
    }
-   own_ruler& get_cross_ruler(True)
+   own_ruler& get_cross_ruler(std::true_type)
    {
       return own_ruler::reverse_cast(static_cast<own_tree*>(this), this->line_index);
    }
-   const cross_ruler& get_cross_ruler(False) const
+   const cross_ruler& get_cross_ruler(std::false_type) const
    {
-      return *reinterpret_cast<const cross_ruler*>(get_cross_ruler(True()).prefix());
+      return *reinterpret_cast<const cross_ruler*>(get_cross_ruler(std::true_type()).prefix());
    }
-   cross_ruler& get_cross_ruler(False)
+   cross_ruler& get_cross_ruler(std::false_type)
    {
-      return *reinterpret_cast<cross_ruler*>(get_cross_ruler(True()).prefix());
+      return *reinterpret_cast<cross_ruler*>(get_cross_ruler(std::true_type()).prefix());
    }
    const cross_ruler& get_cross_ruler() const
    {
-      return get_cross_ruler(bool2type<symmetric>());
+      return get_cross_ruler(bool_constant<symmetric>());
    }
    cross_ruler& get_cross_ruler()
    {
-      return get_cross_ruler(bool2type<symmetric>());
+      return get_cross_ruler(bool_constant<symmetric>());
    }
 
    /** @retval <0 first visit of two
@@ -201,20 +213,20 @@ protected:
 
    static typename Base::mapped_type& data(Node& n) { return n.data; }
 
-   void insert_node_cross(Node *n, int i, True)
+   void insert_node_cross(Node *n, int i, std::true_type)
    {
       this->get_cross_tree(i).insert_node(n);
    }
-   void insert_node_cross(Node *, int i, False)
+   void insert_node_cross(Node *, int i, std::false_type)
    {
-      long& max_cross=reinterpret_cast<long&>(this->get_cross_ruler(True()).prefix());
+      long& max_cross=reinterpret_cast<long&>(this->get_cross_ruler(std::true_type()).prefix());
       if (i>=max_cross) max_cross=i+1;
    }
 
    Node* create_node(int i)
    {
       Node *n=new(node_allocator.allocate(1)) Node(i + this->get_line_index());
-      insert_node_cross(n, i, bool2type<restriction==full>());
+      insert_node_cross(n, i, bool_constant<restriction==full>());
       this->notify_add(n);
       return n;
    }
@@ -223,7 +235,7 @@ protected:
    Node* create_node(int i, const Data& data)
    {
       Node *n=new(node_allocator.allocate(1)) Node(i + this->get_line_index(), data);
-      insert_node_cross(n, i, bool2type<restriction==full>());
+      insert_node_cross(n, i, bool_constant<restriction==full>());
       this->notify_add(n);
       return n;
    }
@@ -239,11 +251,11 @@ protected:
       return create_node(p.first);
    }
 
-   void remove_node_cross(Node* n, True)
+   void remove_node_cross(Node* n, std::true_type)
    {
       this->get_cross_tree(n->key - this->get_line_index()).remove_node(n);
    }
-   void remove_node_cross(Node*, False) {}
+   void remove_node_cross(Node*, std::false_type) {}
 
    Node* clone_node(Node* n)
    {
@@ -263,13 +275,13 @@ protected:
       return restriction != dying || Base::row_oriented;
    }
 
-   int max_size(True) const
+   int max_size_impl(std::true_type) const
    {
       return this->get_cross_ruler().size();
    }
-   int max_size(False) const
+   int max_size_impl(std::false_type) const
    {
-      return reinterpret_cast<const long&>(this->get_cross_ruler(True()).prefix());
+      return reinterpret_cast<const long&>(this->get_cross_ruler(std::true_type()).prefix());
    }
 
 public:
@@ -278,7 +290,7 @@ public:
 
    void destroy_node(Node* n)
    {
-      remove_node_cross(n, bool2type<restriction==full>());
+      remove_node_cross(n, bool_constant<restriction==full>());
       if (restriction != dying) this->notify_remove(n);
       node_allocator.destroy(n);
       node_allocator.deallocate(n,1);
@@ -286,7 +298,7 @@ public:
 
    int max_size() const
    {
-      return max_size(bool2type<(restriction!=only_rows && restriction!=only_cols)>());
+      return max_size_impl(bool_constant<(restriction!=only_rows && restriction!=only_cols)>());
    }
    const key_comparator_type& get_comparator() const
    {
@@ -295,12 +307,12 @@ public:
 
    friend void relocate(traits *from, traits *to)
    {
-      pm::relocate(static_cast<Base*>(from), static_cast<Base*>(to), True());
+      pm::relocate(static_cast<Base*>(from), static_cast<Base*>(to), std::true_type());
    }
 
-   template <typename,bool,restriction_kind> friend class Table;
+   template <typename, bool, restriction_kind> friend class Table;
    template <typename> friend struct sym_permute_entries;
-   template <typename,typename,bool> friend struct asym_permute_entries;
+   template <typename, typename, bool> friend struct asym_permute_entries;
 };
 
 template <typename Base, restriction_kind restriction>
@@ -338,12 +350,12 @@ protected:
       return create_node(p.first);
    }
 
-   void remove_node_cross(Node* n, True)
+   void remove_node_cross(Node* n, std::true_type)
    {
       const int l=this->get_line_index(), i=n->key - l;
       if (i != l) this->get_cross_tree(i).remove_node(n);
    }
-   void remove_node_cross(Node*, False) {}
+   void remove_node_cross(Node*, std::false_type) {}
 
    bool own_node(Node *n) const
    {
@@ -355,7 +367,7 @@ public:
 
    void destroy_node(Node* n)
    {
-      remove_node_cross(n, bool2type<restriction==full>());
+      remove_node_cross(n, bool_constant<restriction==full>());
       if (restriction != dying) this->notify_remove(n);
       this->node_allocator.destroy(n);
       this->node_allocator.deallocate(n,1);
@@ -366,9 +378,9 @@ template <typename CellRef>
 struct cell_accessor {
    typedef CellRef argument_type;
    typedef typename deref<CellRef>::type::mapped_type mapped_type;
-   typedef typename if_else<identical<mapped_type,nothing>::value,
-                            const nothing&,
-                            typename inherit_ref<mapped_type,CellRef>::type >::type
+   typedef typename std::conditional<std::is_same<mapped_type, nothing>::value,
+                                     const nothing&,
+                                     typename inherit_ref<mapped_type,CellRef>::type>::type
       result_type;
    result_type operator() (typename function_argument<CellRef>::type c) const { return c.get_data(); }
 };
@@ -391,7 +403,7 @@ struct asym_permute_entries {
    typedef typename row_ruler::value_type tree_type;
    typedef typename tree_type::Node Node;
 
-   static void relocate(tree_type *from, tree_type *to) { relocate_tree(from,to,True()); }
+   static void relocate(tree_type *from, tree_type *to) { relocate_tree(from, to, std::true_type()); }
 
    void operator()(row_ruler*, row_ruler* R) const
    {
@@ -445,16 +457,16 @@ protected:
 public:
    typedef AVL::tree<row_tree_traits> row_tree_type;
    typedef AVL::tree<col_tree_traits> col_tree_type;
-   typedef typename if_else<restriction==only_cols, col_tree_type, row_tree_type>::type primary_tree_type;
+   typedef typename std::conditional<restriction==only_cols, col_tree_type, row_tree_type>::type primary_tree_type;
    typedef typename row_tree_traits::own_ruler row_ruler;
    typedef typename col_tree_traits::own_ruler col_ruler;
 protected:
    typedef Table<E,symmetric,dying> restricted_Table;
 
-   row_ruler *R;
-   col_ruler *C;
+   row_ruler* R;
+   col_ruler* C;
 
-   void _copy(const Table& t, int add_r=0, int add_c=0)
+   void copy_impl(const Table& t, int add_r=0, int add_c=0)
    {
       R= restriction != only_cols ? row_ruler::construct(*t.R,add_r) : 0;
       C= restriction != only_rows ? col_ruler::construct(*t.C,add_c) : 0;
@@ -469,35 +481,35 @@ protected:
    }
 public:
    Table()
-      : R(row_ruler::construct(0)),
-        C(col_ruler::construct(0))
+      : R(row_ruler::construct(0))
+      , C(col_ruler::construct(0))
    {
       R->prefix()=C;
       C->prefix()=R;
    }
 
-   Table(const nothing&)
+   explicit Table(std::nullptr_t)
    {
       if (!restricted)
          throw std::runtime_error("sparse2d::Table - both dimensions required in unrestricted mode");
-      R=NULL; C=NULL;
+      R=nullptr; C=nullptr;
    }
 
    explicit Table(int n)
-      : R(restriction != only_cols ? row_ruler::construct(n) : 0),
-        C(restriction != only_rows ? col_ruler::construct(n) : 0)
+      : R(restriction != only_cols ? row_ruler::construct(n) : 0)
+      , C(restriction != only_rows ? col_ruler::construct(n) : 0)
    {
       if (!restricted)
          throw std::runtime_error("sparse2d::Table - both dimensions required in unrestricted mode");
       if (restriction == only_rows)
-         R->prefix()=NULL;
+         R->prefix()=nullptr;
       else
-         C->prefix()=NULL;
+         C->prefix()=nullptr;
    }
 
    Table(int r, int c)
-      : R(restriction != only_cols ? row_ruler::construct(r) : 0),
-        C(restriction != only_rows ? col_ruler::construct(c) : 0)
+      : R(restriction != only_cols ? row_ruler::construct(r) : 0)
+      , C(restriction != only_rows ? col_ruler::construct(c) : 0)
    {
       if (restriction == only_rows) {
          reinterpret_cast<long&>(R->prefix())=c;
@@ -511,49 +523,42 @@ public:
 
    Table(const Table& t, int add_r=0, int add_c=0)
    {
-      _copy(t,add_r,add_c);
+      copy_impl(t, add_r, add_c);
    }
 private:
-   template <typename _row_ruler, typename _col_ruler>
-   static _col_ruler* _take_over(_row_ruler* R, _col_ruler* C)
+   template <typename TRow_ruler, typename TCol_ruler>
+   static TCol_ruler* take_over(TRow_ruler* R, TCol_ruler* C, std::false_type)
    {
-      C=_col_ruler::construct(reinterpret_cast<const long&>(R->prefix()));
-      for (typename Entire<_row_ruler>::iterator t=entire(*R);  !t.at_end();  ++t)
-         for (typename _row_ruler::value_type::iterator e=t->begin(); !e.at_end(); ++e)
+      static_assert(restriction==full, "sparse2d::Table - moving between two restricted modes");
+      C=TCol_ruler::construct(reinterpret_cast<const long&>(R->prefix()));
+      for (auto t=entire(*R);  !t.at_end();  ++t)
+         for (auto e=t->begin(); !e.at_end(); ++e)
             (*C)[e->key - t->get_line_index()].push_back_node(e.operator->());
       R->prefix()=C;
       C->prefix()=R;
       return C;
    }
+
+   template <typename TRow_ruler, typename TCol_ruler>
+   static TCol_ruler* take_over(TRow_ruler* R, TCol_ruler* C, std::true_type) {}
+
 public:
-   Table(Table<E,symmetric,only_rows>& t)
+   Table(Table<E, symmetric, only_rows>&& t)
    {
-      if (restriction==only_rows) {
-         _copy(reinterpret_cast<const Table&>(t));
-      } else {
-         if (restricted)
-            throw std::runtime_error("sparse2d::Table - conversion between two restricted modes");
-         R=reinterpret_cast<row_ruler*>(t.R); t.R=NULL;
-         C=_take_over(R, C);
-      }
+      R=reinterpret_cast<row_ruler*>(t.R); t.R=nullptr;
+      C=take_over(R, C, bool_constant<restriction==only_rows>());
    }
 
-   Table(Table<E,symmetric,only_cols>& t)
+   Table(Table<E, symmetric, only_cols>&& t)
    {
-      if (restriction==only_cols) {
-         _copy(reinterpret_cast<const Table&>(t));
-      } else {
-         if (restricted)
-            throw std::runtime_error("sparse2d::Table - conversion between two restricted modes");
-         C=reinterpret_cast<col_ruler*>(t.C); t.C=NULL;
-         R=_take_over(C,R);
-      }
+      C=reinterpret_cast<col_ruler*>(t.C); t.C=nullptr;
+      R=take_over(C, R, bool_constant<restriction==only_cols>());
    }
 
    ~Table()
    {
       if (restriction==full) {
-         std::_Destroy(reinterpret_cast<restricted_Table*>(this));
+         destroy_at(reinterpret_cast<restricted_Table*>(this));
       } else {
          if (restriction==only_cols && C || restriction==dying) col_ruler::destroy(C);
          if (restriction==only_rows && R || restriction==dying) row_ruler::destroy(R);
@@ -567,14 +572,14 @@ public:
       return *this;
    }
 
-   Table& operator= (Table<E,symmetric,only_rows>& t)
+   Table& operator= (Table<E, symmetric, only_rows>&& t)
    {
       this->~Table();
       new(this) Table(t);
       return *this;
    }
 
-   Table& operator= (Table<E,symmetric,only_cols>& t)
+   Table& operator= (Table<E, symmetric, only_cols>&& t)
    {
       this->~Table();
       new(this) Table(t);
@@ -602,10 +607,10 @@ public:
          reinterpret_cast<restricted_Table*>(this)->clear(r,c);
       } else if (restriction==only_rows) {
          R=row_ruler::resize_and_clear(R,r);
-         R->prefix()=NULL;
+         R->prefix()=nullptr;
       } else if (restriction==only_cols) {
          C=col_ruler::resize_and_clear(C,r);    // not a typo: the second argument must be omitted in this case
-         C->prefix()=NULL;
+         C->prefix()=nullptr;
       } else {
          R=row_ruler::resize_and_clear(R,r);
          C=col_ruler::resize_and_clear(C,c);
@@ -626,7 +631,7 @@ public:
    {
       if (restriction == only_rows && !R) {
          R=row_ruler::construct(r);
-         R->prefix()=NULL;
+         R->prefix()=nullptr;
       } else if (restriction == only_cols) {
          reinterpret_cast<long&>(C->prefix())=r;
       } else {
@@ -642,7 +647,7 @@ public:
    {
       if (restriction == only_cols && !C) {
          C=col_ruler::construct(c);
-         C->prefix()=NULL;
+         C->prefix()=nullptr;
       } else if (restriction == only_rows) {
          reinterpret_cast<long&>(R->prefix())=c;
       } else {
@@ -684,25 +689,24 @@ public:
    }
 
 protected:
-   template <typename _ruler, typename number_consumer>
-   static void _squeeze(_ruler* &R, const number_consumer& nc)
+   template <typename TRuler, typename number_consumer>
+   static void _squeeze(TRuler* &R, const number_consumer& nc)
    {
-      typedef typename _ruler::value_type tree_type;
       int i=0, inew=0;
-      for (tree_type *t=R->begin(), *end=R->end(); t!=end; ++t, ++i) {
+      for (auto t=R->begin(), end=R->end(); t!=end; ++t, ++i) {
          if (t->size()) {
             if (int idiff=i-inew) {
                t->line_index=inew;
-               for (typename Entire<tree_type>::iterator e=entire(*t); !e.at_end(); ++e)
+               for (auto e=entire(*t); !e.at_end(); ++e)
                   e->key -= idiff;
-               relocate_tree(t, t-idiff, True());
+               relocate_tree(t.operator->(), &t[-idiff], std::true_type());
             }
             nc(i, inew);  ++inew;
          } else {
-            std::_Destroy(t);
+            destroy_at(t.operator->());
          }
       }
-      if (inew < i) R=_ruler::resize(R,inew,false);
+      if (inew < i) R=TRuler::resize(R,inew,false);
    }
 public:
    /** Remove the empty rows and columns.
@@ -798,7 +802,7 @@ struct sym_permute_entries : public Traits {
    typedef typename Traits::ruler ruler;
    typedef typename tree_type::Node Node;
 
-   static void relocate(tree_type *from, tree_type *to) { relocate_tree(from,to,False()); }
+   static void relocate(tree_type *from, tree_type *to) { relocate_tree(from, to, std::false_type()); }
 
    static void complete_cross_links(ruler* R)
    {
@@ -891,7 +895,7 @@ public:
       if (restricted)
          row_ruler::destroy(R);
       else
-         std::_Destroy(reinterpret_cast<restricted_Table*>(this));
+         destroy_at(reinterpret_cast<restricted_Table*>(this));
    }
 
    Table& operator= (const Table& t)
@@ -934,23 +938,23 @@ public:
    void squeeze(const row_number_consumer& rnc)
    {
       int r=0, rnew=0;
-      for (row_tree_type *t=R->begin(), *end=R->end(); t!=end; ++t, ++r) {
+      for (auto t=R->begin(), end=R->end(); t!=end; ++t, ++r) {
          if (t->size()) {
             if (int rdiff=r-rnew) {
                const int diag=2*r;
-               for (typename Entire<row_tree_type>::iterator e=entire(*t); !e.at_end(); ) {
+               for (auto e=entire(*t); !e.at_end(); ) {
                   cell<E>& c=*e; ++e;
                   c.key -= rdiff << (c.key==diag);
                }
                t->line_index=rnew;
-               relocate_tree(t, t-rdiff, True());
+               relocate_tree(&*t, &t[-rdiff], std::true_type());
             }
             rnc(r, rnew);  ++rnew;
          } else {
-            std::_Destroy(t);
+            destroy_at(t.operator->());
          }
       }
-      if (rnew < this->rows()) R=row_ruler::resize(R,rnew,false);
+      if (rnew < this->rows()) R=row_ruler::resize(R, rnew, false);
    }
 
    void squeeze() { squeeze(operations::binary_noop()); }
@@ -1016,8 +1020,8 @@ public:
 template <typename Tree>
 class line
    : public modified_tree< line<Tree>,
-                           list( Operation< pair< BuildUnary<cell_accessor>, BuildUnaryIt<cell_index_accessor> > >,
-                                 Hidden< Tree > ) > {
+                           mlist< OperationTag< pair< BuildUnary<cell_accessor>, BuildUnaryIt<cell_index_accessor> > >,
+                                  HiddenTag< Tree > > > {
 protected:
    ~line();
 public:
@@ -1053,12 +1057,12 @@ struct binary_op_builder< sparse2d::line_index_accessor<>, Iterator1, Iterator2,
 
 namespace sparse2d {
 
-template <typename Top, typename E, bool symmetric, restriction_kind restriction, typename LineFactory>
+template <typename Top, typename E, bool TSymmetric, restriction_kind TRestriction, typename LineFactory>
 class Rows
    : public modified_container_impl< pm::Rows<Top>,
-                                     list( Container< typename Table<E,symmetric,restriction>::row_ruler >,
-                                           Operation< pair< LineFactory, line_index_accessor<> > >,
-                                           Hidden< Top > ) > {
+                                     mlist< ContainerTag< typename Table<E, TSymmetric, TRestriction>::row_ruler >,
+                                            OperationTag< pair< LineFactory, line_index_accessor<> > >,
+                                            HiddenTag< Top > > > {
 public:
    typename Rows::container& get_container()
    {
@@ -1074,12 +1078,12 @@ public:
    }
 };
 
-template <typename Top, typename E, bool symmetric, restriction_kind restriction, typename LineFactory>
+template <typename Top, typename E, bool TSymmetric, restriction_kind TRestriction, typename LineFactory>
 class Cols
    : public modified_container_impl< pm::Cols<Top>,
-                                     list( Container< typename Table<E,false,restriction>::col_ruler >,
-                                           Operation< pair< LineFactory, line_index_accessor<> > >,
-                                           Hidden< Top > ) > {
+                                     mlist< ContainerTag< typename Table<E, false, TRestriction>::col_ruler >,
+                                            OperationTag< pair< LineFactory, line_index_accessor<> > >,
+                                            HiddenTag< Top > > > {
 public:
    typename Cols::container& get_container()
    {
@@ -1095,8 +1099,8 @@ public:
    }
 };
 
-template <typename Top, typename E, restriction_kind restriction, typename LineFactory>
-class Cols<Top, E, true, restriction, LineFactory> : public Rows<Top, E, true, restriction, LineFactory> {};
+template <typename Top, typename E, restriction_kind TRestriction, typename LineFactory>
+class Cols<Top, E, true, TRestriction, LineFactory> : public Rows<Top, E, true, TRestriction, LineFactory> {};
 
 template <typename IteratorRef>
 struct lower_triangle_selector {
@@ -1112,25 +1116,25 @@ struct lower_triangle_selector {
 template <typename Line>
 class lower_triangle_line
    : public modified_container_impl< lower_triangle_line<Line>,
-                                     list( IteratorConstructor< input_truncator_constructor >,
-                                           Operation< BuildUnaryIt< lower_triangle_selector > >,
-                                           MasqueradedTop ) > {
-   typedef modified_container_impl<lower_triangle_line> _super;
+                                     mlist< IteratorConstructorTag< input_truncator_constructor >,
+                                            OperationTag< BuildUnaryIt< lower_triangle_selector > >,
+                                            MasqueradedTop > > {
+   typedef modified_container_impl<lower_triangle_line> base_t;
 protected:
    ~lower_triangle_line();
 public:
    template <typename First>
-   typename _super::iterator insert(const First& first_arg)
+   typename base_t::iterator insert(const First& first_arg)
    {
       return this->hidden().insert(first_arg);
    }
    template <typename First, typename Second>
-   typename _super::iterator insert(const First& first_arg, const Second& second_arg)
+   typename base_t::iterator insert(const First& first_arg, const Second& second_arg)
    {
       return this->hidden().insert(first_arg,second_arg);
    }
    template <typename First, typename Second, typename Third>
-   typename _super::iterator insert(const First& first_arg, const Second& second_arg, const Third& third_arg)
+   typename base_t::iterator insert(const First& first_arg, const Second& second_arg, const Third& third_arg)
    {
       return this->hidden().insert(first_arg,second_arg,third_arg);
    }
@@ -1157,16 +1161,16 @@ template <typename TreeRef>
 struct line_params {
    typedef typename deref<TreeRef>::type tree_type;
    typedef line<tree_type> container;
-   typedef typename if_else< attrib<TreeRef>::is_reference,
-                             Container< typename inherit_const<container, TreeRef>::type >,
-                             cons< Container<container>, Hidden<tree_type> > >::type
+   typedef typename std::conditional< attrib<TreeRef>::is_reference,
+                                      mlist< ContainerTag< typename inherit_const<container, TreeRef>::type > >,
+                                      mlist< ContainerTag<container>, HiddenTag<tree_type> > >::type
       type;
 };
 
 } // end namespace sparse2d
 
 template <typename TreeRef>
-struct check_container_feature<sparse2d::line<TreeRef>, pure_sparse> : True {};
+struct check_container_feature<sparse2d::line<TreeRef>, pure_sparse> : std::true_type {};
 
 } // end namespace pm
 
@@ -1179,6 +1183,8 @@ namespace std {
 namespace polymake {
    using pm::sparse2d::only_rows;
    using pm::sparse2d::only_cols;
+   using pm::sparse2d::rowwise;
+   using pm::sparse2d::columnwise;
 }
 
 #endif // POLYMAKE_INTERNAL_SPARSE2D_H

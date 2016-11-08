@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -72,6 +72,7 @@ use Polymake::Struct (
    [ '$embedded' => '#%', default => 'undef' ],
    [ '$macro_call' => '#%', default => '$this->flags & $func_is_void ? "Void( " : "( "' ],
    '@all_args',
+   '@anchor_args',
    '@template_params',
    [ '$explicit_template_params' => '#%', default => '[]' ],
    '@lvalue_args',
@@ -96,7 +97,7 @@ sub prepare {
    }
    my $perl_arg_index=0;
    my $cpp_arg_index=0;
-   my ($arg_for_lvalue_opt, @anchor_args);
+   my $arg_for_lvalue_opt;
 
    if ($self->perl_name ne "construct") {
       $self->name ||= $self->perl_name;
@@ -166,7 +167,7 @@ sub prepare {
          push @{$self->template_params}, [ $perl_arg_index, $self->flags & $func_is_non_const ? $func_is_lvalue : $self->flags & ($func_is_lvalue|$func_is_lvalue_opt) ];
          $self->arg_flags->[$perl_arg_index]=$self->flags & $func_is_wary;
          $arg_for_lvalue_opt=$tpcount if $self->flags & ($func_is_lvalue | $func_is_lvalue_opt);
-         push @anchor_args, "arg0" if $self->flags & $func_has_anchor;
+         push @{$self->anchor_args}, "arg0" if $self->flags & $func_has_anchor;
          ++$cpp_arg_index;
       }
       ++$perl_arg_index;
@@ -270,7 +271,7 @@ sub prepare {
       $self->arg_flags->[$perl_arg_index]=$arg_flag;
       $self->wrapper_name.="_".($wrapper_suffix || ($as_template_arg ? "X" : "x"));
       $self->wrapper_name.=$lval_flag+$anchor_flag if $lval_flag+$anchor_flag;
-      push @anchor_args, $cpp_arg if $anchor_flag;
+      push @{$self->anchor_args}, $cpp_arg if $anchor_flag;
       ++$perl_arg_index;
       ++$cpp_arg_index;
       ++$sig_index;
@@ -288,13 +289,10 @@ sub prepare {
       $self->inst_cache=undef;
    }
 
-   if (@anchor_args) {
-      $self->macro_call="Anch".$self->macro_call.scalar(@anchor_args).", ".join("", map { "($_)" } @anchor_args).", ";
-   }
    if ($self->flags & ($func_is_lvalue|$func_is_lvalue_opt)) {
       $self->macro_call="Lvalue".$self->macro_call."T$arg_for_lvalue_opt, ";
    }
-   if (my $fl=($self->flags & ($func_is_method|$func_is_lvalue|$func_is_lvalue_opt|$func_is_void))) {
+   if (my $fl=($self->flags & ($func_is_method | $func_is_lvalue | $func_is_lvalue_opt | $func_is_void | $func_has_anchor))) {
       $self->wrapper_name .= "_f$fl";
    }
    $self->wrapper_name =~ tr/:/_/;
@@ -339,7 +337,9 @@ sub gen_source_code {
      "      perl::Value " . join(", ", map { "arg$_(stack[".($_+$arg_off)."])" } 0..$arg_last) . ";\n",
      $self->via_object &&
      "      perl::Object arg0o;  arg0 >> arg0o;  const T0 self(arg0o);\n",
-     "      WrapperReturn" . $self->macro_call . ($call_as_method or $call_name && "(") . "$call_name(" . join(", ", @args) . ")" . (!$call_as_method && $call_name && ")") . " );\n",
+     "      WrapperReturn" . $self->macro_call . ($call_as_method or $call_name && "(")
+     . "$call_name(" . join(", ", @args) . ")" . (!$call_as_method && $call_name && ")")
+     . join(", ", "", @{$self->anchor_args}) . " );\n",
      "   };\n",
      "\n",
    )
@@ -574,7 +574,7 @@ use Polymake::Struct (
    [ new => '$$' ],
    [ '$is_instance_of' => '#1' ],
    '$func_ptr_type',
-   [ '$embedded | source_file' => '#1 ->embedded' ],
+   [ '$embedded | source_file' => '#1->embedded' ],
    '$is_private',
 );
 
@@ -666,6 +666,8 @@ use Polymake::Struct (
 sub gen_source_code { "" }
 
 sub instance_macro { "OperatorInstance4perl" }
+
+sub execute { croak( "invalid conversion from ", $_[1]->type->full_name, " to ", $_[0]->full_name ) }
 
 #######################################################################################
 package Polymake::Core::CPlusPlus::IndirectWrapper;
@@ -1255,7 +1257,7 @@ package Polymake::Core::CPlusPlus::perApplication;
 
 use Polymake::Struct (
    [ 'new' => '$' ],
-   [ '$application' => 'weak( #1 )' ],
+   [ '$application' => 'weak(#1)' ],
    [ '$functions_begin' => '0' ],
    [ '$functions_end' => '-1' ],
    '$embedded_rules_begin',
@@ -1666,8 +1668,15 @@ sub bind_functions {
       if (ref($auto_func->template_params)) {
          $descr->auto_func=$auto_func;                  # help guessing the right set of headers for non-persistent return types
 
-         my $sub=create_function_wrapper($descr, $self->application->pkg);
-         $auto_func->prepare_wrapper_code($sub);
+         my $sub;
+         if (defined $descr->wrapper) {
+            $sub=create_function_wrapper($descr, $self->application->pkg);
+            $auto_func->prepare_wrapper_code($sub);
+         } elsif ($auto_func==$root->auto_assignment || $auto_func==$root->auto_conversion) {
+            $sub=\&SpecialOperator::execute;
+         } else {
+            croak( "internal error: undefined function instance registered for ", $auto_func->name );
+         }
 
          my $last=$#{$descr->arg_types};
          my ($inst_cache, $extra);
@@ -2109,8 +2118,8 @@ use Polymake::Struct (
 
 # auto-function flags:
 # The values in the first row contribute to auto-generated wrapper names.
-use Polymake::Enum qw( func: is_method=0x1 is_lvalue=0x2 is_lvalue_opt=0x4 has_anchor=0x8 is_void=0x10
-                             is_wary=0x20 is_ellipsis=0x40 is_integral=0x80 is_non_const=0x100
+use Polymake::Enum qw( func: is_method=0x1 is_lvalue=0x2 is_lvalue_opt=0x4 is_void=0x10 has_anchor=0x20
+                             is_wary=0x8 is_ellipsis=0x40 is_integral=0x80 is_non_const=0x100
                              is_top_object_method=0x200 has_prescribed_ret_type=0x400 is_static=0x800 );
 
 # class description kind:    (keep in sync with lib/core/include/perl/constants.h)
@@ -2506,12 +2515,12 @@ my %op_groups=( arith => [ qw( neg + - * / += -= *= /= ) ],
 
 my @assoc_descr=(
    [ $assoc_helem,       ":brk",          "[]",                                 1+$func_is_lvalue_opt ],
-   [ $assoc_find,        "assoc_find",    $binary_op_signature,                 0,
+   [ $assoc_find,        "assoc_find",    [[2, 2, qw($ $)], [qw(*:anchor *)]],  0,
      name => "pm::perl::find_element", include => [ "polymake/perl/assoc.h" ] ],
    [ $assoc_exists,      "exists",        $unary_op_signature,                  $func_is_method ],
    [ $assoc_delete_void, "erase",         $unary_op_signature,                  $func_is_method+$func_is_non_const+$func_is_void ],
    [ $assoc_delete_ret,  "assoc_delete",  [[2, 2, qw($ $)], [qw(*:lvalue *)]],  0,
-     name => "pm::perl::delayed_erase", include => [ "polymake/perl/assoc.h" ], macro_call => "Tmp( " ],
+     name => "pm::perl::delayed_erase", include => [ "polymake/perl/assoc.h" ], ],
 );
 
 sub create_assoc_methods {
@@ -2865,23 +2874,24 @@ sub container_toXML : method {
    my $descr=$proto->cppoptions->descr;
    $proto->toXML= do {
       if (defined (my $val_proto=get_type_proto($descr->vtbl, 1))) {
+         my $elem_proto=get_type_proto($descr->vtbl, 0);
+         my $own_dim= defined($elem_proto) ? $proto->dimension-$elem_proto->dimension : -1;
          if ($descr->kind & $class_is_sparse_container) {
-            if (defined (my $elem_proto=get_type_proto($descr->vtbl, 0))) {
-               my $own_dim=$proto->dimension-$elem_proto->dimension;
-               if ($own_dim==1) {
-                  sub { PropertyType::sparseArray_toXML($elem_proto, @_) };
-               } elsif ($own_dim==2) {
-                  sub { PropertyType::sparseMatrix_toXML($val_proto, @_) };
-               } else {
-                  undef;
-               }
+            if ($own_dim==1) {
+               sub { PropertyType::sparseArray_toXML($elem_proto, @_) };
+            } elsif ($own_dim==2) {
+               sub { PropertyType::sparseMatrix_toXML($val_proto, @_) };
             } else {
                undef;
             }
+         } elsif ($own_dim==2) {
+            sub { PropertyType::denseMatrix_toXML($val_proto, @_) };
+         } elsif ($val_proto->toXML) {
+            sub { PropertyType::nontrivialArray_toXML($val_proto, @_) };
+         } elsif ($val_proto->toString) {
+            sub { PropertyType::formattedArray_toXML($val_proto, @_) };
          } else {
-            $val_proto->toXML
-            ? sub { PropertyType::nontrivialArray_toXML($val_proto, @_) }
-            : sub { PropertyType::trivialArray_toXML($val_proto, @_) };
+            \&PropertyType::trivialArray_toXML;
          }
       } else {
          undef;
@@ -2910,20 +2920,26 @@ sub composite_toXML : method {
    my $descr=$proto->cppoptions->descr;
    $proto->toXML= do {
       my $elem_protos=get_type_proto($descr->vtbl, 2);
-      my $trivial=1;
+      my ($non_trivial, $formatted)=(0, 0);
       foreach my $elem_proto (@$elem_protos) {
          if (defined $elem_proto) {
             if ($elem_proto->toXML) {
-               $trivial=0;
+               $non_trivial=1;
+            } elsif ($elem_proto->toString) {
+               $formatted=1;
             }
          } else {
-            undef $trivial; last;
+            undef $non_trivial; last;
          }
       }
-      if (defined $trivial) {
-         $trivial
-         ? \&PropertyType::trivialComposite_toXML
-         : sub { PropertyType::nontrivialComposite_toXML($elem_protos, @_) };
+      if (defined $non_trivial) {
+         if ($non_trivial) {
+            sub { PropertyType::nontrivialComposite_toXML($elem_protos, @_) };
+         } elsif ($formatted) {
+            sub { PropertyType::formattedComposite_toXML($elem_protos, @_) };
+         } else {
+            \&PropertyType::trivialComposite_toXML;
+         }
       } else {
          undef;
       }

@@ -26,6 +26,8 @@ use Polymake::Struct (
    [ '$Mode' => '#%', default => '"primal"' ],
    [ '$Faces' => '#%', default => 'croak("Faces missing")' ],
    [ '$AtomLabels' => '#%', default => 'undef' ],
+   
+   [ '$Dims' => '#%', default => 'undef' ]
 );
 
 sub create_node_labels {

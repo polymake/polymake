@@ -213,7 +213,7 @@ bool SchedulerHeap::push(SV* chain)
    sv_setuv(agent_sv, PTR2UV(tentative_agent));
    SvIsUV_on(agent_sv);
 
-   for (fl_internal::subset_iterator<Set<int>, false> subs_it=findSubsets(tentative_vertex_set, False());
+   for (fl_internal::subset_iterator<Set<int>, false> subs_it=findSubsets(tentative_vertex_set, std::false_type());
         !subs_it.at_end();  ++subs_it) {
       const ChainAgent* smaller_chain_agent=static_cast<const ChainAgent*>(subs_it.operator->());
       if (smaller_chain_agent != ancestor_agent &&
@@ -222,8 +222,8 @@ bool SchedulerHeap::push(SV* chain)
          if (smaller_chain_agent->heap_index >= 0) {
             SV* smaller_chain=heap.erase_at(smaller_chain_agent->heap_index);
             if (tell_dropped != NULL) {
-               PmStartFuncall;
-               XPUSHs(smaller_chain);
+               PmStartFuncall(1);
+               PUSHs(smaller_chain);
                PUTBACK;
                glue::call_func_void(aTHX_ tell_dropped);
             }
@@ -343,8 +343,7 @@ PPCODE:
 {
    if (SchedulerHeap::class_descr==NULL) {
       // this initialization can't be done in the BOOT block because CPlusPlus is not yet initialized that early
-      static const char pkg_name[]="Polymake::Core::Scheduler::Heap";
-      SchedulerHeap::class_descr=OpaqueClassRegistrator<SchedulerHeap>::register_it(pkg_name, sizeof(pkg_name)-1, NULL);
+      SchedulerHeap::class_descr=OpaqueClassRegistrator<SchedulerHeap>::register_it("Polymake::Core::Scheduler::Heap", nullptr);
       SchedulerHeap::RuleChain_agent_index=CvDEPTH(get_cv("Polymake::Core::Scheduler::TentativeRuleChain::heap_agent", false));
    }
    SV* ref=newSV(0);

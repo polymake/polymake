@@ -225,7 +225,7 @@ sub draw_vertices {
    my $style=$self->source->VertexStyle;
    undef $style unless is_code($style);
    my $color=$self->source->VertexColor;
-   my ($default_color_is_fill, $draw_border);
+   my $default_color_is_fill;
    my $border_color=$self->source->VertexBorderColor;
    my $border_thickness=$self->source->VertexBorderThickness;
    my $draw_border= defined($border_color) || defined($border_thickness);

@@ -1,0 +1,82 @@
+#  Copyright (c) 1997-2016
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object Cone {
+
+    rule RAYS : GROUP.RAYS_ACTION.GENERATORS, GROUP.RAYS_ACTION.ORBIT_REPRESENTATIVES {
+        $this->RAYS = group::orbits_in_orbit_order($this->GROUP->RAYS_ACTION, $this->GROUP->RAYS_ACTION->ORBIT_REPRESENTATIVES);
+    }
+
+    rule FACETS : GROUP.FACETS_ACTION.GENERATORS, GROUP.FACETS_ACTION.ORBIT_REPRESENTATIVES {
+        $this->FACETS = group::orbits_in_orbit_order($this->GROUP->FACETS_ACTION, $this->GROUP->FACETS_ACTION->ORBIT_REPRESENTATIVES);
+    }
+}
+
+CREDIT sympol
+  A software package for polyhedral description conversion up to symmetries.
+  Written by Thomas Rehn and Achill Schürmann.
+  http://www.math.uni-rostock.de/~rehn/software/sympol.html 
+
+object Cone {
+
+    rule GROUP.REPRESENTATIVE_RAYS : GROUP.FACETS_ACTION.GENERATORS, FACETS, LINEAR_SPAN {
+        my $rayCompMethod = 0; # chooses sympol ray computation via lrs (set to 1 for computation via cdd)
+        $this->GROUP->REPRESENTATIVE_RAYS = representation_conversion_up_to_symmetry($this, 0, $rayCompMethod);
+    }
+    weight 5.10;
+
+    rule GROUP.REPRESENTATIVE_FACETS : GROUP.RAYS_ACTION.GENERATORS, RAYS, LINEALITY_SPACE {
+        my $rayCompMethod = 0; # chooses sympol ray computation via lrs (set to 1 for computation via cdd)
+        $this->GROUP->REPRESENTATIVE_FACETS = representation_conversion_up_to_symmetry($this, 1, $rayCompMethod);
+    }
+    weight 5.10;
+
+}
+
+CREDIT off
+
+object Polytope {
+
+    property GROUP {
+
+        property SYMMETRIC_FACETS : Matrix<Rational>;
+
+    }
+
+    rule GROUP.SYMMETRIC_FACETS : FACETS, LINEAR_SPAN, GROUP.COORDINATE_ACTION {
+        $this->GROUP->SYMMETRIC_FACETS = symmetrize_poly_reps($this->FACETS, $this->LINEAR_SPAN, $this->GROUP->COORDINATE_ACTION)->first;
+    }
+}
+
+# @category Symmetry
+# Computes the linear symmetries of a given rational cone or polytope //c//
+# via 'sympol'. If //c// is a cone, it may compute only a subgroup
+# of the linear symmetry group.
+# @param Cone c the cone whose linear symmetry group is to be computed
+# @return group::Group the linear symmetry group of //c// (or a subgroup),              
+user_function linear_symmetries(Cone<Rational>) {
+    my $p = shift;
+    my $g = linear_symmetries_impl($p);
+    if (!defined($p->give("GROUP", "LinAut"))) {
+        $p->add("GROUP", $g);
+    }
+    return $g;
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

@@ -20,19 +20,17 @@
 
 namespace polymake { namespace matroid {
 
-void loops_coloops(perl::Object m)
+void loops(perl::Object m)
 {
   const int n=m.give("N_ELEMENTS");
   Array< Set<int> > bases=m.give("BASES");
 
   Set<int> loops=sequence(0,n)-accumulate(bases,operations::add());
-  Set<int> coloops=accumulate(bases,operations::mul());
 
   m.take("LOOPS") << loops;
-  m.take("COLOOPS") << coloops;
 }
 
-Function4perl(&loops_coloops,"loops_coloops(Matroid)");
+Function4perl(&loops,"loops(Matroid)");
 
 } }
 

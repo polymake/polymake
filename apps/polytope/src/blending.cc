@@ -50,7 +50,7 @@ perl::Object blending(perl::Object p_in1, const int vertex1, perl::Object p_in2,
    Array<int> neighbors2(dim,-1);
 
    // reorder the neighbor vertices in P2 if required
-   Entire<Graph<>::adjacent_node_list>::const_iterator nb=entire(G2.adjacent_nodes(vertex2));
+   auto nb=entire(G2.adjacent_nodes(vertex2));
    Array<int> permutation;
    if (options["permutation"] >> permutation) {
       if (permutation.size() != dim)
@@ -66,7 +66,7 @@ perl::Object blending(perl::Object p_in1, const int vertex1, perl::Object p_in2,
          neighbors2[*p_i] = *nb;
       }
    } else {
-      copy(nb, neighbors2.begin());
+      copy_range(nb, neighbors2.begin());
    }
 
    perl::Object p_out("Polytope<Rational>");
@@ -99,17 +99,17 @@ perl::Object blending(perl::Object p_in1, const int vertex1, perl::Object p_in2,
    p_out.take("N_VERTICES") << n_vertices1+n_vertices2-2;
    p_out.take("VERTICES_IN_FACETS") << VIF_out;
 
-   if (options["relabel"]) {
+   if (!options["no_labels"]) {
       std::vector<std::string> labels1(n_vertices1), labels2(n_vertices2),
          labels_out(n_vertices1+n_vertices2-2);
       read_labels(p_in1, "VERTEX_LABELS", labels1);
       read_labels(p_in2, "VERTEX_LABELS", labels2);
 
       const std::string tick="'";
-      copy(entire(concatenate(select(labels1, ~scalar2set(vertex1)),
-                              attach_operation(select(labels2, ~scalar2set(vertex2)),
-                                               constant(tick), operations::add()))),
-           labels_out.begin());
+      copy_range(entire(concatenate(select(labels1, ~scalar2set(vertex1)),
+                                    attach_operation(select(labels2, ~scalar2set(vertex2)),
+                                                     constant(tick), operations::add()))),
+                 labels_out.begin());
 
       p_out.take("VERTEX_LABELS") << labels_out;
    }
@@ -144,9 +144,9 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# @param Polytope P2"
                   "# @param Int v2 the index of the second vertex"
                   "# @option Array<Int> permutation"
-                  "# @option Bool relabel copy vertex labels from the original polytope"
+                  "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytopes. default: 0"
                   "# @return Polytope",
-                  &blending, "blending(Polytope $ Polytope $ { permutation => undef, relabel => undef })");
+                  &blending, "blending(Polytope $ Polytope $ { permutation => undef, no_labels => 0 })");
 } }
 
 // Local Variables:

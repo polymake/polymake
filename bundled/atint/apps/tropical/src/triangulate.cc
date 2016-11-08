@@ -27,15 +27,11 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/linalg.h"
 #include "polymake/polytope/beneath_beyond.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/thomog.h"
 #include "polymake/tropical/misc_tools.h"
 
 namespace polymake { namespace tropical {
 
-	using namespace atintlog::donotlog;
-	//using namespace atintlog::dolog;
-	//   using namespace atintlog::dotrace;
 
 	///////////////////////////////////////////////////////////////////////////////////////
 
@@ -63,19 +59,14 @@ namespace polymake { namespace tropical {
 			Vector<Set<int> > triangleCones;
 			Vector<Integer> triangleWeights;
 
-			//dbgtrace << "Extracted values" << endl;
 
 			//Go through all cones
 			for(int sigma = 0; sigma < cones.rows(); sigma++) {
-				//dbgtrace << "Subdividing cone " << sigma << " = " << cones.row(sigma) << endl;
 				if(cones.row(sigma).size() > no_of_rays) {
-					//dbgtrace << "Setting up beneath and beyond algorithm" << endl;
 					Matrix<Rational> sigmarays = rays.minor(cones.row(sigma),All);
 					polytope::beneath_beyond_algo<Rational> algo( sigmarays,false);
-					//dbgtrace << "Computing data" << endl;
 					algo.compute(entire(sequence(0,sigmarays.rows())));
 					Array<Set<int> > triang_seq = algo.getTriangulation();
-					//dbgtrace << "Triangulation reads " << triang_seq << endl;
 					Vector<int> rays_as_list(cones.row(sigma));
 					for(int tr = 0; tr < triang_seq.size(); tr++) {
 						triangleCones |= Set<int>(rays_as_list.slice(triang_seq[tr]));
@@ -83,16 +74,13 @@ namespace polymake { namespace tropical {
 					}
 				}
 				else {
-					//dbgtrace << "Is already simplicial\n" << endl;
 					triangleCones |= cones.row(sigma);
 					if(weights_exist) {
 						triangleWeights |= weights[sigma];
 					}
 				}	
-				//dbgtrace << "Weights are " << triangleWeights << endl;
 			}//END iterate all cones
 
-			//dbgtrace << "Triangulation complete " << endl;
 
 
 			perl::Object result(perl::ObjectType::construct<Addition>("Cycle"));
@@ -110,7 +98,6 @@ namespace polymake { namespace tropical {
 	template <typename Addition>
 		perl::Object insert_rays(perl::Object fan, Matrix<Rational> add_rays) {
 
-			//dbgtrace << "Triangulating fan " << endl;
 
 			//Triangulate fan first
 			fan = triangulate_cycle<Addition>(fan);
@@ -132,7 +119,6 @@ namespace polymake { namespace tropical {
 
 			//First we check if any of the additional rays is already a ray of the fan
 
-			//dbgtrace << "Checking if rays exist " << endl;
 
 			Set<int> rays_to_check;
 			for(int r = 0; r < add_rays.rows(); r++) {
@@ -150,13 +136,10 @@ namespace polymake { namespace tropical {
 
 			add_rays = add_rays.minor(rays_to_check,All);
 
-			//dbgtrace << "Rays remaining: " << rays_to_check << endl;
 
-			//dbgtrace << "Inserting remaining rays " << endl;
 
 			//Now iterate over the remaining rays
 			for(int nr = 0; nr < add_rays.rows(); nr++) {
-				//dbgtrace << "Inserting ray nr. " << nr << endl;
 
 				Vector<Set<int> > nr_cones;
 				Vector<Integer> nr_weights;
@@ -166,11 +149,9 @@ namespace polymake { namespace tropical {
 
 				//Go through all cones and check if they contain this ray
 				for(int mc = 0; mc < cones.rows(); mc++) {
-					//dbgtrace << "Checking cone nr. " << mc << endl;
 					bool contains_ray = false;
 					Matrix<Rational> relations = 
 						null_space( T(rays.minor(cones.row(mc),All) / lineality / add_rays.row(nr)));
-					//dbgtrace << "Relation is " << relations << endl;
 					//Since fan is simplicial, this matrix can have at most one relation
 					if(relations.rows() > 0) {
 						//Check if - assuming the last coefficient is < 0 - all ray coeffs are >= 0
@@ -191,7 +172,6 @@ namespace polymake { namespace tropical {
 						//For each non-zero-coefficient: take the codimension one face obtained
 						//by removing the corresponding ray and add the new ray
 						if(contains_ray) {
-							//dbgtrace << "Non-zero coeffs: " << greater_zero << endl;
 							Vector<int> rays_as_list(cones.row(mc));
 							for(Entire<Set<int> >::iterator gzrays = entire(greater_zero); !gzrays.at_end(); gzrays++) {
 								Set<int> nr_cone(rays_as_list.slice(~scalar2set(*gzrays)));
@@ -205,7 +185,6 @@ namespace polymake { namespace tropical {
 
 					//If it does not contain the ray, just copy it
 					if(!contains_ray) {
-						//dbgtrace << "Does not contain, copying..." << endl;
 						nr_cones |= cones.row(mc);
 						if(weights_exist) nr_weights |= weights[mc];
 					}
@@ -215,7 +194,6 @@ namespace polymake { namespace tropical {
 				cones = IncidenceMatrix<>(nr_cones);
 				weights = nr_weights;
 
-				//dbgtrace << "Cones are " << cones << endl;
 
 			}//END iterate new rays
 

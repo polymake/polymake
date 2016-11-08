@@ -24,21 +24,6 @@ namespace polymake { namespace tropical {
 
 
 
-	//FIXME This is terrible and can probably be done in a better way.
-	/*
-	 * Converts a Matrix<Scalar> to a Matrix<TropicalNumber>
-	 */
-	template <typename Addition, typename Scalar, typename VectorTop>
-		Vector<TropicalNumber<Addition,Scalar> > convert_to_tropical_vector(const GenericVector<VectorTop, Scalar> &V) {
-			Vector<TropicalNumber<Addition,Scalar> > result(V.dim());
-			int v_index = 0;
-			for(typename Entire<VectorTop >::const_iterator it = entire(V.top()); !it.at_end(); it++) {
-				result[v_index] = TropicalNumber<Addition,Scalar>(*it);
-				v_index++;
-			}
-			return result;
-		}	
-
 	/*
 	 * @brief compute the covector of a single point in tropical projective space wrt a matrix of generators
 	 *
@@ -75,26 +60,24 @@ namespace polymake { namespace tropical {
 	 * for this only the index set of the 1 entries and the supports of the generators are taken into account
 	 */
 	template <typename Addition, typename Scalar>
-	  IncidenceMatrix<> artificial_ray_covector ( const Set<int> &one_entries, 
-						      const Matrix<TropicalNumber<Addition, Scalar> > &generators) {
+	  IncidenceMatrix<> artificial_ray_covector(const Set<int> &one_entries, 
+						    const Matrix<TropicalNumber<Addition, Scalar>> &generators) {
 	  const int dimension(generators.cols());
-	  Array<Set<int> > pt_covector(dimension);
+	  RestrictedIncidenceMatrix<> pt_covector(dimension);
 	  int gn_index = 0;
-	  for(typename Entire< Rows< Matrix< TropicalNumber<Addition, Scalar> > > >::const_iterator gn = entire(rows(generators)); 
-	      !gn.at_end(); gn++, gn_index++) {
+	  for (auto gn = entire(rows(generators)); !gn.at_end(); ++gn, ++gn_index) {
 
-	    if ( pm::incl(one_entries, sequence(0, dimension) - support(*gn)) <= 0 ) {
-	      //FIXME: Maybe this can be executed more efficiently be directly applying the operation
-	      pt_covector = attach_operation(pt_covector, 
-					     pm::operations::fix2<int, operations::add>(gn_index));
+	    if ( incl(one_entries, sequence(0, dimension) - support(*gn)) <= 0 ) {
+              for (int r=0; r<dimension; ++r)
+                pt_covector(r, gn_index)=true;
 	    }
 	    else {
-	      for(Entire<Set<int> >::const_iterator covector_index_it = entire(one_entries); !covector_index_it.at_end(); covector_index_it++) {
-		pt_covector[*covector_index_it] += gn_index;
+	      for (int covector_index : one_entries) {
+		pt_covector(covector_index, gn_index)=true;
 	      }
 	    }
 	  }
-	  return pt_covector;
+	  return IncidenceMatrix<>(std::move(pt_covector));
 	}
 		
 
@@ -119,24 +102,25 @@ namespace polymake { namespace tropical {
 
 	template <typename Addition, typename Scalar>
 		Array<IncidenceMatrix<> > covectors_of_scalar_vertices( const Matrix<Scalar> &points,
-									const Matrix<TropicalNumber<Addition,Scalar> > &generators) {
+									const Matrix<TropicalNumber<Addition,Scalar> > &generators)
+        {
 	  const int dimension(generators.cols());
 	  Array<IncidenceMatrix<> > result(points.rows());
 	  int pt_index = 0;
-	  for(typename Entire< Rows <Matrix<Scalar> > >::const_iterator pt = entire(rows(points)); !pt.at_end(); pt++, pt_index++) {
+	  for (auto pt = entire(rows(points)); !pt.at_end(); pt++, pt_index++) {
 	    if ((*pt)[0] == 1) {
-	      result[pt_index] = single_covector(convert_to_tropical_vector<Addition>((*pt).slice(sequence(1,dimension))), generators);
+	      result[pt_index] = single_covector(Vector<TropicalNumber<Addition, Scalar>>(pt->slice(1)), generators);
 	    }
-	  
-	    else {
-	      Set<int> one_entries = support((*pt).slice(sequence(1,dimension))); //the indices of the 1-entries of the 0/1-ray
-	      if ( (*pt)[ *(one_entries.begin())+1 ] * Addition::orientation() < 0 ) one_entries = sequence(0, dimension) - one_entries;
+            else {
+	      Set<int> one_entries = support(pt->slice(1)); //the indices of the 1-entries of the 0/1-ray
+	      if ( (*pt)[ one_entries.front()+1 ] * Addition::orientation() < 0 )
+                one_entries = sequence(0, dimension) - one_entries;
 
 	      result[pt_index] = artificial_ray_covector (one_entries, generators);
 	    }
 	  }
 	  return result;
-	  } 
-}}
+        }
+} }
 
 #endif

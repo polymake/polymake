@@ -191,23 +191,23 @@ public:
       update_dim_after_squeeze();
    }
 
-   template <typename SetTop>
-   void delete_nodes(const GenericSet<SetTop>& nodes_to_delete)
+   template <typename TSet>
+   void delete_nodes(const GenericSet<TSet>& nodes_to_delete)
    {
-      for (typename Entire<SetTop>::const_iterator n=entire(nodes_to_delete.top()); !n.at_end(); ++n)
+      for (auto n=entire(nodes_to_delete.top()); !n.at_end(); ++n)
          delete_node(*n);
    }
 
-   template <typename SetTop>
-   void delete_nodes_and_squeeze(const GenericSet<SetTop>& nodes_to_delete)
+   template <typename TSet>
+   void delete_nodes_and_squeeze(const GenericSet<TSet>& nodes_to_delete)
    {
       if (nodes_to_delete.top().empty()) return;
-      if (POLYMAKE_DEBUG || !pm::Unwary<SetTop>::value) {
+      if (POLYMAKE_DEBUG || !pm::Unwary<TSet>::value) {
          if (!set_within_range(nodes_to_delete, this->nodes()))
             throw std::runtime_error("HasseDiagram::delete_nodes - node numbers out of range");
       }
 
-      typename Entire<SetTop>::const_iterator n=entire(nodes_to_delete.top());
+      auto n=entire(nodes_to_delete.top());
       int cnt=0;
       typename std::vector<int>::iterator map_end=dim_map.end();
       for (typename std::vector<int>::iterator d=std::upper_bound(dim_map.begin(), map_end, *n);
@@ -228,8 +228,8 @@ public:
 
       _filler(const _filler& f) : HD(f.HD) { f.HD=0; }
 
-      template <typename SetTop>
-      int add_node(const GenericSet<SetTop>& vertex_set) const
+      template <typename TSet>
+      int add_node(const GenericSet<TSet>& vertex_set) const
       {
          int n=HD->G.nodes();
          HD->G.resize(n+1);
@@ -275,7 +275,7 @@ protected:
 } }
 namespace pm { namespace perl {
 template <>
-struct check_for_magic_storage<polymake::graph::HasseDiagram> : False {};
+struct check_for_magic_storage<polymake::graph::HasseDiagram> : std::false_type {};
 } }
 
 #endif // POLYMAKE_GRAPH_HASSE_DIAGRAM_H

@@ -1,0 +1,97 @@
+$VAR1 = {
+          'app' => 'polytope',
+          '_id' => 'fano',
+          'basic_type' => 'polytope::Polytope<Rational>',
+          'db' => 'LatticePolytopes',
+          'version' => '3.0',
+          'col' => 'SmoothReflexive',
+          'modifier' => 'sub { my $po = shift; $po->{"LATTICE_POINTS"} = $po->{"LATTICE_POINTS_GENERATORS"}->[0]; delete($po->{"LATTICE_POINTS_GENERATORS"}); $po->{"DIM"} = $po->{"CONE_DIM"}-1; delete($po->{"CONE_DIM"}); }',
+          'contributor' => 'Andreas Paffenholz',
+          'key' => 'fano',
+          'template' => {
+                        'AFFINE_HULL' => {
+                                         'dense' => 1,
+                                         'int' => 1
+                                       },
+                        'CENTROID' => 1,
+                        'EHRHART_POLYNOMIAL_COEFF' => 1,
+                        'H_STAR_VECTOR' => {
+                                           'int' => 1
+                                         },
+                        'ESSENTIALLY_GENERIC' => 0,
+                        'LATTICE_VOLUME' => {
+                                            'int' => 1
+                                          },
+                        'LATTICE_POINTS_GENERATORS' => {
+                                                       'int' => 1
+                                                     },
+                        'GORENSTEIN' => {
+                                        'int' => 1
+                                      },
+                        'FEASIBLE' => 0,
+                        'CONE_DIM' => {
+                                      'int' => 1
+                                    },
+                        'FACET_WIDTHS' => {
+                                          'int' => 1
+                                        },
+                        'REFLEXIVE' => {
+                                       'int' => 1
+                                     },
+                        'SMOOTH' => {
+                                    'int' => 1
+                                  },
+                        'F_VECTOR' => {
+                                      'int' => 1
+                                    },
+                        'VERY_AMPLE' => {
+                                        'int' => 1
+                                      },
+                        'FULL_DIM' => {
+                                      'int' => 1
+                                    },
+                        'N_INTERIOR_LATTICE_POINTS' => {
+                                                       'int' => 1
+                                                     },
+                        'N_VERTICES' => {
+                                        'int' => 1
+                                      },
+                        'LATTICE_DEGREE' => {
+                                            'int' => 1
+                                          },
+                        'N_FACETS' => {
+                                      'int' => 1
+                                    },
+                        'VERTICES' => {
+                                      'dense' => 1,
+                                      'int' => 1
+                                    },
+                        'FACETS' => {
+                                    'int' => 1,
+                                    'dense' => 1
+                                  },
+                        'LATTICE_CODEGREE' => {
+                                              'int' => 1
+                                            },
+                        'POINTED' => {
+                                     'int' => 1
+                                   },
+                        'N_BOUNDARY_LATTICE_POINTS' => {
+                                                       'int' => 1
+                                                     },
+                        'N_LATTICE_POINTS' => {
+                                              'int' => 1
+                                            },
+                        'CONE_AMBIENT_DIM' => {
+                                              'int' => 1
+                                            },
+                        'NORMAL' => {
+                                    'int' => 1
+                                  },
+                        'LINEALITY_SPACE' => {
+                                             'dense' => 1,
+                                             'int' => 1
+                                           }
+                      },
+          'type' => 'LatticePolytope'
+        };

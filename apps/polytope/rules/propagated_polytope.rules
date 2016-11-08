@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -36,7 +36,7 @@ property SUM_PRODUCT_GRAPH : Graph<Directed> {
 rule VERTICES, VERTEX_NORMALS, LINEALITY_SPACE : SUM_PRODUCT_GRAPH, CONE_AMBIENT_DIM {
    sum_product($this);
 }
-permutation : VertexPerm;
+incurs VertexPerm;
 
 }
 

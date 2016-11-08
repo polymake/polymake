@@ -41,10 +41,10 @@ Matrix<double> gale_vertices(const Matrix<Scalar>& G)
    do {
       G_y=G*y;
       feasible=true;
-      for (typename Entire< Vector<Scalar> >::iterator g_y=find_if(entire(G_y), operations::is_zero());
-           !g_y.at_end();  g_y=find_if(++g_y, operations::is_zero())) {
+      for (auto g_y=find_in_range_if(entire(G_y), operations::is_zero());
+           !g_y.at_end();  g_y=find_in_range_if(++g_y, operations::is_zero())) {
          if (!is_zero(G[g_y - G_y.begin()])) {
-            copy(translate(random, Scalar(Rational(-1,2))).begin(), entire(y));
+            copy_range(translate(random, Scalar(Rational(-1,2))).begin(), entire(y));
             feasible=false;
             break;
          }
@@ -59,7 +59,7 @@ Matrix<double> gale_vertices(const Matrix<Scalar>& G)
 
    for (int i=0; i<n; ++i)
       if ( (GV(i,0)=sign(G_y[i])) ) {
-         GV[i].slice(1)=P*(G[i]/G_y[i] - y);
+         GV[i].slice(1)=convert_to<double>(P*(G[i]/G_y[i] - y));
       }
    return GV;
 }

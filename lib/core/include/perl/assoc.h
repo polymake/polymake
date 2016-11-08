@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -42,8 +42,9 @@ public:
 };
 
 template <typename Container>
-class element_finder : protected element_finder_helper<const Container>,
-                       public MaybeUndefined< element_finder<Container> > {
+class element_finder
+   : protected element_finder_helper<const Container>
+   , public MaybeUndefined< element_finder<Container> > {
 public:
    template <typename Key>
    element_finder(const Container& c, const Key& key)
@@ -51,40 +52,41 @@ public:
 
    bool defined() const { return !this->pos.at_end(); }
 
-   typename attrib<typename iterator_traits<typename Container::const_iterator>::value_type::second_type>::plus_const_ref
-   operator* () const { return this->pos->second; }
+   decltype(auto) get_val() const { return this->pos->second; }
 };
 
 template <typename Container, typename Key> inline
 element_finder<Container> find_element(const Container& c, const Key& key)
 {
-   return element_finder<Container>(c,key);
+   return element_finder<Container>(c, key);
 }
 
 template <typename Container>
-class delayed_eraser : protected element_finder_helper<Container>,
-                       public MaybeUndefined< delayed_eraser<Container> > {
-   Container& c;
+class delayed_eraser
+   : protected element_finder_helper<Container>
+   , public MaybeUndefined< delayed_eraser<Container> > {
 public:
    template <typename Key>
    delayed_eraser(Container& c_arg, const Key& key)
-      : element_finder_helper<Container>(c_arg, c_arg.find(key)), c(c_arg) {}
+      : element_finder_helper<Container>(c_arg, c_arg.find(key))
+      , c(c_arg) {}
 
    bool defined() const { return !this->pos.at_end(); }
 
-   typename attrib<typename iterator_traits<typename Container::const_iterator>::value_type::second_type>::plus_const_ref
-   operator* () const { return this->pos->second; }
+   decltype(auto) get_val() const { return std::move(this->pos->second); }
 
    ~delayed_eraser()
    {
       if (defined()) c.erase(this->pos);
    }
+private:
+   Container& c;
 };
 
 template <typename Container, typename Key> inline
 delayed_eraser<Container> delayed_erase(Container& c, const Key& key)
 {
-   return delayed_eraser<Container>(c,key);
+   return delayed_eraser<Container>(c, key);
 }
 
 } }

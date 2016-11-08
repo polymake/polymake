@@ -25,7 +25,9 @@
 
 namespace polymake { namespace polytope {
 
-Array<Array<int> > induced_symmetry_group_generators(int n, const Array<Array<int> >& sym_group_generators, const Array<Set<Set<Set<int> > > >& face_orbits)
+Array<Array<int>> induced_symmetry_group_generators(int n, 
+                                                    const Array<Array<int>>& sym_group_generators, 
+                                                    const Array<Set<Set<Set<int>>>>& face_orbits)
 {
    typedef permlib::Permutation PERM;
    typedef permlib::SchreierTreeTransversal<PERM> TRANSVERSAL;
@@ -34,7 +36,7 @@ Array<Array<int> > induced_symmetry_group_generators(int n, const Array<Array<in
    // construct BSGS of symmetry group
    permlib::SchreierSimsConstruction<PERM, TRANSVERSAL> schreierSims(n);
    std::list<PERM::ptr> gen_list;
-   for (Entire<Array<Array<int> > >::const_iterator perm = entire(sym_group_generators); !perm.at_end(); ++perm){
+   for (Entire<Array<Array<int>>>::const_iterator perm = entire(sym_group_generators); !perm.at_end(); ++perm){
       PERM::ptr gen(new PERM((*perm).begin(), (*perm).end()));
       gen_list.push_back(gen);
    }
@@ -43,10 +45,10 @@ Array<Array<int> > induced_symmetry_group_generators(int n, const Array<Array<in
 
 
    // prepare search without DCM pruning
-   typedef Set<Set<int> > Container;
-   typedef Array<Set<Container> > ArrayType;
-   typedef permlib::LayeredSetSystemStabilizerPredicate<PERM, Container, ArrayType> PredType;
+   typedef Set<Set<int>> Container;
+   typedef Array<Set<Container>> ArrayType;
 
+   typedef permlib::LayeredSetSystemStabilizerPredicate<PERM, Container, ArrayType> PredType;
    permlib::classic::SetSystemStabilizerSearch<BSGSType, TRANSVERSAL, PredType> backtrackSearch(sym_bsgs, 0);
    backtrackSearch.construct(n, face_orbits);
         
@@ -55,10 +57,10 @@ Array<Array<int> > induced_symmetry_group_generators(int n, const Array<Array<in
    backtrackSearch.search(stabilizer);
 
    // extract a strong generating set
-   Array< Array<int> > new_bsgs(stabilizer.S.size());
-   Entire<Array<Array<int> > >::iterator pit = entire(new_bsgs);
-   for(std::list<boost::shared_ptr<PERM> >::const_iterator perm = stabilizer.S.begin(); perm!=stabilizer.S.end(); ++perm)
-      *pit++ = group::PermlibGroup::perm2Array(*perm);
+   Array<Array<int>> new_bsgs(stabilizer.S.size());
+   Entire<Array<Array<int>>>::iterator pit = entire(new_bsgs);
+   for (const auto& perm : stabilizer.S)
+      *pit++ = group::PermlibGroup::perm2Array(perm);
    return new_bsgs;
 }
       

@@ -38,7 +38,6 @@ perl::Object center(perl::Object p_in)
    perl::Object p_out=transform<Scalar>(p_in, tau);
    p_out.set_description() << "Centered polytope transformed from " << p_in.name() << endl;
 
-
    p_out.take("CENTERED") << true;
    return p_out;
 }

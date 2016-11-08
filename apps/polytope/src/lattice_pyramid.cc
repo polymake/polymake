@@ -29,7 +29,7 @@ perl::Object lattice_pyramid(perl::Object p_in, const Rational& z, const Vector<
    if (!pointed)
       throw std::runtime_error("lattice_bipyramid: input polyhedron not pointed");
 
-   const bool relabel = options["relabel"];
+   const bool relabel = !options["no_labels"];
 
    if (z==0)
       throw std::runtime_error("lattice_pyramid: z must be non-zero");
@@ -55,9 +55,7 @@ perl::Object lattice_pyramid(perl::Object p_in, const Rational& z, const Vector<
       throw std::runtime_error("v: wrong dimension");
 
    p_out.take("VERTICES") << (V | zero_vector<Rational>()) /
-      (v | z);
-   const Matrix<Rational> empty;
-   p_out.take("LINEALITY_SPACE") << empty;
+                             (v | z);
 
    if (relabel) {
       std::vector<std::string> labels(n_vertices);
@@ -77,11 +75,11 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# @param Polytope P"
                   "# @param Rational z the height for the apex (//v//,//z//), default value is 1."
                   "# @param Vector v the lattice point to use as apex, default is the first vertex of //P//."
-                  "# @option Bool relabel copy the original vertex labels,"
+                  "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytope. default: 0"
                   "#   label the new top vertex with \"Apex\"."
                   "# @return Polytope"
                   "# @example To create the pyramid of height 5 over a square and keep the vertex labels, do this:"
-                  "# > $p = lattice_pyramid(cube(2),5,new Vector(1,0,0),relabel=>1);"
+                  "# > $p = lattice_pyramid(cube(2),5,new Vector(1,0,0));"
                   "# > print $p->VERTICES;"
                   "# | 1 -1 -1 0"
                   "# | 1 1 -1 0"
@@ -90,7 +88,7 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# | 1 0 0 5"
                   "# > print $p->VERTEX_LABELS;"
                   "# | 0 1 2 3 Apex",
-                  &lattice_pyramid, "lattice_pyramid(Polytope; $=1, Vector<Rational>=$_[0]->VERTICES->row(0), { relabel => undef })");
+                  &lattice_pyramid, "lattice_pyramid(Polytope; $=1, Vector<Rational>=$_[0]->VERTICES->row(0), { no_labels => undef })");
 } }
 
 // Local Variables:

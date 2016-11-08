@@ -18,6 +18,7 @@
 
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
+#include "polymake/Matrix.h"
 #include "polymake/Polynomial.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
@@ -74,5 +75,8 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary_mul, perl::Canned< const Rational >, perl::Canned< const UniMonomial< Rational, Rational > >);
    OperatorInstance4perl(Binary_div, perl::Canned< const Rational >, perl::Canned< const UniTerm< Rational, Rational > >);
    OperatorInstance4perl(Binary_div, perl::Canned< const Rational >, perl::Canned< const UniPolynomial< Rational, Rational > >);
+   OperatorInstance4perl(Binary__ge, perl::Canned< const Rational >, int);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const Rational >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, mlist<> > >);
+   FunctionInstance4perl(new_X_X, Rational, long, long);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

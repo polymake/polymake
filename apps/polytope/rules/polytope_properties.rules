@@ -111,10 +111,7 @@ property VERTICES = override RAYS;
 property AFFINE_HULL = override LINEAR_SPAN; 
 
 method canonical_ineq {
-   my ($self) = @_;
-   my $dim = $_[1]->cols() > 0 ? $_[1]->cols() : $self->lookup_ambient_dim($self->lookup("CONE_AMBIENT_DIM"));
-   die "Could not deduce CONE_AMBIENT_DIM. Giving an empty INEQUALITIES section requires setting CONE_AMBIENT_DIM first." unless defined($dim);
-   add_extra_polytope_ineq(@_,$dim);
+   add_extra_polytope_ineq($_[1]);
 }
 
 
@@ -320,6 +317,12 @@ property INEQUALITIES_THRU_VERTICES = override INEQUALITIES_THRU_RAYS;
 # | [5 4 4 4 4 4 3 3 3 3 3]
 property VERTEX_SIZES = override RAY_SIZES;
 
+# @category Combinatorics
+# Measures the deviation of the cone from being simple in terms of the [[GRAPH]].
+# @example The excess vertex degree of an egyptian pyramid is one.
+# > print pyramid(cube(2))->EXCESS_VERTEX_DEGREE;
+# | 1
+property EXCESS_VERTEX_DEGREE = override EXCESS_RAY_DEGREE;
 
 # @topic //properties//HASSE_DIAGRAM
 # Number of incident vertices for each facet.
@@ -338,13 +341,25 @@ weight 1.10;
 
 property GRAPH {
 
+   # @category Geometry
    # Difference of the vertices for each edge (only defined up to signs).
    property EDGE_DIRECTIONS : EdgeMap<Undirected, Vector<Scalar>> : construct(ADJACENCY);
 
+   # @category Geometry
    # Squared Euclidean length of each edge
    property SQUARED_EDGE_LENGTHS : EdgeMap<Undirected, Scalar> : construct(ADJACENCY);
 
 }
+
+property DUAL_GRAPH {
+
+   # @category Geometry
+   # Dihedral angles (in radians) between the two facets corresponding to
+   # each edge of the dual graph, i.e. the ridges of the polytope.
+   property DIHEDRAL_ANGLES : EdgeMap<Undirected, Float> : construct(ADJACENCY);
+
+}
+
 
 # @category Combinatorics
 # Lists for each occurring size (= number of incident vertices or edges) of a 2-face how many there are.
@@ -653,10 +668,10 @@ property NEIGHBOR_VERTICES_CYCLIC_NORMAL = override NEIGHBOR_RAYS_CYCLIC_NORMAL;
 # either manually in a text editor, or with a client program.
 #
 # If you build a polytope with a construction function
-# taking some other input polytope(s), you can create the labels automatically if you
-# call the function with a //relabel// option. The exact format of the labels is dependent on the
-# construction, and is described in the corresponding help topic.
-# @option Bool relabel
+# taking some other input polytope(s), the labels are created the labels automatically
+# except if you call the function with a //no_labels// option. The exact format of the
+# abels is dependent on the construction, and is described in the corresponding help topic.
+# @option Bool no_labels
 property VERTEX_LABELS = override RAY_LABELS;
 
 # @category Visualization

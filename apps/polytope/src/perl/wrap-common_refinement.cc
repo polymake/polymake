@@ -30,11 +30,11 @@ namespace polymake { namespace polytope { namespace {
    }
    FunctionWrapperInstance4perl( perl::Object (perl::Object, perl::Object) );
 
-   FunctionWrapper4perl( pm::Array<pm::Set<int, pm::operations::cmp>, void> (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, int) ) {
+   FunctionWrapper4perl( pm::Array<pm::Set<int, pm::operations::cmp>> (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>> const&, pm::Array<pm::Set<int, pm::operations::cmp>> const&, int) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
       IndirectWrapperReturn( arg0.get< perl::TryCanned< const Matrix<Rational> > >(), arg1.get< perl::TryCanned< const Array< Set< int > > > >(), arg2.get< perl::TryCanned< const Array< Set< int > > > >(), arg3 );
    }
-   FunctionWrapperInstance4perl( pm::Array<pm::Set<int, pm::operations::cmp>, void> (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, int) );
+   FunctionWrapperInstance4perl( pm::Array<pm::Set<int, pm::operations::cmp>> (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>> const&, pm::Array<pm::Set<int, pm::operations::cmp>> const&, int) );
 
    FunctionInstance4perl(common_refinement_T_x_x, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====

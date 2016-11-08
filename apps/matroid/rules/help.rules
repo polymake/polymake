@@ -22,20 +22,26 @@
 # @topic category functions/Producing a matroid from other objects
 # These functions construct a new [[Matroid]] from other objects.
 
+# @topic category any/Advanced properties
+# More complex properties of the matroid.
+
 object Matroid {
 
-# @topic category properties/Axiom systems
-# These are properties that form (part of) an axiom system defining a matroid.
+# @topic category any/Axiom systems
+# These are +++ that form (part of) an axiom system defining a matroid.
 # Most of these can be used to create a matroid.
 
-# @topic category properties/Advanced properties
-# These are more complex properties of the matroid.
-
-# @topic category properties/Enumerative properties
-# These are properties of a matroid that count something.
+# @topic category any/Enumerative properties
+# These are +++ of a matroid that count something.
 
 # @topic category properties/Input properties
 # These are properties that can be used to define a matroid, but do not actually constitute an axiom system.
+
+# @topic category any/Valuation
+# +++ related to the valuation of the matroid.
+
+# @topic category any/Duality
+# +++ related to duality and dual properties.
 
 }
 

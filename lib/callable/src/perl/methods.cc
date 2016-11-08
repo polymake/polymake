@@ -35,8 +35,8 @@ const char Extension[]="Polymake::Core::Extension";
 void Main::set_application(const char* name, size_t nl)
 {
    dTHX;
-   PmStartFuncall;
-   mXPUSHp(name, nl);
+   PmStartFuncall(1);
+   mPUSHp(name, nl);
    PUTBACK;
    glue::call_func_void(aTHX_ application_cv);
 }
@@ -44,8 +44,8 @@ void Main::set_application(const char* name, size_t nl)
 void Main::set_application_of(const Object& x)
 {
    dTHX;
-   PmStartFuncall;
-   XPUSHs(x.obj_ref);
+   PmStartFuncall(1);
+   PUSHs(x.obj_ref);
    PUTBACK;
    glue::call_func_void(aTHX_ app_from_object_cv);
 }
@@ -53,9 +53,9 @@ void Main::set_application_of(const Object& x)
 void Main::add_extension(const char* path, size_t pl)
 {
    dTHX;
-   PmStartFuncall;
-   mXPUSHp(Extension, sizeof(Extension)-1);
-   mXPUSHp(path, pl);
+   PmStartFuncall(2);
+   mPUSHp(Extension, sizeof(Extension)-1);
+   mPUSHp(path, pl);
    PUTBACK;
    glue::call_method_void(aTHX_ "add");
 }
@@ -63,9 +63,9 @@ void Main::add_extension(const char* path, size_t pl)
 SV* Main::lookup_extension(const char* path, size_t pl)
 {
    dTHX;
-   PmStartFuncall;
-   mXPUSHp(Extension, sizeof(Extension)-1);
-   mXPUSHp(path, pl);
+   PmStartFuncall(2);
+   mPUSHp(Extension, sizeof(Extension)-1);
+   mPUSHp(path, pl);
    PUTBACK;
    return glue::call_method_scalar(aTHX_ "lookup");
 }
@@ -73,9 +73,9 @@ SV* Main::lookup_extension(const char* path, size_t pl)
 void Main::call_app_method(const char* method, const char *arg, size_t argl)
 {
    dTHX;
-   PmStartFuncall;
+   PmStartFuncall(2);
    SP=glue::push_current_application(aTHX_ SP);
-   mXPUSHp(arg, argl);
+   mPUSHp(arg, argl);
    PUTBACK;
    glue::call_method_void(aTHX_ method);
 }
@@ -83,10 +83,10 @@ void Main::call_app_method(const char* method, const char *arg, size_t argl)
 void Main::_set_custom(const char* name, size_t ll, const char* key, size_t kl, Value& x)
 {
    dTHX;
-   PmStartFuncall;
-   mXPUSHp(name, ll);
-   if (key) mXPUSHp(key, kl);
-   XPUSHs(x.get_temp());
+   PmStartFuncall(3);
+   mPUSHp(name, ll);
+   if (key) mPUSHp(key, kl);
+   PUSHs(x.get_temp());
    PUTBACK;
    glue::call_func_void(aTHX_ set_custom_cv);
 }
@@ -94,9 +94,9 @@ void Main::_set_custom(const char* name, size_t ll, const char* key, size_t kl, 
 void Main::_reset_custom(const char* name, size_t ll, const char* key, size_t kl)
 {
    dTHX;
-   PmStartFuncall;
-   mXPUSHp(name, ll);
-   if (key) mXPUSHp(key, kl);
+   PmStartFuncall(2);
+   mPUSHp(name, ll);
+   if (key) mPUSHp(key, kl);
    PUTBACK;
    glue::call_func_void(aTHX_ reset_custom_cv);
 }
@@ -104,18 +104,17 @@ void Main::_reset_custom(const char* name, size_t ll, const char* key, size_t kl
 Scope Main::newScope()
 {
    dTHX;
-   PmStartFuncall;
-   PUTBACK;
+   PmStartFuncall(0);
    return call_func_scalar(aTHX_ new_scope_cv);
 }
 
 void Scope::_set_custom(const char* name, size_t ll, const char* key, size_t kl, Value& x)
 {
    dTHX;
-   PmStartFuncall;
-   mXPUSHp(name, ll);
-   if (key) mXPUSHp(key, kl);
-   XPUSHs(x.get_temp());
+   PmStartFuncall(3);
+   mPUSHp(name, ll);
+   if (key) mPUSHp(key, kl);
+   PUSHs(x.get_temp());
    PUTBACK;
    glue::call_func_void(aTHX_ local_custom_cv);
 }
@@ -123,13 +122,13 @@ void Scope::_set_custom(const char* name, size_t ll, const char* key, size_t kl,
 std::string Main::greeting(int verbose)
 {
    dTHX;
-   PmStartFuncall;
-   mXPUSHi(verbose);
+   PmStartFuncall(1);
+   mPUSHi(verbose);
    PUTBACK;
    size_t l=0;
    SV* greeting_sv = glue::call_func_scalar(aTHX_ greeting_cv);
    const char* greeting=SvPV(greeting_sv, l);
-   return std::string(greeting,l);
+   return std::string(greeting, l);
 }
 
 } }

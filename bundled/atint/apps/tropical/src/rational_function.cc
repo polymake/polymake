@@ -35,7 +35,6 @@
 #include "polymake/tropical/misc_tools.h"
 #include "polymake/tropical/linear_algebra_tools.h"
 #include "polymake/tropical/polynomial_tools.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/rational_function.h"
 
 namespace polymake { namespace tropical {

@@ -33,12 +33,6 @@
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( rows_X8, T0 ) {
-      perl::Value arg0(stack[0]);
-      WrapperReturnAnch( 1, (arg0), rows(arg0.get<T0>()) );
-   };
-
-   template <typename T0>
    FunctionInterface4perl( rows_X, T0 ) {
       perl::Value arg0(stack[0]);
       WrapperReturn( rows(arg0.get<T0>()) );
@@ -74,7 +68,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(rows_f1, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::RowChain<pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&> >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Integer>&, pm::all_selector const&, pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> const&> >);
-   FunctionInstance4perl(rows_X8, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
    FunctionInstance4perl(rows_X, perl::Canned< const Matrix< Rational > >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::RowChain<pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, pm::Matrix<pm::Rational> const&> >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::RowChain<pm::RowChain<pm::Matrix<pm::Integer> const&, pm::Matrix<pm::Integer> const&> const&, pm::Matrix<pm::Integer> const&> >);

@@ -47,7 +47,7 @@ UserFunction4perl("# @category Producing a simplicial complex from other objects
                   "# Produce the __independence complex__ of a given matroid.\n"
                   "# If //no_labels// is set to 1, the labels are not copied.\n"
                   "# @param matroid::Matroid matroid"
-                  "# @option Bool no_labels\n"
+                  "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @return SimplicialComplex",
                   &independence_complex,"independence_complex(matroid::Matroid; { no_labels => 0 })");
 } }

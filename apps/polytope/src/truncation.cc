@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -36,10 +36,11 @@ void assign_facet_through_points(const GenericMatrix<Matrix,E>& M,
    f=null_space(M)[0];
    if (f*V_cut > 0) f.negate();
 }
-}
 
-template <typename Scalar, typename SetTop>
-perl::Object truncation(perl::Object p_in, const GenericSet<SetTop>& trunc_vertices, perl::OptionSet options)
+} // end anonymous namespace
+
+template <typename Scalar, typename TSet>
+perl::Object truncation(perl::Object p_in, const GenericSet<TSet>& trunc_vertices, perl::OptionSet options)
 {
    if (options.exists("cutoff") && options.exists("no_coordinates")) 
       throw std::runtime_error("truncation: cannot specify cutoff and no_coordinates options simultaneously");
@@ -49,7 +50,7 @@ perl::Object truncation(perl::Object p_in, const GenericSet<SetTop>& trunc_verti
       throw std::runtime_error("truncation: input should be pointed");
       
    const bool noc = options["no_coordinates"],
-      relabel = options["relabel"];
+      relabel = !options["no_labels"];
 
    const IncidenceMatrix<> VIF=p_in.give("VERTICES_IN_FACETS");
    const Graph<> G=p_in.give("GRAPH.ADJACENCY");
@@ -71,13 +72,13 @@ perl::Object truncation(perl::Object p_in, const GenericSet<SetTop>& trunc_verti
       throw std::runtime_error("vertex numbers out of range");
 
    perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
-   if (pm::identical<SetTop, Set<int> >::value)
+   if (std::is_same<TSet, Set<int> >::value)
       p_out.set_description() << p_in.name() << " with vertices " << trunc_vertices << " truncated" << endl;
 
    n_trunc_vertices=trunc_vertices.top().size();
    n_vertices_out=n_vertices-n_trunc_vertices;
 
-   for (typename Entire<SetTop>::const_iterator v=entire(trunc_vertices.top()); !v.at_end(); ++v) {
+   for (auto v=entire(trunc_vertices.top()); !v.at_end(); ++v) {
       vertex_map[*v]=n_vertices_out;
       n_vertices_out+=G.degree(*v);
    }
@@ -87,13 +88,12 @@ perl::Object truncation(perl::Object p_in, const GenericSet<SetTop>& trunc_verti
 
    // first inherit the original facets along with untouched vertices in them
    if (n_trunc_vertices < n_vertices)
-      copy(entire(rows(VIF.minor(All,~keys(vertex_map)))), rows(VIF_out).begin());
+      copy_range(entire(rows(VIF.minor(All,~keys(vertex_map)))), rows(VIF_out).begin());
 
    int new_facet=n_facets;
    for (vertex_map_type::iterator tv=vertex_map.begin();  !tv.at_end();  ++tv, ++new_facet) {
       int new_vertex=tv->second;
-      for (Entire< AdjacencyMatrix< Graph<> >::row_type >::const_iterator
-              nb=entire(G.adjacent_nodes(tv->first));  !nb.at_end();  ++nb, ++new_vertex) {
+      for (auto nb=entire(G.adjacent_nodes(tv->first));  !nb.at_end();  ++nb, ++new_vertex) {
          // the new vertex inherits the ridge from the truncated vertex,
          // and it belongs to the new facet
          (VIF_out.col(new_vertex) = VIF.col(tv->first) * VIF.col(*nb)) += new_facet;
@@ -105,12 +105,11 @@ perl::Object truncation(perl::Object p_in, const GenericSet<SetTop>& trunc_verti
       std::vector<std::string> labels(n_vertices);
       read_labels(p_in, "VERTEX_LABELS", labels);
       labels_out.resize(n_vertices_out);
-      copy(entire(select(labels, ~keys(vertex_map))), labels_out.begin());
+      copy_range(entire(select(labels, ~keys(vertex_map))), labels_out.begin());
 
       for (vertex_map_type::iterator tv=vertex_map.begin();  !tv.at_end();  ++tv) {
          int new_vertex=tv->second;
-         for (Entire< AdjacencyMatrix< Graph<> >::row_type >::const_iterator
-                 nb=entire(G.adjacent_nodes(tv->first));  !nb.at_end();  ++nb, ++new_vertex) {
+         for (auto nb=entire(G.adjacent_nodes(tv->first));  !nb.at_end();  ++nb, ++new_vertex) {
             labels_out[new_vertex]=labels[tv->first] + '-' + labels[*nb];
          }
       }
@@ -132,7 +131,7 @@ perl::Object truncation(perl::Object p_in, const GenericSet<SetTop>& trunc_verti
       std::vector<int> renumber_vertices;
       if (cutoff_factor==1) {
          renumber_vertices.resize(n_vertices);
-         copy(sequence(0).begin(), select(renumber_vertices, ~keys(vertex_map)).begin());
+         copy_range(sequence(0).begin(), select(renumber_vertices, ~keys(vertex_map)).begin());
       }
       const int dim = p_in.give("CONE_DIM");
       inequalities = (cutoff_factor == 1 || dim == 2);
@@ -152,7 +151,7 @@ perl::Object truncation(perl::Object p_in, const GenericSet<SetTop>& trunc_verti
          Matrix<Scalar> basis(G.out_degree(v_cut_off), V.cols());
          const bool simple_vertex=basis.rows()+AH.rows()==V.cols()-1;
 
-         typename Rows< Matrix<Scalar> >::iterator b=rows(basis).begin();
+         typename Rows<Matrix<Scalar>>::iterator b=rows(basis).begin();
          for (Entire< Graph<>::adjacent_node_list >::const_iterator nb_v=entire(G.adjacent_nodes(v_cut_off)); !nb_v.at_end(); ++nb_v, ++b) {
             if (vertex_map.exists(*nb_v))
                *b = (1-cutoff_factor/2) * V[v_cut_off] + cutoff_factor/2 * V[*nb_v];
@@ -243,7 +242,7 @@ perl::Object truncation(perl::Object p_in, const pm::all_selector&, perl::Option
 template<typename Scalar>
 perl::Object truncation(perl::Object p_in, int vertex, perl::OptionSet options)
 {
-   perl::Object p_out=truncation<Scalar>(p_in,scalar2set(vertex),options);
+   perl::Object p_out=truncation<Scalar>(p_in, scalar2set(vertex), options);
    p_out.set_description() << p_in.name() << " with vertex " << vertex << " truncated" << endl;
    return p_out;
 }
@@ -252,13 +251,13 @@ template<typename Scalar>
 perl::Object truncation(perl::Object p_in, const Array<int>& verts, perl::OptionSet options)
 {
    Set<int> trunc_vertices;
-   for (Entire< Array<int> >::const_iterator vi = entire(verts); !vi.at_end(); ++vi)
-      trunc_vertices += *vi;
+   for (const auto& vi : verts)
+      trunc_vertices += vi;
 
    if (verts.size() != trunc_vertices.size())
       throw std::runtime_error("truncation: repeating vertex numbers in the list");
    
-   return truncation<Scalar>(p_in,trunc_vertices,options);
+   return truncation<Scalar>(p_in, trunc_vertices, options);
 }
 
 UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
@@ -281,7 +280,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# @option Scalar cutoff controls the exact location of the cutting hyperplane(s);"
                           "#   rational number between 0 and 1; default value: 1/2"
                           "# @option Bool no_coordinates produces a pure combinatorial description (in contrast to //cutoff//)"
-                          "# @option Bool relabel creates an additional section [[VERTEX_LABELS]];"
+                          "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytope. default: 0"
                           "#   New vertices get labels of the form 'LABEL1-LABEL2', where LABEL1 is the original label"
                           "#   of the truncated vertex, and LABEL2 is the original label of its neighbor."
                           "# @return Polytope"
@@ -294,7 +293,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# | 1 -1 1/2"
                           "# | 1 -1/2 1"
                           "# @author Kerstin Fritzsche (initial version)",
-                          "truncation<Scalar>(Polytope<Scalar> * {cutoff=>undef, no_coordinates=>undef, relabel=>undef})");
+                          "truncation<Scalar>(Polytope<Scalar> * {cutoff=>undef, no_coordinates=>undef, no_labels=>0})");
 } }
 
 // Local Variables:

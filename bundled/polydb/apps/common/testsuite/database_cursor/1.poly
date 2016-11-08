@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?pm chk="581b2fc8"?>
+
+<object name="F.4D.0020" type="polytope::Polytope&lt;Rational&gt;" version="3.0.6" xmlns="http://www.math.tu-berlin.de/polymake/#3">
+  <credit product="cddlib"><![CDATA[
+Copyright by Komei Fukuda.
+http://www.ifor.math.ethz.ch/~fukuda/cdd_home/cdd.html
+]]></credit>
+  <credit product="libnormaliz"><![CDATA[
+Copyright by Winfried Bruns, Bogdan Ichim, Christof Soeger.
+http://www.math.uos.de/normaliz/
+]]></credit>
+  <credit product="barvinok"><![CDATA[ barvinok is a library to compute with integral points in parametric polytopes
+ written by Sven Verdoolaege
+ http://freshmeat.net/projects/barvinok
+]]></credit>
+  <credit product="normaliz2"><![CDATA[
+Copyright by Winfried Bruns, Bogdan Ichim, Christof Soeger.
+http://www.math.uos.de/normaliz/
+]]></credit>
+  <property name="LATTICE_POINTS_GENERATORS">
+    <m>
+      <m>
+        <v>1 0 1 1 -2</v>
+        <v>1 0 1 1 -1</v>
+        <v>1 0 1 1 0</v>
+        <v>1 0 1 1 1</v>
+        <v>1 1 1 0 -2</v>
+        <v>1 1 1 0 -1</v>
+        <v>1 1 1 0 0</v>
+        <v>1 1 1 0 1</v>
+        <v>1 1 1 1 -2</v>
+        <v>1 1 1 1 -1</v>
+        <v>1 1 1 1 0</v>
+        <v>1 1 1 1 1</v>
+        <v>1 -2 0 1 -1</v>
+        <v>1 -2 0 1 0</v>
+        <v>1 -2 0 1 1</v>
+        <v>1 -1 0 0 -1</v>
+        <v>1 -1 0 0 0</v>
+        <v>1 -1 0 0 1</v>
+        <v>1 -1 0 1 -1</v>
+        <v>1 -1 0 1 0</v>
+        <v>1 -1 0 1 1</v>
+        <v>1 0 0 -1 -1</v>
+        <v>1 0 0 -1 0</v>
+        <v>1 0 0 -1 1</v>
+        <v>1 0 0 0 -1</v>
+        <v>1 0 0 0 0</v>
+        <v>1 0 0 0 1</v>
+        <v>1 0 0 1 -1</v>
+        <v>1 0 0 1 0</v>
+        <v>1 0 0 1 1</v>
+        <v>1 1 0 -2 -1</v>
+        <v>1 1 0 -2 0</v>
+        <v>1 1 0 -2 1</v>
+        <v>1 1 0 -1 -1</v>
+        <v>1 1 0 -1 0</v>
+        <v>1 1 0 -1 1</v>
+        <v>1 1 0 0 -1</v>
+        <v>1 1 0 0 0</v>
+        <v>1 1 0 0 1</v>
+        <v>1 1 0 1 -1</v>
+        <v>1 1 0 1 0</v>
+        <v>1 1 0 1 1</v>
+        <v>1 -4 -1 1 0</v>
+        <v>1 -4 -1 1 1</v>
+        <v>1 -3 -1 0 0</v>
+        <v>1 -3 -1 0 1</v>
+        <v>1 -3 -1 1 0</v>
+        <v>1 -3 -1 1 1</v>
+        <v>1 -2 -1 -1 0</v>
+        <v>1 -2 -1 -1 1</v>
+        <v>1 -2 -1 0 0</v>
+        <v>1 -2 -1 0 1</v>
+        <v>1 -2 -1 1 0</v>
+        <v>1 -2 -1 1 1</v>
+        <v>1 -1 -1 -2 0</v>
+        <v>1 -1 -1 -2 1</v>
+        <v>1 -1 -1 -1 0</v>
+        <v>1 -1 -1 -1 1</v>
+        <v>1 -1 -1 0 0</v>
+        <v>1 -1 -1 0 1</v>
+        <v>1 -1 -1 1 0</v>
+        <v>1 -1 -1 1 1</v>
+        <v>1 0 -1 -3 0</v>
+        <v>1 0 -1 -3 1</v>
+        <v>1 0 -1 -2 0</v>
+        <v>1 0 -1 -2 1</v>
+        <v>1 0 -1 -1 0</v>
+        <v>1 0 -1 -1 1</v>
+        <v>1 0 -1 0 0</v>
+        <v>1 0 -1 0 1</v>
+        <v>1 0 -1 1 0</v>
+        <v>1 0 -1 1 1</v>
+        <v>1 1 -1 -4 0</v>
+        <v>1 1 -1 -4 1</v>
+        <v>1 1 -1 -3 0</v>
+        <v>1 1 -1 -3 1</v>
+        <v>1 1 -1 -2 0</v>
+        <v>1 1 -1 -2 1</v>
+        <v>1 1 -1 -1 0</v>
+        <v>1 1 -1 -1 1</v>
+        <v>1 1 -1 0 0</v>
+        <v>1 1 -1 0 1</v>
+        <v>1 1 -1 1 0</v>
+        <v>1 1 -1 1 1</v>
+        <v>1 -6 -2 1 1</v>
+        <v>1 -5 -2 0 1</v>
+        <v>1 -5 -2 1 1</v>
+        <v>1 -4 -2 -1 1</v>
+        <v>1 -4 -2 0 1</v>
+        <v>1 -4 -2 1 1</v>
+        <v>1 -3 -2 -2 1</v>
+        <v>1 -3 -2 -1 1</v>
+        <v>1 -3 -2 0 1</v>
+        <v>1 -3 -2 1 1</v>
+        <v>1 -2 -2 -3 1</v>
+        <v>1 -2 -2 -2 1</v>
+        <v>1 -2 -2 -1 1</v>
+        <v>1 -2 -2 0 1</v>
+        <v>1 -2 -2 1 1</v>
+        <v>1 -1 -2 -4 1</v>
+        <v>1 -1 -2 -3 1</v>
+        <v>1 -1 -2 -2 1</v>
+        <v>1 -1 -2 -1 1</v>
+        <v>1 -1 -2 0 1</v>
+        <v>1 -1 -2 1 1</v>
+        <v>1 0 -2 -5 1</v>
+        <v>1 0 -2 -4 1</v>
+        <v>1 0 -2 -3 1</v>
+        <v>1 0 -2 -2 1</v>
+        <v>1 0 -2 -1 1</v>
+        <v>1 0 -2 0 1</v>
+        <v>1 0 -2 1 1</v>
+        <v>1 1 -2 -6 1</v>
+        <v>1 1 -2 -5 1</v>
+        <v>1 1 -2 -4 1</v>
+        <v>1 1 -2 -3 1</v>
+        <v>1 1 -2 -2 1</v>
+        <v>1 1 -2 -1 1</v>
+        <v>1 1 -2 0 1</v>
+        <v>1 1 -2 1 1</v>
+      </m>
+      <m cols="5" />
+      <m cols="5" />
+    </m>
+  </property>
+  <property name="LINEALITY_SPACE">
+    <m cols="5" />
+  </property>
+  <property name="F_VECTOR">
+    <v>9 18 15 6</v>
+  </property>
+  <property name="EHRHART_POLYNOMIAL_COEFF">
+    <v>1 10 139/4 99/2 99/4</v>
+  </property>
+  <property name="NORMAL" value="true" />
+  <property name="VERY_AMPLE" value="true" />
+  <property name="AFFINE_HULL">
+    <m cols="5" />
+  </property>
+  <property name="N_BOUNDARY_LATTICE_POINTS" value="119" />
+  <property name="H_STAR_VECTOR">
+    <v>1 115 362 115 1</v>
+  </property>
+  <property name="LATTICE_CODEGREE" value="1" />
+  <property name="FACETS">
+    <m>
+      <v>1 0 -1 0 0</v>
+      <v>1 0 0 0 -1</v>
+      <v>1 1 -2 1 0</v>
+      <v>1 -1 0 0 0</v>
+      <v>1 0 0 -1 0</v>
+      <v>1 0 1 0 1</v>
+    </m>
+  </property>
+  <property name="N_LATTICE_POINTS" value="120" />
+  <property name="ESSENTIALLY_GENERIC" value="false" />
+  <property name="CONE_DIM" value="5" />
+  <property name="GORENSTEIN" value="true" />
+  <property name="FEASIBLE" value="true" />
+  <property name="VERTICES">
+    <m>
+      <v>1 1 1 1 -2</v>
+      <v>1 1 -2 1 1</v>
+      <v>1 1 1 1 1</v>
+      <v>1 0 1 1 1</v>
+      <v>1 1 1 0 1</v>
+      <v>1 -6 -2 1 1</v>
+      <v>1 0 1 1 -2</v>
+      <v>1 1 -2 -6 1</v>
+      <v>1 1 1 0 -2</v>
+    </m>
+  </property>
+  <property name="CENTROID">
+    <v>1 -68/165 -34/55 -68/165 17/55</v>
+  </property>
+  <property name="LATTICE_VOLUME" value="594" />
+  <property name="FULL_DIM" value="true" />
+  <property name="CONE_AMBIENT_DIM" value="5" />
+  <property name="FACET_WIDTHS">
+    <v>3 3 7 7 7 3</v>
+  </property>
+  <property name="SMOOTH" value="true" />
+  <property name="N_INTERIOR_LATTICE_POINTS" value="1" />
+  <property name="POINTED" value="true" />
+  <property name="LATTICE_DEGREE" value="4" />
+  <property name="N_FACETS" value="6" />
+  <property name="REFLEXIVE" value="true" />
+  <property name="N_VERTICES" value="9" />
+  <attachment name="polyDB" type="Map&lt;String, String&gt;">
+    <m>
+      <t>collection SmoothReflexive</t>
+      <t>contributor 'Andreas Paffenholz'</t>
+      <t>creation_date 2016-08-23</t>
+      <t>database LatticePolytopes</t>
+      <t>id F.4D.0020</t>
+      <t>tag object</t>
+      <t>version 3.0</t>
+    </m>
+  </attachment>
+</object>

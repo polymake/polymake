@@ -30,7 +30,7 @@ bool is_homology_sphere(const HasseDiagram& HD)
    const int dim = HD.dim()-1;
 
    const SimplicialComplex_as_FaceMap<int> SC(faces_of_dim_set(HD.faces(), HD.nodes_of_dim(-1)));
-   ChainComplex_iterator<coefficient_type,base_complex_type,false,false> h_it(SC,dim,0);
+   Complex_iterator<coefficient_type,SparseMatrix<coefficient_type>,base_complex_type,false,false> h_it(SC,dim,0);
    if (h_it->betti_number!=1 || h_it->torsion.size()!=0)
       return false; // top rank homology free of rank 1
    for (++h_it; !h_it.at_end(); ++h_it) {

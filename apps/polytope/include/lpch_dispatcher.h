@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -53,10 +53,14 @@ void ch_primal(perl::Object& p, Solver& solver)
                       Lineality=p.lookup("LINEALITY_SPACE | INPUT_LINEALITY");
    const bool isCone = !p.isa("Polytope");
    if (isCone) {
-      if ( Points.rows() )  // leave matrix empty otherwise
-         Points = zero_vector<coord_type>()|Points;
-      if ( Lineality.rows() )  // leave matrix empty otherwise
+      Points = zero_vector<coord_type>()|Points;
+      if (Lineality.cols())
          Lineality = zero_vector<coord_type>()|Lineality;
+   }
+
+   if (Points.cols() != Lineality.cols() &&
+       Points.cols() && Lineality.cols()) {
+      throw std::runtime_error("ch_primal - dimension mismatch between Points and Lineality");
    }
 
    typename Solver::matrix_pair F=solver.enumerate_facets(Points, Lineality, isCone, false);
@@ -80,15 +84,20 @@ template <typename Solver>
 void count_facets(perl::Object& p, Solver& solver)
 {
    typedef typename Solver::coord_type coord_type;
-   Matrix<coord_type> Points=p.give("RAYS | INPUT_RAYS"), 
+   Matrix<coord_type> Points=p.give("RAYS | INPUT_RAYS"),
                       Lineality=p.lookup("LINEALITY_SPACE | INPUT_LINEALITY");
    const bool isCone = !p.isa("Polytope");
    if (isCone) {
-      if ( Points.rows() )  // leave matrix empty otherwise
-         Points = zero_vector<coord_type>()|Points;
-      if ( Lineality.rows() )  // leave matrix empty otherwise
+      Points = zero_vector<coord_type>()|Points;
+      if (Lineality.cols())
          Lineality = zero_vector<coord_type>()|Lineality;
    }
+
+   if (Points.cols() != Lineality.cols() &&
+       Points.cols() && Lineality.cols()) {
+      throw std::runtime_error("count_facets - dimension mismatch between Points and Lineality");
+   }
+
    p.take("N_FACETS") << solver.count_facets(Points,Lineality,isCone);
 }
 
@@ -96,21 +105,27 @@ template <typename Solver>
 void ch_dual(perl::Object& p, Solver& solver)
 {
    typedef typename Solver::coord_type coord_type;
-   Matrix<coord_type> H=p.give("FACETS | INEQUALITIES"), 
+   Matrix<coord_type> H=p.give("FACETS | INEQUALITIES"),
                       EQ=p.lookup("LINEAR_SPAN | EQUATIONS");
 
    // recall that all output properties lacking after the rule completion automatically get undefined values
    if (H.rows() || EQ.rows()) {
       try {
+         // TODO: pass this as an input flag, providing overridable rules for Cone and Polytope
          const bool isCone = !p.isa("Polytope");
          if (isCone) {
-            if ( H.rows() )  // leave matrix empty otherwise
-               H = zero_vector<coord_type>()|H;
-            if ( EQ.rows() )  // leave matrix empty otherwise
+            H = zero_vector<coord_type>()|H;
+            if (EQ.cols())
                EQ = zero_vector<coord_type>()|EQ;
          }
-         typename Solver::matrix_pair VL=solver.enumerate_vertices(H, EQ, isCone, true); 
-         if (isCone) { 
+
+         if (H.cols() != EQ.cols() &&
+             H.cols() && EQ.cols()) {
+            throw std::runtime_error("ch_dual - dimension mismatch between Inequalities and Equations");
+         }
+
+         typename Solver::matrix_pair VL=solver.enumerate_vertices(H, EQ, isCone, true);
+         if (isCone) {
             if (VL.first.cols() > 1)
                p.take("RAYS") << VL.first.minor(All, range(1, VL.first.cols()-1));
             else
@@ -120,24 +135,24 @@ void ch_dual(perl::Object& p, Solver& solver)
             else
                p.take("LINEALITY_SPACE") << Matrix<coord_type>();
          } else {
-            p.take("RAYS") << VL.first;           
+            p.take("RAYS") << VL.first;
             p.take("LINEALITY_SPACE") << VL.second;
          }
-         if ( VL.second.rows() == 0 )
-            p.take("POINTED") << true;
-         else
-            p.take("POINTED") << false;
+         p.take("POINTED") << (VL.second.rows()==0);
+         // TODO: enable this for Polytope
+         // p.take("FEASIBLE") << false;
          p.take("LINEALITY_DIM") << VL.second.rows();
+         return;
       }
-      catch (infeasible) {
-         throw std::runtime_error("illegal empty polytope");
-      }
-   } else {
-      p.take("RAYS") << Matrix<coord_type>();
-      p.take("LINEALITY_SPACE") << Matrix<coord_type>();
-      p.take("LINEALITY_DIM") << 0;
-      p.take("POINTED") << true;
+      catch (infeasible) { }
    }
+   const int d=H.cols();
+   p.take("RAYS") << Matrix<coord_type>(0, d);
+   p.take("LINEALITY_SPACE") << Matrix<coord_type>(0, d);
+   p.take("LINEALITY_DIM") << 0;
+   p.take("POINTED") << true;
+   // TODO: enable this for Polytope
+   // p.take("FEASIBLE") << false;
 }
 
 // only lrs
@@ -154,15 +169,19 @@ void count_vertices(perl::Object& p, Solver& solver, bool only_bounded=false)
    if (H.rows() || EQ.rows()) {
       try {
          if (isCone) {
-            if ( H.rows() )  // leave matrix empty otherwise
-               H = zero_vector<coord_type>()|H;
-            if ( EQ.rows() )  // leave matrix empty otherwise
+            H = zero_vector<coord_type>()|H;
+            if (EQ.cols())
                EQ = zero_vector<coord_type>()|EQ;
+         }
+
+         if (H.cols() != EQ.cols() &&
+             H.cols() && EQ.cols()) {
+            throw std::runtime_error("count_vertices - dimension mismatch between Inequalities and Equations");
          }
 
          typename Solver::vertex_count count=solver.count_vertices(H,EQ,only_bounded);
          if ( isCone ) {
-            // lrs counts the origin 
+            // lrs counts the origin
             // we have to substract this in our representation
             p.take("N_RAYS") << count.verts.first-1;
          } else {

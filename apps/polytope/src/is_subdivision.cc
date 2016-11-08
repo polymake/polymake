@@ -24,24 +24,24 @@
 namespace polymake { namespace polytope {
 
 template <typename Faces>
-typename pm::enable_if<bool, pm::isomorphic_to_container_of<Faces, Set<int> >::value>::type
+typename std::enable_if<pm::isomorphic_to_container_of<Faces, Set<int> >::value, bool>::type
 is_subdivision(const Matrix<Rational>& verts, const Faces& subdiv, perl::OptionSet options)
 {
    const int n_vertices=verts.rows();
 
    Set<int> all_verts; //to test the union property
 
-   for (typename Entire<Faces>::const_iterator face_i=entire(subdiv); !face_i.at_end(); ++face_i) {
+   for (auto face_i=entire(subdiv); !face_i.at_end(); ++face_i) {
       all_verts += *face_i;
-      typename Entire<Faces>::const_iterator face_l=face_i;
+      auto face_l=face_i;
       while (!(++face_l).at_end()) {
          //test the intersection property
          const Matrix<Rational> intersection=null_space(verts.minor((*face_i) * (*face_l), All)); //the (affine hull of) the intersection
          const Set<int> rest=(*face_i) ^ (*face_l);
          //test if some other vertex of one of the two faces is contained in the affine hull
-         for (Entire< Set<int> >::const_iterator j=entire(rest); !j.at_end(); ++j) {
+         for (auto j=entire(rest); !j.at_end(); ++j) {
             bool is_contained=true;
-            for (Entire< Rows < Matrix<Rational> > >::const_iterator k=entire(rows(intersection)); is_contained && !k.at_end(); ++k)
+            for (auto k=entire(rows(intersection)); is_contained && !k.at_end(); ++k)
                if ((*k)*verts.row(*j)!=0) is_contained=false;
             if (is_contained) {
                //the intersection property is violated
@@ -102,6 +102,14 @@ is_subdivision(const Matrix<Rational>& verts, const Faces& subdiv, perl::OptionS
 bool is_subdivision(const Matrix<Rational>& verts, const IncidenceMatrix<>& subdiv, perl::OptionSet options)
 {
    return is_subdivision(verts, rows(subdiv), options);
+}
+
+template <typename UnorderedFaces>
+typename std::enable_if<std::is_constructible<IncidenceMatrix<>, UnorderedFaces>::value &&
+                        !pm::isomorphic_to_container_of<UnorderedFaces, Set<int>>::value, bool>::type
+is_subdivision(const Matrix<Rational>& verts, const UnorderedFaces& subdiv, perl::OptionSet options)
+{
+   return is_subdivision(verts, IncidenceMatrix<>(subdiv), options);
 }
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"

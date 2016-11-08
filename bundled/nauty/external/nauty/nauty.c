@@ -1,8 +1,8 @@
 /*****************************************************************************
 *                                                                            *
-*  Main source file for version 2.5 of nauty.                                *
+*  Main source file for version 2.6 of nauty.                                *
 *                                                                            *
-*   Copyright (1984-2013) Brendan McKay.  All rights reserved.  Permission   *
+*   Copyright (1984-2016) Brendan McKay.  All rights reserved.  Permission   *
 *   Subject to the waivers and disclaimers in nauty.h.                       *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
@@ -62,7 +62,9 @@
 *       10-Dec-06 : remove BIGNAUTY                                          *
 *       10-Nov-09 : remove shortish and permutation types                    *
 *       16-Nov-11 : added Shreier option                                     *
-*       15-Jan012 : added TLS_ATTR to static declarations                    *
+*       15-Jan-12 : added TLS_ATTR to static declarations                    *
+*       18-Jan-13 : added signal aborting                                    *
+*       19-Jan-13 : added usercanonproc()                                    *
 *                                                                            *
 *****************************************************************************/
 
@@ -72,8 +74,10 @@
 
 #ifdef NAUTY_IN_MAGMA
 #include "cleanup.e"
-#define NAUTY_ABORT (-11)
 #endif
+
+#define NAUTY_ABORTED (-11)
+#define NAUTY_KILLED (-12)
 
 typedef struct tcnode_struct
 {
@@ -113,6 +117,8 @@ static TLS_ATTR void (*usernodeproc)(graph*,int*,int*,int,int,int,int,int,int);
 static TLS_ATTR void (*userautomproc)(int,int*,int*,int,int,int);
 static TLS_ATTR void (*userlevelproc)
           (int*,int*,int,int*,statsblk*,int,int,int,int,int,int);
+static TLS_ATTR int (*usercanonproc)
+          (graph*,int*,graph*,int,int,int,int);
 static TLS_ATTR void (*invarproc)
           (graph*,int*,int*,int,int,int,int*,int,boolean,int,int);
 static TLS_ATTR FILE *outfile;
@@ -376,6 +382,7 @@ nauty(graph *g_arg, int *lab, int *ptn, set *active_arg,
     usernodeproc = options->usernodeproc;
     userautomproc = options->userautomproc;
     userlevelproc = options->userlevelproc;
+    usercanonproc = options->usercanonproc;
 
     invarproc = options->invarproc;
     if (options->mininvarlevel < 0 && options->getcanon)
@@ -481,9 +488,11 @@ nauty(graph *g_arg, int *lab, int *ptn, set *active_arg,
     retval = firstpathnode(lab,ptn,1,numcells);
 #endif  
 
-#ifdef NAUTY_IN_MAGMA
-    if (retval != NAUTY_ABORT)
-#endif
+    if (retval == NAUTY_ABORTED)
+	stats->errstatus = NAUABORTED;
+    else if (retval == NAUTY_KILLED)
+	stats->errstatus = NAUKILLED;
+    else
     {
         if (getcanon)
         {
@@ -602,6 +611,14 @@ firstpathnode(int *lab, int *ptn, int level, int numcells)
     {
         firstterminal(lab,level);
         OPTCALL(userlevelproc)(lab,ptn,level,orbits,stats,0,1,1,n,0,n);
+	if (getcanon && usercanonproc != NULL)
+	{
+            (*dispatch.updatecan)(g,canong,canonlab,samerows,M,n);
+            samerows = n;
+	    if ((*usercanonproc)(g,canonlab,canong,stats->canupdates,
+                                (int)canoncode[level],M,n))
+	        return NAUTY_ABORTED;
+	}
         return level-1;
     }
 
@@ -710,7 +727,9 @@ othernode(int *lab, int *ptn, int level, int numcells)
 #endif
 
 #ifdef NAUTY_IN_MAGMA
-    if (main_seen_interrupt) return NAUTY_ABORT;
+    if (main_seen_interrupt) return NAUTY_KILLED;
+#else
+    if (nauty_kill_request) return NAUTY_KILLED;
 #endif
 
     ++stats->numnodes;
@@ -984,6 +1003,14 @@ processnode(int *lab, int *ptn, int level, int numcells)
         comp_canon = 0;
         canoncode[level+1] = 077777;
         samerows = sr;
+	if (getcanon && usercanonproc != NULL)
+	{
+            (*dispatch.updatecan)(g,canong,canonlab,samerows,M,n);
+            samerows = n;
+	    if ((*usercanonproc)(g,canonlab,canong,stats->canupdates,
+                                (int)canoncode[level],M,n))
+	        return NAUTY_ABORTED;
+	}
         break;
 
     case 4:                /* non-automorphism terminal node */

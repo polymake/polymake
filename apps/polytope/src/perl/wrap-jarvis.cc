@@ -16,9 +16,9 @@
 
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/Rational.h"
 #include "polymake/TropicalNumber.h"
-#include "polymake/PuiseuxFraction.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -43,5 +43,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(jarvis_X, perl::Canned< const Matrix< Rational > >);
    FunctionInstance4perl(jarvis_X, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
    FunctionInstance4perl(new_X, Matrix< PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const pm::ListMatrix<pm::Vector<pm::PuiseuxFraction<pm::Min, pm::Rational, pm::Rational> > > >);
+   FunctionInstance4perl(jarvis_X, perl::Canned< const Matrix< double > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

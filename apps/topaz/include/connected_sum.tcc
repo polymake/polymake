@@ -36,7 +36,7 @@ std::list< Set<int> > connected_sum(const Complex_1& C1,
    // add facets of C1, omitting f1, and compute the vertex set of C1
    Set<int> V1, V2, facet1, facet2;
    int i=0;
-   for (typename Entire<Complex_1>::const_iterator c_it=entire(C1); !c_it.at_end(); ++c_it, ++i) {
+   for (auto c_it=entire(C1);  !c_it.at_end();  ++c_it, ++i) {
       if (i==f1)
          facet1=*c_it;
       else
@@ -77,8 +77,7 @@ std::list< Set<int> > connected_sum(const Complex_1& C1,
       
    // add facets of C2, omitting f2, and adjust the vertex indices
    i=0;
-   for (typename Entire<Complex_2>::const_iterator c_it=entire(C2);
-        !c_it.at_end(); ++c_it, ++i)
+   for (auto c_it=entire(C2);  !c_it.at_end();  ++c_it, ++i)
       if (i!=f2) {
          Set<int> f;
          for (typename Entire<Facet2>::const_iterator f_it=entire(*c_it);
@@ -92,21 +91,17 @@ std::list< Set<int> > connected_sum(const Complex_1& C1,
       int count = L1.size();
       L1.resize(count + L2.size() - facet1.size());
          
-      for (int v=0; v<count; ++v)
-         if (!facet1.contains(v)) {
-            std::ostringstream label;
-            label << L1[v] << "_1";
-            L1[v] = label.str();
-         }
+      for (int v=0; v<count; ++v) {
+         if (!facet1.contains(v))
+            L1[v].append("_1");
+      }
          
-      for (int v=0; v<L2.size(); ++v)
+      for (int v=0; v<L2.size(); ++v) {
          if (!facet2.contains(v)) {
-            std::ostringstream label;
-            label << L2[v] << "_2";
-            std::string l = label.str();
-            L1[count] = label.str();;
+            L1[count] = L2[v] + "_2";
             ++count;
          }
+      }
    }
       
    const Set<int> V = accumulate(CS, operations::add());

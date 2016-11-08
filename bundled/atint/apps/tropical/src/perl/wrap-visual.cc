@@ -22,11 +22,35 @@ namespace polymake { namespace tropical { namespace {
    }
    FunctionWrapperInstance4perl( pm::Matrix<pm::Rational> (pm::Matrix<pm::Rational>, pm::Rational, bool) );
 
-   FunctionWrapper4perl( pm::perl::ListReturn (perl::Object, pm::Vector<pm::Integer>, pm::Matrix<pm::Rational>, pm::Array<std::string, void>) ) {
+   FunctionWrapper4perl( pm::perl::ListReturn (perl::Object, pm::Vector<pm::Integer>, pm::Matrix<pm::Rational>, pm::Array<std::string>) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
       IndirectWrapperReturnVoid( arg0, arg1.get< perl::TryCanned< const Vector< Integer > > >(), arg2.get< perl::TryCanned< const Matrix< Rational > > >(), arg3.get< perl::TryCanned< const Array< std::string > > >() );
    }
-   FunctionWrapperInstance4perl( pm::perl::ListReturn (perl::Object, pm::Vector<pm::Integer>, pm::Matrix<pm::Rational>, pm::Array<std::string, void>) );
+   FunctionWrapperInstance4perl( pm::perl::ListReturn (perl::Object, pm::Vector<pm::Integer>, pm::Matrix<pm::Rational>, pm::Array<std::string>) );
+
+   FunctionWrapper4perl( pm::Matrix<pm::Rational> (pm::Matrix<pm::Rational> const&, pm::Rational const&, bool) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Matrix< Rational > > >(), arg1.get< perl::TryCanned< const Rational > >(), arg2 );
+   }
+   FunctionWrapperInstance4perl( pm::Matrix<pm::Rational> (pm::Matrix<pm::Rational> const&, pm::Rational const&, bool) );
+
+   FunctionWrapper4perl( pm::perl::ListReturn (perl::Object, pm::Vector<pm::Integer> const&, pm::Matrix<pm::Rational> const&, pm::Array<std::basic_string<char, std::char_traits<char>, std::allocator<char> > > const&) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
+      IndirectWrapperReturnVoid( arg0, arg1.get< perl::TryCanned< const Vector< Integer > > >(), arg2.get< perl::TryCanned< const Matrix< Rational > > >(), arg3.get< perl::TryCanned< const Array< std::string > > >() );
+   }
+   FunctionWrapperInstance4perl( pm::perl::ListReturn (perl::Object, pm::Vector<pm::Integer> const&, pm::Matrix<pm::Rational> const&, pm::Array<std::basic_string<char, std::char_traits<char>, std::allocator<char> > > const&) );
+
+   FunctionWrapper4perl( pm::perl::ListReturn (perl::Object, pm::Vector<pm::Integer> const&, pm::Array<pm::Rational> const&, pm::Matrix<pm::Rational> const&, pm::Array<std::basic_string<char, std::char_traits<char>, std::allocator<char> > > const&) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]), arg4(stack[4]);
+      IndirectWrapperReturnVoid( arg0, arg1.get< perl::TryCanned< const Vector< Integer > > >(), arg2.get< perl::TryCanned< const Array< Rational > > >(), arg3.get< perl::TryCanned< const Matrix< Rational > > >(), arg4.get< perl::TryCanned< const Array< std::string > > >() );
+   }
+   FunctionWrapperInstance4perl( pm::perl::ListReturn (perl::Object, pm::Vector<pm::Integer> const&, pm::Array<pm::Rational> const&, pm::Matrix<pm::Rational> const&, pm::Array<std::basic_string<char, std::char_traits<char>, std::allocator<char> > > const&) );
+
+   FunctionWrapper4perl( pm::perl::ListReturn (perl::Object, pm::Matrix<pm::Rational> const&, pm::Array<std::basic_string<char, std::char_traits<char>, std::allocator<char> > > const&) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      IndirectWrapperReturnVoid( arg0, arg1.get< perl::TryCanned< const Matrix< Rational > > >(), arg2.get< perl::TryCanned< const Array< std::string > > >() );
+   }
+   FunctionWrapperInstance4perl( pm::perl::ListReturn (perl::Object, pm::Matrix<pm::Rational> const&, pm::Array<std::basic_string<char, std::char_traits<char>, std::allocator<char> > > const&) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

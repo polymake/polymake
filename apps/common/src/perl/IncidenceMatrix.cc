@@ -87,5 +87,8 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, IncidenceMatrix< NonSymmetric >, perl::Canned< const pm::ComplementIncidenceMatrix<pm::Transposed<pm::IncidenceMatrix<pm::NonSymmetric> > > >);
    OperatorInstance4perl(convert, IncidenceMatrix< NonSymmetric >, perl::Canned< const NodeMap< Directed, Set< int > > >);
    FunctionInstance4perl(new_X, IncidenceMatrix< NonSymmetric >, perl::Canned< const pm::MatrixMinor<pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::all_selector const&, pm::Set<int, pm::operations::cmp> const&> >);
+   OperatorInstance4perl(assign, pm::MatrixMinor<pm::IncidenceMatrix<pm::NonSymmetric>&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&>, perl::Canned< const pm::MatrixMinor<pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::all_selector const&, pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&> const&> >);
+   OperatorInstance4perl(assign, pm::MatrixMinor<pm::IncidenceMatrix<pm::NonSymmetric>&, pm::all_selector const&, pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> const&>, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
+   FunctionInstance4perl(new_X, IncidenceMatrix< NonSymmetric >, perl::Canned< const pm::MatrixMinor<pm::IncidenceMatrix<pm::NonSymmetric>&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&, pm::all_selector const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

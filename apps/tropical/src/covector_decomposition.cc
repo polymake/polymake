@@ -107,7 +107,7 @@ namespace polymake { namespace tropical {
 	/*
 	 * @brief Computes the covector decomposition of the tropical span and possibly of the tropical
 	 * torus induced by a list of tropical points.
-	 * @param perl::Object cone. A tropical::Cone
+	 * @param tropical::Cone
 	 * @param bool compute_only_tropical_span If true, only the covector decomposition of the tropical span is
 	 * computed. If false, the covector decomposition of the torus is also computed.
 	 * @return Nothing. Sets the properties [[CONE_COVECTOR_DECOMPOSITION]], [[CONE_MAXIMAL_COVECTOR_CELLS]] 
@@ -273,9 +273,9 @@ namespace polymake { namespace tropical {
 				cone_covector_lattice.take("FACES") << HD_cone.faces();
 				cone_covector_lattice.take("DIMS") << HD_cone.dims();
 				cone_covector_lattice.take("COVECTORS") << cone_covector_map;
-			cone.take("CONE_COVECTOR_DECOMPOSITION") << cone_covector_lattice;
-			cone.take("CONE_MAXIMAL_COVECTOR_CELLS") << max_cone_faces;
-			cone.take("CONE_MAXIMAL_COVECTORS") << max_cone_covectors;
+			cone.take("POLYTOPE_COVECTOR_DECOMPOSITION") << cone_covector_lattice;
+			cone.take("POLYTOPE_MAXIMAL_COVECTOR_CELLS") << max_cone_faces;
+			cone.take("POLYTOPE_MAXIMAL_COVECTORS") << max_cone_covectors;
 
 			if(!compute_only_tropical_span) {
 				IncidenceMatrix<> max_torus_incidence(max_torus_faces);
@@ -292,7 +292,7 @@ namespace polymake { namespace tropical {
 
 		}
 
-	FunctionTemplate4perl("compute_covector_decomposition<Addition,Scalar>(Cone<Addition,Scalar>, $) : void");
+	FunctionTemplate4perl("compute_covector_decomposition<Addition,Scalar>(Polytope<Addition,Scalar>, $) : void");
 
 
 }}

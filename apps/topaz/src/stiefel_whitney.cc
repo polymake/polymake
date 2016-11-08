@@ -78,12 +78,8 @@ Array<PowerSet<int> > stiefel_whitney(const Array<Set<int> >& facets, perl::Opti
    if (low_d<0) low_d+=d+1;
    if (high_d<0) high_d+=d+1;
    
-   if (high_d < low_d || high_d > d) {
-      std::ostringstream e;
-      e << "stiefel_whitney: dim_low(" << low_d << "), dim_high("
-        << high_d << ") out of bounds" << endl;
-      throw std::runtime_error(e.str());
-   }
+   if (high_d < low_d || high_d > d)
+      throw std::runtime_error("stiefel_whitney: dim_low(" + std::to_string(low_d) + "), dim_high(" + std::to_string(high_d) + ") out of bounds");
    
    Array< PowerSet<int> > omega_cycle(high_d-low_d+1);
    Array< PowerSet<int> >::iterator omega_cycle_k=omega_cycle.begin();

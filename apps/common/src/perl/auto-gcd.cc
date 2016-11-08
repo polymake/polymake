@@ -40,7 +40,7 @@ namespace polymake { namespace common { namespace {
       WrapperReturn( gcd(arg0.get<T0>(), arg1.get<T1>()) );
    };
 
-   FunctionInstance4perl(gcd_X, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer>&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(gcd_X, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer>&>, pm::Series<int, true>> >);
    FunctionInstance4perl(gcd_X, perl::Canned< const Vector< Integer > >);
    FunctionInstance4perl(gcd_X_X, perl::Canned< const Integer >, perl::Canned< const Integer >);
    FunctionInstance4perl(gcd_X_X, long, perl::Canned< const Integer >);

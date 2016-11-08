@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,6 +18,7 @@
 #define POLYMAKE_INTERNAL_PLAIN_PARSER_H
 
 #include "polymake/internal/comparators_basic_defs.h"
+#include "polymake/meta_list.h"
 
 #include <iostream>
 #include <sstream>
@@ -32,15 +33,16 @@ class Rational;
 template <typename> class OpeningBracket;
 template <typename> class SeparatorChar;
 template <typename> class ClosingBracket;
+
 template <typename Options, typename Traits> class PlainPrinterCompositeCursor;
 template <typename Options, typename Traits> class PlainPrinterSparseCursor;
 
-template <typename Options=void, typename Traits=std::ostream::traits_type>
+template <typename Options=mlist<>, typename Traits=std::ostream::traits_type>
 class PlainPrinter
-   : public GenericOutputImpl< PlainPrinter<Options,Traits> >,
-     public GenericIOoptions< PlainPrinter<Options,Traits>, Options> {
+   : public GenericOutputImpl< PlainPrinter<Options, Traits> >
+   , public GenericIOoptions< PlainPrinter<Options, Traits>, Options> {
 public:
-   typedef std::basic_ostream<char,Traits> ostream;
+   typedef std::basic_ostream<char, Traits> ostream;
    typedef GenericOutputImpl<PlainPrinter> generic_impl;
 protected:
    ostream* os;
@@ -58,28 +60,29 @@ public:
    template <typename ObjectRef>
    struct list_cursor {
       typedef typename deref<ObjectRef>::type Object;
-      static const bool top_level=!extract_type_param<Options, SeparatorChar>::specified;
-      static const bool in_composite=extract_int_param<Options, OpeningBracket>::value == '(' ||
-                                     extract_int_param<Options, SeparatorChar>::value == ' ' ||
-                                     extract_bool_param<Options, SparseRepresentation>::value;
-      static const int
+      static const char null_char='\0';
+      static const bool top_level=!mtagged_list_extract<Options, SeparatorChar>::is_specified;
+      static const bool in_composite=tagged_list_extract_integral<Options, OpeningBracket>(null_char) == '(' ||
+                                     tagged_list_extract_integral<Options, SeparatorChar>(null_char) == ' ' ||
+                                     tagged_list_extract_integral<Options, SparseRepresentation>(false);
+      static const char
          opening= object_traits<Object>::IO_separator==IO_sep_inherit && !object_traits<Object>::IO_ends_with_eol
                   ? '{'
                   : !top_level && (object_traits<Object>::IO_ends_with_eol || in_composite)
-                  ? '<' : 0,
+                  ? '<' : null_char,
          closing= object_traits<Object>::IO_separator==IO_sep_inherit && !object_traits<Object>::IO_ends_with_eol
                   ? '}'
                   : !top_level && (object_traits<Object>::IO_ends_with_eol || in_composite)
-                  ? '>' : 0,
+                  ? '>' : null_char,
          sep= object_traits<Object>::IO_separate_elements_with_eol ||
               object_traits<typename Object::value_type>::IO_ends_with_eol
               ? '\n' : ' ';
 
-      typedef typename replace_params<
-              typename remove_bool_param<Options, SparseRepresentation>::type,
-                 cons< OpeningBracket< int2type<opening> >,
-                 cons< ClosingBracket< int2type<closing> >,
-                       SeparatorChar< int2type<sep> > > > >::type
+      typedef typename mtagged_list_replace<
+                 typename mtagged_list_remove<Options, SparseRepresentation>::type,
+                 OpeningBracket<char_constant<opening>>,
+                 ClosingBracket<char_constant<closing>>,
+                 SeparatorChar<char_constant<sep>> >::type
          cursor_options;
       typedef PlainPrinterCompositeCursor<cursor_options, Traits> type;
 
@@ -113,18 +116,19 @@ public:
          total= list_length<typename object_traits<Object>::elements>::value,
          ignored= list_accumulate_unary<list_count, ignore_in_composite, typename object_traits<Object>::elements>::value;
       static const bool
-         top_level=!extract_type_param<Options, SeparatorChar>::specified,
+         top_level=!mtagged_list_extract<Options, SeparatorChar>::is_specified,
          compress= ignored>0 && total-ignored<=1;
-      static const int
-         opening = top_level || compress ? 0 : '(',
-         closing = top_level || compress ? 0 : ')',
-         sep= compress ? 0 : object_traits<Object>::IO_ends_with_eol ? '\n' : ' ';
+      static const char
+         null_char = '\0',
+         opening = top_level || compress ? null_char : '(',
+         closing = top_level || compress ? null_char : ')',
+         sep= compress ? null_char : object_traits<Object>::IO_ends_with_eol ? '\n' : ' ';
 
-      typedef typename replace_params<
-              typename remove_bool_param<Options, SparseRepresentation>::type,
-                 cons< OpeningBracket< int2type<opening> >,
-                 cons< ClosingBracket< int2type<closing> >,
-                       SeparatorChar< int2type<sep> > > > >::type
+      typedef typename mtagged_list_replace<
+                 typename mtagged_list_remove<Options, SparseRepresentation>::type,
+                 OpeningBracket<char_constant<opening>>,
+                 ClosingBracket<char_constant<closing>>,
+                 SeparatorChar<char_constant<sep>> >::type
          cursor_options;
       typedef PlainPrinterCompositeCursor<cursor_options, Traits> type;
    };
@@ -155,9 +159,9 @@ public:
 };
 
 template <typename Traits> inline
-PlainPrinter<void,Traits> wrap(std::basic_ostream<char,Traits>& os)
+PlainPrinter<mlist<>, Traits> wrap(std::basic_ostream<char, Traits>& os)
 {
-   return PlainPrinter<void,Traits>(os);
+   return PlainPrinter<mlist<>, Traits>(os);
 }
 
 extern PlainPrinter<> cout;
@@ -169,7 +173,7 @@ extern PlainPrinter<> cerr;
 enum std_manip { endl, ends };
 
 template <typename Traits> inline
-std::basic_ostream<char,Traits>& operator<< (std::basic_ostream<char,Traits>& os, std_manip manip)
+std::basic_ostream<char, Traits>& operator<< (std::basic_ostream<char, Traits>& os, std_manip manip)
 {
    switch (manip) {
    case endl:
@@ -183,8 +187,8 @@ std::basic_ostream<char,Traits>& operator<< (std::basic_ostream<char,Traits>& os
 #else
 
 template <typename Options, typename Traits> inline
-PlainPrinter<Options,Traits>&
-operator<< (PlainPrinter<Options,Traits>& os, std::basic_ostream<char,Traits>& (*manip)(std::basic_ostream<char,Traits>&))
+PlainPrinter<Options, Traits>&
+operator<< (PlainPrinter<Options, Traits>& os, std::basic_ostream<char, Traits>& (*manip)(std::basic_ostream<char, Traits>&))
 {
    os.fallback(manip);
    return os;
@@ -202,9 +206,10 @@ protected:
    char pending_sep;
    int width;
    static const char
-      sep=extract_int_param<Options, SeparatorChar>::value,
-      opening=extract_int_param<Options, OpeningBracket>::value,
-      closing=extract_int_param<Options, ClosingBracket>::value;
+      null_char = '\0',
+      sep = tagged_list_extract_integral<Options, SeparatorChar>(null_char),
+      opening = tagged_list_extract_integral<Options, OpeningBracket>(null_char),
+      closing = tagged_list_extract_integral<Options, ClosingBracket>(null_char);
 
 public:
    PlainPrinterCompositeCursor(typename super::ostream& os_arg, bool no_opening_by_width=false)
@@ -324,6 +329,10 @@ public:
    void get_scalar(Rational&);
    void get_string(std::string&, char delim);
 
+   /// return ±1 if the input string equals "[+-]inf" (and consume that string)
+   /// return 0 otherwise (and don't consume anything)
+   int probe_inf();
+
    int count_lines();
    int count_all_lines();
 protected:
@@ -365,11 +374,11 @@ struct composite_depth<Object, is_composite> {
    static const int value= composite_depth<typename n_th<typename object_traits<Object>::elements, 0>::type>::value + 1;
 };
 
-template <typename Options=void>
+template <typename Options=mlist<>>
 class PlainParser
-   : public PlainParserCommon,
-     public GenericInputImpl< PlainParser<Options> >,
-     public GenericIOoptions< PlainParser<Options>, Options > {
+   : public PlainParserCommon
+   , public GenericInputImpl< PlainParser<Options> >
+   , public GenericIOoptions< PlainParser<Options>, Options > {
 public:
    PlainParser(std::istream& is_arg) : PlainParserCommon(is_arg) { }
 
@@ -437,14 +446,15 @@ operator>> (GenericInput< PlainParser<Options> >& is, std::string& s)
 template <typename Options>
 class PlainParserCursor : public PlainParserCommon {
 protected:
-   char *start_pos;
+   char* start_pos;
 
    static const char
-      opening=extract_int_param<Options, OpeningBracket>::value,
-      closing=extract_int_param<Options, ClosingBracket>::value,
-      separator=extract_int_param<Options, SeparatorChar>::value;
+      null_char = '\0',
+      opening = tagged_list_extract_integral<Options, OpeningBracket>(null_char),
+      closing = tagged_list_extract_integral<Options, ClosingBracket>(null_char),
+      separator = tagged_list_extract_integral<Options, SeparatorChar>(null_char);
    static const bool
-      is_temp=extract_bool_param<Options, LookForward>::value;
+      is_temp = tagged_list_extract_integral<Options, LookForward>(false);
 
    PlainParser<Options>& sub_parser()
    {
@@ -503,10 +513,10 @@ class PlainParserListCursor
 
    template <typename, typename> friend class PlainParserListCursor;
 
-   static const bool has_sparse_representation=extract_bool_param<Options, SparseRepresentation, false>::value;
+   static const bool has_sparse_representation=tagged_list_extract_integral<Options, SparseRepresentation>(false);
 protected:
    int _size;
-   char *pair_egptr;
+   char* pair_egptr;
 
    int size(is_scalar)
    {
@@ -588,21 +598,20 @@ public:
 
    bool sparse_representation()
    {
-      return extract_type_param<Options,SparseRepresentation>::specified
+      return mtagged_list_extract<Options, SparseRepresentation>::is_specified
              ? has_sparse_representation
              : _sparse_representation();
    }
 
-   template <typename ElementType>
-   int lookup_lower_dim(bool tell_size_if_dense)
+   int cols(bool tell_size_if_dense)
    {
-      return this->sub_parser().set_option(LookForward<True>()).begin_list((ElementType*)0).lookup_dim(tell_size_if_dense);
+      return this->sub_parser().set_option(LookForward<std::true_type>()).begin_list((Value*)0).lookup_dim(tell_size_if_dense);
    }
 
    int lookup_dim(bool tell_size_if_dense)
    {
       return (!ignore_in_composite<Value>::value && sparse_representation())
-         ? this->set_option(SparseRepresentation<True>()).get_dim() :
+             ? this->set_option(SparseRepresentation<std::true_type>()).get_dim() :
              tell_size_if_dense
              ? size() : -1;
    }
@@ -650,25 +659,6 @@ public:
       }
    }
 };
-
-template <typename T>
-class convToString {
-public:
-   typedef T argument_type;
-   typedef const std::string result_type;
-
-   result_type operator() (typename function_argument<T>::type x) const
-   {
-      std::ostringstream out;
-      wrap(out) << x;
-      return out.str();
-   }
-};
-
-template <> class conv<int, std::string> : public convToString<int> {};
-template <> class conv<long, std::string> : public convToString<long> {};
-template <> class conv<float, std::string> : public convToString<float> {};
-template <> class conv<double, std::string> : public convToString<double> {};
 
 namespace perl {
 

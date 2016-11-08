@@ -16,7 +16,9 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/Graph.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/Integer.h"
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
@@ -27,6 +29,12 @@
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0>
+   FunctionInterface4perl( rows_X32, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturn( (rows(arg0.get<T0>())), arg0 );
+   };
+
    template <typename T0>
    FunctionInterface4perl( rows_X, T0 ) {
       perl::Value arg0(stack[0]);
@@ -50,5 +58,14 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> >);
    FunctionInstance4perl(rows_f1, perl::Canned< const Matrix< TropicalNumber< Max, Rational > > >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true> >);
+   FunctionInstance4perl(rows_f1, perl::Canned< const pm::AdjacencyMatrix<pm::graph::Graph<pm::graph::Undirected>, false> >);
+   FunctionInstance4perl(rows_X, perl::Canned< const Matrix< int > >);
+   FunctionInstance4perl(rows_f1, perl::Canned< const Matrix< std::pair< double, double > > >);
+   FunctionInstance4perl(rows_X32, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
+   FunctionInstance4perl(rows_X, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Integer> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSetCmp<int, pm::operations::cmp>, int, pm::operations::cmp> const&> >);
+   FunctionInstance4perl(rows_X, perl::Canned< const Matrix< Integer > >);
+   FunctionInstance4perl(rows_X, perl::Canned< const SparseMatrix< int, NonSymmetric > >);
+   FunctionInstance4perl(rows_f1, perl::Canned< const pm::MatrixMinor<pm::Matrix<double>&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> >);
+   FunctionInstance4perl(rows_f1, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<double, pm::NonSymmetric>&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

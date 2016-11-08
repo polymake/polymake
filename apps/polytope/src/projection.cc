@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -62,18 +62,18 @@ void process_rays(perl::Object& p_in, int first_coord, const Array<int>& indices
       points_read=true;
       if ( indices.empty() )  { // if we do a full projection then vertices remain vertices, so we write back whatever we got
          p_out.take(got_property) << Rays.minor(All,~coords_to_eliminate);
-         if ( p_in.lookup("LINEALITY_SPACE | INPUT_LINEALITY") >> lineality && lineality.rows() )
+         if (p_in.lookup("LINEALITY_SPACE | INPUT_LINEALITY") >> lineality && lineality.rows() > 0)
             p_out.take( got_property=="RAYS" || got_property=="VERTICES" ? "LINEALITY_SPACE" : "INPUT_LINEALITY") << lineality.minor(All,~coords_to_eliminate);
          else {
-            Matrix<Rational> empty;
+            Matrix<Rational> empty(0, Rays.cols() - coords_to_eliminate.size());
             p_out.take( got_property=="RAYS" || got_property=="VERTICES" ? "LINEALITY_SPACE" : "INPUT_LINEALITY") << empty;
          }
       } else {
          p_out.take("INPUT_RAYS") << Rays.minor(All,~coords_to_eliminate);
-         if ( p_in.lookup("LINEALITY_SPACE | INPUT_LINEALITY") >> lineality && lineality.rows() ) 
+         if (p_in.lookup("LINEALITY_SPACE | INPUT_LINEALITY") >> lineality && lineality.rows() > 0) 
             p_out.take("INPUT_LINEALITY") << lineality.minor(All,~coords_to_eliminate);  
          else {
-            Matrix<Rational> empty;
+            Matrix<Rational> empty(0, Rays.cols() - coords_to_eliminate.size());
             p_out.take("INPUT_LINEALITY") << empty;
          }
       }
@@ -81,10 +81,10 @@ void process_rays(perl::Object& p_in, int first_coord, const Array<int>& indices
   
    if (!points_read && options["nofm"])
       throw std::runtime_error("projection: no rays found and Fourier-Motzkin elimination excluded");
-   if ( indices.empty() && options["relabel"]) {
+   if ( indices.empty() && !options["no_labels"]) {
       // here we assume that, if VERTEX_LABELS are present in the object, then also VERTICES are known
       // otherwise this will trigger a convex hull computation
-      int n_vertices = p_in.give("N_VERTICES");
+      int n_vertices = p_in.give("N_RAYS");
       Array<std::string> labels(n_vertices);
       read_labels(p_in, "RAY_LABELS", labels);
       p_out.take("RAY_LABELS") << labels;
@@ -141,21 +141,20 @@ void process_facets(perl::Object& p_in, const Array<int>& indices, perl::OptionS
 }  // end anonymous namespace
 
 template <typename Scalar>
-perl::Object projection_impl(perl::Object p_in, const std::string object_prefix, const std::string linear_span_name, int first_coord, const Array<int> indices, perl::OptionSet options) {
-
-
+perl::Object projection_impl(perl::Object p_in, const std::string object_prefix, const std::string linear_span_name, int first_coord, const Array<int> indices, perl::OptionSet options)
+{
    if ( (object_prefix=="CONE" || object_prefix=="FAN") && !p_in.exists("RAYS | INPUT_RAYS") &&
         ! (object_prefix=="CONE" && p_in.exists("FACETS | INEQUALITIES") ) )
       throw std::runtime_error("projection is not defined for combinatorially given objects");
    
-   const int ambient_dim = p_in.give((object_prefix + "_AMBIENT_DIM").c_str());
-   const int dim = p_in.give((object_prefix + "_DIM").c_str());
+   const int ambient_dim = p_in.give(object_prefix + "_AMBIENT_DIM");
+   const int dim = p_in.give(object_prefix + "_DIM");
    const int codim = ambient_dim-dim;
    if (indices.empty() && codim==0) return p_in; // nothing to do
 
-   const Matrix<Scalar> linear_span = p_in.give(linear_span_name.c_str());
-   if (codim!=linear_span.rows())
-      throw std::runtime_error(("projection: " + linear_span_name + " has wrong number of rows").c_str());
+   const Matrix<Scalar> linear_span = p_in.give(linear_span_name);
+   if (codim != linear_span.rows())
+      throw std::runtime_error("projection: " + linear_span_name + " has wrong number of rows");
    const int last_coord=ambient_dim-1;
    const Set<int> coords_to_eliminate = coordinates_to_eliminate(indices, first_coord, last_coord, codim, linear_span, options["revert"]);   // set of columns to project to
 

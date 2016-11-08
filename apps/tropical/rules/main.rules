@@ -14,12 +14,12 @@
 #-------------------------------------------------------------------------------
 
 # @topic application
-# This application concentrates on [[Hypersurface|tropical hypersurfaces]] and [[Cone|tropical cones]].
+# This application concentrates on [[Hypersurface|tropical hypersurfaces]] and [[Polytope|tropical polytopes]].
 # It provides the functionality for the computation of basic properties. Visualization and various constructions are possible.
 
 IMPORT common graph
 
-USE polytope fan graph
+USE polytope fan graph matroid 
 
 file_suffix trop
 
@@ -33,12 +33,12 @@ HELP help.rules
 # also saves the corresponding type.
 declare object CovectorLattice : FaceLattice;
 
-# A tropical cone is the tropical convex hull of finitely many points in tropical projective space.
+# A tropical polytope is the tropical convex hull of finitely many points in tropical projective space.
 # It should always be defined via [[POINTS]] instead of [[VERTICES]], as those define the combinatorics
 # of the induced subdivision.
 # @tparam Addition Either [[Min]] or [[Max]]. There is NO default for this, you have to choose!
 # @tparam Scalar Rational by default. The underlying type of ordered group.
-declare object Cone<Addition, Scalar=Rational> [ is_ordered_field_with_unlimited_precision(Scalar) ];
+declare object Polytope<Addition, Scalar=Rational> [ is_ordered_field_with_unlimited_precision(Scalar) ];
 
 # A tropical cycle is a weighted, balanced, pure polyhedral complex.
 # It is given as a polyhedral complex in tropical projective coordinates.
@@ -68,7 +68,6 @@ INCLUDE
   #tplib.rules
   visual.rules
   visual_covector.rules
-  visual_cycle.rules
 
 
 # Local Variables:

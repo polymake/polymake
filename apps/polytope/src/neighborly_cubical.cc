@@ -136,11 +136,8 @@ perl::Object neighborly_cubical(int d, int n)
 {
   // there is a certain restriction on the parameters
   const int m=8*sizeof(int)-2;
-  if (d < 2 || d > n || n > m) {
-    std::ostringstream error;
-    error << "neighborly_cubical: 2 <= d <= n <= " << m;
-    throw std::runtime_error(error.str());
-  }
+  if (d < 2 || d > n || n > m)
+    throw std::runtime_error("neighborly_cubical: 2 <= d <= n <= " + std::to_string(m));
 
   perl::Object p_out("Polytope<Rational>"); //FIXME: Polytope<Combinatorial>
   p_out.set_description() << "Neighborly cubical " << d << "-polytope" << endl;
@@ -196,9 +193,8 @@ perl::Object neighborly_cubical(int d, int n)
    circuit = series(1,pm1-pm1/2,4) + series(2,pm1/2,4); // always starts with a negative one
    add_facet(VIF, labels, circuit+(2*pm1), CubeFacets);
    add_facet(VIF, labels, circuit+(2*pm1+1), CubeFacets);
-   IncidenceMatrix<> VIF_out(VIF);
 
-   p_out.take("VERTICES_IN_FACETS") << VIF_out;
+   p_out.take("VERTICES_IN_FACETS") << IncidenceMatrix<>(std::move(VIF));
    p_out.take("N_VERTICES") << n_vertices;
    p_out.take("FACET_LABELS") << labels;
    return p_out;

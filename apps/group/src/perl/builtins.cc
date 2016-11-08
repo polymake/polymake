@@ -25,5 +25,7 @@ namespace polymake { namespace group { namespace {
    Builtin4perl("Polymake::group::on_elements", on_elements);
    Builtin4perl("Polymake::group::on_container", on_container);
    Builtin4perl("Polymake::group::on_rows", on_rows);
+   Builtin4perl("Polymake::group::on_nonhomog_cols", on_nonhomog_cols);
+   Builtin4perl("Polymake::group::on_nonhomog_container", on_nonhomog_container);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

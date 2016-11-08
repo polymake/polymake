@@ -14,6 +14,9 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Integer.h"
+#include "polymake/Matrix.h"
 #include "polymake/Rational.h"
 #include "polymake/Vector.h"
 

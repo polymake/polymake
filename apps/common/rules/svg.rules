@@ -1,0 +1,175 @@
+#  Copyright (c) 1997-2016
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+REQUIRE
+   webbrowser.rules
+
+package PmSvg;
+
+CREDIT SVG
+   Generated using the Perl SVG Module
+   by Ronan Oger
+
+CONFIGURE {
+   eval("require SVG;");
+   if ($@) {
+      die "Could not load perl SVG module: $@\n";
+   } else {
+      return 1;
+   }
+}
+
+# @topic custom
+# The first two numeric constants defined here are in postscript points (1/72"). The following one are in px and are scaled to match the DIN A4 sheet.
+
+# height of DIN A4 sheet
+custom $Hpaper=841;
+
+# width of DIN A4 sheet
+custom $Wpaper=595;
+
+# vertical margin
+custom $Hmargin=50;
+
+# horizontal margin
+custom $Wmargin=30;
+
+# text labels
+custom $fontname="Times-Roman";
+
+# text labels
+custom $fontsize=10;
+
+# for circles representing single geometric points
+custom $point_radius=4;
+
+# normal line width
+custom $line_width=1;
+
+# spacing between points (lines) and labels
+custom $text_spacing=3;
+
+
+###########################################################################################
+#
+#  Basic class implementing the required back-end interface.
+#
+
+package PmSvg::Viewer;
+
+require PmSvg;
+
+use BackgroundViewer;
+
+use Polymake::Struct [ '@ISA' => 'SimpleViewer' ];
+
+sub file_suffix { ".svg" }
+
+sub new {
+   unless (defined $Visual::webbrowser) {
+      die <<'.';
+no Svg viewer configured: please specify the output File option
+or call  reconfigure("common::webbrowser.rules");
+.
+   }
+   my $self=&_new;
+   #$self->graphics=new Svg::File;
+   $self->tempfile->descend_dir();
+   $self;
+}
+
+sub command {
+   my ($self, $filename)=@_;
+   "$Visual::webbrowser $filename";
+}
+
+sub new_drawing {
+   my ($self, $title)=@_;
+   $self->SUPER::new_drawing($title);
+   $self;
+}
+
+sub append {
+   my $self=shift;
+   $self->graphics->append(@_);
+}
+
+# @category Visualization
+# Create a Svg drawing and show it with your favorite viewer.
+label svg
+
+global_method svg.geometry: draw(Visual::PointSet, @) {
+   my ($self, $P)=@_;
+   $self->append(PmSvg::PointSet->new($P));
+}
+
+global_method svg.geometry: draw(Visual::Polygon, @) {
+   my ($self, $P)=@_;
+   $self->append(PmSvg::Solid->new($P));
+}
+
+global_method svg.geometry: draw(Visual::Polygons, @) {
+   my ($self, $P)=@_;
+   $self->append(PmSvg::Solid->new($P));
+}
+
+
+###########################################################################################
+#
+#  Writes a SVG file without rendering
+#
+
+package PmSvg::File::Writer;
+import Visual::FileWriter;
+
+sub file_suffix { ".svg" }
+
+sub new_drawing {
+   my ($self, $title)=@_;
+   $self->title=$title;
+   $self;
+}
+
+sub DESTROY { }
+
+###########################################################################################
+
+package application;
+
+# @category Visualization
+# Create a Svg drawing with the given visual objects.
+#
+# @param Visual::Object vis_obj ... objects to draw
+#
+# @option String File "filename" or "AUTO"
+#  Store the drawing in a file without starting the viewer.
+#  The ''.svg'' suffix is automatically added to the file name.
+#
+#  Specify //AUTO// if you want the filename be automatically derived
+#  from the drawing title.
+#
+#  You can also use any expression allowed for the ''open'' function,
+#  including "-" for terminal output, "&HANDLE" for an already opened file handle,
+#  or "| program" for a pipe.
+
+user_function svg(Visual::Object+, { File => undef }) {
+   visualize_explicit(@_, "PmSvg");
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# End:

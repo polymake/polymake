@@ -66,6 +66,8 @@ endif
 
 Libs := -lmpfr -lgmp -lpthread ${Libs}
 
+override _depends_on_staticlib :=
+
 ifdef StaticLibs
   .PHONY: compile-staticlibs
 
@@ -77,17 +79,14 @@ ifdef StaticLibs
       $(foreach x,${StaticLibs},$(call _MakeStaticLib,$x,$(1)))
   endef
 
-  # build process of a static library might produce header files needed for our clients
-  ${SharedObjects} : | compile-staticlibs
-
   compile-staticlibs:
 	+@$(call _MakeStaticLibs,compile)
 
   clean::
 	+@$(call _MakeStaticLibs,clean)
-endif
 
-OwnShared := ${BuildDir}/lib/${AppName}$S
+  override _depends_on_staticlib := $(filter ${BuildDir}/%$A, ${LIBS})
+endif
 
 ifneq ($(wildcard ${SourceDir}/perl/*.cc ${SourceDir}/perl/*.C ${SourceDir}/perl/*.cpp),)
   groom_error := $(shell ${PERL} ${ProjectTop}/support/groom_wrappers.pl ${SourceDir}/perl 2>&1)
@@ -145,12 +144,14 @@ ${WrappersOnly} : ExtraCXXFLAGS += -DPOLYMAKE_NO_EMBEDDED_RULES
 ${WithWrappers} ${WrappersOnly} : guardedCompiler = yes
 $(addsuffix $O, ${AutoGenModules}) : guardedCompiler = yes
 
+OwnShared := ${BuildDir}/lib/${AppName}$S
+
 ifdef SharedObjects
   ifdef TempWrapperFor
     ${SharedObjects} : includeSource = ${IncludeSources} $(call addinclude,src/${TempWrapperFor}) $<
   endif
 
-  ${OwnShared} : $(if ${OnlyModules}, $(filter $(addsuffix $O,${OnlyModules}), ${SharedObjects}), ${SharedObjects}) ${_remove_orphans}
+  ${OwnShared} : $(if ${OnlyModules}, $(filter $(addsuffix $O,${OnlyModules}), ${SharedObjects}), ${SharedObjects}) ${_depends_on_staticlib} ${_remove_orphans}
 	${CXX} ${LDsharedFlags} -o $@ ${SharedObjects} ${LDFLAGS} ${LIBS}
 
 else
@@ -162,7 +163,12 @@ else
 
 endif
 
-compile : ${OwnShared}
+ifdef StaticLibs
+  compile : compile-staticlibs
+	@$(MAKE) --no-print-directory ${OwnShared}
+else
+  compile : ${OwnShared}
+endif
 
 ifdef ExtensionTop
   InstallSuffix := /bundled/$(notdir ${ExtensionTop})

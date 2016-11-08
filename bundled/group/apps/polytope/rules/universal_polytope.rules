@@ -1,0 +1,89 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object Polytope {
+
+# @category Combinatorics
+# The symmetrized version of SIMPLEXITY_LOWER_BOUND
+#rule SIMPLEXITY_LOWER_BOUND : VOLUME, MAX_INTERIOR_SIMPLICES | GROUP.REPRESENTATIVE_SIMPLICES, VERTICES, COMBINATORIAL_DIM, COCIRCUIT_EQUATIONS | GROUP.COCIRCUIT_EQUATIONS, VERTICES_IN_FACETS {
+
+# rule GROUP.SIMPLEXITY_LOWER_BOUND : VOLUME, VERTICES, COMBINATORIAL_DIM, GROUP.SYMMETRIZED_COCIRCUIT_EQUATIONS.FACETS, GROUP.SYMMETRIZED_COCIRCUIT_EQUATIONS.SYMMETRIZED_EQUATIONS {
+#     my $d=$this->COMBINATORIAL_DIM;
+#     $this->GROUP->SIMPLEXITY_LOWER_BOUND = simplexity_lower_bound($d, $this->VERTICES, $this->GROUP->SYMMETRIZED_COCIRCUIT_EQUATIONS->FACETS, $this->VOLUME, $this->GROUP->SYMMETRIZED_COCIRCUIT_EQUATIONS->SYMMETRIZED_EQUATIONS);
+# }
+
+} # end Object Polytope
+
+
+# @category Triangulations, subdivisions and volume
+# Calculate the universal polytope of a polytope
+# @param Polytope P the input polytope
+# @return Polytope
+user_function universal_polytope<Scalar>(Polytope<Scalar>) {
+    my $p = shift;
+    return universal_polytope_impl($p->COMBINATORIAL_DIM, $p->VERTICES, $p->MAX_INTERIOR_SIMPLICES, $p->VOLUME, $p->COCIRCUIT_EQUATIONS);
+}                      
+
+# @category Triangulations, subdivisions and volume
+# Calculate the universal polytope of a polytope, point configuration or quotient manifold
+# @param Polytope P the input polytope
+# @param Array<Set> reps the representatives of maximal interior simplices 
+# @param SparseMatrix cocircuit_equations the matrix of cocircuit equations 
+# @return Polytope
+user_function universal_polytope<Scalar>(Polytope<Scalar>, Array<Set>, SparseMatrix) {
+    my ($p, $simplices, $cocircuit_equations) = @_;
+    return universal_polytope_impl($p->COMBINATORIAL_DIM, $p->VERTICES, $simplices, $p->VOLUME, new SparseMatrix<Rational>($cocircuit_equations));
+}                      
+
+# @category Optimization
+# construct a linear program whose optimal value is a lower bound for the minimal number of simplices
+# in a triangulation of P.
+# @param Polytope P
+# @param String outfile_name 
+user_function write_simplexity_ilp<Scalar>(Polytope<Scalar> $) {
+    my ($p, $outfilename) = @_;
+    my $rmis = new Array<Set>($p->MAX_INTERIOR_SIMPLICES);
+    return simplexity_ilp($p->COMBINATORIAL_DIM, $p->VERTICES, $rmis, $p->VOLUME, $p->COCIRCUIT_EQUATIONS, filename => $outfilename);
+}
+
+# @category Optimization
+# construct a linear program whose optimal value is a lower bound for the minimal number of simplices
+# in a triangulation of P.
+# @param Polytope P
+# @param String outfile_name 
+user_function write_symmetrized_simplexity_ilp<Scalar>(Polytope<Scalar> Set<Int> $) {
+    my ($p, $components, $outfilename) = @_;
+    return simplexity_ilp($p->COMBINATORIAL_DIM, $p->VERTICES, $p->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, $p->VOLUME, symmetrized_cocircuit_equations($p, $components)->PROJECTED_EQUATIONS, filename => $outfilename);
+}
+
+
+sub write_foldable_max_signature_ilp;
+
+# @category Optimization
+# construct a linear program whose optimal value is an upper bound for the algebraic signature of 
+# a triangulation of P.
+# @param Polytope P
+# @param String outfile_name 
+user_function write_foldable_max_signature_ilp<Scalar>(Polytope<Scalar> $) {
+    my $p = shift;
+    my $outfilename = shift;
+    return foldable_max_signature_ilp($p->COMBINATORIAL_DIM, $p->VERTICES, $p->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, $p->VOLUME, $p->GROUP->FOLDABLE_COCIRCUIT_EQUATIONS, filename => $outfilename);
+}
+    
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

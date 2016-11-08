@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -28,15 +28,25 @@ USE
 
 file_suffix mat
 
+
 # A matroid on the set //{0,...,n-1}//.  Here //n// is the same as [[N_ELEMENTS]].
 # 
 declare object Matroid;
+
+# A valuated matroid. It is given by a matroid and some form of valuation, either on bases
+# or circuits. It has two template parameters:
+# Addition: Either Min or Max. Has no default.
+# Scalar: An ordered group in which the valuation lives, Rational by default.
+declare object ValuatedMatroid<Addition,Scalar=Rational> : Matroid;
 
 INCLUDE
   help.rules
   matroid_properties.rules
   matroid.rules
+  dual.rules
+  valuatedmatroid_properties.rules
   matroid_examples.rules
+  automorphisms.rules
   _4ti2.rules
 
 

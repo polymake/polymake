@@ -158,10 +158,7 @@ object Morphism {
 
 		#Define identity on X
 		my $vertexvalues = $X->SEPARATED_VERTICES->minor(All,~scalar2set(0));
-		my $linealityvalues = $X->LINEALITY_SPACE;
-		if($linealityvalues->rows() > 0) {
-			$linealityvalues = $linealityvalues->minor(All,~scalar2set(0));
-		}
+		my $linealityvalues = $X->LINEALITY_SPACE->minor(All,~scalar2set(0));
 
 		my $emb = new Morphism<Addition>( DOMAIN=>$X, VERTEX_VALUES=>$vertexvalues,LINEALITY_VALUES=>$linealityvalues, MATRIX=>(unit_matrix<Rational>($f->DOMAIN->PROJECTIVE_AMBIENT_DIM+1)));
 

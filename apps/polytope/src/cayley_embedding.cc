@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -24,24 +24,20 @@ perl::Object cayley_embedding(const perl::Object& p_in1, const perl::Object& p_i
                               const Scalar& t, const Scalar& t_prime, 
                               perl::OptionSet options)
 {
-   Array<perl::Object> p_array(2);
-   p_array[0] = p_in1; p_array[1] = p_in2;
+   const Array<perl::Object> p_array{ p_in1, p_in2 };
+   const Vector<Scalar> t_vec{ t, t_prime };
 
-   Array<Scalar> t_array(2);
-   t_array[0] = t; t_array[1] = t_prime;
-
-   return cayley_embedding(p_array, t_array, options);
+   return cayley_embedding(p_array, t_vec, options);
 }
 
 template<typename Scalar>
 perl::Object cayley_embedding(const Array<perl::Object>& p_array,
                               perl::OptionSet options)
 {
-   Array<Scalar> t_array;
-   if (options.exists("factors"))
-      t_array = options["factors"];
+   Vector<Scalar> t_vec;
+   options["factors"] >> t_vec;
 
-   return cayley_embedding(p_array, t_array, options);
+   return cayley_embedding(p_array, t_vec, options);
 }
 
 UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
@@ -50,16 +46,14 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# and the vertices of the second polytope //P_1// to //(0,t_1)//."
                           "# "
                           "# Default values are //t_0//=//t_1//=1."
-                          "# "
-                          "# The option //relabel// creates an additional section [[VERTEX_LABELS]]."
                           "# @param Polytope P_0 the first polytope"
                           "# @param Polytope P_1 the second polytope"
                           "# @param Scalar t_0 the extra coordinate for the vertices of //P_0//"
                           "# @param Scalar t_1 the extra coordinate for the vertices of //P_1//"
-                          "# @option Bool relabel"
+                  "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytope. default: 0"
                           "# @return Polytope",
                           "cayley_embedding<Scalar>(Polytope<type_upgrade<Scalar>>, Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=1, type_upgrade<Scalar>=($_[-1]),"
-                          "                         { relabel => undef })");
+                          "                         { no_labels => 0 })");
 
 
 UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
@@ -68,13 +62,11 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# and all must be defined over the same number type. "
                           "# Each vertex //v// of the //i//-th polytope is embedded to //v//|//t_i e_i//, "
                           "# where //t_i// is the //i//-th entry of the optional array //t//. "
-                          "# "
-                          "# The option //relabel// creates an additional section [[VERTEX_LABELS]]."
                           "# @param Polytope A the input polytopes"
                           "# @option Array<Scalar> factors array of scaling factors for the Cayley embedding; defaults to the all-1 vector"
-                          "# @option Bool relabel"
+                  "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytope. default: 0"
                           "# @return Polytope",
-                          "cayley_embedding<Scalar>(Polytope<type_upgrade<Scalar>>+; { factors => [], relabel => undef })");
+                          "cayley_embedding<Scalar>(Polytope<type_upgrade<Scalar>>+; { factors => [], no_labels => 0 })");
 } }
 
 // Local Variables:

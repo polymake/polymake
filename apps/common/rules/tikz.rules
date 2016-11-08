@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,25 +13,13 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-
-package TikZ;
+REQUIRE
+   pdfviewer.rules
 
 CREDIT tikz
   TikZ, a graphical toolkit for LaTeX.
   http://pgf.sourceforge.net.
   
-# pdflatex executable
-custom $pdflatex;
-
-# pdf viewer
-custom $pdfviewer;
-
-CONFIGURE_OPT {
-   find_program($pdflatex, qw( pdflatex ), { prompt => "the PDFLaTeX executable" });
-   find_program($pdfviewer, qw( evince acroread xpdf ), { prompt => "executable of some PDF viewer" });
-}
-
-
 package TikZ::default;
 
 # coordinates of the viewpoint
@@ -61,10 +49,10 @@ use Polymake::Struct [ '@ISA' => 'SimpleViewer' ];
 sub file_suffix { ".tikz" }
 
 sub new {
-   unless (defined($pdflatex) && defined($pdfviewer)) {
+   unless (defined($Visual::pdflatex) && defined($Visual::pdfviewer)) {
       die <<'.';
 requires PDFLaTeX and a PDF viewer;
-please specify the output File option or call reconfigure("common::tikz.rules");
+please specify the output File option or call reconfigure("common::pdfviewer.rules");
 .
    }
    my $self = &_new;
@@ -81,7 +69,8 @@ sub command {
    my $pdfout = $self->tempfile.".pdf";
    my $pdfout_dir = $self->tempfile->dir;
    my $pdfout_name = $self->tempfile->basename;
-   "$pdflatex --output-directory=$pdfout_dir --jobname=$pdfout_name $latextemplate 1>/dev/null ; $pdfviewer $pdfout 1>/dev/null 2>/dev/null";
+   "$Visual::pdflatex -interaction=batchmode --output-directory=$pdfout_dir --jobname=$pdfout_name $latextemplate 1>/dev/null; $Visual::pdfviewer $pdfout 1>/dev/null 2>/dev/null";
+
 }
 
 sub new_drawing {
@@ -105,7 +94,7 @@ my $text = <<'|';
 %---------------------------------------------------------------------------------
 %
 % Polymake LaTeX template for TikZ-Output
-% Copyright (c) 1997-2015
+% Copyright (c) 1997-2016
 % Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 % http://www.polymake.org
 \documentclass[12pt]{article}
@@ -159,7 +148,7 @@ my $text = <<'|';
 %---------------------------------------------------------------------------------
 %
 % Polymake LaTeX template for TikZ-Output
-% Copyright (c) 1997-2015
+% Copyright (c) 1997-2016
 % Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 % http://www.polymake.org
 \documentclass[tikz,x11names,border=10pt]{standalone}

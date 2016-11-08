@@ -16,7 +16,7 @@
 
 # A Schlegel diagram of a polytope.
 # @tparam Scalar default [[Rational]]
-# @relates Polytope
+# @relates objects/Polytope
 declare object SchlegelDiagram<Scalar=Rational> {
 
 # The facet number in the original polytope, giving the projection plane.
@@ -292,7 +292,7 @@ user_method SOLID(%Visual::Polygons::decorations) {
    my @facets;
    for (my ($i,$end)=(0,$P->N_FACETS); $i<$end; ++$i) {
       next if $i==$self->SchlegelObject->FACET;
-      my $F=facet($P,$i,relabel=>1);
+      my $F=facet($P,$i);
       push @facets,
            new Visual::Polygons( Name => "Facet #$i of ".$P->name,
                                  Vertices => $G->Coord->minor($P->VERTICES_IN_FACETS->[$i],All),

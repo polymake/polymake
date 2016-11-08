@@ -18,11 +18,10 @@
 #include "polymake/Matrix.h"
 #include "polymake/Array.h"
 #include "polymake/AccurateFloat.h"
-#include "polymake/group/group_domain.h"
 
 namespace polymake { namespace polytope {
 
-      perl::Object n_gon(int n, const Rational& r, perl::OptionSet options)
+perl::Object n_gon(int n, const Rational& r, perl::OptionSet options)
 {
    if ((n < 3) || (r <= 0)) {
       throw std::runtime_error("n_gon: n >= 3 and r > 0 required\n");
@@ -46,11 +45,11 @@ namespace polymake { namespace polytope {
    const int iend= n%2 ? (n+1)/2 : (n+2)/4;
    const AccurateFloat angle = (2 * AccurateFloat::pi()) / n;
    AccurateFloat c, s;
-   Rational x, y;
+
    for (int i=1; i<iend; ++i) {
       sin_cos(s, c, i*angle);
-      x=r*c;
-      y=r*s;
+      Rational x(r*c);
+      Rational y(r*s);
       V(i,1)=x;
       V(i,2)=y;
       V(n-i,1)=x;
@@ -66,10 +65,6 @@ namespace polymake { namespace polytope {
 
    bool group_flag = options["group"];
    if ( group_flag ) {
-      perl::Object g("group::GroupOfPolytope");
-      g.set_description() << "full combinatorial group on vertices" << endl;
-      g.set_name("fullCombinatorialGroupOnRays");
-      g.take("DOMAIN") << polymake::group::OnRays;
       Array< Array< int > > gens(2);
       Array< int > gen1(n);
       Array< int > gen2(n);
@@ -80,7 +75,14 @@ namespace polymake { namespace polytope {
 
       gens[0]=gen1;
       gens[1]=gen2;
-      g.take("GENERATORS") << gens;
+
+      perl::Object a("group::PermutationAction");
+      a.take("GENERATORS") << gens;
+
+      perl::Object g("group::Group");
+      g.set_description() << "full combinatorial group on vertices" << endl;
+      g.set_name("fullCombinatorialGroupOnRays");
+      g.take("RAYS_ACTION") << a;
       p.take("GROUP") << g;
 
    }
@@ -89,7 +91,6 @@ namespace polymake { namespace polytope {
    p.take("CONE_AMBIENT_DIM") << 3;
    p.take("CONE_DIM") << 3;
    p.take("VERTICES") <<  V;
-   p.take("LINEALITY_SPACE") << Matrix<Rational>();
    p.take("N_VERTICES") << n;
    p.take("BOUNDED") << true;
    p.take("CENTERED") << true;

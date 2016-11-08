@@ -25,8 +25,8 @@
 namespace pm {
 
 template <typename Iterator>
-class RandomSubset_iterator : public iterator_traits<Iterator>::derivable_type {
-   typedef typename iterator_traits<Iterator>::derivable_type super;
+class RandomSubset_iterator : public Iterator {
+   typedef Iterator base_t;
 public:
    typedef forward_iterator_tag iterator_category;
    typedef RandomSubset_iterator<typename iterator_traits<Iterator>::iterator>
@@ -35,31 +35,26 @@ public:
       const_iterator;
 
    RandomSubset_iterator() {}
+
    RandomSubset_iterator(const iterator& it)
-      : super(static_cast<const typename iterator::super&>(it)),
-        rg(it.rg), k(it.k) {}
+      : base_t(static_cast<const typename iterator::base_t&>(it))
+      , rg(it.rg)
+      , k(it.k) {}
 
-   RandomSubset_iterator(const Iterator& cur_arg,
-                         int n_arg, int k_arg,
-                         const SharedRandomState& random_arg)
-      : super(cur_arg), rg(n_arg, random_arg), k(k_arg)
+   template <typename SourceIterator, typename suitable=typename suitable_arg_for_iterator<SourceIterator, Iterator>::type>
+   RandomSubset_iterator(const SourceIterator& cur_arg, int n_arg, int k_arg, const SharedRandomState& random_arg)
+      : base_t(prepare_iterator_arg<Iterator>(cur_arg))
+      , rg(n_arg, random_arg)
+      , k(k_arg)
    {
       toss(typename iterator_traits<Iterator>::iterator_category(), 0);
    }
 
-   RandomSubset_iterator(typename alt_constructor<Iterator>::arg_type& cur_arg,
-                         int n_arg, int k_arg,
-                         const SharedRandomState& random_arg)
-      : super(cur_arg), rg(n_arg, random_arg), k(k_arg)
-   {
-      toss(typename iterator_traits<Iterator>::iterator_category(), 0);
-   }
-
-   RandomSubset_iterator(const Iterator& end_arg, const SharedRandomState& random_arg)
-      : super(end_arg), rg(0,random_arg), k(0) {}
-
-   RandomSubset_iterator(typename alt_constructor<Iterator>::arg_type& end_arg, const SharedRandomState& random_arg)
-      : super(end_arg), rg(0,random_arg), k(0) {}
+   template <typename SourceIterator, typename enable=typename std::enable_if<is_const_compatible_with<SourceIterator, Iterator>::value>::type>
+   RandomSubset_iterator(const SourceIterator& end_arg, const SharedRandomState& random_arg)
+      : base_t(end_arg)
+      , rg(0,random_arg)
+      , k(0) {}
 
    RandomSubset_iterator& operator++()
    {
@@ -71,13 +66,14 @@ public:
    RandomSubset_iterator operator++ (int) { RandomSubset_iterator copy=*this; operator++(); return copy; }
 
    bool at_end() const { return k==0; }
+
 protected:
    void toss(input_iterator_tag, int incr)
    {
-      if (incr) super::operator++();
+      if (incr) base_t::operator++();
       while (rg.upper_limit() > 0 && rg.get() >= k) {
          --(rg.upper_limit());
-         super::operator++();
+         base_t::operator++();
       }
    }
 
@@ -86,7 +82,7 @@ protected:
       while (rg.upper_limit() > 0 && rg.get() >= k) {
          --(rg.upper_limit()); ++incr;
       }
-      super::operator+=(incr);
+      base_t::operator+=(incr);
    }
 
    UniformlyRandomRanged<long> rg;
@@ -94,7 +90,7 @@ protected:
 
    template <typename> friend class RandomSubset_iterator;
 private:
-   // shadow possible super:: operators
+   // shadow possible base_t:: operators
    void operator--();
    void operator+=(int);
    void operator-=(int);
@@ -104,7 +100,7 @@ private:
 };
 
 template <typename Iterator>
-struct check_iterator_feature<RandomSubset_iterator<Iterator>, end_sensitive> : True {};
+struct check_iterator_feature<RandomSubset_iterator<Iterator>, end_sensitive> : std::true_type {};
 
 template <typename ContainerRef>
 class RandomSubset
@@ -228,7 +224,7 @@ protected:
 };
 
 template <>
-struct check_iterator_feature<RandomPermutation_iterator, end_sensitive> : True {};
+struct check_iterator_feature<RandomPermutation_iterator, end_sensitive> : std::true_type {};
 
 template <typename ContainerRef=sequence,
           bool _direct=identical_minus_const_ref<ContainerRef, sequence>::value>
@@ -272,23 +268,23 @@ protected:
 template <typename ContainerRef>
 class RandomPermutation<ContainerRef, false>
    : public indexed_subset_impl< RandomPermutation<ContainerRef, false>,
-                                 list( Container1< ContainerRef >,
-                                       Container2< RandomPermutation<> > ) > {
-   typedef indexed_subset_impl<RandomPermutation> _super;
+                                 mlist< Container1Tag< ContainerRef >,
+                                        Container2Tag< RandomPermutation<> > > > {
+   typedef indexed_subset_impl<RandomPermutation> impl_t;
 protected:
    alias<ContainerRef> base;
    RandomPermutation<> perm;
 public:
    explicit RandomPermutation(typename alias<ContainerRef>::arg_type base_arg, const RandomSeed& seed=RandomSeed())
-      : base(base_arg),
-        perm(base->size(), seed) {}
+      : base(base_arg)
+      , perm(base->size(), seed) {}
 
    RandomPermutation(typename alias<ContainerRef>::arg_type base_arg, const SharedRandomState& s)
-      : base(base_arg),
-        perm(base->size(), s) {}
+      : base(base_arg)
+      , perm(base->size(), s) {}
 
-   typename _super::container1& get_container1() { return *base; }
-   const typename _super::container1& get_container1() const { return *base; }
+   typename impl_t::container1& get_container1() { return *base; }
+   const typename impl_t::container1& get_container1() const { return *base; }
    const RandomPermutation<>& get_container2() const { return perm; }
 };
 

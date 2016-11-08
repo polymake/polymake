@@ -16,7 +16,7 @@
 INCLUDE
   global_categories.rules
 
-# @topic top
+# @topic core/top
 # You are in the interactive mode of polymake.
 #
 # You may type in any valid perl expression, it will be evaluated as soon as it is complete,
@@ -56,14 +56,14 @@ INCLUDE
 # Press F1 to get context-sensitive help to the keyword near cursor.
 
 
-# @topic category functions/Basic
+# @topic category core/functions/Basic
 # These functions are part of the core user interface.
 # They are available in both scripting and interactive modes.
 
-# @topic category functions/Interactive
+# @topic category core/functions/Interactive
 # These functions are available in the interactive shell only.
 
-# @topic functions/application
+# @topic core/functions/application
 # @category Basic
 #
 # Called in void context sets the current application to the one given by //name//
@@ -79,7 +79,7 @@ INCLUDE
 # @param String name | Application app_obj
 
 
-# @topic functions/include
+# @topic core/functions/include
 # @category Basic
 # Read additional rule files, interpret them in the context of the current application.
 # The rule files may reside in the application's standard subdirectory ''rules'' or in any
@@ -87,7 +87,7 @@ INCLUDE
 # @param String rulefile : one or more filenames.
 
 
-# @topic functions/load
+# @topic core/functions/load
 # @category Basic
 # Read the object data file created earlier by [[save]] and return the object.
 #
@@ -97,7 +97,7 @@ INCLUDE
 # @return Object
 
 
-# @topic functions/save (Object;$)
+# @topic core/functions/save (Object;$)
 # @category Basic
 #
 # Store the given //object// in a data file.
@@ -117,7 +117,7 @@ INCLUDE
 # @param String filename
 
 
-# @topic functions/load_data
+# @topic core/functions/load_data
 # @category Basic
 #
 # Read the data file created earlier by [[save_data]] and return the data object stored there.
@@ -125,7 +125,7 @@ INCLUDE
 # @return any data object; in list context additionally returns the optional description read from in the file.
 
 
-# @topic functions/save_data ($$;$)
+# @topic core/functions/save_data ($$;$)
 # @category Basic
 #
 # Create an XML data file and store the given data object there, together with an optional description.
@@ -136,7 +136,7 @@ INCLUDE
 # @param String description
 
 
-# @topic functions/prefer
+# @topic core/functions/prefer
 # @category Basic
 #
 # Make the production rules, user functions, or methods (further called //items//)
@@ -161,7 +161,7 @@ INCLUDE
 #      with cdd rules having the topmost rank.
 
 
-# @topic functions/prefer_now
+# @topic core/functions/prefer_now
 # @category Basic
 #
 # The same as [[prefer]], but does not store the changes persistently.  The lifespan of the
@@ -170,7 +170,7 @@ INCLUDE
 # @param String label_expression
 
 
-# @topic functions/reset_preference
+# @topic core/functions/reset_preference
 # @category Basic
 #
 # Reset the matching preference lists to the default state.
@@ -185,7 +185,7 @@ INCLUDE
 #   Two last forms match all preference lists visible from the current application.
 
 
-# @topic functions/show_preferences
+# @topic core/functions/show_preferences
 # @category Interactive
 # Prints the currently active preference lists.
 # Please be aware that the output only reflects the persistent preferences;
@@ -193,7 +193,7 @@ INCLUDE
 # when this command is executed.
 
 
-# @topic functions/set_custom
+# @topic core/functions/set_custom
 # @category Basic
 #
 # Set the custom variable, array, hash, or hash element to a new value and store it perpetually
@@ -206,7 +206,7 @@ INCLUDE
 #  ''$hash{key}=value;''
 
 
-# @topic functions/reset_custom
+# @topic core/functions/reset_custom
 # @category Basic
 #
 # Reset the custom variable, array, hash, or hash element to the default value(s) as defined in the rule base
@@ -218,7 +218,7 @@ INCLUDE
 #  ''$hash{key};''
 
 
-# @topic functions/disable_rules ($)
+# @topic core/functions/disable_rules ($)
 # @category Basic
 #
 # Temporarily disable production rules matching given pattern.
@@ -239,7 +239,7 @@ INCLUDE
 #        their precoditions, weights, or other attributes.
 
 
-# @topic functions/help
+# @topic core/functions/help
 # @category Interactive
 #
 # Display the help information or comments associated with a given item.
@@ -258,14 +258,14 @@ INCLUDE
 # @param String item : "word" | "category/subcategory/.../item"
 
 
-# @topic functions/apropos
+# @topic core/functions/apropos
 # @category Interactive
 #
 # List all help topics matching the given pattern.
 # @param String pattern (part of) an item name to be looked for, may contain regular expression elements.
 
 
-# @topic functions/history
+# @topic core/functions/history
 # @category Interactive
 #
 # Let you choose and edit the commands typed earlier in the interactive shell.
@@ -274,7 +274,7 @@ INCLUDE
 # the values of environment variables ''VISUAL'' and ''EDITOR'' are consulted.
 
 
-# @topic functions/replay_history
+# @topic core/functions/replay_history
 # @category Interactive
 #
 # Bring the interactive shell in the replay mode.  In this mode you can revisit, edit and execute the commands stored in the history.
@@ -284,7 +284,7 @@ INCLUDE
 # The replay mode is visually signaled by the history line number in square brackets displayed in the shell prompt.
 
 
-# @topic functions/load_commands
+# @topic core/functions/load_commands
 # @category Interactive
 #
 # Read the lines from the given file, filter out comments and empty lines, append them to the
@@ -293,7 +293,7 @@ INCLUDE
 # @param String filename
 
 
-# @topic functions/script ($@)
+# @topic core/functions/script ($@)
 # @category Basic
 #
 # Run the polymake script, passing the arguments in ''@ARGV''.
@@ -301,10 +301,10 @@ INCLUDE
 # then in the user's script directories (custom array ''@lookup_scripts''), and finally in the
 # top-level ''scripts'' subdirectory.
 # @param String filename : script code
-# @param any Arguments : arbitrary many arguments passed to the script
+# @param Any Arguments : arbitrary many arguments passed to the script
 
 
-# @topic functions/found_extension ($)
+# @topic core/functions/found_extension ($)
 # @category Interactive
 #
 # Found a new extension at the given //path//.  The specified directory may be absent, then it will be created;
@@ -321,7 +321,7 @@ INCLUDE
 # @param String path : top-level directory of the extension, or ''"bundled:NAME"'' for a bundled extension.
 
 
-# @topic functions/extend_application ($;$)
+# @topic core/functions/extend_application ($;$)
 # @category Interactive
 #
 # Create a directory tree for rules, scripts, clients, etc. in the given //extension// pertaining to the given application.
@@ -330,7 +330,7 @@ INCLUDE
 # @param String app_name : name of the application to be extended; by default, the current application is assumed.
 
 
-# @topic functions/found_application ($$)
+# @topic core/functions/found_application ($$)
 # @category Interactive
 #
 # Create a directory tree for a new application, rooted at the given extension.
@@ -346,7 +346,7 @@ INCLUDE
 # @param String app_name : name of the new application
 
 
-# @topic functions/import_extension ($;@)
+# @topic core/functions/import_extension ($;@)
 # @category Interactive
 #
 # Load the extension installed in the given directory. The //path// is also included in the custom list ''@extensions''
@@ -362,7 +362,7 @@ INCLUDE
 # @param List options : options passed to the extension script configure.pl
 
 
-# @topic functions/reconfigure_extension ($;@)
+# @topic core/functions/reconfigure_extension ($;@)
 # @category Interactive
 #
 # Re-run the configuration script of the extension, passing some options to it.  The extension must already have been imported;
@@ -372,7 +372,7 @@ INCLUDE
 # @param List options : options passed to the extension script configure.pl
 
 
-# @topic functions/obliterate_extension ($)
+# @topic core/functions/obliterate_extension ($)
 # @category Interactive
 # Removes all references to the specified extension from your settings, so that the //following// polymake session won't load anything from it.
 # Beware that in the //current// session all the rules and functions defined in the extension remain active!
@@ -381,7 +381,7 @@ INCLUDE
 # @param String path : URI or top-level directory of the extension.
 
 
-# @topic functions/reconfigure ($)
+# @topic core/functions/reconfigure ($)
 # @category Interactive
 # Repeats the auto-configuration routines stored in the given rulefile, possibly asking for program paths, options, etc.
 # If the configuration succeeds, and the rulefile hasn't been configured until now, it will be loaded, as well as all other known rulefiles
@@ -391,7 +391,7 @@ INCLUDE
 #                          URI specifies an extension the rulefile comes from.
 
 
-# @topic functions/unconfigure ($)
+# @topic core/functions/unconfigure ($)
 # @category Interactive
 # Forgets the configuration made for the given rulefile and disables it for the //following// polymake sessions.
 # @param String rulename : name of the rulefile with optional prefix and suffix: "[APPNAME::]rulefile[@URI]".
@@ -399,7 +399,7 @@ INCLUDE
 #                          URI specifies an extension the rulefile comes from.
 
 
-# @topic functions/show_unconfigured
+# @topic core/functions/show_unconfigured
 # @category Interactive
 # Prints the names of all rulefiles visible from the current application,
 # which could not be loaded because of configuration failures
@@ -408,7 +408,7 @@ INCLUDE
 # the required software and/or cleared out other configuration troubles.
 
 
-# @topic functions/export_configured ($;$)
+# @topic core/functions/export_configured ($;$)
 # @category Interactive
 # Saves all custom variables having non-defalt values in a file.
 # This includes all results of automatical or manual rule configuration.
@@ -419,7 +419,7 @@ INCLUDE
 #             will be included in the resulting file as well.
 
 
-# @topic functions/show_credits (;$)
+# @topic core/functions/show_credits (;$)
 # @category Interactive
 # Prints the short descriptions of third-party software packages available from within polymake,
 # including the copyright holders and project site URLs.
@@ -428,11 +428,11 @@ INCLUDE
 # @param Bool brief : list the product names only, no descriptive text
 
 
-# @topic functions/show_extensions
+# @topic core/functions/show_extensions
 # @category Interactive
 # Prints the list of active extensions including their URIs and credit notes.
 
-# @topic functions/save_history (;$)
+# @topic core/functions/save_history (;$)
 # @category Interactive
 # Saves the commands entered in the current and recent sessions in the file.
 # Polymake does it automatically at the end of each interactive session; this command is provided
@@ -442,7 +442,7 @@ INCLUDE
 # @param String filename : defaults to ~/.polymake/history
 
 
-# @topic citation
+# @topic core/citation
 #
 # If you are using polymake, please, cite:
 #
@@ -457,13 +457,13 @@ INCLUDE
 # }
 
 
-# @topic objects/Core::Object
+# @topic core/objects/Core::Object
 # This is the common base class of all `big' objects in polymake.
-# It is included in the online help because it provides several useful methods
+# It does not have any properties, but provides several useful methods
 # for scripting and interactive use.
 
 
-# @topic objects/Core::Object/methods/get_schedule ($@)
+# @topic core/objects/Core::Object/methods/get_schedule ($@)
 # Compose an optimal chain of production rules providing all requested properties.
 # The returned RuleChain object can be applied to the original object as well as to any other object
 # with the same initial set of properties.  If no feasible rule chain exists, `undef' is returned.
@@ -474,15 +474,19 @@ INCLUDE
 # @param String request : name of a property with optional alternatives or a property path in dotted notation.
 #                         Several requests may be listed.
 # @return Core::RuleChain
+# @example generate an optimal rule chain for a parameterized family of polytopes:
+# > @p=map { new Polytope("POINTS" => my_matrix($_) ) } 1..10;
+# > $s=$p[0]->get_schedule("FACETS", "TRIANGULATION.FACETS");
+# > $s->apply($_) for @p;
 
 
-# @topic objects/Core::Object/methods/dont_save ()
+# @topic core/objects/Core::Object/methods/dont_save ()
 # Clears the `changed' flag in the object, so that it won't be saved in the XML file it stems from.
 # This method is primarily designed for unit tests, but could be also useful in interactive mode
 # if you want to revert all recent changes and reload the object from the data file.
 
 
-# @topic objects/Core::Object/methods/disable_rules ($)
+# @topic core/objects/Core::Object/methods/disable_rules ($)
 # Temporarily disable production rules matching given pattern for an object.
 # Rules are re-enabled after the complete execution of the current script
 # or input expression in interactive mode.
@@ -497,7 +501,7 @@ INCLUDE
 #        their precoditions, weights, or other attributes.
 
 
-# @topic objects/Core::Object/methods/apply_rule ($)
+# @topic core/objects/Core::Object/methods/apply_rule ($)
 # Executes the specified production rule.
 # If the object does not possess enough initial properties to provide all required
 # rule sources, or any of its preconditions are not satisfied, an exception is raised.
@@ -509,69 +513,74 @@ INCLUDE
 #        (including the rules supplying the source properties) is chosen.
 
 
-# @topic objects/Core::Object/methods/set_as_default ()
+# @topic core/objects/Core::Object/methods/set_as_default ()
 # Makes the multiple subobject instance the default one.
 # Physically this means moving it at the 0-th position in the instance list.
 #
-# The instance can be selected by give() or PROPERTY_NAME access method, e.g.:
-#
-#   by current position:
-#   > $p->TRIANGULATION->[$i]->set_as_default;
-#
-#   by subobject name:
-#   > $p->TRIANGULATION("placing")->set_as_default;
-#
-#   by checking for a specific property:
-#   > $p->TRIANGULATION(sub { defined($_->lookup("WEIGHTS")) })->set_as_default;
-#
-#   by analyzing all instances and picking the best one:
-#   > for (@{$p->TRIANGULATION}) { assign_min($min_facets, $_->N_FACETS) and $t=$_ } $t->set_as_default;
+# The instance can be selected by give() or PROPERTY_NAME access method.
+# @example by current position:
+#  > $p->TRIANGULATION->[$i]->set_as_default;
+# @example by subobject name:
+#  > $p->TRIANGULATION("placing")->set_as_default;
+# @example by checking for a specific property:
+#  > $p->TRIANGULATION(sub { defined($_->lookup("WEIGHTS")) })->set_as_default;
+# @example by analyzing all instances and picking the best one:
+#  > for (@{$p->TRIANGULATION}) { assign_min($min_facets, $_->N_FACETS) and $t=$_ } $t->set_as_default;
 
-# @topic objects/Core::Object/methods/set_as_default_now ()
+# @topic core/objects/Core::Object/methods/set_as_default_now ()
 # Temporarily make the multiple subobject instance the default one.
 # The change is automatically reverted at the end of the current user cycle.
 # Usage as [[set_as_default]].
 
-# @topic objects/Core::Object/methods/list_names ()
+# @topic core/objects/Core::Object/methods/list_names ()
 # Returns the list of names of multiple subobject instances.
-# This method can be applied to any instance.
+# This method can be applied to any instance of a multiple subobject.
 # For a normal (non-multiple) subobject or a top-level object just returns its name.
+# @example List all names of linear programs associated with a polytope:
+# > print join(" ", $p->LP->list_names);
 
 
-# @topic objects/Core::Object/methods/list_properties (;$)
+# @topic core/objects/Core::Object/methods/list_properties (;$)
 # Returns the list of names of all properties kept in the object.
 # @param Bool deep : recursively descend in all subobjects
 #                    and list their properties in dotted notation.
 
+# @topic core/objects/Core::Object/methods/properties (;maxdepth=>0)
+# Returns or prints a string with all properties (names and values) and subobjects.
+# @option Int maxdepth descend into subobjects up to given depth, default 0
 
-# @topic objects/Core::Object/methods/remove (String+)
+# @topic core/objects/Core::Object/methods/remove (String+)
 # Remove the property //prop// from the object.
 # The property must be //mutable//, //multiple//,
 # or unambiguously reconstructible from the remaining properties.
 # @param String prop : property name or a path to a property in a subobject in dotted notation,
 #                      Several properties may be removed at once.
 
-# @topic objects/Core::Object/methods/remove (Object+)
+# @topic core/objects/Core::Object/methods/remove (Object+)
 # Remove the multiple subobject instance(s) from the object.
 # @param Object subobj : multiple subobject instance.
 #                        Several subobjects may be removed at once.
 
 
-# @topic objects/Core::RuleChain
-# A rule chain to compute properties of an object.
+# @topic core/objects/Core::RuleChain
+# A rule chain to compute properties of a `big' object.
+# It can be obtained by calling the method [[get_schedule]].
 
+# @topic core/objects/Core::RuleChain/methods/list
+# Return the headers of rules in the chain.
 
-# @topic objects/Core::RuleChain/methods/list
-# List the properties computed by the rule chain.
+# @topic core/objects/Core::RuleChain/methods/list_new_properties
+# Return the names of properties computed by the rule chain.
 
-# @topic objects/Core::RuleChain/methods/apply($)
+# @topic core/objects/Core::RuleChain/methods/apply (Object)
 # Apply the rule chain to an object.
-# @param Core::Object o
+# @param Object o
 
-# @topic exit
+# @topic core/functions/exit
+# @category Interactive
 # use this command only if you want to restart polymake.
 
-# @topic polymake
+# @topic core/polymake
 #       MM                            ,,
 #      MM M                         `7MM                                    `7MM
 #     M M  M                          MM                                      MM

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,7 +19,6 @@
 #include "polymake/SparseMatrix.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/polytope/CubeFacets.h"
-#include "polymake/group/group_domain.h"
 
 namespace polymake { namespace polytope {
 
@@ -49,14 +48,10 @@ perl::Object cross(int d, const Scalar& s, perl::OptionSet options)
       (*v)[c]=-s;
    }
    IncidenceMatrix<> VIF(1<<d, n_vertices);
-   copy(CubeFacets<int>(d).begin(), cols(VIF).begin());
+   copy_range(CubeFacets<int>(d).begin(), cols(VIF).begin());
 
    bool group_flag = options["group"];
    if ( group_flag ) {
-      perl::Object g("group::GroupOfPolytope");
-      g.set_description() << "full combinatorial group on vertices" << endl;
-      g.set_name("fullCombinatorialGroupOnRays");
-      g.take("DOMAIN") << polymake::group::OnRays;
       Array< Array< int > > gens(d);
       if ( d==1 ) {
          Array< int > gen(1);
@@ -90,16 +85,21 @@ perl::Object cross(int d, const Scalar& s, perl::OptionSet options)
          }
       }
 
-      g.take("GENERATORS") << gens;
-      p.take("GROUP") << g;
+      perl::Object a("group::PermutationAction");
+      a.take("GENERATORS") << gens;
 
+      perl::Object g("group::Group");
+      g.set_description() << "full combinatorial group on vertices" << endl;
+      g.set_name("fullCombinatorialGroupOnRays");
+      g.take("RAYS_ACTION") << a;
+
+      p.take("GROUP") << g;
    }
 
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("CONE_DIM") << d+1;
    p.take("N_VERTICES") << n_vertices;
    p.take("VERTICES") << V;
-   p.take("LINEALITY_SPACE") << Matrix<Scalar>();
    p.take("VERTICES_IN_FACETS") << VIF;
    p.take("BOUNDED") << true;
    p.take("CENTERED") << true;

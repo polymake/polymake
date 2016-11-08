@@ -15,7 +15,7 @@
 
 
 # creates an array of colors to distinguish generators and
-# pseudo-vertices of a tropical cone
+# pseudo-vertices of a tropical polytope 
 sub choose_colors($$$$) {
   my ($points,$pseudovertices,$p_color,$pv_color)=@_;
   my $indices = points_in_pseudovertices($points,$pseudovertices);
@@ -24,50 +24,50 @@ sub choose_colors($$$$) {
   return @pseudovertex_colors;
 } 
 
-package Visual::TropicalCone;
+package Visual::TropicalPolytope;
 use Polymake::Struct (
 	[ '@ISA' => 'Container' ],
-	[ '$Cone' => '#%' ],
+	[ '$Polytope' => '#%' ],
 );
 
 package Visual::Color;
 
-custom $conegenerators="255 255 0"; 
+custom $polytopegenerators="255 255 0"; 
 
-options %Visual::TropicalCone::decorations=(
+options %Visual::TropicalPolytope::decorations=(
 	%Visual::Polygons::decorations,
     
 	# Flexible<Int> The visualization is always in affine coordinates. This chooses the chart.
 	Chart => 0,
     
-    # Flexible<Color> color of the finite [[POINTS]] of a cone
-    GeneratorColor => $Visual::Color::conegenerators,
+    # Flexible<Color> color of the finite [[POINTS]] of a polytope 
+    GeneratorColor => $Visual::Color::polytopegenerators,
 
-    # Flexible<Color> color of the finite [[PSEUDOVERTICES]] of a cone
+    # Flexible<Color> color of the finite [[PSEUDOVERTICES]] of a polytope 
     PseudovertexColor => $Visual::Color::vertices,
 );
 
-object Cone {
+object Polytope {
 
 
 # @category Visualization
-# Visualize the subdivision of the cone induced by [[POINTS]].
-# @options %Visual::TropicalCone::decorations
+# Visualize the subdivision of the polytope induced by [[POINTS]].
+# @options %Visual::TropicalPolytope::decorations
 # @return fan::Visual::PolyhedralFan
 
-	user_method VISUAL(%Visual::TropicalCone::decorations) {
+	user_method VISUAL(%Visual::TropicalPolytope::decorations) {
 		my ($this, $decor)=@_;
 		
 		my $chart = $$decor{"Chart"};
 		delete($$decor{"Chart"});
 
 		my $used_pvs = new Set<Int>();
-		for my $i (0 .. $this->CONE_MAXIMAL_COVECTOR_CELLS->rows()-1) {
-			$used_pvs += $this->CONE_MAXIMAL_COVECTOR_CELLS->row($i);
+		for my $i (0 .. $this->POLYTOPE_MAXIMAL_COVECTOR_CELLS->rows()-1) {
+			$used_pvs += $this->POLYTOPE_MAXIMAL_COVECTOR_CELLS->row($i);
 		}
 
 		my $vertices = new Matrix<Scalar>($this->PSEUDOVERTICES->minor($used_pvs,All));
-		my $cells = $this->CONE_MAXIMAL_COVECTOR_CELLS->minor(All, $used_pvs);
+		my $cells = $this->POLYTOPE_MAXIMAL_COVECTOR_CELLS->minor(All, $used_pvs);
 
                 my @pseudovertex_colors=choose_colors($this->POINTS,$vertices,$$decor{"PseudovertexColor"},$$decor{"GeneratorColor"});
 
@@ -81,9 +81,9 @@ object Cone {
 
 # @category Visualization
 # Visualize the subdivision of the torus induced by [[POINTS]]. 
-# @options %Visual::TropicalCone::decorations
+# @options %Visual::TropicalPolytope::decorations
 # @return fan::Visual::PolyhedralFan
-	user_method VISUAL_SUBDIVISION(%Visual::TropicalCone::decorations) {
+	user_method VISUAL_SUBDIVISION(%Visual::TropicalPolytope::decorations) {
 		my ($this,$decor) = @_;
 
 		my $chart = $$decor{"Chart"};

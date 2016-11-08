@@ -105,13 +105,20 @@ public:
     const vector<mpz_class>& getCyclotomicNum() const;
     // returns the denominator, repr. as a map of the exponents of the cyclotomic polynomials
     const map<long, denom_t>& getCyclotomicDenom() const;
+    
+    void setHSOPDenom(vector<denom_t> new_denom);
+    
+    // returns the numerator, repr. as vector of coefficients
+    const vector<mpz_class>& getHSOPNum() const;
+    // returns the denominator, repr. as a map of the exponents of (1-t^i)^e
+    const map<long, denom_t>& getHSOPDenom() const;
 
     long getDegreeAsRationalFunction() const;
 
     long getPeriod() const;
 
     void computeHilbertQuasiPolynomial() const;
-    long isHilbertQuasiPolynomialComputed() const;
+    bool isHilbertQuasiPolynomialComputed() const;
     vector< vector<mpz_class> > getHilbertQuasiPolynomial() const;
     mpz_class getHilbertQuasiPolynomialDenom() const;
 
@@ -129,6 +136,10 @@ public:
     void from_string_rep(const string&);
 
     void setVerbose(bool v) { verbose = v; }
+    
+    // compute the new numerator by multiplying the HS with a denominator
+    // of the form (1-t^i)
+    void compute_hsop_num() const;
 
 private:
     // collected data in denominator classes
@@ -145,6 +156,11 @@ private:
     mutable vector<mpz_class> cyclo_num;
     // the denominator, repr. as a map of the exponents of the cyclotomic polynomials
     mutable map<long, denom_t> cyclo_denom;
+    
+    // the numerator, repr. as vector of coefficients
+    mutable vector<mpz_class> hsop_num;
+    // the denominator, repr. as a map of the exponents of the cyclotomic polynomials
+    mutable map<long, denom_t> hsop_denom;
 
     mutable bool is_simplified;
     mutable long dim;

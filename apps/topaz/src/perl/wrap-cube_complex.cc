@@ -16,11 +16,11 @@
 
 namespace polymake { namespace topaz { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( perl::Object (pm::Array<int, void>) ) {
+   FunctionWrapper4perl( perl::Object (pm::Array<int>) ) {
       perl::Value arg0(stack[0]);
       IndirectWrapperReturn(arg0);
    }
-   FunctionWrapperInstance4perl( perl::Object (pm::Array<int, void>) );
+   FunctionWrapperInstance4perl( perl::Object (pm::Array<int>) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

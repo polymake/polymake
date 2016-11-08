@@ -19,7 +19,6 @@
 #include "polymake/Vector.h"
 #include "polymake/Matrix.h"
 #include <algorithm>
-#include "polymake/group/group_domain.h"
 #include "polymake/Array.h"
 
 namespace polymake { namespace polytope {
@@ -32,10 +31,10 @@ perl::Object permutahedron(int d, perl::OptionSet options)
    perl::Object p("Polytope<Rational>");
    p.set_description() << "permutahedron of dimension " << d << endl;
    // enumerate the (d+1)! vertices of the d-permutahedron
-   Matrix<Rational> V(Integer::fac(d+1).to_int(), d+2);
+   Matrix<Rational> V(int(Integer::fac(d+1)), d+2);
    Vector<int> perm(d+1, sequence(1).begin());
 
-   Rows< Matrix<Rational> >::iterator r=rows(V).begin();
+   Rows<Matrix<Rational>>::iterator r=rows(V).begin();
    do {
       *r = 1 | perm;
       ++r;
@@ -44,33 +43,34 @@ perl::Object permutahedron(int d, perl::OptionSet options)
 // generate the combinatorial symmetry group on the coordinates
    const bool group_flag = options["group"];
    if ( group_flag ) {
-      perl::Object g("group::GroupOfPolytope");
-      g.set_description() << "full combinatorial group on coordinates of " << d << "-dim permutahedron" << endl;
-      g.set_name("fullCombinatorialGroupOnCoords");
-      g.take("DOMAIN") << polymake::group::OnCoords;
-
-      Array< Array< int > > gens(2);
-      Array< int > gen = sequence(0,d+1);
+      Array<Array<int>> gens(2);
+      Array<int> gen{sequence(0,d+1)};
       gen[0]=1;
       gen[1]=0;
       gens[0]=gen;
 
          
       gen[0]=d;
-      for ( int j=1; j<=d; ++j ) {
+      for (int j=1; j<=d; ++j) {
          gen[j]=j-1; 
       }
       gens[1]=gen;
       
-      g.take("GENERATORS") << gens;
+      perl::Object a("group::PermutationAction");
+      a.take("GENERATORS") << gens;
+      
+      perl::Object g("group::Group");
+      g.set_description() << "full combinatorial group on coordinates of " << d << "-dim permutahedron" << endl;
+      g.set_name("fullCombinatorialGroupOnCoords");
+
       p.take("GROUP") << g;
+      p.take("GROUP.COORDINATE_ACTION") << a;
 
    }
 
    p.take("CONE_AMBIENT_DIM") << d+2;
    p.take("CONE_DIM") << d+1;
    p.take("VERTICES") << V;
-   p.take("LINEALITY_SPACE") << Matrix<Rational>();
    p.take("N_VERTICES") << V.rows();
    p.take("BOUNDED") << true;
    return p;
@@ -83,12 +83,13 @@ perl::Object signed_permutahedron(int d)
    }
    perl::Object p("Polytope<Rational>");
    p.set_description() << "signed permutahedron of dimension " << d << endl;
-   const int n = (Integer::fac(d) << d).to_int();
+   const int n(Integer::fac(d) << d);
+
    // enumerate the d! vertices of the (d-1)-permutahedron
    Matrix<Rational> V(n, d+1);
    Vector<int> perm(d, sequence(1).begin());
 
-   Rows< Matrix<Rational> >::iterator r=rows(V).begin();
+   Rows<Matrix<Rational>>::iterator r=rows(V).begin();
    const int m=1<<d;
    do {
       Vector<int> signed_perm(perm);
@@ -97,10 +98,10 @@ perl::Object signed_permutahedron(int d)
          ++r;
          // add one "bit"
          for (int k=0; k<d; ++k) {
-            if (signed_perm[k]<0)
-               signed_perm[k]*=-1;
+            if (signed_perm[k] < 0)
+               signed_perm[k] *= -1;
             else {
-               signed_perm[k]*=-1;
+               signed_perm[k] *= -1;
                break;
             }
          }
@@ -110,7 +111,6 @@ perl::Object signed_permutahedron(int d)
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("CONE_DIM") << d+1;
    p.take("VERTICES") << V;
-   p.take("LINEALITY_SPACE") << Matrix<Rational>();
    p.take("N_VERTICES") << V.rows();
    p.take("BOUNDED") << true;
    return p;

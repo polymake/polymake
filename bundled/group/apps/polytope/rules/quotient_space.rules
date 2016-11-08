@@ -25,7 +25,7 @@ declare object QuotientSpace {
 # @category Basic properties
 # The group encoding the quotient space.
 # The faces of the space are the orbits of the faces of the polytope under the group.
-property IDENTIFICATION_GROUP : group::Group;
+property IDENTIFICATION_ACTION : group::PermutationAction;
 
 # @category Combinatorics
 # The dimension of the quotient space, defined to be the dimension of the polytope.
@@ -37,7 +37,7 @@ property SIMPLICIAL_COMPLEX : topaz::SimplicialComplex : multiple;
 
 # @category Combinatorics
 # The faces of the quotient space, ordered by dimension. One representative of each orbit class is kept.
-property FACES : Array<Array<Set<Int>>>;
+property FACES : Array<Set<Set<Int>>>;
 
 # @category Combinatorics
 # The orbits of faces of the quotient space, ordered by dimension.
@@ -97,8 +97,8 @@ rule QUOTIENT_SPACE(any).DIM = COMBINATORIAL_DIM;
 # @return Polytope
 user_function cylinder_2 {
     my $p = cube(2);
-    my $g = new group::Group(GENERATORS=>[[2,3,0,1]]);
-    my $qs = new QuotientSpace(IDENTIFICATION_GROUP=>$g);
+    my $g = new group::PermutationAction(GENERATORS=>[[2,3,0,1]]);
+    my $qs = new QuotientSpace(IDENTIFICATION_ACTION=>$g);
     $p->QUOTIENT_SPACE = $qs;
     $p->description="2-dimensional cylinder";
     return $p; 
@@ -111,9 +111,9 @@ user_function cylinder_2 {
 # @return Polytope
 user_function quarter_turn_manifold {
     my $p = cube(3);
-    $p->GROUP = linear_symmetries($p,1); # this will disappear with ticket #553
-    my $g = new group::Group(GENERATORS=>[[5,7,4,6,2,0,3,1],[6,2,1,5,7,3,0,4]]); 
-    my $q = new QuotientSpace(IDENTIFICATION_GROUP=>$g);
+    linear_symmetries($p);
+    my $g = new group::PermutationAction(GENERATORS=>[[5,7,4,6,2,0,3,1],[6,2,1,5,7,3,0,4]]); 
+    my $q = new QuotientSpace(IDENTIFICATION_ACTION=>$g);
     $q->name = "Quarter turn manifold";
     $q->description = "Quarter turn manifold obtained by identifying facets of a 3-cube";
     $p->QUOTIENT_SPACE = $q;
@@ -129,8 +129,8 @@ user_function cs_quotient {
     die "cs_quotient: input not centrally symmetric" unless $this->CENTRALLY_SYMMETRIC;
     my $gen = $this->CS_PERMUTATION;
     my $arr = new Array<Array<Int>>([ $gen ]);
-    my $g = new group::Group(GENERATORS=>$arr);
-    my $qs = new QuotientSpace(IDENTIFICATION_GROUP=>$g);
+    my $g = new group::PermutationAction(GENERATORS=>$arr);
+    my $qs = new QuotientSpace(IDENTIFICATION_ACTION=>$g);
     $qs->description = "Quotient space mod Z_2 of " . $this->description; 
     $this->QUOTIENT_SPACE = $qs;
     return $this;
@@ -151,7 +151,7 @@ user_function cs_quotient {
 
 object Polytope {
 
-rule QUOTIENT_SPACE.FACES, QUOTIENT_SPACE.FACE_ORBITS, QUOTIENT_SPACE.SYMMETRY_GROUP.GENERATORS : COMBINATORIAL_DIM, N_VERTICES, HASSE_DIAGRAM, GROUP.GENERATORS, QUOTIENT_SPACE.IDENTIFICATION_GROUP.GENERATORS {
+rule QUOTIENT_SPACE.FACES, QUOTIENT_SPACE.FACE_ORBITS, QUOTIENT_SPACE.SYMMETRY_GROUP.PERMUTATION_ACTION(new).GENERATORS : COMBINATORIAL_DIM, N_VERTICES, HASSE_DIAGRAM, GROUP.VERTICES_ACTION.GENERATORS, QUOTIENT_SPACE.IDENTIFICATION_ACTION.GENERATORS {
     quotient_space_faces($this);
 }
 
@@ -163,19 +163,19 @@ rule QUOTIENT_SPACE.F_VECTOR : QUOTIENT_SPACE.FACES {
 
 rule QUOTIENT_SPACE.SIMPLICIAL_COMPLEX(new).FACETS, QUOTIENT_SPACE.SIMPLICIAL_COMPLEX(new).VERTEX_LABELS, \
      QUOTIENT_SPACE.SIMPLICIAL_COMPLEX(new).PURE,  QUOTIENT_SPACE.SIMPLICIAL_COMPLEX(new).DIM \
-     : VERTICES_IN_FACETS, HASSE_DIAGRAM, QUOTIENT_SPACE.IDENTIFICATION_GROUP {
+     : VERTICES_IN_FACETS, HASSE_DIAGRAM, QUOTIENT_SPACE.IDENTIFICATION_ACTION {
     my $bs = iterated_barycentric_subdivision($this, 2, geometric_realization=>0);
     $this->QUOTIENT_SPACE->SIMPLICIAL_COMPLEX = topaz::bs2quotient($this, $bs); 
 }
 
-rule QUOTIENT_SPACE.SIMPLICES : COMBINATORIAL_DIM, VERTICES, QUOTIENT_SPACE.SYMMETRY_GROUP.GENERATORS {
-    $this->QUOTIENT_SPACE->SIMPLICES = representative_simplices($this->COMBINATORIAL_DIM, $this->VERTICES, $this->QUOTIENT_SPACE->SYMMETRY_GROUP->GENERATORS);
+rule QUOTIENT_SPACE.SIMPLICES : COMBINATORIAL_DIM, VERTICES, QUOTIENT_SPACE.SYMMETRY_GROUP.PERMUTATION_ACTION.GENERATORS {
+    $this->QUOTIENT_SPACE->SIMPLICES = representative_simplices($this->COMBINATORIAL_DIM, $this->VERTICES, $this->QUOTIENT_SPACE->SYMMETRY_GROUP->PERMUTATION_ACTION->GENERATORS);
 }
 
 # @category Combinatorics
 # The equivalence classes of maximal-dimensional simplices in the interior and boundary under a symmetry group 
 rule QUOTIENT_SPACE.REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, QUOTIENT_SPACE.REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES \
-     : COMBINATORIAL_DIM, RAYS_IN_FACETS, RAYS, QUOTIENT_SPACE.SYMMETRY_GROUP.GENERATORS {
+     : COMBINATORIAL_DIM, RAYS_IN_FACETS, RAYS, QUOTIENT_SPACE.SYMMETRY_GROUP.PERMUTATION_ACTION.GENERATORS {
     my $pair = representative_interior_and_boundary_ridges($this);
     $this->QUOTIENT_SPACE->REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES = $pair->first;
     $this->QUOTIENT_SPACE->REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES = $pair->second;
@@ -183,8 +183,8 @@ rule QUOTIENT_SPACE.REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, QUOTIENT_SPACE.REPR
 
 # @category Combinatorics
 # The equivalence classes of maximal-dimensional simplices in the boundary under a symmetry group 
-rule QUOTIENT_SPACE.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES : COMBINATORIAL_DIM, RAYS, QUOTIENT_SPACE.SYMMETRY_GROUP.GENERATORS {
-    $this->QUOTIENT_SPACE->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES = representative_max_interior_simplices($this->COMBINATORIAL_DIM, $this->RAYS, $this->QUOTIENT_SPACE->SYMMETRY_GROUP->GENERATORS);
+rule QUOTIENT_SPACE.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES : COMBINATORIAL_DIM, RAYS, QUOTIENT_SPACE.SYMMETRY_GROUP.PERMUTATION_ACTION.GENERATORS {
+    $this->QUOTIENT_SPACE->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES = representative_max_interior_simplices($this->COMBINATORIAL_DIM, $this->RAYS, $this->QUOTIENT_SPACE->SYMMETRY_GROUP->PERMUTATION_ACTION.GENERATORS);
 }
 
 rule QUOTIENT_SPACE.N_SIMPLICES : QUOTIENT_SPACE.SIMPLICES {
@@ -193,20 +193,20 @@ rule QUOTIENT_SPACE.N_SIMPLICES : QUOTIENT_SPACE.SIMPLICES {
     $this->QUOTIENT_SPACE->N_SIMPLICES = \@n_vector;
 }
 
-rule QUOTIENT_SPACE.COCIRCUIT_EQUATIONS : QUOTIENT_SPACE.REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, QUOTIENT_SPACE.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, QUOTIENT_SPACE.SYMMETRY_GROUP.GENERATORS {
+rule QUOTIENT_SPACE.COCIRCUIT_EQUATIONS : QUOTIENT_SPACE.REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, QUOTIENT_SPACE.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, QUOTIENT_SPACE.SYMMETRY_GROUP.PERMUTATION_ACTION.GENERATORS {
    my $d = $this->COMBINATORIAL_DIM;
    my $interior_ridge_reps = $this->QUOTIENT_SPACE->REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES;
    print $interior_ridge_reps, "\n";
    my $facet_reps = $this->QUOTIENT_SPACE->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES;
    print $facet_reps, "\n";
-   $this->QUOTIENT_SPACE->COCIRCUIT_EQUATIONS = symmetrized_cocircuit_equations($d, $this->RAYS, $this->RAYS_IN_FACETS, $this->QUOTIENT_SPACE->SYMMETRY_GROUP->GENERATORS, $interior_ridge_reps, $facet_reps);
+   $this->QUOTIENT_SPACE->COCIRCUIT_EQUATIONS = symmetrized_cocircuit_equations($d, $this->RAYS, $this->RAYS_IN_FACETS, $this->QUOTIENT_SPACE->SYMMETRY_GROUP->PERMUTATION_ACTION.GENERATORS, $interior_ridge_reps, $facet_reps);
 }
 
-rule QUOTIENT_SPACE.SIMPLEXITY_LOWER_BOUND : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, QUOTIENT_SPACE.REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES, QUOTIENT_SPACE.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, VOLUME, QUOTIENT_SPACE.COCIRCUIT_EQUATIONS, QUOTIENT_SPACE.SYMMETRY_GROUP.GENERATORS, QUOTIENT_SPACE.IDENTIFICATION_GROUP.GENERATORS {
+rule QUOTIENT_SPACE.SIMPLEXITY_LOWER_BOUND : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, QUOTIENT_SPACE.REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES, QUOTIENT_SPACE.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, VOLUME, QUOTIENT_SPACE.COCIRCUIT_EQUATIONS, QUOTIENT_SPACE.SYMMETRY_GROUP.PERMUTATION_ACTION.GENERATORS, QUOTIENT_SPACE.IDENTIFICATION_ACTION.GENERATORS {
    my $d = $this->COMBINATORIAL_DIM;
    my $exterior_ridge_reps = $this->QUOTIENT_SPACE->REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES;
    my $facet_reps = $this->QUOTIENT_SPACE->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES;
-   $this->QUOTIENT_SPACE->SIMPLEXITY_LOWER_BOUND = quotient_space_simplexity_lower_bound($d, $this->VERTICES, $this->VERTICES_IN_FACETS, $exterior_ridge_reps, $facet_reps, $this->VOLUME, $this->QUOTIENT_SPACE->COCIRCUIT_EQUATIONS, $this->QUOTIENT_SPACE->SYMMETRY_GROUP->GENERATORS, $this->QUOTIENT_SPACE->IDENTIFICATION_GROUP->GENERATORS);
+   $this->QUOTIENT_SPACE->SIMPLEXITY_LOWER_BOUND = quotient_space_simplexity_lower_bound($d, $this->VERTICES, $this->VERTICES_IN_FACETS, $exterior_ridge_reps, $facet_reps, $this->VOLUME, $this->QUOTIENT_SPACE->COCIRCUIT_EQUATIONS, $this->QUOTIENT_SPACE->SYMMETRY_GROUP->PERMUTATION_ACTION->GENERATORS, $this->QUOTIENT_SPACE->IDENTIFICATION_ACTION->GENERATORS);
 }
 
 }
@@ -217,7 +217,7 @@ rule QUOTIENT_SPACE.SIMPLEXITY_LOWER_BOUND : COMBINATORIAL_DIM, RAYS, RAYS_IN_FA
 # of the boundary.
 user_function write_quotient_space_simplexity_ilp<Scalar>(Polytope<Scalar> $) {
     my ($q, $outfilename) = @_;
-    return quotient_space_simplexity_ilp($q->COMBINATORIAL_DIM, $q->VERTICES, $q->VERTICES_IN_FACETS, $q->QUOTIENT_SPACE->REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES, $q->QUOTIENT_SPACE->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, $q->VOLUME, $q->QUOTIENT_SPACE->COCIRCUIT_EQUATIONS, $q->QUOTIENT_SPACE->SYMMETRY_GROUP->GENERATORS, $q->QUOTIENT_SPACE->IDENTIFICATION_GROUP->GENERATORS, filename => $outfilename);
+    return quotient_space_simplexity_ilp($q->COMBINATORIAL_DIM, $q->VERTICES, $q->VERTICES_IN_FACETS, $q->QUOTIENT_SPACE->REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES, $q->QUOTIENT_SPACE->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, $q->VOLUME, $q->QUOTIENT_SPACE->COCIRCUIT_EQUATIONS, $q->QUOTIENT_SPACE->SYMMETRY_GROUP->PERMUTATION_ACTION->GENERATORS, $q->QUOTIENT_SPACE->IDENTIFICATION_ACTION->GENERATORS, filename => $outfilename);
 }
 
 

@@ -36,7 +36,7 @@ namespace polymake { namespace tropical {
 			cone.take("MAXIMAL_COVECTOR_CELLS") << IncidenceMatrix<>(facets_as_set);
 		}
 
-	FunctionTemplate4perl("extract_pseudovertices<Addition,Scalar>(Cone<Addition,Scalar>) : void");
+	FunctionTemplate4perl("extract_pseudovertices<Addition,Scalar>(Polytope<Addition,Scalar>) : void");
 
 } }
 

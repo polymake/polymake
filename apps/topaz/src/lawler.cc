@@ -21,7 +21,7 @@
 
 namespace polymake { namespace topaz {
   
-Array<Set<int> > lawler(const Array<Set<int> > F, const int n_vertices )
+Array<Set<int>> lawler(const Array<Set<int> > F, const int n_vertices )
 {
    sequence Vertices(0,n_vertices);
 
@@ -45,7 +45,7 @@ Array<Set<int> > lawler(const Array<Set<int> > F, const int n_vertices )
       C = Cnew;
    }
 
-   return C;
+   return Array<Set<int>>(C);
 }
 
 Function4perl(&lawler, "lawler_minimal_non_faces(Array<Set<Int>>, $)");

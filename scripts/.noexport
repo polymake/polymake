@@ -1,0 +1,4 @@
+correct_failures local
+gather_coverage test
+pcov2gcov.pl test
+run_testcases test

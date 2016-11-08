@@ -41,8 +41,8 @@ Graph<Directed> dgraph(perl::Object p, perl::Object lp, perl::OptionSet options)
    }
    if (inverse) obj.negate();
 
-   const Scalar* obj_value=obj.begin();
-   for (Entire< Nodes< Graph<Directed> > >::iterator n=entire(nodes(DG));  !n.at_end();  ++n, ++obj_value) {
+   auto obj_value=obj.begin();
+   for (auto n=entire(nodes(DG));  !n.at_end();  ++n, ++obj_value) {
       if (check_for_rays && rays.contains(*n)) {
          const int ray_orientation=sign(*obj_value);
          if (ray_orientation>0) upper_bound=false;
@@ -51,7 +51,7 @@ Graph<Directed> dgraph(perl::Object p, perl::Object lp, perl::OptionSet options)
          if (ray_orientation<=0) n.in_edges().clear();
       } else {
          // affine vertex
-         for (Graph<Directed>::out_edge_list::iterator e=n.out_edges().find_nearest(*n, operations::gt()); !e.at_end(); ) {
+         for (auto e=n.out_edges().find_nearest(*n, operations::gt()); !e.at_end(); ) {
             if (check_for_rays && rays.contains(e.to_node())) {
                ++e;
                continue;
@@ -72,7 +72,7 @@ Graph<Directed> dgraph(perl::Object p, perl::Object lp, perl::OptionSet options)
 
    if (!inverse && !generic) {
       Set<int> minface, maxface;
-      for (Entire< Nodes< Graph<Directed> > >::iterator n=entire(nodes(DG));  !n.at_end();  ++n) {
+      for (auto n=entire(nodes(DG));  !n.at_end();  ++n) {
          if (!n.in_degree() && n.out_degree()) minface.push_back(n.index());
          if (!n.out_degree() && n.in_degree()) maxface.push_back(n.index());
       }
@@ -100,7 +100,7 @@ Vector<Scalar> objective_values_for_embedding(perl::Object p, perl::Object lp)
    if (!rays.empty()) {
       const Scalar max_obj=accumulate(val.slice(~rays), operations::max()),
          min_obj=accumulate(val.slice(~rays), operations::min());
-      for (Entire< Set<int> >::const_iterator r=entire(rays); !r.at_end(); ++r)
+      for (auto r=entire(rays); !r.at_end(); ++r)
          if (val[*r]>0)
             val[*r]=2*max_obj-min_obj;
          else

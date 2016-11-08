@@ -22,18 +22,6 @@
 
 namespace polymake { namespace group { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0>
-   FunctionInterface4perl( orbit_supports_x_X, T0 ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturn( (orbit_supports(arg0, arg1.get<T0>())) );
-   };
-
-   template <typename T0>
-   FunctionInterface4perl( orbit_support_sets_x_X, T0 ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturn( (orbit_support_sets(arg0, arg1.get<T0>())) );
-   };
-
    template <typename T0, typename T1>
    FunctionInterface4perl( lex_min_representative_T_x_C, T0,T1 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
@@ -41,8 +29,6 @@ namespace polymake { namespace group { namespace {
    };
 
    FunctionInstance4perl(lex_min_representative_T_x_C, Set< int >, perl::Canned< const Set< int > >);
-   FunctionInstance4perl(orbit_supports_x_X, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
-   FunctionInstance4perl(orbit_support_sets_x_X, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
    FunctionWrapper4perl( int (perl::Object) ) {
       perl::Value arg0(stack[0]);
       IndirectWrapperReturn( arg0 );

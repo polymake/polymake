@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -203,7 +203,7 @@ rule TRIANGULATION.FACETS : POINTS, TRIANGULATION.WEIGHTS {
    $this->TRIANGULATION->FACETS=regular_subdivision($this->POINTS, $this->TRIANGULATION->WEIGHTS);
 }
 weight 3.10;
-permutation : TRIANGULATION.FacetPerm;
+incurs TRIANGULATION.FacetPerm;
 
 }
 
@@ -212,12 +212,12 @@ permutation : TRIANGULATION.FacetPerm;
 # Create a simplicial complex as the barycentric subdivision of a given point configuration.
 # Each vertex in the new complex corresponds to a face in the old complex.
 # @param PointConfiguration pc input point configuration
-# @option Bool relabel generate vertex labels from the faces of the original complex; default true
+# @option Bool no_labels Do not generate [[VERTEX_LABELS]] from the faces of the original complex. default: 0
 # @option Bool geometric_realization read [[POINTS]] of the input complex,
 #  compute the coordinates of the new vertices and store them as
 #  [[POINTS]] of the produced complex; default false
 # @return PointConfiguration
-user_function barycentric_subdivision(PointConfiguration { relabel => 1, geometric_realization => 1, pin_hasse_section => 'TRIANGULATION.HASSE_DIAGRAM', label_section => 'LABELS', coord_section => 'POINTS' }) {
+user_function barycentric_subdivision(PointConfiguration { no_labels => 0, geometric_realization => 1, pin_hasse_section => 'TRIANGULATION.HASSE_DIAGRAM', label_section => 'LABELS', coord_section => 'POINTS' }) {
    topaz::barycentric_subdivision_impl(@_);
 }
 
@@ -225,7 +225,7 @@ user_function barycentric_subdivision(PointConfiguration { relabel => 1, geometr
 # Computes the complex obtained by stellar subdivision of all //faces// of the [[TRIANGULATION]] of the PointConfiguration.
 # @param PointConfiguration pc input point configuration
 # @param Array<Set<Int>> faces list of faces to subdivide
-# @option Bool no_labels : do not write any labels
+# @option Bool no_labels Do not generate [[VERTEX_LABELS]] from the faces of the original complex. default: 0
 # @return PointConfiguration
 user_function stellar_subdivision(PointConfiguration, Array<Set<Int>>, { no_labels => 0}) {
    topaz::stellar_subdivision(@_);

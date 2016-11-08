@@ -16,17 +16,17 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
 #include "polymake/Graph.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( all_edges_R_x_x_f5, T0 ) {
+   FunctionInterface4perl( all_edges_R_x_x_f37, T0 ) {
       perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]);
-      WrapperReturnLvalueAnchPkg( 1, (arg0), T0, arg0.get<T0>().all_edges(arg1, arg2) );
+      WrapperReturnLvaluePkg( T0, arg0.get<T0>().all_edges(arg1, arg2), arg0 );
    };
 
-   FunctionInstance4perl(all_edges_R_x_x_f5, perl::Canned< Wary< Graph< DirectedMulti > > >);
+   FunctionInstance4perl(all_edges_R_x_x_f37, perl::Canned< Wary< Graph< DirectedMulti > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -20,26 +20,26 @@
 #include "polymake/SparseMatrix.h"
 #include "polymake/Rational.h"
 #include "polymake/linalg.h"
+#include "polymake/polytope/poly2lp.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
 
 namespace polymake { namespace polytope {
 
-void print_lp(perl::Object p, perl::Object lp, const bool maximize, std::ostream& os);
-
 namespace {
 
+template<typename Scalar>
 void write_output(const perl::Object& q, const perl::Object& lp, const std::string& filename)
 {
    if (filename.empty()) {
       return;
    }
    else if (filename == "-") {
-      print_lp(q, lp, false, perl::cout);
+      print_lp<Scalar>(q, lp, false, perl::cout);
    } else {
       std::ofstream os(filename.c_str());
-      print_lp(q, lp, false, os);
+      print_lp<Scalar>(q, lp, false, os);
    }
 }
 
@@ -47,23 +47,25 @@ void write_output(const perl::Object& q, const perl::Object& lp, const std::stri
 
 template <typename Scalar, typename SetType>
 perl::Object universal_polytope_impl(int d, 
-                                const Matrix<Scalar>& points, 
-                                const Array<SetType>& facet_reps, 
-                                Scalar vol, 
-                                const SparseMatrix<Rational>& cocircuit_equations)
+                                     const Matrix<Scalar>& points, 
+                                     const Array<SetType>& facet_reps, 
+                                     const Scalar& vol, 
+                                     const SparseMatrix<Rational>& cocircuit_equations)
 {
-   const int n = facet_reps.size();
-   Vector<Scalar> volume_vect(n);
-   typename Vector<Scalar>::iterator vit = volume_vect.begin();
-   for (typename Entire<Array<SetType> >::const_iterator fit = entire(facet_reps); !fit.at_end(); ++fit, ++vit) 
-      *vit = abs(det(points.minor(*fit, All)));
+   const int 
+      n_reps = facet_reps.size(), 
+      n_cols = cocircuit_equations.cols();
+   if (n_reps > n_cols)
+      throw std::runtime_error("Need at least #{simplex reps} many columns in the cocircuit equation matrix");
 
-   const SparseMatrix<Scalar> Inequalities = zero_vector<Scalar>(n) | unit_matrix<Scalar>(n);
-   SparseMatrix<Scalar> Equations(0, n+1);
-   Equations /= (-Integer::fac(d) * vol) | volume_vect;
-   if (cocircuit_equations.cols())
-      Equations /= (zero_vector<Scalar>(cocircuit_equations.rows()) 
-                    | Matrix<Scalar>(cocircuit_equations));
+   Vector<Scalar> volume_vect(n_reps);
+   typename Vector<Scalar>::iterator vit = volume_vect.begin();
+   for (const auto& f : facet_reps)
+      *vit = abs(det(points.minor(f, All))), ++vit;
+
+   const SparseMatrix<Scalar> Inequalities = zero_vector<Scalar>(n_reps) | unit_matrix<Scalar>(n_reps) | zero_matrix<Scalar>(n_reps, n_cols - n_reps);
+   const SparseMatrix<Scalar> Equations(((-Integer::fac(d) * vol) | volume_vect | zero_vector<Scalar>(n_cols - n_reps))
+                                       / (zero_vector<Scalar>(cocircuit_equations.rows()) | Matrix<Scalar>(cocircuit_equations)));
 
    perl::Object q(perl::ObjectType::construct<Scalar>("Polytope"));
    q.take("FEASIBLE") << true;
@@ -80,23 +82,27 @@ perl::Object simplexity_ilp(int d,
                             const SparseMatrix<Rational>& cocircuit_equations, 
                             perl::OptionSet options)
 {
-   const int n = facet_reps.size();
+   const int 
+      n_reps = facet_reps.size(), 
+      n_cols = cocircuit_equations.cols();
+   if (n_reps > n_cols)
+      throw std::runtime_error("Need at least #{simplex reps} many columns in the cocircuit equation matrix");
 
    perl::Object lp(perl::ObjectType::construct<Scalar>("LinearProgram"));
-   lp.attach("INTEGER_VARIABLES") << Array<bool>(n,true);
-   lp.take("LINEAR_OBJECTIVE") << Vector<Scalar>(0|ones_vector<Scalar>(n));
+   lp.attach("INTEGER_VARIABLES") << Array<bool>(n_reps, true);
+   lp.take("LINEAR_OBJECTIVE") << Vector<Scalar>(0 | ones_vector<Scalar>(n_reps) | zero_vector<Scalar>(n_cols-n_reps));
 
    perl::Object q = universal_polytope_impl(d, points, facet_reps, vol, cocircuit_equations);
    q.take("LP") << lp;
 
    const std::string filename = options["filename"];
-   write_output(q, lp, filename);
+   write_output<Scalar>(q, lp, filename);
    return q;
 }
 
 perl::Object foldable_max_signature_ilp(int d,
                                         const Matrix<Rational>& points,
-                                        const Array<Set<int> >& facet_reps,
+                                        const Array<Set<int>>& facet_reps,
                                         const Rational& vol,
                                         const SparseMatrix<Rational>& foldable_cocircuit_equations,
                                         perl::OptionSet options)
@@ -108,13 +114,13 @@ perl::Object foldable_max_signature_ilp(int d,
    SparseMatrix<Integer> selection(n,n2);
    Vector<Integer>::iterator vit = volume_vect.begin();
    int i=0;
-   for (Entire<Array<Set<int> > >::const_iterator fit = entire(facet_reps); !fit.at_end(); ++fit, ++vit, ++i) {
+   for (const auto& f : facet_reps) {
       // points required to have integer coordinates!
-      const Integer facet_vol = convert_to<Integer>(abs(det(points.minor(*fit, All))));
-      *vit = facet_vol; // black facet
-      ++vit;
-      *vit = facet_vol; // white facet
+      const Integer facet_vol = convert_to<Integer>(abs(det(points.minor(f, All))));
+      *vit = facet_vol; ++vit; // black facet
+      *vit = facet_vol; ++vit; // white facet
       selection(i,2*i) = selection(i,2*i+1) = -1; // either black or white
+      ++i;
    }
 
    const SparseMatrix<Integer> 
@@ -126,8 +132,10 @@ perl::Object foldable_max_signature_ilp(int d,
    // signature = absolute difference of normalized volumes of black minus white maximal simplices
    // (provided that normalized volume is odd)
    for (int i=0; i<n; ++i)
-      if (volume_vect[2*i].even()) volume_vect[2*i] = volume_vect[2*i+1] = 0;
-      else volume_vect[2*i+1].negate();
+      if (volume_vect[2*i].even()) 
+         volume_vect[2*i] = volume_vect[2*i+1] = 0;
+      else 
+         volume_vect[2*i+1].negate();
    
    perl::Object lp("LinearProgram<Rational>");
    lp.attach("INTEGER_VARIABLES") << Array<bool>(n2,true);
@@ -140,7 +148,7 @@ perl::Object foldable_max_signature_ilp(int d,
    q.take("LP") << lp;
 
    const std::string filename = options["filename"];
-   write_output(q, lp, filename);
+   write_output<Rational>(q, lp, filename);
    return q;
 }
 
@@ -160,7 +168,7 @@ Integer simplexity_lower_bound(int d,
 
 Integer foldable_max_signature_upper_bound(int d, 
                                            const Matrix<Rational>& points, 
-                                           const Array<Set<int> >& facets, 
+                                           const Array<Set<int>>& facets, 
                                            const Rational& vol, 
                                            const SparseMatrix<Rational>& foldable_cocircuit_equations, 
                                            perl::OptionSet options)
@@ -183,7 +191,7 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# @param SparseMatrix cocircuit_equations the matrix of cocircuit equations "
                           "# @option String filename a name for a file in .lp format to store the linear program"
                           "# @return LinearProgram an LP that provides a lower bound",
-                          "simplexity_ilp<Scalar>($ Matrix<Scalar> Array<Set> $ SparseMatrix { filename=>'' })");
+                          "simplexity_ilp<Scalar,SetType>($ Matrix<Scalar> Array<SetType> $ SparseMatrix { filename=>'' })");
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# Calculate the LP relaxation lower bound for the minimal number of simplices needed to triangulate a polytope, point configuration or quotient manifold"

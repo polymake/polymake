@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -229,7 +229,7 @@ user_function ceil(*) : c++ (include => "polymake/Rational.h");
 
 # @category Arithmetic
 # Check whether the given number has a finite value.
-# @param Integer a
+# @param SCALAR a
 # @return Bool
 # @example > print isfinite('inf');
 # | 0
@@ -241,8 +241,8 @@ user_function isfinite(*) : c++ (include => "polymake/Integer.h");
 
 # @category Arithmetic
 # Check whether the given number has an infinite value.  Return -1/+1 for infinity and 0 for all finite values.
-# @param Integer a
-# @return Bool
+# @param SCALAR a
+# @return Int
 # @example > print isinf('inf');
 # | 1
 # > print isinf(23);
@@ -252,9 +252,9 @@ user_function isinf(*) : c++ (include => "polymake/Integer.h");
 
 # @category Arithmetic
 # Computes the ratio of two given integral numbers under the assumption that the dividend is a multiple of the divisor.
-# @param Int a
-# @param Int b a divisor of //a//
-# @return Int
+# @param Integer a
+# @param Integer b a divisor of //a//
+# @return Integer
 # @example  > print div_exact(10,5);
 # | 2
 user_function div_exact(*:int, *:int) : c++ (include => "polymake/numerical_functions.h");
@@ -419,17 +419,19 @@ user_function convert_to<Target>($) {
 # You can construct the value a+b\(\sqrt r\) via QuadraticExtension(a, b, r) (where a, b, r are of type //Field//).
 # @tparam Field default: [[Rational]]
 declare property_type QuadraticExtension<Field=Rational> : upgrades(Field) : c++ \
-   (operators => '! @arith @compare', include => "polymake/QuadraticExtension.h") {
+   (operators => '! @arith @compare abs(abs(*))', include => "polymake/QuadraticExtension.h") {
 
-    # Construct q=a+b*sqrt(r).
-    # @param Field a
-    # @param Field b
-    # @param Field r
-    method construct(*, *, *) : c++;
+   # Construct q=a+b*sqrt(r).
+   # @param Field a
+   # @param Field b
+   # @param Field r
+   method construct(*, *, *) : c++;
 
-    # construct q=a
-    # @param Field a
-    method construct(type_upgrades_to<Field>) : c++;
+   # construct q=a
+   # @param Field a
+   method construct(type_upgrades_to<Field>) : c++;
+
+   use overload '0+' => \&inhibited_num;
 }
 
 function conjugate(QuadraticExtension) : c++;
@@ -492,79 +494,6 @@ declare property_type Array<Element> : (instanceof Polymake::Core::ObjectType(El
       }
    }
 }
-
-function permuted(Array, *) : c++ (include => "polymake/permutations.h") : builtin_sub {
-   my ($array, $perm)=@_;
-   local $Core::PropertyType::trusted_value=1;
-   $array->type->construct->([ @$array[ @$perm ] ]);
-}
-
-function permuted_inv(Array, *) : c++ (include => "polymake/permutations.h") : builtin_sub {
-   my ($array, $perm)=@_;
-   my @inv; $#inv=$#$array;
-   $inv[$perm->[$_]]=$array->[$_] for 0..$#inv;
-   local $Core::PropertyType::trusted_value=1;
-   $array->type->construct->(\@inv);
-}
-
-function permuted_elements(Array, $) {
-   my ($array, $perm)=@_;
-   local $Core::PropertyType::trusted_value=1;
-   $array->type->construct->([ map { permuted($_,$perm) } @$array ]);
-}
-
-
-# @category Combinatorics
-# Returns the permutation that maps //a// to //b//.
-# @param Array a
-# @param Array b
-# @return Array<Int>
-# @example > $p = find_permutation([1,8,3,4],[3,8,4,1]);
-# > print $p;
-# 2 1 3 0
-
-user_function find_permutation(*,*) : c++ (include => "polymake/permutations.h");
-
-
-# @category Combinatorics
-# Returns the __cycles__ of a permutation given by //p//.
-# @param Array<Int> p
-# @return Array<List<Int>>
-# @example > print permutation_cycles([1,0,3,2]);
-# | {0 1}{2 3}
-
-user_function permutation_cycles(*) : c++ (include => "polymake/permutations.h") : returns(@);
-
-# @category Combinatorics
-# Returns the __sign__ of the permutation given by //p//.
-# @param Array<Int> p
-# @return Int +1 or -1
-# @example > print permutation_sign([1,0,3,2]);
-# | 1
-
-user_function permutation_sign(*) : c++ (include => "polymake/permutations.h");
-
-#FIXME: ticket 725 and 727 return type should be masqueraded Array<Array <Int> > instead of perl-Array
-
-# @category Combinatorics
-# Returns a list of all permutations of the set {0...n-1} as a perl-array
-# @param Int n
-# @return ARRAY
-# @example To store the result in the perl array @a, type this:
-# > @a = all_permutations(3);
-# The array contains pointers to arrays. To access the 0-th pointer, do this:
-# > $a0 = $a[0];
-# To print the 0-th array itself, you have to dereference it as follows:
-# > print @{ $a0 };
-# | 012
-# You can loop through @a by using foreach. The print statement gets the string obtained by dereferencing
-# the current entry concatenated with the string " ".
-# > foreach( @a ){
-# > print @{ $_ }," ";
-# > }
-# | 012 102 201 021 120 210
-
-user_function all_permutations($) : c++  (include => "polymake/permutations.h") : returns(@);
 
 ##################################################################################
 

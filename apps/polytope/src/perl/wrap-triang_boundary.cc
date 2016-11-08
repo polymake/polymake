@@ -16,11 +16,11 @@
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::perl::ListReturn (pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, pm::IncidenceMatrix<pm::NonSymmetric> const&) ) {
+   FunctionWrapper4perl( pm::perl::ListReturn (pm::Array<pm::Set<int, pm::operations::cmp>> const&, pm::IncidenceMatrix<pm::NonSymmetric> const&) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
       IndirectWrapperReturnVoid( arg0.get< perl::TryCanned< const Array< Set< int > > > >(), arg1.get< perl::TryCanned< const IncidenceMatrix< NonSymmetric > > >() );
    }
-   FunctionWrapperInstance4perl( pm::perl::ListReturn (pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, pm::IncidenceMatrix<pm::NonSymmetric> const&) );
+   FunctionWrapperInstance4perl( pm::perl::ListReturn (pm::Array<pm::Set<int, pm::operations::cmp>> const&, pm::IncidenceMatrix<pm::NonSymmetric> const&) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

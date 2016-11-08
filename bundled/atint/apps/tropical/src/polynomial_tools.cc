@@ -28,7 +28,6 @@
 #include "polymake/Polynomial.h"
 #include "polymake/TropicalNumber.h"
 #include "polymake/tropical/polynomial_tools.h"
-#include "polymake/tropical/LoggingPrinter.h"
 
 
 namespace polymake { namespace tropical {

@@ -209,6 +209,7 @@ protected:
 template <typename E> inline
 Matrix<E> beneath_beyond_algo<E>::getFacets() const
 {
+   // TODO: move instead of copy
    return Matrix<E>(dual_graph.nodes(), points.cols(),
                     entire(attach_member_accessor(facets, ptr2type<facet_info, Vector<E>, &facet_info::normal>())));
 }

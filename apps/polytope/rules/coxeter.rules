@@ -20,7 +20,7 @@
 # The Dynkin diagrams of the different types can be
 # found in the description of the clients [[simple_roots_type_A|simple_roots_type_*]].
 # @param String type the type of the Coxeter group
-# @return group::GroupOfPolytope the Coxeter group of type //type// 
+# @return group::Group the Coxeter group of type //type// 
 user_function coxeter_group {
     my $type = $_[0];
     if (length($type) < 2) {
@@ -30,7 +30,7 @@ user_function coxeter_group {
     my $n = $chars[1];
     my $rings = new Set<Int>(0..$n-1);
     my $p = wythoff($type,$rings);
-    return new group::GroupOfPolytope($p->GROUP);
+    return new group::Group($p->GROUP);
 }
 
 

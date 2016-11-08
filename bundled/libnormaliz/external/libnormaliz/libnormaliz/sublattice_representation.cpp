@@ -99,11 +99,7 @@ void Sublattice_Representation<Integer>::initialize(const Matrix<Integer>& M, bo
     rank=N.row_echelon_reduce(success);
     if(!success)
         return;
-    if (rank==0) {
-        errorOutput()<<"warning: matrix has rank 0. Please check input data."<<endl;
-    }
-    
-    
+
     if(rank==dim && take_saturation){
         A = B = Matrix<Integer>(dim);
         c=1;
@@ -111,7 +107,6 @@ void Sublattice_Representation<Integer>::initialize(const Matrix<Integer>& M, bo
         return;   
     }
 
-    
     mpz_class row_index=1;
     vector<key_t> col(rank);
     vector<bool> col_is_corner(dim,false);

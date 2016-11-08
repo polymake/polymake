@@ -28,7 +28,7 @@ perl::Object link_complex(perl::Object p_in, const Set<int>& F, perl::OptionSet 
       throw std::runtime_error("t_link: Specified vertex indices out of range");
    
    std::list< Set<int> > Link;
-   copy(entire(link(C,F)), std::back_inserter(Link));
+   copy_range(entire(link(C,F)), std::back_inserter(Link));
    
    if (Link.empty()) {
       std::ostringstream e;
@@ -55,7 +55,7 @@ UserFunction4perl("# @category  Producing a new simplicial complex from others"
                   "#  Produce the __link__ of a //face// of the //complex//"
                   "# @param SimplicialComplex complex"
                   "# @param Set<int> face"
-                  "# @option Bool no_labels  tells the client not to create any labels."
+                  "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @return SimplicialComplex",
                   &link_complex,"link_complex(SimplicialComplex, $ { no_labels => 0 })");
 } }

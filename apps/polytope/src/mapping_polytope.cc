@@ -72,17 +72,17 @@ perl::Object mapping_polytope(perl::Object p_in1, perl::Object p_in2, perl::Opti
       }
    }
    p_out.take("FACETS") << H_out;
-   p_out.take("AFFINE_HULL") << Matrix<Scalar>();
+   p_out.take("AFFINE_HULL") << Matrix<Scalar>(0, H_out.cols());
    p_out.take("FEASIBLE") << true;
    p_out.take("BOUNDED") << true;
 
-   const bool relabel=options["relabel"];
+   const bool relabel=!options["no_labels"];
    if (relabel) {
       std::vector<std::string> vertex_labels(n), facet_labels(m), labels_out(m*n);
       read_labels(p_in1, "VERTEX_LABELS", vertex_labels);
       read_labels(p_in2, "FACET_LABELS", facet_labels);
 
-      copy(entire(pm::product(vertex_labels, facet_labels, product_label())), labels_out.begin());
+      copy_range(entire(pm::product(vertex_labels, facet_labels, product_label())), labels_out.begin());
       p_out.take("FACET_LABELS") << labels_out;
    }
 
@@ -97,9 +97,9 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                   "# \"v<sub>1</sub>*h<sub>1</sub>\"."
                   "# @param Polytope P1"
                   "# @param Polytope P2"
-                  "# @option Bool relabel"
+                  "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytope. default: 0"
                   "# @return Polytope",
-                  "mapping_polytope<Scalar> (Polytope<Scalar> Polytope<Scalar> { relabel => undef })");
+                  "mapping_polytope<Scalar> (Polytope<Scalar> Polytope<Scalar> { no_labels => 0 })");
 } }
 
 // Local Variables:

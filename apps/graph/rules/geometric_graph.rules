@@ -15,6 +15,7 @@
 
 # An undirected graph with given node coordinates and a bounding box.
 
+# @category Combinatorics
 declare object GeometricGraph<Scalar=Rational> : Graph {
 
    # The coordinates of the nodes of the graph.

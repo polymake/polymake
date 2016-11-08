@@ -29,7 +29,6 @@
 #include "polymake/Vector.h"
 #include "polymake/linalg.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/divisor.h"
 #include "polymake/tropical/solver_def.h"
 #include "polymake/tropical/convex_hull_tools.h"
@@ -60,11 +59,6 @@ namespace polymake { namespace tropical {
 	  @return A FacetData object (see above)
 	  */
 	FacetData computeFacets(const Matrix<Rational> &rays,const Set<int> &cone, solver<Rational> &sv) ;
-
-	/**
-	  @brief This takes a result of computeFacets and finds all the facets visible from "direction", i.e. all facets whose outer normal has strict positive scalar product with direction (it doesn't matter which normal we take: The direction must lie in the span of the two-dimensional cone, so the equation g of the cone is zero on direction. Any two representatives of a facet normal only differ by a multiple of g).
-	  */
-	Vector<Set<int> > visibleFaces(FacetData fd, Vector<Rational> direction);
 
 	/**
 	  @brief This takes a vertex in the cubic (whose function's domain is describes by frays and fcones) and a direction and computes the vertex w farthest away from vertex in this direction, such that the convex hull of vertex and w still lies in X. It returns the empty vertex, if the complete half-line lies in X.

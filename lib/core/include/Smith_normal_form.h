@@ -125,7 +125,7 @@ int smith_normal_form_steps(Matrix& M, CompanionLogger& Logger
 #endif
                             )
 {
-   const bool Logger_dummy=pm::derived_from<CompanionLogger, dummy_companion_logger>::value;
+   const bool Logger_dummy=is_derived_from<CompanionLogger, dummy_companion_logger>::value;
    typedef typename Matrix::element_type E;
 
    // These are working variables in the following loops,
@@ -195,7 +195,7 @@ int smith_normal_form_steps(Matrix& M, CompanionLogger& Logger
             if ((U.j=e.index()) == r) { ++e; continue; }
             if (next_r<0) next_r=U.j;
             if (abs_equal(pivot_elem, *e)) {
-               if (pm::sign(pivot_elem)==pm::sign(*e)) {
+               if (sign(pivot_elem)==sign(*e)) {
                   if (!Logger_dummy) U.a_ji=-one_value<E>();
                   ++e;
                   M.row(U.j) -= M.row(r);
@@ -240,9 +240,9 @@ int smith_normal_form_steps(Matrix& M, CompanionLogger& Logger
 
 template <typename E, typename CompanionLogger, bool strict_diagonal>
 int smith_normal_form(SparseMatrix<E>& M, std::list< std::pair<E,int> >& torsion,
-                      const CompanionLogger& Logger, bool2type<strict_diagonal>)
+                      const CompanionLogger& Logger, bool_constant<strict_diagonal>)
 {
-   const bool Logger_dummy=pm::derived_from<CompanionLogger, dummy_companion_logger>::value;
+   const bool Logger_dummy=is_derived_from<CompanionLogger, dummy_companion_logger>::value;
 
 #if POLYMAKE_DEBUG
    const int debug_level = perl::get_debug_level();
@@ -361,7 +361,7 @@ void compress_torsion(std::list< std::pair<E,int> >& torsion)
 template <typename E, typename CompanionLogger>
 int eliminate_ones(SparseMatrix<E>& M, Bitset& elim_rows, Bitset& elim_cols, const CompanionLogger& Logger)
 {
-   const bool Logger_dummy=pm::derived_from<CompanionLogger, dummy_companion_logger>::value;
+   const bool Logger_dummy=is_derived_from<CompanionLogger, dummy_companion_logger>::value;
 
 #if POLYMAKE_DEBUG
    const int debug_level = perl::get_debug_level();
@@ -394,7 +394,7 @@ int eliminate_ones(SparseMatrix<E>& M, Bitset& elim_rows, Bitset& elim_cols, con
       for (typename SparseMatrix<E>::col_type::iterator e2=M.col(c).begin(); !e2.at_end(); ) {
          if ((U.j=e2.index())==r) { ++e2; continue; }
          if (abs_equal(*e,*e2)) {
-            if (pm::sign(*e)==pm::sign(*e2)) {
+            if (sign(*e)==sign(*e2)) {
                if (!Logger_dummy) U.a_ji=-one_value<E>();
                ++e2;
                M.row(U.j) -= M.row(r);
@@ -445,7 +445,7 @@ int eliminate_ones(SparseMatrix<E>& M, Bitset& elim_rows, Bitset& elim_cols, con
 template <typename E> inline
 int smith_normal_form_only(SparseMatrix<E>& M, std::list< std::pair<E,int> >& torsion)
 {
-   int rank=smith_normal_form(M, torsion, dummy_companion_logger(), False());
+   int rank=smith_normal_form(M, torsion, dummy_companion_logger(), std::false_type());
    compress_torsion(torsion);
    return rank;
 }
@@ -471,16 +471,16 @@ public:
 template <typename Matrix, typename E> inline
 SmithNormalForm<E>
 smith_normal_form(const GenericMatrix<Matrix, E>& M,
-                  typename enable_if<bool, std::numeric_limits<E>::is_integer>::type inverse_companions=false)
+                  typename std::enable_if<std::numeric_limits<E>::is_integer, bool>::type inverse_companions=false)
 {
    SmithNormalForm<E> res;
    res.form=M;
    res.left_companion=unit_matrix<E>(M.rows());
    res.right_companion=unit_matrix<E>(M.cols());
    if (inverse_companions)
-      res.rank=smith_normal_form(res.form, res.torsion, SNF_companion_logger<E, false>(&res.left_companion, &res.right_companion), True());
+      res.rank=smith_normal_form(res.form, res.torsion, SNF_companion_logger<E, false>(&res.left_companion, &res.right_companion), std::true_type());
    else
-      res.rank=smith_normal_form(res.form, res.torsion, SNF_companion_logger<E, true>(&res.left_companion, &res.right_companion), True());
+      res.rank=smith_normal_form(res.form, res.torsion, SNF_companion_logger<E, true>(&res.left_companion, &res.right_companion), std::true_type());
    compress_torsion(res.torsion);
    return res;
 }

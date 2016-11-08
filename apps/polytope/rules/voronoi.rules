@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -21,7 +21,7 @@
 
 declare object VoronoiDiagram<Scalar=Rational> : Polytope<Scalar> {
 
-# Coordinates of the sites in case the polyhedron is Voronoi.
+# Homogeneous coordinates of the sites in case the polyhedron is Voronoi.
 # Sites must be pairwise distinct.
 
 property SITES : Matrix<Scalar>;
@@ -39,7 +39,7 @@ weight 0.1;
 rule FACETS, AFFINE_HULL, REL_INT_POINT, FEASIBLE, BOUNDED : SITES {
   voronoi($this);
 }
-permutation : FacetPerm;
+incurs FacetPerm;
 
 
 # Unique names assigned to the [[SITES]].  Works like [[VERTEX_LABELS]].
@@ -175,8 +175,13 @@ user_method VISUAL_VORONOI(%Visual::Graph::decorations) : SITES, VORONOI_GRAPH, 
                                  NodeStyle => "hidden",
                                );
 # Voronoi vertices
+   my $i=-1;
+   my @labels;
+   # skip vertices outside of the bounding box and determine appropriate labels
+   my $vertices = new Matrix<Rational>(grep { $i++; minimum($this->VORONOI_GRAPH->BOUNDING_BOX * $_) >= 0 && push @labels, $i; } @{$this->VORONOI_VERTICES});
    my $vVertices=new Visual::PointSet( Name => $this->name." voronoi vertices",
-                                       Points => dehomogenize(convert_to<Float>($this->VORONOI_VERTICES)),
+                                       Points => dehomogenize(convert_to<Float>($vertices)),
+                                       PointLabels => [@labels],
                                      );
    compose($dGraph, $vGraph, $vVertices, Title => $this->name." Voronoi Diagram");
 }
@@ -192,7 +197,8 @@ precondition : CONE_AMBIENT_DIM {
 user_method VISUAL_CRUST(%Visual::Graph::decorations) : SITES, VORONOI_GRAPH, DELAUNAY_GRAPH, ITERATED_DELAUNAY_GRAPH, CRUST_GRAPH {
    my ($this, $decor)=@_;
 
-   my $visual_container=$this->VISUAL_VORONOI($decor);
+   # hide delaunay vertices as they are drawn again for the crust graph
+   my $visual_container=$this->VISUAL_VORONOI($decor,NodeStyle=>"hidden");
    $visual_container->Name = $this->name." crust graph";
    my $sites2 = $this->SITES / $this->VORONOI_VERTICES;
 
@@ -207,6 +213,7 @@ user_method VISUAL_CRUST(%Visual::Graph::decorations) : SITES, VORONOI_GRAPH, DE
    my $cGraph=new Visual::Graph( Name => $this->name." crust graph",
                                  Graph => $this->CRUST_GRAPH,
                                  NodeLabels => $this->lookup("SITE_LABELS"),
+                                 NodeBorderColor => $Visual::Color::DelaunayVertexBorder,
                                  Coord => dehomogenize(convert_to<Float>($this->SITES)),
                                  NodeColor => $Visual::Color::CrustVertex,
                                  EdgeColor => $Visual::Color::CrustEdge,
@@ -227,7 +234,8 @@ precondition : CONE_AMBIENT_DIM {
 user_method VISUAL_NN_CRUST(%Visual::Graph::decorations) : SITES, VORONOI_GRAPH, DELAUNAY_GRAPH, NN_GRAPH, NN_CRUST_GRAPH {
    my ($this, $decor)=@_;
 
-   my $visual_container=$this->VISUAL_VORONOI($decor);
+   # hide delaunay vertices as they are drawn again for the crust graph
+   my $visual_container=$this->VISUAL_VORONOI($decor,NodeStyle=>"hidden");
    $visual_container->Name = $this->name." nn-crust graph";
 
 # nearest neighbor graph
@@ -242,6 +250,7 @@ user_method VISUAL_NN_CRUST(%Visual::Graph::decorations) : SITES, VORONOI_GRAPH,
                                  Graph => $this->NN_CRUST_GRAPH,
                                  NodeLabels => $this->lookup("SITE_LABELS"),
                                  Coord => dehomogenize(convert_to<Float>($this->SITES)),
+                                 NodeBorderColor => $Visual::Color::DelaunayVertexBorder,
                                  NodeColor => $Visual::Color::CrustVertex,
                                  EdgeColor => $Visual::Color::CrustEdge,
                                  EdgeThickness => $Visual::Style::CrustEdge,

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -53,11 +53,11 @@ static SV *plugin_code;
 static int cur_lexical_import_ix=-1, cur_lexical_flags=0;
 static int shadow_stash_cnt=0;
 static HV *last_stash, *last_pkgLOOKUP;
-static AV *last_dotLOOKUP;
-static CV *declare_cv;
+static AV* last_dotLOOKUP;
+static CV* declare_cv;
 static ToRestore* active_begin=NULL;
 static const char instanceof[]="instanceof";
-static SV *dot_lookup_key, *dot_import_key, *dot_subst_op_key, *dot_subs_key, *declare_key, *dot_dummy_pkg_key;
+static SV *dot_lookup_key, *dot_import_key, *dot_autolookup_key, *dot_subst_op_key, *dot_subs_key, *declare_key, *dot_dummy_pkg_key;
 static SV *lex_imp_key, *sub_type_params_key, *scope_type_params_key, *iv_hint, *uv_hint;
 static const char TypeExpression_pkg[]="namespaces::TypeExpression";
 static const char BeginAV_pkg[]="namespaces::BeginAV";
@@ -210,11 +210,7 @@ void insert_undo(pTHX_ int skip_frames)
       /* There is a useful ENTER at the beginning of yyparse() which marks the suitable position on the save stack.
        * In newer perls this seems to be the second ENTER executed within the context block,
        * while in the older versions one had to go deeper into the scope stack, for reasons long forgotten and obscure now */
-#if PerlVersion >= 5160
       saves=PL_savestack+PL_scopestack[cx->blk_oldscopesp+1];
-#else
-      saves=PL_savestack+PL_scopestack[cx->blk_oldscopesp]-3;
-#endif
       to_restore->replaced=3;
       memcpy(to_restore->saved, saves, 3 * sizeof(to_restore->saved[0]));
       (saves++)->any_dxptr=&reset_ptrs;
@@ -258,23 +254,17 @@ int reset_ptrs_via_magic(pTHX_ SV* sv, MAGIC* mg)
 # define RestorePadnames(savevar)
 #endif
 
-#if PerlVersion >= 5140
-#  define refcounted_he_fetch_sv(chain, keysv, hash, flags) Perl_refcounted_he_fetch_sv(aTHX_ chain, keysv, hash, flags)
-#else
-#  define refcounted_he_fetch_sv(chain, keysv, hash, flags) Perl_refcounted_he_fetch(aTHX_ chain, keysv, NULL, 0, flags, hash)
-#endif
-
 static inline
 int extract_lex_imp_ix(pTHX_ COP *cop)
 {
-   SV *sv=refcounted_he_fetch_sv(cop->cop_hints_hash, lex_imp_key, 0, 0);
+   SV *sv=Perl_refcounted_he_fetch_sv(aTHX_ cop->cop_hints_hash, lex_imp_key, 0, 0);
    return SvIOK(sv) ? SvIVX(sv) & LexCtxIndex : 0;
 }
 
 static inline
 int get_lex_flags(pTHX)
 {
-   SV *sv=refcounted_he_fetch_sv(PL_curcop->cop_hints_hash, lex_imp_key, 0, 0);
+   SV *sv=Perl_refcounted_he_fetch_sv(aTHX_ PL_curcop->cop_hints_hash, lex_imp_key, 0, 0);
    return SvIOK(sv) ? SvIVX(sv) : 0;
 }
 
@@ -504,7 +494,7 @@ OP* switch_off_namespaces(pTHX)
 }
 
 static
-I32 append_imp_stash(pTHX_ AV *import_av, HV *imp_stash)
+I32 append_imp_stash(pTHX_ AV* import_av, HV* imp_stash)
 {
    if (find_stash_in_import_list(import_av, imp_stash))
       return FALSE;
@@ -513,7 +503,7 @@ I32 append_imp_stash(pTHX_ AV *import_av, HV *imp_stash)
 }
 
 static
-void remove_imp_stash(pTHX_ AV *dotLOOKUP, HV *imp_stash)
+void remove_imp_stash(pTHX_ AV* dotLOOKUP, HV* imp_stash)
 {
    SV **lookp, **endp;
    if ((lookp=AvARRAY(dotLOOKUP)))
@@ -579,17 +569,17 @@ int merge_lexical_import_scopes(pTHX_ int lex_ix1, int lex_ix2)
 }
 
 static
-AV* get_dotLOOKUP(pTHX_ HV *stash);
+AV* get_dotLOOKUP(pTHX_ HV* stash);
 
 static
-void append_lookup(pTHX_ HV *stash, AV *dotLOOKUP, AV *import_from, int recurse)
+void append_lookup(pTHX_ HV* stash, AV* dotLOOKUP, AV* import_from, int recurse)
 {
    SV **impp=AvARRAY(import_from), **endp;
    if (impp) {
       for (endp=impp+AvFILLp(import_from); impp<=endp; ++impp) {
-         HV *imp_stash=(HV*)SvRV(*impp);
+         HV* imp_stash=(HV*)SvRV(*impp);
          if (imp_stash != stash && append_imp_stash(aTHX_ dotLOOKUP, imp_stash) && recurse) {
-            AV *imp_dotLOOKUP=get_dotLOOKUP(aTHX_ imp_stash);
+            AV* imp_dotLOOKUP=get_dotLOOKUP(aTHX_ imp_stash);
             if (imp_dotLOOKUP) append_lookup(aTHX_ stash, dotLOOKUP, imp_dotLOOKUP, FALSE);
          }
       }
@@ -602,10 +592,10 @@ AV* get_dotLOOKUP(pTHX_ HV* stash)
    AV* dotLOOKUP=NULL;
    HV* pkgLOOKUP=NULL;
    int i;
-   GV *lookup_gv=(GV*)HeVAL(hv_fetch_ent(stash, dot_lookup_key, TRUE, SvSHARED_HASH(dot_lookup_key)));
-   if (SvTYPE(lookup_gv)!=SVt_PVGV)
+   GV* lookup_gv=(GV*)HeVAL(hv_fetch_ent(stash, dot_lookup_key, TRUE, SvSHARED_HASH(dot_lookup_key)));
+   if (SvTYPE(lookup_gv) != SVt_PVGV) {
       gv_init(lookup_gv, stash, SvPVX(dot_lookup_key), SvCUR(dot_lookup_key), GV_ADDMULTI);
-   else {
+   } else {
       dotLOOKUP=GvAV(lookup_gv);
       pkgLOOKUP=GvHV(lookup_gv);
    }
@@ -755,6 +745,18 @@ void do_repair_gvop(pTHX_ SV *old_sv, SV *new_sv, PADOFFSET pad_ix)
       PAD **padstart=PadlistARRAY(padlist), **pads, **epads;
       if (PL_comppad==padstart[CvDEPTH(cv)]) {
          PADOFFSET max = PadlistMAX(padlist);
+#ifdef DEBUGGING
+         PADNAMELIST* padnames = PadlistNAMES(padlist);
+         if ((I32)pad_ix <= PadnamelistMAX(padnames)) {
+#if PerlVersion < 5220
+            SV* empty_slot=PadnamelistARRAY(padnames)[pad_ix];
+            if (empty_slot != NULL && SvTYPE(empty_slot))
+#else
+            if (PadnameLEN(PadnamelistARRAY(padnames)[pad_ix]) != 0)
+#endif
+               Perl_croak(aTHX_ "namespaces::do_repair_gvop - internal error");
+         }
+#endif
          while (!PadlistARRAY(padlist)[max])
             max--;
          for (pads=padstart+1, epads=padstart+max; pads<=epads; ++pads) {
@@ -1005,13 +1007,14 @@ GV* lookup_var(pTHX_ HV *stash, const char *name, STRLEN namelen, I32 type, int 
 
 /* new Package(arg,...) is often misinterpreted as new(Package(arg,...)) */
 static
-void resolve_static_method(pTHX_ HV *stash, GV *var_gv, OP *next_gv_op)
+void resolve_static_method(pTHX_ HV* stash, GV* var_gv, OP* next_gv_op)
 {
-   OP *next_sub_op;
+   OP* next_sub_op;
    if (next_gv_op->op_type == OP_ENTERSUB  &&
        (next_gv_op=next_gv_op->op_next)->op_type == OP_GV  &&
        (next_sub_op=next_gv_op->op_next)->op_type == OP_ENTERSUB) {
-      OP *pushmark2_op=cUNOPx(next_sub_op)->op_first, *pushmark1_op;
+      OP* pushmark2_op=cUNOPx(next_sub_op)->op_first;
+      OP* pushmark1_op;
       if (!OpHAS_SIBLING(pushmark2_op))
          pushmark2_op=cUNOPx(pushmark2_op)->op_first;
       pushmark1_op=pushmark2_op->op_next;
@@ -1040,7 +1043,7 @@ void resolve_static_method(pTHX_ HV *stash, GV *var_gv, OP *next_gv_op)
             buf[tl]=0;
             n=buf; l=tl;
          }
-         if ((pkg_stash=pm_perl_namespace_lookup_class(aTHX_ stash, n, l, get_lex_imp_ix))) {
+         if ((pkg_stash=pm_perl_namespace_lookup_class_autoload(aTHX_ stash, n, l, get_lex_imp_ix))) {
             GV *next_sub=cGVOPx_gv(next_gv_op);
             GV *method_gv=gv_fetchmethod(pkg_stash, GvNAME(next_sub));
             if (method_gv) {
@@ -1289,10 +1292,10 @@ void lookup(pTHX_ pMultiDerefItem_ GV* var_gv, I32 type, OP** pnext_op, OP* acce
 
          cur_stash=CopSTASH(PL_curcop);
          lex_imp_ix=get_lex_imp_ix;
-         other_stash=pm_perl_namespace_lookup_class(aTHX_ cur_stash, HvNAME(stash), HvNAMELEN_get(stash), lex_imp_ix);
+         other_stash=pm_perl_namespace_lookup_class_autoload(aTHX_ cur_stash, HvNAME(stash), HvNAMELEN_get(stash), lex_imp_ix);
          if (other_stash) {
             if (other_stash==stash) {
-               MAGIC *mg=mg_find((SV*)var_gv, PERL_MAGIC_ext);
+               MAGIC* mg=mg_find((SV*)var_gv, PERL_MAGIC_ext);
                if (mg && (imp_gv=(GV*)mg->mg_obj) &&
                    (imp_gv=test_imported_gv(aTHX_ imp_gv, type, FALSE))) {
                   repair_pp_gv(aTHX_ aMultiDerefItem_ var_gv, imp_gv);
@@ -1468,7 +1471,7 @@ OP* intercept_pp_gv(pTHX)
          if (first_arg->op_next==this_op && first_arg->op_type==OP_CONST && (first_arg->op_private & OPpCONST_BARE)) {
             /* a very special case: `method XXX;' where (another) sub `method' is defined in the current package too */
             SV *pkg_name_sv=cSVOPx_sv(first_arg);
-            HV *pkg_stash=pm_perl_namespace_lookup_class(aTHX_ GvSTASH(var_gv), SvPVX(pkg_name_sv), SvCUR(pkg_name_sv), get_lex_imp_ix);
+            HV *pkg_stash=pm_perl_namespace_lookup_class_autoload(aTHX_ GvSTASH(var_gv), SvPVX(pkg_name_sv), SvCUR(pkg_name_sv), get_lex_imp_ix);
             if (pkg_stash) {
                GV *method_gv=gv_fetchmethod(pkg_stash, GvNAME(var_gv));
                if (method_gv) {
@@ -1481,7 +1484,7 @@ OP* intercept_pp_gv(pTHX)
             }
          } else if (pushmark->op_next==this_op && (meth_op=this_op->op_next->op_next)->op_type==OP_METHOD_NAMED && CvMETHOD(GvCV(var_gv))) {
             /* another suspicious case: `name->method' where sub name is defined as method: look for a namespace `name' first */
-            HV *pkg_stash=pm_perl_namespace_lookup_class(aTHX_ GvSTASH(var_gv), GvNAME(var_gv), GvNAMELEN(var_gv), get_lex_imp_ix);
+            HV *pkg_stash=pm_perl_namespace_lookup_class_autoload(aTHX_ GvSTASH(var_gv), GvNAME(var_gv), GvNAMELEN(var_gv), get_lex_imp_ix);
             if (pkg_stash) {
                SV *pkg_name=newSVpvn_share(HvNAME(pkg_stash), HvNAMELEN_get(pkg_stash), 0);
                SvREADONLY_on(pkg_name);
@@ -1569,15 +1572,8 @@ OP* intercept_pp_aelemfast(pTHX)
 {
    OP* this_op=PL_op;
    OP* next_op=this_op;
-#if PerlVersion >= 5160
-   // since perl 5.16 AELEMFAST_LEX is a separate op, but implemented via the same pp subroutine
    if (next_op->op_type != OP_AELEMFAST_LEX)
-#else
-   if (!(next_op->op_flags & OPf_SPECIAL))
-#endif
-   {
       resolve_array_gv(aTHX_ nullMultiDerefItem_ cGVOP_gv, &next_op, Null(OP*));
-   }
    if (next_op == this_op && this_op->op_ppaddr == &intercept_pp_aelemfast)  // not died
       this_op->op_ppaddr=def_pp_AELEMFAST;
    return next_op;
@@ -1586,24 +1582,34 @@ OP* intercept_pp_aelemfast(pTHX)
 static
 OP* intercept_pp_split(pTHX)
 {
-   PMOP* pushre=cPMOPx(cUNOP->op_first);
-   GV* var_gv;
+   PMOP* pushre;
+   GV* var_gv = Nullgv;
    OP* this_op=PL_op;
    OP* next_op=this_op;
-#ifdef USE_ITHREADS
+#if PerlVersion >= 5256
+   if ((this_op->op_private & (OPpSPLIT_ASSIGN | OPpSPLIT_LEX)) == OPpSPLIT_ASSIGN
+       && !(this_op->op_flags & OPf_STACKED)) {
+      pushre=cPMOPx(this_op);
+# ifdef USE_ITHREADS
+      var_gv=(GV*)PAD_SVl(pushre->op_pmreplrootu.op_pmtargetoff);
+# else
+      var_gv=pushre->op_pmreplrootu.op_pmtargetgv;
+# endif
+   }
+#else  // PerlVersion <= 5256
+   pushre=cPMOPx(cUNOP->op_first);
+# ifdef USE_ITHREADS
    if (pushre->op_pmreplrootu.op_pmtargetoff) {
       var_gv=(GV*)PAD_SVl(pushre->op_pmreplrootu.op_pmtargetoff);
-#else
+   }
+# else
    if (pushre->op_pmreplrootu.op_pmtargetgv) {
       var_gv=pushre->op_pmreplrootu.op_pmtargetgv;
-#endif
-      if (!GvIMPORTED_AV(var_gv))
-         lookup(aTHX_ nullMultiDerefItem_ var_gv, SVt_PVAV, &next_op, next_op);
    }
-#if 0
-   // to calm down emacs
-   }
+# endif
 #endif
+   if (var_gv && !GvIMPORTED_AV(var_gv))
+      lookup(aTHX_ nullMultiDerefItem_ var_gv, SVt_PVAV, &next_op, next_op);
    if (next_op == this_op && this_op->op_ppaddr == &intercept_pp_split)  // not died
       this_op->op_ppaddr=def_pp_SPLIT;
    return next_op;
@@ -1747,17 +1753,7 @@ static inline
 OP* store_in_state_var(pTHX)
 {
    OP* store_op=newOP(OP_PADSV, (OPpPAD_STATE | OPpLVAL_INTRO) << 8);
-   store_op->op_targ=
-#if PerlVersion >= 5160
-      pad_add_name_pvn("", 0, padadd_STATE | padadd_NO_DUP_CHECK, Nullhv, Nullhv);
-#elif PerlVersion >= 5120
-      // not exported to XSUBs in these versions
-      Perl_pad_add_name(aTHX_ "", 0, 2+4, Nullhv, Nullhv);
-#else
-      // ancient interface with incomplete support
-      Perl_pad_add_name(aTHX_ "", Nullhv, Nullhv, FALSE, TRUE);
-   SvPADSTALE_on(PAD_SVl(store_op->op_targ));
-#endif
+   store_op->op_targ=pad_add_name_pvn("", 0, padadd_STATE | padadd_NO_DUP_CHECK, Nullhv, Nullhv);
    return store_op;
 }
 
@@ -2042,7 +2038,7 @@ OP* pp_class_method(pTHX)
       prefix=6;
    }
    class= prefix ? gv_stashpvn(class_name+prefix, l-prefix, FALSE)
-                 : pm_perl_namespace_lookup_class(aTHX_ CopSTASH(PL_curcop), class_name, l, get_lex_imp_ix);
+                 : pm_perl_namespace_lookup_class_autoload(aTHX_ CopSTASH(PL_curcop), class_name, l, get_lex_imp_ix);
    SPAGAIN;
    if (!class) {
       /* maybe a file handle method? */
@@ -2112,7 +2108,7 @@ OP* fetch_type_param_proto_pvn(pTHX_ const char* pkg_name, STRLEN pkg_name_len)
 {
    SV* hint_sv;
    GV* sub_type_params_gv=NULL;
-   if ((hint_sv=refcounted_he_fetch_sv(PL_compiling.cop_hints_hash, sub_type_params_key, 0, 0)) &&
+   if ((hint_sv=Perl_refcounted_he_fetch_sv(aTHX_ PL_compiling.cop_hints_hash, sub_type_params_key, 0, 0)) &&
        SvIOK(hint_sv)) {
       sub_type_params_gv=(GV*)SvUVX(hint_sv);
       if (sub_type_params_gv != PL_defgv) {
@@ -2144,7 +2140,7 @@ OP* fetch_type_param_proto_pvn(pTHX_ const char* pkg_name, STRLEN pkg_name_len)
          sub_type_params_gv=NULL;
       }
    }
-   if ((hint_sv=refcounted_he_fetch_sv(PL_compiling.cop_hints_hash, scope_type_params_key, 0, 0)) &&
+   if ((hint_sv=Perl_refcounted_he_fetch_sv(aTHX_ PL_compiling.cop_hints_hash, scope_type_params_key, 0, 0)) &&
        SvIOK(hint_sv)) {
       GV* scope_type_params_gv=(GV*)SvUVX(hint_sv);
       int name_ix=find_among_parameter_names(aTHX_ GvAV(scope_type_params_gv), pkg_name, pkg_name_len);
@@ -2238,7 +2234,7 @@ OP* intercept_ck_leavesub(pTHX_ OP *op)
          // marked in fetch_type_param_proto_pvn :
          // construct a localizing assignment for the outer scope type array,
          // the list of concrete types is delivered by a sub attached to the glob holding the type array
-         SV* hint_sv=refcounted_he_fetch_sv(PL_compiling.cop_hints_hash, scope_type_params_key, 0, 0);
+         SV* hint_sv=Perl_refcounted_he_fetch_sv(aTHX_ PL_compiling.cop_hints_hash, scope_type_params_key, 0, 0);
          GV* scope_type_params_gv=(GV*)SvUVX(hint_sv);
          OP *gvop1, *gvop2, *call_typelist_sub, *localize_op;
          OP* o=cUNOPx(op)->op_first;    // lineseq?
@@ -2514,9 +2510,9 @@ OP* intercept_ck_readline(pTHX_ OP *o)
 #ifdef LEX_KNOWNEXT
       // these seem to have disappeared since perl 5.25
       PL_parser->lex_defer=PL_parser->lex_state;
+      PL_parser->lex_expect=XTERM;
       PL_parser->lex_state=LEX_KNOWNEXT;
 #endif
-      PL_parser->lex_expect=XTERM;
       op_free(o);
       return const_op;
    }
@@ -2726,7 +2722,34 @@ HV* pm_perl_namespace_lookup_class(pTHX_ HV* stash, const char* class_name, STRL
    return imp_class;
 }
 
-CV* pm_perl_namespace_lookup_sub(pTHX_ HV *stash, const char *name, STRLEN namelen, CV* lex_context_cv)
+HV* pm_perl_namespace_lookup_class_autoload(pTHX_ HV* stash, const char* class_name, STRLEN class_namelen, int lex_imp_ix)
+{
+   HV* result=pm_perl_namespace_lookup_class(aTHX_ stash, class_name, class_namelen, lex_imp_ix);
+   if (!result) {
+      HE* he=hv_fetch_ent(stash, dot_autolookup_key, FALSE, SvSHARED_HASH(dot_autolookup_key));
+      GV* gv;
+      CV* auto_sub;
+      if (he && (gv=(GV*)HeVAL(he), SvTYPE(gv)==SVt_PVGV && (auto_sub=GvCV(gv)) != NULL)) {
+         int found=FALSE;
+         dSP;
+         PUSHMARK(SP);
+         mXPUSHp(class_name, class_namelen);
+         PUTBACK;
+         if (call_sv((SV*)auto_sub, G_SCALAR | G_EVAL)) {
+            SV* ret;
+            SPAGAIN;
+            ret=POPs;
+            found=SvTRUE(ret);
+            PUTBACK;
+         }
+         if (found)
+            result=pm_perl_namespace_lookup_class(aTHX_ stash, class_name, class_namelen, lex_imp_ix);
+      }
+   }
+   return result;
+}
+
+CV* pm_perl_namespace_lookup_sub(pTHX_ HV* stash, const char* name, STRLEN namelen, CV* lex_context_cv)
 {
    GV *gv;
    const int lex_imp_ix=lex_context_cv ? get_lex_imp_ix_from_cv(lex_context_cv) : 0;
@@ -2734,7 +2757,7 @@ CV* pm_perl_namespace_lookup_sub(pTHX_ HV *stash, const char *name, STRLEN namel
    const char *colon=strrchr(name,':');
    if (colon && --colon > name && *colon==':') {
       // (at least partially) qualified: look for the package first
-      stash=pm_perl_namespace_lookup_class(aTHX_ stash, name, colon-name, lex_imp_ix);
+      stash=pm_perl_namespace_lookup_class_autoload(aTHX_ stash, name, colon-name, lex_imp_ix);
       if (stash == Nullhv) return Nullcv;
       colon+=2;
       namelen-=colon-name;
@@ -3348,7 +3371,7 @@ PPCODE:
       imp_gve=hv_fetch_ent(lex_ctx_stash, dot_import_key, FALSE, SvSHARED_HASH(dot_import_key));
       if (imp_gve && (imp_gv=(GV*)HeVAL(imp_gve), SvIOKp(GvSVn(imp_gv))))
          lex_ix=SvIVX(GvSV(imp_gv));
-      if ((class_stash=pm_perl_namespace_lookup_class(aTHX_ stash, classn, classl, lex_ix))) {
+      if ((class_stash=pm_perl_namespace_lookup_class_autoload(aTHX_ stash, classn, classl, lex_ix))) {
          dTARGET;
          sv_setpv(TARG, HvNAME(class_stash));
          PUSHs(TARG);
@@ -4006,6 +4029,7 @@ BOOT:
 #endif
    dot_lookup_key=newSVpvn_share(".LOOKUP",7,0);
    dot_import_key=newSVpvn_share(".IMPORT",7,0);
+   dot_autolookup_key=newSVpvn_share(".AUTOLOOKUP",11,0);
    dot_dummy_pkg_key=newSVpvn_share(".DUMMY_PKG",10,0);
    dot_subst_op_key=newSVpvn_share(".SUBST_OP",9,0);
    dot_subs_key=newSVpvn_share(".SUBS",5,0);

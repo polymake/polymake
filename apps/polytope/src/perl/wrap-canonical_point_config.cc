@@ -25,12 +25,6 @@
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0, typename T1>
-   FunctionInterface4perl( find_matrix_row_permutation_X_X, T0,T1 ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturn( find_matrix_row_permutation(arg0.get<T0>(), arg1.get<T1>()) );
-   };
-
    template <typename T0>
    FunctionInterface4perl( canonicalize_point_configuration_X2_f16, T0 ) {
       perl::Value arg0(stack[0]);

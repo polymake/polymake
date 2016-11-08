@@ -88,8 +88,8 @@ bool is_vertex_decomposition(perl::Object p, const Array<int>& ShedVert, perl::O
          const std::list< Set<int> > link=as_iterator_range(vertex_link_in_HD(HD,w));
 
          if (dim==1 && !link.empty() && link.size()<3) continue;
-         if (dim==2 && !link.empty() && is_ball_or_sphere(link,int2type<1>())>0) continue;
-         if (dim==3 && !link.empty() && is_ball_or_sphere(link,int2type<2>())>0) continue;
+         if (dim==2 && !link.empty() && is_ball_or_sphere(link, int_constant<1>())>0) continue;
+         if (dim==3 && !link.empty() && is_ball_or_sphere(link, int_constant<2>())>0) continue;
 
          if (verbose) cout << "The remaining complex after removing vertex star(" << v << ") is not a manifold." << endl;
          return false;

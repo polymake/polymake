@@ -18,7 +18,8 @@
 
 #include <cstring>
 #include <memory>
-#include <cstdio>
+#include <cstdlib>
+#include <cassert>
 #include <gmp.h>
 
 extern "C" {
@@ -36,6 +37,10 @@ void pm_gmp_deallocate(void* p, size_t n) { gmp_allocator.deallocate(reinterpret
 
 void* pm_gmp_reallocate(void* p, size_t old_sz, size_t new_sz)
 {
+   if (!p) {
+      assert(old_sz==0);
+      return gmp_allocator.allocate(new_sz);
+   }
    static const bool use_new=getenv("GLIBCPP_FORCE_NEW") || getenv("GLIBCXX_FORCE_NEW");
    const size_t align=8, limit=128;
    if (!use_new && ((old_sz+align-1)&~(align-1)) == ((new_sz+align-1)&~(align-1)) && new_sz < limit)

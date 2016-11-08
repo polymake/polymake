@@ -16,11 +16,11 @@
 
 namespace polymake { namespace graph { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::Array<int, void> (pm::graph::Graph<pm::graph::Undirected> const&) ) {
+   FunctionWrapper4perl( pm::Array<int> (pm::graph::Graph<pm::graph::Undirected> const&) ) {
       perl::Value arg0(stack[0]);
       IndirectWrapperReturn(arg0.get< perl::TryCanned< const Graph< Undirected > > >());
    }
-   FunctionWrapperInstance4perl( pm::Array<int, void> (pm::graph::Graph<pm::graph::Undirected> const&) );
+   FunctionWrapperInstance4perl( pm::Array<int> (pm::graph::Graph<pm::graph::Undirected> const&) );
 
    FunctionWrapper4perl( pm::graph::NodeMap<pm::graph::Undirected, int> (pm::graph::Graph<pm::graph::Undirected> const&) ) {
       perl::Value arg0(stack[0]);

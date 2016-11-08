@@ -31,7 +31,7 @@ struct StructUtils_helper {
    static void gather_fields(ArrayHolder& arr)
    {
       size_t nl;
-      const char *n=Struct::get_field_name(nl,int2type<i>());
+      const char* n=Struct::get_field_name(nl, int_constant<i>());
       arr.push(Scalar::const_string(n,nl));
       if (next>i) recurse_down::gather_fields(arr);
    }
@@ -49,27 +49,15 @@ struct StructUtils {
    }
 };
 
-template <typename Struct, size_t pkgl, bool exact_match>
-SV* get_Struct_type(const char (&pkg)[pkgl], bool2type<exact_match>)
-{
-   Stack stack(true, 1+TypeListUtils<typename Struct::field_types>::type_cnt);
-   if (TypeListUtils<typename Struct::field_types>::push_types(stack)) {
-      return get_parameterized_type(pkg, pkgl-1, exact_match);
-   } else {
-      stack.cancel();
-      return NULL;
-   }
-}
-
 } }
 
 namespace polymake { namespace perl_bindings {
 
 template <typename T, typename Struct>
-recognized<pm::identical<T, Struct>::value>* recognize(SV** proto_p, bait*, T*, GenericStruct<Struct>*)
+recognized<std::is_same<T, Struct>::value>* recognize(SV** proto_p, bait*, T*, GenericStruct<Struct>*)
 {
-   *proto_p=pm::perl::get_Struct_type<Struct>("Polymake::common::Tuple", pm::identical<T, Struct>());
-   return (recognized<pm::identical<T, Struct>::value>*)0;                                         \
+   *proto_p=pm::perl::get_parameterized_type<typename Struct::field_types>("Polymake::common::Tuple", std::is_same<T, Struct>());
+   return nullptr;
 }
 
 template <typename Struct>

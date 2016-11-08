@@ -15,6 +15,7 @@
 
 # Lattice represented as a directed acyclic graph.
 
+# @category Combinatorics
 declare object FaceLattice : Graph<Directed> {
 
    # Each node of the FaceLattice corresponds to a face. The node attribute is a set of vertices comprising the face.

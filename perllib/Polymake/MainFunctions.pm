@@ -26,7 +26,7 @@ BEGIN {
 package Polymake;
 
 use strict;
-use vars qw($InstallTop $InstallArch $Arch $DeveloperMode);
+use vars qw($InstallTop $InstallArch $Arch $DeveloperMode $DebugLevel);
 
 use Polymake;
 use namespaces;

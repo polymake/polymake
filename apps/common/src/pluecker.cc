@@ -28,19 +28,19 @@ namespace polymake { namespace common {
 template <typename Scalar>
 Vector<Scalar> pluecker(const Matrix<Scalar>& V)
 {
-   const int n(V.rows()), d(V.cols()),
-      r(rank(V)),
-      sz((Integer::binom(n,r)*Integer::binom(d,r)).to_int());
+   const int n(V.rows()),
+             d(V.cols()),
+             r(rank(V)),
+             sz(Integer::binom(n,r) * Integer::binom(d,r));
 
-   const sequence all_rows = sequence(0,n), all_cols = sequence(0,d);;
+   const sequence all_rows = sequence(0, n);
+   const sequence all_cols = sequence(0, d);
 
    Vector<Scalar> pi(sz);
 
    int i=0;
-   for (Entire< Subsets_of_k<const sequence&> >::const_iterator rho = entire(all_subsets_of_k(all_rows,r));
-        !rho.at_end(); ++rho)
-      for (Entire< Subsets_of_k<const sequence&> >::const_iterator sigma = entire(all_subsets_of_k(all_cols,r));
-           !sigma.at_end(); ++sigma) {
+   for (auto rho = entire(all_subsets_of_k(all_rows, r)); !rho.at_end(); ++rho)
+      for (auto sigma = entire(all_subsets_of_k(all_cols, r)); !sigma.at_end(); ++sigma) {
          pi[i]=det(Matrix<Scalar>(V.minor(*rho,*sigma)));
          ++i;
       }

@@ -41,5 +41,6 @@ namespace polymake { namespace tropical { namespace {
    FunctionInstance4perl(dual_addition_version_T_X_x, Min, Rational, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >);
    FunctionInstance4perl(dual_addition_version_T_X, Max, Rational, perl::Canned< const Ring< TropicalNumber< Max, Rational >, int > >);
    FunctionInstance4perl(dual_addition_version_T_X_x, Min, Rational, perl::Canned< const Polynomial< TropicalNumber< Min, Rational >, int > >);
+   FunctionInstance4perl(dual_addition_version_T_X_x, Max, Rational, perl::Canned< const Polynomial< TropicalNumber< Max, Rational >, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -61,9 +61,8 @@ perl::ListReturn singular_get_var(const std::string varname){
             Matrix<Integer> pmmat(iv->rows(), iv->cols());
             
             int i = 0;
-            for(Integer *elem = concat_rows(pmmat).begin(); elem != concat_rows(pmmat).end(); ++elem, ++i){
+            for (auto elem=entire(concat_rows(pmmat)); !elem.at_end(); ++elem, ++i)
                *elem = (*iv)[i];
-            }
             res << pmmat;
             break;
          }

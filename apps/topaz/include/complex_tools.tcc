@@ -185,7 +185,7 @@ bool is_pseudo_manifold(const HasseDiagram& HD, bool known_pure, OutputIterator 
          if (bad_face_p) *bad_face_p=*it;
          return false;
       }
-      if (!pm::derived_from_instance<OutputIterator, pm::black_hole>::value && d == 1 )
+      if (!is_derived_from_instance_of<OutputIterator, pm::black_hole>::value && d == 1 )
          *boundary_consumer++ = HD.face(*it);
    }
 
@@ -194,7 +194,7 @@ bool is_pseudo_manifold(const HasseDiagram& HD, bool known_pure, OutputIterator 
 
 // return values: 1=true, 0=false, -1=undef
 template <typename Complex, int d>
-int is_ball_or_sphere(const Complex& C, int2type<d>)
+int is_ball_or_sphere(const Complex& C, int_constant<d>)
 {
    if (POLYMAKE_DEBUG) {
       if (C.empty())
@@ -202,7 +202,7 @@ int is_ball_or_sphere(const Complex& C, int2type<d>)
    }
    // compute the vertex set and test whether C is a pure d-complex
    Set<int> V;
-   for (typename Entire<Complex>::const_iterator c_it=entire(C); !c_it.at_end(); ++c_it) {
+   for (auto c_it=entire(C); !c_it.at_end(); ++c_it) {
       V += *c_it;
       if (POLYMAKE_DEBUG) {
          if (c_it->size() > d+1) {
@@ -214,12 +214,12 @@ int is_ball_or_sphere(const Complex& C, int2type<d>)
       if (c_it->size()!=d+1)  // complex is not pure
          return 0;
    }
-   return is_ball_or_sphere(C,V,int2type<d>());
+   return is_ball_or_sphere(C, V, int_constant<d>());
 }
 
 // return values: 1=true, 0=false, -1=undef
 template <typename Complex, int d>
-int is_manifold(const Complex& C, int2type<d>, int *bad_link_p)
+int is_manifold(const Complex& C, int_constant<d>, int* bad_link_p)
 {
    if (POLYMAKE_DEBUG) {
       if (C.empty())
@@ -227,7 +227,7 @@ int is_manifold(const Complex& C, int2type<d>, int *bad_link_p)
    }
    // compute the vertex set and test whether C is a pure 1-complex
    Set<int> V;
-   for (typename Entire<Complex>::const_iterator c_it=entire(C); !c_it.at_end(); ++c_it) {
+   for (auto c_it=entire(C); !c_it.at_end(); ++c_it) {
       V+=*c_it;
       if (POLYMAKE_DEBUG) {
          if (c_it->size() > d+1) {
@@ -241,16 +241,16 @@ int is_manifold(const Complex& C, int2type<d>, int *bad_link_p)
          return 0;
       }
    }
-   return is_manifold(C,V,int2type<d>(),bad_link_p);
+   return is_manifold(C, V, int_constant<d>(), bad_link_p);
 }
 
 // return values: 1=true, 0=false, -1=undef
 template <typename Complex, typename VertexSet, int d>
-int is_manifold(const Complex& C, const GenericSet<VertexSet>& V, int2type<d>, int *bad_link_p)
+int is_manifold(const Complex& C, const GenericSet<VertexSet>& V, int_constant<d>, int* bad_link_p)
 {
    // iterate over the vertices and test if their links are (d-1)-balls or (d-1)-spheres
-   for (typename Entire<VertexSet>::const_iterator it=entire(V.top()); !it.at_end(); ++it) {
-      const int bos=is_ball_or_sphere(link(C,scalar2set(*it)), int2type<d-1>());
+   for (auto it=entire(V.top()); !it.at_end(); ++it) {
+      const int bos=is_ball_or_sphere(link(C, scalar2set(*it)), int_constant<d-1>());
       if (bos<=0) { // false or undef
          if (bad_link_p) *bad_link_p=*it;
          return bos;

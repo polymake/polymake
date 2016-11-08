@@ -165,7 +165,7 @@ sub parseTerm {
       }
    }
    my $result = 1;
-   my $i = 0;
+   $i = 0;
    foreach my $var (@vars) {
       my $pow = $exp->[$i];
       while ($pow>0) {

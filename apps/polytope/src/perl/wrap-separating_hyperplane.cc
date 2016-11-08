@@ -19,24 +19,41 @@
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/Vector.h"
+#include "polymake/linalg.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0>
-   FunctionInterface4perl( separating_hyperplane_poly_T_x_x, T0 ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturn( (separating_hyperplane_poly<T0>(arg0, arg1)) );
-   };
-
    template <typename T0, typename T1, typename T2>
    FunctionInterface4perl( separating_hyperplane_T_X_X, T0,T1,T2 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
       WrapperReturn( (separating_hyperplane<T0>(arg0.get<T1>(), arg1.get<T2>())) );
    };
 
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( separable_T_X_X_o, T0,T1,T2 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      WrapperReturn( (separable<T0>(arg0.get<T1>(), arg1.get<T2>(), arg2)) );
+   };
+
+   template <typename T0>
+   FunctionInterface4perl( separating_hyperplane_T_x_x_o, T0 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      WrapperReturn( (separating_hyperplane<T0>(arg0, arg1, arg2)) );
+   };
+
+   template <typename T0, typename T1>
+   FunctionInterface4perl( cone_contains_point_T_x_X_o, T0,T1 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      WrapperReturn( (cone_contains_point<T0>(arg0, arg1.get<T1>(), arg2)) );
+   };
+
    FunctionInstance4perl(separating_hyperplane_T_X_X, Rational, perl::Canned< const Vector< Rational > >, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(separable_T_X_X_o, Rational, perl::Canned< const Vector< Rational > >, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(separating_hyperplane_T_x_x_o, Rational);
    FunctionInstance4perl(separating_hyperplane_T_X_X, QuadraticExtension< Rational >, perl::Canned< const Vector< QuadraticExtension< Rational > > >, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
-   FunctionInstance4perl(separating_hyperplane_poly_T_x_x, Rational);
-   FunctionInstance4perl(separating_hyperplane_poly_T_x_x, QuadraticExtension< Rational >);
+   FunctionInstance4perl(separating_hyperplane_T_x_x_o, QuadraticExtension< Rational >);
+   FunctionInstance4perl(cone_contains_point_T_x_X_o, Rational, perl::Canned< const Vector< Rational > >);
+   FunctionInstance4perl(cone_contains_point_T_x_X_o, QuadraticExtension< Rational >, perl::Canned< const Vector< QuadraticExtension< Rational > > >);
+   FunctionInstance4perl(cone_contains_point_T_x_X_o, QuadraticExtension< Rational >, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSetCmp<int, pm::operations::cmp>, pm::QuadraticExtension<pm::Rational> > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -47,7 +47,7 @@ Integer v_scalar_product(const vector<Integer>& av,const vector<Integer>& bv){
     size_t i,n=av.size();
 
 
-#ifdef __MIC__
+#if 0 // #ifdef __MIC__   // not for newer compiler versions
     // this version seems to be better vectorizable on the mic
     for (i=0; i<n; ++i)
         ans += av[i]*bv[i];
@@ -212,7 +212,6 @@ vector<Integer> v_abs_value(vector<Integer>& v){
     return w;
 }
 
-
 //---------------------------------------------------------------------------
 
 template<typename Integer>
@@ -235,6 +234,20 @@ Integer v_lcm(const vector<Integer>& v){
     size_t i,size=v.size();
     Integer g=1;
     for (i = 0; i < size; i++) {
+        g = libnormaliz::lcm(g,v[i]);
+        if (g==0) {
+            return 0;
+        }
+    }
+    return g;
+}
+
+template<typename Integer>
+Integer v_lcm_to(const vector<Integer>& v,const size_t k, const size_t j){
+    assert(k <= j);
+    size_t i;
+    Integer g=1;
+    for (i = k; i <= j; i++) {
         g = libnormaliz::lcm(g,v[i]);
         if (g==0) {
             return 0;
@@ -472,6 +485,27 @@ bool v_is_zero(const vector<Integer>& v) {
 //---------------------------------------------------------------------------
 
 template<typename Integer>
+bool v_is_symmetric(const vector<Integer>& v) {
+    for (size_t i = 0; i < v.size()/2; ++i) {
+        if (v[i] != v[v.size()-1-i]) return false;
+    }
+    return true;
+}
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+bool v_is_nonnegative(const vector<Integer>& v) {
+    for (size_t i = 0; i < v.size(); ++i) {
+        if (v[i] <0) return false;
+    }
+    return true;
+}
+
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
 void v_el_trans(const vector<Integer>& av,vector<Integer>& bv, const Integer& F, const size_t& start){
 
     size_t i,n=av.size();
@@ -670,8 +704,32 @@ vector<Integer> v_random(size_t n, long m){
         result[i]=rand()%(2*m+1)-m;
     return result;    
 }
+template<typename Integer>
+vector<Integer> degrees_hsop(const vector<Integer> gen_degrees,const vector<size_t> heights){
+    vector<Integer> hsop(heights.back());
+    hsop[0]=gen_degrees[0];
+    size_t k=1;
+    while (k<heights.size() && heights[k]>heights[k-1]){
+        hsop[k]=gen_degrees[k];
+        k++;
+    }
+    size_t j=k;
+    for (size_t i=k;i<heights.size();i++){
+            if (heights[i]>heights[i-1]){
+                hsop[j]=v_lcm_to(gen_degrees,k,i);
+                j++;
+            }
+    }
+    return hsop;
+}
 
+template bool v_is_nonnegative<long>(const vector<long>&);
+template bool v_is_nonnegative<long long>(const vector<long long>&);
+template bool v_is_nonnegative<mpz_class>(const vector<mpz_class>&);
 
+template bool v_is_symmetric<long>(const vector<long>&);
+template bool v_is_symmetric<long long>(const vector<long long>&);
+template bool v_is_symmetric<mpz_class>(const vector<mpz_class>&);
 
 template long      v_make_prime(vector<long     >&);
 template long long v_make_prime(vector<long long>&);

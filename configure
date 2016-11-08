@@ -19,11 +19,11 @@ ExtractPerl() {
 
 case "$*" in *PERL=*)
   ExtractPerl "$@"
-  exec $Perl $Script "$@"
+  exec $Perl -I. $Script "$@"
   ;;
 ?*)
-  exec perl $Script "$@"
+  exec perl -I. $Script "$@"
   ;;
 esac
 
-exec perl $Script
+exec perl -I. $Script

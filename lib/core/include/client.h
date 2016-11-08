@@ -31,8 +31,6 @@ using pm::perl::Value;
 using pm::perl::OptionSet;
 using pm::perl::Scalar;
 using pm::perl::Array;
-using pm::perl::ArgList;
-using pm::perl::ListResult;
 using pm::perl::Hash;
 using pm::perl::ListReturn;
 using pm::perl::undefined;
@@ -55,15 +53,14 @@ namespace polymake { namespace POLYMAKE_APPNAME { namespace {
 
 template <typename Fptr>
 struct IndirectFunctionWrapper : protected pm::perl::FunctionBase {
-   template <size_t fl>
-   IndirectFunctionWrapper(const char (&file)[fl], int line)
+   IndirectFunctionWrapper(const AnyString& file, int line)
    {
-      register_func(reinterpret_cast<pm::perl::wrapper_type>(&call), ".wrp", 4, file, fl-1, line,
+      register_func(reinterpret_cast<pm::perl::wrapper_type>(&call), ".wrp", file, line,
                     pm::perl::TypeListUtils<Fptr>::get_types());
    }
 
    typedef Fptr *fptr_type;
-   static SV* call(fptr_type, SV**, char*);
+   static SV* call(fptr_type, SV**);
 };
 
 template <typename What, int id>

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -49,14 +49,14 @@ struct cmp_lex_containers<Matrix1, Matrix2, ComparatorFamily, 2, 2> :
    }
 
    template <typename Iterator2>
-   typename enable_if<typename cons<cmp_value, Iterator2>::head, partially_defined>::type
+   typename std::enable_if<partially_defined, typename mproject1st<cmp_value, Iterator2>::type>::type
    operator() (partial_left, const Matrix1& a, const Iterator2& b) const
    {
       return cmp_rows()(partial_left(), rows(a), b);
    }
 
    template <typename Iterator1>
-   typename enable_if<typename cons<cmp_value, Iterator1>::head, partially_defined>::type
+   typename std::enable_if<partially_defined, typename mproject1st<cmp_value, Iterator1>::type>::type
    operator() (partial_right, const Iterator1& a, const Matrix2& b) const
    {
       return cmp_rows()(partial_right(), a, rows(b));
@@ -100,7 +100,7 @@ protected:
    }
 
    template <typename Iterator, typename _end1, typename _end2> static
-   cmp_value run(Iterator it, _end1 *e1, _end2 *e2, True)
+   cmp_value run(Iterator&& it, _end1* e1, _end2* e2, std::true_type)
    {
       for (;;) {
          if (at_end1(it, e1))
@@ -115,19 +115,19 @@ protected:
    }
 
    template <typename Iterator, typename _end1, typename _end2> static
-   cmp_value run(Iterator it, _end1*, _end2*, False)
+   cmp_value run(Iterator&& it, _end1*, _end2*, std::false_type)
    {
-      return first_differ(it, cmp_eq);
+      return first_differ_in_range(std::forward<Iterator>(it), cmp_eq);
    }
 
    static
-   cmp_value compare(const Container1& a, const Container2& b, False, bool2type<ordered>)
+   cmp_value compare(const Container1& a, const Container2& b, std::false_type, bool_constant<ordered>)
    {
-      typedef typename if_else<object_classifier::what_is<Container1>::value==object_classifier::is_constant,
-                               void, end_sensitive>::type
+      typedef typename std::conditional<object_classifier::what_is<Container1>::value==object_classifier::is_constant,
+                                        void, end_sensitive>::type
          feature1;
-      typedef typename if_else<object_classifier::what_is<Container2>::value==object_classifier::is_constant,
-                               void, end_sensitive>::type
+      typedef typename std::conditional<object_classifier::what_is<Container2>::value==object_classifier::is_constant,
+                                        void, end_sensitive>::type
          feature2;
 
       if (!ordered &&
@@ -139,36 +139,36 @@ protected:
       typedef TransformedContainerPair< masquerade_add_features<const Container1&, feature1>,
                                         masquerade_add_features<const Container2&, feature2>,
                                         ComparatorFamily > TP;
-      return run(entire(TP(a, b, ComparatorFamily())), (feature1*)0, (feature2*)0, bool2type<ordered>());
+      return run(entire(TP(a, b, ComparatorFamily())), (feature1*)0, (feature2*)0, bool_constant<ordered>());
    }
 
    static
-   cmp_value compare(const Container1& a, const Container2& b, True, True)
+   cmp_value compare(const Container1& a, const Container2& b, std::true_type, std::true_type)
    {
-      const cmp_value result=first_differ(entire(attach_operation(a, b, ComparatorFamily())), cmp_eq);
-      return result!=cmp_eq ? result : pm::sign(get_dim(a) - get_dim(b));
+      const cmp_value result=first_differ_in_range(entire(attach_operation(a, b, ComparatorFamily())), cmp_eq);
+      return result!=cmp_eq ? result : cmp_value(sign(get_dim(a) - get_dim(b)));
    }
 
    static
-   cmp_value compare(const Container1& a, const Container2& b, True, False)
+   cmp_value compare(const Container1& a, const Container2& b, std::true_type, std::false_type)
    {
       return get_dim(a)==get_dim(b)
-             ? first_differ(entire(attach_operation(a, b, ComparatorFamily())), cmp_eq)
+             ? first_differ_in_range(entire(attach_operation(a, b, ComparatorFamily())), cmp_eq)
              : cmp_ne;
    }
 
    static
-   cmp_value compare(partial_left, const Container1& c, True)
+   cmp_value compare(partial_left, const Container1& c, std::true_type)
    {
       ComparatorFamily cmp_el;
       cmp_value ret=cmp_eq;
-      for (typename Entire<Container1>::const_iterator it=entire(c); !it.at_end(); ++it)
+      for (auto it=entire(c); !it.at_end(); ++it)
          if ((ret=cmp_el(partial_left(), *it, it)) != cmp_eq) break;
       return ret;
    }
 
    static
-   cmp_value compare(partial_right, const Container2& c, True)
+   cmp_value compare(partial_right, const Container2& c, std::true_type)
    {
       ComparatorFamily cmp_el;
       cmp_value ret=cmp_eq;
@@ -178,13 +178,13 @@ protected:
    }
 
    static
-   cmp_value compare(partial_left, const Container1& a, False)
+   cmp_value compare(partial_left, const Container1& a, std::false_type)
    {
       return a.empty() ? cmp_eq : cmp_ne;
    }
 
    static
-   cmp_value compare(partial_right, const Container2& a, False)
+   cmp_value compare(partial_right, const Container2& a, std::false_type)
    {
       return a.empty() ? cmp_eq : cmp_ne;
    }
@@ -194,21 +194,21 @@ public:
    {
       const bool got_sparse=check_container_feature<Container1,sparse>::value ||
                             check_container_feature<Container2,sparse>::value;
-      return compare(a, b, bool2type<got_sparse>(), bool2type<ordered>());
+      return compare(a, b, bool_constant<got_sparse>(), bool_constant<ordered>());
    }
 
    template <typename Iterator2>
-   typename enable_if<typename cons<cmp_value, Iterator2>::head, partially_defined>::type
+   typename std::enable_if<partially_defined, typename mproject1st<cmp_value, Iterator2>::type>::type
    operator() (partial_left, const Container1& a, const Iterator2&) const
    {
-      return compare(partial_left(), a, bool2type<ordered>());
+      return compare(partial_left(), a, bool_constant<ordered>());
    }
 
    template <typename Iterator1>
-   typename enable_if<typename cons<cmp_value, Iterator1>::head, partially_defined>::type
+   typename std::enable_if<partially_defined, typename mproject1st<cmp_value, Iterator1>::type>::type
    operator() (partial_right, const Iterator1&, const Container2& b) const
    {
-      return compare(partial_right(), b, bool2type<ordered>());
+      return compare(partial_right(), b, bool_constant<ordered>());
    }
 };
 
@@ -238,18 +238,18 @@ protected:
    // SUGGESTION: make provisions for a list of comparators?
 
    template <int i> static
-   cmp_value compare_step(const Composite1& a, const Composite2& b, int2type<i>)
+   cmp_value compare_step(const Composite1& a, const Composite2& b, int_constant<i>)
    {
-      cmp_value result=ComparatorFamily()(visit_n_th(a, int2type<i>()), visit_n_th(b, int2type<i>()));
+      cmp_value result=ComparatorFamily()(visit_n_th(a, int_constant<i>()), visit_n_th(b, int_constant<i>()));
       const int next= i+1<l ? i+1 : i;
-      if (i<next && result==cmp_eq) result=compare_step(a, b, int2type<next>());
+      if (i<next && result==cmp_eq) result=compare_step(a, b, int_constant<next>());
       return result;
    }
 
 public:
    cmp_value operator() (const Composite1& a, const Composite2& b) const
    {
-      return compare_step(a, b, int2type<0>());
+      return compare_step(a, b, int_constant<0>());
    }
 };
 
@@ -260,34 +260,6 @@ struct build_comparator<T1, T2, ComparatorFamily, is_composite, is_composite, co
 };
 
 } // end namespace operations
-
-namespace operators {
-
-template <typename Left, typename Right> inline
-bool operator!= (const Left& l, const Right& r)
-{
-   return !(l==r);
-}
-
-template <typename Left, typename Right> inline
-bool operator> (const Left& l, const Right& r)
-{
-   return r<l;
-}
-
-template <typename Left, typename Right> inline
-bool operator<= (const Left& l, const Right& r)
-{
-   return !(r<l);
-}
-
-template <typename Left, typename Right> inline
-bool operator>= (const Left& l, const Right& r)
-{
-   return !(l<r);
-}
-
-} // end namespace operators
 
 template <typename T, bool _is_max> inline
 bool operator== (const T&, const extremal<T,_is_max>&) { return false; }

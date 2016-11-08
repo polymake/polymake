@@ -30,15 +30,15 @@ Array<Set<int> > delaunay_triangulation(perl::Object p)
 
    //delete the unbounded vertices
    const Set<int> far_face= p.give("FAR_FACE");
-   const IncidenceMatrix<> v_i_f_without_far_face=v_i_f.minor(All,~far_face); 
-   
-   const int dim = p.CallPolymakeMethod("DIM");
+   const IncidenceMatrix<> v_i_f_without_far_face=v_i_f.minor(All,~far_face);
+
+   const int dim = p.call_method("DIM");
    const Matrix<Rational> points = p.give("FACETS");
    const Matrix<Rational> sites = p.give("SITES");
-   
+
    int n_sims=0;
 
-   for (Entire< Cols < IncidenceMatrix<> > >::const_iterator sim=entire(cols(v_i_f_without_far_face)); !sim.at_end(); ++sim) {
+   for (auto sim=entire(cols(v_i_f_without_far_face)); !sim.at_end(); ++sim) {
       if (sim->size()==dim) {
          Set<int> rows = *sim;
          if (det(sites.minor(rows,All)) != 0) ++n_sims;
@@ -46,7 +46,7 @@ Array<Set<int> > delaunay_triangulation(perl::Object p)
       else if (sim->size()>dim) { //we have to triangulate ourselves
          Set<int> rows = *sim;
          const Matrix<Rational> poly=points.minor(rows,All);
-       
+
          perl::Object pol("Polytope<Rational>");
          pol.take("VERTICES")<<poly;
          const Array<Set<int> > tri=pol.give("TRIANGULATION.FACETS");
@@ -54,10 +54,10 @@ Array<Set<int> > delaunay_triangulation(perl::Object p)
          n_sims+=n_s;
       }
    }
-   
-   Array < Set <int> > triang(n_sims);
+
+   Array<Set<int>> triang(n_sims);
    int index=0;
-   for (Entire< Cols < IncidenceMatrix<> > >::const_iterator sim=entire(cols(v_i_f_without_far_face)); !sim.at_end(); ++sim) {
+   for (auto sim=entire(cols(v_i_f_without_far_face)); !sim.at_end(); ++sim) {
       if (sim->size()==dim) {
          Set<int> rows = *sim;
          if (det(sites.minor(rows,All)) != 0) triang[index++]=*sim;
@@ -65,7 +65,7 @@ Array<Set<int> > delaunay_triangulation(perl::Object p)
       else if (sim->size()>dim) { //we have to triangulate ourselves
          Set<int> rows = *sim;
          const Matrix<Rational> poly=points.minor(rows,All);
-       
+
          perl::Object pol("Polytope<Rational>");
          pol.take("VERTICES")<<poly;
          const Array< Set <int> > potriag=pol.give("TRIANGULATION.FACETS");
@@ -74,8 +74,8 @@ Array<Set<int> > delaunay_triangulation(perl::Object p)
             if (det(sites.minor(sim2,All)) != 0) triang[index++]=sim2;
          }
       }
-   } 
-   return triang;        
+   }
+   return triang;
 }
 
 UserFunction4perl("# @category Triangulations, subdivisions and volume"

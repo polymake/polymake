@@ -102,7 +102,7 @@ public:
 namespace pm {
 
 template <>
-struct is_mutable<polymake::polytope::SchlegelWindow> : False {};
+struct is_mutable<polymake::polytope::SchlegelWindow> : std::false_type {};
 
 }
 namespace polymake { namespace polytope {

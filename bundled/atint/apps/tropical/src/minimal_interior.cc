@@ -31,20 +31,16 @@
 #include "polymake/Rational.h"
 #include "polymake/Map.h"
 #include "polymake/linalg.h"
-#include "polymake/common/hermite_normal_form.h"
+#include "polymake/integer_linalg.h"
 #include "polymake/tropical/thomog.h"
 #include "polymake/tropical/misc_tools.h"
 #include "polymake/tropical/lattice.h"
 #include "polymake/tropical/solver_def.h"
 #include "polymake/tropical/linear_algebra_tools.h"
-#include "polymake/tropical/LoggingPrinter.h"
 
 
 namespace polymake { namespace tropical {
 
-	using namespace atintlog::donotlog;
-	// using namespace atintlog::dolog;
-	// using namespace atintlog::dotrace;
 	
 	/*
 	 * @brief Computes the set of indices such that the corresponding entries
@@ -79,14 +75,15 @@ namespace polymake { namespace tropical {
 		return scalar2set(i) + scalar2set(j);
 	}
 
-	IncidenceMatrix<> minimal_interior(const Matrix<Rational> &vertices,	
-			const IncidenceMatrix<> &polytopes, solver<Rational> &sv) {
-		IncidenceMatrix<> result(0,vertices.rows());
-
+	IncidenceMatrix<> minimal_interior(const Matrix<Rational> &vertices,
+                                           const IncidenceMatrix<>& polytopes, solver<Rational>& sv)
+        {
 		//If it only has one cone, it is minimal
-		if(polytopes.rows() == 1) {
-			return IncidenceMatrix<>(polytopes);	
+		if (polytopes.rows() == 1) {
+                  return polytopes;
 		}
+
+		IncidenceMatrix<> result(0, vertices.rows());
 	
 		//Compute facet normals of the original polyhedron
 		Matrix<Rational> facet_normals = sv.enumerate_facets(vertices, Matrix<Rational>(0,vertices.cols()),false,false).first;
@@ -120,8 +117,8 @@ namespace polymake { namespace tropical {
 		IncidenceMatrix<> interior_in_max = T(associated_pairs.minor(pairwise_maximal,All));
 
 		//If there are no codimension one cones, return the maximal cells
-		if(exterior_codim.rows() + interior_codim.rows() == 0) {
-			return IncidenceMatrix<>(polytopes);
+		if (exterior_codim.rows() + interior_codim.rows() == 0) {
+                  return polytopes;
 		}
 
 		//For each maximal cone, we compute all its minimal interior faces as maximal intersections
@@ -135,7 +132,6 @@ namespace polymake { namespace tropical {
 			//Compute all non-marked codim-1-cells of mc. If there are none left, go to the next cone
 			Vector<int> nonmarked(interior_in_max.row(mc) - markedFaces);
 			if(nonmarked.dim() == 0) continue;
-			//dbgtrace << "Remaining interior cells are: " << nonmarked << endl;
 			int k = nonmarked.dim();
 			//ordered list of indices of interior codim-1-cells (in nonmarked)
 			//indices != -1 correspond to codim-1-cells that we intersect to obtain a minimal face
@@ -222,29 +218,29 @@ namespace polymake { namespace tropical {
 		IncidenceMatrix<> refining_polytopes = refining_cycle.give("MAXIMAL_POLYTOPES");
 		int refining_lineality_dim = refining_cycle.give("LINEALITY_DIM");
 
-		Vector<Set<int> > result;
+		Set<Set<int> > result;
 
 		//Iterate all local cones of the localized cycle
-		for(int lc = 0; lc < local_restriction.rows(); lc++) {
+		for (int lc = 0; lc < local_restriction.rows(); ++lc) {
 			//Go through maximal cones of refining complex and check which ones intersect in the right dimension
 			Matrix<Rational> lc_vertices = local_vertices.minor(local_restriction.row(lc),All);
 			int local_dim = rank(lc_vertices) + local_lineality_dim;
-			Vector<Set<int> > lc_refiners;
-			for(int mc = 0; mc < refining_polytopes.rows(); mc++) {
+			RestrictedIncidenceMatrix<> lc_refiners;
+			for (int mc = 0; mc < refining_polytopes.rows(); ++mc) {
 				Set<int> contained_vertices;
 				Set<int> mcset = refining_polytopes.row(mc);
-				for(Entire<Set<int> >::iterator vert = entire(mcset); !vert.at_end(); vert++){
-					if(is_ray_in_cone(lc_vertices, local_lineality, refining_vertices.row(*vert), false,sv)) 
+				for (auto vert = entire(mcset); !vert.at_end(); ++vert) {
+					if (is_ray_in_cone(lc_vertices, local_lineality, refining_vertices.row(*vert), false,sv)) 
 						contained_vertices += (*vert);
 
-					if( rank( refining_vertices.minor(contained_vertices,All)) + refining_lineality_dim == local_dim)
-						lc_refiners |= contained_vertices;
+					if (rank( refining_vertices.minor(contained_vertices,All) ) + refining_lineality_dim == local_dim)
+						lc_refiners /= contained_vertices;
 				}
 			}//END iterate maximal cones
 
 			//Now that we have the subdividing cones, compute the minimal interior ones
-			result |= incMatrixToVector( minimal_interior( refining_vertices,
-																			lc_refiners, sv));
+                        IncidenceMatrix<> mi_res = minimal_interior(refining_vertices, IncidenceMatrix<>(std::move(lc_refiners)), sv);
+                        for (auto mi_cell = entire(rows(mi_res)); !mi_cell.at_end(); mi_cell++) { result += *mi_cell; }
 
 		}//END iterate local cones 
 		return IncidenceMatrix<>(result);

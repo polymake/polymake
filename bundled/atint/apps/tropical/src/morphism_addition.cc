@@ -24,14 +24,10 @@
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
 #include "polymake/Vector.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/refine.h"
 
 namespace polymake { namespace tropical {
 
-	using namespace atintlog::donotlog;
-	//   using namespace atintlog::dolog;
-	//using namespace atintlog::dotrace;
 	
 	/*
 	 * @brief Takes a morphism and a Cycle whose support is equal to f's [[DOMAIN]]
@@ -112,12 +108,10 @@ namespace polymake { namespace tropical {
 			sum_translate = ftranslate + gtranslate;
 		}
 
-		//dbgtrace << "Homogenizing where necessary" << endl;
 
 		//First we homogenize where necessary
 		perl::Object fDomain = f.give("DOMAIN");
 		perl::Object gDomain = g.give("DOMAIN");
-		//dbgtrace << "Computing refinement " << endl;
 
 		//Then compute the common refinement of the domains
 		RefinementResult r = refinement(fDomain,gDomain,false,false,false,true,false);

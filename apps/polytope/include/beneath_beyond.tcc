@@ -53,7 +53,7 @@ void beneath_beyond_algo<E>::compute(Iterator perm)
 #if POLYMAKE_DEBUG
       if (debug==do_check) {
          check_p(*perm);
-         if (!pm::identical<Iterator,sequence::iterator>::value) points_so_far+=*perm;
+         if (!std::is_same<Iterator, sequence::iterator>::value) points_so_far+=*perm;
       }
 #endif
       ++perm;
@@ -65,7 +65,7 @@ void beneath_beyond_algo<E>::compute(Iterator perm)
 #if POLYMAKE_DEBUG
       if (debug==do_check) {
          check_p(*perm);
-         if (!pm::identical<Iterator,sequence::iterator>::value) points_so_far+=*perm;
+         if (!std::is_same<Iterator, sequence::iterator>::value) points_so_far+=*perm;
       }
 #endif
       ++perm;

@@ -20,36 +20,35 @@
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/ListIncidenceMatrix.h"
 
 namespace polymake { namespace polytope {
- 
+
 template <typename Scalar>
 IncidenceMatrix<> common_refinement(const Matrix<Scalar>& vertices, const IncidenceMatrix<>& sub1, const IncidenceMatrix<>& sub2,  const int dim)
 {
    perl::ObjectType polytope=perl::ObjectType::construct<Scalar>("Polytope");
 
-   ListIncidenceMatrix< Set<int> > refinement;
-   for (Entire< Rows< IncidenceMatrix<> > >::const_iterator i=entire(rows(sub1)); !i.at_end(); ++i)
-      for (Entire< Rows< IncidenceMatrix<> > >::const_iterator j=entire(rows(sub2)); !j.at_end(); ++j) {
+   RestrictedIncidenceMatrix<> refinement;
+   for (auto i=entire(rows(sub1)); !i.at_end(); ++i)
+      for (auto j=entire(rows(sub2)); !j.at_end(); ++j) {
          const Set<int> intersection = (*i)*(*j);
          if (intersection.size() > dim) {
             perl::Object p(polytope);
             p.take("VERTICES") << vertices.minor(intersection, All);
-            const int int_dim = p.CallPolymakeMethod("DIM");
+            const int int_dim = p.call_method("DIM");
             if (int_dim == dim) {
                refinement /= intersection;
             }
          }
       }
 
-   return IncidenceMatrix<>(refinement);
+   return IncidenceMatrix<>(std::move(refinement));
 }
 
 template <typename Scalar>
 perl::Object common_refinement(perl::Object p1, perl::Object p2)
 {
-   int dim = p1.CallPolymakeMethod("DIM");
+   const int dim = p1.call_method("DIM");
    const Matrix<Scalar> vert=p1.give("VERTICES");
    const IncidenceMatrix<> sub1=p1.give("POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS");
    const IncidenceMatrix<> sub2=p2.give("POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS");

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -41,14 +41,14 @@ declare property_type Vector<Element=Rational> : c++ (include => ["polymake/Vect
    # @return Int
    user_method dim() : c++;
 
-   # Returns a [[Vector]] containing only the entries after //i//.
-   # @param Int i
+   # Returns a [[Vector]] containing all entries whose index is in a [[Set]] //s//.
+   # @param Set s indices to select from the vector
    # @return Vector
    user_method slice(*:anchor) : lvalue_opt : wary : c++;
 
-   # Returns a [[Vector]] containing only the entries from //i// to //j//-1.
-   # @param Int i
-   # @param Int j
+   # Returns a [[Vector]] containing only the entries from //start// to //start//+//length//-1.
+   # @param Int start first index to select
+   # @param Int length optional, until the end of the vector by default
    # @return Vector
    user_method slice($$) : lvalue_opt : wary : c++;
 
@@ -57,10 +57,6 @@ declare property_type Vector<Element=Rational> : c++ (include => ["polymake/Vect
    # @return Vector
    user_method div_exact(*) : lvalue : c++;
 }
-
-function permuted(Vector, *) : c++;
-
-function permuted_inv(Vector, *) : c++;
 
 
 # @category Arithmetic
@@ -138,6 +134,12 @@ declare property_type Matrix<Element=Rational, Sym=NonSymmetric> : \
       }
    }
 
+   # Change the dimensions; when growing, set added elements to 0.
+   user_method resize(Int, Int) : c++ : void : non_const;
+
+   # Change the dimensions setting all elements to 0.
+   user_method clear(Int, Int) : c++ : void : non_const;
+
    # Returns the number of rows.
    # @return Int
    user_method rows() : c++;
@@ -201,6 +203,7 @@ declare property_type Matrix<Element=Rational, Sym=NonSymmetric> : \
 # @param Matrix orthogonal basis of the subspace
 user_function project_to_orthogonal_complement(Matrix:lvalue,Matrix) : void : c++ (include => "polymake/linalg.h");
 
+function find_matrix_row_permutation(Matrix, Matrix) : c++;
 
 # @category Algebraic Types
 # Use the keyword "All" for all rows or columns, e.g. when constructing a [[minor]].
@@ -389,15 +392,6 @@ user_function cols(Matrix) : c++;
 user_function concat_rows(Matrix:lvalue_opt:anchor) : c++;
 
 
-function permuted_rows(Matrix, *) : c++;
-
-function permuted_inv_rows(Matrix, *) : c++;
-
-function permuted_cols(Matrix, *) : c++;
-
-function permuted_inv_cols(Matrix, *) : c++;
-
-
 # @category Linear Algebra
 # Computes the __transpose__ //A//<sup>T</sup> of a matrix //A//, i.e., (a<sup>T</sup>)<sub>ij</sub> = a<sub>ji</sub>.
 # @param Matrix A
@@ -477,6 +471,12 @@ user_function reduce(Matrix:wary, Vector:wary) : c++ (include => "polymake/linal
 
 user_function normalized(Matrix) : c++ (include => "polymake/linalg.h");
 
+# @category Linear Algebra
+# Return the sum of the squared entries of a vector //v//.
+# @param Vector<Scalar> v
+# @return Scalar
+
+user_function sqr(Vector) : c++ (include => "polymake/Vector.h");
 
 # @category Linear Algebra
 # Computes subsets of the rows and columns of //A// that form a basis for the linear space spanned by //A//.
@@ -653,6 +653,24 @@ user_function ones_vector<Element=Rational>(;$=0) : c++ (include => "polymake/li
 }
 
 # @category Linear Algebra
+# Creates a matrix with all elements equal to 1.
+# @param Int m number of rows
+# @param Int n number of columns
+# @tparam Element default: [[Rational]].
+# @return Matrix<Element>
+# @example The following creates an all-ones matrix with Rational coefficients.
+# > $M = ones_matrix<Rational>(2,3);
+# > print $M;
+# | 1 1 1
+# | 1 1 1
+
+user_function ones_matrix<Element=Rational>($$) : c++ (include => "polymake/linalg.h") {
+   if ($_[0] < 0 || $_[1] < 0) {
+      croak( "ones_matrix - invalid dimension");
+   }
+}                                          
+                                            
+# @category Linear Algebra
 # Compute the __null space__ of a matrix //A//.
 # @param Matrix A
 # @return Matrix
@@ -696,6 +714,19 @@ user_function lineality_space(Matrix) : c++ (include => "polymake/linalg.h");
 
 user_function lin_solve(Matrix:wary, Vector:wary) : c++ (include => "polymake/linalg.h");
 
+# @category Linear Algebra
+# Computes the solution of the system //A//x = //b// by applying Cramer's rule
+# @param Matrix A must be invertible
+# @param Vector b
+# @return Vector
+# @example from the Wikipedia:
+# > $A = new Matrix([3,2,-1],[2,-2,4],[-1,1/2,-1]);
+# > $b = new Vector(1,-2,0);
+# > print cramer($A,$b);
+# | 1 -2 -2
+
+user_function cramer(Matrix:wary, Vector:wary) : c++ (include => "polymake/linalg.h");
+                                           
 # @category Linear Algebra
 # The matrix //A// is totally unimodular if the determinant of each square submatrix equals 0, 1, or -1.
 # This is the naive test (exponential in the size of the matrix).
@@ -802,21 +833,6 @@ user_function dense(Vector) { $_[0] }
 # @param Matrix m
 # @return Matrix
 user_function dense(Matrix) { $_[0] }
-
-
-# @category Combinatorics
-# Returns the __permuation matrix__ of the permutation given by //p//.
-# @tparam Scalar default: [[Int]]
-# @param Array<Int> p
-# @return Matrix<Scalar>
-# @example The following prints the permutation matrix in sparse representation.
-# > print permutation_matrix([1,0,3,2]);
-# | (4) (1 1)
-# | (4) (0 1)
-# | (4) (3 1)
-# | (4) (2 1)
-
-user_function permutation_matrix<Scalar=Int>(*:anchor) : c++ (include => [ "polymake/permutations.h", "polymake/SparseMatrix.h" ]);
 
 ##################################################################################
 
@@ -1043,10 +1059,28 @@ declare property_type Ring<Coefficient=Rational, Exponent=Int> \
 
    user_method names() : c++;
 
+   # Override the variable names in the pretty printing of this ring for the __current__ session.
+   # @param Array<String> names
+   user_method override_varnames(*) : c++ (name => "set_pretty_names");
+
    method id() : c++;
 
    type_method toXML { &Core::CPlusPlus::serialized_with_id_toXML }
+
 }
+
+# @category Utilities
+# Override the variable names in the pretty printing of the corresponding default ring for the __current__ session.
+# @tparam PolynomialType explicit template parameter to choose ring
+# @param Array<String> names new variable names, size must be the same as the number variables in the ring
+# @example Print all polynomial types that use the same ring as [[PuiseuxFraction]] with 't' as variable:
+# > override_varnames<PuiseuxFraction<Max>>(["t"]);
+# > print long_and_winding(1)->VERTICES;
+# | (1) (t) (t) (t^2) (2*t^3/2)
+# | (1) (t) (0) (0) (t^3/2)
+# | (1) (t) (t) (t^2) (1)/(t)
+# | ...
+user_function override_varnames<PolynomialType>(*) : void : c++ (name => "pm::Ring_base::override_varnames", include => "polymake/Ring.h" );
 
 # @category Algebraic Types
 # @tparam Coefficient default: [[Rational]]
@@ -1117,14 +1151,31 @@ declare property_type Polynomial<Coefficient=Rational, Exponent=Int> \
    # @return Int
    user_method lc() : c++;
 
-   user_method print_ordered(Matrix) : c++ : void;
+   # Print a polynomial with terms sorted according to a given [[Matrix]] //m//.
+   # @param Matrix m
+   user_method print_ordered(Matrix<Exponent>) : c++ : void;
 
+   # The initial form with respect to a weight-vector //v//
+   # @param Vector<Exponent> v weights
+   # @return Polynomial
+   user_method initial_form(Vector<Exponent>) : c++;
+
+   # The matrix of all exponent vectors (row-wise).
+   # The sorting agrees with [[coefficients_as_vector]].
+   # @return SparseMatrix<Exponent>
    user_method monomials_as_matrix() : c++;
 
+   # The ring of the polynomial.
+   # @return Ring
    user_method get_ring() : c++;
 
+   # The polynomial is zero.
+   # @return Bool
    user_method trivial() : c++;
 
+   # The vector of all coefficients.
+   # The sorting agrees with [[monomials_as_matrix]].
+   # @return Vector<Coefficient>
    user_method coefficients_as_vector() : c++;
 
 }
@@ -1143,19 +1194,49 @@ declare property_type UniPolynomial<Coefficient=Rational, Exponent=Int> \
 
    method construct(*,*,Ring) : c++;
 
+   # The highest degree occuring in the polynomial.
+   # @return Exponent
    user_method deg() : c++;
 
+   # The lowest degree occuring in the polynomial.
+   # @return Exponent
    user_method lower_deg() : c++;
 
    # The __leading coefficient__.
    # @return Int
    user_method lc() : c++;
 
-   user_method print_ordered(Matrix) : c++ : void;
+   # Print a polynomial with terms sorted according to //exponent*x//.
+   # @param Exponent x
+   user_method print_ordered($) : c++ : void;
 
+   # Approximate evaluation of the polynomial at a [[Float]] //x//.
+   # @param Float x
+   # @return Float
    user_method evaluate_float($) : c++;
 
+   # Evaluate a [[UniPolynomial]] at a number (//x^exp//).
+   # Note that for non-integral exponents this may require intermediate floating point
+   # computations depending on the input:
+   # Let //explcm// be the lcm of the denominators of all exponents.
+   # If there are no denominators or //explcm// divides //exp//, then the evaluation
+   # is computed exactly.
+   # Otherwise, some rational number close to the root //(x^exp)^-explcm// will be chosen
+   # via an intermediate floating point number.
+   # @param Coefficient x
+   # @param Exponent exp (default: 1)
+   # @return Coefficient
    user_method evaluate(*;$=1) : c++;
+
+   # The vector of all coefficients.
+   # The sorting agrees with [[monomials_as_vector]].
+   # @return Vector<Coefficient>
+   user_method coefficients_as_vector() : c++;
+
+   # The vector of all exponents.
+   # The order agrees with [[coefficients_as_vector]].
+   # @return Vector<Exponent>
+   user_method monomials_as_vector() : c++;
 }
 
 # @category Arithmetic
@@ -1198,13 +1279,13 @@ declare property_type RationalFunction<Coefficient=Rational, Exponent=Int> \
 # Returns the __numerator__ of a [[RationalFunction]] //f//.
 # @param RationalFunction f
 # @return Polynomial
-user_function numerator(RationalFunction) : c++;
+user_function numerator(RationalFunction:anchor) : c++;
 
 # @category Arithmetic
 # Returns the __denominator__ of a [[RationalFunction]] //f//.
 # @param RationalFunction f
 # @return Polynomial
-user_function denominator(RationalFunction) : c++;
+user_function denominator(RationalFunction:anchor) : c++;
 
 # @category Algebraic Types
 # @tparam MinMax type of tropical addition: either [[Min]] or [[Max]]
@@ -1281,13 +1362,13 @@ function is_ordered_field_with_unlimited_precision(PuiseuxFraction) { 1 }
 # Returns the __numerator__ of a [[PuiseuxFraction]] //f//.
 # @param PuiseuxFraction f
 # @return Polynomial
-user_function numerator(PuiseuxFraction) : c++;
+user_function numerator(PuiseuxFraction:anchor) : c++;
 
 # @category Arithmetic
 # Returns the __denominator__ of a [[PuiseuxFraction]] //f//.
 # @param PuiseuxFraction f
 # @return Polynomial
-user_function denominator(PuiseuxFraction) : c++;
+user_function denominator(PuiseuxFraction:anchor) : c++;
 
 
 # @topic category property_types/Linear Algebra
@@ -1305,6 +1386,7 @@ declare property_type SmithNormalForm<Scalar> : c++ (include => "polymake/Smith_
 
 # @category Linear Algebra
 # Compute the __Smith normal form__ of a given matrix //M//.
+# M = LSR in normal case, or S = LMR in inverted case.
 # @param Matrix M must be of integer type
 # @param Bool inv optional, if true, compute the inverse of the companion matrices
 # @return SmithNormalForm<Integer>
@@ -1323,6 +1405,44 @@ declare property_type SmithNormalForm<Scalar> : c++ (include => "polymake/Smith_
 
 user_function smith_normal_form(Matrix; $=0) : c++ (include => "polymake/Smith_normal_form.h");
 
+# @category Linear Algebra
+# Complete result of the __Hermite normal form__ computation.
+# Contains the following fields:
+#  Matrix<Scalar> hnf: the Hermite normal form N of //M//
+#  SparseMatrix<Scalar> companion: unimodular Matrix R such that M*R = N.
+#  Int rank: rank of //M//
+declare property_type HermiteNormalForm<Scalar> : c++ (include => "polymake/integer_linalg.h");
+
+# @category Linear Algebra
+# Computes the (column) Hermite normal form of an integer matrix.
+# Pivot entries are positive, entries to the left of a pivot are non-negative and strictly smaller than the pivot.
+# @param Matrix M Matrix to be transformed.
+# @option Bool reduced If this is false, entries to the left of a pivot are left untouched. True by default
+# @return HermiteNormalForm object H with H.hnf, H.companion and H.rank with M*H.companion=H.hnf and rank(M) = H.rank.
+# @example The following stores the result for a small matrix M in H and then prints both hnf and companion:
+# > $M = new Matrix<Integer>([1,2],[2,3]);
+# > $H = hermite_normal_form($M);
+# > print $H->hnf;
+# | 1 0
+# | 0 1
+# > print $H->companion;
+# | -3 2
+# | 2 -1
+user_function hermite_normal_form(Matrix; $=0) : c++ (include => "polymake/integer_linalg.h");
+
+# @category Linear Algebra
+# Computes the __lattice null space__ of the integer matrix //A//.
+# @param Matrix<Integer> A
+# @return SparseMatrix<Integer> Has a lattice basis of the null space as rows.
+
+user_function null_space_integer<Matrix>(Matrix) : c++ (include=>"polymake/integer_linalg.h");
+
+# @category Linear Algebra
+# Computes a lattice basis of the span of the rows of //A//.
+# @param Matrix<Integer> A
+# @return Set<Int> Indices of the rows of //A// that constitute a basis.
+
+user_function basis_rows_integer<Matrix>(Matrix) : c++ (include=>"polymake/integer_linalg.h");
 
 # Local Variables:
 # mode: perl

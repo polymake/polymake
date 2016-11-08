@@ -48,16 +48,14 @@ struct traits<Rational> {
    static const CDDRESOLVE(NumberType) number_type=CDDRESOLVE(Rational);
 
    // PTL -> cddlib
-   static void store(mytype *dst, const Rational *src)
+   template <typename Iterator>
+   static
+   void store(mytype *dst, const Iterator& src)
    {
       CDDRESOLVE(set)(*dst, src->get_rep());
    }
 
-   // cddlib -> PTL
-   static void fetch(Rational* dst, const mytype* src)
-   {
-      dst->set(*src);
-   }
+   typedef operations::move getter;
 };
 
 #else // use USE_DDF_
@@ -69,17 +67,103 @@ template <>
 struct traits<double> {
    static const CDDRESOLVE(NumberType) number_type=CDDRESOLVE(Real);
 
-   static void store(mytype *dst, const double *src)
+   template <typename Iterator>
+   static void store(mytype *dst, const Iterator& src)
    {
       CDDRESOLVE(set_d)(*dst, *src);
    }
 
-   static void fetch(double *dst, const mytype* src)
-   {
-      *dst=CDDRESOLVE(get_d)(*const_cast<mytype*>(src));         // cddlib is not const-clean
-   }
+   struct getter {
+      typedef mytype argument_type;
+      typedef double result_type;
+
+      result_type operator() (argument_type& src) const
+      {
+         return CDDRESOLVE(get_d)(src);
+      }
+   };
 };
 #endif
+
+template <typename Coord>
+class vector_output {
+public:
+   typedef traits<Coord> traits_t;
+
+   vector_output(mytype* start_arg, int sz_arg)
+      : start(start_arg)
+      , sz(sz_arg) {}
+
+   typedef std::input_iterator_tag container_category;
+   typedef Coord value_type;
+   typedef value_type reference;
+   typedef value_type const_reference;
+   typedef pm::unary_transform_iterator<pm::pointer2iterator_t<mytype*>, typename traits_t::getter> iterator;
+   typedef iterator const_iterator;
+
+   iterator begin() const { return iterator(start); }
+   iterator end() const { return iterator(start+sz); }
+
+private:
+   mytype* start;
+   int sz;
+};
+
+template <typename Coord>
+class matrix_output_rows_iterator {
+public:
+   typedef std::input_iterator_tag iterator_category;
+   typedef vector_output<Coord> value_type;
+   typedef value_type reference;
+   typedef void pointer;
+   typedef ptrdiff_t difference_type;
+
+   typedef ListMatrix<Vector<Coord>> lin_matrix_t;
+
+   matrix_output_rows_iterator(mytype** start, int n_rows, int n_cols_arg,
+                               dd_rowset lin_set_arg, lin_matrix_t& lin_out_arg)
+      : cur(start)
+      , end(start+n_rows)
+      , n_cols(n_cols_arg)
+      , row_index(1)         // cddlib starts counting at 1
+      , lin_set(lin_set_arg)
+      , lin_out(lin_out_arg)
+   {
+      valid_position();
+   }
+
+   value_type operator* () const
+   {
+      return value_type(*cur, n_cols);
+   }
+
+   matrix_output_rows_iterator& operator++ ()
+   {
+      ++cur; ++row_index;
+      valid_position();
+      return *this;
+   }
+
+   bool at_end() const { return cur == end; }
+
+private:
+   void valid_position()
+   {
+      while (!at_end() && set_member(row_index, lin_set)) {
+         lin_out /= Vector<Coord>(n_cols, typename value_type::iterator(*cur));
+         ++cur;
+         ++row_index;
+      }
+   }
+
+   mytype** cur;
+   mytype** end;
+   int n_cols;
+   int row_index;
+   dd_rowset lin_set;
+   lin_matrix_t& lin_out;
+};
+
 
 template <typename Coord> class cdd_polyhedron;
 template <typename Coord> class cdd_lp;
@@ -88,7 +172,7 @@ template <typename Coord> class cdd_matrix;
 
 template <typename Coord>
 class cdd_vector : public traits<Coord> {
-   typedef traits<Coord> _super;
+   typedef traits<Coord> traits_t;
 
    friend class cdd_matrix<Coord>;
    friend class cdd_polyhedron<Coord>;
@@ -102,7 +186,10 @@ public:
 
    ~cdd_vector() { CDDRESOLVE(FreeArow)(dim, ptr); }
 
-   Vector<Coord> get(int start_at=0) const;
+   Vector<Coord> get(int start_at=0) const
+   {
+      return Vector<Coord>(dim-start_at, typename vector_output<Coord>::iterator(ptr+start_at));
+   }
 
 private:
    int dim;
@@ -110,18 +197,8 @@ private:
 };
 
 template <typename Coord>
-Vector<Coord> cdd_vector<Coord>::get(int start_at) const
-{
-   Vector<Coord> ret(dim-start_at);
-   typename Vector<Coord>::iterator dst=ret.begin();
-   for (mytype *src=ptr+start_at, *end=ptr+dim;  src!=end;  ++src, ++dst)
-      _super::fetch(dst, src);
-   return ret;
-}
-
-template <typename Coord>
 class cdd_matrix : public traits<Coord> {
-   typedef traits<Coord> _super;
+   typedef traits<Coord> traits_t;
 
    friend class cdd_polyhedron<Coord>;
    friend class cdd_lp<Coord>;
@@ -166,7 +243,7 @@ protected:
 
 template <typename Coord>
 class cdd_lp : public traits<Coord> {
-   typedef traits<Coord> _super;
+   typedef traits<Coord> traits_t;
    friend class cdd_lp_sol<Coord>;
 public:
    cdd_lp(const cdd_matrix<Coord>& M) : ptr(CDDRESOLVE(Matrix2LP)(M.ptr, &err)) {}
@@ -283,10 +360,16 @@ protected:
 namespace pm {
 
 template <>
-struct check_iterator_feature<polymake::polytope::cdd_interface::cdd_bitset_iterator, end_sensitive> : True {};
+struct check_iterator_feature<polymake::polytope::cdd_interface::cdd_bitset_iterator, end_sensitive> : std::true_type {};
 
 template <>
-struct check_container_feature<polymake::polytope::cdd_interface::cdd_bitset, sparse_compatible> : True {};
+struct check_container_feature<polymake::polytope::cdd_interface::cdd_bitset, sparse_compatible> : std::true_type {};
+
+template <typename Coord>
+struct check_iterator_feature<polymake::polytope::cdd_interface::matrix_output_rows_iterator<Coord>, end_sensitive> : std::true_type {};
+
+template <typename Coord>
+struct spec_object_traits<polymake::polytope::cdd_interface::vector_output<Coord>> : spec_object_traits<is_container> {};
 
 }
 namespace polymake { namespace polytope { namespace cdd_interface {
@@ -296,23 +379,22 @@ namespace polymake { namespace polytope { namespace cdd_interface {
 // should not be used for INEQUALITES (set representation type)
 template <typename Coord>
 cdd_matrix<Coord>::cdd_matrix(const Matrix<Coord>& P)
-   : ptr(CDDRESOLVE(CreateMatrix)(P.rows(), P.cols()))   
+   : ptr(CDDRESOLVE(CreateMatrix)(P.rows(), P.cols()))
 {
-
    // get size of the input matrix
    int m = P.rows();
    int n = P.cols();
 
    ptr->representation = CDDRESOLVE(Generator);    // Input type: points
-   ptr->numbtype = _super::number_type;
-  
+   ptr->numbtype = traits_t::number_type;
+
    // copy data: polymake -> cdd
-   typename ConcatRows< Matrix<Coord> >::const_iterator p=concat_rows(P).begin();
+   auto p=concat_rows(P).begin();
    for (mytype **r=ptr->matrix, **rend=r+m;  r!=rend;  ++r) {
       mytype *c=*r;
       mytype *cend=c+n;
-      for (;  c!=cend;  ++c, ++p) 
-         _super::store(c,p);
+      for (;  c!=cend;  ++c, ++p)
+         traits_t::store(c, p);
    }
 
 }
@@ -330,24 +412,24 @@ cdd_matrix<Coord>::cdd_matrix(const Matrix<Coord>& I, const Matrix<Coord>& E, co
       ptr->representation = CDDRESOLVE(Inequality);   // Input type: inequalities
    else
       ptr->representation = CDDRESOLVE(Generator);    // Input type: points
-   ptr->numbtype = _super::number_type;
-  
-   typename ConcatRows< Matrix<Coord> >::const_iterator p=concat_rows(I).begin();
+   ptr->numbtype = traits_t::number_type;
+
+   auto p=concat_rows(I).begin();
    mytype **r, **rend;
    for (r=ptr->matrix, rend=r+mi;  r!=rend;  ++r) {
       mytype *c=*r;
-      mytype *cend=c+n;  
-      for (;  c!=cend;  ++c, ++p) 
-         _super::store(c,p);
+      mytype *cend=c+n;
+      for (;  c!=cend;  ++c, ++p)
+         traits_t::store(c,p);
    }
-   
+
    p=concat_rows(E).begin();
    ++mi; // cddlib starts counting at 1
    for (rend+=me;  r!=rend;  ++r, ++mi) {
       mytype *c=*r;
       mytype *cend=c+n;
       for (;  c!=cend;  ++c, ++p)
-         _super::store(c,p);
+         traits_t::store(c,p);
       set_addelem(ptr->linset, mi);
    }
 }
@@ -355,9 +437,9 @@ cdd_matrix<Coord>::cdd_matrix(const Matrix<Coord>& I, const Matrix<Coord>& E, co
 template <typename Coord>
 void cdd_matrix<Coord>::add_objective(const Vector<Coord>& obj, bool maximize)
 {
-   typename Vector<Coord>::const_iterator o=obj.begin();
+   auto o=obj.begin();
    for (mytype *r=ptr->rowvec, *rend=r+obj.size();  r!=rend;  ++r, ++o)
-      _super::store(r,o);
+      traits_t::store(r,o);
    ptr->objective= maximize ? CDDRESOLVE(LPmax) : CDDRESOLVE(LPmin);
 }
 
@@ -402,37 +484,26 @@ cdd_matrix<Coord>::representation_conversion(const bool isCone, const bool prima
 {
    const CDDRESOLVE(rowrange) m = ptr->rowsize;
    const CDDRESOLVE(colrange) n = ptr->colsize;
-   const long linsize = set_card(ptr->linset); 
+   const long linsize = set_card(ptr->linset);
 
    if (primal && m<=0) throw infeasible();
 
-   Matrix<Coord> Pt(m-linsize,n);
-   Matrix<Coord> Lin(linsize, n);
+   ListMatrix<Vector<Coord>> Lin(0, n);
+   Matrix<Coord> Pt(m-linsize, n, matrix_output_rows_iterator<Coord>(ptr->matrix, m, n, ptr->linset, Lin));
 
-   typename ConcatRows< Matrix<Coord> >::iterator pt=concat_rows(Pt).begin(), lin=concat_rows(Lin).begin();
-   int index=1;         // cddlib starts counting at 1
-   for (mytype **r=ptr->matrix, **rend=r+m;  r!=rend;  ++r, ++index) {
-      if (set_member(index, ptr->linset))
-         // the current row is a lineality 
-         for (mytype *c=*r, *cend=c+n;  c!=cend;  ++c, ++lin)
-            _super::fetch(lin,c);
-      else 
-         // the current row is a generator of the pointed cone
-         for (mytype *c=*r, *cend=c+n;  c!=cend;  ++c, ++pt)
-            _super::fetch(pt,c);
-   }
-
-   if ( primal ) {
+   if (primal) {
       // for a 0-dimensional cone cdd returns the origin as a vertex
       // we have to remove this in our interpretation
-      if (isCone && !linsize && Pt.rows()==1 && Pt(0,0)==1 ) { Pt.resize(0,Pt.cols()); }
-      
+      if (isCone && !linsize && Pt.rows()==1 && Pt(0,0)==1)
+         Pt.resize(0, Pt.cols());
+
       // in the case of a homogeneous cone, the cddlib omits the origin point
       // in the case of a cone we don't want to add this!
-      if (!linsize && is_zero(Pt.col(0)) && !isCone) Pt /= unit_vector<Coord>(Pt.cols(), 0);
-   } 
+      if (!linsize && is_zero(Pt.col(0)) && !isCone)
+         Pt /= unit_vector<Coord>(Pt.cols(), 0);
+   }
 
-   return typename solver<Coord>::matrix_pair(Pt,Lin);
+   return typename solver<Coord>::matrix_pair(Pt, Matrix<Coord>(linsize, n, operations::move(), entire(rows(Lin))));
 }
 
 
@@ -441,7 +512,7 @@ ListMatrix< Vector<Coord> >
 cdd_matrix<Coord>::vertex_normals(Bitset& Vertices)
 {
    ListMatrix< Vector<Coord> > VN;
-   typename Rows< ListMatrix< Vector<Coord> > >::iterator vn_front=rows(VN).begin();
+   auto vn_front=rows(VN).begin();
    cdd_vector<Coord> cert(ptr->colsize+1);
    CDDRESOLVE(ErrorType) err;
    for (int i=ptr->rowsize; i>=1; --i) {
@@ -457,7 +528,7 @@ cdd_matrix<Coord>::vertex_normals(Bitset& Vertices)
          Vertices += i-1;
          Vector<Coord> vertex_normal=cert.get(1);
          //  we redefined vertex normals to be affine functionals
-         //  vertex_normal[0]=0; 
+         //  vertex_normal[0]=0;
          // vertex_normal.negate();
          vn_front=VN.insert_row(vn_front, vertex_normal);
       }
@@ -486,7 +557,7 @@ cdd_matrix<Coord>::canonicalize(Bitset& Pt, Bitset& Lin) {
 
    for (int i = 1; i <= m; ++i )
       if ( newpos[i] > 0 ) {
-         if ( newpos[i] <= linsize ) 
+         if ( newpos[i] <= linsize )
             Lin += i-1;
          else
             Pt += i-1;
@@ -514,7 +585,7 @@ cdd_matrix<Coord>::canonicalize_lineality(Bitset& Lin) {
    const long linsize = set_card(ptr->linset);
 
    for (int i = 1; i <= m; ++i )
-      if ( newpos[i] > 0 && newpos[i] <= linsize ) 
+      if ( newpos[i] > 0 && newpos[i] <= linsize )
          Lin += i-1;
 
    free(newpos);
@@ -524,15 +595,15 @@ template <typename Coord>
 void cdd_lp_sol<Coord>::verify()
 {
    switch (ptr->LPS) {
-   case CDDRESOLVE(Optimal): 
+   case CDDRESOLVE(Optimal):
        break;
    case CDDRESOLVE(StrucInconsistent):   // if the problem is inconsistent then mark that there is no valid point
-   case CDDRESOLVE(Inconsistent):       
+   case CDDRESOLVE(Inconsistent):
       throw infeasible();
    case CDDRESOLVE(Unbounded):      // if the problem is unbounded then mark that there is no optimal solution
       throw unbounded();
    case CDDRESOLVE(StrucDualInconsistent):  // if the dual problem is either unbounded or
-   case CDDRESOLVE(DualUnbounded):          // inconsistent we don't know whether the primal 
+   case CDDRESOLVE(DualUnbounded):          // inconsistent we don't know whether the primal
    case CDDRESOLVE(DualInconsistent):       // is inconsistent or unbounded
       throw std::runtime_error("cannot handle lp solution: problem is either inconsistent or unbounded");
    default:  // all other cases are handled here ....
@@ -545,12 +616,7 @@ void cdd_lp_sol<Coord>::verify()
 template <typename Coord>
 Vector<Coord> cdd_lp<Coord>::optimal_vertex() const
 {
-   const int n=ptr->d;
-   Vector<Coord> Opt(n);
-   typename Vector<Coord>::iterator o=Opt.begin();
-   for (mytype *s=ptr->sol, *send=s+n;  s!=send;  ++s, ++o)
-      _super::fetch(o,s);
-   return Opt;
+   return Vector<Coord>(ptr->d, typename vector_output<Coord>::iterator(ptr->sol));
 }
 
 // end of cdd classes
@@ -602,7 +668,7 @@ template <typename Coord>
 typename solver<Coord>::non_redundant_canonical
 solver<Coord>::canonicalize(const Matrix<Coord>& Pt, const Matrix<Coord>& Lin, bool primal)
 {
-   cdd_matrix<Coord> IN(Pt, Lin, false);  // in some cases cdd does not return the facet x_0>=0 for the primal reduction 
+   cdd_matrix<Coord> IN(Pt, Lin, false);  // in some cases cdd does not return the facet x_0>=0 for the primal reduction
                                           // so we always use the dual reduction
                                           // FIXME this has to be checked carefully
    Bitset red_Pt(Pt.rows());

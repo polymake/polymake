@@ -154,11 +154,10 @@ Array<int> lex_discMorse(const int& strategy, graph::HasseDiagram newHD, const p
    int n_max_d_faces(newHD.nodes_of_dim(global_d).size());  // number of faces of dim = max_d
    const int n_verts(newHD.nodes_of_dim(0).size());  // number of vertices
 
-   Vector<int> morse_vector(zero_vector<int>(max_d+1));
+   Array<int> morse_vector(max_d+1, 0);
 
    // random relabeling of vertices
-   Array<int> relabel(n_verts);
-   copy(entire(random_permutation(n_verts,random_source)), relabel.begin());
+   Array<int> relabel(n_verts, random_permutation(n_verts, random_source).begin());
    CompareByHasseDiagram cmp(newHD,relabel);   
   
    // find free faces of newHD
@@ -235,11 +234,11 @@ Array<int> lex_discMorse(const int& strategy, graph::HasseDiagram newHD, const p
 	 }
       }
    }
-   
-   
+
+
    // The remaining vertices are critical cells.
    morse_vector[0] += newHD.nodes_of_dim(0).size();
-   
+
 
    return morse_vector;
 }   
@@ -345,17 +344,17 @@ Array<int> rand_discMorse(graph::HasseDiagram newHD, const pm::SharedRandomState
 
    int n_max_d_faces=newHD.nodes_of_dim(global_d).size();  // number of faces of dim = max_d
 
-   Vector<int> morse_vector(zero_vector<int>(max_d+1));
+   Array<int> morse_vector(max_d+1, 0);
 
    // find free faces of newHD
    // remember elements of free_face_list are of dim=max_d-1
    Set<int> free_face_list;
    rand_free_faces(newHD,max_d,free_face_list);
-   
+
    bool first_removed_face(true);
    bool save_remaining_faces(print_collapsed);
-  
-   while (true){
+
+   while (true) {
       if (!free_face_list.empty()) {
 	 // collapse anything that can be collapsed
 	 
@@ -425,13 +424,13 @@ Array<int> rand_discMorse(graph::HasseDiagram newHD, const pm::SharedRandomState
 	 }
       }
    }
-   
-   
+
+
    // The remaining vertices are critical cells.
    morse_vector[0] += newHD.nodes_of_dim(0).size();
 
    return morse_vector;
-}   
+}
    
    
 //////////////////////////////////////////////////////////////////////////////////////

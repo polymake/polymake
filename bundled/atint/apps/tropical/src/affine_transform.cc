@@ -17,7 +17,7 @@
 	---
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
-	Contains functions to compute the affine transform of a cycle 
+	Contains functions to compute the affine transform of a cycle
 	*/
 
 #include "polymake/client.h"
@@ -26,20 +26,16 @@
 #include "polymake/Vector.h"
 #include "polymake/linalg.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/misc_tools.h"
 #include "polymake/tropical/thomog.h"
 #include "polymake/tropical/specialcycles.h"
 
 namespace polymake { namespace tropical {
 
-	using namespace atintlog::donotlog;
-	//using namespace atintlog::dolog;
-	//   using namespace atintlog::dotrace;
 
 	template <typename Addition>
 		perl::Object affine_transform(perl::Object cycle, Matrix<Rational> matrix, Vector<Rational> translate) {
-			//Extract values 
+			//Extract values
 			Matrix<Rational> vertices = cycle.give("VERTICES");
 			IncidenceMatrix<> polytopes = cycle.give("MAXIMAL_POLYTOPES");
 			Matrix<Rational> lineality = cycle.give("LINEALITY_SPACE");
@@ -50,18 +46,18 @@ namespace polymake { namespace tropical {
 				translate = zero_vector<Rational>(matrix.rows());
 
 			//Sanity checks
-			if(CallPolymakeFunction("is_empty",cycle)) {
+			if (call_function("is_empty", cycle)) {
 				return empty_cycle<Addition>(matrix.rows()-1);
 			}
-			if(matrix.rows() != translate.dim() || matrix.cols() != vertices.cols()-1)
+			if (matrix.rows() != translate.dim() || matrix.cols() != vertices.cols()-1)
 				throw std::runtime_error("affine_transform: Dimension mismatch.");
 
-			//Change matrix and translate so we can just apply it to rays 
+			//Change matrix and translate so we can just apply it to rays
 			matrix = zero_vector<Rational>() / matrix;
 			matrix = unit_vector<Rational>(matrix.rows(),0) | matrix;
 			translate = Rational(0) | translate;
 
-			//Transform 
+			//Transform
 			Set<int> nonfar = far_and_nonfar_vertices(vertices).second;
 			vertices= vertices * T(matrix);
 			for(Entire<Set<int> >::iterator nf = entire(nonfar); !nf.at_end(); nf++) {

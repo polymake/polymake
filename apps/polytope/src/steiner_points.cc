@@ -78,7 +78,7 @@ template <typename Coord>
 Matrix<Coord> all_steiner_points(perl::Object p, perl::OptionSet options)
 {
    //FIXME: check dim-type!
-   const int dim=p.CallPolymakeMethod("DIM");
+   const int dim=p.call_method("DIM");
    const Matrix<Coord> V=p.give("VERTICES");
    const Graph<> G=p.give("GRAPH.ADJACENCY");
    const graph::HasseDiagram HDiagram=p.give("HASSE_DIAGRAM");
@@ -122,7 +122,7 @@ template <typename Coord>
 Vector<Coord> steiner_point(perl::Object p, perl::OptionSet options)
 {
    //FIXME: check dim-type!
-   const int dim=p.CallPolymakeMethod("DIM");
+   const int dim=p.call_method("DIM");
    const Matrix<Coord> V=p.give("VERTICES");
    const Graph<> G=p.give("GRAPH.ADJACENCY");
 

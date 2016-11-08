@@ -22,291 +22,137 @@
 #include "polymake/linalg.h"
 #include "polymake/list"
 #include "polymake/Integer.h"
+#include "polymake/matroid/deletion_contraction.h"
 
 namespace polymake { namespace matroid {
-namespace {
 
-enum { element_not_found, element_found, break_when_element_found };
-
-inline
-Set<int> reduce_set(const Set<int>& set, const int element, int& found_flag)
-{
-  Set<int> new_set;
-  for (Entire< Set<int> >::const_iterator j=entire(set); !j.at_end(); ++j) {
-    if (*j == element) {
-      if (found_flag==break_when_element_found) {
-        found_flag=element_found;
-        break;
+   Map<int,int> relabeling_map(const int total_set_size, const Set<int> &removed_set) {
+      Map<int,int> result;
+      int next_index = 0;
+      for(int i = 0; i < total_set_size; i++) {
+         if(!removed_set.contains(i)) {
+            result[i] = next_index; next_index++;
+         }
       }
-      found_flag=element_found;
-    } else {
-      new_set.push_back(*j<element ? *j : (*j)-1);
-    }
-  }
+    
+      return result;
+   }
 
-  return new_set;
-}
+   //FIXME This would be more efficient, if refactored into a big object type Minor (see issue #898)
 
-template <typename _prefer_containing>
-Array< Set<int> > collect_bases(const Array< Set<int> >& bases, const int element)
-{
-  //_prefer_contaning == 'false' for deletion and 'true' for contraction
-  std::list< Set<int> > not_containing_bases, containing_bases;
-  for (Entire< Array< Set<int> > >::const_iterator i=entire(bases); !i.at_end(); ++i) {
-    int found_flag= _prefer_containing::value || not_containing_bases.empty() ? element_not_found : break_when_element_found;
-    Set<int> new_basis=reduce_set(*i, element, found_flag);
-    if (found_flag==element_found) {
-      if ((_prefer_containing::value || not_containing_bases.empty()) )
-        containing_bases.push_back(new_basis);
-    } else {
-       if (!_prefer_containing::value || containing_bases.empty()){
-        not_containing_bases.push_back(new_basis);
-       }
-    }
-  }  
-  if (containing_bases.empty())
-    return not_containing_bases;
-  else
-    if (_prefer_containing::value || not_containing_bases.empty())
-    return containing_bases;
-  else
-    return not_containing_bases;
-}
+   template <typename MinorType>
+   perl::Object minor( perl::Object matroid, Set<int> minor_set, perl::OptionSet options) {
+      Array<std::string> list_computed_properties = options["computed_properties"];
+      Set<std::string> computed_properties(list_computed_properties);
 
-template <typename _contraction>
-Array< Set<int> > collect_non_bases(const Array< Set<int> >& nonbases, const int element, int& count){
-   //_contraction == 'False' for deleation and 'True' for contraction
-   //count = maximal number of elements in containing_nonbases or not_containing_nonbases
+      int n = matroid.give("N_ELEMENTS");
+      //This re-indexes and has nothing to do with [[LABELS]]
+      Map<int,int> label_map = relabeling_map(n, minor_set);
 
-  std::list< Set<int> > not_containing_nonbases, containing_nonbases;
-  for (Entire< Array< Set<int> > >::const_iterator i=entire(nonbases); !i.at_end(); ++i) {
-    int found_flag=element_not_found;
-    Set<int> new_nonbasis=reduce_set(*i, element, found_flag);
-    if (found_flag==element_found) {
-       containing_nonbases.push_back(new_nonbasis);
-       if(_contraction::value){
-          --count;
-          if(count==0){
-             if(not_containing_nonbases.empty())
-                count=-1;
-             return not_containing_nonbases;
-          }
-       }
-    } else {
-        not_containing_nonbases.push_back(new_nonbasis);
-        if(!_contraction::value){
-           --count;
-           if(count==0){
-              if(containing_nonbases.empty())
-                 count=-1;
-              return containing_nonbases;
-           }
-        }
-    }
-  }
+      perl::Object result_matroid("Matroid");
+         result_matroid.take("N_ELEMENTS") << (n - minor_set.size());
 
-  if (_contraction::value){
-     if(containing_nonbases.empty())
-        count=-2;
-     return containing_nonbases;
-  }
-
-  if(not_containing_nonbases.empty())
-     count=-2;
-  return not_containing_nonbases;
-}
-
-Array< Set<int> >
-collect_not_containing_circuits(const Array< Set<int> >& circuits, int element)
-{
-  std::list< Set<int> > new_circuits;
-  for (Entire< Array< Set<int> > >::const_iterator i=entire(circuits); !i.at_end(); ++i) {
-    int found_flag=break_when_element_found;
-    Set<int> new_circ=reduce_set(*i, element, found_flag);
-    if (found_flag != element_found) new_circuits.push_back(new_circ);
-  }
-  return new_circuits;
-}
-
-Array< Set<int> >
-collect_circuits(const Array< Set<int> >& circuits, int element)
-{
-  std::list< Set<int> > new_circuits, candidates; //if these are minimal, they will also be new circuits
-
-  for (Entire< Array< Set<int> > >::const_iterator i=entire(circuits); !i.at_end(); ++i) {
-    int found_flag=element_not_found;
-    Set<int> new_circ=reduce_set(*i, element, found_flag);
-    if (found_flag == element_found) {
-      if (!new_circ.empty()) new_circuits.push_back(new_circ);
-    } else {
-      candidates.push_back(new_circ);
-    }
-  }
-
-  for (Entire< std::list< Set<int> > >::const_iterator i=entire(candidates); !i.at_end(); ++i) {
-    bool is_minimal=true;
-    for (Entire< std::list< Set<int> > >::const_iterator j=entire(new_circuits); !j.at_end(); ++j) {
-      if (incl(*j,*i)<=0) {
-        is_minimal=false;
-        break;
+      Array<std::string> labels;
+      if (matroid.lookup("LABELS") >> labels && !labels.empty()) {
+         result_matroid.take("LABELS") << select(labels, ~minor_set);
       }
-    }
-    if (is_minimal) new_circuits.push_back(*i);
-  }
 
-  return new_circuits;
-}
+      if (computed_properties.size() == 0  || computed_properties.contains(std::string("BASES"))) {
+         const Array<Set<int>> m_bases = matroid.give("BASES");
+         const Array<Set<int>> result_bases{ minor_bases(MinorType(), m_bases, minor_set, label_map) };
+         result_matroid.take("BASES") << result_bases;
+         computed_properties -= std::string("BASES");
+      }
 
-Array<std::string>
-reduce_labels(const Array<std::string>& labels, int n_elements, int element)
-{
-  if (!labels.empty()) return select(labels, ~scalar2set(element));
+      if (computed_properties.contains(std::string("CIRCUITS"))) {
+         const Array<Set<int>> m_circuits = matroid.give("CIRCUITS");
+         const Array<Set<int>> result_circuits = minor_circuits(MinorType(), m_circuits, minor_set, label_map);
+         result_matroid.take("CIRCUITS") << result_circuits;
+         computed_properties -= std::string("CIRCUITS");
+      }
 
-  Array<std::string> new_labels(n_elements-1);
-  Array<std::string>::iterator l=new_labels.begin();
-  for (int i=0; i<n_elements; ++i) {
-    if (i!=element) {
-      std::stringstream out;
-      out << i;
-      *l=out.str();
-      ++l;
-    }
-  }
-  return new_labels;
-}
+      if (computed_properties.contains(std::string("VECTORS"))) {
+         const Matrix<Rational> m_vectors = matroid.give("VECTORS");
+         const Matrix<Rational> result_vectors = minor_vectors(MinorType(), m_vectors, minor_set);
+         result_matroid.take("VECTORS") << result_vectors;
+         computed_properties -= std::string("VECTORS");
+      }
 
-} // end anonymous namespace
+      if (!computed_properties.empty())
+         throw std::runtime_error("Computing minor: Invalid properties");
+      
+      return result_matroid;
+   }
 
-perl::Object deletion(perl::Object m, int element)
-{
-  const int n=m.give("N_ELEMENTS");
-  if (element<0||element>=n) throw std::runtime_error("deletion: element out of bounds");
+   // For convenience and backward compat.
+   template <typename MinorType>
+      perl::Object single_element_minor( perl::Object matroid, int element, perl::OptionSet options) {
+         return minor<MinorType>( matroid, scalar2set(element), options);
+      }
 
-  perl::Object m_new("Matroid");
-  m_new.set_description()<<"Deletion of element number "<<element<<" from matroid "<<m.name()<<"."<<endl;
-  m_new.take("N_ELEMENTS") << (n-1);
 
-  Array<std::string> labels;
-  m.lookup("LABELS")>>labels;
-  m_new.take("LABELS") << reduce_labels(labels, n, element);
 
-  Array<Set<int> > bases;
-  if (m.lookup("BASES")>>bases) {
-     m_new.take("BASES") << collect_bases<pm::False>(bases, element);
-  }
-
-  if (m.lookup("NON_BASES")>>bases) {
-     if(!bases.empty()){
-        int rank = bases[0].size();
-        int count=Integer::binom(n-1,rank).to_int();
-        m_new.take("NON_BASES") << collect_non_bases<pm::False>(bases, element, count); //count<0: new NON_BASES is empty
-        if(count==-1){
-           if(rank==1) throw std::runtime_error("deletion: rank will be to low");              
-           m_new.take("RANK")<< rank-1;
-        }
-        if(count==-2)
-           m_new.take("RANK")<< rank;
-     }else{ // m is the uniform matroid:
-        int rank = m.give("RANK");
-        m_new.take("NON_BASES") << bases;
-        if(rank<n){
-           m_new.take("RANK")<< rank;
-        }else{
-           if(rank==1) throw std::runtime_error("deletion: rank will be to low"); 
-           m_new.take("RANK")<< rank-1;
-        }
-     }
-  }
-
-  Array<Set<int> > circuits;
-  if (m.lookup("COCIRCUITS")>>circuits) {
-    m_new.take("COCIRCUITS") << collect_circuits(circuits, element);
-  }
-
-  if (m.lookup("CIRCUITS")>>circuits) {
-    m_new.take("CIRCUITS") << collect_not_containing_circuits(circuits, element);
-  }
-
-  Matrix<Rational> points;
-  if (m.lookup("VECTORS")>>points)
-    m_new.take("VECTORS")<<points.minor(~scalar2set(element),All);
-
-  return m_new;
-}
 
 UserFunction4perl("# @category Producing a matroid from matroids"
-                  "# The matroid obtained from a matroid //m// by __deletion__ of //element// ."
+                  "# The matroid obtained from a matroid //m// by __deletion__ of set //S// ."
                   "# @param Matroid m"
-                  "# @param Int element index of element to be deleted"
+                  "# @param Set<Int> S indices of elements to be deleted"
+                  "# @option Array<String> computed_properties This is a list of property names. Allowed are"
+                  "# BASES, CIRCUITS and VECTORS. If given, only these properties will be computed"
+                  "# from their counterparts in //m//. If none is given, the default is BASES"
+                  "# @example This takes the uniform matroid of rank 2 on 3 elements and deletes the first"
+                  "# two elements. It first only computes CIRCUITS and VECTORS, not BASES."
+                  "# The second computation only computes the bases."
+                  "# > $u = uniform_matroid(2,3);"\
+                  "# > $d = deletion( $u, (new Set([0,1])), computed_properties=>[qw(CIRCUITS VECTORS)]);"
+                  "# > print join(\",\",$d->list_properties());"
+                  "# | N_ELEMENTS,CIRCUITS,VECTORS"
+                  "# > $d2 = deletion($u, new Set([0,1]));"
+                  "# > print join(\",\",$d2->list_properties());"
+                  "# | N_ELEMENTS,BASES"
                   "# @return Matroid",
-                  &deletion,"deletion(Matroid $)");
-
-perl::Object contraction(perl::Object m, int element)
-{
-  const int n=m.give("N_ELEMENTS");
-  if (element<0||element>=n) throw std::runtime_error("contraction: element out of bounds");
-
-  perl::Object m_new("Matroid");
-  m_new.set_description()<<"Contraction of "<<element<<"th element from "<<m.name()<<"."<<endl;
-  m_new.take("N_ELEMENTS")<<(n-1);
-
-  Array<std::string> labels;
-  m.lookup("LABELS")>>labels;
-  m_new.take("LABELS") << reduce_labels(labels, n, element);
-
-  Array<Set<int> > bases;
-  if (m.lookup("BASES")>>bases) {
-     m_new.take("BASES") << collect_bases<pm::True>(bases, element);
-  }
-
-  if (m.lookup("NON_BASES")>>bases) {
-     if(!bases.empty()){
-        int rank = bases[0].size();
-        int count=Integer::binom(n-1,rank-1).to_int();
-        m_new.take("NON_BASES") << collect_non_bases<pm::True>(bases, element, count); //count<0: new NON_BASES is empty
-        if(count==-2){            
-           m_new.take("RANK")<< rank-1;
-        }
-        if(count==-1)
-           m_new.take("RANK")<< rank;
-     }else{ // m is the uniform matroid:
-        int rank = m.give("RANK");
-        m_new.take("NON_BASES") << bases;
-        m_new.take("RANK")<< (rank ? rank-1 : 0);
-     }
-  }
-
-  Array<Set<int> > circuits;
-  if (m.lookup("COCIRCUITS")>>circuits) {
-    m_new.take("COCIRCUITS") << collect_not_containing_circuits(circuits, element);
-  }
-
-  if (m.lookup("CIRCUITS")>>circuits) {
-    m_new.take("CIRCUITS") << collect_circuits(circuits, element);
-  }
-
-  Matrix<Rational> points;
-  if (m.lookup("VECTORS")>>points) {
-    const Matrix<Rational> ns1=null_space(T(points));
-    if (ns1.rows())  {
-      const Matrix<Rational> ns2=null_space(ns1.minor(All,~scalar2set(element)));
-      if (ns2.rows()) m_new.take("VECTORS")<< T(ns2);
-      else m_new.take("VECTORS")<<vector2col(zero_vector<Rational>(n-1));
-    }
-    else {
-      m_new.take("VECTORS")<< unit_matrix<Rational>(n-1);
-    } 
-  }
-
-  return m_new;
-}
+                  &minor<Deletion>,"deletion(Matroid,Set<Int>, {computed_properties=>[]})");
 
 UserFunction4perl("# @category Producing a matroid from matroids"
-                  "# The matroid obtained from a matroid //m// by __contraction__ of //element// ."
+                  "# The matroid obtained from a matroid //m// by __deletion__ of element //x// ."
                   "# @param Matroid m"
-                  "# @param Int element index of element to be contracted"
+                  "# @param Int x index of element to be deleted"
+                  "# @option Array<String> computed_properties This is a list of property names. Allowed are"
+                  "# BASES, CIRCUITS and VECTORS. If given, only these properties will be computed"
+                  "# from their counterparts in //m//. If none is given, the default is BASES"
                   "# @return Matroid",
-                  &contraction,"contraction(Matroid $)");
+                  &single_element_minor<Deletion>,"deletion(Matroid,Int, {computed_properties=>[]})");
+
+UserFunction4perl("# @category Producing a matroid from matroids"
+                  "# The matroid obtained from a matroid //m// by __contraction__ of set //S// ."
+                  "# @param Matroid m"
+                  "# @param Set<Int> S indices of elements to be contracted"
+                  "# @option Array<String> computed_properties This is a list of property names. Allowed are"
+                  "# BASES, CIRCUITS and VECTORS. If given, only these properties will be computed"
+                  "# from their counterparts in //m//. If none is given, the default is BASES"
+                  "# @example This takes the uniform matroid of rank 2 on 3 elements and contracts the first"
+                  "# two elements. It first only computes CIRCUITS and VECTORS, not BASES."
+                  "# The second computation only computes the bases."
+                  "# > $u = uniform_matroid(2,3);"\
+                  "# > $d = contraction( $u, (new Set([0,1])), computed_properties=>[qw(CIRCUITS VECTORS)]);"
+                  "# > print join(\",\",$d->list_properties());"
+                  "# | N_ELEMENTS,CIRCUITS,VECTORS"
+                  "# > $d2 = contraction($u, new Set([0,1]));"
+                  "# > print join(\",\",$d2->list_properties());"
+                  "# | N_ELEMENTS,BASES"
+                  "# @return Matroid",
+                  &minor<Contraction>,"contraction(Matroid,$, {computed_properties=>[]})");
+
+UserFunction4perl("# @category Producing a matroid from matroids"
+                  "# The matroid obtained from a matroid //m// by __contraction__ of element //x// ."
+                  "# @param Matroid m"
+                  "# @param Int x index of element to be contracted"
+                  "# @option Array<String> computed_properties This is a list of property names. Allowed are"
+                  "# BASES, CIRCUITS and VECTORS. If given, only these properties will be computed"
+                  "# from their counterparts in //m//. If none is given, the default is BASES"
+                  "# @return Matroid",
+                  &single_element_minor<Contraction>,"contraction(Matroid,Int, {computed_properties=>[]})");
+
 } }
 
 // Local Variables:

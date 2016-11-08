@@ -20,24 +20,21 @@
 
 namespace polymake { namespace polytope {
 
-template<typename Scalar>
-bool check_inc(const Matrix<Scalar>& P, const Matrix<Scalar>& H, const char* sign_arg, bool verbose)
+template <typename Scalar>
+bool check_inc(const Matrix<Scalar>& P, const Matrix<Scalar>& H, std::string sign_arg, bool verbose)
 {
    bool ok=true,
      minus=false, equal=false, plus=false;  // what is allowed
    int n_minus=0, n_equal=0, n_plus=0;         // number of point/hyperplane pairs
 
    // analyze sign argument
-   char c;
-   for (int i=0; (c = sign_arg[i]); ++i) {
+   for (char c : sign_arg) {
       switch (c) {
       case '-' : minus = true; break;
       case '0' : equal = true; break;
       case '+' : plus  = true; break;
       default :
-         std::ostringstream err_msg;
-         err_msg << "check_inc: unrecognized sign argument " << sign_arg;
-         throw std::runtime_error(err_msg.str());
+         throw std::runtime_error("check_inc: unrecognized sign argument " + sign_arg);
       }
    }
 
@@ -46,11 +43,8 @@ bool check_inc(const Matrix<Scalar>& P, const Matrix<Scalar>& H, const char* sig
 
    if (!P.rows() || !H.rows())   // nothing to do
       return true;
-   if (P.cols() != H.cols()) {
-      std::ostringstream err_msg;
-      err_msg << "check_inc: the matrices must match in dimension";
-      throw std::runtime_error(err_msg.str());
-   }
+   if (P.cols() != H.cols())
+      throw std::runtime_error("check_inc: P/H matrix dimension mismatch");
 
    // check all pairs
    Scalar scp;

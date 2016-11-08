@@ -36,11 +36,8 @@ const Ring_base::id_type* Ring_base::find_by_arity(repo_by_key_type& repo_by_key
       full_key.first.resize(s_key.arity);
       full_key.second = s_key.coeff_ring_id;
 
-      for (int i=0; i<s_key.arity; ++i) {
-         std::ostringstream tmp;
-         tmp << s_key.varname << i;
-         full_key.first[i] = tmp.str();
-      }
+      for (int i=0; i<s_key.arity; ++i)
+         full_key.first[i] = s_key.varname + std::to_string(i);
 
       id_ptr = find_by_key(repo_by_key, full_key);
    }

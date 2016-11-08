@@ -23,21 +23,14 @@ namespace polymake { namespace polytope {
 namespace {
 
 inline
-Integer round_down(const Rational& rat)
-{
-   const Integer truncated_rat(rat);
-   return (truncated_rat!=rat && rat<0) ? truncated_rat-1 : truncated_rat;
-}
-    
-inline
 bool feasible(const Vector<Rational>& point, const Matrix<Rational>& Inequalities)
 {
-   for(Entire< Rows< Matrix<Rational> > >::const_iterator i=entire(rows(Inequalities)); !i.at_end(); ++i)
+   for (auto i=entire(rows(Inequalities)); !i.at_end(); ++i)
       if (point*(*i)<0) return false;
    return true;
 }
 
-inline 
+inline
 bool feasible_after_update(Vector<Rational>& diff_vec, const Vector<Rational>& ineqs_col)
 {
    diff_vec -= ineqs_col;  // update diff vector (to -b + Az_i)
@@ -45,7 +38,7 @@ bool feasible_after_update(Vector<Rational>& diff_vec, const Vector<Rational>& i
    for (int i = 0; i < diff_vec.dim(); ++i) {
       if (diff_vec[i] < 0) return false; // infeasible
    }
-      
+
    return true; // feasible
 }
 
@@ -62,21 +55,21 @@ perl::ListReturn find_transitive_lp_sol(const Matrix<Rational>& Inequalities)
    bool max_bounded=true;
    bool feasible=true;
    Rational a=std::numeric_limits<Rational>::max();
-   for(Entire< Rows< Matrix<Rational> > >::const_iterator i=entire(rows(Inequalities)); !i.at_end(); ++i){
+   for (auto i=entire(rows(Inequalities)); !i.at_end(); ++i) {
       Rational sum=0;
-      for(int j=1;j<N_cols;j++){ //add up all coefficients of one ineq (=project to fixed space spanned by (1,...,1))
+      for (int j=1;j<N_cols;j++) { //add up all coefficients of one ineq (=project to fixed space spanned by (1,...,1))
          sum+=(*i)[j];
       }
-      if(sum!=0){ //Facets with normalvectors orthogonal to (1,...,1) do not yield bounds
-                  //therefore, we can neglect them!
+      if (sum!=0) { // Facets with normalvectors orthogonal to (1,...,1) do not yield bounds
+                    // therefore, we can neglect them!
          Rational constraint_val=-(*i)[0]/sum;
          Rational bound=dim*constraint_val;
-         if(sum>0 && bound>lower_bound){ //new lower bound
+         if (sum>0 && bound>lower_bound) { //new lower bound
             lower_bound=bound;
-         } else if(sum<0 &&bound<upper_bound){ //new upper bound
+         } else if(sum<0 &&bound<upper_bound) { //new upper bound
             a=constraint_val;
             upper_bound=bound;
-         }  
+         }
       }
    }
    if (upper_bound<lower_bound) {
@@ -98,9 +91,9 @@ perl::ListReturn find_transitive_lp_sol(const Matrix<Rational>& Inequalities)
 perl::ListReturn core_point_algo(perl::Object p, const Rational optLPvalue, perl::OptionSet options)
 {
    const Matrix<Rational> Inequalities=p.give("FACETS|INEQUALITIES");
-   const int n=p.CallPolymakeMethod("AMBIENT_DIM");
-   const Integer d = round_down(optLPvalue/n);
-   const Integer r_start = round_down(optLPvalue) % n;
+   const int n=p.call_method("AMBIENT_DIM");
+   const Integer d = floor(optLPvalue / n);
+   const Integer r_start = floor(optLPvalue) % n;
 
    const bool verbose = options["verbose"];
 
@@ -109,7 +102,7 @@ perl::ListReturn core_point_algo(perl::Object p, const Rational optLPvalue, perl
            << "LP approximation=" << optLPvalue << ", "
            << "d=" << d << endl;
 
-   int r=r_start.to_int();
+   int r(r_start);
    bool ILP_not_feasible(true);
    Vector<Rational> optILPsolution;
    Rational optILPvalue;
@@ -137,7 +130,7 @@ perl::ListReturn core_point_algo(perl::Object p, const Rational optLPvalue, perl
       result << optILPsolution
              << optILPvalue;
    }
-    
+
    return result;
 }
 
@@ -147,9 +140,9 @@ perl::ListReturn core_point_algo(perl::Object p, const Rational optLPvalue, perl
 perl::ListReturn core_point_algo_Rote(perl::Object p, const Rational optLPvalue, perl::OptionSet options)
 {
    const Matrix<Rational> Inequalities=p.give("FACETS|INEQUALITIES");
-   const int n=p.CallPolymakeMethod("AMBIENT_DIM");
-   const Integer d = round_down(optLPvalue/n);
-   const Integer r_start = round_down(optLPvalue) % n;
+   const int n=p.call_method("AMBIENT_DIM");
+   const Integer d = floor(optLPvalue / n);
+   const Integer r_start = floor(optLPvalue) % n;
 
    const bool verbose = options["verbose"];
 
@@ -158,7 +151,7 @@ perl::ListReturn core_point_algo_Rote(perl::Object p, const Rational optLPvalue,
            << "LP approximation=" << optLPvalue << ", "
            << "d=" << d << endl;
 
-   int r=r_start.to_int();
+   int r(r_start);
    bool ILP_not_feasible(true);
    Vector<Rational> optILPsolution;
    Rational optILPvalue;
@@ -181,10 +174,10 @@ perl::ListReturn core_point_algo_Rote(perl::Object p, const Rational optLPvalue,
    } else { // initial core point was not feasible; test others via update of diff_vec
       --r;
 
-      while (r>=0 && ILP_not_feasible) { 
+      while (r>=0 && ILP_not_feasible) {
          if (verbose)
             cout << "trying r=" << r << endl;
-         
+
          if ( feasible_after_update(diff_vec, Inequalities.col(r+1)) ) { // do comparison via update of vector -b+Az, A=ineqs,z=core point
             const Vector<Rational> core_point(1|same_element_vector<Rational>(d+1,r)|same_element_vector<Rational>(d,n-r));
             optILPsolution = core_point;
@@ -207,7 +200,7 @@ perl::ListReturn core_point_algo_Rote(perl::Object p, const Rational optLPvalue,
       result << optILPsolution
              << optILPvalue;
    }
-    
+
    return result;
 }
 

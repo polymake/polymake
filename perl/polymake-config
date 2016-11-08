@@ -158,7 +158,7 @@ while (defined ($_=shift)) {
       my $libs="-lgmp $conf{Libs} $conf{LIBXML2_LIBS}";
       $libs=~s/\s+$//;
       if ($debug_asked=defined($debug)) {
-         print "-lpolymake-d -lpolymake-apps $libs\n";
+         print "-lpolymake-d -lpolymake-apps-d $libs\n";
       } else {
          print "-lpolymake -lpolymake-apps $libs\n";
       }

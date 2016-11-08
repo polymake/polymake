@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -22,16 +22,16 @@ rule lrs.convex_hull.primal: FACETS, LINEAR_SPAN : RAYS | INPUT_RAYS {
 }
 weight 4.10;
 precondition : N_RAYS | N_INPUT_RAYS;
-permutation : FacetPerm;
+incurs FacetPerm;
 
-rule lrs.convex_hull.dual: RAYS, POINTED, LINEALITY_SPACE, LINEALITY_DIM : FACETS | INEQUALITIES {
-    lrs_ch_dual($this);
+rule lrs.convex_hull.dual: RAYS, LINEALITY_SPACE, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
+   lrs_ch_dual($this);
 }
 weight 4.10;
-permutation : VertexPerm;
+incurs VertexPerm;
 
 rule lrs.convex_hull.cone.count: N_RAYS, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
-  lrs_count_vertices($this);
+   lrs_count_vertices($this);
 }
 weight 4.50;
 
@@ -43,7 +43,7 @@ rule lrs.convex_hull.redund: POINTED, RAYS, LINEAR_SPAN : INPUT_RAYS, LINEALITY_
    lrs_eliminate_redundant_points($this);
 }
 weight 3.20;
-permutation : VertexPerm;
+incurs VertexPerm;
 
 # lrs cannot detect implicit equalities among INEQUALITIES
 # hence LINEAR_SPAN must be known in advance
@@ -51,7 +51,7 @@ rule lrs.convex_hull.redund: FACETS, LINEALITY_SPACE : INEQUALITIES, LINEAR_SPAN
    lrs_eliminate_redundant_ineqs($this);
 }
 weight 3.20;
-permutation : FacetPerm;
+incurs FacetPerm;
 
 
 # FIXME does this rule work for unbounded polyhedra?

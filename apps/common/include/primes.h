@@ -142,13 +142,15 @@ ExponentMap naive_partial_prime_factorization(const Integer& n)
    while (i < n_polymake_primes && rest > 1) {
       const Div<Integer> qr = div(rest, *pptr);
       if (qr.rem == 0) { 
-         exponent_of[*pptr]++;
+         ++exponent_of[*pptr];
          rest = qr.quot;
-      } else 
-         ++pptr, ++i;
+      } else {
+         ++pptr;
+         ++i;
+      }
    }
    if (rest > 1) {
-      exponent_of[rest.to_long()] = 1;
+      exponent_of[long(rest)] = 1;
       cerr << "Warning: did not completely factorize the input. The result may simplify further."
            << endl;
    }

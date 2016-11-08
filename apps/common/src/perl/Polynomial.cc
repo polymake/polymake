@@ -64,5 +64,8 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new, Polynomial< PuiseuxFraction< Min, Rational, Rational >, int >);
    Class4perl("Polymake::common::Polynomial_A_PuiseuxFraction_A_Min_I_Rational_I_Rational_Z_I_Int_Z", Polynomial< PuiseuxFraction< Min, Rational, Rational >, int >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Polynomial< PuiseuxFraction< Min, Rational, Rational >, int > >, perl::Canned< const Polynomial< PuiseuxFraction< Min, Rational, Rational >, int > >);
+   FunctionInstance4perl(new_X, Polynomial< TropicalNumber< Max, Rational >, int >, perl::Canned< const Polynomial< TropicalNumber< Max, Rational >, int > >);
+   FunctionInstance4perl(new_X_X_X, Polynomial< TropicalNumber< Min, Rational >, int >, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<int, pm::NonSymmetric>&, pm::all_selector const&, pm::Complement<pm::SingleElementSetCmp<int, pm::operations::cmp>, int, pm::operations::cmp> const&> >, perl::Canned< const Vector< TropicalNumber< Min, Rational > > >, perl::Canned< const Ring< TropicalNumber< Min, Rational >, int > >);
+   FunctionInstance4perl(new_X, Polynomial< Rational, int >, perl::Canned< const Ring< Rational, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

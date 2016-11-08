@@ -40,11 +40,12 @@ bool revlex(const Container& a, const Container& b)
 
 } // end anonymous namespace
 
+// TODO: replace with backward traversal of Subsets_of_k when implemented
 inline
 Array<Set<int> > make_revlex_bases(int n, int r)
 {
-   Array<Set<int> > revlex_bases(Integer::binom(n,r).to_int());
-   Entire<Array<Set<int> > >::iterator rit = entire(revlex_bases);
+   Array<Set<int>> revlex_bases(int(Integer::binom(n,r)));
+   auto rit = entire(revlex_bases);
    for (Entire<Subsets_of_k<const sequence&> >::const_iterator bit(entire(all_subsets_of_k(sequence(0,n), r))); !bit.at_end(); ++bit, ++rit) 
       *rit = Set<int>(*bit);
    std::sort(revlex_bases.begin(), revlex_bases.end(), revlex<Set<int> >);

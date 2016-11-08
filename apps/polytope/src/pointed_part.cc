@@ -67,7 +67,7 @@ perl::Object pointed_part(perl::Object p_in)
     orthogonalize(Points, LinealitySpace);
 
     p_out.take("VERTICES") << Points;
-    const Matrix<Scalar> empty;
+    const Matrix<Scalar> empty(0, Points.cols());
     p_out.take("LINEALITY_SPACE") << empty;
 
     // Copying the labels  
@@ -77,7 +77,7 @@ perl::Object pointed_part(perl::Object p_in)
   }
   // Check if POINTS are given, because the POINTS without those,
   // which lie in LINEALITY_SPACE are the pointed part.
-  else if(p_in.lookup("POINTS") >> Points)
+  else if (p_in.lookup("POINTS") >> Points)
   {    
     p_in.give("LINEALITY_SPACE") >> LinealitySpace;
      

@@ -25,7 +25,7 @@
 #include "polymake/Rational.h"
 #include "polymake/Vector.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/tropical/LoggingPrinter.h"
+#include "polymake/common/lattice_tools.h"
 #include "polymake/tropical/lattice.h"
 #include "polymake/tropical/thomog.h"
 #include "polymake/tropical/make_complex.h"
@@ -34,9 +34,6 @@
 namespace polymake { namespace tropical {
 
 
-	using namespace atintlog::donotlog;
-	//using namespace atintlog::dolog;
-	//   using namespace atintlog::dotrace;
 
 	///////////////////////////////////////////////////////////////////////////////////////
 
@@ -80,10 +77,8 @@ namespace polymake { namespace tropical {
 			}
 
 			while(queue.size() > 0) {
-				//dbgtrace << "Computed: " << computed << endl;
 				int nextv = queue.front();
 				queue.pop_front();
-				//dbgtrace << "Looking for neighbours of " << nextv << endl;
 				int neighbour = -1;
 				for(int nb = 0; nb < computed.size(); nb++) {
 					if(nb != nextv && computed[nb] && (nodes_by_sets.row(nb) * nodes_by_sets.row(nextv)).size() > 0) {
@@ -94,7 +89,6 @@ namespace polymake { namespace tropical {
 					queue.push_back(nextv); continue;
 				}
 
-				//dbgtrace << "Neighbour is " << neighbour << endl;
 
 				//Compute orientation of edge: Take any other edge at nextv. It the intersection with
 				//the partition of the connecting edge is empty or the connecting set, then 
@@ -121,20 +115,20 @@ namespace polymake { namespace tropical {
 					sum_of_leaves += delta.row(*d-1);
 				}
 				sum_of_leaves = Rational(0) | sum_of_leaves;
-				//Compute the weight of the bounded edge as the mulitplicity of the 
+				//Compute the weight of the bounded edge as the multiplicity of the 
 				//directional ray wrt to the primitive one
 				Vector<Rational> direction = sign * sum_of_leaves;
-				Vector<Integer> primitive_direction = makePrimitiveInteger(direction);
+				Vector<Integer> primitive_direction = common::primitive(direction);
 				Integer mult; 
-				for(int x = 0; x < direction.dim(); x++) {
-					if(direction[x] != 0) { mult = Integer(direction[x] / primitive_direction[x]); break;}
+				for (int x = 0; x < direction.dim(); x++) {
+                                  if (direction[x] != 0) {
+                                    mult = direction[x] / primitive_direction[x];
+                                    break;
+                                  }
 				}
 				rays.row(nextv) = rays.row(neighbour) + coeffs[edge_index] * primitive_direction;
 				computed[nextv] = true;
 				weights |= mult;
-				//dbgtrace << "Dir: " << direction << endl;
-				//dbgtrace << "PDir: " << primitive_direction << endl;
-				//dbgtrace << "mult: " << mult << endl;
 
 				//Create the cone
 				Set<int> cone_set;
@@ -145,12 +139,15 @@ namespace polymake { namespace tropical {
 			//Finally we attach the leaves - but there may be doubles!
 			Matrix<Rational> leaves = zero_vector<Rational>() | delta;
 			Map<int, int> leaf_ray_index;
-			for(int l = 0; l < leaves.rows(); l++) {
+			for (int l = 0; l < leaves.rows(); l++) {
 				int index = -1;
-				Vector<Integer> primitive_leaf = makePrimitiveInteger(leaves.row(l));
+				Vector<Integer> primitive_leaf = common::primitive(leaves.row(l));
 				Integer mult;
-				for(int x = 0; x < primitive_leaf.dim(); x++) {
-					if(primitive_leaf[x] != 0) { mult = Integer(leaves(l,x) / primitive_leaf[x]); break;}
+				for (int x = 0; x < primitive_leaf.dim(); x++) {
+                                  if (primitive_leaf[x] != 0) {
+                                    mult = leaves(l,x) / primitive_leaf[x];
+                                    break;
+                                  }
 				}
 				weights |= mult;
 				for(int r = nodes_by_leaves.rows(); r < rays.rows(); r++) {

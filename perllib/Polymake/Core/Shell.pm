@@ -16,7 +16,6 @@
 use strict;
 use namespaces;
 
-require Term::ReadLine;
 require Polymake::Core::InteractiveCommands;
 require Polymake::Core::InteractiveHelp;
 require Polymake::Core::ShellHelpers;
@@ -69,6 +68,7 @@ sub start {
          or die "can't redirect STDERR: $!\n";
       }
    } else {
+      require Term::ReadLine;
       *Term::ReadLine::Gnu::AUTOLOAD=\&Term::ReadLine::Gnu::AU::AUTOLOAD;
       $Shell=new Shell(\*STDIN);
       defuse_environ_bug();
@@ -747,7 +747,7 @@ package _::OverPipe;
 
 use Polymake::Struct (
    [ new => '$' ],
-   [ '$pipe' => 'new Pipe( #1 )' ],
+   [ '$pipe' => 'new Pipe(#1)' ],
    [ '$state' => '0' ],
 );
 

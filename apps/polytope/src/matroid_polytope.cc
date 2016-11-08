@@ -31,7 +31,6 @@ void matroid_polytope(perl::Object m,  perl::OptionSet options )
   const int n_bases=bases.size();
   const int n_elements=m.give("N_ELEMENTS");
   
-  perl::Object p("polytope::Polytope<Rational>");
   Matrix<Rational> V(n_bases,n_elements+1);
   
   //test for each subset of size r
@@ -50,7 +49,7 @@ void matroid_polytope(perl::Object m,  perl::OptionSet options )
       Matrix<Rational> E(1,n_elements+1);
       int f(0);
       for(int j=1 ; j<rank; ++j){
-         for (Entire<graph::HasseDiagram::nodes_of_dim_set>::iterator fi=entire(lattice.nodes_of_dim(j)); !fi.at_end(); ++fi,++f) {
+         for (Entire<graph::HasseDiagram::nodes_of_dim_set>::const_iterator fi=entire(lattice.nodes_of_dim(j)); !fi.at_end(); ++fi,++f) {
             I(f,0)=j;
             for (Entire< Set<int> >::const_iterator i=entire(lattice.face(*fi)); !i.at_end(); ++i)
                I(f,(*i)+1)=-1;
@@ -65,26 +64,19 @@ void matroid_polytope(perl::Object m,  perl::OptionSet options )
          I(size+2*i+1,i+1)=-1;
          E(0,i+1)=1;
       }
-   p.take("INEQUALITIES") << I;
-   p.take("EQUATIONS") << E;
+   m.take("POLYTOPE.INEQUALITIES") << I;
+   m.take("POLYTOPE.EQUATIONS") << E;
   }
 
-  p.take("VERTICES") << V;
-  p.take("CONE_AMBIENT_DIM") << n_elements+1;
-  
-  m.take("POLYTOPE") << p;
+  m.take("POLYTOPE.VERTICES") << V;
+  m.take("POLYTOPE.CONE_AMBIENT_DIM") << n_elements+1;
+  m.take("POLYTOPE.FEASIBLE") << (bases.size() > 0);
+  m.take("POLYTOPE.BOUNDED") << 1;
 }
 
 InsertEmbeddedRule("REQUIRE_APPLICATION matroid\n\n");
 
-UserFunction4perl("# @category Producing a polytope from other objects"
-                  "# Produce the matroid polytope from a matroid //m//."
-                  "# Each vertex corresponds to a basis of the matroid,"
-                  "# the non-bases coordinates get value 0, the bases coordinates get value 1."
-                  "# @param matroid::Matroid m"
-                  "# @option Bool inequalities also generate [[INEQUALITIES]], if [[CONNECTED]]"
-                  "# @return Polytope<Rational>",
-                  &matroid_polytope, "matroid_polytope(matroid::Matroid, { inequalities => undef } )");
+Function4perl(&matroid_polytope, "matroid_polytope(matroid::Matroid, { inequalities => undef })");
 
 } }
 

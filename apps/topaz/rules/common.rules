@@ -419,6 +419,73 @@ weight 1.10;
 
 }
 
+declare property_type Cell : c++ (include => "polymake/topaz/Filtration.h", operators => '==') {
+
+   # Construct a filtration cell.
+   # @param Int deg Filtration degree of the cell.
+   # @param Int dim Dimension of the cell.
+   # @param Int idx Row number of the cell in the boundary matrix belonging to the Filtration.
+   method construct(*, *, *) : c++;
+
+}
+
+# A filtration of chain complexes.
+# @tparam MatrixType
+declare property_type Filtration<MatrixType> : c++ (include => "polymake/topaz/Filtration.h", operators => '=='){
+
+   # Construct a Filtration.
+   # @param Array<Cell> C An array containing all cells in the filtration.
+   # @param Array<MatrixType> bd The boundary matrices of the last frame of the filtration, indexed by dimension.
+   # @optional Bool s Indicates whether the cell array is already sorted by degree first and dimension second, default: 0
+   method construct(Array<Cell>:lvalue,Array<MatrixType>;$=0) : c++;
+
+   # Construct a Filtration from a HasseDiagram and an integer array.
+   # @param HasseDiagram The last frame of the filtration.
+   # @param Array<Int> degs The degrees of the simplices in the input complex.
+   #                        Indexing after sorting them first by dimension, second lexicographically (like in the HasseDiagram)
+    method construct(FaceLattice,Array<Int>) : c++;
+
+   # Returns the dimension of the maximal cells in the last frame of the filtration.
+   # @return Int
+   user_method dim() : c++;
+
+   # Returns the number of frames in of the filtration.
+   # @return Int
+   user_method n_frames() : c++;
+
+   # Returns the number of cells in the last frame of the filtration.
+   # @return Int
+   user_method n_cells() : c++;
+
+   # Returns the cells of the filtration.
+   # @return Array<Cell>
+   user_method cells() : c++;
+
+   # Returns the d-boundary matrix of the t-th frame of the filtration.
+   # @param Int d
+   # @param Int t
+   user_method boundary_matrix(Int, Int) : non_const : c++;
+}
+
+# A finite chain complex, represented as its boundary matrices.
+# @tparam MatrixType
+declare property_type ChainComplex<MatrixType> : c++ (include => "polymake/topaz/ChainComplex.h", operators => '=='){
+
+   # Construct a Chain Complex.
+   # @param Array<MatrixType> bd The boundary matrices of the chain complex, NOT including the zeroth and last matrices. Indexed by dimension. The matrices are maps via left multiplication.
+   # @optional Bool sanity_check Indicates whether to test if the input matrices' dimensions match and the maps satisfy the differential condition. default: 0
+   method construct(Array<MatrixType>; $=0) : c++;
+
+   # Returns the number of non-empty modules in the complex.
+   # @return Int
+   user_method dim() : c++;
+
+   # Returns the d-boundary matrix of the chain complex.
+   # @param Int d
+   # @return MatrixType
+   user_method boundary_matrix(*) : c++;
+}
+
 # @category Producing a new simplicial complex from others
 # Computes the __barycentric subdivision__ of //complex//.
 # @param SimplicialComplex complex
@@ -443,8 +510,6 @@ user_function barycentric_subdivision($ { relabel => 1, pin_hasse_section=>"HASS
 user_function iterated_barycentric_subdivision($ $ { relabel => 1, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", geometric_realization=>0, coord_section=>"VERTICES" }) {
   iterated_barycentric_subdivision_impl(@_);
 }
-
-
 
 # Local Variables:
 # mode: perl

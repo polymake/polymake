@@ -123,26 +123,83 @@ public:
 	vector<Integer> to_sublattice_dual_no_div (const vector<Integer>& M) const;
 
     // and with integrated type conversion
+    // Note: the "to" conversions assume that val has the same integer type as the SLR
+    // whereas the "from" versions assume that ret has the same integer type as the SLR.
     template<typename ToType, typename FromType>
     void convert_to_sublattice(ToType& ret, const FromType& val) const {
         convert(ret, to_sublattice(val));
     }
+    
+    template<typename ToType>
+    void convert_to_sublattice(Matrix<ToType>& ret, const Matrix<Integer> & val) const {
+        ret=Matrix<ToType>(val.nr_of_rows(),rank);
+        vector<Integer> v;
+        for(size_t i=0;i<val.nr_of_rows();++i){
+            v=to_sublattice(val[i]);
+            convert(ret[i],v);
+        }
+    }
+
     template<typename ToType, typename FromType>
     void convert_from_sublattice(ToType& ret, const FromType& val) const {
         ret = from_sublattice(convertTo<ToType>(val));
     }
+    
+    template<typename FromType>
+    void convert_from_sublattice(Matrix<Integer>& ret, const Matrix<FromType> & val) const {
+        ret=Matrix<Integer>(val.nr_of_rows(),dim);
+        vector<Integer> v;
+        for(size_t i=0;i<val.nr_of_rows();++i){
+            convert(v,val[i]);
+            ret[i]=from_sublattice(v);
+        }
+    } 
+    
     template<typename ToType, typename FromType>
     void convert_to_sublattice_dual(ToType& ret, const FromType& val) const {
         convert(ret, to_sublattice_dual(val));
     }
+    
+    template<typename ToType>
+    void convert_to_sublattice_dual(Matrix<ToType>& ret, const Matrix<Integer> & val) const {
+        ret=Matrix<ToType>(val.nr_of_rows(),rank);
+        vector<Integer> v;
+        for(size_t i=0;i<val.nr_of_rows();++i){
+            v=to_sublattice_dual(val[i]);
+            convert(ret[i],v);
+        }
+    }
+    
     template<typename ToType, typename FromType>
     void convert_from_sublattice_dual(ToType& ret, const FromType& val) const {
         ret = from_sublattice_dual(convertTo<ToType>(val));
     }
+    
+    template<typename FromType>
+    void convert_from_sublattice_dual(Matrix<Integer>& ret, const Matrix<FromType> & val) const {
+        ret=Matrix<Integer>(val.nr_of_rows(),dim);
+        vector<Integer> v;
+        for(size_t i=0;i<val.nr_of_rows();++i){
+            convert(v,val[i]);
+            ret[i]=from_sublattice_dual(v);
+        }
+    }
+    
     template<typename ToType, typename FromType>
     void convert_to_sublattice_dual_no_div(ToType& ret, const FromType& val) const {
         convert(ret, to_sublattice_dual_no_div(val));
     }
+    
+    template<typename ToType>
+    void convert_to_sublattice_dual_no_div(Matrix<ToType>& ret, const Matrix<Integer> & val) const {
+        ret=Matrix<ToType>(val.nr_of_rows(),rank);
+        vector<Integer> v;
+        for(size_t i=0;i<val.nr_of_rows();++i){
+            v=to_sublattice_dual_no_div(val[i]);
+            convert(ret[i],v);
+        }
+    }
+
 
 //---------------------------------------------------------------------------
 //						 Data acces

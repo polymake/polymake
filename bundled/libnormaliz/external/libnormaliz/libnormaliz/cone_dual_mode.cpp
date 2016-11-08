@@ -110,19 +110,16 @@ Cone_Dual_Mode<Integer>::Cone_Dual_Mode(Matrix<Integer>& M, const vector<Integer
     }
     SupportHyperplanes.append(M);
     nr_sh = SupportHyperplanes.nr_of_rows();
-    // hyp_size = dim + nr_sh;
-    
-    /* if (dim!=SupportHyperplanes.rank()) {
-        errorOutput()<<"Cone_Dual_Mode error: constraints do not define pointed cone!"<<endl;
-        // M.pretty_print(errorOutput());
-        throw BadInputException();
-    }*/
 
+    verbose = false;
+    inhomogeneous = false;
+    do_only_Deg1_Elements = false;
+    truncate = false;
+    
     Intermediate_HB.dual=true;
 
     if (nr_sh != static_cast<size_t>(static_cast<key_t>(nr_sh))) {
-        errorOutput()<<"Too many support hyperplanes to fit in range of key_t!"<<endl;
-        throw FatalException();
+        throw FatalException("Too many support hyperplanes to fit in range of key_t!");
     }
 }
 
@@ -142,7 +139,7 @@ Matrix<Integer> Cone_Dual_Mode<Integer>::get_generators()const{
 
 template<typename Integer>
 vector<bool> Cone_Dual_Mode<Integer>::get_extreme_rays() const{
-    return ExtremeRays;
+    return ExtremeRaysInd;
 
 }
 
@@ -174,8 +171,6 @@ void Cone_Dual_Mode<Integer>::cut_with_halfspace_hilbert_basis(const size_t& hyp
         verboseOutput()<<"==================================================" << endl;
         verboseOutput()<<"cut with halfspace "<<hyp_counter+1 <<" ..."<<endl;
     }
-    
-    truncate=inhomogeneous || do_only_Deg1_Elements;
     
     size_t i;
     int sign;
@@ -773,7 +768,11 @@ Matrix<Integer> Cone_Dual_Mode<Integer>::cut_with_halfspace(const size_t& hyp_co
 template<typename Integer>
 void Cone_Dual_Mode<Integer>::hilbert_basis_dual(){
 
-    assert(dim>0);         
+    truncate = inhomogeneous || do_only_Deg1_Elements;
+
+    if(dim==0)
+        return;
+
     if (verbose==true) {
         verboseOutput()<<"************************************************************\n";
         verboseOutput()<<"computing Hilbert basis";
@@ -782,9 +781,8 @@ void Cone_Dual_Mode<Integer>::hilbert_basis_dual(){
         verboseOutput() << " ..." << endl;
     }
     
-    if(Generators.nr_of_rows()!=ExtremeRays.size()){
-        errorOutput() << "Mismatch of extreme rays and generators in cone dual mode. THIS SHOULD NOT HAPPEN." << endl;
-        throw FatalException(); 
+    if(Generators.nr_of_rows()!=ExtremeRaysInd.size()){
+        throw FatalException("Mismatch of extreme rays and generators in cone dual mode. THIS SHOULD NOT HAPPEN."); 
     }
     
     size_t hyp_counter;      // current hyperplane
@@ -792,7 +790,7 @@ void Cone_Dual_Mode<Integer>::hilbert_basis_dual(){
         BasisMaxSubspace=cut_with_halfspace(hyp_counter,BasisMaxSubspace);
     }
 
-    if (ExtremeRays.size() > 0) { // implies that we have transformed everything to a pointed full-dimensional cone
+    if (ExtremeRaysInd.size() > 0) { // implies that we have transformed everything to a pointed full-dimensional cone
         // must produce the relevant support hyperplanes from the generators
         // since the Hilbert basis may have been truncated
         vector<Integer> test(SupportHyperplanes.nr_of_rows());
@@ -810,7 +808,7 @@ void Cone_Dual_Mode<Integer>::hilbert_basis_dual(){
         }
         SupportHyperplanes = SupportHyperplanes.submatrix(relevant_sh);
     }
-    if (!truncate && ExtremeRays.size()==0){  // no precomputed generators
+    if (!truncate && ExtremeRaysInd.size()==0){  // no precomputed generators
         extreme_rays_rank();
         relevant_support_hyperplanes();
         ExtremeRayList.clear();
@@ -870,7 +868,7 @@ void Cone_Dual_Mode<Integer>::extreme_rays_rank(){
     for (i=0, l=ExtremeRayList.begin(); l != ExtremeRayList.end(); ++l, ++i) {
         Generators[i]= (*l)->cand;
     }
-    ExtremeRays=vector<bool>(s,true);
+    ExtremeRaysInd=vector<bool>(s,true);
 }
 
 //---------------------------------------------------------------------------
@@ -914,7 +912,6 @@ void Cone_Dual_Mode<Integer>::to_sublattice(const Sublattice_Representation<Inte
         return;
 
     dim = SR.getRank();
-    // hyp_size = dim+nr_sh;
     SupportHyperplanes = SR.to_sublattice_dual(SupportHyperplanes);
     typename list<vector<Integer> >::iterator it;
     vector<Integer> tmp;

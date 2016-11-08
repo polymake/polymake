@@ -16,18 +16,18 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
-#include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( concat_rows_X12_f4, T0 ) {
+   FunctionInterface4perl( concat_rows_X36_f4, T0 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturnLvalueAnch( 1, (arg0), T0, (concat_rows(arg0.get<T0>())) );
+      WrapperReturnLvalue( T0, (concat_rows(arg0.get<T0>())), arg0 );
    };
 
-   FunctionInstance4perl(concat_rows_X12_f4, perl::Canned< Matrix< double > >);
+   FunctionInstance4perl(concat_rows_X36_f4, perl::Canned< Matrix< double > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

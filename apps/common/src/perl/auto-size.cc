@@ -18,6 +18,8 @@
 
 #include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/Integer.h"
+#include "polymake/Matrix.h"
 #include "polymake/Polynomial.h"
 #include "polymake/PowerSet.h"
 #include "polymake/QuadraticExtension.h"
@@ -26,6 +28,7 @@
 #include "polymake/SparseMatrix.h"
 #include "polymake/Vector.h"
 #include "polymake/client.h"
+#include "polymake/hash_set"
 #include "polymake/list"
 
 namespace polymake { namespace common { namespace {
@@ -47,5 +50,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(size_f1, perl::Canned< const Set< std::pair< Set< int >, Set< int > > > >);
    FunctionInstance4perl(size_f1, perl::Canned< const Set< std::string > >);
    FunctionInstance4perl(size_f1, perl::Canned< const Set< Array< int > > >);
+   FunctionInstance4perl(size_f1, perl::Canned< const hash_set< Vector< Rational > > >);
+   FunctionInstance4perl(size_f1, perl::Canned< const Set< Vector< Integer > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

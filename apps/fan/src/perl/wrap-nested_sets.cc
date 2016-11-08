@@ -16,11 +16,11 @@
 
 namespace polymake { namespace fan { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::PowerSet<int, pm::operations::cmp> (pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, int) ) {
+   FunctionWrapper4perl( pm::PowerSet<int, pm::operations::cmp> (pm::Array<pm::Set<int, pm::operations::cmp>> const&, int) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
       IndirectWrapperReturn( arg0.get< perl::TryCanned< const Array< Set< int > > > >(), arg1 );
    }
-   FunctionWrapperInstance4perl( pm::PowerSet<int, pm::operations::cmp> (pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, int) );
+   FunctionWrapperInstance4perl( pm::PowerSet<int, pm::operations::cmp> (pm::Array<pm::Set<int, pm::operations::cmp>> const&, int) );
 
    FunctionWrapper4perl( bool (pm::Set<pm::Set<int, pm::operations::cmp>, pm::operations::cmp> const&, pm::PowerSet<int, pm::operations::cmp> const&) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);

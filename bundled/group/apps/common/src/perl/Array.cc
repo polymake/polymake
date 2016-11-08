@@ -17,9 +17,13 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/Array.h"
+#include "polymake/Map.h"
+#include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/client.h"
 #include "polymake/common/boost_dynamic_bitset.h"
+#include "polymake/hash_map"
+#include "polymake/list"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -45,5 +49,16 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< boost_dynamic_bitset > >, perl::Canned< const Array< boost_dynamic_bitset > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< Array< boost_dynamic_bitset > > >, perl::Canned< const Array< Array< boost_dynamic_bitset > > >);
    OperatorInstance4perl(convert, Array< boost_dynamic_bitset >, perl::Canned< const Array< Set< int > > >);
+   FunctionInstance4perl(new_X, Array< boost_dynamic_bitset >, perl::Canned< const std::list< boost_dynamic_bitset > >);
+   Class4perl("Polymake::common::Array__Map_A_boost_dynamic_bitset_I_Rational_Z", Array< Map< boost_dynamic_bitset, Rational > >);
+   FunctionInstance4perl(new, Array< Map< boost_dynamic_bitset, Rational > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< Map< boost_dynamic_bitset, Rational > > >, perl::Canned< const Array< Map< boost_dynamic_bitset, Rational > > >);
+   Class4perl("Polymake::common::Array__HashMap_A_boost_dynamic_bitset_I_Rational_Z", Array< hash_map< boost_dynamic_bitset, Rational > >);
+   FunctionInstance4perl(new, Array< hash_map< boost_dynamic_bitset, Rational > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< hash_map< boost_dynamic_bitset, Rational > > >, perl::Canned< const Array< hash_map< boost_dynamic_bitset, Rational > > >);
+   OperatorInstance4perl(assign, Array< int >, perl::Canned< const boost_dynamic_bitset >);
+   Class4perl("Polymake::common::Array__Pair_A_boost_dynamic_bitset_I_HashMap_A_boost_dynamic_bitset_I_Rational_Z_Z", Array< std::pair< boost_dynamic_bitset, hash_map< boost_dynamic_bitset, Rational > > >);
+   FunctionInstance4perl(new, Array< std::pair< boost_dynamic_bitset, hash_map< boost_dynamic_bitset, Rational > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< std::pair< boost_dynamic_bitset, hash_map< boost_dynamic_bitset, Rational > > > >, perl::Canned< const Array< std::pair< boost_dynamic_bitset, hash_map< boost_dynamic_bitset, Rational > > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

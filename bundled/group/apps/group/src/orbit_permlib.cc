@@ -22,9 +22,9 @@ namespace polymake { namespace group {
 template <typename Container>
 Set<Container> orbit_permlib (perl::Object G, const Container& c)
 {
-   const Array<Array<int> > generators = G.give("GENERATORS");
+   const Array<Array<int> > generators = G.give("STRONG_GENERATORS | GENERATORS");
    const PermlibGroup sym_group(generators);
-   return sym_group.orbit(c);
+   return Set<Container>(sym_group.orbit(c));
 }
 
 UserFunction4perl("# @category Orbits\n"
@@ -32,14 +32,14 @@ UserFunction4perl("# @category Orbits\n"
                   "# @param Group G"
                   "# @param Set S"
                   "# @return Set",
-                  &orbit_permlib<Set<int> >, "orbit_permlib(Group, Set)");
+                  &orbit_permlib<Set<int> >, "orbit_permlib(PermutationAction, Set)");
 
 UserFunction4perl("# @category Orbits\n"
                   "# The orbit of a set //S// of sets under a group //G//."
                   "# @param Group G"
                   "# @param Set<Set> S"
                   "# @return Set",
-                  &orbit_permlib<Set<Set<int> > >, "orbit_permlib(Group, Set<Set>)");
+                  &orbit_permlib<Set<Set<int> > >, "orbit_permlib(PermutationAction, Set<Set>)");
 
 } } // end namespaces
 

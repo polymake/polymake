@@ -57,21 +57,11 @@ void merge_disjoint_vertices (Array<std::string>& L1, const Array<std::string>& 
    // adjust labels
    L1.resize(n_vert1 + n_vert2);
     
-   for (int v=0; v<n_vert1; ++v) {
-      std::ostringstream label;
-      label << L1[v];
-      label << "_1";
-
-      L1[v] = label.str();
-   }
+   for (int v=0; v<n_vert1; ++v)
+      L1[v] = L1[v] + "_1";
     
-   for (int v=0; v<n_vert2; ++v) {
-      std::ostringstream label;
-      label << L2[v];
-      label << "_2";
-
-      L1[n_vert1 + v] = label.str();
-   }
+   for (int v=0; v<n_vert2; ++v)
+      L1[n_vert1 + v] = L2[v]+"_2";
 }
 
 } }

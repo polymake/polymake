@@ -33,14 +33,14 @@ public:
    typedef Map<std::string, bool> iparam_map;
 
 protected:
-   void _print_name(std::ostream& os, const std::string& this_geom_name) const
+   void print_name(std::ostream& os, const std::string& this_geom_name) const
    {
       if (!os) throw std::runtime_error("communication error");
       os << "n " << this_geom_name << '\n';
    }
 
    template <typename Window>
-   void _print_points(std::ostream& os, const Window& W, pm::False) const
+   void print_points(std::ostream& os, const Window& W, std::false_type) const
    {
       const Matrix<double>& P=W.get_points();
       os << "# " << P.rows() << '\n';
@@ -50,19 +50,19 @@ protected:
    }
 
    template <typename Window>
-   void _print_points(std::ostream& os, const Window& W, pm::True) const
+   void print_points(std::ostream& os, const Window& W, std::true_type) const
    {
       os << "P " << W.get_shared_matrix_id() << '\n';
    }
 
    template <typename Window>
-   void _print_points(std::ostream& os, const Window& W) const
+   void print_points(std::ostream& os, const Window& W) const
    {
-      _print_points(os, W, bool2type<Window::has_shared_matrix>());
+      print_points(os, W, bool_constant<Window::has_shared_matrix>());
    }
 
    template <typename Window>
-   void _print_params(std::ostream& os, const Window& W) const
+   void print_params(std::ostream& os, const Window& W) const
    {
       const param_map& params = W.get_params();
       const iparam_map& iparams = W.get_iparams();
@@ -80,13 +80,13 @@ protected:
    static pm::is_scalar* param_model(const std::string&) { return 0; }
 
    template <typename Window, typename Params>
-   void _print_params(std::ostream& os, const Window& W, const Params& params) const
+   void print_params(std::ostream& os, const Window& W, const Params& params) const
    {
-      _print_params(os, W, params, param_model(params));
+      print_params(os, W, params, param_model(params));
    }
 
    template <typename Window, typename Params>
-   void _print_params(std::ostream& os, const Window& W, const Params& param_name, pm::is_scalar*) const
+   void print_params(std::ostream& os, const Window& W, const Params& param_name, pm::is_scalar*) const
    {
       const param_map& params = W.get_params();
       const iparam_map& iparams = W.get_iparams();
@@ -97,7 +97,7 @@ protected:
    }
 
    template <typename Window, typename Params>
-   void _print_params(std::ostream& os, const Window& W, const Params& param_name, pm::is_container*) const
+   void print_params(std::ostream& os, const Window& W, const Params& param_name, pm::is_container*) const
    {
       const param_map& params = W.get_params();
       const iparam_map& iparams = W.get_iparams();
@@ -109,7 +109,7 @@ protected:
       }
    }
 
-   void _print_end(std::ostream& os) const
+   void print_end(std::ostream& os) const
    {
       os << 'x' << endl;
    }
@@ -126,13 +126,13 @@ public:
    template <typename Window>
    void print_long(std::ostream& os, const Window& W) const;
 
-   void print_empty(std::ostream& os) { _print_end(os); }
+   void print_empty(std::ostream& os) { print_end(os); }
 
    void print_warning(std::ostream& os, const std::string& this_geom_name, const std::string& message) const
    {
-      _print_name(os, this_geom_name);
+      print_name(os, this_geom_name);
       os << "w " << message << '\n';
-      _print_end(os);
+      print_end(os);
    }
 
    template <typename Window, typename Params>
@@ -147,37 +147,37 @@ public:
 template <typename Window>
 void SimpleGeometryParser::print_short(std::ostream& os, const Window& W) const
 {
-   _print_name(os, W.get_name());
-   _print_points(os, W);
-   _print_end(os);
+   print_name(os, W.get_name());
+   print_points(os, W);
+   print_end(os);
 }
 
 template <typename Window, typename Params>
 void SimpleGeometryParser::print_short(std::ostream& os, const Window& W, const Params& params) const
 {
-   _print_name(os, W.get_name());
-   _print_points(os, W);
-   _print_params(os, W, params);
-   _print_end(os);
+   print_name(os, W.get_name());
+   print_points(os, W);
+   print_params(os, W, params);
+   print_end(os);
 }
 
 template <typename Window>
 void SimpleGeometryParser::print_long(std::ostream& os, const Window& W) const
 {
-   _print_name(os, W.get_name());
-   _print_points(os, W);
-   _print_params(os, W);
-   _print_end(os);
+   print_name(os, W.get_name());
+   print_points(os, W);
+   print_params(os, W);
+   print_end(os);
 }
 
 template <typename Window, typename Params>
 void SimpleGeometryParser::print_error(std::ostream& os, const Window& W, const Params& params, const std::string& message) const
 {
-   _print_name(os, W.get_name());
-   _print_points(os, W);
-   _print_params(os, W, params);
+   print_name(os, W.get_name());
+   print_points(os, W);
+   print_params(os, W, params);
    os << "e " << message << '\n';
-   _print_end(os);
+   print_end(os);
 }
 
 
@@ -218,7 +218,7 @@ void SimpleGeometryParser::loop(pm::socketstream& js, Window& W)
          W.set_param(param,value);
          break;
       case 'f': {
-         pm::PlainParserListCursor<int, pm::TrustedValue<pm::False> > reader(js);
+         pm::PlainParserListCursor<int, mlist<pm::TrustedValue<std::false_type>>> reader(js);
          Set<int> f;
          int i;
          while (js >> i) {

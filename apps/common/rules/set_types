@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -49,6 +49,11 @@ declare property_type Set<Element=Int> : c++ (include => "polymake/Set.h", opera
    # The last element of the (implicitly sorted) set
    # @return Int
    user_method back() : c++;
+
+   # Add to the set, report true if existed formerly.
+   # @param Element e element to insert into the set
+   # @return Bool
+   user_method collect(*) : c++ : non_const;
 }
 
 # @category Set Operations
@@ -74,7 +79,7 @@ user_function incl(Set,Set) : c++ (include => "polymake/Set.h");
 
 
 # @category Set Operations
-# Creates the [[Set]] {//a//, //a//+1, ..., //b//-1, //b//} for //a// &le; //b//.
+# Creates the [[Set]] {//a//, //a//+1, ..., //b//-1, //b//} for //a// &le; //b//. See also: sequence
 # @param Int a minimal element of the set
 # @param Int b maximal element of the set
 # @return Set<Int>
@@ -88,7 +93,7 @@ user_function range(Int,Int) : c++ (include => "polymake/Set.h") {
 }
 
 # @category Set Operations
-# Creates the [[Set]] {//a//, //a//+1, ..., //a//+//c//-1}.
+# Creates the [[Set]] {//a//, //a//+1, ..., //a//+//c//-1}. See also: range
 # @param Int a the smallest element
 # @param Int c the cardinality
 # @return Set<Int>
@@ -100,10 +105,6 @@ user_function sequence(Int,Int) : c++ (include => "polymake/Set.h") {
       croak( "invalid sequence: negative size" );
    }
 }
-
-function permuted(Set, *) : c++;
-
-function permuted_inv(Set, *) : c++;
 
 # @category Set Operations
 # Returns the subset of //s// given by the //indices//.
@@ -131,12 +132,6 @@ user_function scalar2set(*) : c++ (name => 'pm::scalarcopy2set', include => "pol
 # A [[Set]] whose elements are of type Set<//Element//>.
 # @tparam Element default: [[Int]]
 declare property_type PowerSet<Element=Int> : Set<Set<Element>> : c++ (include => "polymake/PowerSet.h");
-
-function permuted(PowerSet, *) : c++;
-
-function permuted_inv(PowerSet, *) : c++;
-
-
 
 # allow to write ~[0,1,2] in contexts where a Set<Int> is expected
 sub _construct_set {
@@ -334,14 +329,6 @@ user_function rows(IncidenceMatrix:anchor) : c++;
 
 user_function cols(IncidenceMatrix:anchor) : c++;
 
-function permuted_rows(IncidenceMatrix *) : c++;
-
-function permuted_inv_rows(IncidenceMatrix *) : c++;
-
-function permuted_cols(IncidenceMatrix *) : c++;
-
-function permuted_inv_cols(IncidenceMatrix *) : c++;
-
 
 # @category Linear Algebra
 # Computes the __transpose__ //A//<sup>T</sup> of an incidence matrix //A//, i.e., (a<sup>T</sup>)<sub>ij</sub> = a<sub>ji</sub>.
@@ -387,13 +374,28 @@ declare property_type Map<Key,Value> : c++ (include => "polymake/Map.h", operato
 # Similar to [[Set]].
 # (But keep in mind differences in performance and memory demand.)
 # @tparam Element
-declare property_type HashSet<Element> : c++ (name => 'hash_set', include => "polymake/hash_set", operators => '+= -= ^=');
+declare property_type HashSet<Element> : c++ (name => 'hash_set', include => "polymake/hash_set", operators => '+= -= ^= == !=') {
+
+   method contains {
+      my ($self, $key)=@_;
+      exists $self->{$key};
+   }
+
+   # The cardinality of the set.
+   # @return Int
+   user_method size() : c++;
+
+   # Some element of the set; compatibility to Set
+   # @return Int
+   user_method front() : c++;
+
+}
 
 # @category Set Types
 # Similar to [[Map]].
 # HashMaps are associative containers that contain unique key/value pairs. 
 #
-# The values are stored in a hash table. Accessing and interserting a value by its key 
+# The values are stored in a hash table. Accessing and inserting a value by its key 
 # works in constant time O(1).
 #
 # You can create a new HashMap mapping Ints to Strings by 
@@ -403,8 +405,9 @@ declare property_type HashSet<Element> : c++ (name => 'hash_set', include => "po
 # and memory demand).
 # @tparam Key type of the key values
 # @tparam Value	type of the mapped value
-declare property_type HashMap<Key,Value> : c++ (name => 'hash_map', include => "polymake/hash_map");
+declare property_type HashMap<Key,Value> : c++ (name => 'hash_map', include => "polymake/hash_map", operators => '== !=') {
 
+}
 
 # Local Variables:
 # mode: perl

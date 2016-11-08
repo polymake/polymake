@@ -27,15 +27,11 @@
 #include "polymake/Vector.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/linalg.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/solver_def.h"
 #include "polymake/tropical/thomog.h"
 
 namespace polymake { namespace tropical {
 
-	using namespace atintlog::donotlog;
-	//using namespace atintlog::dolog;
-	//   using namespace atintlog::dotrace;
 
 	///////////////////////////////////////////////////////////////////////////////////////
 
@@ -70,9 +66,9 @@ namespace polymake { namespace tropical {
 			int cmplx_ambient_dim = complex.give("PROJECTIVE_AMBIENT_DIM");
 			bool weights_exist = complex.exists("WEIGHTS");
 			Vector<Integer> weights;
-			if(weights_exist) {
+			if (weights_exist) {
 				complex.give("WEIGHTS") >> weights;
-			}    
+			}
 			IncidenceMatrix<> maximalCones = complex.give("MAXIMAL_POLYTOPES");
 			IncidenceMatrix<> codimOneCones = complex.give("CODIMENSION_ONE_POLYTOPES");
 			IncidenceMatrix<> codimInMaximal = complex.give("MAXIMAL_AT_CODIM_ONE");
@@ -82,8 +78,8 @@ namespace polymake { namespace tropical {
 			//For fan testing, we need the equations of all non-twovalent codimension one faces
 			Vector<Matrix<Rational> > codimOneEquations(codimOneCones.rows());
 			Set<int> highervalentCodim;
-			for(int cd = 0; cd < codimOneCones.rows(); cd++) { 
-				if(codimInMaximal.row(cd).size() > 2) {
+			for (int cd = 0; cd < codimOneCones.rows(); ++cd) {
+				if (codimInMaximal.row(cd).size() > 2) {
 					codimOneEquations[cd] = null_space( rays.minor(codimOneCones.row(cd),All) / linspace);
 					highervalentCodim += cd;
 				}//END only for >2-valent
@@ -101,7 +97,6 @@ namespace polymake { namespace tropical {
 			Vector<bool> hasBeenAdded(noOfCones); //contains whether a cone has been added to an equivalence class
 			//     Map<int, int> conesInClasses; //Maps cone indices to the index of their class in equivalenceClasses
 
-			//dbgtrace << "Computing equivalence classes" << endl;
 
 			for(int mc = 0; mc < noOfCones; mc++) {
 				if(!hasBeenAdded[mc]) {
@@ -112,9 +107,8 @@ namespace polymake { namespace tropical {
 					//Semantics: Elements in that queue have been added but their neighbours might not
 					while(queue.size() != 0) {
 						//Take the first element and find its neighbours
-						int node = queue.front(); 
+						int node = queue.front();
 						queue.pop_front();
-						//dbgtrace << "Checking node " << node << endl;
 						Set<int> cdset = maximalOverCodim.row(node);
 						for(Entire<Set<int> >::iterator cd = entire(cdset); !cd.at_end(); cd++) {
 							Set<int> otherMaximals = codimInMaximal.row(*cd) - node;
@@ -136,7 +130,6 @@ namespace polymake { namespace tropical {
 				}	
 			} //END iterate maximal cones
 
-			//dbgtrace << "Equivalence classes: " << equivalenceClasses << endl;
 
 			/*Test equivalence classes for convexit:
 			  An equivalence class S = (s1,...,sr) is convex, iff it fulfills the following criterion: Let T be the set of all outer (i.e. not two-valent) codim one facets and write f_t >= a_t for the corresponding facet inequality. Then for each pair t,t' in T the polyhedron t must fulfill the inequality f_t' >= a_t'.
@@ -144,48 +137,39 @@ namespace polymake { namespace tropical {
 			if(testFan) {
 				//Check each equivalence class
 				for(int cl = 0; cl < equivalenceClasses.dim(); cl++) {
-					//dbgtrace << "Checking convexity of class " << cl << endl;
 					//First, we compute the equation of the subdivision class
 					Matrix<Rational> classEquation =
 						null_space(rays.minor(maximalCones.row(*(equivalenceClasses[cl].begin())),All) / linspace);
-					//dbgtrace << "Class equations are " << classEquation << endl;
 					//Compute all outer codim one faces and their facet inequality;
 					Set<int> outerFacets;
 					Map<int,Vector<Rational> > facetInequality;
-					for(Entire<Set<int> >::iterator mc = entire(equivalenceClasses[cl]); !mc.at_end(); mc++) {
-						//dbgtrace << "Checking maximal cone " << (*mc) << endl;
+					for (auto mc = entire(equivalenceClasses[cl]); !mc.at_end(); ++mc) {
 						Set<int> outerCodimInMc = maximalOverCodim.row(*mc) * highervalentCodim;
-						//dbgtrace << "Outer facets are " << outerCodimInMc << endl;
 						outerFacets += outerCodimInMc;
-						for(Entire<Set<int> >::iterator fct = entire(outerCodimInMc); !fct.at_end(); fct++) {
+						for (auto fct = entire(outerCodimInMc); !fct.at_end(); ++fct) {
 							//Find the one equation of fct that is not an equation of the class
-							//dbgtrace << "Computing facet inequality of cone " << (*mc) << " and facet " << (*fct) << endl;
-							//dbgtrace << "Facet equations are " << codimOneEquations[*fct] << endl;
-							for(int r = 0; r < codimOneEquations[*fct].rows(); r++) {
-								if(rank(classEquation / codimOneEquations[*fct].row(r)) > cmplx_ambient_dim - cmplx_dim) {
+							for (int r = 0; r < codimOneEquations[*fct].rows(); ++r) {
+								if (rank(classEquation / codimOneEquations[*fct].row(r)) > cmplx_ambient_dim - cmplx_dim) {
 									//Find the right sign and save the inequality
-									//dbgtrace << "Row " << r << " is the additional equation" << endl;
 									int additionalRay = *( (maximalCones.row(*mc) - codimOneCones.row(*fct)).begin());
 									facetInequality[*fct] = codimOneEquations[*fct].row(r);
-									if(facetInequality[*fct] * rays.row(additionalRay) < 0) {
+									if (facetInequality[*fct] * rays.row(additionalRay) < 0) {
 										facetInequality[*fct] = - facetInequality[*fct];
-									}		    
-									// 		    dbgtrace << "Right inequality is " << facetInequality[*fct] << endl;
+									}
 									break;
 								}
 							}//END iterate equations of fct
 						}//END iterate all outer facets of the cone
 					}//END iterate all maximal cones in the class
-					//dbgtrace << "Checking convexity criterion" << endl;
 					//Now go through all pairs of outer facets
-					for(Entire<Set<int> >::iterator out1 = entire(outerFacets); !out1.at_end(); out1++) {
+					for (auto out1 = entire(outerFacets); !out1.at_end(); out1++) {
 						Set<int> remainingOuter = outerFacets - *out1;
-						for(Entire<Set<int> >::iterator out2 = entire(remainingOuter); !out2.at_end(); out2++) {
+						for (auto out2 = entire(remainingOuter); !out2.at_end(); out2++) {
 							//Check if out2 fulfills the facet inequality of out1
-							if(!coneInHalfspace(rays.minor(codimOneCones.row(*out2),All), linspace, facetInequality[*out1])) {
+							if (!coneInHalfspace(rays.minor(codimOneCones.row(*out2),All), linspace, facetInequality[*out1])) {
 								throw std::runtime_error("The equivalence classes are not convex. There is no coarsest structure.");
 
-							}		  
+							}
 						}//END iterate second facet.
 					}//END iterate first facet
 				}//END iterate classes
@@ -210,7 +194,6 @@ namespace polymake { namespace tropical {
 					union_ray_list |= Vector<int>(maximalCones.row(*mc));
 				}
 				std::pair<Bitset,Bitset> union_cone = sv.canonicalize(union_rays, linspace,0);
-				//dbgtrace << "Class " << cl << ": " << union_cone << endl;
 
 				//Compute lineality if it hasn't been computed yet
 				if(!newlin_computed) {
@@ -236,7 +219,7 @@ namespace polymake { namespace tropical {
 
 				newcones |= ray_set;
 				used_rays += ray_set;
-				if(weights_exist) newweights |= weights[*(conesInClass.begin())];      
+				if (weights_exist) newweights |= weights[*(conesInClass.begin())];
 			}
 
 			//
@@ -247,20 +230,20 @@ namespace polymake { namespace tropical {
 			Matrix<Rational> final_rays(0,complete_matrix.cols());
 			int linrank = rank(newlin);
 
-			for(Entire<Set<int> >::iterator r1 = entire(used_rays); !r1.at_end(); r1++) {
-				if(!keys(ray_index_conversion).contains(*r1)) {
+			for (auto r1 = entire(used_rays); !r1.at_end(); r1++) {
+				if (!keys(ray_index_conversion).contains(*r1)) {
 					ray_index_conversion[*r1] = next_index;
 					final_rays /= complete_matrix.row(*r1);
 
-					for(Entire<Set<int> >::iterator r2 = entire(used_rays); !r2.at_end(); r2++) {
-						if(!keys(ray_index_conversion).contains(*r2)) {
+					for (auto r2 = entire(used_rays); !r2.at_end(); r2++) {
+						if (!keys(ray_index_conversion).contains(*r2)) {
 							//Check if both rays are equal mod lineality space
 							/*cout << "Row r1 " << complete_matrix.row(*r1) << endl;
 							cout << "Row r2 " << complete_matrix.row(*r2) << endl;
 							cout << "Diff" << complete_matrix.row(*r1) - complete_matrix.row(*r2) << endl;
 							cout << "Concat" << newlin / (complete_matrix.row(*r1) - complete_matrix.row(*r2)) << endl;*/
 							Vector<Rational> diff_vector = complete_matrix.row(*r1) - complete_matrix.row(*r2);
-							if( rank(newlin / diff_vector) == linrank) {
+							if (rank(newlin / diff_vector) == linrank) {
 								ray_index_conversion[*r2] = next_index;
 							}
 						}//END if second not mapped yet
@@ -270,8 +253,8 @@ namespace polymake { namespace tropical {
 			}//END iterate first ray index
 
 			//Now convert the cones
-			for(int nc = 0; nc < newcones.dim(); nc++) {
-				newcones[nc] = attach_operation(newcones[nc],pm::operations::associative_access<Map<int,int>,int>(&ray_index_conversion));
+			for (int nc = 0; nc < newcones.dim(); nc++) {
+                          newcones[nc] = Set<int>{ ray_index_conversion.map(newcones[nc]) };
 			}
 
 
@@ -279,10 +262,10 @@ namespace polymake { namespace tropical {
 			//     if(testFan) {
 			//       //This function throws an error if the result is not a fan.
 			//       try {
-			// 	CallPolymakeFunction("fan::check_fan",final_rays, newcones);
+			//         call_function("fan::check_fan",final_rays, newcones);
 			//       }
 			//       catch(...) {
-			// 	throw std::runtime_error("The equivalence classes do not form a fan. There is no coarsest structure.");
+			//         throw std::runtime_error("The equivalence classes do not form a fan. There is no coarsest structure.");
 			//       }
 			//     }
 

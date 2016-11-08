@@ -30,13 +30,13 @@ perl::Object lattice_bipyramid_vv(perl::Object p_in, const Vector<Rational>& v, 
    if (!pointed)
       throw std::runtime_error("lattice_bipyramid: input polyhedron not pointed");
 
-   if (z*z_prime >= 0) 
+   if (z*z_prime >= 0)
       throw std::runtime_error("lattice_bipyramid: z and z' must have opposite signs and be non-zero");
 
    perl::Object p_out("Polytope<Rational>");
    p_out.set_description() << "Lattice Bipyramid over " << p_in.name() << endl;
 
-   const bool relabel = options["relabel"];
+   const bool relabel = !options["no_labels"];
 
    int n_vertices=0;
    if (p_in.exists("VERTICES_IN_FACETS")) {
@@ -48,7 +48,7 @@ perl::Object lattice_bipyramid_vv(perl::Object p_in, const Vector<Rational>& v, 
       p_out.take("N_VERTICES") << n_vertices+2;
       p_out.take("VERTICES_IN_FACETS") << VIF_out;
    }
-   
+
    const Matrix<Rational> V=p_in.give("VERTICES");
    n_vertices=V.rows();
 
@@ -56,8 +56,6 @@ perl::Object lattice_bipyramid_vv(perl::Object p_in, const Vector<Rational>& v, 
                                 (v | z) /
                                 (v_prime | z_prime);
    p_out.take("VERTICES") << V_out;
-   const Matrix<Rational> empty;
-   p_out.take("LINEALITY_SPACE") << empty;
 
    if (relabel) {
       std::vector<std::string> labels(n_vertices);
@@ -93,8 +91,8 @@ perl::Object lattice_bipyramid(perl::Object p_in, const Rational& z, const Ratio
       throw std::runtime_error("lattice_bipyramid: input polyhedron not pointed");
 
     const int n_vert = p_in.give("N_VERTICES");
-    const int dim = p_in.CallPolymakeMethod("DIM");
-    if(n_vert > dim+1) {
+    const int dim = p_in.call_method("DIM");
+    if (n_vert > dim+1) {
         const Matrix<Rational> F = p_in.give("FACETS");
         const Matrix<Rational> V = p_in.give("VERTICES");
         const Vector<Rational> zeros(2);
@@ -132,11 +130,11 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "#  both //v// and //v_prime//."
                   "# @param Rational z height for the first apex, default value is 1"
                   "# @param Rational z_prime height for the second apex, default value is -//z//"
-                  "# @option Bool relabel copy the vertex labels from the original polytope,"
+                  "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytope. default: 0"
                   "# label the new vertices with \"Apex\" and \"Apex'\"."
                   "# @return Polytope"
                   "# @example To create the bipyramid over a square and keep the vertex labels, do this:"
-                  "# > $p = lattice_bipyramid(cube(2),new Vector(1,0,0),relabel=>1);"
+                  "# > $p = lattice_bipyramid(cube(2),new Vector(1,0,0));"
                   "# > print $p->VERTICES;"
                   "# | 1 -1 -1 0"
                   "# | 1 1 -1 0"
@@ -146,11 +144,11 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# | 1 0 0 -1"
                   "# > print $p->VERTEX_LABELS;"
                   "# | 0 1 2 3 Apex Apex'",
-                  &lattice_bipyramid_vv, "lattice_bipyramid(Polytope, Vector, Vector; $=1, $=-$_[3], {relabel => 0})");
+                  &lattice_bipyramid_vv, "lattice_bipyramid(Polytope, Vector, Vector; $=1, $=-$_[3], {no_labels => 0})");
 
-Function4perl(&lattice_bipyramid_v, "lattice_bipyramid(Polytope, Vector; $=1, $=-$_[2], {relabel => 0})");
+Function4perl(&lattice_bipyramid_v, "lattice_bipyramid(Polytope, Vector; $=1, $=-$_[2], {no_labels => 0})");
 
-Function4perl(&lattice_bipyramid, "lattice_bipyramid(Polytope; $=1, $=-$_[1], {relabel => 0})");
+Function4perl(&lattice_bipyramid, "lattice_bipyramid(Polytope; $=1, $=-$_[1], {no_labels => 0})");
 
 } }
 

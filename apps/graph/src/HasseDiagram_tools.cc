@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -26,13 +26,13 @@ perl::Object permuted_atoms(perl::Object in, const Permutation& perm)
    const sequence atoms=H.node_range_of_dim(0);
    const int atom0=atoms.front();
    Array<int> node_perm(H.nodes(), sequence(0).begin());
-   copy(entire(translate(perm, atom0)), node_perm.begin()+atom0);
+   copy_range(entire(translate(perm, atom0)), node_perm.begin()+atom0);
 
    Graph<Directed> G=permuted_nodes(H.graph(), node_perm);
    NodeMap<Directed, Set<int> > F(G);
 
    F[H.top_node()]=H.face(H.top_node());
-   copy(entire(select(H.faces(), atoms)), select(F, atoms).begin());
+   copy_range(entire(select(H.faces(), atoms)), select(F, atoms).begin());
 
    if (H.dim()>1) {
       for (Entire<sequence>::const_iterator f=entire(H.node_range_of_dim(1,-1)); !f.at_end(); ++f) {
@@ -53,7 +53,7 @@ perl::Object permuted_coatoms(perl::Object in, const Permutation& perm)
    const HasseDiagram H(in);
    const int coatom0=H.node_range_of_dim(-1).front();
    Array<int> node_perm(H.nodes(), sequence(0).begin());
-   copy(entire(translate(perm, coatom0)), node_perm.begin()+coatom0);
+   copy_range(entire(translate(perm, coatom0)), node_perm.begin()+coatom0);
 
    Graph<Directed> G=permuted_nodes(H.graph(), node_perm);
    NodeMap<Directed, Set<int> > F(G, entire(select(H.faces(), node_perm)));

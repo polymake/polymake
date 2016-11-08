@@ -31,18 +31,18 @@ Array<RGB> vertex_colors(perl::Object p, perl::Object lp, perl::OptionSet option
    Set<int> rays;
    Vector<double> obj;
 
-   if (lp.lookup("LINEAR_OBJECTIVE") >> obj) {
+   if (lp.lookup("LINEAR_OBJECTIVE", allow_conversion()) >> obj) {
       const Matrix<double> V=p.give("VERTICES");
       obj=V*obj;
       p.give("FAR_FACE") >> rays;
    } else {
-      lp.give("ABSTRACT_OBJECTIVE") >> obj;
+      lp.give("ABSTRACT_OBJECTIVE", allow_conversion()) >> obj;
    }
 
    double max_val=lp.give("MAXIMAL_VALUE"),
-      min_val=lp.give("MINIMAL_VALUE");
+          min_val=lp.give("MINIMAL_VALUE");
    const bool upper_bound=isfinite(max_val),
-      lower_bound=isfinite(min_val);
+              lower_bound=isfinite(min_val);
 
    if (!upper_bound || !lower_bound) {
       const Graph<> G=p.give("GRAPH.ADJACENCY");

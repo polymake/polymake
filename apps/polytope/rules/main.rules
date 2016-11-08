@@ -36,13 +36,25 @@ HELP help.rules
 # Note that in contrast to the vertices of a polytope, the [[RAYS]] are given in affine coordinates.
 declare object Cone<Scalar=Rational> [ is_ordered_field(Scalar) ];
 
-# Not necessarily bounded or unbounded polyhedron.
-# Nonetheless, the name "Polytope" is used for two reasons:
-# Firstly, combinatorially we always deal with polytopes; see the description of [[VERTICES_IN_FACETS]] for details.
+# Not necessarily bounded convex polyhedron, i.e., the feasible region of a linear program.
+# Nonetheless, the name "Polytope" is used for two reasons: Firstly, as far as the combinatorics
+# is concerned we always deal with polytopes; see the description of [[VERTICES_IN_FACETS]] for details.
+# Note that a pointed polyhedron is projectively equivalent to a polytope.
 # The second reason is historical.
 # We use homogeneous coordinates, which is why Polytope is derived from [[Cone]].
-# Note that a pointed polyhedron is projectively equivalent to a polytope.
 # //Scalar// is the numeric data type used for the coordinates.
+# @example To construct a polytope as the convex hull of three points in the plane use
+# > $p=new Polytope(POINTS=>[[1,0,0],[1,1,0],[1,0,1]]);
+# > print $p->N_FACETS
+# | 3
+# Note that homogeneous coordinates are used throughout.
+#
+# @example Many standard constructions are available directly.  For instance, to get a regular 120-cell (which is 4-dimensional) use:
+# > $c=regular_120_cell();
+# > print $c->VOLUME;
+# | 1575+705r5
+# This is the exact volume 1575+705*\sqrt{5}.
+# polymake has limited support for polytopes with non-rational coordinates.
 declare object Polytope<Scalar=Rational> [ is_ordered_field(Scalar) ] : Cone<Scalar>;
 
 
@@ -65,10 +77,10 @@ INCLUDE
   flag_vector.rules
   lattice.rules
   vector_configuration.rules
-  group.rules
   point_configuration.rules
   polarize.rules
   visual.rules
+  stl.rules  
   schlegel.rules
   visual_graph.rules
   gale.rules
@@ -78,14 +90,13 @@ INCLUDE
   propagated_polytope.rules
   edge_orientable.rules
   visual_point_configuration.rules
-  symmetric_cone.rules
-  symmetric_polytope.rules
-  symmetry.rules
+  action.rules
   coxeter.rules  
-  orbit_polytope.rules	
-  orbit_polytope_helpers.rules
-  orbit_polytope_visual.rules
+#  orbit_polytope.rules	
+#  orbit_polytope_helpers.rules
+#  orbit_polytope_visual.rules
   wronski.rules
+    
 
 # self-configuring rules
 INCLUDE

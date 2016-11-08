@@ -27,6 +27,7 @@ GNU General Public License for more details.
 #include "polymake/Array.h"
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
+#include "polymake/Set.h"
 #include "polymake/graph/hungarian_method.h"
 
 
@@ -37,27 +38,34 @@ namespace pm {
          typedef TropicalNumber<Addition, Scalar> first_argument_type;
          typedef TropicalNumber<Addition, Scalar> second_argument_type;
          typedef const TropicalNumber<Addition, Scalar> result_type;
-         result_type operator() (typename function_argument<first_argument_type>::type a, typename function_argument<second_argument_type>::type b) const {
+
+         result_type operator() (typename function_argument<first_argument_type>::type a, typename function_argument<second_argument_type>::type b) const
+         {
             if (is_zero(b)) {
-               if (is_zero(a)) return TropicalNumber<Addition, Scalar>::zero();
-               else {
-                  if (identical<Addition,Max>::value) return TropicalNumber<Addition, Scalar>(std::numeric_limits<Scalar>::infinity());
-                  else return TropicalNumber<Addition, Scalar>::dual_zero();
-               }
+               if (is_zero(a))
+                  return TropicalNumber<Addition, Scalar>::zero();
+               else if (std::is_same<Addition, Max>::value)
+                  return TropicalNumber<Addition, Scalar>(std::numeric_limits<Scalar>::infinity());
+               else
+                  return TropicalNumber<Addition, Scalar>::dual_zero();
             }
             return a/b;
          }
+
          template <typename Iterator2>
-         const first_argument_type& operator() (partial_left, typename function_argument<first_argument_type>::type a, const Iterator2&) const {
-            if (is_zero(a)) return zero_value<TropicalNumber<Addition, Scalar> >();
-            else {
-               if (identical<Addition,Max>::value) return TropicalNumber<Addition, Scalar>::zero();
-               else return TropicalNumber<Addition, Scalar>::dual_zero();
-            }
+         const first_argument_type& operator() (partial_left, typename function_argument<first_argument_type>::type a, const Iterator2&) const
+         {
+            if (is_zero(a))
+               return zero_value<TropicalNumber<Addition, Scalar> >();
+            else if (std::is_same<Addition, Max>::value)
+               return TropicalNumber<Addition, Scalar>::zero();
+            else
+               return TropicalNumber<Addition, Scalar>::dual_zero();
          }
 
          template <typename Iterator1>
-         const second_argument_type& operator() (partial_right, const Iterator1&, typename function_argument<second_argument_type>::type b) const {
+         const second_argument_type& operator() (partial_right, const Iterator1&, typename function_argument<second_argument_type>::type b) const
+         {
             return zero_value<TropicalNumber<Addition, Scalar> >();
          }
 
@@ -69,6 +77,24 @@ namespace polymake {
       using pm::operations::div_skip_zero; }
 
    namespace tropical {
+
+
+     /*
+     *
+     * @brief compute the tropical sum w.r.t. Addition and the entries where the extremum is attained
+     */
+        template <typename Addition, typename Scalar, typename VectorTop>
+      std::pair< TropicalNumber<Addition, Scalar>, Set<int> > extreme_value_and_index (const GenericVector<VectorTop, TropicalNumber<Addition,Scalar> >& vector)
+      {
+	typedef TropicalNumber<Addition, Scalar> TNumber;
+	TNumber extremum = accumulate(vector.top(), operations::add());
+	Set<int> extremal_entries;
+	int td_index = 0;
+	for(auto td = entire(vector.top()); !td.at_end(); td++, td_index++) {
+	  if(*td == extremum) extremal_entries += td_index;
+	} 
+	return std::make_pair(extremum,extremal_entries);
+	}
 
       /*
        * @brief coordinatewise tropical quotient of two vectors with special treatment for 
@@ -102,19 +128,121 @@ namespace polymake {
          return x;
       }
 
+       
+
+         
+      template <typename Addition, typename Scalar, typename MatrixTop>
+      std::pair< TropicalNumber<Addition, Scalar>, Array<int> > tdet_and_perm(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
+      {
+         Scalar value(zero_value<Scalar>()); // empty matrix has tropical determinant zero
+         const int d(matrix.rows());
+         if (d != matrix.cols())
+            throw std::runtime_error("input matrix has to be quadratic");
+         
+         // Checking for zero columns or rows
+         for(typename Entire<Cols <MatrixTop > >::const_iterator c = entire(cols(matrix.top())); !c.at_end(); c++) {
+            if (is_zero(*c)) return std::make_pair(zero_value<TropicalNumber<Addition, Scalar> >(), Array<int>(sequence(0,d)));
+         }
+         for(typename Entire<Rows <MatrixTop > >::const_iterator r = entire(rows(matrix.top())); !r.at_end(); r++) {
+            if (is_zero(*r)) return std::make_pair(zero_value<TropicalNumber<Addition, Scalar> >(), Array<int>(sequence(0,d)));
+         }
+
+         const Array<int> perm(graph::HungarianMethod<Scalar>(Addition::orientation()*Matrix<Scalar>(matrix.top())).stage());
+
+         for(int k = 0; k < d; ++k) value += Scalar(matrix.top()(k,perm[k]));
+
+         return std::make_pair(TropicalNumber<Addition,Scalar>(value),perm);
+      }
 
       template <typename Addition, typename Scalar, typename MatrixTop>
       TropicalNumber<Addition, Scalar> tdet(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
       {
-         Scalar value(zero_value<Scalar>()); // empty matrix has tropical determinant zero
-         const int d(matrix.rows());
-         const Array<int > perm(graph::HungarianMethod<Scalar>(Addition::orientation()*Matrix<Scalar>(matrix.top())).stage());
-         for(int k = 0; k < d; ++k) value += Scalar(matrix[k][perm[k]]);
+         return tdet_and_perm(matrix).first;
+      }
 
-         return TropicalNumber<Addition,Scalar>(value);
+      
+      template <typename Addition, typename Scalar, typename MatrixTop>
+      std::pair< TropicalNumber<Addition, Scalar>, Array<int> > second_tdet_and_perm(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
+      {
+         typedef TropicalNumber<Addition,Scalar> TNumber;
+         TNumber value(zero_value<TNumber>()); // empty matrix has tropical determinant zero
+         const int d(matrix.rows());
+         if (d != matrix.cols())
+            throw std::runtime_error("input matrix has to be quadratic");
+         
+         // Checking for zero columns or rows
+         for(typename Entire<Cols <MatrixTop > >::const_iterator c = entire(cols(matrix.top())); !c.at_end(); c++) {
+            if (is_zero(*c)) return std::make_pair(zero_value<TNumber >(), Array<int>(sequence(0,d)));
+         }
+         for(typename Entire<Rows <MatrixTop > >::const_iterator r = entire(rows(matrix.top())); !r.at_end(); r++) {
+            if (is_zero(*r)) return std::make_pair(zero_value<TNumber >(), Array<int>(sequence(0,d)));
+         }
+
+         const Array<int> perm(graph::HungarianMethod<Scalar>(Addition::orientation()*Matrix<Scalar>(matrix.top())).stage());
+
+         // successively setting the entries which form the optimal permutation to tropical zero
+         // -- this should be replaced by an incremental change of entries resulting in
+         // O(n^2) operations per changed entry and O(n^3) in total --
+         Matrix<TNumber> modmatrix(matrix.top());
+         Array< Array<int> > modperm(d);
+         Vector<TNumber> modval(ones_vector<TNumber>(d));
+         TNumber oldentry;
+         for(int j = 0; j < d; ++j) {
+            oldentry = modmatrix(j, perm[j]);
+            modmatrix(j, perm[j]) = zero_value<TNumber>();
+            modperm[j] = graph::HungarianMethod<Scalar>(Addition::orientation()*Matrix<Scalar>(modmatrix)).stage();
+            for(int k = 0; k < d; ++k) modval[j] *= modmatrix(k,modperm[j][k]);
+            modmatrix(j, perm[j]) = oldentry;
+         }
+         value = extreme_value_and_index(modval).first;
+         int index = (extreme_value_and_index(modval).second).front();
+         return std::make_pair(value,modperm[index]);
+      }
+
+      
+      template <typename Addition, typename Scalar, typename MatrixTop>
+      Vector<TropicalNumber<Addition, Scalar> > cramer(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
+      {
+         // The runtime of the implementation is about O(d^4). 
+         // It could be improved to O(d^3) by an incremental approach which does not also
+         // recompute the whole tropical determinant.
+
+         const int d(matrix.cols());
+         if (d != matrix.rows()+1)
+            throw std::runtime_error("input matrix has to have one row less than the column number");
+         
+         Vector<TropicalNumber<Addition,Scalar> > solvec(d);
+         for(int k = 0; k < d; ++k) {
+            Matrix<TropicalNumber<Addition, Scalar> > submatrix(matrix.top().minor(All, ~Set<int>(k)));
+            solvec[k] = tdet(submatrix);
+            // The following does not work but I don't know the reason.
+            // solvec[k] = tdet(matrix.top().minor(All, ~Set<int>(k)));
+         }
+         return solvec;
       }
 
 
+      // tropical distance function; notice that the tropical Addition is not relevant
+      template <typename Addition, typename Scalar, typename VectorTop>
+      Scalar tdist(const GenericVector< VectorTop, TropicalNumber<Addition, Scalar> >& v, const GenericVector< VectorTop, TropicalNumber<Addition, Scalar> >& w) {
+         Vector<Scalar> diff(Vector<Scalar>(v) - Vector<Scalar>(w)); // this is ordinary subtraction
+         Scalar min,max;
+         for (int i=0; i<diff.dim(); ++i)
+            assign_min_max(min,max,diff[i]);
+         return max-min;
+      }
+
+      // tropical diameter of a simplex; notice that the tropical Addition is not relevant
+      template <typename Addition, typename Scalar, typename MatrixTop>
+      Scalar tdiam(const GenericMatrix< MatrixTop, TropicalNumber<Addition,Scalar> >& matrix) {
+         const int d(matrix.cols());
+         Scalar td(zero_value<Scalar>());
+         for (int i=0; i<d-1; ++i) {
+            for (int k=i+1; k<d; ++k)
+               assign_max(td,tdist(matrix.col(i),matrix.col(k)));
+         }
+         return td;
+      }
 
 } }
 

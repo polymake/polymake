@@ -20,7 +20,7 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Map.h"
 #include "polymake/linalg.h"
-#include "polymake/common/hermite_normal_form.h"
+#include "polymake/integer_linalg.h"
 #include "polymake/tropical/thomog.h"
 
 namespace polymake { namespace tropical {
@@ -82,7 +82,7 @@ namespace polymake { namespace tropical {
 
 			//Compute the transformation to a weak Hermite normal form.
 			SparseMatrix<Integer> transformation = 
-					polymake::common::hermite_normal_form( add_eq / make_rowwise_integer(normal_matrix),false).second;
+					hermite_normal_form( add_eq / make_rowwise_integer(normal_matrix),false).companion;
 			
 			//The last fanDim-1 columns of the transformation matrix are a Z-basis for
 			//the space spanned by the maximal cone. The last fanDim-2 columns do the same
@@ -113,42 +113,42 @@ namespace polymake { namespace tropical {
 	 * @param Map<..> lnormals2 The second set of lattice normals.
 	 * @return bool
 	 */
-	bool compare_lattice_normals(Matrix<Rational> &vertices, Matrix<Rational> &lineality, const IncidenceMatrix<> &codim,
-										const Map<std::pair<int,int>,Vector<Integer> > lnormals1, const Map<std::pair<int,int>,Vector<Integer> > lnormals2) {
-		//First we check if the maps are defined on the same key set
-		if(lnormals1.size() != lnormals2.size()) return false;
+	bool compare_lattice_normals(const Matrix<Rational>& vertices_in, const Matrix<Rational>& lineality_in, const IncidenceMatrix<>& codim,
+                                     const Map<std::pair<int,int>, Vector<Integer>>& lnormals1,
+                                     const Map<std::pair<int,int>, Vector<Integer>>& lnormals2)
+        {
+          //First we check if the maps are defined on the same key set
+          if (lnormals1.size() != lnormals2.size()) return false;
 
-		//We only need far rays and affine coordinates without leading coordinate for span computation
-		Set<int> far_rays = far_points(vertices);
-		if(vertices.rows() > 0) {
-			vertices = tdehomog(vertices).minor(All,~scalar2set(0));
-		}
-		if(lineality.rows() > 0) {
-			lineality = tdehomog(lineality).minor(All,~scalar2set(0));
-		}
+          if (vertices_in.cols() != lineality_in.cols())
+            throw std::runtime_error("dimension mismatch between VERTICES and LINEALITY_SPACE");
+          if (vertices_in.cols() == 0)
+            return lnormals1.empty();
 
-		for(Entire<Map<std::pair<int,int>,Vector<Integer> > >::const_iterator l1pairs = entire(lnormals1); !l1pairs.at_end(); l1pairs++) {
-			if(!lnormals2.contains( (*l1pairs).first)) return false;
-			
-			//If the key exists, check equality of normals
-			Vector<Rational> v1( lnormals1[ (*l1pairs).first ] );
-				v1 = tdehomog_vec(v1).slice(~scalar2set(0));
-			Vector<Rational> v2( lnormals2[ (*l1pairs).first ] );
-				v2 = tdehomog_vec(v2).slice(~scalar2set(0));
+          //We only need far rays and affine coordinates without leading coordinate for span computation
+          Set<int> far_rays = far_points(vertices_in);
+          Matrix<Rational> vertices = tdehomog(vertices_in).minor(All,~scalar2set(0));
+          Matrix<Rational> lineality = tdehomog(lineality_in).minor(All,~scalar2set(0));
 
-			int cone_index = (*l1pairs).first.first;
+          for (auto& l1pair : lnormals1) {
+            if (!lnormals2.contains(l1pair.first)) return false;
 
-			Matrix<Rational> span_matrix = vertices.minor( codim.row(cone_index) * far_rays,All) / lineality;
-			span_matrix /= v1;
-			if(rank(span_matrix) != rank(span_matrix / v2)) return false;
-		}
-		
-		return true;
+            //If the key exists, check equality of normals
+            Vector<Rational> v1( lnormals1[ l1pair.first ] );
+            v1 = tdehomog_vec(v1).slice(1);
+            Vector<Rational> v2( lnormals2[ l1pair.first ] );
+            v2 = tdehomog_vec(v2).slice(1);
 
+            int cone_index = l1pair.first.first;
+
+            Matrix<Rational> span_matrix = vertices.minor( codim.row(cone_index) * far_rays,All) / lineality;
+            span_matrix /= v1;
+            if(rank(span_matrix) != rank(span_matrix / v2)) return false;
+          }
+
+          return true;
 	}
 
-	Function4perl(&compute_lattice_normals,"compute_lattice_normals(Cycle)");
-	Function4perl(&compare_lattice_normals, "compare_lattice_normals(Matrix, Matrix, IncidenceMatrix, Map< Pair<Int,Int>, Vector<Integer> >, Map< Pair<Int,Int>, Vector<Integer> >)");
-
-}}
-
+	Function4perl(&compute_lattice_normals, "compute_lattice_normals(Cycle)");
+	Function4perl(&compare_lattice_normals, "compare_lattice_normals");
+} }

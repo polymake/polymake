@@ -248,7 +248,7 @@ object Polytope {
       unless (defined ($n=$this->lookup("N_VERTICES"))) {
 	 if (defined (my $v=$this->lookup("VERTICES"))) {
 	    $n=$v->rows;
-	 } elsif (defined (my $v=$this->lookup("VERTICES_IN_FACETS"))) {
+	 } elsif (defined ($v=$this->lookup("VERTICES_IN_FACETS"))) {
 	    $n=$v->cols;
 	 } elsif (defined (my $G=$this->lookup("GRAPH.ADJACENCY"))) {
 	    $n=$G->nodes;
@@ -405,6 +405,13 @@ object Polytope {
 	  $as_dim="COMBINATORIAL_DIM";
       }
       $this->take($as_dim, $value);
+   }
+
+   method upgrade_plain_AFFINE_HULL {
+      my ($this, $value)=@_;
+      if (length($value)) {
+	 $this->take("AFFINE_HULL", $value);
+      }
    }
 }
 

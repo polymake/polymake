@@ -89,8 +89,7 @@ Matrix<Integer>::Matrix(const vector< vector<Integer> >& new_elem){
         //check if all rows have the same length
         for (size_t i=1; i<nr; i++) {
             if (elem[i].size() != nc) {
-                errorOutput() << "Inconsistent lengths of rows in matrix!" << endl;
-                throw BadInputException();
+                throw BadInputException("Inconsistent lengths of rows in matrix!");
             }
         }
     } else {
@@ -112,8 +111,7 @@ Matrix<Integer>::Matrix(const list< vector<Integer> >& new_elem){
             nc = (*it).size();
         } else {
             if ((*it).size() != nc) {
-                errorOutput() << "Inconsistent lengths of rows in matrix!" << endl;
-                throw BadInputException();
+                throw BadInputException("Inconsistent lengths of rows in matrix!");
             }
         }
         elem[i]=(*it);
@@ -121,7 +119,7 @@ Matrix<Integer>::Matrix(const list< vector<Integer> >& new_elem){
 }
 
 //---------------------------------------------------------------------------
-
+/*
 template<typename Integer>
 void Matrix<Integer>::write(istream& in){
     size_t i,j;
@@ -131,31 +129,7 @@ void Matrix<Integer>::write(istream& in){
         }
     }
 }
-
-//---------------------------------------------------------------------------
-
-template<typename Integer>
-void Matrix<Integer>::write(size_t row, const vector<Integer>& data){
-    assert(row >= 0);
-    assert(row < nr); 
-    assert(nc == data.size());
-    
-    elem[row]=data;
-}
-
-//---------------------------------------------------------------------------
-
-template<typename Integer>
-void Matrix<Integer>::write(size_t row, const vector<int>& data){
-    assert(row >= 0);
-    assert(row < nr); 
-    assert(nc == data.size());
-
-    for (size_t i = 0; i < nc; i++) {
-        elem[row][i]=data[i];
-    }
-}
-
+*/
 //---------------------------------------------------------------------------
 
 template<typename Integer>
@@ -167,18 +141,6 @@ void Matrix<Integer>::write_column(size_t col, const vector<Integer>& data){
     for (size_t i = 0; i < nr; i++) {
         elem[i][col]=data[i];
     }
-}
-
-//---------------------------------------------------------------------------
-
-template<typename Integer>
-void Matrix<Integer>::write(size_t row, size_t col, Integer data){
-    assert(row >= 0);
-    assert(row < nr); 
-    assert(col >= 0);
-    assert(col < nc); 
-
-    elem[row][col]=data;
 }
 
 //---------------------------------------------------------------------------
@@ -220,7 +182,11 @@ void Matrix<Integer>::print(ostream& out) const{
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void Matrix<Integer>::pretty_print(ostream& out, bool with_row_nr) const{    
+void Matrix<Integer>::pretty_print(ostream& out, bool with_row_nr) const{
+    if(nr>1000000 && !with_row_nr){
+        print(out);
+        return;
+    }
     size_t i,j,k;
     vector<size_t> max_length = maximal_decimal_length_columnwise();
     size_t max_index_length = decimal_length(nr);
@@ -232,50 +198,26 @@ void Matrix<Integer>::pretty_print(ostream& out, bool with_row_nr) const{
             out << i << ": ";
         }
         for (j = 0; j < nc; j++) {
-            for (k= 0; k <= max_length[j] - decimal_length(elem[i][j]); k++) {
+            ostringstream to_print;
+            to_print << elem[i][j];
+            for (k= 0; k <= max_length[j] - to_print.str().size(); k++) {
                 out<<" ";
             }
-            out<<elem[i][j];
+            out<< to_print.str();
         }
         out<<endl;
     }
 }
-//---------------------------------------------------------------------------
 
-
-template<typename Integer>
-void Matrix<Integer>::read() const{      //to overload for files
-    size_t i,j;
-    for(i=0; i<nr; i++){
-        cout << "\n" ;
-        for(j=0; j<nc; j++) {
-            cout << elem[i][j] << " ";
-        }
-    }
-}
-
-//---------------------------------------------------------------------------
-
-template<typename Integer>
-vector<Integer> Matrix<Integer>::read(size_t row) const{
-    assert(row >= 0);
-    assert(row < nr);
-
-    return elem[row];
-}
-
-//---------------------------------------------------------------------------
-
-template<typename Integer>
-Integer Matrix<Integer>::read (size_t row, size_t col) const{
-    assert(row >= 0);
-    assert(row < nr); 
-    assert(col >= 0);
-    assert(col < nc); 
-
-    return elem[row][col];
-}
-
+/*
+ * string to_print;
+            ostringstream(to_print) << elem[i][j];
+            cout << elem[i][j] << " S " << to_print << " L " << decimal_length(elem[i][j]) << endl;
+            for (k= 0; k <= max_length[j] - to_print.size(); k++) {
+                out<<" ";
+            }
+            out << to_print;
+*/
 //---------------------------------------------------------------------------
 
 template<typename Integer>
@@ -288,6 +230,13 @@ size_t Matrix<Integer>::nr_of_rows () const{
 template<typename Integer>
 size_t Matrix<Integer>::nr_of_columns () const{
     return nc;
+}
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+void Matrix<Integer>::set_nr_of_columns(size_t c){
+    nc=c;
 }
 
 //---------------------------------------------------------------------------
@@ -465,12 +414,11 @@ vector<Integer> Matrix<Integer>::diagonal() const{
 
 template<typename Integer>
 size_t Matrix<Integer>::maximal_decimal_length() const{
-    size_t i,j,maxim=0;
-    for (i = 0; i <nr; i++) {
-        for (j = 0; j <nc; j++) {
-            maxim=max(maxim,decimal_length(elem[i][j]));
-        }
-    }
+    size_t i,maxim=0;
+    vector<size_t> maxim_col;
+    maxim_col=maximal_decimal_length_columnwise();
+    for (i = 0; i <nr; i++)
+        maxim=max(maxim,maxim_col[i]);
     return maxim;
 }
 
@@ -480,11 +428,21 @@ template<typename Integer>
 vector<size_t> Matrix<Integer>::maximal_decimal_length_columnwise() const{
     size_t i,j=0;
     vector<size_t> maxim(nc,0);
+    vector<Integer> pos_max(nc,0), neg_max(nc,0);
     for (i = 0; i <nr; i++) {
         for (j = 0; j <nc; j++) {
-            maxim[j]=max(maxim[j],decimal_length(elem[i][j]));
+            // maxim[j]=max(maxim[j],decimal_length(elem[i][j]));
+            if(elem[i][j]<0){
+                if(elem[i][j]<neg_max[j])
+                    neg_max[j]=elem[i][j];
+                continue;
+            }
+            if(elem[i][j]>pos_max[j])
+                pos_max[j]=elem[i][j];
         }
     }
+    for(size_t j=0;j<nc;++j)
+        maxim[j]=max(decimal_length(neg_max[j]),decimal_length(pos_max[j]));
     return maxim;
 }
 
@@ -2392,5 +2350,47 @@ void Matrix<Integer>::Shrink_nr_rows(size_t new_nr_rows){
     nr=new_nr_rows;
     elem.resize(nr);
 }
+
+template<typename Integer>
+Matrix<Integer>  readMatrix(const string project){
+// reads one matrix from file with name project
+// format: nr of rows, nr of colimns, entries
+// all separated by white space
+    
+    string name_in=project;
+    const char* file_in=name_in.c_str();
+    ifstream in;
+    in.open(file_in,ifstream::in);
+    if (in.is_open()==false){
+        cerr << "Cannot find input file" << endl;
+        exit(1);
+    }
+    
+    int nrows,ncols;
+    in >> nrows;
+    in >> ncols;
+    
+    if(nrows==0 || ncols==0){
+        cerr << "Matrix empty" << endl;
+        exit(1);
+    }
+    
+    
+    int i,j,entry;
+    Matrix<Integer> result(nrows,ncols);
+    
+    for(i=0;i<nrows;++i)
+        for(j=0;j<ncols;++j){
+            in >> entry;
+            result[i][j]=entry;
+        }
+    return result;
+}
+
+#ifndef NMZ_MIC_OFFLOAD  //offload with long is not supported
+template Matrix<long>  readMatrix(const string project);
+#endif // NMZ_MIC_OFFLOAD
+template Matrix<long long>  readMatrix(const string project);
+template Matrix<mpz_class>  readMatrix(const string project);
 
 }  // namespace

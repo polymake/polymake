@@ -160,7 +160,7 @@ sub toString {
       }
       $text.="  n$n" . (keys %node_attrs ? " [" . attrs2text(\%node_attrs) . "];\n" : ";\n");
    }
-
+   
    for (my $e=$self->Graph->all_edges; $e; ++$e) {
       %edge_attrs=();
       if (defined($edge_labels)) {
@@ -182,6 +182,31 @@ sub toString {
       $text.="  n$s " . $self->edge_symbol . " n$t" .
              (keys %edge_attrs ? " [" . attrs2text(\%edge_attrs) . "];\n" : ";\n");
    }
+   
+   if (instanceof Visual::Lattice($self->Graph) && $self->Graph->Mode eq "primal") {
+      my @dims = @{$self->Graph->Dims};
+      if (scalar @dims>0) {
+         my $rank_commands = "";
+         my $require_edge = 1;
+         foreach my $rank (0..scalar @dims-2) {
+            next if ($dims[$rank]==$dims[$rank+1]);
+            $require_edge = 1;
+            foreach my $from_node ($dims[$rank]..$dims[$rank+1]-1) {
+               foreach my $to_node ($dims[$rank+1]..$dims[$rank+2]-1) {
+                  if ($self->Graph->has_edge($from_node,$to_node) || $self->Graph->has_edge($to_node,$from_node)) {
+                     $require_edge = 0;
+                     last;                                                    
+                  }
+               }
+               last if ($require_edge == 0);
+            }
+            $text.= "  n$dims[$rank+1] -> n$dims[$rank] [style=\"invis\"];\n" if ($require_edge != 0 && $rank < scalar @dims-2 && $dims[$rank+1] != $self->Graph->n_nodes-1);
+            $rank_commands.= "  { rank=same; " . join("; ",map {"n$_"} ($dims[$rank]..$dims[$rank+1]-1)) . " };\n";
+         }
+         $text.="$rank_commands";   
+      }
+   }
+   
    $text.="}\n";
 }
 

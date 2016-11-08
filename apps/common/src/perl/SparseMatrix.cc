@@ -17,6 +17,7 @@
 ///==== this line controls the automatic file splitting: max.instances=20
 
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/Integer.h"
 #include "polymake/Matrix.h"
 #include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
@@ -24,6 +25,7 @@
 #include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/TropicalNumber.h"
+#include "polymake/Vector.h"
 #include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
@@ -49,5 +51,14 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new, SparseMatrix< PuiseuxFraction< Max, Rational, Rational >, NonSymmetric >);
    Class4perl("Polymake::common::SparseMatrix_A_PuiseuxFraction_A_Max_I_Rational_I_Rational_Z_I_Symmetric_Z", SparseMatrix< PuiseuxFraction< Max, Rational, Rational >, Symmetric >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > > >, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
+   OperatorInstance4perl(convert, SparseMatrix< Rational, NonSymmetric >, perl::Canned< const Matrix< Rational > >);
+   OperatorInstance4perl(Binary_diva, perl::Canned< const Wary< SparseMatrix< double, NonSymmetric > > >, perl::Canned< const SparseMatrix< double, NonSymmetric > >);
+   OperatorInstance4perl(Binary_sub, perl::Canned< const Wary< SparseMatrix< Rational, NonSymmetric > > >, perl::Canned< const pm::RepeatedRow<pm::Vector<pm::Rational> const&> >);
+   FunctionInstance4perl(new, SparseMatrix< Integer, NonSymmetric >);
+   Class4perl("Polymake::common::SparseMatrix_A_TropicalNumber_A_Min_I_Int_Z_I_Symmetric_Z", SparseMatrix< TropicalNumber< Min, int >, Symmetric >);
+   FunctionInstance4perl(new_X, SparseMatrix< double, NonSymmetric >, perl::Canned< const SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >);
+   OperatorInstance4perl(Binary_sub, perl::Canned< const Wary< SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > > >, perl::Canned< const pm::RepeatedRow<pm::Vector<pm::QuadraticExtension<pm::Rational> > const&> >);
+   FunctionInstance4perl(new_X, SparseMatrix< PuiseuxFraction< Max, Rational, Rational >, NonSymmetric >, perl::Canned< const SparseMatrix< PuiseuxFraction< Max, Rational, Rational >, NonSymmetric > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< SparseMatrix< PuiseuxFraction< Max, Rational, Rational >, NonSymmetric > > >, perl::Canned< const SparseMatrix< PuiseuxFraction< Max, Rational, Rational >, NonSymmetric > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

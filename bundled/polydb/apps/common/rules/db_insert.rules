@@ -1,0 +1,387 @@
+# Copyright (c) 2013-2016 Silke Horn, Andreas Paffenholz
+# http://solros.de/polymake/poly_db
+# http://www.mathematik.tu-darmstadt.de/~paffenholz
+# 
+# This file is part of the polymake extension polyDB.
+# 
+# polyDB is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# polyDB is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with polyDB.  If not, see <http://www.gnu.org/licenses/>.
+
+# @topic property_types/MongoClient
+# @category Database
+# MongoDB client object to maintain a database connection.
+# This is a MongoDB::MongoClient from the MongoDB perl driver.
+
+
+use Data::Dumper;
+
+sub adjust_properties_at_level {
+	my ($input_object, $output_object, $properties, $options) = @_;
+
+	my %knownproperties = map { $_ => 1 } $input_object->list_properties;
+
+	my @proplist;
+	foreach my $pn (keys %$properties) {
+		next if $pn eq "attachments";
+		my $prop = $input_object->type->lookup_property($pn);
+
+		if ($prop->flags & $Polymake::Core::Property::is_subobject) {
+			my @outlist;
+			my @inlist;
+			if (exists($knownproperties{$pn})) {
+				if ($options->{keep_all_props}) {
+					if ($prop->flags & $Polymake::Core::Property::is_multiple) {
+						@outlist = @{$output_object->lookup($pn)};
+					} else {
+						@outlist = ($output_object->lookup($pn));
+					}
+				}
+				if ($prop->flags & $Polymake::Core::Property::is_multiple) {
+					@inlist = @{$input_object->lookup($pn)};
+				} else {
+					@inlist = ($input_object->lookup($pn));
+				}
+			} elsif (!$options->{nonew}) {
+				# this may produce additional (unwanted?) properties
+				@inlist = ($input_object->give($pn));
+				# update list of known properties after give
+				%knownproperties = map { $_ => 1 } $input_object->list_properties;
+			}
+			foreach my $inobj (@inlist) {
+				my $outobj = shift(@outlist) // $prop->type->construct->();
+				adjust_properties_at_level($inobj, $outobj, $properties->{$pn}, $options);
+				unless ($options->{keep_all_props} and exists($knownproperties{$pn})) {
+					$outobj->name = $inobj->name;
+					if ($prop->flags & $Polymake::Core::Property::is_multiple) {
+						$output_object->add($pn,$outobj);
+					} else {
+						$output_object->take($pn,$outobj);
+					}
+				}
+			}
+		} else {
+			if ( exists($knownproperties{$pn} ) ) {
+				if ( !$options->{keep_all_props} ) { 
+					# otherwise it is in $output_object already
+					# we fetch the property from $input_object
+					my $val = $input_object->give($pn);
+					# and pass it on to $output_object
+					$output_object->take($pn,$val);
+				}
+			} else { 
+				if ( !$options->{nonew} ) {
+					push @proplist,$pn;
+				}
+			}
+		}
+	}	
+	# compute everything at once!
+	$input_object->provide(@proplist);
+	foreach my $prop (@proplist) {
+		# we compute properties in $input_object
+		my $val = $input_object->give($prop);
+		# and pass them on to $output_object
+		$output_object->take($prop,$val);
+	}
+}
+
+sub adjust_properties {
+	my ($input_object, $options ) = @_;
+	
+	my $output_object;
+	if ( $options->{keep_all_props} ) {
+		$output_object = $input_object->copy;
+		$output_object->begin_transaction;
+	} else {
+		# create a new polytope
+		$output_object = (exists $options->{template}->{app} && exists $options->{template}->{basic_type}) ?
+							  User::application($options->{template}->{app})->eval_type($options->{template}->{basic_type})->construct->() :
+							  $input_object->type->construct->();
+		$output_object->name        = $input_object->name;
+		$output_object->credits     = $input_object->credits;
+		$output_object->description = $input_object->description;
+	}
+	
+	my $properties = $options->{template}->{template};
+	if ( exists( $properties->{"attachments"} ) ) {
+		foreach my $pn (keys %{$properties->{"attachments"} } ) {
+			$output_object->attach($pn,$input_object->get_attachment("$pn"));
+		}
+	}
+
+	adjust_properties_at_level($input_object,$output_object,$properties,$options);
+
+	$output_object->commit;
+	return $output_object;
+}
+
+sub insert_into_col {
+	my ($obj, $collection, $id, $options) = @_;	
+	
+	my $use_type_info = 0;
+	my $temp;
+	if ( defined($temp = $options->{template}) ) {
+		$use_type_info = 1;
+	}
+	
+	# prepare metadata
+	my $metadata = {};
+	
+	# set the contributor, precedence is
+	# given in object > set as option > given in template
+	if ( defined($options->{"contributor"}) ) {
+		$metadata->{"contributor"} = $options->{"contributor"};
+	} else {
+		if ( defined($temp->{"contributor"}) ) {
+			$metadata->{"contributor"} = $temp->{"contributor"};
+		}
+	}
+
+	if ( defined($options->{template_key}) ) {
+		$metadata->{"template_key"} = $options->{template_key};
+	}
+
+	# check if polytope has a polyDB attachment
+	if ( defined( my $polydb_attachment = $obj->get_attachment("polyDB") ) ) {
+		foreach (keys %{$polydb_attachment}) {
+			$metadata->{$_} = $polydb_attachment->{$_};
+		}
+	} 
+	
+	my $polymake_object;	
+	if ( $use_type_info ) {
+		# returns a new polymake object with the properties of $obj copied to it if all should be kept or in template, properties required by template computed and nonoew not set
+		$obj = adjust_properties($obj, $options);
+
+		# convert to perl array
+		$polymake_object = polymake_to_array($obj, $metadata, $id, {projection=>$temp->{'template'}, modifier=>$temp->{'modifier'}, version=>$temp->{'version'} });
+	} else {
+		
+		# convert to perl array
+		# save the given polymake object as is
+		$polymake_object = polymake_to_array($obj, $metadata, $id);		
+	}
+		
+	# insert into database
+	my $o = $options->{noinsert} || $collection->insert_one($polymake_object);
+	
+	# return success
+	return $o;
+}
+
+sub set_entry_id {
+	my ($name,$id) = @_;
+	
+	if ( !defined($id) ) {
+		if ( !defined($name) ) {
+			croak("no id defined, currently no method to generate one implemented");
+		} else {
+			$id = $name;
+		}
+	}
+	
+	return $id;
+}
+
+
+# @category Database Write Access
+# Adds an object //obj// to the collection //col// in the database //db//.
+# 
+# Note that you need write access to the database for this.
+# 
+# Contained in extension ''polyDB''.
+# @param Core::Object obj
+# @option String db             name of the database
+# @option String collection     name of the collection
+# @option String id             unique identifier
+# @option String contributor    set the contributor
+# @option Bool local            set to 1 if you want to use a local database (on localhost), default 0
+# @option String username
+# @option String password
+# @option Bool use_type_info    set to 1 to match properties with a template object
+# @option HASH template         object template specifying the properties to store
+# @option String template_key   template name to load from the database
+# @option Bool nonew            set to 1 if you don't want to compute missing properties but only delete surplus ones (only takes effect if use_type_info is also set to 1)
+# @option Bool keep_all_props   keep all properties present in the polymake object (in the xml. not necessarily in the db representation)
+# @option Bool noinsert         dont insert anything, just try evaluate the template
+# @option MongoClient client
+# @return String
+user_function db_insert ($, {db => $db_database_name, collection => $db_collection_name, local => 0, id => undef, contributor => undef, username => $db_user, password => $db_pwd, client => undef, use_type_info => 0, template => undef, template_key=> "default", nonew => 0, keep_all_props=> 0, noinsert => 0}) {
+	my ($obj, $options) = @_;
+   my ($db, $col) = ($options->{db}, $options->{collection});
+ 	 	
+	# get client if not given by the options
+	my $client;
+	unless (defined($client = $options->{client})) {
+		$client = get_client($options);
+	}
+	my $collection = get_collection($client, $db, $col);
+	my $id = set_entry_id($obj->name,$options->{"id"});
+
+	
+	# get template object if not given by the options
+	my $temp;
+	my $output;
+	# check if use of template is wanted
+	# check if template is given in the options, otherwise try to load one
+	if ($options->{use_type_info} or 
+		 $options->{template_key} ne 'default' or 
+		 defined($temp = $options->{template})) {
+		unless (defined($temp)) {
+			$temp = db_get_type_info($db, $col, local => $options->{local}, client => $client, template_key => $options->{template_key}) or
+				croak("Template requested but not loaded\n");
+			$options->{template} = $temp;
+		}
+	}
+	$output = insert_into_col($obj, $collection, $id, $options);
+	
+	unless (defined($options->{client})){
+		undef $client;
+	}
+	
+	if (!$options->{noinsert} && !$output->acknowledged ) {
+		print Dumper($output);
+		croak("Error while inserting into database\n");
+	}
+}
+
+
+# @category Database Write Access
+# Adds an object from a file //file// to the collection //col// in the database //db//. First it matches its properties with the template object for this collection (unless your options say otherwise).
+# 
+# Note that you need write access to the database for this.
+# 
+# @param String file polymake object stored in a file
+# @option String db             name of the database
+# @option String collection     name of the collection
+# @option String id             unique identifier, if you don't specify one, polyDB will try to create one from the object name or file name, if this does not work out one will be created automatically
+# @option String contributor    set the contributor
+# @option Bool local            set to 1 if you want to use a local database (on localhost), default 0
+# @option String username
+# @option String password
+# @option Bool use_type_info    set to 1 to match properties with a template object
+# @option HASH template         object template specifying the properties to store
+# @option String template_key   template name to load from the database
+# @option Bool nonew            set to 1 if you don't want to compute missing properties but only delete surplus ones (only takes effect if use_type_info is also set to 1)
+# @option Bool keep_all_props   keep all properties present in the polymake object (in the xml. not necessarily in the db representation)
+# @option MongoClient client
+# @return String
+user_function db_insert_from_file($, {db => $db_database_name, collection => $db_collection_name, local => 0, username => $db_user, password => $db_pwd, id => "", contributor => undef, nonew => 0, use_type_info => 0, template => undef,  template_key=> "default", keep_all_props=> 0, client => undef}) {
+	my ($file, $options) = @_;
+
+	my $obj = User::load($file);
+	return db_insert($obj, $options);
+}
+
+
+# @category Database Write Access
+# Adds a list of objects from an array of big objects to the collection //col// in the database //db//. It assumes that the objects names can be used to generate unique ids. Objects with ids that are already contained in the database will be skipped.
+# 
+# Note that you need write access to the database for this.
+# 
+# @param Array<Core::Object> objects array of big objects to insert
+# @option String db             name of the database
+# @option String collection     name of the collection
+# @option String id             unique identifier
+# @option String contributor    set the contributor
+# @option Bool local            set to 1 if you want to use a local database (on localhost), default 0
+# @option String username
+# @option String password
+# @option Bool use_type_info    set to 1 to match properties with a template object
+# @option HASH template         object template specifying the properties to store
+# @option String template_key   template name to load from the database
+# @option Bool nonew            set to 1 if you don't want to compute missing properties but only delete surplus ones (only takes effect if use_type_info is also set to 1)
+# @option Bool keep_all_props   keep all properties present in the polymake object (in the xml. not necessarily in the db representation)
+# @option Bool noinsert         dont insert anything, just try evaluate the template
+# @option Bool verbose print database output
+# @option MongoClient client
+# @return String
+user_function db_insert_array ($, {db => $db_database_name, collection => $db_collection_name, contributor => undef, local => 0, username => $db_user, password => $db_pwd, nonew => 0, use_type_info => 0, client => undef, template => undef, template_key => "default", verbose => 0, noinsert => 0}){
+	my ($objects, $options) = @_;
+   my ($db, $col) = ($options->{db}, $options->{collection});
+	
+	# get client if not given by the options
+	my $client;
+	unless (defined($client = $options->{client})) {
+		$client = get_client($options);
+	}
+
+	my $collection = get_collection($client, $db, $col);
+	my $use_template = 0;
+	my $temp;
+	if ($options->{use_type_info} or 
+		 $options->{template_key} ne 'default' or 
+		 defined($temp = $options->{template})) {
+		unless (defined($temp)) {
+			$temp = db_get_type_info($db, $col, local => $options->{local}, client => $client, template_key => $options->{template_key}) or
+				croak("Template requested but not loaded\n");
+			$options->{template} = $temp;
+		}
+		$use_template = 1;
+	}	
+	
+	my $count = 0;
+	foreach my $obj (@$objects) {
+		my $id = set_entry_id($obj->name);
+
+		if ($collection->find_one({'_id' => $id}) && !$options->{noinsert}) {	
+			if ($options->{verbose}) { print "id $id already exists\n"; }
+			next;
+		}
+		
+		my $output = insert_into_col($obj, $collection, $id, $options);
+
+	   if (!$options->{noinsert} && !$output->acknowledged ) {
+			print Dumper($output);
+			croak("Error while inserting into database\n");
+		}
+		$count++;
+
+	}
+	
+	unless (defined($options->{client})){
+		undef $client;
+	}
+	print "Inserted $count objects.\n\n" if ($options->{verbose});
+}
+
+
+
+# @category Database Write Access
+# Removes the object with a given //id// from the collection //col// in the database //db//.
+# 
+# Note that you need write access to the database for this.
+# 
+# @param String id
+# @option String db             name of the database
+# @option String collection     name of the collection
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @option String username
+# @option String password
+# @option MongoClient client
+# @return String
+user_function db_remove ($, {db => $db_database_name, collection => $db_collection_name, local => 0, username => $db_user, password => $db_pwd, client => undef}) {
+	my ($id, $options) = @_;
+   my ($db, $col) = ($options->{db}, $options->{collection});
+
+	# get client if not given by the options
+	my $client;
+	unless (defined($client = $options->{client})) {
+		$client = get_client($options);
+	}
+
+	my $col_obj = get_collection($client, $db, $col);
+	
+	return $col_obj->remove({'_id' => $id});
+}
+

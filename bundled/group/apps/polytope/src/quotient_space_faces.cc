@@ -20,7 +20,6 @@
 #include "polymake/hash_set"
 #include "polymake/graph/HasseDiagram.h"
 #include "polymake/polytope/sympol_interface.h"
-#include "permlib/permlib_api.h"
 #include "polymake/polytope/quotient_space_tools.h"
 #include <vector>
 #include <list>
@@ -28,7 +27,7 @@
 
 namespace polymake { namespace polytope {
 
-typedef Set<Set<int> > FaceSet;
+typedef Set<Set<int>> FaceSet;
 typedef Array<FaceSet> RepArray;
 
 namespace {
@@ -39,28 +38,30 @@ namespace {
    Set<int> pm_set_action(const permlib::Permutation& p, const Set<int>& s) 
    {
       Set<int> simg;
-      BOOST_FOREACH(unsigned long i, s) 
+      for (const auto& i : s)
          simg += p / i;
       return simg;
    }
 }
 
-Array<Set<Set<Set<int> > > > orbits(int d, const graph::HasseDiagram& HD, const Array<Array<int> >& generators)
+Array<Set<Set<Set<int>>>> orbits(int d, 
+                                 const graph::HasseDiagram& HD, 
+                                 const Array<Array<int>>& generators)
 { 
    typedef permlib::Permutation PERM;
    std::list<PERM::ptr> gen_list;
-   for(Entire< Array< Array <int> > >::const_iterator perm = entire(generators); !perm.at_end(); ++perm){
+   for(Entire< Array< Array <int>> >::const_iterator perm = entire(generators); !perm.at_end(); ++perm){
       PERM::ptr gen(new permlib::Permutation((*perm).begin(),(*perm).end()));
       gen_list.push_back(gen);
    }
    
-   Array<Set<Set<Set<int> > > > face_orbits_of_dim(d+1);
+   Array<Set<Set<Set<int>>>> face_orbits_of_dim(d+1);
    for (int k=0; k<=d; ++k)
       for (Entire<sequence>::const_iterator fit = entire(HD.node_range_of_dim(k)); !fit.at_end(); ++fit) {
          const Set<int> face(HD.face(*fit));
-         permlib::OrbitSet<PERM, Set<int> > face_orbit;
+         permlib::OrbitSet<PERM, Set<int>> face_orbit;
          face_orbit.orbit(face, gen_list, pm_set_action);
-         face_orbits_of_dim[k] += Set<Set<int> >(face_orbit.begin(), face_orbit.end());
+         face_orbits_of_dim[k] += Set<Set<int>>(face_orbit.begin(), face_orbit.end());
       }
    return face_orbits_of_dim;
 }
@@ -71,9 +72,9 @@ void quotient_space_faces(perl::Object p)
       d = p.give("COMBINATORIAL_DIM"),
       n = p.give("N_VERTICES");
    const graph::HasseDiagram HD = p.give("HASSE_DIAGRAM");
-   const Array<Array<int> > 
-      sym_group_generators = p.give("GROUP.GENERATORS"),
-      id_group_generators = p.give("QUOTIENT_SPACE.IDENTIFICATION_GROUP.GENERATORS");
+   const Array<Array<int>> 
+      sym_group_generators = p.give("GROUP.VERTICES_ACTION.GENERATORS"),
+      id_group_generators = p.give("QUOTIENT_SPACE.IDENTIFICATION_ACTION.GENERATORS");
    const group::PermlibGroup identification_group(id_group_generators);
 
    RepArray cds(d+1);
@@ -82,12 +83,19 @@ void quotient_space_faces(perl::Object p)
          cds[k] += identification_group.lex_min_representative(HD.face(*it));
       
    p.take("QUOTIENT_SPACE.FACES") << cds;
-   const Array<Set<Set<Set<int> > > > face_orbits_of_dim = orbits(d, HD, id_group_generators);
+   const auto face_orbits_of_dim = orbits(d, HD, id_group_generators);
    p.take("QUOTIENT_SPACE.FACE_ORBITS") << face_orbits_of_dim;
-   Set<Set<Set<int> > > face_orbits;
+   Set<Set<Set<int>>> face_orbits;
    for (int k=0; k<=d; ++k)
       face_orbits += face_orbits_of_dim[k];
-   p.take("QUOTIENT_SPACE.SYMMETRY_GROUP.GENERATORS") << induced_symmetry_group_generators(n, sym_group_generators, face_orbits_of_dim);
+
+   perl::Object sga("group::PermutationAction");
+   sga.take("GENERATORS") << induced_symmetry_group_generators(n, sym_group_generators, face_orbits_of_dim);
+
+   perl::Object g("group::Group");
+   g.take("PERMUTATION_ACTION") << sga;
+
+   p.take("QUOTIENT_SPACE.SYMMETRY_GROUP") << g;
 }
 
 Function4perl(&quotient_space_faces,"quotient_space_faces(Polytope)");

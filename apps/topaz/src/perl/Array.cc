@@ -16,10 +16,11 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
 #include "polymake/Array.h"
-#include "polymake/topaz/ChainComplex.h"
 #include "polymake/Integer.h"
+#include "polymake/client.h"
+#include "polymake/topaz/Filtration.h"
+#include "polymake/topaz/HomologyComplex.h"
 
 namespace polymake { namespace topaz { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -28,8 +29,9 @@ namespace polymake { namespace topaz { namespace {
       WrapperReturnNew(T0, () );
    };
 
-   Class4perl("Polymake::common::Array__CycleGroup__Integer", Array< CycleGroup< Integer > >);
    Class4perl("Polymake::common::Array__HomologyGroup__Integer", Array< HomologyGroup< Integer > >);
+   Class4perl("Polymake::common::Array__CycleGroup__Integer", Array< CycleGroup< Integer > >);
+   Class4perl("Polymake::common::Array__Cell", Array< Cell >);
    FunctionInstance4perl(new, Array< HomologyGroup< Integer > >);
    FunctionInstance4perl(new, Array< CycleGroup< Integer > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< HomologyGroup< Integer > > >, perl::Canned< const Array< HomologyGroup< Integer > > >);

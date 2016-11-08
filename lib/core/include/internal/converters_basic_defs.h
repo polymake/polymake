@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -21,18 +21,6 @@
 
 namespace pm {
 
-/** Explicit type converter.
- *  The primary template expresses the case of a *lacking* conversion.
- */
-template <typename From, typename To>
-class conv : public nothing {};
-
-template <typename From, typename To>
-struct explicitly_convertible_to
-{
-   static const bool value = !identical<From, To>::value && !convertible_to<From, To>::value && !derived_from<conv<From, To>, nothing>::value;
-};
-
 // special case of trivial no-conversion
 template <typename T>
 class trivial_conv {
@@ -40,20 +28,42 @@ public:
    typedef T argument_type;
    typedef typename function_argument<T>::type result_type;
 
-   typename function_argument<T>::type operator() (typename function_argument<T>::type x) const { return x; }
+   const T& operator() (const T& x) const { return x; }
+   T&& operator() (T&& x) const { return std::move(x); }
 };
+
+template <typename From, typename To, bool enabled=std::is_constructible<To, From>::value>
+class conv_default : public nothing {};
+
+template <typename From, typename To>
+class conv_default<From, To, true> {
+public:
+   typedef pure_type_t<From> argument_type;
+   typedef To result_type;
+
+   To operator() (const From& x) const { return static_cast<To>(x); }
+};
+
+/// Explicit type converter.
+template <typename From, typename To>
+class conv : public conv_default<From, To> {};
 
 template <typename T>
 class conv<T, T> : public trivial_conv<T> {};
 
 template <typename From, typename To>
-class conv_by_cast {
-public:
-   typedef typename attrib<From>::minus_const_ref argument_type;
-   typedef To result_type;
-
-   To operator() (typename function_argument<From>::type x) const { return To(x); }
+struct explicitly_convertible_to {
+   static const bool value = !is_derived_from<conv<From, To>, nothing>::value;
 };
+
+template <typename Source, typename Target>
+struct can_initialize
+   : bool_constant< isomorphic_types<Source, Target>::value &&
+                    ( std::is_convertible<Source, Target>::value || explicitly_convertible_to<Source, Target>::value) > {};
+
+template <typename Source, typename Target>
+struct can_upgrade
+   : bool_constant< isomorphic_types<Source, Target>::value && std::is_convertible<Source, Target>::value > {};
 
 } // end namespace pm
 

@@ -53,7 +53,7 @@ void voronoi(perl::Object p)
    // to the sites
    voronoi_ineq /= unit_vector<E>(d+1,0); // facet at infinity
    p.take("FACETS") << voronoi_ineq;
-   p.take("AFFINE_HULL") << Matrix<E>(); // always full-dimensional
+   p.take("AFFINE_HULL") << Matrix<E>(0,d+1); // always full-dimensional
 
    // to simplify subsequent computations we also provide an obvious interior point and other basic information
    Vector<E> rip(d+1); rip[0]=rip[d]=1;

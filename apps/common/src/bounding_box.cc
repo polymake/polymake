@@ -42,8 +42,8 @@ void extend_bounding_box(Matrix<Coord>& BB, const Matrix<Coord>& BB2)
 {
    if (BB.rows()) {
       const int d=BB.cols();
-      const Coord *src=concat_rows(BB2).begin();
-      Coord *dst=concat_rows(BB).begin();
+      auto src=concat_rows(BB2).begin();
+      auto dst=concat_rows(BB).begin();
       for (int j=0; j<d; ++j, ++dst, ++src) assign_min(*dst, *src);
       for (int j=0; j<d; ++j, ++dst, ++src) assign_max(*dst, *src);
    } else {

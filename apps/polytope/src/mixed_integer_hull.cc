@@ -38,13 +38,13 @@ perl::Object mixed_integer_hull(perl::Object p_in, const Array<int>& int_coords)
   const int d = facets.cols();
   if (d==0)
     throw std::runtime_error("mixed_integer_hull: non-empty facet matrix required");
-  if ( (d==1) || (int_coords.empty()))
+  if (d==1 || int_coords.empty())
     return p_in;
-  
-  // project to the integral coordinates and  take the convex hull   
-  perl::Object p_project = CallPolymakeFunction("projection", p_in, int_coords);
-  Matrix<Rational> proj_lattice_points = p_project.CallPolymakeMethod("LATTICE_POINTS");
-  
+
+  // project to the integral coordinates and  take the convex hull
+  perl::Object p_project = call_function("projection", p_in, int_coords);
+  Matrix<Rational> proj_lattice_points = p_project.call_method("LATTICE_POINTS");
+
   ListMatrix<Vector<Rational> > out_points, temp_points;
   Matrix<Rational> temp_ineq(unit_matrix<Rational>(d).minor(scalar2set(0), All));
 
@@ -54,7 +54,7 @@ perl::Object mixed_integer_hull(perl::Object p_in, const Array<int>& int_coords)
   {
     // computing the equation-set of the affine space
     Vector<Rational> right_side;
-    right_side = proj_lattice_points.row(i).slice(~scalar2set(0));    
+    right_side = proj_lattice_points.row(i).slice(~scalar2set(0));
     Matrix<Rational> temp_eq(-right_side | unit_matrix<Rational>(d).minor(int_coords, ~scalar2set(0)));
 
     perl::Object p_fiber("Polytope<Rational>");
@@ -62,13 +62,13 @@ perl::Object mixed_integer_hull(perl::Object p_in, const Array<int>& int_coords)
     p_fiber.take("EQUATIONS") << temp_eq;
 
     // intersecting it with P
-    perl::Object p_intersection = CallPolymakeFunction("intersection", p_in,p_fiber);
+    perl::Object p_intersection = call_function("intersection", p_in, p_fiber);
 
     // remembering the vertices
     p_intersection.give("VERTICES") >> temp_points;
     out_points /= temp_points;
   }
-  
+
   // convex hull of all vertices computed before
   perl::Object p_out("Polytope<Rational>");
   p_out.take("POINTS") << out_points;
@@ -81,7 +81,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# Produces the mixed integer hull of a polyhedron"
                           "# @param Polytope P"
                           "# @param Array<Int> int_coords the coordinates to be integral;"
-                          "# @return Polytope", 
+                          "# @return Polytope",
                           "mixed_integer_hull(Polytope, $)");
 } }
 

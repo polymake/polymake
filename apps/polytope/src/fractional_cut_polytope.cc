@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -80,7 +80,6 @@ perl::Object fractional_cut_polytope(const graph_type& G)
 
    perl::Object p("Polytope<Rational>");
    p.take("VERTICES") << V;
-   p.take("LINEALITY_SPACE") << Matrix<Rational>();
    p.take("N_VERTICES") << n_cuts;
    p.take("CONE_AMBIENT_DIM") << n_edges+1;
    p.take("BOUNDED") << true;

@@ -395,9 +395,9 @@ public:
       if (tell_sv != Nullsv) {
          if (AV* rule=me.rule_deputies[node]) {
             dTHXa(pi);
-            PmStartFuncall;
-            XPUSHs(sv_2mortal(newRV((SV*)rule)));
-            XPUSHs(sv_2mortal(newSViv(reason)));
+            PmStartFuncall(2);
+            mPUSHs(newRV((SV*)rule));
+            mPUSHi(reason);
             PUTBACK;
             glue::call_func_void(aTHX_ tell_sv);
          }
@@ -1046,8 +1046,7 @@ PPCODE:
 {
    if (RuleGraph::class_descr==NULL) {
       // this initialization can't be done in the BOOT block because CPlusPlus is not yet initialized that early
-      static const char pkg_name[]="Polymake::Core::Scheduler::RuleGraph";
-      RuleGraph::class_descr=OpaqueClassRegistrator<RuleGraph>::register_it(pkg_name, sizeof(pkg_name)-1, NULL);
+      RuleGraph::class_descr=OpaqueClassRegistrator<RuleGraph>::register_it("Polymake::Core::Scheduler::RuleGraph", nullptr);
       RuleGraph::RuleChain_rgr_index=CvDEPTH(get_cv("Polymake::Core::Scheduler::TentativeRuleChain::rgr", false));
       RuleGraph::RuleChain_rgr_state_index=CvDEPTH(get_cv("Polymake::Core::Scheduler::TentativeRuleChain::rgr_state", false));
       RuleGraph::RuleChain_ready_rules_index=CvDEPTH(get_cv("Polymake::Core::Scheduler::TentativeRuleChain::ready", false));

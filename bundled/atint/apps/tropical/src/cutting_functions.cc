@@ -27,15 +27,11 @@
 #include "polymake/Vector.h"
 #include "polymake/linalg.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/tropical/LoggingPrinter.h"
 
 
 namespace polymake { namespace tropical {
 
 
-	using namespace atintlog::donotlog;
-	//using namespace atintlog::dolog;
-	//   using namespace atintlog::dotrace;
 
 	///////////////////////////////////////////////////////////////////////////////////////
 
@@ -67,7 +63,6 @@ namespace polymake { namespace tropical {
 
 			//Finally add desired weights as additional coefficients
 			equations |= weight_aim;
-			//dbgtrace << "Equations: " << equations << endl;
 			return null_space(equations);
 		}
 

@@ -20,9 +20,8 @@ HELP
 INCLUDE
   permlib.rules
   group_helpers.rules
-  group_types
-  representations.rules
-  quotiented_representation.rules
+
+
 
 # Local Variables:
 # mode: perl

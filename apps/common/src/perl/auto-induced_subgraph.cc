@@ -24,15 +24,15 @@
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1>
-   FunctionInterface4perl( induced_subgraph_X8_X8, T0,T1 ) {
+   FunctionInterface4perl( induced_subgraph_X32_X32, T0,T1 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturnAnch( 2, (arg0)(arg1), (induced_subgraph(arg0.get<T0>(), arg1.get<T1>())) );
+      WrapperReturn( (induced_subgraph(arg0.get<T0>(), arg1.get<T1>())), arg0, arg1 );
    };
 
-   FunctionInstance4perl(induced_subgraph_X8_X8, perl::Canned< const Wary< Graph< Undirected > > >, perl::Canned< const Set< int > >);
-   FunctionInstance4perl(induced_subgraph_X8_X8, perl::Canned< const Wary< Graph< Undirected > > >, perl::Canned< const pm::Series<int, true> >);
-   FunctionInstance4perl(induced_subgraph_X8_X8, perl::Canned< const Wary< Graph< Undirected > > >, perl::Canned< const pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> >);
-   FunctionInstance4perl(induced_subgraph_X8_X8, perl::Canned< const Wary< Graph< Directed > > >, perl::Canned< const pm::Nodes<pm::graph::Graph<pm::graph::Undirected> > >);
-   FunctionInstance4perl(induced_subgraph_X8_X8, perl::Canned< const Wary< Graph< Directed > > >, perl::Canned< const pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> >);
+   FunctionInstance4perl(induced_subgraph_X32_X32, perl::Canned< const Wary< Graph< Undirected > > >, perl::Canned< const Set< int > >);
+   FunctionInstance4perl(induced_subgraph_X32_X32, perl::Canned< const Wary< Graph< Undirected > > >, perl::Canned< const pm::Series<int, true> >);
+   FunctionInstance4perl(induced_subgraph_X32_X32, perl::Canned< const Wary< Graph< Undirected > > >, perl::Canned< const pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> >);
+   FunctionInstance4perl(induced_subgraph_X32_X32, perl::Canned< const Wary< Graph< Directed > > >, perl::Canned< const pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> >);
+   FunctionInstance4perl(induced_subgraph_X32_X32, perl::Canned< const Wary< Graph< Directed > > >, perl::Canned< const pm::Nodes<pm::graph::Graph<pm::graph::Undirected> > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

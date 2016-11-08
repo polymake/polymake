@@ -119,6 +119,25 @@ user_function automorphisms(IncidenceMatrix<NonSymmetric>) : c++ (include => "po
 user_function automorphisms(IncidenceMatrix<Symmetric>) : c++ (include => "polymake/graph/compare.h");
 
 
+# @category Comparing
+# Find a canonical representation of a graph //g//.
+# Warning: This representation can depend on the extension (bliss/nauty) used, its version and configuration, as well as the hardware!
+# @param props::Graph g
+# @return props::Graph
+# @depends bliss or nauty
+user_function canonical_form(props::Graph) : c++ (include => "polymake/graph/compare.h");
+
+# @category Comparing
+# Compute a hash for a graph //g// independent of the node ordering.
+# Warning: This hash can depend on the extension (bliss/nauty) used, its version and configuration, as well as the hardware!
+# Nauty requires an integer key //k// as input, bliss will ignore the key.
+# @param props::Graph g
+# @param Int k a key for the hash computation, default value 2922320
+# @return Int
+# @depends bliss or nauty
+user_function canonical_hash(props::Graph;$=2922320) : c++ (include => "polymake/graph/compare.h");
+
+
 object Graph {
 
 # @notest  Rule defined "in stock" - currently without use

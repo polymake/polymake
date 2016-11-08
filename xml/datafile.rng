@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 
 <!--
-  Copyright (c) 1997-2015
+  Copyright (c) 1997-2016
   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
   http://www.polymake.org
 
@@ -58,10 +58,29 @@
 
   <define name="PropertyName">
     <attribute name="name">
+      <note:a>
+        Must be prefixed by the name of the application where this property is introduced
+        if that is different from the application where the owning object is defined
+        (aka property injection).
+      </note:a>
       <data type="string">
         <param name="pattern">([a-zA-Z][a-zA-Z_0-9]*::)?[a-zA-Z][a-zA-Z_0-9]*</param>
       </data>
     </attribute>
+  </define>
+
+  <define name="Extensions">
+    <optional>
+      <attribute name="ext">
+        <note:a>
+          The first reference to any extension in the document order must consist
+          of the ordinal number and the URI; all subsequent references are solely numbers.
+        </note:a>
+        <data type="string">
+          <param name="pattern">( *\d+(=[^\s#]+(#\d+)?)?)+ *</param>
+        </data>
+      </attribute>
+    </optional>
   </define>
 
   <define name="TopAttribs">
@@ -84,21 +103,13 @@
         </data>
       </attribute>
     </optional>
-
-    <optional>
-      <attribute name="tm">
-        <data type="hexBinary" />
-      </attribute>
-    </optional>
   </define>
 
   <define name="ObjectContent">
     <optional>
       <attribute name="name" />
     </optional>
-    <optional>
-      <attribute name="ext" />
-    </optional>
+    <ref name="Extensions" />
     <optional>
       <element name="description">
         <text/>
@@ -123,10 +134,7 @@
   <define name="Property">
     <element name="property">
       <ref name="PropertyName" />
-      <optional>
-        <attribute name="ext" />
-      </optional>
-
+      <ref name="Extensions" />
       <choice>
         <group>
           <note:a>
@@ -158,9 +166,7 @@
   <define name="Attachment">
     <element name="attachment">
       <ref name="SimpleName" />
-      <optional>
-        <attribute name="ext" />
-      </optional>
+      <ref name="Extensions" />
       <ref name="AttachmentData" />
     </element>
   </define>
@@ -168,9 +174,7 @@
   <define name="LooseData">
     <element name="data">
       <ref name="TopAttribs" />
-      <optional>
-        <attribute name="ext" />
-      </optional>
+      <ref name="Extensions" />
       <optional>
         <element name="description">
           <text/>
@@ -221,6 +225,10 @@
       <group>
         <attribute name="type" />
         <optional>
+          <note:a>
+            Property path in dotted notation, referring to the enclosing object.
+            The property is passed to the constructor of the data stored in this attachment.
+          </note:a>
           <attribute name="construct" />
         </optional>
         <ref name="Complex" />

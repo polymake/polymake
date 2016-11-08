@@ -24,12 +24,11 @@
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( diagonal_x_f5, T0 ) {
+   FunctionInterface4perl( diagonal_x_f37, T0 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturnLvalueAnch( 1, (arg0), T0, arg0.get<T0>().diagonal(arg1) );
+      WrapperReturnLvalue( T0, arg0.get<T0>().diagonal(arg1), arg0 );
    };
 
-   FunctionInstance4perl(diagonal_x_f5, perl::Canned< const Wary< Matrix< Integer > > >);
-   FunctionInstance4perl(diagonal_x_f5, perl::Canned< const Wary< Matrix< int > > >);
+   FunctionInstance4perl(diagonal_x_f37, perl::Canned< const Wary< Matrix< Integer > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

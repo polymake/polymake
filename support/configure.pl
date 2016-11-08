@@ -14,9 +14,9 @@
 #-------------------------------------------------------------------------------
 
 BEGIN {
-   if ($] < 5.010) {
+   if ($] < 5.016) {
       print STDERR <<".";
-polymake requires perl version not lower than 5.10;
+polymake requires perl version not lower than 5.16;
 your perl interpreter says it is $].
 
 Please upgrade your perl installation;
@@ -65,12 +65,12 @@ $directory_of_cmd_re=qr{ ^(.*) / [^/]+ (?: $ | \s)}x;
 
 package Polymake::Configure;
 
-my (%options, %vars, %allowed_options, %allowed_with, %allowed_vars);
-my $check_prereq=1;
+my (%options, %vars, %allowed_options, %allowed_with, %allowed_flags, %allowed_vars);
 
 # expected options for the core script
 @allowed_options{ qw( prefix exec-prefix bindir includedir libdir libexecdir datadir docdir build ) }=();
-@allowed_with{ qw( gmp mpfr libxml2 callable ) }=();
+@allowed_with{ qw( gmp mpfr libxml2 toolchain ) }=();
+@allowed_flags{ qw( prereq callable native openmp libcxx ) }=();
 @allowed_vars{ qw( CC CFLAGS CXX CXXFLAGS CXXOPT CXXDEBUG LDFLAGS LIBS PERL ) }=();
 
 if ($^O eq "darwin") {
@@ -168,7 +168,7 @@ It tries to mimic well-known GNU auto-configuration scripts:
 
 Allowed options (and their default values) are:
 
-  Installation directories:
+ Installation directories:
 
   --prefix=PATH       ( /usr/local )  root of the installation tree
   --exec-prefix=PATH  ( ${prefix} )   root of the architecture-dependent tree
@@ -178,6 +178,7 @@ Allowed options (and their default values) are:
   --libexecdir=PATH   ( ${exec-prefix}/lib/polymake )  dynamic modules loaded at the runtime
   --datadir=PATH      ( ${prefix}/share/polymake )     rules and other architecture-independent files
   --docdir=PATH       ( ${datadir}/doc )               automatically generated documentation files
+
 .
    if ($^O eq "darwin") { 
       print STDERR <<'.'; 
@@ -186,11 +187,16 @@ Allowed options (and their default values) are:
    } else {
       print STDERR <<'.'; 
   --build=ARCH        abbreviation for the build architecture
+  --without-native    build without "-march=native" flag to allow execution on different CPU types
+                      (passing one of -m{cpu,arch,tune} via CFLAGS or CXXFLAGS also disables "-march=native")
 .
    }
    print STDERR <<'.';
 
-  Build dependences:
+ Build dependences:
+
+  --with-toolchain=PATH path to a full GCC or LLVM (including clang and libc++) installation
+                      (sets CC, CXX, CXXFLAGS, LDFLAGS, LIBS and --with-libcxx accordingly)
 
 .
    if ($^O eq "darwin") {
@@ -204,8 +210,10 @@ Allowed options (and their default values) are:
   --with-gmp=PATH     ( $GMPdef ) GNU MultiPrecision library installation directory
   --with-mpfr=PATH    ( =gmp-path ) GNU Multiple Precision Floating-point Reliable library installation directory
   --with-libxml2=PATH ( find via \$PATH ) GNU XML processing library
-.
 
+
+ Bundled extensions:
+.
    foreach my $ext (sort keys %ext_with_config) {
       no strict 'refs';
       print STDERR "\n  --without-$ext  disable the bundled extension $ext completely\n";
@@ -215,12 +223,21 @@ Allowed options (and their default values) are:
 
    print STDERR <<".";
 
+
+ Other options:
+
+  --with-libcxx       build against the libc++ library instead of the GNU libstdc++, useful when
+                      building with LLVM/Clang. (sets -stdlib=libc++, -lc++ and -lc++abi)
+                      see also --with-toolchain when using a custom LLVM installation
+
   --without-callable  don't build polymake callable library
                       (in the case of custom perl installations lacking libperl shared library)
 
   --without-prereq    don't check for availability of required libraries and perl modules
                       (to be used from within package management systems like RPM,
-                       having own mechanisms for providing all prerequisits.)
+                       having own mechanisms for providing all prerequisites.)
+
+  --without-openmp    disable OpenMP support for libnormaliz and to_simplex
 
 Allowed variables are:
 
@@ -250,20 +267,25 @@ while (defined (my $arg=shift @ARGV)) {
    $arg =~ s/^\s+//;
    $arg =~ s/\s+$//;
    next if ($arg =~ /^$/);
+   $arg = "--with-libcxx" if ($arg eq "--with-libc++");
    if ($arg eq "--help") {
       usage();
       exit(0);
-   } elsif ($arg eq '--without-prereq') {
-      $check_prereq=0;
-      next;
    } elsif (my ($with, $out, $name, $value)= $arg =~ /^--(with(out)?-)?([-\w]+)(?:=(.*))?$/) {
-      if ($with ? exists $allowed_with{$name}
-                : exists $allowed_options{$name}
-            and
-          defined($out) || defined($value) || @ARGV) {
-	 if (defined($out)) {
-	    $value=".none.";
-	 } else {
+      if ($with and exists $allowed_flags{$name} and !defined($value)) {
+         if (defined($out)) {
+            $options{$name}=".none.";
+         } else {
+            $options{$name}=".true.";
+         }
+         next;
+      } elsif ($with ? exists $allowed_with{$name}
+                   : exists $allowed_options{$name}
+                 and
+               defined($out) || defined($value) || @ARGV) {
+         if (defined($out)) {
+            $value=".none.";
+         } else {
             $value=shift(@ARGV) unless defined($value);
             $value =~ s{^~/}{$ENV{HOME}/};
             $value =~ s{/+$}{};
@@ -309,6 +331,21 @@ print "checking C++ compiler ... ";
 $CXX=$vars{CXX};
 $CC=$vars{CC};
 
+if ($options{toolchain}) {
+   if (-x $options{toolchain}."/bin/clang++") {
+      $CXX ||= $options{toolchain}."/bin/clang++";
+      $CC  ||= $options{toolchain}."/bin/clang";
+   } elsif (-x $options{toolchain}."/bin/g++") {
+      $CXX ||= $options{toolchain}."/bin/g++";
+      $CC  ||= $options{toolchain}."/bin/gcc";
+   } else {
+      die <<"."
+Unsupported toolchain given, only GCC or LLVM/Clang are supported.
+Make sure $options{toolchain}/bin/clang++ or $options{toolchain}/bin/g++ exists and is executable.
+.
+   }
+}
+
 my $absCXX=check_program($CXX, "g++", "c++", "icpc", "clang++")
   or die "no supported C++ compiler found; please reconfigure with CXX=name\n";
 
@@ -320,18 +357,17 @@ $CCache= $absCXX =~ /\bccache$/;
 my $build_error = build_test_program(<<".");
 #include <iostream>
 int main() {
+#if defined(__APPLE__)
+   std::cout << "apple";
+#endif
 #if defined(__clang__)
    std::cout << "clang " << __clang_major__ << '.' << __clang_minor__ << '.' << __clang_patchlevel__ << std::endl;
    return 0;
-#elif defined(__INTEL_COMPILER)
-   // FIXME: investigate proper macro symbols carrying the icc version
-   std::cout << "icc " << std::endl;
-   return 0;
 #elif defined(__GNUC__)
-# if defined(__APPLE__)
-   std::cout << "apple";
-# endif
    std::cout << "gcc " << __GNUC__ << '.' << __GNUC_MINOR__ << '.' << __GNUC_PATCHLEVEL__ << std::endl;
+   return 0;
+#elif defined(__INTEL_COMPILER)
+   std::cout << "icc " << __INTEL_COMPILER << std::endl;
    return 0;
 #else
    return 1;
@@ -344,24 +380,28 @@ if ($? != 0) {
        "\nPlease investigate and reconfigure with CXX=<appropriate C++ compiler>\n";
 } else {
    local $_=run_test_program();  chomp;
-   if (/^clang /) {
+   if (/^(apple)?clang /) {
       $CLANGversion=$';
-      if (v_cmp($CLANGversion, "3.2") < 0) {
-         die "C++ compiler $CXX says its version is $CLANGversion, while the minimal required version is 3.2\n";
+      $AppleClang = "true" if $1 eq "apple";
+      if (defined($AppleClang) and v_cmp($CLANGversion, "5.1") < 0) {
+         die "C++ compiler $CXX is from Xcode $CLANGversion, while the minimal required Xcode version is 5.1\n";
+      } elsif (!defined($AppleClang) and v_cmp($CLANGversion, "3.4") < 0) {
+         die "C++ compiler $CXX says its version is $CLANGversion, while the minimal required version is 3.4\n";
       }
 
-   } elsif (/icc /) {
-      $ICCversion=$';
-      # if (v_cmp($ICCversion, "10.0") < 0) {
-      #   die "C++ compiler $CXX says its version is $ICCversion, while the minimal required version is 10.0\n";
-      # }
-
+   } elsif (/icc (\d+)(\d\d)$/) {
+      $ICCversion="$1.$2";
+      if (v_cmp($ICCversion, "16.0") < 0) {
+        die "C++ compiler $CXX says its version is $ICCversion, while the minimal required version is 16.0\n";
+      }
+      # untested but since version 16 most of C++14 should be supported
+      print "warning: probably unsupported C++ compiler Intel $ICCversion.\n";
    } elsif (/(apple)?gcc /) {
       $GCCversion=$';
       # decide whether we use the gcc provided by apple, in that case we need the -arch flags, otherwise we probably don't
       $NeedsArchFlag=defined($1);
-      if (v_cmp($GCCversion, "4.2") < 0) {
-         die "C++ compiler $CXX says its version is $GCCversion, while the minimal required version is 4.2\n";
+      if (v_cmp($GCCversion, "5.1") < 0) {
+         die "C++ compiler $CXX says its version is $GCCversion, while the minimal required version is 5.1\n";
       }
    } else {
       die "$CXX is an unsupported C++ compiler.  Please choose one of the supported: Intel, clang, or GCC.\n";
@@ -386,7 +426,16 @@ if (defined $CC) {
       $CC=$Config::Config{cc};
    }
 }
-print "ok ($CXX is ", defined($GCCversion) ? "GCC $GCCversion" : defined($CLANGversion) ? "CLANG $CLANGversion" : "ICC $ICCversion", ")\n";
+if (defined($GCCversion) or defined($CLANGversion)) {
+   print "ok ($CXX is ",
+            defined($GCCversion) ?
+               "GCC $GCCversion" :
+               defined($CLANGversion) ?
+                  (defined($AppleClang) ?
+                     "Apple CLANG (roughly ".clang_ver($CLANGversion).") from Xcode $CLANGversion" :
+                     "CLANG $CLANGversion")
+                  : "unknown", ")\n";
+}
 
 $PERL     =$vars{PERL}     || $^X;
 $CXXOPT   =$vars{CXXOPT}   || "-O3";
@@ -401,7 +450,41 @@ $LDcallableFlags= $options{callable} eq ".none." ? "none" : "$LDsharedFlags $Con
 
 print "checking C++ library ... ";
 
+if ($options{toolchain}) {
+   my $libdir;
+   # CC/CXX was set earlier, the else case already died at that point
+   if (-x $options{toolchain}."/bin/clang++") {
+      $libdir = get_libdir($options{toolchain},"clang");
+      $options{libcxx} = ".true.";
+   } elsif (-x $options{toolchain}."/bin/g++") {
+      $libdir = get_libdir($options{toolchain},"gcc_s");
+   }
+   $Cflags   .= " -I$options{toolchain}/include";
+   $CXXflags .= " -I$options{toolchain}/include";
+   $LDflags  .= " -L$libdir -Wl,-rpath,$libdir";
+}
+
+if ($options{libcxx} eq ".true.") {
+   $CXXflags .= " -stdlib=libc++";
+   $LDflags  .= " -stdlib=libc++";
+   $Libs     .= " -lc++";
+   $Libs     .= " -lc++abi" if ($^O eq "linux");
+}
+
+# All polymake releases after 3.0 require C++14,
+# but if someone explicitly requests another standard version go along with it,
+# if it is too old we will generate a warning / an error later on.
+if ($CXXflags !~ /(?:^|\s)-std=/) {
+   if (defined($CLANGversion) and v_cmp(clang_ver($CLANGversion), "3.5") < 0) {
+      $CXXflags .= ' -std=c++1y';
+   } else {
+      $CXXflags .= ' -std=c++14';
+   }
+}
+
 my $build_error = build_test_program(<<".");
+#include <cstddef>
+#include <cstdio>
 #include <iostream>
 int main() {
    std::cout << "cplusplus " << __cplusplus << std::endl;
@@ -409,7 +492,7 @@ int main() {
    std::cout << "libc++ " << _LIBCPP_VERSION << std::endl;
    return 0;
 #elif defined(__GLIBCXX__)
-   std::cout << "GNU stdlibc++ " << __GLIBCXX__ << std::endl;
+   std::cout << "GNU libstdc++ " << __GLIBCXX__ << std::endl;
    return 0;
 #elif defined(__INTEL_CXXLIB_ICC)
    std::cout << "Intel " << __INTEL_CXXLIB_ICC << std::endl;
@@ -426,16 +509,27 @@ if ($? != 0) {
 } else {
    local $_=run_test_program();  chomp;
    my ($cppver, $cpplib) = $_ =~ m/^cplusplus (\d+)\n(.+)$/;
+
+   unless ($cppver >= 201402 or
+           $cppver >= 201305 and
+               defined($CLANGversion) and v_cmp(clang_ver($CLANGversion), "3.5") < 0
+          ) {
+      # C++ standard older than C++14 wont work (C++1y from clang 3.4 is also ok)
+      die "C++ standard version ($cppver) too old, C++14 or later is required. Please omit any '-std=' options.\n";
+   }
+
    # see http://sourceforge.net/p/predef/wiki/Libraries/
-   if ($cpplib =~ /^GNU stdlibc\+\+ /) {
+   if ($cpplib =~ /^GNU libstdc\+\+ /) {
       # this is some more or less useful date
       my $stdlibversion=$';
       $CPPStd = $cppver;
       print "ok ($cpplib, C++ $CPPStd)\n";
    } elsif ($cpplib =~ /^libc\+\+ /) {
-      my $libcxxversion=$';
-      $CXXflags .= " -std=c++11 ";
-      $CPPStd = 201103;
+      $CPPStd = $cppver;
+      if ($Libs !~ /-lc\+\+/){
+         $Libs .= " -lc++";
+         $Libs .= " -lc++abi" if ($^O eq "linux");
+      }
       print "ok ($cpplib, C++ $CPPStd)\n";
    } elsif ($cpplib =~ /^Intel /) {
       my $intelcxxversion=$';
@@ -445,6 +539,11 @@ if ($? != 0) {
    } else {
       die "Unsupported C++ library, use -stdlib to specify libstdc++ or libc++.\n";
    }
+
+   if ($LDflags !~ /-stdlib=/ and $CXXflags =~ /(-stdlib=\S+)/) {
+      $LDflags .= " $1";
+   }
+
 }
 
 
@@ -536,9 +635,10 @@ if ($^O eq "darwin") {
    # not MacOS
    print "determining architecture ... ";
    $Platform=platform_name();
-   unless ($CXXflags) {
-      $CXXflags="-march=native";
-      $Cflags=$CXXflags;
+   # no arch flags set
+   unless ($options{native} eq ".none." or "$Cflags $CXXflags" =~ /(?:^|\s)-m(?:arch|tune|cpu)=/) {
+      $Cflags .= " -march=native";
+      $CXXflags .= " -march=native";
    }
    $Arch=$options{build} || $Platform;
 
@@ -555,27 +655,15 @@ print "determining compiler flags ... ";
 if (defined($GCCversion)) {
    $CsharedFlags="-fPIC";
    $CXXDEBUG .= " -g";
-   $CXXflags .= " -ftemplate-depth-200 -Wall -Wno-strict-aliasing -Wno-parentheses";
+   # TODO: remove -fno-strict-aliasing when the core library is free from reintepret_casts
+   $CXXflags .= " -ftemplate-depth-200 -Wall -fno-strict-aliasing -Wno-parentheses -fwrapv";
+   if ($options{openmp} ne ".none.") {
+      $CXXflags .= " -fopenmp";
+      $LDflags .= " -fopenmp";
+   }
    $Cflags .= " -Wall";
    # external libraries might be somehow dirtier
-   $CflagsSuppressWarnings="-Wno-uninitialized -Wno-unused -Wno-parentheses";
-   if (v_cmp($GCCversion, "4.6")<0) {
-      $CXXflags .= " -fno-inline-functions-called-once";
-   } else {
-      $CXXflags .= " -fwrapv -fopenmp";
-      $LDflags .= " -fopenmp";
-      $CflagsSuppressWarnings .= " -Wno-unused-but-set-variable -Wno-enum-compare -Wno-sign-compare -Wno-switch -Wno-format -Wno-write-strings";
-   }
-   if (v_cmp($GCCversion, "4.3")<0) {
-      $CXXflags .= " -Wno-uninitialized";
-   }
-   if ($^O eq "solaris") {
-      $CXXflags .= " -D__C99FEATURES__ -D_GLIBCXX_USE_C99_MATH";
-   }
-
-   if (v_cmp($GCCversion, "6.0") >= 0) {
-      $CXXflags .= " -fno-delete-null-pointer-checks";
-   }
+   $CflagsSuppressWarnings="-Wno-uninitialized -Wno-unused -Wno-parentheses -Wno-unused-but-set-variable -Wno-enum-compare -Wno-sign-compare -Wno-switch -Wno-format -Wno-write-strings";
 } elsif (defined($ICCversion)) {
    $CsharedFlags="-fPIC";
    $CXXDEBUG .= " -g -Ob0";
@@ -587,8 +675,33 @@ if (defined($GCCversion)) {
    $CXXDEBUG .= " -g";
    $CXXflags .= " -Wall -Wno-logical-op-parentheses -Wno-shift-op-parentheses -Wno-duplicate-decl-specifier -Wno-reserved-user-defined-literal -Wno-mismatched-tags";
    $CflagsSuppressWarnings="-Wno-uninitialized -Wno-unused -Wno-unused-variable -Wno-enum-compare -Wno-sign-compare -Wno-switch -Wno-format -Wno-write-strings -Wno-empty-body -Wno-logical-op-parentheses -Wno-shift-op-parentheses -Wno-dangling-else";
-   if (v_cmp($CLANGversion, "3.6") >= 0 and v_cmp($CLANGversion, "3.8") < 0 || ($^O eq "darwin" && v_cmp($CLANGversion, "7.0.0") <= 0) ) {
+   if (v_cmp(clang_ver($CLANGversion), "3.6") >= 0) {
       $CXXflags .= " -Wno-unused-local-typedef";
+   }
+
+   # verify openmp support which is available starting with 3.7 but depends on the installation,
+   # but 3.7 seems to crash when compiling libnormaliz so we skip that version
+   # version 3.8 is tested to work with openmp
+   if (v_cmp(clang_ver($CLANGversion), "3.8") >= 0 && $options{openmp} ne ".none.") {
+      my $ompflag = "-fopenmp";
+      my $build_error=build_test_program(<<'---', CXXflags => "$ompflag", LDflags => "$ompflag");
+#include <stdio.h>
+#include <omp.h>
+
+int main() {
+#pragma omp parallel
+    printf("Hello from thread %d, nthreads %d\n", omp_get_thread_num(), omp_get_num_threads());
+    return 0;
+}
+---
+      if ($? == 0) {
+         my $openmpout = run_test_program();
+         my ($nthr) = $openmpout =~ /Hello from thread \d+, nthreads (\d+)/;
+         if ($? == 0) {
+            $CXXflags .= " $ompflag";
+            $LDflags .= " $ompflag";
+         }
+      }
    }
 }
 
@@ -649,7 +762,7 @@ if (defined($MPFR) && $MPFR ne $GMP) {
    }
 }
 
-if ($check_prereq) {
+if ($options{prereq} ne ".none.") {
    print "checking gmp installation ... ";
    # check GMP installation
    my $build_error=build_test_program(<<'---', Libs => "$ARCHFLAGS -lgmp");
@@ -749,14 +862,13 @@ static PerlInterpreter *my_perl;
 
 int main(int argc, char **argv, char **env)
 {
-   char *embedding[] = { "", "-e", "0" };
+   char *embedding[] = { "", "-e", "print $];" };
    PERL_SYS_INIT3(&argc,&argv,&env);
    my_perl = perl_alloc();
    perl_construct(my_perl);
    PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
    perl_parse(my_perl, NULL, 3, embedding, (char **)NULL);
    perl_run(my_perl);
-   eval_pv("print $]",TRUE);
    perl_destruct(my_perl);
    perl_free(my_perl);
    PERL_SYS_TERM();

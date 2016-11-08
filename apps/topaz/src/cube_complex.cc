@@ -96,7 +96,7 @@ perl::Object cube_complex(Array<int> x_param)
   for (MultiDimCounter<false> counter(x_param); !counter.at_end(); ++corner, ++counter) {     
 
     // compute coordinates
-    copy(entire(*counter), Coordinates[corner].begin());
+    copy_range(entire(*counter), Coordinates[corner].begin());
 
     // compute cube
     bool cube_corner = true;

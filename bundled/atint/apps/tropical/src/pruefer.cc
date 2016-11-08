@@ -23,9 +23,6 @@
 #include "polymake/tropical/pruefer.h"
 
 namespace polymake { namespace tropical {
-	using namespace atintlog::donotlog;
-	//using namespace atintlog::dolog;
-	//   using namespace atintlog::dotrace;
 
 	///////////////////////////////////////////////////////////////////////////////////////
 
@@ -42,7 +39,6 @@ namespace polymake { namespace tropical {
 		//Iterate all rows of valences
 		for(int v = 0; v < valences.rows(); v++) {
 
-			//dbgtrace << "Valences: " << valences.row(v) << endl;
 
 			//Compute for each interior vertex n+i,i=1,..k the possible distribution of
 			//valence(i) - 2 entries on seq_length - (sum_j=1^(i-1) v_i) - 1 free spaces
@@ -58,7 +54,6 @@ namespace polymake { namespace tropical {
 				entrymax |= distributions[k].size();
 			}
 
-			//dbgtrace << "Entry distributions: " << entrymax << endl;
 
 
 			//We find all sequences by iterating the following vector: Read as (s_1,..,s_k),
@@ -68,7 +63,6 @@ namespace polymake { namespace tropical {
 
 			while(true) {
 				//Construct sequence corresponding to the iterator
-				//dbgtrace << result.rows() << endl;
 				Vector<int> current_sequence(seq_length);
 				Vector<int> free_entries(sequence(0, current_sequence.dim()));
 				//Go through all but the last vertex
@@ -129,8 +123,8 @@ namespace polymake { namespace tropical {
 		perl::Object p("polytope::Polytope");
 		p.take("INEQUALITIES") << ineq;
 		p.take("EQUATIONS") << eq;
-		Matrix<int> latt = p.CallPolymakeMethod("LATTICE_POINTS");
-		latt = latt.minor(All,~scalar2set(0));
+		Matrix<int> latt = p.call_method("LATTICE_POINTS");
+		latt = latt.minor(All, ~scalar2set(0));
 
 		return prueferSequenceFromValences(n,latt);
 	}//END dimension_k_prueferSequence

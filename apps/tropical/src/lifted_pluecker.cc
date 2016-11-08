@@ -30,7 +30,7 @@ template <typename Addition>
 Vector<TropicalNumber<Addition> > lifted_pluecker(const Matrix<TropicalNumber<Addition> > &V)
 {
    const int n(V.rows()), d(V.cols());
-   const int nd_d=Integer::binom(d+n,d).to_int();
+   const int nd_d(Integer::binom(d+n,d));
    Vector<TropicalNumber<Addition> > pi(nd_d);
 
    const sequence all_rows = sequence(0,d+n); // d extra rows plus n given ones

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -86,7 +86,7 @@ path_loader(const char *URL, const char *ID, xmlParserCtxtPtr ctxt)
    return NULL;
 }
 
-MODULE = Polymake::Core::XMLhandler           PACKAGE = Polymake::Core::XMLhandler
+MODULE = Polymake::Core::XMLreader           PACKAGE = Polymake::Core::XMLreader
 
 void
 set_search_path(path)
@@ -107,7 +107,7 @@ PPCODE:
 
 BOOT:
 if (PL_DBgv) {
-   CvNODEBUG_on(get_cv("Polymake::Core::XMLhandler::set_search_path", FALSE));
+   CvNODEBUG_on(get_cv("Polymake::Core::XMLreader::set_search_path", FALSE));
 }
 
 =pod

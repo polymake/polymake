@@ -1,0 +1,71 @@
+#  Copyright (c) 1997-2016
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object Polytope {
+    
+# @category Visualization
+# Take a 3-polytope and write ASCII STL output.
+#    
+# @param String filename
+# @example > dodecahedron()->write_stl("/tmp/dodecahedron.stl");  
+
+user_method write_stl(String) : VERTICES, FACETS, VIF_CYCLIC_NORMAL {
+  my ($self,$filename) = @_;
+  my $n_facets=$self->FACETS->rows();
+  my $vertices=new Matrix<Float>($self->VERTICES->minor(All,~[0]));
+
+  open STL, ">$filename" or die "can't write to $filename";
+  print STL << ".";
+solid Default
+.
+
+  for (my $f=0; $f<$n_facets; ++$f) {
+    # facet normals pointing outwards
+    my $facet_normal=new Vector<Float>(-$self->FACETS->[$f]->slice(1));
+    # each facet needs to be triangulated
+    my $vif=$self->VIF_CYCLIC_NORMAL->[$f];
+    my $k=$vif->size();
+    # the first vertex is contained in each triangle
+    my $first=$vertices->[$vif->[0]];
+    for (my $i=2; $i<$k; ++$i) {
+      my $second=$vertices->[$vif->[$i-1]];
+      my $third=$vertices->[$vif->[$i]];
+      print STL << ".";
+  facet normal $facet_normal
+    outer loop
+      vertex $first
+      vertex $second
+      vertex $third
+    endloop
+  endfacet
+.
+    }
+  }
+  print STL << ".";
+endsolid Default
+.
+  close STL;
+}
+precondition : CONE_DIM { $this->CONE_DIM==4 }
+precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM==4 }
+precondition : BOUNDED;
+
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

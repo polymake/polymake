@@ -22,7 +22,7 @@
 #include "polymake/Vector.h"
 #include "polymake/Matrix.h"
 #include "polymake/topaz/SimplicialComplex_as_FaceMap.h"
-#include "polymake/topaz/ChainComplex.h"
+#include "polymake/topaz/HomologyComplex.h"
 #include "polymake/topaz/IntersectionForm.h"
 
 namespace polymake { namespace topaz {
@@ -101,20 +101,14 @@ void intersection_form(perl::Object p)
    const Array<cycle_type> Cycles = p.give("CYCLES");
 
    const int d(Cycles.size()-1);
-   if (d%4!=0) {
-      std::ostringstream e;
-      e << "intersection_form: Dimension " << d << " not divisible by 4";
-      throw std::runtime_error(e.str());
-   }
+   if (d%4 != 0)
+      throw std::runtime_error("intersection_form: Dimension " + std::to_string(d) + " not divisible by 4");
 
    const cycle_type::face_list facets(Cycles[d].faces);
    const cycle_type::coeff_matrix signs(Cycles[d].coeffs);
 
-   if (signs.rows() != 1) {
-      std::ostringstream e;
-      wrap(e) << "intersection_form: Expected exactly one top level homology class, found " << signs.rows();
-      throw std::runtime_error(e.str());
-   }
+   if (signs.rows() != 1)
+      throw std::runtime_error("intersection_form: Expected exactly one top level homology class, found " + std::to_string(signs.rows()));
 
    Entire<cycle_type::face_list>::const_iterator f(entire(facets));
    Entire<cycle_type::coeff_matrix::row_type>::const_iterator s(entire(signs[0]));

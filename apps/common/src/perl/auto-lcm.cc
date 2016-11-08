@@ -16,8 +16,9 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
 #include "polymake/Integer.h"
+#include "polymake/client.h"
+#include "polymake/numerical_functions.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -28,5 +29,6 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(lcm_X_X, long, long);
+   FunctionInstance4perl(lcm_X_X, perl::Canned< const Integer >, perl::Canned< const Integer >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

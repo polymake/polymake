@@ -29,7 +29,6 @@
 #include "polymake/Vector.h"
 #include "polymake/PowerSet.h"
 #include "polymake/tropical/moduli_rational.h"
-#include "polymake/tropical/LoggingPrinter.h"
 
 namespace polymake { namespace tropical {
 
@@ -51,7 +50,7 @@ namespace polymake { namespace tropical {
 
 			//Check the trivial cases
 			if(n < 3 || k_sum > n-3) {
-				return CallPolymakeFunction("zero_cycle");
+				return call_function("zero_cycle");
 			}
 
 			//We have to divide each weight by this:
@@ -64,7 +63,7 @@ namespace polymake { namespace tropical {
 				//Compute the weight of the origin
 				Matrix<Rational> norays(1,(n*(n-3))/2 + 2);
 					norays(0,0) = 1;
-				Vector<Set<int> > vertexcone; vertexcone |= scalar2set(0); 
+				Vector<Set<int> > vertexcone; vertexcone |= scalar2set(0);
 				Vector<Integer> singleweight; singleweight |= (Integer::fac(k_sum) / divisor);
 				perl::Object origin(perl::ObjectType::construct<Addition>("Cycle"));
 				origin.take("PROJECTIVE_VERTICES") << norays;
@@ -75,7 +74,7 @@ namespace polymake { namespace tropical {
 
 			// ORDER EXPONENT VECTOR ------------------------------------------------------
 
-			//We have to put the exponent vector in descending order, i.e. we have to apply a permutation to 
+			//We have to put the exponent vector in descending order, i.e. we have to apply a permutation to
 			//the exponents and later to the resulting Pruefer sequence
 			Vector<int> ordered_exponents;
 			Vector<int> permutation;
@@ -95,17 +94,16 @@ namespace polymake { namespace tropical {
 
 			// PRÜFER SEQUENCE COMPUTATION ------------------------------------------------
 
-			//dbgtrace << "Preparing..." << endl;
 
 			//Prepare all variables for the Prüfer sequence computation
 
 			//The vertex we currently try to place in the sequence
-			//More precisely: The vertex is current_vertex + n 
+			//More precisely: The vertex is current_vertex + n
 			int current_vertex = 0;
 			//At [i][j] contains the positions in the sequence (counting from 0)
 			//that we have already tried for the (j+1)-st occurence of vertex i
 			//for the given placement of 0,..,current_vertex-1
-			Vector<Vector<Vector<int> > > placements_tried(n-2-k_sum); 
+			Vector<Vector<Vector<int> > > placements_tried(n-2-k_sum);
 			placements_tried[0] |= Vector<int>();
 			//The current Prüfer sequence (0 = entry we haven't filled yet)
 			Vector<int> current_sequence(2*n - 4 - k_sum);
@@ -119,19 +117,16 @@ namespace polymake { namespace tropical {
 			//This will contain the resulting sequences
 			Matrix<int> result_sequences(0,2*n-4-k_sum);
 
-			//dbgtrace  << "Starting Prüfer sequence computation" << endl;
 
 			while(current_vertex >= 0) {
 
-				//dbgtrace << "Computing next position of vertex " << current_vertex << endl;
 
-				//Find the next free space after the last tried position 
+				//Find the next free space after the last tried position
 				int next_pos = -1;
 				int occurences_so_far = 0;
 				//If the vertex index is too large, we have found a solution
 				if(current_vertex < numbers_needed.dim()) {
 					occurences_so_far = placements_tried[current_vertex].dim()-1;
-					//dbgtrace << "So far: " << occurences_so_far << " occurences" << endl;
 					//If its' the first occurence (or the last vertex), we always take the first free position, so we only
 					//have to look something up, if it's not the first occurence and not the last vertex
 					if(occurences_so_far > 0 && current_vertex < numbers_needed.dim() - 1) {
@@ -144,7 +139,7 @@ namespace polymake { namespace tropical {
 						}
 						else {
 							int last_placements = (placements_tried[current_vertex])[occurences_so_far-1].dim();
-							next_pos = ((placements_tried[current_vertex]) [occurences_so_far-1])[last_placements-1]; 
+							next_pos = ((placements_tried[current_vertex]) [occurences_so_far-1])[last_placements-1];
 						}
 					}
 					//If it is the first occurence, we still have to check if we already tried the first free
@@ -158,11 +153,9 @@ namespace polymake { namespace tropical {
 						next_pos++;
 						if(next_pos >= current_sequence.dim()) break;
 					}while(current_sequence[next_pos] != 0);
-					//dbgtrace << "Next free space: " << next_pos << endl;
 				}
 				else {
 					if(!(Set<int>(current_sequence)).contains(0)) {
-						//dbgtrace << "Found sequence " << current_sequence << endl;
 						result_sequences /= current_sequence;
 					}
 					next_pos = current_sequence.dim();
@@ -171,15 +164,13 @@ namespace polymake { namespace tropical {
 
 
 				//STEP DOWN: If we cannot place the vertex, we go back a step
-				if(next_pos >= current_sequence.dim()) {
-					//dbgtrace << "Stepping down... " << endl;
+				if (next_pos >= current_sequence.dim()) {
 					//Remove placements of the current step
-					if(current_vertex < numbers_needed.dim()) 
+					if (current_vertex < numbers_needed.dim())
 						placements_tried[current_vertex] = placements_tried[current_vertex].slice(
 								~scalar2set(occurences_so_far));
 					//and go back one vertex if this is the first occurence
-					if(occurences_so_far == 0) {
-						//dbgtrace << "Going back one vertex " << endl;
+					if (occurences_so_far == 0) {
 						current_vertex--;
 					}
 
@@ -197,17 +188,15 @@ namespace polymake { namespace tropical {
 				}//END step down
 				//INSERT
 				else {
-					//dbgtrace << "Inserting " << current_vertex + n << endl;
 					//Insert current vertex and recompute number of entries needed
 					current_sequence[next_pos] = current_vertex + n ;
 					numbers_needed[current_vertex] += (weight[next_pos] -1);
 					((placements_tried[current_vertex])[occurences_so_far]) |= next_pos;
-					//dbgtrace << "Still needing " << numbers_needed[current_vertex] << endl;
 					//STEP UP
 					//If we still need entries with this vertex, we try the next placement,
 					//otherwise we go to the next vertex
-					if(numbers_needed[current_vertex] == 0) {
-						current_vertex++;	    
+					if (numbers_needed[current_vertex] == 0) {
+						current_vertex++;
 					}
 					if(current_vertex < numbers_needed.dim()) placements_tried[current_vertex] |= Vector<int>();
 
@@ -216,17 +205,13 @@ namespace polymake { namespace tropical {
 			}//END compute Prüfer sequences
 
 
-			//dbgtrace << "Result before permuting: " << result_sequences << endl;
 			//Now we have to permute the columns of the sequences back according to the reordering on the
 			//exponents
-			//dbgtrace << "Permutation: " << permutation << endl;
 			result_sequences.minor(All,sequence(0,n)) = permuted_inv_cols(result_sequences.minor(All,sequence(0,n)), permutation);
 
-			//dbgtrace << "Result: \n" << result_sequences << endl;
 
 			// MODULI CONE CONVERSION -----------------------------------------------------------
 
-			//dbgtrace << "Computing cones from Pruefer sequences..." << endl;
 
 			//Prepare variables for the tropical fan
 			Matrix<Rational> rays(0, (n*(n-3))/2 + 1);
@@ -240,7 +225,6 @@ namespace polymake { namespace tropical {
 			Matrix<int> E(n-1,n-1);
 			for(int i = 0; i < n-1; i++) {
 				for(int j = i+1; j < n-1; j++) {
-					//dbgtrace << "Setting E(" << i << "," << j << ") = " << nextindex << endl;
 					E(i,j) = nextindex;
 					E(j,i) = nextindex;
 					nextindex++;
@@ -249,20 +233,16 @@ namespace polymake { namespace tropical {
 
 			//Iterate all Pruefer sequences
 			for(int s = 0; s < result_sequences.rows(); s++) {
-				//dbgtrace << "Converting sequence " << result_sequences.row(s) << endl;
 
 				//Convert to partition list
 				Vector<Set<int> > partitions = decodePrueferSequence(result_sequences.row(s),n);
-				//dbgtrace << "Partitions are " << partitions << endl;
 
 				Set<int> newcone;
 
 				//Go through each partition and compute its ray
 				for(int p = 0; p < partitions.dim(); p++) {
-					//dbgtrace << "Computing matroid coordinates of " << partitions[p] << endl;
 					newray.fill(0);
 					for(pm::Subsets_of_k_iterator<const pm::Set<int>& > raypair = entire(all_subsets_of_k(partitions[p],2)); !raypair.at_end(); raypair++) {
-						//dbgtrace << "Computing coordinate of pair " << *raypair << endl;
 						int smaller_index = (*raypair).front();
 						int larger_index = (*raypair).back();
 						newray[ E(smaller_index,larger_index)] = Addition::orientation();
@@ -285,7 +265,6 @@ namespace polymake { namespace tropical {
 
 				}//END iterate partitions
 
-				//dbgtrace << "Corresponding cone is " << newcone << endl;
 
 				//Add the cone
 				cones |= newcone;
@@ -302,7 +281,6 @@ namespace polymake { namespace tropical {
 				}
 				tropical_weights |= (w / divisor);
 
-				//dbgtrace << "Its weight is " << tropical_weights[tropical_weights.dim()-1] << endl;
 
 			}//END iterate sequences
 

@@ -1,7 +1,7 @@
 CREDIT
   Computation of automorphism groups of graphs.
-  Copyright by Brendan McKay.
-  http://cs.anu.edu.au/~bdm/nauty/
+  Copyright by Brendan McKay and Adolfo Piperno.
+  http://pallini.di.uniroma1.it/
 
 # This is a common tag for bliss and this extension
 REPLACE

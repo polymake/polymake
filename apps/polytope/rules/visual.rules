@@ -19,7 +19,7 @@
 # Visualization of a polytope as a graph (if 1d), or as a solid object (if 2d or 3d),
 # or as a Schlegel diagram (4d).
 # @super Visual::Container
-# @relates Polytope
+# @relates objects/Polytope
 
 package Visual::Polytope;
 

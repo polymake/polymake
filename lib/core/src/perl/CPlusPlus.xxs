@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -50,13 +50,13 @@ bool report_position(pTHX_ COP* o)
 
 void raise_exception(pTHX) __attribute__noreturn__;
 
-template <size_t ll> inline
-void raise_exception(pTHX_ const char (&errmsg)[ll]) __attribute__noreturn__;
+inline
+void raise_exception(pTHX_ const polymake::AnyString& errmsg) __attribute__noreturn__;
 
 void raise_exception(pTHX)
 {
    STRLEN l;
-   const char* errmsg=SvPV(ERRSV,l);
+   const char* errmsg=SvPV(ERRSV, l);
    if (l>0 && errmsg[l-1] != '\n') {
       if (!report_position(aTHX_ PL_curcop)) {
          for (PERL_CONTEXT *cx_bottom=cxstack, *cx=cx_bottom+cxstack_ix;
@@ -67,14 +67,14 @@ void raise_exception(pTHX)
    Perl_croak(aTHX_ Nullch);
 }
 
-template <size_t ll> inline
-void raise_exception(pTHX_ const char (&errmsg)[ll])
+inline
+void raise_exception(pTHX_ const polymake::AnyString& errmsg)
 {
-   sv_setpvn(ERRSV, errmsg, ll-1);
+   sv_setpvn(ERRSV, errmsg.ptr, errmsg.len);
    raise_exception(aTHX);
 }
 
-#define GuardedCallImpl(save,expr,restore,cleanup)        \
+#define GuardedCallImpl(save, expr, restore, cleanup)     \
    do {                                                   \
       save;                                               \
       try { expr; restore; break; }                       \
@@ -107,16 +107,17 @@ void raise_exception(pTHX_ const char (&errmsg)[ll])
 
 namespace pm { namespace perl { namespace glue {
 
-HV *FuncDescr_stash=NULL,
-   *TypeDescr_stash=NULL,
-   *User_stash=NULL;
-SV *cur_wrapper_cv=NULL;
-const base_vtbl *cur_class_vtbl=NULL;
-GV *CPP_root=NULL,
-   *PropertyType_nesting_level=NULL,
-   *User_application=NULL,
-   *Debug_level=NULL;
-SV *negative_indices_key=NULL;
+HV *FuncDescr_stash=nullptr,
+   *TypeDescr_stash=nullptr,
+   *User_stash=nullptr,
+   *Object_InitTransaction_stash=nullptr;
+SV *cur_wrapper_cv=nullptr;
+const base_vtbl *cur_class_vtbl=nullptr;
+GV *CPP_root=nullptr,
+   *PropertyType_nesting_level=nullptr,
+   *User_application=nullptr,
+   *Debug_level=nullptr;
+SV *negative_indices_key=nullptr;
 
 int Object_name_index, Object_description_index,
     Object_parent_index, Object_transaction_index, Object_attachments_index,
@@ -124,9 +125,9 @@ int Object_name_index, Object_description_index,
     TypeDescr_pkg_index, TypeDescr_vtbl_index,
     CPPOptions_builtin_index, CPPOptions_descr_index,
     FuncDescr_wrapper_index,
-    PropertyType_pkg_index, PropertyType_cppoptions_index,
+    PropertyType_pkg_index, PropertyType_cppoptions_index, PropertyType_params_index,
     CPP_functions_index, CPP_regular_functions_index, CPP_embedded_rules_index,
-    CPP_duplicate_class_instances_index, CPP_classes_index, CPP_templates_index, CPP_typeids_index,
+    CPP_duplicate_class_instances_index, CPP_classes_index, CPP_builtins_index, CPP_templates_index, CPP_typeids_index,
     CPP_auto_convert_constructor_index, CPP_auto_assignment_index, CPP_auto_conversion_index,
     CPP_auto_assoc_methods_index, CPP_auto_set_methods_index,
     FuncDescr_fill, TypeDescr_fill;
@@ -499,7 +500,7 @@ SV* clone_assoc_container_magic_sv(pTHX_ SV* src)
 # define IsRandomAccessOp(opc) (opc==OP_AELEM || opc==OP_ASLICE)
 #endif
 
-int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy, PM_svt_copy_klen_arg index)
+int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy, I32 index)
 {
    const OPCODE opc=PL_op ? PL_op->op_type : OP_AELEM;   // assume a plain array access when called directly from the callable library
    const container_vtbl* const t=(const container_vtbl*)mg->mg_virtual;
@@ -513,7 +514,7 @@ int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy,
    if (opc==OP_ITER) {
       cix=cxstack_ix;
       cx=cxstack+cix;
-      if (ForLoopArray(cx)==my_av) {
+      if (cx->blk_loop.state_u.ary.ary==my_av) {
          // direct iterating over a C++ container: each loop requires its own iterator
          if (PL_op->op_private & OPpITER_REVERSED) {
             it_index=2;  it_incr=-1;  acct+=2;
@@ -534,7 +535,7 @@ int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy,
                my_av=(AV*)sv;
                mg=SvMAGIC(sv);
                mg->mg_ptr=(char*)obj;
-               ForLoopArray(cx)=my_av;
+               cx->blk_loop.state_u.ary.ary=my_av;
             }
             *(int*)(AvARRAY(my_av))=cix;
             AvARRAY(my_av)[it_index]=it_sv=newSV(0);
@@ -551,7 +552,7 @@ int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy,
       }
 
    } else if (IsRandomAccessOp(opc) && acct->random) {
-      GuardedCallSaveVtbl((acct->random)(obj, 0, index, nsv, sv, (char*)&obj), t);
+      GuardedCallSaveVtbl((acct->random)(obj, 0, index, nsv, sv), t);
       return 1;
    }
 
@@ -596,21 +597,21 @@ int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy,
       /* we are called from av_store (during aassign): nsv carries the RHS value */
       GuardedCallSaveVtbl((t->store_at_ref)(obj, it, index, nsv), t);
    } else {
-      GuardedCallSaveVtbl((acct->deref)(obj, it, index, nsv, sv, (char*)&obj), t);
+      GuardedCallSaveVtbl((acct->deref)(obj, it, index, nsv, sv), t);
    }
    return 1;
 }
 
-int canned_assoc_container_access(pTHX_ SV* obj_sv, MAGIC* mg, SV *val_sv, const char *key, PM_svt_copy_klen_arg klen)
+int canned_assoc_container_access(pTHX_ SV* obj_sv, MAGIC* mg, SV *val_sv, const char *key, I32 klen)
 {
    const container_vtbl* const t=(const container_vtbl*)mg->mg_virtual;
    const container_access_vtbl* const acct=t->acc+(mg->mg_flags & value_read_only);
    char* it=(char*)HvARRAY(obj_sv);
-   GuardedCallSaveVtbl((acct->deref)(0, it, 1, val_sv, obj_sv, (char*)&it), t);
+   GuardedCallSaveVtbl((acct->deref)(0, it, 1, val_sv, obj_sv), t);
    return 1;
 }
 
-int canned_composite_access(pTHX_ SV* sv, MAGIC* mg, SV* nsv, const char *dummy, PM_svt_copy_klen_arg index)
+int canned_composite_access(pTHX_ SV* sv, MAGIC* mg, SV* nsv, const char *dummy, I32 index)
 {
    const composite_vtbl* const t=(const composite_vtbl*)mg->mg_virtual;
    const composite_access_vtbl *acct=t->acc+index;
@@ -622,7 +623,7 @@ int canned_composite_access(pTHX_ SV* sv, MAGIC* mg, SV* nsv, const char *dummy,
          raise_exception(aTHX_ "Attempt to modify a read-only C++ object");
       GuardedCallSaveVtbl((acct->store)(obj, nsv), t);
    } else {
-      GuardedCallSaveVtbl((acct->get[mg->mg_flags & value_read_only])(obj, nsv, sv, (char*)&obj), t);
+      GuardedCallSaveVtbl((acct->get[mg->mg_flags & value_read_only])(obj, nsv, sv), t);
    }
    return 1;
 }
@@ -647,10 +648,10 @@ SV** call_function(pTHX_ SV *cur_wrapper, SV *wrap_sv, SV *func_ptr_sv, SV** SP)
    PUTBACK;
    if (SvFLAGS(func_ptr_sv) & SVp_POK) {
       indirect_wrapper_type wrapper=(indirect_wrapper_type)SvPVX(wrap_sv);
-      GuardedCallSaveCurWrapper(ret=wrapper(SvPVX(func_ptr_sv), SP+1, (char*)&ret), cur_wrapper);
+      GuardedCallSaveCurWrapper(ret=wrapper(SvPVX(func_ptr_sv), SP+1), cur_wrapper);
    } else {
       wrapper_type wrapper=(wrapper_type)SvPVX(wrap_sv);
-      GuardedCallSaveCurWrapper(ret=wrapper(SP+1, (char*)&ret), cur_wrapper);
+      GuardedCallSaveCurWrapper(ret=wrapper(SP+1), cur_wrapper);
    }
    SPAGAIN;
    if (ret) PUSHs(ret);
@@ -838,6 +839,29 @@ int pm_perl_cpp_has_assoc_methods(const MAGIC* mg)
    return ((const container_vtbl*)mg->mg_virtual)->assoc_methods != NULL;
 }
 
+
+// copied from perl-5.10.0/mathoms.c - disappeared in 5.12.0
+// TODO: avoid allocating from heap here
+static
+AV* av_fake(pTHX_ I32 size, SV **strp)
+{
+   SV** ary;
+   AV* const av = (AV*)newSV_type(SVt_PVAV);
+   Newx(ary,size+1,SV*);
+   AvALLOC(av) = ary;
+   Copy(strp,ary,size,SV*);
+   AvREIFY_only(av);
+   AvARRAY(av) = ary;
+   AvFILLp(av) = size - 1;
+   AvMAX(av) = size - 1;
+   while (size--) {
+      assert(*strp);
+      SvTEMP_off(*strp);
+      strp++;
+   }
+   return av;
+}
+
 MODULE = Polymake::Core::CPlusPlus              PACKAGE = Polymake::Core::CPlusPlus
 
 PROTOTYPES: DISABLE
@@ -851,7 +875,7 @@ PPCODE:
 {
    MAGIC *mg=pm_perl_get_cpp_magic(SvRV(obj));
    const base_vtbl* t=(const base_vtbl*)mg->mg_virtual;
-   const value_flags flags= value_flags((SvTRUE(flags_sv) ? value_trusted : value_not_trusted) | value_ignore_magic);
+   const value_flags flags= (SvTRUE(flags_sv) ? value_trusted : value_not_trusted) | value_ignore_magic;
    PUTBACK;
    GuardedCallSaveVtbl((t->assignment)(mg->mg_ptr, value, flags), t);
    XSprePUSH;
@@ -865,8 +889,8 @@ PPCODE:
 {
    MAGIC *mg=pm_perl_get_cpp_magic(SvRV(obj));
    const base_vtbl* t=(const base_vtbl*)mg->mg_virtual;
-   const value_flags flags= value_flags((SvTRUE(ST(items-1)) ? value_trusted : value_not_trusted) | value_ignore_magic);
-   AV *args=Perl_av_fake(aTHX_ items-2, SP+2);
+   const value_flags flags= (SvTRUE(ST(items-1)) ? value_trusted : value_not_trusted) | value_ignore_magic;
+   AV *args=av_fake(aTHX_ items-2, SP+2);
    PUTBACK;
    GuardedCallSaveVtbl((t->assignment)(mg->mg_ptr, sv_2mortal(newRV_noinc((SV*)args)), flags), t);
    XSprePUSH;
@@ -882,7 +906,7 @@ PPCODE:
    MAGIC *mg=pm_perl_get_cpp_magic(SvRV(src));
    const common_vtbl *t=(const common_vtbl*)mg->mg_virtual;
    PUTBACK;
-   GuardedCall(result=(t->to_string)(mg->mg_ptr, NULL));
+   GuardedCall(result=(t->to_string)(mg->mg_ptr));
    XSprePUSH;
    PUSHs(result);
 }
@@ -896,7 +920,7 @@ PPCODE:
    MAGIC *mg=pm_perl_get_cpp_magic(SvRV(src));
    const common_vtbl *t=(const common_vtbl*)mg->mg_virtual;
    PUTBACK;
-   GuardedCallSaveVtbl(result=(t->to_serialized)(mg->mg_ptr, (char*)&src), t);
+   GuardedCallSaveVtbl(result=(t->to_serialized)(mg->mg_ptr), t);
    XSprePUSH;
    PUSHs(result);
 }
@@ -1013,7 +1037,7 @@ PPCODE:
    const composite_vtbl* const t=(const composite_vtbl*)mg->mg_virtual;
    SV *result=sv_newmortal();
    PUTBACK;
-   GuardedCallSaveVtbl((t->acc[CvDEPTH(cv)].get[mg->mg_flags & value_read_only])(mg->mg_ptr, result, src, (char*)&src), t);
+   GuardedCallSaveVtbl((t->acc[CvDEPTH(cv)].get[mg->mg_flags & value_read_only])(mg->mg_ptr, result, src), t);
    XSprePUSH;
    PUSHs(result);
 }
@@ -1065,7 +1089,7 @@ PPCODE:
       XPUSHs(sv_2mortal(newRV_noinc((SV*)newAV())));
    } else {
       int n_trail=items-n_args;
-      SV *trailing=sv_2mortal(newRV_noinc((SV*)Perl_av_fake(aTHX_ n_trail, ++SP)));
+      SV *trailing=sv_2mortal(newRV_noinc((SV*)av_fake(aTHX_ n_trail, ++SP)));
       SETs(trailing);
    }
    PUTBACK;
@@ -1169,7 +1193,9 @@ convert_to_int(proto, obj)
 PPCODE:
 {
    dTARGET;
-   PUSHi(pm::perl::Scalar::convert_to_int(obj));
+   int result;
+   GuardedCall(result=pm::perl::Scalar::convert_to_int(obj));
+   PUSHi(result);
    PERL_UNUSED_ARG(proto);
 }
 
@@ -1180,7 +1206,9 @@ convert_to_float(proto, obj)
 PPCODE:
 {
    dTARGET;
-   PUSHn(pm::perl::Scalar::convert_to_float(obj));
+   double result;
+   GuardedCall(result=pm::perl::Scalar::convert_to_float(obj));
+   PUSHn(result);
    PERL_UNUSED_ARG(proto);
 }
 
@@ -1237,14 +1265,9 @@ demangle(sym)
    const char* sym;
 PPCODE:
 {
-   int status;
-   char* result=abi::__cxa_demangle(sym, NULL, NULL, &status);
-   if (status==0) {
-      XPUSHs(sv_2mortal(newSVpv(result, 0)));
-      free(result);
-   } else {
-      Perl_croak(aTHX_ "__cxa_demangle failed with code %d", status);
-   }
+   dTARGET;
+   std::string s=polymake::legible_typename(sym);
+   PUSHp(s.c_str(), s.size());
 }
 
 MODULE = Polymake::Core::CPlusPlus              PACKAGE = Polymake::Core::CPlusPlus::Iterator
@@ -1287,7 +1310,7 @@ PPCODE:
    const iterator_vtbl* const t=(const iterator_vtbl*)mg->mg_virtual;
    SV *result;
    PUTBACK;
-   GuardedCallSaveVtbl(result=(t->deref)(mg->mg_ptr,(char*)&t), t);
+   GuardedCallSaveVtbl(result=(t->deref)(mg->mg_ptr), t);
    XSprePUSH;
    PUSHs(result);
 }
@@ -1301,7 +1324,7 @@ PPCODE:
    const iterator_vtbl* const t=(const iterator_vtbl*)mg->mg_virtual;
    SV *result;
    PUTBACK;
-   GuardedCallSaveVtbl(result=(t->deref)(mg->mg_ptr,(char*)&t), t);
+   GuardedCallSaveVtbl(result=(t->deref)(mg->mg_ptr), t);
    XSprePUSH;
    PUSHs(sv_2mortal(newRV(result)));
 }
@@ -1364,7 +1387,7 @@ PPCODE:
    PUTBACK;
    GuardedCall((acct->begin)(it, obj));
    it[acct->obj_size]=1;
-   GuardedCallSaveVtbl((acct->deref)(0, it, -1, key_sv, obj_sv, (char*)&it), t);
+   GuardedCallSaveVtbl((acct->deref)(0, it, -1, key_sv, obj_sv), t);
    XSprePUSH;
    PUSHs(key_sv);
 }
@@ -1382,40 +1405,43 @@ PPCODE:
    char *it=(char*)HvARRAY(obj_sv);
    key_sv=sv_newmortal();
    PUTBACK;
-   GuardedCallSaveVtbl((acct->deref)(0, it, 0, key_sv, obj_sv, (char*)&it), t);
+   GuardedCallSaveVtbl((acct->deref)(0, it, 0, key_sv, obj_sv), t);
    XSprePUSH;
    PUSHs(key_sv);
 }
 
 BOOT:
 {
-   static const char FuncDescr_name[]="Polymake::Core::CPlusPlus::FuncDescr",
-                     TypeDescr_name[]="Polymake::Core::CPlusPlus::TypeDescr",
-                          User_name[]="Polymake::User";
+   static const char FuncDescr_pkg[]="Polymake::Core::CPlusPlus::FuncDescr",
+                     TypeDescr_pkg[]="Polymake::Core::CPlusPlus::TypeDescr",
+                          User_pkg[]="Polymake::User",
+               InitTransaction_pkg[]="Polymake::Core::InitTransaction";
 
    CPP_root=gv_fetchpv("Polymake::Core::CPlusPlus::root", false, SVt_PV);
    PropertyType_nesting_level=gv_fetchpv("Polymake::Core::PropertyType::nesting_level", false, SVt_PV);
    User_application=gv_fetchpv("Polymake::User::application", false, SVt_PV);
    Debug_level=gv_fetchpv("Polymake::DebugLevel", false, SVt_PV);
-   FuncDescr_stash=gv_stashpvn(FuncDescr_name, sizeof(FuncDescr_name)-1, false);
+   FuncDescr_stash=gv_stashpvn(FuncDescr_pkg, sizeof(FuncDescr_pkg)-1, false);
    FuncDescr_fill=get_sizeof(aTHX_ FuncDescr_stash)-1;
    FuncDescr_wrapper_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::FuncDescr::wrapper", false));
    FuncDescr_func_ptr_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::FuncDescr::func_ptr", false));
    FuncDescr_name_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::FuncDescr::name", false));
-   TypeDescr_stash=gv_stashpvn(TypeDescr_name, sizeof(TypeDescr_name)-1, false);
+   TypeDescr_stash=gv_stashpvn(TypeDescr_pkg, sizeof(TypeDescr_pkg)-1, false);
    TypeDescr_fill=get_sizeof(aTHX_ TypeDescr_stash)-1;
    TypeDescr_pkg_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::TypeDescr::pkg", false));
    TypeDescr_vtbl_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::TypeDescr::vtbl", false));
-   User_stash=gv_stashpvn(User_name, sizeof(User_name)-1, false);
+   User_stash=gv_stashpvn(User_pkg, sizeof(User_pkg)-1, false);
    CPPOptions_builtin_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::Options::builtin", false));
    CPPOptions_descr_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::Options::descr", false));
    PropertyType_pkg_index=CvDEPTH(get_cv("Polymake::Core::PropertyType::pkg", false));
    PropertyType_cppoptions_index=CvDEPTH(get_cv("Polymake::Core::PropertyType::cppoptions", false));
+   PropertyType_params_index=CvDEPTH(get_cv("Polymake::Core::PropertyParamedType::params", false));
    CPP_functions_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::functions", false));
    CPP_regular_functions_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::regular_functions", false));
    CPP_embedded_rules_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::embedded_rules", false));
    CPP_duplicate_class_instances_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::duplicate_class_instances", false));
    CPP_classes_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::classes", false));
+   CPP_builtins_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::builtins", false));
    CPP_templates_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::templates", false));
    CPP_typeids_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::typeids", false));
    CPP_auto_convert_constructor_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::auto_convert_constructor", false));
@@ -1435,6 +1461,7 @@ BOOT:
    Object_parent_index=CvDEPTH(get_cv("Polymake::Core::Object::parent", false));
    Object_transaction_index=CvDEPTH(get_cv("Polymake::Core::Object::transaction", false));
    Object_attachments_index=CvDEPTH(get_cv("Polymake::Core::Object::attachments", false));
+   Object_InitTransaction_stash=gv_stashpvn(InitTransaction_pkg, sizeof(InitTransaction_pkg)-1, TRUE);
 
    CvLVALUE_on(get_cv("Polymake::Core::CPlusPlus::Iterator::hidden", false));
    CvMETHOD_on(get_cv("Polymake::Core::CPlusPlus::convert_to_int", false));

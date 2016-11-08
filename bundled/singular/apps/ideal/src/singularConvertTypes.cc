@@ -26,20 +26,24 @@ static coeffs singular_rational = NULL;
 // Convert a Singular number to a GMP rational.
 Rational convert_number_to_Rational(number n, ring ring)
 {
-   if(rField_is_Q(ring)){
-      if(SR_HDL(n) & SR_INT){
-         long l = SR_TO_INT(n);
-         return Rational(l, 1);
+   Rational result;
+   if (rField_is_Q(ring)) {
+      if (SR_HDL(n) & SR_INT) {
+         result = SR_TO_INT(n);
       } else {
-         switch(n->s){
+         switch (n->s) {
             case 0:
-               return Rational(n->z, n->n);
             case 1:
-               return Rational(n->z, n->n);
+               result.copy_from(n->z, n->n);
+               break;
             case 3:
-               return Rational(n->z);
+               result.copy_from(n->z);
+               break;
+            default:
+               throw std::runtime_error("unexpected number type");
          }
       }
+      return result;
    }
    throw std::runtime_error("I can has number? :P");
 }

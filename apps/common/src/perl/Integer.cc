@@ -16,9 +16,24 @@
 
 ///==== this line controls the automatic file splitting: max.instances=60
 
+#include "polymake/Integer.h"
+#include "polymake/Rational.h"
 #include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1>
+   FunctionInterface4perl( new_X, T0,T1 ) {
+      perl::Value arg0(stack[1]);
+      WrapperReturnNew(T0, (arg0.get<T1>()) );
+   };
+
+   OperatorInstance4perl(Binary_add, perl::Canned< const pm::RationalParticle<true, pm::Integer> >, perl::Canned< const pm::RationalParticle<false, pm::Integer> >);
+   OperatorInstance4perl(Binary_sub, perl::Canned< const pm::RationalParticle<true, pm::Integer> >, perl::Canned< const pm::RationalParticle<false, pm::Integer> >);
+   FunctionInstance4perl(new_X, Integer, perl::Canned< const pm::RationalParticle<true, pm::Integer> >);
+   FunctionInstance4perl(new_X, Integer, perl::Canned< const pm::RationalParticle<false, pm::Integer> >);
+   OperatorInstance4perl(Binary_mod, perl::Canned< const Integer >, long);
+   OperatorInstance4perl(Binary_mod, long, perl::Canned< const Integer >);
+   OperatorInstance4perl(Binary__gt, int, perl::Canned< const Integer >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -18,21 +18,21 @@
 #define POLYMAKE_RANDOM_SPHERE_POINTS_H
 
 #include "polymake/RandomGenerators.h"
+#include <cmath>
 
 namespace pm {
 
+using std::log;
+
 /** Generator of floating-point numbers normally distributed in (-1,1).
  *  The algorithm is taken from Donald E. Knuth, The Art of Computer Programming, vol. II, p117.
- *
- *  General case is undefined; specializations are provided for Num=double and AccurateFloat
  */
-template <typename Num=AccurateFloat, typename _dummy=void>
-class NormalRandom;
-
-template <typename Num>
-class NormalRandom<Num, typename enable_if<void, list_contains<list(AccurateFloat,double), Num>::value>::type>
-   : public GenericRandomGenerator<NormalRandom<Num,void>, const Num&> {
+template <typename Num=AccurateFloat>
+class NormalRandom
+   : public GenericRandomGenerator<NormalRandom<Num>, const Num&> {
 public:
+   static_assert(is_among<Num, AccurateFloat, double>::value, "wrong number type");
+
    explicit NormalRandom(const RandomSeed& seed=RandomSeed())
       : uni_src(seed)
    {
@@ -90,6 +90,13 @@ public:
       return point;
    }
 
+   void set_precision(int precision)
+   {
+      static_assert(std::is_same<Num,AccurateFloat>::value, "RandomSpherePoints.set_precision is defined only for AccurateFloat");
+      for(auto&& x: point)
+         x.set_precision(precision);
+   }
+
 protected:
    Vector<Num> point;
    NormalRandom<Num> norm_src;
@@ -98,7 +105,7 @@ protected:
    {
       Num norm;
       do {
-         copy(norm_src.begin(), entire(point));
+         copy_range(norm_src.begin(), entire(point));
          norm = sqr(point);
       } while (norm == 0);        // this occurs with very low probability
       point /= sqrt(norm);

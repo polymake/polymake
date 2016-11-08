@@ -43,5 +43,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(beneath_beyond_T_x_x_x_f16, PuiseuxFraction< Min, Rational, int >);
    FunctionInstance4perl(placing_triangulation_X_o, perl::Canned< const Matrix< Rational > >);
    FunctionInstance4perl(placing_triangulation_X_o, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(placing_triangulation_X_o, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

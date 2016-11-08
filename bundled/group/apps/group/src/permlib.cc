@@ -16,58 +16,97 @@
 
 #include "polymake/client.h"
 #include "polymake/group/permlib.h"
-#include "polymake/Array.h"
-#include "polymake/Set.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/ListMatrix.h"
-#include "polymake/hash_map"
 
 #include "polymake/group/permlib_helpers.h"
 
 #include "permlib/export/bsgs_schreier_export.h"
-#include "permlib/generator/bsgs_generator.h"
 
 namespace polymake { namespace group {
 
-   void perlgroup_from_group(const PermlibGroup& permlib_group, perl::Object group) {
-      using namespace permlib::exports;
-      BSGSSchreierExport exp;
-      BSGSSchreierData* data = exp.exportData(*permlib_group.get_permlib_group());
-      
-      Array<Array<int> > transversals = arrays2PolymakeArray(data->transversals, data->baseSize, data->n);
-      Array<Array<int> > sgs = arrays2PolymakeArray(data->sgs, data->sgsSize, data->n);
-      Array<int> base = array2PolymakeArray(data->base, data->baseSize);
-      delete data;
-      
-      group.take("STRONG_GENERATORS") << sgs;
-      group.take("BASE") << base;
-      group.take("TRANSVERSALS") << transversals;
-   }
-   
-   void perlgroup_from_generators(const Array< Array<int> >& generators, perl::Object group) {
-      PermlibGroup permlib_group(generators);
-      perlgroup_from_group(permlib_group, group);
-   }
+namespace {
 
-   PermlibGroup group_from_perlgroup(perl::Object group) {
-      using namespace permlib::exports;
-
-      Array<int> base;
-      Array<Array<int> > sgs;
-      Array<Array<int> > transversals;
-      int n = 0;
+void perl_action_from_group_impl(const PermlibGroup& permlib_group, 
+                                 perl::Object action,
+                                 const std::string& name,
+                                 const std::string& description) 
+{
+   using namespace permlib::exports;
+   BSGSSchreierExport exp;
+   BSGSSchreierData* data = exp.exportData(*permlib_group.get_permlib_group());
       
-      // If group has a BSGS in perl, use it for C++.
-      // Otherwise, compute BSGS from scratch (ie. from GENERATORS).
-      if ((group.lookup("BASE") >> base) && 
-          (group.lookup("STRONG_GENERATORS") >> sgs) &&
-          (group.lookup("TRANSVERSALS") >> transversals))
+   Array<Array<int>> transversals = arrays2PolymakeArray(data->transversals, data->baseSize, data->n);
+   Array<Array<int>> sgs = arrays2PolymakeArray(data->sgs, data->sgsSize, data->n);
+   Array<int> base = array2PolymakeArray(data->base, data->baseSize);
+   delete data;
+
+   action.take("STRONG_GENERATORS") << sgs;
+   action.take("BASE") << base;
+   action.take("TRANSVERSALS") << transversals;
+
+   if (name.length())        action.set_name(name);
+   if (description.length()) action.set_description() << description;
+}
+
+} // end anonymous namespace
+
+Array<Array<int>>
+generators_from_permlib_group(const PermlibGroup& permlib_group)
+{
+   using namespace permlib::exports;
+   BSGSSchreierExport exp;
+   BSGSSchreierData* data = exp.exportData(*permlib_group.get_permlib_group());
+   Array<Array<int>> sgs = arrays2PolymakeArray(data->sgs, data->sgsSize, data->n);
+   delete data;
+   return sgs;
+}
+
+perl::Object perl_action_from_group(const PermlibGroup& permlib_group,
+                                    const std::string& name,
+                                    const std::string& description) {
+   perl::Object pa("group::PermutationAction");
+   perl_action_from_group_impl(permlib_group, pa, name, description);
+   return pa;
+}
+
+void perl_action_from_generators(const Array<Array<int>>& generators,
+                                 perl::Object action,
+                                 perl::OptionSet options) {
+   const std::string name = options["name"];
+   const std::string description = options["description"];
+   perl_action_from_group_impl(PermlibGroup(generators), action, name, description);
+}
+
+
+perl::Object perl_group_from_group(const PermlibGroup& permlib_group,
+                                   const std::string& name,
+                                   const std::string& description) {
+   perl::Object G("group::Group");
+   G.take("PERMUTATION_ACTION") << perl_action_from_group(permlib_group, name, description);
+   return G;
+}
+  
+
+
+PermlibGroup group_from_perl_action(perl::Object action) {
+   using namespace permlib::exports;
+
+   Array<int> base;
+   Array<Array<int>> sgs;
+   Array<Array<int>> transversals;
+   int n = 0;
+      
+   // If group has a BSGS in perl, use it for C++.
+   // Otherwise, compute BSGS from scratch (ie. from GENERATORS).
+   if ((action.lookup("BASE") >> base) && 
+       (action.lookup("STRONG_GENERATORS") >> sgs) &&
+       (action.lookup("TRANSVERSALS") >> transversals))
       {
-         if ( !(group.lookup("DEGREE") >> n) ) {
+         if ( !(action.lookup("DEGREE") >> n) ) {
             if (sgs.size() > 0) {
                n = sgs[0].size();
             } else {
-               throw std::runtime_error("group_from_perlgroup: could not compute DEGREE for trivial group");
+               throw std::runtime_error("group_from_perl_action: could not compute DEGREE for trivial group");
             }
          }
          
@@ -85,58 +124,45 @@ namespace polymake { namespace group {
          boost::shared_ptr<permlib::PermutationGroup> perm_group(imp.importData(&data));
          return PermlibGroup(perm_group);
       }
-      else
+   else
       {
-         Array<Array<int> > generators;
-         group.give("GENERATORS") >> generators;
+         Array<Array<int>> generators;
+         action.give("STRONG_GENERATORS | GENERATORS") >> generators;
          return PermlibGroup(generators);
       }
-   }
+}
 
 
 /* helpers */  
 
-    perl::Object group_from_permlib_cyclic_notation(const Array<std::string>& cyc_not, int degree){
-      Array< Array<int> > parsed_generators;
-      PermlibGroup permlib_group = PermlibGroup::permgroup_from_cyclic_notation(cyc_not,degree,parsed_generators);
-      perl::Object group("Group");
-      perlgroup_from_group(permlib_group, group);
-      group.take("GENERATORS") << parsed_generators;      
-      group.take("DEGREE") << degree;
-      return group;
-    }
+perl::Object group_from_permlib_cyclic_notation(const Array<std::string>& cyc_not, int degree) {
+   Array<Array<int>> parsed_generators;
+   const PermlibGroup permlib_group = PermlibGroup::permgroup_from_cyclic_notation(cyc_not, degree, parsed_generators);
+   perl::Object action(perl_action_from_group(permlib_group));
+   action.take("GENERATORS") << parsed_generators;      
+   action.take("DEGREE") << degree;
+   perl::Object G("Group");
+   G.take("PERMUTATION_ACTION") << action;
+   return G;
+}
     
-    std::string group_to_cyclic_notation(perl::Object group){
-       Array<Array<int> > generators;
-       group.give("GENERATORS") >> generators;
-       std::stringstream ss;
-       int count = generators.size()-1;
-       for (Entire< Array< Array <int> > >::const_iterator perm = entire(generators); !perm.at_end(); ++perm){
-          boost::scoped_ptr<permlib::Permutation> gen(new permlib::Permutation((*perm).begin(),(*perm).end()));
-          ss << *gen;
-          if (count > 0)
-             ss << ",\n";
-          --count;
-       }
-       if (generators.size() == 0) {
-          ss << "()";
-       }
-       return ss.str();
-    }
-
-    perl::Object correct_group_from_permlib_group(perl::Object group, const PermlibGroup& permlib_group) {
-      perl::Object correct_group(group.type());
-      if (group.type().isa("group::GroupOfCone")||group.type().isa("group::GroupOfPolytope")){
-         correct_group.take("DOMAIN") << group.give("DOMAIN");
-      }
-      perlgroup_from_group(permlib_group, correct_group);
-      correct_group.take("GENERATORS") << permlib_group.strong_gens();
-      correct_group.set_name(group.name());
-      correct_group.set_description(group.description());
-      return correct_group;
-    }
-
-
+std::string action_to_cyclic_notation(perl::Object action) {
+   Array<Array<int>> generators;
+   action.give("STRONG_GENERATORS | GENERATORS") >> generators;
+   std::stringstream ss;
+   int count = generators.size()-1;
+   for (Entire<Array<Array<int>> >::const_iterator perm = entire(generators); !perm.at_end(); ++perm) {
+      boost::scoped_ptr<permlib::Permutation> gen(new permlib::Permutation((*perm).begin(),(*perm).end()));
+      ss << *gen;
+      if (count > 0)
+         ss << ",\n";
+      --count;
+   }
+   if (generators.size() == 0) {
+      ss << "()";
+   }
+   return ss.str();
+}
 
 
 
@@ -144,167 +170,139 @@ namespace polymake { namespace group {
 
    //action on DOMAIN
    //constructor for permlib::PermutationGroup(Transversals,Base,SG) would be good!!!
-   Array< Set<int> > orbits_of_domain(perl::Object group){
-      PermlibGroup group_of_cone = group_from_perlgroup(group);
-      return group_of_cone.orbits();
+Array<hash_set<int>> orbits_of_action(perl::Object action) {
+   return group_from_perl_action(action).orbits();
+}
+
+namespace {  
+
+/*
+  The following function takes an action of a permutation group and a matrix as arguments, and 
+  an action functional class as a template parameter.
+
+  The permutation action acts on the columns of the matrix via the action functional class,
+  and the following function calculates the orbits of the action that is induced on the rows.
+
+  The main use cases are:
+
+     DomainType =      Set<int>,
+     DomainContainer = IncidenceMatrix<>,
+     Action =          SetOfIndicesAction<permlib::Permutation>
+
+  and
+
+     DomainType =      Vector<Scalar>
+     DomainContainer = GenericMatrix<MatrixTop, Scalar>
+     Action =          CoordinateAction<permlib::Permutation,Scalar>
+*/    
+template<typename DomainType, typename DomainContainer, typename Action>
+Array<hash_set<int>> orbits_of_induced_action_impl(perl::Object action, const DomainContainer& container) {
+   const PermlibGroup group_of_cone = group_from_perl_action(action);
+   hash_map<DomainType, int> index_of;
+   std::vector<DomainType> domain_list;
+   domain_list.reserve(container.rows());
+   int i(0);
+   for (typename Entire<Rows<DomainContainer>>::const_iterator cit=entire(rows(container)); !cit.at_end(); ++cit, ++i) {	
+      domain_list.push_back(*cit);
+      index_of[*cit] = i;
    }
 
-   template<class PERM>
-   struct SetOfIndicesAction {
-      Set<int> operator()(const PERM& p, const Set<int>& s) {
-         Set<int> ret;
-         for( Entire< Set<int> >::const_iterator index = entire(s); !index.at_end(); ++index) {
-            ret+=p.at(*index);
-         }
-         return ret;
+   typedef typename std::list<boost::shared_ptr<permlib::OrbitSet<permlib::Permutation, DomainType>> > OrbitListType;
+
+   const OrbitListType olist = permlib::orbits<DomainType, Action>(*(group_of_cone.get_permlib_group()), domain_list.begin(), domain_list.end());
+
+   Array<hash_set<int>> induced_orbits(olist.size()); 
+   Entire<Array<hash_set<int>> >::iterator ioit (entire(induced_orbits));
+   for (typename OrbitListType::const_iterator orbit = olist.begin(); orbit != olist.end(); ++orbit, ++ioit) {
+      hash_set<int> one_orbit;
+      for (typename permlib::OrbitSet<permlib::Permutation, DomainType>::const_iterator orb_it=(*orbit)->begin(); orb_it != (*orbit)->end(); ++orb_it) {
+         one_orbit += index_of.at(*orb_it); // this will throw if *orb_it isn't in the orbit already, which means the action would be undefined
       }
-   };
-  
-    //action on set of domain indices
-   Array< Set<int> > orbits_induced_action(perl::Object group,const IncidenceMatrix<>& inc_mat){
-      PermlibGroup group_of_cone = group_from_perlgroup(group);
+      *ioit = one_orbit;
+   }    
 
-      hash_map<Set<int>, int> inc_mat_rows; //to look up the index in inc_mat belonging to the set orbit_set
-      std::list<Set<int> > sets_of_indices;
-      for (Entire< Rows< IncidenceMatrix<> > >::const_iterator set=entire(rows(inc_mat)); !set.at_end(); ++set){	
-         sets_of_indices.push_back(*set);
-         inc_mat_rows[*set]=set->index();
+   return induced_orbits;      
+}
+
+} // end anonymous namespace
+
+
+Array<hash_set<int>> orbits_of_induced_action_incidence(perl::Object action, const IncidenceMatrix<>& container) {
+   return orbits_of_induced_action_impl<Set<int>, IncidenceMatrix<>, SetOfIndicesAction<permlib::Permutation>>(action, container);
+}
+
+template<typename Scalar, typename MatrixTop>
+Array<hash_set<int>> orbits_of_coordinate_action(perl::Object action, const GenericMatrix<MatrixTop, Scalar>& container) {
+   return orbits_of_induced_action_impl<Vector<Scalar>, GenericMatrix<MatrixTop, Scalar>, CoordinateAction<permlib::Permutation, Scalar>>(action, container);
+}
+
+
+//wrapper for orbits_in_orbit_order_impl, returns ListReturn instead of Pair
+template <typename MatrixTop, typename Scalar>
+perl::ListReturn orbits_in_orbit_order(perl::Object coordinate_action, const GenericMatrix<MatrixTop, Scalar>& mat)
+{
+   const std::pair<ListMatrix<Vector<Scalar>> , Array<hash_set<int>>> sub_result(orbits_in_orbit_order_impl(coordinate_action, mat));
+   perl::ListReturn result;
+   result << sub_result.first
+          << sub_result.second;
+   return result;  
+}
+
+
+//test whether one vector is in the orbit of another vector (coordinate action)
+template <typename Scalar>
+bool are_in_same_orbit(perl::Object action, const Vector<Scalar>& vec1, const Vector<Scalar>& vec2) {
+   typedef permlib::OrbitSet<permlib::Permutation,Vector<Scalar>> VecOrbit;
+
+   PermlibGroup group_of_cone = group_from_perl_action(action);
+   boost::shared_ptr<VecOrbit> o(new VecOrbit());
+      
+   if (vec1.size() <= group_of_cone.degree() || vec2.size() <= group_of_cone.degree())
+      throw std::runtime_error("are_in_same_orbit: the dimension of the vectors must be equal to the degree of the group!");
+
+   //orbit computation
+   o->orbit(vec2, group_of_cone.get_permlib_group()->S, CoordinateAction<permlib::Permutation,Scalar>());
+
+   for (typename VecOrbit::const_iterator orb_it=o->begin(); orb_it!=o->end(); ++orb_it) {
+      if (*orb_it == vec1) {
+         return true;
       }
-      std::list<boost::shared_ptr<permlib::OrbitSet<permlib::Permutation,Set<int> > > > o = permlib::orbits<Set<int>, SetOfIndicesAction<permlib::Permutation> >(*(group_of_cone.get_permlib_group()), sets_of_indices.begin(), sets_of_indices.end());
-
-      Array< Set<int> > induced_orbits(o.size()); 
-      std::list<boost::shared_ptr<permlib::OrbitSet<permlib::Permutation,Set<int> > > >::const_iterator orbit;
-      int count=0;
-      for (orbit=o.begin(); orbit != o.end(); ++orbit){
-         Set<int> one_orbit;
-         permlib::OrbitSet<permlib::Permutation,Set<int> >::const_iterator orb_it; 
-         for (orb_it=(*orbit)->begin();orb_it!=(*orbit)->end();++orb_it){
-            Set<int> orbit_set=*orb_it; //one set contained in the orbit	  
-            one_orbit+=inc_mat_rows[orbit_set];
-         }
-         induced_orbits[count]=one_orbit;
-         ++count;
-      }    
-
-      return induced_orbits;      
    }
+   return false;
+}
 
 
-
-    //FIXME: almost the same as orbits_induced_action, maybe join to one function? too many templates...
-   template <typename MatrixTop, typename Scalar>
-   Array< Set<int> > orbit_coord_action(perl::Object group,const GenericMatrix<MatrixTop, Scalar>& mat){
-      PermlibGroup group_of_cone = group_from_perlgroup(group);
-      
-      if (mat.cols() <= group_of_cone.degree())
-         throw std::runtime_error("orbit_coord_action: group/matrix dimension mismatch: group degree greater than #(number of matrix columns)-1");
-
-      hash_map<Vector<Scalar>, int> mat_rows; //to look up the index in mat belonging to the image of vec
-      typename std::list< Vector<Scalar> > vectors;
-      int i=0;
-      for (typename Entire< Rows<MatrixTop> >::const_iterator vec=entire(rows(mat.top())); !vec.at_end(); ++vec){
-         vectors.push_back(*vec);
-         //mat_rows[*vec]=vec->index();
-         mat_rows[*vec]=i;
-         ++i;
-      }
-      typename std::list<boost::shared_ptr<permlib::OrbitSet<permlib::Permutation,Vector<Scalar> > > > o = permlib::orbits<Vector<Scalar>, CoordinateAction<permlib::Permutation,Scalar> >(*(group_of_cone.get_permlib_group()), vectors.begin(), vectors.end());
-      Array< Set<int> > coord_act_orbits(o.size()); 
-      typename std::list<boost::shared_ptr<permlib::OrbitSet<permlib::Permutation,Vector<Scalar> > > >::const_iterator orbit;
-      int count=0;
-      for (orbit=o.begin(); orbit != o.end(); ++orbit){
-         Set<int> one_orbit;
-         typename permlib::OrbitSet<permlib::Permutation,Vector<Scalar> >::const_iterator orb_it; 
-         for (orb_it=(*orbit)->begin();orb_it!=(*orbit)->end();++orb_it){
-            Vector<Scalar> vec_in_orbit=*orb_it; //one vector contained in the orbit	  
-            one_orbit+=mat_rows[vec_in_orbit];
-         }
-         coord_act_orbits[count]=one_orbit;
-         ++count;
-      }    
-
-      return coord_act_orbits;  
-    }
-
-
-    //wrapper for orbits_coord_action_complete_sub, returns ListReturn instead of Pair
-    template <typename MatrixTop, typename Scalar>
-    perl::ListReturn orbits_coord_action_complete(perl::Object group,const GenericMatrix<MatrixTop, Scalar>& mat)
-    {
-      const std::pair< ListMatrix< Vector<Scalar> > , Array< Set<int> > > sub_result(orbits_coord_action_complete_sub(group,mat));
-      perl::ListReturn result;
-      result << sub_result.first
-             << sub_result.second;
-      return result;  
-    }
-
-
-    //test whether one vector is in the orbit of another vector (coordinate action)
-    template <typename Scalar>
-    bool are_in_same_orbit(perl::Object group, const Vector<Scalar>& vec1, const Vector<Scalar>& vec2) {
-      typedef permlib::OrbitSet<permlib::Permutation,Vector<Scalar> > VecOrbit;
-
-      bool answer=false;
-      PermlibGroup group_of_cone = group_from_perlgroup(group);
-      boost::shared_ptr<VecOrbit> o(new VecOrbit());
-      
-      if (vec1.size() <= group_of_cone.degree() || vec2.size() <= group_of_cone.degree())
-         throw std::runtime_error("are_in_same_orbit: the dimension of the vectors must be equal to the degree of the group!");
-
-      //orbit computation
-      o->orbit(vec2, group_of_cone.get_permlib_group()->S, CoordinateAction<permlib::Permutation,Scalar>());
-
-      for (typename VecOrbit::const_iterator orb_it=o->begin(); orb_it!=o->end(); ++orb_it) {
-         if (*orb_it == vec1){
-            answer=true;
-            break;
-         }
-      }
-      return answer;
-    }
-
-
-    // compute all group elements
-    Array<Array<int> > all_group_elements( perl::Object group ) {
-      using namespace permlib;
-      
-      std::list< Array<int> > all_elements;
-      PermlibGroup perm_group = group_from_perlgroup(group);
-      BSGSGenerator<TRANSVERSAL> bsgsGen(perm_group.get_permlib_group()->U);
-      while (bsgsGen.hasNext()) {
-	const PERMUTATION p = bsgsGen.next();
-	Array<int> perm = PermlibGroup::perm2Array(p);
-	all_elements.push_back(perm);
-      }
-      Array<Array<int> > all_elements_array(all_elements);
-      return all_elements_array;
-    } 
+// compute all group elements
+Array<Array<int>>
+all_group_elements(perl::Object action) {
+   return Array<Array<int>>(all_group_elements_impl(group_from_perl_action(action)));
+} 
 
 
 /* stabilizer computations */    
 
-    perl::Object stabilizer_of_set (perl::Object group, const Set<int>& set) {
-      PermlibGroup permlib_group = group_from_perlgroup(group);
-      PermlibGroup permlib_stab(permlib_group.setwise_stabilizer(set));
-      perl::Object stab = correct_group_from_permlib_group(group,permlib_stab);
-      stab.set_name("set stabilizer");
-      stab.set_description() << "Stabilizer of " << set << endl;
-      return stab;
-    }
+perl::Object stabilizer_of_set (perl::Object action, const Set<int>& set) {
+   PermlibGroup permlib_group = group_from_perl_action(action);
+   PermlibGroup permlib_stab(permlib_group.setwise_stabilizer(set));
+   perl::Object stab = perl_group_from_group(permlib_stab);
+   stab.set_name("set stabilizer");
+   stab.set_description() << "Stabilizer of " << set << endl;
+   return stab;
+}
 
-    template< typename Scalar >
-    perl::Object stabilizer_of_vector (perl::Object group, const Vector<Scalar>& vec) {
-      int deg=group.give("DEGREE");
-      if(deg!=vec.size()-1){
-         throw std::runtime_error("stabilizer_of_vector: the dimension of the vector must be equal to the degree of the group!");
-      }
-      PermlibGroup permlib_group = group_from_perlgroup(group);
-      PermlibGroup permlib_stab(permlib_group.vector_stabilizer(vec));
-      perl::Object stab = correct_group_from_permlib_group(group,permlib_stab);
-      stab.set_name("vector stabilizer");
-      stab.set_description() << "Stabilizer of " << vec << endl;
-      return stab;
-    }
+template<typename Scalar>
+perl::Object stabilizer_of_vector (perl::Object action, const Vector<Scalar>& vec) {
+   const int deg = action.give("DEGREE");
+   if (deg != vec.size()-1) {
+      throw std::runtime_error("stabilizer_of_vector: the dimension of the vector must be equal to the degree of the group!");
+   }
+   PermlibGroup permlib_group = group_from_perl_action(action);
+   PermlibGroup permlib_stab(permlib_group.vector_stabilizer(vec));
+   perl::Object stab = perl_group_from_group(permlib_stab);
+   stab.set_name("vector stabilizer");
+   stab.set_description() << "Stabilizer of " << vec << endl;
+   return stab;
+}
 
 
 /****************************************************************
@@ -312,81 +310,78 @@ user functions
 ****************************************************************/
 
 UserFunction4perl("# @category Utilities"
-                  "# Computes the basic properties [[Group::BASE|BASE]], "
-                  "# [[Group::STRONG_GENERATORS|STRONG_GENERATORS]], and [[Group::TRANSVERSALS|TRANSVERSALS]] "
-                  "# and stores the result in the given [[Group]] object //group//."
+                  "# Computes groups with a permutation action with the basic properties [[PermutationAction::BASE|BASE]], "
+                  "# [[PermutationAction::STRONG_GENERATORS|STRONG_GENERATORS]], and [[PermutationAction::TRANSVERSALS|TRANSVERSALS]]."
                   "# @param Array<Array<Int>> gens some generators of the group"
-                  "# @param Group group to fill in the data",
-                  &perlgroup_from_generators, "group_from_generators(Array Group)");
+                  "# @param Group action the generated action",
+                  &perl_action_from_generators, "action_from_generators(Array<Array<Int>>, PermutationAction, { name=>'', description=>'action defined from generators' })");
 
 
 /*orbit computations*/  
 
 UserFunction4perl("# @category Orbits"
-                  "# Computes the orbits of the basic set under //group//. "
-                  "# @param Group group a group of a cone"
-                  "# @return Array ",
-                  &orbits_of_domain,"orbits_of_domain(Group)");
+                  "# Computes the orbits of the basic set under //a//. "
+                  "# @param PermutationAction a a permutation action of a group"
+                  "# @return Array<Set<Int>>",
+                  &orbits_of_action, "orbits_of_action(PermutationAction)");
 
 
 UserFunction4perl("# @category Orbits"
                   "# Computes the orbits of a set on which an action is induced."
                   "# The incidences between the domain elements and the elements"
                   "# in the set are given by an incidence matrix //inc//."
-                  "# @param Group group a group of a cone"
+                  "# @param PermutationAction action an action of group"
                   "# @param IncidenceMatrix inc the incidences between domain elements"
                   "#    and elements on which an action is induced"
-                  "# @return Array an array of the orbits of the induced action",
-                  &orbits_induced_action,"orbits_induced_action(Group,IncidenceMatrix)");
+                  "# @return Array<Set<Int>> an array of the orbits of the induced action",
+                  &orbits_of_induced_action_incidence, "orbits_of_induced_action(PermutationAction, IncidenceMatrix)");
 
 
 UserFunctionTemplate4perl("# @category Orbits"
-            "# Computes the orbits of the vectors (homogenized) of a matrix //mat// by"
+            "# Computes the orbits of the vectors (homogenized) of the rows of a matrix //M// by"
             "# permuting the coordinates of the vectors (skipping the homogenizing coordinate)."
-            "# The group must act on the set of vectors. Choose the function"
-            "# 'orbits_coord_action_complete' if your set is not complete."
-            "# @param Group group a group acting on the cone by permuting the coordinates"
-            "# @param Matrix<Scalar> mat a matrix with vectors on which the group acts by "
+            "# The group must act on the set of vectors, and the rows of the matrix must contain the entire orbit."
+            "# @param PermutationAction a an action of a group acting by permuting the coordinates"
+            "# @param Matrix<Scalar> M a matrix on whose columns the group acts by "
             "#    coordinate permutation"
-            "# @return Array an array of the orbits under the action on the coordinates",
-            "orbit_coord_action(Group,Matrix)");
+            "# @return Array<Set<Int>> an array of the orbits under the action on the coordinates",
+            "orbits_of_coordinate_action<Scalar>(PermutationAction, Matrix<Scalar>)");
 
 
 UserFunctionTemplate4perl("# @category Orbits"
-            "# Computes the orbit of the set of all vectors of the matrix //mat//"
-            "# under //group//, which acts by permuting coordinates."
-            "# The set of vectors does not have to be complete."
-            "# @param Group group a group of coordinate permutations"
+            "# Computes the orbit of the rows of the matrix //mat//"
+            "# under the permutation action on coordinates //action//."
+            "# @param PermutationAction action an action of a group of coordinate permutations"
             "# @param Matrix<Scalar> mat some input vectors"
-            "# @return List( Matrix all generated vectors, Array orbits of generated vectors)",
-            "orbits_coord_action_complete(Group,Matrix)");
+            "# @return List( Matrix generated vectors in orbit order, Array orbits of generated vectors)",
+            "orbits_in_orbit_order(PermutationAction, Matrix)");
 
 
 UserFunctionTemplate4perl("# @category Utilities"
             "# Compute all elements of a given //group//."
-            "# @param Group group the permutation group"
+            "# @param PermutationAction action the action of a permutation group"
             "# @return Array<Array<Int> contains all group elements ",
-            "all_group_elements(Group)");
+            "all_group_elements(PermutationAction)");
 
 
 UserFunctionTemplate4perl("# @category Orbits"
             "# Checks whether vector //vec1// and //vec2// are in the same orbit"
             "# with respect to the (coordinate) action of //group//." 
-            "# @param Group group the permutation group acting on coordinates"
+            "# @param PermutationAction action the permutation group acting on coordinates"
             "# @param Vector vec1"
             "# @param Vector vec2"
             "# @return Bool",
-            "are_in_same_orbit(Group,Vector,Vector)");
+            "are_in_same_orbit(PermutationAction,Vector,Vector)");
 
 /*stabilizer computations*/  
 
 UserFunction4perl("# @category Producing a group"
                   "# Computes the subgroup of //group// which stabilizes"
                   "# the given set of indices //set//."
-                  "# @param Group group a permutation group"
+                  "# @param PermutationAction action the action of a permutation group"
                   "# @param Set set the set to be stabilized"
                   "# @return Group the stabilizer of //set// w.r.t. //group//",
-                  &stabilizer_of_set,"stabilizer_of_set(Group,Set)");
+                  &stabilizer_of_set,"stabilizer_of_set(PermutationAction, Set)");
 
 
 UserFunctionTemplate4perl("# @category Producing a group"
@@ -395,7 +390,7 @@ UserFunctionTemplate4perl("# @category Producing a group"
             "# @param Group group a permutation group"
             "# @param Vector vec the vector to be stabilized"
             "# @return Group the stabilizer of //vec// w.r.t. //group//",
-            "stabilizer_of_vector(Group,Vector)");
+            "stabilizer_of_vector(PermutationAction,Vector)");
 
 
 /*group generation from cyclic notation*/  
@@ -408,16 +403,23 @@ UserFunction4perl("# @category Producing a group"
                   "# @param Array<String> gens generators of the permutation group in permlib cyclic notation"
                   "# @param Int degree the degree of the permutation group"
                   "# @return Group the group generated by //gens//",
-                  &group_from_permlib_cyclic_notation,"group_from_permlib_cyclic_notation(Array $)");
+                  &group_from_permlib_cyclic_notation, "group_from_permlib_cyclic_notation(Array $)");
 
 UserFunction4perl("# @category Utilities"
                   "# Returns group generators in 1-based cyclic notation"
                   "# (GAP like, not permlib like notation)"
-                  "# @param Group g the permutation group"
+                  "# @param PermutationAction a the action of the permutation group"
                   "# @return String group generators, separated by newline and comma",
-                  &group_to_cyclic_notation,"group_to_cyclic_notation(Group)");
+                  &action_to_cyclic_notation, "action_to_cyclic_notation(PermutationAction)");
 
 }
 }
 
+
+
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:
 

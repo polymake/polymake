@@ -18,12 +18,12 @@
 
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/TropicalNumber.h"
-#include "polymake/PuiseuxFraction.h"
 #include "polymake/client.h"
 #include "polymake/linalg.h"
 
@@ -53,5 +53,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(rank_X, perl::Canned< const pm::RowChain<pm::Matrix<double> const&, pm::SparseMatrix<double, pm::NonSymmetric> const&> >);
    FunctionInstance4perl(rank_X, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
    FunctionInstance4perl(rank_X, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
+   FunctionInstance4perl(rank_X, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

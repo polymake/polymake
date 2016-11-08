@@ -104,51 +104,50 @@ use Class::Struct;
 
 sub tree_nodes {
 
-    my ($tree_store, $object, $iter_parent) = @_;
+  my ($tree_store, $object, $iter_parent) = @_;
 
-   foreach my $pv (@{$object->contents}) {
+  foreach my $pv (@{$object->contents}) {
 
-       next if !defined($pv) || $pv->property->flags & $Core::Property::is_non_storable;
+    next if !defined($pv) || $pv->property->flags & $Core::Property::is_non_storable;
 
-       if (instanceof Core::Object($pv)) {
+    if (instanceof Core::Object($pv)) {
        my $iter = $tree_store->append($iter_parent);
        my $name=$pv->property->qual_name;
        my $display_name = $name;
-	 $tree_store->set ($iter,0 => $name, 1 => $display_name);
-	 tree_nodes($tree_store, $pv, $iter);
-       } elsif ($pv->property->flags & $Core::Property::is_multiple) {
-	   my $count = 0;
-	   my @pv_array = @{$pv->values};
-	   my $name = $pv->property->qual_name;
-	   my $length = scalar(@pv_array);
-	   foreach my $val (@pv_array) {
-	       my $iter = $tree_store->append($iter_parent);
-	       my $display_name = $name;
-	       if ($length!=1){
-		   $display_name.="($count)";
-		   $count++;
-	       }
-	       my $multiple_number = $count; # number in display_name+1 !
-	       $tree_store->set ($iter,0 => $name, 1 => $display_name, 2 => $multiple_number);
-	       tree_nodes($tree_store, $val, $iter);
-	   }
-      } elsif (defined($pv->value)) {
-	  my $iter = $tree_store->append($iter_parent);
-	  my $name=$pv->property->qual_name;
-	  my $display_name = $name;
-	  $tree_store->set ($iter,0 => $name, 1 => $display_name);
-      }
-   }
+       $tree_store->set ($iter,0 => $name, 1 => $display_name);
+       tree_nodes($tree_store, $pv, $iter);
+    } elsif ($pv->property->flags & $Core::Property::is_multiple) {
+       my $count = 0;
+       my @pv_array = @{$pv->values};
+       my $name = $pv->property->qual_name;
+       my $length = scalar(@pv_array);
+       foreach my $val (@pv_array) {
+          my $iter = $tree_store->append($iter_parent);
+          my $display_name = $name;
+          if ($length!=1){
+             $display_name.="($count)";
+             $count++;
+          }
+          my $multiple_number = $count; # number in display_name+1 !
+          $tree_store->set ($iter,0 => $name, 1 => $display_name, 2 => $multiple_number);
+          tree_nodes($tree_store, $val, $iter);
+       }
+     } elsif (defined($pv->value) && !($pv->flags & $PropertyValue::is_weak_ref)) {
+       my $iter = $tree_store->append($iter_parent);
+       my $name=$pv->property->qual_name;
+       my $display_name = $name;
+       $tree_store->set ($iter,0 => $name, 1 => $display_name);
+     }
+  }
 
-    #attachments
-    while (my ($name, $at)=each %{$object->attachments}) {
-	my $display_name = '*'.$name;
-	my $is_attachment = 1;
-	
-	my $iter = $tree_store->append($iter_parent);
-	$tree_store->set ($iter,0 => $name, 1 => $display_name, 3 => $is_attachment);
+  #attachments
+  while (my ($name, $at)=each %{$object->attachments}) {
+     my $display_name = '*'.$name;
+     my $is_attachment = 1;
 
-    }
+     my $iter = $tree_store->append($iter_parent);
+     $tree_store->set ($iter,0 => $name, 1 => $display_name, 3 => $is_attachment);
+  }
 
 }
 

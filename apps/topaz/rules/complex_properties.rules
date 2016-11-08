@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitae Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -23,7 +23,7 @@
 #
 # Access methods: //torsion// delivers the list of Z-groups, //betti_number// the number f.
 #
-declare property_type HomologyGroup<Scalar> : c++ (include => "polymake/topaz/ChainComplex.h");
+declare property_type HomologyGroup<Scalar> : c++ (include => "polymake/topaz/HomologyComplex.h");
 
 # @category Topology
 #
@@ -34,7 +34,7 @@ declare property_type HomologyGroup<Scalar> : c++ (include => "polymake/topaz/Ch
 #
 # @tparam Scalar integer type of matrix elements
 
-declare property_type CycleGroup<Scalar> : c++ (include => "polymake/topaz/ChainComplex.h");
+declare property_type CycleGroup<Scalar> : c++ (include => "polymake/topaz/HomologyComplex.h");
 
 # @category Topology
 # TODO: explain the meaning of the fields: parity, positive, negative
@@ -42,16 +42,20 @@ declare property_type IntersectionForm : c++ (include => "polymake/topaz/Interse
 
 object SimplicialComplex {
 
-declare permutation VertexPerm {
-
-   # Transforming vertices from this into basic object.
-   property PERMUTATION : Array<Int>;
-}
+# permuting the vertices
+permutation VertexPerm : PermBase ;
 
 # @category Input property
 # Any description of the faces of a simplicial complex with vertices v_0 < v_1 < v_2 < ... arbitrary.  Redundant faces allowed.
 
-property INPUT_FACES : Array<Set>;
+property INPUT_FACES : Array<Set> {
+
+  # for testing purposes, properties are equivalent regardless of the order
+  sub equal {
+     my ($hf1, $hf2)=map { new HashSet<Set>($_) } @_;
+     $hf1==$hf2;
+  }
+}
 
 # @category Combinatorics
 # Indices of the vertices from [[INPUT_FACES]].  That is, the map i \mapsto v_i.
@@ -99,11 +103,8 @@ rule FACETS : VertexPerm.FACETS, VertexPerm.PERMUTATION {
 }
 weight 1.20;
 
-declare permutation FacetPerm {
-
-   # Transforming [[FACETS]] from this into basic object
-   property PERMUTATION : Array<Int>;
-}
+# permuting the [[FACETS]]
+permutation FacetPerm : PermBase;
 
 rule FacetPerm.PERMUTATION : FacetPerm.FACETS, FACETS {
    $this->FacetPerm->PERMUTATION=find_permutation($this->FacetPerm->FACETS, $this->FACETS);

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -28,14 +28,14 @@ namespace pm {
 
 /// determinant of a matrix
 template <typename E>
-typename enable_if<E, is_field<E>::value>::type
+typename std::enable_if<is_field<E>::value, E>::type
 det(Matrix<E> M)
 {
    const int dim=M.rows();
    if (!dim) return zero_value<E>();
 
    std::vector<int> row_index(dim);
-   copy(entire(sequence(0,dim)), row_index.begin());
+   copy_range(entire(sequence(0, dim)), row_index.begin());
    E result = one_value<E>();
 
    for (int c=0; c<dim; ++c) {
@@ -75,14 +75,14 @@ trace(Matrix<E> M)
    return trace;
 }
 template <typename E>
-typename enable_if<Vector<E>, is_field<E>::value>::type
+typename std::enable_if<is_field<E>::value, Vector<E>>::type
 reduce(Matrix<E> M, Vector<E> V)
 {
    const int n_rows=M.rows();
    const int n_cols=M.cols();
 
    std::vector<int> row_index(n_rows);
-   copy(entire(sequence(0,n_rows)), row_index.begin());
+   copy_range(entire(sequence(0, n_rows)), row_index.begin());
    
    int row=0;
    for (int c=0; c<n_cols && row < n_rows; ++c) {
@@ -135,12 +135,12 @@ reduce(Matrix<E> M, Vector<E> V)
 
 /// matrix inversion
 template <typename E>
-typename enable_if<Matrix<E>, is_field<E>::value>::type
+typename std::enable_if<is_field<E>::value, Matrix<E>>::type
 inv(Matrix<E> M)
 {
    const int dim=M.rows();
    std::vector<int> row_index(dim);
-   copy(entire(sequence(0,dim)), row_index.begin());
+   copy_range(entire(sequence(0, dim)), row_index.begin());
    Matrix<E> u=unit_matrix<E>(dim);
 
    for (int c=0; c<dim; ++c) {
@@ -176,13 +176,13 @@ Matrix<double> inv(Matrix<double> M);
 
 /// solving systems of linear equations
 template <typename E>
-typename enable_if<Vector<E>, is_field<E>::value>::type
+typename std::enable_if<is_field<E>::value, Vector<E>>::type
 lin_solve(Matrix<E> A, Vector<E> b)
 {
    const int m=A.rows(), n=A.cols();
    if (m<n) throw degenerate_matrix();
    std::vector<int> row_index(m);
-   copy(entire(sequence(0,m)), row_index.begin());
+   copy_range(entire(sequence(0, m)), row_index.begin());
 
    for (int c=0; c<n; ++c) {
       int r=c;
@@ -240,7 +240,7 @@ public:
 
 
 Vector<double> lin_solve(Matrix<double> A, Vector<double> b);
-
+Vector<double> eigenvalues(Matrix<double> M);
 Matrix<double> householder_trafo(const Vector<double>& v);
 std::pair< Matrix<double>,Matrix<double> > qr_decomp(Matrix<double> M);
 SingularValueDecomposition singular_value_decomposition(Matrix<double> M);

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,6 +18,7 @@
 #define POLYMAKE_INTERNAL_HASH_ITERATORS_H
 
 #include "polymake/internal/comparators.h"
+#include "polymake/meta_list.h"
 
 namespace pm {
 
@@ -52,32 +53,33 @@ struct iterator_cross_const_helper< std::__detail::_Node_const_iterator<Value,__
 #elif defined(_LIBCPP_VERSION)
 
 template <typename Iterator>
-struct iterator_cross_const_helper<std::__1::__hash_map_iterator<Iterator>,true> {
-   typedef std::__1::__hash_map_iterator<typename iterator_traits<Iterator>::iterator> iterator;
-   typedef std::__1::__hash_map_const_iterator<typename iterator_traits<Iterator>::const_iterator> const_iterator;
+struct iterator_cross_const_helper<std::__hash_map_iterator<Iterator>, true> {
+   typedef std::__hash_map_iterator<typename iterator_traits<Iterator>::iterator> iterator;
+   typedef std::__hash_map_const_iterator<typename iterator_traits<Iterator>::const_iterator> const_iterator;
 };
 template <typename Iterator>
-struct iterator_cross_const_helper<std::__1::__hash_map_const_iterator<Iterator>,true> {
-   typedef std::__1::__hash_map_iterator<typename iterator_traits<Iterator>::iterator> iterator;
-   typedef std::__1::__hash_map_const_iterator<typename iterator_traits<Iterator>::const_iterator> const_iterator;
+struct iterator_cross_const_helper<std::__hash_map_const_iterator<Iterator>, true> {
+   typedef std::__hash_map_iterator<typename iterator_traits<Iterator>::iterator> iterator;
+   typedef std::__hash_map_const_iterator<typename iterator_traits<Iterator>::const_iterator> const_iterator;
 };
 
 template <typename Iterator>
-struct iterator_cross_const_helper<std::__1::__hash_iterator<Iterator>,true> {
-   typedef std::__1::__hash_iterator<typename iterator_traits<Iterator>::iterator> iterator;
-   typedef std::__1::__hash_const_iterator<typename iterator_traits<Iterator>::const_iterator> const_iterator;
+struct iterator_cross_const_helper<std::__hash_iterator<Iterator>, true> {
+   typedef std::__hash_iterator<typename iterator_traits<Iterator>::iterator> iterator;
+   typedef std::__hash_const_iterator<typename iterator_traits<Iterator>::const_iterator> const_iterator;
 };
 template <typename Iterator>
-struct iterator_cross_const_helper<std::__1::__hash_const_iterator<Iterator>,true> {
-   typedef std::__1::__hash_iterator<typename iterator_traits<Iterator>::iterator> iterator;
-   typedef std::__1::__hash_const_iterator<typename iterator_traits<Iterator>::const_iterator> const_iterator;
+struct iterator_cross_const_helper<std::__hash_const_iterator<Iterator>, true> {
+   typedef std::__hash_iterator<typename iterator_traits<Iterator>::iterator> iterator;
+   typedef std::__hash_const_iterator<typename iterator_traits<Iterator>::const_iterator> const_iterator;
 };
 
 #endif
 
-   template <typename Key, typename Params>
+   template <typename Key, typename... TParams>
    struct hash_table_cmp_adapter {
-      typedef typename extract_type_param<Params, Comparator, operations::cmp>::type key_comparator;
+      typedef typename mlist_wrap<TParams...>::type params;
+      typedef typename mtagged_list_extract<params, ComparatorTag, operations::cmp>::type key_comparator;
       typedef operations::cmp2eq<key_comparator, Key> type;
    };
 

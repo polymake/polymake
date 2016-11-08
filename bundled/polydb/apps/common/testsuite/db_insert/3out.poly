@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?pm chk="581b31e2"?>
+
+<object name="cube" type="polytope::Polytope&lt;Rational&gt;" version="3.0.6" xmlns="http://www.math.tu-berlin.de/polymake/#3">
+  <description><![CDATA[cube of dimension 3]]></description>
+  <property name="CONE_AMBIENT_DIM" value="4" />
+  <property name="LINEALITY_SPACE">
+    <m cols="4" />
+  </property>
+  <property name="CONE_DIM" value="4" />
+  <property name="AFFINE_HULL">
+    <m cols="4" />
+  </property>
+  <property name="GRAPH">
+    <object>
+      <property name="CONNECTED" value="true" />
+      <property name="ADJACENCY">
+        <m>
+          <v>1 2 4</v>
+          <v>0 3 5</v>
+          <v>0 3 6</v>
+          <v>1 2 7</v>
+          <v>0 5 6</v>
+          <v>1 4 7</v>
+          <v>2 4 7</v>
+          <v>3 5 6</v>
+        </m>
+      </property>
+      <property name="CONNECTED_COMPONENTS">
+        <m cols="8">
+          <v>0 1 2 3 4 5 6 7</v>
+        </m>
+      </property>
+    </object>
+  </property>
+  <property name="VERTICES_IN_FACETS">
+    <m cols="8">
+      <v>0 2 4 6</v>
+      <v>1 3 5 7</v>
+      <v>0 1 4 5</v>
+      <v>2 3 6 7</v>
+      <v>0 1 2 3</v>
+      <v>4 5 6 7</v>
+    </m>
+  </property>
+  <property name="BOUNDED" value="true" />
+  <property name="FACETS" type="SparseMatrix&lt;Rational, NonSymmetric&gt;">
+    <m cols="4">
+      <v> <e i="0">1</e> <e i="1">1</e> </v>
+      <v> <e i="0">1</e> <e i="1">-1</e> </v>
+      <v> <e i="0">1</e> <e i="2">1</e> </v>
+      <v> <e i="0">1</e> <e i="2">-1</e> </v>
+      <v> <e i="0">1</e> <e i="3">1</e> </v>
+      <v> <e i="0">1</e> <e i="3">-1</e> </v>
+    </m>
+  </property>
+  <property name="N_FACETS" value="6" />
+  <property name="FEASIBLE" value="true" />
+  <property name="FULL_DIM" value="true" />
+</object>

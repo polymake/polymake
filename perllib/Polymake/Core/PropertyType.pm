@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -216,13 +216,18 @@ sub add_upgrade_relations {
 }
 ##################################################################################
 sub trivialArray_toXML {
+   my ($value, $writer, @attr)=@_;
+   if (@$value) {
+      $writer->dataElement("v", "@$value", @attr);
+   } else {
+      $writer->emptyTag("v",@attr);
+   }
+}
+
+sub formattedArray_toXML {
    my ($elem_proto, $value, $writer, @attr)=@_;
    if (@$value) {
-      if (defined ($elem_proto->toString)) {
-         $writer->dataElement("v", join(" ", map { $elem_proto->toString->($_) } @$value), @attr);
-      } else {
-         $writer->dataElement("v", "@$value", @attr);
-      }
+      $writer->dataElement("v", join(" ", map { $elem_proto->toString->($_) } @$value), @attr);
    } else {
       $writer->emptyTag("v",@attr);
    }
@@ -260,15 +265,30 @@ sub sparseMatrix_toXML {
    my ($elem_proto, $value, $writer)=@_;
    if ($value->rows) {
       local $writer->{"!dim"}=1;
-      nontrivialArray_toXML(@_,  cols => $value->cols);
+      nontrivialArray_toXML(@_, cols => $value->cols);
    } else {
-      $writer->emptyTag("m",@_[3..$#_]);
+      $writer->emptyTag("m", @_[3..$#_], cols => $value->cols);
+   }
+}
+
+sub denseMatrix_toXML {
+   my ($elem_proto, $value, $writer)=@_;
+   if ($value->rows) {
+      &nontrivialArray_toXML;
+   } else {
+      $writer->emptyTag("m", @_[3..$#_], cols => $value->cols);
    }
 }
 
 sub trivialComposite_toXML {
    my ($value, $writer, @attr)=@_;
    $writer->dataElement("t", "@$value", @attr);
+}
+
+sub formattedComposite_toXML {
+   my ($elem_protos, $value, $writer, @attr)=@_;
+   my $i=0;
+   $writer->dataElement("t", join(" ", map { $elem_protos->[$i++]->toString->($_) } @$value), @attr);
 }
 
 sub nontrivialComposite_toXML {
@@ -329,10 +349,10 @@ package Polymake::Core::PropertyParamedType;
 use Polymake::Struct (
    [ '@ISA' => 'PropertyType' ],
    [ new => '$$$' ],
-   [ '$name' => '#1 ->name' ],
-   [ '$pkg' => '#1 ->pkg' ],
-   [ '$application' => '#1 ->application' ],
-   [ '$extension' => '#1 ->extension' ],
+   [ '$name' => '#1->name' ],
+   [ '$pkg' => '#1->pkg' ],
+   [ '$application' => '#1->application' ],
+   [ '$extension' => '#1->extension' ],
    [ '$super' => '#2 // #1' ],
    [ '$generic' => '#1' ],
    [ '$params' => '#3' ],
@@ -560,9 +580,9 @@ package Polymake::Core::PropertyTypeInstance;
 use Polymake::Struct (
    [ '@ISA' => 'PropertyType' ],
    [ new => '$$$;$' ],
-   [ '$name' => '#1 ->name' ],
-   [ '$pkg' => '#1 ->pkg' ],
-   [ '$application' => '#1 ->application' ],
+   [ '$name' => '#1->name' ],
+   [ '$pkg' => '#1->pkg' ],
+   [ '$application' => '#1->application' ],
    [ '$super' => '#2 || #4' ],
    [ '$generic' => '#1' ],
    [ '$param' => '#3' ],
@@ -761,7 +781,7 @@ use Polymake::Struct (
    [ '$super' => 'undef' ],
    [ '$generic' => 'undef' ],
    [ '$params' => '[ #1 ]' ],
-   [ '$context_pkg' => '#1 ->context_pkg' ],
+   [ '$context_pkg' => '#1->context_pkg' ],
    [ '&perform_typecheck' => '\&check_upgradable' ],
 );
 

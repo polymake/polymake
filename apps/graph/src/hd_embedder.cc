@@ -65,7 +65,7 @@ void HDEmbedder::init(const perl::OptionSet& options)
       const HasseDiagram::nodes_of_dim_set nodes=HD.nodes_of_dim(d);
       const int n=nodes.size();
       l->resize(n);
-      copy(entire(random_permutation(nodes, random)), l->begin());
+      copy_range(entire(random_permutation(nodes, random)), l->begin());
       accumulate_in(entire(select(label_width, nodes)), operations::max(), *wd);
       assign_max(total_width, (*wd)*n);
    }

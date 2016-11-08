@@ -379,23 +379,42 @@ vector<Integer> best_point(const list<vector<Integer> >& bottom_candidates, cons
     size_t i;
     auto best = bottom_candidates.end();
     Integer best_value = v_scalar_product(grading,gens[dim-1]);
-
+    Integer sum=0;
+    vector<Integer> eval;
+    size_t in_hyp=0;
     for (auto it = bottom_candidates.begin(); it != bottom_candidates.end(); ++it) {
+        in_hyp=0;
         for (i=0; i<dim; ++i) {
             if (v_scalar_product(SuppHyp[i],*it) < 0) {
                 break;
             }
-
+            if (v_scalar_product(SuppHyp[i],*it) == 0){
+                in_hyp++;
+            }
         }
         if (i < dim) continue;
+        if (in_hyp==dim-1){
+            continue;
+        }
         Integer current_value = v_scalar_product(grading,*it);
         if (current_value<best_value){
             best_value = current_value;
             best = it;
         }
+        
+        if (current_value==best_value){
+            eval = SuppHyp.MxV(*it);
+            Integer tmp=0;
+            for (size_t j=0;j<eval.size();j++) tmp+=eval[j];
+            if (tmp>sum){
+                sum = tmp;
+                best=it;
+            }
+        }
     }
     if (best != bottom_candidates.end()) {
-       return *best;
+        //cout << "The best vector is " << *best << endl;
+        return *best;
     } else {
 		//cout << "Could not find a new point in the list! " << endl;
 		return vector<Integer>();
@@ -660,7 +679,9 @@ vector<Integer> opt_sol(SCIP* scip,
 }
 #endif // NMZ_SCIP
 
+#ifndef NMZ_MIC_OFFLOAD  //offload with long is not supported
 template void bottom_points(list< vector<long> >& new_points, Matrix<long> gens,const vector<long>& grading,long app_level,long recursion_depth);
+#endif // NMZ_MIC_OFFLOAD
 template void bottom_points(list< vector<long long> >& new_points, Matrix<long long> gens,const vector<long long>& grading,long app_level,long recursion_depth);
 template void bottom_points(list< vector<mpz_class> >& new_points, Matrix<mpz_class> gens,const vector<mpz_class>& grading,long app_level,long recursion_depth);
 

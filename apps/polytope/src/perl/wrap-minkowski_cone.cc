@@ -16,11 +16,11 @@
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( perl::Object (polymake::graph::HasseDiagram, pm::graph::Graph<pm::graph::Undirected>, pm::graph::EdgeMap<pm::graph::Undirected, pm::Vector<pm::Rational>, void>) ) {
+   FunctionWrapper4perl( perl::Object (polymake::graph::HasseDiagram, pm::graph::Graph<pm::graph::Undirected>, pm::graph::EdgeMap<pm::graph::Undirected, pm::Vector<pm::Rational> >) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
       IndirectWrapperReturn( arg0, arg1.get< perl::TryCanned< const Graph< Undirected > > >(), arg2.get< perl::TryCanned< const EdgeMap< Undirected, Vector< Rational > > > >() );
    }
-   FunctionWrapperInstance4perl( perl::Object (polymake::graph::HasseDiagram, pm::graph::Graph<pm::graph::Undirected>, pm::graph::EdgeMap<pm::graph::Undirected, pm::Vector<pm::Rational>, void>) );
+   FunctionWrapperInstance4perl( perl::Object (polymake::graph::HasseDiagram, pm::graph::Graph<pm::graph::Undirected>, pm::graph::EdgeMap<pm::graph::Undirected, pm::Vector<pm::Rational> >) );
 
    FunctionWrapper4perl( perl::Object (pm::Vector<pm::Rational>, pm::Matrix<pm::Rational>, perl::Object) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
@@ -34,11 +34,11 @@ namespace polymake { namespace polytope { namespace {
    }
    FunctionWrapperInstance4perl( perl::Object (pm::Vector<pm::Rational>, perl::Object, perl::Object) );
 
-   FunctionWrapper4perl( perl::Object (polymake::graph::HasseDiagram, pm::graph::Graph<pm::graph::Undirected>, pm::graph::EdgeMap<pm::graph::Undirected, pm::Vector<pm::Rational>, void>, pm::Set<int, pm::operations::cmp>) ) {
+   FunctionWrapper4perl( perl::Object (polymake::graph::HasseDiagram, pm::graph::Graph<pm::graph::Undirected>, pm::graph::EdgeMap<pm::graph::Undirected, pm::Vector<pm::Rational> >, pm::Set<int, pm::operations::cmp>) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
       IndirectWrapperReturn( arg0, arg1.get< perl::TryCanned< const Graph< Undirected > > >(), arg2.get< perl::TryCanned< const EdgeMap< Undirected, Vector< Rational > > > >(), arg3.get< perl::TryCanned< const Set< int > > >() );
    }
-   FunctionWrapperInstance4perl( perl::Object (polymake::graph::HasseDiagram, pm::graph::Graph<pm::graph::Undirected>, pm::graph::EdgeMap<pm::graph::Undirected, pm::Vector<pm::Rational>, void>, pm::Set<int, pm::operations::cmp>) );
+   FunctionWrapperInstance4perl( perl::Object (polymake::graph::HasseDiagram, pm::graph::Graph<pm::graph::Undirected>, pm::graph::EdgeMap<pm::graph::Undirected, pm::Vector<pm::Rational> >, pm::Set<int, pm::operations::cmp>) );
 
    FunctionWrapper4perl( perl::Object (pm::Vector<pm::Rational>, pm::Matrix<pm::Rational>, perl::Object, pm::Set<int, pm::operations::cmp>) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);

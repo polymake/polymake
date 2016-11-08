@@ -112,74 +112,79 @@ public:
 
 protected:
    template <typename Iterator>
-   void _assign(Iterator src)
+   void assign(Iterator src)
    {
       for (; !src.at_end(); ++src)
          rep.set(*src);
    }
 
    template <typename Iterator>
-   void _assign(Iterator src, Iterator src_end)
+   void assign(Iterator src, Iterator src_end)
    {
       for (; src!=src_end; ++src)
          rep.set(*src);
    }
 
    template <typename Container>
-   void _assign_from(const Container& src, False)
+   void assign_from(const Container& src, std::false_type)
    {
-      _assign(entire(src));
+      assign(entire(src));
    }
 
    template <typename Container>
-   void _assign_from(const Container& src, True)
+   void assign_from(const Container& src, std::true_type)
    {
-      _assign(entire(reversed(src)));
+      assign(entire(reversed(src)));
    }
 
    template <typename Container>
-   void _assign_from(const Container& src)
+   void assign_from(const Container& src)
    {
-      _assign_from(src, bool2type<container_traits<Container>::is_bidirectional>());
+      assign_from(src, bool_constant<container_traits<Container>::is_bidirectional>());
    }
 
 public:
 
    /// Copy of an abstract set of integers.
    template <typename Set>
-   explicit boost_dynamic_bitset(int n, const GenericSet<Set,int>& s) : rep(super())
+   explicit boost_dynamic_bitset(int n, const GenericSet<Set,int>& s)
+      : rep(super())
    {
       rep.resize(n);
-      _assign_from(s.top());
+      assign_from(s.top());
    }
 
    /// Copy of an abstract set with element conversion.
    template <typename Set, typename E2, typename Comparator2>
-   explicit boost_dynamic_bitset(int n, const GenericSet<Set,E2,Comparator2>& s) : rep(super())
+   explicit boost_dynamic_bitset(int n, const GenericSet<Set,E2,Comparator2>& s)
+      : rep(super())
    {
       rep.resize(n);
-      _assign_from(attach_converter<int>(s.top()));
+      assign_from(attach_converter<int>(s.top()));
    }
 
    template <typename Iterator>
-   boost_dynamic_bitset(int n,  Iterator src, Iterator src_end) : rep(super())
+   boost_dynamic_bitset(int n,  Iterator&& src, Iterator&& src_end)
+      : rep(super())
    {
       rep.resize(n);
-      _assign(src,src_end);
+      assign(src, src_end);
    }
 
    template <typename Iterator>
-   explicit boost_dynamic_bitset(int n, Iterator src, typename enable_if_iterator<Iterator,end_sensitive>::type=0) : rep(super())
+   explicit boost_dynamic_bitset(int n, Iterator src,
+                                 typename std::enable_if<assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value, void**>::type=nullptr)
+      : rep(super())
    {
       rep.resize(n);
-      _assign(src);
+      assign(src);
    }
 
    template <size_t n>
    explicit boost_dynamic_bitset(const int (&a)[n]) : rep(super())
    {
       rep.resize(n);
-      _assign_from(array2container(a));
+      assign_from(array2container(a));
    }
 
    template <typename E2, typename Comparator2>
@@ -229,8 +234,10 @@ public:
 
    const super& dset() const { return rep; }
 
+   unsigned long to_ulong() const { return rep.to_ulong(); }
+
    // conversion to and from GMP Integers
-   const Integer toInteger() const {
+   Integer toInteger() const {
       mpz_t out;
       mpz_init(out);
       size_t i = rep.find_first();
@@ -238,7 +245,7 @@ public:
          mpz_setbit(out, i);
          i = rep.find_next(i);
       }
-      return Integer(out);
+      return Integer(std::move(out));
    }
 
    boost_dynamic_bitset& fromInteger(const size_t capacity, const Integer& in) {
@@ -263,6 +270,10 @@ public:
       if (k >= rep.size()) rep.resize(k+1);
       rep.set(k);
       return *this;
+   }
+
+   void insert_unchecked(const size_t k) {
+      rep.set(k);
    }
    
    boost_dynamic_bitset& operator-= (const size_t k)
@@ -366,8 +377,9 @@ public:
 
    operations::cmp get_comparator() const { return operations::cmp(); }
 
-   iterator begin() const { return iterator(&rep); }
-   iterator end() const { return iterator(&rep, super::npos); }
+   const_iterator begin() const { return iterator(&rep); }
+   iterator begin() { return iterator(&rep); }
+   const_iterator end() const { return iterator(&rep, super::npos); }
 
    Set<int> to_polymake_set() const {
       Set<int> out;
@@ -414,14 +426,12 @@ struct spec_object_traits< Serialized< boost_dynamic_bitset > > :
    template <typename Visitor>
    static void visit_elements(const Serialized< boost_dynamic_bitset >& me, Visitor& v)
    {
-      cerr << "const visit_elements" << endl;
       v << me.capacity() << me.toInteger();
    }
 
    template <typename Visitor>
    static void visit_elements(Serialized< boost_dynamic_bitset >& me, Visitor& v)
    {
-      cerr << "non-const visit_elements" << endl;
       int cap;
       Integer stored;
       v << cap << stored;
@@ -430,9 +440,27 @@ struct spec_object_traits< Serialized< boost_dynamic_bitset > > :
 };
 
 
-template <> struct check_iterator_feature<boost_dynamic_bitset_iterator, end_sensitive> : True {};
-template <> struct check_iterator_feature<boost_dynamic_bitset_iterator, rewindable> : True {};
-template <> struct check_container_feature< boost_dynamic_bitset_iterator, sparse_compatible > : True {};
+template <> struct check_iterator_feature<boost_dynamic_bitset_iterator, end_sensitive> : std::true_type {};
+template <> struct check_iterator_feature<boost_dynamic_bitset_iterator, rewindable> : std::true_type {};
+template <> struct check_container_feature< boost_dynamic_bitset_iterator, sparse_compatible > : std::true_type {};
+
+template <typename Permutation> inline
+boost_dynamic_bitset
+permuted(const boost_dynamic_bitset& c, const Permutation& perm)
+{
+   boost_dynamic_bitset p(c.capacity());
+   for (const auto& i : c)
+      p += perm[i];
+   return p;
+}
+
+template<>
+struct hash_func<boost_dynamic_bitset, is_set> {
+   size_t operator() (const boost_dynamic_bitset& s) const
+   {
+      return s.to_ulong();
+   }
+};
 
 } // end namespace pm
 
@@ -444,6 +472,21 @@ namespace polymake { namespace polytope {
    using pm::boost_dynamic_bitset;
 } }
 
+namespace polymake { namespace group {
+
+template <typename Iterator, typename Permutation> inline
+void permute_to(Iterator in_it,          // deliberately no reference, so we can increment it inside the function
+                const Permutation& perm,
+                common::boost_dynamic_bitset& out)
+{
+   out.reset();
+   while (!in_it.at_end()) {
+      out.insert_unchecked(perm[*in_it]);
+      ++in_it;
+   }
+}
+
+} }
 
 #endif // POLYMAKE_DYNAMIC_BITSET_H
 

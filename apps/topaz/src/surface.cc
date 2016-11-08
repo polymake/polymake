@@ -20,22 +20,20 @@
 #include "polymake/topaz/connected_sum.h"
 
 namespace polymake { namespace topaz {
-  
+
 perl::Object surface(int g)
 {
    const bool oriented= g<0 ? false : true;
    g = abs(g);
 
    perl::Object p("SimplicialComplex");
-   std::ostringstream descrition;
-   if (oriented)  descrition << "Oriented ";
-   else           descrition << "Non-oriented ";
-   descrition << "surface of genus "<< g << ".\n";
-   p.set_description() << descrition.str();
-   
+   std::ostringstream description;
+   description << (oriented ? "Oriented " : "Non-oriented ") << "surface of genus "<< g << ".\n";
+   p.set_description() << description.str();
+
    if (g==0) {    // return 2-sphere
-      Array< Set<int> > C( 4, all_subsets_less_1(sequence(0,4)).begin() );
-      
+      Array<Set<int>> C(4, all_subsets_less_1(sequence(0,4)).begin());
+
       p.take("FACETS") << C;
       p.take("DIM") << 2;
       p.take("MANIFOLD") << 1;
@@ -43,29 +41,29 @@ perl::Object surface(int g)
       p.take("ORIENTED_PSEUDO_MANIFOLD") << 1;
       p.take("SPHERE") << 1;
 
-   } else {     
+   } else {
       // produce g toruses / projective planes and compute their connected sum
       std::list< Set<int> > C;
       if (oriented) {
          const Array< Set<int> > T = torus_facets();
-         copy(entire(T), std::back_inserter(C));
-         for(int i=0; i<g-1; ++i) {
+         copy_range(entire(T), std::back_inserter(C));
+         for (int i=0; i<g-1; ++i) {
             C=connected_sum(C,T);
          }
       } else {
          const Array< Set<int> > PJP = real_projective_plane_facets();
-         copy(entire(PJP), std::back_inserter(C));
-         for(int i=0; i<g-1; ++i) {
+         copy_range(entire(PJP), std::back_inserter(C));
+         for (int i=0; i<g-1; ++i) {
             C=connected_sum(C,PJP);
          }
       }
-      
+
       p.take("FACETS") << C;
       p.take("DIM") << 2;
       p.take("MANIFOLD") << 1;
       p.take("CLOSED_PSEUDO_MANIFOLD") << 1;
       p.take("ORIENTED_PSEUDO_MANIFOLD") << oriented;
-   }    
+   }
    return p;
 }
 

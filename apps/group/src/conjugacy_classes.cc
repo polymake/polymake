@@ -26,26 +26,27 @@
 
 namespace polymake { namespace group {
 
-Array<Set<Array<int> > > conjugacy_classes(const Array<Array<int> >& generators, 
-                                           const Array<Array<int> >& conjugacy_classes_representatives)
+Array<Array<Array<int>>> 
+conjugacy_classes(const Array<Array<int>>& generators, 
+                  const Array<Array<int>>& conjugacy_classes_representatives)
 {
    const int degree = generators[0].size();
-   const Set<Array<int> > entire_group = orbit<on_container>(generators, Array<int>(degree, entire(sequence(0, degree))));
+   const auto entire_group = orbit<on_container>(generators, Array<int>(degree, entire(sequence(0, degree))));
    
-   Map<Array<int>, Array<int> > inverse_of;
-   for (Entire<Set<Array<int> > >::const_iterator git = entire(entire_group); !git.at_end(); ++git) {
+   Map<Array<int>, Array<int>> inverse_of;
+   for (const auto& g : entire_group) {
       Array<int> inverse;
-      inverse_permutation(*git, inverse);
-      inverse_of[*git] = inverse;
+      inverse_permutation(g, inverse);
+      inverse_of[g] = inverse;
    }
 
-   Array<Set<Array<int> > > conjugacy_classes(conjugacy_classes_representatives.size());
+   Array<Array<Array<int>>> conjugacy_classes(conjugacy_classes_representatives.size());
    for (int i=0; i<conjugacy_classes_representatives.size(); ++i) {
-      Set<Array<int> > conjugacy_class;
-      for (Entire<Set<Array<int> > >::const_iterator git = entire(entire_group); !git.at_end(); ++git) {
-         conjugacy_class += action<on_container>(inverse_of[*git], action<on_container>(conjugacy_classes_representatives[i], *git));
+      hash_set<Array<int>> conjugacy_class;
+      for (const auto& g : entire_group) {
+         conjugacy_class += action<on_container>(inverse_of[g], action<on_container>(conjugacy_classes_representatives[i], g));
       }
-      conjugacy_classes[i] = conjugacy_class;
+      conjugacy_classes[i] = Array<Array<int>>(conjugacy_class.size(), entire(conjugacy_class));
    }
    return conjugacy_classes;
 }
@@ -55,7 +56,7 @@ UserFunction4perl("# @category Other"
 		  "# Calculate the conjugacy classes of a group"
 		  "# @param Array<Array<Int>> the generators of the group"
                   "# @param Array<Array<Int>> the representatives of the conjugacy classes"
-                  "# @return Array<Set<Array<Int>>>",
+                  "# @return Array<Array<Array<Int>>>",
                   &conjugacy_classes, "conjugacy_classes(Array<Array<Int>> Array<Array<Int>>)");
 
 }

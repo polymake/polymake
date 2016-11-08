@@ -32,7 +32,7 @@ namespace {
 typedef Graph<Directed> PartialLattice;
 typedef NodeMap<Directed,Integer> IncidenceMap;
 
-Integer* calcEntry(const graph::HasseDiagram& F, PartialLattice& G, IncidenceMap& Inc, int k, Integer* fl)
+Vector<Integer>::iterator calcEntry(const graph::HasseDiagram& F, PartialLattice& G, IncidenceMap& Inc, int k, Vector<Integer>::iterator fl)
 {
    // INVARIANT for G here: layer k is connected to some upper layer, all layers below k have no edges at all
    Integer Entry=0;

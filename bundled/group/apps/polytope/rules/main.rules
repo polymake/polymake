@@ -14,20 +14,22 @@
 #-------------------------------------------------------------------------------
 
 INCLUDE
-  permlib.rules
-  symmetric_cone.rules
-  group_of_cone.rules
-  cone_properties.rules
-  cone_common.rules
-  cone_group.rules
+  # implicit_action.rules
+  # permlib.rules
+  group.rules
+  representations.rules
+  # cone.rules
+  symmetrized_cocircuit_equations.rules
+  action.rules
+  # cone_group.rules
   polytope_properties.rules
-  polytope_group.rules
+  # polytope_group.rules
   arbitrary_coords.rules
   quotient_space.rules
   point_configuration_properties.rules
   point_configuration.rules
   point_configuration_group.rules
-
+  universal_polytope.rules
 
 # Local Variables:
 # mode: perl

@@ -59,13 +59,13 @@ void sum_product(perl::Object p)
 {
    // Read the graph.
    const graph G=p.give("SUM_PRODUCT_GRAPH.ADJACENCY");
-   const EdgeMap<Directed, Vector<Scalar> > Trans=p.give("SUM_PRODUCT_GRAPH.TRANSLATIONS");
+   const EdgeMap<Directed, Vector<Scalar>> Trans=p.give("SUM_PRODUCT_GRAPH.TRANSLATIONS");
    const int n(G.nodes());
    if (n==0)
       throw std::runtime_error("SUM_PRODUCT_GRAPH must be non-empty");
 
    // The dimension of the ambient space.
-   const int d=p.CallPolymakeMethod("AMBIENT_DIM");
+   const int d=p.call_method("AMBIENT_DIM");
 
    // This is the description of the origin as a 0-dimensional polytope (living in d-space).
    // Used to initialize the computation at the sources of the graph.
@@ -76,7 +76,7 @@ void sum_product(perl::Object p)
    // The nodes in the graph are consecutively numbered, starting at 0.
    // The corresponding polytope can be accessed by indexing with the node number.
    // In the beginning the polytopes are undefined.
-   NodeMap<Directed,perl::Object> pa(G);
+   NodeMap<Directed, perl::Object> pa(G);
    std::list<int> next_nodes;
    // will need this now and again
    perl::ObjectType Polytope(perl::ObjectType::construct<Scalar>("Polytope"));
@@ -84,7 +84,7 @@ void sum_product(perl::Object p)
    // Initialize by assigning a single point (origin) to each source in the graph.
    for (int v=0; v<n; ++v) {
       if (G.in_degree(v)==0) {
-         pa[v].create_new(Polytope);
+         pa[v]=perl::Object(Polytope);
          pa[v].take("VERTICES") << single_point_vertices;
          pa[v].take("VERTICES_IN_FACETS") << single_point_vif;
          add_next_generation(next_nodes,v,G,pa);
@@ -100,16 +100,16 @@ void sum_product(perl::Object p)
       const int w=next_nodes.front(); next_nodes.pop_front();
       if (pa[w].valid())
          throw std::runtime_error("unvisited node already initialized");
-      pa[w].create_new(Polytope);
+      pa[w]=perl::Object(Polytope);
 
       // The polytope will be specified as the convex hull of points, which will be collected
       // from other polytopes.
       // The special data type ListMatrix is efficient in terms of concatenating rows
       // (which correspond to points); not efficient in terms of matrix operations
       // (although all operations are defined), but this is ok, since we do not compute
-      // anything in this step. 
+      // anything in this step.
       ListMatrix< Vector<Scalar> > points(0,d+1);
-      for (Entire<graph::in_edge_list>::const_iterator e=entire(G.in_edges(w)); !e.at_end(); ++e) {
+      for (auto e=entire(G.in_edges(w)); !e.at_end(); ++e) {
          // Node v is the current predecessor to process.
          const int v=e.from_node();
          // Translation vector in the edge from v to w.

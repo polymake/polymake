@@ -13,6 +13,7 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+# @category Singular interface
 # An intermediate object wrapping the ideal on the Singular side and providing its methods.
 declare property_type SingularIdeal : c++ (include => ["polymake/ideal/singularIdeal.h"]) {
 
@@ -32,36 +33,27 @@ declare property_type SingularIdeal : c++ (include => ["polymake/ideal/singularI
    # Compute the Groebner basis.
    method groebner() : void : c++ ;
 
-   # @category Singular interface
    # Compute the dimension of the ideal.
    method dim() : c++ ;
 
-   # @category Singular interface
    # Check via saturation whether the ideal contains a monomial.
    method contains_monomial(Ring) : c++ ;
 
-   # @category Singular interface
    # Compute the initial ideal. Depends on monomial ordering.
    method initial_ideal() : c++;
 
-   # @category Singular interface
    # Compute the radical of the ideal.
    method radical() : c++ ;
 
-   # @category Singular interface
    method division(Polynomial, Ring) : c++;
 
-   # @category Singular interface
    method solve() : c++;
 
-   # @category Singular interface
    # Reduce a polynomial modulo the ideal, i.e. check ideal membership.
    method reduce(Polynomial, Ring) : c++;
 
-   # @category Singular interface
    method polynomials(Ring) : c++;
 
-   # @category Singular interface
    # Compute the primary decomposition of the ideal.
    method primary_decomposition() : c++;
 
@@ -73,15 +65,18 @@ object Groebner {
    # Intermediate object wrapping the Singular objects, i.e. the ring with the monomial ordering and the ideal.
    property SINGULAR_IDEAL : SingularIdeal : non_storable;
 
+   # Reduce a [[Polynomial]] //p// with respect to the Groebner basis.
+   # @param Polynomial p
+   # @return Polynomial
    user_method reduce(Polynomial) {
       my ($self, $p) = @_;
-      # TODO: Take care if ring is correct.
+      $self->parent->RING == $p->get_ring() or croak ("incompatible rings");
       return $self->SINGULAR_IDEAL->reduce($p, $p->get_ring());
    }
 
    user_method division(Polynomial) {
       my ($self, $p) = @_;
-      # TODO: Take care if ring is correct.
+      $self->parent->RING == $p->get_ring() or croak ("incompatible rings");
       return $self->SINGULAR_IDEAL->division($p, $p->get_ring());
    }
 
@@ -188,6 +183,15 @@ object Ideal {
       }
       my $radical = $si->radical();
       $this->RADICAL = new Ideal(GENERATORS=>$radical->polynomials($this->RING),RING=>$this->RING);
+   }
+
+   # Check via saturation whether the ideal contains a monomial.
+   # Returns a monomial from the ideal or the trivial monomial if there is none.
+   # @param String s Optional term order (see [[ORDER_NAME]]) for intermediate Groebner bases, default: "dp"
+   # @return Polynomial
+   user_method contains_monomial(;$="dp") {
+      my ($I,$order) = @_;
+      return $I->GROEBNER(ORDER_NAME=>$order)->SINGULAR_IDEAL->contains_monomial($I->RING);
    }
 }
 

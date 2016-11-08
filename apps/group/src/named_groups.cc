@@ -19,9 +19,8 @@
 
 namespace polymake { namespace group {
 
-perl::Object symmetric_group(int n){
-   perl::Object g("Group");
-   if ( n < 1) 
+perl::Object symmetric_group(int n) {
+   if (n < 1) 
       throw std::runtime_error("symmetric_group: the degree must be greater or equal than 1");
    
    Array< Array<int> > sgs(n-1);
@@ -32,17 +31,22 @@ perl::Object symmetric_group(int n){
       std::swap(gen[i], gen[i+1]);
       sgs[i] = gen;
    }
-   g.take("GENERATORS") << sgs;
+   perl::Object pa("PermutationAction");
+   pa.take("GENERATORS") << sgs;
+
+   perl::Object g("Group");
+   g.take("PERMUTATION_ACTION") << pa;
    g.set_description() << "Symmetric group of degree " << n << endl;
    return g;
 }
 
-perl::Object alternating_group(int n){
-   perl::Object g("Group");
-   if ( n < 1) 
+perl::Object alternating_group(int n) {
+   if (n < 1) 
       throw std::runtime_error("alternating_group: the degree must be greater or equal than 1");
 
-   if ( n <= 3) {
+   perl::Object pa("PermutationAction");
+
+   if (n <= 3) {
 
       Array< Array<int> > gens(1);
       Array<int> gen(n);     
@@ -51,7 +55,7 @@ perl::Object alternating_group(int n){
       }
       gen[n-1] = 0;
       gens[0] = gen; 
-      g.take("GENERATORS") << gens;
+      pa.take("GENERATORS") << gens;
 
    } else {
 
@@ -70,20 +74,25 @@ perl::Object alternating_group(int n){
          gen1[j] = j+1;
       gen1[n-1] = 1-mod;
       gens[1] = gen1;
-      g.take("GENERATORS") << gens;
+      pa.take("GENERATORS") << gens;
    }
+   perl::Object g("Group");
+   g.take("PERMUTATION_ACTION") << pa;
    g.set_description() << "Alternating group of degree " << n << endl;
    return g;
 }
 
 perl::Object cyclic_group(int n){
-   perl::Object g("Group");
    Array< Array<int> > sgs(1);
    Array<int> gen(n);
    for (int j = 0; j < n; ++j)
       gen[j] = (j + 1) % n;
    sgs[0] = gen;
-   g.take("GENERATORS") << sgs;
+   perl::Object pa("PermutationAction");
+   pa.take("GENERATORS") << sgs;
+
+   perl::Object g("Group");
+   g.take("PERMUTATION_ACTION") << pa;
    g.set_description() << "Cyclic group of order " << n << endl;
    return g;
 }

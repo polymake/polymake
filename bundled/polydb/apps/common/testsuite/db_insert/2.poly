@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?pm chk="581b352e"?>
+
+<object name="p2" type="polytope::Polytope&lt;Rational&gt;" version="3.0.6" xmlns="http://www.math.tu-berlin.de/polymake/#3">
+  <property name="VERTICES">
+    <m>
+      <v>1 -1 -1 -1</v>
+      <v>1 1 -1 -1</v>
+      <v>1 -1 1 -1</v>
+      <v>1 1 1 -1</v>
+      <v>1 -1 -1 1</v>
+      <v>1 1 -1 1</v>
+      <v>1 -1 1 1</v>
+      <v>1 1 1 1</v>
+    </m>
+  </property>
+  <property name="FEASIBLE" value="true" />
+  <property name="CONE_AMBIENT_DIM" value="4" />
+</object>

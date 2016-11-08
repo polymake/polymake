@@ -72,7 +72,7 @@ class dehomogenize_impl<OpRef, is_vector> {
 protected:
    typedef IndexedSlice<typename attrib<OpRef>::plus_const_ref, sequence> slice;
    typedef typename container_traits<OpRef>::const_reference element_ref;
-   static const bool _is_sparse=check_container_ref_feature<OpRef,sparse>::value;
+   static const bool is_sparse=check_container_ref_feature<OpRef, sparse>::value;
    typedef LazyVector2<slice, constant_value_container<element_ref>, polymake::operations::div>
       lazy_vector;
 public:
@@ -80,14 +80,14 @@ public:
    typedef ContainerUnion< cons<slice, lazy_vector> > result_type;
 protected:
    static
-   result_type _do(typename function_argument<OpRef>::const_type v, False)
+   result_type impl(typename function_argument<OpRef>::const_type v, std::false_type)
    {
       typename container_traits<OpRef>::const_reference first=v.front();
       if (is_zero(first) || is_one(first)) return v.slice(1);
       return lazy_vector(v.slice(1), first);
    }
    static
-   result_type _do(typename function_argument<OpRef>::const_type v, True)
+   result_type impl(typename function_argument<OpRef>::const_type v, std::true_type)
    {
       typename container_traits<OpRef>::const_iterator first=v.begin();
       if (first.at_end() || first.index() || is_one(*first)) return v.slice(1);
@@ -96,7 +96,7 @@ protected:
 public:
    result_type operator() (typename function_argument<OpRef>::const_type v) const
    {
-      return _do(v, bool2type<_is_sparse>());
+      return impl(v, bool_constant<is_sparse>());
    }
 };
 
@@ -105,22 +105,22 @@ class dehomogenize_trop_impl<OpRef, is_vector> {
 protected:
    typedef IndexedSlice<typename attrib<OpRef>::plus_const_ref, sequence> slice;
    typedef typename container_traits<OpRef>::const_reference element_ref;
-   static const bool _is_sparse=check_container_ref_feature<OpRef,sparse>::value;
-   typedef LazyVector2<slice, typename if_else<_is_sparse, SameElementVector<element_ref>, constant_value_container<element_ref> >::type, polymake::operations::sub>
+   static const bool is_sparse=check_container_ref_feature<OpRef, sparse>::value;
+   typedef LazyVector2<slice, typename std::conditional<is_sparse, SameElementVector<element_ref>, constant_value_container<element_ref> >::type, polymake::operations::sub>
       lazy_vector;
 public:
    typedef OpRef argument_type;
    typedef ContainerUnion< cons<slice, lazy_vector> > result_type;
 protected:
    static
-   result_type _do(typename function_argument<OpRef>::const_type v, False)
+   result_type impl(typename function_argument<OpRef>::const_type v, std::false_type)
    {
       typename container_traits<OpRef>::const_reference first=v.front();
       if (is_zero(first)) return v.slice(1);
       return lazy_vector(v.slice(1), first);
    }
    static
-   result_type _do(typename function_argument<OpRef>::const_type v, True)
+   result_type impl(typename function_argument<OpRef>::const_type v, std::true_type)
    {
       typename container_traits<OpRef>::const_iterator first=v.begin();
       if (first.at_end() || first.index()) return v.slice(1);
@@ -129,7 +129,7 @@ protected:
 public:
    result_type operator() (typename function_argument<OpRef>::const_type v) const
    {
-      return _do(v, bool2type<_is_sparse>());
+      return impl(v, bool_constant<is_sparse>());
    }
 };
 
@@ -142,7 +142,7 @@ class dehomogenize_trop_vectors : public dehomogenize_trop_impl<OpRef> {};
 template <typename OpRef>
 struct get_numerator {
    typedef OpRef argument_type;
-   typedef const typename object_traits<typename deref<OpRef>::type::numerator_type>::persistent_type& result_type;
+   typedef decltype(numerator(std::declval<std::add_const_t<std::remove_reference_t<OpRef>>>())) result_type;
 
    result_type operator() (typename function_argument<OpRef>::const_type x) const
    {
@@ -153,7 +153,7 @@ struct get_numerator {
 template <typename OpRef>
 struct get_denominator {
    typedef OpRef argument_type;
-   typedef const typename object_traits<typename deref<OpRef>::type::denominator_type>::persistent_type& result_type;
+   typedef decltype(denominator(std::declval<std::add_const_t<std::remove_reference_t<OpRef>>>())) result_type;
 
    result_type operator() (typename function_argument<OpRef>::const_type x) const
    {
@@ -189,92 +189,91 @@ normalized(const GenericMatrix<Matrix>& m)
 }
 
 /// Compute the determinant of a matrix using the Gauss elimination method
-template <typename Matrix, typename E> inline
-typename enable_if<E, is_field<E>::value>::type
-det(const GenericMatrix<Matrix, E>& m)
+template <typename TMatrix, typename E> inline
+typename std::enable_if<is_field<E>::value, E>::type
+det(const GenericMatrix<TMatrix, E>& m)
 {
-   if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
       if (m.rows() != m.cols())
          throw std::runtime_error("det - non-square matrix");
    }
-   return det(typename Matrix::persistent_nonsymmetric_type(m));
+   return det(typename TMatrix::persistent_nonsymmetric_type(m));
 }
 
 /// Compute the trace of a matrix
-template <typename Matrix, typename E> inline
-E
-trace(const GenericMatrix<Matrix, E>& m)
+template <typename TMatrix, typename E> inline
+E trace(const GenericMatrix<TMatrix, E>& m)
 {
-   if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
       if (m.rows() != m.cols())
          throw std::runtime_error("trace - non-square matrix");
    }
-   return trace(typename Matrix::persistent_nonsymmetric_type(m));
+   return trace(typename TMatrix::persistent_nonsymmetric_type(m));
 }
 
 
-template <typename Matrix, typename E> inline
-typename enable_if<E, !identical<E, typename algebraic_traits<E>::field_type>::value>::type
-det(const GenericMatrix<Matrix, E>& m)
+template <typename TMatrix, typename E> inline
+typename std::enable_if<!std::is_same<E, typename algebraic_traits<E>::field_type>::value, E>::type
+det(const GenericMatrix<TMatrix, E>& m)
 {
-   if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
       if (m.rows() != m.cols())
          throw std::runtime_error("det - non-square matrix");
    }
-   return convert_to<E>(det(typename GenericMatrix<Matrix, typename algebraic_traits<E>::field_type>::persistent_nonsymmetric_type(m)));
+   return convert_to<E>(det(typename GenericMatrix<TMatrix, typename algebraic_traits<E>::field_type>::persistent_nonsymmetric_type(m)));
 }
 
 /// Reduce a vector with a given matrix using the Gauss elimination method
-template <typename MatrixTop, typename VectorTop, typename E> inline
-typename enable_if<typename VectorTop::persistent_type, is_field<E>::value>::type
-reduce(const GenericMatrix<MatrixTop, E>& A, const GenericVector<VectorTop, E>& V)
+template <typename TMatrix, typename TVector, typename E> inline
+typename std::enable_if<is_field<E>::value, typename TVector::persistent_type>::type
+reduce(const GenericMatrix<TMatrix, E>& A, const GenericVector<TVector, E>& V)
 {
-   if (POLYMAKE_DEBUG || !Unwary<MatrixTop>::value || !Unwary<VectorTop>::value) {
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TVector>::value) {
       if (V.dim() != A.cols())
          throw std::runtime_error("reduce - dimension mismatch");
    }
-   typedef typename if_else<MatrixTop::is_sparse, SparseVector<E>, Vector<E> >::type vector_type;
-   return reduce(typename MatrixTop::persistent_nonsymmetric_type(A), vector_type(V));
+   typedef typename std::conditional<TMatrix::is_sparse, SparseVector<E>, Vector<E>>::type vector_type;
+   return reduce(typename TMatrix::persistent_nonsymmetric_type(A), vector_type(V));
 }
 
-template <typename MatrixTop, typename VectorTop, typename E> inline
-typename enable_if<Vector<typename algebraic_traits<E>::field_type>,
-                   !identical<E, typename algebraic_traits<E>::field_type>::value>::type
-reduce(const GenericMatrix<MatrixTop, E>& A, const GenericVector<VectorTop, E>& V)
+template <typename TMatrix, typename TVector, typename E> inline
+typename std::enable_if<!std::is_same<E, typename algebraic_traits<E>::field_type>::value,
+                        Vector<typename algebraic_traits<E>::field_type> >::type
+reduce(const GenericMatrix<TMatrix, E>& A, const GenericVector<TVector, E>& V)
 {
-   if (POLYMAKE_DEBUG || !Unwary<MatrixTop>::value || !Unwary<VectorTop>::value) {
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TVector>::value) {
       if (V.dim() != A.cols())
          throw std::runtime_error("reduce - dimension mismatch");
    }
    typedef typename algebraic_traits<E>::field_type Field;
-   typedef typename if_else<MatrixTop::is_sparse, SparseVector<Field>, Vector<Field> >::type vector_type;
-   return reduce(typename GenericMatrix<MatrixTop, Field>::persistent_nonsymmetric_type(A), vector_type(V));
+   typedef typename std::conditional<TMatrix::is_sparse, SparseVector<Field>, Vector<Field>>::type vector_type;
+   return reduce(typename GenericMatrix<TMatrix, Field>::persistent_nonsymmetric_type(A), vector_type(V));
 }
 
 /** Compute the inverse matrix $A^-1$ using the Gauss elimination method.
     @exception degenerate_matrix if det(A)==0
 */
-template <typename Matrix, typename E> inline
-typename enable_if<typename Matrix::persistent_nonsymmetric_type, is_field<E>::value>::type
-inv(const GenericMatrix<Matrix, E>& m)
+template <typename TMatrix, typename E> inline
+typename std::enable_if<is_field<E>::value, typename TMatrix::persistent_nonsymmetric_type>::type
+inv(const GenericMatrix<TMatrix, E>& m)
 {
-   if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
       if (m.rows() != m.cols())
          throw std::runtime_error("inv - non-square matrix");
    }
-   return inv(typename Matrix::persistent_nonsymmetric_type(m));
+   return inv(typename TMatrix::persistent_nonsymmetric_type(m));
 }
 
-template <typename Matrix, typename E> inline
-typename enable_if<typename GenericMatrix<Matrix, typename algebraic_traits<E>::field_type>::persistent_nonsymmetric_type,
-                   !identical<E, typename algebraic_traits<E>::field_type>::value>::type
-inv(const GenericMatrix<Matrix, E>& m)
+template <typename TMatrix, typename E> inline
+typename std::enable_if<!std::is_same<E, typename algebraic_traits<E>::field_type>::value,
+                        typename GenericMatrix<TMatrix, typename algebraic_traits<E>::field_type>::persistent_nonsymmetric_type>::type
+inv(const GenericMatrix<TMatrix, E>& m)
 {
-   if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
       if (m.rows() != m.cols())
          throw std::runtime_error("inv - non-square matrix");
    }
-   return inv(typename GenericMatrix<Matrix, typename algebraic_traits<E>::field_type>::persistent_nonsymmetric_type(m));
+   return inv(typename GenericMatrix<TMatrix, typename algebraic_traits<E>::field_type>::persistent_nonsymmetric_type(m));
 }
 
 /** Solve the linear system A*x==b
@@ -282,28 +281,50 @@ inv(const GenericMatrix<Matrix, E>& m)
     @exception degenerate_matrix if det(A) == 0
     @exception infeasible if rank(A) != rank(A|b)
 */
-template <typename MatrixTop, typename VectorTop, typename E> inline
-typename enable_if<Vector<E>, is_field<E>::value>::type
-lin_solve(const GenericMatrix<MatrixTop, E>& A, const GenericVector<VectorTop, E>& b)
+template <typename TMatrix, typename TVector, typename E> inline
+typename std::enable_if<is_field<E>::value, Vector<E>>::type
+lin_solve(const GenericMatrix<TMatrix, E>& A, const GenericVector<TVector, E>& b)
 {
-   if (POLYMAKE_DEBUG || !Unwary<MatrixTop>::value || !Unwary<VectorTop>::value) {
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TVector>::value) {
       if (b.dim() != A.rows())
          throw std::runtime_error("lin_solve - dimension mismatch");
    }
-   return lin_solve(typename MatrixTop::persistent_nonsymmetric_type(A), Vector<E>(b));
+   return lin_solve(typename TMatrix::persistent_nonsymmetric_type(A), Vector<E>(b));
 }
 
-template <typename MatrixTop, typename VectorTop, typename E> inline
-typename enable_if<Vector<typename algebraic_traits<E>::field_type>,
-                   !identical<E, typename algebraic_traits<E>::field_type>::value>::type
-lin_solve(const GenericMatrix<MatrixTop, E>& A, const GenericVector<VectorTop, E>& b)
+template <typename TMatrix, typename TVector, typename E> inline
+typename std::enable_if<!std::is_same<E, typename algebraic_traits<E>::field_type>::value,
+                        Vector<typename algebraic_traits<E>::field_type> >::type
+lin_solve(const GenericMatrix<TMatrix, E>& A, const GenericVector<TVector, E>& b)
 {
-   if (POLYMAKE_DEBUG || !Unwary<MatrixTop>::value || !Unwary<VectorTop>::value) {
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TVector>::value) {
       if (b.dim() != A.rows())
          throw std::runtime_error("lin_solve - dimension mismatch");
    }
    typedef typename algebraic_traits<E>::field_type Field;
-   return lin_solve(typename GenericMatrix<MatrixTop, Field>::persistent_nonsymmetric_type(A), Vector<Field>(b));
+   return lin_solve(typename GenericMatrix<TMatrix, Field>::persistent_nonsymmetric_type(A), Vector<Field>(b));
+}
+
+template <typename TMatrix, typename TVector, typename E> inline
+typename std::enable_if<is_field<E>::value, Vector<E>>::type
+cramer(const GenericMatrix<TMatrix, E>& A, const GenericVector<TVector, E>& b) {
+   const int d=A.rows();
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TVector>::value) {
+      if (A.cols() != d)
+         throw std::runtime_error("cramer - non square matrix");
+      if (b.dim() != d)
+         throw std::runtime_error("cramer - dimension mismatch");
+   }
+   const E det_A = det(A);
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
+      if (det_A == 0)
+         throw std::runtime_error("cramer - matrix singular");
+   }
+   Vector<E> x(d);
+   for (int i=0; i<d; ++i) {
+      x[i] = det(A.minor(All,sequence(0,i)) | b | A.minor(All,sequence(i+1,d-i-1))) / det_A;
+   }
+   return x;
 }
 
 /**
@@ -326,9 +347,9 @@ bool project_rest_along_row (AHRowIterator &h, const VectorType& v, RowBasisOutp
    // Project each row *h2 that comes after *h along *h until *h2 becomes orthogonal to v.
 
    // first, bookkeeping if desired
-   if (!derived_from_instance<RowBasisOutputIterator,black_hole>::value)
+   if (!is_derived_from_instance_of<RowBasisOutputIterator, black_hole>::value)
       *row_basis_consumer++ = i;
-   if (!derived_from_instance<ColBasisOutputIterator,black_hole>::value)
+   if (!is_derived_from_instance_of<ColBasisOutputIterator, black_hole>::value)
       *col_basis_consumer++ = h->rbegin().index();
 
    AHRowIterator h2 = h;
@@ -375,32 +396,33 @@ bool add_row_if_rowspace_increases(ListMatrix<SparseVector<T> >& M, const Sparse
 }
 
 template <typename Iterator, typename E> inline
-typename enable_if<void, is_field<E>::value>::type
+typename std::enable_if<is_field<E>::value, void>::type
 reduce_row(Iterator& h2, Iterator& h, const E& pivot, const E& x)
 {
    *h2 -= (x/pivot)*(*h);
 }
 
 template <typename Iterator, typename E> inline
-typename disable_if<void, is_field<E>::value>::type
+typename std::enable_if<!is_field<E>::value, void>::type
 reduce_row(Iterator& h2, Iterator& h, const E& pivot, const E& x)
 {
    *h2 *= pivot;  *h2 -= x*(*h);
 }
 
-template <typename Matrix> inline
-typename enable_if<void, is_gcd_domain<typename Matrix::element_type>::value>::type
-simplify_rows(Matrix& M)
+template <typename TMatrix> inline
+typename std::enable_if<is_gcd_domain<typename TMatrix::element_type>::value, void>::type
+simplify_rows(GenericMatrix<TMatrix>& M)
 {
-   for (typename Entire< Rows<Matrix> >::iterator r=entire(rows(M)); !r.at_end(); ++r) {
-      const typename Matrix::element_type g=gcd(*r);
+   for (auto r=entire(rows(M)); !r.at_end(); ++r) {
+      const auto g=gcd(*r);
       if (!is_one(g)) r->div_exact(g);
    }
 }
 
-template <typename Matrix> inline
-typename disable_if<void, is_gcd_domain<typename Matrix::element_type>::value>::type
-simplify_rows(Matrix&) {}
+template <typename TMatrix> inline
+typename std::enable_if<!is_gcd_domain<typename TMatrix::element_type>::value, void>::type
+simplify_rows(GenericMatrix<TMatrix>& M)
+{}
 
 
 /** Compute the basis of the subspaces spanned by a sequence of vectors and orthogonal one.
@@ -459,8 +481,7 @@ lineality_space(const GenericMatrix<Matrix, E>& M)
 {
    ListMatrix< SparseVector<E> > H=unit_matrix<E>(M.cols()-1);
    null_space(entire(rows(M.minor(All, range(1,M.cols()-1)))), black_hole<int>(), black_hole<int>(), H, true);
-   if (H.rows()) return zero_vector<E>(H.rows()) | H;
-   return typename Matrix::persistent_nonsymmetric_type();
+   return zero_vector<E>(H.rows()) | H;
 }
 
 template <typename VectorIterator> inline
@@ -759,46 +780,46 @@ lcm_of_sequence(Iterator it)
    return res;
 }
 
-template <typename Vector, typename E> inline
-E gcd(const GenericVector<Vector, E>& v)
+template <typename TVector, typename E> inline
+E gcd(const GenericVector<TVector, E>& v)
 {
    return gcd_of_sequence(entire(v.top()));
 }
 
-template <typename Vector, typename E> inline
-E lcm(const GenericVector<Vector, E>& v)
+template <typename TVector, typename E> inline
+E lcm(const GenericVector<TVector, E>& v)
 {
    return lcm_of_sequence(entire(v.top()));
 }
 
-template <typename Vector, typename E> inline
-typename enable_if< LazyVector1<const Vector&, polymake::operations::get_numerator>,
-                    is_field_of_fractions<E>::value>::type
-numerators(const GenericVector<Vector, E>& v)
+template <typename TVector, typename E> inline
+typename std::enable_if<is_field_of_fractions<E>::value,
+                        LazyVector1<const TVector&, polymake::operations::get_numerator> >::type
+numerators(const GenericVector<TVector, E>& v)
 {
    return apply_operation(v, polymake::operations::get_numerator());
 }
 
-template <typename Vector, typename E> inline
-typename enable_if< LazyVector1<const Vector&, polymake::operations::get_denominator>,
-                    is_field_of_fractions<E>::value>::type
-denominators(const GenericVector<Vector, E>& v)
+template <typename TVector, typename E> inline
+typename std::enable_if<is_field_of_fractions<E>::value,
+                        LazyVector1<const TVector&, polymake::operations::get_denominator> >::type
+denominators(const GenericVector<TVector, E>& v)
 {
    return apply_operation(v, polymake::operations::get_denominator());
 }
 
-template <typename Matrix, typename E> inline
-typename enable_if< LazyMatrix1<const Matrix&, polymake::operations::get_numerator>,
-                    is_field_of_fractions<E>::value>::type
-numerators(const GenericMatrix<Matrix, E>& m)
+template <typename TMatrix, typename E> inline
+typename std::enable_if<is_field_of_fractions<E>::value,
+                        LazyMatrix1<const TMatrix&, polymake::operations::get_numerator> >::type
+numerators(const GenericMatrix<TMatrix, E>& m)
 {
    return apply_operation(m, polymake::operations::get_numerator());
 }
 
-template <typename Matrix, typename E> inline
-typename enable_if< LazyMatrix1< const Matrix&, polymake::operations::get_denominator>,
-                    is_field_of_fractions<E>::value>::type
-denominators(const GenericMatrix<Matrix, E>& m)
+template <typename TMatrix, typename E> inline
+typename std::enable_if<is_field_of_fractions<E>::value,
+                        LazyMatrix1< const TMatrix&, polymake::operations::get_denominator> >::type
+denominators(const GenericMatrix<TMatrix, E>& m)
 {
    return apply_operation(m, polymake::operations::get_denominator());
 }

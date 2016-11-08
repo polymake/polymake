@@ -14,6 +14,7 @@
 #-------------------------------------------------------------------------------
 
 
+# @category Geometry
 # A [[PolyhedralFan]] with a symmetry group acting on the coordinates.
 declare object SymmetricFan<Scalar=Rational> [ is_ordered_field(Scalar) ] : PolyhedralFan<Scalar>;
 
@@ -160,7 +161,7 @@ precondition : PURE;
 weight 0.10;
 
 rule LINEALITY_SPACE : RAYS, MAXIMAL_CONES_REPS {
-   $this->LINEALITY_SPACE=new Matrix<Scalar>();
+   $this->LINEALITY_SPACE=new Matrix<Scalar>(0, $this->RAYS->cols);
 }
 weight 0.10;
 

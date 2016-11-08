@@ -24,11 +24,12 @@
 
 
 #include <algorithm>
+#include <tuple>
 
 namespace pm {
 
 namespace {
-   const double epsilon=1e-15; // machine epislon
+   const double epsilon=1e-14; // machine epislon
 
    struct matrixTriple {Matrix<double> diag; Matrix<double> left; Matrix<double> right;};
    struct matrixPair {Matrix<double> left; Matrix<double> right;};
@@ -101,10 +102,36 @@ namespace {
 
 }
 
+   double eigenValuesOfT(double dm, double dn, double fm, double fmMinus1 )
+   {
+      double lambda;
+      double T00;
+      double T11;
+      double T10;
+      double eigen_val1;
+      double eigen_val2;
+            
+      T00= dm*dm+fmMinus1*fmMinus1;
+      T11=dn*dn+fm*fm;
+      T10=dm*fm;
+      eigen_val1=(T00+T11+sqrt((T00-T11)*(T00-T11)+4*T10*T10))/2;
+      eigen_val2=(T00+T11-sqrt((T00-T11)*(T00-T11)+4*T10*T10))/2;
+      lambda=std::min(abs(eigen_val1-T11),abs(eigen_val2-T11));                    
+      return lambda;
+   }
+   
    SingularValueDecomposition singular_value_decomposition(Matrix<double> M)
    { 
       const int colsM=M.cols();  
       const int rowsM=M.rows();
+       double max_entry=0;
+      for (int i=0; i<rowsM-1; i++){ 
+         for (int j=0; j<colsM-1; j++){
+            if(abs(M[i][j])>max_entry){
+               max_entry=abs(M[i][j]);
+            }          
+         }
+      }
       if (colsM>rowsM)
          {
             Matrix<double> M1=T(M);
@@ -151,19 +178,12 @@ namespace {
             }
          }
          double lambda;
-         double T00;
-         double T11;
-         double T10;
-          double eigen_val1;
-          double eigen_val2;
-          
-         T00= biDuv.diag[rowsM-2][colsM-2]*biDuv.diag[rowsM-2][colsM-2]+biDuv.diag[rowsM-3][colsM-2]*biDuv.diag[rowsM-3][colsM-2];
-         T11=biDuv.diag[rowsM-1][colsM-1]*biDuv.diag[rowsM-1][colsM-1]+biDuv.diag[rowsM-2][colsM-1]*biDuv.diag[rowsM-2][colsM-1];
-         T10=biDuv.diag[rowsM-2][colsM-2]*biDuv.diag[rowsM-2][colsM-1];
-         eigen_val1=(T00+T11+sqrt((T00-T11)*(T00-T11)+4*T10*T10))/2;
-         eigen_val2=(T00+T11-sqrt((T00-T11)*(T00-T11)+4*T10*T10))/2;
-         lambda=std::min(abs(eigen_val1-T11),abs(eigen_val2-T11));
-        
+         double dm =biDuv.diag[rowsM-2][colsM-2];
+         double fm=biDuv.diag[rowsM-2][colsM-1];
+         double dn=biDuv.diag[rowsM-1][colsM-1];
+         double fmMinus1=biDuv.diag[rowsM-3][colsM-2];
+         lambda=eigenValuesOfT(dm,dn,fm,fmMinus1);
+         
          for (int i=0; i<=colsDiag-2; i++) {
             Set<int> setij(i);
             setij += i+1;
@@ -185,11 +205,15 @@ namespace {
             
             Matrix<double> U1=T(Rij)*biDuv.left.minor(setij,sequence(0,dimU)); 
             biDuv.left.minor(setij,sequence(0,dimU))=U1;
-
-           
          }
          for (int i=0; i<=colsDiag-2; i++) {
-            if (abs(biDuv.diag[i][i+1])>epsilon*(abs(biDuv.diag[i][i])+abs(biDuv.diag[i+1][i+1]))){
+            double left=abs(biDuv.diag[i][i+1]);
+            double right=epsilon*colsM*rowsM*max_entry;
+            if (left<=right)
+               {
+                  biDuv.diag[i][i+1]=0;
+               }
+            if (left>right){
                fuse=1;
                break;
             }
@@ -286,7 +310,13 @@ namespace {
       Vector<double> x= moore_penrose_inverse(A)*b;
       return x;
    }
-   
+    
+   Vector<double> eigenvalues(Matrix<double> M)
+   // computes a vector tof eigenvalues only for  square positive-semidefinte matrix
+   { 
+      SingularValueDecomposition Mdecomp=singular_value_decomposition(M);
+      return Mdecomp.sigma.diagonal();
+   }
  
 }
 

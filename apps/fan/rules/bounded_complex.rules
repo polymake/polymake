@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -20,7 +20,7 @@ object polytope::Polytope {
 # Bounded subcomplex.
 # Defined as the bounded cells of the boundary of the pointed part of the polytope. 
 # Therefore it only depends on [[VERTICES_IN_FACETS]] and [[FAR_FACE]].
-property BOUNDED_COMPLEX : PolyhedralComplex {
+property BOUNDED_COMPLEX : PolyhedralComplex<Scalar> {
 
 
   property GRAPH {
@@ -175,16 +175,15 @@ user_method BOUNDED_HASSE_DIAGRAM = BOUNDED_COMPLEX.HASSE_DIAGRAM;
 # 
 #rule VERTICES, BOUNDED, FAR_FACE, BOUNDED_COMPLEX.GRAPH.ADJACENCY, LINEALITY_SPACE : ONE_VERTEX, FACETS | INEQUALITIES {
 #    reverse_search_graph($this,$this->ONE_VERTEX);
- #}
- #precondition : SIMPLE_POLYHEDRON;
- #precondition : POINTED;
- #weight 4.20;
- #permutation : VertexPerm;
- #
- #}
+#}
+#precondition : SIMPLE_POLYHEDRON && POINTED;
+#weight 4.20;
+#incurs VertexPerm;
+#
+#}
 
 
-object polytope::TightSpan{
+object polytope::TightSpan {
 
 rule BOUNDED_COMPLEX.GRAPH.EDGE_COLORS : BOUNDED_COMPLEX.GRAPH.ADJACENCY, HASSE_DIAGRAM, FAR_FACE, COMBINATORIAL_DIM {
    edge_colored_bounded_graph($this->BOUNDED_COMPLEX->GRAPH,$this->HASSE_DIAGRAM, $this->FAR_FACE, $this->COMBINATORIAL_DIM/2)

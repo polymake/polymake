@@ -29,6 +29,7 @@
 #include "polymake/hash_map"
 #include "polymake/list"
 #include <cassert>
+#include <forward_list>
 
 namespace pm {
 
@@ -47,25 +48,41 @@ class UniPolynomial;
 template <typename Coefficient=Rational, typename Exponent=int>
 class RationalFunction;
 
+template <typename T>
+inline
+typename std::enable_if<is_field<T>::value, bool>::type
+is_minus_one(const T& x)
+{
+   return is_one(-x);
+}
+
+template <typename T>
+inline
+typename std::enable_if<!is_field<T>::value, bool>::type
+is_minus_one(const T& x)
+{
+   return false;
+}
+
 template <typename Coefficient, typename Exponent>
-struct matching_ring< Polynomial<Coefficient, Exponent> > : True
+struct matching_ring< Polynomial<Coefficient, Exponent> > : std::true_type
 {
    typedef Ring<Coefficient, Exponent> type;
 };
 
 template <typename Coefficient, typename Exponent>
-struct matching_ring< UniPolynomial<Coefficient, Exponent> > : True
+struct matching_ring< UniPolynomial<Coefficient, Exponent> > : std::true_type
 {
    typedef Ring<Coefficient, Exponent> type;
 };
 
 template <typename Coefficient, typename Exponent>
-struct matching_ring< RationalFunction<Coefficient, Exponent> > : True
+struct matching_ring< RationalFunction<Coefficient, Exponent> > : std::true_type
 {
    typedef Ring<Coefficient, Exponent> type;
 };
 
-template <typename Exponent=int>
+template <typename Exponent=int, bool strict=true>
 class cmp_monomial_ordered_base {
 public:
    // for multi-variate polynomials
@@ -85,7 +102,18 @@ public:
    cmp_value compare_values(const SparseVector<Exponent>& m1, const SparseVector<Exponent>& m2, const GenericMatrix<_Matrix>& order) const
    {
       cmp_value v(operations::cmp()(order * m1, order * m2));
-      if (v != cmp_eq)
+      if (v != cmp_eq || !strict)
+         return v;
+      else
+         return operations::cmp()(m1, m2);
+   }
+
+   // for multi-variate polynomials
+   template <typename _Vector>
+   cmp_value compare_values(const SparseVector<Exponent>& m1, const SparseVector<Exponent>& m2, const GenericVector<_Vector>& order) const
+   {
+      cmp_value v(operations::cmp()(order * m1, order * m2));
+      if (v != cmp_eq || !strict)
          return v;
       else
          return operations::cmp()(m1, m2);
@@ -99,9 +127,9 @@ public:
 };
 
 
-template <typename Order, typename order_type_tag=typename object_traits<Order>::generic_tag>
+template <typename Order, bool strict=true, typename order_type_tag=typename object_traits<Order>::generic_tag>
 class cmp_monomial_ordered
-   : public cmp_monomial_ordered_base<Order>
+   : public cmp_monomial_ordered_base<Order, strict>
 {
 public:
    typedef Order exponent_type;
@@ -119,9 +147,9 @@ private:
 };
 
 
-template <typename Order>
-class cmp_monomial_ordered<Order, is_matrix>
-   : public cmp_monomial_ordered_base<typename Order::element_type>
+template <typename Order, bool strict>
+class cmp_monomial_ordered<Order, strict, is_matrix>
+   : public cmp_monomial_ordered_base<typename Order::element_type, strict>
 {
 public:
    explicit cmp_monomial_ordered(const Order& order_arg)
@@ -136,42 +164,139 @@ private:
    const Order& order;
 };
 
+template <typename Order, bool strict>
+class cmp_monomial_ordered<Order, strict, is_vector>
+   : public cmp_monomial_ordered_base<typename Order::element_type, strict>
+{
+public:
+   explicit cmp_monomial_ordered(const Order& order_arg)
+      : order(order_arg) {}
+
+   cmp_value operator()(const SparseVector<typename Order::element_type>& m1, const SparseVector<typename Order::element_type>& m2) const
+   {
+      return this->compare_values(m1, m2, order);
+   }
+
+private:
+   const Order& order;
+};
+
+template <typename TMonomial> struct Term_result;
+template <typename TMonomial> struct Polynomial_result;
+
 // forward declaration in Ring.h
 
 template <typename Coefficient, typename Exponent>
-class Monomial {
+class Monomial_base {
 public:
    typedef Ring<Coefficient, Exponent> ring_type;
+   typedef Coefficient coefficient_type;
+   typedef Exponent exponent_type;
+
+private:
+   // how to convert something to a coefficient of a Term or Polynomial
+
+   // primary template catches bogus input not being a polynomial at all
+   template <typename T, typename TBogus, typename enabled=void>
+   struct deeper_coefficient_impl
+      : std::false_type {};
+
+   // if T can directly be converted into TPolynomial's coefficient, it will be handled by the corresponding constructor
+   template <typename T, typename TPolynomial>
+   struct deeper_coefficient_impl<T, TPolynomial,
+                                  typename std::enable_if<std::is_convertible<T, typename TPolynomial::coefficient_type>::value>::type>
+      : std::false_type {};
+
+   // T can be converted to TPolynomial's Coefficient's coefficient
+   template <typename T, typename TPolynomial>
+   struct deeper_coefficient_impl<T, TPolynomial,
+                                  typename std::enable_if<std::is_convertible<T, typename TPolynomial::coefficient_type::coefficient_type>::value>::type>
+      : std::true_type {
+      typedef typename TPolynomial::coefficient_type coefficient_type;
+
+      static
+      coefficient_type construct(const T& x, const typename TPolynomial::ring_type& ring)
+      {
+         return coefficient_type(x, ring.get_coefficient_ring());
+      }
+   };
+
+   // T can be converted to some deeper coefficient in the nesting hierarchy
+   template <typename T, typename TPolynomial>
+   struct deeper_coefficient_impl<T, TPolynomial,
+                                  typename std::enable_if<!std::is_convertible<T, typename TPolynomial::coefficient_type::coefficient_type>::value &&
+                                                          deeper_coefficient_impl<T, typename TPolynomial::coefficient_type>::value>::type>
+      : std::true_type {
+      typedef deeper_coefficient_impl<T, typename TPolynomial::coefficient_type> deeper;
+      typedef typename TPolynomial::coefficient_type coefficient_type;
+
+      static
+      coefficient_type construct(const T& x, const typename TPolynomial::ring_type& ring)
+      {
+         return coefficient_type(deeper::construct(x, ring.get_coefficient_ring()), ring.get_coefficient_ring());
+      }
+   };
+public:
+   template <typename T>
+   struct is_deeper_coefficient
+      : deeper_coefficient_impl<T, Monomial_base> {};
+
+   template <typename T>
+   struct fits_as_coefficient
+      : bool_constant<can_upgrade<T, coefficient_type>::value || is_deeper_coefficient<T>::value> {};
+
+protected:
+   ring_type ring;
+
+public:
+   Monomial_base() {}
+
+   explicit Monomial_base(const ring_type& r)
+      : ring(r) {}
+
+   const ring_type& get_ring() const { return ring; }
+
+   void swap(Monomial_base& other) { ring.swap(other.ring); }
+
+   void croak_if_incompatible(const Monomial_base& other) const
+   {
+      if (ring != other.ring) throw std::runtime_error("Monomials of different rings");
+   }
+};
+
+template <typename Coefficient, typename Exponent>
+class Monomial
+   : public Monomial_base<Coefficient, Exponent> {
+public:
+   typedef Monomial_base<Coefficient, Exponent> base_t;
+   using typename base_t::ring_type;
    typedef Coefficient coefficient_type;
    typedef Exponent exponent_type;
    typedef SparseVector<Exponent> value_type;
 
 protected:
    value_type the_monom;
-   ring_type ring;
 
 public:
-   // undefined object - to be read later from perl::Value
    Monomial() {}
 
    explicit Monomial(const ring_type& r)
-      : the_monom(r.n_vars())
-      , ring(r) {}
-
+      : base_t(r)
+      , the_monom(r.n_vars()) {}
+   
    template <typename Vector>
    Monomial(const GenericVector<Vector, Exponent>& m, const ring_type& r)
-      : the_monom(m)
-      , ring(r)
+      : base_t(r)
+      , the_monom(m)
    {
       if (POLYMAKE_DEBUG || !Unwary<Vector>::value) {
-         if (m.dim() != ring.n_vars())
+         if (m.dim() != r.n_vars())
             throw std::runtime_error("Monomial constructor - dimension mismatch");
       }
    }
 
    int dim() const { return the_monom.dim(); }
    const value_type& get_value() const { return the_monom; }
-   const ring_type& get_ring() const { return ring; }
 
    void clear()
    {
@@ -179,10 +304,10 @@ public:
       the_monom.fill(Exponent(0));
    }
 
-   void swap(Monomial& m)
+   void swap(Monomial& other)
    {
-      ring.swap(m.ring);
-      the_monom.swap(m.the_monom);
+      base_t::swap(other);
+      the_monom.swap(other.the_monom);
    }
 
    static value_type default_value(const ring_type& r)
@@ -208,14 +333,14 @@ public:
 
    cmp_value compare(const Monomial& m) const
    {
-      if (ring != m.ring) throw std::runtime_error("Monomials of different rings");
+      this->croak_if_incompatible(m);
       return compare_values(the_monom, m.the_monom, cmp_monomial_ordered_base<Exponent>());
    }
 
    template <typename Matrix>
    cmp_value compare(const Monomial& m, const GenericMatrix<Matrix, Exponent>& order) const
    {
-      if (ring != m.ring) throw std::runtime_error("Monomials of different rings");
+      this->croak_if_incompatible(m);
       return compare_values(the_monom, m.the_monom, cmp_monomial_ordered<Matrix>(order.top()));
    }
 
@@ -223,20 +348,20 @@ public:
 
    Monomial operator* (const Monomial& m) const
    {
-      if (ring != m.ring) throw std::runtime_error("Monomials of different rings");
-      return Monomial(the_monom+m.the_monom, ring);
+      this->croak_if_incompatible(m);
+      return Monomial(the_monom+m.the_monom, this->ring);
    }
 
    Monomial& operator*= (const Monomial& m)
    {
-      if (ring != m.ring) throw std::runtime_error("Monomials of different rings");
+      this->croak_if_incompatible(m);
       the_monom += m.the_monom;
       return *this;
    }
 
    Monomial operator^ (typename function_argument<Exponent>::type exp) const
    {
-      return Monomial(exp*the_monom, ring);
+      return Monomial(exp*the_monom, this->ring);
    }
 
    Monomial& operator^= (typename function_argument<Exponent>::type exp)
@@ -247,30 +372,30 @@ public:
 
    bool operator== (const Monomial& m) const
    {
-      if (ring != m.ring) throw std::runtime_error("Monomials of different rings");
+      this->croak_if_incompatible(m);
       return the_monom == m.the_monom;
    }
    bool operator!= (const Monomial& m) const
    {
-      if (ring != m.ring) throw std::runtime_error("Monomials of different rings");
+      this->croak_if_incompatible(m);
       return the_monom != m.the_monom;
    }
 
    bool operator< (const Monomial& m) const
    {
-      return operations::cmp()(*this,m)==cmp_lt;
+      return operations::cmp()(*this, m)==cmp_lt;
    }
    bool operator<= (const Monomial& m) const
    {
-      return operations::cmp()(*this,m)!=cmp_gt;
+      return operations::cmp()(*this, m)!=cmp_gt;
    }
    bool operator> (const Monomial& m) const
    {
-      return operations::cmp()(*this,m)==cmp_gt;
+      return operations::cmp()(*this, m)==cmp_gt;
    }
    bool operator>= (const Monomial& m) const
    {
-      return operations::cmp()(*this,m)!=cmp_lt;
+      return operations::cmp()(*this, m)!=cmp_lt;
    }
 
    template <typename Output> static
@@ -287,7 +412,7 @@ public:
             first = false;
          else
             out.top() << '*';
-         out.top() << r.names()[it.index()];
+         out.top() << r.pretty_names()[it.index()];
          if (!is_one(*it)) out.top() << '^' << *it;
       }
    }
@@ -304,45 +429,42 @@ public:
 
 
 template <typename Coefficient, typename Exponent>
-class UniMonomial {
+class UniMonomial : public Monomial_base<Coefficient, Exponent> {
 public:
-   typedef Ring<Coefficient, Exponent> ring_type;
-   typedef Coefficient coefficient_type;
-   typedef Exponent exponent_type;
+   typedef Monomial_base<Coefficient, Exponent> base_t;
+   using typename base_t::ring_type;
    typedef Exponent value_type;
 
    static ring_type default_ring() { return ring_type(1); }
 
 protected:
    value_type the_monom;
-   ring_type ring;
 
 public:
-   UniMonomial() :
-      the_monom(),
-      ring(default_ring()) {}
+   UniMonomial()
+      : base_t(default_ring())
+      , the_monom() {}
 
-   explicit UniMonomial(const Exponent& exp) :
-      the_monom(exp),
-      ring(default_ring()) {}
+   explicit UniMonomial(const Exponent& exp)
+      : base_t(default_ring())
+      , the_monom(exp) {}
 
-   explicit UniMonomial(const ring_type& r) :
-      the_monom(),
-      ring(r)
+   explicit UniMonomial(const ring_type& r)
+      : base_t(r)
+      , the_monom()
    {
       if (r.n_vars() != 1) throw std::runtime_error("UniMonomial constructor - invalid ring");
    }
 
-   UniMonomial(const Exponent& exp, const ring_type& r) :
-      the_monom(exp),
-      ring(r)
+   UniMonomial(const Exponent& exp, const ring_type& r)
+      : base_t(r)
+      , the_monom(exp)
    {
       if (r.n_vars() != 1) throw std::runtime_error("UniMonomial constructor - invalid ring");
    }
 
    int dim() const { return 1; }
    const value_type& get_value() const { return the_monom; }
-   const ring_type& get_ring() const { return ring; }
 
    void clear()
    {
@@ -351,7 +473,7 @@ public:
 
    void swap(UniMonomial& m)
    {
-      ring.swap(m.ring);
+      base_t::swap(m);
       the_monom.swap(m.the_monom);
    }
 
@@ -378,32 +500,32 @@ public:
 
    cmp_value compare(const UniMonomial& m) const
    {
-      if (ring != m.ring) throw std::runtime_error("UniMonomials of different rings");
+      this->croak_if_incompatible(m);
       return compare_values(the_monom, m.the_monom, cmp_monomial_ordered_base<Exponent>());
    }
 
    cmp_value compare(const UniMonomial& m, const Exponent& order) const
    {
-      if (ring != m.ring) throw std::runtime_error("UniMonomials of different rings");
+      this->croak_if_incompatible(m);
       return compare_values(the_monom, m.the_monom, cmp_monomial_ordered<Exponent>(order));
    }
 
    UniMonomial operator* (const UniMonomial& m) const
    {
-      if (ring != m.ring) throw std::runtime_error("UniMonomials of different rings");
-      return UniMonomial(the_monom+m.the_monom, ring);
+      this->croak_if_incompatible(m);
+      return UniMonomial(the_monom+m.the_monom, this->ring);
    }
 
    UniMonomial& operator*= (const UniMonomial& m)
    {
-      if (ring != m.ring) throw std::runtime_error("UniMonomials of different rings");
+      this->croak_if_incompatible(m);
       the_monom += m.the_monom;
       return *this;
    }
 
    UniMonomial operator^ (typename function_argument<Exponent>::type exp) const
    {
-      return UniMonomial(exp*the_monom, ring);
+      return UniMonomial(exp*the_monom, this->ring);
    }
 
    UniMonomial& operator^= (typename function_argument<Exponent>::type exp)
@@ -414,32 +536,32 @@ public:
 
    bool operator== (const UniMonomial& m) const
    {
-      if (ring != m.ring) throw std::runtime_error("UniMonomials of different rings");
+      this->croak_if_incompatible(m);
       return the_monom == m.the_monom;
    }
    bool operator!= (const UniMonomial& m) const
    {
-      if (ring != m.ring) throw std::runtime_error("UniMonomials of different rings");
+      this->croak_if_incompatible(m);
       return the_monom != m.the_monom;
    }
    bool operator< (const UniMonomial& m) const
    {
-      if (ring != m.ring) throw std::runtime_error("UniMonomials of different rings");
+      this->croak_if_incompatible(m);
       return the_monom < m.the_monom;
    }
    bool operator<= (const UniMonomial& m) const
    {
-      if (ring != m.ring) throw std::runtime_error("UniMonomials of different rings");
+      this->croak_if_incompatible(m);
       return the_monom <= m.the_monom;
    }
    bool operator> (const UniMonomial& m) const
    {
-      if (ring != m.ring) throw std::runtime_error("UniMonomials of different rings");
+      this->croak_if_incompatible(m);
       return the_monom > m.the_monom;
    }
    bool operator>= (const UniMonomial& m) const
    {
-      if (ring != m.ring) throw std::runtime_error("UniMonomials of different rings");
+      this->croak_if_incompatible(m);
       return the_monom >= m.the_monom;
    }
 
@@ -450,7 +572,7 @@ public:
          out.top() << one_value<Coefficient>();  // constant monomial
          return;
       }
-      out.top() << r.names().front();
+      out.top() << r.pretty_names().front();
       if (!is_one(m)) out.top() << '^' << m;
    }
 
@@ -500,8 +622,8 @@ struct spec_object_traits< Serialized< UniMonomial<Coefficient, Exponent> > > :
 template <typename Coefficient, typename Exponent>
 class Ring_impl<Coefficient, Exponent>::Variables :
    public modified_container_impl<Variables,
-                                  list( Container< sequence >,
-                                        Operation< Monomial_constructor > ) > {
+                                  mlist< ContainerTag< sequence >,
+                                         OperationTag< Monomial_constructor > > > {
 public:
    Variables(const Ring_impl& r) : ring(r) {}
 
@@ -539,9 +661,6 @@ Ring_impl<Coefficient, Exponent>::variable() const
 
 // how to reconstruct the type of the Term or Polynomial from its Monomial type
 
-template <typename Monomial> struct Term_result {};
-template <typename Monomial> struct Polynomial_result {};
-
 template <typename Coefficient, typename Exponent>
 struct Term_result< Monomial<Coefficient, Exponent> > {
    typedef Term<Coefficient, Exponent> type;
@@ -562,83 +681,44 @@ struct Polynomial_result< UniMonomial<Coefficient, Exponent> > {
    typedef UniPolynomial<Coefficient, Exponent> type;
 };
 
-// how to convert something to a coefficient of a Term or Polynomial
-
-// this catches the SFINAE cases, that is, when Result does not have an inner coefficient_type at all
-template <typename T, typename Result, typename enabler=void>
-struct deeper_coefficient_of : False {};
-
-// if T can be directly converted into Result's coefficient, it will be handled by the corresponding constructor
-template <typename T, typename Result>
-struct deeper_coefficient_of<T, Result, typename enable_if<void, convertible_to<T, typename Result::coefficient_type>::value>::type> : False {};
-
-// T can be converted to Result's coefficient's coefficient
-template <typename T, typename Result>
-struct deeper_coefficient_of<T, Result, typename enable_if<void, convertible_to<T, typename Result::coefficient_type::coefficient_type>::value>::type> : True
-{
-   typedef typename Result::coefficient_type result_type;
-
-   static
-   result_type construct(typename function_argument<T>::type x, const typename Result::ring_type& ring)
-   {
-      return result_type(x, ring.get_coefficient_ring());
-   }
-};
-
-// T can be converted to some deeper coefficient in the nesting hierarchy
-template <typename T, typename Result>
-struct deeper_coefficient_of<T, Result, typename enable_if<void, (!convertible_to<T, typename Result::coefficient_type::coefficient_type>::value &&
-                                                                  deeper_coefficient_of<T, typename Result::coefficient_type>::value)>::type> : True
-{
-   typedef deeper_coefficient_of<T, typename Result::coefficient_type> deeper;
-   typedef typename Result::coefficient_type result_type;
-
-   static
-   result_type construct(typename function_argument<T>::type x, const typename Result::ring_type& ring)
-   {
-      return result_type(deeper::construct(x, ring.get_coefficient_ring()), ring.get_coefficient_ring());
-   }
-};
-
-template <typename T, typename TermOrPolynomial, bool answer=(convertible_to<T, typename TermOrPolynomial::coefficient_type>::value ||
-                                                              deeper_coefficient_of<T, TermOrPolynomial>::value)>
-struct fits_as_coefficient : True {};
-
-template <typename T, typename TermOrPolynomial>
-struct fits_as_coefficient<T, TermOrPolynomial, false> : False {};
-
-template <typename Monomial>
+template <typename TMonomial>
 class Term_base {
 public:
-   typedef Monomial monomial_type;
+   typedef TMonomial monomial_type;
    typedef typename monomial_type::ring_type ring_type;
    typedef typename monomial_type::coefficient_type coefficient_type;
    typedef typename monomial_type::exponent_type exponent_type;
+
+   template <typename T>
+   using fits_as_coefficient = typename monomial_type::template fits_as_coefficient<T>;
+   template <typename T>
+   using is_deeper_coefficient = typename monomial_type::template is_deeper_coefficient<T>;
+
    typedef std::pair<typename monomial_type::value_type, coefficient_type> value_type;
-   typedef typename Term_result<Monomial>::type term_result;
+   typedef typename Term_result<monomial_type>::type term_result;
 
    Term_base() {}
 
    explicit Term_base(const ring_type& r) :
       ring(r) {}
 
-   Term_base(const coefficient_type& c, const ring_type& r) :
-      the_term(monomial_type::default_value(r), c),
-      ring(r) {}
+   Term_base(const coefficient_type& c, const ring_type& r)
+      : the_term(monomial_type::default_value(r), c)
+      , ring(r) {}
 
    template <typename T>
-   Term_base(const T& c, const typename enable_if<ring_type, deeper_coefficient_of<T, Term_base>::value>::type& r) :
-      the_term(monomial_type::default_value(r), deeper_coefficient_of<T, Term_base>::construct(c, r)),
-      ring(r) {}
+   Term_base(const T& c, const typename std::enable_if<is_deeper_coefficient<T>::value, ring_type>::type& r)
+      : the_term(monomial_type::default_value(r), is_deeper_coefficient<T>::construct(c, r))
+      , ring(r) {}
 
-   Term_base(const typename monomial_type::value_type& m, const coefficient_type& c, const ring_type& r) :
-      the_term(m, c),
-      ring(r) {}
+   Term_base(const typename monomial_type::value_type& m, const coefficient_type& c, const ring_type& r)
+      : the_term(m, c)
+      , ring(r) {}
 
    template <typename T>
-   Term_base(const typename monomial_type::value_type& m, const T& c, const typename enable_if<ring_type, deeper_coefficient_of<T, Term_base>::value>::type& r) :
-      the_term(m, deeper_coefficient_of<T, Term_base>::construct(c, r)),
-      ring(r) {}
+   Term_base(const typename monomial_type::value_type& m, const T& c, const typename std::enable_if<is_deeper_coefficient<T>::value, ring_type>::type& r)
+      : the_term(m, is_deeper_coefficient<T>::construct(c, r))
+      , ring(r) {}
 
    void swap(Term_base& t)
    {
@@ -655,22 +735,28 @@ public:
    term_result& top() { return static_cast<term_result&>(*this); }
    const term_result& top() const { return static_cast<const term_result&>(*this); }
 
+   template <typename Other>
+   void croak_if_incompatible(const Other& other) const
+   {
+      if (get_ring() != other.get_ring()) throw std::runtime_error("Terms of different rings");
+   }
+
    template <typename T>
-   typename enable_if<term_result, fits_as_coefficient<T, Term_base>::value>::type
+   typename std::enable_if<fits_as_coefficient<T>::value, term_result>::type
    operator* (const T& c) const
    {
       return term_result(value_type(the_term.first, the_term.second * c), ring);
    }
 
    template <typename T> friend
-   typename enable_if<term_result, fits_as_coefficient<T, Term_base>::value>::type
+   typename std::enable_if<fits_as_coefficient<T>::value, term_result>::type
    operator* (const T& c, const Term_base& t)
    {
       return term_result(value_type(t.the_term.first, c * t.the_term.second), t.ring);
    }
 
    template <typename T>
-   typename enable_if<term_result, fits_as_coefficient<T, Term_base>::value>::type&
+   typename std::enable_if<fits_as_coefficient<T>::value, term_result>::type&
    operator*= (const T& c)
    {
       the_term.second *= c;
@@ -678,7 +764,7 @@ public:
    }
 
    template <typename T>
-   typename enable_if<term_result, fits_as_coefficient<T, Term_base>::value>::type
+   typename std::enable_if<fits_as_coefficient<T>::value, term_result>::type
    operator/ (const T& c) const
    {
       if (is_zero(c)) throw GMP::ZeroDivide();
@@ -686,7 +772,7 @@ public:
    }
 
    template <typename T>
-   typename enable_if<term_result, fits_as_coefficient<T, Term_base>::value>::type&
+   typename std::enable_if<fits_as_coefficient<T>::value, term_result>::type&
    operator/= (const T& c)
    {
       if (is_zero(c)) throw GMP::ZeroDivide();
@@ -696,7 +782,7 @@ public:
 
    term_result operator* (const monomial_type& m) const
    {
-      if (ring != m.get_ring()) throw std::runtime_error("Terms of different rings");
+      croak_if_incompatible(m);
       return term_result(value_type(the_term.first + m.get_value(), the_term.second), ring);
    }
 
@@ -708,20 +794,20 @@ public:
 
    term_result& operator*= (const monomial_type& m)
    {
-      if (ring != m.get_ring()) throw std::runtime_error("Terms of different rings");
+      croak_if_incompatible(m);
       the_term.first += m.get_value();
       return top();
    }
 
    term_result operator* (const Term_base& t) const
    {
-      if (ring != t.ring) throw std::runtime_error("Terms of different rings");
+      croak_if_incompatible(t);
       return term_result(value_type(the_term.first + t.the_term.first, the_term.second * t.the_term.second), ring);
    }
 
    term_result& operator*= (const Term_base& t)
    {
-      if (ring != t.ring) throw std::runtime_error("Terms of different rings");
+      croak_if_incompatible(t);
       the_term.first += t.the_term.first;
       the_term.second *= t.the_term.second;
       return top();
@@ -739,26 +825,26 @@ public:
       return top();
    }
 
-   bool operator== (const Term_base& x2) const
+   bool operator== (const Term_base& t) const
    {
-      if (ring != x2.ring) throw std::runtime_error("Terms of different rings");
-      return the_term==x2.the_term;
+      croak_if_incompatible(t);
+      return the_term==t.the_term;
    }
 
-   bool operator!= (const Term_base& x2) const
+   bool operator!= (const Term_base& t) const
    {
-      return !operator==(x2);
+      return !operator==(t);
    }
 
-   bool operator== (const monomial_type& x2) const
+   bool operator== (const monomial_type& m) const
    {
-      if (ring != x2.get_ring()) throw std::runtime_error("Terms of different rings");
-      return the_term.first==x2.get_value() && is_one(the_term.second);
+      croak_if_incompatible(m);
+      return the_term.first==m.get_value() && is_one(the_term.second);
    }
 
-   bool operator!= (const monomial_type& x2)
+   bool operator!= (const monomial_type& m)
    {
-     return !operator==(x2);
+     return !operator==(m);
    }
 
    friend
@@ -774,28 +860,28 @@ public:
    }
 
    template <typename T>
-   typename enable_if<bool, fits_as_coefficient<T, Term_base>::value>::type
+   typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
    operator== (const T& x2) const
    {
       return is_zero(x2) && is_zero(the_term.second) || monomial_type::equals_to_default(the_term.first) && the_term.second==x2;
    }
 
    template <typename T>
-   typename enable_if<bool, fits_as_coefficient<T, Term_base>::value>::type
+   typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
    operator!= (const T& x2) const
    {
      return !operator==(x2);
    }
 
    template <typename T> friend
-   typename enable_if<bool, fits_as_coefficient<T, Term_base>::value>::type
+   typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
    operator== (const T& x1, const Term_base& x2)
    {
       return x2==x1;
    }
 
    template <typename T> friend
-   typename enable_if<bool, fits_as_coefficient<T, Term_base>::value>::type
+   typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
    operator!= (const T& x1, const Term_base& x2)
    {
       return !(x2==x1);
@@ -814,7 +900,7 @@ protected:
    template <typename Comparator>
    cmp_value compare_ordered(const Term_base& x, const Comparator& cmp) const
    {
-      if (ring != x.ring) throw std::runtime_error("Terms of different rings");
+      croak_if_incompatible(x);
       return compare_values(the_term, x.the_term, cmp);
    }
 
@@ -857,16 +943,16 @@ public:
                      const ring_type& r)
    {
       if (!is_one(c)) {
-         if (!(is_field<coefficient_type>::value && is_one(-c))){
-            if (!identical<typename object_traits<coefficient_type>::model, is_scalar>::value)
+         if (is_minus_one(c)) {
+            out.top() << "- ";
+         } else {
+            if (!std::is_same<typename object_traits<coefficient_type>::model, is_scalar>::value)
                out.top() << '(';
             out.top() << c;
-            if (!identical<typename object_traits<coefficient_type>::model, is_scalar>::value)
+            if (!std::is_same<typename object_traits<coefficient_type>::model, is_scalar>::value)
                out.top() << ')';
             if (monomial_type::equals_to_default(m)) return;
             out.top() << '*';
-         } else {
-            out.top() << "- ";
          }
       }
       monomial_type::pretty_print(out, m, r);
@@ -886,8 +972,8 @@ public:
    }
 
 protected:
-   static bool needs_plus(const coefficient_type& c, True) { return c>=zero_value<coefficient_type>(); }
-   static bool needs_plus(const coefficient_type&, False) { return true; }
+   static bool needs_plus(const coefficient_type& c, std::true_type) { return c >= zero_value<coefficient_type>(); }
+   static bool needs_plus(const coefficient_type&, std::false_type) { return true; }
 
    value_type the_term;
    ring_type ring;
@@ -898,33 +984,34 @@ class Term : public Term_base< Monomial<Coefficient, Exponent> > {
 public:
    typedef Monomial<Coefficient, Exponent> monomial_type;
 private:
-   typedef Term_base<monomial_type> super;
+   typedef Term_base<monomial_type> base_t;
 public:
+   template <typename T>
+   using fits_as_coefficient = typename monomial_type::template fits_as_coefficient<T>;
+   using typename base_t::ring_type;
+
    Term() {}
 
-   explicit Term(const typename super::ring_type& r) :
-      super(r) {}
+   explicit Term(const ring_type& r)
+      : base_t(r) {}
 
-   template <typename T>
-   Term(const T& c, const typename super::ring_type& r,
-        typename enable_if<void**, fits_as_coefficient<T, Term>::value>::type=0) :
-      super(c,r) {}
+   template <typename T, typename enabled=typename std::enable_if<fits_as_coefficient<T>::value>::type>
+   Term(const T& c, const ring_type& r)
+      : base_t(c,r) {}
 
-   Term(const monomial_type& m) :
-      super(m.get_value(), m.get_ring().one_coef(), m.get_ring()) {}
+   Term(const monomial_type& m)
+      : base_t(m.get_value(), m.get_ring().one_coef(), m.get_ring()) {}
 
-   template <typename T>
-   Term(const monomial_type& m, const T& c,
-        typename enable_if<void**, fits_as_coefficient<T, Term>::value>::type=0) :
-      super(m.get_value(), c, m.get_ring()) {}
+   template <typename T, typename enabled=typename std::enable_if<fits_as_coefficient<T>::value>::type>
+   Term(const monomial_type& m, const T& c)
+      : base_t(m.get_value(), c, m.get_ring()) {}
 
-   Term(const std::pair<const typename monomial_type::value_type, Coefficient>& p, const typename super::ring_type& r) :
-      super(p.first, p.second, r) {}
+   Term(const std::pair<const typename monomial_type::value_type, Coefficient>& p, const ring_type& r)
+      : base_t(p.first, p.second, r) {}
 
-   template <typename Vector, typename T>
-   Term(const GenericVector<Vector,Exponent>& m, const T& c, const typename super::ring_type& r,
-        typename enable_if<void**, fits_as_coefficient<T, Term>::value>::type=0) :
-      super(m, c, r) {}
+   template <typename TVector, typename T, typename enabled=typename std::enable_if<fits_as_coefficient<T>::value>::type>
+   Term(const GenericVector<TVector, Exponent>& m, const T& c, const ring_type& r)
+      : base_t(m, c, r) {}
 
    template <typename> friend struct spec_object_traits;
 };
@@ -934,39 +1021,35 @@ class UniTerm : public Term_base< UniMonomial<Coefficient, Exponent> > {
 public:
    typedef UniMonomial<Coefficient, Exponent> monomial_type;
 private:
-   typedef Term_base<monomial_type> super;
+   typedef Term_base<monomial_type> base_t;
 public:
-   UniTerm() : super(monomial_type::default_ring()) {}
-
-   explicit UniTerm(const typename super::ring_type& r) :
-      super(r)
-   {
-      if (r.n_vars() != 1) throw std::runtime_error("UniTerm constructor - invalid ring");
-   }
-
    template <typename T>
-   explicit UniTerm(const T& c,
-                    typename enable_if<void**, fits_as_coefficient<T, UniTerm>::value>::type=0) :
-      super(c, monomial_type::default_ring()) {}
+   using fits_as_coefficient = typename monomial_type::template fits_as_coefficient<T>;
+   using typename base_t::ring_type;
 
-   template <typename T>
-   UniTerm(const T& c, const typename super::ring_type& r,
-           typename enable_if<void**, fits_as_coefficient<T, UniTerm>::value>::type=0) :
-      super(c,r)
-   {
-      if (r.n_vars() != 1) throw std::runtime_error("UniTerm constructor - invalid ring");
-   }
+   UniTerm()
+      : base_t(monomial_type::default_ring()) {}
 
-   UniTerm(const monomial_type& m) :
-      super(m.get_value(), m.get_ring().one_coef(), m.get_ring()) {}
+   explicit UniTerm(const ring_type& r)
+      : base_t(r) {}
 
-   template <typename T>
-   UniTerm(const monomial_type& m, const T& c,
-           typename enable_if<void**, fits_as_coefficient<T, UniTerm>::value>::type=0) :
-      super(m.get_value(), c, m.get_ring()) {}
+   template <typename T, typename enabled=typename std::enable_if<fits_as_coefficient<T>::value>::type>
+   explicit UniTerm(const T& c)
+      : base_t(c, monomial_type::default_ring()) {}
 
-   UniTerm(const std::pair<const typename monomial_type::value_type, Coefficient>& p, const typename super::ring_type& r) :
-      super(p.first, p.second, r) {}
+   template <typename T, typename enabled=typename std::enable_if<fits_as_coefficient<T>::value>::type>
+   UniTerm(const T& c, const ring_type& r)
+      : base_t(c, r) {}
+
+   UniTerm(const monomial_type& m)
+      : base_t(m.get_value(), m.get_ring().one_coef(), m.get_ring()) {}
+
+   template <typename T, typename enabled=typename std::enable_if<fits_as_coefficient<T>::value>::type>
+   UniTerm(const monomial_type& m, const T& c)
+      : base_t(m.get_value(), c, m.get_ring()) {}
+
+   UniTerm(const std::pair<const typename monomial_type::value_type, Coefficient>& p, const ring_type& r)
+      : base_t(p.first, p.second, r) {}
 
    template <typename> friend struct spec_object_traits;
 };
@@ -1005,46 +1088,54 @@ struct spec_object_traits< Serialized< UniTerm<Coefficient,Exponent> > > :
 };
 
 
-template <typename monomial_type, typename T> inline
-typename enable_if<typename Term_result<monomial_type>::type, fits_as_coefficient<T, monomial_type>::value>::type
-operator* (const T& c, const monomial_type& m)
+template <typename TMonomial, typename T> inline
+typename std::enable_if<TMonomial::template fits_as_coefficient<T>::value,
+                        typename Term_result<TMonomial>::type>::type
+operator* (const T& c, const TMonomial& m)
 {
-   return typename Term_result<monomial_type>::type(m, c);
+   return typename Term_result<TMonomial>::type(m, c);
 }
 
-template <typename monomial_type, typename T> inline
-typename enable_if<typename Term_result<monomial_type>::type, fits_as_coefficient<T, monomial_type>::value>::type
-operator* (const monomial_type& m, const T& c)
+template <typename TMonomial, typename T> inline
+typename std::enable_if<TMonomial::template fits_as_coefficient<T>::value,
+                        typename Term_result<TMonomial>::type>::type
+operator* (const TMonomial& m, const T& c)
 {
-   return typename Term_result<monomial_type>::type(m, c);
+   return typename Term_result<TMonomial>::type(m, c);
 }
 
-template <typename monomial_type, typename T> inline
-typename enable_if<typename Term_result<monomial_type>::type, fits_as_coefficient<T, monomial_type>::value>::type
-operator/ (const monomial_type& m, const T& c)
+template <typename TMonomial, typename T> inline
+typename std::enable_if<TMonomial::template fits_as_coefficient<T>::value,
+                        typename Term_result<TMonomial>::type>::type
+operator/ (const TMonomial& m, const T& c)
 {
    if (is_zero(c)) throw GMP::ZeroDivide();
-   return typename Term_result<monomial_type>::type(m, m.get_ring().one_coef() / c);
+   return typename Term_result<TMonomial>::type(m, m.get_ring().one_coef() / c);
 }
 
-template <typename monomial_type> inline
-typename Term_result<monomial_type>::type
-operator- (const monomial_type& m)
+template <typename TMonomial> inline
+typename Term_result<TMonomial>::type
+operator- (const TMonomial& m)
 {
-   return typename Term_result<monomial_type>::type(m, -m.get_ring().one_coef());
+   return typename Term_result<TMonomial>::type(m, -m.get_ring().one_coef());
 }
 
-template <typename Monomial>
+template <typename TMonomial>
 class Polynomial_base {
 public:
-   typedef Monomial monomial_type;
+   typedef TMonomial monomial_type;
    typedef typename monomial_type::ring_type ring_type;
    typedef typename monomial_type::coefficient_type coefficient_type;
    typedef typename monomial_type::exponent_type exponent_type;
    typedef typename Term_result<monomial_type>::type term_type;
    typedef typename Polynomial_result<monomial_type>::type polynomial_result;
    typedef hash_map<typename monomial_type::value_type, coefficient_type> term_hash;
-   typedef std::list<typename monomial_type::value_type> sorted_terms_type; // use forward_list when using c++11
+   typedef std::forward_list<typename monomial_type::value_type> sorted_terms_type;
+
+   template <typename T>
+   using fits_as_coefficient = typename monomial_type::template fits_as_coefficient<T>;
+   template <typename T>
+   using is_deeper_coefficient = typename monomial_type::template is_deeper_coefficient<T>;
 
 protected:
    struct impl {
@@ -1093,45 +1184,39 @@ public:
    Polynomial_base() {}
 
    // the default polynomial in a given ring
-   explicit Polynomial_base(const ring_type& r) :
-      data(make_constructor(r, (impl*)0)) {}
+   explicit Polynomial_base(const ring_type& r)
+      : data(r) {}
 
-   Polynomial_base(const coefficient_type& c, const ring_type& r) :
-      data(make_constructor(r, (impl*)0))
+   Polynomial_base(const coefficient_type& c, const ring_type& r)
+      : data(r)
    {
       if (__builtin_expect(!is_zero(c), 1)) {
          data.get()->the_terms.insert(monomial_type::default_value(r), c);
       }
    }
 
-   template <typename T>
-   Polynomial_base(const T& c, const ring_type& r,
-                   typename enable_if<void**, deeper_coefficient_of<T, Polynomial_base>::value>::type=0) :
-      data(make_constructor(r, (impl*)0))
+   template <typename T, typename enabled=typename std::enable_if<is_deeper_coefficient<T>::value>::type>
+   Polynomial_base(const T& c, const ring_type& r)
+      : data(r)
    {
       if (__builtin_expect(!is_zero(c), 1)) {
-         data.get()->the_terms.insert(monomial_type::default_value(r), deeper_coefficient_of<T, Polynomial_base>::construct(c, r));
+         data.get()->the_terms.insert(monomial_type::default_value(r), is_deeper_coefficient<T>::construct(c, r));
       }
    }
 
-   Polynomial_base(const monomial_type& m) :
-      data(make_constructor(m.get_ring(), (impl*)0))
+   Polynomial_base(const monomial_type& m)
+      : data(m.get_ring())
    {
       data.get()->the_terms.insert(m.get_value(), m.get_ring().one_coef());
    }
 
-   Polynomial_base(const Term_base<monomial_type>& t) :
-      data(make_constructor(t.get_ring(), (impl*)0))
+   Polynomial_base(const Term_base<monomial_type>& t)
+      : data(t.get_ring())
    {
       if (__builtin_expect(!is_zero(t.get_coefficient()), 1)) {
          data.get()->the_terms.insert(t.get_value().first, t.get_coefficient());
       }
    }
-
-#if POLYMAKE_DEBUG
-   ~Polynomial_base() { POLYMAKE_DEBUG_METHOD(Polynomial_base,dump); }
-   void dump() const { cerr << *this << std::flush; }
-#endif
 
    void swap(Polynomial_base& p)
    {
@@ -1142,6 +1227,12 @@ public:
    void clear()
    {
       data.apply(shared_clear());
+   }
+
+   template <typename Other>
+   void croak_if_incompatible(const Other& other) const
+   {
+      if (get_ring() != other.get_ring()) throw std::runtime_error("Polynomials of different rings");
    }
 
    polynomial_result& top() { return static_cast<polynomial_result&>(*this); }
@@ -1167,7 +1258,7 @@ public:
    // returns the coefficient of the monomial m or 0 iff m does not exists
    const coefficient_type& get_coefficient(const monomial_type& m) const
    {
-      if (m.get_ring() != get_ring()) throw std::runtime_error("Polynomial - Monomial of different ring");
+      croak_if_incompatible(m);
       return get_coefficient(m.get_value());
    }
 
@@ -1181,7 +1272,7 @@ public:
 
    bool exists(const monomial_type& m) const
    {
-      if (m.get_ring() != get_ring()) throw std::runtime_error("Polynomial - Monomial of different ring");
+      croak_if_incompatible(m);
       return exists(m.get_value());
    }
 
@@ -1268,8 +1359,35 @@ public:
          return find_lm(cmp_monomial_ordered<Matrix>(order.top()))->second;
    }
 
+
+   template <typename Vector>
+   polynomial_result initial_form(const GenericVector<Vector, exponent_type>& weights) const
+   {
+      const auto cmp_ordered = cmp_monomial_ordered<Vector,false>(weights.top());
+      typename term_hash::const_iterator it=data->the_terms.begin(), max_term=it, end=data->the_terms.end();
+      std::list<typename term_hash::const_iterator> if_list;
+      if (it != end) {
+         if_list.push_back(max_term);
+         while (++it != end) {
+            cmp_value c = cmp_ordered(it->first, max_term->first);
+            if (c == cmp_gt) {
+               max_term = it;
+               if_list.clear();
+               if_list.push_back(it);
+            } else if (c == cmp_eq) {
+               if_list.push_back(it);
+            }
+         }
+      }
+      polynomial_result in_form(get_ring());
+      // this is an iterator over iterators
+      for (auto&& termit : if_list)
+         in_form.add_term(termit->first, termit->second, std::true_type());
+      return in_form;
+   }
+
    template <typename T>
-   typename enable_if<polynomial_result, fits_as_coefficient<T, Polynomial_base>::value>::type
+   typename std::enable_if<fits_as_coefficient<T>::value, polynomial_result>::type
    operator* (const T& c) const
    {
       if (__builtin_expect(is_zero(c), 0))
@@ -1279,7 +1397,7 @@ public:
    }
 
    template <typename T>
-   typename enable_if<polynomial_result, fits_as_coefficient<T, Polynomial_base>::value>::type
+   typename std::enable_if<fits_as_coefficient<T>::value, polynomial_result>::type
    mult_from_right(const T& c) const
    {
       if (__builtin_expect(is_zero(c), 0))
@@ -1291,7 +1409,7 @@ public:
    }
 
    template <typename T>
-   typename enable_if<polynomial_result, fits_as_coefficient<T, Polynomial_base>::value>::type&
+   typename std::enable_if<fits_as_coefficient<T>::value, polynomial_result>::type&
    operator*= (const T& c)
    {
       if (__builtin_expect(is_zero(c), 0)) {
@@ -1304,7 +1422,7 @@ public:
    }
 
    template <typename T>
-   typename enable_if<polynomial_result, fits_as_coefficient<T, Polynomial_base>::value>::type
+   typename std::enable_if<fits_as_coefficient<T>::value, polynomial_result>::type
    operator/ (const T& c) const
    {
       if (__builtin_expect(is_zero(c), 0)) throw GMP::ZeroDivide();
@@ -1313,7 +1431,7 @@ public:
    }
 
    template <typename T>
-   typename enable_if<polynomial_result, fits_as_coefficient<T, Polynomial_base>::value>::type&
+   typename std::enable_if<fits_as_coefficient<T>::value, polynomial_result>::type&
    operator/= (const T& c)
    {
       if (__builtin_expect(is_zero(c), 0)) throw GMP::ZeroDivide();
@@ -1336,11 +1454,10 @@ public:
 
    polynomial_result operator* (const monomial_type& m) const
    {
-      if (get_ring() != m.get_ring()) throw std::runtime_error("Polynomials of different rings");
-
+      croak_if_incompatible(m);
       polynomial_result prod(get_ring());
-      for (typename Entire<term_hash>::const_iterator it=entire(data->the_terms); !it.at_end(); ++it)
-         prod.add_term(it->first + m.get_value(), it->second, True(), True());
+      for (auto it=entire(data->the_terms); !it.at_end(); ++it)
+         prod.add_term(it->first + m.get_value(), it->second, std::true_type());
 
       return prod;
    }
@@ -1351,18 +1468,17 @@ public:
       return top();
    }
 
-   template <typename _from_right>
-   polynomial_result mult(const Term_base<monomial_type>& t, _from_right) const
+   template <typename from_right>
+   polynomial_result mult(const Term_base<monomial_type>& t, from_right) const
    {
-      if (get_ring() != t.get_ring()) throw std::runtime_error("Polynomials of different rings");
-
+      croak_if_incompatible(t);
       polynomial_result prod(get_ring());
       if (__builtin_expect(!is_zero(t.get_coefficient()), 1)) {
-         for (typename Entire<term_hash>::const_iterator it=entire(data->the_terms); !it.at_end(); ++it)
+         for (auto it=entire(data->the_terms); !it.at_end(); ++it)
             prod.add_term(it->first + t.get_value().first,
-                          _from_right::value ? t.get_value().second * it->second
-                                             : it->second * t.get_value().second,
-                          True(), True());
+                          from_right::value ? t.get_value().second * it->second
+                                            : it->second * t.get_value().second,
+                          std::true_type());
 
       }
       return prod;
@@ -1370,7 +1486,7 @@ public:
 
    polynomial_result operator* (const term_type& t) const
    {
-      return mult(t, False());
+      return mult(t, std::false_type());
    }
 
    polynomial_result& operator*= (const term_type& t)
@@ -1381,12 +1497,11 @@ public:
 
    polynomial_result operator* (const Polynomial_base& p2) const
    {
-      if (get_ring() != p2.get_ring()) throw std::runtime_error("Polynomials of different rings");
-
+      croak_if_incompatible(p2);
       polynomial_result prod(get_ring());
-      for (typename Entire<term_hash>::const_iterator it1=entire(data->the_terms); !it1.at_end(); ++it1)
-         for (typename Entire<term_hash>::const_iterator it2=entire(p2.data->the_terms); !it2.at_end(); ++it2)
-            prod.add_term(it1->first + it2->first, it1->second * it2->second, True(), True());
+      for (auto it1=entire(data->the_terms); !it1.at_end(); ++it1)
+         for (auto it2=entire(p2.data->the_terms); !it2.at_end(); ++it2)
+            prod.add_term(it1->first + it2->first, it1->second * it2->second, std::true_type());
 
       return prod;
    }
@@ -1411,7 +1526,7 @@ public:
    }
 
    template <typename T>
-   typename enable_if<polynomial_result, fits_as_coefficient<T, Polynomial_base>::value>::type
+   typename std::enable_if<fits_as_coefficient<T>::value, polynomial_result>::type
    operator+ (const T& c) const
    {
       Polynomial_base sum(*data);
@@ -1421,19 +1536,19 @@ public:
    polynomial_result& operator+= (const coefficient_type& c)
    {
       if (__builtin_expect(!is_zero(c), 1))
-         add_term(monomial_type::default_value(get_ring()), c, True(), True());
+         add_term(monomial_type::default_value(get_ring()), c, std::true_type());
       return top();
    }
 
    template <typename T>
-   typename enable_if<polynomial_result, deeper_coefficient_of<T, Polynomial_base>::value>::type&
+   typename std::enable_if<is_deeper_coefficient<T>::value, polynomial_result>::type&
    operator+= (const T& c)
    {
-      return operator+= (deeper_coefficient_of<T, Polynomial_base>::construct(c, get_ring()));
+      return operator+=(is_deeper_coefficient<T>::construct(c, get_ring()));
    }
 
    template <typename T>
-   typename enable_if<polynomial_result, fits_as_coefficient<T, Polynomial_base>::value>::type
+   typename std::enable_if<fits_as_coefficient<T>::value, polynomial_result>::type
    operator- (const T& c) const
    {
       Polynomial_base diff(*data);
@@ -1443,15 +1558,15 @@ public:
    polynomial_result& operator-= (const coefficient_type& c)
    {
       if (__builtin_expect(!is_zero(c), 1))
-         add_term(monomial_type::default_value(get_ring()), c, True(), False());
+         sub_term(monomial_type::default_value(get_ring()), c, std::true_type());
       return top();
    }
 
    template <typename T>
-   typename enable_if<polynomial_result, deeper_coefficient_of<T, Polynomial_base>::value>::type&
+   typename std::enable_if<is_deeper_coefficient<T>::value, polynomial_result>::type&
    operator-= (const T& c)
    {
-      return operator-= (deeper_coefficient_of<T, Polynomial_base>::construct(c, get_ring()));
+      return operator-=(is_deeper_coefficient<T>::construct(c, get_ring()));
    }
 
    polynomial_result operator+ (const monomial_type& m) const
@@ -1462,8 +1577,8 @@ public:
 
    polynomial_result& operator+= (const monomial_type& m)
    {
-      if (get_ring() != m.get_ring()) throw std::runtime_error("Polynomials of different rings");
-      add_term(m.get_value(), m.get_ring().one_coef(), True(), True());
+      croak_if_incompatible(m);
+      add_term(m.get_value(), m.get_ring().one_coef(), std::true_type());
       return top();
    }
 
@@ -1475,8 +1590,8 @@ public:
 
    polynomial_result& operator-= (const monomial_type& m)
    {
-      if (get_ring() != m.get_ring()) throw std::runtime_error("Polynomials of different rings");
-      add_term(m.get_value(), m.get_ring().one_coef(), True(), False());
+      croak_if_incompatible(m);
+      sub_term(m.get_value(), m.get_ring().one_coef(), std::true_type());
       return top();
    }
 
@@ -1488,8 +1603,8 @@ public:
 
    polynomial_result& operator+= (const term_type& t)
    {
-      if (get_ring() != t.get_ring()) throw std::runtime_error("Polynomials of different rings");
-      add_term(t.get_value().first, t.get_value().second, False(), True());
+      croak_if_incompatible(t);
+      add_term(t.get_value().first, t.get_value().second, std::false_type());
       return top();
    }
 
@@ -1501,8 +1616,8 @@ public:
 
    polynomial_result& operator-= (const term_type& t)
    {
-      if (get_ring() != t.get_ring()) throw std::runtime_error("Polynomials of different rings");
-      add_term(t.get_value().first, t.get_value().second, False(), False());
+      croak_if_incompatible(t);
+      sub_term(t.get_value().first, t.get_value().second, std::false_type());
       return top();
    }
 
@@ -1514,9 +1629,9 @@ public:
 
    polynomial_result& operator+= (const Polynomial_base& p)
    {
-      if (get_ring() != p.get_ring()) throw std::runtime_error("Polynomials of different rings");
-      for (typename Entire<term_hash>::const_iterator t=entire(p.data->the_terms); !t.at_end(); ++t)
-         add_term(t->first, t->second, True(), True());
+      croak_if_incompatible(p);
+      for (auto t=entire(p.data->the_terms); !t.at_end(); ++t)
+         add_term(t->first, t->second, std::true_type());
       return top();
    }
 
@@ -1528,9 +1643,9 @@ public:
 
    polynomial_result& operator-= (const Polynomial_base& p)
    {
-      if (get_ring() != p.get_ring()) throw std::runtime_error("Polynomials of different rings");
-      for (typename Entire<term_hash>::const_iterator t=entire(p.data->the_terms); !t.at_end(); ++t)
-         add_term(t->first, t->second, True(), False());
+      croak_if_incompatible(p);
+      for (auto t=entire(p.data->the_terms); !t.at_end(); ++t)
+         sub_term(t->first, t->second, std::true_type());
       return top();
    }
 
@@ -1539,10 +1654,10 @@ public:
    {
       // this list will carry the sorted terms except in lex
       sorted_terms_type temp;
-      const sorted_terms_type& sorted_terms = pm::identical<Order, cmp_monomial_ordered_base<exponent_type> >::value ? get_sorted_terms() : get_sorted_terms(temp, order);
+      const sorted_terms_type& sorted_terms = std::is_same<Order, cmp_monomial_ordered_base<exponent_type> >::value ? get_sorted_terms() : get_sorted_terms(temp, order);
       bool first = true;
-      for (typename sorted_terms_type::const_iterator tp_it = sorted_terms.begin(), tp_end = sorted_terms.end(); tp_it != tp_end; ++tp_it) {
-        typename term_hash::const_iterator term = data->the_terms.find(*tp_it); 
+      for (const auto& tp : sorted_terms) {
+         auto term = data->the_terms.find(tp); 
          if (first)
             first = false;
          else if (term_type::needs_plus(term->second))
@@ -1580,7 +1695,7 @@ protected:
    {
       if(data->the_sorted_terms_set) return data->the_sorted_terms;
       for(typename term_hash::const_iterator it = data->the_terms.begin(); it != data->the_terms.end(); ++it) {
-         data->the_sorted_terms.push_back(it->first);
+         data->the_sorted_terms.push_front(it->first);
       }
       data->the_sorted_terms.sort(ordered_gt< cmp_monomial_ordered_base<exponent_type> >(cmp_monomial_ordered_base<exponent_type>())); // TODO: check if this is sorted by lex
       data->the_sorted_terms_set = true;
@@ -1592,7 +1707,7 @@ protected:
    const sorted_terms_type& get_sorted_terms(sorted_terms_type& sort, const Order& cmp_order) const
    {
       for(typename term_hash::const_iterator it = data->the_terms.begin(); it != data->the_terms.end(); ++it) {
-         sort.push_back(it->first);
+         sort.push_front(it->first);
       }
       sort.sort(ordered_gt< Order >(cmp_order));
       return sort;
@@ -1629,27 +1744,36 @@ protected:
       return lt_it;
    }
 
-   template <bool trusted, bool addition>
-   void add_term(const typename monomial_type::value_type& m, const coefficient_type& c, bool2type<trusted>, bool2type<addition>)
+   template <bool trusted>
+   void add_term(const typename monomial_type::value_type& m, const coefficient_type& c, bool_constant<trusted>)
    {
       if (!trusted && __builtin_expect(is_zero(c), 0)) return;
 
       data->forget_sorted_terms();
       std::pair<typename term_hash::iterator, bool> it = data->the_terms.find_or_insert(m);
-      if (it.second) {
-         if (addition)
-            it.first->second=c;
-         else
-            it.first->second=-c;
-      } else if (is_zero(addition ? (it.first->second += c) : (it.first->second -= c))) {
+      if (it.second)
+         it.first->second=c;
+      else if (is_zero(it.first->second += c))
          data->the_terms.erase(it.first);
-      }
+   }
+
+   template <bool trusted>
+   void sub_term(const typename monomial_type::value_type& m, const coefficient_type& c, bool_constant<trusted>)
+   {
+      if (!trusted && __builtin_expect(is_zero(c), 0)) return;
+
+      data->forget_sorted_terms();
+      std::pair<typename term_hash::iterator, bool> it = data->the_terms.find_or_insert(m);
+      if (it.second)
+         it.first->second=-c;
+      else if (is_zero(it.first->second -= c))
+         data->the_terms.erase(it.first);
    }
 
 public:
    bool operator== (const Polynomial_base& p2) const
    {
-      if (get_ring() != p2.get_ring()) throw std::runtime_error("Polynomials of different rings");
+      croak_if_incompatible(p2);
       return data->the_terms == p2.data->the_terms;
    }
 
@@ -1660,7 +1784,7 @@ public:
 
    bool operator== (const term_type& t) const
    {
-      if (get_ring() != t.get_ring()) throw std::runtime_error("Polynomials of different rings");
+      croak_if_incompatible(t);
       return data->the_terms.size()==1
           && *data->the_terms.begin() == t.get_value();
    }
@@ -1684,7 +1808,7 @@ public:
 
    bool operator== (const monomial_type& m) const
    {
-      if (get_ring() != m.get_ring()) throw std::runtime_error("Polynomials of different rings");
+      croak_if_incompatible(m);
       return data->the_terms.size()==1
           && data->the_terms.begin()->first == m.get_value()
           && is_one(data->the_terms.begin()->second);
@@ -1708,7 +1832,7 @@ public:
    }
 
    template <typename T>
-   typename enable_if<bool, fits_as_coefficient<T, Polynomial_base>::value>::type
+   typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
    operator== (const T& c) const
    {
       return trivial() && is_zero(c)
@@ -1718,21 +1842,21 @@ public:
    }
 
    template <typename T>
-   typename enable_if<bool, fits_as_coefficient<T, Polynomial_base>::value>::type
+   typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
    operator!= (const T& c) const
    {
       return !operator==(c);
    }
 
    template <typename T> friend
-   typename enable_if<bool, fits_as_coefficient<T, Polynomial_base>::value>::type
+   typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
    operator== (const T& c, const Polynomial_base& p)
    {
       return p==c;
    }
 
    template <typename T> friend
-   typename enable_if<bool, fits_as_coefficient<T, Polynomial_base>::value>::type
+   typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
    operator!= (const T& c, const Polynomial_base& p)
    {
      return !(p==c);
@@ -1742,16 +1866,15 @@ public:
    template <typename Comparator>
    cmp_value compare_ordered(const Polynomial_base& p, const Comparator& cmp_order) const
    {
-      if (get_ring() != p.get_ring()) throw std::runtime_error("Polynomials of different rings");
-
+      croak_if_incompatible(p);
       if (trivial()) return p.trivial() ? cmp_eq : cmp_lt;
       if (p.trivial()) return cmp_gt;
 
       // this list will carry the sorted terms except in lex
       sorted_terms_type t1, t2;
 
-      const sorted_terms_type& fst = pm::identical<Comparator, cmp_monomial_ordered_base<exponent_type> >::value ?   get_sorted_terms() :   get_sorted_terms(t1, cmp_order);
-      const sorted_terms_type& snd = pm::identical<Comparator, cmp_monomial_ordered_base<exponent_type> >::value ? p.get_sorted_terms() : p.get_sorted_terms(t2, cmp_order);
+      const sorted_terms_type& fst = std::is_same<Comparator, cmp_monomial_ordered_base<exponent_type> >::value ?   get_sorted_terms() :   get_sorted_terms(t1, cmp_order);
+      const sorted_terms_type& snd = std::is_same<Comparator, cmp_monomial_ordered_base<exponent_type> >::value ? p.get_sorted_terms() : p.get_sorted_terms(t2, cmp_order);
         
       typename sorted_terms_type::const_iterator it1 = fst.begin(), 
                                                  it2 = snd.begin();
@@ -1810,53 +1933,60 @@ public:
    {
       return p1.compare(p2) != cmp_lt;
    }
+
+#if POLYMAKE_DEBUG
+   void dump() const __attribute__((used)) { cerr << *this << std::flush; }
+#endif
 };
 
 
 template <typename Coefficient, typename Exponent>
-class Polynomial :
-   public Polynomial_base< Monomial<Coefficient, Exponent> > {
+class Polynomial
+   : public Polynomial_base< Monomial<Coefficient, Exponent> > {
 
    template <typename> friend struct spec_object_traits;
 public:
    typedef Monomial<Coefficient, Exponent> monomial_type;
 protected:
-   typedef Polynomial_base<monomial_type> super;
-   explicit Polynomial(const typename super::impl& d) : super(d) {}
+   typedef Polynomial_base<monomial_type> base_t;
+   explicit Polynomial(const typename base_t::impl& d) : base_t(d) {}
 public:
+   using typename base_t::ring_type;
+
+   template <typename T>
+   using fits_as_coefficient = typename monomial_type::template fits_as_coefficient<T>;
+
    // undefined object - to be read from perl::Value
    Polynomial() {}
 
    // the default polynomial in a given ring
-   explicit Polynomial(const typename super::ring_type& r) :
-      super(r) {}
+   explicit Polynomial(const ring_type& r)
+      : base_t(r) {}
 
    // a constant polynomial
-   template <typename T>
-   Polynomial(const T& c, const typename super::ring_type& r,
-              typename enable_if<void**, fits_as_coefficient<T, Polynomial>::value>::type=0) :
-      super(c, r) {}
+   template <typename T, typename enabled=typename std::enable_if<fits_as_coefficient<T>::value>::type>
+   Polynomial(const T& c, const ring_type& r)
+      : base_t(c, r) {}
 
-   Polynomial(const monomial_type& m) :
-      super(m) {}
+   Polynomial(const monomial_type& m)
+      : base_t(m) {}
 
-   Polynomial(const typename super::term_type& t) :
-      super(t) {}
+   Polynomial(const typename base_t::term_type& t)
+      : base_t(t) {}
 
-   template <typename Matrix, typename Container>
+   template <typename Matrix, typename Container, typename enabled=typename std::enable_if<isomorphic_to_container_of<Container, Coefficient>::value>::type>
    Polynomial(const GenericMatrix<Matrix,Exponent>& monoms,
               const Container& coeffs,
-              const typename super::ring_type& r,
-              typename enable_if<void**, isomorphic_to_container_of<Container, Coefficient>::value>::type=0) :
-      super(r)
+              const ring_type& r)
+      : base_t(r)
    {
       if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
          if (monoms.rows() != coeffs.size() || monoms.cols() != this->n_vars())
             throw std::runtime_error("Polynomial constructor - dimension mismatch");
       }
       typename Container::const_iterator c=coeffs.begin();
-      for (typename Entire<Rows<Matrix> >::const_iterator m=entire(rows(monoms)); !m.at_end(); ++m, ++c)
-         this->add_term(*m, *c, False(), True());
+      for (auto m=entire(rows(monoms)); !m.at_end(); ++m, ++c)
+         this->add_term(*m, *c, std::false_type());
    }
 
    template <typename Matrix>
@@ -1920,62 +2050,58 @@ lcm(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coefficie
 
 
 template <typename Coefficient, typename Exponent>
-class UniPolynomial :
-   public Polynomial_base< UniMonomial<Coefficient, Exponent> > {
+class UniPolynomial
+   : public Polynomial_base< UniMonomial<Coefficient, Exponent> > {
 
    friend class RationalFunction<Coefficient, Exponent>;
    template <typename> friend struct spec_object_traits;
 public:
    typedef UniMonomial<Coefficient, Exponent> monomial_type;
 protected:
-   typedef Polynomial_base<monomial_type> super;
-   explicit UniPolynomial(const typename super::impl& d) : super(d) {}
+   typedef Polynomial_base<monomial_type> base_t;
+   explicit UniPolynomial(const typename base_t::impl& d) : base_t(d) {}
 public:
+   using typename base_t::ring_type;
+
+   template <typename T>
+   using fits_as_coefficient = typename monomial_type::template fits_as_coefficient<T>;
+
    UniPolynomial() :
-      super(monomial_type::default_ring()) {}
+      base_t(monomial_type::default_ring()) {}
 
-   explicit UniPolynomial(const typename super::ring_type& r) :
-      super(r)
-   {
-      if (r.n_vars() != 1) throw std::runtime_error("UniPolynomial constructor - invalid ring");
-   }
+   explicit UniPolynomial(const ring_type& r)
+      : base_t(r) {}
 
-   template <typename T>
-   explicit UniPolynomial(const T& c,
-                          typename enable_if<void**, fits_as_coefficient<T, UniPolynomial>::value>::type=0) :
-      super(c, monomial_type::default_ring()) {}
+   template <typename T, typename enabled=typename std::enable_if<fits_as_coefficient<T>::value>::type>
+   explicit UniPolynomial(const T& c)
+      : base_t(c, monomial_type::default_ring()) {}
 
-   template <typename T>
-   UniPolynomial(const T& c, const typename super::ring_type& r,
-                 typename enable_if<void**, fits_as_coefficient<T, UniPolynomial>::value>::type=0) :
-      super(c,r)
-   {
-      if (r.n_vars() != 1) throw std::runtime_error("UniPolynomial constructor - invalid ring");
-   }
+   template <typename T, typename enabled=typename std::enable_if<fits_as_coefficient<T>::value>::type>
+   UniPolynomial(const T& c, const ring_type& r)
+      : base_t(c, r) {}
 
-   UniPolynomial(const monomial_type& m) :
-      super(m) {}
+   UniPolynomial(const monomial_type& m)
+      : base_t(m) {}
 
-   UniPolynomial(const typename super::term_type& t) :
-      super(t) {}
+   UniPolynomial(const typename base_t::term_type& t)
+      : base_t(t) {}
 
-   template <typename Container1, typename Container2>
+   template <typename Container1, typename Container2,
+             typename enabled=typename std::enable_if<isomorphic_to_container_of<Container1, Coefficient>::value &&
+                                                      isomorphic_to_container_of<Container2, Exponent>::value>::type>
    UniPolynomial(const Container1& coeffs,
                  const Container2& monoms,
-                 const typename super::ring_type& r,
-                 typename enable_if<void**, (isomorphic_to_container_of<Container1, Coefficient>::value &&
-                                             isomorphic_to_container_of<Container2, Exponent>::value)>::type=0) :
-      super(r)
+                 const ring_type& r)
+      : base_t(r)
    {
-      if (r.n_vars() != 1) throw std::runtime_error("UniPolynomial constructor - invalid ring");
       if (POLYMAKE_DEBUG) {
          if (monoms.size() != coeffs.size())
             throw std::runtime_error("UniPolynomial constructor - dimension mismatch");
       }
 
       typename Container1::const_iterator c=coeffs.begin();
-      for (typename Entire<Container2>::const_iterator m=entire(monoms); !m.at_end(); ++m, ++c)
-         this->add_term(*m, *c, False(), True());
+      for (auto m=entire(monoms); !m.at_end(); ++m, ++c)
+         this->add_term(*m, *c, std::false_type());
    }
 
    Vector<Exponent> monomials_as_vector()  const
@@ -1991,7 +2117,7 @@ public:
    Exponent lower_deg() const
    {
       Exponent low=std::numeric_limits<Exponent>::max();
-      for (typename Entire<typename super::term_hash>::const_iterator it=entire(this->get_terms()); !it.at_end(); ++it)
+      for (auto it=entire(this->get_terms()); !it.at_end(); ++it)
          assign_min(low, it->first);
       return low;
    }
@@ -2015,30 +2141,32 @@ public:
    }
 
    template <typename T>
-   typename enable_if<typename algebraic_traits<T>::field_type, (is_field_of_fractions<Exponent>::value && fits_as_coefficient<T, UniPolynomial>::value)>::type
+   typename std::enable_if<is_field_of_fractions<Exponent>::value && fits_as_coefficient<T>::value,
+                           typename algebraic_traits<T>::field_type>::type
    evaluate(const T& t, const long exp_lcm=1) const
    {
       typedef typename algebraic_traits<T>::field_type field;
       field res;
-      for (typename Entire<typename super::term_hash>::const_iterator it=entire(this->get_terms()); !it.at_end(); ++it)
+      for (auto it=entire(this->get_terms()); !it.at_end(); ++it)
       {
          const Exponent exp = exp_lcm * it->first;
          if (denominator(exp) != 1)
             throw std::runtime_error("Exponents non-integral, larger exp_lcm needed.");
-         res += it->second * field::pow(t, convert_to<long>(exp));
+         res += it->second * field::pow(t, static_cast<long>(exp));
       }
       return res;
    }
 
    template <typename T>
-   typename enable_if<typename algebraic_traits<T>::field_type, (std::numeric_limits<Exponent>::is_integer && fits_as_coefficient<T, UniPolynomial>::value)>::type
+   typename std::enable_if<std::numeric_limits<Exponent>::is_integer && fits_as_coefficient<T>::value,
+                           typename algebraic_traits<T>::field_type>::type
    evaluate(const T& t, const long exp_lcm=1) const
    {
       typedef typename algebraic_traits<T>::field_type field;
       field res;
-      for (typename Entire<typename super::term_hash>::const_iterator it=entire(this->get_terms()); !it.at_end(); ++it)
+      for (auto it=entire(this->get_terms()); !it.at_end(); ++it)
       {
-         res += it->second * field::pow(t, convert_to<long>(exp_lcm * it->first));
+         res += it->second * field::pow(t, static_cast<long>(exp_lcm * it->first));
       }
       return res;
    }
@@ -2048,7 +2176,7 @@ public:
    double evaluate_float(const double a) const
    {
       double res = 0;
-      for (typename Entire<typename super::term_hash>::const_iterator it=entire(this->get_terms()); !it.at_end(); ++it)
+      for (auto it=entire(this->get_terms()); !it.at_end(); ++it)
       {
          res += convert_to<double>(it->second) * std::pow(a,convert_to<double>(it->first));
       }
@@ -2061,7 +2189,7 @@ public:
     */
    UniPolynomial& div_exact(const UniPolynomial& b)
    {
-      if (this->get_ring() != b.get_ring()) throw std::runtime_error("Polynomials of different rings");
+      this->croak_if_incompatible(b);
       if (b.trivial()) throw GMP::ZeroDivide();
 
       UniPolynomial quot(this->get_ring());
@@ -2073,8 +2201,7 @@ public:
 
    UniPolynomial& div_exact(const monomial_type& b)
    {
-      if (this->get_ring() != b.get_ring()) throw std::runtime_error("Polynomials of different rings");
-
+      this->croak_if_incompatible(b);
       UniPolynomial quot(this->get_ring());
       this->data.enforce_unshared();
       remainder(b.get_value(), quot.data.get()->the_terms.make_filler());
@@ -2084,7 +2211,7 @@ public:
 
    UniPolynomial& div_exact(const UniTerm<Coefficient, Exponent>& b)
    {
-      if (this->get_ring() != b.get_ring()) throw std::runtime_error("Polynomials of different rings");
+      this->croak_if_incompatible(b);
       if (is_zero(b.get_value().second)) throw GMP::ZeroDivide();
 
       UniPolynomial quot(this->get_ring());
@@ -2097,7 +2224,7 @@ public:
 
    UniPolynomial& operator%= (const UniPolynomial& b)
    {
-      if (this->get_ring() != b.get_ring()) throw std::runtime_error("Polynomials of different rings");
+      croak_if_incompatible(b);
       if (b.trivial()) throw GMP::ZeroDivide();
       if (!this->trivial()) {
          this->data.enforce_unshared();
@@ -2114,8 +2241,7 @@ public:
 
    UniPolynomial& operator%= (const monomial_type& b)
    {
-      if (this->get_ring() != b.get_ring()) throw std::runtime_error("Polynomials of different rings");
-
+      this->croak_if_incompatible(b);
       this->data.enforce_unshared();
       remainder(b.get_value(), quot_black_hole());
       return *this;
@@ -2129,7 +2255,7 @@ public:
 
    UniPolynomial& operator%= (const UniTerm<Coefficient, Exponent>& b)
    {
-      if (this->get_ring() != b.get_ring()) throw std::runtime_error("Polynomials of different rings");
+      this->croak_if_incompatible(b);
       if (is_zero(b.get_value().second)) throw GMP::ZeroDivide();
 
       this->data.enforce_unshared();
@@ -2162,10 +2288,6 @@ public:
    friend
    UniPolynomial lcm<>(const UniPolynomial& a, const UniPolynomial& b);
 
-   RationalFunction<Coefficient, Exponent> to_rational_function() const {
-      return RationalFunction<Coefficient, Exponent>(*this);
-   }
-
    template <typename Output> friend
    Output& operator<< (GenericOutput<Output>& out, const UniPolynomial& me)
    {
@@ -2190,12 +2312,12 @@ private:
    template <typename QuotConsumer>
    void remainder(const UniPolynomial& b, const QuotConsumer& quot_consumer)
    {
-      const typename super::term_hash::const_iterator
+      const typename base_t::term_hash::const_iterator
          this_end=this->data.get()->the_terms.end(),
            b_lead=b.find_lex_lm(),
             b_end=b.data->the_terms.end();
 
-      typename super::term_hash::const_iterator this_lead;
+      typename base_t::term_hash::const_iterator this_lead;
 
       while ((this_lead=this->find_lex_lm()) != this_end && this_lead->first >= b_lead->first) {
          const Coefficient k = this_lead->second / b_lead->second;
@@ -2203,8 +2325,8 @@ private:
          quot_consumer(d, k);
          this->data.get()->forget_sorted_terms();
 
-         for (typename super::term_hash::const_iterator b_it=b.data->the_terms.begin();  b_it != b_end;  ++b_it) {
-            std::pair<typename super::term_hash::iterator, bool> it = this->data.get()->the_terms.find_or_insert(b_it->first + d);
+         for (typename base_t::term_hash::const_iterator b_it=b.data->the_terms.begin();  b_it != b_end;  ++b_it) {
+            std::pair<typename base_t::term_hash::iterator, bool> it = this->data.get()->the_terms.find_or_insert(b_it->first + d);
             if (it.second) {
                it.first->second= -k * b_it->second;
             } else if (is_zero(it.first->second -= k * b_it->second)) {
@@ -2219,11 +2341,11 @@ private:
    template <typename QuotConsumer>
    void remainder(typename function_argument<Exponent>::type b, const QuotConsumer& quot_consumer)
    {
-      for (typename super::term_hash::const_iterator it=this->data.get()->the_terms.begin(), end=this->data.get()->the_terms.end();  it != end;  ) {
+      for (typename base_t::term_hash::const_iterator it=this->data.get()->the_terms.begin(), end=this->data.get()->the_terms.end();  it != end;  ) {
          if (it->first < b) {
             ++it;
          } else {
-            if (!identical<QuotConsumer, quot_black_hole>::value)
+            if (!std::is_same<QuotConsumer, quot_black_hole>::value)
                quot_consumer(it->first - b, it->second);
             this->data.get()->the_terms.erase(it++);
          }
@@ -2236,7 +2358,7 @@ template <typename Coefficient, typename Exponent> inline
 Div< UniPolynomial<Coefficient, Exponent> >
 div(const UniPolynomial<Coefficient, Exponent>& num, const UniPolynomial<Coefficient, Exponent>& den)
 {
-   if (num.get_ring() != den.get_ring()) throw std::runtime_error("Polynomials of different rings");
+   num.croak_if_incompatible(den);
    if (den.trivial()) throw GMP::ZeroDivide();
    Div< UniPolynomial<Coefficient, Exponent> > res;
    res.quot.data.get()->ring=num.get_ring();
@@ -2249,7 +2371,7 @@ template <typename Coefficient, typename Exponent> inline
 Div< UniPolynomial<Coefficient, Exponent> >
 div(const UniPolynomial<Coefficient, Exponent>& num, const UniMonomial<Coefficient, Exponent>& den)
 {
-   if (num.get_ring() != den.get_ring()) throw std::runtime_error("Polynomials of different rings");
+   num.croak_if_incompatible(den);
    Div< UniPolynomial<Coefficient, Exponent> > res;
    res.quot.data.get()->ring=num.get_ring();
    res.rem.data.assign_copy(num.data);
@@ -2261,7 +2383,7 @@ template <typename Coefficient, typename Exponent> inline
 Div< UniPolynomial<Coefficient, Exponent> >
 div(const UniPolynomial<Coefficient, Exponent>& num, const UniTerm<Coefficient, Exponent>& den)
 {
-   if (num.get_ring() != den.get_ring()) throw std::runtime_error("Polynomials of different rings");
+   num.croak_if_incompatible(den);
    if (is_zero(den.get_value().second)) throw GMP::ZeroDivide();
    Div< UniPolynomial<Coefficient, Exponent> > res;
    res.quot.data.get()->ring=num.get_ring();
@@ -2275,7 +2397,7 @@ template <typename Coefficient, typename Exponent>
 UniPolynomial<Coefficient, Exponent>
 gcd(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coefficient, Exponent>& b)
 {
-   if (a.get_ring() != b.get_ring()) throw std::runtime_error("Polynomials of different rings");
+   a.croak_if_incompatible(b);
    if (a.trivial()) return b;
    if (b.trivial()) return a;
 
@@ -2298,9 +2420,10 @@ ExtGCD< UniPolynomial<Coefficient, Exponent> >
 ext_gcd(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coefficient, Exponent>& b,
         bool normalize_gcd)
 {
+   a.croak_if_incompatible(b);
+
    typedef UniPolynomial<Coefficient, Exponent> Polynomial;
    const typename Polynomial::ring_type& ring=a.get_ring();
-   if (ring != b.get_ring()) throw std::runtime_error("Polynomials of different rings");
 
    ExtGCD<Polynomial> res;
    if (a.trivial()) {
@@ -2504,6 +2627,66 @@ struct choose_generic_object_traits< UniPolynomial<Coefficient, Exponent>, false
    }
 };
 
+template <typename Coefficient, typename Exponent>
+struct is_gcd_domain< UniPolynomial<Coefficient, Exponent> >
+   : is_field<Coefficient> {};
+
+struct is_monomial {};
+
+template <typename Coefficient, typename Exponent>
+struct choose_generic_object_traits< Monomial<Coefficient, Exponent>, false, false > :
+   spec_object_traits< Monomial<Coefficient, Exponent> > {
+   typedef void generic_type;
+   typedef is_monomial generic_tag;
+   typedef Monomial<Coefficient, Exponent> persistent_type;
+
+   static
+   bool is_zero(const persistent_type& p)
+   {
+      return p.trivial();
+   }
+
+   static
+   bool is_one(const persistent_type& p)
+   {
+      return p.unit();
+   }
+};
+
+template <typename Coefficient, typename Exponent>
+struct choose_generic_object_traits< UniMonomial<Coefficient, Exponent>, false, false > :
+   spec_object_traits< UniMonomial<Coefficient, Exponent> > {
+   typedef void generic_type;
+   typedef is_monomial generic_tag;
+   typedef UniMonomial<Coefficient, Exponent> persistent_type;
+
+   static
+   bool is_zero(const persistent_type& p)
+   {
+      return is_zero(p);
+   }
+
+   static
+   bool is_one(const persistent_type& p)
+   {
+      return p.unit();
+   }
+
+   static
+   const persistent_type& zero()
+   {
+      static const persistent_type x=persistent_type();
+      return x;
+   }
+
+   static
+   const persistent_type& one()
+   {
+      static const persistent_type x(one_value<Coefficient>());
+      return x;
+   }
+};
+
 template <typename Coefficient, typename Exponent> inline
 bool is_zero(const Term<Coefficient, Exponent>& t)
 {
@@ -2528,235 +2711,242 @@ bool is_zero(const UniMonomial<Coefficient, Exponent>&)
    return false;
 }
 
-template <typename Coefficient, typename Exponent>
-struct is_gcd_domain< UniPolynomial<Coefficient, Exponent> > : is_field<Coefficient> {};
-
 template <typename Coefficient, typename Exponent, typename T>
 struct compatible_with_polynomial {
    static const bool value= isomorphic_types<Coefficient, T>::value ||
-                            deeper_coefficient_of<T, Term<Coefficient, Exponent> >::value ||
-                            derived_from<T, Monomial<Coefficient, Exponent> >::value ||
-                            derived_from<T, Term<Coefficient, Exponent> >::value;
+                            Monomial<Coefficient, Exponent>::template is_deeper_coefficient<T>::value ||
+                            is_derived_from<T, Monomial<Coefficient, Exponent> >::value ||
+                            is_derived_from<T, Term<Coefficient, Exponent> >::value;
 };
 
 template <typename Coefficient, typename Exponent, typename T>
 struct compatible_with_unipolynomial {
    static const bool value= isomorphic_types<Coefficient, T>::value ||
-                            deeper_coefficient_of<T, UniTerm<Coefficient, Exponent> >::value ||
-                            derived_from<T, UniMonomial<Coefficient, Exponent> >::value ||
-                            derived_from<T, UniTerm<Coefficient, Exponent> >::value;
+                            UniMonomial<Coefficient, Exponent>::template is_deeper_coefficient<T>::value ||
+                            is_derived_from<T, UniMonomial<Coefficient, Exponent> >::value ||
+                            is_derived_from<T, UniTerm<Coefficient, Exponent> >::value;
 };
 
 template <typename Coefficient, typename Exponent, typename T, typename TModel>
-struct isomorphic_types_impl<Polynomial<Coefficient,Exponent>, T,
-                             typename enable_if<is_polynomial, compatible_with_polynomial<Coefficient,Exponent,T>::value>::type,
+struct isomorphic_types_impl<Polynomial<Coefficient, Exponent>, T,
+                             typename std::enable_if<compatible_with_polynomial<Coefficient, Exponent, T>::value, is_polynomial>::type,
                              TModel>
-   : False {
+   : std::false_type {
    typedef cons<is_polynomial, is_scalar> discriminant;
 };
 
 template <typename Coefficient, typename Exponent, typename T, typename TModel>
-struct isomorphic_types_impl<T, Polynomial<Coefficient,Exponent>, TModel,
-                             typename enable_if<is_polynomial, compatible_with_polynomial<Coefficient,Exponent,T>::value>::type>
-   : False {
+struct isomorphic_types_impl<T, Polynomial<Coefficient, Exponent>, TModel,
+                             typename std::enable_if<compatible_with_polynomial<Coefficient, Exponent, T>::value, is_polynomial>::type>
+   : std::false_type {
    typedef cons<is_scalar, is_polynomial> discriminant;
 };
 
 template <typename Coefficient, typename Exponent>
 struct isomorphic_types_impl<Polynomial<Coefficient,Exponent>, Polynomial<Coefficient,Exponent>, is_polynomial, is_polynomial>
-   : True {
+   : std::true_type {
    typedef cons<is_polynomial, is_polynomial> discriminant;
 };
 
 template <typename Coefficient, typename Exponent, typename T, typename TModel>
-struct isomorphic_types_impl<UniPolynomial<Coefficient,Exponent>, T,
-                             typename enable_if<is_polynomial, compatible_with_unipolynomial<Coefficient,Exponent,T>::value>::type,
+struct isomorphic_types_impl<UniPolynomial<Coefficient, Exponent>, T,
+                             typename std::enable_if<compatible_with_unipolynomial<Coefficient, Exponent, T>::value, is_polynomial>::type,
                              TModel>
-   : False {
+   : std::false_type {
    typedef cons<is_polynomial, is_scalar> discriminant;
 };
 
 template <typename Coefficient, typename Exponent, typename T, typename TModel>
-struct isomorphic_types_impl<T, UniPolynomial<Coefficient,Exponent>, TModel,
-                             typename enable_if<is_polynomial, compatible_with_unipolynomial<Coefficient,Exponent,T>::value>::type>
-   : False {
+struct isomorphic_types_impl<T, UniPolynomial<Coefficient, Exponent>, TModel,
+                             typename std::enable_if<compatible_with_unipolynomial<Coefficient, Exponent, T>::value, is_polynomial>::type>
+   : std::false_type {
    typedef cons<is_scalar, is_polynomial> discriminant;
 };
 
 template <typename Coefficient, typename Exponent>
 struct isomorphic_types_impl<UniPolynomial<Coefficient,Exponent>, UniPolynomial<Coefficient,Exponent>, is_polynomial, is_polynomial>
-   : True {
+   : std::true_type {
    typedef cons<is_polynomial, is_polynomial> discriminant;
 };
 
 
-template <typename monomial_type, typename T> inline
-typename enable_if<typename Polynomial_result<monomial_type>::type, fits_as_coefficient<T, monomial_type>::value>::type
-operator+ (const monomial_type& m, const T& c)
+template <typename TMonomial, typename T> inline
+typename std::enable_if<TMonomial::template fits_as_coefficient<T>::value,
+                        typename Polynomial_result<TMonomial>::type>::type
+operator+ (const TMonomial& m, const T& c)
 {
-   return Polynomial_base<monomial_type>(m)+=c;
+   return Polynomial_base<TMonomial>(m)+=c;
 }
 
-template <typename monomial_type, typename T> inline
-typename enable_if<typename Polynomial_result<monomial_type>::type, fits_as_coefficient<T, monomial_type>::value>::type
-operator+ (const T& c, const monomial_type& m)
+template <typename TMonomial, typename T> inline
+typename std::enable_if<TMonomial::template fits_as_coefficient<T>::value,
+                        typename Polynomial_result<TMonomial>::type>::type
+operator+ (const T& c, const TMonomial& m)
 {
    return m+c;
 }
 
-template <typename monomial_type, typename T> inline
-typename enable_if<typename Polynomial_result<monomial_type>::type, fits_as_coefficient<T, monomial_type>::value>::type
-operator- (const monomial_type& m, const T& c)
+template <typename TMonomial, typename T> inline
+typename std::enable_if<TMonomial::template fits_as_coefficient<T>::value,
+                        typename Polynomial_result<TMonomial>::type>::type
+operator- (const TMonomial& m, const T& c)
 {
-   return Polynomial_base<monomial_type>(m)-=c;
+   return Polynomial_base<TMonomial>(m)-=c;
 }
 
-template <typename monomial_type, typename T> inline
-typename enable_if<typename Polynomial_result<monomial_type>::type, fits_as_coefficient<T, monomial_type>::value>::type
-operator- (const T& c, const monomial_type& m)
+template <typename TMonomial, typename T> inline
+typename std::enable_if<TMonomial::template fits_as_coefficient<T>::value,
+                        typename Polynomial_result<TMonomial>::type>::type
+operator- (const T& c, const TMonomial& m)
 {
-   return Polynomial_base<monomial_type>(c, m.get_ring())-=m;
+   return Polynomial_base<TMonomial>(c, m.get_ring())-=m;
 }
 
-template <typename monomial_type> inline
-typename Polynomial_result<monomial_type>::type
-operator+ (const monomial_type& m1, const monomial_type& m2)
+template <typename TMonomial> inline
+typename Polynomial_result<TMonomial>::type
+operator+ (const TMonomial& m1, const TMonomial& m2)
 {
-   return Polynomial_base<monomial_type>(m1)+=m2;
+   return Polynomial_base<TMonomial>(m1)+=m2;
 }
 
-template <typename monomial_type> inline
-typename Polynomial_result<monomial_type>::type
-operator- (const monomial_type& m1, const monomial_type& m2)
+template <typename TMonomial> inline
+typename Polynomial_result<TMonomial>::type
+operator- (const TMonomial& m1, const TMonomial& m2)
 {
-   return Polynomial_base<monomial_type>(m1)-=m2;
+   return Polynomial_base<TMonomial>(m1)-=m2;
 }
 
-template <typename monomial_type, typename T> inline
-typename enable_if<typename Polynomial_result<monomial_type>::type, fits_as_coefficient<T, monomial_type>::value>::type
-operator+ (const Term_base<monomial_type>& t, const T& c)
+template <typename TMonomial, typename T> inline
+typename std::enable_if<TMonomial::template fits_as_coefficient<T>::value,
+                        typename Polynomial_result<TMonomial>::type>::type
+operator+ (const Term_base<TMonomial>& t, const T& c)
 {
-   return Polynomial_base<monomial_type>(t)+=c;
+   return Polynomial_base<TMonomial>(t)+=c;
 }
 
-template <typename monomial_type, typename T> inline
-typename enable_if<typename Polynomial_result<monomial_type>::type, fits_as_coefficient<T, monomial_type>::value>::type
-operator+ (const T& c, const Term_base<monomial_type>& t)
+template <typename TMonomial, typename T> inline
+typename std::enable_if<TMonomial::template fits_as_coefficient<T>::value,
+                        typename Polynomial_result<TMonomial>::type>::type
+operator+ (const T& c, const Term_base<TMonomial>& t)
 {
    return t+c;
 }
 
-template <typename monomial_type, typename T> inline
-typename enable_if<typename Polynomial_result<monomial_type>::type, fits_as_coefficient<T, monomial_type>::value>::type
-operator- (const Term_base<monomial_type>& t, const T& c)
+template <typename TMonomial, typename T> inline
+typename std::enable_if<TMonomial::template fits_as_coefficient<T>::value,
+                        typename Polynomial_result<TMonomial>::type>::type
+operator- (const Term_base<TMonomial>& t, const T& c)
 {
-   return Polynomial_base<monomial_type>(t)-=c;
+   return Polynomial_base<TMonomial>(t)-=c;
 }
 
-template <typename monomial_type, typename T> inline
-typename enable_if<typename Polynomial_result<monomial_type>::type, fits_as_coefficient<T, monomial_type>::value>::type
-operator- (const T& c, const Term_base<monomial_type>& t)
+template <typename TMonomial, typename T> inline
+typename std::enable_if<TMonomial::template fits_as_coefficient<T>::value,
+                        typename Polynomial_result<TMonomial>::type>::type
+operator- (const T& c, const Term_base<TMonomial>& t)
 {
-   return Polynomial_base<monomial_type>(c, t.get_ring())-=t;
+   return Polynomial_base<TMonomial>(c, t.get_ring())-=t;
 }
 
-template <typename monomial_type> inline
-typename Polynomial_result<monomial_type>::type
-operator+ (const Term_base<monomial_type>& t, const monomial_type& m)
+template <typename TMonomial> inline
+typename Polynomial_result<TMonomial>::type
+operator+ (const Term_base<TMonomial>& t, const TMonomial& m)
 {
-   return Polynomial_base<monomial_type>(t)+=m;
+   return Polynomial_base<TMonomial>(t)+=m;
 }
 
-template <typename monomial_type> inline
-typename Polynomial_result<monomial_type>::type
-operator+ (const monomial_type& m, const Term_base<monomial_type>& t)
+template <typename TMonomial> inline
+typename Polynomial_result<TMonomial>::type
+operator+ (const TMonomial& m, const Term_base<TMonomial>& t)
 {
    return t+m;
 }
 
-template <typename monomial_type> inline
-typename Polynomial_result<monomial_type>::type
-operator- (const Term_base<monomial_type>& t, const monomial_type& m)
+template <typename TMonomial> inline
+typename Polynomial_result<TMonomial>::type
+operator- (const Term_base<TMonomial>& t, const TMonomial& m)
 {
-   return Polynomial_base<monomial_type>(t)-=m;
+   return Polynomial_base<TMonomial>(t)-=m;
 }
 
-template <typename monomial_type> inline
-typename Polynomial_result<monomial_type>::type
-operator- (const monomial_type& m, const Term_base<monomial_type>& t)
+template <typename TMonomial> inline
+typename Polynomial_result<TMonomial>::type
+operator- (const TMonomial& m, const Term_base<TMonomial>& t)
 {
-   return Polynomial_base<monomial_type>(m)-=t;
+   return Polynomial_base<TMonomial>(m)-=t;
 }
 
-template <typename monomial_type> inline
-typename Polynomial_result<monomial_type>::type
-operator+ (const Term_base<monomial_type>& t1, const Term_base<monomial_type>& t2)
+template <typename TMonomial> inline
+typename Polynomial_result<TMonomial>::type
+operator+ (const Term_base<TMonomial>& t1, const Term_base<TMonomial>& t2)
 {
-   return Polynomial_base<monomial_type>(t1)+=t2;
+   return Polynomial_base<TMonomial>(t1)+=t2;
 }
 
-template <typename monomial_type> inline
-typename Polynomial_result<monomial_type>::type
-operator- (const Term_base<monomial_type>& t1, const Term_base<monomial_type>& t2)
+template <typename TMonomial> inline
+typename Polynomial_result<TMonomial>::type
+operator- (const Term_base<TMonomial>& t1, const Term_base<TMonomial>& t2)
 {
-   return Polynomial_base<monomial_type>(t1)-=t2;
+   return Polynomial_base<TMonomial>(t1)-=t2;
 }
 
-template <typename monomial_type, typename T> inline
-typename enable_if<typename Polynomial_result<monomial_type>::type, fits_as_coefficient<T, monomial_type>::value>::type
-operator+ (const T& c, const Polynomial_base<monomial_type>& p)
+template <typename TMonomial, typename T> inline
+typename std::enable_if<TMonomial:: template fits_as_coefficient<T>::value,
+                        typename Polynomial_result<TMonomial>::type>::type
+operator+ (const T& c, const Polynomial_base<TMonomial>& p)
 {
    return p+c;
 }
 
-template <typename monomial_type, typename T> inline
-typename enable_if<typename Polynomial_result<monomial_type>::type, fits_as_coefficient<T, monomial_type>::value>::type
-operator- (const T& c, const Polynomial_base<monomial_type>& p)
+template <typename TMonomial, typename T> inline
+typename std::enable_if<TMonomial::template fits_as_coefficient<T>::value,
+                        typename Polynomial_result<TMonomial>::type>::type
+operator- (const T& c, const Polynomial_base<TMonomial>& p)
 {
    return (-p)+=c;
 }
 
-template <typename monomial_type> inline
-typename Polynomial_result<monomial_type>::type operator+ (const monomial_type& m, const Polynomial_base<monomial_type>& p)
+template <typename TMonomial> inline
+typename Polynomial_result<TMonomial>::type operator+ (const TMonomial& m, const Polynomial_base<TMonomial>& p)
 {
    return p+m;
 }
 
-template <typename monomial_type> inline
-typename Polynomial_result<monomial_type>::type operator- (const monomial_type& m, const Polynomial_base<monomial_type>& p)
+template <typename TMonomial> inline
+typename Polynomial_result<TMonomial>::type operator- (const TMonomial& m, const Polynomial_base<TMonomial>& p)
 {
    return (-p)+=m;
 }
 
-template <typename monomial_type> inline
-typename Polynomial_result<monomial_type>::type operator+ (const Term_base<monomial_type>& t, const Polynomial_base<monomial_type>& p)
+template <typename TMonomial> inline
+typename Polynomial_result<TMonomial>::type operator+ (const Term_base<TMonomial>& t, const Polynomial_base<TMonomial>& p)
 {
    return p+t;
 }
 
-template <typename monomial_type> inline
-typename Polynomial_result<monomial_type>::type operator- (const Term_base<monomial_type>& t, const Polynomial_base<monomial_type>& p)
+template <typename TMonomial> inline
+typename Polynomial_result<TMonomial>::type operator- (const Term_base<TMonomial>& t, const Polynomial_base<TMonomial>& p)
 {
    return (-p)+=t;
 }
 
-template <typename monomial_type, typename T> inline
-typename enable_if<typename Polynomial_result<monomial_type>::type, fits_as_coefficient<T, monomial_type>::value>::type
-operator* (const T& c, const Polynomial_base<monomial_type>& p)
+template <typename TMonomial, typename T> inline
+typename std::enable_if<TMonomial::template fits_as_coefficient<T>::value, typename Polynomial_result<TMonomial>::type>::type
+operator* (const T& c, const Polynomial_base<TMonomial>& p)
 {
    return p.mult_from_right(c);
 }
 
-template <typename monomial_type> inline
-typename Polynomial_result<monomial_type>::type operator* (const monomial_type& m, const Polynomial_base<monomial_type>& p)
+template <typename TMonomial> inline
+typename Polynomial_result<TMonomial>::type operator* (const TMonomial& m, const Polynomial_base<TMonomial>& p)
 {
    return p*m;
 }
 
-template <typename monomial_type> inline
-typename Polynomial_result<monomial_type>::type operator* (const Term_base<monomial_type>& t, const Polynomial_base<monomial_type>& p)
+template <typename TMonomial> inline
+typename Polynomial_result<TMonomial>::type operator* (const Term_base<TMonomial>& t, const Polynomial_base<TMonomial>& p)
 {
-   return p.mult(t, True());
+   return p.mult(t, std::true_type());
 }
 
 namespace operations {
@@ -3004,6 +3194,30 @@ struct cmp_opaque< UniPolynomial<Coefficient, Exponent>, UniPolynomial<Coefficie
    cmp_common_polynomial< UniPolynomial<Coefficient, Exponent> > {};
 
 } // end namespace operations
+
+// FIXME: these functions are GRUESOME
+template <typename Polynomial>
+struct hash_func<Polynomial, is_polynomial> {
+   size_t operator() (const Polynomial& p) const
+   {
+      std::ostringstream os;
+      PlainPrinter<> w(os);
+      w << p;
+      return hash_func<std::string>()(os.str());
+   }
+};
+
+template <typename Monomial>
+struct hash_func<Monomial, is_monomial> {
+   size_t operator() (const Monomial& p) const
+   {
+      std::ostringstream os;
+      PlainPrinter<> w(os);
+      w << p;
+      return hash_func<std::string>()(os.str());
+   }
+};
+
 
 } // end namespace pm
 

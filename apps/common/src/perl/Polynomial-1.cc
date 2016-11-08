@@ -61,7 +61,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X_X_X, Polynomial< Rational, int >, perl::Canned< const Matrix<int> >, perl::Canned< const Vector< Rational > >, perl::Canned< const Ring< Rational, int > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Polynomial< Rational, int > >, perl::Canned< const Polynomial< Rational, int > >);
    FunctionInstance4perl(new, Polynomial< Rational, int >);
-   FunctionInstance4perl(new_X_X_X, Polynomial< Rational, int >, perl::Canned< const pm::MatrixMinor<pm::Matrix<int>&, pm::Array<int, void> const&, pm::all_selector const&> >, perl::Canned< const Array< int > >, perl::Canned< const Ring< Rational, int > >);
+   FunctionInstance4perl(new_X_X_X, Polynomial< Rational, int >, perl::Canned< const pm::MatrixMinor<pm::Matrix<int>&, pm::Array<int> const&, pm::all_selector const&> >, perl::Canned< const Array< int > >, perl::Canned< const Ring< Rational, int > >);
    FunctionInstance4perl(new_X_X_X, Polynomial< Rational, int >, perl::Canned< const pm::MatrixMinor<pm::Matrix<int>&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >, perl::Canned< const Vector< Rational > >, perl::Canned< const Ring< Rational, int > >);
    OperatorInstance4perl(Binary_mul, int, perl::Canned< const Polynomial< Rational, int > >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Polynomial< Rational, int > >, perl::Canned< const Polynomial< Rational, int > >);

@@ -44,21 +44,20 @@ std::pair< const Matrix<Scalar>,const Matrix<Scalar> > secondary_cone_ineq(const
    //compute a full-dimensional orthogonal projection if verts is not full_dimensional
    const Matrix<Scalar> affine_hull=null_space(verts);
    const int codim=affine_hull.rows();
-   bool found=false;
    SetInt coords;
-   for (Entire< Subsets_of_k <const sequence &> >::const_iterator i=entire(all_subsets_of_k(sequence(0,ambient_dim),codim));!found&&!i.at_end(); ++i)
-      if (det(affine_hull.minor(All,*i)).non_zero()) {
-         coords=*i;
-         found=true;
-      }
+   for (auto i=entire(all_subsets_of_k(sequence(0,ambient_dim),codim)); !i.at_end(); ++i) {
+     if (!is_zero(det(affine_hull.minor(All, *i)))) {
+       coords=*i;
+       break;
+     }
+   }
    const Matrix<Scalar> vertices=verts.minor(All,~coords);  
-
    const int dim=vertices.cols()-1;
 
    // the equations and inequalities for the possible weight vectors
    // (without right hand side which will be 0)
-   ListMatrix<Vector<Scalar> > equats;
-   ListMatrix<Vector<Scalar> > inequs;
+   ListMatrix<Vector<Scalar> > equats(0,n_vertices);
+   ListMatrix<Vector<Scalar> > inequs(0,n_vertices);
 
    Matrix<Scalar> eqs;
    if (options["equations"]>> eqs) equats/=eqs;
@@ -69,7 +68,6 @@ std::pair< const Matrix<Scalar>,const Matrix<Scalar> > secondary_cone_ineq(const
    }
    for(typename Entire<Set<int> >::const_iterator j=entire(tozero);!j.at_end();++j)
       equats/=unit_vector<Scalar>(n_vertices,*j);
-
 
 
    //now we start generating the equation and inequalities

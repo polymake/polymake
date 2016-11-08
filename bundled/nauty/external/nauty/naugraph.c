@@ -1,8 +1,8 @@
 /*****************************************************************************
 *                                                                            *
-*  Graph-specific auxiliary source file for version 2.5 of nauty.            *
+*  Graph-specific auxiliary source file for version 2.6 of nauty.            *
 *                                                                            *
-*   Copyright (1984-2013) Brendan McKay.  All rights reserved.               *
+*   Copyright (1984-2016) Brendan McKay.  All rights reserved.               *
 *   Subject to waivers and disclaimers in nauty.h.                           *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
@@ -16,6 +16,7 @@
 *       10-Nov-09 : remove shortish and permutation types                    *
 *       23-May-10 : add densenauty()                                         *
 *       15-Jan-12 : add TLS_ATTR attributes                                  *
+*       23-Jan-13 : add some parens to make icc happy                        *
 *                                                                            *
 *****************************************************************************/
 
@@ -263,7 +264,7 @@ refine(graph *g, int *lab, int *ptn, int level, int *numcells,
                 set2 = GRAPHROW(g,lab[i],m);
                 cnt = 0;
                 for (c1 = m; --c1 >= 0;)
-                    if ((x = (*set1++) & (*set2++)) != 0)
+                    if ((x = ((*set1++) & (*set2++))) != 0)
                         cnt += POPCOUNT(x);
 
                 count[i] = bmin = bmax = cnt;
@@ -274,7 +275,7 @@ refine(graph *g, int *lab, int *ptn, int level, int *numcells,
                     set2 = GRAPHROW(g,lab[i],m);
                     cnt = 0;
                     for (c1 = m; --c1 >= 0;)
-                        if ((x = (*set1++) & (*set2++)) != 0)
+                        if ((x = ((*set1++) & (*set2++))) != 0)
                             cnt += POPCOUNT(x);
 
                     while (bmin > cnt) bucket[--bmin] = 0;

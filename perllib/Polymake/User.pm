@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -47,6 +47,15 @@ sub application {
       $application;
    }
 }
+
+namespaces::set_autolookup(
+  sub {
+     my ($pkg)=@_;
+     if ($pkg =~ /^($id_re)::\w/o) {
+        my $app_name=$1;
+        !lookup Core::Application($app_name) && defined(try_add Core::Application($app_name));
+     }
+  });
 
 #################################################################################
 sub include {

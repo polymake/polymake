@@ -42,7 +42,7 @@ perl::Object tight_span(perl::Object p_in)
 {
    const Matrix<Scalar> verts=p_in.give("VERTICES");
    const Vector<Scalar> w = p_in.give("POLYTOPAL_SUBDIVISION.WEIGHTS");
-   const int dim = p_in.CallPolymakeMethod("DIM");
+   const int dim = p_in.call_method("DIM");
    return tight_span<Scalar>(verts, w, dim==verts.cols()-1);
 }
 

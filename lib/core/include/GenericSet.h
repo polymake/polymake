@@ -33,10 +33,8 @@
 namespace pm {
 
 #if POLYMAKE_DEBUG
-template <typename Set, typename E, typename Comparator>
-GenericSet<Set,E,Comparator>::~GenericSet() { POLYMAKE_DEBUG_METHOD(GenericSet,dump); }
-template <typename Set, typename E, typename Comparator>
-void GenericSet<Set,E,Comparator>::dump() const { cerr << this->top() << endl; }
+template <typename TSet, typename E, typename Comparator>
+void GenericSet<TSet, E, Comparator>::dump() const { cerr << this->top() << endl; }
 #endif
 
 /* ------------
@@ -73,69 +71,50 @@ struct redirect_object_traits< Complement<SetTop, E, Comparator> >
    typedef GenericSet<SetTop, E, Comparator> generic_type;
    typedef is_set generic_tag;
    typedef SetTop masquerade_for;
+   static const bool is_always_const=true;
 };
 
 template <typename SetTop, typename E, typename Comparator>
-struct is_suitable_container<Complement<SetTop, E, Comparator>, void, false> : True {};
+struct is_suitable_container<Complement<SetTop, E, Comparator>, void, false> : std::true_type {};
 
 /* ------------------
  *  SingleElementSet
  * ------------------ */
-template <typename E, typename Comparator>
-class SingleElementSetCmp;
 
-//! Helper class for SingleElementSetCmp implementing the element query methods.
-template <typename E, typename Comparator>
-class SingleElementSetContains {
-protected:
-   typedef typename function_argument<E>::const_type elem_arg_type;
-   const SingleElementSetCmp<E,Comparator>& me() const { return *static_cast<const SingleElementSetCmp<E,Comparator>*>(this); }
-
+/** @ingroup genericSets
+ *  @brief A set consisting of exactly one element.
+ */
+template <typename Eref, typename Comparator>
+class SingleElementSetCmp
+   : public single_value_container<Eref>
+   , public GenericSet<SingleElementSetCmp<Eref, Comparator>, typename deref<Eref>::type, Comparator> {
+   typedef single_value_container<Eref> base_t;
 public:
-   /// gives an answer whether an element is contained in the set
-   bool contains(elem_arg_type x) const
+   using typename GenericSet<SingleElementSetCmp>::element_type;
+
+   SingleElementSetCmp(typename base_t::arg_type arg)
+      : base_t(arg) {}
+
+   bool contains(const element_type& x) const
    {
       Comparator cmp;
-      return cmp(x, me().front())==cmp_eq;
+      return cmp(x, this->front())==cmp_eq;
    }
 
-   typename single_value_container<E>::const_iterator find(elem_arg_type x) const
+   typename base_t::const_iterator find(const element_type& x) const
    {
-      return contains(x) ? me().begin() : me().end();
+      return contains(x) ? this->begin() : this->end();
    }
 
    const Comparator get_comparator() const { return Comparator(); }
 };
 
-template <typename Eref, typename Comparator>
-class SingleElementSetCmp
-   : public single_value_container<Eref>,
-     public GenericSet<SingleElementSetCmp<Eref,Comparator>, typename deref<Eref>::type, Comparator>,
-     public SingleElementSetContains<Eref, Comparator> {
-   typedef single_value_container<Eref> _super;
-public:
-   SingleElementSetCmp(typename _super::arg_type arg)
-      : _super(arg) {}
-};
-
-/** @ingroup genericSets
- *  @brief A set consisting of exactly one element.
- */
 template <typename E>
-class SingleElementSet : public SingleElementSetCmp<E, operations::cmp> {
-   typedef SingleElementSetCmp<E, operations::cmp> _super;
-public:
-   SingleElementSet(typename _super::arg_type arg)
-      : _super(arg) {}
-};
+using SingleElementSet = SingleElementSetCmp<E, operations::cmp>;
 
 template <typename E, typename Comparator>
-struct spec_object_traits< SingleElementSetCmp<E,Comparator> > : spec_object_traits< single_value_container<E> > {
-   static const bool is_always_const=true;
-};
-
-template <typename E>
-struct spec_object_traits< SingleElementSet<E> > : spec_object_traits< single_value_container<E> > {
+struct spec_object_traits< SingleElementSetCmp<E, Comparator> >
+   : spec_object_traits< single_value_container<E> > {
    static const bool is_always_const=true;
 };
 
@@ -168,27 +147,26 @@ scalarcopy2set(const E& x)
 
 template <typename SetRef1, typename SetRef2, typename Controller>
 class LazySet2
-   : public container_pair_base<SetRef1, SetRef2>,
-     public modified_container_pair_impl< LazySet2<SetRef1,SetRef2,Controller>,
-                                          list( Container1< SetRef1 >,
-                                                Container2< SetRef2 >,
-                                                IteratorCoupler< zipping_coupler<typename deref<SetRef1>::type::element_comparator, Controller> >,
-                                                Operation< BuildBinaryIt<operations::zipper> >,
-                                                IteratorConstructor< binary_transform_constructor< Bijective<False> > > ) >,
-     public GenericSet< LazySet2<SetRef1,SetRef2,Controller>,
-                        typename identical<typename deref<SetRef1>::type::element_type,
-                                           typename deref<SetRef2>::type::element_type>::type,
-                        typename identical<typename deref<SetRef1>::type::element_comparator,
-                                           typename deref<SetRef2>::type::element_comparator>::type
-                      > {
-   typedef container_pair_base<SetRef1, SetRef2> _base;
-   typedef modified_container_pair_impl<LazySet2> _super;
+   : public container_pair_base<SetRef1, SetRef2>
+   , public modified_container_pair_impl< LazySet2<SetRef1, SetRef2, Controller>,
+                                          mlist< Container1Tag< SetRef1 >,
+                                                 Container2Tag< SetRef2 >,
+                                                 IteratorCouplerTag< zipping_coupler<typename deref<SetRef1>::type::element_comparator, Controller> >,
+                                                 OperationTag< BuildBinaryIt<operations::zipper> >,
+                                                 IteratorConstructorTag< binary_transform_constructor<BijectiveTag<std::false_type>> > > >
+   , public GenericSet< LazySet2<SetRef1, SetRef2, Controller>,
+                        typename deref<SetRef1>::type::element_type,
+                        typename deref<SetRef1>::type::element_comparator > {
+   typedef container_pair_base<SetRef1, SetRef2> base_t;
 public:
+   static_assert(std::is_same<typename LazySet2::element_type, typename deref<SetRef2>::type::element_type>::value,
+                 "sets with different element types mixed in an expression");
+   static_assert(std::is_same<typename LazySet2::element_comparator, typename deref<SetRef2>::type::element_comparator>::value,
+                 "sets with different element comparators mixed in an expression");
    typedef indexed cannot_enforce_features;
 
-   LazySet2(typename _base::first_arg_type src1_arg, typename _base::second_arg_type src2_arg,
-            Controller=Controller())
-      : _base(src1_arg,src2_arg) {}
+   LazySet2(typename base_t::first_arg_type src1_arg, typename base_t::second_arg_type src2_arg, Controller=Controller())
+      : base_t(src1_arg,src2_arg) {}
 
    const typename deref<SetRef1>::type::element_comparator& get_comparator() const
    {
@@ -204,31 +182,31 @@ public:
 template <typename SetRef1, typename Set2>
 class LazySet2<SetRef1, const Complement<Set2>&, set_difference_zipper>
    : public LazySet2<SetRef1, const Set2&, set_intersection_zipper> {
-   typedef LazySet2<SetRef1, const Set2&, set_intersection_zipper> _super;
+   typedef LazySet2<SetRef1, const Set2&, set_intersection_zipper> base_t;
 public:
    typedef const Complement<Set2>& second_arg_type;
-   LazySet2(typename _super::first_arg_type src1_arg, second_arg_type src2_arg)
-      : _super(src1_arg, src2_arg.base()) {}
+   LazySet2(typename base_t::first_arg_type src1_arg, second_arg_type src2_arg)
+      : base_t(src1_arg, src2_arg.base()) {}
 };
 
 template <typename SetRef1, typename Set2>
 class LazySet2<SetRef1, const Complement<Set2>&, set_intersection_zipper>
    : public LazySet2<SetRef1, const Set2&, set_difference_zipper> {
-   typedef LazySet2<SetRef1, const Set2&, set_difference_zipper> _super;
+   typedef LazySet2<SetRef1, const Set2&, set_difference_zipper> base_t;
 public:
    typedef const Complement<Set2>& second_arg_type;
-   LazySet2(typename _super::first_arg_type src1_arg, second_arg_type src2_arg)
-      : _super(src1_arg, src2_arg.base()) {}
+   LazySet2(typename base_t::first_arg_type src1_arg, second_arg_type src2_arg)
+      : base_t(src1_arg, src2_arg.base()) {}
 };
 
 template <typename Set1, typename SetRef2>
 class LazySet2<const Complement<Set1>&, SetRef2, set_intersection_zipper>
    : public LazySet2<SetRef2, const Set1&, set_difference_zipper> {
-   typedef LazySet2<SetRef2, const Set1&, set_difference_zipper> _super;
+   typedef LazySet2<SetRef2, const Set1&, set_difference_zipper> base_t;
 public:
    typedef const Complement<Set1>& first_arg_type;
-   LazySet2(first_arg_type src1_arg, typename _super::second_arg_type src2_arg)
-      : _super(src1_arg.base(), src2_arg) {}
+   LazySet2(first_arg_type src1_arg, typename base_t::second_arg_type src2_arg)
+      : base_t(src1_arg.base(), src2_arg) {}
 };
 
 template <typename SetRef1, typename SetRef2, typename Controller>
@@ -242,8 +220,8 @@ struct spec_object_traits< LazySet2<SetRef1, SetRef2, Controller> >
  * ----------------------------- */
 
 template <typename SetRef,
-          bool _is_complement=derived_from_instance3<typename deref<SetRef>::type,Complement>::value>
-struct complement_helper : False {
+          bool is_complement=is_derived_from_instance_of<typename deref<SetRef>::type, Complement>::value>
+struct complement_helper : std::false_type {
    typedef typename deref<SetRef>::type container;
    typedef container base_type;
    typedef const container& container_ref;
@@ -251,7 +229,7 @@ struct complement_helper : False {
 };
 
 template <typename SetRef>
-struct complement_helper<SetRef, true> : True {
+struct complement_helper<SetRef, true> : std::true_type {
    typedef typename deref<SetRef>::type::base_type base_type;
    typedef LazySet2<sequence, const base_type&, set_difference_zipper> container;
    typedef container container_ref;
@@ -264,13 +242,12 @@ struct complement_helper<SetRef, true> : True {
 template <typename SetRef>
 class Set_with_dim
    : public modified_container_impl< Set_with_dim<SetRef>,
-                                     list( Container< typename complement_helper<SetRef>::container >,
-                                           Operation< pair<nothing, operations::identity<int> > >,
-                                           ExpectedFeatures<end_sensitive> ) >,
+                                     mlist< ContainerTag< typename complement_helper<SetRef>::container >,
+                                            OperationTag< pair<nothing, operations::identity<int> > >,
+                                            ExpectedFeaturesTag<end_sensitive> > >,
      public GenericSet< Set_with_dim<SetRef>, typename deref<SetRef>::type::element_type,
                         typename deref<SetRef>::type::element_comparator> {
-
-   typedef modified_container_impl<Set_with_dim> _super;
+   typedef modified_container_impl<Set_with_dim> base_t;
    typedef typename function_argument<typename deref<SetRef>::type::element_type>::type elem_arg_type;
    typedef complement_helper<SetRef> helper;
 protected:
@@ -280,21 +257,22 @@ public:
    typedef typename alias<SetRef>::arg_type arg_type;
 
    Set_with_dim(arg_type set_arg, int dim_arg)
-      : set(set_arg), _dim(dim_arg) {}
+      : set(set_arg)
+      , _dim(dim_arg) {}
 
    const typename helper::base_type& get_set() const
    {
-      return _get_set(helper());
+      return get_set_impl(helper());
    }
    typename helper::container_ref get_container() const
    {
-      return _get_container(helper());
+      return get_container_impl(helper());
    }
 
    /// the size of the set
    int size() const
    {
-      return _size(helper());
+      return size_impl(helper());
    }
    int max_size() const
    {
@@ -312,43 +290,43 @@ public:
    {
       return get_set().get_comparator();
    }
-   typename _super::const_iterator find(elem_arg_type x) const
+   typename base_t::const_iterator find(elem_arg_type x) const
    {
       return get_container().find(x);
    }
 private:
-   const typename helper::base_type& _get_set(False) const
+   const typename helper::base_type& get_set_impl(std::false_type) const
    {
       return *set;
    }
-   const typename helper::base_type& _get_set(True) const
+   const typename helper::base_type& get_set_impl(std::true_type) const
    {
       return set->base();
    }
-   typename helper::container_ref _get_container(False) const
+   typename helper::container_ref get_container_impl(std::false_type) const
    {
-      return _get_set(False());
+      return get_set_impl(std::false_type());
    }
-   typename helper::container_ref _get_container(True) const
+   typename helper::container_ref get_container_impl(std::true_type) const
    {
-      return typename helper::container(sequence(0,_dim), _get_set(True()));
+      return typename helper::container(sequence(0,_dim), get_set_impl(std::true_type()));
    }
-   int _size(False) const
+   int size_impl(std::false_type) const
    {
-      return _get_set(False()).size();
+      return get_set_impl(std::false_type()).size();
    }
-   int _size(True) const
+   int size_impl(std::true_type) const
    {
-      return _dim-_get_set(True()).size();
+      return _dim-get_set_impl(std::true_type()).size();
    }
 };
 
 template <typename SetRef>
-struct check_container_feature<Set_with_dim<SetRef>, sparse_compatible> : True {};
+struct check_container_feature<Set_with_dim<SetRef>, sparse_compatible> : std::true_type {};
 
 template <typename SetRef,
           bool _has_dim=check_container_feature<typename complement_helper<SetRef>::container, sparse_compatible>::value>
-struct Set_with_dim_helper : True {
+struct Set_with_dim_helper : std::true_type {
    typedef SetRef container;
    typedef typename attrib<SetRef>::plus_const_ref container_ref;
    typedef alias<SetRef> alias_type;
@@ -359,7 +337,7 @@ struct Set_with_dim_helper : True {
 };
 
 template <typename SetRef>
-struct Set_with_dim_helper<SetRef, false> : False {
+struct Set_with_dim_helper<SetRef, false> : std::false_type {
    typedef Set_with_dim<SetRef> alias_type;
    typedef alias_type container;
 
@@ -728,19 +706,43 @@ operator- (const GenericSet<Set1>& l, const Complement<Set2>& r)
 }
 
 /// equality of GenericSet objects
-template <typename Set1, typename Set2> inline
-bool operator== (const GenericSet<Set1>& l, const GenericSet<Set2>& r)
+template <typename Set1, typename Set2, typename E, typename Comparator> inline
+bool operator== (const GenericSet<Set1, E, Comparator>& l, const GenericSet<Set2, E, Comparator>& r)
 {
    operations::eq<const Set1&, const Set2&> cmp_op;
    return cmp_op(l.top(), r.top());
 }
 
-/// containment between GenericSet objects
-template <typename Set1, typename Set2> inline
-bool operator< (const GenericSet<Set1>& l, const GenericSet<Set2>& r)
+template <typename Set1, typename Set2, typename E, typename Comparator> inline
+bool operator!= (const GenericSet<Set1, E, Comparator>& l, const GenericSet<Set2, E, Comparator>& r)
+{
+   return !(l==r);
+}
+
+/// lexicographical comparison of GenericSet objects
+template <typename Set1, typename Set2, typename E, typename Comparator> inline
+bool operator< (const GenericSet<Set1, E, Comparator>& l, const GenericSet<Set2, E, Comparator>& r)
 {
    operations::lt<const Set1&, const Set2&> cmp_op;
    return cmp_op(l.top(), r.top());
+}
+
+template <typename Set1, typename Set2, typename E, typename Comparator> inline
+bool operator> (const GenericSet<Set1, E, Comparator>& l, const GenericSet<Set2, E, Comparator>& r)
+{
+   return r < l;
+}
+
+template <typename Set1, typename Set2, typename E, typename Comparator> inline
+bool operator<= (const GenericSet<Set1, E, Comparator>& l, const GenericSet<Set2, E, Comparator>& r)
+{
+   return !(r < l);
+}
+
+template <typename Set1, typename Set2, typename E, typename Comparator> inline
+bool operator>= (const GenericSet<Set1, E, Comparator>& l, const GenericSet<Set2, E, Comparator>& r)
+{
+   return !(l < r);
 }
 
 } // end namespace operators
@@ -804,10 +806,10 @@ int incl(const GenericSet<Set1, E1, Comparator>& s1, const GenericSet<Set2, E2, 
 
 template <typename Container, typename Comparator=operations::cmp, typename ProvidedFeatures=void>
 class OrderedContainer
-   : public redirected_container< OrderedContainer<Container,Comparator,ProvidedFeatures>,
-                                  list( Hidden< Container >,
-                                        ExpectedFeatures< ProvidedFeatures > ) >,
-     public GenericSet< OrderedContainer<Container,Comparator,ProvidedFeatures>,
+   : public redirected_container< OrderedContainer<Container, Comparator, ProvidedFeatures>,
+                                  mlist< HiddenTag< Container >,
+                                         ExpectedFeaturesTag< ProvidedFeatures > > >
+   , public GenericSet< OrderedContainer<Container, Comparator, ProvidedFeatures>,
                         typename object_traits<typename Container::value_type>::persistent_type,
                         Comparator > {};
 
@@ -833,24 +835,23 @@ assure_ordered(const Container& c)
 template <typename ContainerRef>
 class Indices
    : public modified_container_impl< Indices<ContainerRef>,
-                                     list( Container< ContainerRef >,
-                                           Operation< BuildUnaryIt<operations::index2element> >,
-                                           ExpectedFeatures< indexed > ) >,
+                                     mlist< ContainerTag< ContainerRef >,
+                                            OperationTag< BuildUnaryIt<operations::index2element> >,
+                                            ExpectedFeaturesTag< indexed > > >,
      public GenericSet< Indices<ContainerRef>, int, operations::cmp> {
-   typedef modified_container_impl<Indices> _super;
+   typedef modified_container_impl<Indices> base_t;
 protected:
    alias<ContainerRef> c;
 public:
-   typedef typename least_derived< cons<bidirectional_iterator_tag, typename container_traits<ContainerRef>::category> >::type
-      container_category;
+   typedef typename least_derived_class<bidirectional_iterator_tag, typename container_traits<ContainerRef>::category>::type container_category;
 
    Indices(typename alias<ContainerRef>::arg_type c_arg) : c(c_arg) {}
 
-   const typename _super::container& get_container() const { return *c; }
+   const typename base_t::container& get_container() const { return *c; }
 
    bool contains(int i) const { return !get_container().find(i).at_end(); }
 
-   typename _super::const_iterator find(int i) const { return get_container().find(i); }
+   typename base_t::const_iterator find(int i) const { return get_container().find(i); }
 };
 
 template <typename ContainerRef>

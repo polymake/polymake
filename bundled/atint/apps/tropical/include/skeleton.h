@@ -71,8 +71,8 @@ namespace polymake { namespace tropical {
 
 			//Now we compute the codimension one skeleton of the fan (cmplx_dim - k) times 
 			IncidenceMatrix<> newMaximalCones = maximalCones;
-			for(int i = 1; i <= (cmplx_dim - k); i++) {
-				newMaximalCones = calculateCodimOneData(rays,newMaximalCones, lineality, local_restriction).codimOneCones;
+			for (int i = 1; i <= (cmplx_dim - k); i++) {
+				newMaximalCones = calculateCodimOneData(rays, newMaximalCones, lineality, local_restriction).codimOneCones;
 			}
 
 			//Now return the result - made irredundant, if preserve is false

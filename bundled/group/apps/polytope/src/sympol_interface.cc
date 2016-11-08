@@ -89,7 +89,7 @@ namespace polymake { namespace polytope { namespace sympol_interface {
          assert( int(r) < out_inequalities.rows() );
          for (c = homogenity_offset; c < sympolPoly->dimension(); ++c) {
             assert( c < (*it)->ray->size() );
-            out_inequalities[r][c-homogenity_offset].set((*(*it)->ray)[c]);
+            out_inequalities[r][c-homogenity_offset].copy_from((*(*it)->ray)[c]);
          }
          ++r;
       }
@@ -103,7 +103,7 @@ namespace polymake { namespace polytope { namespace sympol_interface {
          assert( int(r) < out_equations.rows() );
          for (c = homogenity_offset; c < sympolPoly->dimension(); ++c) {
             assert( c < (*it)->size() );
-            out_equations[r][c-homogenity_offset].set((**it)[c]);
+            out_equations[r][c-homogenity_offset].copy_from((**it)[c]);
          }
          ++r;
       }

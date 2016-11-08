@@ -60,6 +60,7 @@ class SimplexEvaluator {
     Integer volume;
     mpz_class mpz_volume;
     size_t Deg0_offset; // the degree of 0+offset
+    long level_offset; // the same for the inhomogeneous case
     // Integer det_sum; // sum of the determinants of all evaluated simplices --> Collector
     // mpq_class mult_sum; // sum of the multiplicities of all evaluated simplices --> Collector
     vector<key_t> key; 
@@ -96,7 +97,7 @@ class SimplexEvaluator {
     
     bool sequential_evaluation; // indicates whether the simplex is evaluated by a single thread
     
-    bool GMP_transition; 
+    bool GMP_transition;
     
     struct SIMPLINEXDATA{                    // local data of excluded faces
         boost::dynamic_bitset<> GenInFace;   // indicator for generators of simplex in face 
@@ -133,6 +134,7 @@ class SimplexEvaluator {
     void update_mult_inhom(Integer& multiplicity);
     
     Integer start_evaluation(SHORTSIMPLEX<Integer>& s, Collector<Integer>& Coll);
+    void find_excluded_facets();
     void take_care_of_0vector(Collector<Integer>& Coll);
     // void evaluation_loop_sequential(Collector<Integer>& Coll);
     void evaluate_element(const vector<Integer>& element, Collector<Integer>& Coll);

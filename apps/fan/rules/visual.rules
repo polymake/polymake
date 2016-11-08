@@ -69,19 +69,26 @@ user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cu
                                        EdgeColor => "0 0 0",
                                       );
    push @cells_visual, $rays_vgraph;
+
+   my $ind = $this->MAXIMAL_CONES_INCIDENCES;
+   my $i = 0;
+ 
    foreach (@{$this->MAXIMAL_CONES}) {
       my $cone=$_;
       my $all_ones=ones_vector<Float>($cone->size()+1);
       my $v=$all_ones | ($rays->minor($cone,All) / $zero);
-# FIXME #885: the following is too costly
-# Either add additional properties FACETS and VERTICES_IN_FACETS from MAXIMAL_CONES_FACETS etc
-# or create suitable visual objects directly.
-      my $p=new polytope::Polytope<Float>(VERTICES => $v, LINEALITY_SPACE => (zero_vector<Float>($lineality->rows)) | $lineality);
 
+      my $vif=new IncidenceMatrix($this->MAXIMAL_CONES_INCIDENCES->[$i]->rows()+1,$cone->size()+1);
+      $vif->minor(~[$this->MAXIMAL_CONES_INCIDENCES->[$i]->rows()],~[$cone->size()])=$ind->[$i]->minor(All,$cone);
+      for(my $j=0;$j<$vif->rows()-1;++$j){
+          $vif->row($j)+=$cone->size();
+      }
+      $vif->row($this->MAXIMAL_CONES_INCIDENCES->[$i]->rows())+=new Set(0..$cone->size()-1);
+       my $p=new polytope::Polytope<Float>(VERTICES => $v, LINEALITY_SPACE => (zero_vector<Float>($lineality->rows)) | $lineality, VERTICES_IN_FACETS=>$vif);
+      ++$i;
       my $pv= $lineality->rows > 0 && $this->FAN_DIM > 1 ?
          $p->VISUAL( $decor , BoundingBox=>$bbox ) :
          $p->VISUAL( $decor );
-
       my (@cutoff_attrs);
       my $dim=$p->DIM;
       if ($dim==3) {

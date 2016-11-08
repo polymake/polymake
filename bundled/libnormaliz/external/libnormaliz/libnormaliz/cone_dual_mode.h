@@ -44,8 +44,7 @@ class Cone_Dual_Mode {
 public:
     size_t dim;
     size_t nr_sh;
-    // size_t hyp_size;
-    
+
     bool verbose;
     
     bool inhomogeneous;
@@ -54,7 +53,7 @@ public:
     
     Matrix<Integer> SupportHyperplanes;
     Matrix<Integer> Generators;
-    vector<bool> ExtremeRays;
+    vector<bool> ExtremeRaysInd;
     list<Candidate<Integer>* > ExtremeRayList; //only temporarily used
     CandidateList<Integer> Intermediate_HB; // intermediate Hilbert basis
     list<vector<Integer> > Hilbert_Basis; //the final result

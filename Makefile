@@ -17,7 +17,7 @@
 #  Building and installation
 #
 .PHONY: all compile install install-arch install-shared \
-	install-arch-prep docs release-docs clean clean-arch distclean TAGS RTAGS test
+	install-arch-prep docs release-docs clean clean-arch clean-xs distclean TAGS RTAGS test
 
 .shell := $(firstword $(wildcard /bin/bash /usr/bin/bash /usr/local/bin/bash))
 ifdef .shell
@@ -190,6 +190,10 @@ release-docs:
 clean-arch:
 	@+$(call _MakeApps,clean)
 	@+$(call _MakeInBundledExtensions,clean)
+
+# fully clean up current and old perl-xs trees
+clean-xs:
+	rm -rf ${BuildDir}/perlx*
 
 clean : clean-arch
 	rm -rf doc_build

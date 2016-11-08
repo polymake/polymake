@@ -25,61 +25,14 @@
 #include "polymake/Rational.h"
 #include "polymake/Vector.h"
 #include "polymake/tropical/refine.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/misc_tools.h"
 #include "polymake/tropical/separated_data.h"
 #include "polymake/tropical/specialcycles.h"
+#include "polymake/tropical/localize.h"
 #include "polymake/tropical/thomog.h"
 
 
 namespace polymake { namespace tropical {
-	using namespace atintlog::donotlog;
-	//using namespace atintlog::dolog;
-	//using namespace atintlog::dotrace;
-
-	///////////////////////////////////////////////////////////////////////////////////////
-
-	//Documentation see perl wrapper
-	template <typename Addition>
-		perl::Object local_restrict(perl::Object complex, IncidenceMatrix<> cones) {
-			//Extract values
-			IncidenceMatrix<> maximalCones = complex.give("MAXIMAL_POLYTOPES");
-			Matrix<Rational> rays = complex.give("VERTICES");
-			Matrix<Rational> linspace = complex.give("LINEALITY_SPACE");
-			Vector<Integer> weights = complex.give("WEIGHTS");
-
-			//Find out which cones are no longe compatible
-			Set<int> remainingCones;
-			for(int c = 0; c < maximalCones.rows(); c++) {
-				if(is_coneset_compatible(maximalCones.row(c), cones)) {
-					remainingCones += c;
-				}
-			}
-
-			//Adapt cone description and ray indices
-			maximalCones = maximalCones.minor(remainingCones,All);
-			weights = weights.slice(remainingCones);
-			Set<int> usedRays = accumulate(rows(maximalCones),operations::add());
-			
-			//We have to take care when adapting the local restriction:
-			// If cones is input by hand, it may have less columns then there are rays left.
-			IncidenceMatrix<> newlocalcones(cones.rows(), rays.rows());
-				newlocalcones.minor(All, sequence(0, cones.cols())) = cones;
-			newlocalcones = newlocalcones.minor(All,usedRays);
-
-			rays = rays.minor(usedRays,All);
-			IncidenceMatrix<> newMaximalCones(maximalCones);
-			newMaximalCones = newMaximalCones.minor(All,usedRays);
-
-						perl::Object result(perl::ObjectType::construct<Addition>("Cycle"));
-			result.take("PROJECTIVE_VERTICES") << rays;
-			result.take("MAXIMAL_POLYTOPES") << newMaximalCones;
-			result.take("LINEALITY_SPACE") << linspace;
-			result.take("WEIGHTS") << weights;
-			result.take("LOCAL_RESTRICTION") << newlocalcones;
-
-			return result;
-		}
 
 	///////////////////////////////////////////////////////////////////////////////////////
 

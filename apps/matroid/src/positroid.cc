@@ -25,7 +25,7 @@
 namespace polymake { namespace matroid {
 
 perl::Object positroid_from_decorated_permutation(const Array<int> perm,  const Set<int> loops)
-{  
+{
 
   const int n = perm.size();
   Set <int> set;
@@ -50,7 +50,7 @@ perl::Object positroid_from_decorated_permutation(const Array<int> perm,  const 
   }
 
   ineq[0]=-rank;
-  ineq.slice(1,0)=ones_vector<Rational>(n);
+  ineq.slice(1)=ones_vector<Rational>(n);
   p.take("EQUATIONS") << ineq;
 
   for(int s=1;s<n;++s){
@@ -93,16 +93,15 @@ perl::Object positroid_from_decorated_permutation(const Array<int> perm,  const 
      ineq_list/=unit_vector<Rational>(n+1,1+i);
   }
   p.take("INEQUALITIES") << ineq_list;
-  perl::Object m = CallPolymakeFunction("matroid_from_matroid_polytope",p);
-  return m;
+  return call_function("matroid_from_matroid_polytope", p);
 }
 
-      UserFunction4perl("# @category Producing a matroid from other objects"
-                        "# Producing a positroid from a decorated permuatation"
-                        "# @param Array<Int> perm a permutation"
-                        "# @param Set<Int> loops the loops/decoration"
-                        "# @return Matroid",
-&positroid_from_decorated_permutation, "positroid_from_decorated_permutation($, $)");
+UserFunction4perl("# @category Producing a matroid from other objects"
+                  "# Producing a positroid from a decorated permuatation"
+                  "# @param Array<Int> perm a permutation"
+                  "# @param Set<Int> loops the loops/decoration"
+                  "# @return Matroid",
+                  &positroid_from_decorated_permutation, "positroid_from_decorated_permutation($, $)");
 
 } }
 

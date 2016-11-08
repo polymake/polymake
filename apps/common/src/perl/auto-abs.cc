@@ -17,11 +17,18 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/Integer.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0>
+   FunctionInterface4perl( QuadraticExtension__abs_X, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturn( (abs(arg0.get<T0>())) );
+   };
+
    template <typename T0>
    FunctionInterface4perl( Integer__abs_X, T0 ) {
       perl::Value arg0(stack[0]);
@@ -36,5 +43,6 @@ namespace polymake { namespace common { namespace {
 
    FunctionInstance4perl(Integer__abs_X, perl::Canned< const Integer >);
    FunctionInstance4perl(Rational__abs_X, perl::Canned< const Rational >);
+   FunctionInstance4perl(QuadraticExtension__abs_X, perl::Canned< const QuadraticExtension< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

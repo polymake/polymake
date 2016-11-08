@@ -44,15 +44,15 @@ product_coord(const Matrix<Scalar>& V1, const Matrix<Scalar>& V2,
       n_vertices1=V1.rows(), n_vertices2=V2.rows(),
          n_vertices_out=(n_vertices1 - rays1.size()) * (n_vertices2 - rays2.size()) + n_rays;
    const int dim=V1.cols()+V2.cols()-1;
-  
+
    Matrix<Scalar> V_out(n_vertices_out, dim);
    if (n_rays==0) {
-      copy(entire(product(rows(V1), rows(V2.minor(All,range(1,V2.cols()-1))), operations::concat())),
-           rows(V_out).begin());
+      copy_range(entire(product(rows(V1), rows(V2.minor(All,range(1,V2.cols()-1))), operations::concat())),
+                 rows(V_out).begin());
    } else {
       // affine vertices
-      copy(entire(product(rows(V1.minor(~rays1,All)), rows(V2.minor(~rays2,range(1,V2.cols()-1))), operations::concat())),
-           rows(V_out).begin());
+      copy_range(entire(product(rows(V1.minor(~rays1,All)), rows(V2.minor(~rays2,range(1,V2.cols()-1))), operations::concat())),
+                 rows(V_out).begin());
       // rays from P1
       V_out.minor(sequence(n_vertices_out-n_rays, rays1.size()), sequence(0,V1.cols())) =
          V1.minor(rays1,All);
@@ -62,7 +62,7 @@ product_coord(const Matrix<Scalar>& V1, const Matrix<Scalar>& V2,
    }
    return V_out;
 }
-  
+
 } // end unnamed namespace
 
 template<typename Scalar>
@@ -71,7 +71,7 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
    int n_vertices1=0, n_vertices2=0, n_vertices_out=0, n_rays=0;
 
    const bool noc=options["no_coordinates"],
-      relabel=options["relabel"];
+      relabel=!options["no_labels"];
 
    Set<int> rays1, rays2;
    if (!noc) {
@@ -100,19 +100,20 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
          n_facets_out=n_facets1 + n_facets2 + has_far_facet;
       IncidenceMatrix<> VIF_out(n_facets_out, n_vertices_out);
       if (n_rays==0) {
-         copy(entire(pm::product(cols(VIF1), cols(VIF2), operations::concat())),
-              cols(VIF_out).begin());
+         copy_range(entire(pm::product(cols(VIF1), cols(VIF2), operations::concat())),
+                    cols(VIF_out).begin());
       } else {
          // affine vertices come first
-         copy(entire(pm::product(cols(VIF1.minor(~far_facet1,~rays1)), cols(VIF2.minor(~far_facet2,~rays2)),
-                                 operations::concat())), cols(VIF_out).begin());
+         copy_range(entire(pm::product(cols(VIF1.minor(~far_facet1,~rays1)), cols(VIF2.minor(~far_facet2,~rays2)),
+                                       operations::concat())),
+                    cols(VIF_out).begin());
          // rays from P1 and P2
          VIF_out.minor(sequence(0, n_facets_out-has_far_facet), sequence(n_vertices_out-n_rays, n_rays)) =
-            diag_1(VIF1.minor(~far_facet1,rays1), VIF2.minor(~far_facet2,rays2));
+            diag_1(VIF1.minor(~far_facet1,rays1), VIF2.minor(~far_facet2, rays2));
          if (has_far_facet)
             VIF_out[n_facets_out-1]=sequence(n_vertices_out-n_rays, n_rays);
       }
-   
+
       p_out.take("N_VERTICES") << n_vertices_out;
       p_out.take("VERTICES_IN_FACETS") << VIF_out;
    }
@@ -136,11 +137,7 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
 
       const Matrix<Scalar> V_out=product_coord(V1, V2, n_vertices1, n_vertices2, n_vertices_out, n_rays, rays1, rays2);
 
-      p_out.take(VERTICES_out ? "VERTICES" : "POINTS") << V_out;
-      if ( VERTICES_out ) {
-         const Matrix<Scalar> empty;
-         p_out.take("LINEALITY_SPACE") << empty;
-      }
+      p_out.take(VERTICES_out ? Str("VERTICES") : Str("POINTS")) << V_out;
    }
 
    if (relabel) {
@@ -149,13 +146,13 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
       read_labels(p_in1, "VERTEX_LABELS", labels1);
       read_labels(p_in2, "VERTEX_LABELS", labels2);
       if (n_rays==0) {
-         copy(entire(pm::product(labels1, labels2, product_label())), labels_out.begin());
+         copy_range(entire(pm::product(labels1, labels2, product_label())), labels_out.begin());
       } else {
          std::vector<std::string>::iterator l=labels_out.begin();
-         l=copy(entire(pm::product(select(labels1,~rays1), select(labels2,~rays2), product_label())), l);
+         l=copy_range(entire(pm::product(select(labels1,~rays1), select(labels2,~rays2), product_label())), l);
          const std::string all("all");
-         l=copy(entire(attach_operation(select(labels1,rays1), constant(all), product_label())), l);
-         copy(entire(attach_operation(constant(all), select(labels2,rays2), product_label())), l);
+         l=copy_range(entire(attach_operation(select(labels1,rays1), constant(all), product_label())), l);
+         copy_range(entire(attach_operation(constant(all), select(labels2,rays2), product_label())), l);
       }
       p_out.take("VERTEX_LABELS") << labels_out;
    }
@@ -167,16 +164,16 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# @param Polytope P1"
                           "# @param Polytope P2"
                           "# @option Bool no_coordinates only combinatorial information is handled"
-                          "# @option Bool relabel creates an additional section [[VERTEX_LABELS]];"
+                  "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytopes. default: 0"
                           "#   the label of a new vertex corresponding to v<sub>1</sub> &oplus; v<sub>2</sub> will"
                           "#   have the form LABEL_1*LABEL_2."
                           "# @return Polytope"
-                          "# @example The following builds the product of a square and an interval while relabeling,"
+                          "# @example The following builds the product of a square and an interval,"
                           "# and then prints a nice representation of its vertices."
-                          "# > $p = product(cube(2),cube(1),relabel=>1);"
+                          "# > $p = product(cube(2),cube(1));"
                           "# > print labeled($p->VERTICES,$p->VERTEX_LABELS);"
                           "# | 0*0:1 -1 -1 -1 0*1:1 -1 -1 1 1*0:1 1 -1 -1 1*1:1 1 -1 1 2*0:1 -1 1 -1 2*1:1 -1 1 1 3*0:1 1 1 -1 3*1:1 1 1 1",
-                          "product<Scalar>(Polytope<type_upgrade<Scalar>>, Polytope<type_upgrade<Scalar>>; { no_coordinates => 0, relabel => undef })");
+                          "product<Scalar>(Polytope<type_upgrade<Scalar>>, Polytope<type_upgrade<Scalar>>; { no_coordinates => 0, no_labels => 0 })");
 
 } }
 

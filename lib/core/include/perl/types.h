@@ -19,21 +19,21 @@
 
 namespace pm { namespace perl {
 
-typedef SV* (*wrapper_type)(SV**, char*);
-typedef SV* (*indirect_wrapper_type)(void*, SV**, char*);
+typedef SV* (*wrapper_type)(SV**);
+typedef SV* (*indirect_wrapper_type)(void*, SV**);
 typedef void (*destructor_type)(char*);
 typedef void (*copy_constructor_type)(void*, const char*);
 typedef void (*assignment_type)(char*, SV*, value_flags);
-typedef SV* (*conv_to_SV_type)(const char*, const char*);
+typedef SV* (*conv_to_SV_type)(const char*);
 typedef int (*conv_to_int_type)(const char*);
-typedef double (*conv_to_double_type)(const char*);
+typedef double (*conv_to_float_type)(const char*);
 typedef void (*container_resize_type)(char*, int);
 typedef void (*container_begin_type)(void*, char*);
-typedef void (*container_access_type)(char*, char*, int, SV*, SV*, const char*);
+typedef void (*container_access_type)(char*, char*, int, SV*, SV*);
 typedef void (*container_store_type)(char*, char*, int, SV*);
-typedef void (*composite_access_type)(char*, SV*, SV*, const char*);
+typedef void (*composite_access_type)(char*, SV*, SV*);
 typedef void (*composite_store_type)(char*, SV*);
-typedef SV* (*iterator_deref_type)(const char*, const char*);
+typedef SV* (*iterator_deref_type)(const char*);
 typedef void (*iterator_incr_type)(char*);
 typedef SV* (*provide_type)();
 
@@ -65,6 +65,9 @@ namespace pm { namespace perl {
 
 typedef polymake::perl_bindings::bait* recognizer_bait;
 
+extern AnyString class_with_prescribed_pkg;
+extern AnyString relative_of_known_class;
+
 struct type_infos {
    SV* descr;
    SV* proto;
@@ -81,22 +84,22 @@ struct type_infos {
 
 template <typename T>
 struct known_type {
-   static const size_t recog_size=sizeof(*recognize((SV**)0, recognizer_bait(0), (T*)0, (T*)0));
-   static const bool value = recog_size >= sizeof(polymake::perl_bindings::recognized<false>),
-               exact_match = recog_size == sizeof(polymake::perl_bindings::recognized<true>);
-};
+   typedef type_behind_t<T> TData;
+   static const bool is_proxy=!std::is_same<T, TData>::value;
 
-template <typename Base, typename E, typename Params>
-struct known_type< sparse_elem_proxy<Base,E,Params> > {
-   static const bool value=known_type<E>::value || list_contains<primitive_lvalues,E>::value,
-               exact_match=false;
+   static const size_t recog_size=sizeof(*recognize((SV**)0, recognizer_bait(0), (TData*)0, (TData*)0));
+
+   static const bool value = recog_size >= sizeof(polymake::perl_bindings::recognized<false>)
+                             || (is_proxy && mlist_contains<primitive_lvalues, TData>::value),
+               exact_match = recog_size == sizeof(polymake::perl_bindings::recognized<true>) && !is_proxy;
 };
 
 template <typename T,
-          bool _known=known_type<T>::value, bool _exact_match=known_type<T>::exact_match,
-          bool _has_persistent=known_type<typename object_traits<T>::persistent_type>::value,
-          bool _has_generic=known_type<typename generic_representative<T>::type>::value,
-          bool _is_sparse_proxy=is_instance3_of<T,sparse_elem_proxy>::value>
+          bool is_known=known_type<T>::value,
+          bool is_exact_match=known_type<T>::exact_match,
+          bool has_persistent=known_type<typename object_traits<T>::persistent_type>::value,
+          bool has_generic=known_type<typename generic_representative<T>::type>::value,
+          bool is_proxy=!std::is_same<typename object_traits<T>::proxy_for, void>::value>
 class type_cache_helper {
 protected:
    // primary template: nothing known
@@ -106,22 +109,22 @@ protected:
 
    static type_infos get(SV* known_proto)
    {
-      type_infos _infos;
+      type_infos infos;
       if (!list_contains<prohibited_magic_for, T>::value &&
-          _infos.set_descr(typeid(typename remove_unsigned<T>::type))) {
-         _infos.set_proto(known_proto);
-         _infos.magic_allowed=_infos.allow_magic_storage();
+          infos.set_descr(typeid(typename remove_unsigned<T>::type))) {
+         infos.set_proto(known_proto);
+         infos.magic_allowed=infos.allow_magic_storage();
       }
-      return _infos;
+      return infos;
    }
 
    static type_infos get_with_prescribed_pkg(SV* prescribed_pkg, bool accept_magic)
    {
-      type_infos _infos;
-      _infos.set_proto(prescribed_pkg, typeid(T));
-      _infos.magic_allowed= accept_magic && _infos.allow_magic_storage();
-      _infos.descr= _infos.magic_allowed ? polymake::perl_bindings::Class<T>::register_it(0,1,_infos.proto) : 0;
-      return _infos;
+      type_infos infos;
+      infos.set_proto(prescribed_pkg, typeid(T));
+      infos.magic_allowed= accept_magic && infos.allow_magic_storage();
+      infos.descr= infos.magic_allowed ? polymake::perl_bindings::Class<T>::register_it(class_with_prescribed_pkg, infos.proto) : 0;
+      return infos;
    }
 };
 
@@ -142,14 +145,14 @@ protected:
 
    static type_infos& get(SV* known_proto=NULL)
    {
-      static type_infos _infos=super::get(known_proto);
-      return _infos;
+      static type_infos infos=super::get(known_proto);
+      return infos;
    }
 
    static type_infos& get_with_prescribed_pkg(SV* prescribed_pkg)
    {
-      static type_infos _infos=super::get_with_prescribed_pkg(prescribed_pkg, !object_traits<T>::is_lazy);
-      return _infos;
+      static type_infos infos=super::get_with_prescribed_pkg(prescribed_pkg, !object_traits<T>::is_lazy);
+      return infos;
    }
 public:
    static SV* get_descr(SV* known_proto=NULL) { return get(known_proto).descr; }
@@ -183,91 +186,92 @@ public:
 template <typename T, typename Representative>
 class type_cache_via {
 protected:
-   static SV* _get_descr(SV* proto, False)
+   static SV* get_descr(SV* proto, std::false_type)
    {
-      return polymake::perl_bindings::Class<T>::register_it(0,0,proto);
+      return polymake::perl_bindings::Class<T>::register_it(relative_of_known_class, proto);
    }
-   static SV* _get_descr(SV*, True) { return NULL; }
+   static SV* get_descr(SV*, std::true_type) { return nullptr; }
 
    static type_infos get(SV* known_proto)
    {
-      assert(known_proto==NULL);
-      type_infos _infos;
-      _infos.proto=type_cache<Representative>::get_proto();
-      _infos.magic_allowed=type_cache<Representative>::magic_allowed(0);
-      _infos.descr=_infos.proto ? _get_descr(_infos.proto, bool2type<object_traits<T>::is_lazy>()) : 0;
-      return _infos;
+      assert(known_proto==nullptr);
+      type_infos infos;
+      infos.proto=type_cache<Representative>::get_proto();
+      infos.magic_allowed=type_cache<Representative>::magic_allowed(0);
+      infos.descr=infos.proto ? get_descr(infos.proto, bool_constant<object_traits<T>::is_lazy>()) : nullptr;
+      return infos;
    }
 
    static type_infos get_with_prescribed_pkg(SV* prescribed_pkg, bool accept_magic)
    {
-      type_infos _infos;
-      _infos.set_proto(prescribed_pkg, typeid(T), type_cache<Representative>::get_proto());
-      _infos.magic_allowed= accept_magic && _infos.allow_magic_storage();
-      _infos.descr= _infos.magic_allowed ? polymake::perl_bindings::Class<T>::register_it(0,1,_infos.proto) : 0;
-      return _infos;
+      type_infos infos;
+      infos.set_proto(prescribed_pkg, typeid(T), type_cache<Representative>::get_proto());
+      infos.magic_allowed= accept_magic && infos.allow_magic_storage();
+      infos.descr= infos.magic_allowed ? polymake::perl_bindings::Class<T>::register_it(class_with_prescribed_pkg, infos.proto) : nullptr;
+      return infos;
    }
 };
 
-template <typename T, bool _has_generic>
-class type_cache_helper<T, false, false, true, _has_generic, false>
+template <typename T, bool has_generic>
+class type_cache_helper<T, false, false, true, has_generic, false>
    : public type_cache_via<T, typename object_traits<T>::persistent_type> {};
 
 template <typename T>
 class type_cache_helper<T, false, false, false, true, false>
    :  public type_cache_via<T, typename generic_representative<T>::type> {};
 
-template <typename T, bool _has_persistent, bool _has_generic>
-class type_cache_helper<T, true, false, _has_persistent, _has_generic, true> {
+template <typename T, bool has_persistent, bool has_generic>
+class type_cache_helper<T, true, false, has_persistent, has_generic, true> {
 protected:
+   typedef type_behind_t<T> TData;
    static type_infos get(SV* known_proto)
    {
-      assert(known_proto==NULL);
-      type_infos _infos;
-      _infos.proto=type_cache<typename T::value_type>::get_proto();
-      _infos.magic_allowed=true;
-      _infos.descr=polymake::perl_bindings::Class<T>::register_it(0, 0, _infos.proto);
-      return _infos;
+      assert(known_proto==nullptr);
+      type_infos infos;
+      infos.proto=type_cache<TData>::get_proto();
+      infos.magic_allowed=true;
+      infos.descr=polymake::perl_bindings::Class<T>::register_it(relative_of_known_class, infos.proto);
+      return infos;
    }
 };
 
-template <typename T, bool _has_persistent, bool _has_generic>
-class type_cache_helper<T, true, false, _has_persistent, _has_generic, false> {
+template <typename T, bool has_persistent, bool has_generic>
+class type_cache_helper<T, true, false, has_persistent, has_generic, false> {
 protected:
    static type_infos get(SV* known_proto)
    {
-      assert(known_proto==NULL);
-      type_infos _infos;
-      recognize(&_infos.proto, recognizer_bait(0), (T*)0, (T*)0);
-      _infos.magic_allowed=_infos.allow_magic_storage();
-      _infos.descr=polymake::perl_bindings::Class<T>::register_it(0, 0, _infos.proto);
-      return _infos;
+      assert(known_proto==nullptr);
+      type_infos infos;
+      recognize(&infos.proto, recognizer_bait(0), (T*)0, (T*)0);
+      infos.magic_allowed=infos.allow_magic_storage();
+      infos.descr=polymake::perl_bindings::Class<T>::register_it(relative_of_known_class, infos.proto);
+      return infos;
    }
 };
 
-template <typename T, bool _has_persistent, bool _has_generic>
-class type_cache_helper<T, true, true, _has_persistent, _has_generic, false> {
+template <typename T, bool has_persistent, bool has_generic>
+class type_cache_helper<T, true, true, has_persistent, has_generic, false> {
 protected:
    static type_infos get(SV* known_proto)
    {
-      type_infos _infos;
+      type_infos infos;
       if (known_proto
-          ? (_infos.set_proto(known_proto),
+          ? (infos.set_proto(known_proto),
              true)
-          : (recognize(&_infos.proto, recognizer_bait(0), (T*)0, (T*)0),
-             _infos.proto != NULL)) {
-         if ((_infos.magic_allowed = _infos.allow_magic_storage()))
-            _infos.set_descr();
+          : (recognize(&infos.proto, recognizer_bait(0), (T*)0, (T*)0),
+             infos.proto != nullptr)) {
+         if ((infos.magic_allowed = infos.allow_magic_storage()))
+            infos.set_descr();
       }
-      return _infos;
+      return infos;
    }
 };
 
 template <typename T>
-struct is_lvalue : bool2type<attrib<T>::is_reference && !attrib<T>::is_const> {};
+struct is_lvalue : bool_constant<attrib<T>::is_reference && !attrib<T>::is_const> {};
 
 template <typename T>
-struct is_mutable : bool2type<pm::is_mutable<T>::value && !object_traits<T>::is_always_const> {};
+struct is_mutable : bool_constant<pm::is_mutable<T>::value && !object_traits<T>::is_always_const> {};
 
 template <typename type_list, int i>
 struct TypeList_helper {
@@ -327,8 +331,8 @@ class TypeListUtils {
    {
       ArrayHolder arr(1+list_accumulate_unary<list_count, is_lvalue, type_list>::value);
       Value void_result;
-      void_result << (identical<typename list2cons<Fptr>::return_type, void>::value ||
-                      identical<typename list2cons<Fptr>::return_type, ListReturn>::value);
+      void_result << (std::is_same<typename list2cons<Fptr>::return_type, void>::value ||
+                      std::is_same<typename list2cons<Fptr>::return_type, ListReturn>::value);
       arr.push(void_result);
       TypeList_helper<type_list,0>::gather_flags(arr);
       return arr.get();
@@ -359,7 +363,7 @@ public:
 
    // build an array with void-return and arg-is-lvalue flags;
    // the signature of this function has to be compatible with wrapper_type
-   static SV* get_flags(SV**, char*)
+   static SV* get_flags(SV**)
    {
       static SV* ret=gather_flags();
       return ret;

@@ -25,5 +25,6 @@ namespace polymake { namespace fan { namespace {
    };
 
    FunctionInstance4perl(raysToFacetNormals_T_x_f16, Rational);
+   FunctionInstance4perl(raysToFacetNormals_T_x_f16, double);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

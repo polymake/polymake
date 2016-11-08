@@ -14,6 +14,7 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 
 namespace polymake { namespace fan { namespace {
@@ -25,5 +26,7 @@ namespace polymake { namespace fan { namespace {
    };
 
    FunctionInstance4perl(planar_net_T_x, Rational);
+   FunctionInstance4perl(planar_net_T_x, QuadraticExtension< Rational >);
+   FunctionInstance4perl(planar_net_T_x, double);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

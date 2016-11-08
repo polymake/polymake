@@ -38,8 +38,7 @@ namespace libnormaliz {
 template<typename ToType, typename FromType>
 void convert(ToType& ret, const FromType& val) {
     if (!try_convert(ret,val)) {
-        errorOutput() << "Cannot convert " << val << endl;
-        throw ArithmeticException();
+        throw ArithmeticException(val);
     }
 }
 

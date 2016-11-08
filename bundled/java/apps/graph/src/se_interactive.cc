@@ -71,7 +71,7 @@ public:
 namespace pm {
 
 template <>
-struct is_mutable<polymake::graph::SpringEmbedderWindow> : False {};
+struct is_mutable<polymake::graph::SpringEmbedderWindow> : std::false_type {};
 
 }
 namespace polymake { namespace graph {

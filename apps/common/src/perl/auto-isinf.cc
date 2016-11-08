@@ -17,6 +17,7 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/Integer.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/client.h"
 
@@ -31,5 +32,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(isinf_X, double);
    FunctionInstance4perl(isinf_X, perl::Canned< const Rational >);
    FunctionInstance4perl(isinf_X, perl::Canned< const Integer >);
+   FunctionInstance4perl(isinf_X, perl::Canned< const QuadraticExtension< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

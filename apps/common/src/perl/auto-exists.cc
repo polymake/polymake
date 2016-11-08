@@ -40,9 +40,9 @@ namespace polymake { namespace common { namespace {
 
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Map< Vector< double >, int > >, perl::Canned< const Vector< double > >);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const hash_set< Vector< Rational > > >, perl::Canned< const Vector< Rational > >);
-   FunctionInstance4perl(exists_X_f1, perl::Canned< const Map< Vector< Rational >, bool > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(exists_X_f1, perl::Canned< const Map< Vector< Rational >, bool > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>> >);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< int > >, int);
-   FunctionInstance4perl(exists_X_f1, perl::Canned< const Map< Vector< double >, int > >, perl::Canned< const pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>, void> const&, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(exists_X_f1, perl::Canned< const Map< Vector< double >, int > >, perl::Canned< const pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>> const&, pm::Series<int, true>> >);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&> >, int);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< Array< int > > >, perl::Canned< const Array< int > >);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< Set< int > > >, perl::Canned< const Set< int > >);
@@ -51,16 +51,16 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(exists_X_f1, perl::Canned< const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> >&> >, int);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Map< Vector< Rational >, bool > >, perl::Canned< const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::Rational, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric> >);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< int > >, perl::Canned< const Integer >);
-   FunctionInstance4perl(exists_X_f1, perl::Canned< const Map< Vector< Rational >, bool > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(exists_X_f1, perl::Canned< const Map< Vector< Rational >, bool > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>> >);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< Vector< Integer > > >, perl::Canned< const Vector< Integer > >);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< Vector< Rational > > >, perl::Canned< const Vector< Rational > >);
-   FunctionInstance4perl(exists_X_f1, perl::Canned< const Map< Vector< double >, bool > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double>&>, pm::Series<int, true>, void> >);
-   FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< Vector< Rational > > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(exists_X_f1, perl::Canned< const Map< Vector< double >, bool > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double>&>, pm::Series<int, true>> >);
+   FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< Vector< Rational > > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>> >);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< std::string > >, std::string);
-   FunctionInstance4perl(exists_X_f1, perl::Canned< const Map< Vector< double >, bool > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>, void> >);
-   FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< Vector< double > > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(exists_X_f1, perl::Canned< const Map< Vector< double >, bool > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>> >);
+   FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< Vector< double > > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>> >);
    FunctionInstance4perl(exists_X_f1, perl::Canned< const Set< Vector< Rational > > >, perl::Canned< const pm::SameElementVector<pm::Rational const&> >);
-   FunctionInstance4perl(exists_X_f1, perl::Canned< const hash_set< Vector< Rational > > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, void> >);
-   FunctionInstance4perl(exists_X_f1, perl::Canned< const hash_set< Vector< Rational > > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(exists_X_f1, perl::Canned< const hash_set< Vector< Rational > > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>> >);
+   FunctionInstance4perl(exists_X_f1, perl::Canned< const hash_set< Vector< Rational > > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

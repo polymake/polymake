@@ -24,14 +24,14 @@
 
 namespace polymake { namespace topaz {
   
-Array<Set<int> > minimal_non_faces(const graph::HasseDiagram HD)
+Array<Set<int>> minimal_non_faces(const graph::HasseDiagram HD)
 {
 #if POLYMAKE_DEBUG
    const bool debug_print = perl::get_debug_level() > 1;
 #endif
 
    const int dim = HD.dim()-1;  // dimension of the complex = HD.dim()-1
-   std::list< Set<int> > min_non_faces;
+   std::list<Set<int>> min_non_faces;
 
    // determine the start level (the highest complete level)
    int start_dim = 1;
@@ -92,7 +92,7 @@ Array<Set<int> > minimal_non_faces(const graph::HasseDiagram HD)
       }  // end iterate over all faces of this dimension
    }
 
-   return min_non_faces;
+   return Array<Set<int>>(min_non_faces);
 }
 
 Function4perl(&minimal_non_faces, "minimal_non_faces(FaceLattice)");

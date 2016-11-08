@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -22,21 +22,20 @@
 namespace pm {
 
 template <typename E>
-typename enable_if<E, is_field<E>::value>::type
+typename std::enable_if<is_field<E>::value, E>::type
 det(SparseMatrix<E> M)
 {
    const int dim = M.rows();
    if (!dim) return zero_value<E>();
 
    std::vector<int> column_permutation(dim);
-   copy(entire(sequence(0,dim)), column_permutation.begin());
+   copy_range(entire(sequence(0, dim)), column_permutation.begin());
    E result = one_value<E>();
 
-   for (typename Entire< Rows< SparseMatrix<E> > >::iterator pivotrow=entire(rows(M));
-        !pivotrow.at_end(); ++pivotrow) {
+   for (auto pivotrow=entire(rows(M)); !pivotrow.at_end(); ++pivotrow) {
       if (pivotrow->empty()) return zero_value<E>();
 
-      typename SparseMatrix<E>::row_type::iterator pivot=pivotrow->begin();
+      auto pivot=pivotrow->begin();
       const int pr=pivotrow.index(), pc=pivot.index();   // row and column index
       result *= *pivot;
       if (column_permutation[pr] != pc) {
@@ -44,7 +43,7 @@ det(SparseMatrix<E> M)
          negate(result);
       }
 
-      typename SparseMatrix<E>::col_type::iterator beneath=cross_direction(pivot);
+      auto beneath=cross_direction(pivot);
       ++beneath;
       while (!beneath.at_end()) {
          // delete all elements below pivot
@@ -74,7 +73,7 @@ trace(SparseMatrix<E> M)
 }
 
 template <typename E>
-typename enable_if<SparseVector<E>, is_field<E>::value>::type
+typename std::enable_if<is_field<E>::value, SparseVector<E>>::type
 reduce(SparseMatrix<E> M, SparseVector<E> V)
 {
    const int n_cols=M.cols();
@@ -103,7 +102,7 @@ reduce(SparseMatrix<E> M, SparseVector<E> V)
 }
 
 template <typename E>
-typename enable_if<SparseMatrix<E>, is_field<E>::value>::type
+typename std::enable_if<is_field<E>::value, SparseMatrix<E>>::type
 inv(SparseMatrix<E> M)
 {
    const int dim=M.rows();
@@ -133,7 +132,7 @@ inv(SparseMatrix<E> M)
 }
 
 template <typename E>
-typename enable_if<Vector<E>, is_field<E>::value>::type
+typename std::enable_if<is_field<E>::value, Vector<E>>::type
 lin_solve(SparseMatrix<E> A, Vector<E> B)
 {
    const int m=A.rows(), n=A.cols();

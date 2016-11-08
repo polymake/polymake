@@ -28,8 +28,8 @@ perl::Object uniform_matroid(const int r, const int n)
 
    if (n < 1)
       throw std::runtime_error("uniform_matroid: at least 1 element requiered");
-   if (r < 1 || r > n)
-      throw std::runtime_error("uniform_matroid: 1 <= r <= n required");
+   if (r < 0 || r > n)
+      throw std::runtime_error("uniform_matroid: 0 <= r <= n required");
 
 
   perl::Object m("Matroid");
@@ -37,7 +37,7 @@ perl::Object uniform_matroid(const int r, const int n)
   m.take("N_ELEMENTS")<< n;
   m.take("RANK")<<r;
   // we already know the number of bases
-  const int n_bases=Integer::binom(n,r).to_int();
+  const int n_bases(Integer::binom(n,r));
   m.take("N_BASES") << n_bases;
 
   Array<Set<int> > bases(n_bases);

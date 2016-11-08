@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -23,20 +23,20 @@ rule cdd.convex_hull.primal: FACETS, LINEAR_SPAN : RAYS | INPUT_RAYS {
 }
 weight 4.10;
 precondition : N_RAYS | N_INPUT_RAYS;
-permutation : FacetPerm;
+incurs FacetPerm;
 
 rule cdd.convex_hull.dual: RAYS, LINEALITY_SPACE, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
     cdd_ch_dual($this);
 }
 weight 4.10;
-permutation : VertexPerm;
+incurs VertexPerm;
 
 # cdd redundancy checks
 rule cdd.convex_hull.canon: POINTED, RAYS, LINEALITY_SPACE : INPUT_RAYS {
    cdd_canonicalize($this,0);
 }
 weight 3.10;
-permutation : VertexPerm;
+incurs VertexPerm;
 
 rule cdd.convex_hull.lineality: LINEALITY_SPACE, POINTED : INPUT_RAYS {
    cdd_canonicalize_lineality($this,0);
@@ -48,19 +48,19 @@ rule cdd.convex_hull.redund: RAYS, RAY_SEPARATORS, LINEALITY_SPACE : INPUT_RAYS 
 }
 weight 3.20;
 precondition : POINTED;
-permutation : VertexPerm;
+incurs VertexPerm;
 
 rule cdd.convex_hull.separators: RAY_SEPARATORS : RAYS {
    cdd_vertex_normals($this);
 }
 weight 3.20;
-permutation : VertexPerm;
+incurs VertexPerm;
 
 rule cdd.convex_hull.canon : FACETS, LINEAR_SPAN : INEQUALITIES { 
   cdd_canonicalize($this,1)
 }
 weight 3.20;
-permutation : FacetPerm;
+incurs FacetPerm;
 
 rule cdd.convex_hull.linear_span : LINEAR_SPAN : INEQUALITIES {     
    cdd_canonicalize_lineality($this,1);
@@ -78,7 +78,7 @@ weight 3.10;
 #}
 #weight 3.20;
 #precondition : FULL_DIM;
-#permutation : FacetPerm;
+#incurs FacetPerm;
 
 # rule cdd.convex_hull.facet_certificates: FACET_CERTIFICATES : FACETS { 
 #   cdd_vertex_normals($this);

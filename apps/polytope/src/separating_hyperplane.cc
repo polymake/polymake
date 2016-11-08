@@ -1,171 +1,354 @@
+/* Copyright (c) 1997-2016
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+http://www.polymake.org
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2, or (at your option) any
+later version: http://www.gnu.org/licenses/gpl.txt.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+--------------------------------------------------------------------------------
+*/
+
 #include "polymake/client.h"
-#include "polymake/Vector.h"
-#include "polymake/Matrix.h"
-#include "polymake/linalg.h"
-#include "polymake/polytope/to_interface.h"
+#include "polymake/polytope/separating_hyperplane.h"
 
 namespace polymake { namespace polytope {
 
-template<typename Scalar>
-void is_vertex_sub(const Vector<Scalar>& q, const Matrix<Scalar>& points, bool& answer, Vector<Scalar>& sep_hyp)
-{
-   /*construction of LP according to cdd redundancy check for points, see
-     http://www.ifor.math.ethz.ch/~fukuda/polyfaq/node22.html#polytope:Vredundancy
-    */
-   Matrix<Scalar> extension(zero_vector<Scalar>(points.rows())/ones_vector<Scalar>(points.rows()));
-   Matrix<Scalar> ineqs(T(extension)|-points.minor(All,range(1,points.cols()-1)));//z^tp_i-z_0<=0; CAUTION: p_i is affine part of i-th point! 
-   Vector<Scalar> prev_unbound(ones_vector<Scalar>(2)|-q.slice(1)); //z^tq-z_0<=1, prevents unboundedness
-   ineqs/=prev_unbound;
-   Matrix<Scalar> aff_hull=null_space(points/q);
-   Matrix<Scalar> extension2(aff_hull.rows(),2);
-   Matrix<Scalar> aff_hull_minor(aff_hull.rows(),aff_hull.cols()-1);
-   if ( aff_hull.cols() > 1 ) {
-	aff_hull_minor = aff_hull.minor(All, range(1,aff_hull.cols()-1));
-   }
-   Matrix<Scalar> eqs(extension2|-aff_hull_minor);
-   Vector<Scalar> obj(zero_vector<Scalar>(1)|-ones_vector<Scalar>(1)|q.slice(1)); //z^tq-z_0
+    //translate all entries of the matrix that do not have 0 as first coordinate (i.e. non-rays) by t
+  template<typename Scalar>
+        Matrix<Scalar> translate_non_rays(Matrix<Scalar> M, Vector<Scalar> t){
+            Matrix<Scalar> tM(M.rows(),M.cols());
+            typedef typename Entire< Rows< Matrix<Scalar> > >::iterator it;
+            for (std::pair<it, it> r(entire(rows(M)), entire(rows(tM)));
+     !r.first.at_end(); ++r.first, ++r.second){
+                if((*(r.first))[0] == 0) *(r.second) = *(r.first);
+                else *(r.second) = *(r.first)-t;
+            }
+            return tM;
+        }
 
-   to_interface::solver<Scalar> S;
-   /// @retval first: objective value, second: solution
-   typedef std::pair<Scalar, Vector<Scalar> > lp_solution;
-   lp_solution sol=S.solve_lp(ineqs, eqs, obj, true);
-   Scalar obj_val=sol.first;
-   Vector<Scalar> res(sol.second);
-   //H: z^tx=z_0, i.e., z_0-z^tx=0
-   sep_hyp=-res.slice(1); //sep_hyp*point should be >= 0
-   sep_hyp[0]=res[1]; 
-   if(sol.first > 0){ //q non-red. <=> obj_val > 0
-      answer=true;
-   } else {
-      answer=false;
-   }
-}
+    template<typename Scalar>
+        Vector<Scalar> separate_strong(perl::Object p1, perl::Object p2)
+        {
+            const Matrix<Scalar>
+                V = p1.give("VERTICES | POINTS"),
+                  W = p2.give("VERTICES | POINTS"),
+                  L1 = p1.give("LINEALITY_SPACE | INPUT_LINEALITY"),
+                  L2 = p2.give("LINEALITY_SPACE | INPUT_LINEALITY");
 
-template<typename Scalar>
-bool is_vertex(const Vector<Scalar>& q, const Matrix<Scalar>& points)
-{
-   bool answer;
-   Vector<Scalar> sep_hyp(points.cols());
-   is_vertex_sub(q, points, answer, sep_hyp);
-   return answer;
-}
+            int i=0; //index of the first non-ray in V
+            for(auto r = entire(rows(V)); !r.at_end(); ++r, ++i)
+               if((*r)[0] != 0) break;
 
-template<typename Scalar>
-perl::ListReturn separating_hyperplane(const Vector<Scalar>& q, const Matrix<Scalar>& points)
-{
-   bool answer;
-   Vector<Scalar> sep_hyp(points.cols());
-   is_vertex_sub(q, points, answer, sep_hyp);
+            //origin needs to be on the positive side of the separating plane in order for the LP to work.
+            //translate the whole thing s.t. v_0 is the origin
+            Vector<Scalar> t = V[i];
+            t[0]=0;
 
-   perl::ListReturn result;
-   result << answer
-          << sep_hyp;
-   return result;
-}
+            const Matrix<Scalar> ineqs( ( (translate_non_rays(V,t) / -translate_non_rays(W,t)) | //V is on the positive, W on the negative side of the hyperplane
+                        ( -ones_vector<Scalar>(V.rows()+W.rows()))) //vz - eps >= 0 and wz + eps <= 0
+                    /  unit_vector<Scalar>(V.cols()+1, V.cols()) //eps >=0
+                    / (unit_vector<Scalar>(V.cols()+1, 0) - unit_vector<Scalar>(V.cols()+1, V.cols()))); //eps <= z_0 to ensure boundedness (the solver sets z_0 = 1 or z_0 = 0 always)
 
-template<typename Scalar>
-Vector<Scalar> separating_hyperplane_poly(perl::Object p1, perl::Object p2)
-{
-   Matrix<Scalar> V = p1.give("VERTICES | POINTS");
-   Matrix<Scalar> W = p2.give("VERTICES | POINTS");
-   Matrix<Scalar> L1 = p1.give("LINEALITY_SPACE | INPUT_LINEALITY");
-   Matrix<Scalar> L2 = p2.give("LINEALITY_SPACE | INPUT_LINEALITY");
-   
-   if ( L1.rows() + L2.rows() > 0)
-      throw std::runtime_error("separating_hyperplane: could not handle linealities");
-      
-   //origin needs to be on the positive side of the separating plane in order for the LP to work.
-   //translate the whole thing s.t. v_0 is the origin
-   Vector<Scalar> t = V[0];
-   t[0]=0;
+            Matrix<Scalar> eqs(0, V.cols());
+            if(L1.rows()) eqs /= L1;
+            if(L2.rows()) eqs /= L2;
+            eqs = eqs | zero_vector<Scalar>();
 
-   const Matrix<Scalar> ineqs( ( ((V-repeat_row(t,V.rows())) / -(W-repeat_row(t,W.rows()))) | //V is on the positive, W on the negative side of the hyperplane
-               ( -ones_vector<Scalar>(V.rows()) | zero_vector<Scalar>(W.rows()) ) ) //vz - z_d >= 0 and wz <= 0
-           /  unit_vector<Scalar>(V.cols()+1, V.cols()) //z_d >=0
-           / (unit_vector<Scalar>(V.cols()+1, 0) - unit_vector<Scalar>(V.cols()+1, V.cols()))); //z_d <= v_0[0] to ensure boundedness
-   Matrix<Scalar> eqs(0,V.cols()+1);
-   Vector<Scalar> obj = unit_vector<Scalar>(V.cols()+1, V.cols());
+            const Vector<Scalar> obj = unit_vector<Scalar>(V.cols()+1, V.cols());//maximize eps
 
-   to_interface::solver<Scalar> S;
-   Vector<Scalar> P;
-   Vector<Scalar> sep_hyp;
-   /// @retval first: objective value, second: solution
-   typedef std::pair<Scalar, Vector<Scalar> > lp_solution;
+            to_interface::solver<Scalar> S;
+            Vector<Scalar> P, sep_hyp;
 
-   try {
-      lp_solution sol=S.solve_lp(ineqs, eqs, obj, true);
-      Scalar obj_val=sol.first;
-      Vector<Scalar> res(sol.second);
-      sep_hyp = res.slice(0,V.cols());
-   }
-   catch (infeasible) {
-      throw std::runtime_error("separating_hyperplane: the given polytopes cannot be separated");
-   }
-   /* not relevant
-   catch (unbounded) {
-      throw std::runtime_error("separating_hyperplane: the given polytopes cannot be separated");
-      }*/
-   //translate sol back to the original polytope position
-   for(int i=1;i<sep_hyp.dim(); ++i){
-       if(sep_hyp[i] != 0){
-           t[i] -= sep_hyp[0]/sep_hyp[i];
-           break;
-       }
-   }
-   t[0]=1;
-   sep_hyp[0] = -(sep_hyp * t - sep_hyp[0]*t[0]);
+            Vector<Scalar> sol;
+            try {
+                std::pair<Scalar,Vector<Scalar>> sol_pair = S.solve_lp(ineqs, eqs, obj, true);
+                if(sol_pair.first == 0) throw infeasible(); //the only separating plane is a weak one
+                sol = sol_pair.second.slice(0, V.cols());
+            }
+            catch (infeasible) {
+                throw std::runtime_error("separating_hyperplane: the given polytopes cannot be separated");
+            }
 
-   return sep_hyp;
-}
-      
+            //translate sol back to the original polytope position
+            for(int i=1;i<sol.dim(); ++i){
+                if(sol[i] != 0){
+                    t[i] -= sol[0]/sol[i];
+                    break;
+                }
+            }
+            t[0]=1;
+            sol[0] = -(sol * t - sol[0]);
+            return sol;
+        }
 
-UserFunctionTemplate4perl("# @category Geometry"
-                          "# Checks whether there exists a hyperplane seperating the  given point //q//"
-                          "# from the //points// via solving a suitable LP (compare cdd redundancy check)."
-                          "# If so, //q// would be a new vertex of the polytope P generated by //points// and //q//"
-                          "# that is not a vertex in the convex hull of //points// alone. To get the seperating"
-                          "# hyperplane, use __seperating_hyperplane__"
-                          "# Works without knowing the facets of P!"
-                          "# @param Vector q the vertex (candidate) which is to be separated from //points//"
-                          "# @param Matrix points the points from which //q// is to be separated"
-                          "# @return Bool 'true' if //q// is a vertex"
-                          "# @example  > $q = cube(2)->VERTICES->row(0);"
-                          "# > $points = cube(2)->VERTICES->minor(sequence(1,3),All);"
-                          "# > print is_vertex($q,$points);"
-                          "# | 1",
-                          "is_vertex<Scalar>(Vector<type_upgrade<Scalar>>, Matrix<type_upgrade<Scalar>>)");
+    //finds a weak separating plane for a full-dimensional polytope p1 from a polytope p2
+    //t is an inner point of p1 that is not a vertex of p2
+    //called from separate_weak
+    template<typename Scalar>
+        Vector<Scalar> separate_weak(perl::Object p1, perl::Object p2, Vector<Scalar> t)
+        {
+            const Matrix<Scalar>
+                V = p1.give("VERTICES | POINTS"),
+                  W = p2.give("VERTICES | POINTS"),
+                  L1 = p1.give("LINEALITY_SPACE | INPUT_LINEALITY"),
+                  L2 = p2.give("LINEALITY_SPACE | INPUT_LINEALITY");
 
-UserFunctionTemplate4perl("# @category Optimization"
-                          "# Computes (the normal vector of) a hyperplane which separates a given point //q//"
-                          "# from //points// via solving a suitable LP. The scalar product of the normal vector"
-                          "# of the separating hyperplane and a point in //points// is greater or equal than 0"
-                          "# (same behavior as for facets!)."
-                          "# If //q// is not a vertex of P=conv(//points//,//q//),"
-                          "# the function returns a zero vector and sets //answer// to 'false'."
-                          "# Works without knowing the facets of P!"
-                          "# @param Vector q the vertex (candidate) which is to be separated from //points//"
-                          "# @param Matrix points the points from which //q// is to be separated"
-                          "# @return List (Bool answer, Vector sep_hyp)"
-                          "# @example The following stores the result in the List @r and then prints the answer and"
-                          "# a description of the hyperplane separating the zeroth vertex of the square from the others."                         "# > $q = cube(2)->VERTICES->row(0);"
-                          "# > $points = cube(2)->VERTICES->minor(sequence(1,3),All);"
-                          "# > @r = separating_hyperplane($q,$points);"
-                          "# > print $r[0];"
-                          "# | 1"
-                          "# > print $r[1];"
-                          "# | 0 1/2 1/2",
-                          "separating_hyperplane<Scalar>(Vector<type_upgrade<Scalar>>, Matrix<type_upgrade<Scalar>>)");
+            //the solution of the LP is supposed to define the separating hyperplane.
+            //it thus must be constructed in a way that rules out the origin as a solution
+            //as that does not define a plane. therefore the following two choices were made.
 
-FunctionTemplate4perl("separating_hyperplane_poly<Scalar>(Polytope<type_upgrade<Scalar>>, Polytope<type_upgrade<Scalar>>)");
+            //origin needs to be on the positive side of the separating plane and must not be a vertex of p1
+            // in order for the LP to work. translate the whole thing s.t. the origin lies in the interior of p1
+            t[0]=0;
 
-InsertEmbeddedRule("# @category Optimization"
-                          "# Computes (the normal vector of) a hyperplane which separates two given polytopes"
-                          "# //p1// and //p2// if possible."
-                          "# @param Polytope p1 the first polytope"
-                          "# @param Polytope p2 the second polytope"
-                          "# @return Vector a hyperplane separating //p1// from //p2//\n"
-                          "user_function separating_hyperplane<Scalar>(Polytope<type_upgrade<Scalar>>, Polytope<type_upgrade<Scalar>>) {\n"
-                          "separating_hyperplane_poly(@_); }\n");
+            int i=0; //index of the first non-ray in V
+            for(auto r = entire(rows(V)); !r.at_end(); ++r, ++i)
+               if((*r)[0] != 0) break;
+
+
+            //obj must not be a vertex of p1 or p2, so we choose an inner point of the translated polytope.
+            const Vector<Scalar> obj = ones_vector<Scalar>(1) | ((V[i] - t)/2).slice(1);
+
+            const Matrix<Scalar> ineqs( ( translate_non_rays(V,t) / -translate_non_rays(W,t)) //V is on the positive, W on the negative side of the hyperplane
+                    / (2*ones_vector<Scalar>(1) | obj.slice(1))); //obj*z >= -1 to ensure boundedness
+
+            Matrix<Scalar> eqs(0, V.cols());
+            if(L1.rows()) eqs /= L1;
+            if(L2.rows()) eqs /= L2;
+
+            to_interface::solver<Scalar> S;
+            Vector<Scalar> P, sep_hyp;
+
+            Vector<Scalar> sol;
+            //exception is caught in separate_weak
+            sol = S.solve_lp(ineqs, eqs, obj, false).second; //minimize obj*z
+
+            //translate sol back to the original polytope position
+            for(int i=1;i<sol.dim(); ++i){
+                if(sol[i] != 0){
+                    t[i] -= sol[0]/sol[i];
+                    break;
+                }
+            }
+            t[0]=1;
+            sol[0] = -(sol * t - sol[0]);
+            return sol;
+        }
+
+
+    //the separating plane is found using an LP whose solution is the normal vector.
+    //to_solver forces the first coodinate of the solution to be 1, so the separating plane
+    //cannot pass through the origin (as that would mean first coordinate 0).
+    //to avoid that, we translate the polytopes such that the origin lies in the interior
+    //of the polytope that is supposed to lie on the positive side of the plane.
+    //in case both polytopes are low dimensional, we have to take extra care (see below)
+    template<typename Scalar>
+        Vector<Scalar> separate_weak(perl::Object p1, perl::Object p2)
+        {
+            const Matrix<Scalar>
+                V = p1.give("VERTICES | POINTS"),
+                  W = p2.give("VERTICES | POINTS"),
+                  L1 = p1.give("LINEALITY_SPACE | INPUT_LINEALITY"),
+                  L2 = p2.give("LINEALITY_SPACE | INPUT_LINEALITY");
+
+            Matrix<Scalar> ker1 = null_space(V/L1);
+
+            if(!ker1.rows()){ //p1 is fulldim
+                Vector<Scalar> inn = p1.give("REL_INT_POINT");
+                return separate_weak<Scalar>(p1,p2,inn);
+            }
+            else{
+                Matrix<Scalar> ker2 = null_space(W/L2);
+
+                if(!ker2.rows()){ //p2 is fulldim
+                    Vector<Scalar> inn = p2.give("REL_INT_POINT");
+                    return -separate_weak<Scalar>(p2,p1,inn); //p2 is fulldim => swap
+                }
+                else{ //both are lowdim
+
+                    Vector<Scalar> sol;
+
+                    try{
+                        //we need to find an inner point of p1 that is not a vertex of p2.
+                        //the loop terminates after a maximum of 2 restarts as there is a maximum of
+                        //2 vertices of p2 on the line from inn to V[i]
+
+                        if(V.rows()==1) throw infeasible(); //p1 is a point
+
+                        int i=0; //index of the first non-ray in V
+                        for(auto r = entire(rows(V)); !r.at_end(); ++r, ++i)
+                            if((*r)[0] != 0) break;
+
+                        Vector<Scalar> inn = p1.give("REL_INT_POINT");
+                        for(auto r = entire(rows(W)); !r.at_end(); ){
+                            if(*r == inn){
+                                inn = ones_vector<Scalar>(1) | (inn + (V[i]-inn)/2).slice(1);
+                                r = entire(rows(W));
+                            }
+                            else ++r;
+                        }
+
+                        sol = separate_weak<Scalar>(p1,p2,inn);
+                    }catch(infeasible){
+
+                        try{
+                            if(W.rows()==1) throw infeasible(); //p2 is a point
+
+                            int i=0; //index of the first non-ray in V
+                            for(auto r = entire(rows(W)); !r.at_end(); ++r, ++i)
+                                if((*r)[0] != 0) break;
+
+                            //maybe the inner point lies on the separating plane!
+                            //try the same for p1 and p2 swapped:
+                            Vector<Scalar> inn = p2.give("REL_INT_POINT");
+                            for(auto r = entire(rows(V)); !r.at_end(); ){
+                                if(*r == inn){
+                                    inn = ones_vector<Scalar>(1) | (inn + (W[i]-inn)/2).slice(1);
+                                    r = entire(rows(V));
+                                }
+                                else ++r;
+                            }
+                            sol= -separate_weak<Scalar>(p2,p1,inn);
+                        }catch(infeasible){
+                            //there is only two options left:
+                            //either both inner points lie on the separating plane, so p1 and p2 lie in a common hyperplane,
+                            //or they are inseparable.
+                            if(W*T(ker1)!=zero_matrix<Scalar>(W.rows(),ker1.rows())) throw infeasible();//no common plane
+                            sol = ker1[0];
+
+                        }
+                    }
+                    return sol;
+                }
+            }
+        }
+
+//separate two polytopes
+    template<typename Scalar>
+        Vector<Scalar> separating_hyperplane(perl::Object p1, perl::Object p2, perl::OptionSet options)
+        {
+            bool strong = options["strong"];
+            Vector<Scalar> sol;
+            try{
+                if(strong) sol = separate_strong<Scalar>(p1,p2);
+                else sol = separate_weak<Scalar>(p1,p2);
+            }
+            catch (infeasible) {
+                throw std::runtime_error("separating_hyperplane: the given polytopes cannot be separated");
+            }
+            return sol;
+        }
+
+  template <typename Scalar>
+      bool cone_contains_point(perl::Object p, const Vector<Scalar> & q, perl::OptionSet options)
+      {
+          //the LP constructed here is supposed to find a conical/convex combination of the rays/vertices
+          //of cone/polytope p that equals q. if the in_interior flag is set, all coefficients are
+          //required to be strictly positive.
+
+          Matrix<Scalar> P = p.give("RAYS | INPUT_RAYS");
+
+          Matrix<Scalar> eqs = -q | T(P) ; //sum z_i p_i = q
+          //(if p_i are given in hom.coords, also sum z_i = 1 for all i whose p_i are not rays)
+
+          Matrix<Scalar> E;
+          if(p.lookup("LINEALITY_SPACE | INPUT_LINEALITY") >> E){
+
+              //for polytopes, replace first row of E with 0, so we have sum z_i = 1 only for points
+              if(p.isa("Polytope")) E = zero_vector<Scalar>() / E.minor(range(1,E.rows()-1),All);
+
+              eqs = eqs | T(E);
+          }
+          eqs = eqs | zero_vector<Scalar>();
+
+          int n = P.rows();
+          Matrix<Scalar> ineqs = zero_vector<Scalar>(n) | unit_matrix<Scalar>(n) | zero_matrix<Scalar>(n, E.rows()) | -ones_vector<Scalar>(n); //z_i >= eps for rays
+
+          int c = n + E.rows() + 2;
+          ineqs = ineqs / unit_vector<Scalar>(c,c-1) //eps >= 0
+              / (unit_vector<Scalar>(c,0) - unit_vector<Scalar>(c,c-1)); // eps <= 1
+
+          Vector<Scalar> obj = unit_vector<Scalar>(c,c-1); //maximize eps
+
+          to_interface::solver<Scalar> S;
+          try {
+              std::pair<Scalar,Vector<Scalar>> sol = S.solve_lp(ineqs, eqs, obj, true);
+              bool in = options["in_interior"];
+              if(sol.first == 0 && in) return false; //the only separating plane is a weak one
+
+              return true;
+          }
+          catch (infeasible) {
+              return false;
+          }
+
+      }
+
+    //check for separability of a point and a set of points
+    template<typename Scalar>
+        bool separable(const Vector<Scalar>& q, const Matrix<Scalar>& points, perl::OptionSet options)
+        {
+            bool strong = options["strong"];
+
+            perl::Object pp(perl::ObjectType::construct<Scalar>("Polytope"));
+            pp.take("POINTS") << points;
+            return !cone_contains_point<Scalar>(pp, q, perl::OptionSet("in_interior", !strong));
+        }
+
+    FunctionTemplate4perl("cone_contains_point<Scalar> [ is_ordered_field_with_unlimited_precision(type_upgrade<Scalar, Rational>) ](Cone<Scalar>, Vector<Scalar>, {in_interior=>0})");
+
+    UserFunctionTemplate4perl("# @category Geometry"
+            "# Checks whether there exists a hyperplane separating a given point //q//"
+            "# from a matrix //points// by solving a suitable LP (compare cdd redundancy check)."
+            "# If true, //q// is a vertex of the polytope P generated by //points// and //q//"
+            "# that is not a vertex in the convex hull of //points// alone. To get the separating"
+            "# hyperplane, use __separating_hyperplane__."
+            "# Works without knowing the facets of P!"
+            "# @param Vector q the vertex (candidate) which is to be separated from //points//"
+            "# @param Matrix points the points from which //q// is to be separated"
+            "# @option Bool strong Test for strong separability. default: true"
+            "# @return Bool 'true' if //q// is separable from //points//"
+            "# @example  > $q = cube(2)->VERTICES->row(0);"
+            "# > $points = cube(2)->VERTICES->minor(sequence(1,3),All, strong=>0);"
+            "# > print separable($q, $points);"
+            "# | 1",
+            "separable<Scalar>(Vector<type_upgrade<Scalar>>, Matrix<type_upgrade<Scalar>>, {strong=>1})");
+
+    UserFunctionTemplate4perl("# @category Optimization"
+            "# Computes (the normal vector of) a hyperplane which separates a given point //q//"
+            "# from //points// via solving a suitable LP. The scalar product of the normal vector"
+            "# of the separating hyperplane and a point in //points// is greater or equal than 0"
+            "# (same behavior as for facets!)."
+            "# If //q// is not a vertex of P=conv(//points//,//q//),"
+            "# the function throws an //infeasible// exception."
+            "# Works without knowing the facets of P!"
+            "# @param Vector q the vertex (candidate) which is to be separated from //points//"
+            "# @param Matrix points the points from which //q// is to be separated"
+            "# @return Vector sep_hyp"
+            "# @example The following stores the result in the List @r and then prints the answer and"
+            "# a description of the hyperplane separating the zeroth vertex of the square from the others."
+            "# > $q = cube(2)->VERTICES->row(0);"
+            "# > $points = cube(2)->VERTICES->minor(sequence(1,3),All);"
+            "# > print separating_hyperplane($q,$points);"
+            "# | 0 1/2 1/2",
+            "separating_hyperplane<Scalar>(Vector<type_upgrade<Scalar>>, Matrix<type_upgrade<Scalar>>)");
+
+    UserFunctionTemplate4perl("# @category Optimization"
+            "# Computes (the normal vector of) a hyperplane which separates two given polytopes"
+            "# //p1// and //p2// if possible. Works by solving a linear program, not by facet enumeration."
+            "# @param Polytope p1 the first polytope, will be on the positive side of the separating hyperplane"
+            "# @param Polytope p2 the second polytope"
+            "# @option Bool strong If this is set to true, the resulting hyperplane will be strongly separating,"
+            "#  i.e. it wont touch either of the polytopes. If such a plane does not exist, an exception"
+            "#  will be thrown. default: true"
+            "# @return Vector a hyperplane separating //p1// from //p2//\n",
+            "separating_hyperplane<Scalar>(Polytope<type_upgrade<Scalar>>, Polytope<type_upgrade<Scalar>>, {strong=>1})");
 } }
 
 

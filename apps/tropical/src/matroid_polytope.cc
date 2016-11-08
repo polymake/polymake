@@ -34,7 +34,7 @@ namespace polymake { namespace tropical {
 
 
 			typedef typename pm::concat_list<Addition, Scalar>::type  cone_type;
-			perl::Object t(perl::ObjectType::construct<cone_type>("Cone"));
+			perl::Object t(perl::ObjectType::construct<cone_type>("Polytope"));
 
 			
 			Matrix<TropicalNumber<Addition,Scalar> > V(n_bases,n_elements);
@@ -50,7 +50,6 @@ namespace polymake { namespace tropical {
 			return t;
 		}
 
-InsertEmbeddedRule("REQUIRE_APPLICATION matroid\n\n");
 
 UserFunctionTemplate4perl("# @category Producing a tropical polytope"
                           "# Produce the tropical matroid polytope from a matroid //m//."
@@ -61,7 +60,7 @@ UserFunctionTemplate4perl("# @category Producing a tropical polytope"
                           "# @param Scalar v value for the bases"
                           "# @tparam Addition Min or Max"
                           "# @tparam Scalar coordinate type"
-                          "# @return Cone<Addition,Scalar>",
+                          "# @return Polytope<Addition,Scalar>",
                           "matroid_polytope<Addition,Scalar> [ is_ordered_field_with_unlimited_precision(type_upgrade<Scalar, Rational>) ](matroid::Matroid; type_upgrade<Scalar> = -Addition->orientation())");
 } }
 

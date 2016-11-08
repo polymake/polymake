@@ -41,7 +41,7 @@ namespace polymake { namespace tropical {
 			cone.take("MAXIMAL_COVECTORS") << covectors_of_scalar_vertices(interior_points, points);
 		}
 
-	FunctionTemplate4perl("compute_maximal_covectors<Addition,Scalar>(Cone<Addition,Scalar>) : void");
+	FunctionTemplate4perl("compute_maximal_covectors<Addition,Scalar>(Polytope<Addition,Scalar>) : void");
 
 }}
 

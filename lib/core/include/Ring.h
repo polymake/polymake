@@ -75,6 +75,17 @@ protected:
    }
 
    static id_type global_id;
+
+   static hash_map<id_type,Array<std::string>>& pretty_names_map()
+   {
+      static hash_map<id_type,Array<std::string>> override_names;
+      return override_names;
+   }
+
+public:
+   template <typename P>
+   static void override_varnames(const Array<std::string>& n);
+
 };
 
 template <typename Coefficient=Rational, typename Exponent=int>
@@ -148,6 +159,22 @@ public:
       return get_repo_key(id_ptr).first;
    }
 
+   const Array<std::string>& pretty_names() const
+   {
+      const auto& name_map_it = pretty_names_map().find(*id_ptr);
+      if (name_map_it == pretty_names_map().end())
+         return names();
+      else
+         return name_map_it->second;
+   }
+
+   void set_pretty_names(const Array<std::string>& n) const
+   {
+      if (n.size() != n_vars())
+         throw std::runtime_error("Ring->set_pretty_names: wrong number of variables");
+      pretty_names_map()[*id_ptr] = n;
+   }
+
    id_type id() const { return *id_ptr; }
 
    Variables variables() const;
@@ -167,7 +194,7 @@ public:
 };
 
 template <typename Something>
-struct matching_ring : False {};
+struct matching_ring : std::false_type {};
 
 template <typename ring_type, bool requires_coeff_ring=matching_ring<typename ring_type::coefficient_type>::value>
 struct ring_var_name;
@@ -184,6 +211,12 @@ struct ring_var_name<ring_type, true> {
    // x y z u v w t
    static const char name = depth < 3 ? 'x' + depth : depth < 6 ? 'u' + depth - 3 : 't';
 };
+
+template <typename P>
+void Ring_base::override_varnames(const Array<std::string>& n)
+{
+   typename matching_ring<P>::type(1).set_pretty_names(n);
+}
 
 template <typename Coefficient=Rational, typename Exponent=int,
           bool requires_coeff_ring=matching_ring<Coefficient>::value>
@@ -206,9 +239,8 @@ public:
    Ring() {}
 
    // construct with given variable names, passed in a container
-   template <typename Container>
-   explicit Ring(const Container& names,
-                 typename enable_if<void**, isomorphic_to_container_of<Container, std::string>::value>::type=0)
+   template <typename Container, typename enabled=typename std::enable_if<isomorphic_to_container_of<Container, std::string>::value>::type>
+   explicit Ring(const Container& names)
       : super(typename super::ring_key_type(names, NULL)) {}
 
    // construct with given variable names, passed in a static array
@@ -264,9 +296,8 @@ public:
 
    // construct with a ring of coefficients given explicitly
 
-   template <typename Container>
-   Ring(const coefficient_ring_type& coeff_ring, const Container& names,
-        typename enable_if<void**, isomorphic_to_container_of<Container, std::string>::value>::type=0)
+   template <typename Container, typename enabled=typename std::enable_if<isomorphic_to_container_of<Container, std::string>::value>::type>
+   Ring(const coefficient_ring_type& coeff_ring, const Container& names)
       : super(typename super::ring_key_type(names, coeff_ring.id_ptr)) {}
 
    template <size_t n>
@@ -281,9 +312,8 @@ public:
 
    // construct with a default (unvariate) ring of coefficients
 
-   template <typename Container>
-   explicit Ring(const Container& names,
-                 typename enable_if<void**, isomorphic_to_container_of<Container, std::string>::value>::type=0)
+   template <typename Container, typename enabled=typename std::enable_if<isomorphic_to_container_of<Container, std::string>::value>::type>
+   explicit Ring(const Container& names)
       : super(typename super::ring_key_type(names, default_coefficient_ring().id_ptr)) {}
 
    template <size_t n>

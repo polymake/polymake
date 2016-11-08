@@ -73,7 +73,7 @@ bool decompose_impl(int e,
       // row iterators don't have an index() method, so do it directly
       Set<int> summand_indices;
       for (int i=0; i<vals.rows(); ++i)
-         if (vals[i] == zero_vector<Scalar>(vals.cols()))
+         if (is_zero(vals[i]))
             summand_indices += original_vertex[i];
 
       // check if the origin lies in the convex hull of the putative summand indices

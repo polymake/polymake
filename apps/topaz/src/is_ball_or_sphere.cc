@@ -35,9 +35,9 @@ int is_ball_or_sphere_client(perl::Object p, bool check_for_sphere, perl::Option
       else
          return 0;
    case 1:
-      return is_ball_or_sphere(C,n_vertices,int2type<1>());
+      return is_ball_or_sphere(C, n_vertices, int_constant<1>());
    case 2:
-      return is_ball_or_sphere(C,n_vertices,int2type<2>());
+      return is_ball_or_sphere(C, n_vertices, int_constant<2>());
    default:
       break;
    }

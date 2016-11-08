@@ -22,17 +22,17 @@ namespace polymake { namespace topaz { namespace {
    }
    FunctionWrapperInstance4perl( std::list<pm::Set<int, pm::operations::cmp>, std::allocator<pm::Set<int, pm::operations::cmp> > > (perl::Object) );
 
-   FunctionWrapper4perl( pm::Array<int, void> (int, int) ) {
+   FunctionWrapper4perl( pm::Array<int> (int, int) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
       IndirectWrapperReturn( arg0, arg1 );
    }
-   FunctionWrapperInstance4perl( pm::Array<int, void> (int, int) );
+   FunctionWrapperInstance4perl( pm::Array<int> (int, int) );
 
-   FunctionWrapper4perl( int (pm::Array<int, void> const&) ) {
+   FunctionWrapper4perl( int (pm::Array<int> const&) ) {
       perl::Value arg0(stack[0]);
       IndirectWrapperReturn( arg0 );
    }
-   FunctionWrapperInstance4perl( int (pm::Array<int, void> const&) );
+   FunctionWrapperInstance4perl( int (pm::Array<int> const&) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -17,7 +17,7 @@
 	---
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
-	Implements lines_in_cubic_reachable.h 
+	Implements lines_in_cubic_reachable.h
 	*/
 
 
@@ -29,7 +29,6 @@
 #include "polymake/Polynomial.h"
 #include "polymake/linalg.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/divisor.h"
 #include "polymake/tropical/convex_hull_tools.h"
 #include "polymake/tropical/lines_in_cubic_reachable.h"
@@ -41,9 +40,6 @@
 
 namespace polymake { namespace tropical {
 
-	using namespace atintlog::donotlog;
-	//   using namespace atintlog::dolog;
-	   //using namespace atintlog::dotrace;
 
 
 	bool maximumAttainedTwice(Vector<Rational> values) {
@@ -62,15 +58,15 @@ namespace polymake { namespace tropical {
 
 	ReachableResult reachablePoints(Polynomial<TropicalNumber<Max> > f, perl::Object X, int direction) {
 
-		//Extract values 
-		perl::Object ratfct = CallPolymakeFunction("rational_fct_from_affine_numerator",f);
-		perl::Object lindom = ratfct.give("DOMAIN"); 
+		//Extract values
+		perl::Object ratfct = call_function("rational_fct_from_affine_numerator", f);
+		perl::Object lindom = ratfct.give("DOMAIN");
 		//Create matrix: Put coefficients in front of monomials
 
 		Matrix<Rational> funmat(f.monomials_as_matrix());
 		Vector<Rational> funcoeffs(f.coefficients_as_vector());
 		//Rearrange so that values of terms on points can be computed as product with matrix
-		funmat = funcoeffs | funmat; 
+		funmat = funcoeffs | funmat;
 
 		IncidenceMatrix<> cones = X.give("MAXIMAL_POLYTOPES");
 		IncidenceMatrix<> codim = X.give("CODIMENSION_ONE_POLYTOPES");
@@ -78,7 +74,7 @@ namespace polymake { namespace tropical {
 		codim_by_max = T(codim_by_max);
 		Matrix<Rational> rays = X.give("VERTICES");
 		rays = tdehomog(rays);
-		Set<int> vertices = far_and_nonfar_vertices(rays).second; 
+		Set<int> vertices = far_and_nonfar_vertices(rays).second;
 
 		Matrix<Rational> degree = (-1) *  unit_matrix<Rational>(3);
 		degree = ones_vector<Rational>(3) / degree;
@@ -99,9 +95,8 @@ namespace polymake { namespace tropical {
 		}
 
 
-		//dbgtrace << "Computing edges of cones with given direction..." << endl;
 
-		//Find all cones that use the chosen direction and 
+		//Find all cones that use the chosen direction and
 		//keep only the codimension one locus of theses
 		Set<int> d_edges;
 		for(int c = 0; c < cones.rows(); c++) {
@@ -110,7 +105,6 @@ namespace polymake { namespace tropical {
 			}
 		}
 
-		//dbgtrace << "Intersecting with linearity domains" << endl;
 
 		//For each of these edges, add +/-direction as lineality
 		//Then refine the resulting complex along the linearity domains of f
@@ -121,25 +115,23 @@ namespace polymake { namespace tropical {
 		for(int dc = 0; dc < d_cone_matrix.rows(); dc++) {
 			d_cone_list |= d_cone_matrix.row(dc);
 		}
-		Matrix<Rational> d_lineality(0,degree.cols()); 
+		Matrix<Rational> d_lineality(0,degree.cols());
 		d_lineality /= degree.row(direction);
 		perl::Object d_complex(perl::ObjectType::construct<Max>("Cycle"));
 		d_complex.take("VERTICES") << thomog(d_rays);
 		d_complex.take("MAXIMAL_POLYTOPES") << d_cone_list;
 		d_complex.take("LINEALITY_SPACE") << thomog(d_lineality);
 		d_complex.take("PURE") << false;
-		d_complex = CallPolymakeFunction("intersect_container",d_complex,lindom);
+		d_complex = call_function("intersect_container", d_complex, lindom);
 
-		//dbgtrace << "Projecting vertices " << endl;
 
 		//We now go through all (new) vertices of this complex and "project" them onto the one-dimensional
 		//complex of the edges defined by d_edges(i.e. we find an edge intersecting the ray (vertex + R*direction))
 		Matrix<Rational> d_ref_rays = d_complex.give("VERTICES");
 			d_ref_rays = tdehomog(d_ref_rays);
-		Set<int> d_ref_vertices = far_and_nonfar_vertices(d_ref_rays).second; 
+		Set<int> d_ref_vertices = far_and_nonfar_vertices(d_ref_rays).second;
 		Set<int> old_vertices = used_rays_in_edges * vertices;
 		for(Entire<Set<int> >::iterator vert = entire(d_ref_vertices); !vert.at_end(); vert++) {
-			       //dbgtrace << "Vertex " << *vert << endl;
 			//First we check if this vertex is an "old" vertex, i.e. already exists in the d_edges complex
 			int old_index = -1;
 			for(Entire<Set<int> >::iterator oldvert = entire(old_vertices); !oldvert.at_end(); oldvert++) {
@@ -150,14 +142,13 @@ namespace polymake { namespace tropical {
 			if(old_index >= 0) continue;
 
 			//Otherwise we go through all edges of d_edges until we find one that intersects (vertex + R*direction)
-			//This is computed as follows: Assume p is a vertex of an edge of d_edges and that w is the direction 
-			//from p into that edge (either a ray or p2-p1, if the edge is bounded). Then we compute a linear representation of (vertex - p_1) in terms of w and 
-			//direction. If a representation exists and the second edge generator is also a vertex, we have to check 
+			//This is computed as follows: Assume p is a vertex of an edge of d_edges and that w is the direction
+			//from p into that edge (either a ray or p2-p1, if the edge is bounded). Then we compute a linear representation of (vertex - p_1) in terms of w and
+			//direction. If a representation exists and the second edge generator is also a vertex, we have to check
 			//that the coefficient of w = p2-p1 is in between 0 and 1, otherwise it has to be > 0
 			//
 			//If we find an intersecting edge, we refine it (in d_cone_list) such that it contains the intersection point.
 			for(int ed = 0; ed < d_cone_list.dim(); ed++) {
-				 	//dbgtrace << "Edge " << ed << endl;
 				Matrix<Rational> edge_generators = d_rays.minor(d_cone_list[ed],All);
 				Vector<Rational> p1 = edge_generators(0,0) == 0? edge_generators.row(1) : edge_generators.row(0);
 				bool bounded = edge_generators(0,0) == edge_generators(1,0);
@@ -165,7 +156,7 @@ namespace polymake { namespace tropical {
 				if(bounded) w = edge_generators.row(1) - edge_generators.row(0);
 				else w = (edge_generators(0,0) == 0? edge_generators.row(0) : edge_generators.row(1));
 				Vector<Rational> lin_rep = linearRepresentation(d_ref_rays.row(*vert) - p1, (w / degree.row(direction)));
-				//Check that: 
+				//Check that:
 				// - There is a representation
 				// - The coefficient of w is > 0 (and < 1 if bounded)
 				if(lin_rep.dim() > 0) {
@@ -188,7 +179,6 @@ namespace polymake { namespace tropical {
 			}//END intersect with edges.
 		}//END project vertices
 
-		//dbgtrace << "Refine along projections" << endl;
 
 		//Now take the refined edge complex, add lineality again and intersect it with d_complex to get
 		//the final refined complex
@@ -197,22 +187,17 @@ namespace polymake { namespace tropical {
 		d_vert_complex.take("MAXIMAL_POLYTOPES") << d_cone_list;
 		d_vert_complex.take("LINEALITY_SPACE") << thomog(d_lineality);
 		d_vert_complex.take("PURE") << false;
-		//dbgtrace << "Intersecting..." << endl;
-		//dbgtrace << "Vertices: " << thomog(d_rays) << endl;
-		//dbgtrace << "Cones: " << d_cone_list << endl;
-		//dbgtrace << "Lineality: " << thomog(d_lineality) << endl;
-		perl::Object final_refined = CallPolymakeFunction("intersect_container",d_vert_complex, d_complex);
-		//dbgtrace << "Done." << endl;
+		perl::Object final_refined = call_function("intersect_container", d_vert_complex, d_complex);
 		Matrix<Rational> final_rays = final_refined.give("VERTICES");
-		Set<int> final_vertices = far_and_nonfar_vertices(final_rays).second; 
+		Set<int> final_vertices = far_and_nonfar_vertices(final_rays).second;
 		IncidenceMatrix<> final_cones = final_refined.give("MAXIMAL_POLYTOPES");
 		IncidenceMatrix<> final_codim = final_refined.give("CODIMENSION_ONE_POLYTOPES");
 		IncidenceMatrix<> final_co_in_max = final_refined.give("MAXIMAL_AT_CODIM_ONE");
 		IncidenceMatrix<> final_max_to_co = T(final_co_in_max);
 			final_rays = tdehomog(final_rays);
 		int final_direction_index = -1;
-		for(int fr = 0; fr < final_rays.rows(); fr++) {					   
-			if(final_rays.row(fr) == degree.row(direction)) {
+		for (int fr = 0; fr < final_rays.rows(); ++fr) {
+			if (final_rays.row(fr) == degree.row(direction)) {
 				final_direction_index = fr; break;
 			}
 		}
@@ -236,12 +221,11 @@ namespace polymake { namespace tropical {
 		Set<int> codimension_blacklist; //This will also later include edges we already used for iteration
 		codimension_blacklist += direction_edges;
 
-		//dbgtrace << "Compute reachable 2-cells" << endl;
 
 		//Find all maximal cells which have direction as ray and use them to iterate the refined complex:
-		// In each step we find all maximal cells, that share an edge "in the right direction" with one 
+		// In each step we find all maximal cells, that share an edge "in the right direction" with one
 		// of the currently selected cells and whose interior point is in the support of f. These cells
-		// then serve as reference in the next iteration step. An edge in the right direction is an edge, whose 
+		// then serve as reference in the next iteration step. An edge in the right direction is an edge, whose
 		// span is not generated by direction and which has not been chosen before as edge
 		//
 		//Also, in each iteration we keep track of vertices lying in "edges in right direction", whose adjacent
@@ -253,12 +237,12 @@ namespace polymake { namespace tropical {
 		while(reference_cells.size() > 0) {
 			reachable_2_cells += reference_cells;
 			//First compute all edges in right direction
-			Set<int> edges_in_direction = 
-				accumulate(rows(final_max_to_co.minor(reference_cells,All)),operations::add()) - 
+			Set<int> edges_in_direction =
+				accumulate(rows(final_max_to_co.minor(reference_cells,All)),operations::add()) -
 				codimension_blacklist;
 			//... and add them to edges we don't need in the future
 			codimension_blacklist += edges_in_direction;
-			//For each of these edges, compute the adjacent cell in the correct direction and check if its 
+			//For each of these edges, compute the adjacent cell in the correct direction and check if its
 			//in the support of X
 			Set<int> next_reference_cells;
 			for(Entire<Set<int> >::iterator eid = entire(edges_in_direction); !eid.at_end(); eid++) {
@@ -288,7 +272,6 @@ namespace polymake { namespace tropical {
 		//       reach_two.take("MAXIMAL_CONES") << final_cones.minor(reachable_2_cells,rays_in_two_set);
 		//       reach_two.take("USES_HOMOGENEOUS_C") << true;
 
-		//dbgtrace << "Find problematic vertices " << endl;
 
 		//Remove from the "problematic" vertices all those that were not problematic after all:
 		//A vertex is only problematic, if it is only contained in one-valent codimension one faces of reach_two
@@ -311,7 +294,7 @@ namespace polymake { namespace tropical {
 		problematic_vertices -= not_so_problematic_vertices;
 
 		//Now we apply the same procedure as before. This time we have edges as reference cells
-		//We start with the edges in direction span containing our problematic vertices that "point away" 
+		//We start with the edges in direction span containing our problematic vertices that "point away"
 		//from the reach-2-locus (i.e. are not a codimension one face of it)
 		Set<int> interesting_dir_edges = direction_edges - reach_two_codim_indices; //Set of all dir edges not in reach_two
 		Set<int> reference_edges = accumulate(rows(T(final_codim).minor(problematic_vertices,All)),operations::add());
@@ -321,7 +304,6 @@ namespace polymake { namespace tropical {
 		Set<int> reachable_1_cells;
 
 
-		//dbgtrace << "Compute reachable 1-cells" << endl;
 
 		//Go through all reference edges. Test on each one, if it lies in the support. If so, we take
 		// the "next" edge as a new reference edge.
@@ -344,7 +326,6 @@ namespace polymake { namespace tropical {
 			reference_edges = next_reference_edges;
 		}//END iterate 1-cells
 
-		//dbgtrace << "Prepare result " << endl;
 
 		//Now we also have the one-dim. part
 		//     Set<int> rays_in_one_set = accumulate(rows(final_codim.minor(reachable_1_cells,All)),operations::add());
@@ -353,8 +334,8 @@ namespace polymake { namespace tropical {
 		//       reach_one.take("MAXIMAL_CONES") << final_codim.minor(reachable_1_cells,rays_in_one_set);
 		//       reach_one.take("USES_HOMOGENEOUS_C") << true;
 		Set<int> all_rays_used =
-			accumulate(rows(final_cones.minor(reachable_2_cells,All)),operations::add()) + 
-			accumulate(rows(final_codim.minor(reachable_1_cells,All)),operations::add()); 
+			accumulate(rows(final_cones.minor(reachable_2_cells,All)),operations::add()) +
+			accumulate(rows(final_codim.minor(reachable_1_cells,All)),operations::add());
 		Matrix<Rational> reachable_rays = final_rays.minor(all_rays_used,All);
 		IncidenceMatrix<> reach_cells = final_cones.minor(reachable_2_cells, all_rays_used);
 		IncidenceMatrix<> reach_edges = final_codim.minor(reachable_1_cells, all_rays_used);

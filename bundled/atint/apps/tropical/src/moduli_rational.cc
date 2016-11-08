@@ -22,7 +22,6 @@
 
 
 #include "polymake/client.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/Vector.h"
 #include "polymake/Matrix.h"
 #include "polymake/Set.h"
@@ -36,9 +35,6 @@
 
 namespace polymake { namespace tropical{
 
-	using namespace atintlog::donotlog;
-	//using namespace atintlog::dolog;
-	//   using namespace atintlog::dotrace;
 
 	///////////////////////////////////////////////////////////////////////////////////////
 
@@ -63,24 +59,24 @@ namespace polymake { namespace tropical{
 
 		}
 		if(k == n-3)
-			return count_maximal_mn_cones(n); 
+			return count_maximal_mn_cones(n);
 
 		int vertex_count = k+1;
 		int seq_length = n + k-1;
 
 		//We compute the number of ways that a Prüfer sequence of appropriate length and
 		// order can be created:
-		// We first compute the number of distributions of total valences (i.e. the distribution of numbers 
-		// of free spaces in the sequence) on the interior vertices p_0,...,p_k as Integer points of a 
+		// We first compute the number of distributions of total valences (i.e. the distribution of numbers
+		// of free spaces in the sequence) on the interior vertices p_0,...,p_k as Integer points of a
 		// polytope.
 		// For each such valence distribution we compute the number of ways to realize it:
-		// p_0 has to fill the first position to create an ordered Prüfer sequence and then 
-		// we have (# of remaining space CHOOSE valence of p_0) other possibilities. Multiplying over all 
+		// p_0 has to fill the first position to create an ordered Prüfer sequence and then
+		// we have (# of remaining space CHOOSE valence of p_0) other possibilities. Multiplying over all
 		// p_i gives all realizations of the valence distribution and summing over all valence distributions
 		// gives all possibilities.
 
 		Matrix<Rational> eq(0,vertex_count+1);
-		Vector<Rational> eqvec = ones_vector<Rational>(vertex_count); 
+		Vector<Rational> eqvec = ones_vector<Rational>(vertex_count);
 		eqvec = Rational(-seq_length) | eqvec;
 		eq /= eqvec;
 
@@ -90,17 +86,17 @@ namespace polymake { namespace tropical{
 		perl::Object p("polytope::Polytope");
 		p.take("INEQUALITIES") << ineq;
 		p.take("EQUATIONS") << eq;
-		Matrix<Integer> latt = p.CallPolymakeMethod("LATTICE_POINTS");
+		Matrix<Integer> latt = p.call_method("LATTICE_POINTS");
 		latt = latt.minor(All,~scalar2set(0));
 
 		Integer total(0);
-		for(int l = 0; l < latt.rows(); l++) {
+		for (int l = 0; l < latt.rows(); l++) {
 			Integer prod(1);
 			int sum_vi = 0;
-			for(int v = 0; v < vertex_count-1; v++) {
-				int vi = latt(l,v).to_int();
-				prod *= Integer::binom(seq_length-sum_vi-1,vi-1);
-				sum_vi += vi;
+			for (int v = 0; v < vertex_count-1; v++) {
+                            int vi(latt(l,v));
+                            prod *= Integer::binom(seq_length-sum_vi-1, vi-1);
+                            sum_vi += vi;
 			}
 			total += prod;
 		}
@@ -125,7 +121,7 @@ namespace polymake { namespace tropical{
 		Integer result(0);
 		Integer nint(n);
 		for(long i = 1; i <= n-3; i++) {
-			result = result + Integer::binom(nint-1,i);
+			result += Integer::binom(nint-1,i);
 		}
 		return result;
 	}
@@ -141,8 +137,8 @@ namespace polymake { namespace tropical{
 		}
 		int result = 0;
 		int nint = n;
-		for(long i = 1; i <= n-3; i++) {
-			result = result + Integer::binom(nint-1,i).to_int();
+		for (long i = 1; i <= n-3; i++) {
+                   result += int(Integer::binom(nint-1,i));
 		}
 		return result;
 	}
@@ -175,7 +171,6 @@ namespace polymake { namespace tropical{
 		Vector<Set<int> > result;
 		Set<int> allLeafs = sequence(0,n);
 
-		//dbgtrace << "Connecting leaves" << endl;
 		int firstindex = 0; //We pretend that pseq starts at this index
 		//Connect leaves
 		for(int i = 0; i < n; i++) {
@@ -184,9 +179,6 @@ namespace polymake { namespace tropical{
 			firstindex++;
 		}//END add leaves
 
-		//dbgtrace << "Connecting edges" << endl;
-		//dbgtrace << "V: " << V << endl;
-		//dbgtrace << "Adjacencies: " << adjacencies << endl;
 
 		//Now create edges
 		for(int i = 1; i <= no_of_edges; i++) {
@@ -243,7 +235,6 @@ namespace polymake { namespace tropical{
 		Matrix<int> E(n-1,n-1);
 		for(int i = 0; i < n-2; i++) {
 			for(int j = i+1; j < n-1; j++) {
-				//dbgtrace << "Setting E(" << i << "," << j << ") = " << nextindex << endl;
 				E(i,j) = nextindex;
 				E(j,i) = nextindex;
 				nextindex++;
@@ -258,23 +249,22 @@ namespace polymake { namespace tropical{
 		//Will contain the rays of the moduli space in matroid coordinates
 		int raydim = (n*(n-3))/2 + 1;
 		int raycount = count_mn_rays_int(n);
-		//dbgtrace << "Expecting " << raycount << " rays" << endl;
 		Matrix<Rational> rays(raycount,raydim);
 
 		//Will contain value 'true' for each ray that has been computed
 		Vector<bool> raysComputed(count_mn_rays_int(n));
-		//Will contain the set of maximal cones 
+		//Will contain the set of maximal cones
 		Vector<Set<int> > cones;
 
 		//Compute the number of sequences = number of maximal cones
-		int noOfMax = count_mn_cones(n,n-3).to_int();
+		int noOfMax(count_mn_cones(n, n-3));
 
 		//Things we will need:
 		Set<int> allLeafs = sequence(0,n); //The complete sequence of leaves (for taking complements)
 		Vector<int> rayIndices(n-2); //Entry k contains the sum from i = 1 to k of binomial(n-1,i)
 		rayIndices[0] = 0;
-		for(int i = 1; i < rayIndices.dim(); i++) {
-			rayIndices[i] = rayIndices[i-1] + Integer::binom(n-1,i).to_int();
+		for (int i = 1; i < rayIndices.dim(); i++) {
+                  rayIndices[i] = rayIndices[i-1] + int(Integer::binom(n-1,i));
 		}
 
 		//Iterate through all Prüfer sequences -------------------------------------------------
@@ -286,12 +276,11 @@ namespace polymake { namespace tropical{
 		for(int iteration = 0; iteration < noOfMax; iteration++) {
 
 			//Create the sequence currently represented by indices and append it------------------
-			//dbgtrace << "Creating sequence" << endl;
 			//       baseSequence = zero_vector<int>(2*n -4);
 			baseSequence.resize(2*n-4);
 			baseSequence.fill(0);
 			for(int i = 0; i < n-1; i++) {
-				//Go through the non-zero entries of baseSequence. If it is the first or the indices[i]+1-th, 
+				//Go through the non-zero entries of baseSequence. If it is the first or the indices[i]+1-th,
 				//insert an n+i
 				int nonzero_count = -1;
 				for(int entry = 0; entry < baseSequence.dim(); entry++) {
@@ -309,38 +298,31 @@ namespace polymake { namespace tropical{
 			}
 
 			//We now decode the Prüfer sequence to obtain the corresponding cone---------------------
-			//dbgtrace << "Creating cone for sequence " << baseSequence << endl;
 			Set<int> newcone;
 
 			Set<int> V = sequence(0,2*n-2);
-			//dbgtrace << "Initialized sequence to " << V << endl;
-			adjacent.fill(Set<int>()); 
-			//dbgtrace << "Connecting leaves" << endl;
+			adjacent.fill(Set<int>());
 			//First: Connect the leaves
 			for(int i = 0; i < n; i++) {
-				//dbgtrace << "Attaching leaf " << i << " to node " << baseSequence[0] << endl;
 				adjacent[baseSequence[0]-n] = adjacent[baseSequence[0]-n] + i;
 				V = V - i;
 				baseSequence = baseSequence.slice(1,baseSequence.dim()-1);
 			}
 			//Now create edges:
 			int enumber = n-3;
-			//dbgtrace << "Creating edges" << endl;
 			for(int i = 1; i <= enumber; i++) {
-				//dbgtrace << "Creating edge number " << i << endl;
 				//Construct the leaf partition represented by the curve corresponding to the sequence
 				Set<int> rayset;
 				if(i == enumber) { //If V only has two elements left, simply connect these
 					// 	  Vector<int> last(V);
-					//dbgtrace << "Only two left: " <<  V << endl;
 					rayset = adjacent[*(V.begin()) - n];//adjacent[last[0]-n];
 				}
 				else {
-					Set<int> pset(baseSequence); 
+					Set<int> pset(baseSequence);
 					int smallest = -1;
-					//Find the smallest element in V that is not in P 
-					for(Entire<Set<int> >::iterator vit = entire(V); !vit.at_end(); vit++) {
-						if(!(pset.contains(*vit))) {
+					//Find the smallest element in V that is not in P
+					for (auto vit = entire(V); !vit.at_end(); ++vit) {
+						if (!(pset.contains(*vit))) {
 							smallest = *vit; break;
 						}
 					}
@@ -352,12 +334,10 @@ namespace polymake { namespace tropical{
 					baseSequence = baseSequence.slice(1,baseSequence.dim()-1);
 				}
 				//The new edge is: v_{adjacent[smallest]}. If it containst the last leaf, take the complement
-				//dbgtrace << "Edge partition is " << rayset << ". Creating matroid coords" << endl;
 				if(rayset.contains(n-1)) {
 					rayset = allLeafs - rayset;
 				}
 				//Now check, if we already have that ray
-				//dbgtrace << "Checking if ray already exists" << endl;
 
 				// 	bool found = false;
 				// 	for(int s = 0; s < raysAsPartitions.dim(); s++) {
@@ -373,19 +353,19 @@ namespace polymake { namespace tropical{
 				int k = n - rayset.size();
 				int bsleft = k-1; int l = 1;
 				int rIndex (rayIndices[k-2]);
-				while(bsleft > 1) {
-					if(rayset.contains(n-l-1)) {
-						rIndex += Integer::binom(n-l-1,bsleft-1).to_int();
+				while (bsleft > 1) {
+					if (rayset.contains(n-l-1)) {
+                                          rIndex += int(Integer::binom(n-l-1,bsleft-1));
 					}
 					else {
-						bsleft--;
+                                          bsleft--;
 					}
 					l++;
 				}
 				int m = 0;
 				while(rayset.contains(m)) { m++;}
 				//at last we add the difference of the indices of the second b' and the first b (-1)
-				rIndex += (n-1-l)-m; 
+				rIndex += (n-1-l)-m;
 				newcone = newcone + rIndex;
 
 
@@ -393,8 +373,6 @@ namespace polymake { namespace tropical{
 				//If not, create the corresponding matroid coordinates
 				if(!raysComputed[rIndex]) {
 					//if(!found) {
-					//dbgtrace << "Ray index of " << rayset << " is " << rIndex << endl;
-					//dbgtrace << "Ray " << rayset << " does not exist. Creating..." << endl;
 					//raysAsPartitions = raysAsPartitions | rayset;
 					//newcone = newcone + (raysAsPartitions.dim()-1);
 					raysComputed[rIndex] = true;
@@ -402,9 +380,9 @@ namespace polymake { namespace tropical{
 					newray.fill(0);
 					// 	  for(int k = 0; k < raylist.dim()-1; k++) {
 					// 	      for(int l = k+1; l < raylist.dim(); l++) {
-					for(pm::Subsets_of_k_iterator<const pm::Set<int>& > raypair = entire(all_subsets_of_k(rayset,2)); !raypair.at_end(); raypair++) {
+					for (auto raypair = entire(all_subsets_of_k(rayset,2)); !raypair.at_end(); ++raypair) {
 						int newrayindex = E((*raypair).front(),(*raypair).back());
-						//If the newrayindex is one higher than the ray dimension, 
+						//If the newrayindex is one higher than the ray dimension,
 						//this means it is the last pair. Also, we don't
 						//add -e_n but e_1 + ... + e_{n-1} (as we mod out lineality)
 						newray[newrayindex] = Addition::orientation();
@@ -418,8 +396,7 @@ namespace polymake { namespace tropical{
 				cones |= newcone;
 
 
-				//dbgtrace << "Increasing counter" << endl;   
-				//Increase the indices vector by "1"---------------------------------------------------    
+				//Increase the indices vector by "1"---------------------------------------------------
 				if(iteration < noOfMax-1) {
 					int counterindex = n-3;
 					while(indices[counterindex] == 2*(n-counterindex)-5) {
@@ -433,19 +410,19 @@ namespace polymake { namespace tropical{
 			std::ostringstream dsc;
 			dsc << "Moduli space M_0," << n;
 
-			//Add the vertex at the origin 
+			//Add the vertex at the origin
 			rays = zero_vector<Rational>(rays.rows()) | rays;
 			
 			rays /= unit_vector<Rational>(rays.cols(),0);
 
 
 			//Add the vertex to all cones
-			for(int mc = 0; mc < cones.dim(); mc++) {
+			for (int mc = 0; mc < cones.dim(); mc++) {
 				cones[mc] += (rays.rows()-1);
 			}
 
 			perl::Object result(perl::ObjectType::construct<Addition>("Cycle"));
-			result.take("PROJECTIVE_VERTICES") << rays; 
+			result.take("PROJECTIVE_VERTICES") << rays;
 			result.take("MAXIMAL_POLYTOPES") << cones;
 			result.take("WEIGHTS") << ones_vector<int>(cones.dim());
 			result.set_description() << dsc.str();
@@ -463,8 +440,8 @@ namespace polymake { namespace tropical{
 			perl::Object space_of_stable_maps(int n, int d, int r) {
 				perl::Object moduli = m0n<Addition>(n+d);
 				perl::Object torus = projective_torus<Addition>(r,1);
-				perl::Object result = CallPolymakeFunction("cartesian_product",moduli,torus);
-					result.set_description() << "Moduli space of stable rational maps with " << n << " contracted ends, " << d << " non-contracted ends into the torus of dimension " << d;
+				perl::Object result = call_function("cartesian_product", moduli, torus);
+                                result.set_description() << "Moduli space of stable rational maps with " << n << " contracted ends, " << d << " non-contracted ends into the torus of dimension " << d;
 				return result;
 			}
 

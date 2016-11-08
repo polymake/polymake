@@ -1,0 +1,30 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+object Cone {
+
+rule GROUP.IMPLICIT_SET_ACTION.CHARACTER : GROUP.PERMUTATION_ACTION.GENERATORS, GROUP.PERMUTATION_ACTION.CONJUGACY_CLASS_REPRESENTATIVES, GROUP.IMPLICIT_SET_ACTION.DOMAIN_NAME {
+    $this->CHARACTER = implicit_character($this);
+}
+
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

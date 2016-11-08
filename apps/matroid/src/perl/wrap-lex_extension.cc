@@ -16,17 +16,17 @@
 
 namespace polymake { namespace matroid { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( bool (perl::Object, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&) ) {
+   FunctionWrapper4perl( bool (perl::Object, pm::Array<pm::Set<int, pm::operations::cmp>> const&) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
       IndirectWrapperReturn( arg0, arg1.get< perl::TryCanned< const Array< Set< int > > > >() );
    }
-   FunctionWrapperInstance4perl( bool (perl::Object, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&) );
+   FunctionWrapperInstance4perl( bool (perl::Object, pm::Array<pm::Set<int, pm::operations::cmp>> const&) );
 
-   FunctionWrapper4perl( bool (perl::Object, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, bool) ) {
+   FunctionWrapper4perl( bool (perl::Object, pm::Array<pm::Set<int, pm::operations::cmp>> const&, bool) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
       IndirectWrapperReturn( arg0, arg1.get< perl::TryCanned< const Array< Set< int > > > >(), arg2 );
    }
-   FunctionWrapperInstance4perl( bool (perl::Object, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, bool) );
+   FunctionWrapperInstance4perl( bool (perl::Object, pm::Array<pm::Set<int, pm::operations::cmp>> const&, bool) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

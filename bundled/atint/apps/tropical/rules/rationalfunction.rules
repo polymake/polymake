@@ -77,11 +77,12 @@ object RationalFunction {
 		$this->POWER = 1;
 	}
 
-	rule DOMAIN, IS_GLOBALLY_DEFINED : NUMERATOR, DENOMINATOR {
+	rule DOMAIN.VERTICES, DOMAIN.MAXIMAL_POLYTOPES, DOMAIN.LINEALITY_SPACE, IS_GLOBALLY_DEFINED : NUMERATOR, DENOMINATOR {
 		computeDomain($this);
 		$this->IS_GLOBALLY_DEFINED = !(defined($this->lookup("VERTEX_VALUES")) || defined($this->lookup("LINEALITY_VALUES")));
 	}
 	weight 2.10;
+	incurs DOMAIN.RaysPerm;
 	#FIXME: THis property should maybe be used in some arithmetic functions...
 
 	rule IS_GLOBALLY_DEFINED : {
@@ -119,18 +120,14 @@ object RationalFunction {
 	# @return RationalFunction<Addition>
 	user_method restrict(Cycle<Addition>) {
 		my ($f,$X) = @_;
-	
+
 		#Need to do that to be able to use it in rules of $X
 		my $Xcopy = new Cycle<Addition>(VERTICES=>$X->VERTICES, MAXIMAL_POLYTOPES=>$X->MAXIMAL_POLYTOPES, 
 													LINEALITY_SPACE=>$X->LINEALITY_SPACE, WEIGHTS=>$X->WEIGHTS);
 
 		#Define identity on X
 		my $vertexvalues = new Matrix<Rational>($Xcopy->SEPARATED_VERTICES->minor(All,~scalar2set(0)));
-		my $linealityvalues = new Matrix<Rational>($Xcopy->LINEALITY_SPACE);
-		if($linealityvalues->rows() > 0) {
-			$linealityvalues = $linealityvalues->minor(All,~scalar2set(0));
-		}
-
+		my $linealityvalues = new Matrix<Rational>($Xcopy->LINEALITY_SPACE->minor(All,~scalar2set(0)));
 	
 		my $emb = new Morphism<Addition>( DOMAIN=>$Xcopy, VERTEX_VALUES=>$vertexvalues,LINEALITY_VALUES=>$linealityvalues, MATRIX=>(unit_matrix<Rational>($f->DOMAIN->PROJECTIVE_AMBIENT_DIM+1)));
 		return pullback($emb,$f);

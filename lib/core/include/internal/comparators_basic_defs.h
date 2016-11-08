@@ -23,66 +23,51 @@
 #include <cstdlib>
 #include <cmath>
 #include <string>
-
-#if __cplusplus >= 201103L && !defined(PM_FORCE_TR1)
 #include <functional>
-#else
-#include <tr1/functional>
-#endif
 
 namespace pm {
 
 enum cmp_value { cmp_lt=-1, cmp_eq=0, cmp_gt=1, cmp_ne=cmp_gt };
 
-template <typename T> inline
-cmp_value _sign(const T& x, True)
+template <typename T>
+constexpr int sign_impl(T x, std::true_type)
 {
-   return x<0 ? cmp_lt : cmp_value(x>0);
+   return x<0 ? -1 : x>0;
 }
-
-template <typename T> inline
-cmp_value _sign(const T& x, False)
-{
-   return cmp_value(x!=0);
-}
-
-template <typename T> inline
-cmp_value sign(const T& x)
-{
-   return _sign(x, bool2type<std::numeric_limits<T>::is_signed>());
-}
-
-template <typename T, bool _is_max> struct extremal {};
-template <typename T> struct maximal : extremal<T,true> {};
-template <typename T> struct minimal : extremal<T,false> {};
-
-template <typename T, bool _is_pod=is_pod<T>::value>
-struct is_ordered_impl {
-   struct anything {
-      anything(const T& ...);
-   };
-   struct helper {
-      static derivation::yes Test(bool, int);
-      static derivation::no Test(anything ...);
-   };
-   struct mix_in : public T {
-      mix_in();
-
-      friend
-      const anything& operator< (const anything& a, const anything&) { return a; }
-
-      friend
-      const anything& operator> (const anything& a, const anything&) { return a; }
-   };
-   static const bool value= sizeof(helper::Test(mix_in() < mix_in(), 1))==sizeof(derivation::yes) &&
-                            sizeof(helper::Test(mix_in() > mix_in(), 1))==sizeof(derivation::yes);
-};
 
 template <typename T>
-struct is_ordered_impl<T, true> : True {};
+constexpr int sign_impl(T x, std::false_type)
+{
+   return x!=0;
+}
 
 template <typename T>
-struct is_ordered : bool2type<is_ordered_impl<T>::value> {};
+constexpr
+typename std::enable_if<std::is_arithmetic<T>::value, int>::type
+sign(T x)
+{
+   return sign_impl(x, bool_constant<std::numeric_limits<T>::is_signed>());
+}
+
+template <typename TPrimitive, typename T>
+constexpr
+typename std::enable_if<std::is_arithmetic<T>::value, TPrimitive>::type
+max_value_as(mlist<T>)
+{
+   return static_cast<TPrimitive>(std::numeric_limits<T>::max());
+}
+
+template <typename TPrimitive, typename T>
+constexpr
+typename std::enable_if<std::is_arithmetic<T>::value, TPrimitive>::type
+min_value_as(mlist<T>)
+{
+   return static_cast<TPrimitive>(std::numeric_limits<T>::min());
+}
+
+template <typename T, bool is_max> struct extremal {};
+template <typename T> struct maximal : extremal<T, true> {};
+template <typename T> struct minimal : extremal<T, false> {};
 
 namespace operations {
 
@@ -196,16 +181,16 @@ struct cmp_scalar : cmp_extremal, cmp_partial_scalar {
    using cmp_partial_scalar::operator();
 
    template <typename Left, typename Right>
-   typename enable_if<cmp_value, (std::numeric_limits<Left>::is_integer && std::numeric_limits<Right>::is_signed &&
-                                  std::numeric_limits<Left>::is_integer && std::numeric_limits<Right>::is_signed   )>::type
+   typename std::enable_if<(std::numeric_limits<Left>::is_integer && std::numeric_limits<Right>::is_signed &&
+                            std::numeric_limits<Left>::is_integer && std::numeric_limits<Right>::is_signed), cmp_value>::type
    operator() (const Left& a, const Right& b) const
    {
-      return sign(a-b);
+      return cmp_value(sign(a-b));
    }
 
    template <typename Left, typename Right>
-   typename disable_if<cmp_value, (std::numeric_limits<Left>::is_integer && std::numeric_limits<Right>::is_signed &&
-                                   std::numeric_limits<Left>::is_integer && std::numeric_limits<Right>::is_signed   )>::type
+   typename std::enable_if<!(std::numeric_limits<Left>::is_integer && std::numeric_limits<Right>::is_signed &&
+                             std::numeric_limits<Left>::is_integer && std::numeric_limits<Right>::is_signed), cmp_value>::type
    operator() (const Left& a, const Right& b) const
    {
       return cmp_basic<Left, Right, true>()(a, b);
@@ -309,19 +294,11 @@ void assign_min_max(T1& min, T2& max, const T3& x)
 template <typename T, typename Tag=typename object_traits<T>::generic_tag>
 struct hash_func;
 
-#if __cplusplus >= 201103L && !defined(PM_FORCE_TR1)
 template <typename T>
 struct hash_func<T, is_scalar> : public std::hash<T> {};
 
 template <typename Char, typename Traits, typename Alloc>
 struct hash_func<std::basic_string<Char, Traits, Alloc>, is_opaque> : public std::hash< std::basic_string<Char, Traits, Alloc> > {};
-#else
-template <typename T>
-struct hash_func<T, is_scalar> : public std::tr1::hash<T> {};
-
-template <typename Char, typename Traits, typename Alloc>
-struct hash_func<std::basic_string<Char, Traits, Alloc>, is_opaque> : public std::tr1::hash< std::basic_string<Char, Traits, Alloc> > {};
-#endif // __cplusplus
 
 template <typename T>
 struct hash_func<T*, is_not_object> {
@@ -329,9 +306,18 @@ struct hash_func<T*, is_not_object> {
 };
 
 using std::abs;
-inline int isinf(double x) { if (std::isinf(x)) return (x>0)*2-1; else return 0; }
-// isfinite in C99 returns int but in C++11 returns bool ...
-inline int isfinite(double x) { return std::isfinite(x); }
+using std::isfinite;
+
+/// return the sign of the inifinite value, or 0 if the value is finite
+/// std::isinf returns bool nowadays which is insufficient for efficient operations
+inline
+int isinf(double x) noexcept
+{
+   return std::isinf(x) ? (x>0)*2-1 : 0;
+}
+
+constexpr int isinf(long) { return 0; }
+constexpr int isinf(int) { return 0; }
 
 template <typename T, bool _is_max>
 struct spec_object_traits< extremal<T,_is_max> > : spec_object_traits<T> {};
@@ -343,15 +329,6 @@ template <typename T>
 struct spec_object_traits< minimal<T> > : spec_object_traits<T> {};
 
 } // end namespace pm
-
-namespace std {
-   template <>
-   struct numeric_limits<pm::cmp_value> : numeric_limits<short> {
-      static pm::cmp_value min() throw() { return pm::cmp_lt; }
-      static pm::cmp_value max() throw() { return pm::cmp_gt; }
-      static const int digits = 1;
-   };
-}
 
 #endif // POLYMAKE_INTERNAL_COMPARATORS_BASIC_DEFS_H
 

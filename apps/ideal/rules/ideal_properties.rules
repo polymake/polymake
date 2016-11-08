@@ -100,15 +100,25 @@ object Groebner {
    # @depends singular
    property INITIAL_IDEAL : Ideal;
 
+   # @category Commutative algebra
+   # The initial forms of all polynomials in the [[BASIS]], with respect to either the [[ORDER_VECTOR]] or
+   # the first row of the [[ORDER_MATRIX]].
+   # @depends singular
+   property INITIAL_FORMS : Array<Polynomial>;
+
    # @category Input properties
    # The matrix defining the monomial ordering.
+   # For performance reasons this is realized via several weight vectors preceding a lexicographic order.
+   # (Singular: a(row), a(row),...,lp)
    #
    # Note that only one of [[ORDER_MATRIX]], [[ORDER_VECTOR]], [[ORDER_NAME]]
    # should be given.
    property ORDER_MATRIX : Matrix<Int>;
    
    # @category Input properties
-   # A weight vector for the monomial ordering.
+   # A weight vector for the monomial ordering, a reverse lexicographic order will be used
+   # as tie-breaker. (Singular: wp(vector))
+   # This vector is expected to consist of positive integers only.
    #
    # Note that only one of [[ORDER_MATRIX]], [[ORDER_VECTOR]], [[ORDER_NAME]]
    # should be given.
@@ -116,7 +126,7 @@ object Groebner {
    
    # @category Input properties
    # A string containing the name of the monomial ordering. Currently we follow
-   # the singular conventions, i.e. dp, lex, ds, etc.
+   # the singular conventions, i.e. dp, lp, rp, ds, etc.
    #
    # Note that only one of [[ORDER_MATRIX]], [[ORDER_VECTOR]], [[ORDER_NAME]]
    # should be given.

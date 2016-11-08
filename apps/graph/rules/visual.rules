@@ -224,6 +224,7 @@ user_method VISUAL(%Visual::Lattice::decorations, { seed => undef }) {
                                top_node => $top_node,
                                ArrowStyle => 0,
                                NodeBorderColor => "0 0 0",
+                               Dims => $this->DIMS,
                                Coord => hd_embedding($this,$seed),
                                $decor
                              );
@@ -234,6 +235,8 @@ user_method VISUAL(%Visual::Lattice::decorations, { seed => undef }) {
 }
 
 # Visualize the dual FaceLattice.
+# This only produces meaningful results for lattice where the
+# codimension one nodes generate the lattice under intersection.
 # @options %Visual::Lattice::decorations
 # @option Int seed random seed value for the node placement
 # @return Visual::Lattice

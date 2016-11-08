@@ -23,7 +23,7 @@ template <typename Scalar>
 perl::Object scale(perl::Object p_in, const Scalar& factor,
                    bool store_reverse_transformation)
 {
-   int amb_dim=p_in.CallPolymakeMethod("AMBIENT_DIM");
+   int amb_dim=p_in.call_method("AMBIENT_DIM");
    Matrix<Scalar> T(diag(1,(factor*unit_matrix<Scalar>(amb_dim))));
    return transform<Scalar>(p_in,T,store_reverse_transformation);
 }
@@ -33,7 +33,7 @@ template <typename Scalar>
 perl::Object translate(perl::Object p_in, const Vector<Scalar>& trans,
                        bool store_reverse_transformation)
 {
-   int amb_dim=p_in.CallPolymakeMethod("AMBIENT_DIM");
+   int amb_dim=p_in.call_method("AMBIENT_DIM");
    Matrix<Scalar> T((unit_vector<Scalar>(amb_dim+1,0)|(trans/unit_matrix<Scalar>(amb_dim))));
    return transform<Scalar>(p_in,T,store_reverse_transformation);
 }

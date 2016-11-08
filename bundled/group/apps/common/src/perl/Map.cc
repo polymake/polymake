@@ -17,6 +17,7 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/Map.h"
+#include "polymake/Rational.h"
 #include "polymake/client.h"
 #include "polymake/common/boost_dynamic_bitset.h"
 
@@ -30,5 +31,6 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::Map_A_boost_dynamic_bitset_I_Int_Z", Map< boost_dynamic_bitset, int >);
    FunctionInstance4perl(new, Map< boost_dynamic_bitset, int >);
    OperatorInstance4perl(Binary_brk, perl::Canned< Map< boost_dynamic_bitset, int > >, perl::Canned< const boost_dynamic_bitset >);
+   Class4perl("Polymake::common::Map_A_boost_dynamic_bitset_I_Rational_Z", Map< boost_dynamic_bitset, Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

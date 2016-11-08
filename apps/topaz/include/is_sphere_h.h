@@ -21,7 +21,7 @@
 #include "polymake/Integer.h"
 #include "polymake/topaz/BistellarComplex.h"
 #include "polymake/topaz/SimplicialComplex_as_FaceMap.h"
-#include "polymake/topaz/ChainComplex.h"
+#include "polymake/topaz/HomologyComplex.h"
 
 namespace polymake { namespace topaz {
 

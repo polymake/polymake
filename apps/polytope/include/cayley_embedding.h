@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,6 +19,7 @@
 
 #include "polymake/Matrix.h"
 #include "polymake/Array.h"
+#include "polymake/Vector.h"
 #include "polymake/Set.h"
 #include "polymake/linalg.h"
 #include "polymake/vector"
@@ -41,19 +42,22 @@ Matrix<Scalar> embedding_matrix(const Matrix<Scalar>& V, int i, int m, const Sca
 
 template<typename Scalar>
 perl::Object cayley_embedding(const Array<perl::Object>& p_array,
-                              const Array<Scalar>& t_array,
+                              const Vector<Scalar>& t_vec,
                               perl::OptionSet options)
 {
    const int m = p_array.size();
-   
+
    // input sanity checks
    if (!m)
       throw std::runtime_error("cayley_embedding: empty array given.");
 
    bool any_pointed(false);
-   for (Entire<Array<perl::Object> >::const_iterator ait = entire(p_array); !ait.at_end() && !any_pointed; ++ait) {
-      const bool pointed = ait->give("POINTED");
-      any_pointed = any_pointed || pointed;
+   for (const perl::Object& p : p_array) {
+      const bool pointed = p.give("POINTED");
+      if (pointed) {
+         any_pointed=true;
+         break;
+      }
    }
    if (!any_pointed)
       throw std::runtime_error("cayley_embedding: at least one input polyhedron must be POINTED");
@@ -67,9 +71,9 @@ perl::Object cayley_embedding(const Array<perl::Object>& p_array,
    Matrix<Scalar> V_out;
 
    // labels
-   const bool relabel=options["relabel"];
+   const bool relabel=!options["no_labels"];
 
-   // name of output
+   // description of resulting object
    std::ostringstream odesc;
    odesc << "Cayley embedding of ";
 
@@ -78,22 +82,16 @@ perl::Object cayley_embedding(const Array<perl::Object>& p_array,
       const Matrix<Scalar> V = p_array[i].give_with_property_name("VERTICES | POINTS", has_VERTICES);
       n_vertices[i] = V.rows();
       dimensions += V.cols();
-      if (dimensions.size() >= 2) {
-         std::ostringstream os;
-         os << "cayley_embedding: dimension mismatch between input polytopes 0 and " << i;
-         throw std::runtime_error(os.str().c_str());
-      }
+      if (dimensions.size() >= 2)
+         throw std::runtime_error("cayley_embedding: dimension mismatch between input polytopes 0 and " + std::to_string(i));
 
       // rays
       VERTICES_out = VERTICES_out && has_VERTICES=="VERTICES" && far_points(V).empty();
-      if (!VERTICES_out && relabel) {
-         std::ostringstream os;
-         os << "cayley_embedding: can't produce VERTEX_LABELS since VERTICES are unknown in argument "  << i;
-         throw std::runtime_error(os.str().c_str());
-      }
+      if (!VERTICES_out && relabel)
+         throw std::runtime_error("cayley_embedding: can't produce VERTEX_LABELS since VERTICES are unknown in argument " + std::to_string(i));
 
       // scaling
-      const Scalar t (t_array.size() ? t_array[i] : Scalar(1));
+      const Scalar t{ t_vec.empty() ? Scalar(1) : t_vec[i] };
 
       // output matrix
       V_out /= V | embedding_matrix(V, i, m, t);
@@ -108,8 +106,8 @@ perl::Object cayley_embedding(const Array<perl::Object>& p_array,
    odesc << endl;
    p_out.set_description() << odesc.str();
 
-   p_out.take(VERTICES_out ? "VERTICES" : "POINTS") << V_out;
-   p_out.take(VERTICES_out ? "LINEALITY_SPACE" : "INPUT_LINEALITY") << Matrix<Scalar>();
+   p_out.take(VERTICES_out ? Str("VERTICES") : Str("POINTS")) << V_out;
+   p_out.take(VERTICES_out ? Str("LINEALITY_SPACE") : Str("INPUT_LINEALITY")) << Matrix<Scalar>(0, V_out.cols());
 
    if (relabel) {
       std::vector<std::string> labels(accumulate(n_vertices, operations::add()));

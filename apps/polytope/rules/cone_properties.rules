@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -118,13 +118,30 @@ property RAYS : Matrix<Scalar> {
    sub canonical { &canonicalize_rays; }
 }
 
-declare permutation VertexPerm {
+# @category Geometry
+# Basis of the linear subspace orthogonal to all [[INEQUALITIES]] and [[EQUATIONS]]
+# All vectors in this section must be non-zero.
+# The property [[LINEALITY_SPACE]] appears only in conjunction with the property [[RAYS]], or [[VERTICES]], respectively.
+# The specification of the property [[RAYS]] or [[VERTICES]] requires the specification of [[LINEALITY_SPACE]], and vice versa.
+property LINEALITY_SPACE : Matrix<Scalar> {
+   sub canonical { &orthogonalize_subspace; }
 
-   # Transforming [[RAYS]] from this into basic object
-   property PERMUTATION : Array<Int>;
+   method equal {
+     my ($this,$M1,$M2)=@_;
+     $this->prepare_computations;
+     equal_bases($M1,$M2);
+   }
 }
 
-rule VertexPerm.PERMUTATION : VertexPerm.RAYS, RAYS {
+# @category Geometry
+# Dimension of the [[LINEALITY_SPACE]] (>0 in the non-POINTED case)
+property LINEALITY_DIM : Int;
+
+# permuting the [[RAYS]]
+# TODO: rename into RaysPerm and introduce an overriding alias in Polytope
+permutation VertexPerm : PermBase;
+
+rule VertexPerm.PERMUTATION : VertexPerm.RAYS, RAYS, LINEALITY_SPACE {
    my $cmp=$this->prepare_computations;
    $this->VertexPerm->PERMUTATION=find_representation_permutation($this->VertexPerm->RAYS, $this->RAYS, $this->LINEALITY_SPACE, 0);
 }
@@ -186,11 +203,8 @@ property LINEAR_SPAN : Matrix<Scalar> {
 # or [[AFFINE_HULL]], respectively, and vice versa.
 property FACETS : Matrix<Scalar>;
 
-declare permutation FacetPerm {
-
-   # Transforming [[FACETS]] from this into basic object
-   property PERMUTATION : Array<Int>;
-}
+# permuting the [[FACETS]]
+permutation FacetPerm : PermBase;
 
 rule FacetPerm.PERMUTATION : FacetPerm.FACETS, FACETS, LINEAR_SPAN {
    my $cmp=$this->prepare_computations;
@@ -246,25 +260,6 @@ property FULL_DIM : Bool;
 # @category Geometry
 # A point in the relative interior of the cone.
 property REL_INT_POINT : Vector<Scalar>;
-
-# @category Geometry
-# Basis of the linear subspace orthogonal to all [[INEQUALITIES]] and [[EQUATIONS]]
-# All vectors in this section must be non-zero.
-# The property [[LINEALITY_SPACE]] appears only in conjunction with the property [[RAYS]], or [[VERTICES]], respectively.
-# The specification of the property [[RAYS]] or [[VERTICES]] requires the specification of [[LINEALITY_SPACE]], and vice versa.
-property LINEALITY_SPACE : Matrix<Scalar> {
-   sub canonical { &orthogonalize_subspace; }
-
-   method equal {
-     my ($this,$M1,$M2)=@_;
-     $this->prepare_computations;
-     equal_bases($M1,$M2);
-   }
-}
-
-# @category Geometry
-# Dimension of the [[LINEALITY_SPACE]] (>0 in the non-POINTED case)
-property LINEALITY_DIM : Int;
 
 # @category Geometry
 # True if all [[RAYS]] of the cone have non-negative coordinates, 
@@ -378,6 +373,16 @@ property FACET_SIZES : Array<Int>;
 
 
 # @category Combinatorics
+# Measures the deviation of the cone from being simple in terms of the [[GRAPH]].
+property EXCESS_RAY_DEGREE : Int;
+
+
+# @category Combinatorics
+# Measures the deviation of the cone from being simple in terms of the [[DUAL_GRAPH]].
+property EXCESS_FACET_DEGREE : Int;
+
+
+# @category Combinatorics
 # Vertex-edge graph obtained by intersecting the cone with a transversal hyperplane.
 property GRAPH : objects::Graph;
 
@@ -453,6 +458,28 @@ property SIMPLICIAL_CONE : Bool;
 # to throw away.  Use big objects of type [[VectorConfiguration]] if you want to work with
 # triangulations using redundant points.
 property TRIANGULATION_INT : Array<Set>;
+
+# @category Combinatorics
+# The interior //d//-dimensional simplices of a cone of combinatorial dimension //d//
+property MAX_INTERIOR_SIMPLICES : Array<Set>;
+
+# @category Combinatorics
+# The boundary (//d//-1)-dimensional simplices of a cone of combinatorial dimension //d//
+property MAX_BOUNDARY_SIMPLICES : Array<Set>;
+
+# @category Combinatorics
+# The (//d//-1)-dimensional simplices in the interior.
+property INTERIOR_RIDGE_SIMPLICES : Array<Set>;
+
+# @category Combinatorics
+# A matrix whose rows contain the cocircuit equations of P. The columns correspond to the [[MAX_INTERIOR_SIMPLICES]].
+property COCIRCUIT_EQUATIONS : SparseMatrix;
+
+# @category Combinatorics
+# A matrix whose rows contain the foldable cocircuit equations of P.  The columns correspond to 2 * [[MAX_INTERIOR_SIMPLICES]].
+# col 0 = 0, col 1 = first simplex (black copy), col 2 = first simplex (white copy), col 3 = second simplex (black copy), ...
+property FOLDABLE_COCIRCUIT_EQUATIONS : SparseMatrix;
+
 
 # @category Combinatorics
 # True if the facets of the cone are simple. Dual to [[SIMPLICIAL]].

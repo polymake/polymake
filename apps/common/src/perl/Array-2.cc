@@ -58,7 +58,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new, Array< Polynomial< Rational, int > >);
    Class4perl("Polymake::common::Array__Set__Set__Int", Array< Set< Set< int > > >);
    FunctionInstance4perl(new, Array< Set< Set< int > > >);
-   FunctionInstance4perl(new_X, Array< int >, perl::Canned< const pm::IndexedSlice<pm::ConcatRows<pm::Matrix<int> > const&, pm::Series<int, false>, void> >);
+   FunctionInstance4perl(new_X, Array< int >, perl::Canned< const pm::IndexedSlice<pm::ConcatRows<pm::Matrix<int> > const&, pm::Series<int, false>> >);
    Class4perl("Polymake::common::Array__Set__Set__Set__Int", Array< Set< Set< Set< int > > > >);
    FunctionInstance4perl(new, Array< Set< Set< Set< int > > > >);
    OperatorInstance4perl(assign, Array< Array< int > >, perl::Canned< const Array< Set< int > > >);

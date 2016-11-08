@@ -44,7 +44,7 @@ bounded_complex_from_face_lattice(perl::Object HD_obj, const Set<int>& far_face)
 
    Set<int> faces_to_visit;
    std::list<int> Q;
-   copy(entire(HD.node_range_of_dim(-1)), std::back_inserter(Q));
+   copy_range(entire(HD.node_range_of_dim(-1)), std::back_inserter(Q));
 
    while (!Q.empty()) {
       const int f=Q.front(); Q.pop_front();
@@ -53,7 +53,7 @@ bounded_complex_from_face_lattice(perl::Object HD_obj, const Set<int>& far_face)
       } else {
          for (graph::HasseDiagram::graph_type::in_adjacent_node_list::const_iterator subf=HD.in_adjacent_nodes(f).begin();
               !subf.at_end(); ++subf)
-            if (faces_to_visit.collect(*subf))
+            if (!faces_to_visit.collect(*subf))
                Q.push_back(*subf);
       }
    }

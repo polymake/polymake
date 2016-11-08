@@ -28,7 +28,7 @@ namespace {
 bool is_face (const Set<int>& F, const IncidenceMatrix<>& I)
 {
    Set<int> face;
-      
+
    int i = 0;
    while ( i < I.rows() && face.size() == 0 && incl(F,I[i]) > 0 ) ++i;
 
@@ -50,27 +50,27 @@ bool is_face (const Set<int>& F, const IncidenceMatrix<>& I)
 }
 
 
-template<typename Coord>
-perl::Object check_fan_objects(const Array<perl::Object>& all_cones,perl::OptionSet options)
+template <typename Coord>
+perl::Object check_fan_objects(const Array<perl::Object>& all_cones, perl::OptionSet options)
 {
    const int n_i_cones=all_cones.size();
    bool verbose=false;
    //bool verbose=options["verbose"];
    FacetList max_cones;
- 
-   perl::ObjectType t=all_cones[0].type();
+
+   const perl::ObjectType t=all_cones.element_type();
    const int lineality_dim=all_cones[0].give("LINEALITY_DIM");
    const int ambientDim = all_cones[0].give("CONE_AMBIENT_DIM");
-    
-   for(int i=0; i<n_i_cones;++i) {
+
+   for (int i=0; i<n_i_cones; ++i) {
       perl::Object cone=all_cones[i];
       const Matrix<Coord> c_rays=cone.give("RAYS");
       const Matrix<Coord> facets=cone.give("FACETS");
       const Matrix<Coord> eqs=cone.give("LINEAR_SPAN");
       const IncidenceMatrix<> inc=cone.give("RAYS_IN_FACETS");
       const int cone_lin_dim=cone.give("LINEALITY_DIM");
-      if (cone_lin_dim!=lineality_dim) {
-         if (verbose) cout<<"Cones do not have the same lineality space."<<endl;
+      if (cone_lin_dim != lineality_dim) {
+         if (verbose) cout << "Cones do not have the same lineality space." << endl;
          throw std::runtime_error("not a fan");
       }
       // test intersection property
@@ -109,7 +109,7 @@ perl::Object check_fan_objects(const Array<perl::Object>& all_cones,perl::Option
                }
             }
             //if the intersection has the same number of rays than one of the cones, it is one of the cones
-            //otherwise we explicitely check if it is a face of 
+            //otherwise we explicitely check if it is a face of
             if (!(n_int_rays==c_rays.rows()||n_int_rays==c_rays2.rows())){
                if (!is_face(rays_in_cone,inc)) throw std::runtime_error("not a fan");
                const IncidenceMatrix<> inc2=all_cones[j].give("RAYS_IN_FACETS");
@@ -118,24 +118,24 @@ perl::Object check_fan_objects(const Array<perl::Object>& all_cones,perl::Option
          }
       }
    }
-    
-   hash_map<Vector<Coord>,int > rays;    
-    
+
+   hash_map<Vector<Coord>, int> rays;
+
    int n_rays=0;
-   
 
    for(int i=0; i<n_i_cones;++i) {
       perl::Object cone=all_cones[i];
       const Matrix<Coord> c_rays=cone.give("RAYS");
       Set<int> ray_indices;
       for(typename Entire<Rows<Matrix<Coord> > >::const_iterator r=entire(rows(c_rays)); !r.at_end(); ++r) {
-         typename hash_map<Vector<Coord>,int >::iterator r_iti=rays.find(*r);
+         typename hash_map<Vector<Coord>,int >::const_iterator r_iti=rays.find(*r);
          if (r_iti==rays.end()) {
             rays[*r]=n_rays;
             ray_indices.insert(n_rays++);
          }
-         else 
+         else {
             ray_indices.insert(r_iti->second);
+         }
       }
       max_cones.insertMax(ray_indices);
       //FIXME: one could also extract and save other properties here.
@@ -155,29 +155,26 @@ perl::Object check_fan_objects(const Array<perl::Object>& all_cones,perl::Option
    f.take("MAXIMAL_CONES")<<max_cones;
    return f;
 }
-  
-
 
 
 //template<typename Coord>
 typedef Rational Coord;
-perl::Object check_fan(const Matrix<Coord> &i_rays,const Array<Set<int> > &i_cones,perl::OptionSet options)
+perl::Object check_fan(const Matrix<Coord>& i_rays, const Array<Set<int>>& i_cones, perl::OptionSet options)
 {
    const int n_i_cones=i_cones.size();
    Matrix<Coord> linealitySpace;
    const int ambientDim=i_rays.cols();
-   if (!(options["lineality_space"]>>linealitySpace)) linealitySpace=Matrix<Coord>(0,ambientDim);
+   if (!(options["lineality_space"] >> linealitySpace))
+      linealitySpace=Matrix<Coord>(0, ambientDim);
    perl::ObjectType t=perl::ObjectType::construct<Coord>("Cone");
-   Array<perl::Object> all_cones(n_i_cones);
-   for(int i=0; i<n_i_cones;++i) {
-      perl::Object cone(t);
-      cone.take("INPUT_RAYS")<<i_rays.minor(i_cones[i],All);
-      cone.take("INPUT_LINEALITY")<<linealitySpace;
-      all_cones[i]=cone;
+   Array<perl::Object> all_cones(t, n_i_cones);
+   for (int i=0; i<n_i_cones; ++i) {
+      all_cones[i].take("INPUT_RAYS") << i_rays.minor(i_cones[i], All);
+      all_cones[i].take("INPUT_LINEALITY") << linealitySpace;
    }
-   perl::Object f=check_fan_objects<Coord>(all_cones,options);
-   f.take("INPUT_RAYS")<<i_rays;
-   f.take("INPUT_CONES")<<i_cones;
+   perl::Object f=check_fan_objects<Coord>(all_cones, options);
+   f.take("INPUT_RAYS") << i_rays;
+   f.take("INPUT_CONES") << i_cones;
    return f;
 }
 
@@ -194,7 +191,7 @@ UserFunction4perl("# @category Consistency check"
                   "# @option Bool verbose prints information about the check."
                   "# @return PolyhedralFan",
                   &check_fan,"check_fan($ $ {lineality_space=> undef, verbose=>0})");
-  
+
 UserFunctionTemplate4perl("# @category Consistency check"
                           "# Checks whether the [[polytope::Cone]] objects form a polyhedral fan."
                           "# If this is the case, returns that [[PolyhedralFan]]."

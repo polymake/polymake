@@ -67,6 +67,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::MatrixMinor<pm::Matrix<double> const&, pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&> const&, pm::all_selector const&> >);
    FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::Vector<int> const&>, pm::MatrixMinor<pm::SparseMatrix<int, pm::NonSymmetric> const&, pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> const&, pm::all_selector const&> const&> >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< Matrix< Rational > > >, perl::Canned< const pm::Transposed<pm::ColChain<pm::Matrix<pm::Rational> const&, pm::SingleCol<pm::Vector<pm::Rational> const&> > > >);
-   FunctionInstance4perl(new_X, Matrix< double >, perl::Canned< const pm::MatrixMinor<pm::Matrix<double> const&, pm::Array<int, void> const&, pm::all_selector const&> >);
+   FunctionInstance4perl(new_X, Matrix< double >, perl::Canned< const pm::MatrixMinor<pm::Matrix<double> const&, pm::Array<int> const&, pm::all_selector const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

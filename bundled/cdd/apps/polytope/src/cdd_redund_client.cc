@@ -57,9 +57,9 @@ void cdd_vertex_normals(perl::Object p)
    if (isCone &&  P.rows() )  // leave matrix empty otherwise
       P = zero_vector<Scalar>()|P;
    const typename cdd_interface::solver<Scalar>::non_redundant non_red=solver.find_vertices_among_points(P);//   ( p.type() == pobjtype) );
-   if ( isCone ) 
+   if ( isCone )
       p.take("RAY_SEPARATORS") << non_red.second.minor(All,~scalar2set(0));
-   else 
+   else
       p.take("RAY_SEPARATORS") << non_red.second;
 }
 
@@ -86,9 +86,9 @@ void cdd_canonicalize(perl::Object p, bool primal = true)
    }
 
    // FIXME: better solution: do it similar to facets_and_ah() ?
-   const Matrix<Scalar> PL = P/L; 
+   const Matrix<Scalar> PL = L.rows() ? Matrix<Scalar>(P/L) : P;
 
-   if ( PL.rows() ) { 
+   if ( PL.rows() ) {
       const typename cdd_interface::solver<Scalar>::non_redundant_canonical non_red=solver.canonicalize(P, L, primal);
       if ( primal ) {
          if ( isCone ) {
@@ -116,8 +116,8 @@ void cdd_canonicalize(perl::Object p, bool primal = true)
          p.take("POINTED") << non_red.second.empty();
       }
    } else {
-      p.take(primal ? "FACETS" : "RAYS") << Matrix<Scalar>();
-      p.take(primal ? "LINEAR_SPAN" : "LINEALITY_SPACE") << Matrix<Scalar>();     
+      p.take(primal ? Str("FACETS") : Str("RAYS")) << Matrix<Scalar>();
+      p.take(primal ? Str("LINEAR_SPAN") : Str("LINEALITY_SPACE")) << Matrix<Scalar>();
    }
 }
 
@@ -143,7 +143,7 @@ void cdd_canonicalize_lineality(perl::Object p, bool primal = true)
    }
 
    // FIXME: better solution: do it similar to facets_and_ah() ?
-   const Matrix<Scalar> PL = P/L; 
+   const Matrix<Scalar> PL = P/L;
 
    Bitset lineality=solver.canonicalize_lineality(P, L, primal);
    if ( primal ) {
@@ -152,7 +152,7 @@ void cdd_canonicalize_lineality(perl::Object p, bool primal = true)
       } else {
          // cdd doesn't handle the case of an empty polytope in the same way as polymake
          // so first check for an infeasible system
-         if ( is_zero(null_space(PL.minor(lineality,All)).col(0)) ) 
+         if ( is_zero(null_space(PL.minor(lineality,All)).col(0)) )
             p.take("AFFINE_HULL") << PL.minor(basis_rows(PL),All);
          else
             p.take("AFFINE_HULL") << PL.minor(lineality,All);

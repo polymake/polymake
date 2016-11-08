@@ -1,4 +1,4 @@
- #include "polymake/client.h"
+#include "polymake/client.h"
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
 #include "polymake/polytope/sympol_interface.h"
@@ -6,68 +6,73 @@
 
 namespace polymake { namespace polytope {
 
-   // beware: sympol / permlib only work with Rational coordinates
+namespace {
+                
+void add_action(perl::Object& g,
+                const Matrix<Rational>& rays_or_facets,
+                const Matrix<Rational>& lin,
+                const AnyString& rf_prop,
+                const std::string& action_name,
+                const std::string& action_desc)
+{
+   g.take(rf_prop) << perl_action_from_group(sympol_interface::sympol_wrapper::compute_linear_symmetries(rays_or_facets, lin), action_name, action_desc);
+}
+
+} // end anonymous namespace
+
+// beware: sympol / permlib only work with Rational coordinates
      
-   //symmetry group computation vie edge colored graph automorphisms works for non-convex point sets, too. For the proof, see prop. 3.1 in "Polyhedral representation conversion up to symmetries" by Bremner, Sikiric and Schuermann, arxiv 0702239v2.
-   perl::Object linear_symmetries_matrix(const Matrix<Rational> &M)
-   {
-      Matrix<Rational> Mpty;
-      group::PermlibGroup sym_group = sympol_interface::sympol_wrapper::compute_linear_symmetries(M,Mpty);
-      perl::Object g("group::Group");
-      g.set_name("linear_symmetries");
-      g.set_description() << "linear symmetries of some Matrix";
-      return polymake::group::correct_group_from_permlib_group(g, sym_group);
-   } 
+//symmetry group computation vie edge colored graph automorphisms works for non-convex point sets, too. For the proof, see prop. 3.1 in "Polyhedral representation conversion up to symmetries" by Bremner, Sikiric and Schuermann, arxiv 0702239v2.
+perl::Object linear_symmetries_matrix(const Matrix<Rational>& M)
+{
+   Matrix<Rational> Mpty;
+   perl::Object g(perl_group_from_group(sympol_interface::sympol_wrapper::compute_linear_symmetries(M, Mpty)));
+   g.set_name("LinAut");
+   g.set_description() << "linear symmetry group";
+   return g;
+} 
 
-   perl::Object linear_symmetries(perl::Object p, bool dual)
-   {
-      group::PermlibGroup sym_group;
-      const bool isPolytope = p.isa("polytope::Polytope");
-      if (dual) { //V-representation
-         sym_group = sympol_interface::sympol_wrapper::compute_linear_symmetries(p.give("VERTICES | RAYS"), p.give("LINEALITY_SPACE"));
-      } else {
-         sym_group = sympol_interface::sympol_wrapper::compute_linear_symmetries(p.give("FACETS"), p.give("AFFINE_HULL | LINEAR_SPAN"));
-      }
-      static const char* groupPoly = "group::GroupOfPolytope";
-      static const char* groupCone = "group::GroupOfCone";
-      const char* correctGroupType = (isPolytope) ? groupPoly : groupCone;
-      perl::Object g(correctGroupType);
-      g.set_name("linear_symmetries");
-      g.set_description() << "linear symmetries of " << p.description();
-      g.take("DOMAIN") << 
-         (dual 
-            ? polymake::group::OnRays
-            : polymake::group::OnFacets
-         ); //if dual, then action on vertices(rays), else on facets
-      return polymake::group::correct_group_from_permlib_group(g, sym_group);
-   }
+perl::Object linear_symmetries_impl(perl::Object p)
+{
+   Matrix<Rational> rays, facets;
+   perl::Object g("group::Group");
+   g.set_name("LinAut");
+   g.set_description() << "linear symmetry group";
+
+   if (p.lookup("RAYS") >> rays)
+      add_action(g, rays, p.give("LINEALITY_SPACE"), "RAYS_ACTION", "ray_action", "action of LinAut on rays/vertices");
+
+   if (p.lookup("FACETS") >> facets)
+      add_action(g, facets, p.give("LINEAR_SPAN"), "FACETS_ACTION", "facet_action", "action of LinAut on facets");
+
+   return g;
+}
    
-   perl::ListReturn representation_conversion_up_to_symmetry(perl::Object p, perl::Object group, bool dual, int rayCompMethod)
-   {
-      Matrix<Rational> inequalities, equations;
-      perl::ListReturn result;
-      group::PermlibGroup sym_group = polymake::group::group_from_perlgroup(group);
-      bool success = false;
-      const int sym_group_domain = group.give("DOMAIN");
-      assert( sym_group_domain );
+Matrix<Rational>
+representation_conversion_up_to_symmetry(perl::Object p, bool v_to_h, int rayCompMethod)
+{
+   Matrix<Rational> inequalities, equations;
+   Array<Array<int>> gens = p.give(v_to_h
+                                   ? Str("GROUP.RAYS_ACTION.STRONG_GENERATORS | GROUP.RAYS_ACTION.GENERATORS")
+                                   : Str("GROUP.FACETS_ACTION.STRONG_GENERATORS | GROUP.FACETS_ACTION.GENERATORS"));
+   const sympol_interface::SympolRayComputationMethod compMethod = static_cast<sympol_interface::SympolRayComputationMethod>(rayCompMethod);
+      
+   const Matrix<Rational> rays_or_facets = p.give(v_to_h ? Str("RAYS") : Str("FACETS"));
+   const Matrix<Rational> lin_sp = p.give(v_to_h ? Str("LINEALITY_SPACE") : Str("LINEAR_SPAN"));
 
-      sympol_interface::SympolRayComputationMethod compMethod = static_cast<sympol_interface::SympolRayComputationMethod>(rayCompMethod);
+   // appease sympol, which wants the automorphism group to act on both rays and lineality space
+   const int n(rays_or_facets.rows()), m(lin_sp.rows());
+   if (m)
+      for (auto& g : gens)
+         g.append(m, entire(sequence(n, m)));
 
-      if (dual) {
-         if ( sym_group_domain != polymake::group::OnRays )
-            throw std::runtime_error("group DOMAIN does not match 'dual' parameter (expected OnRays)");
-         success = sympol_interface::sympol_wrapper::computeFacets(p.give("VERTICES | RAYS"), p.give("LINEALITY_SPACE"), sym_group, compMethod, dual, inequalities, equations);
-
-      } else {
-         if ( sym_group_domain != polymake::group::OnFacets )
-            throw std::runtime_error("group DOMAIN does not match 'dual' parameter (expected OnFacets)");
-
-         success = sympol_interface::sympol_wrapper::computeFacets(p.give("FACETS"), p.give("AFFINE_HULL | LINEAR_SPAN"), sym_group, compMethod, dual, inequalities, equations);
-         
-      }
-      result << success << inequalities << equations;
-      return result;
-   }
+   const group::PermlibGroup sym_group(gens);
+      
+   if (!sympol_interface::sympol_wrapper::computeFacets(rays_or_facets, lin_sp, sym_group, compMethod, v_to_h, inequalities, equations))
+      throw std::runtime_error("sympol computation of linear symmetry representatives not successful");
+      
+   return inequalities;
+}
 
 UserFunction4perl("# CREDIT sympol\n\n"
                   "# @category Symmetry"
@@ -82,25 +87,17 @@ UserFunction4perl("# CREDIT sympol\n\n"
                   "# | 2 3 0 1",
                   &linear_symmetries_matrix,"linear_symmetries(Matrix<Rational>)");
 
-UserFunction4perl("# CREDIT sympol\n\n"
-                  "# @category Symmetry"
-                  "# Computes the linear symmetries of a given polytope //p//"
-                  "# via 'sympol'. If the input is a cone, it may compute only a subgroup"
-                  "# of the linear symmetry group."
-                  "# @param Cone c the cone (or polytope) whose linear symmetry group is to be computed"
-                  "# @param Bool dual true if group action on vertices, false if action on facets" 
-                  "# @return group::GroupOfCone the linear symmetry group of //p// (or a subgroup if //p// is a cone)",
-                  &linear_symmetries,"linear_symmetries(Cone<Rational> $)");
+Function4perl(&linear_symmetries_impl, "linear_symmetries_impl(Cone<Rational>)");
 
 UserFunction4perl("# CREDIT sympol\n\n"
                   "# @category Symmetry"
                   "# Computes the dual description of a polytope up to its linear symmetry group."
                   "# @param Cone c the cone (or polytope) whose dual description is to be computed"
-                  "# @param group::Group a symmetry group of the cone //c// ([[group::GroupOfCone]] or [[group::GroupOfPolytope]])"
-                  "# @param Bool dual true if V to H, false if H to V" 
-                  "# @param Int rayCompMethod specifies sympol's method of ray computation via lrs(0), cdd(1), beneath_and_beyond(2), ppl(3)" 
-                  "# @return List (Bool success indicator, Matrix<Rational> vertices/inequalities, Matrix<Rational> lineality/equations)",
-                  &representation_conversion_up_to_symmetry,"representation_conversion_up_to_symmetry(Cone<Rational>, group::Group $ $)");
+                  "# @param group::Group a symmetry group of the cone //c//"
+                  "# @param Bool v_to_h true (default) if converting V to H, false if converting H to V" 
+                  "# @param Int rayCompMethod specifies sympol's method of ray computation via lrs(0) (default), cdd(1), beneath_and_beyond(2), ppl(3)" 
+                  "# @return Pair (Matrix<Rational> vertices/inequalities, Matrix<Rational> lineality/equations)",
+                  &representation_conversion_up_to_symmetry,"representation_conversion_up_to_symmetry(Cone<Rational>; $=1, $=0)");
 } }
 
 // Local Variables:

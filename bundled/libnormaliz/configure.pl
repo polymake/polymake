@@ -22,27 +22,23 @@
 
 sub allowed_options {
    my ($allowed_options, $allowed_with)=@_;
-   @$allowed_with{ qw( openmp boost ) }=();
+   @$allowed_with{ qw( boost ) }=();
 }
 
 
 sub usage {
-   print STDERR "  --without-openmp        deactivate OpenMP support for libnormaliz\n",
-                "  --with-boost=PATH  installation path of boost library, if non-standard\n";
+   print STDERR "  --with-boost=PATH  installation path of boost library, if non-standard\n";
 }
 
 sub proceed {
    my ($options)=@_;
    my $message = "";
 
-   if (defined($Polymake::Configure::GCCversion) && Polymake::Configure::v_cmp($Polymake::Configure::GCCversion, "4.4") >= 0 && $options->{openmp} ne ".none.") {
-      $CXXflags = "-fopenmp";
-      $LDflags = "-fopenmp";
-   } else {
+# openmp flags are set in the main configure script
+   if (defined($Polymake::Configure::CXXflags) && $Polymake::Configure::CXXflags !~ /-fopenmp/) {
       $CXXflags = "-DOPENMP=no";
       $message = "OpenMP support disabled";
    }
-
 
 # libnormaliz uses the boost library
 # check for the headers and add the appropriate path to CXXflags if neccessary

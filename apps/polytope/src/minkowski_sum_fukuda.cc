@@ -435,16 +435,18 @@ int lex_max(const int a, const int b, const Matrix<E>& mat){
  * and subroutines find_max_face, lex_max, components2vector and canonical_vector
  * called by minkowski_sum_fukuda
  */
-template<typename E>
-void initialize(const Array<perl::Object>& summands, const int k, graph_list& graphs, Array<Matrix<E> >& polytopes, Array<int>& components, Vector<E>& v_st, Vector<E>& c_st, Vector<E>& c_st2)
+template <typename E>
+void initialize(const Array<perl::Object>& summands, const int k, graph_list& graphs,
+                Array<Matrix<E>>& polytopes, Array<int>& components, Vector<E>& v_st, Vector<E>& c_st, Vector<E>& c_st2)
 {
    //initialize graphs and polytopes:
    int j=0;
-   for (Array<perl::Object>::const_iterator it=summands.begin(); it!=summands.end(); ++it, ++j) {
-      const Matrix<E> m=it->give("VERTICES");
+   for (const perl::Object& s : summands) {
+      const Matrix<E> m=s.give("VERTICES");
       polytopes[j]=m;
-      const Graph<Undirected> graph=it->give("GRAPH.ADJACENCY");
+      const Graph<Undirected> graph=s.give("GRAPH.ADJACENCY");
       graphs[j]=graph;
+      ++j;
    }
 
    //initialize components and v_st:
@@ -495,10 +497,10 @@ Matrix<E> minkowski_sum_vertices_fukuda(const Array<perl::Object>& summands)
    Vector<E> c_st2;     // alternative for c* (if c is parallel to c_st)
    Array<int> components(k);    // j-th entry will contain the number of a vertex in P_j  s.t. v = v(1)+v(2)+...+v(k) where v(j)= P_j(comp(j))
    graph_list graphs(k);                // stores all Graphs from the input Polytopes P_j
-   Array<Matrix<E> > polytopes(k);      // stores matrices s.t. the i-th entry is a discribtion of P_j by vertices
+   Array<Matrix<E>> polytopes(k);      // stores matrices s.t. the i-th entry is a discribtion of P_j by vertices
 
    initialize(summands, k, graphs, polytopes, components, v_st, c_st, c_st2);
-   hash_set<Vector<E> > vertices = addition(k, v_st, c_st, c_st2, components, graphs, polytopes);
+   hash_set<Vector<E>> vertices = addition(k, v_st, c_st, c_st2, components, graphs, polytopes);
    // Output = listed coordinates of the vertices of P, (the first vertex will be v*)
    return list2matrix(vertices);
 }
@@ -518,7 +520,7 @@ Matrix<E> zonotope_vertices_fukuda(const Matrix<E>& Z, perl::OptionSet options)
    const int 
       n = Z.rows(),
       d = Z.cols();
-   Array<perl::Object> summands(n);
+   Array<perl::Object> summands(perl::ObjectType::construct<E>("Polytope"), n);
    const bool centered_zonotope = options["centered_zonotope"];
 
    Graph<Undirected> G(2);
@@ -536,16 +538,14 @@ Matrix<E> zonotope_vertices_fukuda(const Matrix<E>& Z, perl::OptionSet options)
          opposite[0].negate();
       } 
 
-      perl::Object summand(perl::ObjectType::construct<E>("Polytope"));
       // take care of the origin
-      if (point.slice(1) == zero_vector<E>(d-1)){
-         summand.take("VERTICES") << Matrix<E>(vector2row(point));
-         summand.take("GRAPH.ADJACENCY") << Graph<Undirected>(1);
+      if (is_zero(point.slice(1))) {
+         summands[i].take("VERTICES") << Matrix<E>(vector2row(point));
+         summands[i].take("GRAPH.ADJACENCY") << Graph<Undirected>(1);
       } else {
-         summand.take("VERTICES") << Matrix<E>(point/opposite);
-         summand.take("GRAPH.ADJACENCY") << G;
+         summands[i].take("VERTICES") << Matrix<E>(point/opposite);
+         summands[i].take("GRAPH.ADJACENCY") << G;
       }
-      summands[i] = summand;
    }
 
    return minkowski_sum_vertices_fukuda<E>(summands);

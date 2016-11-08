@@ -23,8 +23,7 @@
 
 namespace polymake { namespace tropical {
 
-
-	UserFunction4perl("# @Category Affine and projective coordinates"
+	UserFunctionTemplate4perl("# @Category Affine and projective coordinates"
 							"# Converts tropical affine to tropical projective coordinates."
 							"# It takes a matrix of row vectors in R<sup>n-1</sup> and "
 							"# identifies the latter with R<sup>n</sup> mod (1,..,1) by "
@@ -42,10 +41,16 @@ namespace polymake { namespace tropical {
 							"# whether a row is a vertex or a ray. In that case, this coordinate is not touched."
 							"# This is true by default."
 							"# @return Matrix<Rational>",
-							thomog<Rational>,"thomog($;$=0, $=1)");
+                     "thomog(Matrix;$=0, $=1)");
 
+   //We need the following rule to allow anonymous arrays as input.
 
-	UserFunction4perl("# @Category Affine and projective coordinates"
+   InsertEmbeddedRule( "function thomog($;$=0,$=1) {\n"
+                       "   $_[0] = new Matrix($_[0]);\n"
+                       "   return thomog(@_);\n"
+                       "}\n");
+
+	UserFunctionTemplate4perl("# @Category Affine and projective coordinates"
 							"# This is the inverse operation of thomog. It assumes a list of"
 							"# rays and vertices is given in tropical projective coordinates and returns"
 							"# a conversion into affine coordinates."
@@ -57,8 +62,14 @@ namespace polymake { namespace tropical {
 							"# @param Bool has_leading_coordinate Whether the matrix has a leading 1/0 to indicate"
 							"# whether a row is a vertex or a ray. In that case, this coordinate is not touched."
 							"# This is true by default."
-							"# @return Matrix<Rational>",
-							tdehomog<Rational>,"tdehomog($;$=0, $=1)");
+							"# @return Matrix<Rational>","tdehomog(Matrix;$=0, $=1)");
+
+   //We need the following rule to allow anonymous arrays as input.
+
+   InsertEmbeddedRule( "function tdehomog($;$=0,$=1) {\n"
+                       "   $_[0] = new Matrix($_[0]);\n"
+                       "   return tdehomog(@_);\n"
+                       "}\n");
 
 
 }}

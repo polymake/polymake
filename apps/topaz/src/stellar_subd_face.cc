@@ -30,8 +30,8 @@ perl::Object stellar_subdivision(perl::Object p_in, const Array<Set<int> >& subd
 {
    const bool is_PC= !p_in.isa("topaz::SimplicialComplex");
   
-   Array< Set<int> > C_in = p_in.give(is_PC ? "TRIANGULATION.FACETS" : "FACETS");
-   int n_vert             = p_in.give(is_PC ? "N_POINTS"             : "N_VERTICES");
+   Array< Set<int> > C_in = p_in.give(is_PC ? Str("TRIANGULATION.FACETS") : Str("FACETS"));
+   int n_vert             = p_in.give(is_PC ? Str("N_POINTS")             : Str("N_VERTICES"));
   
    // compute new complex
    std::list< Set<int> > C;
@@ -67,7 +67,7 @@ perl::Object stellar_subdivision(perl::Object p_in, const Array<Set<int> >& subd
 
    perl::Object p_out(p_in.type());
    p_out.set_description()<<"Obtained from " << p_in.name() << " by barycentric subdivision of the faces\n" << subd_faces << ".\n";
-   p_out.take(is_PC ? "TRIANGULATION.FACETS" : "FACETS") << as_array(C_in);
+   p_out.take(is_PC ? Str("TRIANGULATION.FACETS") : Str("FACETS")) << as_array(C_in);
   
    // compute new coordinates
    if (is_PC) {
@@ -90,7 +90,7 @@ perl::Object stellar_subdivision(perl::Object p_in, const Array<Set<int> >& subd
    
    // compute new label
    if (!options["no_labels"]) {
-      Array<std::string> L = p_in.give(is_PC ? "LABELS" : "VERTEX_LABELS");
+      Array<std::string> L = p_in.give(is_PC ? Str("LABELS") : Str("VERTEX_LABELS"));
       hash_set<std::string> old_L(n_vert);
       for (Entire< Array<std::string> >::const_iterator l=entire(L); !l.at_end(); ++l)
          old_L.insert(*l);
@@ -98,7 +98,7 @@ perl::Object stellar_subdivision(perl::Object p_in, const Array<Set<int> >& subd
       L.resize(n_vert+subd_faces.size());
       for (int i=0; i<subd_faces.size(); ++i) {
          std::ostringstream label;
-         Entire< Set<int> >::const_iterator v=entire(subd_faces[i]);
+         auto v=entire(subd_faces[i]);
          label << "{" << L[*v];  ++v;
          for ( ; !v.at_end(); ++v)
             label << "," << L[*v];
@@ -116,7 +116,7 @@ perl::Object stellar_subdivision(perl::Object p_in, const Array<Set<int> >& subd
       
          L[n_vert+i] = ll;
       }
-      p_out.take(is_PC ? "LABELS" : "VERTEX_LABELS") << L;
+      p_out.take(is_PC ? Str("LABELS") : Str("VERTEX_LABELS")) << L;
    }
    return p_out;
 }
@@ -125,7 +125,7 @@ UserFunction4perl("# @category  Producing a new simplicial complex from others"
                   "# Computes the complex obtained by stellar subdivision of the given //faces// of the //complex//."
                   "# @param SimplicialComplex complex"
                   "# @param Array<Set<Int>> faces"
-                  "# @option Bool no_labels"
+                  "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @option Bool geometric_realization default 0"
                   "# @return SimplicialComplex",
                   &stellar_subdivision, "stellar_subdivision($,Array<Set<Int> > { no_labels => 0, geometric_realization => 0})"); 
@@ -134,7 +134,7 @@ InsertEmbeddedRule("# @category  Producing a new simplicial complex from others"
                    "# Computes the complex obtained by stellar subdivision of the given //face// of the //complex//."
                    "# @param SimplicialComplex complex"
                    "# @param Set<Int> face"
-                   "# @option Bool no_labels"
+                   "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                    "# @option Bool geometric_realization default 0"
                    "# @return SimplicialComplex\n"
                    "user_function stellar_subdivision(SimplicialComplex, Set<Int> { no_labels => 0, geometric_realization => 0}) { "

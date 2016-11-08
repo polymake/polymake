@@ -26,13 +26,13 @@ namespace polymake { namespace topaz {
 
 namespace {
 
-void convert_labels(const Array<std::string>& string_labels, Array<Set<Set<int> > >& labels_as_set)
+void convert_labels(const Array<std::string>& string_labels, Array<Set<Set<int>>>& labels_as_set)
 {
-   Entire<Array<Set<Set<int> > > >::iterator lsit = entire(labels_as_set);
-   for (Entire<Array<std::string> >::const_iterator lit = entire(string_labels); !lit.at_end(); ++lit) {
+   Entire<Array<Set<Set<int>>>>::iterator lsit = entire(labels_as_set);
+   for (Entire<Array<std::string>>::const_iterator lit = entire(string_labels); !lit.at_end(); ++lit) {
       std::istringstream is(*lit);
       is.ignore(1); // "{"
-      Set<Set<int> > labels;
+      Set<Set<int>> labels;
       while (is.good() && is.peek() != '}') {
          is.ignore(1); // '{'
          while (is.good() && is.peek() != '}') {
@@ -53,58 +53,58 @@ void convert_labels(const Array<std::string>& string_labels, Array<Set<Set<int> 
    }
 }
 
-bool on_boundary (const Set<Set<int> >& label, int d, const IncidenceMatrix<>& VIF)
+bool on_boundary (const Set<Set<int>>& label, int d, const IncidenceMatrix<>& VIF)
 {
    Set<int> face;
-   for (Entire<Set<Set<int> > >::const_iterator lit = entire(label); !lit.at_end(); ++lit)
+   for (Entire<Set<Set<int>>>::const_iterator lit = entire(label); !lit.at_end(); ++lit)
       face += *lit;
-   for (Entire<Rows<IncidenceMatrix<> > >::const_iterator rit = entire(rows(VIF)); !rit.at_end(); ++rit) 
+   for (Entire<Rows<IncidenceMatrix<>>>::const_iterator rit = entire(rows(VIF)); !rit.at_end(); ++rit) 
       if (!(face - *rit).size()) return true; // it's contained in the boundary
    return false;
 }
 
-void identify_labels(int d, const group::PermlibGroup& identification_group, const IncidenceMatrix<>& VIF, Array<Set<Set<int> > >& labels_as_set)
+void identify_labels(int d, const group::PermlibGroup& identification_group, const IncidenceMatrix<>& VIF, Array<Set<Set<int>>>& labels_as_set)
 {
-   for (Entire<Array<Set<Set<int> > > >::iterator lit = entire(labels_as_set); !lit.at_end(); ++lit)
+   for (Entire<Array<Set<Set<int>>>>::iterator lit = entire(labels_as_set); !lit.at_end(); ++lit)
       if (on_boundary(*lit, d, VIF)) 
-         *lit = identification_group.orbit(*lit).front();
+         *lit = *(identification_group.orbit(*lit).begin());
 }
 
 } // end anonymous namespace
 
 perl::Object bs2quotient(perl::Object p, perl::Object bs)
 {
-   const Array<Array<int> > generators = p.give("QUOTIENT_SPACE.IDENTIFICATION_GROUP.GENERATORS");
+   const Array<Array<int>> generators = p.give("QUOTIENT_SPACE.IDENTIFICATION_ACTION.GENERATORS");
    const group::PermlibGroup identification_group(generators);
    const IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
    const Array<std::string> labels = bs.give("VERTEX_LABELS");
    const int n = labels.size();
-   const Array<Set<int> > facets = bs.give("FACETS");
+   const Array<Set<int>> facets = bs.give("FACETS");
    if (!facets.size() || !facets[0].size()) throw std::runtime_error("Got no facets");
    const int d = facets[0].size() - 1;
    
-   Array<Set<Set<int> > > labels_as_set(n);
+   Array<Set<Set<int>>> labels_as_set(n);
    convert_labels(labels, labels_as_set);
    identify_labels(d, identification_group, VIF, labels_as_set);
 
    std::vector<std::string> identified_labels;
-   Map<Set<Set<int> >,int> index_of;
+   Map<Set<Set<int>>,int> index_of;
    int index(0);
    std::ostringstream os;
-   for (Entire<Array<Set<Set<int> > > >::const_iterator ait = entire(labels_as_set); !ait.at_end(); ++ait) {
-      if (!index_of.contains(*ait)) {
-         index_of[*ait] = index++;
-         wrap(os) << *ait;
+   for (const auto& lset : labels_as_set) {
+      if (!index_of.contains(lset)) {
+         index_of[lset] = index++;
+         wrap(os) << lset;
          identified_labels.push_back(os.str());
          os.str("");
       }
    }
 
-   Set<Set<int> > identified_facets;
-   for (Entire<Array<Set<int> > >::const_iterator fit = entire(facets); !fit.at_end(); ++fit) {
+   Set<Set<int>> identified_facets;
+   for (const auto& f : facets) {
       Set<int> new_facet;
-      for (Entire<Set<int> >::const_iterator sit = entire(*fit); !sit.at_end(); ++sit)
-         new_facet += index_of[labels_as_set[*sit]];
+      for (const auto& s : f)
+         new_facet += index_of[labels_as_set[s]];
       identified_facets += new_facet;
    }
 

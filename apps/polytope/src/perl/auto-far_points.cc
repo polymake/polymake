@@ -18,11 +18,11 @@
 
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/TropicalNumber.h"
-#include "polymake/PuiseuxFraction.h"
 #include "polymake/client.h"
 #include "polymake/linalg.h"
 
@@ -41,5 +41,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(far_points_X, perl::Canned< const SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >);
    FunctionInstance4perl(far_points_X, perl::Canned< const SparseMatrix< double, NonSymmetric > >);
    FunctionInstance4perl(far_points_X, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(far_points_X, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -25,6 +25,8 @@
 #define NORMALIZ_EXEPTION_H_
 
 #include <exception>
+#include <string>
+#include <sstream>
 #include <libnormaliz/libnormaliz.h>
 #include <libnormaliz/cone_property.h>
 
@@ -37,9 +39,23 @@ class NormalizException: public std::exception {
 
 class ArithmeticException: public NormalizException {
     public:
+    ArithmeticException() : msg("Arithmetic Overflow detected, try a bigger integer type!") {}
+    ~ArithmeticException() throw() {}
+
+    template<typename Integer>
+    ArithmeticException(const Integer& convert_number){
+        std::stringstream stream;
+        stream << "Could not convert " << convert_number << ".\n";
+        stream << "Arithmetic Overflow detected, try a bigger integer type!";
+        msg = stream.str();
+    }
+
 	virtual const char* what() const throw() {
-		return "Arithmetic Overflow detected, try a bigger integer type!";
+		return msg.c_str();
 	}
+
+    private:
+    std::string msg;
 };
 
 class NonpointedException: public NormalizException {
@@ -58,27 +74,50 @@ class NotIntegrallyClosedException: public NormalizException {
 
 class BadInputException: public NormalizException {
     public:
+    BadInputException(const std::string& message) :
+            msg("Some error in the normaliz input data detected: " + message)
+    {}
+    ~BadInputException() throw() {}
+
 	virtual const char* what() const throw() {
-		return "Some error in the normaliz input data detected!";
+		return msg.c_str();
 	}
+
+    private:
+    std::string msg;
 };
 
-
-//class ConeProperties; // forward decl
 class NotComputableException: public NormalizException {
     public:
-    NotComputableException(){};
-    NotComputableException(const ConeProperties& props){};
-	virtual const char* what() const throw() {
-		return "Could not compute: ...";
+    NotComputableException(const std::string& message) : msg("Could not compute: " + message) {}
+    NotComputableException(const ConeProperties& missing) {
+        std::stringstream stream;
+        stream << "Could not compute: " << missing << "!";
+        msg = stream.str();
+    }
+    ~NotComputableException() throw() {}
+
+    virtual const char* what() const throw() {
+		return msg.c_str();
 	}
+
+    private:
+    std::string msg;
 };
 
 class FatalException: public NormalizException {
     public:
+    FatalException(const std::string& message) :
+            msg("Fatal error: " + message +"\nThis should not happen, please contact the developers!")
+    {}
+    ~FatalException() throw() {}
+
 	virtual const char* what() const throw() {
-		return "Fatal error! This should not happen, please contact the developers.";
+		return msg.c_str();
 	}
+
+    private:
+    std::string msg;
 };
 
 

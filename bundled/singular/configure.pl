@@ -46,10 +46,17 @@ sub proceed {
    chomp $singular_prefix;
    # yes we need it twice ...
 
-   $Libs = join(" ",$LDflags =~ m/(-l\w+)/g) . " -lfactory -lresources -lpolys -lomalloc";
+   # some of these additional libraries might be unnecessary
+   # but we keep them for backwards compatibility for now
+   $Libs = join(" ",$LDflags =~ m/[\s^](-l\w+)/g) . " -lfactory -lsingular_resources -lpolys -lomalloc";
    $LDflags =~ s/ -l\w+//g;
    $LDflags =~ s/-L(\S+)/-L$1 -Wl,-rpath,$1/g;
    my $libdir = $1;
+
+   # newer versions of singular need -lsingular_resources while older ones needed -lresources
+   if (!-e "$libdir/libsingular_resources.${lib_ext}" and -e "$libdir/libresources.${lib_ext}") {
+      $Libs =~ s/-lsingular_resources/-lresources/;
+   }
 
    my $error=Polymake::Configure::build_test_program(<<"---", CXXflags => $CXXflags, LDflags => $LDflags, Libs => $Libs);
 #include "Singular/libsingular.h"

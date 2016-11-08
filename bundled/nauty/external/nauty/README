@@ -1,4 +1,4 @@
-README file for nauty 2.5 
+README file for nauty 2.6 
 
 Brendan McKay, bdm@cs.anu.edu.au
 Adolfo Piperno, piperno@di.uniroma1.it
@@ -8,15 +8,11 @@ Adolfo Piperno, piperno@di.uniroma1.it
 The most recent distribution of nauty and Traces can be found at
 http://cs.anu.edu.au/~bdm/nauty and http://pallini.di.uniroma1.it .
 
-The manual nug25.pdf is available at that site and is also included
+The manual nug26.pdf is available at that site and is also included
 in the distribution package.
 
 Note that nauty and Traces are copyright but free to use for most
-purposes. The details are in the file nauty.h.
-
-The code in the file traces.c is copyright to Adolfo Piperno.
-The code in the file planarity.c (used by the planarg program)
-is copyright to the Magma project. 
+purposes. The details are in the file COPYRIGHT.
 
 ------------------------------------------------------------
 
@@ -32,6 +28,9 @@ to compile nauty and Traces for your system.
 
 If that succeeds without problem, you will have have the
 program dreadnaut ready to run.
+
+There are some options that can be specified at the ./configure
+step; see the manual.
 
 If you don't have a shell or make, manually edit the files nauty.h,
 naututil.h and gtools.h as distributed.  The parts between the lines
@@ -54,7 +53,6 @@ TESTING.
 After compiling nauty successfully, it is recommended that you run
 the included test programs.  The simplest way is
     make checks
-    ./runalltests
 
 ------------------------------------------------------------
 
@@ -85,6 +83,11 @@ bliss2dre.c - A program which reads one file in Bliss format and writes
 blisstog.c - A program which reads one or more files in Bliss format
   and writes all the graphs in sparse6 format.
 
+poptest.c - A program for testing the POPCOUNT macro.
+
+dretodot.c - A program that reads files in dreadaut format and writes
+  dot files suitable for drawing with graphviz.
+
 ------------------------------------------------------------
 
 Windows.
@@ -95,11 +98,6 @@ If configure gives an error message similar to this:
    can not guess host type: you must specify one
 then try
    ./configure --build=unknown
-
-If shortg gives an error something like "Input file
-given twice" it means that the Windows sort program is
-being found rather than the Cygwin sort program.  Usually
-this is a configuration error in Cygwin.
 
 ------------------------------------------------------------
 
@@ -116,8 +114,5 @@ they are called ia32-libs and libc6-dev-i386.
 
 RECENT CHANGES.
 
-The big change in version 2.5 is the incorporation of Traces.
-
-See the file changes24-25.txt for a longer list.
-
+See the file changes24-26.txt for a longer list.
 See the file README_24 for a list of older changes.

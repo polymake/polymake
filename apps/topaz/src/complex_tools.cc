@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -65,7 +65,7 @@ void remove_vertex_star(HasseDiagram& HD, const int v)
 
 void remove_facet_node(HasseDiagram& HD, const int start_node)
 {
-   graph::BFSiterator< Graph<Directed>, graph::Reversed<pm::True> > n_it(HD.graph(), start_node);
+   graph::BFSiterator<Graph<Directed>, graph::TraversalDirectionTag<int_constant<-1>>> n_it(HD.graph(), start_node);
    const int bottom_node=HD.bottom_node();
    HD.graph().out_edges(start_node).clear();
    Set<int> to_delete;

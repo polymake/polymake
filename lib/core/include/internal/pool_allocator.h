@@ -32,22 +32,6 @@ template <typename T> class allocator;
 
 #include <memory>
 
-namespace std {
-
-template <typename T>
-inline void _Destroy(T* p) {
-   p->~T();
-}
-
-template<typename _ForwardIterator>
-inline void _Destroy(_ForwardIterator __first, _ForwardIterator __last)
-{
-  for (; __first != __last; ++__first)
-    std::_Destroy(&*__first);
-}
-
-}
-
 #endif
 
 namespace pm {

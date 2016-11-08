@@ -24,7 +24,7 @@ namespace polymake { namespace topaz {
   
 perl::Object t_union(perl::Object p1, perl::Object p2,perl::OptionSet options)
 {
-   const bool relabel=options["labels"];
+   const bool relabel=!options["no_labels"];
    const Array< Set<int> > C1 = p1.give("FACETS");
    Array<std::string> Labels = p1.give("VERTEX_LABELS");
    
@@ -63,11 +63,11 @@ perl::Object t_union(perl::Object p1, perl::Object p2,perl::OptionSet options)
 UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# Produce the union of the two given complexes, identifying\n"
                   "# vertices with equal labels.\n"
-                  "# @option Bool labels creates [[VERTEX_LABELS]].\n"
+                  "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @param SimplicialComplex complex1"
                   "# @param SimplicialComplex complex2"
                   "# @return SimplicialComplex",
-                  &t_union, "union(SimplicialComplex SimplicialComplex { labels => 1 })");
+                  &t_union, "union(SimplicialComplex SimplicialComplex { no_labels => 0 })");
 } }
 
 // Local Variables:

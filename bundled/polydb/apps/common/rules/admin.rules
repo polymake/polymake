@@ -1,0 +1,48 @@
+# Copyright (c) 2013-2016 Silke Horn, Andreas Paffenholz
+# http://solros.de/polymake/poly_db
+# http://www.mathematik.tu-darmstadt.de/~paffenholz
+# 
+# This file is part of the polymake extension polyDB.
+# 
+# polyDB is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# polyDB is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with polyDB.  If not, see <http://www.gnu.org/licenses/>.
+
+declare $test_col_re = qr{test-.*?-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}}xo;
+
+
+# @category Database Admin
+# This function cleans up everything (failed) testcases may have left in the Test database.
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @option String db database name
+# @option String username database username
+# @option String password database password
+function db_clean_up_test ({local=>0, db=>"Test", username=>$db_user, password=>$db_pwd}){
+	my $options = shift;
+
+	my $client = get_client($options);
+	my $db = $client->get_database($options->{db});
+	
+	my @cols = $db->collection_names;
+	my $i = 0;
+	
+	# drop collections that were created by testcases
+	foreach (@cols) {
+		if ($_ =~ $test_col_re) {
+			$db->get_collection($_)->drop();
+		}
+	}
+	
+	# remove type information created by testcases
+	my $col = $db->get_collection("type_information");
+	$col->remove({"col" => $test_col_re});
+}

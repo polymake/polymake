@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -77,19 +77,13 @@ rule FULL_DIM : CONE_AMBIENT_DIM, CONE_DIM {
 }
 weight 0.1;
 
-rule CONE_AMBIENT_DIM : {
-  $this->CONE_AMBIENT_DIM=$this->lookup_ambient_dim(undef) // 0;
-}
-precondition : defined(RAYS | INPUT_RAYS | LINEALITY_SPACE | INPUT_LINEALITY | INEQUALITIES | FACETS | EQUATIONS | LINEAR_SPAN);
-weight 0.1;
-
 rule CONE_DIM : CONE_AMBIENT_DIM, LINEAR_SPAN {
    $this->CONE_DIM= $this->CONE_AMBIENT_DIM - $this->LINEAR_SPAN->rows;
 }
 weight 0.1;
 
-rule LINEAR_SPAN : {
-   $this->LINEAR_SPAN=new Matrix<Scalar>;
+rule LINEAR_SPAN : CONE_AMBIENT_DIM {
+   $this->LINEAR_SPAN=new Matrix<Scalar>(0, $this->CONE_AMBIENT_DIM);
 }
 precondition : FULL_DIM;
 weight 0.1;
@@ -175,28 +169,23 @@ rule cone_only : LINEALITY_SPACE : FACETS | INEQUALITIES {
       $F=$this->FACETS | INEQUALITIES;
    }
    my $cmp=$this->prepare_computations;
-   if ($F->rows()) {
-       $this->LINEALITY_SPACE=common::null_space($F);
-   } else {
-       $this->LINEALITY_SPACE=unit_matrix<Scalar>($this->CONE_AMBIENT_DIM);
-   }
+   $this->LINEALITY_SPACE=common::null_space($F);
 }
-precondition : CONE_AMBIENT_DIM {
-   $this->CONE_AMBIENT_DIM>=0;
-}
+precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM >= 1 }
 weight 1.10;
 
-rule LINEALITY_DIM, LINEALITY_SPACE : {
+rule LINEALITY_DIM, LINEALITY_SPACE : CONE_AMBIENT_DIM {
    $this->LINEALITY_DIM=0;
-   $this->LINEALITY_SPACE=new Matrix<Scalar>;
+   $this->LINEALITY_SPACE=new Matrix<Scalar>(0, $this->CONE_AMBIENT_DIM);
 }
 precondition : POINTED;
-weight 0.1;
+weight 0.10;
 
-rule ONE_RAY : RAYS, N_RAYS {
-  $this->ONE_RAY= $this->N_RAYS ? $this->RAYS->[0] : undef;
+rule ONE_RAY : RAYS {
+  $this->ONE_RAY=$this->RAYS->[0];
 }
-weight 0.1;
+precondition : N_RAYS;
+weight 0.10;
 
 rule cone_only : REL_INT_POINT : RAYS {
    $this->REL_INT_POINT=barycenter($this->RAYS);
@@ -496,14 +485,14 @@ rule RAYS_IN_FACETS, RAYS, LINEALITY_SPACE : INPUT_RAYS_IN_FACETS, INPUT_RAYS {
    compress_incidence_primal($this);
    $this->remove("INPUT_RAYS_IN_FACETS");
 }
-permutation : VertexPerm;
+incurs VertexPerm;
 
 rule RAYS_IN_FACETS, FACETS, LINEAR_SPAN : RAYS_IN_INEQUALITIES, INEQUALITIES {
    my $cmp=$this->prepare_computations;
    compress_incidence_dual($this);
    $this->remove("RAYS_IN_INEQUALITIES");
 }
-permutation : FacetPerm;
+incurs FacetPerm;
 
 rule FACETS, LINEAR_SPAN : RAYS, LINEALITY_SPACE, RAYS_IN_FACETS {
    my $cmp=$this->prepare_computations;
@@ -546,6 +535,48 @@ rule FTR_CYCLIC_NORMAL, NEIGHBOR_RAYS_CYCLIC_NORMAL : CONE_DIM, FACETS, RAYS_IN_
 }
 precondition : POINTED;
 precondition : CONE_DIM { $this->CONE_DIM>=3 && $this->CONE_DIM<=4 }
+
+# @category Combinatorics
+# The interior //d//-dimensional simplices of a cone of combinatorial dimension //d//
+# symmetries of the cone are NOT taken into account
+rule MAX_INTERIOR_SIMPLICES : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS {
+    $this->MAX_INTERIOR_SIMPLICES = max_interior_simplices($this);
+}
+
+# @category Combinatorics
+# The interior //d-1//-dimensional simplices of a cone of combinatorial dimension //d//
+# symmetries of the cone are NOT taken into account
+rule INTERIOR_RIDGE_SIMPLICES, MAX_BOUNDARY_SIMPLICES : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS {
+    my $pair=interior_and_boundary_ridges($this);
+    $this->INTERIOR_RIDGE_SIMPLICES = $pair->first;
+    $this->MAX_BOUNDARY_SIMPLICES = $pair->second;
+}
+
+# @category Combinatorics
+# A matrix whose rows contain the cocircuit equations of a cone C
+# symmetries of the cone are NOT taken into account
+rule COCIRCUIT_EQUATIONS : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, INTERIOR_RIDGE_SIMPLICES, MAX_INTERIOR_SIMPLICES {
+    $this->COCIRCUIT_EQUATIONS = cocircuit_equations($this->COMBINATORIAL_DIM, $this->RAYS, $this->RAYS_IN_FACETS, $this->INTERIOR_RIDGE_SIMPLICES, $this->MAX_INTERIOR_SIMPLICES);
+}
+
+# @category Combinatorics
+# A matrix whose rows contain the cocircuit equations of a cone C
+# symmetries of the cone are NOT taken into account
+rule FOLDABLE_COCIRCUIT_EQUATIONS : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, INTERIOR_RIDGE_SIMPLICES, MAX_INTERIOR_SIMPLICES {
+    $this->FOLDABLE_COCIRCUIT_EQUATIONS = foldable_cocircuit_equations($this->COMBINATORIAL_DIM, $this->RAYS, $this->RAYS_IN_FACETS, $this->INTERIOR_RIDGE_SIMPLICES, $this->MAX_INTERIOR_SIMPLICES);
+}
+
+# @category Combinatorics
+# The vertex degrees add up to twice the number of edges.
+rule EXCESS_RAY_DEGREE : N_RAYS, GRAPH.N_EDGES, CONE_DIM {
+  $this->EXCESS_RAY_DEGREE = 2 * $this->GRAPH->N_EDGES - $this->N_VERTICES * ($this->CONE_DIM-1);
+}
+
+# @category Combinatorics
+# The vertex degrees add up to twice the number of edges.
+rule EXCESS_FACET_DEGREE : N_FACETS, DUAL_GRAPH.N_EDGES, CONE_DIM {
+  $this->EXCESS_FACET_DEGREE = 2 * $this->DUAL_GRAPH->N_EDGES - $this->N_FACETS * ($this->CONE_DIM-1);
+}
 
 # @category Geometry
 # returns the dimension of the ambient space of the cone
@@ -599,16 +630,59 @@ user_method face {
    return new Pair<Set,Set>($vertices_in_facets_found,$facets_containing_given_vertices);
 }
 
+# @category Geometry
+# checks whether a given point is contained in a cone 
+# @param Vector<Scalar> v point
+# @return Bool
+user_method contains {
+  my ($self,$v)=@_;
+  my $zero=0;
+  if (defined (my $f=$self->lookup("FACETS | INEQUALITIES"))) {
+    if (defined (my $ah=$self->lookup("LINEAR_SPAN | INPUT_LINEALITY")) ) {
+      if ( $ah->rows ) {
+        my $b=$ah*$v;
+        foreach (@{$b}) { if ( $_ != $zero ) { return; } }
+      }
+    }
+    my $b=$f*$v;
+    foreach (@{$b}) { if ( $_ < $zero ) { return; } }
+    return 1;
+  } else {
+    return cone_contains_point($self,$v,in_interior=>0);
+  }
+}
+
+# @category Geometry
+# checks whether a given point is contained in the strict interior of a cone
+# @param Vector<Scalar> v point
+# @return Bool
+user_method contains_in_interior {
+  my ($self,$v)=@_;
+  if (defined (my $f=$self->lookup("FACETS | INEQUALITIES"))) {
+    if (defined (my $ah=$self->lookup("LINEAR_SPAN | INPUT_LINEALITY")) ) {
+      if ( $ah->rows ) {
+        my $b=$ah*$v;
+        foreach (@{$b}) { if ( $_ != 0 ) { return; } }
+      }
+    }
+    my $b=$f*$v;
+    foreach (@{$b}) { if ( $_ <= 0 ) { return; } }
+    return 1;
+  }else {
+    return cone_contains_point($self,$v,in_interior=>1);
+  }
+}
+
 }
 
 # @category Triangulations, subdivisions and volume
 # Create a simplicial complex as a barycentric subdivision of a given cone or polytope.
 # Each vertex in the new complex corresponds to a face in the old complex.
 # @param Cone c input cone or polytope
-# @option Bool relabel generate vertex labels from the faces of the original complex; default true
+# @option Bool no_labels Do not generate [[VERTEX_LABELS]] from the faces of the original cone. default: 0
 # @option Bool geometric_realization create a [[topaz::GeometricSimplicialComplex]]; default is true
 # @return topaz::SimplicialComplex
-user_function barycentric_subdivision<Scalar>(Cone<Scalar> { relabel=>1, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", geometric_realization=>1, coord_section=>"RAYS" }) {
+user_function barycentric_subdivision<Scalar>(Cone<Scalar> { no_labels=>0, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", geometric_realization=>1, coord_section=>"RAYS" }) {
   topaz::barycentric_subdivision_impl<Scalar>(@_);
 }
 
@@ -617,10 +691,10 @@ user_function barycentric_subdivision<Scalar>(Cone<Scalar> { relabel=>1, pin_has
 # Create a simplicial complex as an iterated barycentric subdivision of a given cone or polytope.
 # @param Cone c input cone or polytope
 # @param Int n how many times to subdivide
-# @option Bool relabel write labels of new points; default is false
+# @option Bool no_labels Do not generate [[VERTEX_LABELS]] from the faces of the original cone. default: 0
 # @option Bool geometric_realization create a [[topaz::GeometricSimplicialComplex]]; default is false
 # @return topaz::SimplicialComplex
-user_function iterated_barycentric_subdivision<Scalar>(Cone<Scalar> $ { relabel=>1, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", pout_section=>"TRIANGULATION.FACETS", geometric_realization=>0, coord_section=>"RAYS" }) {
+user_function iterated_barycentric_subdivision<Scalar>(Cone<Scalar> $ { no_labels=>0, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", pout_section=>"TRIANGULATION.FACETS", geometric_realization=>0, coord_section=>"RAYS" }) {
     topaz::iterated_barycentric_subdivision_impl<Scalar>(@_);
 }
 
@@ -652,6 +726,23 @@ user_function lawrence<Scalar>(Cone<Scalar>) {
     my $p = shift;
     return new Polytope<Scalar>(VERTICES=>lawrence_matrix($p->VERTICES));
 }
+
+
+# @category Triangulations, subdivisions and volume
+# Find the maximal interior simplices of a polytope P.
+# Symmetries of P are NOT taken into account.
+# @param Polytope P the input polytope
+# @return Array<Set>
+# @example > print max_interior_simplices(cube(2));
+# | {0 1 2}
+# | {0 1 3}
+# | {0 2 3}
+# | {1 2 3}
+user_function max_interior_simplices<Scalar>(Cone<Scalar>) {
+    max_interior_simplices_impl<Scalar>(@_);
+}
+
+
 
 # Local Variables:
 # c-basic-offset:2

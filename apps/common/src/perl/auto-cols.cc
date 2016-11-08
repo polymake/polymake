@@ -16,6 +16,7 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/Graph.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
@@ -55,5 +56,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(cols_f1, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
    FunctionInstance4perl(cols_f1, perl::Canned< const pm::RowChain<pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&> >);
    FunctionInstance4perl(cols_f1, perl::Canned< const pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true> >);
+   FunctionInstance4perl(cols_f1, perl::Canned< const pm::AdjacencyMatrix<pm::graph::Graph<pm::graph::Undirected>, false> >);
+   FunctionInstance4perl(cols_f1, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&, pm::all_selector const&, pm::Complement<pm::SingleElementSetCmp<int, pm::operations::cmp>, int, pm::operations::cmp> const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

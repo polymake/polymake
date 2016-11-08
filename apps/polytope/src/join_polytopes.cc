@@ -57,7 +57,7 @@ perl::Object join_polytopes(perl::Object p1, perl::Object p2, perl::OptionSet op
    }
 
    
-   if(!noc){
+   if (!noc) {
       const Matrix<Scalar> 
       v1=p1.give("VERTICES"),
       v2=p2.give("VERTICES");
@@ -70,7 +70,6 @@ perl::Object join_polytopes(perl::Object p1, perl::Object p2, perl::OptionSet op
          (v1 | same_element_vector(Scalar(-1),n1) | zero_matrix<Scalar>(n1,v2.cols()-1)) /
          (ones_vector<Scalar>(n2) | zero_matrix<Scalar>(n2,v1.cols()-1) | v2);
       p_out.take("VERTICES") << V_out;
-      p_out.take("LINEALITY_SPACE") << Matrix<Scalar>();
    }
 
    p_out.take("N_VERTICES") << n_vertices_out;
@@ -105,17 +104,15 @@ perl::Object free_sum(perl::Object p1, perl::Object p2, perl::OptionSet options)
       n_vertices_out= n1 + n2;
       
       const int n_facets1=VIF1.rows(),
-         n_facets2=VIF2.rows(),
-         n_facets_out=n_facets1 * n_facets2;
+                n_facets2=VIF2.rows(),
+             n_facets_out=n_facets1 * n_facets2;
 
-      IncidenceMatrix<> VIF_out(n_facets_out, n_vertices_out);
-
-      copy(entire(product(rows(VIF1), rows(VIF2), operations::concat())), rows(VIF_out).begin());
+      IncidenceMatrix<> VIF_out(n_facets_out, n_vertices_out, product(rows(VIF1), rows(VIF2), operations::concat()).begin());
 
       p_out.take("VERTICES_IN_FACETS") << VIF_out;
    }
 
-   if(!noc){
+   if (!noc) {
       const Matrix<Scalar> 
          v1=p1.give("VERTICES"),
          v2=p2.give("VERTICES");
@@ -128,10 +125,9 @@ perl::Object free_sum(perl::Object p1, perl::Object p2, perl::OptionSet options)
          (v1 | zero_matrix<Scalar>(v1.rows(), v2.cols()-1)) /
          (ones_vector<Scalar>(v2.rows()) | zero_matrix<Scalar>(v2.rows(), v1.cols()-1) | v2.minor(All, ~scalar2set(0)));
       p_out.take("VERTICES") << V_out;
-      p_out.take("LINEALITY_SPACE") << Matrix<Scalar>();
    }
    
-p_out.take("N_VERTICES") << n_vertices_out;
+   p_out.take("N_VERTICES") << n_vertices_out;
    return p_out;
 }
 

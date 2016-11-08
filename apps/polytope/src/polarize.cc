@@ -34,7 +34,7 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
 
    perl::ObjectType t = p_in.type();
    perl::Object p_out(t);
-   if ( isCone ) 
+   if ( isCone )
       p_out.set_description() << "Cone dualized from " << p_in.name() << endl;
    else
       p_out.set_description() << "Polytope polarized from " << p_in.name() << endl;
@@ -47,7 +47,7 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
 
    if (!no_coordinates) {
       const int ambient_dim = p_in.give("CONE_AMBIENT_DIM");
-      
+
       if ( !isCone ) {
          const bool is_centered = p_in.give("WEAKLY_CENTERED");
          if (!is_centered)
@@ -65,8 +65,8 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
 
       if (p_in.lookup_with_property_name("RAYS | INPUT_RAYS", rays_property) >> ineq) {
          p_out.take( rays_property == "RAYS" || rays_property == "VERTICES"
-                     ? "FACETS"
-                     : "INEQUALITIES" ) << ineq;
+                     ? Str("FACETS")
+                     : Str("INEQUALITIES") ) << ineq;
          rays_property_read = true;
       }
 
@@ -88,20 +88,18 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
       // the following properties may exist, and if so, are essential to describe the polyhedron
       // but they are not valid without one of the previous properties
       if (p_in.lookup_with_property_name("LINEALITY_SPACE | INPUT_LINEALITY", eq_property) >> eq)
-         p_out.take( eq_property=="LINEALITY_SPACE" ? "LINEAR_SPAN" : "EQUATIONS") << eq;
+         p_out.take( eq_property=="LINEALITY_SPACE" ? Str("LINEAR_SPAN") : Str("EQUATIONS")) << eq;
 
 
       // now we write out the lineality
       if (p_in.lookup_with_property_name("LINEAR_SPAN | EQUATIONS", eq_property) >> lin)
-         p_out.take( eq_property=="LINEAR_SPAN" || eq_property=="AFFINE_HULL" ? "LINEALITY_SPACE" : "INPUT_LINEALITY") << lin;
+         p_out.take( eq_property=="LINEAR_SPAN" || eq_property=="AFFINE_HULL" ? Str("LINEALITY_SPACE") : Str("INPUT_LINEALITY")) << lin;
 
       // ... and the facet property
       if (facets_property_read) {
          orthogonalize(entire(rows(lin)));
          project_to_orthogonal_complement(pts, lin); // cheap if lin==0
-         p_out.take( facets_property == "FACETS"
-                     ? "RAYS"
-                     : "INPUT_RAYS" ) << pts;
+         p_out.take( facets_property == "FACETS" ? Str("RAYS") : Str("INPUT_RAYS") ) << pts;
       }
 
       // if p was obtained by some transformation,
@@ -109,15 +107,15 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
       Matrix<Scalar> tau;
       if (p_in.get_attachment("REVERSE_TRANSFORMATION") >> tau)
          p_out.attach("REVERSE_TRANSFORMATION") << T(inv(tau));
-        
+
       p_out.take("CONE_AMBIENT_DIM") << ambient_dim;
 
       int ldim, cdim;
-      if (p_in.lookup("LINEALITY_DIM") >> ldim ) 
-         p_out.take("CONE_DIM") << ambient_dim-ldim;      
+      if (p_in.lookup("LINEALITY_DIM") >> ldim)
+         p_out.take("CONE_DIM") << ambient_dim-ldim;
 
-      if (p_in.lookup("CONE_DIM") >> cdim ) 
-         p_out.take("LINEALITY_DIM") << ambient_dim-cdim;      
+      if (p_in.lookup("CONE_DIM") >> cdim)
+         p_out.take("LINEALITY_DIM") << ambient_dim-cdim;
    }
 
    Array<std::string> labels;

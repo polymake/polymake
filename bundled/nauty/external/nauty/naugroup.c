@@ -455,3 +455,74 @@ allgroup2(grouprec *grp, void (*action)(int*,int,int*))
 
     return abort;
 }
+
+/**************************************************************************/
+
+static void
+groupelts3(levelrec *lr, int n, int level,
+    void (*action)(int*,int,int*,void*), int *before,
+    int *after, int *id, int *abort, void *userptr)
+/* Recursive routine used by allgroup3. */
+{
+    int i,j,orbsize;
+    int *p,*cr;
+    cosetrec *coset;
+    
+    coset = lr[level].replist;
+    orbsize = lr[level].orbitsize;
+
+    for (j = 0; j < orbsize; ++j)
+    {
+	cr = (coset[j].rep == NULL ? NULL : coset[j].rep->p);
+	if (before == NULL)
+	    p = cr;
+	else if (cr == NULL)
+	    p = before;
+	else
+	{
+	    p = after;
+	    for (i = 0; i < n; ++i) p[i] = cr[before[i]];
+	}
+
+	if (level == 0) 
+	    (*action)((p == NULL ? id : p),n,abort,userptr);
+	else
+	    groupelts3(lr,n,level-1,action,p,after+n,id,abort,userptr);
+	if (*abort) return;
+    }
+}
+
+/**************************************************************************/
+
+int
+allgroup3(grouprec *grp, void (*action)(int*,int,int*,void*), void *userptr)
+/* Call action(p,n,&abort,userptr) for every element of the group,
+   including the identity.  The identity is always the first call.
+   If action() stores a non-zero value in abort, group generation is
+   aborted and the abort value is returned by this procedure.  If no
+   non-zero value is ever returned in abort by action(), this
+   procedure returns 0. The pointer userptr is not interpretted and
+   is passed to action() to use as it likes. */
+{
+    int i,depth,n,abort;
+
+    depth = grp->depth;
+    n = grp->n;
+
+    DYNALLOC1(int,id,id_sz,n,"malloc");
+    for (i = 0; i < n; ++i) id[i] = i;
+
+    abort = 0;
+    if (depth == 0)
+    {
+	(*action)(id,n,&abort,userptr);
+	return abort;
+    }
+
+    DYNALLOC1(int,allp,allp_sz,n*depth,"malloc");
+
+    groupelts3(grp->levelinfo,n,depth-1,action,NULL,allp,id,&abort,userptr);
+
+    return abort;
+}
+

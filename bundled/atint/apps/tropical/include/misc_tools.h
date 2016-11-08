@@ -41,7 +41,11 @@ namespace polymake { namespace tropical {
 	  @param Matrix<Rational> m The matrix whose rows we consider
 	  @return std::pair<Set<int>, Set<int> > The first set contains the row indices of rows that start with a zero entry, the second set is the complement
 	  */
-	std::pair<Set<int>, Set<int> > far_and_nonfar_vertices(const Matrix<Rational> &m);
+   template <typename MType> inline
+      std::pair<Set<int>, Set<int> > far_and_nonfar_vertices(const GenericMatrix<MType> &m) {
+         const auto& first_col_supp = support(m.col(0));
+         return std::pair<Set<int>, Set<int> >( sequence(0, m.rows()) - first_col_supp, first_col_supp);
+      }
 
 	/*
 	 * @brief Takes a polyhedral complex and returns [[CONES]] summarized into one single incidence matrix.
@@ -53,9 +57,15 @@ namespace polymake { namespace tropical {
 	/*
 	 * @brief Converts an incidence matrix to a Vector<Set<int> >
 	 */
-	Vector<Set<int> > incMatrixToVector(const IncidenceMatrix<> &i);
+	template <typename MType> inline
+      Vector<Set<int> > incMatrixToVector(const GenericIncidenceMatrix<MType> &i) {
+         return Vector<Set<int> >(i.rows(), entire(rows(i)));
+      }
 
-	Array<Integer> randomInteger(const int& max_arg, const int &n);
+   inline Array<Integer> randomInteger(const int& max_arg, const int &n) {
+      static UniformlyRandomRanged<Integer> rg(max_arg);
+      return Array<Integer>(n, rg.begin());
+   }
 
 	/**
 	  @brief Computes all vectors of dimension n with entries +1 and -1. 
@@ -70,7 +80,13 @@ namespace polymake { namespace tropical {
 	  @brief Assumes v is a vector with entries +1 and -1 only. 
 	  Returns sum_{i: v_i = 1} 2^i (where i runs from 0 to n-1
 	  */
-	int binaryIndex(Vector<Rational> v);
+	template <typename VType> inline
+      int binaryIndex(const GenericVector<VType> &v) {
+         int result = 0;
+         for(const auto &i : indices(attach_selector( v.top(), operations::positive())))
+               result += pow(2,i);
+         return result;
+      }
 
 	/**
    	@brief Helper function for the refinement function. 
@@ -86,17 +102,17 @@ namespace polymake { namespace tropical {
    */
 	template <typename ch_solver>
 		bool is_ray_in_cone(const Matrix<Rational> &rays, const Matrix<Rational> &lineality, 
-				Vector<Rational> ray, bool is_projective, ch_solver& sv) {
+				const Vector<Rational> &ray, bool is_projective, ch_solver& sv) {
 			std::pair<Matrix<Rational>, Matrix<Rational> > facets = 
 				is_projective ? enumerate_homogeneous_facets(rays, lineality, sv) :
 				sv.enumerate_facets(rays,lineality, false,false);
 			//Check equations
-			for(int l = 0; l < facets.second.rows(); l++) {
-				if(facets.second.row(l) * ray != 0) return false;
+			for(auto l = entire(rows(facets.second)); !l.at_end(); ++l) {
+				if(*l * ray != 0) return false;
 			}
 			//Check facets
-			for(int f = 0; f < facets.first.rows(); f++) {
-				if(facets.first.row(f) * ray < 0) return false;
+			for(auto f = entire(rows(facets.first)); !f.at_end(); ++f) {
+				if(*f * ray < 0) return false;
 			}
 			return true;
 		}//END is_ray_in_cone

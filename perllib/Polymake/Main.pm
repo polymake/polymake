@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,7 +13,7 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-use v5.10;
+use v5.16;
 
 package Polymake::Main;
 
@@ -23,10 +23,6 @@ sub import {
 
    # these redefinitions must happen before the whole slew of polymake perl code is loaded!
    if ($must_reset_SIGCHLD) {
-      if ($^V lt v5.16) {
-         # perl 5.16 protects its system() operation against foreign handlers
-         *CORE::GLOBAL::system=sub { local $SIG{CHLD}='DEFAULT'; CORE::system(@_) };
-      }
       *CORE::GLOBAL::readpipe=sub { local $SIG{CHLD}='DEFAULT'; CORE::readpipe(@_) };
    }
 

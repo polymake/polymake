@@ -52,7 +52,7 @@ perl::Object symmetrized_foldable_max_signature_ilp(int d,
    const group::PermlibGroup sym_group(generators);
    const int group_order(sym_group.order());
    cerr << "group_order: " << group_order << endl;
-   SparseMatrix<Integer> selection_matrix(n,n2+1);
+   SparseMatrix<Integer> selection_matrix(n, n2+1);
 
    Vector<Integer> volume_vect(n2+1);
    Vector<Integer>::iterator vit = volume_vect.begin();
@@ -60,7 +60,7 @@ perl::Object symmetrized_foldable_max_signature_ilp(int d,
    ++vit;
 
    int i=0;
-   for (Entire<Array<SetType > >::const_iterator fit = entire(facets); !fit.at_end(); ++fit, ++vit, ++i) {
+   for (auto fit = entire(facets); !fit.at_end(); ++fit, ++vit, ++i) {
       // points required to have integer coordinates!
       const Rational rational_facet_vol = abs(det(points.minor(*fit, All)));
       assert (denominator(rational_facet_vol) == 1);

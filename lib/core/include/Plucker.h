@@ -84,10 +84,10 @@ public:
       : _d(d)
       , _k(k)
       , _coos(CooType()) {
-      if (v.size() != Integer::binom(d,k).to_int())
+      if (v.size() != Integer::binom(d, k))
          throw std::runtime_error("The number of coordinates is not the expected one, binom(d,k)");
       typename Entire<Vector<E> >::const_iterator vit = entire(v);
-      for (Entire<Subsets_of_k<const sequence&> >::const_iterator fit = entire(all_subsets_of_k(sequence(0,_d), _k)); !fit.at_end(); ++fit, ++vit) 
+      for (auto fit = entire(all_subsets_of_k(sequence(0,_d), _k)); !fit.at_end(); ++fit, ++vit) 
          _coos[*fit] = *vit;
    }
 
@@ -100,15 +100,17 @@ public:
    const int k() const { return _k; }
    const T& operator[] (const Set<int> &s) const { return _coos[s]; }
 
-   const Vector<T> coordinates() const {
-      Vector<T> v(Integer::binom(_d,_k).to_int());
-      typename Entire<Vector<T> >::iterator vit = entire(v);
-      for (typename Entire<CooType>::const_iterator cit = entire(_coos); !cit.at_end(); ++cit, ++vit)
+   const Vector<T> coordinates() const
+   {
+      Vector<T> v(int(Integer::binom(_d,_k)));
+      auto vit = entire(v);
+      for (auto cit = entire(_coos); !cit.at_end(); ++cit, ++vit)
          *vit = cit->second;
       return v;
    }
 
-   const Vector<T> point() const {
+   const Vector<T> point() const
+   {
       if (_k!=1) {
          cerr << *this << endl;
          throw std::runtime_error("The dimension is not 1; can't convert this flat to a point");
@@ -188,7 +190,7 @@ public:
     */
    Vector<T> project_out (const Vector<T>& v) {
       if (_k!=2) throw std::runtime_error("Only projecting from planes is implemented");
-      SparseMatrix<T> M(Integer::binom(_d,2).to_int()+1, _d);
+      SparseMatrix<T> M(int(Integer::binom(_d,2))+1, _d);
       int row_ct(0);
       for (Entire<Subsets_of_k<const sequence&> >::const_iterator fit = entire(all_subsets_of_k(sequence(0,_d), _k)); !fit.at_end(); ++fit, ++row_ct) {
          M(row_ct, fit->front()) = -v[fit->back()];

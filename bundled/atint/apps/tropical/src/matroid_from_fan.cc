@@ -23,11 +23,11 @@
 
 #include "polymake/client.h"
 #include "polymake/Rational.h"
-#include "polymake/Vector.h"
 #include "polymake/Matrix.h"
 #include "polymake/Array.h"
 #include "polymake/Set.h"
 #include "polymake/PowerSet.h"
+#include "polymake/list"
 #include "polymake/tropical/specialcycles.h"
 #include "polymake/tropical/misc_tools.h"
 #include "polymake/tropical/thomog.h"
@@ -36,32 +36,31 @@ namespace polymake { namespace tropical {
 
 	template <typename Addition>
 	perl::Object matroid_from_fan(perl::Object cycle) {
-		//Find rank and ground set 
+		//Find rank and ground set
 		int ambient_dim = cycle.give("PROJECTIVE_AMBIENT_DIM");
 		int n = ambient_dim+1;
 		int dim = cycle.give("PROJECTIVE_DIM");
 		int r = dim+1;
 
-		if(dim == ambient_dim) {
-			return CallPolymakeFunction("matroid::uniform_matroid",n,n);
+		if (dim == ambient_dim) {
+			return call_function("matroid::uniform_matroid", n, n);
 		}
 
 		//FIXME Testing this could be done in a more efficient way by
 		//finding all cones containing the origin and testing for
 		//complementarity with unit vectors.
 		//Take all r-sets and check if they are a basis
-		Array<Set<int> > rset = all_subsets_of_k( sequence(0,n),r);
-		Vector<Set<int> > bases;
-		Matrix<Rational> unitm = unit_matrix<Rational>(n);
-		for(int b = 0; b < rset.size(); b++) {
-			perl::Object hp = affine_linear_space<Addition>(unitm.minor(~rset[b],All));
-			perl::Object inter = CallPolymakeFunction("intersect", cycle, hp);
-			bool empty = CallPolymakeFunction("is_empty",inter);
-			if(!empty) bases |= rset[b];
+		Array<Set<int>> rsets{ all_subsets_of_k(sequence(0,n), r) };
+                std::list<Set<int>> bases;
+		for (const auto& rset : rsets) {
+			perl::Object hp = affine_linear_space<Addition>(unit_matrix<Rational>(n).minor(~rset, All));
+			perl::Object inter = call_function("intersect", cycle, hp);
+			bool empty = call_function("is_empty", inter);
+			if(!empty) bases.push_back(rset);
 		}
 		perl::Object result("matroid::Matroid");
 			result.take("N_ELEMENTS") << n;
-			result.take("BASES") << bases;
+			result.take("BASES") << Array<Set<int>>(bases);
 		return result;
 	}
 

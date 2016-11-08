@@ -1,0 +1,99 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+sub term_sign($$){
+   my ($s,$t) = @_;
+   my $s_it = entire($s);
+   my $t_it = entire($t);
+   my $count = 0;
+   my $ind = 0;
+   while( $s_it && $t_it){
+      if($$s_it==$$t_it){return 0;}
+      if($$s_it<$$t_it){++$ind; ++$s_it;}
+      else{$count += $s->size()-$ind; ++$t_it;} 
+   }
+   return (-1)**$count;
+}
+
+# @category Producing an ideal from scratch
+# Generates the ideal of all Grassmann-Plücker relations of dxd minors of an dxn matrix.
+# For the algorithm see Sturmfels: Algorithms in invariant theory, Springer, 2nd ed., 2008
+# @param Int d
+# @param Int n
+# @return Ideal the Grassmann-Plücker ideal
+user_function pluecker_ideal($$){
+   my ($d,$n) = @_;
+   my $m = new Int(binomial($n,$d));
+   my $subsets = new Array< Set<Int> >($m);
+   my $HM = new HashMap<Set,Int>;
+   my $weights = new Vector<Int>($m);
+   my $i=0;
+   my @v = map{ 
+      $subsets->[$i]=$_;
+      $HM->{new Set($_)}=$i;
+      my $w = 2**$n;
+      for my $j (@$_){
+         $w += 2**$j; # this is not a optimal choice
+         }
+      $weights->[$i++]= $w ;
+      "p_(".join(",",@$_).")";
+      } all_subsets_of_k($d,0..$n-1);
+      # variable order in M2:
+      # my @vecs = sort { $a cmp $b } map { new Vector<Int>(reverse(@$_)) } all_subsets_of_k($d,0..$n-1);
+   my $r = new Ring(\@v);
+   my @var = $r->variables;
+   my @GB;
+   for my $i (0..$m-2){
+      for my $j ($i+1..$m-1){
+         next if ( ($subsets->[$i]*$subsets->[$j])->size() > $d-2 );
+         my $array = new Array<Int>($d+1);
+         my $ind = 0;
+         my $x = new Set();
+         my $y = new Set();
+         my $i_it = entire($subsets->[$i]);
+         my $j_it = entire($subsets->[$j]);
+         while ($i_it && $j_it && $$i_it <= $$j_it) {
+            $x += $$i_it;
+            $array->[$ind++] += $$j_it;
+            ++$i_it; ++$j_it;
+         }
+         next if (!$i_it || !$j_it);
+         $array->[$ind++] += $$j_it;
+         $array->[$ind++] += $$i_it;
+         ++$i_it; ++$j_it;
+         while ($i_it && $j_it) {
+            $y += $$j_it;
+            $array->[$ind++] += $$i_it;
+            ++$i_it; ++$j_it;
+         }
+         my $poly = new Polynomial($r);
+         my $set = new Set(0..$array->size-1);
+         map{
+               my $temp1=new Array<Int>([@{$array}[@{$_}]]);
+               my $temp2=new Array<Int>([@{$array}[@{($set-new Set(@{$_}))}]]);
+               $poly += term_sign($x,$temp2)*term_sign($temp1,$temp2)*term_sign($temp1,$y)*
+                        $var[$HM->{$x+new Set($temp2)}]*$var[$HM->{$y+new Set($temp1)}]; 
+            } all_subsets_of_k($x->size()+1,@{$set});
+         push @GB, $poly;
+      }
+   }
+   return new ideal::Ideal("GROEBNER.ORDER_VECTOR"=>$weights,"GROEBNER.BASIS"=>\@GB,GENERATORS=>\@GB);
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

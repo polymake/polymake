@@ -60,7 +60,6 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(assign, PuiseuxFraction< Max, Rational, Rational >, perl::Canned< const RationalFunction< Rational, Rational > >);
    FunctionInstance4perl(new_X, PuiseuxFraction< Max, Rational, Rational >, perl::Canned< const UniPolynomial< Rational, Rational > >);
    FunctionInstance4perl(new_X, PuiseuxFraction< Min, Rational, Rational >, perl::Canned< const UniPolynomial< Rational, Rational > >);
-   OperatorInstance4perl(Binary__eq, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const TropicalNumber< Min, Rational > >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const Monomial< PuiseuxFraction< Min, Rational, Rational >, int > >);
    Class4perl("Polymake::common::PuiseuxFraction_A_Min_I_PuiseuxFraction_A_Min_I_Rational_I_Rational_Z_I_Rational_Z", PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational >);
    FunctionInstance4perl(new_X_X, PuiseuxFraction< Min, Rational, Rational >, perl::Canned< const UniPolynomial< Rational, Rational > >, perl::Canned< const UniPolynomial< Rational, Rational > >);
@@ -71,5 +70,7 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary_add, perl::Canned< const PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >, perl::Canned< const PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >);
    FunctionInstance4perl(new, PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >, perl::Canned< const PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const TropicalNumber< Min, Rational > >);
+   OperatorInstance4perl(Binary__le, perl::Canned< const PuiseuxFraction< Max, Rational, Rational > >, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -25,7 +25,7 @@ namespace {
    Matrix<Rational> cyclic_vertices(const int d, const int n, const int x_start)
    {
       Matrix<Rational> vertices(n,d+1);
-      Rational* v=concat_rows(vertices).begin();
+      auto v=concat_rows(vertices).begin();
 
       // and now we compute n points (x_i^1,..,x_i^d) on the momentum curve in R^d
       for (int i=0, x=x_start;  i<n;  ++i, ++x) {
@@ -50,7 +50,7 @@ namespace {
    Matrix<Rational> spherical_cyclic_vertices(const int d, const int n, const int x_start)
    {
       Matrix<Rational> vertices(n,d+1);
-      Rational* v=concat_rows(vertices).begin();
+      auto v=concat_rows(vertices).begin();
 
       // and now we compute n points on the spherical momentum curve in R^d
       for (int i=0, x=x_start;  i<n;  ++i, ++x) {
@@ -101,7 +101,6 @@ perl::Object cyclic(const int d, const int n, perl::OptionSet options)
    p.take("CONE_DIM") << d+1;
    p.take("N_VERTICES") << n;
    p.take("VERTICES") << vertices;
-   p.take("LINEALITY_SPACE") << Matrix<Rational>();
    p.take("BOUNDED") << true;
    return p;
 }

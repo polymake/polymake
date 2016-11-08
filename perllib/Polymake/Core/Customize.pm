@@ -677,7 +677,7 @@ package Polymake::Core::Customize::perApplication;
 
 use Polymake::Struct (
    [ new => '$$' ],
-   [ '$handler' => 'weak( #1 )' ],
+   [ '$handler' => 'weak(#1)' ],
    '%per_pkg',                  # package_name->{"$var_name"}->Var
    '%pkg_help',                 # package_name => help text
    [ '$default_pkg' => '#2' ],

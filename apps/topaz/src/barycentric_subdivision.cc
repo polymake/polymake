@@ -23,7 +23,7 @@
 
 namespace polymake { namespace topaz {
 
-Array< Set<int> > bs(const graph::HasseDiagram& HD)
+Array<Set<int>> bs(const graph::HasseDiagram& HD)
 {
    const bool has_top_node (HD.faces()[HD.top_node()].size() > 0); // it comes from a polytope
    const bool built_dually (HD.built_dually()); // the Hasse diagram has the empty set on top, i.e., in last position
@@ -34,16 +34,16 @@ Array< Set<int> > bs(const graph::HasseDiagram& HD)
    // each facet of the barycentric subdivision is a flag in the input face lattice HD,
    // stored as the set of node indices of the constituent faces in HD
    std::vector< Set<int> > facets; 
-   facets.reserve(HD.nodes_of_dim(-1).size() * Integer::fac(dim+1).to_int());
-  
+   facets.reserve(HD.nodes_of_dim(-1).size() * int(Integer::fac(dim+1)));
+
    typedef Graph<Directed>::out_edge_list::const_iterator out_edge;
    typedef std::vector<out_edge> stack_type;  // vector is more efficient than list
    stack_type flag;
    flag.reserve(dim+1);
-  
+
    // start with the "empty set" node - just for convenience
    flag.push_back(HD.out_edges(HD.bottom_node()).begin());
-  
+
    int d=0; // dimension of the face accumulated in the flag so far
    do {
       // complete the facet
@@ -55,20 +55,21 @@ Array< Set<int> > bs(const graph::HasseDiagram& HD)
         
       // copy the facet
       Set<int> facet;
-      for (Entire<stack_type>::const_iterator s=entire(flag);  !s.at_end();  ++s)
+      for (auto s=entire(flag);  !s.at_end();  ++s)
          facet += s->to_node() - 1 + (built_dually && has_top_node); // disregard bottom node to start at index 0, unless two things happen        
       facets.push_back(facet);
-        
+
       // depth-first search to the next facet
       do {
          if (!(++flag.back()).at_end()) break;
          flag.pop_back();
       } while (--d>=0);
    } while (d>=0);
-   return facets;
+
+   return Array<Set<int>>(facets);
 }
 
-Array<Set<int> > bs(const Array<Set<int> >& old_bs) 
+Array<Set<int>> bs(const Array<Set<int> >& old_bs) 
 {
    return bs(pure_hasse_diagram(old_bs));
 }
@@ -91,14 +92,14 @@ Array<std::string> bs_labels(const graph::HasseDiagram& HD, const Array<std::str
       ++f;  // skip the top(bottom) node corresponding to the empty set
    std::ostringstream label;
    const bool convert_old_labels(old_labels.size() > 0);
-   for (Entire< Array<std::string> >::iterator l=entire(L); !l.at_end(); ++l, ++f) {
+   for (auto l=entire(L); !l.at_end(); ++l, ++f) {
       if (!convert_old_labels)
          wrap(label) << *f;
       else {
          wrap(label) << "{";
          bool first(true);
          const Set<int> fset(*f);
-         for (Entire<Set<int> >::const_iterator fsit = entire(fset); !fsit.at_end(); ++fsit) {
+         for (auto fsit = entire(fset); !fsit.at_end(); ++fsit) {
             if (first) 
                first = false;
             else 

@@ -283,7 +283,7 @@ sub facesToString {
    my $egstring = join ",", @edgecolor;
    my $thickness = $self->source->EdgeThickness // 1;
 
-   my $transp = $self->source->FacetTransparency // 0.8;
+   $transp //= 0.8;
 
    my $text = "";
 

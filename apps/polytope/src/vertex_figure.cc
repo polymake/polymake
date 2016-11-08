@@ -82,7 +82,7 @@ perl::Object vertex_figure(perl::Object p_in, int v_cut_off, perl::OptionSet opt
       p_out.take("AFFINE_HULL") << AH / cutting_plane;  //FIXME
    }
 
-   if (options["relabel"]) {
+   if (!options["no_labels"]) {
       Array<std::string> labels(n_vertices);
       read_labels(p_in, "VERTEX_LABELS", labels);
       Array<std::string> labels_out(select(labels, G.adjacent_nodes(v_cut_off)));
@@ -104,7 +104,8 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "#   Value 1 would let the hyperplane touch the nearest neighbor vertex of a polyhedron."
                           "#   Default value is 1/2."
                           "# @option Bool no_coordinates skip the coordinates computation, producing a pure combinatorial description."
-                          "# @option Bool relabel inherit vertex labels from the corresponding neighbor vertices of the original polytope."
+                          "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytope. default: 0"
+                          "#   by default, the labels are produced from the corresponding neighbor vertices of the original polytope."
                           "# @return Polytope"
                           "# @example This produces a vertex figure of one vertex of a 3-dimensional cube with the origin as its center"
                           "# and side length 2. The result is a 2-simplex."
@@ -112,7 +113,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# > print $p->VERTICES;"
                           "# | 1 1 -1 0"
                           "# | 1 1 0 1",
-                          "vertex_figure<Scalar>(Polytope<Scalar> $ {cutoff => undef, no_coordinates => undef, relabel => 0})");
+                          "vertex_figure<Scalar>(Polytope<Scalar> $ {cutoff => undef, no_coordinates => undef, no_labels => 0})");
 } }
 
 // Local Variables:

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,24 +13,20 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-
-
-
 object Cone<Rational> {
-
 
 rule ppl.convex_hull.primal: FACETS, LINEAR_SPAN : RAYS | INPUT_RAYS {
    ppl_ch_primal($this);
 }
 weight 4.10;
 precondition : N_RAYS | N_INPUT_RAYS;
-permutation : FacetPerm;
+incurs FacetPerm;
 
 rule ppl.convex_hull.dual: RAYS, LINEALITY_SPACE, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
-    ppl_ch_dual($this);
+   ppl_ch_dual($this);
 }
 weight 4.10;
-permutation : VertexPerm;
+incurs VertexPerm;
 
 
 }

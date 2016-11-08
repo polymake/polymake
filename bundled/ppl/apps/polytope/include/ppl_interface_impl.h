@@ -58,15 +58,14 @@ private:
    {
    public:
       init()
+         : version(PPL::version_major()) // ensure libppl is really loaded
+         , mode(fegetround())
       {
-         // ensure libppl is really loaded
-         version=PPL::version_major();
-         mode=fegetround();
          fesetround(FE_TONEAREST);
       }
 
-      int mode;
-      int version;
+      const int version;
+      const int mode;
    };
 
    static init captured;
@@ -97,18 +96,13 @@ namespace {
         int dim = n+1;
         Vector<Coord> vec(dim);
          
-        for ( int i = 0; i < dim-1; ++i ) {
-           Integer num( mpz_class( gen.coefficient(PPL::Variable(i)) ).get_mpz_t() );
-           Coord entry(num, 1); // FIXME: only works for Rational!
-           vec[i+1] = entry;
-        }
+        for ( int i = 0; i < dim-1; ++i )
+           vec[i+1] = Integer(gen.coefficient(PPL::Variable(i)));
 
         if ( gen.is_point() ) { // in case of isCone, generators are rays or lines except for (0,...,0)
 
            // gen.divisor only works for PPL-(closure-)points
-           Integer denom(mpz_class(gen.divisor()).get_mpz_t());  
-           Coord factor(1,denom);
-           vec = factor * vec;
+           vec /= Integer(gen.divisor());
            vec[0] = 1;
 
         } else {
@@ -126,10 +120,9 @@ namespace {
         unsigned int n = cons.space_dimension();
         Vector<Coord> vec(n + 1);
         vec[0] = cons.inhomogeneous_term(); // will be overwritten if isCone = true
-        for ( unsigned int i = 0; i < n; ++i ) {
-           Integer coeff( mpz_class( cons.coefficient(PPL::Variable(i)) ).get_mpz_t() ); 
-           vec[i+1] = coeff;
-        }
+        for ( unsigned int i = 0; i < n; ++i )
+           vec[i+1] = Integer(cons.coefficient(PPL::Variable(i)));
+
         return vec;
      }
 
@@ -146,7 +139,7 @@ namespace {
         int num_columns = std::max(Inequalities.cols(),Equations.cols());
 
         // insert inequalities
-        for ( typename Entire< Rows < Matrix<Coord> > >::const_iterator row_it = entire(rows(Inequalities)); !row_it.at_end(); ++row_it ) {
+        for ( auto row_it = entire(rows(Inequalities)); !row_it.at_end(); ++row_it ) {
               Integer lcm_of_row_denom(lcm(denominators(*row_it))); 
               std::vector<mpz_class> coefficients = convert_to_mpz<Coord>(*row_it, lcm_of_row_denom); 
               // PPL variables have indices 0, 1, ..., space_dim-1.
@@ -160,7 +153,7 @@ namespace {
            } 
 
         // insert equations
-        for ( typename Entire< Rows < Matrix<Coord> > >::const_iterator row_it = entire(rows(Equations)); !row_it.at_end(); ++row_it ) {
+        for ( auto row_it = entire(rows(Equations)); !row_it.at_end(); ++row_it ) {
               Integer lcm_of_row_denom(lcm(denominators(*row_it))); 
               std::vector<mpz_class> coefficients = convert_to_mpz<Coord>(*row_it, lcm_of_row_denom); 
               // PPL variables have indices 0, 1, ..., space_dim-1.
@@ -195,7 +188,7 @@ namespace {
         }
 
         // insert points/rays
-        for ( typename Entire< Rows < Matrix<Coord> > >::const_iterator row_it = entire(rows(Points)); !row_it.at_end(); ++row_it ) {
+        for ( auto row_it = entire(rows(Points)); !row_it.at_end(); ++row_it ) {
               Integer lcm_of_row_denom(lcm(denominators(*row_it))); 
               std::vector<mpz_class> coefficients = convert_to_mpz<Coord>(*row_it, lcm_of_row_denom); 
               // PPL variables have indices 0, 1, ..., space_dim-1.
@@ -215,7 +208,7 @@ namespace {
 
 
         // insert linealities
-        for ( typename Entire< Rows < Matrix<Coord> > >::const_iterator row_it = entire(rows(Lineality)); !row_it.at_end(); ++row_it ) {
+        for ( auto row_it = entire(rows(Lineality)); !row_it.at_end(); ++row_it ) {
               Integer lcm_of_row_denom(lcm(denominators(*row_it))); 
               std::vector<mpz_class> coefficients = convert_to_mpz<Coord>(*row_it, lcm_of_row_denom); 
               // PPL variables have indices 0, 1, ..., space_dim-1.
@@ -256,16 +249,18 @@ namespace {
      ListMatrix< Vector<Coord> > affine_hull_list;
 
      int num_columns = std::max(Points.cols(),Lineality.cols());
-     Vector<Coord> triv_ineq(1|zero_vector<Coord>(num_columns - 1));
+     const auto triv_ineq=unit_vector<Coord>(num_columns, 0);
 
      for (PPL::Constraint_System::const_iterator csi = cs.begin(); csi != cs.end(); ++csi) {
         const PPL::Constraint& c = *csi;
         Vector<Coord> row = ppl_constraint_to_vec<Coord>(c, isCone);
         if ( !( isCone && row == triv_ineq ) ) { 
            if (c.is_inequality()) {
+              // TODO: std::move(row) when move constructors implemented for vector classes
               facet_list /= row;
            } else {
               assert(c.is_equality());
+              // TODO: std::move(row) when move constructors implemented for vector classes
               affine_hull_list  /= row;
            }
         }
@@ -282,6 +277,7 @@ namespace {
         facet_list /= triv_ineq;
      }
 
+     // TODO: std::move(XXX_list) when move constructors implemented for matrix classes
      Matrix<Coord> facets(facet_list);
      Matrix<Coord> affine_hull(affine_hull_list);
      return typename solver<Coord>::matrix_pair(facets, affine_hull);
@@ -298,21 +294,24 @@ namespace {
      ListMatrix< Vector<Coord> > lin_space_list;
 
      int num_columns = std::max(Inequalities.cols(),Equations.cols());
-     Vector<Coord> cone_origin(1|zero_vector<Coord>( num_columns - 1 ));
+     const auto cone_origin=unit_vector<Coord>(num_columns, 0);
 
      for (PPL::Generator_System::const_iterator gsi = gs.begin(); gsi != gs.end(); ++gsi) {
         const PPL::Generator& g = *gsi;
         Vector<Coord> row = ppl_gen_to_vec<Coord>(g, isCone);
         if ( !(isCone && row == cone_origin) ) {
            if (g.is_point() || g.is_ray()) {
+              // TODO: std::move(row) when move constructors implemented for vector classes
               vertex_list /= row;
            } else {
               assert(g.is_line());
+              // TODO: std::move(row) when move constructors implemented for vector classes
               lin_space_list  /= row;
            }
         }
      }
 
+     // TODO: std::move(XXX_list) when move constructors are implemented for matrix classes
      Matrix<Coord> vertices(vertex_list);
      Matrix<Coord> lin_space(lin_space_list);
      return typename solver<Coord>::matrix_pair(vertices, lin_space);
@@ -392,8 +391,8 @@ namespace {
      }
 
      Vector<Coord> opt_sol( ppl_gen_to_vec<Coord>(g_opt, 0) );
-     Integer bound_n_Int(mpz_class(bound_n).get_mpz_t());
-     Integer bound_d_Int(mpz_class(bound_d).get_mpz_t());
+     Integer bound_n_Int(bound_n);
+     Integer bound_d_Int(bound_d);
 
      // see FIXME (1)
      //Coord opt_val(bound_n_Int / bound_d_Int); //dividing an Integer by an Integer returns an Integer, not a Rational

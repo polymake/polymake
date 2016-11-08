@@ -28,13 +28,13 @@ int is_manifold_client(perl::Object p)
    int answer;
    switch (d) {
    case 1:
-      answer=is_manifold(C,n_vertices,int2type<1>());
+      answer=is_manifold(C, n_vertices, int_constant<1>());
       break;
    case 2:
-      answer=is_manifold(C,n_vertices,int2type<2>());
+      answer=is_manifold(C, n_vertices, int_constant<2>());
       break;
    case 3:
-      answer=is_manifold(C,n_vertices,int2type<3>());
+      answer=is_manifold(C, n_vertices, int_constant<3>());
       break;
    default:
       answer=-1; // don't know

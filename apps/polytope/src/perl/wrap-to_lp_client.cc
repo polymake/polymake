@@ -49,5 +49,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(to_solve_lp_T_x_x_x_o_f16, QuadraticExtension< Rational >);
    FunctionInstance4perl(to_solve_lp_T_x_x_x_o_f16, PuiseuxFraction< Min, Rational, Rational >);
    FunctionInstance4perl(to_solve_lp_T_x_x_x_o_f16, PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational >);
+   FunctionInstance4perl(to_input_feasible_T_x, PuiseuxFraction< Min, Rational, Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

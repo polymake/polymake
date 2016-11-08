@@ -7,6 +7,10 @@ my $err=gensym;
 my $rc=0;
 my $retry=1;
 
+unless (grep { /^-f(?:no-)?diagnostics-color/ } @cmd) {
+   splice @cmd, 1, 0, (-t STDERR ? "-fdiagnostics-color" : "-fno-diagnostics-color");
+}
+
 while ($retry) {
    open DupSTDIN, "<&", \*STDIN;
    open DupSTDOUT, ">&", \*STDOUT;

@@ -37,27 +37,34 @@ public:
    typedef typename assign_const<value_type, is_const>::type& reference;
    typedef typename assign_const<value_type, is_const>::type* pointer;
    typedef ptrdiff_t difference_type;
-   typedef typename if_else<attrib<T>::is_reference, single_value_iterator<typename attrib<T>::minus_const>,
-                                                     single_value_iterator>::type
+   typedef typename std::conditional<attrib<T>::is_reference, single_value_iterator<typename attrib<T>::minus_const>,
+                                                              single_value_iterator>::type
       iterator;
-   typedef typename if_else<attrib<T>::is_reference, single_value_iterator<typename attrib<T>::plus_const>,
-                                                     single_value_iterator>::type
+   typedef typename std::conditional<attrib<T>::is_reference, single_value_iterator<typename attrib<T>::plus_const>,
+                                                              single_value_iterator>::type
       const_iterator;
 
-   typedef typename if_else<identical<iterator, single_value_iterator>::value, type2type<T>,
-                            const alias<typename attrib<T>::minus_const> >::type
-      alt_alias_arg_type;
+   typedef typename mlist_prepend_if<std::is_same<const_iterator, single_value_iterator>::value,
+                                     typename attrib<T>::minus_const, T>::type
+      alias_arg_types;
+
    typedef single_value_iterator<typename attrib<T>::toggle_const> cmp_iterator;
 
-   single_value_iterator() : _at_end(true) {}
+   single_value_iterator()
+      : _at_end(true) {}
+
    single_value_iterator(typename alias<T>::arg_type arg)
-      : value(arg), _at_end(false) {}
-   single_value_iterator(const alias<T>& arg)
-      : value(arg), _at_end(false) {}
-   single_value_iterator(alt_alias_arg_type& arg)
-      : value(arg), _at_end(false) {}
+      : value(arg)
+      , _at_end(false) {}
+
+   template <typename TArg, typename enabled=typename std::enable_if<is_among<TArg, alias_arg_types>::value>::type>
+   single_value_iterator(const alias<TArg>& arg)
+      : value(arg)
+      , _at_end(false) {}
+
    single_value_iterator(const iterator& it)
-      : value(it.value), _at_end(it._at_end) {}
+      : value(it.value)
+      , _at_end(it._at_end) {}
 
    reference operator* () const { return *value; }
    pointer operator-> () const { return &operator*(); }
@@ -69,9 +76,9 @@ public:
 
    single_value_iterator& operator+= (int i) { _at_end^=i&1; return *this; }
    single_value_iterator& operator-= (int i) { return operator+=(i); }
-   const single_value_iterator operator+ (int i) const { single_value_iterator copy=*this; return copy+=i; }
-   friend const single_value_iterator operator+ (int i, const single_value_iterator& me) { return me+i; }
-   const single_value_iterator operator- (int i) const { single_value_iterator copy=*this; return copy+=i; }
+   single_value_iterator operator+ (int i) const { single_value_iterator copy=*this; return copy+=i; }
+   friend single_value_iterator operator+ (int i, const single_value_iterator& me) { return me+i; }
+   single_value_iterator operator- (int i) const { single_value_iterator copy=*this; return copy+=i; }
 
    difference_type operator- (const single_value_iterator& it) const { return _at_end - it._at_end; }
    bool operator== (const single_value_iterator& it) const { return _at_end==it._at_end; }
@@ -142,7 +149,8 @@ class constant_value_iterator {
 protected:
    mutable alias<T> value;
 
-   static const bool is_const=!attrib<T>::is_reference || attrib<T>::is_const;
+   static const bool is_const=!attrib<T>::is_reference || attrib<T>::is_const,
+              is_always_const=object_traits<typename deref<T>::type>::is_always_const;
    template <typename> friend class constant_value_iterator;
 public:
    typedef random_access_iterator_tag iterator_category;
@@ -150,25 +158,30 @@ public:
    typedef typename assign_const<value_type, is_const>::type& reference;
    typedef typename assign_const<value_type, is_const>::type* pointer;
    typedef ptrdiff_t difference_type;
-   typedef typename if_else<attrib<T>::is_reference, constant_value_iterator<typename attrib<T>::minus_const>,
-                                                     constant_value_iterator>::type
+   typedef typename std::conditional<attrib<T>::is_reference && !is_always_const,
+                                     constant_value_iterator<typename attrib<T>::minus_const>,
+                                     constant_value_iterator>::type
       iterator;
-   typedef typename if_else<attrib<T>::is_reference, constant_value_iterator<typename attrib<T>::plus_const>,
-                                                     constant_value_iterator>::type
+   typedef typename std::conditional<attrib<T>::is_reference && !is_always_const,
+                                     constant_value_iterator<typename attrib<T>::plus_const>,
+                                     constant_value_iterator>::type
       const_iterator;
 
-   typedef typename if_else<identical<iterator, constant_value_iterator>::value, type2type<T>,
-                            const alias<typename attrib<T>::minus_const> >::type
-      alt_alias_arg_type;
+   typedef typename mlist_prepend_if<std::is_same<const_iterator, constant_value_iterator>::value && !is_always_const,
+                                     typename attrib<T>::minus_const, T>::type
+      alias_arg_types;
+
    typedef constant_value_iterator<typename attrib<T>::toggle_const> cmp_iterator;
 
    constant_value_iterator() {}
+
    constant_value_iterator(typename alias<T>::arg_type arg)
       : value(arg) {}
-   constant_value_iterator(const alias<T>& arg)
+
+   template <typename TArg, typename enable=typename std::enable_if<is_among<TArg, alias_arg_types>::value>::type>
+   constant_value_iterator(const alias<TArg>& arg)
       : value(arg) {}
-   constant_value_iterator(alt_alias_arg_type& arg)
-      : value(arg) {}
+
    constant_value_iterator(const iterator& it)
       : value(it.value) {}
 
@@ -207,16 +220,16 @@ public:
 };
 
 template <typename T>
-class constant_pointer_iterator : public ptr_wrapper<T> {
-   typedef ptr_wrapper<T> _super;
+class constant_pointer_iterator : public ptr_wrapper<T, false> {
+   typedef ptr_wrapper<T, false> base_t;
 public:
    typedef constant_pointer_iterator<typename attrib<T>::minus_const> iterator;
    typedef constant_pointer_iterator<typename attrib<T>::plus_const> const_iterator;
    template <typename> friend class constant_pointer_iterator;
 
    constant_pointer_iterator() {}
-   constant_pointer_iterator(T& arg) : _super(&arg) {}
-   constant_pointer_iterator(const iterator& it) : _super(it.cur) {};
+   constant_pointer_iterator(T& arg) : base_t(&arg) {}
+   constant_pointer_iterator(const iterator& it) : base_t(it) {};
 
    constant_pointer_iterator& operator++ () { return *this; }
    const constant_pointer_iterator& operator++ (int) { return *this; }
@@ -228,46 +241,46 @@ public:
    const constant_pointer_iterator& operator- (int) { return *this; }
    friend const constant_pointer_iterator& operator+ (int, const constant_pointer_iterator& me) { return me; }
 
-   ptrdiff_t operator- (const constant_pointer_iterator& it) const { return (this->cur != 0) != (it.cur != 0); }
+   ptrdiff_t operator- (const constant_pointer_iterator& it) const { return (this->cur != nullptr) != (it.cur != nullptr); }
    void rewind() {}
    void contract(bool, int, int) {}
 };
 
 template <typename T>
-struct check_iterator_feature<single_value_iterator<T>, end_sensitive> : True {};
+struct check_iterator_feature<single_value_iterator<T>, end_sensitive> : std::true_type {};
 
 template <typename T>
-struct check_iterator_feature<single_value_iterator<T>, indexed> : True {};
+struct check_iterator_feature<single_value_iterator<T>, indexed> : std::true_type {};
 
 template <typename T>
-struct check_iterator_feature<single_value_iterator<T>, rewindable> : True {};
+struct check_iterator_feature<single_value_iterator<T>, rewindable> : std::true_type {};
 
 template <typename Iterator>
-struct check_iterator_feature<single_position_iterator<Iterator>, end_sensitive> : True {};
+struct check_iterator_feature<single_position_iterator<Iterator>, end_sensitive> : std::true_type {};
 
 template <typename Iterator>
 struct check_iterator_feature<single_position_iterator<Iterator>, indexed> : check_iterator_feature<Iterator, indexed> {};
 
 template <typename Iterator>
-struct check_iterator_feature<single_position_iterator<Iterator>, rewindable> : True {};
+struct check_iterator_feature<single_position_iterator<Iterator>, rewindable> : std::true_type {};
 
 template <typename T>
-struct check_iterator_feature<constant_value_iterator<T>, unlimited> : True {};
+struct check_iterator_feature<constant_value_iterator<T>, unlimited> : std::true_type {};
 
 template <typename T>
-struct check_iterator_feature<constant_value_iterator<T>, contractable> : True {};
+struct check_iterator_feature<constant_value_iterator<T>, contractable> : std::true_type {};
 
 template <typename T>
-struct check_iterator_feature<constant_value_iterator<T>, rewindable> : True {};
+struct check_iterator_feature<constant_value_iterator<T>, rewindable> : std::true_type {};
 
 template <typename T>
-struct check_iterator_feature<constant_pointer_iterator<T>, unlimited> : True {};
+struct check_iterator_feature<constant_pointer_iterator<T>, unlimited> : std::true_type {};
 
 template <typename T>
-struct check_iterator_feature<constant_pointer_iterator<T>, contractable> : True {};
+struct check_iterator_feature<constant_pointer_iterator<T>, contractable> : std::true_type {};
 
 template <typename T>
-struct check_iterator_feature<constant_pointer_iterator<T>, rewindable> : True {};
+struct check_iterator_feature<constant_pointer_iterator<T>, rewindable> : std::true_type {};
 
 template <typename T, bool _sparse=false>
 class single_value_container : public alias<T> {
@@ -275,8 +288,8 @@ class single_value_container : public alias<T> {
 protected:
    single_value_container() {}
 public:
-   typedef typename if_else<identical_minus_const_ref<T, typename _super::arg_type>::value,
-                            type2type<T>&, typename attrib<T>::plus_const_ref>::type
+   typedef typename std::conditional<identical_minus_const_ref<T, typename _super::arg_type>::value,
+                                     type2type<T>&, typename attrib<T>::plus_const_ref>::type
       alt_arg_type;
    single_value_container(typename _super::arg_type arg) : _super(arg) {}
    single_value_container(alt_arg_type arg) : _super(arg) {}
@@ -345,50 +358,50 @@ public:
    int dim() const { return 1; }
 };
 
-template <typename T, bool _sparse>
-struct spec_object_traits< single_value_container<T,_sparse> >
+template <typename T, bool is_sparse>
+struct spec_object_traits< single_value_container<T, is_sparse> >
    : spec_object_traits<is_container> {
    static const bool is_temporary=true, is_always_const=attrib<T>::is_const || !attrib<T>::is_reference;
 };
 
-template <typename E, bool _sparse>
-struct check_container_feature<single_value_container<E,_sparse>, sparse> : bool2type<_sparse> {};
+template <typename E, bool is_sparse>
+struct check_container_feature<single_value_container<E, is_sparse>, sparse> : bool_constant<is_sparse> {};
 
 template <typename T>
-struct check_container_feature<single_value_container<T,false>, provide_construction<rewindable,false> > : True {};
+struct check_container_feature<single_value_container<T, false>, provide_construction<rewindable, false> > : std::true_type {};
 
 template <typename T>
 class constant_value_container : public alias<T> {
-   typedef alias<T> _super;
+   typedef alias<T> base_t;
 public:
-   typedef typename if_else<identical_minus_const_ref<T, typename _super::arg_type>::value,
-                            type2type<T>&, typename attrib<T>::plus_const_ref>::type
+   typedef typename std::conditional<identical_minus_const_ref<T, typename base_t::arg_type>::value,
+                                     type2type<T>&, typename attrib<T>::plus_const_ref>::type
       alt_arg_type;
-   constant_value_container(typename _super::arg_type arg) : _super(arg) {}
-   constant_value_container(alt_arg_type arg) : _super(arg) {}
+   constant_value_container(typename base_t::arg_type arg) : base_t(arg) {}
+   constant_value_container(alt_arg_type arg) : base_t(arg) {}
 protected:
-   constant_value_container(const _super& arg) : _super(arg) {}
+   constant_value_container(const base_t& arg) : base_t(arg) {}
 public:
    typedef constant_value_iterator<T> iterator;
    typedef typename iterator::const_iterator const_iterator;
    typedef iterator reverse_iterator;
    typedef const_iterator const_reverse_iterator;
 
-   typename _super::reference front() { return _super::operator*(); }
-   typename _super::reference back() { return front(); }
-   typename _super::reference operator[] (int) { return front(); }
-   typename _super::const_reference front() const { return _super::operator*(); }
-   typename _super::const_reference back() const { return front(); }
-   typename _super::const_reference operator[] (int) const { return front(); }
+   typename base_t::reference front() { return base_t::operator*(); }
+   typename base_t::reference back() { return front(); }
+   typename base_t::reference operator[] (int) { return front(); }
+   typename base_t::const_reference front() const { return base_t::operator*(); }
+   typename base_t::const_reference back() const { return front(); }
+   typename base_t::const_reference operator[] (int) const { return front(); }
 
-   iterator begin() { return *this; }
+   iterator begin() { return static_cast<base_t&>(*this); }
    iterator end() { return iterator(); }
-   iterator rbegin() { return *this; }
+   iterator rbegin() { return static_cast<base_t&>(*this); }
    iterator rend() { return iterator(); }
 
-   const_iterator begin() const { return *this; }
+   const_iterator begin() const { return static_cast<const base_t&>(*this); }
    const_iterator end() const { return iterator(); }
-   const_iterator rbegin() const { return *this; }
+   const_iterator rbegin() const { return static_cast<const base_t&>(*this); }
    const_iterator rend() const { return iterator(); }
 
    bool empty() const { return false; }
@@ -447,10 +460,10 @@ struct spec_object_traits< constant_masquerade_container<T> >
 };
 
 template <typename T>
-struct check_container_feature<constant_value_container<T>, provide_construction<rewindable,false> > : True {};
+struct check_container_feature<constant_value_container<T>, provide_construction<rewindable,false> > : std::true_type {};
 
 template <typename T>
-struct check_container_feature<constant_masquerade_container<T>, provide_construction<rewindable,false> > : True {};
+struct check_container_feature<constant_masquerade_container<T>, provide_construction<rewindable,false> > : std::true_type {};
 
 template <typename T> inline
 single_value_container<T&>
@@ -533,7 +546,7 @@ namespace object_classifier {
 }
 
 template <typename T>
-struct spec_object_traits< cons<T, int2type<object_classifier::is_constant> > >
+struct spec_object_traits< cons<T, int_constant<object_classifier::is_constant> > >
    : spec_object_traits<is_container> {};
 
 } // end namespace pm

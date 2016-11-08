@@ -39,7 +39,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(det_X, perl::Canned< const Wary< Matrix< UniPolynomial< Rational, int > > > >);
    FunctionInstance4perl(det_X, perl::Canned< const Wary< Matrix< PuiseuxFraction< Max, Rational, Rational > > > >);
    FunctionInstance4perl(det_X, perl::Canned< const Wary< Matrix< RationalFunction< Rational, int > > > >);
-   FunctionInstance4perl(det_X, perl::Canned< const Wary< pm::MatrixMinor<pm::MatrixMinor<pm::Matrix<pm::Integer>&, pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&> const&, pm::all_selector const&>&, pm::all_selector const&, pm::Array<int, void> const&> > >);
-   FunctionInstance4perl(det_X, perl::Canned< const Wary< pm::MatrixMinor<pm::Matrix<pm::Integer>&, pm::all_selector const&, pm::Array<int, void> const&> > >);
+   FunctionInstance4perl(det_X, perl::Canned< const Wary< pm::MatrixMinor<pm::MatrixMinor<pm::Matrix<pm::Integer>&, pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&> const&, pm::all_selector const&>&, pm::all_selector const&, pm::Array<int> const&> > >);
+   FunctionInstance4perl(det_X, perl::Canned< const Wary< pm::MatrixMinor<pm::Matrix<pm::Integer>&, pm::all_selector const&, pm::Array<int> const&> > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

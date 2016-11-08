@@ -15,11 +15,11 @@
 
 namespace polymake { namespace topaz { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::Array<pm::Set<int, pm::operations::cmp>, void> (polymake::graph::HasseDiagram) ) {
+   FunctionWrapper4perl( pm::Array<pm::Set<int, pm::operations::cmp>> (polymake::graph::HasseDiagram) ) {
       perl::Value arg0(stack[0]);
       IndirectWrapperReturn( arg0 );
    }
-   FunctionWrapperInstance4perl( pm::Array<pm::Set<int, pm::operations::cmp>, void> (polymake::graph::HasseDiagram) );
+   FunctionWrapperInstance4perl( pm::Array<pm::Set<int, pm::operations::cmp>> (polymake::graph::HasseDiagram) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

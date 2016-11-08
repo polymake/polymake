@@ -67,7 +67,7 @@ void SpringEmbedder::init_params(const perl::OptionSet& options)
    } else {
       min_edge_weight=1/scale;
       avg_edge_weight=scale;
-      fill(entire(wanted_edge_length), avg_edge_weight);
+      fill_range(entire(wanted_edge_length), avg_edge_weight);
    }
 
    for (Entire< std::vector<double> >::iterator e=entire(wanted_edge_length), ie=entire(inv_wanted_length);

@@ -27,22 +27,17 @@
 #include "polymake/Vector.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/linalg.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/thomog.h"
 
 
 namespace polymake { namespace tropical {
 
 
-	using namespace atintlog::donotlog;
-    //using namespace atintlog::dolog;
-//     using namespace atintlog::dotrace;
 	
 	//Documentation see perl wrapper
 	template <typename Addition>
 		bool check_cycle_equality(perl::Object X, perl::Object Y, bool check_weights = true) {
 
-			//dbgtrace << "Extracting values " << endl;
 			//Extract values
 			Matrix<Rational> xrays = X.give("VERTICES");
 			xrays = tdehomog(xrays);
@@ -68,12 +63,10 @@ namespace polymake { namespace tropical {
 			}
 			else check_weights = false;
 
-			//dbgtrace << "Checking equality of dimensions " << endl;
 
 			//Check dimensional equality
 			if(xambi != yambi) return false;
 
-			//dbgtrace << "Checkking equality of lineality spaces " << endl;
 
 			//Check equality of lineality spaces
 			if(rank(xlin) == rank(ylin)) {
@@ -81,7 +74,6 @@ namespace polymake { namespace tropical {
 			}
 			else return false;
 
-			//dbgtrace << "Finding ray permutation " << endl;
 
 			//Find ray permutation
 			if(xrays.rows() != yrays.rows()) return false;
@@ -99,27 +91,21 @@ namespace polymake { namespace tropical {
 				}
 			}//END compute ray permutation
 
-			//dbgtrace << "Ray permutation is " << permutation << endl;
 
-			//dbgtrace << "Matching cones " << endl;
 
 			//Now check if all cones are equal
 			Set<int> matched_cones;
 			for(int xc = 0; xc < xcones.rows(); xc++) {
-				//dbgtrace << "Matching cone " << xcones.row(xc) << endl;
 				//Compute permuted cone
-				Set<int> perm_cone = attach_operation(xcones.row(xc), pm::operations::associative_access<Map<int,int>, int>(&permutation));
-				//dbgtrace << "Permuted cone is " << perm_cone << endl;
+                                Set<int> perm_cone{ permutation.map(xcones.row(xc)) };
 				//Find this cone in Y
 				for(int yc = 0; yc < ycones.rows(); yc++) {
 					if(!matched_cones.contains(yc)) {
 						if(ycones.row(yc).size() == perm_cone.size()) {
-							//dbgtrace << "Comparing with " << ycones.row(yc) << endl;
 							if((ycones.row(yc) * perm_cone).size() == perm_cone.size()) {
 								matched_cones += yc;
 								//Check equality of weights, if necessary
 								if(check_weights) {
-									//dbgtrace << "Checking weight equality" << endl;
 									if(xweights[xc] != yweights[yc]) return false;
 								}
 								break;
@@ -132,7 +118,6 @@ namespace polymake { namespace tropical {
 				}//END iterate Y cones
 			}//END iterate X cones
 
-			//dbgtrace << "Checking if all cones were matched " << endl;
 
 			//Check if we actually matched ALL Y cones
 			if(matched_cones.size() < ycones.rows()) return false;

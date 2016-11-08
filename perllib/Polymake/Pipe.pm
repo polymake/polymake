@@ -28,7 +28,7 @@ package Polymake::Selector::Member;
 use Polymake::Struct (
    [ new => '$' ],
    [ '$handle' => '#1' ],
-   [ '$rfd | wfd' => 'fileno( #1 )' ],
+   [ '$rfd | wfd' => 'fileno(#1)' ],
 );
 
 sub new {
@@ -342,7 +342,7 @@ use Polymake::Struct (
    [ '@ISA' => 'CollaborativePipe' ],
    [ new => '$$$' ],
    [ '$out' => '#2' ],
-   [ '$wfd' => 'fileno( #2 )' ],
+   [ '$wfd' => 'fileno(#2)' ],
    [ '$pid' => '#3' ],
 );
 

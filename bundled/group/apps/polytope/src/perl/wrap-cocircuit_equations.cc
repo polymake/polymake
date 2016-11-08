@@ -16,56 +16,35 @@
 
 #include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/Map.h"
 #include "polymake/Matrix.h"
-#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
-#include "polymake/SparseMatrix.h"
+#include "polymake/common/boost_dynamic_bitset.h"
+#include "polymake/hash_map"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0, typename T1, typename T2>
-   FunctionInterface4perl( cocircuit_equation_T_x_X_X, T0,T1,T2 ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      WrapperReturn( (cocircuit_equation<T0>(arg0, arg1.get<T1>(), arg2.get<T2>())) );
-   };
-
-   template <typename T0, typename T1, typename T2, typename T3, typename T4>
-   FunctionInterface4perl( cocircuit_equations_T_x_X_X_X_X_o, T0,T1,T2,T3,T4 ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]), arg4(stack[4]), arg5(stack[5]);
-      WrapperReturn( (cocircuit_equations<T0>(arg0, arg1.get<T1>(), arg2.get<T2>(), arg3.get<T3>(), arg4.get<T4>(), arg5)) );
-   };
-
-   template <typename T0, typename T1, typename T2>
-   FunctionInterface4perl( cocircuit_equations_T_x_X_X_o, T0,T1,T2 ) {
+   template <typename T0, typename T1, typename T2, typename T3>
+   FunctionInterface4perl( cocircuit_equations_T_x_X_X_o, T0,T1,T2,T3 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
-      WrapperReturn( (cocircuit_equations<T0>(arg0, arg1.get<T1>(), arg2.get<T2>(), arg3)) );
+      WrapperReturn( (cocircuit_equations<T0,T1>(arg0, arg1.get<T2>(), arg2.get<T3>(), arg3)) );
    };
 
-   template <typename T0>
-   FunctionInterface4perl( rows_f1, T0 ) {
-      perl::Value arg0(stack[0]);
-      WrapperReturn( arg0.get<T0>().rows() );
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( cocircuit_equation_of_ridge_T_x_C, T0,T1,T2 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      WrapperReturn( (cocircuit_equation_of_ridge<T0,T1>(arg0, arg1.get<T2, T1>())) );
    };
 
-   template <typename T0>
-   FunctionInterface4perl( cols_f1, T0 ) {
-      perl::Value arg0(stack[0]);
-      WrapperReturn( arg0.get<T0>().cols() );
+   template <typename T0, typename T1, typename T2, typename T3, typename T4, typename T5>
+   FunctionInterface4perl( cocircuit_equations_T_x_X_X_X_X_o, T0,T1,T2,T3,T4,T5 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]), arg4(stack[4]), arg5(stack[5]);
+      WrapperReturn( (cocircuit_equations<T0,T1>(arg0, arg1.get<T2>(), arg2.get<T3>(), arg3.get<T4>(), arg4.get<T5>(), arg5)) );
    };
 
-   template <typename T0, typename T1>
-   FunctionInterface4perl( new_X, T0,T1 ) {
-      perl::Value arg0(stack[1]);
-      WrapperReturnNew(T0, (arg0.get<T1>()) );
-   };
-
-   FunctionInstance4perl(new_X, SparseMatrix< Rational, NonSymmetric >, perl::Canned< const pm::ListMatrix<pm::SparseVector<int> > >);
-   FunctionInstance4perl(rows_f1, perl::Canned< const pm::ListMatrix<pm::SparseVector<int> > >);
-   FunctionInstance4perl(cols_f1, perl::Canned< const pm::ListMatrix<pm::SparseVector<int> > >);
-   FunctionInstance4perl(cocircuit_equations_T_x_X_X_o, Rational, perl::Canned< const Array< Set< int > > >, perl::Canned< const Array< Set< int > > >);
-   FunctionInstance4perl(cocircuit_equations_T_x_X_X_X_X_o, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >, perl::Canned< const Array< Set< int > > >, perl::Canned< const Array< Set< int > > >);
-   FunctionInstance4perl(cocircuit_equation_T_x_X_X, Rational, perl::Canned< const Set< int > >, perl::Canned< const Map< Set< int >, int > >);
+   FunctionInstance4perl(cocircuit_equations_T_x_X_X_X_X_o, Rational, Set< int >, perl::Canned< const Matrix< Rational > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >, perl::Canned< const Array< Set< int > > >, perl::Canned< const Array< Set< int > > >);
+   FunctionInstance4perl(cocircuit_equation_of_ridge_T_x_C, Rational, Set< int >, perl::Canned< const Set< int > >);
+   FunctionInstance4perl(cocircuit_equation_of_ridge_T_x_C, Rational, boost_dynamic_bitset, perl::Canned< const boost_dynamic_bitset >);
+   FunctionInstance4perl(cocircuit_equations_T_x_X_X_o, Rational, Set< int >, perl::Canned< const Array< Set< int > > >, perl::Canned< const Array< Set< int > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

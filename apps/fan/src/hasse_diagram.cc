@@ -15,12 +15,7 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/hash_map"
-#include "polymake/FaceMap.h"
-#include "polymake/Bitset.h"
-#include "polymake/FacetList.h"
-#include "polymake/graph/HasseDiagram.h"
-
+#include "polymake/fan/hasse_diagram.h"
 #include <sstream>
 
 namespace polymake { namespace fan {
@@ -32,10 +27,11 @@ namespace polymake { namespace fan {
 //       in an improved version we might want to list the maximal cones at the beginning of the level they appear in, 
 //       in the order they are listed in MAXIMAL_CONES
 //       the algorithm below does not support this 
-perl::Object hasse_diagram(const IncidenceMatrix<> &MaximalCones, 
+graph::HasseDiagram hasse_diagram_fan_computation(const IncidenceMatrix<> &MaximalCones,
                            const Array<IncidenceMatrix<> > &ListOfCones, 
                            const Array<int> dims, 
-                           const int dim) {
+                           const int dim,
+                           const int to_dim) {
 
    // sort facets according to their dimension
    Array<  Set<int> > facets_of_dim(dim+2);
@@ -56,7 +52,7 @@ perl::Object hasse_diagram(const IncidenceMatrix<> &MaximalCones,
 
    // the trivial case
    if (ListOfCones.size()==0)  
-      return HD.makeObject();
+      return HD;
 
    // a list of the facets of all cones (facet wrt the dim of the cone) of dimension >= the current layer
    // adjusted in each step
@@ -87,7 +83,8 @@ perl::Object hasse_diagram(const IncidenceMatrix<> &MaximalCones,
       // go down dimension-wise
       // in each iteration we add the cones with the current dimension, and the faces in FacesBelow
       // we stop at the 2-dimensional faces and add the rays in the order of RAYS below.
-      for (int d=dim; d>1; --d) {
+      const int max = (to_dim < 1 ) ? 1 : to_dim;
+      for (int d=dim; d>max ; --d) {
          
          // add the cones that first appear in dimension dimension d
          // FBelow collects the faces in the level below the current one
@@ -144,37 +141,46 @@ perl::Object hasse_diagram(const IncidenceMatrix<> &MaximalCones,
       }
    } // end of the loop over the inner layers of the Hasse diagram
 
-   // collect isolated rays
-   // we have to add an edge to the top node for those
-   Set<int> isolated_rays;
-   if (dim >-1)
-      for (Entire< Set<int> >::const_iterator f_it=entire(facets_of_dim[1]); !f_it.at_end(); ++f_it) 
-         if ( MaximalCones[*f_it].size() == 1 )
-            isolated_rays += *(MaximalCones[*f_it].begin());
+   if(to_dim<1){
+      // collect isolated rays
+      // we have to add an edge to the top node for those
+      Set<int> isolated_rays;
+      if (dim >-1)
+         for (Entire< Set<int> >::const_iterator f_it=entire(facets_of_dim[1]); !f_it.at_end(); ++f_it)
+            if ( MaximalCones[*f_it].size() == 1 )
+               isolated_rays += *(MaximalCones[*f_it].begin());
 
-   // record the first node in the ray level
-   int node_in_ray_level = i;
-   // add the rays in the order they appear in RAYS
-   for ( int j = 0; j < MaximalCones.cols(); ++j, ++i ) {
-      HD_filler.add_node(scalar2set(j));
+      // record the first node in the ray level
+      int node_in_ray_level = i;
+      // add the rays in the order they appear in RAYS
+      for ( int j = 0; j < MaximalCones.cols(); ++j, ++i ) {
+         HD_filler.add_node(scalar2set(j));
 
-      // add edge to top node if ray is a maximal cone
-      if ( isolated_rays.contains(j) ) 
-         HD_filler.add_edge(i,0);
-      
-      for ( Entire< graph::HasseDiagram::nodes_of_dim_set >::const_iterator h_it = entire(HD.nodes_of_dim(0)); 
-            !h_it.at_end(); ++h_it ) 
-         if ( HD.face(*h_it).contains(j) )
-            HD_filler.add_edge(i,*h_it);
-   }
+         // add edge to top node if ray is a maximal cone
+         if ( isolated_rays.contains(j) )
+            HD_filler.add_edge(i,0);
 
-   HD_filler.increase_dim();
+         for ( Entire< graph::HasseDiagram::nodes_of_dim_set >::const_iterator h_it = entire(HD.nodes_of_dim(0));
+               !h_it.at_end(); ++h_it )
+            if ( HD.face(*h_it).contains(j) )
+               HD_filler.add_edge(i,*h_it);
+      }
 
-   // add the origin and connect it to the rays
-   HD_filler.add_node(sequence(0,0));  
-   while (node_in_ray_level < HD.nodes()-1 ) {
-      HD_filler.add_edge(i, node_in_ray_level);
-      ++node_in_ray_level;
+      HD_filler.increase_dim();
+
+      // add the origin and connect it to the rays
+      HD_filler.add_node(sequence(0,0));
+      while (node_in_ray_level < HD.nodes()-1 ) {
+         HD_filler.add_edge(i, node_in_ray_level);
+         ++node_in_ray_level;
+      }
+
+   }else{
+      //HD_filler.increase_dim();
+      HD_filler.add_node(sequence(0,0));
+      for ( Entire< graph::HasseDiagram::nodes_of_dim_set >::const_iterator h_it = entire(HD.nodes_of_dim(0));
+            !h_it.at_end(); ++h_it )
+         HD_filler.add_edge(i,*h_it);
    }
    
    // add an edge between the origin and the artificial node for fans
@@ -182,10 +188,19 @@ perl::Object hasse_diagram(const IncidenceMatrix<> &MaximalCones,
    if (dim == -1)
       HD_filler.add_edge(i,0);
       
-   return HD.makeObject();
+   return HD;
 }
 
-Function4perl(&hasse_diagram, "hasse_diagram($,$,$,$)");
+perl::Object hasse_diagram(const IncidenceMatrix<> &MaximalCones,
+                           const Array<IncidenceMatrix<> > &ListOfCones,
+                           const Array<int> dims,
+                           const int dim,
+                           const int to_dim) {
+
+   return hasse_diagram_fan_computation(MaximalCones, ListOfCones, dims, dim, to_dim).makeObject();
+}
+
+Function4perl(&hasse_diagram, "hasse_diagram($,$,$,$;$=-1)");
     
 } }
 

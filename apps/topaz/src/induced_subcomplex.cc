@@ -67,7 +67,7 @@ perl::Object induced_subcomplex(perl::Object p_in,const Set<int>& V_in, perl::Op
 
 UserFunction4perl("# @category Producing a new simplicial complex from others"
                   "# Produce the subcomplex consisting of all faces which are contained in the given set of //vertices//." 
-                  "# @option Bool no_label tells the client not to create any labels."
+                  "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @option Bool geom_real  tells the client to inherit the [[COORDINATES]]."
                   "# @param SimplicialComplex complex"
                   "# @param Set<Int> vertices"

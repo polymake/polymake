@@ -17,7 +17,7 @@
 # These functions produce a [[Hypersurface|tropical hypersurface]] from other objects.
 
 # @topic category functions/Producing a tropical polytope
-# These functions produce an object of type [[Cone]] from other objects.
+# These functions produce an object of type [[Polytope]] from other objects.
 
 # @topic category any/Weights and lattices
 # These +++ relate to the weights of a tropical cycle.
@@ -34,6 +34,9 @@
 
 # @topic category any/Tropical covector decomposition
 # These +++ deal with covectors of subdivision of tropical point configurations.
+
+# @topic category any/Tropical linear spaces
+# These +++ deal with tropical linear spaces associated to valuated matroids.
 
 # @topic category any/gfan
 # These +++ are wrappers for gfan functions.

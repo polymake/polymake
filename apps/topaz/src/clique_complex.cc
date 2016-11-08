@@ -44,7 +44,7 @@ UserFunction4perl("# @category Producing a simplicial complex from other objects
                   "# Produce the __clique complex__ of a given graph.\n"
                   "# If //no_labels// is set to 1, the labels are not copied.\n"
                   "# @param Graph graph"
-                  "# @option Bool no_labels\n"
+                  "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @return SimplicialComplex",
                   &clique_complex,"clique_complex(Graph; { no_labels => 0 })");
 } }

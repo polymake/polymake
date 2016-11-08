@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,12 +16,6 @@
 
 #include "polymake/perl/Ext.h"
 
-#if PerlVersion < 5120
-# define LineNumCorr +1
-#else
-# define LineNumCorr
-#endif
-
 MODULE = Polymake::Core::Shell          PACKAGE = Polymake::Core::Shell
 
 PROTOTYPES: DISABLE
@@ -33,7 +27,7 @@ PPCODE:
    if (PL_parser->lex_brackets==0 && PL_parser->lex_state==LEX_NORMAL && PL_parser->expect==XSTATE)
       XPUSHs(&PL_sv_undef);
    else
-      XPUSHs(sv_2mortal(newSViv(CopLINE(&PL_compiling) LineNumCorr)));
+      XPUSHs(sv_2mortal(newSViv(CopLINE(&PL_compiling))));
 }
 
 BOOT:

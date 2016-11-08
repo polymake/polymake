@@ -16,17 +16,17 @@
 
 namespace polymake { namespace topaz { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::Map<pm::Array<int, void>, std::list<int, std::allocator<int> >, pm::operations::cmp> (perl::Object const&, perl::OptionSet) ) {
+   FunctionWrapper4perl( pm::Map<pm::Array<int>, std::list<int, std::allocator<int> >, pm::operations::cmp> (perl::Object const&, perl::OptionSet) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
       IndirectWrapperReturn( arg0, arg1 );
    }
-   FunctionWrapperInstance4perl( pm::Map<pm::Array<int, void>, std::list<int, std::allocator<int> >, pm::operations::cmp> (perl::Object const&, perl::OptionSet) );
+   FunctionWrapperInstance4perl( pm::Map<pm::Array<int>, std::list<int, std::allocator<int> >, pm::operations::cmp> (perl::Object const&, perl::OptionSet) );
 
-   FunctionWrapper4perl( pm::Map<pm::Array<int, void>, int, pm::operations::cmp> (perl::Object const&, perl::OptionSet) ) {
+   FunctionWrapper4perl( pm::Map<pm::Array<int>, int, pm::operations::cmp> (perl::Object const&, perl::OptionSet) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
       IndirectWrapperReturn( arg0, arg1 );
    }
-   FunctionWrapperInstance4perl( pm::Map<pm::Array<int, void>, int, pm::operations::cmp> (perl::Object const&, perl::OptionSet) );
+   FunctionWrapperInstance4perl( pm::Map<pm::Array<int>, int, pm::operations::cmp> (perl::Object const&, perl::OptionSet) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

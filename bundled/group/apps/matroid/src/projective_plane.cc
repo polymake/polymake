@@ -57,7 +57,6 @@ perl::Object projective_plane(const int p){
 	throw std::runtime_error("projective_plane: p should be positive.");	
    }
    perl::Object m("Matroid");
-   Set< Set<int> > bases;
    int  n_elements=p*p+p+1;
    int rank=3;
 
@@ -115,9 +114,8 @@ perl::Object projective_plane(const int p){
       }
 
    const group::PermlibGroup sym_group(group);
-   int b[] = {0,1,p+1};
-   Set<int> basis(b);
-   bases=sym_group.orbit(basis); 
+   Set<int> basis{0, 1, p+1};
+   Set<Set<int>> bases{ sym_group.orbit(basis) };
 
    m.take("BASES") << bases;
    m.take("RANK") << rank;
@@ -130,20 +128,12 @@ perl::Object projective_plane(const int p){
    return m;
 }
 
-perl::Object fano_matroid(){
-   return projective_plane(2);
-}
 
 UserFunction4perl("# @category Producing a matroid from scratch\n"
                   "# Creates the projective plane matroid of rank 3 with //p**2+p+1// elements, where p is a prime."
                   "# @param Integer p"
                   "# @return Matroid",
                   &projective_plane, "projective_plane");
-
-UserFunction4perl("# @category Producing a matroid from scratch\n"
-                  "# Creates the Fano plane matroid of rank 3 with 7 elements."
-                  "# @return Matroid",
-                  &fano_matroid, "fano_matroid");
 
 } }
 

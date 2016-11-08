@@ -73,17 +73,10 @@ perl::Object tiling_quotient(perl::Object P, perl::Object Q)
    VPL -= repeat_row(barycenter, VPL.rows());
    VQL -= repeat_row(barycenter, VQL.rows());
 
-   // construct the perl object with these vertices in homogeneous coordinates
-   perl::Object 
-      PT(perl::ObjectType::construct<E>("Polytope")),
-      QT(perl::ObjectType::construct<E>("Polytope"));
-   PT.take("VERTICES") << (ones_vector<E>(VPL.rows()) | VPL);
-   QT.take("VERTICES") << (ones_vector<E>(VQL.rows()) | VQL);
-
    // Take the Minkowski sum of the transformed P and Q 
-   Array<perl::Object> summands(2);
-   summands[0] = PT;
-   summands[1] = QT;
+   Array<perl::Object> summands(perl::ObjectType::construct<E>("Polytope"), 2);
+   summands[0].take("VERTICES") << (ones_vector<E>() | VPL);
+   summands[1].take("VERTICES") << (ones_vector<E>() | VQL);
    const Matrix<E> MV = polytope::minkowski_sum_vertices_fukuda<E>(summands);
 
    // Find the interior and boundary lattice points of the Minkowski sum
@@ -98,8 +91,8 @@ perl::Object tiling_quotient(perl::Object P, perl::Object Q)
    // get the facets of the transformed polytopes.
    // of course, we could calculate these directly...
    const Matrix<E> 
-      FP = PT.give("FACETS"),
-      FQ = QT.give("FACETS");
+      FP = summands[0].give("FACETS"),
+      FQ = summands[1].give("FACETS");
 
    Map<Vector<E>, int> index_of;
    int n(0);

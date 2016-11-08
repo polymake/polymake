@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -24,12 +24,7 @@ package Polymake::Core::Shell::Helper;
 use Polymake::Struct (
    [ new => '$$$;$' ],
    [ '$name' => '#1' ],         # descriptive name
-
-# TODO: remove this hack when support for perl 5.10 is phased out.
-# Before perl 5.12, compiled qr// patterns were not attached to references.
-
-   [ '$pattern' => ($^V lt v5.12 ? '\\( #2 )' : '#2') ],      # pattern to match the partial input
-
+   [ '$pattern' => '#2' ],      # pattern to match the partial input
    [ '&completion' => '#3' ],   # ($Shell, $word) => 1 for `ready' || 0 or undef for `try next pattern'
    [ '&help' => '#4' ],         # ($Shell) => (start position in partial input, InteractiveHelp topics) || () for `try next pattern'
 );
@@ -295,7 +290,8 @@ declare @list=(
       'rulefile argument',
 
       qr{ $statement_start_re (?'cmd' reconfigure|unconfigure|include)
-          $args_start_re (?: $quote_re (?'prefix' (?'app_name' $id_re) ::)? (?'filename' $non_quote_space_re*) )? $}xo,
+          $args_start_re (?: $quoted_re \s*,\s* )*
+          (?: $quote_re (?'prefix' (?'app_name' $id_re) ::)? (?'filename' $non_quote_space_re*) )? $}xo,
 
       sub {
          my ($shell, $word)=@_;
@@ -310,8 +306,7 @@ declare @list=(
             } else {
                @proposals=matching_rulefiles($User::application, $cmd, $filename);
                while (my ($app_name, $app)=each %{$User::application->used}) {
-                  if ($app_name =~ /^\Q$filename\E/ and
-                      $cmd eq "include" ? glob($app->rulepath->[0]."/*") : $app->list_configured($cmd eq "unconfigure")) {
+                  if ($app_name =~ /^\Q$filename\E/ and matching_rulefiles($app, $cmd, "")) {
                      push @proposals, "$app_name\::";
                   }
                }
@@ -430,7 +425,7 @@ declare @list=(
 
          if (defined( my $type=retrieve_method_owner_type($var, $app_name, $func, $intermed) )) {
             if (instanceof ObjectType($type) && defined(my $prop=$type->lookup_property($prop_name))) {
-               $shell->completion_words=[ try_property_completion($prop->specialization($type)->type, $prefix) ];
+               $shell->completion_words=[ try_property_completion($prop->type, $prefix) ];
                if ($quote) {
                   $shell->term->Attribs->{completion_append_character}=$quote;
                } else {
@@ -451,7 +446,7 @@ declare @list=(
          if (length($prefix) && $prefix ne "temporary") {
             if (defined( my $type=retrieve_method_owner_type($var, $app_name, $func, $intermed) )) {
                if (instanceof ObjectType($type) && defined(my $prop=$type->lookup_property($prop_name))) {
-                  $type=$prop->specialization($type)->type;
+                  $type=$prop->type;
                   @proposals=fetch_property_help($type, $prefix)
                     or
                   @proposals=sub { print "object type ", $type->full_name, " does not have a property $prefix\n" };
@@ -508,11 +503,13 @@ declare @list=(
                   my @proposals;
                   if ($prefix =~ /^ (?: $hier_id_re (?:\.)? )? $/xo) {
                      # maybe a label
-                     @proposals=sorted_uniq(sort( grep { /^\Q$prefix\E/ } map { $_->full_name } map { @{$_->labels} } map { @{$_->production_rules} } $type, @{$type->super} ));
+                     @proposals=sorted_uniq(sort( grep { /^\Q$prefix\E/ } map { $_->full_name } map { @{$_->labels} }
+                                                  map { @{$_->production_rules} } $type, @{$type->linear_isa} ));
                   }
                   my $pattern=$prefix;
                   Rule::prepare_header_search_pattern($pattern);
-                  push @proposals, sorted_uniq(sort( grep { /^$pattern/ } map { $_->header } map { @{$_->production_rules} } $type, @{$type->super} ));
+                  push @proposals, sorted_uniq(sort( grep { /^$pattern/ } map { $_->header }
+                                                     map { @{$_->production_rules} } $type, @{$type->linear_isa} ));
                   finalize_proposals($shell, $prefix, $word, @proposals);
                   $shell->term->Attribs->{completion_append_character}=$quote;
                }
@@ -840,7 +837,7 @@ declare @list=(
                               }
                               if ($prefix =~ /^($id_re)?$/o) {
                                  # property for selecting a subobject
-                                 @proposals=map { "$_=>" } try_property_completion($prop->specialization($type)->type, $prefix);
+                                 @proposals=map { "$_=>" } try_property_completion($prop->type, $prefix);
                               }
                            }
                            if (index("temporary", $prefix)==0) {
@@ -850,14 +847,16 @@ declare @list=(
                                  $last_method_name =~ /^(?:give|take|add)$/ &&
                                  index("temporary", $prefix)==0) {
                            push @proposals, "temporary";
+
                         }
                         if (@proposals) {
                            # prefix is simple, no need to reiterate
                            $shell->completion_words=\@proposals;
                            return 1;
                         }
-                     } elsif (try_keyword_completion($shell, $preceding_args, $prefix, $word,
-                                                     uniq(retrieve_method_topics($type, $last_method_name, "find")))) {
+                     }
+                     if (try_keyword_completion($shell, $preceding_args, $prefix, $word,
+                                                uniq(retrieve_method_topics($type, $last_method_name, "find")))) {
                         return 1;
                      }
                   } else {
@@ -962,7 +961,7 @@ declare @list=(
                         # property for selecting a subobject
                         if ($prop->flags & $Property::is_multiple
                               and
-                            @proposals=fetch_property_help($prop->specialization($type)->type, $prefix)) {
+                            @proposals=fetch_property_help($prop->type, $prefix)) {
                            # next time match the multiple property
                            return ($method_name_pos+1, @proposals);
                         }
@@ -993,7 +992,7 @@ declare @list=(
 sub matching_rulefiles {
    my ($app, $cmd, $prefix)=@_;
    if ($cmd eq "include") {
-      map { $_ =~ $filename_re } map { glob("$_/$prefix*") } @{$app->rulepath}
+      map { $_ =~ $filename_re } map { glob("$_/rules/$prefix*") } $app->top, map { $_->app_dir($app) } @{$app->extensions}
    } else {
       grep { /^\Q$prefix\E/ } $app->list_configured($cmd eq "unconfigure")
    }
@@ -1011,7 +1010,7 @@ sub prepare_property_lookup {
    foreach (@path) {
       my $prop=$type->lookup_property($_) or return;
       $prop->flags & $Property::is_subobject or return;
-      $type=$prop->specialization($type)->type;
+      $type=$prop->type;
    }
    ($type, $prefix);
 }
@@ -1020,7 +1019,7 @@ sub try_property_completion {
    my ($type, $prefix)=@_;
    if (($type, $prefix)=&prepare_property_lookup) {
       sorted_uniq(sort( grep { !$type->is_overridden($_) } grep { /^$prefix/ }
-                        map { keys %{$_->properties} } $type, @{$type->super} ))
+                        map { keys %{$_->properties} } $type, @{$type->linear_isa} ))
    } else {
       ()
    }
@@ -1033,7 +1032,7 @@ sub fetch_property_help {
       my $topic;
       uniq( grep { !$type->is_overridden($_->name) }
                  map { defined($topic=$_->help_topic) ? $topic->find("!rel", "properties", $prefix) : () }
-                     $type, @{$type->super} )
+                     $type, @{$type->linear_isa} )
    } else {
       ()
    }
@@ -1150,13 +1149,13 @@ sub retrieve_method_owner_type {
       }
    }
 
-   if (defined($type)) {
+   if (defined $type) {
       my $prop;
       while ($intermed =~ m{\G $intermed_re }gxo) {
          if (defined (my $method_name=$+{method_name})) {
             undef $prop;
-            if (instanceof ObjectType($type) and defined ($prop=$type->lookup_property($method_name, 1))) {
-               $type=$prop->specialization($type)->type;
+            if (instanceof ObjectType($type) and defined ($prop=$type->lookup_property($method_name))) {
+               $type=$prop->type;
             } elsif (defined ($func= ref($type) ? ($topic=$type->help_topic and $topic->find("methods", $method_name))
                                                 : ($topic=$User::application->help->find("objects", $type)) and $topic->find("methods", $method_name))) {
                if (defined (my $ret_type=retrieve_return_type($func))) {
@@ -1186,7 +1185,7 @@ sub retrieve_method_topics {
    if (ref($type)) {
       if (instanceof ObjectType($type)) {
          return map { $_->$help_method("!rel", "properties", "methods", $name) }
-                    ( grep { defined } map { $_->help_topic } $type, @{$type->super} ),
+                    ( grep { defined } map { $_->help_topic } $type, @{$type->linear_isa} ),
                     $type->application->help->find(qw(objects Core::Object));
       }
 

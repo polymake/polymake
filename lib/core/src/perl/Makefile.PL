@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -79,18 +79,10 @@ XMLfile\$(OBJ_EXT) : INC += $libxml2Cflags
 sub MY::xs_c {
    package MY;
    my $text=(shift)->SUPER::xs_c;
-   if ($] >= 5.010 && $] < 5.012) {
-      # avoid annoying compiler warnings about const violations
-      $text =~ s{(?= *> *\$\*\.xsc)}{| sed -e 's/^\\( *\\)\\(char\\* *file *= *__FILE__;\\)\$\$/\\1 const \\2/'};
-   }
    my $copy=$text;
    $copy =~ s/\.xs\b/.xxs/g;
    $copy =~ s/\.c(?=:|$)/.cc/mg;
-   if ($] >= 5.010 && $] < 5.012) {
-      $copy =~ s{(?<=\| sed -e ')}{s/\\.xxs\\.c"/.cc"/' -e '};
-   } else {
-      $copy =~ s{(?= *> *\$\*\.xsc)}{| sed -e 's/\\.xxs\\.c"/.cc"/'};
-   }
+   $copy =~ s{(?= *> *\$\*\.xsc)}{| sed -e 's/\\.xxs\\.c"/.cc"/'};
    return $text.$copy;
 }
 

@@ -31,20 +31,20 @@ struct SkewSymmetric;
 template <typename Container>
 class construct_sparse_compatible
    : public redirected_container< construct_sparse_compatible<Container>,
-                                  list( Hidden< Container >,
-                                        ExpectedFeatures< cons<end_sensitive, indexed> > ) > {
-   typedef redirected_container<construct_sparse_compatible> _super;
+                                  mlist< HiddenTag< Container >,
+                                         ExpectedFeaturesTag< cons<end_sensitive, indexed> > > > {
+   typedef redirected_container<construct_sparse_compatible> base_t;
 public:
    int dim() const { return this->size(); }
 
-   void erase(const typename _super::iterator& where)
+   void erase(const typename base_t::iterator& where)
    {
-      operations::clear<typename _super::value_type> zero;
+      operations::clear<typename base_t::value_type> zero;
       zero(*where);
    }
 
    // Must be defined, although never called
-   void insert(const typename _super::iterator&, int, const typename _super::value_type&) {}
+   void insert(const typename base_t::iterator&, int, const typename base_t::value_type&) {}
 };
 
 template <typename Container>
@@ -60,7 +60,7 @@ struct redirect_object_traits< construct_sparse_compatible<Container> >
 };
 
 template <typename Container>
-struct check_container_feature<construct_sparse_compatible<Container>, sparse_compatible> : True {};
+struct check_container_feature<construct_sparse_compatible<Container>, sparse_compatible> : std::true_type {};
 
 struct pure_sparse_constructor {
    template <typename Iterator, typename Predicate, typename ExpectedFeatures>
@@ -72,12 +72,12 @@ struct pure_sparse_constructor {
    };
 };
 
-template <typename Container, int kind=object_classifier::what_is<Container>::value>
+template <typename Container, int TKind=object_classifier::what_is<Container>::value>
 class construct_pure_sparse
    : public modified_container_impl< construct_pure_sparse<Container>,
-                                     list( Hidden< Container >,
-                                           Operation< BuildUnary<operations::non_zero> >,
-                                           IteratorConstructor< pure_sparse_constructor > ) > {
+                                     mlist< HiddenTag< Container >,
+                                            OperationTag< BuildUnary<operations::non_zero> >,
+                                            IteratorConstructorTag< pure_sparse_constructor > > > {
 public:
    int dim() const { return this->hidden().size(); }
 };
@@ -114,89 +114,98 @@ struct redirect_object_traits< construct_pure_sparse<Container> >
 };
 
 template <typename Container, int kind>
-struct check_container_feature<construct_pure_sparse<Container,kind>, pure_sparse> : True {};
+struct check_container_feature<construct_pure_sparse<Container,kind>, pure_sparse> : std::true_type {};
 
 template <typename Iterator, typename Target, typename is_enabled=void>
 struct construct_sparse_iterator {};
 
 template <typename Iterator, typename Target>
 struct construct_sparse_iterator<Iterator, Target,
-                                 typename enable_if<void, (check_iterator_feature<Iterator, indexed>::value &&
-                                                           check_iterator_feature<Iterator, end_sensitive>::value &&
-                                                           isomorphic_types<typename iterator_traits<Iterator>::value_type, Target>::value &&
-                                                           convertible_to<typename iterator_traits<Iterator>::value_type, Target>::value)>::type>
+                                 typename std::enable_if<(check_iterator_feature<Iterator, indexed>::value &&
+                                                          check_iterator_feature<Iterator, end_sensitive>::value &&
+                                                          isomorphic_types<typename iterator_traits<Iterator>::value_type, Target>::value &&
+                                                          std::is_convertible<typename iterator_traits<Iterator>::value_type, Target>::value)>::type>
 {
-   typedef void** enabled;
+   static const bool enabled=true;
    typedef Iterator iterator;
 
-   Iterator& operator() (Iterator& src, int) const { return src; }
+   Iterator&& operator() (Iterator&& src, int) const { return std::forward<Iterator>(src); }
 };
 
 template <typename Iterator, typename Target>
 struct construct_sparse_iterator<Iterator, Target,
-                                 typename enable_if<void, (check_iterator_feature<Iterator, end_sensitive>::value &&
-                                                           isomorphic_types<typename iterator_traits<Iterator>::value_type, pair<int, Target> >::value &&
-                                                           convertible_to<typename iterator_traits<Iterator>::value_type::second_type, Target>::value)>::type>
+                                 typename std::enable_if<(check_iterator_feature<Iterator, end_sensitive>::value &&
+                                                          isomorphic_types<typename iterator_traits<Iterator>::value_type, pair<int, Target> >::value &&
+                                                          std::is_convertible<typename iterator_traits<Iterator>::value_type::second_type, Target>::value)>::type>
 {
-   typedef void** enabled;
+   static const bool enabled=true;
    typedef Iterator iterator;
 
-   Iterator& operator() (Iterator& src, int) const { return src; }
+   Iterator&& operator() (Iterator&& src, int) const { return std::forward<Iterator>(src); }
 };
 
 template <typename Iterator, typename Target>
 struct construct_sparse_iterator<Iterator, Target,
-                                 typename enable_if<void, (check_iterator_feature<Iterator, indexed>::value &&
-                                                           check_iterator_feature<Iterator, end_sensitive>::value &&
-                                                           isomorphic_types<typename iterator_traits<Iterator>::value_type, Target>::value &&
-                                                           explicitly_convertible_to<typename iterator_traits<Iterator>::value_type, Target>::value)>::type>
+                                 typename std::enable_if<(check_iterator_feature<Iterator, indexed>::value &&
+                                                          check_iterator_feature<Iterator, end_sensitive>::value &&
+                                                          isomorphic_types<typename iterator_traits<Iterator>::value_type, Target>::value &&
+                                                          !std::is_convertible<typename iterator_traits<Iterator>::value_type, Target>::value &&
+                                                          explicitly_convertible_to<typename iterator_traits<Iterator>::value_type, Target>::value)>::type>
 {
-   typedef void** enabled;
-   typedef unary_transform_iterator<Iterator, conv<typename iterator_traits<Iterator>::value_type, Target> > iterator;
+   static const bool enabled=true;
+   typedef pure_type_t<Iterator> src_iterator;
+   typedef conv<typename object_traits<typename iterator_traits<Iterator>::value_type>::persistent_type, Target> converter;
+   typedef unary_transform_iterator<src_iterator, converter> iterator;
 
-   iterator operator() (const Iterator& src, int) const { return src; }
+   iterator operator() (const Iterator& src, int) const { return iterator(src); }
 };
 
 template <typename Iterator, typename Target>
 struct construct_sparse_iterator<Iterator, Target,
-                                 typename enable_if<void, (check_iterator_feature<Iterator, end_sensitive>::value &&
-                                                           isomorphic_types<typename iterator_traits<Iterator>::value_type, pair<int, Target> >::value &&
-                                                           explicitly_convertible_to<typename iterator_traits<Iterator>::value_type::second_type, Target>::value)>::type>
+                                 typename std::enable_if<(check_iterator_feature<Iterator, end_sensitive>::value &&
+                                                          isomorphic_types<typename iterator_traits<Iterator>::value_type, pair<int, Target> >::value &&
+                                                          !std::is_convertible<typename iterator_traits<Iterator>::value_type::second_type, Target>::value &&
+                                                          explicitly_convertible_to<typename iterator_traits<Iterator>::value_type::second_type, Target>::value)>::type>
 {
-   typedef void** enabled;
-   typedef unary_transform_iterator<Iterator, conv<typename iterator_traits<Iterator>::value_type, pair<int, Target> > > iterator;
+   static const bool enabled=true;
+   typedef pure_type_t<Iterator> src_iterator;
+   typedef unary_transform_iterator<src_iterator, conv<typename iterator_traits<Iterator>::value_type, pair<int, Target> > > iterator;
 
-   iterator operator() (const Iterator& src, int) const { return src; }
+   iterator operator() (const Iterator& src, int) const { return iterator(src); }
 };
 
 template <typename Iterator, typename Target>
 struct construct_sparse_iterator<Iterator, Target,
-                                 typename enable_if<void, (!check_iterator_feature<Iterator, indexed>::value &&
-                                                           isomorphic_types<typename iterator_traits<Iterator>::value_type, Target>::value &&
-                                                           convertible_to<typename iterator_traits<Iterator>::value_type, Target>::value)>::type>
+                                 typename std::enable_if<(!check_iterator_feature<Iterator, indexed>::value &&
+                                                          isomorphic_types<typename iterator_traits<Iterator>::value_type, Target>::value &&
+                                                          std::is_convertible<typename iterator_traits<Iterator>::value_type, Target>::value)>::type>
 {
-   typedef void** enabled;
+   static const bool enabled=true;
+   typedef pure_type_t<Iterator> src_iterator;
    typedef ensure_features<sequence, sparse_compatible>::const_iterator indexer;
-   typedef iterator_pair<Iterator, indexer, FeaturesViaSecond<indexed> > it_pair;
-   typedef unary_predicate_selector<it_pair, BuildUnary<operations::non_zero> > iterator;
+   typedef iterator_pair<src_iterator, indexer, mlist<FeaturesViaSecondTag<indexed>>> it_pair;
+   typedef unary_predicate_selector<it_pair, BuildUnary<operations::non_zero>> iterator;
 
    iterator operator() (const Iterator& src, int dim) const
    {
-      return it_pair(src, ensure(sequence(0,dim), (sparse_compatible*)0).begin());
+      return it_pair(src, ensure(sequence(0, dim), (sparse_compatible*)0).begin());
    }
 };
 
 template <typename Iterator, typename Target>
 struct construct_sparse_iterator<Iterator, Target,
-                                 typename enable_if<void, (!check_iterator_feature<Iterator, indexed>::value &&
-                                                           isomorphic_types<typename iterator_traits<Iterator>::value_type, Target>::value &&
-                                                           explicitly_convertible_to<typename iterator_traits<Iterator>::value_type, Target>::value)>::type>
+                                 typename std::enable_if<(!check_iterator_feature<Iterator, indexed>::value &&
+                                                          isomorphic_types<typename iterator_traits<Iterator>::value_type, Target>::value &&
+                                                          !std::is_convertible<typename iterator_traits<Iterator>::value_type, Target>::value &&
+                                                          explicitly_convertible_to<typename iterator_traits<Iterator>::value_type, Target>::value)>::type>
 {
-   typedef void** enabled;
+   static const bool enabled=true;
+   typedef pure_type_t<Iterator> src_iterator;
    typedef ensure_features<sequence, sparse_compatible>::const_iterator indexer;
-   typedef iterator_pair<Iterator, indexer, FeaturesViaSecond<indexed> > it_pair;
-   typedef unary_predicate_selector<it_pair, BuildUnary<operations::non_zero> > filter;
-   typedef unary_transform_iterator<filter, conv<typename iterator_traits<Iterator>::value_type, Target> > iterator;
+   typedef iterator_pair<src_iterator, indexer, mlist<FeaturesViaSecondTag<indexed>>> it_pair;
+   typedef unary_predicate_selector<it_pair, BuildUnary<operations::non_zero>> filter;
+   typedef conv<typename object_traits<typename iterator_traits<Iterator>::value_type>::persistent_type, Target> converter;
+   typedef unary_transform_iterator<filter, converter> iterator;
 
    iterator operator() (const Iterator& src, int dim) const
    {
@@ -229,10 +238,10 @@ deref_sparse_iterator(const Iterator& it)
 
 template <typename Container>
 struct dense_helper {
-   typedef list(params)( Container1< Container >,
-                         Container2< sequence >,
-                         IteratorCoupler< zipping_coupler< operations::cmp, set_union_zipper, true, false> >,
-                         Hidden< Container > );
+   typedef mlist< Container1Tag< Container >,
+                  Container2Tag< sequence >,
+                  IteratorCouplerTag< zipping_coupler< operations::cmp, set_union_zipper, true, false> >,
+                  HiddenTag< Container > > params;
 };
 
 template <typename Container>
@@ -247,9 +256,9 @@ public:
 template <typename Container>
 class construct_dense
    : public modified_container_pair_impl< construct_dense<Container>,
-                                          list( Operation< pair< BuildBinary<implicit_zero>,
-                                                                 operations::apply2< BuildUnaryIt<operations::dereference> > > >,
-                                                typename dense_helper<Container>::params ) > {
+                                          typename mlist_concat< OperationTag< pair< BuildBinary<implicit_zero>,
+                                                                                     operations::apply2< BuildUnaryIt<operations::dereference> > > >,
+                                                                 typename dense_helper<Container>::params >::type > {
 public:
    const Container& get_container1() const { return this->hidden(); }
    sequence get_container2() const { return sequence(0, this->size()); }
@@ -276,7 +285,7 @@ struct redirect_object_traits< construct_dense_pair<Container> >
 };
 
 template <typename Container>
-struct check_container_feature<construct_dense<Container>, dense> : True {};
+struct check_container_feature<construct_dense<Container>, dense> : std::true_type {};
 
 template <typename Controller>
 struct sparse_coupler {
@@ -299,54 +308,61 @@ class sparse_elem_proxy : public Base {
 protected:
    static const bool is_skew=list_contains<Params,SkewSymmetric>::value;
 
-   typename if_else<is_skew, operations::neg<const E&>, nothing>::type op;
+   typename std::conditional<is_skew, operations::neg<const E&>, nothing>::type op;
 
-   bool inversed(False) const { return false; }
-   bool inversed(True) const { return this->i > this->vec->get_line_index(); }
-   bool inversed() const { return inversed(bool2type<is_skew>()); }
+   bool inversed_impl(std::false_type) const { return false; }
+   bool inversed_impl(std::true_type) const { return this->i > this->vec->get_line_index(); }
+   bool inversed() const { return inversed_impl(bool_constant<is_skew>()); }
 
-   void store(const E& x, bool, False) { this->insert(x); }
-   void store(const E& x, bool do_inverse, True) { if (do_inverse) this->insert(op(x)); else this->insert(x); }
+   void store(const E& x, bool, std::false_type) { this->insert(x); }
+   void store(const E& x, bool do_inverse, std::true_type) { if (do_inverse) this->insert(op(x)); else this->insert(x); }
 
-   const E& _get(False) const { return Base::get(); }
-   E _get(True) const { return inversed(True()) ? op(Base::get()) : Base::get(); }
+   const E& get_impl(std::false_type) const { return Base::get(); }
+   E get_impl(std::true_type) const { return inversed(std::true_type()) ? op(Base::get()) : Base::get(); }
 
 public:
    typedef Params parameters;
 
    sparse_elem_proxy(const Base& base_arg) : Base(base_arg) {}
-   typedef typename if_else<is_skew, const E, const E&>::type const_reference;
+   typedef typename std::conditional<is_skew, const E, const E&>::type const_reference;
 
-   const_reference get() const { return _get(bool2type<is_skew>()); }
+   const_reference get() const { return get_impl(bool_constant<is_skew>()); }
 
    operator const_reference () const { return get(); }
+
+   template <typename T,
+             typename=typename std::enable_if<std::is_constructible<T, E>::value && !is_derived_from<E, T>::value>::type>
+   explicit operator T () const
+   {
+      return static_cast<T>(get());
+   }
 
    sparse_elem_proxy& operator= (const sparse_elem_proxy& p2)
    {
       if (p2.exists())
-         store(p2._get(False()), this->inversed() != p2.inversed(), bool2type<is_skew>());
+         store(p2.get_impl(std::false_type()), this->inversed() != p2.inversed(), bool_constant<is_skew>());
       else
          this->erase();
       return *this;
    }
 
    template <typename E2>
-   typename enable_if<sparse_elem_proxy, convertible_to<E2, E>::value>::type&
+   typename std::enable_if<std::is_convertible<E2, E>::value, sparse_elem_proxy>::type&
    operator= (const E2& x)
    {
       if (!is_zero(x))
-         store(x, this->inversed(), bool2type<is_skew>());
+         store(x, this->inversed(), bool_constant<is_skew>());
       else
          this->erase();
       return *this;
    }
 
    template <typename E2>
-   typename enable_if<sparse_elem_proxy, explicitly_convertible_to<E2, E>::value>::type&
+   typename std::enable_if<explicitly_convertible_to<E2, E>::value && !std::is_convertible<E2, E>::value, sparse_elem_proxy>::type&
    operator= (const E2& x)
    {
       if (!is_zero(x))
-         store(conv<E2, E>()(x), this->inversed(), bool2type<is_skew>());
+         store(conv<E2, E>()(x), this->inversed(), bool_constant<is_skew>());
       else
          this->erase();
       return *this;
@@ -638,32 +654,11 @@ public:
 };
 
 template <typename Base, typename E, typename Params>
-struct object_traits< sparse_elem_proxy<Base, E, Params> > : object_traits<E> {};
-
-template <typename Base, typename E, typename Params, typename Target>
-struct convertible_to<sparse_elem_proxy<Base, E, Params>, Target> : False {};
-
-template <typename Base, typename E, typename Params, typename Target>
-struct explicitly_convertible_to<sparse_elem_proxy<Base, E, Params>, Target>
-{
-   static const bool value=explicitly_convertible_to<E, Target>::value || convertible_to<E, Target>::value;
+struct object_traits< sparse_elem_proxy<Base, E, Params> >
+   : object_traits<E> {
+   typedef E proxy_for;
+   static const bool is_temporary=true, is_persistent=false;
 };
-
-template <typename Base, typename E1, typename Params, typename E2>
-struct isomorphic_types< sparse_elem_proxy<Base, E1, Params>, E2 >
-   : isomorphic_types<E1, E2> {};
-
-template <typename E1, typename Base, typename E2, typename Params>
-struct isomorphic_types< E1, sparse_elem_proxy<Base, E2, Params> >
-   : isomorphic_types<E1, E2> {};
-
-template <typename Base1, typename E1, typename Params1, typename Base2, typename E2, typename Params2>
-struct isomorphic_types< sparse_elem_proxy<Base1, E1, Params1>, sparse_elem_proxy<Base2, E2, Params2> >
-   : isomorphic_types<E1, E2> {};
-
-template <typename Base, typename E, typename Params, typename Target, typename ExpectedRet>
-struct assignable_to<sparse_elem_proxy<Base, E, Params>, Target, ExpectedRet, false, false>
-   : assignable_to<E, Target, ExpectedRet> {};
 
 template <typename Base, typename E, typename Params> inline
 bool is_zero(const sparse_elem_proxy<Base, E, Params>& x)
@@ -676,25 +671,6 @@ bool is_one(const sparse_elem_proxy<Base, E, Params>& x)
 {
    return x.exists() && is_one(x.get());
 }
-
-template <typename Base, typename E, typename Params> inline
-sparse_elem_proxy<Base, E, Params>& negate(const sparse_elem_proxy<Base, E, Params>& x)
-{
-   return const_cast<sparse_elem_proxy<Base, E, Params>&>(x).negate();
-}
-
-template <typename Base, typename E, typename Params, typename Target>
-class conv<sparse_elem_proxy<Base, E, Params>, Target> :
-   public if_else<convertible_to<E, Target>::value, conv_by_cast<E, Target>, conv<E, Target> >::type {
-public:
-   typedef typename if_else<convertible_to<E, Target>::value, conv_by_cast<E, Target>, conv<E, Target> >::type super;
-   typedef sparse_elem_proxy<Base, E, Params> argument_type;
-
-   const Target operator() (const argument_type& x) const
-   {
-      return super::operator()(x.get());
-   }
-};
 
 namespace operations {
    template <typename ContainerRef>

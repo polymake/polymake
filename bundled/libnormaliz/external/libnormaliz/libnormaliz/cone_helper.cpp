@@ -21,6 +21,10 @@
  * terms of service.
  */
 
+#ifdef NMZ_MIC_OFFLOAD
+#pragma offload_attribute (push, target(mic))
+#endif
+
 #include "libnormaliz/cone_helper.h"
 #include <vector>
 
@@ -71,5 +75,9 @@ void maximal_subsets(const vector<vector<bool> >& ind, vector<bool>& is_max_subs
 }
 
 //---------------------------------------------------------------------------
+
+#ifdef NMZ_MIC_OFFLOAD
+#pragma offload_attribute (pop)
+#endif
 
 } //end namespace libnormaliz

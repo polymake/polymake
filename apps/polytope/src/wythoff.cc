@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -26,7 +26,6 @@
 #include "polymake/ListMatrix.h"
 #include "polymake/linalg.h"
 #include "polymake/polytope/simple_roots.h"
-#include "polymake/group/group_domain.h"
 #include "polymake/hash_map"
 #include "polymake/list"
 #include <sstream>
@@ -268,19 +267,21 @@ perl::Object wythoff_dispatcher(std::string type, Set<int> rings)
    }
    p.set_description() << "Wythoff polytope of type " << type << " with rings " << rings << endl;
 
-   p.take("LINEALITY_SPACE") << Matrix<Rational>();
+   const int ambient_dim= (t == 'A' || t == 'a') ? n+2 : n+1;
 
-   p.take("CONE_AMBIENT_DIM") << ((t == 'A' || t == 'a') ? n+2 : n+1);
+   p.take("CONE_AMBIENT_DIM") << ambient_dim;
    p.take("CONE_DIM") << n+1;
-   p.take("AFFINE_HULL") << ((t == 'A' || t == 'a') ? vector2row(-1 | ones_vector<Rational>(n+1)) : Matrix<Rational>());
+   p.take("AFFINE_HULL") << ((t == 'A' || t == 'a') ? vector2row(-1 | ones_vector<Rational>(n+1)) : Matrix<Rational>(0, ambient_dim));
+   p.take("LINEALITY_SPACE") << Matrix<Rational>(0, ambient_dim);
    p.take("BOUNDED") << true;
    p.take("FEASIBLE") << true;
    p.take("POINTED") << true;
    p.take("CENTERED") << true;
 
-   perl::Object g("group::GroupOfPolytope");
-   g.take("DOMAIN") << polymake::group::OnRays;
-   g.take("GENERATORS") << generators;
+   perl::Object a("group::PermutationAction");
+   a.take("GENERATORS") << generators;
+   perl::Object g("group::Group");
+   g.take("RAYS_ACTION") << a;
    p.take("GROUP") << g;
 
    return p;
@@ -300,7 +301,7 @@ perl::Object tetrahedron()
 
    p.take("VERTICES") << RM;
    p.take("N_VERTICES") << 4;
-   p.take("LINEALITY_SPACE") << Matrix<Scalar>();
+   p.take("LINEALITY_SPACE") << Matrix<Scalar>(0, 4);
 
    p.take("CONE_AMBIENT_DIM") << 4;
    p.take("CONE_DIM") << 4;

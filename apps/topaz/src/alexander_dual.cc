@@ -38,7 +38,7 @@ perl::Object alexander_dual(perl::Object p_in, perl::OptionSet options)
    if (MNF.empty()) MNF.resize(1);      // add a single empty face
    p_out.take("FACETS") << MNF;
 
-   if (!options["nol"]) {
+   if (!options["no_labels"]) {
       const Array<std::string> L = p_in.give("VERTEX_LABELS");
       const Array<std::string> new_L(V.size(), select(L,V).begin());
       p_out.take("VERTEX_LABELS") << new_L;
@@ -49,11 +49,11 @@ perl::Object alexander_dual(perl::Object p_in, perl::OptionSet options)
 
 UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# Computes the Alexander dual complex, that is, the complements of all non-faces.\n"
-                  "# The vertex labels are preserved unless the //nol// flag is specified.\n"
+                  "# The vertex labels are preserved unless the //no_labels// flag is specified.\n"
                   "# @param SimplicialComplex complex"
-                  "# @option Bool nol"
+                  "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @return SimplicialComplex",
-                  &alexander_dual, "alexander_dual(SimplicialComplex { nol => 0 })");
+                  &alexander_dual, "alexander_dual(SimplicialComplex { no_labels => 0 })");
 } }
 
 // Local Variables:

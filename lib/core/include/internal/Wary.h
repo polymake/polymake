@@ -28,9 +28,9 @@ template <typename T>
 class Wary_traits<T, is_container> : public container_traits<T> {};
 
 template <typename T>
-class Wary :
-   public Wary_traits<T>,
-   public inherit_generic<Wary<T>, T>::type
+class Wary
+   : public Wary_traits<T>
+   , public inherit_generic<Wary<T>, T>::type
 {
 protected:
    // never instantiate
@@ -78,40 +78,44 @@ const Wary<T>& wary(const T& x)
 }
 
 template <typename T>
-struct MaybeWary : assignable_to<T, Wary<T>, T> {};
+using MaybeWary = can_assign_to<T, Wary<T>>;
 
 template <typename T> inline
-typename enable_if<Wary<T>&, MaybeWary<T>::value>::type
+typename std::enable_if<MaybeWary<T>::value, Wary<T>&>::type
 maybe_wary(T& x)
 {
    return wary(x);
 }
+
 template <typename T> inline
-typename disable_if<T&, MaybeWary<T>::value>::type
+typename std::enable_if<!MaybeWary<T>::value, T&>::type
 maybe_wary(T& x)
 {
    return x;
 }
 
 template <typename T>
-struct Unwary : True {
+struct Unwary : std::true_type {
    typedef T type;
 };
 
 template <typename T>
-struct Unwary< Wary<T> > : False {
+struct Unwary< Wary<T> > : std::false_type {
    typedef T type;
 };
 
 template <typename T>
-struct Unwary< Wary<T>& > : False {
+struct Unwary< Wary<T>& > : std::false_type {
    typedef T& type;
 };
 
 template <typename T>
-struct Unwary< const Wary<T>& > : False {
+struct Unwary< const Wary<T>& > : std::false_type {
    typedef const T& type;
 };
+
+template <typename T>
+using unwary_t = typename Unwary<T>::type;
 
 template <typename T> inline
 T& unwary(T& x) { return x; }

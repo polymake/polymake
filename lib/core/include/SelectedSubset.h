@@ -31,20 +31,18 @@ namespace pm {
 template <typename Iterator, typename Predicate>
 class unary_predicate_selector : public Iterator {
 protected:
-   typedef Iterator super;
+   typedef Iterator base_t;
    typedef unary_helper<Iterator, Predicate> helper;
    typename helper::operation pred;
 
    void valid_position()
    {
-      while (!this->at_end() && !pred(*helper::get(*this))) super::operator++();
+      while (!this->at_end() && !pred(*helper::get(*this))) base_t::operator++();
    }
 
-   template <typename,typename> friend class unary_predicate_selector;
+   template <typename, typename> friend class unary_predicate_selector;
 public:
-   typedef typename least_derived< cons<typename iterator_traits<Iterator>::iterator_category,
-                                        bidirectional_iterator_tag> >::type
-      iterator_category;
+   typedef typename least_derived_class<typename iterator_traits<Iterator>::iterator_category, bidirectional_iterator_tag>::type iterator_category;
    typedef unary_predicate_selector<typename iterator_traits<Iterator>::iterator, Predicate> iterator;
    typedef unary_predicate_selector<typename iterator_traits<Iterator>::const_iterator, Predicate> const_iterator;
 
@@ -52,24 +50,36 @@ public:
 
    template <typename Predicate2>
    unary_predicate_selector(const unary_predicate_selector<typename iterator_traits<Iterator>::iterator, Predicate2>& it)
-      : super(it),
-        pred(helper::create(it.pred)) {}
+      : base_t(static_cast<const typename std::remove_reference_t<decltype(it)>::base_t&>(it))
+      , pred(helper::create(it.pred)) {}
 
    template <typename Predicate2>
    explicit unary_predicate_selector(const unary_predicate_selector<typename iterator_reversed<Iterator>::type, Predicate2>& it)
-      : super(iterator_reversed<Iterator>::make(it)),
-        pred(helper::create(it.pred)) {}
+      : base_t(iterator_reversed<Iterator>::reverse(it))
+      , pred(helper::create(it.pred)) {}
 
-   unary_predicate_selector(const Iterator& cur_arg, const Predicate& pred_arg=Predicate(), bool at_valid_position=false)
-      : super(cur_arg),
-        pred(helper::create(pred_arg))
+   template <typename SourceIterator,
+             typename suitable=typename std::enable_if<std::is_default_constructible<Predicate>::value,
+                                                       typename suitable_arg_for_iterator<SourceIterator, Iterator>::type>::type>
+   unary_predicate_selector(const SourceIterator& cur_arg, bool at_valid_position=false)
+      : base_t(prepare_iterator_arg<Iterator>(cur_arg))
+      , pred(helper::create(Predicate()))
+   {
+      if (!at_valid_position) valid_position();
+   }
+
+   template <typename SourceIterator,
+             typename suitable=typename suitable_arg_for_iterator<SourceIterator, Iterator>::type>
+   unary_predicate_selector(const SourceIterator& cur_arg, const Predicate& pred_arg, bool at_valid_position=false)
+      : base_t(prepare_iterator_arg<Iterator>(cur_arg))
+      , pred(helper::create(pred_arg))
    {
       if (!at_valid_position) valid_position();
    }
 
    unary_predicate_selector& operator++ ()
    {
-      super::operator++();
+      base_t::operator++();
       valid_position();
       return *this;
    }
@@ -81,17 +91,17 @@ public:
 
    void rewind()
    {
-      typedef typename enable_if<super, check_iterator_feature<super, rewindable>::value>::type error_if_unimplemented __attribute__((unused));
-      super::rewind();
+      static_assert(check_iterator_feature<base_t, rewindable>::value, "iterator is not rewindable");
+      base_t::rewind();
       valid_position();
    }
 
    // it's the applications' responsibility not to call this at the first position
    unary_predicate_selector& operator-- ()
    {
-      typedef typename enable_if<super, iterator_traits<super>::is_bidirectional>::type error_if_unimplemented __attribute__((unused));
+      static_assert(iterator_traits<base_t>::is_bidirectional, "iterator is not bidirectional");
       do
-         error_if_unimplemented::operator--();
+         base_t::operator--();
       while (!pred(*helper::get(*this)));
       return *this;
    }
@@ -125,10 +135,9 @@ struct unary_predicate_selector_constructor {
 
 /// Convenience function creating an iterator with element selection.
 template <typename Iterator, typename Predicate> inline
-unary_predicate_selector<Iterator, Predicate>
-make_unary_predicate_selector(Iterator it, const Predicate& pred)
+auto make_unary_predicate_selector(Iterator&& it, const Predicate& pred)
 {
-   return unary_predicate_selector<Iterator, Predicate>(it, pred);
+   return unary_predicate_selector<pointer2iterator_t<Iterator>, Predicate>(pointer2iterator(std::forward<Iterator>(it)), pred);
 }
 
 
@@ -140,11 +149,11 @@ make_unary_predicate_selector(Iterator it, const Predicate& pred)
 template <typename Iterator, typename Predicate>
 class input_truncator : public Iterator {
 protected:
-   typedef Iterator super;
+   typedef Iterator base_t;
    typedef unary_helper<Iterator,Predicate> helper;
    typename helper::operation pred;
 
-   template <typename,typename> friend class input_truncator;
+   template <typename, typename> friend class input_truncator;
 public:
    typedef forward_iterator_tag iterator_category;
    typedef input_truncator<typename iterator_traits<Iterator>::iterator, Predicate> iterator;
@@ -154,16 +163,17 @@ public:
 
    template <typename Predicate2>
    input_truncator(const input_truncator<typename iterator_traits<Iterator>::iterator, Predicate2>& it)
-      : super(it),
-        pred(helper::create(it.pred)) {}
+      : base_t(static_cast<const typename std::remove_reference_t<decltype(it)>::base_t&>(it))
+      , pred(helper::create(it.pred)) {}
 
-   input_truncator(const Iterator& cur_arg, const Predicate& pred_arg=Predicate())
-      : super(cur_arg),
-        pred(helper::create(pred_arg)) {}
+   template <typename SourceIterator, typename suitable=typename suitable_arg_for_iterator<SourceIterator, Iterator>::type>
+   input_truncator(const SourceIterator& cur_arg, const Predicate& pred_arg=Predicate())
+      : base_t(prepare_iterator_arg<Iterator>(cur_arg))
+      , pred(helper::create(pred_arg)) {}
 
    input_truncator& operator++ ()
    {
-      super::operator++();
+      base_t::operator++();
       return *this;
    }
    const input_truncator operator++ (int)
@@ -173,22 +183,19 @@ public:
 
    bool at_end() const
    {
-      return super::at_end() || !pred(*helper::get(*this));
+      return base_t::at_end() || !pred(*helper::get(*this));
    }
 
-   bool operator== (const iterator& it) const
+   template <typename Other>
+   typename std::enable_if<is_among<Other, iterator, const_iterator>::value, bool>::type
+   operator== (const Other& it) const
    {
       return at_end() ? it.at_end() : static_cast<const Iterator&>(*this)==it;
    }
-   bool operator== (typename assign_const<const_iterator, !identical<iterator,const_iterator>::value>::type& it) const
-   {
-      return at_end() ? it.at_end() : static_cast<const Iterator&>(*this)==it;
-   }
-   bool operator!= (const iterator& it) const
-   {
-      return !operator==(it);
-   }
-   bool operator!= (typename assign_const<const_iterator, !identical<iterator,const_iterator>::value>::type& it) const
+
+   template <typename Other>
+   typename std::enable_if<is_among<Other, iterator, const_iterator>::value, bool>::type
+   operator!= (const Other& it) const
    {
       return !operator==(it);
    }
@@ -222,8 +229,8 @@ struct input_truncator_constructor {
 template <typename Iterator, typename Predicate>
 class range_contractor : public Iterator {
    template <typename,typename> friend class range_contractor;
+   typedef Iterator base_t;
 protected:
-   typedef Iterator super;
    typedef binary_op_builder<Predicate, Iterator, Iterator> op_helper;
    typename op_helper::operation pred;
 public:
@@ -234,18 +241,19 @@ public:
    range_contractor() {}
 
    template <typename Predicate2>
-   range_contractor(const range_contractor<typename iterator_traits<Iterator>::iterator, Predicate2>& it) :
-      super(it),
-      pred(op_helper::create(it.pred)) {}
+   range_contractor(const range_contractor<typename iterator_traits<Iterator>::iterator, Predicate2>& it)
+      : base_t(static_cast<const typename std::remove_reference_t<decltype(it)>::base_t&>(it))
+      , pred(op_helper::create(it.pred)) {}
 
-   range_contractor(const Iterator& start, const Predicate& pred_arg=Predicate()) :
-      super(start),
-      pred(op_helper::create(pred_arg)) {}
+   template <typename SourceIterator, typename suitable=typename suitable_arg_for_iterator<SourceIterator, Iterator>::type>
+   range_contractor(const SourceIterator& start, const Predicate& pred_arg=Predicate())
+      : base_t(prepare_iterator_arg<Iterator>(start))
+      , pred(op_helper::create(pred_arg)) {}
 
    range_contractor& operator++ ()
    {
-      const typename super::value_type shown = *(*this);
-      do super::operator++();
+      const auto& shown = *(*this);
+      do base_t::operator++();
       while (!this->at_end() && pred(shown, *(*this)));
       return *this;
    }
@@ -257,8 +265,8 @@ public:
 
    void rewind()
    {
-      typedef typename enable_if<super, check_iterator_feature<super, rewindable>::value>::type error_if_unimplemented __attribute__((unused));
-      super::rewind();
+      static_assert(check_iterator_feature<base_t, rewindable>::value, "iterator is not rewindable");
+      base_t::rewind();
    }
 
 private:
@@ -285,25 +293,23 @@ struct range_contractor_constructor {
 };
 
 template <typename Iterator, typename Predicate> inline
-range_contractor<Iterator, Predicate>
-make_range_contractor(Iterator it, const Predicate& pred)
+auto make_range_contractor(Iterator&& it, const Predicate& pred)
 {
-   return range_contractor<Iterator, Predicate>(it, pred);
+   return range_contractor<pointer2iterator_t<Iterator>, Predicate>(pointer2iterator(std::forward<Iterator>(it)), pred);
 }
 
 template <typename Iterator> inline
-range_contractor<Iterator, BuildBinary<operations::eq> >
-make_equal_range_contractor(Iterator it)
+auto make_equal_range_contractor(Iterator&& it)
 {
-   return range_contractor<Iterator, BuildBinary<operations::eq> >(it);
+   return range_contractor<pointer2iterator_t<Iterator>, BuildBinary<operations::eq> >(pointer2iterator(std::forward<Iterator>(it)));
 }
 
 
 template <typename Iterator, typename FoldingOperation>
 class range_folder : public Iterator {
-   template <typename,typename> friend class range_folder;
+   template <typename, typename> friend class range_folder;
+   typedef Iterator base_t;
 protected:
-   typedef Iterator super;
    typedef unary_helper<Iterator, FoldingOperation> helper;
 
    typename helper::operation op;
@@ -311,10 +317,10 @@ protected:
 
    void valid_position()
    {
-      op.reset(*helper::get(static_cast<const super&>(*this)));
+      op.reset(*helper::get(static_cast<const base_t&>(*this)));
 
-      while (!(++static_cast<super&>(*this)).at_end() &&
-             op(*helper::get(static_cast<const super&>(*this)))) ;
+      while (!(++static_cast<base_t&>(*this)).at_end() &&
+             op(*helper::get(static_cast<const base_t&>(*this)))) ;
    }
 
 public:
@@ -326,15 +332,16 @@ public:
 
    range_folder() {}
 
-   range_folder(const iterator& it) :
-      super(it),
-      op(helper::create(it.op)),
-      _at_end(it._at_end) {}
+   range_folder(const iterator& it)
+      : base_t(static_cast<const typename std::remove_reference_t<decltype(it)>::base_t&>(it))
+      , op(helper::create(it.op))
+      , _at_end(it._at_end) {}
 
-   range_folder(const Iterator& start, const FoldingOperation& op_arg=FoldingOperation()) :
-      super(start),
-      op(helper::create(op_arg)),
-      _at_end(super::at_end())
+   template <typename SourceIterator, typename suitable=typename suitable_arg_for_iterator<SourceIterator, Iterator>::type>
+   range_folder(const SourceIterator& start, const FoldingOperation& op_arg=FoldingOperation())
+      : base_t(prepare_iterator_arg<Iterator>(start))
+      , op(helper::create(op_arg))
+      , _at_end(base_t::at_end())
    {
       if (!_at_end) valid_position();
    }
@@ -344,7 +351,7 @@ public:
 
    range_folder& operator++ ()
    {
-      if (super::at_end())
+      if (base_t::at_end())
          _at_end=true;
       else
          valid_position();
@@ -357,8 +364,9 @@ public:
 
    void rewind()
    {
-      super::rewind();
-      if (!(_at_end=super::at_end())) valid_position();
+      static_assert(check_iterator_feature<base_t, rewindable>::value, "iterator is not rewindable");
+      base_t::rewind();
+      if (!(_at_end=base_t::at_end())) valid_position();
    }
 
 private:
@@ -386,58 +394,56 @@ struct range_folder_constructor {
 };
 
 template <typename Iterator, typename FoldingOperation> inline
-range_folder<Iterator, FoldingOperation>
-make_range_folder(Iterator it, const FoldingOperation& op)
+auto make_range_folder(Iterator&& it, const FoldingOperation& op)
 {
-   return range_folder<Iterator, FoldingOperation>(it, op);
+   return range_folder<pointer2iterator_t<Iterator>, FoldingOperation>(pointer2iterator(std::forward<Iterator>(it)), op);
 }
 
 
 template <typename ContainerRef, typename Predicate>
 class SelectedSubset
-   : public modified_container_base<ContainerRef, Predicate>,
-     public modified_container_impl< SelectedSubset<ContainerRef, Predicate>,
-                                     list( Container< ContainerRef >,
-                                           Operation< Predicate >,
-                                           IteratorConstructor< unary_predicate_selector_constructor > ) >,
-     public generic_of_subset< SelectedSubset<ContainerRef, Predicate>,
+   : public modified_container_base<ContainerRef, Predicate>
+   , public modified_container_impl< SelectedSubset<ContainerRef, Predicate>,
+                                     mlist< ContainerTag< ContainerRef >,
+                                            OperationTag< Predicate >,
+                                            IteratorConstructorTag< unary_predicate_selector_constructor > > >
+   , public generic_of_subset< SelectedSubset<ContainerRef, Predicate>,
                                typename deref<ContainerRef>::type> {
-   typedef modified_container_base<ContainerRef, Predicate> _base;
-   typedef modified_container_impl<SelectedSubset> _super;
+   typedef modified_container_base<ContainerRef, Predicate> base_t;
+   typedef modified_container_impl<SelectedSubset> impl_t;
 public:
-   typedef typename least_derived< cons<bidirectional_iterator_tag, typename _super::container_category> >::type
-      container_category;
+   typedef typename least_derived_class<bidirectional_iterator_tag, typename impl_t::container_category>::type container_category;
 
-   SelectedSubset(typename _base::arg_type src_arg, const Predicate& pred_arg=Predicate()) :
-      _base(src_arg, pred_arg) {}
+   SelectedSubset(typename base_t::arg_type src_arg, const Predicate& pred_arg=Predicate()) :
+      base_t(src_arg, pred_arg) {}
 
-   using _base::get_operation;
+   using base_t::get_operation;
 };
 
 template <typename ContainerRef, typename Predicate>
 class TruncatedContainer
-   : public modified_container_base<ContainerRef, Predicate>,
-     public modified_container_impl< TruncatedContainer<ContainerRef, Predicate>,
-                                     list( Container< ContainerRef >,
-                                           Operation< Predicate >,
-                                           IteratorConstructor< input_truncator_constructor > ) >,
-     public generic_of_subset< TruncatedContainer<ContainerRef, Predicate>,
+   : public modified_container_base<ContainerRef, Predicate>
+   , public modified_container_impl< TruncatedContainer<ContainerRef, Predicate>,
+                                     mlist< ContainerTag< ContainerRef >,
+                                            OperationTag< Predicate >,
+                                            IteratorConstructorTag< input_truncator_constructor > > >
+   , public generic_of_subset< TruncatedContainer<ContainerRef, Predicate>,
                                typename deref<ContainerRef>::type> {
-   typedef modified_container_base<ContainerRef, Predicate> _base;
-   typedef modified_container_impl<TruncatedContainer> _super;
+   typedef modified_container_base<ContainerRef, Predicate> base_t;
+   typedef modified_container_impl<TruncatedContainer> impl_t;
 public:
    typedef forward_iterator_tag container_category;
 
-   TruncatedContainer(typename _base::arg_type src_arg, const Predicate& pred_arg=Predicate()) :
-      _base(src_arg, pred_arg) {}
+   TruncatedContainer(typename base_t::arg_type src_arg, const Predicate& pred_arg=Predicate()) :
+      base_t(src_arg, pred_arg) {}
 
-   using _base::get_operation;
+   using base_t::get_operation;
 
-   typename _super::reference front()
+   typename impl_t::reference front()
    {
       return this->get_container().front();
    }
-   typename _super::const_reference front() const
+   typename impl_t::const_reference front() const
    {
       return this->get_container().front();
    }
@@ -446,37 +452,37 @@ public:
 
 template <typename ContainerRef, typename Predicate>
 class ContractedRanges
-   : public modified_container_base<ContainerRef, Predicate>,
-     public modified_container_impl< ContractedRanges<ContainerRef, Predicate>,
-                                     list( Container< ContainerRef >,
-                                           Operation< Predicate >,
-                                           IteratorConstructor< range_contractor_constructor > ) > {
-   typedef modified_container_base<ContainerRef, Predicate> _base;
+   : public modified_container_base<ContainerRef, Predicate>
+   , public modified_container_impl< ContractedRanges<ContainerRef, Predicate>,
+                                     mlist< ContainerTag< ContainerRef >,
+                                            OperationTag< Predicate >,
+                                            IteratorConstructorTag< range_contractor_constructor > > > {
+   typedef modified_container_base<ContainerRef, Predicate> base_t;
 public:
    typedef forward_iterator_tag container_category;
 
-   ContractedRanges(typename _base::arg_type src_arg, const Predicate& pred_arg=Predicate()) :
-      _base(src_arg, pred_arg) {}
+   ContractedRanges(typename base_t::arg_type src_arg, const Predicate& pred_arg=Predicate()) :
+      base_t(src_arg, pred_arg) {}
 
-   using _base::get_operation;
+   using base_t::get_operation;
 };
 
 
 template <typename ContainerRef, typename FoldingOperation>
 class FoldedRanges
-   : public modified_container_base<ContainerRef, FoldingOperation>,
-     public modified_container_impl< FoldedRanges<ContainerRef, FoldingOperation>,
-                                     list( Container< ContainerRef >,
-                                           Operation< FoldingOperation >,
-                                           IteratorConstructor< range_folder_constructor > ) > {
-   typedef modified_container_base<ContainerRef, FoldingOperation> _base;
+   : public modified_container_base<ContainerRef, FoldingOperation>
+   , public modified_container_impl< FoldedRanges<ContainerRef, FoldingOperation>,
+                                     mlist< ContainerTag< ContainerRef >,
+                                            OperationTag< FoldingOperation >,
+                                            IteratorConstructorTag< range_folder_constructor > > > {
+   typedef modified_container_base<ContainerRef, FoldingOperation> base_t;
 public:
    typedef forward_iterator_tag container_category;
 
-   FoldedRanges(typename _base::arg_type src_arg, const FoldingOperation& op_arg=FoldingOperation()) :
-      _base(src_arg, op_arg) {}
+   FoldedRanges(typename base_t::arg_type src_arg, const FoldingOperation& op_arg=FoldingOperation()) :
+      base_t(src_arg, op_arg) {}
 
-   using _base::get_operation;
+   using base_t::get_operation;
 };
 
 
@@ -616,11 +622,10 @@ fold_ranges(const Container& c, const Operation& op)
     Only items mapped to TRUE are passed through to the assignment method of the basis iterator.
 */
 template <typename Iterator, typename Predicate>
-class output_predicate_selector : public iterator_traits<Iterator>::derivable_type {
+class output_predicate_selector : public Iterator {
 protected:
    Predicate pred;
-
-   typedef typename iterator_traits<Iterator>::derivable_type super;
+   typedef Iterator base_t;
 public:
    typedef output_iterator_tag iterator_category;
    typedef typename iterator_traits<Iterator>::value_type value_type;
@@ -628,20 +633,21 @@ public:
    output_predicate_selector() {}
 
    output_predicate_selector(const Iterator& cur_arg, const Predicate& pred_arg=Predicate())
-      : super(cur_arg), pred(pred_arg) {}
+      : base_t(cur_arg)
+      , pred(pred_arg) {}
 
    output_predicate_selector& operator= (typename function_argument<value_type>::type arg)
    {
       if (pred(arg))
-         *static_cast<super*>(this)=arg;
+         static_cast<base_t&>(*this)=arg;
       return *this;
    }
 
-   template <class Arg>
+   template <typename Arg>
    output_predicate_selector& operator= (const Arg& arg)
    {
       if (pred(arg))
-         *static_cast<super*>(this)=arg;
+         static_cast<base_t&>(*this)=arg;
       return *this;
    }
 
@@ -651,10 +657,9 @@ public:
 };
 
 template <typename Iterator, typename Predicate> inline
-output_predicate_selector<Iterator,Predicate>
-make_output_predicate_selector(Iterator it, Predicate pred)
+auto make_output_predicate_selector(Iterator&& it, Predicate pred)
 {
-   return output_predicate_selector<Iterator,Predicate>(it,pred);
+   return output_predicate_selector<Iterator, Predicate>(it, pred);
 }
 
 struct output_predicate_selector_constructor {
@@ -667,22 +672,20 @@ struct output_predicate_selector_constructor {
 
 template <typename IteratorPair, typename Predicate>
 class binary_predicate_selector : public IteratorPair {
+   typedef IteratorPair base_t;
 protected:
-   typedef IteratorPair super;
    typedef binary_helper<IteratorPair,Predicate> helper;
    typename helper::operation pred;
 
    void valid_position()
    {
       while (!this->at_end() && !pred(*helper::get1(*this), *helper::get2(this->second)))
-         super::operator++();
+         base_t::operator++();
    }
 
-   template <typename,typename> friend class binary_predicate_selector;
+   template <typename, typename> friend class binary_predicate_selector;
 public:
-   typedef typename least_derived< cons<typename IteratorPair::iterator_category,
-                                        bidirectional_iterator_tag> >::type
-      iterator_category;
+   typedef typename least_derived_class<typename IteratorPair::iterator_category, bidirectional_iterator_tag>::type iterator_category;
    typedef binary_predicate_selector<typename iterator_traits<IteratorPair>::iterator, Predicate> iterator;
    typedef binary_predicate_selector<typename iterator_traits<IteratorPair>::const_iterator, Predicate> const_iterator;
 
@@ -690,37 +693,60 @@ public:
 
    template <typename Predicate2>
    binary_predicate_selector(const binary_predicate_selector<typename iterator_traits<IteratorPair>::iterator, Predicate2>& it)
-      : super(it),
-        pred(helper::create(it.pred)) {}
+      : base_t(static_cast<const typename std::remove_reference_t<decltype(it)>::base_t&>(it))
+      , pred(helper::create(it.pred)) {}
 
-   binary_predicate_selector(const IteratorPair& cur_arg, const Predicate& pred_arg=Predicate(), bool at_valid_position=false)
-      : super(cur_arg),
-        pred(helper::create(pred_arg))
+   template <typename SourceIteratorPair,
+             typename suitable=typename std::enable_if<std::is_default_constructible<Predicate>::value,
+                                                       typename suitable_arg_for_iterator<SourceIteratorPair, IteratorPair>::type>::type>
+   binary_predicate_selector(const SourceIteratorPair& cur_arg,
+                             bool at_valid_position=false)
+      : base_t(prepare_iterator_arg<IteratorPair>(cur_arg))
+      , pred(helper::create(Predicate()))
    {
       if (!at_valid_position) valid_position();
    }
 
-   binary_predicate_selector(const typename IteratorPair::first_type& first_arg,
-                             const typename IteratorPair::second_type& second_arg,
-                             const Predicate& pred_arg=Predicate(), bool at_valid_position=false)
-      : super(first_arg,second_arg),
-        pred(helper::create(pred_arg))
+   template <typename SourceIteratorPair,
+             typename suitable=typename suitable_arg_for_iterator<SourceIteratorPair, IteratorPair>::type>
+   binary_predicate_selector(const SourceIteratorPair& cur_arg,
+                             const Predicate& pred_arg,
+                             bool at_valid_position=false)
+      : base_t(prepare_iterator_arg<IteratorPair>(cur_arg))
+      , pred(helper::create(pred_arg))
    {
       if (!at_valid_position) valid_position();
    }
 
-   binary_predicate_selector(typename alt_constructor<typename IteratorPair::first_type>::arg_type& first_arg,
-                             typename alt_constructor<typename IteratorPair::second_type>::arg_type& second_arg,
-                             const Predicate& pred_arg=Predicate(), bool at_valid_position=false)
-      : super(first_arg,second_arg),
-        pred(helper::create(pred_arg))
+   template <typename SourceIterator1, typename SourceIterator2,
+             typename suitable1=typename std::enable_if<std::is_default_constructible<Predicate>::value,
+                                                        typename suitable_arg_for_iterator<SourceIterator1, typename IteratorPair::first_type>::type>::type,
+             typename suitable2=typename suitable_arg_for_iterator<SourceIterator2, typename IteratorPair::second_type>::type>
+   binary_predicate_selector(const SourceIterator1& first_arg,
+                             const SourceIterator2& second_arg,
+                             bool at_valid_position=false)
+      : base_t(prepare_iterator_arg<typename IteratorPair::first_type>(first_arg), prepare_iterator_arg<typename IteratorPair::second_type>(second_arg))
+      , pred(helper::create(Predicate()))
+   {
+      if (!at_valid_position) valid_position();
+   }
+
+   template <typename SourceIterator1, typename SourceIterator2,
+             typename suitable1=typename suitable_arg_for_iterator<SourceIterator1, typename IteratorPair::first_type>::type,
+             typename suitable2=typename suitable_arg_for_iterator<SourceIterator2, typename IteratorPair::second_type>::type>
+   binary_predicate_selector(const SourceIterator1& first_arg,
+                             const SourceIterator2& second_arg,
+                             const Predicate& pred_arg,
+                             bool at_valid_position=false)
+      : base_t(prepare_iterator_arg<typename IteratorPair::first_type>(first_arg), prepare_iterator_arg<typename IteratorPair::second_type>(second_arg))
+      , pred(helper::create(pred_arg))
    {
       if (!at_valid_position) valid_position();
    }
 
    binary_predicate_selector& operator++ ()
    {
-      super::operator++();
+      base_t::operator++();
       valid_position();
       return *this;
    }
@@ -731,9 +757,9 @@ public:
 
    binary_predicate_selector& operator-- ()
    {
-      typedef typename enable_if<super, iterator_traits<super>::is_bidirectional>::type error_if_unimplemented __attribute__((unused));
+      static_assert(iterator_traits<base_t>::is_bidirectional, "iterator is not bidirectional");
       do
-         super::operator--();
+         base_t::operator--();
       while (!pred(*helper::get1(*this), *helper::get2(this->second)));
       return *this;
    }
@@ -744,8 +770,8 @@ public:
 
    void rewind()
    {
-      typedef typename enable_if<super, check_iterator_feature<super, rewindable>::value>::type error_if_unimplemented __attribute__((unused));
-      super::rewind();
+      static_assert(check_iterator_feature<base_t, rewindable>::value, "iterator is not rewindable");
+      base_t::rewind();
       valid_position();
    }
 private:
@@ -761,10 +787,10 @@ struct check_iterator_feature<binary_predicate_selector<IteratorPair, Predicate>
    : check_iterator_feature<IteratorPair, Feature> {};
 
 template <typename Iterator1, typename Iterator2, typename Predicate> inline
-binary_predicate_selector<iterator_pair<Iterator1, Iterator2>, Predicate>
-make_binary_predicate_selector(Iterator1 first, Iterator2 second, const Predicate& pred)
+auto make_binary_predicate_selector(Iterator1& first, Iterator2& second, const Predicate& pred)
 {
-   return binary_predicate_selector<iterator_pair<Iterator1, Iterator2>, Predicate>(first,second,pred);
+   return binary_predicate_selector<iterator_pair<pointer2iterator_t<Iterator1>, pointer2iterator_t<Iterator2>>, Predicate>
+      (pointer2iterator(std::forward<Iterator1>(first)), pointer2iterator(std::forward<Iterator2>(second)), pred);
 }
 
 struct binary_predicate_selector_constructor {
@@ -782,24 +808,23 @@ struct binary_predicate_selector_constructor {
 template <typename ContainerRef1, typename ContainerRef2, typename Predicate>
 class SelectedContainerPairSubset
    : public modified_container_pair_base<ContainerRef1, ContainerRef2, Predicate>,
-     public modified_container_pair_impl< SelectedContainerPairSubset<ContainerRef1,ContainerRef2,Predicate>,
-                                          list( Container1< ContainerRef1 >,
-                                                Container2< ContainerRef2 >,
-                                                IteratorConstructor< binary_predicate_selector_constructor >,
-                                                Operation< Predicate > ) >,
-     public generic_of_subset< SelectedContainerPairSubset<ContainerRef1,ContainerRef2,Predicate>,
+     public modified_container_pair_impl< SelectedContainerPairSubset<ContainerRef1, ContainerRef2, Predicate>,
+                                          mlist< Container1Tag< ContainerRef1 >,
+                                                 Container2Tag< ContainerRef2 >,
+                                                 IteratorConstructorTag< binary_predicate_selector_constructor >,
+                                                 OperationTag< Predicate > > >,
+     public generic_of_subset< SelectedContainerPairSubset<ContainerRef1, ContainerRef2, Predicate>,
                                typename deref<ContainerRef1>::type > {
-   typedef modified_container_pair_base<ContainerRef1, ContainerRef2, Predicate> _base;
-   typedef modified_container_pair_impl<SelectedContainerPairSubset> _super;
+   typedef modified_container_pair_base<ContainerRef1, ContainerRef2, Predicate> base_t;
+   typedef modified_container_pair_impl<SelectedContainerPairSubset> impl_t;
 public:
-   typedef typename least_derived< cons<bidirectional_iterator_tag, typename _super::container_category> >::type
-      container_category;
+   typedef typename least_derived_class<bidirectional_iterator_tag, typename impl_t::container_category>::type container_category;
 
-   SelectedContainerPairSubset(typename _base::first_arg_type src1_arg, typename _base::second_arg_type src2_arg,
+   SelectedContainerPairSubset(typename base_t::first_arg_type src1_arg, typename base_t::second_arg_type src2_arg,
                                const Predicate& pred_arg=Predicate())
-      : _base(src1_arg,src2_arg,pred_arg) {}
+      : base_t(src1_arg, src2_arg, pred_arg) {}
 
-   using _base::get_operation;
+   using base_t::get_operation;
 };
 
 template <typename ContainerRef1, typename ContainerRef2, typename Predicate>

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,8 +19,8 @@
 /******************************************************************************************************/
 /*  references as hash keys  */
 
-static HV *my_pkg;
-static AV *allowed_pkgs;
+static HV* my_pkg;
+static AV* allowed_pkgs;
 
 static Perl_check_t def_ck_PUSH;
 static Perl_ppaddr_t def_pp_CONST, def_pp_HELEM, def_pp_HSLICE, def_pp_EXISTS, def_pp_DELETE, def_pp_EACH, def_pp_KEYS,
@@ -34,15 +34,16 @@ static Perl_check_t def_ck_HELEM, def_ck_EXISTS, def_ck_DELETE;
 #endif
 
 typedef struct tmp_keysv {
-   U32 place_for_HEK[2];
-   SV *ptr;
+   HEK hek;
+   char key_tail[sizeof(SV*)];  // the last byte is the terminating 0, the first byte of the key resides in hek.
    XPVUV xpv;
    SV sv;
 } tmp_keysv;
 
 typedef union key_or_ptr {
-   SV *ptr;
-   unsigned long key;
+   SV* ptr;
+   unsigned long keyl;
+   char keyp[sizeof(SV*)];
 } key_or_ptr;
 
 #if PerlVersion < 5180
@@ -52,33 +53,29 @@ typedef union key_or_ptr {
 #endif
 
 static
-SV* ref2key(SV *keysv, tmp_keysv *tmp_key)
+SV* ref2key(SV* keysv, tmp_keysv* tmp_key)
 {
-   HEK *hek=SvSHARED_HEK_FROM_PV((char*)(&tmp_key->ptr));
+   HEK* hek=&tmp_key->hek;
    key_or_ptr obj;
    obj.ptr=SvRV(keysv);
 #if PerlVersion < 5180
-   if (SvAMAGIC(keysv)) obj.key |= 1;
+   if (SvAMAGIC(keysv)) obj.keyl |= 1;
 #endif
-   tmp_key->ptr=obj.ptr;
-   HEK_HASH(hek)=obj.key >> 4;          /* hash value */
+   Copy(obj.keyp, HEK_KEY(hek), sizeof(SV*), char);
+   HEK_KEY(hek)[sizeof(SV*)] = 0;
    HEK_LEN(hek)=sizeof(SV*);
-#if PerlVersion >= 5140
-   tmp_key->xpv.xmg_stash=NULL;         /* provide enough trailing zeroes */
-#else
-   tmp_key->xpv.xnv_u.xgv_stash=NULL;
-#endif
-   HEK_FLAGS(hek) |= HVhek_UNSHARED;
+   HEK_HASH(hek)=obj.keyl >> 4;          // hash value
+   HEK_FLAGS(hek)=HVhek_UNSHARED;
    tmp_key->sv.sv_any=&tmp_key->xpv;
    tmp_key->sv.sv_refcnt=1;
    tmp_key->sv.sv_flags= SVt_PVIV | SVf_IVisUV | SVf_POK | SVp_POK | PmFlagsForHashKey;
-   SvPV_set(&tmp_key->sv, (char*)&tmp_key->ptr);
+   SvPV_set(&tmp_key->sv, HEK_KEY(hek));
    SvCUR_set(&tmp_key->sv, sizeof(SV*));
    SvLEN_set(&tmp_key->sv, 0);
    return &tmp_key->sv;
 }
 
-#define TmpKeyHash(tk) HEK_HASH(SvSHARED_HEK_FROM_PV((char*)(&tk.ptr)))
+#define TmpKeyHash(tk) HEK_HASH(&tk.hek)
 
 #define MarkAsRefHash(hv)     SvSTASH(hv)=my_pkg
 #define MarkAsNormalHash(hv)  SvSTASH(hv)=Nullhv
@@ -134,9 +131,9 @@ void delete_hash_elem(pTHX_ void* p)
 {
    local_hash_ref_elem* le=(local_hash_ref_elem*)p;
    tmp_keysv tmp_key;
-   HV *hv=le->hv;
-   SV *keyref=le->keyref;
-   SV *keysv=ref2key(keyref, &tmp_key);
+   HV* hv=le->hv;
+   SV* keyref=le->keyref;
+   SV* keysv=ref2key(keyref, &tmp_key);
    (void)hv_delete_ent(hv, keysv, G_DISCARD, TmpKeyHash(tmp_key));
    SvREFCNT_dec(hv);
    SvREFCNT_dec(keyref);
@@ -218,7 +215,7 @@ OP* intercept_pp_hslice(pTHX)
             tmp_keysv tmp_key;
             I32 lval = (PL_op->op_flags & OPf_MOD || LVRET);
             I32 localizing = lval && (PL_op->op_private & OPpLVAL_INTRO);
-            HE *he;
+            HE* he;
             gimme=GIMME_V;
 
             while (++MARK <= SP) {
@@ -370,14 +367,14 @@ OP* intercept_pp_delete(pTHX)
 }
 
 static
-void key2ref(pTHX_ SV *keysv)
+void key2ref(pTHX_ SV* keysv)
 {
    U32 flags=PmFlagsForHashKey | SVf_POK | SVp_POK | SVf_ROK;
    key_or_ptr obj;
    obj.ptr=*(SV**)SvPVX(keysv);
 #if PerlVersion < 5180
-   if (obj.key & 1) {
-      obj.key ^= 1;
+   if (obj.keyl & 1) {
+      obj.keyl ^= 1;
       flags |= SVf_AMAGIC;
    }
 #endif
@@ -684,7 +681,7 @@ OP* pp_ref_anonhash(pTHX)
         val = newSV(0);
         if (MARK < SP)
             sv_setsv(val, *++MARK);
-        (void)hv_store_ent(hv,keysv,val,TmpKeyHash(tmp_key));
+        (void)hv_store_ent(hv, keysv, val, TmpKeyHash(tmp_key));
     }
     SP = ORIGMARK;
     XPUSHs(sv_2mortal((PL_op->op_flags & OPf_SPECIAL)
@@ -712,11 +709,7 @@ OP* check_pushhv(pTHX_ OP *o)
          kid = OpSIBLING(kid);
       if (kid->op_type == OP_RV2HV || kid->op_type == OP_PADHV) {
          int arg_cnt=2;
-#if PerlVersion >= 5160
          op_lvalue(kid, o->op_type);
-#else
-         Perl_mod(aTHX_ kid, o->op_type);
-#endif
          while ((kid=OpSIBLING(kid))) {
             if (kid->op_type == OP_RV2HV || kid->op_type == OP_PADHV) {
                Perl_list(aTHX_ kid);

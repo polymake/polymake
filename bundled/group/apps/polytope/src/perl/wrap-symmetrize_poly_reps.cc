@@ -16,11 +16,17 @@
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( std::pair<pm::Matrix<pm::Rational>, pm::Array<pm::Set<int, pm::operations::cmp>, void> > (pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&, perl::Object) ) {
+   FunctionWrapper4perl( std::pair<pm::Matrix<pm::Rational>, pm::Array<pm::Set<int, pm::operations::cmp>> > (pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&, perl::Object) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
       IndirectWrapperReturn( arg0.get< perl::TryCanned< const Matrix<Rational> > >(), arg1.get< perl::TryCanned< const Matrix<Rational> > >(), arg2 );
    }
-   FunctionWrapperInstance4perl( std::pair<pm::Matrix<pm::Rational>, pm::Array<pm::Set<int, pm::operations::cmp>, void> > (pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&, perl::Object) );
+   FunctionWrapperInstance4perl( std::pair<pm::Matrix<pm::Rational>, pm::Array<pm::Set<int, pm::operations::cmp>> > (pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&, perl::Object) );
+
+   FunctionWrapper4perl( std::pair<pm::Matrix<pm::Rational>, pm::Array<pm::hash_set<int>> > (pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&, perl::Object) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Matrix< Rational > > >(), arg1.get< perl::TryCanned< const Matrix< Rational > > >(), arg2 );
+   }
+   FunctionWrapperInstance4perl( std::pair<pm::Matrix<pm::Rational>, pm::Array<pm::hash_set<int>> > (pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&, perl::Object) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

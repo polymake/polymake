@@ -28,7 +28,6 @@
 #include "polymake/Vector.h"
 #include "polymake/linalg.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/thomog.h"
 #include "polymake/tropical/misc_tools.h"
 #include "polymake/tropical/specialcycles.h"
@@ -36,10 +35,10 @@
 namespace polymake { namespace tropical {
 
 	/**
-	  @brief Takes a list of Cycle objects (that may be weighted but need not be) and computes the cartesian product of these. 
-	  If any complex has weights, all non-weighted complexes will be treated as having constant weight 1. 
-	  The [[LOCAL_RESTRICTION]] of the result will be the cartesian product of the [[LOCAL_RESTRICTION]]s of each complex. 
-	  (If a complex does not have any restrictions, the new local restriction is the (pairwise) product of all 
+	  @brief Takes a list of Cycle objects (that may be weighted but need not be) and computes the cartesian product of these.
+	  If any complex has weights, all non-weighted complexes will be treated as having constant weight 1.
+	  The [[LOCAL_RESTRICTION]] of the result will be the cartesian product of the [[LOCAL_RESTRICTION]]s of each complex.
+	  (If a complex does not have any restrictions, the new local restriction is the (pairwise) product of all
 	  local restriction cones with ALL cones (including faces) of the next complex)
 	  @param Array<perl::Object> complexes A list of Cycle objects
 	  @return Cycle The cartesian product of the complexes. Note that the representation is noncanonical, as it identifies
@@ -47,8 +46,7 @@ namespace polymake { namespace tropical {
 	  by dehomogenizing and then later rehomogenizing after the first coordinate.
 	  */
 	template <typename Addition>
-		perl::Object cartesian_product(const Array<perl::Object> &complexes) {
-			//dbgtrace << "Generating container variables for result" << endl;
+		perl::Object cartesian_product(const Array<perl::Object>& complexes) {
 
 			//** EXTRACT FIRST COMPLEX ********************************************
 
@@ -75,7 +73,6 @@ namespace polymake { namespace tropical {
 			Matrix<Integer> product_l_generators;
 			IncidenceMatrix<> product_l_bases;
 			if(product_has_lattice) {
-				//dbgtrace << "Extracting first lattice " << endl;
 				Matrix<Integer> lg = firstComplex.give("LATTICE_GENERATORS");
 				lg = tdehomog(lg);
 				product_l_generators = lg;
@@ -88,19 +85,15 @@ namespace polymake { namespace tropical {
 			std::pair<Set<int>, Set<int> > product_vertex_pair = far_and_nonfar_vertices(rayMatrix);
 			Set<int> product_affine = product_vertex_pair.second;
 			Set<int> product_directional = product_vertex_pair.first;
-			//dbgtrace << "Product affine " << product_affine << endl;
-			//dbgtrace << "Product directional " << product_directional << endl;
 
 
-			//dbgtrace << "Iterating over all " << complexes.size() -1 << " complexes: " << endl;
 
 			//** ITERATE OTHER COMPLEXES ********************************************
 
-			for(unsigned int i = 1; i < complexes.size(); i++) {
-				//dbgtrace << "Considering complex nr. " << i+1 << endl;
+			for (int i = 1; i < complexes.size(); i++) {
 				//Extract properties
 				
-				if(CallPolymakeFunction("is_empty",complexes[i])) {
+				if (call_function("is_empty", complexes[i])) {
 					int projective_amb = std::max(rayMatrix.cols(), linMatrix.cols()) -1;
 					for(int j = i; j < complexes.size(); j++) {
 						int jth_projective_amb = complexes[j].give("PROJECTIVE_AMBIENT_DIM");
@@ -121,9 +114,9 @@ namespace polymake { namespace tropical {
 				}
 
 				Array<Integer> preweights;
-				if(complexes[i].exists("WEIGHTS")) {
+				if (complexes[i].exists("WEIGHTS")) {
 					preweights = complexes[i].give("WEIGHTS");
-					uses_weights = true; 
+					uses_weights = true;
 				}
 
 				// ** RECOMPUTE RAY DATA ***********************************************
@@ -132,21 +125,12 @@ namespace polymake { namespace tropical {
 				std::pair<Set<int>, Set<int> > complex_vertex_pair = far_and_nonfar_vertices(prerays);
 				Set<int> complex_affine = complex_vertex_pair.second;
 				Set<int> complex_directional = complex_vertex_pair.first;
-				//dbgtrace << "Affine: " << complex_affine << endl;
-				//dbgtrace << "Directional: " << complex_directional << endl;
 				//If this fan uses homog. coordinates, strip away the first column of rays and linear space
 				if(prerays.rows() > 0) prerays = prerays.minor(All,~scalar2set(0));
 				if(prelin.rows() > 0) prelin = prelin.minor(All,~scalar2set(0));
-				//dbgtrace << "prerays: " << prerays << endl;
-				//dbgtrace << "rcols: " << prerays.cols() << endl;
-				//dbgtrace << "lcols: " << prelin.cols() << endl;
 				//int dim = prerays.cols() > prelin.cols() ? prerays.cols() : prelin.cols();
 				int dim = prerays.rows() > 0? prerays.cols() : prelin.cols();
-				//dbgtrace << "dim: " << dim << endl;
 
-				//dbgtrace << "Creating ray matrix" << endl;
-				// 	dbgtrace << "Affine rays of product are " << rayMatrix.minor(product_affine,All) << endl;
-				// 	dbgtrace << "Affine rays of complex are " << prerays.minor(complex_affine,All) << endl;
 
 				//Create new ray matrix
 				Matrix<Rational> newRays(0,product_dim + dim);
@@ -169,9 +153,7 @@ namespace polymake { namespace tropical {
 				}
 				Set<int> newAffine = sequence(0, newRays.rows());
 
-				//dbgtrace << "New affine rays read " << newRays << endl;
 
-				//dbgtrace << "Adding directional rays" << endl;
 				//Now add the directional rays of both cones
 				Map<int,int> pdirIndices;
 				Map<int,int> cdirIndices; //For index conversion
@@ -187,7 +169,6 @@ namespace polymake { namespace tropical {
 				}
 				Set<int> newDirectional = sequence(newAffine.size(),product_directional.size() + complex_directional.size());
 
-				//dbgtrace << "Creating lineality matrix" << endl;
 
 				//Create new lineality matrix
 				if(prelin.rows() > 0) {
@@ -197,7 +178,6 @@ namespace polymake { namespace tropical {
 					linMatrix = linMatrix | Matrix<Rational>(linMatrix.rows(), dim);
 				}
 
-				//dbgtrace << "Prelin = " << prelin << "\nlinMatrix = " << linMatrix << endl;
 
 				// ** RECOMPUTE LATTICE DATA ***************************************
 
@@ -218,11 +198,12 @@ namespace polymake { namespace tropical {
 					complex_lb = clb;
 					//Compute cartesian product of lattice matrices:
 					//Adjust dimension, then concatenate
-					if(complex_lg.rows() > 0) complex_lg = complex_lg.minor(All,~scalar2set(0));
-					product_l_generators = 
+					if (complex_lg.rows() > 0)
+                                          complex_lg = complex_lg.minor(All,~scalar2set(0));
+					product_l_generators =
 						product_l_generators | Matrix<Integer>(product_l_generators.rows(), dim);
-					complex_lg = 
-						Matrix<Integer>(complex_lg.rows(), product_dim) | complex_lg;	    
+					complex_lg =
+						Matrix<Integer>(complex_lg.rows(), product_dim) | complex_lg;
 					lattice_index_translation = product_l_generators.rows();
 					product_l_generators /= complex_lg;
 
@@ -232,12 +213,7 @@ namespace polymake { namespace tropical {
 
 
 
-				//dbgtrace << "Creating cones" << endl;
 
-				//dbgtrace << "Ray matrix is " << newRays << endl;
-				//dbgtrace << "Affine indices " << affineIndices << endl;
-				//dbgtrace << "Directional indices product" << pdirIndices << endl;
-				//dbgtrace << "Directional indices complex" << cdirIndices << endl;
 
 				//Now create the new cones and weights:
 				IncidenceMatrix<> newMaxCones(0,newRays.rows());
@@ -246,10 +222,8 @@ namespace polymake { namespace tropical {
 				if(premax.rows() == 0) { premax = premax / Set<int>();}
 				for(int pmax = 0; pmax < maximalCones.rows(); pmax++) {
 					Set<int> product_cone = maximalCones.row(pmax);
-					//dbgtrace << "Product cone: " << product_cone << endl;
 					for(int cmax = 0; cmax < premax.rows(); cmax++) {
 						Set<int> complex_cone = premax.row(cmax);
-						//dbgtrace << "Complex cone: " << complex_cone << endl;
 						Set<int> newcone;
 						Set<int> pAffine = product_cone * product_affine;
 						Set<int> pDirectional = product_cone * product_directional;
@@ -260,7 +234,6 @@ namespace polymake { namespace tropical {
 						//affineIndices
 						for(Entire<Set<int> >::iterator pa = entire(pAffine); !pa.at_end(); pa++) {
 							for(Entire<Set<int> >::iterator ca = entire(cAffine); !ca.at_end(); ca++) {
-								// 		    if(cmax + pmax == 0) dbgtrace << *pa << "," << *ca << ": " << affineIndices[std::make_pair(*pa,*ca)] << endl;
 								newcone = newcone + affineIndices[*pa][*ca];
 							}		
 						}
@@ -271,7 +244,6 @@ namespace polymake { namespace tropical {
 						for(Entire<Set<int> >::iterator cd = entire(cDirectional); !cd.at_end(); cd++) {
 							newcone = newcone + cdirIndices[*cd];
 						}
-						//dbgtrace << "Result: " << newcone << endl;
 						newMaxCones /= newcone;
 						//Compute weight
 						if(product_has_weights || uses_weights) {
@@ -285,7 +257,6 @@ namespace polymake { namespace tropical {
 					}
 				}
 
-				//dbgtrace << "Maximal cones now: " << newMaxCones << endl;
 
 				//Compute the cross product of the local_restrictions
 				IncidenceMatrix<> new_local_restriction(0,newRays.rows());
@@ -296,15 +267,13 @@ namespace polymake { namespace tropical {
 						perl::Object current_product("fan::PolyhedralComplex");
 							current_product.take("VERTICES") << rayMatrix;
 							current_product.take("MAXIMAL_POLYTOPES") << maximalCones;
-						product_locality = all_cones_as_incidence(current_product); 
+						product_locality = all_cones_as_incidence(current_product);
 					}
 					IncidenceMatrix<> pre_locality(pre_local_restriction);
-					if(pre_locality.rows() == 0) {
-						pre_locality = all_cones_as_incidence(complexes[i]); 
+					if (pre_locality.rows() == 0) {
+						pre_locality = all_cones_as_incidence(complexes[i]);
 					}
 
-					//dbgtrace << "pro_locality " << product_locality << endl;
-					//dbgtrace << "pre_locality " << pre_locality << endl;
 
 					for(int i = 0; i < product_locality.rows(); i++) {
 						Set<int> pAffine = product_locality.row(i) * product_affine;

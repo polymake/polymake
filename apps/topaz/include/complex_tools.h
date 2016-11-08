@@ -179,47 +179,47 @@ void remove_facet(HasseDiagram& HD, const GenericSet< Set,int >& F);
 // Checks whether a 1-complex (graph) is a 1-ball or 1-sphere.
 // return values: 1=true, 0=false, -1=undef (does not occur here)
 template <typename Complex, typename VertexSet>
-int is_ball_or_sphere(const Complex& C, const GenericSet<VertexSet>& V, int2type<1>);
+int is_ball_or_sphere(const Complex& C, const GenericSet<VertexSet>& V, int_constant<1>);
 
 // Checks whether a 2-complex is a 2-ball or 2-sphere.
 // return values: 1=true, 0=false, -1=undef (does not occur here)
 template <typename Complex, typename VertexSet>
-int is_ball_or_sphere(const Complex& C, const GenericSet<VertexSet>& V, int2type<2>);
+int is_ball_or_sphere(const Complex& C, const GenericSet<VertexSet>& V, int_constant<2>);
 
 // Checks whether a 1-complex (graph) is a manifold.
 // return values: 1=true, 0=false, -1=undef (does not occur here)
 template <typename Complex, typename VertexSet>
-int is_manifold(const Complex& C, const GenericSet<VertexSet>& V, int2type<1>, int *bad_link_p=0);
+int is_manifold(const Complex& C, const GenericSet<VertexSet>& V, int_constant<1>, int *bad_link_p=0);
 
 // Heuristic check whether a complex of arbitrary dimension d is a manifold.
 // If not, *bad_link_p = vertex whose link is neither a ball nor a sphere
 // return values: 1=true, 0=false, -1=undef
 template <typename Complex, typename VertexSet, int d>
-int is_manifold(const Complex& C, const GenericSet<VertexSet>& V, int2type<d>, int *bad_link_p=0);
+int is_manifold(const Complex& C, const GenericSet<VertexSet>& V, int_constant<d>, int *bad_link_p=0);
 
 // heuristic sphere checking
 // return values: 1=true, 0=false, -1=undef
 template <typename Complex, int d>
-int is_ball_or_sphere(const Complex& C, int2type<d>);
+int is_ball_or_sphere(const Complex& C, int_constant<d>);
 
 // The same for a trusted complex (pure, without gaps in vertex numbering)
 // return values: 1=true, 0=false, -1=undef
 template <typename Complex, int d> inline
-int is_ball_or_sphere(const Complex& C, int n_vertices, int2type<d>)
+int is_ball_or_sphere(const Complex& C, int n_vertices, int_constant<d>)
 {
-   return is_ball_or_sphere(C, sequence(0,n_vertices), int2type<d>());
+   return is_ball_or_sphere(C, sequence(0,n_vertices), int_constant<d>());
 }
 
 template <typename Complex, int d>
 // return values: 1=true, 0=false, -1=undef
-int is_manifold(const Complex& C, int2type<d>, int *bad_link_p=0);
+int is_manifold(const Complex& C, int_constant<d>, int* bad_link_p=nullptr);
 
 // The same for a trusted complex (pure, without gaps in vertex numbering)
 // return values: 1=true, 0=false, -1=undef
 template <typename Complex, int d> inline
-int is_manifold(const Complex& C, int n_vertices, int2type<d>, int *bad_link_p=0)
+int is_manifold(const Complex& C, int n_vertices, int_constant<d>, int* bad_link_p=nullptr)
 {
-   return is_manifold(C, sequence(0,n_vertices), int2type<d>(), bad_link_p);
+   return is_manifold(C, sequence(0,n_vertices), int_constant<d>(), bad_link_p);
 }
 
 /// Adjusts the vertex numbers to 0..n-1.

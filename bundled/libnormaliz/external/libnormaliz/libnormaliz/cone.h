@@ -48,6 +48,9 @@ template<typename Integer> struct SHORTSIMPLEX {
     vector<key_t> key;                // full key of simplex
     Integer height;                   // height of last vertex over opposite facet
     Integer vol;                      // volume if computed, 0 else
+    vector<bool> Excluded;           // for disjoint decomposition of cone
+                                      // true in position i indictate sthat the facet 
+                                      // opposite of generator i must be excluded
 };
 
 template<typename Integer> struct STANLEYDATA {
@@ -128,13 +131,14 @@ public:
     // dimension and rank invariants
     size_t getEmbeddingDim() const { return dim; };   // is always known
     size_t getRank();                           // depends on ExtremeRays
-    Integer getIndex();                         // depends on OriginalMonoidGenerators
+    Integer getIndex(); // depends on OriginalMonoidGenerators
+    Integer getUnitGroupIndex(); // ditto
     // only for inhomogeneous case:
     size_t getRecessionRank();
     long getAffineDim();
     size_t getModuleRank();
     
-    Cone<Integer>& getIntHullCone() const;
+    Cone<Integer>& getIntegerHullCone() const;
 
     const Matrix<Integer>& getGeneratorsMatrix();
     const vector< vector<Integer> >& getGenerators();
@@ -213,6 +217,7 @@ public:
     bool isTriangulationNested();
     bool isTriangulationPartial();
     const vector< pair<vector<key_t>, Integer> >& getTriangulation();
+    const vector< vector<bool> >& getOpenFacets();
     const vector< pair<vector<key_t>, long> >& getInclusionExclusionData();
     const list< STANLEYDATA<Integer> >& getStanleyDec();
 
@@ -242,6 +247,7 @@ private:
     bool triangulation_is_nested;
     bool triangulation_is_partial;
     vector< pair<vector<key_t>, Integer> > Triangulation;
+    vector<vector<bool> > OpenFacets;
     vector< pair<vector<key_t>, long> > InExData;
     list< STANLEYDATA<Integer> > StanleyDec;
     mpq_class multiplicity;
@@ -254,7 +260,8 @@ private:
     vector<Integer> Grading;
     vector<Integer> Dehomogenization;
     Integer GradingDenom;
-    Integer index;
+    Integer index;  // the internal index
+    Integer unit_group_index;
 
     bool pointed;
     bool inhomogeneous;
@@ -324,6 +331,11 @@ private:
     /* extract the data from Full_Cone, this may remove data from Full_Cone!*/
     template<typename IntegerFC>
     void extract_data(Full_Cone<IntegerFC>& FC);
+    template<typename IntegerFC>
+    void extract_supphyps(Full_Cone<IntegerFC>& FC);
+    
+    void extract_supphyps(Full_Cone<Integer>& FC);
+
 
     /* set OriginalMonoidGenerators */
     void set_original_monoid_generators(const Matrix<Integer>&);
@@ -334,11 +346,9 @@ private:
     /* If the Hilbert basis and the original monoid generators are computed,
      * use them to check whether the original monoid is integrally closed. */
     void check_integrally_closed();
+    void compute_unit_group_index();
     /* try to find a witness for not integrally closed in the Hilbert basis */
     void find_witness();
-
-    /* set this object to the zero cone */
-    void set_zero_cone();
 
     Integer compute_primary_multiplicity();
     template<typename IntegerFC>

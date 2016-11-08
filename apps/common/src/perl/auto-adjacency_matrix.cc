@@ -16,20 +16,20 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
 #include "polymake/Graph.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( adjacency_matrix_X12_f4, T0 ) {
+   FunctionInterface4perl( adjacency_matrix_X36_f4, T0 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturnLvalueAnch( 1, (arg0), T0, (adjacency_matrix(arg0.get<T0>())) );
+      WrapperReturnLvalue( T0, (adjacency_matrix(arg0.get<T0>())), arg0 );
    };
 
-   FunctionInstance4perl(adjacency_matrix_X12_f4, perl::Canned< Graph< Undirected > >);
-   FunctionInstance4perl(adjacency_matrix_X12_f4, perl::Canned< const Graph< Directed > >);
-   FunctionInstance4perl(adjacency_matrix_X12_f4, perl::Canned< const Graph< Undirected > >);
-   FunctionInstance4perl(adjacency_matrix_X12_f4, perl::Canned< Graph< Directed > >);
+   FunctionInstance4perl(adjacency_matrix_X36_f4, perl::Canned< Graph< Undirected > >);
+   FunctionInstance4perl(adjacency_matrix_X36_f4, perl::Canned< const Graph< Undirected > >);
+   FunctionInstance4perl(adjacency_matrix_X36_f4, perl::Canned< const Graph< Directed > >);
+   FunctionInstance4perl(adjacency_matrix_X36_f4, perl::Canned< Graph< Directed > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -114,15 +114,6 @@ perl::Object lex_extension(const perl::Object N, const Array<Set<int> >& modular
    return E;
 }
 
-perl::Object free_extension(const perl::Object N)
-{
-   int n = N.give("N_ELEMENTS");
-   Array<Set<int> > flat(1);
-   flat[0]=Set<int>(range(0,n-1));
-   perl::OptionSet options;
-   return lex_extension(N, flat, options);
-}
-
 UserFunction4perl("# @category Other"
                   "# Check if a subset of the lattice of flats of a matroid is a modular cut"
                   "# @param Matroid M the matroid"
@@ -142,12 +133,7 @@ UserFunction4perl("# @category Producing a matroid from matroids"
                   &lex_extension,
                   "lex_extension(Matroid Array<Set> { check_modular_cut => 1, verbose => 1 })");
 
-UserFunction4perl("# @category Producing a matroid from matroids"
-                  "# Calculate the free extension of a matroid"
-                  "# @param Matroid M the original matroid to be extended"
-                  "# @return Matroid",
-                  &free_extension,
-                  "free_extension(Matroid)");
+
 
 
 } }

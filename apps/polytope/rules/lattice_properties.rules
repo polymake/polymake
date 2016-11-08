@@ -13,17 +13,22 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-object Cone<Rational> {
+# assign the proper number of columns to all empty matrices in a list
+sub canonicalize_empty_matrices {
+    my ($a)=@_;
+    my $dim;
+    foreach (@$a) { $dim=$_->cols and last }
+    if ($dim) {
+        foreach (@$a) { $_->clear(0,$dim) if $_->cols==0 }
+    }
+}
 
-# # The Hilbert basis of the cone spanned by P x {1}.
-# property HILBERT_BASIS : Matrix<Integer> {
-# 
-#    sub equal { &equal_up_to_row_permutation; }
-# }
+object Cone<Rational> {
 
 # @category Lattice points in cones
 # The number of elements of the [[HILBERT_BASIS]].
 property N_HILBERT_BASIS : Int;
+
 
 # @category Lattice points in cones
 # Generators for the [[HILBERT_BASIS]] of a posiibly non-pointed cone 
@@ -33,6 +38,8 @@ property N_HILBERT_BASIS : Int;
 #       it will be if the cone is pointed (the polytope is bounded)
 # @depends 4ti2 (unbounded) or libnormaliz (bounded)
 property HILBERT_BASIS_GENERATORS : Array<Matrix<Integer> > {
+
+  sub canonical { &canonicalize_empty_matrices }
 
   # FIXME This test is too restrictive
   sub equal { 
@@ -68,12 +75,14 @@ property N_LATTICE_POINTS : Integer;
 # where p is a row in P and lambda has only non-negative
 # integral coordinates and mu has arbitrary integral coordinates.
 # @depends 4ti2 for unbounded polytopes
-property LATTICE_POINTS_GENERATORS : Array<Matrix<Integer> >{
+property LATTICE_POINTS_GENERATORS : Array<Matrix<Integer> > {
 
-  sub equal { 
-    my ($a, $b) = @_;
-    return equal_up_to_row_permutation($a->[0],$b->[0]) && equal_up_to_row_permutation($a->[1],$b->[1]) && equal_up_to_row_permutation($a->[2],$b->[2]);
-  }
+    sub canonical { &canonicalize_empty_matrices }
+
+    sub equal { 
+        my ($a, $b) = @_;
+        return equal_up_to_row_permutation($a->[0],$b->[0]) && equal_up_to_row_permutation($a->[1],$b->[1]) && equal_up_to_row_permutation($a->[2],$b->[2]);
+    }
 };
     
 # @category Lattice points in polytopes

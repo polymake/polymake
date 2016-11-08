@@ -27,8 +27,8 @@ Array<int> h_vector(const Array<int> &F)
    for (int k=1; k<=dim+1; ++k) { 
       Integer h_k(Integer::pow(Integer(-1),k) * Integer::binom(dim+1,k));
       for (int j=1; j<=k; ++j) 
-         h_k = h_k + Integer::pow(Integer(-1),k-j) * Integer::binom(dim+1-j, k-j) * Integer(F[j-1]);
-      h_vector[k]=h_k.to_int();
+         h_k = h_k + Integer::pow(Integer(-1),k-j) * Integer::binom(dim+1-j, k-j) * F[j-1];
+      h_vector[k]=int(h_k);
    }
    return h_vector;
 }

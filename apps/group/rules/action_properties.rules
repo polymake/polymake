@@ -1,0 +1,169 @@
+#  Copyright (c) 1997-2016
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object Action {
+
+   # @category Symmetry
+   # The generators of the group action
+   property GENERATORS : Array<GeneratorType>;
+
+   # @category Symmetry
+   # The degree of the representation. For permutation groups,
+   # this is the number of permuted indices, for matrix groups
+   # it is the dimension of the vector space the group acts on
+   property DEGREE : Int;
+
+   # @category Symmetry
+   # The character of the action. The ordering corresponds to the
+   # columns of the CHARACTER_TABLE
+   property CHARACTER : Array<Int>;
+
+   # @category Symmetry
+   # The multiplicities of each irreducible representation in this action.
+   # The ordering corresponds to the rows of the CHARACTER_TABLE
+   property IRREDUCIBLE_DECOMPOSITION : Array<Int>;
+
+   # @category Symmetry
+   # A set of representatives for each conjugacy class.
+   # The order of these representatives must agree with the implicit
+   # order of the columns of the [[Group::CHARACTER_TABLE|CHARACTER_TABLE]].
+   property CONJUGACY_CLASS_REPRESENTATIVES : Array<GeneratorType>;
+
+   # @category Symmetry
+   # The conjugacy classes themselves
+   property CONJUGACY_CLASSES : Array<Set<GeneratorType>>;
+
+
+   # @category Symmetry
+   # the name of the property that we act on, for example MAX_INTERIOR_SIMPLICES or INTERIOR_RIDGES
+   property DOMAIN_NAME : String;
+
+   # @category Symmetry
+   # the name of a different action that this action is induced from
+   property INDUCED_FROM : String;
+
+   # @category Symmetry
+   # The map giving the index of each group element
+   # This is a temporary property; it will not be stored in any file.
+   property INDEX_OF : HashMap<DomainType, Int>;
+
+
+   # @category Symmetry
+   # The orbits of the domain, represented via their indices
+   # transform: { RAYS_IN_ORBITS, FACETS_IN_ORBITS, COORDINATES_IN_ORBITS, INPUT_RAYS_IN_ORBITS, INEQUALITIES_IN_ORBITS } => ORBITS
+   property ORBITS : Array<HashSet<Int>>;
+
+   # @category Symmetry
+   # The number of orbits in the domain under the group action
+   # transform: { N_ORBITS_OF_RAYS, N_ORBITS_OF_FACETS, N_ORBITS_OF_COORDINATES, N_ORBITS_OF_INPUT_RAYS, N_ORBITS_OF_INEQUALITIES } => N_ORBITS
+   property N_ORBITS : Int;
+
+   # @category Symmetry
+   # The cardinality of each orbit
+   property ORBIT_SIZES : Array<Int>;
+
+   # @category Symmetry
+   # A set of generators for input rays, stored as the rows of a matrix.
+   # The list of generators may be redundant and non-canonical.
+   property INPUT_RAYS_GENERATORS : Matrix<OrbitGeneratorScalarType>;
+   
+   # @category Symmetry
+   # The number of generators for orbits.
+   property N_INPUT_RAYS_GENERATORS : Int;
+
+   # @category Symmetry
+   # A set of generators for rays, stored as the rows of a matrix.
+   # The list of generators may be redundant and non-canonical.
+   property RAYS_GENERATORS : Matrix<OrbitGeneratorScalarType>;
+   
+   # @category Symmetry
+   # The number of generators for orbits.
+   property N_RAYS_GENERATORS : Int;
+
+   # @category Symmetry
+   # A set of generators for inequalities, stored as the rows of a matrix.
+   # The list of generators may be redundant and non-canonical.
+   property INEQUALITIES_GENERATORS : Matrix<OrbitGeneratorScalarType>;
+   
+   # @category Symmetry
+   # The number of generators for orbits.
+   property N_INEQUALITIES_GENERATORS : Int;
+
+   # @category Symmetry
+   # A set of generators for facets, stored as the rows of a matrix.
+   # The list of generators may be redundant and non-canonical.
+   property FACETS_GENERATORS : Matrix<OrbitGeneratorScalarType>;
+   
+   # @category Symmetry
+   # The number of generators for orbits.
+   property N_FACETS_GENERATORS : Int;
+
+   # @category Symmetry
+   # A set of generators for equations, stored as the rows of a matrix.
+   # The list of generators may be redundant and non-canonical.
+   property EQUATIONS_GENERATORS : Matrix<OrbitGeneratorScalarType>;
+   
+   # @category Symmetry
+   # The number of generators for orbits.
+   property N_EQUATIONS_GENERATORS : Int;
+
+   # @category Symmetry
+   # A set of generators for input lineality, stored as the rows of a matrix.
+   # The list of generators may be redundant and non-canonical.
+   property INPUT_LINEALITY_GENERATORS : Matrix<OrbitGeneratorScalarType>;
+   
+   # @category Symmetry
+   # The number of generators for orbits.
+   property N_INPUT_LINEALITY_GENERATORS : Int;
+
+   # @category Symmetry
+   # A set of generators for input lineality, stored as the rows of a matrix.
+   # The list of generators may be redundant and non-canonical.
+   property LINEALITY_SPACE_GENERATORS : Matrix<OrbitGeneratorScalarType>;
+   
+   # @category Symmetry
+   # The number of generators for orbits.
+   property N_LINEALITY_SPACE_GENERATORS : Int;
+
+   
+   # @category Symmetry
+   # A collection of representatives for each orbit, represented via their indices
+   # transform: { REPRESENTATIVE_RAYS, REPRESENTATIVE_FACETS, REPRESENTATIVE_LINEAR_SPAN, REPRESENTATIVE_AFFINE_HULL } => ORBIT_REPRESENTATIVES
+   property ORBIT_REPRESENTATIVES : Array<Int>;
+
+   # @category Symmetry
+   # the representatives of orbits explicitly, not via their indices
+   property EXPLICIT_ORBIT_REPRESENTATIVES : Array<DomainType>;
+
+   # @category Symmetry
+   # the representatives of orbits explicitly, not via their indices
+   property EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : Matrix<OrbitGeneratorScalarType>;
+
+   # @category Symmetry
+   # the number of representatives of orbits
+   # transform: { N_REPRESENTATIVE_RAYS, N_REPRESENTATIVE_FACETS } => N_ORBIT_REPRESENTATIVES
+   property N_ORBIT_REPRESENTATIVES : Int;
+
+   # @category Symmetry
+   # A permutation that orders the domain elements by orbits
+   property PERMUTATION_TO_ORBIT_ORDER : Array<Int>;
+
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

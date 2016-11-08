@@ -16,11 +16,11 @@
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( perl::Object (pm::Array<bool, void> const&) ) {
+   FunctionWrapper4perl( perl::Object (pm::Array<bool> const&) ) {
       perl::Value arg0(stack[0]);
       IndirectWrapperReturn(arg0);
    }
-   FunctionWrapperInstance4perl( perl::Object (pm::Array<bool, void> const&) );
+   FunctionWrapperInstance4perl( perl::Object (pm::Array<bool> const&) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

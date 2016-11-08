@@ -40,5 +40,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(unit_matrix_T_x, Integer);
    FunctionInstance4perl(unit_matrix_T_x, TropicalNumber< Min, Rational >);
    FunctionInstance4perl(unit_matrix_T_x, PuiseuxFraction< Max, Rational, Rational >);
+   FunctionInstance4perl(unit_matrix_T_x, TropicalNumber< Min, int >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

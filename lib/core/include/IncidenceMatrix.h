@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -55,8 +55,8 @@ template <typename symmetric> class IncidenceMatrix_base;
 
 template <typename TreeRef>
 struct incidence_line_params
-   : concat_list< typename sparse2d::line_params<TreeRef>::type,
-                  Operation< BuildUnaryIt<operations::index2element> > > {};
+   : mlist_concat< typename sparse2d::line_params<TreeRef>::type,
+                   OperationTag< BuildUnaryIt<operations::index2element> > > {};
 
 template <typename TreeRef>
 class incidence_line_base
@@ -74,7 +74,7 @@ class incidence_line_base<Tree&>
    : public modified_tree< incidence_line<Tree&>, typename incidence_line_params<Tree&>::type > {
 protected:
    typedef typename deref<Tree>::type tree_type;
-   typedef typename if_else<Tree::symmetric, Symmetric, NonSymmetric>::type symmetric;
+   typedef typename std::conditional<Tree::symmetric, Symmetric, NonSymmetric>::type symmetric;
    typedef typename inherit_ref<IncidenceMatrix_base<symmetric>, Tree&>::type matrix_ref;
    typedef typename attrib<matrix_ref>::plus_const const_matrix_ref;
 
@@ -101,19 +101,23 @@ public:
 
 template <typename TreeRef>
 class incidence_line
-   : public incidence_line_base<TreeRef>,
-     public GenericMutableSet<incidence_line<TreeRef>, int, operations::cmp>
+   : public incidence_line_base<TreeRef>
+   , public GenericMutableSet<incidence_line<TreeRef>, int, operations::cmp>
 {
-   typedef incidence_line_base<TreeRef> _super;
+   typedef incidence_line_base<TreeRef> base_t;
+   friend class GenericMutableSet<incidence_line>;
+   template <typename> friend class IncidenceMatrix;
+   template <sparse2d::restriction_kind> friend class RestrictedIncidenceMatrix;
 public:
-   incidence_line(typename _super::first_arg_type arg1, typename _super::second_arg_type arg2)
-      : _super(arg1,arg2) {}
+   incidence_line(typename base_t::first_arg_type arg1, typename base_t::second_arg_type arg2)
+      : base_t(arg1,arg2) {}
 
    incidence_line& operator= (const incidence_line& other)
    {
       return incidence_line::generic_mutable_type::operator=(other);
    }
 
+   // TODO: investigate whether the dimension check is active?
    template <typename Set>
    incidence_line& operator= (const GenericSet<Set, int, operations::cmp>& other)
    {
@@ -126,49 +130,87 @@ public:
       return incidence_line::generic_mutable_type::operator=(sequence(0, this->dim()) * other);
    }
 
-   template <typename Container>
-   typename enable_if<incidence_line, isomorphic_to_container_of<Container, int, is_set>::value>::type&
-   operator= (const Container& src)
+   incidence_line& operator= (std::initializer_list<int> l)
+   {
+      return incidence_line::generic_mutable_type::operator=(l);
+   }
+
+protected:
+   template <typename Iterator>
+   void fill(Iterator src)
    {
       this->clear();
-      for (typename Entire<Container>::const_iterator i=entire(src); !i.at_end(); ++i)
-         this->insert(*i);
-      return *this;
+      for (; !src.at_end(); ++src)
+         this->insert(*src);
    }
 };
 
 template <typename TreeRef>
-struct check_container_feature<incidence_line<TreeRef>, sparse_compatible> : True {};
+struct check_container_feature<incidence_line<TreeRef>, sparse_compatible> : std::true_type {};
 
 template <typename TreeRef>
 struct spec_object_traits< incidence_line<TreeRef> >
    : spec_object_traits<is_container> {
    static const bool is_temporary=attrib<TreeRef>::is_reference,
                      is_always_const=attrib<TreeRef>::is_const;
-   typedef typename if_else<is_temporary, void, typename deref<TreeRef>::type>::type masquerade_for;
+   typedef typename std::conditional<is_temporary, void, typename deref<TreeRef>::type>::type masquerade_for;
    static const int is_resizeable=0;
 };
+
+template <typename Iterator>
+using is_sequence_of_sets=std::is_same<typename object_traits<typename iterator_traits<Iterator>::value_type>::generic_tag, is_set>;
+
+template <typename TContainer>
+using fits_for_append_to_IM
+   = mlist_or<isomorphic_to_container_of<TContainer, int, allow_conversion>,
+              isomorphic_to_container_of<TContainer, Set<int>, allow_conversion>,
+              isomorphic_to_container_of<TContainer, IncidenceMatrix<>, allow_conversion>,
+              std::is_same<typename object_traits<TContainer>::generic_tag, is_incidence_matrix> >;
 
 template <sparse2d::restriction_kind restriction=sparse2d::only_rows>
 class RestrictedIncidenceMatrix
    : public matrix_methods<RestrictedIncidenceMatrix<restriction>, bool> {
 protected:
+   typedef sparse2d::restriction_const<restriction> my_restriction;
+   typedef sparse2d::restriction_const<(restriction==sparse2d::only_rows ? sparse2d::only_cols : sparse2d::only_rows)> cross_restriction;
+
    typedef sparse2d::Table<nothing, false, restriction> table_type;
    table_type data;
 
    table_type& get_table() { return data; }
    const table_type& get_table() const { return data; }
 
-   template <typename Iterator>
-   void _copy(Iterator src, True)
+   template <typename Iterator, typename TLines>
+   static
+   void copy_linewise(Iterator&& src, TLines& lines, my_restriction, std::true_type)
    {
-      copy(src, entire(pm::rows(*this)));
+      copy_range(std::forward<Iterator>(src), entire(lines));
    }
-   template <typename Iterator>
-   void _copy(Iterator src, False)
+
+   template <typename Iterator, typename TLines>
+   static
+   void copy_linewise(Iterator&& src, TLines& lines, my_restriction, std::false_type)
    {
-      copy(src, entire(pm::cols(*this)));
+      for (auto l_i=entire(lines); !l_i.at_end(); ++l_i, ++src)
+         l_i->fill(entire(*src));
    }
+
+   template <typename Iterator, typename TLines, typename TSourceOrdered>
+   static
+   void copy_linewise(Iterator&& src, TLines& lines, cross_restriction, TSourceOrdered)
+   {
+      for (int i=0; !src.at_end(); ++src, ++i)
+         append_across(lines, *src, i);
+   }
+
+   template <typename TLines, typename TSet>
+   static
+   void append_across(TLines& lines, const TSet& set, int i)
+   {
+      for (auto s=entire(set); !s.at_end(); ++s)
+         lines[*s].push_back(i);
+   }
+
 
    typedef incidence_proxy_base< incidence_line<typename table_type::primary_tree_type> > proxy_base;
 
@@ -177,134 +219,238 @@ public:
    typedef sparse_elem_proxy<proxy_base> reference;
    typedef const bool const_reference;
 
-   RestrictedIncidenceMatrix() : data(nothing()) {}
-   explicit RestrictedIncidenceMatrix(int n) : data(n) {}
+   explicit RestrictedIncidenceMatrix(int n=0) : data(n) {}
+
    RestrictedIncidenceMatrix(int r, int c) : data(r,c) {}
 
-   template <typename Iterator>
-   RestrictedIncidenceMatrix(typename enable_if<int, isomorphic_types<typename iterator_traits<Iterator>::value_type, Set<int> >::value>::type n, Iterator src)
+   template <typename Iterator, typename THow,
+             typename=typename std::enable_if<is_among<THow, sparse2d::rowwise, sparse2d::columnwise>::value &&
+                                              assess_iterator_value<Iterator, can_initialize, Set<int>>::value &&
+                                              (THow::value==restriction || assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value)>::type>
+   RestrictedIncidenceMatrix(int n, THow how, Iterator&& src)
       : data(n)
    {
-      _copy(src, bool2type<restriction==sparse2d::only_rows>());
+      copy_linewise(ensure_private_mutable(std::forward<Iterator>(src)), lines(*this, my_restriction()),
+                    how, is_sequence_of_sets<Iterator>());
    }
 
-   template <typename Iterator>
-   RestrictedIncidenceMatrix(typename enable_if<int, isomorphic_types<typename iterator_traits<Iterator>::value_type, Set<int> >::value>::type r, int c, Iterator src)
-      : data(r,c)
+   template <typename Iterator, typename THow,
+             typename=typename std::enable_if<is_among<THow, sparse2d::rowwise, sparse2d::columnwise>::value &&
+                                              assess_iterator_value<Iterator, can_initialize, Set<int>>::value &&
+                                              (THow::value==restriction || assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value)>::type>
+   RestrictedIncidenceMatrix(int r, int c, THow how, Iterator&& src)
+      : data(r, c)
    {
-      _copy(src, bool2type<restriction==sparse2d::only_rows>());
+      copy_linewise(ensure_private_mutable(std::forward<Iterator>(src)), lines(*this, my_restriction()),
+                    how, is_sequence_of_sets<Iterator>());
    }
 
-   template <typename Container>
-   RestrictedIncidenceMatrix(const Container& src,
-                             typename enable_if<void**, (isomorphic_to_container_of<Container, Set<int>, allow_conversion>::value &&
-                                                         restriction==sparse2d::only_rows)>::type=0)
-      : data(src.size())
+   template <typename THow, typename... TSources,
+             typename=typename std::enable_if<is_among<THow, sparse2d::rowwise, sparse2d::columnwise>::value &&
+                                              mlist_and_nonempty<fits_for_append_to_IM<TSources>...>::value>::type>
+   RestrictedIncidenceMatrix(THow how, const TSources&... src)
+      : data(0)
    {
-      _copy(src.begin(), True());
+      append_impl(how, src...);
    }
+
+   RestrictedIncidenceMatrix(std::initializer_list<std::initializer_list<int>> l)
+      : data(l.size())
+   {
+      static_assert(restriction==sparse2d::only_rows, "a column-only restricted incidence matrix can't be constructed from an initializer list");
+      copy_linewise(l.begin(), pm::rows(*this), my_restriction(), std::false_type());
+   }
+
+   RestrictedIncidenceMatrix(RestrictedIncidenceMatrix&& M)
+      : data(std::move(M.data)) {}
 
    void swap(RestrictedIncidenceMatrix& M) { data.swap(M.data); }
 
    void clear() { data.clear(); }
 
 protected:
-   proxy_base _random(int i, int j, False)
+   proxy_base random_impl(int i, int j, std::false_type)
    {
       return proxy_base(this->row(i), j);
    }
-   proxy_base _random(int i, int j, True)
+   proxy_base random_impl(int i, int j, std::true_type)
    {
       return proxy_base(this->col(j), i);
    }
-   bool _random(int i, int j, False) const
+   bool random_impl(int i, int j, std::false_type) const
    {
       return this->row(i).exists(j);
    }
-   bool _random(int i, int j, True) const
+   bool random_impl(int i, int j, std::true_type) const
    {
       return this->col(j).exists(i);
    }
 public:
    reference operator() (int i, int j)
    {
-      return _random(i, j, bool2type<restriction==sparse2d::only_cols>());
+      return random_impl(i, j, bool_constant<restriction==sparse2d::only_cols>());
    }
    const_reference operator() (int i, int j) const
    {
-      return _random(i, j, bool2type<restriction==sparse2d::only_cols>());
+      return random_impl(i, j, bool_constant<restriction==sparse2d::only_cols>());
    }
 
    bool exists(int i, int j) const
    {
-      return _random(i, j, bool2type<restriction==sparse2d::only_cols>());
+      return random_impl(i, j, bool_constant<restriction==sparse2d::only_cols>());
    }
 
 private:
-   template <typename RowCol, typename Set>
-   void _append(RowCol& row_col, const Set& set, int i)
+   auto append_lines_start(sparse2d::rowwise, int n)
    {
-      for (typename Entire<Set>::const_iterator s=entire(set); !s.at_end(); ++s)
-         row_col[*s].push_back(i);
-   }
-
-   template <typename Iterator>
-   void _append_rows(int n, Iterator src, True)
-   {
-      int oldrows=data.rows();
+      const int oldrows=data.rows();
       data.resize_rows(oldrows+n);
-      copy(src, pm::rows(*this).begin()+oldrows);
+      return pm::rows(*this).begin()+oldrows;
    }
 
-   template <typename Iterator>
-   void _append_rows(int, Iterator src, False)
+   auto append_lines_start(sparse2d::columnwise, int n)
    {
-      for (int r=data.rows(); !src.at_end(); ++src, ++r)
-         _append(pm::cols(*this), *src, r);
-   }
-
-   template <typename Iterator>
-   void _append_cols(int n, Iterator src, True)
-   {
-      int oldcols=data.cols();
+      const int oldcols=data.cols();
       data.resize_cols(oldcols+n);
-      copy(src, pm::cols(*this).begin()+oldcols);
+      return pm::cols(*this).begin()+oldcols;
    }
 
-   template <typename Iterator>
-   void _append_cols(int, Iterator src, False)
+   template <typename TContainer, typename... TMoreSources>
+   auto append_lines_start(my_restriction how,
+                           typename std::enable_if<isomorphic_to_container_of<TContainer, int, allow_conversion>::value, int>::type n,
+                           const TContainer& c, TMoreSources&&... more_src)
    {
-      for (int c=data.cols(); !src.at_end(); ++src, ++c)
-         _append(pm::rows(*this), *src, c);
+      return append_lines_start(how, n+1, std::forward<TMoreSources>(more_src)...);
+   }
+
+   template <typename TContainer, typename... TMoreSources>
+   auto append_lines_start(my_restriction how,
+                           typename std::enable_if<isomorphic_to_container_of<TContainer, Set<int>, allow_conversion>::value, int>::type n,
+                           const TContainer& c, TMoreSources&&... more_src)
+   {
+      return append_lines_start(how, n+c.size(), std::forward<TMoreSources>(more_src)...);
+   }
+
+   template <typename TMatrix, typename... TMoreSources>
+   auto append_lines_start(my_restriction how, int n, const GenericIncidenceMatrix<TMatrix>& m, TMoreSources&&... more_src)
+   {
+      return append_lines_start(how, n+(restriction==sparse2d::only_rows ? m.rows() : m.cols()), std::forward<TMoreSources>(more_src)...);
+   }
+
+   template <typename TContainer, typename... TMoreSources>
+   auto append_lines_start(my_restriction how,
+                           typename std::enable_if<isomorphic_to_container_of<TContainer, IncidenceMatrix<>, allow_conversion>::value, int>::type n,
+                           const TContainer& c, TMoreSources&&... more_src)
+   {
+      for (const auto& m : c)
+         n += (restriction==sparse2d::only_rows ? m.rows() : m.cols());
+      return append_lines_start(how, n, std::forward<TMoreSources>(more_src)...);
+   }
+
+   template <typename... TSources>
+   int append_lines_start(cross_restriction, int, TSources&&...)
+   {
+      return restriction==sparse2d::only_rows ? data.cols() : data.rows();
+   }
+
+   template <typename Iterator, typename TSet>
+   void append_lines_from(my_restriction, Iterator& dst, const GenericSet<TSet, int, operations::cmp>& s)
+   {
+      *dst=s.top();
+      ++dst;
+   }
+
+   template <typename Iterator, typename TContainer>
+   typename std::enable_if<isomorphic_to_container_of<TContainer, int, is_set>::value>::type
+   append_lines_from(my_restriction, Iterator& dst, const TContainer& c)
+   {
+      dst->fill(entire(c));
+      ++dst;
+   }
+
+   template <typename THow, typename Iterator, typename TMatrix>
+   void append_lines_from(THow how, Iterator& dst, const GenericIncidenceMatrix<TMatrix>& m)
+   {
+      for (auto src=entire(sparse2d::lines(m.top(), how)); !src.at_end(); ++src)
+         append_lines_from(how, dst, *src);
+   }
+
+   template <typename Iterator, typename TContainer>
+   typename std::enable_if<isomorphic_to_container_of<TContainer, Set<int>, allow_conversion>::value ||
+                           isomorphic_to_container_of<TContainer, IncidenceMatrix<>, allow_conversion>::value>::type
+   append_lines_from(my_restriction how, Iterator& dst, const TContainer& c)
+   {
+      for (auto src=entire(c); !src.at_end(); ++src)
+         append_lines_from(how, dst, *src);
+   }
+
+   template <typename TContainer>
+   typename std::enable_if<isomorphic_to_container_of<TContainer, int, allow_conversion>::value>::type
+   append_lines_from(cross_restriction, int& r, const TContainer& c)
+   {
+      append_across(sparse2d::lines(*this, my_restriction()), c, r);
+      ++r;
+   }
+
+   template <typename THow, typename Iterator>
+   void append_lines(THow, Iterator&) {}
+
+   template <typename THow, typename Iterator, typename TSource, typename... TMoreSources>
+   void append_lines(THow how, Iterator&& dst, const TSource& src, TMoreSources&&... more_src)
+   {
+      append_lines_from(how, dst, src);
+      append_lines(how, dst, std::forward<TMoreSources>(more_src)...);
+   }
+
+   template <typename THow, typename... TSources>
+   void append_impl(THow how, TSources&&... src)
+   {
+      append_lines(how, append_lines_start(how, 0, std::forward<TSources>(src)...), std::forward<TSources>(src)...);
    }
 
 public:
-   template <typename Matrix>
-   RestrictedIncidenceMatrix& operator/= (const GenericIncidenceMatrix<Matrix>& m)
+   template <typename TMatrix>
+   RestrictedIncidenceMatrix& operator/= (const GenericIncidenceMatrix<TMatrix>& m)
    {
-      _append_rows(m.rows(), entire(pm::rows(m)), bool2type<restriction==sparse2d::only_rows>());
+      append_impl(sparse2d::rowwise(), m);
       return *this;
    }
 
-   template <typename Set>
-   RestrictedIncidenceMatrix& operator/= (const GenericSet<Set, int, operations::cmp>& s)
+   template <typename TSet>
+   RestrictedIncidenceMatrix& operator/= (const GenericSet<TSet, int, operations::cmp>& s)
    {
-      _append_rows(1, entire(item2container(s.top())), bool2type<restriction==sparse2d::only_rows>());
+      append_impl(sparse2d::rowwise(), s.top());
       return *this;
    }
 
-   template <typename Matrix>
-   RestrictedIncidenceMatrix& operator|= (const GenericIncidenceMatrix<Matrix>& m)
+   template <typename TMatrix>
+   RestrictedIncidenceMatrix& operator|= (const GenericIncidenceMatrix<TMatrix>& m)
    {
-      _append_cols(m.cols(), entire(pm::cols(m)), bool2type<restriction==sparse2d::only_cols>());
+      append_impl(sparse2d::columnwise(), m);
       return *this;
    }
 
-   template <typename Set>
-   RestrictedIncidenceMatrix& operator|= (const GenericSet<Set, int, operations::cmp>& s)
+   template <typename TSet>
+   RestrictedIncidenceMatrix& operator|= (const GenericSet<TSet, int, operations::cmp>& s)
    {
-      _append_cols(1, entire(item2container(s.top())), bool2type<restriction==sparse2d::only_cols>());
+      append_impl(sparse2d::columnwise(), s.top());
       return *this;
+   }
+
+   /// append one or more rows
+   template <typename... TSources,
+             typename=typename std::enable_if<mlist_and_nonempty<fits_for_append_to_IM<TSources>...>::value>::type>
+   void append_rows(const TSources&... src)
+   {
+      append_impl(sparse2d::rowwise(), src...);
+   }
+
+   /// append one or more columns
+   template <typename... TSources,
+             typename=typename std::enable_if<mlist_and_nonempty<fits_for_append_to_IM<TSources>...>::value>::type>
+   void append_columns(const TSources&... src)
+   {
+      append_impl(sparse2d::columnwise(), src...);
    }
 
    void squeeze() { data.squeeze(); }
@@ -312,25 +458,25 @@ public:
    template <typename Iterator>
    void permute_rows(Iterator perm)
    {
-      data.permute_rows(perm, False());
+      data.permute_rows(perm, std::false_type());
    }
 
    template <typename Iterator>
    void permute_cols(Iterator perm)
    {
-      data.permute_cols(perm, False());
+      data.permute_cols(perm, std::false_type());
    }
 
    template <typename Iterator>
    void permute_inv_rows(Iterator inv_perm)
    {
-      data.permute_rows(inv_perm, True());
+      data.permute_rows(inv_perm, std::true_type());
    }
 
    template <typename Iterator>
    void permute_inv_cols(Iterator inv_perm)
    {
-      data.permute_cols(inv_perm, True());
+      data.permute_cols(inv_perm, std::true_type());
    }
 
 #if POLYMAKE_DEBUG
@@ -350,18 +496,18 @@ class Rows< RestrictedIncidenceMatrix<restriction> >
 protected:
    ~Rows();
 public:
-   typedef typename if_else<restriction==sparse2d::only_rows, random_access_iterator_tag, output_iterator_tag>::type
+   typedef typename std::conditional<restriction==sparse2d::only_rows, random_access_iterator_tag, output_iterator_tag>::type
       container_category;
 };
 
 template <sparse2d::restriction_kind restriction>
 class Cols< RestrictedIncidenceMatrix<restriction> >
-   : public sparse2d::Cols< RestrictedIncidenceMatrix<restriction>, nothing, false, restriction, 
+   : public sparse2d::Cols< RestrictedIncidenceMatrix<restriction>, nothing, false, restriction,
                             operations::masquerade<incidence_line> > {
 protected:
    ~Cols();
 public:
-   typedef typename if_else<restriction==sparse2d::only_cols, random_access_iterator_tag, output_iterator_tag>::type
+   typedef typename std::conditional<restriction==sparse2d::only_cols, random_access_iterator_tag, output_iterator_tag>::type
       container_category;
 };
 
@@ -370,9 +516,9 @@ struct spec_object_traits< RestrictedIncidenceMatrix<restriction> >
    : spec_object_traits<is_container> {
    static const int dimension=2;
 
-   typedef typename if_else<restriction==sparse2d::only_rows,
-                            Rows< RestrictedIncidenceMatrix<restriction> >,
-                            Cols< RestrictedIncidenceMatrix<restriction> > >::type serialized;
+   typedef typename std::conditional<restriction==sparse2d::only_rows,
+                                     Rows< RestrictedIncidenceMatrix<restriction> >,
+                                     Cols< RestrictedIncidenceMatrix<restriction> > >::type serialized;
 
    static serialized& serialize(RestrictedIncidenceMatrix<restriction>& M)
    {
@@ -388,7 +534,7 @@ template <typename symmetric>
 class IncidenceMatrix_base {
 protected:
    typedef sparse2d::Table<nothing, symmetric::value> table_type;
-   shared_object<table_type, AliasHandler<shared_alias_handler> > data;
+   shared_object<table_type, AliasHandlerTag<shared_alias_handler>> data;
 
    table_type& get_table() { return *data; }
    const table_type& get_table() const { return *data; }
@@ -399,14 +545,14 @@ protected:
       return alias;
    }
 
-   IncidenceMatrix_base() {}
+   IncidenceMatrix_base() = default;
 
    IncidenceMatrix_base(int r, int c)
-      : data(make_constructor(r, c, (table_type*)0)) {}
+      : data(r, c) {}
 
-   template <typename Arg>
-   IncidenceMatrix_base(Arg& arg, nothing)
-      : data( constructor<table_type(Arg&)>(arg) ) {}
+   template <sparse2d::restriction_kind restriction>
+   explicit IncidenceMatrix_base(sparse2d::Table<nothing, symmetric::value, restriction>&& input_data)
+      : data(std::move(input_data)) {}
 
    template <typename> friend class Rows;
    template <typename> friend class Cols;
@@ -449,21 +595,21 @@ protected:
 
 template <typename symmetric>
 class IncidenceMatrix
-   : public IncidenceMatrix_base<symmetric>,
-     public GenericIncidenceMatrix< IncidenceMatrix<symmetric> > {
+   : public IncidenceMatrix_base<symmetric>
+   , public GenericIncidenceMatrix< IncidenceMatrix<symmetric> > {
 protected:
-   typedef IncidenceMatrix_base<symmetric> base;
+   typedef IncidenceMatrix_base<symmetric> base_t;
    friend IncidenceMatrix& make_mutable_alias(IncidenceMatrix& alias, IncidenceMatrix& owner)
    {
-      return static_cast<IncidenceMatrix&>(make_mutable_alias(static_cast<base&>(alias), static_cast<base&>(owner)));
+      return static_cast<IncidenceMatrix&>(make_mutable_alias(static_cast<base_t&>(alias), static_cast<base_t&>(owner)));
    }
 
    /// initialize from a dense boolean sequence in row order
    template <typename Iterator>
-   void _init(Iterator src, True)
+   void init_impl(Iterator&& src, std::true_type)
    {
       const int n=this->cols();
-      for (typename Entire< Rows<base> >::iterator r_i=entire(pm::rows(static_cast<base&>(*this))); !r_i.at_end(); ++r_i) {
+      for (auto r_i=entire(pm::rows(static_cast<base_t&>(*this))); !r_i.at_end(); ++r_i) {
          int i=0;
          if (symmetric::value) {
             i=r_i.index();
@@ -474,16 +620,31 @@ protected:
       }
    }
 
-   /// initialize rowwise from a sequence of sets
+   /// input already ordered
    template <typename Iterator>
-   void _init(Iterator src, False)
+   void init_rowwise(Iterator&& src, std::true_type)
    {
-      copy(src, entire(pm::rows(static_cast<base&>(*this))));
+      copy_range(std::forward<Iterator>(src), entire(pm::rows(static_cast<base_t&>(*this))));
    }
 
-   typedef incidence_proxy_base< incidence_line<typename base::table_type::primary_tree_type> > proxy_base;
+   /// input in uncertain order
+   template <typename Iterator>
+   void init_rowwise(Iterator&& src, std::false_type)
+   {
+      for (auto r_i=entire(pm::rows(static_cast<base_t&>(*this))); !r_i.at_end(); ++r_i, ++src)
+         r_i->fill(entire(*src));
+   }
+
+   /// initialize rowwise from a sequence of sets
+   template <typename Iterator>
+   void init_impl(Iterator&& src, std::false_type)
+   {
+      init_rowwise(std::forward<Iterator>(src), is_sequence_of_sets<Iterator>());
+   }
+
+   typedef incidence_proxy_base< incidence_line<typename base_t::table_type::primary_tree_type> > proxy_base;
 public:
-   typedef typename if_else<symmetric::value, void, RestrictedIncidenceMatrix<> >::type unknown_columns_type;
+   typedef typename std::conditional<symmetric::value, void, RestrictedIncidenceMatrix<> >::type unknown_columns_type;
    typedef bool value_type;
    typedef sparse_elem_proxy<proxy_base> reference;
    typedef const bool const_reference;
@@ -493,7 +654,7 @@ public:
 
    /// Create an empty IncidenceMatrix with @a r rows and @a c columns initialized with zeroes.
    IncidenceMatrix(int r, int c)
-      : base(r,c) {}
+      : base_t(r,c) {}
 
    /** @brief Create an IncidenceMatrix IncidenceMatrix with @a r rows and @a c columns and initialize it from a data sequence.
 
@@ -508,61 +669,68 @@ public:
        @param src an iterator
    */
    template <typename Iterator>
-   IncidenceMatrix(int r, int c, Iterator src)
-      : base(r,c)
+   IncidenceMatrix(int r, int c, Iterator&& src)
+      : base_t(r, c)
    {
-      _init(src, bool2type<(object_traits<typename iterator_traits<Iterator>::value_type>::total_dimension==0)>());
+      init_impl(ensure_private_mutable(std::forward<Iterator>(src)),
+                bool_constant<(object_traits<typename iterator_traits<Iterator>::value_type>::total_dimension==0)>());
    }
 
    IncidenceMatrix(const GenericIncidenceMatrix<IncidenceMatrix>& M)
-      : base(M.top()) {}
+      : base_t(M.top()) {}
 
-   template <typename Matrix2>
-   IncidenceMatrix(const GenericIncidenceMatrix<Matrix2>& M,
-                   typename enable_if<void**, (!symmetric::value || Matrix2::is_symmetric)>::type=0)
-      : base(M.rows(), M.cols())
+   template <typename Matrix2, typename=typename std::enable_if<IncidenceMatrix::template compatible_symmetry_types<Matrix2>()>::type>
+   IncidenceMatrix(const GenericIncidenceMatrix<Matrix2>& M)
+      : base_t(M.rows(), M.cols())
    {
-      _init(pm::rows(M).begin(), False());
+      init_impl(pm::rows(M).begin(), std::false_type());
    }
 
-   template <sparse2d::restriction_kind restriction>
-   explicit IncidenceMatrix(RestrictedIncidenceMatrix<restriction>& M,
-                            typename disable_if<typename cons<void**, RestrictedIncidenceMatrix<restriction> >::head, symmetric::value>::type=0)
-      : base(M.data, nothing()) {}
+   template <sparse2d::restriction_kind restriction, typename=typename std::enable_if<!symmetric::value && restriction != sparse2d::full>::type>
+   explicit IncidenceMatrix(RestrictedIncidenceMatrix<restriction>&& M)
+      : base_t(std::move(M.data)) {}
 
-   /// number of columns not known in advance
-   template <typename Container>
-   IncidenceMatrix(const Container& src,
-                   typename enable_if<void**, (isomorphic_to_container_of<Container, Set<int>, allow_conversion>::value &&
-                                               !symmetric::value)>::type=0)
+   /// Construct a matrix by rowwise or columnwise concatenation of given matrices and/or sets.
+   /// Dimensions are set automatically to encompass all input elements.
+   template <typename THow, typename... TSources,
+             typename=typename std::enable_if<!symmetric::value && is_among<THow, sparse2d::rowwise, sparse2d::columnwise>::value &&
+             mlist_and_nonempty<fits_for_append_to_IM<TSources>...>::value>::type>
+   IncidenceMatrix(THow how, const TSources&... src)
+      : base_t(RestrictedIncidenceMatrix<>(how, src...).data) {}
+
+   /// Construct a matrix from a given sequence of row sets.
+   /// Number of columns is set automatically to encompass all input elements.
+   template <typename Container, typename=typename std::enable_if<!symmetric::value && isomorphic_to_container_of<Container, Set<int>, allow_conversion>::value>::type>
+   explicit IncidenceMatrix(const Container& src)
+      : base_t(RestrictedIncidenceMatrix<>(src.size(), sparse2d::rowwise(), src.begin()).data) {}
+
+   /// Construct a matrix with a prescribed number of columns from a given sequence of row sets
+   template <typename Container,
+             typename=typename std::enable_if<!symmetric::value && isomorphic_to_container_of<Container, Set<int>, allow_conversion>::value>::type>
+   IncidenceMatrix(const Container& src, int c)
+      : base_t(src.size(), c)
    {
-      RestrictedIncidenceMatrix<> Mt(src);
-      *this=Mt;
+      init_impl(src.begin(), std::false_type());
    }
 
-   /// number of columns given explicitly
-   template <typename Container>
-   IncidenceMatrix(const Container& src,
-                   typename enable_if<int, isomorphic_to_container_of<Container, Set<int>, allow_conversion>::value &&
-                                           !symmetric::value>::type c)
-      : base(src.size(), c)
+   IncidenceMatrix(int r, int c, std::initializer_list<bool> l)
+      : base_t(r, c)
    {
-      _init(src.begin(), False());
+      if (POLYMAKE_DEBUG && r*c != l.size())
+         throw std::runtime_error("initializer_list size does not match the dimensions");
+      init_impl(l.begin(), std::true_type());
    }
+
+   IncidenceMatrix(std::initializer_list<std::initializer_list<int>> l)
+      : base_t(RestrictedIncidenceMatrix<>(l).data) {}
 
    IncidenceMatrix& operator= (const IncidenceMatrix& other) { assign(other); return *this; }
-#ifdef __clang__
-   template <typename Matrix2>
-   IncidenceMatrix& operator=(const GenericIncidenceMatrix<Matrix2>& other) { return IncidenceMatrix::generic_type::operator=(other); }
-#else
    using IncidenceMatrix::generic_type::operator=;
-#endif
 
-   template <sparse2d::restriction_kind restriction>
-   typename disable_if<typename cons<IncidenceMatrix, RestrictedIncidenceMatrix<restriction> >::head, symmetric::value>::type&
-   operator= (RestrictedIncidenceMatrix<restriction>& M)
+   template <sparse2d::restriction_kind restriction, typename enabled=typename std::enable_if<!symmetric::value && restriction != sparse2d::full>::type>
+   IncidenceMatrix& operator= (RestrictedIncidenceMatrix<restriction>&& M)
    {
-      this->data=make_constructor(M.data,(typename base::table_type*)0);
+      this->data.replace(std::move(M.data));
       return *this;
    }
 
@@ -590,7 +758,7 @@ public:
    void clear() { this->data.apply(shared_clear()); }
 
    /// Clear contents.
-   void clear(int r, int c) { this->data.apply(typename base::table_type::shared_clear(r,c)); }
+   void clear(int r, int c) { this->data.apply(typename base_t::table_type::shared_clear(r,c)); }
 
    /// Entry at row i column j.
    reference operator() (int i, int j)
@@ -599,7 +767,7 @@ public:
          if (i<0 || i>=this->rows() || j<0 || j>=this->cols())
             throw std::runtime_error("IncidenceMatrix::operator() - index out of range");
       }
-      return proxy_base(pm::rows(static_cast<base&>(*this))[i],j);
+      return proxy_base(pm::rows(static_cast<base_t&>(*this))[i],j);
    }
 
    /// Entry at row i column j (const).
@@ -609,7 +777,7 @@ public:
          if (i<0 || i>=this->rows() || j<0 || j>=this->cols())
             throw std::runtime_error("IncidenceMatrix::operator() - index out of range");
       }
-      return pm::rows(static_cast<const base&>(*this))[i].exists(j);
+      return pm::rows(static_cast<const base_t&>(*this))[i].exists(j);
    }
 
    /// Returns the entry at position (i,j).
@@ -640,33 +808,32 @@ public:
    template <typename Iterator>
    void permute_rows(Iterator perm)
    {
-      this->data->permute_rows(perm, False());
+      this->data->permute_rows(perm, std::false_type());
    }
 
    /// Permute the columns according to the given permutation.
    template <typename Iterator>
    void permute_cols(Iterator perm)
    {
-      this->data->permute_cols(perm, False());
+      this->data->permute_cols(perm, std::false_type());
    }
-   
+
    /// Permute the rows according to the inverse of the given permutation.
    template <typename Iterator>
    void permute_inv_rows(Iterator inv_perm)
    {
-      this->data->permute_rows(inv_perm, True());
+      this->data->permute_rows(inv_perm, std::true_type());
    }
 
    /// Permute the columns according to the inverse of the given permutation.
    template <typename Iterator>
    void permute_inv_cols(Iterator inv_perm)
    {
-      this->data->permute_cols(inv_perm, True());
+      this->data->permute_cols(inv_perm, std::true_type());
    }
 
-   template <typename Perm, typename InvPerm>
-   IncidenceMatrix copy_permuted(const Perm& perm, const InvPerm& inv_perm,
-                                 typename enable_if<typename cons<void**, Perm>::head, symmetric::value>::type=0) const
+   template <typename Perm, typename InvPerm, typename enabled=typename std::enable_if<symmetric::value, typename mproject1st<void, Perm>::type>::type>
+   IncidenceMatrix copy_permuted(const Perm& perm, const InvPerm& inv_perm) const
    {
       const int n=this->rows();
       IncidenceMatrix result(n,n);
@@ -694,15 +861,15 @@ protected:
    void append_rows(const Matrix2& m)
    {
       const int old_rows=this->rows();
-      this->data.apply(typename base::table_type::shared_add_rows(m.rows()));
-      copy(entire(pm::rows(m)), pm::rows(static_cast<base&>(*this)).begin()+old_rows);
+      this->data.apply(typename base_t::table_type::shared_add_rows(m.rows()));
+      copy_range(entire(pm::rows(m)), pm::rows(static_cast<base_t&>(*this)).begin()+old_rows);
    }
 
    template <typename Set2>
    void append_row(const Set2& s)
    {
       const int old_rows=this->rows();
-      this->data.apply(typename base::table_type::shared_add_rows(1));
+      this->data.apply(typename base_t::table_type::shared_add_rows(1));
       this->row(old_rows)=s;
    }
 
@@ -710,15 +877,15 @@ protected:
    void append_cols(const Matrix2& m)
    {
       const int old_cols=this->cols();
-      this->data.apply(typename base::table_type::shared_add_cols(m.cols()));
-      copy(entire(pm::cols(m)), pm::cols(static_cast<base&>(*this)).begin()+old_cols);
+      this->data.apply(typename base_t::table_type::shared_add_cols(m.cols()));
+      copy_range(entire(pm::cols(m)), pm::cols(static_cast<base_t&>(*this)).begin()+old_cols);
    }
 
    template <typename Set2>
    void append_col(const Set2& s)
    {
       const int old_cols=this->cols();
-      this->data.apply(typename base::table_type::shared_add_cols(1));
+      this->data.apply(typename base_t::table_type::shared_add_cols(1));
       this->col(old_cols)=s;
    }
 
@@ -749,7 +916,7 @@ class incidence_line_factory {
 public:
    typedef BaseRef first_argument_type;
    typedef int second_argument_type;
-   typedef typename if_else<rowwise, typename deref<BaseRef>::type::table_type::row_tree_type,
+   typedef typename std::conditional<rowwise, typename deref<BaseRef>::type::table_type::row_tree_type,
                                      typename deref<BaseRef>::type::table_type::col_tree_type>::type
       tree_type;
    typedef incidence_line<typename inherit_ref<tree_type, BaseRef>::type> result_type;
@@ -773,22 +940,22 @@ template <bool rowwise, typename Iterator1, typename Iterator2, typename Referen
 struct binary_op_builder< incidence_line_factory<rowwise>, Iterator1, Iterator2, Reference1, Reference2>
    : empty_op_builder< incidence_line_factory<rowwise,Reference1> > {};
 
-template <typename symmetric>
-class Rows< IncidenceMatrix<symmetric> >
-   : public modified_container_pair_impl< Rows< IncidenceMatrix<symmetric> >,
-                                          list( Container1< constant_value_container< IncidenceMatrix_base<symmetric>& > >,
-                                                Container2< sequence >,
-                                                Operation< pair< incidence_line_factory<true>,
-                                                                 BuildBinaryIt<operations::dereference2> > >,
-                                                MasqueradedTop ) > {
+template <typename TSymmetric>
+class Rows< IncidenceMatrix<TSymmetric> >
+   : public modified_container_pair_impl< Rows< IncidenceMatrix<TSymmetric> >,
+                                          mlist< Container1Tag< constant_value_container< IncidenceMatrix_base<TSymmetric>& > >,
+                                                 Container2Tag< sequence >,
+                                                 OperationTag< pair< incidence_line_factory<true>,
+                                                                     BuildBinaryIt<operations::dereference2> > >,
+                                                 MasqueradedTop > > {
 protected:
    ~Rows();
 public:
-   constant_value_container< IncidenceMatrix_base<symmetric>& > get_container1()
+   constant_value_container< IncidenceMatrix_base<TSymmetric>& > get_container1()
    {
       return this->hidden();
    }
-   const constant_value_container< const IncidenceMatrix_base<symmetric>& > get_container1() const
+   const constant_value_container< const IncidenceMatrix_base<TSymmetric>& > get_container1() const
    {
       return this->hidden();
    }
@@ -802,22 +969,22 @@ public:
    }
 };
 
-template <typename symmetric>
-class Cols< IncidenceMatrix<symmetric> >
-   : public modified_container_pair_impl< Cols< IncidenceMatrix<symmetric> >,
-                                          list( Container1< constant_value_container< IncidenceMatrix_base<symmetric>& > >,
-                                                Container2< sequence >,
-                                                Operation< pair< incidence_line_factory<false>,
-                                                                 BuildBinaryIt<operations::dereference2> > >,
-                                                MasqueradedTop ) > {
+template <typename TSymmetric>
+class Cols< IncidenceMatrix<TSymmetric> >
+   : public modified_container_pair_impl< Cols< IncidenceMatrix<TSymmetric> >,
+                                          mlist< Container1Tag< constant_value_container< IncidenceMatrix_base<TSymmetric>& > >,
+                                                 Container2Tag< sequence >,
+                                                 OperationTag< pair< incidence_line_factory<false>,
+                                                                     BuildBinaryIt<operations::dereference2> > >,
+                                                 MasqueradedTop > > {
 protected:
    ~Cols();
 public:
-   constant_value_container< IncidenceMatrix_base<symmetric>& > get_container1()
+   constant_value_container< IncidenceMatrix_base<TSymmetric>& > get_container1()
    {
       return this->hidden();
    }
-   const constant_value_container< const IncidenceMatrix_base<symmetric>& > get_container1() const
+   const constant_value_container< const IncidenceMatrix_base<TSymmetric>& > get_container1() const
    {
       return this->hidden();
    }
@@ -849,61 +1016,59 @@ convolute(const GenericIncidenceMatrix<Matrix1>& m1, const GenericIncidenceMatri
    return result;
 }
 
-template <typename Matrix, typename Permutation> inline
-typename enable_if<typename Matrix::persistent_type, !Matrix::is_symmetric>::type
-permuted_rows(const GenericIncidenceMatrix<Matrix>& m, const Permutation& perm)
+template <typename TMatrix, typename Permutation> inline
+typename std::enable_if<!TMatrix::is_symmetric, typename TMatrix::persistent_type>::type
+permuted_rows(const GenericIncidenceMatrix<TMatrix>& m, const Permutation& perm)
 {
-   if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
       if (m.rows() != perm.size())
          throw std::runtime_error("permuted_rows - dimension mismatch");
    }
-   RestrictedIncidenceMatrix<sparse2d::only_rows> result(m.rows(), m.cols(), select(rows(m),perm).begin());
-   return IncidenceMatrix<>(result);
+   return IncidenceMatrix<>(RestrictedIncidenceMatrix<sparse2d::only_rows>(m.rows(), m.cols(), sparse2d::rowwise(), select(rows(m), perm).begin()));
 }
 
-template <typename Matrix, typename Permutation> inline
-typename enable_if<typename Matrix::persistent_type, !Matrix::is_symmetric>::type
-permuted_cols(const GenericIncidenceMatrix<Matrix>& m, const Permutation& perm)
+template <typename TMatrix, typename Permutation> inline
+typename std::enable_if<!TMatrix::is_symmetric, typename TMatrix::persistent_type>::type
+permuted_cols(const GenericIncidenceMatrix<TMatrix>& m, const Permutation& perm)
 {
-   if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
       if (m.cols() != perm.size())
          throw std::runtime_error("permuted_cols - dimension mismatch");
    }
-   RestrictedIncidenceMatrix<sparse2d::only_cols> result(m.rows(), m.cols(), select(cols(m),perm).begin());
-   return IncidenceMatrix<>(result);
+   return IncidenceMatrix<>(RestrictedIncidenceMatrix<sparse2d::only_cols>(m.rows(), m.cols(), sparse2d::columnwise(), select(cols(m), perm).begin()));
 }
 
-template <typename Matrix, typename Permutation> inline
-typename enable_if<typename Matrix::persistent_type, !Matrix::is_symmetric>::type
-permuted_inv_rows(const GenericIncidenceMatrix<Matrix>& m, const Permutation& perm)
+template <typename TMatrix, typename Permutation> inline
+typename std::enable_if<!TMatrix::is_symmetric, typename TMatrix::persistent_type>::type
+permuted_inv_rows(const GenericIncidenceMatrix<TMatrix>& m, const Permutation& perm)
 {
-   if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
       if (m.rows() != perm.size())
          throw std::runtime_error("permuted_inv_rows - dimension mismatch");
    }
    RestrictedIncidenceMatrix<sparse2d::only_rows> result(m.rows(), m.cols());
-   copy(entire(rows(m)), select(rows(result),perm).begin());
-   return IncidenceMatrix<>(result);
+   copy_range(entire(rows(m)), select(rows(result), perm).begin());
+   return IncidenceMatrix<>(std::move(result));
 }
 
-template <typename Matrix, typename Permutation> inline
-typename enable_if<typename Matrix::persistent_type, !Matrix::is_symmetric>::type
-permuted_inv_cols(const GenericIncidenceMatrix<Matrix>& m, const Permutation& perm)
+template <typename TMatrix, typename Permutation> inline
+typename std::enable_if<!TMatrix::is_symmetric, typename TMatrix::persistent_type>::type
+permuted_inv_cols(const GenericIncidenceMatrix<TMatrix>& m, const Permutation& perm)
 {
-   if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
       if (m.cols() != perm.size())
          throw std::runtime_error("permuted_inv_cols - dimension mismatch");
    }
    RestrictedIncidenceMatrix<sparse2d::only_cols> result(m.rows(), m.cols());
-   copy(entire(cols(m)), select(cols(result),perm).begin());
-   return IncidenceMatrix<>(result);
+   copy_range(entire(cols(m)), select(cols(result), perm).begin());
+   return IncidenceMatrix<>(std::move(result));
 }
 
-template <typename Matrix, typename Permutation> inline
-typename enable_if<typename Matrix::persistent_type, Matrix::is_symmetric>::type
-permuted_rows(const GenericIncidenceMatrix<Matrix>& m, const Permutation& perm)
+template <typename TMatrix, typename Permutation> inline
+typename std::enable_if<TMatrix::is_symmetric, typename TMatrix::persistent_type>::type
+permuted_rows(const GenericIncidenceMatrix<TMatrix>& m, const Permutation& perm)
 {
-   if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
       if (m.rows() != perm.size())
          throw std::runtime_error("permuted_rows - dimension mismatch");
    }
@@ -912,11 +1077,11 @@ permuted_rows(const GenericIncidenceMatrix<Matrix>& m, const Permutation& perm)
    return m.top().copy_permuted(perm,inv_perm);
 }
 
-template <typename Matrix, typename Permutation> inline
-typename enable_if<typename Matrix::persistent_type, (Matrix::is_symmetric && container_traits<Permutation>::is_random)>::type
-permuted_inv_rows(const GenericIncidenceMatrix<Matrix>& m, const Permutation& inv_perm)
+template <typename TMatrix, typename Permutation> inline
+typename std::enable_if<TMatrix::is_symmetric && container_traits<Permutation>::is_random, typename TMatrix::persistent_type>::type
+permuted_inv_rows(const GenericIncidenceMatrix<TMatrix>& m, const Permutation& inv_perm)
 {
-   if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
       if (m.rows() != inv_perm.size())
          throw std::runtime_error("permuted_inv_rows - dimension mismatch");
    }
@@ -925,29 +1090,29 @@ permuted_inv_rows(const GenericIncidenceMatrix<Matrix>& m, const Permutation& in
    return m.copy_permuted(perm,inv_perm);
 }
 
-template <typename Matrix, typename Permutation> inline
-typename enable_if<typename Matrix::persistent_type, (Matrix::is_symmetric && !container_traits<Permutation>::is_random)>::type
-permuted_inv_rows(const GenericIncidenceMatrix<Matrix>& m, const Permutation& inv_perm)
+template <typename TMatrix, typename Permutation> inline
+typename std::enable_if<TMatrix::is_symmetric && !container_traits<Permutation>::is_random, typename TMatrix::persistent_type>::type
+permuted_inv_rows(const GenericIncidenceMatrix<TMatrix>& m, const Permutation& inv_perm)
 {
-   if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
       if (m.rows() != inv_perm.size())
          throw std::runtime_error("permuted_inv_rows - dimension mismatch");
    }
    std::vector<int> inv_perm_copy(inv_perm.size());
-   copy(entire(inv_perm), inv_perm_copy.begin());
+   copy_range(entire(inv_perm), inv_perm_copy.begin());
    return permuted_inv_rows(m,inv_perm_copy);
 }
 
-template <typename Matrix, typename Permutation> inline
-typename enable_if<typename Matrix::persistent_type, Matrix::is_symmetric>::type
-permuted_cols(const GenericIncidenceMatrix<Matrix>& m, const Permutation& perm)
+template <typename TMatrix, typename Permutation> inline
+typename std::enable_if<TMatrix::is_symmetric, typename TMatrix::persistent_type>::type
+permuted_cols(const GenericIncidenceMatrix<TMatrix>& m, const Permutation& perm)
 {
    return permuted_rows(m,perm);
 }
 
-template <typename Matrix, typename Permutation> inline
-typename enable_if<typename Matrix::persistent_type, Matrix::is_symmetric>::type
-permuted_inv_cols(const GenericIncidenceMatrix<Matrix>& m, const Permutation& inv_perm)
+template <typename TMatrix, typename Permutation> inline
+typename std::enable_if<TMatrix::is_symmetric, typename TMatrix::persistent_type>::type
+permuted_inv_cols(const GenericIncidenceMatrix<TMatrix>& m, const Permutation& inv_perm)
 {
    return permuted_inv_rows(m,inv_perm);
 }

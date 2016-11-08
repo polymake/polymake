@@ -19,20 +19,24 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
+#include "polymake/Vector.h"
 #include "polymake/client.h"
 #include "polymake/linalg.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( repeat_row_X8_x, T0 ) {
+   FunctionInterface4perl( repeat_row_X32_x, T0 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturnAnch( 1, (arg0), repeat_row(arg0.get<T0>(), arg1) );
+      WrapperReturn( (repeat_row(arg0.get<T0>(), arg1)), arg0 );
    };
 
-   FunctionInstance4perl(repeat_row_X8_x, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void> >);
-   FunctionInstance4perl(repeat_row_X8_x, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer> const&>, pm::Series<int, true>, void> >);
-   FunctionInstance4perl(repeat_row_X8_x, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer>&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(repeat_row_X32_x, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, mlist<> > >);
+   FunctionInstance4perl(repeat_row_X32_x, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer> const&>, pm::Series<int, true>, mlist<> > >);
+   FunctionInstance4perl(repeat_row_X32_x, perl::Canned< const Vector< Rational > >);
+   FunctionInstance4perl(repeat_row_X32_x, perl::Canned< const Vector< double > >);
+   FunctionInstance4perl(repeat_row_X32_x, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer>&>, pm::Series<int, true>, mlist<> > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }
