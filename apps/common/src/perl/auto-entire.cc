@@ -17,6 +17,7 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/Array.h"
+#include "polymake/Graph.h"
 #include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
@@ -28,5 +29,9 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(entire_R_X32, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(entire_R_X32, perl::Canned< const pm::graph::multi_adjacency_line<pm::AVL::tree<pm::sparse2d::traits<pm::graph::traits_base<pm::graph::DirectedMulti, true, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > > >);
+   FunctionInstance4perl(entire_R_X32, perl::Canned< const pm::Nodes<pm::graph::Graph<pm::graph::DirectedMulti> > >);
+   FunctionInstance4perl(entire_R_X32, perl::Canned< const pm::Nodes<pm::graph::Graph<pm::graph::UndirectedMulti> > >);
+   FunctionInstance4perl(entire_R_X32, perl::Canned< const pm::graph::multi_adjacency_line<pm::AVL::tree<pm::sparse2d::traits<pm::graph::traits_base<pm::graph::UndirectedMulti, false, (pm::sparse2d::restriction_kind)0>, true, (pm::sparse2d::restriction_kind)0> > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -68,7 +68,7 @@ struct edge_agent_base {
 template <typename TDir>
 struct edge_agent : edge_agent_base {
    Table<TDir>* table;
-   edge_agent() : table(NULL) {}
+   edge_agent() : table(nullptr) {}
 
    typedef sparse2d::cell<int> Cell;
 
@@ -78,11 +78,11 @@ struct edge_agent : edge_agent_base {
    template <typename NumberConsumer>
    void renumber(const NumberConsumer& nc);
 
-   void reset() { n_alloc=0; table=NULL; }
+   void reset() { n_alloc=0; table=nullptr; }
 
    void added(Cell *c)
    {
-      if (table != NULL)
+      if (table)
          table->_edge_added(*this,c);
       else
          n_alloc=0;
@@ -91,7 +91,7 @@ struct edge_agent : edge_agent_base {
    void removed(Cell *c)
    {
       --n_edges;
-      if (table != NULL)
+      if (table)
          table->_edge_removed(c);
       else
          n_alloc=0;
@@ -349,8 +349,8 @@ struct node_entry_trees<TDir, restriction, false> {
 };
 
 template <typename TDir, restriction_kind restriction>
-struct node_entry :
-   public node_entry_trees<TDir, restriction> {
+struct node_entry
+   : public node_entry_trees<TDir, restriction> {
    typedef TDir dir;
    typedef sparse2d::ruler<node_entry, edge_agent<TDir> > ruler;
 
@@ -374,15 +374,18 @@ struct node_entry :
    }
 };
 
-template <typename Traits>
+template <typename Table>
 struct dir_permute_entries {
-   typedef typename Traits::ruler ruler;
-   typedef typename Traits::entry entry;
-   typedef typename Traits::out_tree_type out_tree_type;
-   typedef typename Traits::in_tree_type in_tree_type;
-   typedef typename out_tree_type::Node Node;
+   typedef typename Table::ruler ruler;
+   typedef typename Table::entry entry_t;
+   typedef typename Table::out_tree_type out_tree_t;
+   typedef typename Table::in_tree_type in_tree_t;
+   typedef typename out_tree_t::Node Node;
 
-   static void relocate(entry *from, entry *to)
+   explicit dir_permute_entries(int& free_node_id)
+      : free_node_id_ptr(&free_node_id) {}
+
+   static void relocate(entry_t* from, entry_t* to)
    {
       relocate_tree(&from->_out, &to->_out, std::false_type());
       relocate_tree(&from->_in, &to->_in, std::false_type());
@@ -391,69 +394,110 @@ struct dir_permute_entries {
    static void complete_in_trees(ruler* R)
    {
       int nfrom=0;
-      for (typename Entire<ruler>::iterator ri=entire(*R); !ri.at_end();  ++ri, ++nfrom) {
-         for (typename out_tree_type::iterator e=ri->_out.begin(); !e.at_end(); ++e) {
-            Node *node=e.operator->();
+      for (entry_t& entry : *R) {
+         for (auto e=entry._out.begin(); !e.at_end(); ++e) {
+            Node* node=e.operator->();
             (*R)[node->key-nfrom]._in.push_back_node(node);
          }
+         ++nfrom;
       }
    }
 
-   // FIXME: handle gaps properly!
-   void operator()(ruler* Rold, ruler* R) const
+   void operator()(ruler* Rold, ruler* R)
    {
-      std::vector<int> inv_perm(R->size());
+      inv_perm.resize(R->size(), -1);
       int nto=0;
-      for (typename Entire<ruler>::iterator ri=entire(*R);  !ri.at_end();  ++ri, ++nto)
-         inv_perm[ri->_in.line_index]=nto;
+      for (entry_t& entry : *R) {
+         const int old_n=entry._in.line_index;
+         if (old_n >= 0)
+            inv_perm[old_n]=nto;
+         ++nto;
+      }
 
       nto=0;
-      for (typename Entire<ruler>::iterator ri=entire(*R);  !ri.at_end();  ++ri, ++nto) {
-         const int old_nto=ri->_in.line_index;
-         ri->_in.line_index=nto;
-         for (typename in_tree_type::iterator e=(*Rold)[old_nto]._in.begin(); !e.at_end(); ++e) {
-            Node *node=e.operator->();
-            const int old_nfrom=node->key-old_nto, nfrom=inv_perm[old_nfrom];
-            node->key=nfrom+nto;
-            (*R)[nfrom]._out.push_back_node(node);
+      for (entry_t& entry : *R) {
+         const int old_nto=entry._in.line_index;
+         if (old_nto >= 0) {
+            entry._in.line_index=nto;
+            for (auto e=(*Rold)[old_nto]._in.begin(); !e.at_end(); ++e) {
+               Node* node=e.operator->();
+               const int old_nfrom=node->key-old_nto, nfrom=inv_perm[old_nfrom];
+               node->key=nfrom+nto;
+               (*R)[nfrom]._out.push_back_node(node);
+            }
+         } else {
+            *free_node_id_ptr=~nto;
+            free_node_id_ptr=&entry._in.line_index;
          }
+         ++nto;
       }
+      *free_node_id_ptr=std::numeric_limits<int>::min();
 
       complete_in_trees(R);
    }
 
    template <typename Perm, typename InvPerm>
-   static void copy(ruler* Rold, ruler* R, const Perm& perm, const InvPerm& inv_perm)
+   void copy(const ruler* R_src, ruler* R_dst, const Perm& perm, const InvPerm& inv_perm)
    {
-      const int nn=R->size();
-      typename Perm::const_iterator p=perm.begin();
-      for (int nto=0; nto<nn; ++nto, ++p) {
-         const int old_nto=*p;
-         for (typename in_tree_type::const_iterator e=(*Rold)[old_nto]._in.begin(); !e.at_end(); ++e) {
-            const Node *node=e.operator->();
-            const int old_nfrom=node->key-old_nto, nfrom=inv_perm[old_nfrom];
-            out_tree_type& t=(*R)[nfrom]._out;
-            t.push_back_node(new(t.allocate_node()) Node(nfrom+nto));
+      const int n=R_dst->size();
+      auto p_it=perm.begin();
+      for (int dst_nto=0; dst_nto < n; ++dst_nto, ++p_it) {
+         const int src_nto=*p_it;
+         const in_tree_t& src_in_tree=(*R_src)[src_nto]._in;
+         if (src_in_tree.line_index >= 0) {
+            for (auto e=src_in_tree.begin(); !e.at_end(); ++e) {
+               const Node* node=e.operator->();
+               const int src_nfrom=node->key-src_nto;
+               const int dst_nfrom=inv_perm[src_nfrom];
+               out_tree_t& t=(*R_dst)[dst_nfrom]._out;
+               t.push_back_node(new(t.allocate_node()) Node(dst_nfrom+dst_nto));
+            }
+         } else {
+            *free_node_id_ptr=~dst_nto;
+            free_node_id_ptr=&(*R_dst)[dst_nto]._in.line_index;
          }
       }
+      *free_node_id_ptr=std::numeric_limits<int>::min();
 
-      complete_in_trees(R);
+      complete_in_trees(R_dst);
    }
+
+   std::vector<int> inv_perm;
+   int* free_node_id_ptr;
 };
 
 template <typename Traits>
-struct undir_permute_entries : sparse2d::sym_permute_entries<Traits> {
-   typedef typename Traits::entry entry;
-   static void relocate(entry *from, entry *to)
+struct undir_permute_entries
+   : sparse2d::sym_permute_entries<Traits> {
+
+   using typename Traits::entry_t;
+
+   explicit undir_permute_entries(int& free_node_id)
+      : free_node_id_ptr(&free_node_id) {}
+
+   static void relocate(entry_t* from, entry_t* to)
    {
       relocate_tree(&from->_out, &to->_out, std::false_type());
    }
+
+   void deleted_node(entry_t& entry, int n)
+   {
+      *free_node_id_ptr=~n;
+      free_node_id_ptr=&entry._out.line_index;
+   }
+
+   void finalize_deleted_nodes()
+   {
+      *free_node_id_ptr=std::numeric_limits<int>::min();
+   }
+
+   int* free_node_id_ptr;
 };
 
 struct NodeMapBase {
    ptr_pair<NodeMapBase> ptrs;
    long refc;
-   void *_table;
+   void* _table;
 
    NodeMapBase() : refc(1), _table(0) {}
 
@@ -462,9 +506,10 @@ struct NodeMapBase {
    virtual void reset(int n=0)=0;
    virtual void resize(size_t n_alloc_new, int n, int nnew)=0;
    virtual void shrink(size_t n_alloc_new, int n)=0;
-   virtual void move_entry(int n, int nnew)=0;
+   virtual void move_entry(int n_from, int n_to)=0;
    virtual void revive_entry(int n)=0;
    virtual void delete_entry(int n)=0;
+   virtual void permute_entries(const std::vector<int>& inv_perm)=0;
 };
 
 template <typename> class EdgeMapDataAccess;
@@ -472,7 +517,7 @@ template <typename> class EdgeMapDataAccess;
 struct EdgeMapBase {
    ptr_pair<EdgeMapBase> ptrs;
    long refc;
-   void *_table;
+   void* _table;
 
    EdgeMapBase() : refc(1), _table(0)  {}
    virtual ~EdgeMapBase() {}
@@ -508,24 +553,24 @@ struct EdgeMapDenseBase : public EdgeMapBase {
       }
    }
 
-   void destroy() { delete[] buckets; buckets=NULL; n_alloc=0; }
+   void destroy() { delete[] buckets; buckets=nullptr; n_alloc=0; }
 };
 
 template <typename MapList>
 bool edge_agent_base::extend_maps(MapList& maps)
 {
-   if (n_edges&bucket_mask) return false;
+   if (n_edges & bucket_mask) return false;
 
-   const int new_bucket=n_edges>>bucket_shift;
-   if (new_bucket>=n_alloc) {
-      n_alloc+=min_buckets(n_alloc/5);
-      for (typename Entire<MapList>::iterator m=entire(maps); !m.at_end(); ++m) {
-         m->realloc(n_alloc);
-         m->add_bucket(new_bucket);
+   const int new_bucket=n_edges >> bucket_shift;
+   if (new_bucket >= n_alloc) {
+      n_alloc += min_buckets(n_alloc / 5);
+      for (auto& map : maps) {
+         map.realloc(n_alloc);
+         map.add_bucket(new_bucket);
       }
    } else {
-      for (typename Entire<MapList>::iterator m=entire(maps); !m.at_end(); ++m)
-         m->add_bucket(new_bucket);
+      for (auto& map : maps)
+         map.add_bucket(new_bucket);
    }
    return true;
 }
@@ -631,17 +676,17 @@ public:
 protected:
    void detach_node_maps()
    {
-      for (Entire<node_map_list>::iterator it=entire(node_maps); !it.at_end(); ) {
-         NodeMapBase *m=it.operator->();  ++it;
-         m->reset(); m->_table=NULL;
+      for (auto it=entire(node_maps); !it.at_end(); ) {
+         NodeMapBase* m=it.operator->();  ++it;
+         m->reset(); m->_table=nullptr;
          detach(*m);
       }
    }
    void detach_edge_maps()
    {
-      for (Entire<edge_map_list>::iterator it=entire(edge_maps); !it.at_end(); ) {
-         EdgeMapBase *m=it.operator->();  ++it;
-         m->reset(); m->_table=NULL;
+      for (auto it=entire(edge_maps); !it.at_end(); ) {
+         EdgeMapBase* m=it.operator->();  ++it;
+         m->reset(); m->_table=nullptr;
          detach(*m);
       }
    }
@@ -669,28 +714,28 @@ public:
       std::swap(n_nodes, t.n_nodes);
       std::swap(free_node_id, t.free_node_id);
       std::swap(free_edge_ids, t.free_edge_ids);
-      for (Entire<node_map_list>::iterator it=entire(node_maps); !it.at_end(); ++it)
-         it->_table=this;
-      for (Entire<node_map_list>::iterator it=entire(t.node_maps); !it.at_end(); ++it)
-         it->_table=&t;
-      for (Entire<edge_map_list>::iterator it=entire(edge_maps); !it.at_end(); ++it)
-         it->_table=this;
-      for (Entire<edge_map_list>::iterator it=entire(t.edge_maps); !it.at_end(); ++it)
-         it->_table=&t;
+      for (auto& map : node_maps)
+         map._table=this;
+      for (auto& map : t.node_maps)
+         map._table=&t;
+      for (auto& map : edge_maps)
+         map._table=this;
+      for (auto& map : t.edge_maps)
+         map._table=&t;
    }
 
    void clear(int n=0)
    {
-      for (Entire<node_map_list>::iterator it=entire(node_maps); !it.at_end(); ++it) it->reset(n);
-      for (Entire<edge_map_list>::iterator it=entire(edge_maps); !it.at_end(); ++it) it->reset();
-      R->prefix().table=NULL;
+      for (auto& map : node_maps) map.reset(n);
+      for (auto& map : edge_maps) map.reset();
+      R->prefix().table=nullptr;
       R=ruler::resize_and_clear(R,n);
       edge_agent<dir>& h=R->prefix();
       if (!edge_maps.empty()) h.table=this;
       h.n_alloc=0;
       h.n_edges=0;
       n_nodes=n;
-      if (n) for (Entire<node_map_list>::iterator it=entire(node_maps); !it.at_end(); ++it) it->init();
+      if (n) for (auto& map : node_maps) map.init();
       free_node_id=std::numeric_limits<int>::min();
       free_edge_ids.clear();
    }
@@ -724,7 +769,7 @@ protected:
       entry& e=(*R)[n];
       free_node_id=e.in().line_index;
       e.in().line_index=n;
-      for (Entire<node_map_list>::iterator it=entire(node_maps); !it.at_end(); ++it) it->revive_entry(n);
+      for (auto& map : node_maps) map.revive_entry(n);
       ++n_nodes;
       return n;
    }
@@ -733,7 +778,7 @@ protected:
    void _resize(int nnew)
    {
       R=ruler::resize(R,nnew);
-      for (Entire<node_map_list>::iterator it=entire(node_maps); !it.at_end(); ++it) it->resize(R->max_size(),n_nodes,nnew);
+      for (auto& map : node_maps) map.resize(R->max_size(), n_nodes, nnew);
       n_nodes=nnew;
    }
 
@@ -751,19 +796,19 @@ protected:
          free_edge_ids.pop_back();
       }
       c->data=id;
-      for (Entire<edge_map_list>::iterator it=entire(edge_maps); !it.at_end(); ++it) it->revive_entry(id);
+      for (auto& map : edge_maps) map.revive_entry(id);
    }
 
    void _edge_removed(Cell *c)
    {
       const int id=c->data;
-      for (Entire<edge_map_list>::iterator it=entire(edge_maps); !it.at_end(); ++it) it->delete_entry(id);
+      for (auto& map : edge_maps) map.delete_entry(id);
       free_edge_ids.push_back(id);
    }
 public:
    int add_node()
    {
-      if (free_node_id!=std::numeric_limits<int>::min())
+      if (free_node_id != std::numeric_limits<int>::min())
          return revive_node();
       int n=R->size();
       _resize(n+1);
@@ -777,7 +822,7 @@ public:
       if (is_directed) e.in().clear();
       e.in().line_index=free_node_id;
       free_node_id=~n;
-      for (Entire<node_map_list>::iterator it=entire(node_maps); !it.at_end(); ++it) it->delete_entry(n);
+      for (auto& map : node_maps) map.delete_entry(n);
       --n_nodes;
    }
 
@@ -785,7 +830,7 @@ protected:
    template <typename List>
    void init_delete_nodes(const List& l)
    {
-      for (typename Entire<List>::const_iterator it=entire(l); !it.at_end(); ++it) {
+      for (auto it = entire(l); !it.at_end(); ++it) {
          const int n=*it;
          entry& e=(*R)[n];
          e.in().line_index=free_node_id;
@@ -797,13 +842,13 @@ protected:
    template <typename Tree>
    void renumber_nodes_in_edges(Tree& t, int /*nnew*/, int diff, Directed)
    {
-      for (typename Entire<Tree>::iterator e=entire(t); !e.at_end(); ++e)
+      for (auto e=entire(t); !e.at_end(); ++e)
          e->key -= diff;
    }
    void renumber_nodes_in_edges(in_tree_type& t, int nnew, int diff, Undirected)
    {
       const int diag=2*t.line_index;
-      for (typename Entire<in_tree_type>::iterator e=entire(t); !e.at_end(); ) {
+      for (auto e=entire(t); !e.at_end(); ) {
          Cell& c=*e; ++e;
          c.key -= diff << (c.key==diag);
       }
@@ -849,12 +894,12 @@ protected:
                renumber_nodes_in_edges(t->out(), nnew, diff, dir());
                if (is_directed) renumber_nodes_in_edges(t->in(), nnew, diff, dir());
                relocate(t.operator->(), &t[-diff]);
-               for (auto it=entire(node_maps); !it.at_end(); ++it) it->move_entry(n, nnew);
+               for (auto& map : node_maps) map.move_entry(n, nnew);
             }
             nc(n, nnew);  ++nnew;
          } else {
             if (what>0) {
-               for (auto it=entire(node_maps); !it.at_end(); ++it) it->delete_entry(n);
+               for (auto& map : node_maps) map.delete_entry(n);
                --n_nodes;
             }
             destroy_at(t.operator->());
@@ -877,8 +922,8 @@ public:
    template <typename NumberConsumer>
    void squeeze_edges(const NumberConsumer& nc)
    {
-      for (Entire<edge_map_list>::iterator it=entire(edge_maps); !it.at_end(); ++it) {
-         if (!it->is_detachable())
+      for (auto& map : edge_maps) {
+         if (!map.is_detachable())
             throw std::runtime_error("can't renumber edge IDs - non-trivial data attached");
       }
       R->prefix().renumber(nc);
@@ -888,7 +933,7 @@ public:
    void resize(int n)
    {
       if (n > n_nodes) {
-         while (free_node_id!=std::numeric_limits<int>::min()) {
+         while (free_node_id != std::numeric_limits<int>::min()) {
             revive_node();
             if (n==n_nodes) return;
          }
@@ -904,46 +949,46 @@ public:
 protected:
    struct undir_perm_traits {
       typedef typename Table::ruler ruler;
-      typedef out_tree_type tree_type;
-      typedef typename Table::entry entry;
-      static tree_type& tree(entry& e) { return e.out(); }
-      static const tree_type& tree(const entry& e) { return e.out(); }
+      typedef out_tree_type tree_t;
+      typedef typename Table::entry entry_t;
+      static tree_t& tree(entry_t& e) { return e.out(); }
+      static const tree_t& tree(const entry_t& e) { return e.out(); }
+
+      static bool is_alive(const entry_t& e) { return e.get_line_index() >= 0; }
+
+      void handle_dead_entry(entry_t& e, int n)
+      {
+         static_cast<undir_permute_entries<undir_perm_traits>&>(*this).deleted_node(e, n);
+      }
+      void finalize_dead_entries()
+      {
+         static_cast<undir_permute_entries<undir_perm_traits>&>(*this).finalize_deleted_nodes();
+      }
    };
 
-   static
    dir_permute_entries<Table> permute_entries(Directed)
    {
-      return dir_permute_entries<Table>();
+      return dir_permute_entries<Table>(free_node_id);
    }
-   static
    undir_permute_entries<undir_perm_traits> permute_entries(Undirected)
    {
-      return undir_permute_entries<undir_perm_traits>();
+      return undir_permute_entries<undir_perm_traits>(free_node_id);
    }
 
 public:
-   template <typename Iterator, typename _inverse>
-   void permute_nodes(Iterator perm, _inverse)
+   template <typename TPerm, typename _inverse>
+   void permute_nodes(const TPerm& perm, _inverse)
    {
-      // FIXME: permute node maps!
-      R=ruler::permute(R, perm, permute_entries(dir()), _inverse());
+      auto permuter=permute_entries(dir());
+      R=ruler::permute(R, perm, permuter, _inverse());
+      for (auto& map : node_maps) map.permute_entries(permuter.inv_perm);
    }
 
-   template <typename Perm, typename InvPerm>
-   void copy_permuted(const Table& src, const Perm& perm, const InvPerm& inv_perm)
+   template <typename TPerm, typename TInvPerm>
+   void copy_permuted(const Table& src, const TPerm& perm, const TInvPerm& inv_perm)
    {
       permute_entries(dir()).copy(src.R, R, perm, inv_perm);
-      if (src.free_node_id != std::numeric_limits<int>::min()) {
-         int *index_p=&free_node_id, ns=src.free_node_id;
-         do {
-            const int n=inv_perm[~ns];
-            *index_p=~n;
-            index_p=&(*R)[n].in().line_index;
-            ns=(*src.R)[~ns].in().line_index;
-         } while (ns != std::numeric_limits<int>::min());
-         *index_p=ns;
-         n_nodes=src.n_nodes;
-      }
+      n_nodes=src.n_nodes;
    }
 
 #if POLYMAKE_DEBUG
@@ -1511,6 +1556,8 @@ public:
 
    typename base_t::reference operator[] (int n) { return get_container()[n]; }
    typename base_t::const_reference operator[] (int n) const { return get_container()[n]; }
+
+   int dim() const { return get_container().size(); }
 };
 
 template <typename TDir>
@@ -1521,6 +1568,8 @@ class node_container
      public GenericSet<node_container<TDir>, int, operations::cmp> {
 protected:
    ~node_container();
+public:
+   int dim() const { return this->get_container().dim(); }
 };
 
 } // end namespace graph
@@ -1530,7 +1579,16 @@ struct check_iterator_feature<graph::valid_node_iterator<Iterator, Accessor>, Fe
    : check_iterator_feature<unary_predicate_selector<Iterator, Accessor>, Feature> {};
 
 template <typename Iterator, typename Accessor>
-struct check_iterator_feature<graph::valid_node_iterator<Iterator, Accessor>, indexed> : std::true_type {};
+struct check_iterator_feature<graph::valid_node_iterator<Iterator, Accessor>, indexed>
+   : std::true_type {};
+
+template <typename TDir>
+struct check_container_feature<graph::valid_node_container<TDir>, sparse_compatible>
+   : std::true_type {};
+
+template <typename TDir>
+struct check_container_feature<graph::node_container<TDir>, sparse_compatible>
+   : std::true_type {};
 
 namespace graph {
 
@@ -1774,7 +1832,7 @@ public:
    void clear(int n=0) { data.apply(typename table_type::shared_clear(n)); }
 
    /// true of nodes are not (known to be) consecutively ordered
-   bool has_gaps() const { return data->free_node_id!=std::numeric_limits<int>::min(); }
+   bool has_gaps() const { return data->free_node_id != std::numeric_limits<int>::min(); }
 
    /// renumber the nodes
    friend Graph renumber_nodes(const Graph& me)
@@ -1783,9 +1841,9 @@ public:
       Graph G(me.nodes());
       std::vector<int> renumber(me.dim());
       int i=0;
-      for (typename Entire< Nodes<Graph> >::const_iterator n=entire(pm::nodes(me)); !n.at_end(); ++n, ++i)
+      for (auto n=entire(pm::nodes(me)); !n.at_end(); ++n, ++i)
          renumber[n.index()]=i;
-      for (typename Entire< Edges<Graph> >::const_iterator e=entire(pm::edges(me)); !e.at_end(); ++e)
+      for (auto e=entire(pm::edges(me)); !e.at_end(); ++e)
          G.edge(renumber[e.from_node()], renumber[e.to_node()]);
       return G;
    }
@@ -1796,7 +1854,7 @@ public:
    template <typename Input> friend
    Input& operator>> (GenericInput<Input>& in, Graph& me)
    {
-      me.read(in.top(), in.top().begin_list(&rows(pm::adjacency_matrix(me))));
+      me.read(in.top().begin_list(&rows(pm::adjacency_matrix(me))));
       return in.top();
    }
 
@@ -1858,23 +1916,28 @@ public:
       data->delete_node(n);
    }
 
-   /// permute the nodes as specified by an iterator
-   template <typename Iterator>
-   void permute_nodes(Iterator perm)
+   /// permute the nodes
+   template <typename TPerm>
+   typename std::enable_if<isomorphic_to_container_of<TPerm, int>::value>::type
+   permute_nodes(const TPerm& perm)
    {
       data->permute_nodes(perm, std::false_type());
    }
 
    /// inverse permutation of nodes
-   template <typename Iterator>
-   void permute_inv_nodes(Iterator perm)
+   template <typename TInvPerm>
+   typename std::enable_if<isomorphic_to_container_of<TInvPerm, int>::value>::type
+   permute_inv_nodes(const TInvPerm& inv_perm)
    {
-      data->permute_nodes(perm, std::true_type());
+      data->permute_nodes(inv_perm, std::true_type());
    }
 
    /// permuted copy
-   template <typename Perm, typename InvPerm>
-   Graph copy_permuted(const Perm& perm, const InvPerm& inv_perm) const
+   template <typename TPerm, typename TInvPerm>
+   typename std::enable_if<isomorphic_to_container_of<TPerm, int>::value &&
+                           isomorphic_to_container_of<TInvPerm, int>::value,
+                           Graph>::type
+   copy_permuted(const TPerm& perm, const TInvPerm& inv_perm) const
    {
       Graph result(dim());
       result.data->copy_permuted(*data, perm, inv_perm);
@@ -2270,7 +2333,7 @@ public:
 
       void clear(int n=0)
       {
-         for (typename Entire<node_container>::const_iterator it=entire(get_index_container()); !it.at_end(); ++it)
+         for (auto it=entire(get_index_container()); !it.at_end(); ++it)
             dflt.assign(data[*it]);
       }
 
@@ -2310,9 +2373,22 @@ public:
          }
       }
 
-      void move_entry(int n, int nnew) { relocate(data+n, data+nnew); }
+      void move_entry(int n_from, int n_to) { relocate(data+n_from, data+n_to); }
       void revive_entry(int n) { construct_at(data+n, dflt()); }
       void delete_entry(int n) { if (!std::is_trivially_destructible<E>::value) destroy_at(data+n); }
+
+      void permute_entries(const std::vector<int>& inv_perm)
+      {
+         E* new_data=_allocator.allocate(n_alloc);
+         int n_from=0;
+         for (const int n_to : inv_perm) {
+            if (n_to >= 0)
+               relocate(data+n_from, new_data+n_to);
+            ++n_from;
+         }
+         _allocator.deallocate(data, n_alloc);
+         data=new_data;
+      }
 
       typedef E value_type;
 
@@ -2400,7 +2476,7 @@ public:
       {
          if (!std::is_pod<E>::value) {
             operations::clear<E> clr;
-            for (typename Entire< edge_container<TDir> >::const_iterator it=entire(get_index_container()); !it.at_end(); ++it)
+            for (auto it=entire(get_index_container()); !it.at_end(); ++it)
                clr(*index2addr(*it));
          }
       }
@@ -2430,7 +2506,8 @@ public:
       typedef typename mlist_wrap<TParams...>::type params;
       typedef typename mtagged_list_extract<params, DefaultValueTag, operations::clear<E>>::type default_value_supplier;
 
-      hash_map<int, E, TParams...> data;
+      typedef hash_map<int, E, TParams...> hash_map_t;
+      hash_map_t data;
 
       void init() {}
       void reset(int=0) { data.clear(); }
@@ -2442,15 +2519,29 @@ public:
       {
          while (n>nnew) data.erase(--n);
       }
-      void move_entry(int n, int nnew)
+      void move_entry(int n_from, int n_to)
       {
-         typename hash_map<int,E>::const_iterator it=data.find(n);
+         auto it=data.find(n_from);
          if (it != data.end()) {
-            data.insert(nnew,it->second);
+            data.insert(n_to, std::move(it->second));
             data.erase(it);
          }
       }
       void delete_entry(int n) { data.erase(n); }
+
+      void permute_entries(const std::vector<int>& inv_perm)
+      {
+         hash_map_t new_data;
+         int n_from=0;
+         for (const int n_to : inv_perm) {
+            if (n_to >= 0) {
+               auto it=data.find(n_from);
+               if (it != data.end())
+                  new_data.insert(n_to, std::move(it->second));
+            }
+         }
+         data.swap(new_data);
+      }
 
       void copy(const NodeHashMapData& m) { data=m.data; }
 
@@ -2467,7 +2558,8 @@ public:
       typedef typename mlist_wrap<TParams...>::type params;
       typedef typename mtagged_list_extract<params, DefaultValueTag, operations::clear<E>>::type default_value_supplier;
 
-      hash_map<int, E, TParams...> data;
+      typedef hash_map<int, E, TParams...> hash_map_t;
+      hash_map_t data;
 
       void reset() { data.clear(); }
       bool is_detachable() const { return true; }
@@ -2705,22 +2797,29 @@ protected:
       return alias;
    }
 
-   template <typename Input, typename Cursor>
-   void read(Input& in, Cursor src)
+   template <typename Input>
+   void read_with_gaps(Input& in)
    {
-      if (src.sparse_representation()) {
-         int n=0, end=src.lookup_dim(false);
-         clear(end);
-         for (typename Entire<out_edge_list_container>::iterator l=entire(out_edge_lists(*this));  !src.at_end();  ++l, ++n) {
-            const int i=src.index();
-            while (n<i) ++l, data.get()->delete_node(n++);
-            src >> *l;
-         }
-         while (n<end) data.get()->delete_node(n++);
+      const int end=in.lookup_dim(false);
+      clear(end);
+      int n=0;
+      for (auto l=entire(out_edge_lists(*this));  !in.at_end();  ++l, ++n) {
+         const int i=in.index();
+         while (n<i) ++l, data.get()->delete_node(n++);
+         in >> *l;
+      }
+      while (n<end) data.get()->delete_node(n++);
+   }
+
+   template <typename Input>
+   void read(Input&& in)
+   {
+      if (in.sparse_representation()) {
+         read_with_gaps(in.set_option(SparseRepresentation<std::true_type>()));
       } else {
-         clear(src.size());
-         for (typename Entire<out_edge_list_container>::iterator l=entire(out_edge_lists(*this));  !src.at_end();  ++l)
-            src >> *l;
+         clear(in.size());
+         for (auto l=entire(out_edge_lists(*this));  !in.at_end();  ++l)
+            in >> *l;
       }
    }
 
@@ -2768,7 +2867,7 @@ public:
 template <typename TDir>
 void Graph<TDir>::dump_edges() const
 {
-   for (typename Entire< edge_container<TDir> >::const_iterator e=entire(pretend<const edge_container<TDir>&>()); !e.at_end(); ++e)
+   for (auto e=entire(pretend<const edge_container<TDir>&>()); !e.at_end(); ++e)
       cerr << *e << ':' << e.from_node() << '-' << e.to_node() << '\n';
    cerr << std::flush;
 }
@@ -2982,6 +3081,7 @@ public:
    typedef typename shared_base::default_value_supplier default_value_supplier;
    typedef int key_type;
    typedef E mapped_type;
+   typedef hash_map<int, E, TParams...> hash_map_t;
 
    NodeHashMap() {}
 
@@ -2993,12 +3093,12 @@ public:
    template <typename Graph2>
    NodeHashMap(const GenericGraph<Graph2, TDir>& G, const default_value_supplier& dflt_arg) : shared_base(G.top().get_graph(), dflt_arg) {}
 
-   hash_map<int,E>& get_container()
+   hash_map_t& get_container()
    {
       this->mutable_access();
       return this->map->data;
    }
-   const hash_map<int,E>& get_container() const
+   const hash_map_t& get_container() const
    {
       return this->map->data;
    }
@@ -3068,6 +3168,7 @@ public:
    typedef typename shared_base::default_value_supplier default_value_supplier;
    typedef int key_type;
    typedef E mapped_type;
+   typedef hash_map<int, E, TParams...> hash_map_t;
 
    EdgeHashMap() {}
 
@@ -3079,12 +3180,12 @@ public:
    template <typename Graph2>
    EdgeHashMap(const GenericGraph<Graph2, TDir>& G, const default_value_supplier& dflt_arg) : shared_base(G.top().get_graph(), dflt_arg) {}
 
-   hash_map<int,E>& get_container()
+   hash_map_t& get_container()
    {
       this->mutable_access();
       return this->map->data;
    }
-   const hash_map<int,E>& get_container() const
+   const hash_map_t& get_container() const
    {
       return this->map->data;
    }
@@ -3193,6 +3294,10 @@ struct spec_object_traits< graph::NodeMap<TDir, E, TParams...> > : spec_object_t
 };
 
 template <typename TDir, typename E, typename... TParams>
+struct check_container_feature< graph::NodeMap<TDir, E, TParams...>, sparse_compatible>
+   : std::true_type {};
+
+template <typename TDir, typename E, typename... TParams>
 struct spec_object_traits< graph::EdgeMap<TDir, E, TParams...> > : spec_object_traits<is_container> {
    static const int is_resizeable=0;
 };
@@ -3202,35 +3307,35 @@ struct spec_object_traits< graph::Graph<TDir> > : spec_object_traits<is_opaque> 
    static const int is_resizeable=1;
 };
 
-template <typename TGraph, typename Permutation> inline
+template <typename TGraph, typename TPerm> inline
 typename TGraph::persistent_type
-permuted_nodes(const GenericGraph<TGraph>& g, const Permutation& perm)
+permuted_nodes(const GenericGraph<TGraph>& g, const TPerm& perm)
 {
    if (POLYMAKE_DEBUG || !Unwary<TGraph>::value) {
       if (g.top().dim() != perm.size())
          throw std::runtime_error("permuted_nodes - dimension mismatch");
    }
    std::vector<int> inv_perm(g.nodes());
-   inverse_permutation(perm,inv_perm);
-   return g.top().copy_permuted(perm,inv_perm);
+   inverse_permutation(perm, inv_perm);
+   return g.top().copy_permuted(perm, inv_perm);
 }
 
-template <typename TGraph, typename Permutation> inline
-typename std::enable_if<container_traits<Permutation>::is_random, typename TGraph::persistent_type>::type
-permuted_inv_nodes(const GenericGraph<TGraph>& g, const Permutation& inv_perm)
+template <typename TGraph, typename TPerm> inline
+typename std::enable_if<container_traits<TPerm>::is_random, typename TGraph::persistent_type>::type
+permuted_inv_nodes(const GenericGraph<TGraph>& g, const TPerm& inv_perm)
 {
    if (POLYMAKE_DEBUG || !Unwary<TGraph>::value) {
       if (g.top().dim() != inv_perm.size())
          throw std::runtime_error("permuted_inv_nodes - dimension mismatch");
    }
    std::vector<int> perm(g.nodes());
-   inverse_permutation(inv_perm,perm);
-   return g.top().copy_permuted(perm,inv_perm);
+   inverse_permutation(inv_perm, perm);
+   return g.top().copy_permuted(perm, inv_perm);
 }
 
-template <typename TGraph, typename Permutation> inline
-typename std::enable_if<!container_traits<Permutation>::is_random, typename TGraph::persistent_type>::type
-permuted_inv_nodes(const GenericGraph<TGraph>& g, const Permutation& inv_perm)
+template <typename TGraph, typename TPerm> inline
+typename std::enable_if<!container_traits<TPerm>::is_random, typename TGraph::persistent_type>::type
+permuted_inv_nodes(const GenericGraph<TGraph>& g, const TPerm& inv_perm)
 {
    if (POLYMAKE_DEBUG || !Unwary<TGraph>::value) {
       if (g.top().dim() != inv_perm.size())

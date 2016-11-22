@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -208,7 +208,9 @@ E trace(const GenericMatrix<TMatrix, E>& m)
       if (m.rows() != m.cols())
          throw std::runtime_error("trace - non-square matrix");
    }
-   return trace(typename TMatrix::persistent_nonsymmetric_type(m));
+   E trace(zero_value<E>());
+   accumulate_in(entire(m.diagonal()), BuildBinary<operations::add>(), trace);
+   return trace;
 }
 
 

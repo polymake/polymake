@@ -89,22 +89,6 @@ extern I32 pm_perl_skip_debug_cx;
 # endif
 #endif
 
-// PerlVersion < 5220 does not provide macros for manipulating op siblings
-#ifndef OpHAS_SIBLING
-# define OpHAS_SIBLING(o) ((o)->op_sibling != NULL)
-# define OpSIBLING(o) ((o)->op_sibling)
-# define OpMORESIB_set(o, sib) ((o)->op_sibling = (sib))
-# define OpLASTSIB_set(o, parent) ((o)->op_sibling = NULL)
-
-# define PmOpCopySibling(to, from) ((to)->op_sibling=(from)->op_sibling)
-#else
-# if defined PERL_OP_PARENT
-#  define PmOpCopySibling(to, from) ((to)->op_moresib=(from)->op_moresib, (to)->op_sibparent=(from)->op_sibparent)
-# else
-#  define PmOpCopySibling(to, from) ((to)->op_moresib=(from)->op_moresib, (to)->op_sibling=(from)->op_sibling)
-# endif
-#endif
-
 #if PerlVersion >= 5200
 # define PmEmptyArraySlot Nullsv
 #else

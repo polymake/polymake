@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -36,10 +36,10 @@ public:
    void from_right(const SparseMatrix2x2<E>&) const {}
    template <typename E>
    void from_left(const SparseMatrix2x2<E>&) const {}
-   template <typename Container>
-   void permute_rows(const Container&) const {}
-   template <typename Container>
-   void permute_cols(const Container&) const {}
+   template <typename TPerm>
+   void permute_rows(const TPerm&) const {}
+   template <typename TPerm>
+   void permute_cols(const TPerm&) const {}
 };
 
 template <typename Logger>
@@ -102,18 +102,22 @@ public:
       else L->multiply_from_left(U);
    }
 
-   template <typename Container>
-   void permute_rows(const Container& perm) const
+   template <typename TPerm>
+   void permute_rows(const TPerm& perm) const
    {
-      if (inverse_companions) L->permute_cols(entire(perm));
-      else L->permute_rows(entire(perm));
+      if (inverse_companions)
+         L->permute_cols(perm);
+      else
+         L->permute_rows(perm);
    }
 
-   template <typename Container>
-   void permute_cols(const Container& perm) const
+   template <typename TPerm>
+   void permute_cols(const TPerm& perm) const
    {
-      if (inverse_companions) R->permute_rows(entire(perm));
-      else R->permute_cols(entire(perm));
+      if (inverse_companions)
+         R->permute_rows(perm);
+      else
+         R->permute_cols(perm);
    }
 };
 
@@ -315,17 +319,17 @@ int smith_normal_form(SparseMatrix<E>& M, std::list< std::pair<E,int> >& torsion
    }
 
    if (strict_diagonal) {
-      for (typename Entire<std::list< std::pair<E,int> > >::reverse_iterator t=rentire(torsion);  !t.at_end();  ++t)
+      for (auto t=rentire(torsion);  !t.at_end();  ++t)
          *rp++=M.col(t->second).begin().index(), *cp++=t->second;
 
       if (rp < rpe)
-         for (typename Rows< SparseMatrix<E> >::iterator r=rows(M).begin(); ; ++r)
+         for (auto r=rows(M).begin(); ; ++r)
             if (r->empty()) {
                *rp++=r.index();
                if (rp==rpe) break;
             }
       if (cp < cpe)
-         for (typename Cols< SparseMatrix<E> >::iterator c=cols(M).begin(); ; ++c)
+         for (auto c=cols(M).begin(); ; ++c)
             if (c->empty()) {
                *cp++=c.index();
                if (cp==cpe) break;
@@ -333,8 +337,8 @@ int smith_normal_form(SparseMatrix<E>& M, std::list< std::pair<E,int> >& torsion
 
       Logger.permute_rows(r_perm);
       Logger.permute_cols(c_perm);
-      M.permute_rows(entire(r_perm));
-      M.permute_cols(entire(c_perm));
+      M.permute_rows(r_perm);
+      M.permute_cols(c_perm);
    }
 
    return rank;

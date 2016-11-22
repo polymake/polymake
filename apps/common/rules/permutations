@@ -60,16 +60,16 @@ function permuted_rows(IncidenceMatrix *) : c++;
 
 function permuted_inv_rows(Matrix, *) : c++;
 
-function permuted_inv_rows(IncidenceMatrix *) : c++;
+function permuted_inv_rows(IncidenceMatrix, *) : c++;
 
 # Create a new matrix by permuting the columns of the given one.
 function permuted_cols(Matrix, *) : c++;
 
-function permuted_cols(IncidenceMatrix *) : c++;
+function permuted_cols(IncidenceMatrix, *) : c++;
 
 function permuted_inv_cols(Matrix, *) : c++;
 
-function permuted_inv_cols(IncidenceMatrix *) : c++;
+function permuted_inv_cols(IncidenceMatrix, *) : c++;
 
 # Create a new graph by permuting the nodes of the given one.
 function permuted_nodes(Graph, *) : c++;

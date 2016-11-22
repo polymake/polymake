@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -170,15 +170,16 @@ public:
 
    /// perm[i]==j => !inverse: old[j] moves to new[i]
    ///                inverse: old[i] moves to new[j]
-   template <typename Iterator, typename PermuteEntries, bool inverse>
-   static ruler* permute(ruler* old, Iterator perm, const PermuteEntries& perm_entries, bool_constant<inverse>)
+   template <typename TPerm, typename PermuteEntries, bool inverse>
+   static ruler* permute(ruler* old, const TPerm& perm, PermuteEntries&& perm_entries, bool_constant<inverse>)
    {
       int n=old->size_and_prefix.first;
-      ruler *r=allocate(n);
-      for (Container *src=old->containers, *dst=r->containers, *end=dst+n;  dst!=end;  ++dst, ++perm)
-         perm_entries.relocate(src+(inverse ? 0 : *perm), dst+(inverse ? *perm : 0));
+      ruler* r=allocate(n);
+      auto perm_it=perm.begin();
+      for (Container *src=old->containers, *dst=r->containers, *end=dst+n;  dst!=end;  ++dst, ++perm_it)
+         perm_entries.relocate(src+(inverse ? 0 : *perm_it), dst+(inverse ? *perm_it : 0));
       r->size_and_prefix.first=n;
-      perm_entries(old,r);
+      perm_entries(old, r);
       deallocate(old);
       return r;
    }

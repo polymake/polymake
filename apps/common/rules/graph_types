@@ -192,6 +192,14 @@ declare property_type Graph<Dir=Undirected> : c++ (include => "polymake/Graph.h"
    # @return Int
    user_method dim() : c++;
 
+   # permute the nodes
+   # param perm permutation of node indexes
+   user_method permute_nodes(*) : wary : non_const : void : c++;
+
+   # permute the nodes
+   # param perm inverse permutation of node indexes
+   user_method permute_inv_nodes(*) : wary : non_const : void : c++;
+
    # Create a graph with //n// isolated nodes.
    # @param Int n
    method construct(Int) : c++;
@@ -203,7 +211,7 @@ declare property_type Graph<Dir=Undirected> : c++ (include => "polymake/Graph.h"
       my ($proto, $g)=splice @_, 0, 2;
       if ($g->has_gaps) {
          my ($writer, @attr)=@_;
-         $writer->startTag("m", @attr, dim => $g->dim);
+         $writer->startTag("m", @attr, dim => $g->dim, cols => $g->dim);
          local $writer->{"!dim"}=1;
          my $row_type;
          for (my $n=entire(common::nodes($g)); $n; ++$n) {

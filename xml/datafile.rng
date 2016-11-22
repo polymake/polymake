@@ -341,6 +341,11 @@
         <attribute name="dim">
           <data type="nonNegativeInteger" />
         </attribute>
+        <optional>
+          <attribute name="cols">
+            <data type="nonNegativeInteger" />
+          </attribute>
+        </optional>
         <zeroOrMore>
           <element name="v">
             <ref name="ElementIndex" />

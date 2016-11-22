@@ -22,7 +22,7 @@
 
 namespace pm {
 
-template <typename Iterator1, typename Iterator2, bool TRenumber, bool TReversed=false>
+template <typename Iterator1, typename Iterator2, bool TUseIndex1, bool TRenumber, bool TReversed=false>
 class indexed_selector
    : public Iterator1 {
 public:
@@ -31,17 +31,33 @@ public:
 
    Iterator2 second;
 protected:
+   typedef bool_constant<TUseIndex1> pos_discr;
+
    // 0 - general case
    // 1 - sequence::iterator
    // 2 - series::iterator
-   static const int step_kind= (is_derived_from<Iterator2, sequence::iterator>::value +
+   static const int step_kind= TUseIndex1 ? 0 :
+                               (is_derived_from<Iterator2, sequence::iterator>::value +
 				is_derived_from<Iterator2, series::iterator>::value) *
                                std::is_same<typename accompanying_iterator<Iterator2>::type, sequence::iterator>::value;
    typedef int_constant<step_kind> step_discr;
 private:
+   int get_pos1(std::false_type) const
+   {
+      return *second;
+   }
+   static
+   int get_pos1(std::false_type, int expected)
+   {
+      return expected;
+   }
+   int get_pos1(std::true_type, int expected=0) const
+   {
+      return static_cast<const first_type&>(*this).index();
+   }
    void forw_impl(int_constant<0>)
    {
-      int pos=*second;
+      const int pos=get_pos1(pos_discr());
       ++second;
       if (!at_end())
 	 std::advance(static_cast<first_type&>(*this), TReversed ? pos-*second : *second-pos);
@@ -62,7 +78,7 @@ private:
       if (second.at_end()) {
 	 --second;
       } else {
-	 int pos=*second;
+	 const int pos=get_pos1(pos_discr());
 	 --second;
 	 std::advance(static_cast<first_type&>(*this), TReversed ? pos-*second : *second-pos);
       }
@@ -83,7 +99,7 @@ private:
    }
    int step_impl(int i, int_constant<0>)
    {
-      int pos=second.at_end() ? second[-1] : *second;
+      const int pos=second.at_end() ? second[-1] : get_pos1(pos_discr());
       second+=i;
       return TReversed ? pos-(second.at_end() ? second[-1] : *second) : (second.at_end() ? second[-1] : *second)-pos;
    }
@@ -115,8 +131,8 @@ public:
                                         typename iterator_traits<Iterator2>::iterator_category>::type
       iterator_category;
    typedef typename iterator_traits<Iterator2>::difference_type difference_type;
-   typedef indexed_selector<typename iterator_traits<Iterator1>::iterator, Iterator2, TRenumber, TReversed> iterator;
-   typedef indexed_selector<typename iterator_traits<Iterator1>::const_iterator, Iterator2, TRenumber, TReversed> const_iterator;
+   typedef indexed_selector<typename iterator_traits<Iterator1>::iterator, Iterator2, TUseIndex1, TRenumber, TReversed> iterator;
+   typedef indexed_selector<typename iterator_traits<Iterator1>::const_iterator, Iterator2, TUseIndex1, TRenumber, TReversed> const_iterator;
 
    indexed_selector() {}
    indexed_selector(const iterator& it)
@@ -126,11 +142,11 @@ public:
    template <typename SourceIterator1, typename SourceIterator2,
              typename suitable1=typename suitable_arg_for_iterator<SourceIterator1, Iterator1>::type,
              typename suitable2=typename suitable_arg_for_iterator<SourceIterator2, Iterator2>::type>
-   indexed_selector(const SourceIterator1& first_arg, const SourceIterator2& second_arg, bool adjust=false, int offset=0)
+   indexed_selector(const SourceIterator1& first_arg, const SourceIterator2& second_arg, bool adjust=false, int expected_pos1=0)
       : first_type(prepare_iterator_arg<Iterator1>(first_arg))
       , second(prepare_iterator_arg<Iterator2>(second_arg))
    {
-      if (adjust && !at_end()) contract1(offset+*second, !TRenumber);
+      if (adjust && !at_end()) contract1(*second-get_pos1(pos_discr(), expected_pos1), !TRenumber);
    }
 
    template <typename SourceIterator1, typename SourceIterator2,
@@ -186,7 +202,7 @@ public:
    typename first_type::reference operator[] (int i) const
    {
       static_assert(iterator_pair_traits<Iterator1, Iterator2>::is_random, "iterator is not random-access");
-      return static_cast<const first_type&>(*this)[ second[i] - (second.at_end() ? second[-1] : *second) ];
+      return static_cast<const first_type&>(*this)[ second[i] - (second.at_end() ? second[-1] : get_pos1(pos_discr())) ];
    }
 
    template <typename Other>
@@ -226,22 +242,22 @@ public:
    void contract(bool renumber, int distance_front, int distance_back=0)
    {
       static_assert(check_iterator_feature<Iterator2, contractable>::value, "iterator is not contractable");
-      int pos=*second;
+      const int pos=get_pos1(pos_discr());
       second.contract(TRenumber && renumber, distance_front, distance_back);
       contract1(*second-pos, !TRenumber && renumber);
    }
 };
 
-template <typename Iterator1, typename Iterator2, bool TRenumber, bool TReversed, typename Feature>
-struct check_iterator_feature<indexed_selector<Iterator1, Iterator2, TRenumber, TReversed>, Feature> {
+template <typename Iterator1, typename Iterator2, bool TUseIndex1, bool TRenumber, bool TReversed, typename Feature>
+struct check_iterator_feature<indexed_selector<Iterator1, Iterator2, TUseIndex1, TRenumber, TReversed>, Feature> {
    typedef cons<end_sensitive, contractable> via_second;
    static const bool value= (list_contains<via_second, Feature>::value ||
-			     check_iterator_feature<Iterator1,Feature>::value) &&
-			    check_iterator_feature<Iterator2,Feature>::value;
+			     check_iterator_feature<Iterator1, Feature>::value) &&
+			    check_iterator_feature<Iterator2, Feature>::value;
 };
 
-template <typename Iterator1, typename Iterator2, bool TRenumber, bool TReversed>
-struct check_iterator_feature<indexed_selector<Iterator1, Iterator2, TRenumber, TReversed>, indexed> {
+template <typename Iterator1, typename Iterator2, bool TUseIndex1, bool TRenumber, bool TReversed>
+struct check_iterator_feature<indexed_selector<Iterator1, Iterator2, TUseIndex1, TRenumber, TReversed>, indexed> {
    static const bool value= !TRenumber || check_iterator_feature<Iterator2, indexed>::value;
 };
 
@@ -312,7 +328,7 @@ namespace subset_classifier {
                  index2element<ContainerRef1, TRenumber>::value
                  ? sparse : generic;
       static const bool random=false;
-
+      static const bool use_index1=check_container_feature<typename deref<ContainerRef1>::type, sparse_compatible>::value;
       typedef operations::mul<sequence,ContainerRef2> operation;
       typedef typename deref<typename operation::result_type>::type container;
       typedef const container container_ref;
@@ -322,11 +338,12 @@ namespace subset_classifier {
    struct index_helper<ContainerRef1, ContainerRef2, TRenumber, false> {
       typedef std::false_type is_complement;
       static const bool random=iterator_traits<typename container_traits<ContainerRef1>::iterator>::is_random;
+      static const bool use_index1=check_container_feature<typename deref<ContainerRef1>::type, sparse_compatible>::value;
       static const kind
          value = check_container_feature<typename deref<ContainerRef1>::type, pm::sparse>::value ||
                  index2element<ContainerRef1, TRenumber>::value
                  ? sparse :
-                 std::is_same<typename container_traits<ContainerRef2>::iterator, sequence::iterator>::value
+                 std::is_same<typename container_traits<ContainerRef2>::iterator, sequence::iterator>::value && !use_index1
                  ? plain
 		 : generic;
       typedef typename deref<ContainerRef2>::type container;
@@ -444,6 +461,8 @@ protected:
                                                            end_sensitive >::type >::type
       needed_features2;
 
+   static bool const use_index1=index_helper::use_index1;
+
    int size_impl(std::false_type) const
    {
       return this->manip_top().get_container2().size();
@@ -480,11 +499,11 @@ class indexed_subset_elem_access
 public:
    typedef indexed_selector<typename ensure_features<typename base_t::container1, typename base_t::needed_features1>::iterator,
 			    typename ensure_features<typename base_t::index_container, typename base_t::needed_features2>::const_iterator,
-			    base_t::renumber>
+			    base_t::use_index1, base_t::renumber>
       iterator;
    typedef indexed_selector<typename ensure_features<typename base_t::container1, typename base_t::needed_features1>::const_iterator,
 			    typename ensure_features<typename base_t::index_container, typename base_t::needed_features2>::const_iterator,
-			    base_t::renumber>
+			    base_t::use_index1, base_t::renumber>
       const_iterator;
 
    iterator begin()
@@ -492,7 +511,7 @@ public:
       typename base_t::data_container_ref c1=this->manip_top().get_container1();
       return iterator(ensure(c1, (typename base_t::needed_features1*)0).begin(),
 		      ensure(this->index_top().get_container2(), (typename base_t::needed_features2*)0).begin(),
-		      true);
+		      true, 0);
    }
    iterator end()
    {
@@ -506,7 +525,7 @@ public:
    {
       return const_iterator(ensure(this->manip_top().get_container1(), (typename base_t::needed_features1*)0).begin(),
 			    ensure(this->index_top().get_container2(), (typename base_t::needed_features2*)0).begin(),
-			    true);
+			    true, 0);
    }
    const_iterator end() const
    {
@@ -523,18 +542,8 @@ class indexed_subset_elem_access<Top, TParams, TKind, forward_iterator_tag>
    : public indexed_subset_elem_access<Top, TParams, TKind, input_iterator_tag> {
    typedef indexed_subset_typebase<Top, TParams> base_t;
 public:
-   typename base_t::reference front()
-   {
-      typename base_t::container1::iterator b1=this->manip_top().get_container1().begin();
-      std::advance(b1, this->index_top().get_container2().front());
-      return *b1;
-   }
-   typename base_t::const_reference front() const
-   {
-      typename base_t::container1::const_iterator b1=this->manip_top().get_container1().begin();
-      std::advance(b1, this->index_top().get_container2().front());
-      return *b1;
-   }
+   typename base_t::reference front() { return *(this->begin()); }
+   typename base_t::const_reference front() const { return *(this->begin()); }
 };
 
 template <typename Top, typename TParams, subset_classifier::kind TKind>
@@ -544,11 +553,11 @@ class indexed_subset_rev_elem_access
 public:
    typedef indexed_selector<typename ensure_features<typename base_t::container1, typename base_t::needed_features1>::reverse_iterator,
 			    typename ensure_features<typename base_t::index_container, typename base_t::needed_features2>::const_reverse_iterator,
-			    base_t::renumber, true>
+			    base_t::use_index1, base_t::renumber, true>
       reverse_iterator;
    typedef indexed_selector<typename ensure_features<typename base_t::container1, typename base_t::needed_features1>::const_reverse_iterator,
 			    typename ensure_features<typename base_t::index_container, typename base_t::needed_features2>::const_reverse_iterator,
-			    base_t::renumber, true>
+			    base_t::use_index1, base_t::renumber, true>
       const_reverse_iterator;
 
    reverse_iterator rbegin()
@@ -556,7 +565,7 @@ public:
       typename base_t::data_container_ref c1=this->manip_top().get_container1();
       return reverse_iterator(ensure(c1, (typename base_t::needed_features1*)0).rbegin(),
 			      ensure(this->index_top().get_container2(), (typename base_t::needed_features2*)0).rbegin(),
-			      true, 1-int(c1.size()));
+			      true, int(c1.size())-1);
    }
    reverse_iterator rend()
    {
@@ -564,21 +573,21 @@ public:
       typename base_t::index_container_ref indices=this->index_top().get_container2();
       return reverse_iterator(ensure(c1, (typename base_t::needed_features1*)0).rend(),
 			      ensure(indices, (typename base_t::needed_features2*)0).rend(),
-			      !iterator_traits<typename reverse_iterator::first_type>::is_bidirectional || indices.empty() ? 0 : indices.front());
+			      !iterator_traits<typename reverse_iterator::first_type>::is_bidirectional || indices.empty() ? 0 : indices.front()+1);
    }
    const_reverse_iterator rbegin() const
    {
       const typename base_t::container1& c1=this->manip_top().get_container1();
       return const_reverse_iterator(ensure(c1, (typename base_t::needed_features1*)0).rbegin(),
 				    ensure(this->index_top().get_container2(), (typename base_t::needed_features2*)0).rbegin(),
-				    true, 1-int(c1.size()));
+				    true, int(c1.size())-1);
    }
    const_reverse_iterator rend() const
    {
       typename base_t::index_container_ref indices=this->index_top().get_container2();
       return const_reverse_iterator(ensure(this->manip_top().get_container1(), (typename base_t::needed_features1*)0).rend(),
 				    ensure(indices, (typename base_t::needed_features2*)0).rend(),
-				    !iterator_traits<typename reverse_iterator::first_type>::is_bidirectional || indices.empty() ? 0 : indices.front());
+				    !iterator_traits<typename reverse_iterator::first_type>::is_bidirectional || indices.empty() ? 0 : indices.front()+1);
    }
 };
 
@@ -587,20 +596,8 @@ class indexed_subset_elem_access<Top, TParams, TKind, bidirectional_iterator_tag
    : public indexed_subset_rev_elem_access<Top, TParams, TKind> {
    typedef indexed_subset_rev_elem_access<Top, TParams, TKind> base_t;
 public:
-   typename base_t::reference back()
-   {
-      typename base_t::data_container_ref c1=this->manip_top().get_container1();
-      typename base_t::container1::reverse_iterator rb1=c1.rbegin();
-      std::advance(rb1, int(c1.size())-1 - this->index_top().get_container2().back());
-      return *rb1;
-   }
-   typename base_t::reference back() const
-   {
-      const typename base_t::container1& c1=this->manip_top().get_container1();
-      typename base_t::container1::const_reverse_iterator rb1=c1.rbegin();
-      std::advance(rb1, int(c1.size())-1 - this->index_top().get_container2().back());
-      return *rb1;
-   }
+   typename base_t::reference back() { return *(this->rbegin()); }
+   typename base_t::reference back() const { return *(this->rbegin()); }
 };
 
 template <typename Top, typename TParams>

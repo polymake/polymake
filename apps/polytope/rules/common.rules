@@ -399,6 +399,12 @@ rule WEAKLY_CENTERED : FACETS, AFFINE_HULL {
 }
 weight 1.10;
 
+rule WEAKLY_CENTERED : VERTICES | POINTS, LINEALITY_SPACE | INPUT_LINEALITY{
+    my $n = $this->lookup("VERTICES | POINTS")->cols;
+    $this->CENTERED = $this->contains(unit_vector($n, 0));
+}
+weight 4.10;
+
 rule CENTERED : FACETS, AFFINE_HULL {
    foreach my $f (@{$this->FACETS}) {
       if ($f->[0] <= 0) {
@@ -415,6 +421,12 @@ rule CENTERED : FACETS, AFFINE_HULL {
    $this->CENTERED=1;
 }
 weight 1.10;
+
+rule CENTERED : VERTICES | POINTS, LINEALITY_SPACE | INPUT_LINEALITY{
+    my $n = $this->lookup("VERTICES | POINTS")->cols;
+    $this->CENTERED = $this->contains_in_interior(unit_vector($n, 0));
+}
+weight 4.10;
 
 rule WEAKLY_CENTERED : {
     $this->WEAKLY_CENTERED=1;

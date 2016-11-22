@@ -72,5 +72,6 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary__eq, perl::Canned< const PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >, perl::Canned< const PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const TropicalNumber< Min, Rational > >);
    OperatorInstance4perl(Binary__le, perl::Canned< const PuiseuxFraction< Max, Rational, Rational > >, int);
+   OperatorInstance4perl(Binary__lt, perl::Canned< const PuiseuxFraction< Max, Rational, Rational > >, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

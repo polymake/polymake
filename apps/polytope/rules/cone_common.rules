@@ -631,7 +631,7 @@ user_method face {
 }
 
 # @category Geometry
-# checks whether a given point is contained in a cone 
+# checks whether a given point is contained in a cone
 # @param Vector<Scalar> v point
 # @return Bool
 user_method contains {
@@ -641,11 +641,11 @@ user_method contains {
     if (defined (my $ah=$self->lookup("LINEAR_SPAN | INPUT_LINEALITY")) ) {
       if ( $ah->rows ) {
         my $b=$ah*$v;
-        foreach (@{$b}) { if ( $_ != $zero ) { return; } }
+        foreach (@{$b}) { if ( $_ != $zero ) { return 0; } }
       }
     }
     my $b=$f*$v;
-    foreach (@{$b}) { if ( $_ < $zero ) { return; } }
+    foreach (@{$b}) { if ( $_ < $zero ) { return 0; } }
     return 1;
   } else {
     return cone_contains_point($self,$v,in_interior=>0);
@@ -662,11 +662,11 @@ user_method contains_in_interior {
     if (defined (my $ah=$self->lookup("LINEAR_SPAN | INPUT_LINEALITY")) ) {
       if ( $ah->rows ) {
         my $b=$ah*$v;
-        foreach (@{$b}) { if ( $_ != 0 ) { return; } }
+        foreach (@{$b}) { if ( $_ != 0 ) { return 0; } }
       }
     }
     my $b=$f*$v;
-    foreach (@{$b}) { if ( $_ <= 0 ) { return; } }
+    foreach (@{$b}) { if ( $_ <= 0 ) { return 0; } }
     return 1;
   }else {
     return cone_contains_point($self,$v,in_interior=>1);

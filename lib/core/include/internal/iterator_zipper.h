@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -159,8 +159,8 @@ protected:
       }
    }
 
-   template <typename,typename,typename,typename,bool,bool> friend class iterator_zipper;
-   template <typename,typename,bool,bool> friend class iterator_product;
+   template <typename, typename, typename, typename, bool, bool> friend class iterator_zipper;
+   template <typename, typename, bool, bool> friend class iterator_product;
 public:
    iterator_zipper() : state(0) {}
    iterator_zipper(const iterator& it)
@@ -208,8 +208,9 @@ public:
    {
       typedef typename is_derived_from_any<Other, iterator, const_iterator>::type other_iterator;
 
-      return static_cast<const first_type&>(*this)==static_cast<const typename other_iterator::first_type&>(it)
-          && second==static_cast<const other_iterator&>(it).second;
+      return at_end() ? it.at_end() :
+             static_cast<const first_type&>(*this)==static_cast<const typename other_iterator::first_type&>(it)
+             && second==static_cast<const other_iterator&>(it).second;
    }
 
    template <typename Other>

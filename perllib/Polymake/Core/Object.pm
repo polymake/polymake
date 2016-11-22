@@ -268,7 +268,6 @@ use Polymake::Struct (
 
 sub commit {
    my ($self, $object, $parent_trans)=@_;
-      stop_here();
    until (Scheduler::resolve_initial_request($object, [ [ ObjectType::init_pseudo_prop() ], requests_for_subobjects($self, $object) ])) {
       my $err=$@;
       if (defined $parent_trans) {

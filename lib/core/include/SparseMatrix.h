@@ -463,26 +463,30 @@ public:
 
    void squeeze() { data.squeeze(); }
 
-   template <typename Iterator>
-   void permute_rows(Iterator perm)
+   template <typename TPerm>
+   typename std::enable_if<isomorphic_to_container_of<TPerm, int>::value>::type
+   permute_rows(const TPerm& perm)
    {
       data.permute_rows(perm, std::false_type());
    }
 
-   template <typename Iterator>
-   void permute_cols(Iterator perm)
+   template <typename TPerm>
+   typename std::enable_if<isomorphic_to_container_of<TPerm, int>::value>::type
+   permute_cols(const TPerm& perm)
    {
       data.permute_cols(perm, std::false_type());
    }
 
-   template <typename Iterator>
-   void permute_inv_rows(Iterator inv_perm)
+   template <typename TInvPerm>
+   typename std::enable_if<isomorphic_to_container_of<TInvPerm, int>::value>::type
+   permute_inv_rows(const TInvPerm& inv_perm)
    {
       data.permute_rows(inv_perm, std::true_type());
    }
 
-   template <typename Iterator>
-   void permute_inv_cols(Iterator inv_perm)
+   template <typename TInvPerm>
+   typename std::enable_if<isomorphic_to_container_of<TInvPerm, int>::value>::type
+   permute_inv_cols(const TInvPerm& inv_perm)
    {
       data.permute_cols(inv_perm, std::true_type());
    }
@@ -793,28 +797,32 @@ public:
 
    /// Permute the rows of the matrix without copying the elements.
    /// These operations are nevertheless expensive, as they need to visit each element and adjust its indices.
-   template <typename Iterator>
-   void permute_rows(Iterator perm)
+   template <typename TPerm>
+   typename std::enable_if<isomorphic_to_container_of<TPerm, int>::value>::type
+   permute_rows(const TPerm& perm)
    {
       this->data->permute_rows(perm, std::false_type());
    }
 
    /// Permute the columns of the matrix without copying the elements.
    /// These operations are nevetherless expensive, as they need to visit each element and adjust its indices.
-   template <typename Iterator>
-   void permute_cols(Iterator perm)
+   template <typename TPerm>
+   typename std::enable_if<isomorphic_to_container_of<TPerm, int>::value>::type
+   permute_cols(const TPerm& perm)
    {
       this->data->permute_cols(perm, std::false_type());
    }
 
-   template <typename Iterator>
-   void permute_inv_rows(Iterator inv_perm)
+   template <typename TInvPerm>
+   typename std::enable_if<isomorphic_to_container_of<TInvPerm, int>::value>::type
+   permute_inv_rows(const TInvPerm& inv_perm)
    {
       this->data->permute_rows(inv_perm, std::true_type());
    }
 
-   template <typename Iterator>
-   void permute_inv_cols(Iterator inv_perm)
+   template <typename TInvPerm>
+   typename std::enable_if<isomorphic_to_container_of<TInvPerm, int>::value>::type
+   permute_inv_cols(const TInvPerm& inv_perm)
    {
       this->data->permute_cols(inv_perm, std::true_type());
    }

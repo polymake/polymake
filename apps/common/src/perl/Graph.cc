@@ -73,5 +73,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, Graph< Undirected >, perl::Canned< const IncidenceMatrix< Symmetric > >);
    OperatorInstance4perl(convert, Graph< Undirected >, perl::Canned< const Graph< Directed > >);
    OperatorInstance4perl(Binary__ne, perl::Canned< const Graph< Undirected > >, perl::Canned< const Graph< Undirected > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Graph< DirectedMulti > >, perl::Canned< const Graph< DirectedMulti > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Graph< UndirectedMulti > >, perl::Canned< const Graph< UndirectedMulti > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

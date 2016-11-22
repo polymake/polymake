@@ -50,5 +50,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, Matrix< Integer >, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<int, pm::NonSymmetric> const&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< Matrix< QuadraticExtension< Rational > > > >, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSetCmp<int, pm::operations::cmp>, pm::Rational> >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< Matrix< QuadraticExtension< Rational > > > >, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSetCmp<int, pm::operations::cmp>, pm::QuadraticExtension<pm::Rational> > >);
+ OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< Matrix< PuiseuxFraction< Max, Rational, Rational > > > >, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

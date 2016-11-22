@@ -54,6 +54,7 @@ public:
       return _super::find(k) != _super::end();
    }
 
+   // TODO: perfect forwarding of k
    typename _super::iterator
    insert(typename function_argument<Key>::type k)
    {
@@ -69,6 +70,7 @@ public:
       return ret.first;
    }
 #endif
+   // TODO: perfect forwarding of k and v
    typename _super::iterator
    insert(typename function_argument<Key>::type k, typename function_argument<Value>::type v)
    {

@@ -16,6 +16,7 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/Graph.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
@@ -37,5 +38,6 @@ namespace polymake { namespace common { namespace {
 
    FunctionInstance4perl(dim_f1, perl::Canned< const SparseVector< TropicalNumber< Min, Rational > > >);
    FunctionInstance4perl(dim_f1, perl::Canned< const Vector< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const Graph< UndirectedMulti > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

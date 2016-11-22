@@ -31,5 +31,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(adjacency_matrix_X36_f4, perl::Canned< const Graph< Undirected > >);
    FunctionInstance4perl(adjacency_matrix_X36_f4, perl::Canned< const Graph< Directed > >);
    FunctionInstance4perl(adjacency_matrix_X36_f4, perl::Canned< Graph< Directed > >);
+   FunctionInstance4perl(adjacency_matrix_X36_f4, perl::Canned< Graph< DirectedMulti > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

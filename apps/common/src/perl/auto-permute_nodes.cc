@@ -16,20 +16,19 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/Array.h"
 #include "polymake/Graph.h"
 #include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0>
-   FunctionInterface4perl( has_gaps_f1, T0 ) {
-      perl::Value arg0(stack[0]);
-      WrapperReturn( arg0.get<T0>().has_gaps() );
+   template <typename T0, typename T1>
+   FunctionInterface4perl( permute_nodes_X_f17, T0,T1 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      WrapperReturnVoid( arg0.get<T0>().permute_nodes(arg1.get<T1>()) );
    };
 
-   FunctionInstance4perl(has_gaps_f1, perl::Canned< const Graph< Undirected > >);
-   FunctionInstance4perl(has_gaps_f1, perl::Canned< const Graph< Directed > >);
-   FunctionInstance4perl(has_gaps_f1, perl::Canned< const Graph< DirectedMulti > >);
-   FunctionInstance4perl(has_gaps_f1, perl::Canned< const Graph< UndirectedMulti > >);
+   FunctionInstance4perl(permute_nodes_X_f17, perl::Canned< Wary< Graph< Undirected > > >, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(permute_nodes_X_f17, perl::Canned< Wary< Graph< Directed > > >, perl::Canned< const Array< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

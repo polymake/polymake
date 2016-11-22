@@ -634,11 +634,11 @@ sub close_tv {
 sub open_m {
    my ($self, $attrs)=@_;
    my $value=[ ];
-   my $cols;
-   if (defined ($cols=$attrs->{cols})) {
-      set_array_flags($value, $cols+=0, "cols");
-   } elsif (defined (my $dim=$attrs->{dim})) {
+   my $cols=$attrs->{cols};
+   if (defined (my $dim=$attrs->{dim})) {
       set_array_flags($value, $dim, "dim");
+   } elsif (defined $cols) {
+      set_array_flags($value, $cols, "cols");
    }
    push @{$self->cols}, $cols;
    push @{$self->cur_value}, $value;

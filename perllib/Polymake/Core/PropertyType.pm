@@ -220,7 +220,7 @@ sub trivialArray_toXML {
    if (@$value) {
       $writer->dataElement("v", "@$value", @attr);
    } else {
-      $writer->emptyTag("v",@attr);
+      $writer->emptyTag("v", @attr);
    }
 }
 
@@ -229,7 +229,7 @@ sub formattedArray_toXML {
    if (@$value) {
       $writer->dataElement("v", join(" ", map { $elem_proto->toString->($_) } @$value), @attr);
    } else {
-      $writer->emptyTag("v",@attr);
+      $writer->emptyTag("v", @attr);
    }
 }
 
@@ -250,15 +250,20 @@ sub nontrivialArray_toXML {
 sub sparseArray_toXML {
    my ($elem_proto, $value, $writer, @attr)=@_;
    push @attr, dim => $value->dim unless $writer->{"!dim"};
-   $writer->startTag("v",@attr);
-   $writer->setDataMode(0);
-   for (my $it=args::entire($value); $it; ++$it) {
+   my $it=args::entire($value);
+   if ($it) {
+      $writer->startTag("v", @attr);
+      $writer->setDataMode(0);
+      do {
+         $writer->characters(" ");
+         $elem_proto->toXML->($it->deref, $writer, i => $it->index);
+      } while (++$it);
       $writer->characters(" ");
-      $elem_proto->toXML->($it->deref, $writer, i => $it->index);
+      $writer->setDataMode(1);
+      $writer->endTag("v");
+   } else {
+      $writer->emptyTag("v", @attr);
    }
-   $writer->characters(" ");
-   $writer->setDataMode(1);
-   $writer->endTag("v");
 }
 
 sub sparseMatrix_toXML {

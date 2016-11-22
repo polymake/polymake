@@ -91,7 +91,7 @@ decltype(auto) lines(TMatrix& m, columnwise) { return pm::cols(m); }
 
 template <typename E, bool symmetric=false, restriction_kind restriction=full> class Table;
 template <typename Base, bool symmetric, restriction_kind restriction=full> class traits;
-template <typename,typename,bool> struct asym_permute_entries;
+template <typename, typename, bool> struct asym_permute_entries;
 template <typename Traits> struct sym_permute_entries;
 
 template <typename E, bool _row_oriented, bool _symmetric>
@@ -747,16 +747,16 @@ public:
 
    void squeeze_cols() { squeeze_cols(operations::binary_noop()); }
 
-   template <typename Iterator, typename _inverse>
-   void permute_rows(Iterator perm, _inverse)
+   template <typename TPerm, typename _inverse>
+   void permute_rows(const TPerm& perm, _inverse)
    {
       if (restriction==only_cols)
          throw std::runtime_error("sparse2d::Table::permute_rows - disabled in restricted mode");
       R=row_ruler::permute(R, perm, asym_permute_entries<row_ruler, col_ruler, restriction==only_rows>(C), _inverse());
    }
 
-   template <class Iterator, typename _inverse>
-   void permute_cols(Iterator perm, _inverse)
+   template <typename TPerm, typename _inverse>
+   void permute_cols(const TPerm& perm, _inverse)
    {
       if (restriction==only_rows)
          throw std::runtime_error("sparse2d::Table::permute_cols - disabled in restricted mode");
@@ -797,73 +797,100 @@ public:
 };
 
 template <typename Traits>
-struct sym_permute_entries : public Traits {
-   typedef typename Traits::tree_type tree_type;
-   typedef typename Traits::ruler ruler;
-   typedef typename tree_type::Node Node;
+struct sym_permute_entries
+   : public Traits {
 
-   static void relocate(tree_type *from, tree_type *to) { relocate_tree(from, to, std::false_type()); }
+   using typename Traits::tree_t;
+   using typename Traits::ruler;
+   using typename Traits::entry_t;
+   typedef typename tree_t::Node Node;
 
-   static void complete_cross_links(ruler* R)
+   static void relocate(tree_t* from, tree_t* to)
+   {
+      relocate_tree(from, to, std::false_type());
+   }
+
+   void complete_cross_links(ruler* R)
    {
       int r=0;
-      for (typename Entire<ruler>::iterator ri=entire(*R); !ri.at_end();  ++ri, ++r) {
-         for (typename tree_type::iterator e=Traits::tree(*ri).begin(); !e.at_end(); ++e) {
-            Node *node=e.operator->();
+      for (entry_t& entry : *R) {
+         for (auto e=this->tree(entry).begin(); !e.at_end(); ++e) {
+            Node* node=e.operator->();
             const int c=node->key-r;
-            if (c!=r) Traits::tree((*R)[c]).push_back_node(node);
+            if (c!=r) this->tree((*R)[c]).push_back_node(node);
          }
+         ++r;
       }
    }
 
-   void operator()(ruler* Rold, ruler* R) const
+   void operator()(ruler* Rold, ruler* R)
    {
       // unfortunately I can't reuse the line_index entries in both old and new rulers,
       // as the iterators always need correct values there
       const int n=R->size();
-      std::vector<int> perm(n), inv_perm(n);
+      std::vector<int> perm(n);
+      inv_perm.resize(n, -1);
 
       int r=0;
-      for (typename Entire<ruler>::iterator ri=entire(*R);  !ri.at_end();  ++ri, ++r) {
-         tree_type& t=Traits::tree(*ri);
-         perm[r]=t.line_index;
-         inv_perm[t.line_index]=r;
-         t.line_index=r;
+      for (entry_t& entry : *R) {
+         if (this->is_alive(entry)) {
+            tree_t& t=this->tree(entry);
+            perm[r]=t.line_index;
+            inv_perm[t.line_index]=r;
+            t.line_index=r;
+         } else {
+            this->handle_dead_entry(entry, r);
+            perm[r]=-1;
+         }
+         ++r;
       }
 
       for (r=0; r<n; ++r) {
          const int old_r=perm[r];
-         for (typename tree_type::iterator e=Traits::tree((*Rold)[old_r]).begin(); !e.at_end(); ) {
-            Node *node=e.operator->();  ++e;
-            const int old_c=node->key-old_r, c=inv_perm[old_c];
-            if (old_r!=old_c) Traits::tree((*Rold)[old_c]).unlink_node(node);
-            node->key=r+c;
-            Traits::tree((*R)[std::max(r,c)]).push_back_node(node);
-         }
-      }
-
-      complete_cross_links(R);
-   }
-
-   template <typename Perm, typename InvPerm>
-   static void copy(const ruler *Rold, ruler *R, const Perm& perm, const InvPerm& inv_perm)
-   {
-      const int n=R->size();
-      typename Perm::const_iterator p=perm.begin();
-      for (int r=0; r<n; ++r, ++p) {
-         const int old_r=*p;
-         for (typename tree_type::const_iterator e=Traits::tree((*Rold)[old_r]).begin(); !e.at_end(); ++e) {
-            const Node *node=e.operator->();
-            const int old_c=node->key-old_r, c=inv_perm[old_c];
-            if (c>=r) {
-               tree_type& t=Traits::tree((*R)[c]);
-               t.push_back_node(new(t.allocate_node()) Node(r+c, node->get_data()));
+         if (old_r >= 0) {
+            for (auto e=Traits::tree((*Rold)[old_r]).begin(); !e.at_end(); ) {
+               Node* node=e.operator->();  ++e;
+               const int old_c=node->key-old_r;
+               const int c=inv_perm[old_c];
+               if (old_r!=old_c) Traits::tree((*Rold)[old_c]).unlink_node(node);
+               node->key=r+c;
+               Traits::tree((*R)[std::max(r,c)]).push_back_node(node);
             }
          }
       }
 
       complete_cross_links(R);
+      this->finalize_dead_entries();
    }
+
+   template <typename Perm, typename InvPerm>
+   void copy(const ruler* R_src, ruler* R_dst, const Perm& perm, const InvPerm& inv_perm)
+   {
+      const int n=R_dst->size();
+      auto p_it=perm.begin();
+      for (int dst_r=0; dst_r < n; ++dst_r, ++p_it) {
+         const int src_r=*p_it;
+         const entry_t& src_entry=(*R_src)[src_r];
+         if (this->is_alive(src_entry)) {
+            for (auto e=this->tree(src_entry).begin(); !e.at_end(); ++e) {
+               const Node* node=e.operator->();
+               const int src_c=node->key-src_r;
+               const int dst_c=inv_perm[src_c];
+               if (dst_c >= dst_r) {
+                  tree_t& t=this->tree((*R_dst)[dst_c]);
+                  t.push_back_node(new(t.allocate_node()) Node(dst_r+dst_c, node->get_data()));
+               }
+            }
+         } else {
+            this->handle_dead_entry((*R_dst)[dst_r], dst_r);
+         }
+      }
+
+      complete_cross_links(R_dst);
+      this->finalize_dead_entries();
+   }
+
+   std::vector<int> inv_perm;
 };
 
 template <typename E, restriction_kind restriction>
@@ -971,26 +998,30 @@ public:
 
    struct perm_traits {
       typedef row_ruler ruler;
-      typedef row_tree_type tree_type;
-      static tree_type& tree(tree_type& t) { return t; }
-      static const tree_type& tree(const tree_type& t) { return t; }
+      typedef row_tree_type tree_t;
+      typedef tree_t entry_t;
+      static tree_t& tree(tree_t& t) { return t; }
+      static const tree_t& tree(const tree_t& t) { return t; }
+      static bool is_alive (const tree_t& t) { return true; }
+      static void handle_dead_entry(tree_t&, int) {}
+      static void finalize_dead_entries() {}
    };
    typedef sym_permute_entries<perm_traits> permute_entries;
 
-   template <typename Iterator, typename _inverse>
-   void permute_rows(Iterator perm, _inverse)
+   template <typename TPerm, typename _inverse>
+   void permute_rows(const TPerm& perm, _inverse)
    {
       R=row_ruler::permute(R, perm, permute_entries(), _inverse());
    }
 
-   template <class Iterator, typename _inverse>
-   void permute_cols(Iterator perm, _inverse)
+   template <typename TPerm, typename _inverse>
+   void permute_cols(const TPerm& perm, _inverse)
    {
       permute_rows(perm, _inverse());
    }
 
-   template <typename Perm, typename InvPerm>
-   void copy_permuted(const Table& src, const Perm& perm, const InvPerm& inv_perm)
+   template <typename TPerm, typename TInvPerm>
+   void copy_permuted(const Table& src, const TPerm& perm, const TInvPerm& inv_perm)
    {
       permute_entries::copy(src.R, R, perm, inv_perm);
    }

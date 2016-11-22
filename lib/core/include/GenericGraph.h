@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -694,6 +694,15 @@ public:
       if (this->top().invalid_node(n))
          throw std::runtime_error("Graph::adjacent_nodes - node id out of range or deleted");
       return this->top().adjacent_nodes(n);
+   }
+
+   template <typename TPerm>
+   typename std::enable_if<isomorphic_to_container_of<TPerm, int>::value>::type
+   permute_nodes(const TPerm& perm)
+   {
+      if (perm.size() != this->top().dim())
+         throw std::runtime_error("Graph::permute_nodes - dimension mismatch");
+      this->top().permute_nodes(perm);
    }
 };
 
