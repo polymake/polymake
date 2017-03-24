@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -69,11 +69,6 @@ PPCODE:
         PUSHs(rhs);
         PUSHs(AvARRAY(descr)[2]);
       }
-      o->op_ppaddr=&Perl_pp_null;
-#if PerlVersion >= 5160
-      /* remove the LVALUE flag */
-      PL_op->op_private &= ~OPpLVAL_INTRO;
-#endif
       assign=OP_SASSIGN;
 
    } else if ((o=method_named_op(PL_op), o && (o->op_private & MethodIsCalledOnLeftSideOfArrayAssignment))) {
@@ -87,10 +82,6 @@ PPCODE:
       PUSHs(prop);
       PUSHs(rhs);
       PUSHs(AvARRAY(descr)[2]);
-#if PerlVersion >= 5160
-      /* remove the LVALUE flag */
-      PL_op->op_private &= ~OPpLVAL_INTRO;
-#endif
       assign=OP_AASSIGN;
 
    } else {
@@ -282,9 +273,8 @@ create_prop_accessor(descr, pkg)
    SV* pkg;
 PPCODE:
 {
-   SV* sub=newSV(0);
+   SV* sub=newSV_type(SVt_PVCV);
    HV* stash=NULL;
-   sv_upgrade(sub, SVt_PVCV);
    CvXSUB(sub)=&XS_Polymake__Core__Object__prop_accessor;
    CvFLAGS(sub)=CvFLAGS(cv) | CVf_ANON | CVf_LVALUE | CVf_METHOD | CVf_NODEBUG;
    if (SvPOK(pkg))

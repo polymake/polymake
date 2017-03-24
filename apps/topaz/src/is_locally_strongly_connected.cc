@@ -20,18 +20,18 @@
 #include "polymake/graph/connected.h"
 
 namespace polymake { namespace topaz {
-  
+
 bool is_locally_strongly_connected(perl::Object p, perl::OptionSet options)
 {
-   const HasseDiagram HD = p.give("HASSE_DIAGRAM");
-   const int dim = HD.dim()-1;
+   const Lattice<BasicDecoration>& HD = p.give("HASSE_DIAGRAM");
+   const int dim = HD.rank()-2;
 
    const bool verbose=options["verbose"],
                   all=options["all"];
    bool loc_str_conn = true;
 
    for (int d=0; d<dim; ++d)
-      for (Entire<sequence>::iterator f=entire(HD.node_range_of_dim(d)); !f.at_end(); ++f) {
+      for (auto f=entire(HD.nodes_of_rank(d+1)); !f.at_end(); ++f) {
          const FacetList star(star_in_HD(HD,*f));
 
          if ( !graph::is_connected(dual_graph(star)) ) {

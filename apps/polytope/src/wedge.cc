@@ -130,14 +130,14 @@ perl::Object wedge(perl::Object p_in, const int wedge_facet, const Scalar& z, co
    p_out.take("N_VERTICES") << VIF_out.cols(); 
    p_out.take("VERTICES_IN_FACETS") << VIF_out;
 
-   if (options["relabel"]) {
+   if (!options["no_labels"]) {
       std::vector<std::string> labels(n_vertices_out);
       read_labels(p_in, "VERTEX_LABELS", labels);
       const std::string tick="'";
 
-      copy(entire(attach_operation(select(labels, sequence(0,n_vertices)-VIF[wedge_facet]),
-                                   constant(tick), operations::add())),
-           labels.begin()+n_vertices);
+      copy_range(entire(attach_operation(select(labels, sequence(0,n_vertices)-VIF[wedge_facet]),
+                                         constant(tick), operations::add())),
+                 labels.begin()+n_vertices);
 
       p_out.take("VERTEX_LABELS") << labels;
    }
@@ -151,8 +151,6 @@ perl::Object wedge(perl::Object p_in, const int wedge_facet, const Scalar& z, co
       const Vector<Scalar> z0=p_in.give("VERTEX_BARYCENTER");
       const Matrix<Scalar> V_out=wedge_coord(V,z0,VIF,wedge_facet,z,z_prime);
       p_out.take("VERTICES") << V_out;
-      const Matrix<Scalar> empty;
-      p_out.take("LINEALITY_SPACE") << empty;
       p_out.take("BOUNDED") << true;
    }
    return p_out;    
@@ -169,7 +167,8 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# @param Rational z default value is 0."
                   "# @param Rational z_prime default value is -//z//, or 1 if //z//==0."
                   "# @option Bool no_coordinates don't compute coordinates, pure combinatorial description is produced."
-                  "# @option Bool relabel create vertex labels:"
+                  "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytopes. default: 0"
+                  "#  By default, the vertices get labelled as follows:"
                   "#  The bottom facet vertices obtain the labels from the original polytope;"
                   "#  the labels of their clones in the top facet get a tick (') appended."
                   "# @return Polytope"
@@ -184,7 +183,7 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# | 1 1 -1 2"
                   "# | 1 1 1 2",
                   &wedge,
-                  "wedge(Polytope, $; $=0, $=($_[2]==0 ? 1 : -$_[2]), { no_coordinates => undef, relabel => undef})");
+                  "wedge(Polytope, $; $=0, $=($_[2]==0 ? 1 : -$_[2]), { no_coordinates => undef, no_labels => 0})");
 
 //                "wedge<Scalar>(Polytope<type_upgrade<Scalar>>, Int; type_upgrade<Scalar>=0, type_upgrade<Scalar>=($_[2]==0 ? 1 : -$_[2]), { no_coordinates => undef, relabel => undef})");
 } }

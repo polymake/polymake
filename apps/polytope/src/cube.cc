@@ -20,7 +20,6 @@
 #include "polymake/SparseMatrix.h"
 #include "polymake/polytope/CubeFacets.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/group/group_domain.h"
 
 namespace polymake { namespace polytope {
 
@@ -60,18 +59,11 @@ perl::Object cube(int d, Scalar x_up, Scalar x_low, perl::OptionSet options)
    // generate the combinatorial symmetry group on the facets
    bool group_flag = options["group"];
    if ( group_flag ) {
-      perl::Object g("group::GroupOfPolytope");
-      g.set_description() << "full combinatorial group on facets of " << d << "-dim cube" << endl;
-      g.set_name("fullCombinatorialGroupOnFacets");
-      g.take("DOMAIN") << polymake::group::OnFacets;
       Array< Array< int > > gens(d);
       if ( d==1 ) {
-         Array< int > gen(2);
-         gen[0]=1;
-         gen[1]=0;
-         gens[0]=gen;
+         gens[0]=Array<int>{1, 0};
       } else {
-         Array< int > gen = sequence(0,2*d);
+         Array<int> gen{sequence(0, 2*d)};
          gen[0]=1;
          gen[1]=0;
 
@@ -96,15 +88,21 @@ perl::Object cube(int d, Scalar x_up, Scalar x_low, perl::OptionSet options)
          }
       }
 
-      g.take("GENERATORS") << gens;
-      p.take("GROUP") << g;
+      perl::Object a("group::PermutationAction");
+      a.take("GENERATORS") << gens;
 
+      perl::Object g("group::Group");
+      g.set_description() << "full combinatorial group on facets" << endl;
+      g.set_name("fullCombinatorialGroupOnFacets");
+      g.take("FACETS_ACTION") << a;
+
+      p.take("GROUP") << g;
    }
 
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("CONE_DIM") << d+1;
    p.take("FACETS") << F;
-   p.take("AFFINE_HULL") << Matrix<Scalar>();
+   p.take("AFFINE_HULL") << Matrix<Scalar>(0, d+1);
    p.take("VERTICES_IN_FACETS") << VIF;
    p.take("BOUNDED") << true;
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,16 +17,22 @@
 #ifndef POLYMAKE_INTERNAL_SPARSE2D_RULER_H
 #define POLYMAKE_INTERNAL_SPARSE2D_RULER_H
 
-#include "polymake/pair.h"
+#include "polymake/internal/iterators.h"
 
 namespace pm { namespace sparse2d {
 
 template <typename Container, typename prefix_data=nothing>
-class ruler {
+class ruler
+   : public plain_array< ruler<Container, prefix_data>, Container > {
 protected:
    int _alloc_size;
    pair<int, prefix_data> size_and_prefix;
    Container containers[1];
+
+   friend class plain_array< ruler<Container, prefix_data>, Container >;
+
+   Container* get_data() { return containers; }
+   const Container* get_data() const { return containers; }
 
    static size_t total_size(size_t n)
    {
@@ -37,7 +43,7 @@ protected:
    {
       Container *cur=containers+size_and_prefix.first;
       for (int i=size_and_prefix.first; i<n; ++i, ++cur)
-         new(cur) Container(i);
+         construct_at(cur, i);
       size_and_prefix.first=n;
    }
 
@@ -46,8 +52,8 @@ protected:
       allocator alloc;
       ruler *r=reinterpret_cast<ruler*>(alloc.allocate(total_size(n)));
       r->_alloc_size=n;
-      if (!is_pod<prefix_data>::value && !identical<prefix_data,nothing>::value)
-         new(&r->size_and_prefix.second) prefix_data;
+      if (!std::is_pod<prefix_data>::value && !std::is_same<prefix_data, nothing>::value)
+         construct_at(&r->size_and_prefix.second);
       r->size_and_prefix.first=0;
       return r;
    }
@@ -57,6 +63,13 @@ protected:
       allocator alloc;
       alloc.deallocate(reinterpret_cast<allocator::value_type*>(r), total_size(r->_alloc_size));
    }
+
+   void destroy_containers()
+   {
+      for (typename ruler::reverse_iterator cur=this->rbegin(), end=this->rend();  cur != end;  ++cur)
+         destroy_at(cur.operator->());
+   }
+
 public:
    static ruler* construct(int n)
    {
@@ -70,10 +83,10 @@ public:
       int n=r2.size();
       ruler *r=allocate(n+add);
       Container *cur=r->containers, *end=cur+n;
-      for (const Container *src=r2.begin();  cur<end;  ++cur, ++src)
-         new(cur) Container(*src);
+      for (typename ruler::const_iterator src=r2.begin();  cur<end;  ++cur, ++src)
+         construct_at(cur, *src);
       for (end+=add; cur<end; ++cur, ++n)
-         new(cur) Container(n);
+         construct_at(cur, n);
       r->size_and_prefix.first=n;
       return r;
    }
@@ -84,16 +97,14 @@ public:
       ruler *r=allocate(n);
       int i=0;
       for (Container *cur=r->containers, *end=cur+n;  cur != end;  ++cur, ++src, ++i)
-         new(cur) Container(i,*src);
+         construct_at(cur, i, *src);
       r->size_and_prefix.first=n;
       return r;
    }
 
-   static void destroy(ruler *r)
+   static void destroy(ruler* r)
    {
-      Container *cur=r->end(), *first=r->begin();
-      while (cur > first)
-         std::_Destroy(--cur);
+      r->destroy_containers();
       deallocate(r);
    }
 
@@ -116,7 +127,7 @@ public:
          if (_do_delete) {
             Container *cur=old->containers+old->size_and_prefix.first, *first=old->containers+n;
             while (cur > first)
-               std::_Destroy(--cur);
+               destroy_at(--cur);
          }
          old->size_and_prefix.first=n;
 
@@ -128,9 +139,9 @@ public:
          n_alloc=old->_alloc_size+diff;
       }
 
-      ruler *r=allocate(n_alloc);
-      for (Container *src=old->begin(), *src_end=old->end(), *dst=r->containers;  src!=src_end;  ++src, ++dst)
-         relocate(src,dst);
+      ruler* r=allocate(n_alloc);
+      for (typename ruler::iterator src=old->begin(), src_end=old->end(), dst=r->begin();  src!=src_end;  ++src, ++dst)
+         relocate(src.operator->(), dst.operator->());
       r->size_and_prefix=old->size_and_prefix;
 
       deallocate(old);
@@ -138,11 +149,11 @@ public:
       return r;
    }
 
-   static ruler* resize_and_clear(ruler *r, int n)
+   static ruler* resize_and_clear(ruler* r, int n)
    {
       Container *cur=r->containers+r->size_and_prefix.first, *first=r->containers;
       while (cur > first)
-         std::_Destroy(--cur);
+         destroy_at(--cur);
 
       int n_alloc=n;
       int diff=n_alloc - r->_alloc_size, m=std::max(20, r->_alloc_size/5);
@@ -159,15 +170,16 @@ public:
 
    /// perm[i]==j => !inverse: old[j] moves to new[i]
    ///                inverse: old[i] moves to new[j]
-   template <typename Iterator, typename PermuteEntries, bool inverse>
-   static ruler* permute(ruler *old, Iterator perm, const PermuteEntries& perm_entries, bool2type<inverse>)
+   template <typename TPerm, typename PermuteEntries, bool inverse>
+   static ruler* permute(ruler* old, const TPerm& perm, PermuteEntries&& perm_entries, bool_constant<inverse>)
    {
       int n=old->size_and_prefix.first;
-      ruler *r=allocate(n);
-      for (Container *src=old->containers, *dst=r->containers, *end=dst+n;  dst!=end;  ++dst, ++perm)
-         perm_entries.relocate(src+(inverse ? 0 : *perm), dst+(inverse ? *perm : 0));
+      ruler* r=allocate(n);
+      auto perm_it=perm.begin();
+      for (Container *src=old->containers, *dst=r->containers, *end=dst+n;  dst!=end;  ++dst, ++perm_it)
+         perm_entries.relocate(src+(inverse ? 0 : *perm_it), dst+(inverse ? *perm_it : 0));
       r->size_and_prefix.first=n;
-      perm_entries(old,r);
+      perm_entries(old, r);
       deallocate(old);
       return r;
    }
@@ -185,40 +197,14 @@ public:
       return *pm::reverse_cast(cur,i,&ruler::containers);
    }
 
-   typedef Container value_type;
-   typedef value_type& reference;
-   typedef const value_type& const_reference;
-   typedef value_type* iterator;
-   typedef const value_type* const_iterator;
-   typedef std::reverse_iterator<iterator> reverse_iterator;
-   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
-
    int size() const { return size_and_prefix.first; }
-   int empty() const { return size()==0; }
    int max_size() const { return _alloc_size; }
-
-   iterator begin() { return containers; }
-   iterator end() { return containers + size(); }
-   const_iterator begin() const { return containers; }
-   const_iterator end() const { return containers + size(); }
-
-   reverse_iterator rbegin() { return reverse_iterator(end()); }
-   reverse_iterator rend() { return reverse_iterator(begin()); }
-   const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
-   const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
-
-   reference front() { return containers[0]; }
-   reference back() { return containers[size()-1]; }
-   reference operator[] (int i) { return containers[i]; }
-   const_reference front() const { return containers[0]; }
-   const_reference back() const { return containers[size()-1]; }
-   const_reference operator[] (int i) const { return containers[i]; }
 };
 
 } // end namespace sparse2d
 
 template <typename Container, typename prefix_data>
-struct spec_object_traits< sparse2d::ruler<Container,prefix_data> > : spec_object_traits<is_container> {
+struct spec_object_traits< sparse2d::ruler<Container, prefix_data> > : spec_object_traits<is_container> {
    static const int is_resizeable=0;    // since it has no standard resize() method
 };
 

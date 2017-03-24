@@ -78,7 +78,7 @@ protected:
       }
    };
 
-   void init(const HasseDiagram& HD);
+   void init(const Lattice<BasicDecoration>& HD);
 
    FacetList the_facets;
    UniformlyRandom<Integer> random_source;
@@ -87,7 +87,7 @@ protected:
    option next_move;
    Array<OptionsList> raw_options;
    Set<int> rev_move;
-   Array<int> the_flip_vector; 
+   Array<int> the_flip_vector;
    int apex;
    bool allow_rev_move;
    bool verbose;
@@ -96,19 +96,19 @@ protected:
 public:
    BistellarComplex() : dim(0), verts(0), apex(0), allow_rev_move(false), verbose(false), closed(true) {}
 
-   BistellarComplex(const HasseDiagram& HD, const RandomSeed& seed=RandomSeed(),
+   BistellarComplex(const Lattice<BasicDecoration>& HD, const RandomSeed& seed=RandomSeed(),
                     const bool verb=false, const bool in_closed=false, const bool in_allow_rev_move=false)
-      : random_source(seed), dim(HD.dim()-1), verts(0),
-        raw_options(dim+1), the_flip_vector((dim+1)/2), 
+      : random_source(seed), dim(HD.rank()-2), verts(0),
+        raw_options(dim+1), the_flip_vector((dim+1)/2),
         apex(0), allow_rev_move(in_allow_rev_move), verbose(verb), closed(in_closed)
    {
       init(HD);
    }
 
-   BistellarComplex(const HasseDiagram& HD, const pm::SharedRandomState& random_arg,
+   BistellarComplex(const Lattice<BasicDecoration>& HD, const pm::SharedRandomState& random_arg,
                     const bool verb=false, const bool in_closed=false, const bool in_allow_rev_move=false)
-      : random_source(random_arg), dim(HD.dim()-1), verts(0),
-        raw_options(dim+1), the_flip_vector((dim+1)/2), 
+      : random_source(random_arg), dim(HD.rank()-2), verts(0),
+        raw_options(dim+1), the_flip_vector((dim+1)/2),
         apex(0), allow_rev_move(in_allow_rev_move), verbose(verb), closed(in_closed)
    {
       init(HD);
@@ -128,7 +128,7 @@ public:
    {
       return find_move(dim_min,dim);
    }
-   
+
    int find_move()
    {
       return find_move(0,dim);
@@ -140,7 +140,7 @@ protected:
 
 public:
    // Executes what ever move is set by find_move() or find_move(const int).
-   // You MUST set a move by using find_move() or find_move(const int) before executing it. 
+   // You MUST set a move by using find_move() or find_move(const int) before executing it.
    void execute_move();
 
    // Finds minimal revers move >= dim_min and executes it. Return the dimension of the move.
@@ -203,7 +203,7 @@ public:
       return the_flip_vector;
    }
 };
-   
+
 } }
 
 #endif // POLYMAKE_TOPAZ_BISTELLAR_COMPLEX_H

@@ -47,6 +47,7 @@ property CONVEX_HULL : Polytope<Scalar> {
 # @category Geometry
 # Affine dimension of the point configuration.
 # Similar to [[Polytope::DIM]].
+# @return Int
 user_method DIM() : VECTOR_DIM {
    return $_[0]->VECTOR_DIM-1;
 }
@@ -54,6 +55,7 @@ user_method DIM() : VECTOR_DIM {
 # @category Geometry
 # Ambient dimension of the point configuration (without the homogenization coordinate).
 # Similar to [[Polytope::AMBIENT_DIM]].
+# @return Int
 user_method AMBIENT_DIM() : VECTOR_AMBIENT_DIM {
    return $_[0]->VECTOR_AMBIENT_DIM-1;
 }
@@ -87,7 +89,7 @@ property AFFINE_HULL : Matrix<Scalar>;
 
 # @category Combinatorics
 # Graph of the point configuration.
-# Two points are adjacent if they lie in a common edge of the [[CONVEX_HULL]].
+# Two points are adjacent if they are neigbours in a edge of the [[CONVEX_HULL]].
 property GRAPH : objects::Graph;
 
 
@@ -98,6 +100,10 @@ property FAR_POINTS : Set;
 # @category Geometry
 # The center of gravity of the point configuration.
 property BARYCENTER : Vector<Scalar>;
+
+# @category Geometry
+# True if (1, 0, 0, ...) is in the relative interior.
+property CENTERED : Bool;
 
 
 # @category Triangulation and volume
@@ -156,7 +162,7 @@ property SPLIT_COMPATIBILITY_GRAPH : objects::Graph;
 # @category Visualization
 # [[Polytope::VIF_CYCLIC_NORMAL]] of the [[CONVEX_HULL]], but with
 # the indices form [[POINTS]] instead of [[Polytope::VERTICES]]
-property PIF_CYCLIC_NORMAL : Array< Array<Int> >;
+property PIF_CYCLIC_NORMAL : Array<Array<Int>>;
 
 }
 

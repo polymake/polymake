@@ -27,7 +27,6 @@
 #include "polymake/SparseMatrix.h"
 #include "polymake/Array.h"
 #include "polymake/QuadraticExtension.h"
-#include "polymake/RationalFunction.h"
 #include "polymake/Set.h"
 
 namespace polymake { namespace common { namespace {
@@ -38,12 +37,11 @@ namespace polymake { namespace common { namespace {
       WrapperReturnNew(T0, (arg0.get<T1>()) );
    };
 
-   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>, perl::Canned< const pm::VectorChain<pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::Rational> const&, pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::Rational> const&> >);
+   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>>, perl::Canned< const pm::VectorChain<pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::Rational> const&, pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::Rational> const&> >);
    FunctionInstance4perl(new_X, Vector< Rational >, perl::Canned< const pm::VectorChain<pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::Rational> const&, pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::Rational> const&> >);
-   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>, perl::Canned< const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::Rational, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric> >);
+   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>>, perl::Canned< const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::Rational, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric> >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< Vector< Integer > > >, perl::Canned< const Vector< Integer > >);
-   Class4perl("Polymake::common::Vector__UniPolynomial_A_Rational_I_Int_Z", Vector< UniPolynomial< Rational, int > >);
-   OperatorInstance4perl(Binary_sub, perl::Canned< const Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void> > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void> >);
+   OperatorInstance4perl(Binary_sub, perl::Canned< const Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>> > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>> >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< Vector< Rational > > >, perl::Canned< const Vector< Rational > >);
    FunctionInstance4perl(new_X, Vector< Rational >, perl::Canned< const Array< Rational > >);
    FunctionInstance4perl(new_X, Vector< Rational >, perl::Canned< const Vector< int > >);
@@ -51,10 +49,10 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, Vector< int >, perl::Canned< const pm::SameElementVector<pm::Rational const&> >);
    FunctionInstance4perl(new_X, Vector< int >, perl::Canned< const pm::SameElementVector<int const&> >);
    FunctionInstance4perl(new_X, Vector< int >, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSet<int>, int> >);
-   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<int>&>, pm::Series<int, true>, void>, perl::Canned< const pm::VectorChain<pm::VectorChain<pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<int, false, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> >&, pm::NonSymmetric> const&, pm::Vector<int> const&> const&, pm::Vector<int> const&> >);
+   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<int>&>, pm::Series<int, true>>, perl::Canned< const pm::VectorChain<pm::VectorChain<pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<int, false, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> >&, pm::NonSymmetric> const&, pm::Vector<int> const&> const&, pm::Vector<int> const&> >);
    OperatorInstance4perl(Binary_mul, int, perl::Canned< const Wary< pm::SameElementVector<int const&> > >);
    FunctionInstance4perl(new_X, Vector< int >, perl::Canned< const pm::VectorChain<pm::SameElementVector<int const&> const&, pm::SameElementVector<int const&> const&> >);
-   OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void> > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<int> const&>, pm::Series<int, true>, void> >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>> > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<int> const&>, pm::Series<int, true>> >);
    OperatorInstance4perl(Binary__ora, perl::Canned< const pm::SameElementVector<pm::Integer const&> >, perl::Canned< const Matrix< Integer > >);
    OperatorInstance4perl(Binary__ora, perl::Canned< const pm::SameElementVector<pm::Rational const&> >, perl::Canned< const Matrix< Rational > >);
    OperatorInstance4perl(Binary__ora, perl::Canned< const pm::SameElementVector<pm::Rational const&> >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<pm::Rational const&> const&>, pm::Matrix<pm::Rational> const&> >);
@@ -74,10 +72,10 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary__ora, perl::Canned< const Vector< Integer > >, perl::Canned< const pm::SameElementVector<pm::Integer const&> >);
    FunctionInstance4perl(new_X, Vector< Integer >, perl::Canned< const pm::VectorChain<pm::Vector<pm::Integer> const&, pm::SameElementVector<pm::Integer const&> const&> >);
    OperatorInstance4perl(convert, Vector< double >, perl::Canned< const Vector< QuadraticExtension< Rational > > >);
-   OperatorInstance4perl(Binary__ora, perl::Canned< const pm::SameElementVector<pm::Rational const&> >, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Array<int, void> const&, pm::all_selector const&> >);
+   OperatorInstance4perl(Binary__ora, perl::Canned< const pm::SameElementVector<pm::Rational const&> >, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Array<int> const&, pm::all_selector const&> >);
    OperatorInstance4perl(Binary_div, perl::Canned< const Wary< pm::SameElementVector<int const&> > >, perl::Canned< const SparseMatrix< int, NonSymmetric > >);
-   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>, perl::Canned< const SparseVector< Rational > >);
+   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>>, perl::Canned< const SparseVector< Rational > >);
    OperatorInstance4perl(Binary__ora, perl::Canned< const Vector< Rational > >, perl::Canned< const Matrix< Rational > >);
-   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer> const&>, pm::Series<int, true>, void> >);
+   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>>, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer> const&>, pm::Series<int, true>> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

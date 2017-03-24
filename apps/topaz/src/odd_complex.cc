@@ -17,6 +17,7 @@
 #include "polymake/client.h"
 #include "polymake/graph/bipartite.h"
 #include "polymake/topaz/complex_tools.h"
+#include "polymake/topaz/hasse_diagram.h"
 #include "polymake/hash_map"
 
 namespace polymake { namespace topaz {
@@ -27,19 +28,19 @@ void odd_complex(perl::Object p)
    const bool is_pure = p.give("PURE");
    if (!is_pure)
       throw std::runtime_error("odd_complex: Complex is not PURE.");
-   HasseDiagram HD;
-   perl::Object hd("FaceLattice");
-   if ((p.lookup("HASSE_DIAGRAM") >> hd)) HD=HasseDiagram(hd);
-   else  HD = hasse_diagram(C,C[0].size()-1,-2);
-   
+   Lattice<BasicDecoration> HD;
+   perl::Object hd("Lattice<BasicDecoration>");
+   if ((p.lookup("HASSE_DIAGRAM") >> hd)) HD=Lattice<BasicDecoration>(hd);
+   else  HD = hasse_diagram_from_facets(C);
+
    if (C[0].size()-1 < 2)
       throw std::runtime_error("odd_complex: DIM of complex must be greater 2.");
-   
+
    bool output = false;
    std::list< Set<int> > odd_complex;
-   for (Entire<HasseDiagram::nodes_of_dim_set>::iterator f=entire(HD.nodes_of_dim(-3));
+   for (auto f=entire(HD.nodes_of_rank(HD.rank()-3));
         !f.at_end(); ++f) {
-      
+
       Set<int> star_facets;
       const Graph<Directed> HDgraph=HD.graph();
       for (Entire< Graph<Directed>::const_out_adjacent_node_list_ref >::const_iterator n=entire(HD.out_adjacent_nodes(*f));
@@ -48,7 +49,7 @@ void odd_complex(perl::Object p)
               !nn.at_end(); ++nn)
             star_facets += *nn;
       }
-      
+
       std::list< Set<int> > Link;
       Set<int> V_of_Link;
       for (Entire< Set<int> >::iterator s_it=entire(star_facets);
@@ -57,25 +58,25 @@ void odd_complex(perl::Object p)
          Link.push_back(l);
          V_of_Link += l;
       }
-      
+
       // create hash map for the vertices of Link
       hash_map<int, int> vertex_map(V_of_Link.size());
       int count=0;
       for (Entire< Set<int> >::iterator s_it=entire(V_of_Link);
            !s_it.at_end(); ++s_it, ++count)
          vertex_map[*s_it] = count;
-      
+
       Graph<> G(V_of_Link.size());
       for (Entire< std::list< Set<int> > >::iterator l_it=entire(Link);
            !l_it.at_end(); ++l_it)
          G.edge( vertex_map[ l_it->front() ], vertex_map[ l_it->back() ] );
-      
+
       if (graph::bipartite_sign(G)<0) {
          output = true;
          odd_complex.push_back(HD.face(*f));
       }
    }
-   
+
    if (output)
       p.take("ODD_SUBCOMPLEX.FACETS") << as_array(odd_complex);
    else

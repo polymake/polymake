@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -89,7 +89,9 @@ while (defined ($_=shift)) {
       print $conf{CXX}, "\n";
 
    } elsif ($_ eq "--cflags") {
-      $_="$conf{CsharedFlags} $conf{CXXflags}";
+      my ($major, $minor)=split /\./, $Version;
+      my $version_for_c=sprintf("%d%02d", $major, $minor);
+      $_="-DPOLYMAKE_VERSION=$version_for_c $conf{CsharedFlags} $conf{CXXflags}";
       if ($^O eq "darwin") {
          s/\$\{ARCHFLAGS\}/$conf{ARCHFLAGS}/;
       }
@@ -158,7 +160,7 @@ while (defined ($_=shift)) {
       my $libs="-lgmp $conf{Libs} $conf{LIBXML2_LIBS}";
       $libs=~s/\s+$//;
       if ($debug_asked=defined($debug)) {
-         print "-lpolymake-d -lpolymake-apps $libs\n";
+         print "-lpolymake-d -lpolymake-apps-d $libs\n";
       } else {
          print "-lpolymake -lpolymake-apps $libs\n";
       }

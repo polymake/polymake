@@ -26,7 +26,7 @@ template<typename Scalar>
 perl::Object pyramid(perl::Object p_in, const Scalar& z, perl::OptionSet options)
 {
    const bool noc = options["no_coordinates"],
-      relabel = options["relabel"];
+      relabel = !options["no_labels"];
 
    if (z==0 && !noc)
       throw std::runtime_error("pyramid: z must be non-zero");
@@ -60,8 +60,6 @@ perl::Object pyramid(perl::Object p_in, const Scalar& z, perl::OptionSet options
       const Vector<Scalar> z0= p_in.give("BOUNDED") ? p_in.give("VERTEX_BARYCENTER") : p_in.give("REL_INT_POINT");
       p_out.take("VERTICES") << (V | zero_vector<Scalar>()) /
          (z0 | z);
-      const Matrix<Scalar> empty;
-      p_out.take("LINEALITY_SPACE") << empty;
    }
 
    if (relabel) {
@@ -83,12 +81,12 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# @param Scalar z is the distance between the vertex barycenter and //v//,"
                           "#   default value is 1."
                           "# @option Bool no_coordinates don't compute new coordinates, produce purely combinatorial description."
-                          "# @option Bool relabel copy vertex labels from the original polytope,"
+                          "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytope. default: 0"
                           "#   label the new top vertex with \"Apex\"."
                           "# @return Polytope"
                           "# @example The following saves the pyramid of height 2 over the square to the variable $p."
                           "# The vertices are relabeled."
-                          "# > $p = pyramid(cube(2),2,relabel=>1);"
+                          "# > $p = pyramid(cube(2),2);"
                           "# To print the vertices and vertex labels of the newly generated pyramid, do this:"
                           "# > print $p->VERTICES;"
                           "# | 1 -1 -1 0"
@@ -98,7 +96,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# | 1 0 0 2"
                           "# > print $p->VERTEX_LABELS;"
                           "# | 0 1 2 3 Apex",
-                          "pyramid<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=1, { no_coordinates => 0, relabel => undef })");
+                          "pyramid<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=1, { no_coordinates => 0, no_labels => 0 })");
 } }
 
 // Local Variables:

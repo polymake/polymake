@@ -18,7 +18,6 @@
 #define POLYMAKE_IDEAL_SINGULAR_TERM_ORDER_DATA_H
 
 #include "polymake/client.h"
-#include "polymake/Ring.h"
 #include "polymake/Polynomial.h"
 
 #include "Singular/libsingular.h"
@@ -27,20 +26,24 @@ namespace polymake {
 namespace ideal {
 namespace singular {
 
-int StringToSingularTermOrder(std::string ringOrderName);
+// since singular commit 90f715a0b0 the type of the term order is rRingOrder_t* instead of int*
+// in various functions (e.g. rDefault) and as member for ip_sring
+// since there is no version number to determine this we use the type of the member here
+typedef typename std::remove_pointer<decltype(ip_sring::order)>::type singular_order_type;
+
+singular_order_type StringToSingularTermOrder(std::string ringOrderName);
 
 template<typename OrderType>
 class SingularTermOrderData_base{
 
 protected:
    const OrderType orderData;
-   const Ring<> polymakeRing;
+   const int n_vars;
 
 public:
    // Constructor:
-   SingularTermOrderData_base(const Ring<>& r, const OrderType& order) : orderData(order), polymakeRing(r){
-      int nvars = polymakeRing.n_vars();
-      if(nvars == 0) 
+   SingularTermOrderData_base(const int n_vars, const OrderType& order) : orderData(order), n_vars(n_vars){
+      if(n_vars == 0) 
          throw std::runtime_error("Given ring is not a polynomial ring.");
    }
    // Comparison:
@@ -55,8 +58,9 @@ public:
    int* get_block1() const;
    // Depending on template
    int** get_wvhdl() const;
-   int* get_ord() const;
+   singular_order_type* get_ord() const;
 
+  const OrderType& get_orderData() const { return orderData; }
 };
 
 template <typename OrderType> 
@@ -85,9 +89,8 @@ int* SingularTermOrderData_base<OrderType>::get_block0() const {
 template<typename OrderType>
 int* SingularTermOrderData_base<OrderType>::get_block1() const {
    int ord_size = this->get_ord_size();
-   int nvars = polymakeRing.n_vars();
    int* block1 = (int*)omalloc0((ord_size+1)*sizeof(int));
-   block1[0]=nvars;
+   block1[0]=n_vars;
    block1[1]=0;
    block1[2]=0;
    return block1;
@@ -101,7 +104,7 @@ int* SingularTermOrderData_base<OrderType>::get_block1() const {
 
 template<typename Scalar> class SingularTermOrderData<Matrix<Scalar> > : public SingularTermOrderData_base<Matrix<Scalar> > {
 public:
-   SingularTermOrderData(const Ring<>& r, const Matrix<Scalar>& order) : SingularTermOrderData_base< Matrix<Scalar> >(r,order) {}
+   SingularTermOrderData(const int n_vars, const Matrix<Scalar>& order) : SingularTermOrderData_base< Matrix<Scalar> >(n_vars,order) {}
 
    int get_ord_size() const {
      return this->orderData.rows()+1;
@@ -120,7 +123,7 @@ public:
 
    int* get_block1() const {
       int ord_size = this->get_ord_size();
-      int nvars = this->polymakeRing.n_vars();
+      int nvars = this->n_vars;
       int* block1 = (int*)omalloc0((ord_size+2)*sizeof(int));
       for(int i = 0; i < ord_size; ++i) {
         block1[i] = nvars;
@@ -130,9 +133,9 @@ public:
       return block1;
    }
 
-   int* get_ord() const {
+   singular_order_type* get_ord() const {
       int ord_size = this->get_ord_size();
-      int* ord=(int*)omalloc0((ord_size+2)*sizeof(int));
+      singular_order_type* ord=(singular_order_type*)omalloc0((ord_size+2)*sizeof(singular_order_type));
       for(int i = 0; i < ord_size-1; ++i) {
         ord[i] = ringorder_a;
       }
@@ -143,7 +146,7 @@ public:
 
    int** get_wvhdl() const {
       int ord_size = this->get_ord_size();
-      int nvars = this->polymakeRing.n_vars();
+      int nvars = this->n_vars;
       int** wvhdl=(int**)omalloc0((ord_size+2)*sizeof(int*));
       for(int i =0; i<ord_size-1; i++){
          wvhdl[i] = (int*)omalloc0(nvars*sizeof(int));
@@ -160,20 +163,19 @@ public:
 
 template<typename Scalar> class SingularTermOrderData<Vector<Scalar> > : public SingularTermOrderData_base<Vector<Scalar> > {
 public:
-   SingularTermOrderData(const Ring<>& r, const Vector<Scalar>& order) : SingularTermOrderData_base< Vector<Scalar> >(r,order) {}
+   SingularTermOrderData(const int n_vars, const Vector<Scalar>& order) : SingularTermOrderData_base< Vector<Scalar> >(n_vars,order) {}
 
-   int* get_ord() const {
+   singular_order_type* get_ord() const {
       int ord_size = this->get_ord_size();
-      int* ord=(int*)omalloc0((ord_size+1)*sizeof(int));
+      singular_order_type* ord=(singular_order_type*)omalloc0((ord_size+1)*sizeof(singular_order_type));
       ord[1]=ringorder_c;
-      ord[2]=0;
       ord[0] = ringorder_wp;
       return ord;
    }
 
    int** get_wvhdl() const {
       int ord_size = this->get_ord_size();
-      int nvars = this->polymakeRing.n_vars();
+      int nvars = this->n_vars;
       int** wvhdl=(int**)omalloc0((ord_size+1)*sizeof(int*));
       wvhdl[0]=(int*)omalloc0(nvars*sizeof(int));
       for(int i =0; i<nvars; i++){
@@ -187,12 +189,11 @@ public:
 
 template<> class SingularTermOrderData<std::string> : public SingularTermOrderData_base<std::string> {
 public:
-   SingularTermOrderData(const Ring<>& r, const std::string& order) : SingularTermOrderData_base<std::string>(r,order) {}
-   int* get_ord() const {
+   SingularTermOrderData(const int n_vars, const std::string& order) : SingularTermOrderData_base<std::string>(n_vars,order) {}
+   singular_order_type* get_ord() const {
       int ord_size = this->get_ord_size();
-      int* ord=(int*)omalloc0((ord_size+1)*sizeof(int));
+      singular_order_type* ord=(singular_order_type*)omalloc0((ord_size+1)*sizeof(singular_order_type));
       ord[1]=ringorder_c;
-      ord[2]=0;
       ord[0] = StringToSingularTermOrder(orderData);
       return ord;
    }
@@ -208,6 +209,24 @@ public:
 } // end namespace singular
 } // end namespace ideal
 } // end namespace polymake
+
+namespace pm {
+namespace operations {
+
+// for use in Maps
+template <typename OrderType>
+struct cmp_opaque<polymake::ideal::singular::SingularTermOrderData<OrderType>, void> {
+  typedef polymake::ideal::singular::SingularTermOrderData<OrderType> first_argument_type;
+  typedef first_argument_type second_argument_type;
+  typedef cmp_value result_type;
+
+  result_type operator() (const first_argument_type& l, const second_argument_type& r) const
+  {
+    return operations::cmp()(l.get_orderData(), r.get_orderData());
+  }
+};
+
+} }
 
 #endif
 

@@ -20,7 +20,7 @@
 namespace pm {
 
 // forward declaration, needed in perl glue code for an explicit specialization.
-template <typename E, typename SharedParams=void>
+template <typename E, typename... SharedParams>
 class Array;
 
 }

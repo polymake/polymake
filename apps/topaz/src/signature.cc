@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -30,7 +30,7 @@ int signature(perl::Object p)
    GR = ones_vector<Rational>(GR.rows()) | GR;
 
    const Array< Set<int> > F=p.give("FACETS");
-   graph::BFSiterator<Graph<>, graph::Visitor<graph::BipartiteColoring> > it(DG, nodes(DG).front());
+   graph::BFSiterator<Graph<>, graph::VisitorTag<graph::BipartiteColoring>> it(DG, nodes(DG).front());
    int sign=0;
 
    try {

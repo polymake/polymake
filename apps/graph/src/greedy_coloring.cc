@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,7 +17,7 @@
 #include "polymake/client.h"
 #include "polymake/Graph.h"
 #include "polymake/Set.h"
-#include "polymake/graph/BFSiterator.h"
+#include "polymake/graph/graph_iterators.h"
 
 namespace polymake { namespace graph {
 
@@ -25,19 +25,19 @@ NodeMap<Undirected,int> greedy_coloring(const Graph<>& G)
 {
    NodeMap<Undirected,int> C(G,-1);
 
-   BFSiterator< Graph<>, Visitor< BoolNodeVisitor<true> > > it(G, nodes(G).front());
+   BFSiterator<Graph<>, VisitorTag<NodeVisitor<true>>> it(G, nodes(G).front());
    while (true) {
       while (!it.at_end()) {
          const int n=*it;
          Set<int> forbidden_colors;
-         for (Entire<Graph<>::out_edge_list>::const_iterator e=entire(G.out_edges(n)); !e.at_end(); ++e)
-            forbidden_colors += C[e.to_node()];
+         for (auto to_node : G.out_adjacent_nodes(n))
+            forbidden_colors += C[to_node];
          forbidden_colors -= -1;
          C[n]=(range(0,forbidden_colors.size())-forbidden_colors).front();
          ++it;
       }
-      if (it.unvisited_nodes()>0)
-         it.reset(it.node_visitor().get_visited_nodes().front());
+      if (it.undiscovered_nodes() != 0)
+         it.process(it.node_visitor().get_visited_nodes().front());
       else
          break;
    }

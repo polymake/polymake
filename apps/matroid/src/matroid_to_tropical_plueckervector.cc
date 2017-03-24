@@ -36,12 +36,14 @@ int rank_of_set(const Set<int> set, const Set<Set<int> > bases){
    return rank;
 }
 
-perl::ListReturn matroid_plueckervector(perl::Object matroid){
+perl::ListReturn matroid_plueckervector(perl::Object matroid)
+{
    const Set< Set<int> > bases=matroid.give("BASES");
    const int r = matroid.give("RANK");
    const int n = matroid.give("N_ELEMENTS");
-   Vector<int> char_vec(Integer::binom(n,r).to_int());
-   Vector<int> rank_vec(Integer::binom(n,r).to_int());
+   const int k(Integer::binom(n,r));
+   Vector<int> char_vec(k);
+   Vector<int> rank_vec(k);
 
    int l=0;
    for (Entire< Subsets_of_k<const sequence&> >::const_iterator i=entire(all_subsets_of_k(sequence(0,n),r)); !i.at_end(); ++i,++l){
@@ -59,15 +61,16 @@ perl::ListReturn matroid_plueckervector(perl::Object matroid){
    return list_ret;
 }
 
-perl::Object matroid_from_characteristic_vector(const Vector<Integer> vec,const int r,const int n){ 
-   if(vec.dim()!=Integer::binom(n,r).to_int()){
+perl::Object matroid_from_characteristic_vector(const Vector<Integer>& vec, const int r, const int n)
+{
+   if (vec.dim() != Integer::binom(n,r)) {
       throw std::runtime_error("matroid_from_characteristic_vector: dimension of the vector does not fit with the given rank and the number of elments");
    }
    perl::Object m("Matroid");
    std::list< Set<int> > bases;
    int n_bases=0;
    int j=0;
-  
+
    //test for each subset of size r
    for (Entire< Subsets_of_k<const sequence&> >::const_iterator i=entire(all_subsets_of_k(sequence(0,n),r)); !i.at_end(); ++i,++j) {    
       if (vec[j]==1) {
@@ -75,7 +78,7 @@ perl::Object matroid_from_characteristic_vector(const Vector<Integer> vec,const 
 	 ++n_bases;
       }
    }
-   
+
    m.take("BASES") << bases;
    m.take("N_BASES") << n_bases;
    m.take("RANK") << r;

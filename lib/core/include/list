@@ -34,8 +34,8 @@ struct spec_object_traits< std::list<Value,Alloc> >
 template <typename Value, typename Alloc> inline
 void relocate(std::list<Value,Alloc>* from, std::list<Value,Alloc>* to)
 {
-   (new(to) std::list<Value,Alloc>())->swap(*from);
-   _Destroy(from);
+   construct_at(to)->swap(*from);
+   destroy_at(from);
 }
 
 #if defined(__GLIBCXX__)
@@ -59,15 +59,15 @@ struct iterator_cross_const_helper<_GLIBCXX_STD::_List_const_iterator<Value>, tr
 #elif defined(_LIBCPP_VERSION)
 
 template <typename Value>
-struct iterator_cross_const_helper<std::__1::__list_iterator<Value,void*>,true>{
-   typedef std::__1::__list_iterator<Value,void*> iterator;
-   typedef std::__1::__list_const_iterator<Value,void*> const_iterator;
+struct iterator_cross_const_helper<std::__list_iterator<Value,void*>,true>{
+   typedef std::__list_iterator<Value,void*> iterator;
+   typedef std::__list_const_iterator<Value,void*> const_iterator;
 };
 
 template <typename Value>
-struct iterator_cross_const_helper<std::__1::__list_const_iterator<Value,void*>,true>{
-   typedef std::__1::__list_iterator<Value,void*> iterator;
-   typedef std::__1::__list_const_iterator<Value,void*> const_iterator;
+struct iterator_cross_const_helper<std::__list_const_iterator<Value,void*>,true>{
+   typedef std::__list_iterator<Value,void*> iterator;
+   typedef std::__list_const_iterator<Value,void*> const_iterator;
 };
 
 #endif

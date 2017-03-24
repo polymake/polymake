@@ -17,43 +17,48 @@
 #include "polymake/client.h"
 #include "polymake/PowerSet.h"
 #include "polymake/Integer.h"
-#include "polymake/graph/HasseDiagram.h"
+#include "polymake/graph/Lattice.h"
+#include "polymake/graph/Decoration.h"
 #include "polymake/Bitset.h"
 #include "polymake/hash_set"
 #include "polymake/list"
 
 namespace polymake { namespace topaz {
-  
-Array<Set<int> > minimal_non_faces(const graph::HasseDiagram HD)
+
+using graph::Lattice;
+
+template <typename Decoration, typename SeqType>
+Array<Set<int>> minimal_non_faces(const perl::Object HD_obj)
 {
 #if POLYMAKE_DEBUG
    const bool debug_print = perl::get_debug_level() > 1;
 #endif
+   Lattice<Decoration, SeqType> HD(HD_obj);
 
-   const int dim = HD.dim()-1;  // dimension of the complex = HD.dim()-1
-   std::list< Set<int> > min_non_faces;
+   const int dim = HD.rank()-2; // dimension of the complex = HD.dim()-1
+   std::list<Set<int>> min_non_faces;
 
    // determine the start level (the highest complete level)
    int start_dim = 1;
-   while ( HD.nodes_of_dim(start_dim).size() == Integer::binom(dim,start_dim) )  ++start_dim;
+   while ( HD.nodes_of_rank(start_dim+1).size() == Integer::binom(dim,start_dim) )  ++start_dim;
    --start_dim;
 
-   const int n_vertices=HD.node_range_of_dim(0).size(), top_node=HD.top_node();
+   const int n_vertices=HD.nodes_of_rank(1).size(), top_node=HD.top_node();
 
    // iterate over all levels of HD and determine the minimal non-faces one above
    for (int d=start_dim; d<=dim; ++d) {
 
       // create hash set containing all faces of this dimension
-      hash_set< Set<int> > faces(HD.node_range_of_dim(d).size());
-      for (Entire<sequence>::const_iterator it=entire(HD.node_range_of_dim(d)); !it.at_end(); ++it)
+      hash_set< Set<int> > faces(HD.nodes_of_rank(d+1).size());
+      for (auto it=entire(HD.nodes_of_rank(d+1)); !it.at_end(); ++it)
          faces.insert(HD.face(*it));
-      const hash_set< Set<int> >::iterator faces_end = faces.end();  
+      const hash_set< Set<int> >::iterator faces_end = faces.end();
 
       // iterate over all faces of this dimension
-      for (Entire<sequence>::const_iterator it=entire(HD.node_range_of_dim(d)); !it.at_end(); ++it) {
+      for (auto it=entire(HD.nodes_of_rank(d+1)); !it.at_end(); ++it) {
          const int n=*it;
          const Set<int>& f= HD.face(n);
-         
+
          Bitset non_candidates(n_vertices);
          for (Entire<Graph<Directed>::out_edge_list>::const_iterator e=entire(HD.out_edges(n)); !e.at_end(); ++e)
             if (e.to_node() != top_node)
@@ -92,10 +97,10 @@ Array<Set<int> > minimal_non_faces(const graph::HasseDiagram HD)
       }  // end iterate over all faces of this dimension
    }
 
-   return min_non_faces;
+   return Array<Set<int>>(min_non_faces);
 }
 
-Function4perl(&minimal_non_faces, "minimal_non_faces(FaceLattice)");
+FunctionTemplate4perl("minimal_non_faces<Decoration, SeqType>(Lattice<Decoration, SeqType>)");
 
 } }
 

@@ -13,6 +13,88 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+# @category Visualization
+options %Visual::Graph::TightSpanDecorations=(
+   %Visual::Graph::decorations,
+
+   # Array<String> Labels for the taxa of the metric.
+   Taxa=>undef,
+);
+
+
+object PolyhedralComplex{
+
+   # @category Visualization
+   # This is a variation of [[Polytope::VISUAL_BOUNDED_GRAPH]] for the special case of a tight span.
+   # The vertices are embedded according to the metric, the others are hung in between.
+   # This only produces meaningful results for extended tight spans produced from metrics, e.g. through
+   # [[metric_extended_tight_span]].
+   # @options %Visual::Graph::Decorations
+   # @option Array<String> Taxa Labels for the taxa of the metric.
+   # @option Int seed random seed value for the string embedder
+   # @option String norm which norm to use when calculating the distances between metric vectors ("max" or "square")
+   # @return Visual::Graph
+
+user_method VISUAL_METRIC_TIGHT_SPAN(%Visual::Graph::TightSpanDecorations, { norm => enum("max=default", "square"), seed => undef }) {
+   my ($this, $decor, $options)=@_;
+   my $BG=$this->GRAPH;
+   my $metric = new Matrix($this->VERTICES->cols-1,$this->VERTICES->cols);
+   my @tentacle_indices = ();
+   my @tentacles = ();
+   my $labels = new Array<String>([ (" ") x ($this->VERTICES->rows+$this->VERTICES->cols)]);
+
+   my $Taxa = $$decor{"Taxa"};
+   if(!defined $Taxa) {
+      $Taxa = new Array<String>([map {"".$_} (0 .. $this->VERTICES->cols()-2)]);
+   }
+   delete($$decor{"Taxa"});
+
+
+   for (my $i=0; $i<$this->N_VERTICES; ++$i) {
+      if ( $BG->ADJACENCY->degree($i) == 1) {
+         for( my $j=1; $j<$this->VERTICES->cols; ++$j ){
+            if($this->VERTICES->[$i][$j]==0){
+               $metric->row($j-1) = $this->VERTICES->row($i);
+               push @tentacle_indices, $i;
+               push @tentacles, $j-1;
+               $labels->[$i] = $Taxa->[$j-1];
+               last;
+            }
+         }
+      }
+   }
+   for( my $j=0; $j<$this->VERTICES->cols-1; ++$j ){
+      if( is_zero($metric->row($j) )){
+         for (my $i=0; $i<$this->N_VERTICES; ++$i){
+            if($this->VERTICES->[$i][$j+1]==0){
+               for (my $k=1;$k<$this->VERTICES->cols;++$k){
+                  if($metric->[$j][$k]==0){
+                     $metric->[$j][$k] = $this->VERTICES->[$i][$k];
+                  }
+                  else{
+                     $metric->[$j][$k] = min($metric->[$j][$k], $this->VERTICES->[$i][$k]);
+                  }
+                  # $labels->[$i] = $this->VERTEX_LABELS->[$i]; This is not unique
+               }
+            }
+         } 
+      }
+   }
+   my ($tentacle_graph, $edge_weights)=graph::tentacle_graph(\@tentacles, new Matrix($metric->minor(All,~[0])));
+   my $node_colors=sub { $BG->ADJACENCY->degree($_[0])==1 ? $Visual::Color::vertices : $Visual::Color::non_tax_vertices };
+   my $float_vertices = convert_to<Float>($this->VERTICES/dense( zero_vector($this->VERTICES->cols-1)|unit_matrix($this->VERTICES->cols-1) ));
+
+   my $Graph=new Visual::Graph($decor,
+      Name => "Tight Span of " . $this->name,
+      Graph => $BG,
+      Coord => bounded_embedder($BG->ADJACENCY,$float_vertices,new Set($this->VERTICES->rows..$this->VERTICES->rows+$this->VERTICES->cols-2),new Set(@tentacle_indices), spring_embedding_3d($tentacle_graph, 'edge-weights' => $edge_weights, $options)->compute, $options->{norm} eq "max"),
+      NodeLabels => $labels,
+      NodeColor => $node_colors,
+   );
+   visualize($Graph);
+}
+}
+
 # @topic objects/Visual::PolyhedralFan
 # @category Visualization
 # Visualization of a polyhedral fan as a graph
@@ -37,12 +119,12 @@ object PolyhedralFan {
 user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cutoff}) : RAYS, MAXIMAL_CONES, LINEALITY_SPACE {
    my ($this,$decor,$cutoff_decor)=@_;
    $decor->{VertexStyle} ||= "hidden";
-   $cutoff_decor=$cutoff_decor->{CutOff};
-   my $cutoff_decor3d=$cutoff_decor;
-   my $cutoff_decor2d=$cutoff_decor;
-   unless (is_hash($cutoff_decor)) {
-     $cutoff_decor3d={ FacetColor => $cutoff_decor };
-     $cutoff_decor2d={ EdgeColor => $cutoff_decor };
+   my $cutoff_color = $cutoff_decor->{CutOff};
+   my $cutoff_decor3d=$cutoff_color;
+   my $cutoff_decor2d=$cutoff_color;
+   unless (is_hash($cutoff_color)) {
+     $cutoff_decor3d={ FacetColor => $cutoff_color };
+     $cutoff_decor2d={ EdgeColor => $cutoff_color };
    }
    my $d=$this->RAYS->cols;
    my $rays=normalized(convert_to<Float>($this->RAYS));
@@ -69,29 +151,21 @@ user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cu
                                        EdgeColor => "0 0 0",
                                       );
    push @cells_visual, $rays_vgraph;
+
+   my $ind = $this->MAXIMAL_CONES_INCIDENCES;
+   my $i = 0;
+ 
    foreach (@{$this->MAXIMAL_CONES}) {
-      my $cone=$_;
-      my $all_ones=ones_vector<Float>($cone->size()+1);
-      my $v=$all_ones | ($rays->minor($cone,All) / $zero);
-# FIXME #885: the following is too costly
-# Either add additional properties FACETS and VERTICES_IN_FACETS from MAXIMAL_CONES_FACETS etc
-# or create suitable visual objects directly.
-      my $p=new polytope::Polytope<Float>(VERTICES => $v, LINEALITY_SPACE => (zero_vector<Float>($lineality->rows)) | $lineality);
+      my $maximal_cone=$_;
+      my $ftr = $ind->[$i]->minor(All, $maximal_cone);
 
-      my $pv= $lineality->rows > 0 && $this->FAN_DIM > 1 ?
-         $p->VISUAL( $decor , BoundingBox=>$bbox ) :
-         $p->VISUAL( $decor );
-
-      my (@cutoff_attrs);
-      my $dim=$p->DIM;
-      if ($dim==3) {
-        while (my @kv=each %$cutoff_decor3d) {
-          my ($attr, $value)=@kv;
-          push @cutoff_attrs, $attr, sub { $_[0] < $p->FACETS->rows && $p->FACETS->[shift]->[0] ? $value : undef };
-        }
-      }
-      $pv->basis_solid->merge(@cutoff_attrs);
-      push @cells_visual, $pv;
+      my $cone = new polytope::Cone<Rational>(
+          RAYS => $this->RAYS->minor($maximal_cone,All),
+          FACETS_THRU_RAYS => $ftr,
+          LINEALITY_SPACE => $this->LINEALITY_SPACE);
+      my $visual_cone = $cone->VISUAL($decor,$cutoff_decor, {BoundingBox => $bbox});
+      push @cells_visual, $visual_cone;
+      $i++;
    }
    visualize(new Visual::PolyhedralFan( Name => "fan:".$this->name,
                                         PolyhedralFan => new PolyhedralFan(RAYS=>(ones_vector<Float>()) | $rays),
@@ -177,6 +251,11 @@ precondition : FAN_AMBIENT_DIM { $this->FAN_AMBIENT_DIM<=4 }
 
 
 }
+
+package Visual::Color;
+
+# Color for the vertices of a tight span not corresponding to taxa
+custom $non_tax_vertices="255 255 0";
 
 # Local Variables:
 # mode: perl

@@ -24,7 +24,7 @@
 
 package Visual::Cycle;
 
-#Visualization options for RationalFunction/Morphism->BB_VISUAL
+#Visualization options for RationalFunction/Morphism->VISUAL
 options %Visual::Cycle::FunctionDecorations=(
 	%Visual::Cycle::BoundingDecorations,
 
@@ -36,10 +36,10 @@ options %Visual::Cycle::FunctionDecorations=(
 object RationalFunction {
 
 # @category Visualization 
-# Visualizes the domain of the function. Works exactly as BB_VISUAL of WeightedComplex, but has additional option
+# Visualizes the domain of the function. Works exactly as VISUAL of WeightedComplex, but has additional option
 # @options
 # @option String FunctionLabels If set to "show", textual function representations are diplayed on cones. False by default
-	user_method BB_VISUAL(%Visual::Cycle::FunctionDecorations, {CutOff => $Visual::Color::cutoff}) : DOMAIN, VERTEX_VALUES, LINEALITY_VALUES {
+	user_method VISUAL(%Visual::Cycle::FunctionDecorations, {CutOff => $Visual::Color::cutoff}) : DOMAIN, VERTEX_VALUES, LINEALITY_VALUES {
 
 		my ($this,$decor,$cutoff_decor)=@_;
 
@@ -79,7 +79,7 @@ object RationalFunction {
 		}
 
 
-		$domain->BB_VISUAL($decor,$cutoff_decor);
+		$domain->VISUAL($decor,$cutoff_decor);
 	}
 }; #END object RationalFunction
 
@@ -87,10 +87,10 @@ object RationalFunction {
 object Morphism {
   
 # @category Visualization 
-# Visualizes the domain of the morphism. Works exactly as BB_VISUAL of WeightedComplex, but has additional option
+# Visualizes the domain of the morphism. Works exactly as VISUAL of WeightedComplex, but has additional option
 # @options
 # @option String FunctionLabels If set to "show", textual function representations are diplayed on cones. False by default
-user_method BB_VISUAL(%Visual::Cycle::FunctionDecorations, {CutOff => $Visual::Color::cutoff}) : DOMAIN, VERTEX_VALUES, LINEALITY_VALUES {
+user_method VISUAL(%Visual::Cycle::FunctionDecorations, {CutOff => $Visual::Color::cutoff}) : DOMAIN, VERTEX_VALUES, LINEALITY_VALUES {
     
     my ($this,$decor,$cutoff_decor)= @_;
     
@@ -114,6 +114,6 @@ user_method BB_VISUAL(%Visual::Cycle::FunctionDecorations, {CutOff => $Visual::C
     }
     
     
-    $domain->BB_VISUAL($decor,$cutoff_decor);
+    $domain->VISUAL($decor,$cutoff_decor);
 }
 }

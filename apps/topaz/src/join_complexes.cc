@@ -21,7 +21,7 @@ namespace polymake { namespace topaz {
   
 perl::Object join_complexes(perl::Object p_in1,perl::Object p_in2,perl::OptionSet options)
 {
-   const bool relabel=options["labels"];
+   const bool relabel=!options["no_labels"];
    const Array< Set<int> > C1 = p_in1.give("FACETS");
    const int n1 = p_in1.give("N_VERTICES");
 
@@ -55,12 +55,12 @@ perl::Object join_complexes(perl::Object p_in1,perl::Object p_in2,perl::OptionSe
 
 UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# Creates the join of //complex1// and //complex2//.\n"
-                  "# @option Bool labels creates [[VERTEX_LABELS]].\n"
+                  "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "#  The vertex labels are built from the original labels with a suffix ''_1'' or ''_2'' appended.\n"
                   "# @param SimplicialComplex complex1"
                   "# @param SimplicialComplex complex2"
                   "# @return SimplicialComplex",
-                  &join_complexes, "join_complexes(SimplicialComplex SimplicialComplex { labels => 0 })");
+                  &join_complexes, "join_complexes(SimplicialComplex SimplicialComplex { no_labels => 0 })");
 } }
 
 // Local Variables:

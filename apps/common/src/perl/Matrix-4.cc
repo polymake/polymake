@@ -37,8 +37,8 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(BinaryAssign_div, perl::Canned< Wary< Matrix< Rational > > >, perl::Canned< const Matrix< Rational > >);
    FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const Set< Vector< Integer > > >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< Matrix< Integer > > >, int);
-   OperatorInstance4perl(BinaryAssign_sub, perl::Canned< Wary< Matrix< Rational > > >, perl::Canned< const pm::RepeatedRow<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void> const&> >);
-   OperatorInstance4perl(Binary_sub, perl::Canned< const Wary< Matrix< Rational > > >, perl::Canned< const pm::RepeatedRow<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void> const&> >);
+   OperatorInstance4perl(BinaryAssign_sub, perl::Canned< Wary< Matrix< Rational > > >, perl::Canned< const pm::RepeatedRow<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>> const&> >);
+   OperatorInstance4perl(Binary_sub, perl::Canned< const Wary< Matrix< Rational > > >, perl::Canned< const pm::RepeatedRow<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>> const&> >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< Matrix< Integer > > >, perl::Canned< const Matrix< int > >);
    FunctionInstance4perl(new_X, Matrix< double >, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
    OperatorInstance4perl(BinaryAssign_div, perl::Canned< Wary< Matrix< Rational > > >, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::Rational> >);

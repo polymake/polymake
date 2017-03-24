@@ -26,20 +26,24 @@ static coeffs singular_rational = NULL;
 // Convert a Singular number to a GMP rational.
 Rational convert_number_to_Rational(number n, ring ring)
 {
-   if(rField_is_Q(ring)){
-      if(SR_HDL(n) & SR_INT){
-         long l = SR_TO_INT(n);
-         return Rational(l, 1);
+   Rational result;
+   if (rField_is_Q(ring)) {
+      if (SR_HDL(n) & SR_INT) {
+         result = SR_TO_INT(n);
       } else {
-         switch(n->s){
+         switch (n->s) {
             case 0:
-               return Rational(n->z, n->n);
             case 1:
-               return Rational(n->z, n->n);
+               result.copy_from(n->z, n->n);
+               break;
             case 3:
-               return Rational(n->z);
+               result.copy_from(n->z);
+               break;
+            default:
+               throw std::runtime_error("unexpected number type");
          }
       }
+      return result;
    }
    throw std::runtime_error("I can has number? :P");
 }
@@ -59,12 +63,13 @@ number convert_Rational_to_number(const Rational& r)
    return res;
 }
 
-std::pair<ListMatrix<Vector<int> >, std::vector<Rational> > convert_poly_to_matrix_and_vector(const poly q){
+std::pair<std::vector<Rational>, ListMatrix<Vector<int>>> convert_poly_to_vector_and_matrix(const poly q)
+{
    poly p = pCopy(q);
    int n = rVar(currRing);
-   ListMatrix<Vector<int> > exponents(0,n);
+   ListMatrix<Vector<int>> exponents(0,n);
    std::vector<Rational> coefficients;
-   while(p != NULL){
+   while (p != NULL) {
       number c = pGetCoeff(p);
       coefficients.push_back(convert_number_to_Rational(c, currRing));
       Vector<int> monomial(n);
@@ -75,23 +80,24 @@ std::pair<ListMatrix<Vector<int> >, std::vector<Rational> > convert_poly_to_matr
       pIter(p);
    }
    p_Delete(&p,currRing);
-   return std::pair<ListMatrix<Vector<int> >, std::vector<Rational> >(exponents, coefficients);
+   return { std::move(coefficients), std::move(exponents) };
 }
 
-Polynomial<> convert_poly_to_Polynomial(const poly q, const Ring<>& r){
-   std::pair<ListMatrix<Vector<int> >, std::vector<Rational> > decomposed = convert_poly_to_matrix_and_vector(q);
-   return Polynomial<>(decomposed.first, decomposed.second, r);
+Polynomial<> convert_poly_to_Polynomial(const poly q)
+{
+   const auto decomposed = convert_poly_to_vector_and_matrix(q);
+   return Polynomial<>(decomposed.first, decomposed.second);
 }
 
 
 poly convert_Polynomial_to_poly(const Polynomial<>& mypoly, ring ring){
    poly p = p_ISet(0,ring);
-   for(Entire<Polynomial<>::term_hash>::const_iterator term = entire(mypoly.get_terms()); !term.at_end(); ++term)
+   for (const auto& term : mypoly.get_terms())
    {
-      poly monomial = p_NSet(convert_Rational_to_number(term->second),ring);
-      for(int k = 0; k<term->first.dim(); k++)
+      poly monomial = p_NSet(convert_Rational_to_number(term.second), ring);
+      for (int k = 0; k < term.first.dim(); ++k)
       {
-         p_SetExp(monomial,k+1,term->first[k],ring);
+         p_SetExp(monomial, k+1, term.first[k], ring);
       }
       p_Setm(monomial,ring);
       p = p_Add_q(p, monomial,ring);

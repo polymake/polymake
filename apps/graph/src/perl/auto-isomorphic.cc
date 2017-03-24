@@ -16,9 +16,10 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/Graph.h"
+#include "polymake/IncidenceMatrix.h"
 #include "polymake/client.h"
 #include "polymake/graph/compare.h"
-#include "polymake/Graph.h"
 
 namespace polymake { namespace graph { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -29,5 +30,7 @@ namespace polymake { namespace graph { namespace {
    };
 
    FunctionInstance4perl(isomorphic_X_X, perl::Canned< const Graph< Undirected > >, perl::Canned< const Graph< Undirected > >);
+   FunctionInstance4perl(isomorphic_X_X, perl::Canned< const IncidenceMatrix< NonSymmetric > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
+   FunctionInstance4perl(isomorphic_X_X, perl::Canned< const Graph< Directed > >, perl::Canned< const Graph< Directed > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

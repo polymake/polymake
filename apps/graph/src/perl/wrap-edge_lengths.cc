@@ -18,6 +18,7 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
+#include "polymake/SparseMatrix.h"
 
 namespace polymake { namespace graph { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -28,5 +29,6 @@ namespace polymake { namespace graph { namespace {
    };
 
    FunctionInstance4perl(edge_lengths_X_X, perl::Canned< const Graph< Undirected > >, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(edge_lengths_X_X, perl::Canned< const Graph< Undirected > >, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

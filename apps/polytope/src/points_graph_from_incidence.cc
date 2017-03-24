@@ -58,6 +58,7 @@ Graph<> points_graph_from_incidence(const Matrix<Rational>& points,  const Gener
               int i=1;
               //compute lambda with lambda*points[*n1]+(1-lambda)*points[edge.to_node()]=points[*n2]
               while (points(*n1,i)==points(*n2,i)) ++i;
+              if( points(edge.to_node(),i)==points(*n1,i) ){add=false; break;}
               const Rational lambda=(points(edge.to_node(),i)-points(*n2,i))/(points(edge.to_node(),i)-points(*n1,i));
               // cout<<(*n1)<<" "<<(*n2)<<" "<<edge.to_node()<<" "<<lambda<<endl;
               if (lambda>1);

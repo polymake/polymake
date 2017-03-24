@@ -29,17 +29,19 @@
 namespace libnormaliz {
 
    inline bool try_convert(long& a, const pm::Integer& b) {
-      if (!mpz_fits_slong_p(b.get_rep()) || !isfinite(b))
+      if (!isfinite(b) || !mpz_fits_slong_p(b.get_rep()))
          return false;
-      a = b.to_long();
+      a = long(b);
       return true;
    }
 
    inline bool try_convert(long long& a, const pm::Integer& b) {
-      if (!mpz_fits_slong_p(b.get_rep()) || !isfinite(b))
-         return false;
-      a = b.to_long();
-      return true;
+     if (!isfinite(b) ||
+         (sizeof(long)==sizeof(long long)
+          ? !mpz_fits_slong_p(b.get_rep())
+          : std::abs(b.get_rep()->_mp_size) > int(sizeof(long long) / sizeof(mp_limb_t))))
+       return false;
+     return static_cast<long long>(b);
    }
 
    inline bool try_convert(mpz_class& a, const pm::Integer& b) {
@@ -53,32 +55,51 @@ namespace libnormaliz {
    }
 
    inline bool try_convert(pm::Integer& a, const long& b) {
-      a = pm::Integer(b);
+      a = b;
       return true;
    }
    inline bool try_convert(pm::Integer& a, const long long& b) {
-      a = pm::Integer(b);
+      a = b;
       return true;
    }
 
    inline double convert_to_double(const pm::Integer& a) {
-      return a.to_double();
+      return double(a);
    }
 
    inline pm::Integer operator%(size_t a, const pm::Integer& b) {
-      return pm::Integer((unsigned long int) a) % b;
+      if (a <= (unsigned long)std::numeric_limits<long>::max())
+        return long(a) % b;
+      else
+        return pm::Integer(a) % b;
    }
 
    inline pm::Integer operator*(unsigned long a, const pm::Integer& b) {
-      return pm::Integer(a) * b;
+      if (a <= (unsigned long)std::numeric_limits<long>::max())
+        return long(a) * b;
+      else
+        return pm::Integer(a) * b;
    }
 
    inline pm::Integer operator*(unsigned int a, const pm::Integer& b) {
-      return pm::Integer(a) * b;
+      return static_cast<unsigned long>(a) * b;
    }
 }
 
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#if __GNUC__ >= 6
+#pragma GCC diagnostic ignored "-Wmisleading-indentation"
+#endif
+#endif
+
 #include "libnormaliz/libnormaliz-all.cpp"
+
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 namespace libnormaliz {
    template<>
@@ -168,16 +189,13 @@ namespace polymake { namespace polytope {
       // nmzHilb.getDenom() map<long,denom_t> (exponents of (1-t^i)^e) denom_t = long
       RationalFunction<> nmz_convert_HS(const libnormaliz::HilbertSeries& nmzHilb)
       {
-         Ring<> r(1);
          UniPolynomial<> HSnum(convert_to<Integer>(Vector<mpz_class>(nmzHilb.getNum())),
-               Vector<int>(sequence(0,nmzHilb.getNum().size())),r);
+               Vector<int>(sequence(0,nmzHilb.getNum().size())));
          const std::map<long,long>& HSdenomMap(nmzHilb.getDenom());
-         UniPolynomial<> HSdenom(1,r);
-         for(std::map<long,long>::const_iterator mapit = HSdenomMap.begin();
-               mapit != HSdenomMap.end(); ++mapit)
+         UniPolynomial<> HSdenom(1);
+         for (const auto& mapElem : HSdenomMap)
          {
-            for(long i=0; i<mapit->second; ++i)
-               HSdenom *= (UniTerm<>(1,r) - UniTerm<>(UniMonomial<>(mapit->first,r),1));
+           HSdenom *= (1 - UniPolynomial<>(1, mapElem.first))^mapElem.second;
          }
          return RationalFunction<>(HSnum,HSdenom);
       }

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -36,14 +36,6 @@ namespace pm { namespace perl {
 class Scope;
 
 class Main {
-private:
-   static void set_application(const char* appname, size_t ll);
-   static void add_extension(const char* path, size_t ll);
-   static SV* lookup_extension(const char* path, size_t ll); // currently unused
-   static void call_app_method(const char* method, const char *arg, size_t argl);
-
-   static void _set_custom(const char* name, size_t ll, const char* key, size_t kl, Value& x);
-   static void _reset_custom(const char* name, size_t ll, const char* key, size_t kl);
 public:
    explicit Main(const std::string& user_opts="user",
                  const std::string& install_top="",
@@ -51,172 +43,101 @@ public:
 
    std::string greeting(int verbose=2);
 
-   void set_application(const std::string& appname)
-   {
-      set_application(appname.c_str(), appname.size());
-   }
-
-   template <size_t ll>
-   void set_application(const char (&appname)[ll])
-   {
-      set_application(appname, ll-1);
-   }
+   void set_application(const AnyString& appname);
 
    void set_application_of(const Object& x);
 
-   void add_extension(const std::string& path)
-   {
-      add_extension(path.c_str(), path.size());
-   }
+   void add_extension(const AnyString& path);
 
-   template <size_t ll>
-   void add_extension(const char (&path)[ll])
-   {
-      add_extension(path, ll-1);
-   }
+   void include(const AnyString& path);
 
-   template <size_t pl>
-   void include(const char (&path)[pl]) 
-   {
-      call_app_method("include_rules", path, pl-1); 
-   }
+   void set_preference(const AnyString& label_exp);
 
-   void include(const std::string& path) 
-   {
-      call_app_method("include_rules", path.c_str(), path.size()); 
-   }
+   void reset_preference(const AnyString& label_exp);
 
-   template <size_t ll>
-   void set_preference(const char (&label_exp)[ll])
-   { 
-      call_app_method("set_preference", label_exp, ll-1); 
-   }
-   void set_preference(const std::string& label_exp)
-   { 
-      call_app_method("set_preference", label_exp.c_str(), label_exp.size()); 
-   }
-
-   template <size_t ll>
-   void reset_preference(const char (&label_exp)[ll])
-   { 
-      call_app_method("reset_preference", label_exp, ll-1); 
-   }
-   void reset_preference(const std::string& label_exp)
-   { 
-      call_app_method("reset_preference", label_exp.c_str(), label_exp.size()); 
-   }
-
-   template <size_t ll, typename T>
-   void set_custom(const char (&name)[ll], const T& value)
-   {
-      Value x;
-      x << value;
-      _set_custom(name, ll-1, NULL, 0, x);
-   }
    template <typename T>
-   void set_custom(const std::string& name, const T& value)
+   void set_custom(const AnyString& name, T&& value)
    {
       Value x;
-      x << value;
-      _set_custom(name.c_str(), name.size(), NULL, 0, x);
+      x << std::forward<T>(value);
+      set_custom_var(name, AnyString(), x);
    }
 
-   template <size_t ll, typename T>
-   void set_custom(const char (&name)[ll], const std::string& key, const T& value)
-   {
-      Value x;
-      x << value;
-      _set_custom(name, ll-1, key.c_str(), key.size(), x);
-   }
    template <typename T>
-   void set_custom(const std::string& name, const std::string& key, const T& value)
+   void set_custom(const AnyString& name, const AnyString& key, T&& value)
    {
       Value x;
-      x << value;
-      _set_custom(name.c_str(), name.size(), key.c_str(), key.size(), x);
+      x << std::forward<T>(value);
+      set_custom_var(name, key, x);
    }
 
-   template <size_t ll>
-   void reset_custom(const char (&name)[ll])
-   {
-      _reset_custom(name, ll-1, NULL, 0);
-   }
-   void reset_custom(const std::string& name)
-   {
-      _reset_custom(name.c_str(), name.size(), NULL, 0);
-   }
-   template <size_t ll>
-   void reset_custom(const char (&name)[ll], const std::string& key)
-   {
-      _reset_custom(name, ll-1, key.c_str(), key.size());
-   }
-   void reset_custom(const std::string& name, const std::string& key)
-   {
-      _reset_custom(name.c_str(), name.size(), key.c_str(), key.size());
-   }
+   void reset_custom(const AnyString& name, const AnyString& key = AnyString());
 
    Scope newScope();
 
    friend class Scope;
+
+   //! evaluate the given perl code in the context of the current application as if it has been entered in an interactive shell
+   //! the code must be syntactically complete, that is, no unfinished blocks or dangling operators are allowed
+   //! @return the output produced by the code
+   //! syntax or runtime errors are reported via exception
+   std::string simulate_shell_input(const std::string& input);
+private:
+   SV* lookup_extension(const AnyString& path); // currently unused
+   void call_app_method(const char* method, const AnyString& arg);
+
+   void set_custom_var(const AnyString& name, const AnyString& key, Value& x);
+
+   //! cached address of the perl interpreter object
+   void* pi;
 };
 
 class Scope {
    friend class Main;
-private:
-   static unsigned int depth;
-   mutable SV *saved;
-   unsigned int id;
-   Scope(SV *sv) : saved(sv), id(++depth) {}
-
-   // inhibited
-   Scope& operator= (const Scope&);
-
-   static void _set_custom(const char* name, size_t ll, const char* key, size_t kl, Value& x);
-
 public:
-   Scope(const Scope& s) : saved(s.saved), id(s.id) { s.saved=NULL; }
+   Scope(Scope&& s)
+      : pm_main(s.pm_main)
+      , saved(s.saved)
+      , id(s.id)
+   {
+      s.saved=nullptr;
+   }
 
    ~Scope();
 
-   void prefer_now(const std::string& labels) const
+   void prefer_now(const AnyString& labels) const;
+
+   template <typename T>
+   void set_custom(const AnyString& name, T&& value)
    {
-      Main::call_app_method("prefer_now", labels.c_str(), labels.size());
-   }
-   template <size_t ll>
-   void prefer_now(const char (&labels)[ll]) const
-   {
-      Main::call_app_method("prefer_now", labels, ll-1);
+      Value x;
+      x << std::forward<T>(value);
+      set_custom_var(name, AnyString(), x);
    }
 
-   template <size_t ll, typename T>
-   void set_custom(const char (&name)[ll], const T& value)
-   {
-      Value x;
-      x << value;
-      _set_custom(name, ll-1, NULL, 0, x);
-   }
    template <typename T>
-   void set_custom(const std::string& name, const T& value)
+   void set_custom(const AnyString& name, const AnyString& key, T&& value)
    {
       Value x;
-      x << value;
-      _set_custom(name.c_str(), name.size(), NULL, 0, x);
+      x << std::forward<T>(value);
+      set_custom_var(name, key, x);
    }
 
-   template <size_t ll, typename T>
-   void set_custom(const char (&name)[ll], const std::string& key, const T& value)
-   {
-      Value x;
-      x << value;
-      _set_custom(name, ll-1, key.c_str(), key.size(), x);
-   }
-   template <typename T>
-   void set_custom(const std::string& name, const std::string& key, const T& value)
-   {
-      Value x;
-      x << value;
-      _set_custom(name.c_str(), name.size(), key.c_str(), key.size(), x);
-   }
+private:
+   Scope(Main* main_arg, SV* sv)
+      : pm_main(main_arg)
+      , saved(sv)
+      , id(++depth) {}
+
+   Scope(const Scope& s) = delete;
+   Scope& operator= (const Scope&) = delete;
+
+   void set_custom_var(const AnyString& name, const AnyString& key, Value& value) const;
+
+   static unsigned int depth;
+   Main* pm_main;
+   SV* saved;
+   unsigned int id;
 };
 
 } }

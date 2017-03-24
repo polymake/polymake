@@ -43,11 +43,11 @@ namespace polymake { namespace tropical {
                              "# Compute the projection of a point //x// in  tropical projective space onto a tropical cone //C//."
                              "# Cf."
                              "# \t Develin & Sturmfels math.MG/0308254v2, Proposition 9."
-                             "# @param Cone<Addition,Scalar> C"
+                             "# @param Polytope<Addition,Scalar> C"
                              "# @param Vector<TropicalNumber<Addition,Scalar> > x"
                              "# @return Vector<TropicalNumber<Addition,Scalar> >"
                              "# @author Katja Kulas",
-                             "nearest_point<Addition, Scalar>(Cone<Addition, Scalar>, Vector<TropicalNumber<Addition, Scalar> >)"); 
+                             "nearest_point<Addition, Scalar>(Polytope<Addition, Scalar>, Vector<TropicalNumber<Addition, Scalar> >)"); 
 
 
       UserFunctionTemplate4perl("# @category Tropical operations"

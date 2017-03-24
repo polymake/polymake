@@ -31,7 +31,7 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(eliminate_denominators_entire_affine_X, perl::Canned< const Matrix< Rational > >);
-   FunctionInstance4perl(eliminate_denominators_entire_affine_X, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::all_selector const&, pm::Array<int, void> const&> >);
-   FunctionInstance4perl(eliminate_denominators_entire_affine_X, perl::Canned< const pm::MatrixMinor<pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::all_selector const&, pm::Array<int, void> const&> const&, pm::all_selector const&, pm::Array<int, void> const&> >);
+   FunctionInstance4perl(eliminate_denominators_entire_affine_X, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::all_selector const&, pm::Array<int> const&> >);
+   FunctionInstance4perl(eliminate_denominators_entire_affine_X, perl::Canned< const pm::MatrixMinor<pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::all_selector const&, pm::Array<int> const&> const&, pm::all_selector const&, pm::Array<int> const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

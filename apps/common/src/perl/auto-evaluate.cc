@@ -16,9 +16,9 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/PuiseuxFraction.h"
 #include "polymake/Rational.h"
 #include "polymake/TropicalNumber.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {

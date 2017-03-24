@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -31,6 +31,7 @@
 #include <limits>
 #include <climits>
 #include <stdexcept>
+#include <cassert>
 
 namespace pm {
 
@@ -46,7 +47,8 @@ namespace GMP {
 */
 class error : public std::domain_error {
 public:
-   error(const std::string& what_arg) : std::domain_error(what_arg) {}
+   explicit error(const std::string& what_arg)
+      : std::domain_error(what_arg) {}
 };
 
 /// Exception type: "not a number".
@@ -61,11 +63,13 @@ public:
    ZeroDivide();
 };
 
-class TempInteger : public MP_INT {
-protected:
-   /// never instantiate this class: it is a pure masquerade
-   TempInteger();
-   ~TempInteger();
+/// Exception type: a number can't be casted to a smaller type without overflow or lost of data (e.g. non-integral Rational to Integer)
+class BadCast : public error {
+public:
+   BadCast();
+
+   BadCast(const std::string& what_arg)
+      : error(what_arg) {}
 };
 
 }
@@ -74,11 +78,17 @@ protected:
 
 class Integer; class Rational; class AccurateFloat;
 
+template <> struct spec_object_traits<Integer>;
+
 Integer gcd(const Integer& a, const Integer& b);
+Integer&& gcd(Integer&& a, const Integer& b);
 Integer gcd(const Integer& a, long b);
+Integer&& gcd(Integer&& a, long b);
 
 Integer lcm(const Integer& a, const Integer& b);
+Integer&& lcm(Integer&& a, const Integer& b);
 Integer lcm(const Integer& a, long b);
+Integer&& lcm(Integer&& a, long b);
 
 ExtGCD<Integer> ext_gcd(const Integer& a, const Integer& b);
 
@@ -88,279 +98,220 @@ Div<Integer> div(const Integer& a, long b);
 Integer div_exact(const Integer& a, const Integer& b);
 Integer div_exact(const Integer& a, long b);
 
-int isfinite(const Integer& a);
-int isinf(const Integer& a);
+/// data from third parties can't have infinite values
+constexpr bool isfinite(const __mpz_struct&) { return true; }
+constexpr int isinf(const __mpz_struct&) { return 0; }
 
-}
-namespace std {
-
-template <>
-class numeric_limits<pm::Integer>;
-template <>
-class numeric_limits<pm::Rational>;
-template <>
-class numeric_limits<pm::AccurateFloat>;
-
-}
-namespace pm {
+bool isfinite(const Integer& a) noexcept;
+int isinf(const Integer& a) noexcept;
+int sign(const Integer& a) noexcept;
 
 /** @class Integer
-    @brief Wrapper class for @ref GMP "GMP"'s mpz_t type.
+    @brief Integral number of unlimited precision
+
+    Powered by GMP.
  */
 
-class Integer {
-protected:
-   /// GMP's representation
-   mpz_t rep;
+class Integer
+   : protected __mpz_struct {
 
+   // flags for set_inf() and similar internal routines
+   enum class initialized : bool { no, yes };
 public:
-
-#if defined(__GMP_PLUSPLUS__)
-   // convert to the GMP's own C++ wrapper
-   mpz_class gmp() const
+   ~Integer() noexcept
    {
-      return mpz_class(rep);
-   }
-   
-   // construct an Integer from the GMP's own C++ wrapper
-   Integer(const mpz_class& i)
-   {
-      mpz_init_set(rep,i.get_mpz_t());
-   }
-#endif
-
-   /// Initialize to 0.
-   Integer() { mpz_init(rep); }
-
-   Integer(const Integer& i)
-   {
-      if (__builtin_expect(isfinite(i),1))
-         mpz_init_set(rep, i.rep);
-      else
-         _init_set_inf(rep, i.rep);
+      if (_mp_d) mpz_clear(this);
    }
 
-   /// conversion
-   Integer(long i)
+   /// Constructors
+
+   Integer(const Integer& b)
    {
-      mpz_init_set_si(rep, i);
+      set_data(b, initialized::no);
    }
 
-   /// conversion
-   Integer(long long i)
+   Integer(Integer&& b) noexcept
    {
-      mpz_init_set_si(rep, i);
+      set_data(b, initialized::no);
    }
 
-   /// conversion
-   Integer(unsigned long i)
+   /// Copy the value from a third party
+   explicit Integer(const mpz_t& b)
    {
-      mpz_init_set_ui(rep, i);
+      set_data(b[0], initialized::no);
    }
 
-   /// conversion
-   Integer(int i)
+   /// Steal the value from a third party
+   /// The source must be re-initialized if it's going to be used afterwards
+   explicit Integer(mpz_t&& b) noexcept
    {
-      mpz_init_set_si(rep, i);
+      set_data(b[0], initialized::no);
    }
 
-   /// conversion
-   Integer(unsigned int i)
+   Integer(long b=0)
    {
-      mpz_init_set_ui(rep, i);
+      mpz_init_set_si(this, b);
    }
 
-   /// conversion
-   Integer(double d)
+   Integer(int b)
+      : Integer(long(b)) {}
+
+
+   /// these three are solely for libnormaliz
+   Integer(unsigned long b)
    {
-      const int is=isinf(d);
-      if (__builtin_expect(is, 0))
-         _init_set_inf(rep,is);
-      else
-         mpz_init_set_d(rep, d);
+      mpz_init_set_ui(this, b);
    }
 
-   /// Recognizes automatically number base 10, 8, or 16.
-   explicit Integer(const char* s)
+   Integer(unsigned int b)
+      : Integer((unsigned long)b) {}
+
+   Integer(long long b)
    {
-      mpz_init(rep);
-      try {
-         _set(s);
-      }
-      catch (const GMP::error&) {
-         mpz_clear(rep);
-         throw;
+      if (sizeof(long long)==sizeof(long) || (b >= std::numeric_limits<long>::min() && b <= std::numeric_limits<long>::max())) {
+         mpz_init_set_si(this, long(b));
+      } else {
+         mpz_init2(this, sizeof(long long)*8);
+         *this=b;
       }
    }
 
-   explicit Integer(mpz_srcptr src)
+   /// conversion
+   explicit Integer(double b)
    {
-      mpz_init_set(rep, src);
+      set_data(b, initialized::no);
    }
 
-   /// take over the GMP structure without copying
-   explicit Integer(GMP::TempInteger& tmp)
+   /// Construct as a copy of the numerator;
+   /// @a b must be integral, otherwise GMP::BadCast exception will be raised
+   explicit Integer(const Rational& b);
+
+   explicit Integer(Rational&& b);
+
+   explicit Integer(const AccurateFloat& b)
    {
-      rep[0]=tmp;
-   }
-protected:
-   static void _init_set_inf(mpz_ptr rep, int sign)
-   {
-      rep->_mp_alloc=0;
-      rep->_mp_size=sign;
-      rep->_mp_d=NULL;
-   }
-   static void _init_set_inf(mpz_ptr rep, mpz_srcptr b)
-   {
-      _init_set_inf(rep, b->_mp_size);
-   }
-   static void _init_set_inf(mpz_ptr rep, mpz_srcptr b, int inv)
-   {
-      _init_set_inf(rep, b->_mp_size<0 ? -inv : inv);
-   }
-   static void _set_inf(mpz_ptr rep, int sign)
-   {
-      mpz_clear(rep);
-      _init_set_inf(rep,sign);
-   }
-   static void _set_inf(mpz_ptr rep, mpz_srcptr b)
-   {
-      _set_inf(rep, b->_mp_size);
-   }
-   static void _set_inf(mpz_ptr rep, mpz_srcptr b, int inv)
-   {
-      _set_inf(rep, b->_mp_size<0 ? -inv : inv);
-   }
-   static void _inf_inv_sign(mpz_ptr rep, long s, bool division=false)
-   {
-      if (s<0)
-         rep->_mp_size*=-1;
-      else if (s==0 && !division)
-         throw GMP::NaN();
+      mpz_init(this);
+      *this=b;
    }
 
-   template <typename T>
-   explicit Integer(maximal<T>, int s=1)
-   {
-      _init_set_inf(rep,s);
-   }
-
-   template <typename T>
-   Integer(maximal<T>, mpz_srcptr b)
-   {
-      _init_set_inf(rep,b);
-   }
-
-   template <typename T>
-   Integer(maximal<T>, mpz_srcptr b, int inv)
-   {
-      _init_set_inf(rep,b,inv);
-   }
-public:
-
-   /// Performs division with rounding via truncation.
-   explicit inline Integer(const Rational& b);
-
-   explicit Integer(const AccurateFloat& b);
-
-   /// Performs division with rounding via truncation.
-   inline Integer& operator= (const Rational& b);
-
-   Integer& operator= (const AccurateFloat& b);
-
-   template <typename Arg>
-   Integer(void (*f)(mpz_ptr,Arg), Arg a)
-   {
-      mpz_init(rep);
-      f(rep,a);
-   }
-
-   template <typename Arg1, typename Arg2>
-   Integer(void (*f)(mpz_ptr,Arg1,Arg2), Arg1 a, Arg2 b)
-   {
-      mpz_init(rep);
-      f(rep,a,b);
-   }
-
-   template <typename Arg1, typename Arg2>
-   Integer(Arg2 (*f)(mpz_ptr,Arg1,Arg2), Arg1 a, Arg2 b)
-   {
-      mpz_init(rep);
-      f(rep,a,b);
-   }
+   /// Recognizes automatically number base 10, 8, or 16, as well as singular values "±inf" and "nan".
+   explicit Integer(const char* s);
 
    struct Reserve {};
 
    /// Reserve space for n bits.
    Integer(size_t n, Reserve)
    {
-      mpz_init2(rep, n);
+      mpz_init2(this, n);
    }
 
+   /// Fill with a prescribed number of random bits
+   Integer(gmp_randstate_t rnd, unsigned long bits)
+   {
+      mpz_init(this);
+      mpz_urandomb(this, rnd, bits);
+   }
+
+   /// Construct a random number between 0 and @a upper
+   Integer(gmp_randstate_t rnd, const Integer& upper)
+   {
+      mpz_init(this);
+      mpz_urandomm(this, rnd, &upper);
+   }
+
+   /// Construct an infinite value with a given sign
    static
-   mpz_srcptr _tmp_negate(mpz_ptr temp, mpz_srcptr src)
+   Integer infinity(int sgn) noexcept
    {
-      temp->_mp_alloc =  src->_mp_alloc;
-      temp->_mp_size  = -src->_mp_size;
-      temp->_mp_d     =  src->_mp_d;
-      return temp;
+      assert(sgn==-1 || sgn==1);
+      Integer result(nullptr);
+      set_inf(&result, sgn, initialized::no);
+      return result;
    }
 
-   ~Integer()
+#if defined(__GMP_PLUSPLUS__)
+   /// convert to the GMP's own C++ wrapper
+   mpz_class gmp() const
    {
-      mpz_clear(rep);
-#if POLYMAKE_DEBUG
-      POLYMAKE_DEBUG_METHOD(Integer,dump);
+      return mpz_class(this);
+   }
+   
+   /// construct an Integer from the GMP's own C++ wrapper
+   Integer(const mpz_class& i)
+   {
+      mpz_init_set(this, i.get_mpz_t());
+   }
 #endif
-   }
 
-   /// Assignment.
+   /// Assignment
    Integer& operator= (const Integer& b)
    {
-      const bool f1=isfinite(*this), f2=isfinite(b);
-      if (__builtin_expect(f1 && f2, 1))
-         mpz_set(rep, b.rep);
-      else if (f2)
-         mpz_init_set(rep, b.rep);
-      else
-         _set_inf(rep, b.rep);
+      set_data(b, initialized::yes);
+      return *this;
+   }
+
+   Integer& operator= (Integer&& b) noexcept
+   {
+      set_data(b, initialized::yes);
       return *this;
    }
 
    /// Assignment with conversion.
    Integer& operator= (long b)
    {
-      if (__builtin_expect(isfinite(*this),1))
-         mpz_set_si(rep, b);
-      else
-         mpz_init_set_si(rep, b);
+      set_data(b, initialized::yes);
       return *this;
    }
 
-   /// Assignment with conversion.
+   Integer& operator= (int b)
+   {
+      return operator=(long(b));
+   }
+
+   /// these three are for libnormaliz again
    Integer& operator= (unsigned long b)
    {
-      if (__builtin_expect(isfinite(*this),1))
-         mpz_set_ui(rep, b);
+      if (__builtin_expect(isfinite(*this), 1))
+         mpz_set_ui(this, b);
       else
-         mpz_init_set_ui(rep, b);
+         mpz_init_set_ui(this, b);
       return *this;
    }
 
-   /// Assignment with conversion.
-   Integer& operator= (int b) { return operator=(long(b)); }
+   Integer& operator= (unsigned int b)
+   {
+      return operator=(static_cast<unsigned long>(b));
+   }
+
+   Integer& operator= (long long b);
 
    /// Assignment with conversion.
-   Integer& operator= (double d)
+   Integer& operator= (double b)
    {
-      const bool f1=isfinite(*this);
-      const int i2=isinf(d);
-      if (__builtin_expect(f1 && !i2, 1))
-         mpz_set_d(rep, d);
-      else if (!i2)
-         mpz_init_set_d(rep, d);
-      else
-         _set_inf(rep, i2);
+      set_data(b, initialized::yes);
+      return *this;
+   }
+
+   /// Assignment will fail if @a b is not integral
+   Integer& operator= (const Rational& b);
+
+   Integer& operator= (Rational&& b);
+
+   Integer& operator= (const AccurateFloat&);
+
+   /// Assign a copy of data obtained from a third party
+   Integer& copy_from(mpz_srcptr src)
+   {
+      set_data(*src, initialized::yes);
+      return *this;
+   }
+
+   /// Recognizes automatically number base 10, 8, or 16, as well as special values "±inf".
+   Integer& set(const char *s)
+   {
+      if (__builtin_expect(!isfinite(*this), 0))
+         mpz_init(this);
+      parse(s);
       return *this;
    }
 
@@ -369,442 +320,659 @@ public:
    /// @retval true if filled successfully, false if eof or read error occured.
    bool fill_from_file(int fd);
 
-protected:
-   void _set(const char *s);
-
-public:
-   /// Recognizes automatically number base 10, 8, or 16.
-   Integer& set(const char *s)
-   {
-      if (__builtin_expect(!isfinite(*this),0))
-         mpz_init(rep);
-      _set(s);
-      return *this;
-   }
-
-   /// for the rare case of unwrapped GMP objects coexisting with us
-   Integer& set(mpz_srcptr src)
-   {
-      if (__builtin_expect(isfinite(*this),1))
-         mpz_set(rep, src);
-      else
-         mpz_init_set(rep, src);
-      return *this;
-   }
-
-   /// Cast.
-   double to_double() const
-   {
-      const int i=isinf(*this);
-      if (__builtin_expect(i,0))
-         return i*std::numeric_limits<double>::infinity();
-      return mpz_get_d(rep);
-   }
-
-   /// Cast.
-   long to_long() const
-   {
-      if (!mpz_fits_slong_p(rep) || !isfinite(*this))
-         throw GMP::error("Integer: value too big");
-      return mpz_get_si(rep);
-   }
-
-   /// Cast.
-   int to_int() const
-   {
-      if (!mpz_fits_sint_p(rep) || !isfinite(*this))
-         throw GMP::error("Integer: value too big");
-      return mpz_get_si(rep);
-   }
-
-   /// Converts integer to string.
-   std::string to_string(int base=10) const;
-
-   bool non_zero() const
-   {
-      return mpz_sgn(rep);
-   }
-
    /// Efficiently swapping two Integer objects.
-   void swap(Integer& b) { mpz_swap(rep, b.rep); }
+   void swap(Integer& b) noexcept
+   {
+      mpz_swap(this, &b);
+   }
 
-   /** Accelerated combination of copy constructor and destructor.
-       Aimed to be used in container classes only! */
+   /// TODO: kill this
    friend void relocate(Integer* from, Integer* to)
    {
-      to->rep[0] = from->rep[0];
+      static_cast<__mpz_struct&>(*to)=*from;
+   }
+
+   /// Cast to simpler types
+
+   explicit operator double() const
+   {
+      const int is_inf=isinf(*this);
+      if (__builtin_expect(is_inf, 0))
+         return is_inf * std::numeric_limits<double>::infinity();
+      return mpz_get_d(this);
+   }
+
+   explicit operator long() const
+   {
+      if (isfinite(*this) && mpz_fits_slong_p(this))
+         return mpz_get_si(this);
+      throw GMP::BadCast();
+   }
+
+   explicit operator int() const
+   {
+      if (isfinite(*this) && mpz_fits_sint_p(this))
+         return mpz_get_si(this);
+      throw GMP::BadCast();
+   }
+
+   explicit operator long long() const;
+
+   /// Unary operators
+
+   friend
+   Integer operator+ (const Integer& a)
+   {
+      return a;
+   }
+
+   friend
+   Integer&& operator+ (Integer&& a)
+   {
+      return std::move(a);
    }
 
    /// Increment.
    Integer& operator++()
    {
-      if (__builtin_expect(isfinite(*this),1)) mpz_add_ui(rep, rep, 1);
+      if (__builtin_expect(isfinite(*this), 1)) mpz_add_ui(this, this, 1);
       return *this;
    }
+
+   Integer operator++ (int) { Integer copy(*this); operator++(); return copy; }
 
    /// Decrement.
    Integer& operator--()
    {
-      if (__builtin_expect(isfinite(*this),1)) mpz_sub_ui(rep, rep, 1);
+      if (__builtin_expect(isfinite(*this), 1)) mpz_sub_ui(this, this, 1);
       return *this;
    }
+
+   Integer operator-- (int) { Integer copy(*this); operator--(); return copy; }
 
    /// In-place negation.
-   Integer& negate()
+   Integer& negate() noexcept
    {
-      rep[0]._mp_size*=-1;
+      _mp_size=-_mp_size;
       return *this;
    }
 
-   /// Addition.
+   /// Negation
+   friend
+   Integer operator- (const Integer& a)
+   {
+      Integer result(a);
+      result.negate();
+      return result;
+   }
+
+   friend
+   Integer&& operator- (Integer&& a)
+   {
+      return std::move(a.negate());
+   }
+
+   /// Addition
+
    Integer& operator+= (const Integer& b)
    {
-      const bool f1=isfinite(*this), f2=isfinite(b);
-      if (__builtin_expect(f1 && f2, 1))
-         mpz_add(rep, rep, b.rep);
-      else if (f1)
-         _set_inf(rep, b.rep);
-      else if (!f2 && isinf(*this)!=isinf(b))
-         throw GMP::NaN();
-      return *this;
-   }
-
-   /// Addition.
-   Integer& operator+= (long b)
-   {
-      if (__builtin_expect(isfinite(*this),1)) {
-         if (b>=0) mpz_add_ui(rep, rep, b);
-         else mpz_sub_ui(rep, rep, -b);
+      if (__builtin_expect(isfinite(*this), 1)) {
+         if (__builtin_expect(isfinite(b), 1))
+            mpz_add(this, this, &b);
+         else
+            set_inf(this, b);
+      } else {
+         if (isinf(*this)+isinf(b)==0)
+            throw GMP::NaN();
       }
       return *this;
    }
 
-   /// Subtraction.
+   friend
+   Integer operator+ (const Integer& a, const Integer& b)
+   {
+      Integer result;
+      if (__builtin_expect(isfinite(a), 1)) {
+         if (__builtin_expect(isfinite(b), 1))
+            mpz_add(&result, &a, &b);
+         else
+            set_inf(&result, b);
+      } else {
+         if (isinf(a)+isinf(b)==0)
+            throw GMP::NaN();
+         set_inf(&result, a);
+      }
+      return result;
+   }
+
+   friend
+   Integer&& operator+ (Integer&& a, const Integer& b)
+   {
+      return std::move(a+=b);
+   }
+   friend
+   Integer&& operator+ (const Integer& a, Integer&& b)
+   {
+      return std::move(b+=a);
+   }
+   friend
+   Integer&& operator+ (Integer&& a, Integer&& b)
+   {
+      return a._mp_alloc >= b._mp_alloc ? std::move(a+=b) : std::move(b+=a);
+   }
+
+   Integer& operator+= (long b)
+   {
+      if (__builtin_expect(isfinite(*this), 1)) {
+         if (b>=0) {
+            mpz_add_ui(this, this, b);
+         } else {
+            mpz_sub_ui(this, this, -b);
+         }
+      }
+      return *this;
+   }
+   Integer& operator+= (int b)
+   {
+      return *this += long(b);
+   }
+
+   friend
+   Integer operator+ (const Integer& a, long b)
+   {
+      Integer result(a);
+      result += b;
+      return result;
+   }
+   friend
+   Integer&& operator+ (Integer&& a, long b)
+   {
+      return std::move(a+=b);
+   }
+   friend
+   Integer operator+ (const Integer& a, int b)
+   {
+      return a+long(b);
+   }
+   friend
+   Integer&& operator+ (Integer&& a, int b)
+   {
+      return std::move(a+=long(b));
+   }
+   friend
+   Integer operator+ (long a, const Integer& b)
+   {
+      return b+a;
+   }
+   friend
+   Integer operator+ (int a, const Integer& b)
+   {
+      return b+long(a);
+   }
+   friend
+   Integer&& operator+ (long a, Integer&& b)
+   {
+      return std::move(b+=a);
+   }
+   friend
+   Integer&& operator+ (int a, Integer&& b)
+   {
+      return std::move(b+=long(a));
+   }
+
+   /// Subtraction
+
    Integer& operator-= (const Integer& b)
    {
-      const bool f1=isfinite(*this), f2=isfinite(b);
-      if (__builtin_expect(f1 && f2, 1))
-         mpz_sub(rep, rep, b.rep);
-      else if (f1)
-         _set_inf(rep, b.rep, -1);
-      else if (!f2 && isinf(*this)==isinf(b))
-         throw GMP::NaN();
+      if (__builtin_expect(isfinite(*this), 1)) {
+         if (__builtin_expect(isfinite(b), 1))
+            mpz_sub(this, this, &b);
+         else
+            set_inf(this, -1, b);
+      } else {
+         if (isinf(*this)==isinf(b))
+            throw GMP::NaN();
+      }
       return *this;
    }
 
-   /// Subtraction.
+   friend
+   Integer operator- (const Integer& a, const Integer& b)
+   {
+      Integer result;
+      if (__builtin_expect(isfinite(a), 1)) {
+         if (__builtin_expect(isfinite(b), 1))
+            mpz_sub(&result, &a, &b);
+         else
+            set_inf(&result, -1, b);
+      } else {
+         if (isinf(a)==isinf(b))
+            throw GMP::NaN();
+         set_inf(&result, a);
+      }
+      return result;
+   }
+
+   friend
+   Integer&& operator- (Integer&& a, const Integer& b)
+   {
+      return std::move(a-=b);
+   }
+   friend
+   Integer&& operator- (const Integer& a, Integer&& b)
+   {
+      return std::move((b-=a).negate());
+   }
+   friend
+   Integer&& operator- (Integer&& a, Integer&& b)
+   {
+      return a._mp_alloc >= b._mp_alloc ? std::move(a-=b) : std::move((b-=a).negate());
+   }
+
    Integer& operator-= (long b)
    {
       if (__builtin_expect(isfinite(*this),1)) {
-         if (b>=0)
-            mpz_sub_ui(rep, rep, b);
+         if (b>=0) {
+            mpz_sub_ui(this, this, b);
+         } else {
+            mpz_add_ui(this, this, -b);
+         }
+      }
+      return *this;
+   }
+   Integer& operator-= (int b)
+   {
+      return *this -= long(b);
+   }
+
+   friend
+   Integer operator- (const Integer& a, long b)
+   {
+      Integer result(a);
+      result-=b;
+      return result;
+   }
+   friend
+   Integer operator- (const Integer& a, int b)
+   {
+      return a-long(b);
+   }
+   friend
+   Integer&& operator- (Integer&& a, long b)
+   {
+      return std::move(a-=b);
+   }
+   friend
+   Integer&& operator- (Integer&& a, int b)
+   {
+      return std::move(a-=long(b));
+   }
+
+   friend
+   Integer operator- (long a, const Integer& b)
+   {
+      Integer result(b-a);
+      result.negate();
+      return result;
+   }
+   friend
+   Integer operator- (int a, const Integer& b)
+   {
+      return long(a)-b;
+   }
+   friend
+   Integer&& operator- (long a, Integer&& b)
+   {
+      return std::move((b-=a).negate());
+   }
+   friend
+   Integer&& operator- (int a, Integer&& b)
+   {
+      return std::move((b-=long(a)).negate());
+   }
+
+   /// Multiplication
+
+   Integer& operator*= (const Integer& b)
+   {
+      if (__builtin_expect(isfinite(*this), 1)) {
+         if (__builtin_expect(isfinite(b), 1))
+            mpz_mul(this, this, &b);
          else
-            mpz_add_ui(rep, rep, -b);
+            set_inf(this, mpz_sgn(this), b);
+      } else {
+         inf_inv_sign(this, mpz_sgn(&b));
       }
       return *this;
    }
 
-   /// Multiplication.
-   Integer& operator*= (const Integer& b)
+   friend
+   Integer operator* (const Integer& a, const Integer& b)
    {
-      const bool f1=isfinite(*this), f2=isfinite(b);
-      if (__builtin_expect(f1 && f2, 1))
-         mpz_mul(rep, rep, b.rep);
-      else
-         _inf_inv_sign(rep, mpz_sgn(b.rep));
-      return *this;
+      Integer result;
+      if (__builtin_expect(isfinite(a), 1)) {
+         if (__builtin_expect(isfinite(b), 1))
+            mpz_mul(&result, &a, &b);
+         else
+            set_inf(&result, mpz_sgn(&a), b);
+      } else {
+         set_inf(&result, mpz_sgn(&b), a);
+      }
+      return result;
    }
 
-   /// Multiplication.
+   friend
+   Integer&& operator* (Integer&& a, const Integer& b)
+   {
+      return std::move(a*=b);
+   }
+   friend
+   Integer&& operator* (const Integer& a, Integer&& b)
+   {
+      return std::move(b*=a);
+   }
+   friend
+   Integer&& operator* (Integer&& a, Integer&& b)
+   {
+      return std::move(a*=b);
+   }
+
    Integer& operator*= (long b)
    {
-      if (__builtin_expect(isfinite(*this),1))
-         mpz_mul_si(rep, rep, b);
+      if (__builtin_expect(isfinite(*this), 1))
+         mpz_mul_si(this, this, b);
       else
-         _inf_inv_sign(rep,b);
+         inf_inv_sign(this, b);
       return *this;
    }
+   Integer& operator*= (int b)
+   {
+      return *this *= long(b);
+   }
 
-   /// Division with rounding via truncation.
+   friend
+   Integer operator* (const Integer& a, long b)
+   {
+      Integer result(a);
+      result*=b;
+      return result;
+   }
+   friend
+   Integer operator* (const Integer& a, int b)
+   {
+      return a*long(b);
+   }
+   friend
+   Integer&& operator* (Integer&& a, long b)
+   {
+      return std::move(a*=b);
+   }
+   friend
+   Integer&& operator* (Integer&& a, int b)
+   {
+      return std::move(a*=long(b));
+   }
+   friend
+   Integer operator* (long a, const Integer& b)
+   {
+      return b*a;
+   }
+   friend
+   Integer operator* (int a, const Integer& b)
+   {
+      return b*long(a);
+   }
+   friend
+   Integer&& operator* (long a, Integer&& b)
+   {
+      return std::move(b*=a);
+   }
+   friend
+   Integer&& operator* (int a, Integer&& b)
+   {
+      return std::move(b*=long(a));
+   }
+
+   /// Division with rounding via truncation
+
    Integer& operator/= (const Integer& b)
    {
-      const bool f1=isfinite(*this), f2=isfinite(b);
-      if (__builtin_expect(f2,1)) {
-         const int s2=mpz_sgn(b.rep);
-         if (__builtin_expect(f1,1)) {
-            if (__builtin_expect(s2,1))
-               mpz_tdiv_q(rep, rep, b.rep);
+      if (__builtin_expect(isfinite(*this), 1)) {
+         if (__builtin_expect(isfinite(b), 1)) {
+            if (__builtin_expect(!b.is_zero(), 1))
+               mpz_tdiv_q(this, this, &b);
             else
                throw GMP::ZeroDivide();
-         } else
-            _inf_inv_sign(rep,s2,true);
-      } else if (f1)
-         mpz_set_ui(rep, 0);
-      else
-         throw GMP::NaN();
+         } else {
+            mpz_set_ui(this, 0);
+         }
+      } else {
+         if (!isfinite(b))
+            throw GMP::NaN();
+         inf_inv_sign(this, mpz_sgn(&b));
+      }
       return *this;
    }
 
-   /// Division with rounding via truncation.
+   friend
+   Integer operator/ (const Integer& a, const Integer& b)
+   {
+      Integer result(a);
+      result /= b;
+      return result;
+   }
+   friend
+   Integer&& operator/ (Integer&& a, const Integer& b)
+   {
+      return std::move(a/=b);
+   }
+
    Integer& operator/= (long b)
    {
-      if (__builtin_expect(isfinite(*this),1)) {
-         if (__builtin_expect(b,1)) {
-            if (b>0)
-               mpz_tdiv_q_ui(rep, rep, b);
-            else {
-               mpz_tdiv_q_ui(rep, rep, -b);
+      if (__builtin_expect(isfinite(*this), 1)) {
+         if (__builtin_expect(b, 1)) {
+            if (b>0) {
+               mpz_tdiv_q_ui(this, this, b);
+            } else {
+               mpz_tdiv_q_ui(this, this, -b);
                negate();
             }
-         } else
+         } else {
             throw GMP::ZeroDivide();
-      } else
-         _inf_inv_sign(rep,b,true);
+         }
+      } else {
+         inf_inv_sign(this, b);
+      }
       return *this;
+   }
+
+   Integer& operator/= (int b)
+   {
+      return *this /= long(b);
+   }
+
+   friend
+   Integer operator/ (const Integer& a, long b)
+   {
+      Integer result(a);
+      result/=b;
+      return result;
+   }
+   friend
+   Integer operator/ (const Integer& a, int b)
+   {
+      return a/long(b);
+   }
+   friend
+   Integer&& operator/ (Integer&& a, long b)
+   {
+      return std::move(a/=b);
+   }
+   friend
+   Integer&& operator/ (Integer&& a, int b)
+   {
+      return std::move(a/=long(b));
+   }
+
+   friend
+   long operator/ (long a, const Integer& b)
+   {
+      if (__builtin_expect(isfinite(b), 1)) {
+         if (__builtin_expect(!b.is_zero(), 1)) {
+            if (mpz_fits_slong_p(&b))
+               return a/mpz_get_si(&b);
+         } else {
+            throw GMP::ZeroDivide();
+         }
+      }
+      return 0;
+   }
+
+   friend
+   long operator/ (int a, const Integer& b)
+   {
+      return long(a)/b;
+   }
+
+   /// Remainder of division.
+
+   Integer& operator%= (const Integer& b)
+   {
+      if (__builtin_expect(isfinite(*this) && isfinite(b), 1)) {
+         if (__builtin_expect(!b.is_zero(), 1))
+            mpz_tdiv_r(this, this, &b);
+         else
+            throw GMP::ZeroDivide();
+      } else {
+         throw GMP::NaN();
+      }
+      return *this;
+   }
+
+   friend
+   Integer operator% (const Integer& a, const Integer& b)
+   {
+      Integer result(a);
+      result %= b;
+      return result;
+   }
+   friend
+   Integer&& operator% (Integer&& a, const Integer& b)
+   {
+      return std::move(a%=b);
+   }
+
+   Integer& operator%= (long b)
+   {
+      if (__builtin_expect(isfinite(*this), 1)) {
+         if (__builtin_expect(b, 1))
+            mpz_tdiv_r_ui(this, this, std::abs(b));
+         else
+            throw GMP::ZeroDivide();
+      } else {
+         throw GMP::NaN();
+      }
+      return *this;
+   }
+   Integer& operator%= (int b)
+   {
+      return *this %= long(b);
+   }
+
+   friend
+   long operator% (const Integer& a, long b)
+   {
+      if (__builtin_expect(isfinite(a), 1)) {
+         if (__builtin_expect(b, 1))
+            return mpz_tdiv_ui(&a, std::abs(b));
+         else
+            throw GMP::ZeroDivide();
+      } else {
+         throw GMP::NaN();
+      }
+   }
+   friend
+   int operator% (const Integer& a, int b)
+   {
+      return a % long(b);
+   }
+
+   // these two just suppress a warning about "ambiguous candidates"
+   friend
+   long operator% (Integer&& a, long b)
+   {
+      return const_cast<const Integer&>(a) % b;
+   }
+   friend
+   int operator% (Integer&& a, int b)
+   {
+      return const_cast<const Integer&>(a) % long(b);
+   }
+
+   friend
+   long operator% (long a, const Integer& b)
+   {
+      if (__builtin_expect(isfinite(b), 1)) {
+         if (__builtin_expect(!b.is_zero(), 1)) {
+            if (mpz_fits_slong_p(&b))
+               return a % mpz_get_si(&b);
+            else
+               return a;
+         } else {
+            throw GMP::ZeroDivide();
+         }
+      } else {
+         throw GMP::NaN();
+      }
+   }
+
+   friend
+   int operator% (int a, const Integer& b)
+   {
+      return long(a) % b;
    }
 
    /// b != infinity; but 0/0 allowed
    Integer& div_exact(const Integer& b)
    {
-      const int s2=mpz_sgn(b.rep);
-      if (__builtin_expect(isfinite(*this),1)) {
-         if (__builtin_expect(s2,1))
-            mpz_divexact(rep, rep, b.rep);
-      } else
-         _inf_inv_sign(rep,s2,true);
+      if (__builtin_expect(isfinite(*this), 1)) {
+         if (__builtin_expect(!b.is_zero(), 1))
+            mpz_divexact(this, this, &b);
+      } else {
+         inf_inv_sign(this, mpz_sgn(&b));
+      }
       return *this;
    }
 
    /// 0/0 allowed
    Integer& div_exact(long b)
    {
-      if (__builtin_expect(isfinite(*this),1)) {
-         if (__builtin_expect(b,1)) {
-            if (b>0)
-               mpz_divexact_ui(rep, rep, b);
-            else {
-               mpz_divexact_ui(rep, rep, -b);
+      if (__builtin_expect(isfinite(*this), 1)) {
+         if (__builtin_expect(b, 1)) {
+            if (b>0) {
+               mpz_divexact_ui(this, this, b);
+            } else {
+               mpz_divexact_ui(this, this, -b);
                negate();
             }
          }
-      } else
-         _inf_inv_sign(rep,b,true);
-      return *this;
-   }
-
-   /// Remainder of division.
-   Integer& operator%= (const Integer& b)
-   {
-      const bool f1=isfinite(*this), f2=isfinite(b);
-      if (__builtin_expect(!b.non_zero(), 0))
-         throw GMP::ZeroDivide();
-      if (__builtin_expect(f1 && f2, 1)) {
-         mpz_tdiv_r(rep, rep, b.rep);
-      } else if (f2)
-         mpz_set_ui(rep, 0);
-      else
-         throw GMP::NaN();
-      return *this;
-   }
-
-   /// Remainder of division.
-   Integer& operator%= (long b)
-   {
-      if (__builtin_expect(!b,0))
-         throw GMP::ZeroDivide();
-      if (__builtin_expect(isfinite(*this),1))
-         mpz_tdiv_r_ui(rep, rep, abs(b));
-      else
-         mpz_set_ui(rep, 0);
-      return *this;
-   }
-
-   /// Multiply with 2**k.
-   Integer& operator<<= (unsigned long k)
-   {
-      if (__builtin_expect(isfinite(*this),1))
-         mpz_mul_2exp(rep, rep, k);
-      return *this;
-   }
-
-   /// Divide through 2**k, truncate to zero.
-   Integer& operator>>= (unsigned long k)
-   {
-      if (__builtin_expect(isfinite(*this),1))
-         mpz_tdiv_q_2exp(rep, rep, k);
-      return *this;
-   }
-
-   /// Addition.
-   friend Integer operator+ (const Integer& a, const Integer& b)
-   {
-      const bool f1=isfinite(a), f2=isfinite(b);
-      if (__builtin_expect(f1 && f2, 1))
-         return Integer(mpz_add, a.rep, b.rep);
-      if (f2) return a;
-      if (!f1 && isinf(a)!=isinf(b))
-         throw GMP::NaN();
-      return b;
-   }
-
-   /// Addition.
-   friend Integer operator+ (const Integer& a, long b)
-   {
-      if (__builtin_expect(isfinite(a),1))
-         return Integer(b>=0 ? mpz_add_ui : mpz_sub_ui, a.rep, (unsigned long)abs(b));
-      return a;
-   }
-
-   /// Subtraction.
-   friend Integer operator- (const Integer& a, const Integer& b)
-   {
-      const bool f1=isfinite(a), f2=isfinite(b);
-      if (__builtin_expect(f1 && f2, 1))
-         return Integer(mpz_sub, a.rep, b.rep);
-      if (f2) return a;
-      if (!f1 && isinf(a)==isinf(b))
-         throw GMP::NaN();
-      return Integer(maximal<Integer>(), b.rep, -1);
-   }
-
-   /// Subtraction.
-   friend Integer operator- (const Integer& a, long b)
-   {
-      if (__builtin_expect(isfinite(a),1))
-         return Integer(b>=0 ? mpz_sub_ui : mpz_add_ui, a.rep, (unsigned long)abs(b));
-      return a;
-   }
-
-   /// Subtraction.
-   friend Integer operator- (long a, const Integer& b)
-   {
-      if (__builtin_expect(isfinite(b),1)) {
-         mpz_t minus_b;
-         return Integer(a>=0 ? mpz_add_ui : mpz_sub_ui,
-                        _tmp_negate(minus_b,b.rep),  (unsigned long)abs(a));
+      } else {
+         inf_inv_sign(this, b);
       }
-      return Integer(maximal<Integer>(), b.rep, -1);
+      return *this;
    }
 
-   /// Subtraction.
-   friend Integer operator- (const Integer& a)
+   Integer& div_exact(int b)
    {
-      if (__builtin_expect(isfinite(a),1))
-         return Integer(mpz_neg, a.rep);
-      return Integer(maximal<Integer>(), a.rep, -1);
+      return div_exact(long(b));
    }
 
-   /// Multiplication.
-   friend Integer operator* (const Integer& a, const Integer& b)
-   {
-      const bool f1=isfinite(a), f2=isfinite(b);
-      if (__builtin_expect(f1 && f2, 1))
-         return Integer(mpz_mul, a.rep, b.rep);
-      const int s=mpz_sgn(a.rep)*mpz_sgn(b.rep);
-      if (!s) throw GMP::NaN();
-      return Integer(maximal<Integer>(), s);
-   }
+   friend
+   Integer div_exact(const Integer& a, const Integer& b);
 
-   /// Multiplication.
-   friend Integer operator* (const Integer& a, long b)
-   {
-      if (__builtin_expect(isfinite(a),1))
-         return Integer(mpz_mul_si, a.rep, b);
-      if (!b) throw GMP::NaN();
-      return Integer(maximal<Integer>(), a.rep, sign(b));
-   }
+   friend
+   Integer div_exact(const Integer& a, long b);
 
-   /// Division with rounding via truncation.
-   friend Integer operator/ (const Integer& a, const Integer& b)
-   {
-      const bool f1=isfinite(a), f2=isfinite(b);
-      if (__builtin_expect(f2,1)) {
-         const int s2=mpz_sgn(b.rep);
-         if (__builtin_expect(f1,1)) {
-            if (__builtin_expect(s2,1))
-               return Integer(mpz_tdiv_q, a.rep, b.rep);
-            else
-               throw GMP::ZeroDivide();
-         }
-         return Integer(maximal<Integer>(), a.rep, s2<0 ? -1 : 1);
-      } else if (f1)
-         return Integer();
-      else
-         throw GMP::NaN();
-   }
-
-   /// Division.
-   friend Integer operator/ (const Integer& a, long b)
-   {
-      if (__builtin_expect(isfinite(a),1)) {
-         if (__builtin_expect(b,1)) {
-            if (b>0)
-               return Integer(mpz_tdiv_q_ui, a.rep, (unsigned long)b);
-            mpz_t minus_a;
-            return Integer(mpz_tdiv_q_ui, _tmp_negate(minus_a,a.rep), (unsigned long)(-b));
-         } else
-            throw GMP::ZeroDivide();
-      }
-      return Integer(maximal<Integer>(), a.rep, b<0 ? -1 : 1);
-   }
-
-   /// Division.
-   friend int operator/ (int a, const Integer& b)
-   {
-      if (__builtin_expect(!b.non_zero(), 0))
-         throw GMP::ZeroDivide();
-      return isfinite(b) && mpz_fits_sint_p(b.rep) ? a/mpz_get_si(b.rep) : 0;
-   }
-
-   /// Division.
-   friend long operator/ (long a, const Integer& b)
-   {
-      if (__builtin_expect(!b.non_zero(), 0))
-         throw GMP::ZeroDivide();
-      return isfinite(b) && mpz_fits_slong_p(b.rep) ? a/mpz_get_si(b.rep) : 0;
-   }
-
-   /// Remainder of division.
-   friend Integer operator% (const Integer& a, const Integer& b)
-   {
-      const bool f1=isfinite(a), f2=isfinite(b);
-      if (__builtin_expect(!b.non_zero(), 0))
-         throw GMP::ZeroDivide();
-      if (__builtin_expect(f1 && f2, 1)) {
-         return Integer(mpz_tdiv_r, a.rep, b.rep);
-      }
-      if (!f2)
-         throw GMP::NaN();
-      return Integer();
-   }
-
-   /// Remainder of division.
-   friend long operator% (const Integer& a, long b)
-   {
-      if (__builtin_expect(!b, 0))
-         throw GMP::ZeroDivide();
-      if (__builtin_expect(isfinite(a),1)) {
-         long r=mpz_tdiv_ui(a.rep, b);
-         return mpz_sgn(a.rep)>=0 ? r : -r;
-      }
-      return 0;
-   }
-
-   /// Remainder of division.
-   friend Integer operator% (int a, const Integer& b)
-   {
-      if (__builtin_expect(!b.non_zero(), 0))
-         throw GMP::ZeroDivide();
-      return isfinite(b) && mpz_fits_sint_p(b.rep) ? Integer(a%mpz_get_si(b.rep)) : b;
-   }
-
-   /// Remainder of division.
-   friend Integer operator% (long a, const Integer& b)
-   {
-      if (__builtin_expect(!b.non_zero(), 0))
-         throw GMP::ZeroDivide();
-      return isfinite(b) && mpz_fits_slong_p(b.rep) ? Integer(a%mpz_get_si(b.rep)) : b;
-   }
 
    /// Obtain both the quotient and remainder of a division
    friend
@@ -813,171 +981,364 @@ public:
    friend
    Div<Integer> div(const Integer& a, long b);
 
-   /// Multiply with 2**k.
-   friend Integer operator<< (const Integer& a, unsigned long k)
+
+   /// Multiply by or divide through 2**k, truncate to zero.
+   Integer& operator<<= (long k)
    {
-      if (__builtin_expect(isfinite(a),1))
-         return Integer(mpz_mul_2exp, a.rep, k);
-      return a;
+      if (__builtin_expect(isfinite(*this), 1)) {
+         if (k >= 0)
+            mpz_mul_2exp(this, this, k);
+         else
+            mpz_tdiv_q_2exp(this, this, -k);
+      }
+      return *this;
+   }
+   Integer& operator<<= (int k)
+   {
+      return *this <<= long(k);
    }
 
-   /// Divide through 2**k, truncate to 0.
-   friend Integer operator>> (const Integer& a, unsigned long k)
+   friend
+   Integer operator<< (const Integer& a, long k)
    {
-      if (__builtin_expect(isfinite(a),1))
-         return Integer(mpz_tdiv_q_2exp, a.rep, k);
-      return a;
+      Integer result(a);
+      result <<= k;
+      return result;
    }
+   friend
+   Integer&& operator<< (Integer&& a, long k)
+   {
+      return std::move(a <<= k);
+   }
+   friend
+   Integer operator<< (const Integer& a, int k)
+   {
+      return a << long(k);
+   }
+   friend
+   Integer&& operator<< (Integer&& a, int k)
+   {
+      return std::move(a <<= long(k));
+   }
+
+   /// Divide through or multiply by 2**k, truncate to zero.
+   Integer& operator>>= (long k)
+   {
+      return *this <<= -k;
+   }
+   Integer& operator>>= (int k)
+   {
+      return *this >>= long(k);
+   }
+
+   friend
+   Integer operator>> (const Integer& a, long k)
+   {
+      Integer result(a);
+      result >>= k;
+      return result;
+   }
+   friend
+   Integer&& operator>> (Integer&& a, long k)
+   {
+      return std::move(a >>= k);
+   }
+   friend
+   Integer operator>> (const Integer& a, int k)
+   {
+      return a >> long(k);
+   }
+   friend
+   Integer&& operator>> (Integer&& a, int k)
+   {
+      return std::move(a >>= long(k));
+   }
+
 
    /// Test for bits.
-   bool bit(unsigned long i) const { return mpz_tstbit(rep, i); }
+   bool bit(unsigned long i) const
+   {
+      return isfinite(*this) && mpz_tstbit(this, i);
+   }
 
    /// Parity.
-   bool odd() const { return isfinite(*this) && bit(0); }
-   /// Parity.
-   bool even() const { return !odd(); }
+   bool odd() const
+   {
+      return bit(0);
+   }
 
-   friend int isfinite(const Integer& a);
-   friend int isinf(const Integer& a);
+   /// Parity.
+   bool even() const
+   {
+      return isfinite(*this) && !odd();
+   }
+
+
+   /// fast comparison with 0
+   bool is_zero() const noexcept
+   {
+      return mpz_sgn(this)==0;
+   }
 
    /// Comparison. The magnitude of the return value is arbitrary, only its sign is relevant.
    int compare(const Integer& b) const
    {
-      const int i1=isinf(*this), i2=isinf(b);
-      if (__builtin_expect(i1 | i2, 0))
-         return i1-i2;
-      return mpz_cmp(rep, b.rep);
+      if (__builtin_expect(isfinite(*this) && isfinite(b), 1))
+         return mpz_cmp(this, &b);
+      else
+         return isinf(*this)-isinf(b);
    }
 
-   /// Comparison.
    int compare(long b) const
    {
-      const int i1=isinf(*this);
-      if (__builtin_expect(i1,0))
-         return i1;
-      return mpz_cmp_si(rep, b);
+      if (__builtin_expect(isfinite(*this), 1))
+         return mpz_cmp_si(this, b);
+      else
+         return isinf(*this);
    }
 
-   /// Comparison.
-   int compare(int b) const { return compare(long(b)); }
+   int compare(int b) const
+   {
+      return compare(long(b));
+   }
 
-   /// Comparison.
    int compare(double b) const
    {
-      const int i1=isinf(*this);
-      if (__builtin_expect(i1,0))
-         return i1-isinf(b);
-      return mpz_cmp_d(rep, b);
+      if (__builtin_expect(isfinite(*this) && isfinite(b), 1))
+         return mpz_cmp_d(this, b);
+      else
+         return isinf(*this)-isinf(b);
    }
 
-   typedef list comparable_with(int, long, double);
+   typedef mlist<int, long, double> is_comparable_with;
+   typedef mlist_concat<Integer, is_comparable_with>::type self_and_comparable_with;
 
-   /// Equality
-   friend bool operator== (const Integer& a, long b)
+   template <typename T, typename=typename std::enable_if<mlist_contains<self_and_comparable_with, T>::value>::type>
+   friend
+   bool operator== (const Integer& a, const T& b)
    {
-      return isfinite(a) && mpz_fits_slong_p(a.rep) && mpz_get_si(a.rep)==b;
+      return !a.compare(b);
    }
-
-   /// Less than.
-   friend bool operator< (const Integer& a, long b)
+   template <typename T, typename=typename std::enable_if<mlist_contains<self_and_comparable_with, T>::value>::type>
+   friend
+   bool operator!= (const Integer& a, const T& b)
    {
-      const int i1=isinf(a);
-      if (__builtin_expect(i1,0)) return i1<0;
-      return mpz_fits_slong_p(a.rep) ? mpz_get_si(a.rep)<b : mpz_sgn(a.rep)<0;
+      return !(a==b);
    }
-
-   /// Greater than.
-   friend bool operator> (const Integer& a, long b)
+   template <typename T, typename=typename std::enable_if<mlist_contains<self_and_comparable_with, T>::value>::type>
+   friend
+   bool operator< (const Integer& a, const T& b)
    {
-      const int i1=isinf(a);
-      if (__builtin_expect(i1,0)) return i1>0;
-      return mpz_fits_slong_p(a.rep) ? mpz_get_si(a.rep)>b : mpz_sgn(a.rep)>0;
+      return a.compare(b)<0;
+   }
+   template <typename T, typename=typename std::enable_if<mlist_contains<self_and_comparable_with, T>::value>::type>
+   friend
+   bool operator> (const Integer& a, const T& b)
+   {
+      return a.compare(b)>0;
+   }
+   template <typename T, typename=typename std::enable_if<mlist_contains<self_and_comparable_with, T>::value>::type>
+   friend
+   bool operator<= (const Integer& a, const T& b)
+   {
+      return a.compare(b)<=0;
+   }
+   template <typename T, typename=typename std::enable_if<mlist_contains<self_and_comparable_with, T>::value>::type>
+   friend
+   bool operator>= (const Integer& a, const T& b)
+   {
+      return a.compare(b)>=0;
+   }
+   template <typename T, typename=typename std::enable_if<mlist_contains<is_comparable_with, T>::value>::type>
+   friend
+   bool operator== (const T& a, const Integer& b)
+   {
+      return b==a;
+   }
+   template <typename T, typename=typename std::enable_if<mlist_contains<is_comparable_with, T>::value>::type>
+   friend
+   bool operator!= (const T& a, const Integer& b)
+   {
+      return !(b==a);
+   }
+   template <typename T, typename=typename std::enable_if<mlist_contains<is_comparable_with, T>::value>::type>
+   friend
+   bool operator< (const T& a, const Integer& b)
+   {
+      return b>a;
+   }
+   template <typename T, typename=typename std::enable_if<mlist_contains<is_comparable_with, T>::value>::type>
+   friend
+   bool operator> (const T& a, const Integer& b)
+   {
+      return b<a;
+   }
+   template <typename T, typename=typename std::enable_if<mlist_contains<is_comparable_with, T>::value>::type>
+   friend
+   bool operator<= (const T& a, const Integer& b)
+   {
+      return b>=a;
+   }
+   template <typename T, typename=typename std::enable_if<mlist_contains<is_comparable_with, T>::value>::type>
+   friend
+   bool operator>= (const T& a, const Integer& b)
+   {
+      return b<=a;
    }
 
    /// Equality of absolute values.
-   friend bool abs_equal(const Integer& a, const Integer& b)
+   friend
+   bool abs_equal(const Integer& a, const Integer& b)
    {
-      const bool f1=isfinite(a), f2=isfinite(b);
-      if (__builtin_expect(f1 && f2, 1))
-         return !mpz_cmpabs(a.rep, b.rep);
-      return f1==f2;
+      if (__builtin_expect(isfinite(a) && isfinite(b), 1))
+         return !mpz_cmpabs(&a, &b);
+      else
+         return isinf(a) && isinf(b);
    }
 
    /// Equality of absolute values.
-   friend bool abs_equal(const Integer& a, long b)
+   friend
+   bool abs_equal(const Integer& a, long b)
    {
-      return isfinite(a) && !mpz_cmpabs_ui(a.rep, abs(b));
+      return __builtin_expect(isfinite(a), 1) && !mpz_cmpabs_ui(&a, std::abs(b));
+   }
+
+   friend
+   bool abs_equal(const Integer& a, int b)
+   {
+      return abs_equal(a, long(b));
    }
 
    /// Equality of absolute values.
-   friend bool abs_equal(const Integer& a, double b)
+   friend
+   bool abs_equal(const Integer& a, double b)
    {
-      if (__builtin_expect(isfinite(a),1))
-         return !mpz_cmpabs_d(a.rep, b);
+      if (__builtin_expect(isfinite(a), 1))
+         return !mpz_cmpabs_d(&a, b);
       return isinf(b);
    }
 
+   template <typename T, typename=typename std::enable_if<mlist_contains<is_comparable_with, T>::value>::type>
+   friend
+   bool abs_equal(const T& a, const Integer& b)
+   {
+      return abs_equal(b, a);
+   }
+
+
    /// Factorial.
-   static Integer fac(long k)
+   static
+   Integer fac(long k)
    {
-      if (k<0) throw std::runtime_error("fac not defined for negative values");
-      return Integer(mpz_fac_ui, (unsigned long)k);
+      if (k<0) throw GMP::NaN();
+      Integer result;
+      mpz_fac_ui(&result, k);
+      return result;
    }
 
    /// Power.
-   static Integer pow(const Integer& a, unsigned long k)
+   static
+   Integer pow(const Integer& a, unsigned long k)
    {
-      if (__builtin_expect(isfinite(a),1))
-         return Integer(mpz_pow_ui, a.rep, k);
-      return Integer(maximal<Integer>(), k%2 ? isinf(a) : 1);
+      Integer result;
+      if (__builtin_expect(isfinite(a), 1))
+         mpz_pow_ui(&result, &a, k);
+      else if (k)
+         set_inf(&result, k%2 ? mpz_sgn(&a) : 1);
+      else
+         throw GMP::NaN();
+      return result;
    }
 
-   /// Power.
-   static Integer pow(unsigned long a, unsigned long k)
+   static
+   Integer pow(long a, unsigned long k)
    {
-      return Integer(mpz_ui_pow_ui, a, k);
+      Integer result;
+      if (a>=0) {
+         mpz_ui_pow_ui(&result, a, k);
+      } else {
+         mpz_ui_pow_ui(&result, -a, k);
+         result.negate();
+      }
+      return result;
+   }
+
+   static
+   Integer pow(int a, unsigned long k)
+   {
+      return pow(long(a), k);
    }
 
    /// Square Root.
-   friend Integer sqrt(const Integer& a)
+   friend
+   Integer sqrt(const Integer& a)
    {
-      if (__builtin_expect(isfinite(a),1))
-         return Integer(mpz_sqrt, a.rep);
-      return Integer(maximal<Integer>(), 1);
+      if (mpz_sgn(&a)<0)
+         throw GMP::NaN();
+      Integer result;
+      if (__builtin_expect(isfinite(a), 1))
+         mpz_sqrt(&result, &a);
+      else
+         set_inf(&result, 1);
+      return result;
+   }
+
+   friend
+   Integer&& sqrt(Integer&& a)
+   {
+      if (mpz_sgn(&a)<0)
+         throw GMP::NaN();
+      if (__builtin_expect(isfinite(a), 1))
+         mpz_sqrt(&a, &a);
+      return std::move(a);
    }
 
    /// Absolute value.
-   friend Integer abs(const Integer& a)
+   friend
+   Integer abs(const Integer& a)
    {
-      if (__builtin_expect(isfinite(a),1))
-         return Integer(mpz_abs, a.rep);
-      return Integer(maximal<Integer>(), 1);
+      Integer result(a);
+      mpz_abs(&result, &result);
+      return result;
+   }
+
+   friend
+   Integer&& abs(Integer&& a)
+   {
+      mpz_abs(&a, &a);
+      return std::move(a);
    }
 
    /// Greatest common divisor.
    friend
    Integer gcd(const Integer& a, const Integer& b);
 
+   friend
+   Integer&& gcd(Integer&& a, const Integer& b);
+
    /// Greatest common divisor.
    friend
    Integer gcd(const Integer& a, long b);
+
+   friend
+   Integer&& gcd(Integer&& a, long b);
 
    /// Least common multiple.
    friend
    Integer lcm(const Integer& a, const Integer& b);
 
    friend
+   Integer&& lcm(Integer&& a, const Integer& b);
+
+   friend
    Integer lcm(const Integer& a, long b);
+
+   friend
+   Integer&& lcm(Integer&& a, long b);
 
    /// Extended gcd algorithm: g=a*p+b*q, a=m*g, b=n*g.
    friend
    ExtGCD<Integer> ext_gcd(const Integer& a, const Integer& b);
-
-   friend
-   Integer div_exact(const Integer& a, const Integer& b);
-
-   friend
-   Integer div_exact(const Integer& a, long b);
 
    /// Binomial coefficient.
    static
@@ -986,6 +1347,12 @@ public:
    /// Binomial coefficient.
    static
    Integer binom(long n, long k);
+
+   static
+   Integer binom(int n, long k)
+   {
+      return binom(long(n), k);
+   }
 
    /// @param allow_sign whether leading whitespaces and sign are expected
    void read(std::istream& is, bool allow_sign=true);
@@ -998,11 +1365,7 @@ public:
    */
    void putstr(std::ios::fmtflags flags, char *buf) const;
 
-   friend class Rational;
-   friend struct spec_object_traits<Integer>;
-   template <typename> friend class std::numeric_limits;
-
-   mpz_srcptr get_rep() const { return rep; }
+   mpz_srcptr get_rep() const noexcept { return this; }
 
    /// Output to stream.
    friend
@@ -1021,22 +1384,124 @@ public:
       return is;
    }
 #if POLYMAKE_DEBUG
-   void dump() const { std::cerr << *this << std::flush; }
+   void dump() const __attribute__((used)) { std::cerr << *this << std::flush; }
 #endif
+protected:
+   /// uninitialized object
+   explicit Integer(std::nullptr_t) {}
+
+   /// parse the string and assign the value.
+   /// throws an exception in case of syntax errors
+   void parse(const char *s);
+
+   static
+   void set_finite(mpz_ptr me, __mpz_struct& src, initialized st)
+   {
+      if (bool(st)) {
+         // move during assignment
+         mpz_swap(me, &src);
+      } else {
+         // move during construction
+         *me=src;
+         set_inf(&src, 0, st);
+      }
+   }
+
+   static
+   void set_finite(mpz_ptr me, const __mpz_struct& src, initialized st)
+   {
+      if (bool(st) && __builtin_expect(me->_mp_d != nullptr, 1))
+         mpz_set(me, &src);
+      else
+         mpz_init_set(me, &src);
+   }
+
+   static
+   void set_finite(mpz_ptr me, long src, initialized st)
+   {
+      if (bool(st) && __builtin_expect(me->_mp_d != nullptr, 1))
+         mpz_set_si(me, src);
+      else
+         mpz_init_set_si(me, src);
+   }
+
+   static
+   void set_finite(mpz_ptr me, int src, initialized st)
+   {
+      set_finite(me, long(src), st);
+   }
+
+   static
+   void set_finite(mpz_ptr me, double src, initialized st)
+   {
+      if (bool(st) && __builtin_expect(me->_mp_d != nullptr, 1))
+         mpz_set_d(me, src);
+      else
+         mpz_init_set_d(me, src);
+   }
+
+   static
+   void set_inf(mpz_ptr me, int sign, initialized st=initialized::yes) noexcept
+   {
+      if (bool(st) && me->_mp_d) mpz_clear(me);
+      me->_mp_alloc=0;
+      me->_mp_size=sign;
+      me->_mp_d=nullptr;
+   }
+   static
+   void set_inf(mpz_ptr me, const Integer& from, initialized st=initialized::yes) noexcept
+   {
+      set_inf(me, from._mp_size, st);
+   }
+   static
+   void set_inf(mpz_ptr me, int sign, long inv, initialized st=initialized::yes)
+   {
+      if (sign==0 || inv==0)
+         throw GMP::NaN();
+      set_inf(me, inv<0 ? -sign : sign, st);
+   }
+   static
+   void set_inf(mpz_ptr me, int sign, const Integer& from, initialized st=initialized::yes)
+   {
+      set_inf(me, sign, from._mp_size, st);
+   }
+   static
+   void inf_inv_sign(mpz_ptr me, long s)
+   {
+      if (s==0 || me->_mp_size==0)
+         throw GMP::NaN();
+      if (s<0)
+         me->_mp_size = -me->_mp_size;
+   }
+
+   template <typename Src>
+   void set_data(Src&& src, initialized st)
+   {
+      if (__builtin_expect(isfinite(src), 1))
+         set_finite(this, src, st);
+      else
+         set_inf(this, isinf(src), st);
+   }
+
+   friend class Rational;
+   friend class AccurateFloat;
+   friend struct spec_object_traits<Integer>;
 };
 
 }
 namespace std {
 
-inline void swap(pm::Integer& i1, pm::Integer& i2) { i1.swap(i2); }
+inline void swap(pm::Integer& i1, pm::Integer& i2) noexcept { i1.swap(i2); }
 
 template <>
 class numeric_limits<pm::Integer> : public numeric_limits<long> {
 public:
    static const bool has_infinity=true;
-   static pm::Integer min() throw() { return pm::Integer(pm::maximal<pm::Integer>(),-1); }
-   static pm::Integer infinity() throw() { return pm::Integer(pm::maximal<pm::Integer>()); }
-   static pm::Integer max() throw() { return pm::Integer(pm::maximal<pm::Integer>()); }
+
+   static pm::Integer min() noexcept { return pm::Integer::infinity(-1); }
+   static pm::Integer max() noexcept { return pm::Integer::infinity(1); }
+   static pm::Integer infinity() noexcept { return pm::Integer::infinity(1); }
+
    static const int digits=INT_MAX;
    static const int digits10=INT_MAX;
    static const bool is_bounded=false;
@@ -1045,166 +1510,193 @@ public:
 }
 namespace pm {
 
-inline Integer operator+ (const Integer& a) { return a; }
-
-inline const Integer operator++ (Integer& a, int) { Integer copy(a); ++a; return copy; }
-inline const Integer operator-- (Integer& a, int) { Integer copy(a); --a; return copy; }
-
-inline Integer operator+ (long a, const Integer& b) { return b+a; }
-inline Integer operator+ (const Integer& a, int b) { return a+long(b); }
-inline Integer operator+ (int a, const Integer& b) { return b+long(a); }
-
-inline Integer operator- (const Integer& a, int b) { return a-long(b); }
-inline Integer operator- (int a, const Integer& b) { return long(a)-b; }
-
-inline Integer operator* (long a, const Integer& b) { return b*a; }
-inline Integer operator* (const Integer& a, int b) { return a*long(b); }
-inline Integer operator* (int a, const Integer& b) { return b*long(a); }
-
-inline Integer operator/ (const Integer& a, int b) { return a/long(b); }
-inline Integer operator% (const Integer& a, int b) { return a%long(b); }
-
-inline Integer operator<< (const Integer& a, unsigned int k)
-{
-   return a << static_cast<unsigned long>(k);
-}
-
-inline Integer operator>> (const Integer& a, unsigned int k)
-{
-   return a >> static_cast<unsigned long>(k);
-}
-
-inline Integer operator<< (const Integer& a, long k)
-{
-   if (k<0) return a >> static_cast<unsigned long>(-k);
-   return a << static_cast<unsigned long>(k);
-}
-
-inline Integer operator>> (const Integer& a, long k)
-{
-   if (k<0) return a << static_cast<unsigned long>(-k);
-   return a >> static_cast<unsigned long>(k);
-}
-
-inline Integer operator<< (const Integer& a, int k) { return a << long(k); }
-inline Integer operator>> (const Integer& a, int k) { return a >> long(k); }
-
-inline bool operator== (const Integer& a, const Integer& b) { return a.compare(b)==0; }
-inline bool operator!= (const Integer& a, const Integer& b) { return a.compare(b)!=0; }
-inline bool operator< (const Integer& a, const Integer& b) { return a.compare(b)<0; }
-inline bool operator> (const Integer& a, const Integer& b) { return a.compare(b)>0; }
-inline bool operator<= (const Integer& a, const Integer& b) { return a.compare(b)<=0; }
-inline bool operator>= (const Integer& a, const Integer& b) { return a.compare(b)>=0; }
-
-namespace GMP {
-   inline bool operator== (const TempInteger& a, const TempInteger& b) { return mpz_cmp(&a,&b)==0; }
-   inline bool operator!= (const TempInteger& a, const TempInteger& b) { return mpz_cmp(&a,&b)!=0; }
-   inline bool operator< (const TempInteger& a, const TempInteger& b) { return mpz_cmp(&a,&b)<0; }
-   inline bool operator> (const TempInteger& a, const TempInteger& b) { return mpz_cmp(&a,&b)>0; }
-   inline bool operator<= (const TempInteger& a, const TempInteger& b) { return mpz_cmp(&a,&b)<=0; }
-   inline bool operator>= (const TempInteger& a, const TempInteger& b) { return mpz_cmp(&a,&b)>=0; }
-}
-
-inline bool operator== (long a, const Integer& b) { return b==a; }
-inline bool operator== (const Integer& a, int b) { return a==long(b); }
-inline bool operator== (int a, const Integer& b) { return b==long(a); }
-inline bool operator== (const Integer& a, double b) { return !a.compare(b); }
-inline bool operator== (double a, const Integer& b) { return !b.compare(a); }
-inline bool abs_equal(long a, const Integer& b) { return abs_equal(b,a); }
-inline bool abs_equal(double a, const Integer& b) { return abs_equal(b,a); }
-inline bool abs_equal(const Integer& a, int b) { return abs_equal(a,long(b)); }
-inline bool abs_equal(int a, const Integer& b) { return abs_equal(b,long(a)); }
-
-inline bool operator!= (const Integer& a, long b) { return !(a==b); }
-inline bool operator!= (const Integer& a, int b) { return !(a==long(b)); }
-inline bool operator!= (long a, const Integer& b) { return !(b==a); }
-inline bool operator!= (int a, const Integer& b) { return !(b==long(a)); }
-inline bool operator!= (const Integer& a, double b) { return !(a==b); }
-inline bool operator!= (double a, const Integer& b) { return !(b==a); }
-
-inline bool operator< (const Integer& a, int b) { return a<long(b); }
-inline bool operator< (long a, const Integer& b) { return b>a; }
-inline bool operator< (int a, const Integer& b) { return b>long(a); }
-inline bool operator< (const Integer& a, double b) { return a.compare(b)<0; }
-inline bool operator< (double a, const Integer& b) { return b.compare(a)>0; }
-
-inline bool operator> (const Integer& a, int b) { return a>long(b); }
-inline bool operator> (long a, const Integer& b) { return b<a; }
-inline bool operator> (int a, const Integer& b) { return b<long(a); }
-inline bool operator> (const Integer& a, double b) { return a.compare(b)>0; }
-inline bool operator> (double a, const Integer& b) { return b.compare(a)<0; }
-
-inline bool operator<= (const Integer& a, long b) { return !(a>b); }
-inline bool operator<= (const Integer& a, int b) { return !(a>long(b)); }
-inline bool operator<= (long a, const Integer& b) { return !(b<a); }
-inline bool operator<= (int a, const Integer& b) { return !(b<long(a)); }
-inline bool operator<= (const Integer& a, double b) { return !(a>b); }
-inline bool operator<= (double a, const Integer& b) { return !(b<a); }
-
-inline bool operator>= (const Integer& a, long b) { return !(a<b); }
-inline bool operator>= (const Integer& a, int b) { return !(a<long(b)); }
-inline bool operator>= (long a, const Integer& b) { return !(b>a); }
-inline bool operator>= (int a, const Integer& b) { return !(b>long(a)); }
-inline bool operator>= (const Integer& a, double b) { return !(a<b); }
-inline bool operator>= (double a, const Integer& b) { return !(b>a); }
-
-template <> inline
-cmp_value sign(const Integer& a) { return sign(a.get_rep()->_mp_size); }
-
-/// Returns a positive number if not equal to infinity, otherwise zero.
 inline
-int isfinite(const Integer& a)
+bool isfinite(const Integer& a) noexcept
 {
-   return a.rep[0]._mp_alloc;
+   return a.get_rep()->_mp_alloc;
 }
 
-/// Returns the sign if equal to +/-infinity, otherwise zero.
 inline
-int isinf(const Integer& a)
+int isinf(const Integer& a) noexcept
 {
-   return isfinite(a) ? 0 : a.rep[0]._mp_size;
+   return isfinite(a) ? 0 : a.get_rep()->_mp_size;
+}
+
+inline
+int sign(const Integer& a) noexcept
+{
+   return mpz_sgn(a.get_rep());
 }
 
 inline
 Integer gcd(const Integer& a, const Integer& b)
 {
    const bool f1=isfinite(a), f2=isfinite(b);
-   if (__builtin_expect(f1 && f2, 1))
-      return Integer(mpz_gcd, a.rep, b.rep);
-   if (f1) return a;
-   return b;
+   if (__builtin_expect(f1 && f2, 1)) {
+      Integer result;
+      mpz_gcd(&result, &a, &b);
+      return result;
+   }
+   return f1 ? a : b;
+}
+
+inline
+Integer&& gcd(Integer&& a, const Integer& b)
+{
+   const bool f1=isfinite(a), f2=isfinite(b);
+   if (__builtin_expect(f1 && f2, 1)) {
+      mpz_gcd(&a, &a, &b);
+   } else if (f2) {
+      a=b;
+   }
+   return std::move(a);
+}
+
+inline
+Integer&& gcd(const Integer& a, Integer&& b)
+{
+   return gcd(std::move(b), a);
+}
+
+inline
+Integer&& gcd(Integer&& a, Integer&& b)
+{
+   return gcd(std::move(a), b);
 }
 
 inline
 Integer gcd(const Integer& a, long b)
 {
-   if (__builtin_expect(isfinite(a),1))
-      return Integer(mpz_gcd_ui, a.rep, (unsigned long)b);
+   if (__builtin_expect(isfinite(a), 1)) {
+      Integer result;
+      mpz_gcd_ui(&result, &a, b >= 0 ? b : -b);
+      return result;
+   }
    return b;
+}
+inline
+Integer gcd(const Integer& a, int b)
+{
+   return gcd(a, long(b));
 }
 
 inline
-Integer gcd(long a, const Integer& b) { return gcd(b,a); }
+Integer&& gcd(Integer&& a, long b)
+{
+   if (__builtin_expect(isfinite(a), 1))
+      mpz_gcd_ui(&a, &a, std::abs(b));
+   else
+      a=b;
+   return std::move(a);
+}
+inline
+Integer&& gcd(Integer&& a, int b)
+{
+   return gcd(std::move(a), long(b));
+}
+
+inline
+Integer gcd(long a, const Integer& b)
+{
+   return gcd(b, a);
+}
+inline
+Integer gcd(int a, const Integer& b)
+{
+   return gcd(b, long(a));
+}
+inline
+Integer&& gcd(long a, Integer&& b)
+{
+   return gcd(std::move(b), a);
+}
+inline
+Integer&& gcd(int a, Integer&& b)
+{
+   return gcd(std::move(b), long(a));
+}
 
 inline
 Integer lcm(const Integer& a, const Integer& b)
 {
+   Integer result;
+   if (__builtin_expect(isfinite(a) && isfinite(b), 1))
+      mpz_lcm(&result, &a, &b);
+   else
+      Integer::set_inf(&result, 1);
+   return result;
+}
+
+inline
+Integer&& lcm(Integer&& a, const Integer& b)
+{
    const bool f1=isfinite(a), f2=isfinite(b);
    if (__builtin_expect(f1 && f2, 1))
-      return Integer(mpz_lcm, a.rep, b.rep);
-   return Integer(maximal<Integer>(), 1);
+      mpz_lcm(&a, &a, &b);
+   else if (f1)
+      a=b;
+   return std::move(a);
+}
+
+inline
+Integer&& lcm(const Integer& a, Integer&& b)
+{
+   return lcm(std::move(b), a);
+}
+
+inline
+Integer&& lcm(Integer&& a, Integer&& b)
+{
+   return lcm(std::move(a), b);
 }
 
 inline
 Integer lcm(const Integer& a, long b)
 {
-   if (__builtin_expect(isfinite(a),1))
-      return Integer(mpz_lcm_ui, a.rep, (unsigned long)b);
-   return Integer(maximal<Integer>(), 1);
+   Integer result;
+   if (__builtin_expect(isfinite(a), 1))
+      mpz_lcm_ui(&result, &a, b >= 0 ? b : -b);
+   else
+      Integer::set_inf(&result, 1);
+   return result;
 }
-
 inline
-Integer lcm(long a, const Integer& b) { return lcm(b,a); }
+Integer lcm(const Integer& a, int b)
+{
+   return lcm(a, long(b));
+}
+inline
+Integer&& lcm(Integer&& a, long b)
+{
+   if (__builtin_expect(isfinite(a), 1))
+      mpz_lcm_ui(&a, &a, b >= 0 ? b : -b);
+   return std::move(a);
+}
+inline
+Integer&& lcm(Integer&& a, int b)
+{
+   return lcm(std::move(a), long(b));
+}
+inline
+Integer lcm(long a, const Integer& b)
+{
+   return lcm(b, a);
+}
+inline
+Integer lcm(int a, const Integer& b)
+{
+   return lcm(b, long(a));
+}
+inline
+Integer lcm(long a, Integer&& b)
+{
+   return lcm(std::move(b), a);
+}
+inline
+Integer lcm(int a, Integer&& b)
+{
+   return lcm(std::move(b), long(a));
+}
 
 inline
 ExtGCD<Integer> ext_gcd(const Integer& a, const Integer& b)
@@ -1212,9 +1704,9 @@ ExtGCD<Integer> ext_gcd(const Integer& a, const Integer& b)
    ExtGCD<Integer> res;
    const bool f1=isfinite(a), f2=isfinite(b);
    if (__builtin_expect(f1 && f2, 1)) {
-      mpz_gcdext(res.g.rep, res.p.rep, res.q.rep, a.rep, b.rep);
-      mpz_divexact(res.k1.rep, a.rep, res.g.rep);
-      mpz_divexact(res.k2.rep, b.rep, res.g.rep);
+      mpz_gcdext(&res.g, &res.p, &res.q, &a, &b);
+      mpz_divexact(&res.k1, &a, &res.g);
+      mpz_divexact(&res.k2, &b, &res.g);
    } else if (f1) {
       res.g=a; res.p=1; res.q=0; res.k1=1; res.k2=b;
    } else {
@@ -1227,17 +1719,14 @@ inline
 Div<Integer> div(const Integer& a, const Integer& b)
 {
    Div<Integer> res;
-   const bool f1=isfinite(a), f2=isfinite(b);
-   if (__builtin_expect(!b.non_zero(), 0))
-      throw GMP::ZeroDivide();
-   if (__builtin_expect(f1 && f2, 1))
-      mpz_tdiv_qr(res.quot.rep, res.rem.rep, a.rep, b.rep);
-   else if (f1)
+   if (__builtin_expect(isfinite(a) && isfinite(b), 1)) {
+      if (__builtin_expect(!b.is_zero(), 1))
+         mpz_tdiv_qr(&res.quot, &res.rem, &a, &b);
+      else
+         throw GMP::ZeroDivide();
+   } else {
       throw GMP::NaN();
-   else if (f2)
-      Integer::_set_inf(res.quot.rep, b.rep), res.rem=0;
-   else
-      throw GMP::NaN();
+   }
    return res;
 }
 
@@ -1245,37 +1734,58 @@ inline
 Div<Integer> div(const Integer& a, long b)
 {
    Div<Integer> res;
-   const bool f1=isfinite(a);
-   if (__builtin_expect(b==0, 0))
-      throw GMP::ZeroDivide();
-   if (__builtin_expect(f1, 1))
-      mpz_tdiv_qr_ui(res.quot.rep, res.rem.rep, a.rep, b);
-   else
-      Integer::_set_inf(res.quot.rep, b), res.rem=0;
+   if (__builtin_expect(isfinite(a), 1)) {
+      if (__builtin_expect(b, 1))
+         mpz_tdiv_qr_ui(&res.quot, &res.rem, &a, std::abs(b));
+      else
+         throw GMP::ZeroDivide();
+   } else {
+      throw GMP::NaN();
+   }
    return res;
+}
+
+inline
+Div<Integer> div(const Integer& a, int b)
+{
+   return div(a, long(b));
 }
 
 inline
 Integer div_exact(const Integer& a, const Integer& b)
 {
-   if (__builtin_expect(isfinite(a), 1)) {
-      if (__builtin_expect(!b.non_zero(), 0)) return a;     // allow 0/0
-      return Integer(mpz_divexact, a.rep, b.rep);
-   }
-   return Integer(maximal<Integer>(), mpz_sgn(a.rep)*mpz_sgn(b.rep));
+   Integer result(a);
+   result.div_exact(b);
+   return result;
+}
+
+inline
+Integer&& div_exact(Integer&& a, const Integer& b)
+{
+   return std::move(a.div_exact(b));
 }
 
 inline
 Integer div_exact(const Integer& a, long b)
 {
-   if (__builtin_expect(isfinite(a), 1)) {
-      if (__builtin_expect(!b,0)) return a;     // allow 0/0
-      if (b>0)
-         return Integer(mpz_divexact_ui, a.rep, (unsigned long)b);
-      mpz_t minus_a;
-      return Integer(mpz_divexact_ui, a._tmp_negate(minus_a,a.rep), (unsigned long)(-b));
-   }
-   return Integer(maximal<Integer>(), mpz_sgn(a.rep)*pm::sign(b));
+   Integer result(a);
+   result.div_exact(b);
+   return result;
+}
+inline
+Integer div_exact(const Integer& a, int b)
+{
+   return div_exact(a, long(b));
+}
+inline
+Integer&& div_exact(Integer&& a, long b)
+{
+   return std::move(a.div_exact(b));
+}
+inline
+Integer&& div_exact(Integer&& a, int b)
+{
+   return div_exact(std::move(a), long(b));
 }
 
 /// Logarithm (rounded down).
@@ -1284,7 +1794,7 @@ int log2_floor(const Integer& a)
 {
    if (__builtin_expect(!isfinite(a), 0)) throw GMP::NaN();
    int n=mpz_size(a.get_rep())-1;
-   return n>=0 ? n*mp_bits_per_limb + log2_floor(mpz_getlimbn(a.get_rep(),n)) : 0;
+   return n>=0 ? n*mp_bits_per_limb + log2_floor(mpz_getlimbn(a.get_rep(), n)) : 0;
 }
 
 /// Logarithm (rounded up). 
@@ -1293,7 +1803,7 @@ int log2_ceil(const Integer& a)
 {
    if (__builtin_expect(!isfinite(a),0)) throw GMP::NaN();
    int n=mpz_size(a.get_rep())-1;
-   return n>=0 ? n*mp_bits_per_limb + log2_ceil(mpz_getlimbn(a.get_rep(),n)) : 0;
+   return n>=0 ? n*mp_bits_per_limb + log2_ceil(mpz_getlimbn(a.get_rep(), n)) : 0;
 }
 
 namespace operations {
@@ -1335,116 +1845,71 @@ struct cmp_GMP_based : cmp_extremal, cmp_partial_scalar {
 
    cmp_value operator() (const T& a, const T& b) const
    {
-      return sign(a.compare(b));
+      return cmp_value(sign(a.compare(b)));
    }
 
    template <typename T2>
-   typename enable_if<cmp_value, (pass_by_reference<T2>::value && list_contains<typename T::comparable_with, T2>::value)>::type
-   operator() (const T& a, const T2& b) const
-   {
-      return sign(a.compare(b));
-   }
-
-   template <typename T2>
-   typename enable_if<cmp_value, (pass_by_value<T2>::value && list_contains<typename T::comparable_with, T2>::value)>::type
+   typename std::enable_if<mlist_contains<typename T::is_comparable_with, T2>::value, cmp_value>::type
    operator() (const T& a, const T2 b) const
    {
-      return sign(a.compare(b));
+      return cmp_value(sign(a.compare(b)));
    }
 
    template <typename T2>
-   typename enable_if<cmp_value, (!list_contains<typename T::comparable_with, T2>::value && list_contains<typename T2::comparable_with, T>::value)>::type
+   typename std::enable_if<!mlist_contains<typename T::is_comparable_with, T2>::value && mlist_contains<typename T2::is_comparable_with, T>::value, cmp_value>::type
    operator() (const T& a, const T2& b) const
    {
-      return sign(-b.compare(a));
+      return cmp_value(sign(-b.compare(a)));
    }
 
    template <typename T2>
-   typename enable_if<cmp_value, (pass_by_reference<T2>::value && list_contains<typename T::comparable_with, T2>::value)>::type
-   operator() (const T2& a, const T& b) const
-   {
-      return sign(-b.compare(a));
-   }
-
-   template <typename T2>
-   typename enable_if<cmp_value, (pass_by_value<T2>::value && list_contains<typename T::comparable_with, T2>::value)>::type
+   typename std::enable_if<mlist_contains<typename T::is_comparable_with, T2>::value, cmp_value>::type
    operator() (const T2 a, const T& b) const
    {
-      return sign(-b.compare(a));
+      return cmp_value(sign(-b.compare(a)));
    }
 
    template <typename T2>
-   typename enable_if<cmp_value, (!list_contains<typename T::comparable_with, T2>::value && list_contains<typename T2::comparable_with, T>::value)>::type
+   typename std::enable_if<!mlist_contains<typename T::is_comparable_with, T2>::value && mlist_contains<typename T2::is_comparable_with, T>::value, cmp_value>::type
    operator() (const T2& a, const T& b) const
    {
-      return sign(a.compare(b));
+      return cmp_value(sign(a.compare(b)));
    }
 };
 
 template <>
-struct cmp_scalar<Integer, Integer, true> : cmp_GMP_based<Integer> {};
+struct cmp_scalar<Integer, Integer, void>
+   : cmp_GMP_based<Integer> {};
 
 } // end namespace operations
 
 template <>
-class conv<Integer, int> {
-public:
-   typedef Integer argument_type;
-   typedef int result_type;
-   result_type operator() (const Integer& a) const { return a.to_int(); }
-};
-
-template <>
-class conv<Integer, long> {
-public:
-   typedef Integer argument_type;
-   typedef long result_type;
-   result_type operator() (const Integer& a) const { return a.to_long(); }
-};
-
-template <>
-class conv<Integer, double> {
-public:
-   typedef Integer argument_type;
-   typedef double result_type;
-   result_type operator() (const Integer& a) const { return a.to_double(); }
-};
-
-template <>
-class conv<Integer, std::string> {
-public:
-   typedef Integer argument_type;
-   typedef std::string result_type;
-   result_type operator() (const Integer& a) const { return a.to_string(); }
-};
-
-template <>
-struct spec_object_traits<GMP::TempInteger> : spec_object_traits<is_scalar> {};
-
-template <>
-class conv<GMP::TempInteger, Integer> : conv_by_cast<GMP::TempInteger&, Integer> {};
-
-template <>
-struct spec_object_traits<Integer> : spec_object_traits<is_scalar> {
+struct spec_object_traits<Integer>
+   : spec_object_traits<is_scalar> {
    static
    bool is_zero(const Integer& a)
    {
-      return !a.non_zero();
+      return a.is_zero();
    }
 
    static
    bool is_one(const Integer& a)
    {
-      return a==1L;
+      return a==1;
    }
 
    static const Integer& zero();
    static const Integer& one();
 };
 
+// this is needed for various adapters transferring GMP values from third-parties
+template <>
+struct isomorphic_types<mpz_t, Integer>
+   : std::true_type {};
+
 template <> struct hash_func<MP_INT, is_opaque> {
 protected:
-   size_t _do(mpz_srcptr a) const
+   size_t impl(mpz_srcptr a) const
    {
       size_t result=0;
       for (int i=0, n=mpz_size(a); i<n; ++i)
@@ -1452,7 +1917,7 @@ protected:
       return result;
    }
 public:
-   size_t operator() (const MP_INT& a) const { return _do(&a); }
+   size_t operator() (const MP_INT& a) const { return impl(&a); }
 };
 
 template <>
@@ -1460,25 +1925,10 @@ struct hash_func<Integer, is_scalar> : hash_func<MP_INT>
 {
    size_t operator() (const Integer& a) const
    {
-      return __builtin_expect(isfinite(a), 1) ? _do(a.get_rep()) : 0;
+      return __builtin_expect(isfinite(a), 1) ? impl(a.get_rep()) : 0;
    }
 };
 
-template <>
-struct hash_func<GMP::TempInteger, is_scalar> : hash_func<MP_INT>
-{
-   size_t operator() (const GMP::TempInteger& a) const { return hash_func<MP_INT>::operator()(reinterpret_cast<const MP_INT&>(a)); }
-};
-
-namespace GMP {
-
-inline
-std::ostream& operator<< (std::ostream& os, const TempInteger& a)
-{
-   return os << reinterpret_cast<const Integer&>(a);
-}
-
-}
 }
 
 namespace polymake {

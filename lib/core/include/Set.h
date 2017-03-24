@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -56,8 +56,8 @@ public:
 protected:
    typedef typename container_traits<SetRef>::const_iterator set_iterator;
    typedef typename container_traits<SetRef>::const_reverse_iterator set_reverse_iterator;
-   typedef typename if_else<direction==cmp_lt, set_iterator, set_reverse_iterator>::type trunc_base;
-   typedef typename if_else<direction==cmp_gt, set_iterator, set_reverse_iterator>::type range_base;
+   typedef typename std::conditional<direction==cmp_lt, set_iterator, set_reverse_iterator>::type trunc_base;
+   typedef typename std::conditional<direction==cmp_gt, set_iterator, set_reverse_iterator>::type range_base;
 
    class predicate {
       value_type limit;
@@ -75,61 +75,61 @@ protected:
    };
 
    typedef input_truncator<trunc_base, predicate> trunc_it;
-   typedef typename if_else<check_iterator_feature<range_base, end_sensitive>::value, range_base, iterator_range<range_base> >::type range_it;
+   typedef typename std::conditional<check_iterator_feature<range_base, end_sensitive>::value, range_base, iterator_range<range_base> >::type range_it;
 
 public:
-   typedef typename if_else<direction==cmp_lt, trunc_it, range_it>::type iterator;
+   typedef typename std::conditional<direction==cmp_lt, trunc_it, range_it>::type iterator;
    typedef iterator const_iterator;
-   typedef typename if_else<direction==cmp_gt, trunc_it, range_it>::type reverse_iterator;
+   typedef typename std::conditional<direction==cmp_gt, trunc_it, range_it>::type reverse_iterator;
    typedef reverse_iterator const_reverse_iterator;
 protected:
-   template <typename _end_sensitive>
-   iterator _begin(int2type<cmp_lt>, _end_sensitive) const
+   template <typename TEnd_sensitive>
+   iterator begin_impl(int_constant<cmp_lt>, TEnd_sensitive) const
    {
       return iterator(get_set().begin(), predicate(limit));
    }
-   iterator _end(int2type<cmp_lt>) const
+   iterator end_impl(int_constant<cmp_lt>) const
    {
       return iterator(get_set().find_nearest(limit, polymake::operations::ge()), predicate(limit));
    }
-   reverse_iterator _rbegin(int2type<cmp_lt>, False) const
+   reverse_iterator rbegin_impl(int_constant<cmp_lt>, std::false_type) const
    {
       return reverse_iterator(get_set().find_nearest(limit, polymake::operations::lt()), get_set().rend());
    }
-   reverse_iterator _rbegin(int2type<cmp_lt>, True) const
+   reverse_iterator rbegin_impl(int_constant<cmp_lt>, std::true_type) const
    {
       return set_reverse_iterator(get_set().find_nearest(limit, polymake::operations::lt()));
    }
-   reverse_iterator _rend(int2type<cmp_lt>) const
+   reverse_iterator rend_impl(int_constant<cmp_lt>) const
    {
       return get_set().rend();
    }
-   iterator _begin(int2type<cmp_gt>, False) const
+   iterator begin_impl(int_constant<cmp_gt>, std::false_type) const
    {
       return iterator(get_set().find_nearest(limit, polymake::operations::gt()), get_set().end());
    }
-   iterator _begin(int2type<cmp_gt>, True) const
+   iterator begin_impl(int_constant<cmp_gt>, std::true_type) const
    {
       return get_set().find_nearest(limit, polymake::operations::gt());
    }
-   iterator _end(int2type<cmp_gt>) const
+   iterator end_impl(int_constant<cmp_gt>) const
    {
       return get_set().end();
    }
-   template <typename _end_sensitive>
-   reverse_iterator _rbegin(int2type<cmp_gt>, _end_sensitive) const
+   template <typename TEnd_sensitive>
+   reverse_iterator rbegin_impl(int_constant<cmp_gt>, TEnd_sensitive) const
    {
       return reverse_iterator(get_set().rbegin(), predicate(limit));
    }
-   reverse_iterator _rend(int2type<cmp_gt>) const
+   reverse_iterator rend_impl(int_constant<cmp_gt>) const
    {
       return get_set().find_nearest(limit, polymake::operations::le());
    }
 public:
-   iterator begin() const { return _begin(int2type<direction>(), bool2type<check_iterator_feature<range_base,end_sensitive>::value>()); }
-   iterator end() const { return _end(int2type<direction>()); }
-   reverse_iterator rbegin() const { return _rbegin(int2type<direction>(), bool2type<check_iterator_feature<range_base,end_sensitive>::value>()); }
-   reverse_iterator rend() const { return _rend(int2type<direction>()); }
+   iterator begin() const { return begin_impl(int_constant<direction>(), bool_constant<check_iterator_feature<range_base, end_sensitive>::value>()); }
+   iterator end() const { return end_impl(int_constant<direction>()); }
+   reverse_iterator rbegin() const { return rbegin_impl(int_constant<direction>(), bool_constant<check_iterator_feature<range_base, end_sensitive>::value>()); }
+   reverse_iterator rend() const { return rend_impl(int_constant<direction>()); }
 
    reference front() const { return *begin(); }
    reference back() const { return *rbegin(); }
@@ -157,30 +157,30 @@ struct element_seen_op {
 };
 
 /// @ref generic "Generic type" for ordered mutable sets
-template <typename SetTop, typename E=typename SetTop::element_type, typename Comparator=typename SetTop::element_comparator>
+template <typename TSet, typename E=typename TSet::element_type, typename Comparator=typename TSet::element_comparator>
 class GenericMutableSet
-   : public GenericSet<SetTop, E, Comparator> {
-   template <typename,typename,typename> friend class GenericMutableSet;
+   : public GenericSet<TSet, E, Comparator> {
+   template <typename, typename, typename> friend class GenericMutableSet;
 protected:
    GenericMutableSet() {}
    GenericMutableSet(const GenericMutableSet&) {}
    typedef GenericMutableSet generic_mutable_type;
 public:
-   typedef typename GenericSet<SetTop, E, Comparator>::top_type top_type;
+   typedef typename GenericSet<TSet, E, Comparator>::top_type top_type;
 protected:
-   template <typename Set2>
-   void _plus_seek(const Set2& s)
+   template <typename TSet2>
+   void plus_seek(const TSet2& s)
    {
-      for (typename Entire<Set2>::const_iterator e2=entire(s); !e2.at_end(); ++e2)
+      for (auto e2=entire(s); !e2.at_end(); ++e2)
          this->top().insert(*e2);
    }
 
-   template <typename Set2>
-   void _plus_seq(const Set2& s)
+   template <typename TSet2>
+   void plus_seq(const TSet2& s)
    {
       const Comparator& cmp_op=this->top().get_comparator();
-      typename Entire<top_type>::iterator e1=entire(this->top());
-      typename Entire<Set2>::const_iterator e2=entire(s);
+      auto e1=entire(this->top());
+      auto e2=entire(s);
       while (!e1.at_end() && !e2.at_end()) {
          switch (cmp_op(*e1,*e2)) {
          case cmp_eq: ++e2;
@@ -191,46 +191,46 @@ protected:
       for (; !e2.at_end(); ++e2) this->top().insert(e1,*e2);
    }
 
-   template <typename Set2, typename E2>
-   void _plus(const GenericSet<Set2,E2,Comparator>& s, cons<is_set, is_set>, True)
+   template <typename TSet2, typename E2>
+   void plus_impl(const GenericSet<TSet2, E2, Comparator>& s, cons<is_set, is_set>, std::true_type)
    {
-      if (size_estimator<top_type, typename Unwary<Set2>::type>::seek_cheaper_than_sequential(this->top(), s.top()))
-         _plus_seek(s.top());
+      if (size_estimator<top_type, unwary_t<TSet2>>::seek_cheaper_than_sequential(this->top(), s.top()))
+         plus_seek(s.top());
       else
-         _plus_seq(s.top());
+         plus_seq(s.top());
    }
 
-   template <typename Set2, typename E2>
-   void _plus(const GenericSet<Set2,E2,Comparator>& s, cons<is_set, is_set>, False)
+   template <typename TSet2, typename E2>
+   void plus_impl(const GenericSet<TSet2, E2, Comparator>& s, cons<is_set, is_set>, std::false_type)
    {
-      _plus_seq(s.top());
+      plus_seq(s.top());
    }
 
    template <typename Right>
-   void _plus(const Right& x, cons<is_set, is_scalar>, True)
+   void plus_impl(const Right& x, cons<is_set, is_scalar>, std::true_type)
    {
       this->top().insert(x);
    }
 
    template <typename Right>
-   void _plus(const Right& x, cons<is_set, is_scalar>, False)
+   void plus_impl(const Right& x, cons<is_set, is_scalar>, std::false_type)
    {
-      _plus_seq(scalar2set(x));
+      plus_seq(scalar2set(x));
    }
 
-   template <typename Set2>
-   void _minus_seek(const Set2& s)
+   template <typename TSet2>
+   void minus_seek(const TSet2& s)
    {
-      for (typename Entire<Set2>::const_iterator e2=entire(s); !e2.at_end(); ++e2)
+      for (auto e2=entire(s); !e2.at_end(); ++e2)
          this->top().erase(*e2);
    }
 
-   template <typename Set2>
-   void _minus_seq(const Set2& s)
+   template <typename TSet2>
+   void minus_seq(const TSet2& s)
    {
       const Comparator& cmp_op=this->top().get_comparator();
-      typename Entire<top_type>::iterator e1=entire(this->top());
-      typename Entire<Set2>::const_iterator e2=entire(s);
+      auto e1=entire(this->top());
+      auto e2=entire(s);
       while (!e1.at_end() && !e2.at_end()) {
          switch (cmp_op(*e1,*e2)) {
          case cmp_lt: ++e1; break;
@@ -240,52 +240,52 @@ protected:
       }
    }
 
-   template <typename Set2, typename E2>
-   void _minus(const GenericSet<Set2,E2,Comparator>& s, cons<is_set, is_set>, True)
+   template <typename TSet2, typename E2>
+   void minus_impl(const GenericSet<TSet2, E2, Comparator>& s, cons<is_set, is_set>, std::true_type)
    {
-      if (size_estimator<top_type, typename Unwary<Set2>::type>::seek_cheaper_than_sequential(this->top(), s.top()))
-         _minus_seek(s.top());
+      if (size_estimator<top_type, unwary_t<TSet2>>::seek_cheaper_than_sequential(this->top(), s.top()))
+         minus_seek(s.top());
       else
-         _minus_seq(s.top());
+         minus_seq(s.top());
    }
 
-   template <typename Set2, typename E2>
-   void _minus(const GenericSet<Set2,E2,Comparator>& s, cons<is_set, is_set>, False)
+   template <typename TSet2, typename E2>
+   void minus_impl(const GenericSet<TSet2, E2, Comparator>& s, cons<is_set, is_set>, std::false_type)
    {
-      _minus_seq(s.top());
+      minus_seq(s.top());
    }
 
-   template <typename Set2, typename E2, typename _discr>
-   void _minus(const Complement<Set2,E2,Comparator>& s, cons<is_set, is_set>, _discr)
+   template <typename TSet2, typename E2, typename TDiscr>
+   void minus_impl(const Complement<TSet2, E2, Comparator>& s, cons<is_set, is_set>, TDiscr)
    {
       *this *= s.top();
    }
 
    template <typename Right>
-   void _minus(const Right& x, cons<is_set, is_scalar>, True)
+   void minus_impl(const Right& x, cons<is_set, is_scalar>, std::true_type)
    {
       this->top().erase(x);
    }
 
    template <typename Right>
-   void _minus(const Right& x, cons<is_set, is_scalar>, False)
+   void minus_impl(const Right& x, cons<is_set, is_scalar>, std::false_type)
    {
-      _minus_seq(scalar2set(x));
+      minus_seq(scalar2set(x));
    }
 
-   template <typename Set2>
-   void _xor_seek(const Set2& s)
+   template <typename TSet2>
+   void xor_seek(const TSet2& s)
    {
-      for (typename Entire<Set2>::const_iterator e2=entire(s); !e2.at_end(); ++e2)
+      for (auto e2=entire(s); !e2.at_end(); ++e2)
          this->top().toggle(*e2);
    }
 
-   template <typename Set2>
-   void _xor_seq(const Set2& s)
+   template <typename TSet2>
+   void xor_seq(const TSet2& s)
    {
       const Comparator& cmp_op=this->top().get_comparator();
-      typename Entire<top_type>::iterator e1=entire(this->top());
-      typename Entire<Set2>::const_iterator e2=entire(s);
+      auto e1=entire(this->top());
+      auto e2=entire(s);
       while (!e1.at_end() && !e2.at_end()) {
          switch (cmp_op(*e1,*e2)) {
          case cmp_lt:  ++e1;  break;
@@ -296,49 +296,49 @@ protected:
       for (; !e2.at_end(); ++e2) this->top().insert(e1,*e2);
    }
 
-   template <typename Set2, typename E2>
-   void _xor(const GenericSet<Set2,E2,Comparator>& s, cons<is_set, is_set>, True)
+   template <typename TSet2, typename E2>
+   void xor_impl(const GenericSet<TSet2, E2, Comparator>& s, cons<is_set, is_set>, std::true_type)
    {
-      if (size_estimator<top_type, typename Unwary<Set2>::type>::seek_cheaper_than_sequential(this->top(), s.top()))
-         _xor_seek(s.top());
+      if (size_estimator<top_type, unwary_t<TSet2>>::seek_cheaper_than_sequential(this->top(), s.top()))
+         xor_seek(s.top());
       else
-         _xor_seq(s.top());
+         xor_seq(s.top());
    }
 
-   template <typename Set2, typename E2>
-   void _xor(const GenericSet<Set2,E2,Comparator>& s, cons<is_set, is_set>, False)
+   template <typename TSet2, typename E2>
+   void xor_impl(const GenericSet<TSet2, E2, Comparator>& s, cons<is_set, is_set>, std::false_type)
    {
-      _xor_seq(s.top());
+      xor_seq(s.top());
    }
 
    template <typename Right>
-   void _xor(const Right& x, cons<is_set, is_scalar>, True)
+   void xor_impl(const Right& x, cons<is_set, is_scalar>, std::true_type)
    {
       this->top().toggle(x);
    }
 
    template <typename Right>
-   void _xor(const Right& x, cons<is_set, is_scalar>, False)
+   void xor_impl(const Right& x, cons<is_set, is_scalar>, std::false_type)
    {
-      _xor_seq(scalar2set(x));
+      xor_seq(scalar2set(x));
    }
 
-   template <typename Set2, typename E2>
-   bool trivial_assignment(const GenericSet<Set2,E2,Comparator>&) const { return false; }
+   template <typename TSet2, typename E2>
+   constexpr bool trivial_assignment(const GenericSet<TSet2, E2, Comparator>&) const { return false; }
 
-   bool trivial_assignment(const GenericMutableSet& s) const { return this==&s; }
+   constexpr bool trivial_assignment(const GenericMutableSet& s) const { return this==&s; }
 
-   template <typename Set2, typename E2, typename DiffConsumer>
-   void assign(const GenericSet<Set2,E2,Comparator>& s, DiffConsumer diff)
+   template <typename TSet2, typename E2, typename DiffConsumer>
+   void assign(const GenericSet<TSet2, E2, Comparator>& s, DiffConsumer diff)
    {
       const Comparator& cmp_op=this->top().get_comparator();
-      typename Entire<top_type>::iterator dst=entire(this->top());
-      typename Entire<typename Unwary<Set2>::type>::const_iterator src=entire(s.top());
+      auto dst=entire(this->top());
+      auto src=entire(s.top());
       int state=(dst.at_end() ? 0 : zipper_first) + (src.at_end() ? 0 : zipper_second);
       while (state >= zipper_both) {
-         switch (cmp_op(*dst,*src)) {
+         switch (cmp_op(*dst, *src)) {
          case cmp_lt:
-            if (!is_instance_of<DiffConsumer,black_hole>::value) *diff++=*dst;
+            if (!is_instance_of<DiffConsumer, black_hole>::value) *diff++=*dst;
             this->top().erase(dst++);
             if (dst.at_end()) state -= zipper_first;
             break;
@@ -349,27 +349,27 @@ protected:
             if (src.at_end()) state -= zipper_second;
             break;
          case cmp_gt:
-            if (!is_instance_of<DiffConsumer,black_hole>::value) *diff++=*src;
+            if (!is_instance_of<DiffConsumer, black_hole>::value) *diff++=*src;
             this->top().insert(dst, *src);  ++src;
             if (src.at_end()) state -= zipper_second;
          }
       }
       if (state & zipper_first) {
          do {
-            if (!is_instance_of<DiffConsumer,black_hole>::value) *diff++=*dst;
+            if (!is_instance_of<DiffConsumer, black_hole>::value) *diff++=*dst;
             this->top().erase(dst++);
          }
          while (!dst.at_end());
       } else if (state) {
          do {
-            if (!is_instance_of<DiffConsumer,black_hole>::value) *diff++=*src;
+            if (!is_instance_of<DiffConsumer, black_hole>::value) *diff++=*src;
             this->top().insert(dst, *src);  ++src;
          } while (!src.at_end());
       }
    }
 
-   template <typename Set2, typename E2>
-   void assign(const GenericSet<Set2,E2,Comparator>& s)
+   template <typename TSet2, typename E2>
+   void assign(const GenericSet<TSet2, E2, Comparator>& s)
    {
       assign(s, black_hole<E>());
    }
@@ -381,21 +381,30 @@ public:
       return this->top();
    }
 
-   template <typename Set2, typename E2>
-   typename enable_if<top_type, convertible_to<E2, E>::value>::type&
-   operator= (const GenericSet<Set2, E2, Comparator>& other)
+   template <typename TSet2, typename E2,
+             typename=typename std::enable_if<can_initialize<E2, E>::value>::type>
+   top_type& operator= (const GenericSet<TSet2, E2, Comparator>& other)
    {
       this->top().assign(other);
       return this->top();
    }
 
-   template <typename Set2>
-   void swap(GenericMutableSet<Set2,E,Comparator>& s)
+   template <typename E2,
+             typename=typename std::enable_if<can_initialize<E2, E>::value>::type>
+   top_type& operator= (std::initializer_list<E2> l)
+   {
+      this->top().clear();
+      this->top().insert_from(entire(l));
+      return this->top();
+   }
+
+   template <typename TSet2>
+   void swap(GenericMutableSet<TSet2, E, Comparator>& s)
    {
       if (trivial_assignment(s)) return;
       const Comparator& cmp_op=this->top().get_comparator();
-      typename Entire<top_type>::iterator e1=entire(this->top());
-      typename Entire<typename Unwary<Set2>::type>::iterator e2=entire(s.top());
+      auto e1=entire(this->top());
+      auto e2=entire(s.top());
       int state=(e1.at_end() ? 0 : zipper_first) + (e2.at_end() ? 0 : zipper_second);
       while (state >= zipper_both) {
          switch (cmp_op(*e1,*e2)) {
@@ -433,8 +442,8 @@ public:
    template <typename Right>
    top_type& operator+= (const Right& x)
    {
-      _plus(x, typename isomorphic_types<top_type,Right>::discriminant(),
-               derived_from_instance2<top_type,modified_tree>());
+      plus_impl(x, typename isomorphic_types<top_type, Right>::discriminant(),
+                   is_derived_from_instance_of<top_type, modified_tree>());
       return this->top();
    }
 
@@ -451,18 +460,18 @@ public:
    template <typename Right>
    top_type& operator-= (const Right& x)
    {
-      _minus(x, typename isomorphic_types<top_type,Right>::discriminant(),
-                derived_from_instance2<top_type,modified_tree>());
+      minus_impl(x, typename isomorphic_types<top_type, Right>::discriminant(),
+                    is_derived_from_instance_of<top_type, modified_tree>());
       return this->top();
    }
 
    /// %Set intersection
-   template <typename Set2, typename E2>
-   top_type& operator*= (const GenericSet<Set2,E2,Comparator>& s)
+   template <typename TSet2, typename E2>
+   top_type& operator*= (const GenericSet<TSet2, E2, Comparator>& s)
    {
       const Comparator& cmp_op=this->top().get_comparator();
-      typename Entire<top_type>::iterator e1=entire(this->top());
-      typename Entire<typename Unwary<Set2>::type>::const_iterator e2=entire(s.top());
+      auto e1=entire(this->top());
+      auto e2=entire(s.top());
       while (!e1.at_end() && !e2.at_end()) {
          switch (cmp_op(*e1,*e2)) {
          case cmp_lt: this->top().erase(e1++); break;
@@ -474,8 +483,8 @@ public:
       return this->top();
    }
 
-   template <typename Set2, typename E2>
-   top_type& operator*= (const Complement<Set2,E2,Comparator>& s)
+   template <typename TSet2, typename E2>
+   top_type& operator*= (const Complement<TSet2, E2, Comparator>& s)
    {
       return *this -= s.top();
    }
@@ -484,28 +493,26 @@ public:
    template <typename Right>
    top_type& operator^= (const Right& x)
    {
-      _xor(x, typename isomorphic_types<top_type,Right>::discriminant(),
-              derived_from_instance2<top_type,modified_tree>());
+      xor_impl(x, typename isomorphic_types<top_type, Right>::discriminant(),
+                  is_derived_from_instance_of<top_type, modified_tree>());
       return this->top();
    }
 
    /// Compute the symmetrical difference and make *this equal to s
-   template <typename Set2, typename E2>
-   Set<E, Comparator> extract_symdif(const GenericSet<Set2,E2,Comparator>& s)
+   template <typename TSet2, typename E2>
+   Set<E, Comparator> extract_symdif(const GenericSet<TSet2, E2, Comparator>& s)
    {
       Set<E, Comparator> result;
       assign(s, std::back_inserter(result));
       return result;
    }
 
-   TruncatedSet<const top_type&, cmp_lt>
-   operator<< (typename function_argument<E>::type upper_limit) const
+   auto operator<< (typename function_argument<E>::type upper_limit) const
    {
       return TruncatedSet<const top_type&, cmp_lt>(this->top(), upper_limit);
    }
 
-   TruncatedSet<const top_type&, cmp_gt>
-   operator>> (typename function_argument<E>::type lower_limit) const
+   auto operator>> (typename function_argument<E>::type lower_limit) const
    {
       return TruncatedSet<const top_type&, cmp_gt>(this->top(), lower_limit);
    }
@@ -513,7 +520,7 @@ public:
    top_type& operator<<= (typename function_argument<E>::type upper_limit)
    {
       const Comparator& cmp_op=this->top().get_comparator();
-      typename Entire<top_type>::reverse_iterator it=rentire(this->top());
+      auto it=rentire(this->top());
       while (!it.at_end() && cmp_op(*it,upper_limit)>=cmp_eq)
          this->top().erase(it++);
       return this->top();
@@ -522,18 +529,18 @@ public:
    top_type& operator>>= (typename function_argument<E>::type lower_limit)
    {
       const Comparator& cmp_op=this->top().get_comparator();
-      typename Entire<top_type>::iterator it=entire(this->top());
+      auto it=entire(this->top());
       while (!it.at_end() && cmp_op(*it,lower_limit)<=cmp_eq)
          this->top().erase(it++);
       return this->top();
    }
 
-   template <typename Set2>
-   top_type& select(const GenericSet<Set2>& selector)
+   template <typename TSet2>
+   top_type& select(const GenericSet<TSet2>& selector)
    {
-      typename Entire<top_type>::iterator e1=entire(this->top());
-      typename Unwary<Set2>::type::element_type cur(0);
-      for (typename Entire<typename Unwary<Set2>::type>::const_iterator s=entire(selector.top()); !s.at_end(); ++s) {
+      auto e1=entire(this->top());
+      typename unwary_t<TSet2>::element_type cur(0);
+      for (auto s=entire(selector.top()); !s.at_end(); ++s) {
          for (; cur < *s; ++cur) this->top().erase(e1++);
          ++e1; ++cur;
       }
@@ -541,12 +548,12 @@ public:
       return this->top();
    }
 
-   template <typename Set2>
-   top_type& select(const Complement<Set2>& selector)
+   template <typename TSet2>
+   top_type& select(const Complement<TSet2>& selector)
    {
-      typename Entire<top_type>::iterator e1=entire(this->top());
-      typename Set2::element_type cur(0);
-      for (typename Entire<Set2>::const_iterator s=entire(selector.base()); !s.at_end(); ++s) {
+      auto e1=entire(this->top());
+      typename TSet2::element_type cur(0);
+      for (auto s=entire(selector.base()); !s.at_end(); ++s) {
          for (; cur < *s; ++cur) ++e1;
          this->top().erase(e1++); ++cur;
       }
@@ -576,13 +583,12 @@ public:
 template <typename E, typename Comparator>
 class Set
    : public modified_tree< Set<E,Comparator>,
-                           list( Container< AVL::tree< AVL::traits<E,nothing,Comparator> > >,
-                                 Operation< BuildUnary<AVL::node_accessor> > ) >,
-     public GenericMutableSet< Set<E,Comparator>, E, Comparator > {
-   typedef modified_tree<Set> _super;
+                           mlist< ContainerTag< AVL::tree< AVL::traits<E, nothing, Comparator> > >,
+                                  OperationTag< BuildUnary<AVL::node_accessor> > > >
+   , public GenericMutableSet< Set<E, Comparator>, E, Comparator > {
 protected:
-   typedef AVL::tree< AVL::traits<E,nothing,Comparator> > tree_type;
-   shared_object<tree_type, AliasHandler<shared_alias_handler> > tree;
+   typedef AVL::tree< AVL::traits<E, nothing, Comparator> > tree_type;
+   shared_object<tree_type, AliasHandlerTag<shared_alias_handler>> tree;
 
    friend Set& make_mutable_alias(Set& alias, Set& owner)
    {
@@ -598,65 +604,67 @@ public:
 
    /// Create an empty set with a non-default Comparator
    explicit Set(const Comparator& cmp_arg)
-      : tree( make_constructor(cmp_arg, (tree_type*)0) ) {}
+      : tree(cmp_arg) {}
 
    /// Create a Set from an iterator
    template <typename Iterator>
-   Set(Iterator src, Iterator end)
-      : tree( make_constructor(src, end, (tree_type*)0) ) {}
+   Set(Iterator&& src, Iterator&& end,
+       typename std::enable_if<assess_iterator_value<Iterator, can_initialize, E>::value, void**>::type=nullptr)
+   {
+      insert_from(make_iterator_range(std::forward<Iterator>(src), std::forward<Iterator>(end)));
+   }
 
    template <typename Iterator>
-   explicit Set(Iterator src, typename enable_if_iterator<Iterator,end_sensitive>::type=0)
-      : tree( make_constructor(src, (tree_type*)0) ) {}
+   explicit Set(Iterator&& src,
+                typename std::enable_if<assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value &&
+                                        assess_iterator_value<Iterator, can_initialize, E>::value,
+                                        void**>::type=nullptr)
+   {
+      insert_from(ensure_private_mutable(std::forward<Iterator>(src)));
+   }
 
    /// Copy of a disguised Set object.
-   Set(const GenericSet<Set,E,Comparator>& s)
+   Set(const GenericSet<Set, E, Comparator>& s)
       : tree(s.top().tree) {}
 
    /// Copy of an abstract set of the same element type.
    template <typename Set2>
-   Set(const GenericSet<Set2,E,Comparator>& s)
-      : tree( make_constructor(entire(s.top()), (tree_type*)0) ) {}
+   Set(const GenericSet<Set2, E, Comparator>& s)
+      : tree(entire(s.top())) {}
 
    /// Copy of an abstract set with element conversion.
    template <typename Set2, typename E2, typename Comparator2>
-   explicit Set(const GenericSet<Set2,E2,Comparator2>& s)
-      : tree( make_constructor(entire(attach_converter<E>(s.top())), (tree_type*)0) ) {}
+   explicit Set(const GenericSet<Set2, E2, Comparator2>& s)
+      : tree(entire(attach_converter<E>(s.top()))) {}
 
    /// One-element set
    explicit Set(typename function_argument<E>::type x)
-      : tree( make_constructor(entire(scalar2set(x)), (tree_type*)0) ) {}
+      : tree(entire(scalar2set(x))) {}
 
-   template <size_t n>
-   explicit Set(const E (&s)[n])
-      : tree( make_constructor(entire(array2container(s)), (tree_type*)0) ) {}
+   template <typename E2, typename=typename std::enable_if<can_initialize<E2, E>::value>::type>
+   Set(std::initializer_list<E2> l)
+   {
+      insert_from(entire(l));
+   }
 
    template <typename Container>
-   Set(const Container& src,
-       typename enable_if<void**, isomorphic_to_container_of<Container,E,is_set>::value>::type=0)
+   explicit Set(const Container& src,
+                typename std::enable_if<isomorphic_to_container_of<Container, E, is_set>::value, void**>::type=nullptr)
    {
-      tree_type* t=tree.get();
-      for (typename Entire<Container>::const_iterator e=entire(src); !e.at_end(); ++e)
-         t->insert(*e);
+      insert_from(entire(src));
    }
 
    Set& operator= (const Set& other) { assign(other); return *this; }
-#ifdef __clang__
-   template <typename Set2, typename E2>
-   typename enable_if<Set, convertible_to<E2, E>::value>::type&
-   operator= (const GenericSet<Set2, E2, Comparator>& other)
-   {
-      return Set::generic_mutable_type::operator=(other);
-   }
-#else
    using Set::generic_mutable_type::operator=;
-#endif
 
    /// Make the set empty.
    void clear() { tree.apply(shared_clear()); }
 
    /// For compatibility with common::boost_dynamic_bitset, add a trivial method
    void resize(int) {}
+
+   /// For compatibility with common::boost_dynamic_bitset, add a trivial method
+   void reset(void) {}
 
    /** @brief Swap the content with another Set.
        @param s the other Set
@@ -672,7 +680,6 @@ public:
    void check(const char* label) const { tree->check(label); }
    void tree_dump() const { tree->dump(); }
 #endif
-
 
    Set& operator<<= (typename function_argument<E>::type upper_limit)
    {
@@ -726,8 +733,7 @@ public:
    template <typename Permutation>
    Set copy_permuted_inv(const Permutation& perm) const
    {
-      Set result;
-      result._fill(entire(pm::select(perm,*this)));
+      const Set result(pm::select(perm, *this));
       return result;
    }
 
@@ -737,7 +743,7 @@ protected:
    void assign(const GenericSet<Set>& s) { tree=s.top().tree; }
 
    template <typename Set2, typename E2>
-   void assign(const GenericSet<Set2,E2,Comparator>& s)
+   void assign(const GenericSet<Set2, E2, Comparator>& s)
    {
       if (tree.is_shared()) {
          assign(Set(s));
@@ -746,10 +752,13 @@ protected:
       }
    }
 
+   /// Insert elements from a sequence, coming in any order.
    template <typename Iterator>
-   void _fill(Iterator src)
+   void insert_from(Iterator&& src)
    {
-      while (!src.at_end()) this->insert(*src++);
+      tree_type* t=tree.get();
+      for (; !src.at_end(); ++src)
+         t->insert(*src);
    }
 };
 

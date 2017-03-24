@@ -14,15 +14,15 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/Polynomial.h"
 #include "polymake/Rational.h"
+#include "polymake/Polynomial.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
    FunctionInterface4perl( newton_X, T0 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturn( newton(arg0.get<T0>()) );
+      WrapperReturn( (newton(arg0.get<T0>())) );
    };
 
    FunctionInstance4perl(newton_X, perl::Canned< const Polynomial< Rational, int > >);

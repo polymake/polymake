@@ -78,7 +78,7 @@ namespace {
 //creates an exact octagonal prism with z-coordinates z_1 and z_2
 perl::Object exact_octagonal_prism(QE z_1, QE z_2)
 {
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
+  perl::Object p("Polytope<QuadraticExtension>");
   Matrix<QE> V(16,4);
   V.col(0).fill(1);
   for (int i=0; i<8; ++i) {
@@ -145,7 +145,7 @@ perl::Object augment(perl::Object p, Set<int> f_vert){
 
       V /= H;
    }
-   perl::Object p_out(perl::ObjectType::construct<double>("Polytope"));
+   perl::Object p_out("Polytope<Float>");
    p_out.take("VERTICES") << V;
 
    return p_out;
@@ -203,7 +203,7 @@ perl::Object rotunda(perl::Object p, Set<int> f_vert){
    Matrix<double>H = ones_vector<double>(10) | (H_l.minor(All,sequence(1,3)) / H_s.minor(All,sequence(1,3))); //adjust hom.coords
    V /= H;
 
-   perl::Object p_out(perl::ObjectType::construct<double>("Polytope"));
+   perl::Object p_out("Polytope<Float>");
    p_out.take("VERTICES") << V;
 
    return p_out;
@@ -259,7 +259,7 @@ perl::Object gyrotunda(perl::Object p, Set<int> f_vert){
    Matrix<double>H = ones_vector<double>(10) | (H_l.minor(All,sequence(1,3)) / H_s.minor(All,sequence(1,3))); //adjust hom.coords
    V /= H;
 
-   perl::Object p_out(perl::ObjectType::construct<double>("Polytope"));
+   perl::Object p_out("Polytope<Float>");
    p_out.take("VERTICES") << V;
 
    return p_out;
@@ -273,7 +273,7 @@ perl::Object elongate(perl::Object p, Set<int> f_vert){
    IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
    Matrix<double> F = p.give("FACETS");
 
-   perl::Object facet(perl::ObjectType::construct<double>("Polytope"));
+   perl::Object facet("Polytope<Float>");
 
    Matrix<double> FV = V.minor(f_vert,All);
    facet.take("VERTICES")<<FV;
@@ -283,7 +283,7 @@ perl::Object elongate(perl::Object p, Set<int> f_vert){
    double side_length = norm(neighbors[0]-neighbors[1]);
    int n_vert = facet.give("N_VERTICES");
 
-   perl::Object p_out(perl::ObjectType::construct<double>("Polytope"));
+   perl::Object p_out("Polytope<Float>");
 
    int n=0;
    for(; n<VIF.rows(); n++){
@@ -326,7 +326,7 @@ perl::Object elongate(perl::Object p, Set<int> f_vert){
 
   Matrix<double> Rot = rotate(FV+trans, normal, a)-trans;
 
-  perl::Object p_out(perl::ObjectType::construct<double>("Polytope"));
+  perl::Object p_out("Polytope<Float>");
   p_out.take("VERTICES") << (W/Rot);
 
   return p_out;
@@ -350,7 +350,7 @@ perl::Object gyroelongate(perl::Object p, Set<int> f_vert){
   Matrix<double> trans = zero_vector<double>(n_vert) | repeat_row(normal - average(rows(FV)), FV.rows()).minor(All,sequence(1,3)); //translate barycentre to axis
   FV = rotate(FV+trans, normal, M_PI/n_vert)-trans; //rotate the facet by pi/n
 
-  perl::Object facet(perl::ObjectType::construct<double>("Polytope"));
+  perl::Object facet("Polytope<Float>");
   facet.take("VERTICES")<<FV;
   IncidenceMatrix<> FVIF = facet.give("VERTICES_IN_FACETS");
   Matrix<double> neighbors = FV.minor(FVIF.row(0),All); //two neighbor vertices
@@ -363,7 +363,7 @@ perl::Object gyroelongate(perl::Object p, Set<int> f_vert){
   double height = sqrt(1-1.0/(4.0*cos(M_PI/(2*n_vert))*cos(M_PI/(2*n_vert))));
   normal = (side_length*height)*normal; //facet normal of right length (height of a triangle)
 
-  perl::Object p_out(perl::ObjectType::construct<double>("Polytope"));
+  perl::Object p_out("Polytope<Float>");
   p_out.take("VERTICES") << (V / (FV - repeat_row(normal, n_vert)));
 
   return p_out;
@@ -373,7 +373,7 @@ perl::Object gyroelongate(perl::Object p, Set<int> f_vert){
 perl::Object create_prism(int n)
 {
   Matrix<double> V = create_regular_polygon_vertices(n, 1, 0);
-  perl::Object p(perl::ObjectType::construct<double>("Polytope"));
+  perl::Object p("Polytope<Float>");
   p.take("VERTICES") << V;
   IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
   Matrix<double> F = p.give("FACETS");
@@ -381,7 +381,7 @@ perl::Object create_prism(int n)
   Matrix<double> neighbors = V.minor(VIF.row(0),All); //two neighbor vertices
   double side_length = norm(neighbors[0]-neighbors[1]);
 
-  perl::Object p_out(perl::ObjectType::construct<double>("Polytope"));
+  perl::Object p_out("Polytope<Float>");
 
   p_out.take("VERTICES") << (V | zero_vector<double>()) / (V | same_element_vector<double>(side_length, n));
 
@@ -416,82 +416,21 @@ Matrix<QE> truncated_cube_vertices()
   return V / W;
 }
 
-//the following functions are for improved readability of VIF
-Set<int> triangle(int v0, int v1, int v2)
+template <typename E>
+void centralize(perl::Object& p)
 {
-   Set<int> s;
-   s += v0;
-   s += v1;
-   s += v2;
-   return s;
-}
-Set<int> square(int v0, int v1, int v2, int v3)
-{
-   Set<int> s;
-   s += v0;
-   s += v1;
-   s += v2;
-   s += v3;
-   return s;
-}
-Set<int> pentagon(int v0, int v1, int v2, int v3, int v4)
-{
-   Set<int> s;
-   s += v0;
-   s += v1;
-   s += v2;
-   s += v3;
-   s += v4;
-   return s;
-}
-Set<int> hexagon(int v0, int v1, int v2, int v3, int v4, int v5)
-{
-   Set<int> s;
-   s += v0;
-   s += v1;
-   s += v2;
-   s += v3;
-   s += v4;
-   s += v5;
-   return s;
-}
-Set<int> octagon(int v0, int v1, int v2, int v3, int v4, int v5, int v6, int v7)
-{
-   Set<int> s;
-   s += v0;
-   s += v1;
-   s += v2;
-   s += v3;
-   s += v4;
-   s += v5;
-   s += v6;
-   s += v7;
-   return s;
-}
-Set<int> decagon(int v0, int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8, int v9)
-{
-   Set<int> s;
-   s += v0;
-   s += v1;
-   s += v2;
-   s += v3;
-   s += v4;
-   s += v5;
-   s += v6;
-   s += v7;
-   s += v8;
-   s += v9;
-   return s;
+  p.take("AFFINE_HULL") << Matrix<E>(0, 4);
+  p=call_function("center", p);
 }
 
-template <typename T>
-perl::Object centralize(perl::Object p)
+template <typename E>
+perl::Object build_from_vertices(const Matrix<E>& V, bool do_centralize=true)
 {
-  p.take("AFFINE_HULL") << Matrix<T>();
-  p = CallPolymakeFunction("center",p);
+  perl::Object p(perl::ObjectType::construct<E>("Polytope"));
+  p.take("VERTICES") << V;
+  if (do_centralize) centralize<E>(p);
   return p;
 }
-
 
 } // end anonymous namespace
 
@@ -502,11 +441,8 @@ perl::Object square_pyramid()
   tip[1]=tip[2]=0;
   tip[3]=QE(0,1,2);
 
-  Matrix<QE> V((create_square_vertices<QE>() | zero_vector<QE>(4)) / tip);
-
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.take("VERTICES") << V;
-  p = centralize<QE>(p);
+  Matrix<QE> V((create_square_vertices<QE>() | zero_vector<QE>()) / tip);
+  perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J1: Square pyramid" << endl;
 
   return p;
@@ -514,13 +450,11 @@ perl::Object square_pyramid()
 
 perl::Object pentagonal_pyramid()
 {
-  perl::Object ico = CallPolymakeFunction("icosahedron");
+  perl::Object ico = call_function("icosahedron");
   Matrix<QE> V = ico.give("VERTICES");
   V = V.minor(sequence(0,6),All);
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.take("VERTICES") << V;
-  p = centralize<QE>(p);
+  perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J2: Pentagonal pyramid" << endl;
 
   return p;
@@ -528,13 +462,11 @@ perl::Object pentagonal_pyramid()
 
 perl::Object triangular_cupola()
 {
-  perl::Object cub = CallPolymakeFunction("cuboctahedron");
+  perl::Object cub = call_function("cuboctahedron");
   Matrix<QE> V = cub.give("VERTICES");
   V = V.minor(sequence(0,9),All);
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.take("VERTICES") << V;
-  p = centralize<QE>(p);
+  perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J3: Triangular cupola" << endl;
 
   return p;
@@ -557,10 +489,7 @@ perl::Object square_cupola_impl(bool centered)
 
   V/= W;
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.take("VERTICES") << V;
-  if (centered)
-    p = centralize<QE>(p);
+  perl::Object p=build_from_vertices(V, centered);
   p.set_description() << "Johnson solid J4: Square cupola" << endl;
 
   return p;
@@ -573,13 +502,11 @@ perl::Object square_cupola()
 
 perl::Object pentagonal_cupola()
 {
-  perl::Object rico = CallPolymakeFunction("rhombicosidodecahedron");
+  perl::Object rico = call_function("rhombicosidodecahedron");
   Matrix<QE> V = rico.give("VERTICES");
   V= V.minor(sequence(0,7),All) / V.minor(sequence(8,3),All) / V.row(13) / V.row(14) / V.row(18) / V.row(19) / V.row(24);
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.take("VERTICES") << V;
-  p = centralize<QE>(p);
+  perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J5: Pentagonal cupola" << endl;
 
   return p;
@@ -587,13 +514,11 @@ perl::Object pentagonal_cupola()
 
 perl::Object pentagonal_rotunda()
 {
-  perl::Object ico = CallPolymakeFunction("icosidodecahedron");
+  perl::Object ico = call_function("icosidodecahedron");
   Matrix<QE> V = ico.give("VERTICES");
   V= V.minor(sequence(0,17),All) / V.row(18) / V.row(19) / V.row(21);
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.take("VERTICES") << V;
-  p = centralize<QE>(p);
+  perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J6: Pentagonal rotunda" << endl;
 
   return p;
@@ -607,9 +532,7 @@ perl::Object elongated_triangular_pyramid()
 
   Matrix<QE> V( ones_vector<QE>(7) | (same_element_vector<QE>(c,3) / unit_matrix<QE>(3) / (unit_matrix<QE>(3) + same_element_matrix<QE>(s , 3, 3))));
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.take("VERTICES") << V;
-  p = centralize<QE>(p);
+  perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J7: Elongated triangular bipyramid" << endl;
 
   return p;
@@ -626,10 +549,7 @@ perl::Object elongated_square_pyramid_impl(bool centered)
 
   Matrix<QE> V( ((square_vertices | zero_vector<QE>(4)) / (square_vertices | -2*ones_vector<QE>(4))) / tip );
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.take("VERTICES") << V;
-  if (centered)
-    p = centralize<QE>(p);
+  perl::Object p=build_from_vertices(V, centered);
   p.set_description() << "Johnson solid J8: Elongated square pyramid" << endl;
 
   return p;
@@ -646,21 +566,21 @@ perl::Object elongated_pentagonal_pyramid()
   perl::Object p = pentagonal_pyramid();
   p = elongate(p,sequence(1,5));
 
-  IncidenceMatrix<> VIF(11,11);
-  VIF[0]=pentagon(6,7,8,9,10);
-  VIF[1]=square(1,3,6,8);
-  VIF[2]=square(3,5,8,10);
-  VIF[3]=triangle(0,3,5);
-  VIF[4]=triangle(0,1,3);
-  VIF[5]=triangle(0,4,5);
-  VIF[6]=square(4,5,9,10);
-  VIF[7]=triangle(0,2,4);
-  VIF[8]=triangle(0,1,2);
-  VIF[9]=square(1,2,6,7);
-  VIF[10]=square(2,4,7,9);
+  IncidenceMatrix<> VIF{ {6,7,8,9,10},
+                         {1,3,6,8},
+                         {3,5,8,10},
+                         {0,3,5},
+                         {0,1,3},
+                         {0,4,5},
+                         {4,5,9,10},
+                         {0,2,4},
+                         {0,1,2},
+                         {1,2,6,7},
+                         {2,4,7,9} };
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+
+  centralize<double>(p);
   p.set_description() << "Johnson solid J9: Elongated pentagonal pyramid" << endl;
 
   return p;
@@ -672,23 +592,23 @@ perl::Object gyroelongated_square_pyramid()
    perl::Object p = square_pyramid();
    p = gyroelongate(p,sequence(0,4));
 
-   IncidenceMatrix<> VIF(13,9);
-   VIF[0] = triangle(1,3,4);
-   VIF[1] = triangle(2,3,8);
-   VIF[2] = triangle(2,3,4);
-   VIF[3] = triangle(2,7,8);
-   VIF[4] = triangle(0,2,7);
-   VIF[5] = triangle(0,5,7);
-   VIF[6] = triangle(0,2,4);
-   VIF[7] = triangle(0,1,5);
-   VIF[8] = triangle(0,1,4);
-   VIF[9] = triangle(1,5,6);
-   VIF[10] = triangle(3,6,8);
-   VIF[11] = triangle(1,3,6);
-   VIF[12] = square(5,6,7,8);
+   IncidenceMatrix<> VIF{ {1,3,4},
+                          {2,3,8},
+                          {2,3,4},
+                          {2,7,8},
+                          {0,2,7},
+                          {0,5,7},
+                          {0,2,4},
+                          {0,1,5},
+                          {0,1,4},
+                          {1,5,6},
+                          {3,6,8},
+                          {1,3,6},
+                          {5,6,7,8} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+
+   centralize<double>(p);
    p.set_description() << "Johnson solid J10: Gyroelongated square pyramid" << endl;
 
    return p;
@@ -696,13 +616,11 @@ perl::Object gyroelongated_square_pyramid()
 
 perl::Object gyroelongated_pentagonal_pyramid()
 {
-   perl::Object ico = CallPolymakeFunction("icosahedron");
+   perl::Object ico = call_function("icosahedron");
    Matrix<QE> V = ico.give("VERTICES");
    V = V.minor(sequence(0,11),All);
 
-   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-   p.take("VERTICES") << V;
-   p = centralize<QE>(p);
+   perl::Object p=build_from_vertices(V);
    p.set_description() << "Johnson solid J11: Gyroelongated pentagonal pyramid" << endl;
 
    return p;
@@ -714,10 +632,7 @@ perl::Object triangular_bipyramid()
 
   Matrix<Rational> V( ones_vector<Rational>(5) | unit_matrix<Rational>(3) / ones_vector<Rational>(3) / same_element_vector<Rational>(c,3));
 
-  perl::Object p(perl::ObjectType::construct<Rational>("Polytope"));
-
-  p.take("VERTICES") << V;
-  p = centralize<Rational>(p);
+  perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J12: Triangular bipyramid" << endl;
 
   return p;
@@ -729,24 +644,23 @@ perl::Object pentagonal_bipyramid()
   perl::Object p = pentagonal_pyramid();
   p = augment(p,sequence(1,5));
 
-  IncidenceMatrix<> VIF(10,7);
-  VIF[0] = triangle(0,4,5);
-  VIF[1] = triangle(4,5,6);
-  VIF[2] = triangle(3,5,6);
-  VIF[3] = triangle(1,3,6);
-  VIF[4] = triangle(0,1,3);
-  VIF[5] = triangle(0,3,5);
-  VIF[6] = triangle(0,1,2);
-  VIF[7] = triangle(1,2,6);
-  VIF[8] = triangle(2,4,6);
-  VIF[9] = triangle(0,2,4);
+  IncidenceMatrix<> VIF { {0,4,5},
+                          {4,5,6},
+                          {3,5,6},
+                          {1,3,6},
+                          {0,1,3},
+                          {0,3,5},
+                          {0,1,2},
+                          {1,2,6},
+                          {2,4,6},
+                          {0,2,4} };
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
 
+  centralize<double>(p);
   p.set_description() << "Johnson solid J13: Pentagonal bipyramid" << endl;
-  return p;
 
+  return p;
 }
 
 perl::Object elongated_triangular_bipyramid()
@@ -757,9 +671,7 @@ perl::Object elongated_triangular_bipyramid()
 
   Matrix<QE> V( ones_vector<QE>(8) | ( same_element_vector<QE>(1+s,3) / same_element_vector<QE>(c,3) / unit_matrix<QE>(3) / (unit_matrix<QE>(3) + same_element_matrix<QE>(s , 3, 3))));
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.take("VERTICES") << V;
-  p = centralize<QE>(p);
+  perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J14: Elongated triangular bipyramid" << endl;
 
   return p;
@@ -778,9 +690,7 @@ perl::Object elongated_square_bipyramid()
 
   Matrix<QE> V = ( esp_vertices / tip);
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.take("VERTICES") << V;
-  p = centralize<QE>(p);
+  perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J15: Elongated square bipyramid" << endl;
 
   return p;
@@ -794,29 +704,28 @@ perl::Object elongated_pentagonal_bipyramid()
 
   p = augment(p,sequence(6,5));
 
-  IncidenceMatrix<> VIF(15,12);
-  VIF[0] = triangle(7,9,11);
-  VIF[1] = triangle(6,7,11);
-  VIF[2] = triangle(9,10,11);
-  VIF[3] = square(1,3,6,8);
-  VIF[4] = square(3,5,8,10);
-  VIF[5] = triangle(8,10,11);
-  VIF[6] = triangle(6,8,11);
-  VIF[7] = triangle(0,3,5);
-  VIF[8] = triangle(0,1,3);
-  VIF[9] = triangle(0,4,5);
-  VIF[10] = square(4,5,9,10);
-  VIF[11] = triangle(0,2,4);
-  VIF[12] = triangle(0,1,2);
-  VIF[13] = square(1,2,6,7);
-  VIF[14] = square(2,4,7,9);
+  IncidenceMatrix<> VIF{ {7,9,11},
+                         {6,7,11},
+                         {9,10,11},
+                         {1,3,6,8},
+                         {3,5,8,10},
+                         {8,10,11},
+                         {6,8,11},
+                         {0,3,5},
+                         {0,1,3},
+                         {0,4,5},
+                         {4,5,9,10},
+                         {0,2,4},
+                         {0,1,2},
+                         {1,2,6,7},
+                         {2,4,7,9} };
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<QE>(p);
 
+  centralize<QE>(p);
   p.set_description() << "Johnson solid J16: Elongated pentagonal bipyramid" << endl;
-  return p;
 
+  return p;
 }
 
 //FIXME: coordinates #830
@@ -825,26 +734,26 @@ perl::Object gyroelongated_square_bipyramid()
    perl::Object p = gyroelongated_square_pyramid();
    p = augment(p,sequence(5,4));
 
-   IncidenceMatrix<> VIF(16,10);
-   VIF[0] = triangle(1,3,4);
-   VIF[1] = triangle(2,3,8);
-   VIF[2] = triangle(2,3,4);
-   VIF[3] = triangle(7,8,9);
-   VIF[4] = triangle(2,7,8);
-   VIF[5] = triangle(5,7,9);
-   VIF[6] = triangle(0,5,7);
-   VIF[7] = triangle(0,2,7);
-   VIF[8] = triangle(0,2,4);
-   VIF[9] = triangle(0,1,5);
-   VIF[10] = triangle(0,1,4);
-   VIF[11] = triangle(5,6,9);
-   VIF[12] = triangle(1,5,6);
-   VIF[13] = triangle(6,8,9);
-   VIF[14] = triangle(3,6,8);
-   VIF[15] = triangle(1,3,6);
+   IncidenceMatrix<> VIF{ {1,3,4},
+                          {2,3,8},
+                          {2,3,4},
+                          {7,8,9},
+                          {2,7,8},
+                          {5,7,9},
+                          {0,5,7},
+                          {0,2,7},
+                          {0,2,4},
+                          {0,1,5},
+                          {0,1,4},
+                          {5,6,9},
+                          {1,5,6},
+                          {6,8,9},
+                          {3,6,8},
+                          {1,3,6} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+
+   centralize<double>(p);
    p.set_description() << "Johnson solid J17: Gyroelongated square bipyramid" << endl;
 
    return p;
@@ -856,24 +765,24 @@ perl::Object elongated_triangular_cupola()
    perl::Object p = triangular_cupola();
    p = elongate(p,sequence(3,6));
 
-   IncidenceMatrix<> VIF(14,15);
-   VIF[0] = square(1,2,6,8);
-   VIF[1] = triangle(1,5,6);
-   VIF[2] = square(5,6,11,12);
-   VIF[3] = square(4,7,10,13);
-   VIF[4] = square(7,8,13,14);
-   VIF[5] = square(6,8,12,14);
-   VIF[6] = triangle(2,7,8);
-   VIF[7] = hexagon(9,10,11,12,13,14);
-   VIF[8] = square(3,4,9,10);
-   VIF[9] = square(3,5,9,11);
-   VIF[10] = triangle(0,3,4);
-   VIF[11] = triangle(0,1,2);
-   VIF[12] = square(0,2,4,7);
-   VIF[13] = square(0,1,3,5);
+   IncidenceMatrix<> VIF{ {1,2,6,8},
+                          {1,5,6},
+                          {5,6,11,12},
+                          {4,7,10,13},
+                          {7,8,13,14},
+                          {6,8,12,14},
+                          {2,7,8},
+                          {9,10,11,12,13,14},
+                          {3,4,9,10},
+                          {3,5,9,11},
+                          {0,3,4},
+                          {0,1,2},
+                          {0,2,4,7},
+                          {0,1,3,5} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<QE>(p);
+
+   centralize<QE>(p);
    p.set_description() << "Johnson solid J18: Elongated triangular cupola" << endl;
 
    return p;
@@ -887,10 +796,7 @@ perl::Object elongated_square_cupola_impl(bool centered)
   Matrix<QE> T = square_cupola_impl(false).give("VERTICES");
   V /= T.minor(sequence(8,4),All);
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.take("VERTICES") << V;
-  if (centered)
-     p = centralize<QE>(p);
+  perl::Object p=build_from_vertices(V, centered);
   p.set_description() << "Johnson solid J19: Elongated square cupola" << endl;
 
   return p;
@@ -905,34 +811,34 @@ perl::Object elongated_square_cupola()
 perl::Object elongated_pentagonal_cupola()
 {
    perl::Object p = pentagonal_cupola();
-   p = elongate(p,decagon(2,4,5,7,8,10,11,12,13,14));
+   p = elongate(p, Set<int>{2,4,5,7,8,10,11,12,13,14});
 
-   IncidenceMatrix<> VIF(22,25);
-   VIF[0] = decagon(15,16,17,18,19,20,21,22,23,24);
-   VIF[1] = square(0,1,2,4);
-   VIF[2] = square(1,6,8,10);
-   VIF[3] = triangle(1,4,8);
-   VIF[4] = square(8,10,19,20);
-   VIF[5] = square(10,13,20,23);
-   VIF[6] = triangle(6,10,13);
-   VIF[7] = square(13,14,23,24);
-   VIF[8] = square(4,8,16,19);
-   VIF[9] = square(6,9,13,14);
-   VIF[10] = triangle(9,12,14);
-   VIF[11] = square(12,14,22,24);
-   VIF[12] = square(2,4,15,16);
-   VIF[13] = pentagon(0,1,3,6,9);
-   VIF[14] = square(3,9,11,12);
-   VIF[15] = square(11,12,21,22);
-   VIF[16] = triangle(0,2,5);
-   VIF[17] = square(2,5,15,17);
-   VIF[18] = triangle(3,7,11);
-   VIF[19] = square(0,3,5,7);
-   VIF[20] = square(7,11,18,21);
-   VIF[21] = square(5,7,17,18);
+   IncidenceMatrix<> VIF{ {15,16,17,18,19,20,21,22,23,24},
+                          {0,1,2,4},
+                          {1,6,8,10},
+                          {1,4,8},
+                          {8,10,19,20},
+                          {10,13,20,23},
+                          {6,10,13},
+                          {13,14,23,24},
+                          {4,8,16,19},
+                          {6,9,13,14},
+                          {9,12,14},
+                          {12,14,22,24},
+                          {2,4,15,16},
+                          {0,1,3,6,9},
+                          {3,9,11,12},
+                          {11,12,21,22},
+                          {0,2,5},
+                          {2,5,15,17},
+                          {3,7,11},
+                          {0,3,5,7},
+                          {7,11,18,21},
+                          {5,7,17,18} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<QE>(p);
+
+   centralize<QE>(p);
    p.set_description() << "Johnson solid J20: Elongated pentagonal cupola" << endl;
 
   return p;
@@ -942,39 +848,39 @@ perl::Object elongated_pentagonal_cupola()
 perl::Object elongated_pentagonal_rotunda()
 {
    perl::Object p = pentagonal_rotunda();
-   p = elongate(p,decagon(7,9,10,12,13,15,16,17,18,19));
+   p = elongate(p, Set<int>{7,9,10,12,13,15,16,17,18,19});
 
-   IncidenceMatrix<> VIF(27,30);
-   VIF[0] = decagon(20,21,22,23,24,25,26,27,28,29);
-   VIF[1] = square(7,10,20,22);
-   VIF[2] = triangle(3,7,10);
-   VIF[3] = square(16,17,26,27);
-   VIF[4] = pentagon(0,1,2,4,6);
-   VIF[5] = triangle(0,1,3);
-   VIF[6] = triangle(4,6,14);
-   VIF[7] = pentagon(6,11,14,18,19);
-   VIF[8] = square(9,13,21,24);
-   VIF[9] = triangle(5,9,13);
-   VIF[10] = square(18,19,28,29);
-   VIF[11] = pentagon(2,5,11,13,15);
-   VIF[12] = triangle(11,15,18);
-   VIF[13] = square(15,18,25,28);
-   VIF[14] = square(13,15,24,25);
-   VIF[15] = triangle(2,6,11);
-   VIF[16] = triangle(0,2,5);
-   VIF[17] = triangle(14,17,19);
-   VIF[18] = square(17,19,27,29);
-   VIF[19] = square(7,9,20,21);
-   VIF[20] = pentagon(0,3,5,7,9);
-   VIF[21] = triangle(1,4,8);
-   VIF[22] = pentagon(4,8,14,16,17);
-   VIF[23] = triangle(8,12,16);
-   VIF[24] = pentagon(1,3,8,10,12);
-   VIF[25] = square(12,16,23,26);
-   VIF[26] = square(10,12,22,23);
+   IncidenceMatrix<> VIF{ {20,21,22,23,24,25,26,27,28,29},
+                          {7,10,20,22},
+                          {3,7,10},
+                          {16,17,26,27},
+                          {0,1,2,4,6},
+                          {0,1,3},
+                          {4,6,14},
+                          {6,11,14,18,19},
+                          {9,13,21,24},
+                          {5,9,13},
+                          {18,19,28,29},
+                          {2,5,11,13,15},
+                          {11,15,18},
+                          {15,18,25,28},
+                          {13,15,24,25},
+                          {2,6,11},
+                          {0,2,5},
+                          {14,17,19},
+                          {17,19,27,29},
+                          {7,9,20,21},
+                          {0,3,5,7,9},
+                          {1,4,8},
+                          {4,8,14,16,17},
+                          {8,12,16},
+                          {1,3,8,10,12},
+                          {12,16,23,26},
+                          {10,12,22,23} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+
+   centralize<double>(p);
    p.set_description() << "Johnson solid J21: Elongated pentagonal rotunda" << endl;
 
    return p;
@@ -987,30 +893,29 @@ perl::Object gyroelongated_triangular_cupola()
 
   p = gyroelongate(p,sequence(3,6));
 
-  IncidenceMatrix<> VIF(20,15);
-  VIF[0] = square(1,2,6,8);
-  VIF[1] = triangle(1,5,6);
-  VIF[2] = triangle(5,11,12);
-  VIF[3] = triangle(5,6,12);
-  VIF[4] = triangle(2,7,8);
-  VIF[5] = triangle(6,12,14);
-  VIF[6] = triangle(6,8,14);
-  VIF[7] = triangle(8,13,14);
-  VIF[8] = triangle(7,8,13);
-  VIF[9] = triangle(7,10,13);
-  VIF[10] = triangle(4,7,10);
-  VIF[11] = triangle(4,9,10);
-  VIF[12] = hexagon(9,10,11,12,13,14);
-  VIF[13] = triangle(3,4,9);
-  VIF[14] = triangle(3,9,11);
-  VIF[15] = triangle(3,5,11);
-  VIF[16] = triangle(0,3,4);
-  VIF[17] = triangle(0,1,2);
-  VIF[18] = square(0,2,4,7);
-  VIF[19] = square(0,1,3,5);
+  IncidenceMatrix<> VIF{ {1,2,6,8},
+                         {1,5,6},
+                         {5,11,12},
+                         {5,6,12},
+                         {2,7,8},
+                         {6,12,14},
+                         {6,8,14},
+                         {8,13,14},
+                         {7,8,13},
+                         {7,10,13},
+                         {4,7,10},
+                         {4,9,10},
+                         {9,10,11,12,13,14},
+                         {3,4,9},
+                         {3,9,11},
+                         {3,5,11},
+                         {0,3,4},
+                         {0,1,2},
+                         {0,2,4,7},
+                         {0,1,3,5} };
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<QE>(p);
+  centralize<QE>(p);
 
   p.set_description() << "Johnson solid J22: Gyroelongated triangular cupola" << endl;
   return p;
@@ -1023,41 +928,41 @@ perl::Object gyroelongated_square_cupola()
   const double height = -2*sqrt(1-1.0/(4.0*cos(M_PI/16)*cos(M_PI/16)));
   Matrix<double> W = create_regular_polygon_vertices(8, sqrt(2)*sqrt(2+sqrt(2)), 0);
 
-  perl::Object p(perl::ObjectType::construct<double>("Polytope"));
+  perl::Object p("Polytope<Float>");
   Matrix<double> X = (W.minor(All, sequence(0,3)) | same_element_vector<double>(height,8)) / V;
 
-  p.set_description() << "Johnson solid J23: Gyroelongated square cupola" << endl;
-  IncidenceMatrix<> VIF(26,20);
-  VIF[0] = triangle(0,1,9);
-  VIF[1] = triangle(1,2,8);
-  VIF[2] = triangle(2,3,15);
-  VIF[3] = triangle(3,4,14);
-  VIF[4] = triangle(4,5,13);
-  VIF[5] = triangle(5,6,12);
-  VIF[6] = triangle(6,7,11);
-  VIF[7] = triangle(0,7,10);
-  VIF[8] = triangle(1,8,9);
-  VIF[9] = triangle(0,9,10);
-  VIF[10] = triangle(7,10,11);
-  VIF[11] = triangle(6,11,12);
-  VIF[12] = triangle(5,12,13);
-  VIF[13] = triangle(4,13,14);
-  VIF[14] = triangle(3,14,15);
-  VIF[15] = triangle(2,8,15);
-  VIF[16] = octagon(0,1,2,3,4,5,6,7);
-  VIF[17] = square(9,10,16,17);
-  VIF[18] = triangle(8,9,16);
-  VIF[19] = square(13,14,18,19);
-  VIF[20] = square(8,15,16,18);
-  VIF[21] = triangle(10,11,17);
-  VIF[22] = square(11,12,17,19);
-  VIF[23] = triangle(14,15,18);
-  VIF[24] = triangle(12,13,19);
-  VIF[25] = square(16,17,18,19);
+  IncidenceMatrix<> VIF{ {0,1,9},
+                         {1,2,8},
+                         {2,3,15},
+                         {3,4,14},
+                         {4,5,13},
+                         {5,6,12},
+                         {6,7,11},
+                         {0,7,10},
+                         {1,8,9},
+                         {0,9,10},
+                         {7,10,11},
+                         {6,11,12},
+                         {5,12,13},
+                         {4,13,14},
+                         {3,14,15},
+                         {2,8,15},
+                         {0,1,2,3,4,5,6,7},
+                         {9,10,16,17},
+                         {8,9,16},
+                         {13,14,18,19},
+                         {8,15,16,18},
+                         {10,11,17},
+                         {11,12,17,19},
+                         {14,15,18},
+                         {12,13,19},
+                         {16,17,18,19} };
 
   p.take("VERTICES") << X;
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+
+  centralize<double>(p);
+  p.set_description() << "Johnson solid J23: Gyroelongated square cupola" << endl;
 
   return p;
 }
@@ -1066,43 +971,44 @@ perl::Object gyroelongated_square_cupola()
 perl::Object gyroelongated_pentagonal_cupola()
 {
   perl::Object p = pentagonal_cupola();
-  p = gyroelongate(p,decagon(2,4,5,7,8,10,11,12,13,14));
+  p = gyroelongate(p, Set<int>{2,4,5,7,8,10,11,12,13,14});
 
-  IncidenceMatrix<> VIF(32,25);
-  VIF[0] = decagon(15,16,17,18,19,20,21,22,23,24);
-  VIF[1] = triangle(5,17,18);
-  VIF[2] = triangle(2,5,17);
-  VIF[3] = triangle(0,2,5);
-  VIF[4] = triangle(2,15,17);
-  VIF[5] = pentagon(0,1,3,6,9);
-  VIF[6] = triangle(2,4,15);
-  VIF[7] = triangle(4,15,16);
-  VIF[8] = triangle(14,23,24);
-  VIF[9] = triangle(4,8,16);
-  VIF[10] = triangle(6,10,13);
-  VIF[11] = triangle(13,20,23);
-  VIF[12] = triangle(10,19,20);
-  VIF[13] = triangle(10,13,20);
-  VIF[14] = triangle(8,10,19);
-  VIF[15] = triangle(8,16,19);
-  VIF[16] = triangle(13,14,23);
-  VIF[17] = triangle(1,4,8);
-  VIF[18] = square(1,6,8,10);
-  VIF[19] = square(6,9,13,14);
-  VIF[20] = triangle(12,14,24);
-  VIF[21] = triangle(9,12,14);
-  VIF[22] = square(0,1,2,4);
-  VIF[23] = triangle(12,22,24);
-  VIF[24] = triangle(11,12,22);
-  VIF[25] = square(3,9,11,12);
-  VIF[26] = triangle(11,21,22);
-  VIF[27] = triangle(3,7,11);
-  VIF[28] = triangle(7,11,21);
-  VIF[29] = triangle(5,7,18);
-  VIF[30] = triangle(7,18,21);
-  VIF[31] = square(0,3,5,7);
+  IncidenceMatrix<> VIF{ {15,16,17,18,19,20,21,22,23,24},
+                         {5,17,18},
+                         {2,5,17},
+                         {0,2,5},
+                         {2,15,17},
+                         {0,1,3,6,9},
+                         {2,4,15},
+                         {4,15,16},
+                         {14,23,24},
+                         {4,8,16},
+                         {6,10,13},
+                         {13,20,23},
+                         {10,19,20},
+                         {10,13,20},
+                         {8,10,19},
+                         {8,16,19},
+                         {13,14,23},
+                         {1,4,8},
+                         {1,6,8,10},
+                         {6,9,13,14},
+                         {12,14,24},
+                         {9,12,14},
+                         {0,1,2,4},
+                         {12,22,24},
+                         {11,12,22},
+                         {3,9,11,12},
+                         {11,21,22},
+                         {3,7,11},
+                         {7,11,21},
+                         {5,7,18},
+                         {7,18,21},
+                         {0,3,5,7} };
+
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+
+  centralize<double>(p);
   p.set_description() << "Johnson solid J24: Gyroelongated pentagonal cupola" << endl;
 
   return p;
@@ -1112,49 +1018,49 @@ perl::Object gyroelongated_pentagonal_cupola()
 perl::Object gyroelongated_pentagonal_rotunda()
 {
    perl::Object p = pentagonal_rotunda();
-   p = gyroelongate(p,decagon(7,9,10,12,13,15,16,17,18,19));
+   p = gyroelongate(p, Set<int>{7,9,10,12,13,15,16,17,18,19});
 
-   IncidenceMatrix<> VIF(37,30);
-   VIF[0] = decagon(20,21,22,23,24,25,26,27,28,29);
-   VIF[1] = triangle(10,22,23);
-   VIF[2] = pentagon(4,8,14,16,17);
-   VIF[3] = triangle(1,4,8);
-   VIF[4] = triangle(16,17,27);
-   VIF[5] = triangle(17,27,29);
-   VIF[6] = pentagon(0,3,5,7,9);
-   VIF[7] = triangle(7,9,20);
-   VIF[8] = triangle(0,2,5);
-   VIF[9] = pentagon(6,11,14,18,19);
-   VIF[10] = triangle(2,6,11);
-   VIF[11] = triangle(18,19,28);
-   VIF[12] = triangle(18,25,28);
-   VIF[13] = triangle(13,15,24);
-   VIF[14] = triangle(15,18,25);
-   VIF[15] = triangle(15,24,25);
-   VIF[16] = triangle(11,15,18);
-   VIF[17] = triangle(13,21,24);
-   VIF[18] = pentagon(2,5,11,13,15);
-   VIF[19] = triangle(9,13,21);
-   VIF[20] = triangle(5,9,13);
-   VIF[21] = triangle(19,28,29);
-   VIF[22] = triangle(9,20,21);
-   VIF[23] = triangle(17,19,29);
-   VIF[24] = triangle(14,17,19);
-   VIF[25] = triangle(4,6,14);
-   VIF[26] = triangle(0,1,3);
-   VIF[27] = pentagon(0,1,2,4,6);
-   VIF[28] = triangle(7,20,22);
-   VIF[29] = triangle(3,7,10);
-   VIF[30] = triangle(7,10,22);
-   VIF[31] = triangle(16,26,27);
-   VIF[32] = triangle(8,12,16);
-   VIF[33] = triangle(12,16,26);
-   VIF[34] = triangle(10,12,23);
-   VIF[35] = triangle(12,23,26);
-   VIF[36] = pentagon(1,3,8,10,12);
+   IncidenceMatrix<> VIF{ {20,21,22,23,24,25,26,27,28,29},
+                          {10,22,23},
+                          {4,8,14,16,17},
+                          {1,4,8},
+                          {16,17,27},
+                          {17,27,29},
+                          {0,3,5,7,9},
+                          {7,9,20},
+                          {0,2,5},
+                          {6,11,14,18,19},
+                          {2,6,11},
+                          {18,19,28},
+                          {18,25,28},
+                          {13,15,24},
+                          {15,18,25},
+                          {15,24,25},
+                          {11,15,18},
+                          {13,21,24},
+                          {2,5,11,13,15},
+                          {9,13,21},
+                          {5,9,13},
+                          {19,28,29},
+                          {9,20,21},
+                          {17,19,29},
+                          {14,17,19},
+                          {4,6,14},
+                          {0,1,3},
+                          {0,1,2,4,6},
+                          {7,20,22},
+                          {3,7,10},
+                          {7,10,22},
+                          {16,26,27},
+                          {8,12,16},
+                          {12,16,26},
+                          {10,12,23},
+                          {12,23,26},
+                          {1,3,8,10,12} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<QE>(p);
+
+   centralize<QE>(p);
    p.set_description() << "Johnson solid J25: Gyroelongated pentagonal rotunda" << endl;
 
    return p;
@@ -1167,12 +1073,11 @@ perl::Object gyrobifastigium(){
   h[0]=height;
   h[1]=-height;
 
-  Matrix<QE> V = ((create_square_vertices<QE>() | zero_vector<QE>(4)) / (same_element_vector<QE>(QE(1,0,0),4) | ((unit_matrix<QE>(2) | h) / (-unit_matrix<QE>(2) | h))));
+  Matrix<QE> V = ((create_square_vertices<QE>() | zero_vector<QE>(4)) /
+                  (same_element_vector<QE>(QE(1,0,0),4) | ((unit_matrix<QE>(2) | h) / (-unit_matrix<QE>(2) | h))));
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-        p.take("VERTICES") << V;
-        p = centralize<QE>(p);
-        p.set_description() << "Johnson solid J26: Gyrobifastigium" << endl;
+  perl::Object p=build_from_vertices(V);
+  p.set_description() << "Johnson solid J26: Gyrobifastigium" << endl;
 
   return p;
 }
@@ -1208,9 +1113,7 @@ perl::Object triangular_orthobicupola()
 
   Matrix<QE> V=( hexagon_V / (triangle_V + repeat_row(6*trans,3)) / (triangle_V - repeat_row(6*trans,3)));
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.take("VERTICES") << V;
-  p = centralize<QE>(p);
+  perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J27: Triangular orthobicupola" << endl;
 
   return p;
@@ -1221,9 +1124,7 @@ perl::Object square_orthobicupola()
   Matrix<QE> V = square_cupola_impl(false).give("VERTICES");
   V /= (ones_vector<QE>(4) | (-1)*V.minor(sequence(8,4),sequence(1,3)));
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.take("VERTICES") << V;
-  p = centralize<QE>(p);
+  perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J28: Square orthobicupola" << endl;
 
   return p;
@@ -1239,53 +1140,52 @@ perl::Object square_gyrobicupola()
   Matrix<QE> V = square_cupola_impl(false).give("VERTICES");
   V /= (ones_vector<QE>(4) | (-1)*(V.minor(sequence(8,4),sequence(1,3))*R));
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.take("VERTICES") << V;
-  p = centralize<QE>(p);
+  perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J29: Square gyrobicupola" << endl;
 
   return p;
 }
 
-perl::Object pentagonal_orthobicupola() {
+perl::Object pentagonal_orthobicupola()
+{
    perl::Object p = pentagonal_cupola();
-   p = augment(p,decagon(2,4,5,7,8,10,11,12,13,14));
-   p = rotate_facet(p,pentagon(0,1,3,6,9),M_PI/5);
+   p = augment(p, Set<int>{2,4,5,7,8,10,11,12,13,14});
+   p = rotate_facet(p, Set<int>{0,1,3,6,9}, M_PI/5);
 
-   IncidenceMatrix<> VIF(22,20);
-   VIF[0] = square(0,2,10,14);
-   VIF[1] = square(0,2,15,16);
-   VIF[2] = pentagon(15,16,17,18,19);
-   VIF[3] = triangle(0,1,16);
-   VIF[4] = triangle(0,1,14);
-   VIF[5] = square(7,9,11,12);
-   VIF[6] = square(1,4,16,18);
-   VIF[7] = triangle(8,9,12);
-   VIF[8] = triangle(4,5,18);
-   VIF[9] = triangle(4,5,13);
-   VIF[10] = square(5,8,12,13);
-   VIF[11] = triangle(8,9,19);
-   VIF[12] = square(5,8,18,19);
-   VIF[13] = square(1,4,13,14);
-   VIF[14] = square(7,9,17,19);
-   VIF[15] = pentagon(10,11,12,13,14);
-   VIF[16] = triangle(6,7,11);
-   VIF[17] = triangle(6,7,17);
-   VIF[18] = triangle(2,3,10);
-   VIF[19] = triangle(2,3,15);
-   VIF[20] = square(3,6,15,17);
-   VIF[21] = square(3,6,10,11);
+   IncidenceMatrix<> VIF{ {0,2,10,14},
+                          {0,2,15,16},
+                          {15,16,17,18,19},
+                          {0,1,16},
+                          {0,1,14},
+                          {7,9,11,12},
+                          {1,4,16,18},
+                          {8,9,12},
+                          {4,5,18},
+                          {4,5,13},
+                          {5,8,12,13},
+                          {8,9,19},
+                          {5,8,18,19},
+                          {1,4,13,14},
+                          {7,9,17,19},
+                          {10,11,12,13,14},
+                          {6,7,11},
+                          {6,7,17},
+                          {2,3,10},
+                          {2,3,15},
+                          {3,6,15,17},
+                          {3,6,10,11} };
 
-   p.take("VERTICES_IN_FACETS")<<VIF;
-   p = centralize<double>(p);
+   p.take("VERTICES_IN_FACETS") << VIF;
 
+   centralize<double>(p);
    p.set_description() << "Johnson solid J30: Pentagonal orthobicupola" << endl;
+
    return p;
 }
 
 perl::Object pentagonal_gyrobicupola(){
    perl::Object p = pentagonal_pyramid();
-   p = CallPolymakeFunction("minkowski_sum",1,p,-1,p);
+   p = call_function("minkowski_sum", 1, p, -1, p);
 
    p.set_description() << "Johnson solid J31: Pentagonal gyrobicupola" << endl;
 
@@ -1296,39 +1196,39 @@ perl::Object pentagonal_gyrobicupola(){
 perl::Object pentagonal_orthocupolarotunda()
 {
    perl::Object p = pentagonal_rotunda();
-   p = augment(p,decagon(7,9,10,12,13,15,16,17,18,19));
+   p = augment(p, Set<int>{7,9,10,12,13,15,16,17,18,19});
 
-   IncidenceMatrix<> VIF(27,25);
-   VIF[0] = pentagon(4,8,14,16,17);
-   VIF[1] = triangle(1,4,8);
-   VIF[2] = triangle(16,17,24);
-   VIF[3] = pentagon(0,3,5,7,9);
-   VIF[4] = triangle(4,6,14);
-   VIF[5] = square(17,19,20,24);
-   VIF[6] = triangle(14,17,19);
-   VIF[7] = triangle(0,2,5);
-   VIF[8] = square(9,13,21,22);
-   VIF[9] = triangle(5,9,13);
-   VIF[10] = square(15,18,20,21);
-   VIF[11] = triangle(11,15,18);
-   VIF[12] = triangle(13,15,21);
-   VIF[13] = pentagon(2,5,11,13,15);
-   VIF[14] = triangle(18,19,20);
-   VIF[15] = triangle(2,6,11);
-   VIF[16] = pentagon(6,11,14,18,19);
-   VIF[17] = triangle(7,9,22);
-   VIF[18] = pentagon(20,21,22,23,24);
-   VIF[19] = triangle(0,1,3);
-   VIF[20] = pentagon(0,1,2,4,6);
-   VIF[21] = triangle(3,7,10);
-   VIF[22] = square(7,10,22,23);
-   VIF[23] = triangle(10,12,23);
-   VIF[24] = triangle(8,12,16);
-   VIF[25] = square(12,16,23,24);
-   VIF[26] = pentagon(1,3,8,10,12);
+   IncidenceMatrix<> VIF{ {4,8,14,16,17},
+                          {1,4,8},
+                          {16,17,24},
+                          {0,3,5,7,9},
+                          {4,6,14},
+                          {17,19,20,24},
+                          {14,17,19},
+                          {0,2,5},
+                          {9,13,21,22},
+                          {5,9,13},
+                          {15,18,20,21},
+                          {11,15,18},
+                          {13,15,21},
+                          {2,5,11,13,15},
+                          {18,19,20},
+                          {2,6,11},
+                          {6,11,14,18,19},
+                          {7,9,22},
+                          {20,21,22,23,24},
+                          {0,1,3},
+                          {0,1,2,4,6},
+                          {3,7,10},
+                          {7,10,22,23},
+                          {10,12,23},
+                          {8,12,16},
+                          {12,16,23,24},
+                          {1,3,8,10,12} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+
+   centralize<double>(p);
    p.set_description() << "Johnson solid J32: Pentagonal orthocupolarotunda" << endl;
 
    return p;
@@ -1338,39 +1238,39 @@ perl::Object pentagonal_orthocupolarotunda()
 perl::Object pentagonal_gyrocupolarotunda()
 {
    perl::Object p = pentagonal_orthocupolarotunda();
-   p = rotate_facet(p,sequence(20,5),M_PI/5);
+   p = rotate_facet(p, sequence(20,5), M_PI/5);
 
-   IncidenceMatrix<> VIF(27,25);
-   VIF[0] = pentagon(4,8,14,16,17);
-   VIF[1] = triangle(1,4,8);
-   VIF[2] = square(16,17,20,24);
-   VIF[3] = pentagon(0,3,5,7,9);
-   VIF[4] = triangle(4,6,14);
-   VIF[5] = triangle(0,2,5);
-   VIF[6] = square(18,19,20,21);
-   VIF[7] = triangle(9,13,22);
-   VIF[8] = triangle(5,9,13);
-   VIF[9] = triangle(11,15,18);
-   VIF[10] = triangle(15,18,21);
-   VIF[11] = pentagon(2,5,11,13,15);
-   VIF[12] = square(13,15,21,22);
-   VIF[13] = triangle(2,6,11);
-   VIF[14] = pentagon(6,11,14,18,19);
-   VIF[15] = triangle(17,19,20);
-   VIF[16] = triangle(14,17,19);
-   VIF[17] = square(7,9,22,23);
-   VIF[18] = pentagon(20,21,22,23,24);
-   VIF[19] = triangle(0,1,3);
-   VIF[20] = pentagon(0,1,2,4,6);
-   VIF[21] = triangle(7,10,23);
-   VIF[22] = triangle(3,7,10);
-   VIF[23] = triangle(12,16,24);
-   VIF[24] = triangle(8,12,16);
-   VIF[25] = square(10,12,23,24);
-   VIF[26] = pentagon(1,3,8,10,12);
+   IncidenceMatrix<> VIF{ {4,8,14,16,17},
+                          {1,4,8},
+                          {16,17,20,24},
+                          {0,3,5,7,9},
+                          {4,6,14},
+                          {0,2,5},
+                          {18,19,20,21},
+                          {9,13,22},
+                          {5,9,13},
+                          {11,15,18},
+                          {15,18,21},
+                          {2,5,11,13,15},
+                          {13,15,21,22},
+                          {2,6,11},
+                          {6,11,14,18,19},
+                          {17,19,20},
+                          {14,17,19},
+                          {7,9,22,23},
+                          {20,21,22,23,24},
+                          {0,1,3},
+                          {0,1,2,4,6},
+                          {7,10,23},
+                          {3,7,10},
+                          {12,16,24},
+                          {8,12,16},
+                          {10,12,23,24},
+                          {1,3,8,10,12} };
 
-   p.take("VERTICES_IN_FACETS")<<VIF;
-   p = centralize<double>(p);
+   p.take("VERTICES_IN_FACETS") << VIF;
+
+   centralize<double>(p);
    p.set_description() << "Johnson solid J33: Pentagonal gyrocupolarotunda" << endl;
 
    return p;
@@ -1380,47 +1280,45 @@ perl::Object pentagonal_gyrocupolarotunda()
 perl::Object pentagonal_orthobirotunda()
 {
    perl::Object p = pentagonal_rotunda();
-   Vector<double> normal(4);
-   normal[2]=(1+sqrt(5))/2;
-   normal[3]=1;
-   p = gyrotunda(p,decagon(7,9,10,12,13,15,16,17,18,19));
+   Vector<double> normal{ 0., 0., (1+sqrt(5))/2, 1. };
+   p = gyrotunda(p, Set<int>{7,9,10,12,13,15,16,17,18,19});
 
-   IncidenceMatrix<> VIF(32,30);
-   VIF[0] = pentagon(4,8,14,16,17);
-   VIF[1] = triangle(1,4,8);
-   VIF[2] = pentagon(16,17,23,24,29);
-   VIF[3] = pentagon(0,1,2,4,6);
-   VIF[4] = triangle(0,1,3);
-   VIF[5] = pentagon(7,9,21,22,27);
-   VIF[6] = triangle(22,27,28);
-   VIF[7] = triangle(4,6,14);
-   VIF[8] = triangle(14,17,19);
-   VIF[9] = triangle(17,19,24);
-   VIF[10] = triangle(0,2,5);
-   VIF[11] = triangle(21,26,27);
-   VIF[12] = triangle(2,6,11);
-   VIF[13] = pentagon(2,5,11,13,15);
-   VIF[14] = pentagon(13,15,20,21,26);
-   VIF[15] = triangle(11,15,18);
-   VIF[16] = triangle(15,18,20);
-   VIF[17] = triangle(20,25,26);
-   VIF[18] = triangle(9,13,21);
-   VIF[19] = triangle(5,9,13);
-   VIF[20] = pentagon(18,19,20,24,25);
-   VIF[21] = pentagon(6,11,14,18,19);
-   VIF[22] = triangle(24,25,29);
-   VIF[23] = pentagon(25,26,27,28,29);
-   VIF[24] = pentagon(0,3,5,7,9);
-   VIF[25] = triangle(23,28,29);
-   VIF[26] = triangle(7,10,22);
-   VIF[27] = triangle(3,7,10);
-   VIF[28] = triangle(12,16,23);
-   VIF[29] = triangle(8,12,16);
-   VIF[30] = pentagon(10,12,22,23,28);
-   VIF[31] = pentagon(1,3,8,10,12);
+   IncidenceMatrix<> VIF{ {4,8,14,16,17},
+                          {1,4,8},
+                          {16,17,23,24,29},
+                          {0,1,2,4,6},
+                          {0,1,3},
+                          {7,9,21,22,27},
+                          {22,27,28},
+                          {4,6,14},
+                          {14,17,19},
+                          {17,19,24},
+                          {0,2,5},
+                          {21,26,27},
+                          {2,6,11},
+                          {2,5,11,13,15},
+                          {13,15,20,21,26},
+                          {11,15,18},
+                          {15,18,20},
+                          {20,25,26},
+                          {9,13,21},
+                          {5,9,13},
+                          {18,19,20,24,25},
+                          {6,11,14,18,19},
+                          {24,25,29},
+                          {25,26,27,28,29},
+                          {0,3,5,7,9},
+                          {23,28,29},
+                          {7,10,22},
+                          {3,7,10},
+                          {12,16,23},
+                          {8,12,16},
+                          {10,12,22,23,28},
+                          {1,3,8,10,12} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+
+   centralize<double>(p);
    p.set_description() << "Johnson solid J34: Pentagonal orthobirotunda" << endl;
 
    return p;
@@ -1430,33 +1328,33 @@ perl::Object pentagonal_orthobirotunda()
 perl::Object elongated_triangular_orthobicupola()
 {
    perl::Object p = elongated_triangular_cupola();
-   p = augment(p,hexagon(9,10,11,12,13,14));
-   p = rotate_facet(p,triangle(15,16,17),M_PI/3);
+   p = augment(p, Set<int>{9,10,11,12,13,14});
+   p = rotate_facet(p, Set<int>{15,16,17}, M_PI/3);
 
-   IncidenceMatrix<> VIF(20,18);
-   VIF[0] = square(1,2,6,8);
-   VIF[1] = triangle(1,5,6);
-   VIF[2] = square(5,6,11,12);
-   VIF[3] = triangle(11,12,15);
-   VIF[4] = square(4,7,10,13);
-   VIF[5] = square(10,13,16,17);
-   VIF[6] = square(7,8,13,14);
-   VIF[7] = triangle(15,16,17);
-   VIF[8] = triangle(13,14,16);
-   VIF[9] = square(12,14,15,16);
-   VIF[10] = square(6,8,12,14);
-   VIF[11] = triangle(2,7,8);
-   VIF[12] = triangle(9,10,17);
-   VIF[13] = square(9,11,15,17);
-   VIF[14] = square(3,4,9,10);
-   VIF[15] = square(3,5,9,11);
-   VIF[16] = triangle(0,3,4);
-   VIF[17] = triangle(0,1,2);
-   VIF[18] = square(0,2,4,7);
-   VIF[19] = square(0,1,3,5);
+   IncidenceMatrix<> VIF{ {1,2,6,8},
+                          {1,5,6},
+                          {5,6,11,12},
+                          {11,12,15},
+                          {4,7,10,13},
+                          {10,13,16,17},
+                          {7,8,13,14},
+                          {15,16,17},
+                          {13,14,16},
+                          {12,14,15,16},
+                          {6,8,12,14},
+                          {2,7,8},
+                          {9,10,17},
+                          {9,11,15,17},
+                          {3,4,9,10},
+                          {3,5,9,11},
+                          {0,3,4},
+                          {0,1,2},
+                          {0,2,4,7},
+                          {0,1,3,5} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+
+   centralize<double>(p);
    p.set_description() << "Johnson solid J35: Elongated triangular orthobicupola" << endl;
 
    return p;
@@ -1468,33 +1366,33 @@ perl::Object elongated_triangular_gyrobicupola()
    perl::Object p = elongated_triangular_cupola();
    p = augment(p,sequence(9,6));
 
-   IncidenceMatrix<> VIF(20,18);
-   VIF[0] = square(1,2,6,8);
-   VIF[1] = triangle(1,5,6);
-   VIF[2] = square(5,6,11,12);
-   VIF[3] = square(11,12,15,17);
-   VIF[4] = square(4,7,10,13);
-   VIF[5] = triangle(10,13,16);
-   VIF[6] = triangle(15,16,17);
-   VIF[7] = square(13,14,15,16);
-   VIF[8] = square(7,8,13,14);
-   VIF[9] = triangle(12,14,15);
-   VIF[10] = square(6,8,12,14);
-   VIF[11] = triangle(2,7,8);
-   VIF[12] = triangle(9,11,17);
-   VIF[13] = square(9,10,16,17);
-   VIF[14] = square(3,4,9,10);
-   VIF[15] = square(3,5,9,11);
-   VIF[16] = triangle(0,3,4);
-   VIF[17] = triangle(0,1,2);
-   VIF[18] = square(0,2,4,7);
-   VIF[19] = square(0,1,3,5);
+   IncidenceMatrix<> VIF{ {1,2,6,8},
+                          {1,5,6},
+                          {5,6,11,12},
+                          {11,12,15,17},
+                          {4,7,10,13},
+                          {10,13,16},
+                          {15,16,17},
+                          {13,14,15,16},
+                          {7,8,13,14},
+                          {12,14,15},
+                          {6,8,12,14},
+                          {2,7,8},
+                          {9,11,17},
+                          {9,10,16,17},
+                          {3,4,9,10},
+                          {3,5,9,11},
+                          {0,3,4},
+                          {0,1,2},
+                          {0,2,4,7},
+                          {0,1,3,5} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+
+   centralize<double>(p);
    p.set_description() << "Johnson solid J36: Elongated triangular gyrobicupola" << endl;
 
-  return p;
+   return p;
 }
 
 perl::Object elongated_square_gyrobicupola()
@@ -1504,9 +1402,7 @@ perl::Object elongated_square_gyrobicupola()
   V /= W.minor(sequence(12,4),All);
   V(20,3)=V(21,3)=V(22,3)=V(23,3)= V(20,3)-2;
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.take("VERTICES") << V;
-  p = centralize<QE>(p);
+  perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J37: Elongated square gyrobicupola" << endl;
 
   return p;
@@ -1517,44 +1413,44 @@ perl::Object elongated_pentagonal_orthobicupola()
 {
    perl::Object p = elongated_pentagonal_cupola();
    p = augment(p,sequence(15,10));
-   p = rotate_facet(p,sequence(25,5),M_PI/5);
+   p = rotate_facet(p, sequence(25,5), M_PI/5);
 
-   IncidenceMatrix<> VIF(32,30);
-   VIF[0] = square(17,18,27,28);
-   VIF[1] = triangle(18,21,28);
-   VIF[2] = triangle(15,17,27);
-   VIF[3] = square(21,22,28,29);
-   VIF[4] = pentagon(25,26,27,28,29);
-   VIF[5] = square(2,4,15,16);
-   VIF[6] = square(12,14,22,24);
-   VIF[7] = triangle(9,12,14);
-   VIF[8] = triangle(22,24,29);
-   VIF[9] = square(23,24,25,29);
-   VIF[10] = square(4,8,16,19);
-   VIF[11] = square(13,14,23,24);
-   VIF[12] = triangle(20,23,25);
-   VIF[13] = square(10,13,20,23);
-   VIF[14] = square(8,10,19,20);
-   VIF[15] = triangle(6,10,13);
-   VIF[16] = square(19,20,25,26);
-   VIF[17] = triangle(16,19,26);
-   VIF[18] = triangle(1,4,8);
-   VIF[19] = square(1,6,8,10);
-   VIF[20] = square(6,9,13,14);
-   VIF[21] = square(15,16,26,27);
-   VIF[22] = square(0,1,2,4);
-   VIF[23] = pentagon(0,1,3,6,9);
-   VIF[24] = square(3,9,11,12);
-   VIF[25] = square(11,12,21,22);
-   VIF[26] = triangle(0,2,5);
-   VIF[27] = square(2,5,15,17);
-   VIF[28] = triangle(3,7,11);
-   VIF[29] = square(0,3,5,7);
-   VIF[30] = square(7,11,18,21);
-   VIF[31] = square(5,7,17,18);
+   IncidenceMatrix<> VIF{ {17,18,27,28},
+                          {18,21,28},
+                          {15,17,27},
+                          {21,22,28,29},
+                          {25,26,27,28,29},
+                          {2,4,15,16},
+                          {12,14,22,24},
+                          {9,12,14},
+                          {22,24,29},
+                          {23,24,25,29},
+                          {4,8,16,19},
+                          {13,14,23,24},
+                          {20,23,25},
+                          {10,13,20,23},
+                          {8,10,19,20},
+                          {6,10,13},
+                          {19,20,25,26},
+                          {16,19,26},
+                          {1,4,8},
+                          {1,6,8,10},
+                          {6,9,13,14},
+                          {15,16,26,27},
+                          {0,1,2,4},
+                          {0,1,3,6,9},
+                          {3,9,11,12},
+                          {11,12,21,22},
+                          {0,2,5},
+                          {2,5,15,17},
+                          {3,7,11},
+                          {0,3,5,7},
+                          {7,11,18,21},
+                          {5,7,17,18} };
 
-    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+   p.take("VERTICES_IN_FACETS") << VIF;
+
+   centralize<double>(p);
    p.set_description() << "Johnson solid J38: Elongated pentagonal orthobicupola" << endl;
 
    return p;
@@ -1566,42 +1462,42 @@ perl::Object elongated_pentagonal_gyrobicupola()
    perl::Object p = elongated_pentagonal_cupola();
    p = augment(p,sequence(15,10));
 
-   IncidenceMatrix<> VIF(32,30);
-   VIF[0] = square(18,21,27,28);
-   VIF[1] = triangle(17,18,27);
-   VIF[2] = square(15,17,26,27);
-   VIF[3] = triangle(21,22,28);
-   VIF[4] = pentagon(25,26,27,28,29);
-   VIF[5] = square(2,4,15,16);
-   VIF[6] = square(12,14,22,24);
-   VIF[7] = triangle(9,12,14);
-   VIF[8] = square(16,19,25,26);
-   VIF[9] = square(4,8,16,19);
-   VIF[10] = square(13,14,23,24);
-   VIF[11] = square(20,23,25,29);
-   VIF[12] = triangle(19,20,25);
-   VIF[13] = square(10,13,20,23);
-   VIF[14] = square(8,10,19,20);
-   VIF[15] = triangle(6,10,13);
-   VIF[16] = triangle(23,24,29);
-   VIF[17] = triangle(1,4,8);
-   VIF[18] = square(1,6,8,10);
-   VIF[19] = square(6,9,13,14);
-   VIF[20] = square(22,24,28,29);
-   VIF[21] = triangle(15,16,26);
-   VIF[22] = square(0,1,2,4);
-   VIF[23] = pentagon(0,1,3,6,9);
-   VIF[24] = square(3,9,11,12);
-   VIF[25] = square(11,12,21,22);
-   VIF[26] = triangle(0,2,5);
-   VIF[27] = square(2,5,15,17);
-   VIF[28] = triangle(3,7,11);
-   VIF[29] = square(0,3,5,7);
-   VIF[30] = square(7,11,18,21);
-   VIF[31] = square(5,7,17,18);
+   IncidenceMatrix<> VIF{ {18,21,27,28},
+                          {17,18,27},
+                          {15,17,26,27},
+                          {21,22,28},
+                          {25,26,27,28,29},
+                          {2,4,15,16},
+                          {12,14,22,24},
+                          {9,12,14},
+                          {16,19,25,26},
+                          {4,8,16,19},
+                          {13,14,23,24},
+                          {20,23,25,29},
+                          {19,20,25},
+                          {10,13,20,23},
+                          {8,10,19,20},
+                          {6,10,13},
+                          {23,24,29},
+                          {1,4,8},
+                          {1,6,8,10},
+                          {6,9,13,14},
+                          {22,24,28,29},
+                          {15,16,26},
+                          {0,1,2,4},
+                          {0,1,3,6,9},
+                          {3,9,11,12},
+                          {11,12,21,22},
+                          {0,2,5},
+                          {2,5,15,17},
+                          {3,7,11},
+                          {0,3,5,7},
+                          {7,11,18,21},
+                          {5,7,17,18} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+
+   centralize<double>(p);
    p.set_description() << "Johnson solid J39: Elongated pentagonal gyrobicupola" << endl;
 
    return p;
@@ -1611,50 +1507,50 @@ perl::Object elongated_pentagonal_gyrobicupola()
 perl::Object elongated_pentagonal_orthocupolarotunda()
 {
    perl::Object p = elongated_pentagonal_rotunda();
-   p = augment(p,sequence(20,10));
-   p = rotate_facet(p,sequence(30,5),M_PI/5);
+   p = augment(p, sequence(20,10));
+   p = rotate_facet(p, sequence(30,5), M_PI/5);
 
-   IncidenceMatrix<> VIF(37,35);
-   VIF[0] = square(23,26,31,32);
-   VIF[1] = triangle(22,23,31);
-   VIF[2] = square(7,10,20,22);
-   VIF[3] = triangle(3,7,10);
-   VIF[4] = square(16,17,26,27);
-   VIF[5] = pentagon(0,1,2,4,6);
-   VIF[6] = triangle(0,1,3);
-   VIF[7] = pentagon(30,31,32,33,34);
-   VIF[8] = square(7,9,20,21);
-   VIF[9] = square(17,19,27,29);
-   VIF[10] = triangle(14,17,19);
-   VIF[11] = pentagon(6,11,14,18,19);
-   VIF[12] = triangle(2,6,11);
-   VIF[13] = triangle(28,29,33);
-   VIF[14] = pentagon(2,5,11,13,15);
-   VIF[15] = triangle(24,25,34);
-   VIF[16] = square(13,15,24,25);
-   VIF[17] = square(15,18,25,28);
-   VIF[18] = triangle(11,15,18);
-   VIF[19] = square(25,28,33,34);
-   VIF[20] = square(18,19,28,29);
-   VIF[21] = triangle(5,9,13);
-   VIF[22] = square(9,13,21,24);
-   VIF[23] = square(21,24,30,34);
-   VIF[24] = triangle(0,2,5);
-   VIF[25] = square(27,29,32,33);
-   VIF[26] = triangle(20,21,30);
-   VIF[27] = triangle(4,6,14);
-   VIF[28] = pentagon(0,3,5,7,9);
-   VIF[29] = triangle(26,27,32);
-   VIF[30] = square(20,22,30,31);
-   VIF[31] = triangle(1,4,8);
-   VIF[32] = pentagon(4,8,14,16,17);
-   VIF[33] = triangle(8,12,16);
-   VIF[34] = pentagon(1,3,8,10,12);
-   VIF[35] = square(12,16,23,26);
-   VIF[36] = square(10,12,22,23);
+   IncidenceMatrix<> VIF{ {23,26,31,32},
+                          {22,23,31},
+                          {7,10,20,22},
+                          {3,7,10},
+                          {16,17,26,27},
+                          {0,1,2,4,6},
+                          {0,1,3},
+                          {30,31,32,33,34},
+                          {7,9,20,21},
+                          {17,19,27,29},
+                          {14,17,19},
+                          {6,11,14,18,19},
+                          {2,6,11},
+                          {28,29,33},
+                          {2,5,11,13,15},
+                          {24,25,34},
+                          {13,15,24,25},
+                          {15,18,25,28},
+                          {11,15,18},
+                          {25,28,33,34},
+                          {18,19,28,29},
+                          {5,9,13},
+                          {9,13,21,24},
+                          {21,24,30,34},
+                          {0,2,5},
+                          {27,29,32,33},
+                          {20,21,30},
+                          {4,6,14},
+                          {0,3,5,7,9},
+                          {26,27,32},
+                          {20,22,30,31},
+                          {1,4,8},
+                          {4,8,14,16,17},
+                          {8,12,16},
+                          {1,3,8,10,12},
+                          {12,16,23,26},
+                          {10,12,22,23} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<QE>(p);
+
+   centralize<QE>(p);
    p.set_description() << "Johnson solid J40: Elongated pentagonal orthocupolarotunda" << endl;
 
    return p;
@@ -1664,49 +1560,49 @@ perl::Object elongated_pentagonal_orthocupolarotunda()
 perl::Object elongated_pentagonal_gyrocupolarotunda()
 {
    perl::Object p = elongated_pentagonal_rotunda();
-   p = augment(p,sequence(20,10));
+   p = augment(p, sequence(20,10));
 
-   IncidenceMatrix<> VIF(37,35);
-   VIF[0] = square(22,23,30,31);
-   VIF[1] = triangle(23,26,31);
-   VIF[2] = square(7,10,20,22);
-   VIF[3] = triangle(3,7,10);
-   VIF[4] = square(16,17,26,27);
-   VIF[5] = pentagon(0,1,2,4,6);
-   VIF[6] = triangle(0,1,3);
-   VIF[7] = pentagon(30,31,32,33,34);
-   VIF[8] = square(7,9,20,21);
-   VIF[9] = square(17,19,27,29);
-   VIF[10] = triangle(14,17,19);
-   VIF[11] = triangle(27,29,32);
-   VIF[12] = pentagon(6,11,14,18,19);
-   VIF[13] = triangle(2,6,11);
-   VIF[14] = triangle(21,24,34);
-   VIF[15] = square(24,25,33,34);
-   VIF[16] = pentagon(2,5,11,13,15);
-   VIF[17] = triangle(25,28,33);
-   VIF[18] = square(13,15,24,25);
-   VIF[19] = square(15,18,25,28);
-   VIF[20] = triangle(11,15,18);
-   VIF[21] = square(18,19,28,29);
-   VIF[22] = triangle(5,9,13);
-   VIF[23] = square(9,13,21,24);
-   VIF[24] = square(28,29,32,33);
-   VIF[25] = triangle(0,2,5);
-   VIF[26] = square(20,21,30,34);
-   VIF[27] = triangle(4,6,14);
-   VIF[28] = pentagon(0,3,5,7,9);
-   VIF[29] = square(26,27,31,32);
-   VIF[30] = triangle(20,22,30);
-   VIF[31] = triangle(1,4,8);
-   VIF[32] = pentagon(4,8,14,16,17);
-   VIF[33] = triangle(8,12,16);
-   VIF[34] = pentagon(1,3,8,10,12);
-   VIF[35] = square(12,16,23,26);
-   VIF[36] = square(10,12,22,23);
+   IncidenceMatrix<> VIF{ {22,23,30,31},
+                          {23,26,31},
+                          {7,10,20,22},
+                          {3,7,10},
+                          {16,17,26,27},
+                          {0,1,2,4,6},
+                          {0,1,3},
+                          {30,31,32,33,34},
+                          {7,9,20,21},
+                          {17,19,27,29},
+                          {14,17,19},
+                          {27,29,32},
+                          {6,11,14,18,19},
+                          {2,6,11},
+                          {21,24,34},
+                          {24,25,33,34},
+                          {2,5,11,13,15},
+                          {25,28,33},
+                          {13,15,24,25},
+                          {15,18,25,28},
+                          {11,15,18},
+                          {18,19,28,29},
+                          {5,9,13},
+                          {9,13,21,24},
+                          {28,29,32,33},
+                          {0,2,5},
+                          {20,21,30,34},
+                          {4,6,14},
+                          {0,3,5,7,9},
+                          {26,27,31,32},
+                          {20,22,30},
+                          {1,4,8},
+                          {4,8,14,16,17},
+                          {8,12,16},
+                          {1,3,8,10,12},
+                          {12,16,23,26},
+                          {10,12,22,23} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+
+   centralize<double>(p);
    p.set_description() << "Johnson solid J41: Elongated pentagonal gyrocupolarotunda" << endl;
 
    return p;
@@ -1718,52 +1614,52 @@ perl::Object elongated_pentagonal_orthobirotunda()
    perl::Object p = elongated_pentagonal_rotunda();
    p = rotunda(p,sequence(20,10));
 
-   IncidenceMatrix<> VIF(42,40);
-   VIF[0] = pentagon(22,23,30,31,35);
-   VIF[1] = triangle(23,26,31);
-   VIF[2] = square(7,10,20,22);
-   VIF[3] = triangle(3,7,10);
-   VIF[4] = square(16,17,26,27);
-   VIF[5] = triangle(31,35,36);
-   VIF[6] = pentagon(0,3,5,7,9);
-   VIF[7] = pentagon(35,36,37,38,39);
-   VIF[8] = square(7,9,20,21);
-   VIF[9] = square(17,19,27,29);
-   VIF[10] = triangle(14,17,19);
-   VIF[11] = triangle(32,36,37);
-   VIF[12] = pentagon(6,11,14,18,19);
-   VIF[13] = pentagon(28,29,32,33,37);
-   VIF[14] = square(9,13,21,24);
-   VIF[15] = triangle(5,9,13);
-   VIF[16] = square(18,19,28,29);
-   VIF[17] = triangle(33,37,38);
-   VIF[18] = square(13,15,24,25);
-   VIF[19] = square(15,18,25,28);
-   VIF[20] = triangle(25,28,33);
-   VIF[21] = triangle(11,15,18);
-   VIF[22] = pentagon(24,25,33,34,38);
-   VIF[23] = pentagon(2,5,11,13,15);
-   VIF[24] = triangle(21,24,34);
-   VIF[25] = triangle(2,6,11);
-   VIF[26] = triangle(34,38,39);
-   VIF[27] = triangle(0,2,5);
-   VIF[28] = triangle(27,29,32);
-   VIF[29] = triangle(4,6,14);
-   VIF[30] = triangle(30,35,39);
-   VIF[31] = pentagon(20,21,30,34,39);
-   VIF[32] = triangle(0,1,3);
-   VIF[33] = pentagon(0,1,2,4,6);
-   VIF[34] = pentagon(26,27,31,32,36);
-   VIF[35] = triangle(20,22,30);
-   VIF[36] = triangle(1,4,8);
-   VIF[37] = pentagon(4,8,14,16,17);
-   VIF[38] = triangle(8,12,16);
-   VIF[39] = pentagon(1,3,8,10,12);
-   VIF[40] = square(12,16,23,26);
-   VIF[41] = square(10,12,22,23);
+   IncidenceMatrix<> VIF{ {22,23,30,31,35},
+                          {23,26,31},
+                          {7,10,20,22},
+                          {3,7,10},
+                          {16,17,26,27},
+                          {31,35,36},
+                          {0,3,5,7,9},
+                          {35,36,37,38,39},
+                          {7,9,20,21},
+                          {17,19,27,29},
+                          {14,17,19},
+                          {32,36,37},
+                          {6,11,14,18,19},
+                          {28,29,32,33,37},
+                          {9,13,21,24},
+                          {5,9,13},
+                          {18,19,28,29},
+                          {33,37,38},
+                          {13,15,24,25},
+                          {15,18,25,28},
+                          {25,28,33},
+                          {11,15,18},
+                          {24,25,33,34,38},
+                          {2,5,11,13,15},
+                          {21,24,34},
+                          {2,6,11},
+                          {34,38,39},
+                          {0,2,5},
+                          {27,29,32},
+                          {4,6,14},
+                          {30,35,39},
+                          {20,21,30,34,39},
+                          {0,1,3},
+                          {0,1,2,4,6},
+                          {26,27,31,32,36},
+                          {20,22,30},
+                          {1,4,8},
+                          {4,8,14,16,17},
+                          {8,12,16},
+                          {1,3,8,10,12},
+                          {12,16,23,26},
+                          {10,12,22,23} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+
+   centralize<double>(p);
    p.set_description() << "Johnson solid J42: Elongated pentagonal orthobirotunda" << endl;
 
    return p;
@@ -1773,95 +1669,95 @@ perl::Object elongated_pentagonal_orthobirotunda()
 perl::Object elongated_pentagonal_gyrobirotunda()
 {
    perl::Object p = elongated_pentagonal_rotunda();
-   p = gyrotunda(p,sequence(20,10));
+   p = gyrotunda(p, sequence(20,10));
 
-   IncidenceMatrix<> VIF(42,40);
-   VIF[0] = pentagon(23,26,30,31,36);
-   VIF[1] = triangle(22,23,30);
-   VIF[2] = square(7,10,20,22);
-   VIF[3] = triangle(3,7,10);
-   VIF[4] = square(16,17,26,27);
-   VIF[5] = triangle(30,35,36);
-   VIF[6] = pentagon(0,3,5,7,9);
-   VIF[7] = pentagon(35,36,37,38,39);
-   VIF[8] = square(7,9,20,21);
-   VIF[9] = square(17,19,27,29);
-   VIF[10] = triangle(14,17,19);
-   VIF[11] = triangle(34,35,39);
-   VIF[12] = pentagon(6,11,14,18,19);
-   VIF[13] = triangle(32,37,38);
-   VIF[14] = square(9,13,21,24);
-   VIF[15] = triangle(5,9,13);
-   VIF[16] = square(18,19,28,29);
-   VIF[17] = triangle(33,38,39);
-   VIF[18] = square(13,15,24,25);
-   VIF[19] = square(15,18,25,28);
-   VIF[20] = triangle(24,25,33);
-   VIF[21] = triangle(11,15,18);
-   VIF[22] = pentagon(25,28,32,33,38);
-   VIF[23] = pentagon(2,5,11,13,15);
-   VIF[24] = triangle(28,29,32);
-   VIF[25] = triangle(2,6,11);
-   VIF[26] = pentagon(21,24,33,34,39);
-   VIF[27] = triangle(0,2,5);
-   VIF[28] = triangle(20,21,34);
-   VIF[29] = triangle(4,6,14);
-   VIF[30] = triangle(31,36,37);
-   VIF[31] = pentagon(27,29,31,32,37);
-   VIF[32] = triangle(0,1,3);
-   VIF[33] = pentagon(0,1,2,4,6);
-   VIF[34] = triangle(26,27,31);
-   VIF[35] = pentagon(20,22,30,34,35);
-   VIF[36] = triangle(1,4,8);
-   VIF[37] = pentagon(4,8,14,16,17);
-   VIF[38] = triangle(8,12,16);
-   VIF[39] = pentagon(1,3,8,10,12);
-   VIF[40] = square(12,16,23,26);
-   VIF[41] = square(10,12,22,23);
+   IncidenceMatrix<> VIF{ {23,26,30,31,36},
+                          {22,23,30},
+                          {7,10,20,22},
+                          {3,7,10},
+                          {16,17,26,27},
+                          {30,35,36},
+                          {0,3,5,7,9},
+                          {35,36,37,38,39},
+                          {7,9,20,21},
+                          {17,19,27,29},
+                          {14,17,19},
+                          {34,35,39},
+                          {6,11,14,18,19},
+                          {32,37,38},
+                          {9,13,21,24},
+                          {5,9,13},
+                          {18,19,28,29},
+                          {33,38,39},
+                          {13,15,24,25},
+                          {15,18,25,28},
+                          {24,25,33},
+                          {11,15,18},
+                          {25,28,32,33,38},
+                          {2,5,11,13,15},
+                          {28,29,32},
+                          {2,6,11},
+                          {21,24,33,34,39},
+                          {0,2,5},
+                          {20,21,34},
+                          {4,6,14},
+                          {31,36,37},
+                          {27,29,31,32,37},
+                          {0,1,3},
+                          {0,1,2,4,6},
+                          {26,27,31},
+                          {20,22,30,34,35},
+                          {1,4,8},
+                          {4,8,14,16,17},
+                          {8,12,16},
+                          {1,3,8,10,12},
+                          {12,16,23,26},
+                          {10,12,22,23} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+
+   centralize<double>(p);
    p.set_description() << "Johnson solid J43: Elongated pentagonal gyrobirotunda" << endl;
 
-  return p;
+   return p;
 }
 
       //FIXME: coordinates #830
 perl::Object gyroelongated_triangular_bicupola()
 {
    perl::Object p = gyroelongated_triangular_cupola();
-   p = augment(p,sequence(9,6));
+   p = augment(p, sequence(9,6));
 
-   IncidenceMatrix<> VIF(26,18);
-   VIF[0] = square(1,2,6,8);
-   VIF[1] = triangle(1,5,6);
-   VIF[2] = triangle(5,11,12);
-   VIF[3] = triangle(5,6,12);
-   VIF[4] = triangle(2,7,8);
-   VIF[5] = triangle(6,12,14);
-   VIF[6] = triangle(6,8,14);
-   VIF[7] = square(12,14,15,17);
-   VIF[8] = triangle(7,8,13);
-   VIF[9] = triangle(7,10,13);
-   VIF[10] = square(10,13,15,16);
-   VIF[11] = triangle(13,14,15);
-   VIF[12] = triangle(8,13,14);
-   VIF[13] = triangle(15,16,17);
-   VIF[14] = triangle(9,10,16);
-   VIF[15] = triangle(4,7,10);
-   VIF[16] = triangle(4,9,10);
-   VIF[17] = triangle(11,12,17);
-   VIF[18] = square(9,11,16,17);
-   VIF[19] = triangle(3,4,9);
-   VIF[20] = triangle(3,9,11);
-   VIF[21] = triangle(3,5,11);
-   VIF[22] = triangle(0,3,4);
-   VIF[23] = triangle(0,1,2);
-   VIF[24] = square(0,2,4,7);
-   VIF[25] = square(0,1,3,5);
+   IncidenceMatrix<> VIF{ {1,2,6,8},
+                          {1,5,6},
+                          {5,11,12},
+                          {5,6,12},
+                          {2,7,8},
+                          {6,12,14},
+                          {6,8,14},
+                          {12,14,15,17},
+                          {7,8,13},
+                          {7,10,13},
+                          {10,13,15,16},
+                          {13,14,15},
+                          {8,13,14},
+                          {15,16,17},
+                          {9,10,16},
+                          {4,7,10},
+                          {4,9,10},
+                          {11,12,17},
+                          {9,11,16,17},
+                          {3,4,9},
+                          {3,9,11},
+                          {3,5,11},
+                          {0,3,4},
+                          {0,1,2},
+                          {0,2,4,7},
+                          {0,1,3,5} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+
+   centralize<double>(p);
    p.set_description() << "Johnson solid J44: Gyroelongated triangular bicupola" << endl;
 
    return p;
@@ -1873,44 +1769,44 @@ perl::Object gyroelongated_square_bicupola()
    perl::Object p = gyroelongated_square_cupola();
    p = augment(p,sequence(0,8));
 
-   IncidenceMatrix<> VIF(34,24);
-   VIF[0] = square(9,10,16,17);
-   VIF[1] = triangle(1,8,9);
-   VIF[2] = triangle(8,9,16);
-   VIF[3] = square(1,2,20,23);
-   VIF[4] = triangle(1,2,8);
-   VIF[5] = square(20,21,22,23);
-   VIF[6] = square(16,17,18,19);
-   VIF[7] = triangle(6,11,12);
-   VIF[8] = triangle(2,3,23);
-   VIF[9] = triangle(2,3,15);
-   VIF[10] = square(3,4,22,23);
-   VIF[11] = square(13,14,18,19);
-   VIF[12] = triangle(5,12,13);
-   VIF[13] = triangle(3,4,14);
-   VIF[14] = triangle(4,5,13);
-   VIF[15] = triangle(4,13,14);
-   VIF[16] = triangle(4,5,22);
-   VIF[17] = triangle(12,13,19);
-   VIF[18] = triangle(3,14,15);
-   VIF[19] = triangle(14,15,18);
-   VIF[20] = triangle(5,6,12);
-   VIF[21] = square(5,6,21,22);
-   VIF[22] = square(11,12,17,19);
-   VIF[23] = triangle(2,8,15);
-   VIF[24] = square(8,15,16,18);
-   VIF[25] = triangle(6,7,21);
-   VIF[26] = triangle(6,7,11);
-   VIF[27] = triangle(10,11,17);
-   VIF[28] = triangle(7,10,11);
-   VIF[29] = triangle(0,7,10);
-   VIF[30] = triangle(0,1,20);
-   VIF[31] = triangle(0,1,9);
-   VIF[32] = triangle(0,9,10);
-   VIF[33] = square(0,7,20,21);
+   IncidenceMatrix<> VIF{ {9,10,16,17},
+                          {1,8,9},
+                          {8,9,16},
+                          {1,2,20,23},
+                          {1,2,8},
+                          {20,21,22,23},
+                          {16,17,18,19},
+                          {6,11,12},
+                          {2,3,23},
+                          {2,3,15},
+                          {3,4,22,23},
+                          {13,14,18,19},
+                          {5,12,13},
+                          {3,4,14},
+                          {4,5,13},
+                          {4,13,14},
+                          {4,5,22},
+                          {12,13,19},
+                          {3,14,15},
+                          {14,15,18},
+                          {5,6,12},
+                          {5,6,21,22},
+                          {11,12,17,19},
+                          {2,8,15},
+                          {8,15,16,18},
+                          {6,7,21},
+                          {6,7,11},
+                          {10,11,17},
+                          {7,10,11},
+                          {0,7,10},
+                          {0,1,20},
+                          {0,1,9},
+                          {0,9,10},
+                          {0,7,20,21} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+
+   centralize<double>(p);
    p.set_description() << "Johnson solid J45: Gyroelongated square bicupola" << endl;
 
    return p;
@@ -1922,53 +1818,53 @@ perl::Object gyroelongated_pentagonal_bicupola()
    perl::Object p = gyroelongated_pentagonal_cupola();
    p = augment(p,sequence(15,10));
 
-   IncidenceMatrix<> VIF(42,30);
-   VIF[0] = square(18,21,25,26);
-   VIF[1] = triangle(17,18,25);
-   VIF[2] = triangle(5,17,18);
-   VIF[3] = triangle(2,5,17);
-   VIF[4] = triangle(0,2,5);
-   VIF[5] = square(15,17,25,29);
-   VIF[6] = triangle(2,15,17);
-   VIF[7] = pentagon(0,1,3,6,9);
-   VIF[8] = triangle(2,4,15);
-   VIF[9] = triangle(15,16,29);
-   VIF[10] = triangle(4,15,16);
-   VIF[11] = triangle(23,24,27);
-   VIF[12] = triangle(14,23,24);
-   VIF[13] = square(20,23,27,28);
-   VIF[14] = triangle(4,8,16);
-   VIF[15] = triangle(6,10,13);
-   VIF[16] = triangle(8,16,19);
-   VIF[17] = triangle(8,10,19);
-   VIF[18] = triangle(10,13,20);
-   VIF[19] = triangle(10,19,20);
-   VIF[20] = triangle(13,20,23);
-   VIF[21] = triangle(19,20,28);
-   VIF[22] = triangle(13,14,23);
-   VIF[23] = triangle(1,4,8);
-   VIF[24] = square(1,6,8,10);
-   VIF[25] = square(16,19,28,29);
-   VIF[26] = square(6,9,13,14);
-   VIF[27] = triangle(12,14,24);
-   VIF[28] = triangle(9,12,14);
-   VIF[29] = square(0,1,2,4);
-   VIF[30] = pentagon(25,26,27,28,29);
-   VIF[31] = triangle(12,22,24);
-   VIF[32] = square(22,24,26,27);
-   VIF[33] = triangle(11,12,22);
-   VIF[34] = square(3,9,11,12);
-   VIF[35] = triangle(21,22,26);
-   VIF[36] = triangle(11,21,22);
-   VIF[37] = triangle(3,7,11);
-   VIF[38] = triangle(7,11,21);
-   VIF[39] = triangle(5,7,18);
-   VIF[40] = triangle(7,18,21);
-   VIF[41] = square(0,3,5,7);
+   IncidenceMatrix<> VIF{ {18,21,25,26},
+                          {17,18,25},
+                          {5,17,18},
+                          {2,5,17},
+                          {0,2,5},
+                          {15,17,25,29},
+                          {2,15,17},
+                          {0,1,3,6,9},
+                          {2,4,15},
+                          {15,16,29},
+                          {4,15,16},
+                          {23,24,27},
+                          {14,23,24},
+                          {20,23,27,28},
+                          {4,8,16},
+                          {6,10,13},
+                          {8,16,19},
+                          {8,10,19},
+                          {10,13,20},
+                          {10,19,20},
+                          {13,20,23},
+                          {19,20,28},
+                          {13,14,23},
+                          {1,4,8},
+                          {1,6,8,10},
+                          {16,19,28,29},
+                          {6,9,13,14},
+                          {12,14,24},
+                          {9,12,14},
+                          {0,1,2,4},
+                          {25,26,27,28,29},
+                          {12,22,24},
+                          {22,24,26,27},
+                          {11,12,22},
+                          {3,9,11,12},
+                          {21,22,26},
+                          {11,21,22},
+                          {3,7,11},
+                          {7,11,21},
+                          {5,7,18},
+                          {7,18,21},
+                          {0,3,5,7} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
-    p.set_description() << "Johnson solid J46: Gyroelongated pentagonal bicupola" << endl;
+
+   centralize<double>(p);
+   p.set_description() << "Johnson solid J46: Gyroelongated pentagonal bicupola" << endl;
 
    return p;
 }
@@ -1976,61 +1872,61 @@ perl::Object gyroelongated_pentagonal_bicupola()
 perl::Object gyroelongated_pentagonal_cupolarotunda()
 {
    perl::Object p = gyroelongated_pentagonal_rotunda();
-   p = augment(p,sequence(20,10));
+   p = augment(p, sequence(20,10));
 
-   IncidenceMatrix<> VIF(47,35);
-   VIF[0] = square(23,26,30,31);
-   VIF[1] = triangle(22,23,30);
-   VIF[2] = triangle(10,22,23);
-   VIF[3] = pentagon(4,8,14,16,17);
-   VIF[4] = triangle(1,4,8);
-   VIF[5] = triangle(16,17,27);
-   VIF[6] = square(27,29,31,32);
-   VIF[7] = triangle(17,27,29);
-   VIF[8] = pentagon(0,3,5,7,9);
-   VIF[9] = triangle(7,9,20);
-   VIF[10] = triangle(0,2,5);
-   VIF[11] = pentagon(6,11,14,18,19);
-   VIF[12] = square(21,24,33,34);
-   VIF[13] = triangle(2,6,11);
-   VIF[14] = triangle(18,19,28);
-   VIF[15] = triangle(13,21,24);
-   VIF[16] = triangle(11,15,18);
-   VIF[17] = triangle(15,24,25);
-   VIF[18] = triangle(15,18,25);
-   VIF[19] = triangle(13,15,24);
-   VIF[20] = triangle(18,25,28);
-   VIF[21] = triangle(24,25,33);
-   VIF[22] = pentagon(2,5,11,13,15);
-   VIF[23] = triangle(9,13,21);
-   VIF[24] = triangle(5,9,13);
-   VIF[25] = square(25,28,32,33);
-   VIF[26] = triangle(19,28,29);
-   VIF[27] = triangle(28,29,32);
-   VIF[28] = triangle(9,20,21);
-   VIF[29] = triangle(20,21,34);
-   VIF[30] = triangle(17,19,29);
-   VIF[31] = triangle(14,17,19);
-   VIF[32] = triangle(4,6,14);
-   VIF[33] = pentagon(30,31,32,33,34);
-   VIF[34] = triangle(0,1,3);
-   VIF[35] = pentagon(0,1,2,4,6);
-   VIF[36] = triangle(7,20,22);
-   VIF[37] = square(20,22,30,34);
-   VIF[38] = triangle(3,7,10);
-   VIF[39] = triangle(7,10,22);
-   VIF[40] = triangle(26,27,31);
-   VIF[41] = triangle(16,26,27);
-   VIF[42] = triangle(8,12,16);
-   VIF[43] = triangle(12,16,26);
-   VIF[44] = triangle(10,12,23);
-   VIF[45] = triangle(12,23,26);
-   VIF[46] = pentagon(1,3,8,10,12);
+   IncidenceMatrix<> VIF{ {23,26,30,31},
+                          {22,23,30},
+                          {10,22,23},
+                          {4,8,14,16,17},
+                          {1,4,8},
+                          {16,17,27},
+                          {27,29,31,32},
+                          {17,27,29},
+                          {0,3,5,7,9},
+                          {7,9,20},
+                          {0,2,5},
+                          {6,11,14,18,19},
+                          {21,24,33,34},
+                          {2,6,11},
+                          {18,19,28},
+                          {13,21,24},
+                          {11,15,18},
+                          {15,24,25},
+                          {15,18,25},
+                          {13,15,24},
+                          {18,25,28},
+                          {24,25,33},
+                          {2,5,11,13,15},
+                          {9,13,21},
+                          {5,9,13},
+                          {25,28,32,33},
+                          {19,28,29},
+                          {28,29,32},
+                          {9,20,21},
+                          {20,21,34},
+                          {17,19,29},
+                          {14,17,19},
+                          {4,6,14},
+                          {30,31,32,33,34},
+                          {0,1,3},
+                          {0,1,2,4,6},
+                          {7,20,22},
+                          {20,22,30,34},
+                          {3,7,10},
+                          {7,10,22},
+                          {26,27,31},
+                          {16,26,27},
+                          {8,12,16},
+                          {12,16,26},
+                          {10,12,23},
+                          {12,23,26},
+                          {1,3,8,10,12} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
 
+   centralize<double>(p);
    p.set_description() << "Johnson solid J47: Gyroelongated pentagonal cupolarotunda" << endl;
+
    return p;
 }
 
@@ -2038,72 +1934,72 @@ perl::Object gyroelongated_pentagonal_cupolarotunda()
 perl::Object gyroelongated_pentagonal_birotunda()
 {
    perl::Object p = gyroelongated_pentagonal_rotunda();
-   p = rotunda(p,sequence(20,10));
+   p = rotunda(p, sequence(20,10));
 
-   IncidenceMatrix<> VIF(52,40);
-   VIF[0] = pentagon(23,26,30,31,35);
-   VIF[1] = triangle(10,22,23);
-   VIF[2] = triangle(22,23,30);
-   VIF[3] = pentagon(4,8,14,16,17);
-   VIF[4] = triangle(1,4,8);
-   VIF[5] = triangle(16,17,27);
-   VIF[6] = pentagon(27,29,31,32,36);
-   VIF[7] = triangle(31,35,36);
-   VIF[8] = triangle(17,27,29);
-   VIF[9] = pentagon(0,1,2,4,6);
-   VIF[10] = triangle(0,1,3);
-   VIF[11] = triangle(4,6,14);
-   VIF[12] = triangle(14,17,19);
-   VIF[13] = triangle(17,19,29);
-   VIF[14] = triangle(32,36,37);
-   VIF[15] = triangle(20,21,34);
-   VIF[16] = triangle(9,20,21);
-   VIF[17] = triangle(28,29,32);
-   VIF[18] = triangle(19,28,29);
-   VIF[19] = pentagon(25,28,32,33,37);
-   VIF[20] = triangle(5,9,13);
-   VIF[21] = triangle(9,13,21);
-   VIF[22] = triangle(33,37,38);
-   VIF[23] = pentagon(2,5,11,13,15);
-   VIF[24] = triangle(13,21,24);
-   VIF[25] = triangle(11,15,18);
-   VIF[26] = triangle(15,18,25);
-   VIF[27] = triangle(24,25,33);
-   VIF[28] = triangle(15,24,25);
-   VIF[29] = triangle(13,15,24);
-   VIF[30] = triangle(18,25,28);
-   VIF[31] = triangle(18,19,28);
-   VIF[32] = triangle(2,6,11);
-   VIF[33] = pentagon(21,24,33,34,38);
-   VIF[34] = pentagon(6,11,14,18,19);
-   VIF[35] = triangle(0,2,5);
-   VIF[36] = triangle(34,38,39);
-   VIF[37] = triangle(7,9,20);
-   VIF[38] = pentagon(0,3,5,7,9);
-   VIF[39] = pentagon(35,36,37,38,39);
-   VIF[40] = triangle(7,20,22);
-   VIF[41] = triangle(30,35,39);
-   VIF[42] = pentagon(20,22,30,34,39);
-   VIF[43] = triangle(3,7,10);
-   VIF[44] = triangle(7,10,22);
-   VIF[45] = triangle(26,27,31);
-   VIF[46] = triangle(16,26,27);
-   VIF[47] = triangle(8,12,16);
-   VIF[48] = triangle(12,16,26);
-   VIF[49] = triangle(10,12,23);
-   VIF[50] = triangle(12,23,26);
-   VIF[51] = pentagon(1,3,8,10,12);
+   IncidenceMatrix<> VIF{ {23,26,30,31,35},
+                          {10,22,23},
+                          {22,23,30},
+                          {4,8,14,16,17},
+                          {1,4,8},
+                          {16,17,27},
+                          {27,29,31,32,36},
+                          {31,35,36},
+                          {17,27,29},
+                          {0,1,2,4,6},
+                          {0,1,3},
+                          {4,6,14},
+                          {14,17,19},
+                          {17,19,29},
+                          {32,36,37},
+                          {20,21,34},
+                          {9,20,21},
+                          {28,29,32},
+                          {19,28,29},
+                          {25,28,32,33,37},
+                          {5,9,13},
+                          {9,13,21},
+                          {33,37,38},
+                          {2,5,11,13,15},
+                          {13,21,24},
+                          {11,15,18},
+                          {15,18,25},
+                          {24,25,33},
+                          {15,24,25},
+                          {13,15,24},
+                          {18,25,28},
+                          {18,19,28},
+                          {2,6,11},
+                          {21,24,33,34,38},
+                          {6,11,14,18,19},
+                          {0,2,5},
+                          {34,38,39},
+                          {7,9,20},
+                          {0,3,5,7,9},
+                          {35,36,37,38,39},
+                          {7,20,22},
+                          {30,35,39},
+                          {20,22,30,34,39},
+                          {3,7,10},
+                          {7,10,22},
+                          {26,27,31},
+                          {16,26,27},
+                          {8,12,16},
+                          {12,16,26},
+                          {10,12,23},
+                          {12,23,26},
+                          {1,3,8,10,12} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+
+   centralize<double>(p);
    p.set_description() << "Johnson solid J48: Gyroelongated pentagonal birotunda" << endl;
 
    return p;
 }
 
 //FIXME: coordinates 830. this could be done exactly if QE was more powerful
-perl::Object augmented_triangular_prism(){
-
+perl::Object augmented_triangular_prism()
+{
   QE height(0,1,3);
   Matrix<QE> ledge(2,4);
   ledge.col(0).fill(1);
@@ -2118,28 +2014,27 @@ perl::Object augmented_triangular_prism(){
 
   Matrix<QE> V = ((create_square_vertices<QE>() | zero_vector<QE>(4)) / ledge / tip );
 
-  IncidenceMatrix<> VIF(8,7);
-  VIF[0] = square(0,1,4,5);
-  VIF[1] = triangle(0,2,6);
-  VIF[2] = triangle(0,2,5);
-  VIF[3] = triangle(0,1,6);
-  VIF[4] = triangle(1,3,6);
-  VIF[5] = triangle(2,3,6);
-  VIF[6] = triangle(1,3,4);
-  VIF[7] = square(2,3,4,5);
+  IncidenceMatrix<> VIF{ {0,1,4,5},
+                         {0,2,6},
+                         {0,2,5},
+                         {0,1,6},
+                         {1,3,6},
+                         {2,3,6},
+                         {1,3,4},
+                         {2,3,4,5} };
 
+  perl::Object p("Polytope<Float>");
+  p.take("VERTICES") << V;
+  p.take("VERTICES_IN_FACETS") << VIF;
 
-  perl::Object p(perl::ObjectType::construct<double>("Polytope"));
-        p.take("VERTICES") << V;
-        p.take("VERTICES_IN_FACETS") << VIF;
-        p.set_description() << "Johnson solid J49: augmented triangular prism" << endl;
-        p = centralize<QE>(p);
+  centralize<double>(p);
+  p.set_description() << "Johnson solid J49: augmented triangular prism" << endl;
 
   return p;
 }
 
-perl::Object biaugmented_triangular_prism(){
-
+perl::Object biaugmented_triangular_prism()
+{
   QE height(0,1,3);
   Matrix<QE> ledge(2,4);
   ledge.col(0).fill(1);
@@ -2149,443 +2044,421 @@ perl::Object biaugmented_triangular_prism(){
 
   Matrix<QE> V = ((create_square_vertices<QE>() | zero_vector<QE>(4)) / ledge );
 
-  perl::Object p(perl::ObjectType::construct<double>("Polytope"));
+  perl::Object p("Polytope<Float>");
   p.take("VERTICES") << V;
 
-  p = augment(p,square(0,1,4,5));
+  p = augment(p, Set<int>{0,1,4,5});
 
-  p = augment(p,sequence(0,4));
+  p = augment(p, sequence(0,4));
 
-
-  IncidenceMatrix<> VIF(11,8);
-  p.set_description() << "Johnson solid J50: biaugmented triangular prism" << endl;
-  VIF[0] = triangle(1,4,6);
-  VIF[1] = triangle(4,5,6);
-  VIF[2] = triangle(0,2,7);
-  VIF[3] = triangle(0,2,5);
-  VIF[4] = triangle(0,5,6);
-  VIF[5] = triangle(0,1,6);
-  VIF[6] = triangle(0,1,7);
-  VIF[7] = triangle(1,3,7);
-  VIF[8] = triangle(2,3,7);
-  VIF[9] = triangle(1,3,4);
-  VIF[10] = square(2,3,4,5);
+  IncidenceMatrix<> VIF{ {1,4,6},
+                         {4,5,6},
+                         {0,2,7},
+                         {0,2,5},
+                         {0,5,6},
+                         {0,1,6},
+                         {0,1,7},
+                         {1,3,7},
+                         {2,3,7},
+                         {1,3,4},
+                         {2,3,4,5} };
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+
+  centralize<double>(p);
+  p.set_description() << "Johnson solid J50: biaugmented triangular prism" << endl;
 
   return p;
 }
 
-perl::Object triaugmented_triangular_prism(){
-
+perl::Object triaugmented_triangular_prism()
+{
   perl::Object p = create_prism(3);
 
-  p = augment(p,square(1,2,4,5));
-  p = augment(p,square(0,2,3,5));
-  p = augment(p,square(0,1,3,4));
+  p = augment(p, Set<int>{1,2,4,5});
+  p = augment(p, Set<int>{0,2,3,5});
+  p = augment(p, Set<int>{0,1,3,4});
 
+  IncidenceMatrix<> VIF{ {0,1,8},
+                         {0,2,7},
+                         {0,1,2},
+                         {2,5,7},
+                         {1,2,6},
+                         {2,5,6},
+                         {4,5,6},
+                         {1,4,6},
+                         {1,4,8},
+                         {3,4,5},
+                         {3,5,7},
+                         {3,4,8},
+                         {0,3,7},
+                         {0,3,8} };
 
-  IncidenceMatrix<> VIF(14,9);
+  p.take("VERTICES_IN_FACETS") << VIF;
+
+  centralize<QE>(p);
   p.set_description() << "Johnson solid J51: triaugmented triangular prism" << endl;
-  VIF[0] = triangle(0,1,8);
-  VIF[1] = triangle(0,2,7);
-  VIF[2] = triangle(0,1,2);
-  VIF[3] = triangle(2,5,7);
-  VIF[4] = triangle(1,2,6);
-  VIF[5] = triangle(2,5,6);
-  VIF[6] = triangle(4,5,6);
-  VIF[7] = triangle(1,4,6);
-  VIF[8] = triangle(1,4,8);
-  VIF[9] = triangle(3,4,5);
-  VIF[10] = triangle(3,5,7);
-  VIF[11] = triangle(3,4,8);
-  VIF[12] = triangle(0,3,7);
-  VIF[13] = triangle(0,3,8);
-
-
-  p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<QE>(p);
 
   return p;
 }
 
-perl::Object augmented_pentagonal_prism(){
-
+perl::Object augmented_pentagonal_prism()
+{
   perl::Object p = create_prism(5);
 
-  p = augment(p,square(2,3,7,8));
+  p = augment(p, Set<int>{2,3,7,8});
 
+  IncidenceMatrix<> VIF{ {0,1,2,3,4},
+                         {2,3,10},
+                         {3,8,10},
+                         {7,8,10},
+                         {2,7,10},
+                         {3,4,8,9},
+                         {1,2,6,7},
+                         {5,6,7,8,9},
+                         {0,4,5,9},
+                         {0,1,5,6} };
 
-  IncidenceMatrix<> VIF(10,11);
+  p.take("VERTICES_IN_FACETS") << VIF;
+
+  centralize<double>(p);
   p.set_description() << "Johnson solid J52: augmented pentagonal prism" << endl;
-  VIF[0] = pentagon(0,1,2,3,4);
-  VIF[1] = triangle(2,3,10);
-  VIF[2] = triangle(3,8,10);
-  VIF[3] = triangle(7,8,10);
-  VIF[4] = triangle(2,7,10);
-  VIF[5] = square(3,4,8,9);
-  VIF[6] = square(1,2,6,7);
-  VIF[7] = pentagon(5,6,7,8,9);
-  VIF[8] = square(0,4,5,9);
-  VIF[9] = square(0,1,5,6);
-
-
-  p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
 
   return p;
 }
 
-perl::Object biaugmented_pentagonal_prism(){
-
+perl::Object biaugmented_pentagonal_prism()
+{
   perl::Object p = create_prism(5);
 
-  p = augment(p,square(2,3,7,8));
-  p = augment(p,square(0,4,5,9));
+  p = augment(p, Set<int>{2,3,7,8});
+  p = augment(p, Set<int>{0,4,5,9});
 
-
-  IncidenceMatrix<> VIF(13,12);
-  p.set_description() << "Johnson solid J53: biaugmented pentagonal prism" << endl;
-  VIF[0] = square(0,1,5,6);
-  VIF[1] = pentagon(5,6,7,8,9);
-  VIF[2] = square(1,2,6,7);
-  VIF[3] = square(3,4,8,9);
-  VIF[4] = triangle(2,7,10);
-  VIF[5] = triangle(7,8,10);
-  VIF[6] = triangle(3,8,10);
-  VIF[7] = triangle(2,3,10);
-  VIF[8] = pentagon(0,1,2,3,4);
-  VIF[9] = triangle(4,9,11);
-  VIF[10] = triangle(0,4,11);
-  VIF[11] = triangle(5,9,11);
-  VIF[12] = triangle(0,5,11);
+  IncidenceMatrix<> VIF{ {0,1,5,6},
+                         {5,6,7,8,9},
+                         {1,2,6,7},
+                         {3,4,8,9},
+                         {2,7,10},
+                         {7,8,10},
+                         {3,8,10},
+                         {2,3,10},
+                         {0,1,2,3,4},
+                         {4,9,11},
+                         {0,4,11},
+                         {5,9,11},
+                         {0,5,11} };
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+
+  centralize<double>(p);
+  p.set_description() << "Johnson solid J53: biaugmented pentagonal prism" << endl;
 
   return p;
 }
 
 
-perl::Object augmented_hexagonal_prism(){
-
+perl::Object augmented_hexagonal_prism()
+{
   perl::Object p = create_prism(6);
 
-  p = augment(p,square(3,4,9,10));
+  p = augment(p, Set<int>{3,4,9,10});
 
+  IncidenceMatrix<> VIF{ {0,1,2,3,4,5},
+                         {3,4,12},
+                         {3,9,12},
+                         {9,10,12},
+                         {4,10,12},
+                         {2,3,8,9},
+                         {4,5,10,11},
+                         {1,2,7,8},
+                         {6,7,8,9,10,11},
+                         {0,5,6,11},
+                         {0,1,6,7} };
 
-  IncidenceMatrix<> VIF(11,13);
+  p.take("VERTICES_IN_FACETS") << VIF;
+
+  centralize<double>(p);
   p.set_description() << "Johnson solid J54: augmented hexagonal prism" << endl;
-  VIF[0] = hexagon(0,1,2,3,4,5);
-  VIF[1] = triangle(3,4,12);
-  VIF[2] = triangle(3,9,12);
-  VIF[3] = triangle(9,10,12);
-  VIF[4] = triangle(4,10,12);
-  VIF[5] = square(2,3,8,9);
-  VIF[6] = square(4,5,10,11);
-  VIF[7] = square(1,2,7,8);
-  VIF[8] = hexagon(6,7,8,9,10,11);
-  VIF[9] = square(0,5,6,11);
-  VIF[10] = square(0,1,6,7);
-
-  p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
 
   return p;
 }
 
-perl::Object parabiaugmented_hexagonal_prism(){
-
+perl::Object parabiaugmented_hexagonal_prism()
+{
   perl::Object p = augmented_hexagonal_prism();
 
-  p = augment(p,square(0,1,6,7));
+  p = augment(p, Set<int>{0,1,6,7});
 
+  IncidenceMatrix<> VIF{ {0,5,6,11},
+                         {6,7,8,9,10,11},
+                         {1,2,7,8},
+                         {4,5,10,11},
+                         {2,3,8,9},
+                         {4,10,12},
+                         {9,10,12},
+                         {3,9,12},
+                         {3,4,12},
+                         {0,1,2,3,4,5},
+                         {1,7,13},
+                         {0,1,13},
+                         {6,7,13},
+                         {0,6,13} };
 
-  IncidenceMatrix<> VIF(14,14);
+  p.take("VERTICES_IN_FACETS") << VIF;
+
+  centralize<double>(p);
   p.set_description() << "Johnson solid J55: parabiaugmented hexagonal prism" << endl;
-  VIF[0] = square(0,5,6,11);
-  VIF[1] = hexagon(6,7,8,9,10,11);
-  VIF[2] = square(1,2,7,8);
-  VIF[3] = square(4,5,10,11);
-  VIF[4] = square(2,3,8,9);
-  VIF[5] = triangle(4,10,12);
-  VIF[6] = triangle(9,10,12);
-  VIF[7] = triangle(3,9,12);
-  VIF[8] = triangle(3,4,12);
-  VIF[9] = hexagon(0,1,2,3,4,5);
-  VIF[10] = triangle(1,7,13);
-  VIF[11] = triangle(0,1,13);
-  VIF[12] = triangle(6,7,13);
-  VIF[13] = triangle(0,6,13);
-
-  p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
 
   return p;
-
 }
 
-perl::Object metabiaugmented_hexagonal_prism(){
-
+perl::Object metabiaugmented_hexagonal_prism()
+{
   perl::Object p = augmented_hexagonal_prism();
 
-  p = augment(p,square(1,2,7,8));
+  p = augment(p, Set<int>{1,2,7,8});
 
-
-  IncidenceMatrix<> VIF(14,14);
-  p.set_description() << "Johnson solid J56: metabiaugmented hexagonal prism" << endl;
-  VIF[0] = hexagon(0,1,2,3,4,5);
-  VIF[1] = triangle(1,2,13);
-  VIF[2] = square(2,3,8,9);
-  VIF[3] = triangle(4,10,12);
-  VIF[4] = triangle(9,10,12);
-  VIF[5] = triangle(3,9,12);
-  VIF[6] = triangle(3,4,12);
-  VIF[7] = triangle(2,8,13);
-  VIF[8] = square(4,5,10,11);
-  VIF[9] = triangle(7,8,13);
-  VIF[10] = triangle(1,7,13);
-  VIF[11] = hexagon(6,7,8,9,10,11);
-  VIF[12] = square(0,5,6,11);
-  VIF[13] = square(0,1,6,7);
-
+  IncidenceMatrix<> VIF{ {0,1,2,3,4,5},
+                         {1,2,13},
+                         {2,3,8,9},
+                         {4,10,12},
+                         {9,10,12},
+                         {3,9,12},
+                         {3,4,12},
+                         {2,8,13},
+                         {4,5,10,11},
+                         {7,8,13},
+                         {1,7,13},
+                         {6,7,8,9,10,11},
+                         {0,5,6,11},
+                         {0,1,6,7} };
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+
+  centralize<double>(p);
+  p.set_description() << "Johnson solid J56: metabiaugmented hexagonal prism" << endl;
 
   return p;
 }
 
-perl::Object triaugmented_hexagonal_prism(){
-
+perl::Object triaugmented_hexagonal_prism()
+{
   perl::Object p = metabiaugmented_hexagonal_prism();
 
-  p = augment(p,square(0,5,6,11));
+  p = augment(p, Set<int>{0,5,6,11});
 
+  IncidenceMatrix<> VIF{ {0,1,6,7},
+                         {6,7,8,9,10,11},
+                         {1,7,13},
+                         {7,8,13},
+                         {4,5,10,11},
+                         {2,8,13},
+                         {3,4,12},
+                         {3,9,12},
+                         {9,10,12},
+                         {4,10,12},
+                         {2,3,8,9},
+                         {1,2,13},
+                         {0,1,2,3,4,5},
+                         {5,11,14},
+                         {0,5,14},
+                         {6,11,14},
+                         {0,6,14} };
 
-  IncidenceMatrix<> VIF(17,15);
+  p.take("VERTICES_IN_FACETS") << VIF;
+
+  centralize<double>(p);
   p.set_description() << "Johnson solid J57: triaugmented hexagonal prism" << endl;
-  VIF[0] = square(0,1,6,7);
-  VIF[1] = hexagon(6,7,8,9,10,11);
-  VIF[2] = triangle(1,7,13);
-  VIF[3] = triangle(7,8,13);
-  VIF[4] = square(4,5,10,11);
-  VIF[5] = triangle(2,8,13);
-  VIF[6] = triangle(3,4,12);
-  VIF[7] = triangle(3,9,12);
-  VIF[8] = triangle(9,10,12);
-  VIF[9] = triangle(4,10,12);
-  VIF[10] = square(2,3,8,9);
-  VIF[11] = triangle(1,2,13);
-  VIF[12] = hexagon(0,1,2,3,4,5);
-  VIF[13] = triangle(5,11,14);
-  VIF[14] = triangle(0,5,14);
-  VIF[15] = triangle(6,11,14);
-  VIF[16] = triangle(0,6,14);
-
-  p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
 
   return p;
 }
 
-perl::Object augmented_dodecahedron(){
+perl::Object augmented_dodecahedron()
+{
+  perl::Object p = call_function("dodecahedron");
+  p = augment(p, Set<int>{0,2,4,8,9});
 
-  perl::Object p = CallPolymakeFunction("dodecahedron");
-  p = augment(p,pentagon(0,2,4,8,9));
+  IncidenceMatrix<> VIF{ {8,9,13,16,18},
+                         {2,5,8,12,13},
+                         {0,1,2,3,5},
+                         {12,13,15,18,19},
+                         {3,5,10,12,15},
+                         {1,3,6,10,11},
+                         {10,11,15,17,19},
+                         {6,7,11,14,17},
+                         {14,16,17,18,19},
+                         {0,1,4,6,7},
+                         {4,7,9,14,16},
+                         {0,4,20},
+                         {0,2,20},
+                         {4,9,20},
+                         {2,8,20},
+                         {8,9,20} };
 
+  p.take("VERTICES_IN_FACETS") << VIF;
 
-  IncidenceMatrix<> VIF(16,21);
+  centralize<double>(p);
   p.set_description() << "Johnson solid J58: augmented dodecahedron" << endl;
-  VIF[0] = pentagon(8,9,13,16,18);
-  VIF[1] = pentagon(2,5,8,12,13);
-  VIF[2] = pentagon(0,1,2,3,5);
-  VIF[3] = pentagon(12,13,15,18,19);
-  VIF[4] = pentagon(3,5,10,12,15);
-  VIF[5] = pentagon(1,3,6,10,11);
-  VIF[6] = pentagon(10,11,15,17,19);
-  VIF[7] = pentagon(6,7,11,14,17);
-  VIF[8] = pentagon(14,16,17,18,19);
-  VIF[9] = pentagon(0,1,4,6,7);
-  VIF[10] = pentagon(4,7,9,14,16);
-  VIF[11] = triangle(0,4,20);
-  VIF[12] = triangle(0,2,20);
-  VIF[13] = triangle(4,9,20);
-  VIF[14] = triangle(2,8,20);
-  VIF[15] = triangle(8,9,20);
-
-  p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
 
   return p;
 }
 
-perl::Object parabiaugmented_dodecahedron(){
-
+perl::Object parabiaugmented_dodecahedron()
+{
   perl::Object p = augmented_dodecahedron();
 
-  p = augment(p,pentagon(10,11,15,17,19));
+  p = augment(p, Set<int>{10,11,15,17,19});
 
+  IncidenceMatrix<> VIF{ {8,9,13,16,18},
+                         {2,5,8,12,13},
+                         {0,1,2,3,5},
+                         {12,13,15,18,19},
+                         {3,5,10,12,15},
+                         {1,3,6,10,11},
+                         {10,15,21},
+                         {10,11,21},
+                         {11,17,21},
+                         {17,19,21},
+                         {15,19,21},
+                         {6,7,11,14,17},
+                         {14,16,17,18,19},
+                         {0,1,4,6,7},
+                         {4,7,9,14,16},
+                         {0,4,20},
+                         {0,2,20},
+                         {4,9,20},
+                         {2,8,20},
+                         {8,9,20} };
 
-  IncidenceMatrix<> VIF(20,22);
+  p.take("VERTICES_IN_FACETS") << VIF;
+
+  centralize<double>(p);
   p.set_description() << "Johnson solid J59: parabiaugmented dodecahedron" << endl;
-  VIF[0] = pentagon(8,9,13,16,18);
-  VIF[1] = pentagon(2,5,8,12,13);
-  VIF[2] = pentagon(0,1,2,3,5);
-  VIF[3] = pentagon(12,13,15,18,19);
-  VIF[4] = pentagon(3,5,10,12,15);
-  VIF[5] = pentagon(1,3,6,10,11);
-  VIF[6] = triangle(10,15,21);
-  VIF[7] = triangle(10,11,21);
-  VIF[8] = triangle(11,17,21);
-  VIF[9] = triangle(17,19,21);
-  VIF[10] = triangle(15,19,21);
-  VIF[11] = pentagon(6,7,11,14,17);
-  VIF[12] = pentagon(14,16,17,18,19);
-  VIF[13] = pentagon(0,1,4,6,7);
-  VIF[14] = pentagon(4,7,9,14,16);
-  VIF[15] = triangle(0,4,20);
-  VIF[16] = triangle(0,2,20);
-  VIF[17] = triangle(4,9,20);
-  VIF[18] = triangle(2,8,20);
-  VIF[19] = triangle(8,9,20);
-
-  p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
 
   return p;
 }
 
-perl::Object metabiaugmented_dodecahedron(){
-
+perl::Object metabiaugmented_dodecahedron()
+{
   perl::Object p = augmented_dodecahedron();
 
-  p = augment(p,pentagon(12,13,15,18,19));
+  p = augment(p, Set<int>{12,13,15,18,19});
 
-
-  IncidenceMatrix<> VIF(20,22);
-  p.set_description() << "Johnson solid J60: metabiaugmented dodecahedron" << endl;
-  VIF[0] = pentagon(8,9,13,16,18);
-  VIF[1] = pentagon(2,5,8,12,13);
-  VIF[2] = pentagon(0,1,2,3,5);
-  VIF[3] = triangle(13,18,21);
-  VIF[4] = triangle(12,13,21);
-  VIF[5] = pentagon(3,5,10,12,15);
-  VIF[6] = triangle(12,15,21);
-  VIF[7] = triangle(15,19,21);
-  VIF[8] = pentagon(10,11,15,17,19);
-  VIF[9] = pentagon(1,3,6,10,11);
-  VIF[10] = pentagon(6,7,11,14,17);
-  VIF[11] = triangle(18,19,21);
-  VIF[12] = pentagon(14,16,17,18,19);
-  VIF[13] = pentagon(0,1,4,6,7);
-  VIF[14] = pentagon(4,7,9,14,16);
-  VIF[15] = triangle(0,4,20);
-  VIF[16] = triangle(0,2,20);
-  VIF[17] = triangle(4,9,20);
-  VIF[18] = triangle(2,8,20);
-  VIF[19] = triangle(8,9,20);
+  IncidenceMatrix<> VIF{ {8,9,13,16,18},
+                         {2,5,8,12,13},
+                         {0,1,2,3,5},
+                         {13,18,21},
+                         {12,13,21},
+                         {3,5,10,12,15},
+                         {12,15,21},
+                         {15,19,21},
+                         {10,11,15,17,19},
+                         {1,3,6,10,11},
+                         {6,7,11,14,17},
+                         {18,19,21},
+                         {14,16,17,18,19},
+                         {0,1,4,6,7},
+                         {4,7,9,14,16},
+                         {0,4,20},
+                         {0,2,20},
+                         {4,9,20},
+                         {2,8,20},
+                         {8,9,20} };
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+
+  centralize<double>(p);
+  p.set_description() << "Johnson solid J60: metabiaugmented dodecahedron" << endl;
 
   return p;
 }
 
-perl::Object triaugmented_dodecahedron(){
-
+perl::Object triaugmented_dodecahedron()
+{
   perl::Object p = metabiaugmented_dodecahedron();
 
-  p = augment(p,pentagon(1,3,6,10,11));
+  p = augment(p, Set<int>{1,3,6,10,11});
 
-
-  IncidenceMatrix<> VIF(24,23);
-  p.set_description() << "Johnson solid J61: triaugmented dodecahedron" << endl;
-  VIF[0] = pentagon(8,9,13,16,18);
-  VIF[1] = pentagon(2,5,8,12,13);
-  VIF[2] = pentagon(0,1,2,3,5);
-  VIF[3] = triangle(13,18,21);
-  VIF[4] = triangle(12,13,21);
-  VIF[5] = pentagon(3,5,10,12,15);
-  VIF[6] = triangle(12,15,21);
-  VIF[7] = triangle(15,19,21);
-  VIF[8] = pentagon(10,11,15,17,19);
-  VIF[9] = triangle(6,11,22);
-  VIF[10] = triangle(10,11,22);
-  VIF[11] = triangle(3,10,22);
-  VIF[12] = triangle(1,6,22);
-  VIF[13] = triangle(1,3,22);
-  VIF[14] = pentagon(6,7,11,14,17);
-  VIF[15] = triangle(18,19,21);
-  VIF[16] = pentagon(14,16,17,18,19);
-  VIF[17] = pentagon(0,1,4,6,7);
-  VIF[18] = pentagon(4,7,9,14,16);
-  VIF[19] = triangle(0,4,20);
-  VIF[20] = triangle(0,2,20);
-  VIF[21] = triangle(4,9,20);
-  VIF[22] = triangle(2,8,20);
-  VIF[23] = triangle(8,9,20);
+  IncidenceMatrix<> VIF{ {8,9,13,16,18},
+                         {2,5,8,12,13},
+                         {0,1,2,3,5},
+                         {13,18,21},
+                         {12,13,21},
+                         {3,5,10,12,15},
+                         {12,15,21},
+                         {15,19,21},
+                         {10,11,15,17,19},
+                         {6,11,22},
+                         {10,11,22},
+                         {3,10,22},
+                         {1,6,22},
+                         {1,3,22},
+                         {6,7,11,14,17},
+                         {18,19,21},
+                         {14,16,17,18,19},
+                         {0,1,4,6,7},
+                         {4,7,9,14,16},
+                         {0,4,20},
+                         {0,2,20},
+                         {4,9,20},
+                         {2,8,20},
+                         {8,9,20} };
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+
+  centralize<double>(p);
+  p.set_description() << "Johnson solid J61: triaugmented dodecahedron" << endl;
 
   return p;
 }
 
-perl::Object metabidiminished_icosahedron(){
-
-  perl::Object ico = CallPolymakeFunction("icosahedron");
+perl::Object metabidiminished_icosahedron()
+{
+  perl::Object ico = call_function("icosahedron");
 
   Matrix<QE> V = ico.give("VERTICES");
 
   V = ((V.minor(sequence(1,5),All)) / (V.minor(sequence(7,5),All)));
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.take("VERTICES") << V;
-  p = centralize<QE>(p);
+  perl::Object p=build_from_vertices(V);
 
   p.set_description() << "Johnson solid J62: metabidiminished icosahedron" << endl;
   return p;
 }
 
-perl::Object tridiminished_icosahedron(){
-
-   perl::Object dimico = metabidiminished_icosahedron();
+perl::Object tridiminished_icosahedron()
+{
+  perl::Object dimico = metabidiminished_icosahedron();
 
   Matrix<QE> V = dimico.give("VERTICES");
   V = ((V.minor(sequence(0,7),All)) / (V.minor(sequence(8,2),All)));
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.take("VERTICES") << V;
-  p = centralize<QE>(p);
+  perl::Object p=build_from_vertices(V);
 
   p.set_description() << "Johnson solid J63: tridiminished icosahedron" << endl;
   return p;
 }
 
-perl::Object augmented_tridiminished_icosahedron(){
-
+perl::Object augmented_tridiminished_icosahedron()
+{
   perl::Object p = tridiminished_icosahedron();
-  p = augment(p,triangle(0,2,5));
+  p = augment(p, Set<int>{0,2,5});
 
-
-  IncidenceMatrix<> VIF(10,10);
-  p.set_description() << "Johnson solid J64: augmented_tridiminished icosahedron" << endl;
-  VIF[0] = triangle(3,6,7);
-  VIF[1] = triangle(6,7,8);
-  VIF[2] = triangle(0,5,9);
-  VIF[3] = triangle(0,2,9);
-  VIF[4] = triangle(2,5,9);
-  VIF[5] = pentagon(2,4,5,7,8);
-  VIF[6] = triangle(3,4,7);
-  VIF[7] = triangle(1,3,6);
-  VIF[8] = pentagon(0,1,2,3,4);
-  VIF[9] = pentagon(0,1,5,6,8);
-
+  IncidenceMatrix<> VIF{ {3,6,7},
+                         {6,7,8},
+                         {0,5,9},
+                         {0,2,9},
+                         {2,5,9},
+                         {2,4,5,7,8},
+                         {3,4,7},
+                         {1,3,6},
+                         {0,1,2,3,4},
+                         {0,1,5,6,8} };
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+
+  centralize<double>(p);
+  p.set_description() << "Johnson solid J64: augmented_tridiminished icosahedron" << endl;
 
   return p;
 }
@@ -2605,9 +2478,7 @@ perl::Object augmented_truncated_tetrahedron()
   V(13,1)=-5*s; V(13,2)=11*s; V(13,3)=5*s;
   V(14,1)=V(13,1); V(14,2)=V(13,3); V(14,3)=V(13,2);
 
-  perl::Object p(perl::ObjectType::construct<Rational>("Polytope"));
-  p.take("VERTICES") << V;
-  p = centralize<Rational>(p);
+  perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J65: Augmented truncated tetrahedron" << endl;
 
   return p;
@@ -2615,13 +2486,11 @@ perl::Object augmented_truncated_tetrahedron()
 
 perl::Object augmented_truncated_cube()
 {
-   Matrix<QE> V = truncated_cube_vertices();
    Matrix<QE> W = square_cupola_impl(false).give("VERTICES");
    W.col(3) += same_element_vector(QE(2,2,2),12);
+   Matrix<QE> V = truncated_cube_vertices() / W.minor(sequence(8,4), All);
 
-   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-   p.take("VERTICES") << V / W.minor(sequence(8,4),All);
-   p = centralize<QE>(p);
+   perl::Object p=build_from_vertices(V);
    p.set_description() << "Johnson solid J66: Augmented truncated cube" << endl;
 
    return p;
@@ -2629,14 +2498,12 @@ perl::Object augmented_truncated_cube()
 
 perl::Object biaugmented_truncated_cube()
 {
-   Matrix<QE> V = truncated_cube_vertices();
    Matrix<QE> W = square_cupola_impl(false).give("VERTICES");
    W = W.minor(sequence(8,4),sequence(1,3));
+   Matrix<QE> V = truncated_cube_vertices() /
+                  (ones_vector<QE>() | ((W + repeat_row(QE(2,2,2)*unit_vector<QE>(3,2),4)) / -W));
 
-   perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-   p.take("VERTICES") << V / (ones_vector<QE>(8) |
-                              ((W + repeat_row(QE(2,2,2)*unit_vector<QE>(3,2),4)) / -W));
-   p = centralize<QE>(p);
+   perl::Object p=build_from_vertices(V);
    p.set_description() << "Johnson solid J67: Biaugmented truncated cube" << endl;
 
    return p;
@@ -2644,123 +2511,123 @@ perl::Object biaugmented_truncated_cube()
 
 perl::Object augmented_truncated_dodecahedron()
 {
-   perl::Object p = CallPolymakeFunction("truncated_dodecahedron");
+   perl::Object p = call_function("truncated_dodecahedron");
 
-   p = augment(p,decagon(0,1,5,7,9,11,13,16,18,21));
+   p = augment(p, Set<int>{0,1,5,7,9,11,13,16,18,21});
 
-   IncidenceMatrix<> VIF(42,65);
-   VIF[0] = triangle(22,27,38);
-   VIF[1] = decagon(13,16,19,22,32,35,38,41,43,46);
-   VIF[2] = triangle(7,13,19);
-   VIF[3] = triangle(41,46,52);
-   VIF[4] = square(7,13,61,62);
-   VIF[5] = triangle(5,7,61);
-   VIF[6] = decagon(43,46,48,50,52,54,56,57,58,59);
-   VIF[7] = square(0,5,60,61);
-   VIF[8] = triangle(13,16,62);
-   VIF[9] = triangle(0,1,60);
-   VIF[10] = triangle(10,15,26);
-   VIF[11] = triangle(29,36,42);
-   VIF[12] = decagon(12,15,20,23,26,29,37,40,42,45);
-   VIF[13] = triangle(1,4,9);
-   VIF[14] = triangle(55,57,59);
-   VIF[15] = decagon(4,6,9,11,20,23,25,28,30,33);
-   VIF[16] = triangle(6,12,20);
-   VIF[17] = triangle(40,45,53);
-   VIF[18] = decagon(30,33,37,40,44,47,53,55,56,57);
-   VIF[19] = triangle(23,30,37);
-   VIF[20] = triangle(28,33,44);
-   VIF[21] = triangle(47,50,56);
-   VIF[22] = triangle(11,18,25);
-   VIF[23] = triangle(9,11,64);
-   VIF[24] = triangle(18,21,63);
-   VIF[25] = square(11,18,63,64);
-   VIF[26] = decagon(18,21,25,28,32,35,44,47,48,50);
-   VIF[27] = square(1,9,60,64);
-   VIF[28] = triangle(35,43,48);
-   VIF[29] = triangle(16,21,32);
-   VIF[30] = square(16,21,62,63);
-   VIF[31] = pentagon(60,61,62,63,64);
-   VIF[32] = triangle(51,54,58);
-   VIF[33] = triangle(0,2,5);
-   VIF[34] = decagon(36,39,42,45,49,51,53,55,58,59);
-   VIF[35] = decagon(0,1,2,3,4,6,8,10,12,15);
-   VIF[36] = triangle(34,39,49);
-   VIF[37] = triangle(3,8,14);
-   VIF[38] = decagon(8,10,14,17,26,29,31,34,36,39);
-   VIF[39] = triangle(17,24,31);
-   VIF[40] = decagon(24,27,31,34,38,41,49,51,52,54);
-   VIF[41] = decagon(2,3,5,7,14,17,19,22,24,27);
+   IncidenceMatrix<> VIF{ {22,27,38},
+                          {13,16,19,22,32,35,38,41,43,46},
+                          {7,13,19},
+                          {41,46,52},
+                          {7,13,61,62},
+                          {5,7,61},
+                          {43,46,48,50,52,54,56,57,58,59},
+                          {0,5,60,61},
+                          {13,16,62},
+                          {0,1,60},
+                          {10,15,26},
+                          {29,36,42},
+                          {12,15,20,23,26,29,37,40,42,45},
+                          {1,4,9},
+                          {55,57,59},
+                          {4,6,9,11,20,23,25,28,30,33},
+                          {6,12,20},
+                          {40,45,53},
+                          {30,33,37,40,44,47,53,55,56,57},
+                          {23,30,37},
+                          {28,33,44},
+                          {47,50,56},
+                          {11,18,25},
+                          {9,11,64},
+                          {18,21,63},
+                          {11,18,63,64},
+                          {18,21,25,28,32,35,44,47,48,50},
+                          {1,9,60,64},
+                          {35,43,48},
+                          {16,21,32},
+                          {16,21,62,63},
+                          {60,61,62,63,64},
+                          {51,54,58},
+                          {0,2,5},
+                          {36,39,42,45,49,51,53,55,58,59},
+                          {0,1,2,3,4,6,8,10,12,15},
+                          {34,39,49},
+                          {3,8,14},
+                          {8,10,14,17,26,29,31,34,36,39},
+                          {17,24,31},
+                          {24,27,31,34,38,41,49,51,52,54},
+                          {2,3,5,7,14,17,19,22,24,27} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+
+   centralize<double>(p);
    p.set_description() << "Johnson solid J68: Augmented truncated dodecahedron" << endl;
 
-  return p;
+   return p;
 }
 
 
 perl::Object parabiaugmented_truncated_dodecahedron()
 {
    perl::Object p = augmented_truncated_dodecahedron();
-   p = augment(p,decagon(36,39,42,45,49,51,53,55,58,59));
+   p = augment(p, Set<int>{36,39,42,45,49,51,53,55,58,59});
 
-   IncidenceMatrix<> VIF(52,70);
-   VIF[0] = triangle(22,27,38);
-   VIF[1] = decagon(13,16,19,22,32,35,38,41,43,46);
-   VIF[2] = triangle(7,13,19);
-   VIF[3] = triangle(41,46,52);
-   VIF[4] = square(7,13,61,62);
-   VIF[5] = triangle(5,7,61);
-   VIF[6] = decagon(43,46,48,50,52,54,56,57,58,59);
-   VIF[7] = square(0,5,60,61);
-   VIF[8] = triangle(13,16,62);
-   VIF[9] = pentagon(65,66,67,68,69);
-   VIF[10] = square(16,21,62,63);
-   VIF[11] = triangle(16,21,32);
-   VIF[12] = triangle(35,43,48);
-   VIF[13] = triangle(58,59,69);
-   VIF[14] = decagon(12,15,20,23,26,29,37,40,42,45);
-   VIF[15] = square(55,59,68,69);
-   VIF[16] = square(11,18,63,64);
-   VIF[17] = triangle(18,21,63);
-   VIF[18] = triangle(55,57,59);
-   VIF[19] = triangle(53,55,68);
-   VIF[20] = triangle(11,18,25);
-   VIF[21] = triangle(47,50,56);
-   VIF[22] = triangle(28,33,44);
-   VIF[23] = triangle(23,30,37);
-   VIF[24] = decagon(30,33,37,40,44,47,53,55,56,57);
-   VIF[25] = triangle(40,45,53);
-   VIF[26] = triangle(6,12,20);
-   VIF[27] = decagon(4,6,9,11,20,23,25,28,30,33);
-   VIF[28] = triangle(9,11,64);
-   VIF[29] = square(45,53,67,68);
-   VIF[30] = triangle(42,45,67);
-   VIF[31] = triangle(1,4,9);
-   VIF[32] = decagon(18,21,25,28,32,35,44,47,48,50);
-   VIF[33] = square(1,9,60,64);
-   VIF[34] = triangle(29,36,42);
-   VIF[35] = square(36,42,66,67);
-   VIF[36] = triangle(10,15,26);
-   VIF[37] = triangle(0,1,60);
-   VIF[38] = pentagon(60,61,62,63,64);
-   VIF[39] = triangle(51,54,58);
-   VIF[40] = square(51,58,65,69);
-   VIF[41] = triangle(36,39,66);
-   VIF[42] = triangle(0,2,5);
-   VIF[43] = triangle(49,51,65);
-   VIF[44] = square(39,49,65,66);
-   VIF[45] = decagon(0,1,2,3,4,6,8,10,12,15);
-   VIF[46] = triangle(34,39,49);
-   VIF[47] = triangle(3,8,14);
-   VIF[48] = decagon(8,10,14,17,26,29,31,34,36,39);
-   VIF[49] = triangle(17,24,31);
-   VIF[50] = decagon(24,27,31,34,38,41,49,51,52,54);
-   VIF[51] = decagon(2,3,5,7,14,17,19,22,24,27);
+   IncidenceMatrix<> VIF{ {22,27,38},
+                          {13,16,19,22,32,35,38,41,43,46},
+                          {7,13,19},
+                          {41,46,52},
+                          {7,13,61,62},
+                          {5,7,61},
+                          {43,46,48,50,52,54,56,57,58,59},
+                          {0,5,60,61},
+                          {13,16,62},
+                          {65,66,67,68,69},
+                          {16,21,62,63},
+                          {16,21,32},
+                          {35,43,48},
+                          {58,59,69},
+                          {12,15,20,23,26,29,37,40,42,45},
+                          {55,59,68,69},
+                          {11,18,63,64},
+                          {18,21,63},
+                          {55,57,59},
+                          {53,55,68},
+                          {11,18,25},
+                          {47,50,56},
+                          {28,33,44},
+                          {23,30,37},
+                          {30,33,37,40,44,47,53,55,56,57},
+                          {40,45,53},
+                          {6,12,20},
+                          {4,6,9,11,20,23,25,28,30,33},
+                          {9,11,64},
+                          {45,53,67,68},
+                          {42,45,67},
+                          {1,4,9},
+                          {18,21,25,28,32,35,44,47,48,50},
+                          {1,9,60,64},
+                          {29,36,42},
+                          {36,42,66,67},
+                          {10,15,26},
+                          {0,1,60},
+                          {60,61,62,63,64},
+                          {51,54,58},
+                          {51,58,65,69},
+                          {36,39,66},
+                          {0,2,5},
+                          {49,51,65},
+                          {39,49,65,66},
+                          {0,1,2,3,4,6,8,10,12,15},
+                          {34,39,49},
+                          {3,8,14},
+                          {8,10,14,17,26,29,31,34,36,39},
+                          {17,24,31},
+                          {24,27,31,34,38,41,49,51,52,54},
+                          {2,3,5,7,14,17,19,22,24,27} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+
+   centralize<double>(p);
 
    p.set_description() << "Johnson solid J69: Parabiaugmented truncated dodecahedron" << endl;
    return p;
@@ -2769,142 +2636,140 @@ perl::Object parabiaugmented_truncated_dodecahedron()
 perl::Object metabiaugmented_truncated_dodecahedron()
 {
    perl::Object p = augmented_truncated_dodecahedron();
-   p = augment(p,decagon(43,46,48,50,52,54,56,57,58,59));
+   p = augment(p, Set<int>{43,46,48,50,52,54,56,57,58,59});
 
-   IncidenceMatrix<> VIF(52,70);
-   VIF[0] = triangle(22,27,38);
-   VIF[1] = decagon(13,16,19,22,32,35,38,41,43,46);
-   VIF[2] = triangle(7,13,19);
-   VIF[3] = triangle(41,46,52);
-   VIF[4] = square(7,13,61,62);
-   VIF[5] = triangle(5,7,61);
-   VIF[6] = square(46,52,65,69);
-   VIF[7] = triangle(52,54,65);
-   VIF[8] = square(0,5,60,61);
-   VIF[9] = triangle(13,16,62);
-   VIF[10] = triangle(43,46,69);
-   VIF[11] = square(54,58,65,66);
-   VIF[12] = pentagon(65,66,67,68,69);
-   VIF[13] = square(16,21,62,63);
-   VIF[14] = triangle(16,21,32);
-   VIF[15] = square(43,48,68,69);
-   VIF[16] = triangle(35,43,48);
-   VIF[17] = triangle(58,59,66);
-   VIF[18] = decagon(12,15,20,23,26,29,37,40,42,45);
-   VIF[19] = square(57,59,66,67);
-   VIF[20] = square(11,18,63,64);
-   VIF[21] = triangle(18,21,63);
-   VIF[22] = triangle(48,50,68);
-   VIF[23] = triangle(55,57,59);
-   VIF[24] = triangle(56,57,67);
-   VIF[25] = triangle(11,18,25);
-   VIF[26] = triangle(47,50,56);
-   VIF[27] = triangle(28,33,44);
-   VIF[28] = triangle(23,30,37);
-   VIF[29] = decagon(30,33,37,40,44,47,53,55,56,57);
-   VIF[30] = triangle(40,45,53);
-   VIF[31] = triangle(6,12,20);
-   VIF[32] = decagon(4,6,9,11,20,23,25,28,30,33);
-   VIF[33] = triangle(9,11,64);
-   VIF[34] = square(50,56,67,68);
-   VIF[35] = triangle(1,4,9);
-   VIF[36] = decagon(18,21,25,28,32,35,44,47,48,50);
-   VIF[37] = square(1,9,60,64);
-   VIF[38] = triangle(29,36,42);
-   VIF[39] = triangle(10,15,26);
-   VIF[40] = triangle(0,1,60);
-   VIF[41] = pentagon(60,61,62,63,64);
-   VIF[42] = triangle(51,54,58);
-   VIF[43] = triangle(0,2,5);
-   VIF[44] = decagon(36,39,42,45,49,51,53,55,58,59);
-   VIF[45] = decagon(0,1,2,3,4,6,8,10,12,15);
-   VIF[46] = triangle(34,39,49);
-   VIF[47] = triangle(3,8,14);
-   VIF[48] = decagon(8,10,14,17,26,29,31,34,36,39);
-   VIF[49] = triangle(17,24,31);
-   VIF[50] = decagon(24,27,31,34,38,41,49,51,52,54);
-   VIF[51] = decagon(2,3,5,7,14,17,19,22,24,27);
+   IncidenceMatrix<> VIF{ {22,27,38},
+                          {13,16,19,22,32,35,38,41,43,46},
+                          {7,13,19},
+                          {41,46,52},
+                          {7,13,61,62},
+                          {5,7,61},
+                          {46,52,65,69},
+                          {52,54,65},
+                          {0,5,60,61},
+                          {13,16,62},
+                          {43,46,69},
+                          {54,58,65,66},
+                          {65,66,67,68,69},
+                          {16,21,62,63},
+                          {16,21,32},
+                          {43,48,68,69},
+                          {35,43,48},
+                          {58,59,66},
+                          {12,15,20,23,26,29,37,40,42,45},
+                          {57,59,66,67},
+                          {11,18,63,64},
+                          {18,21,63},
+                          {48,50,68},
+                          {55,57,59},
+                          {56,57,67},
+                          {11,18,25},
+                          {47,50,56},
+                          {28,33,44},
+                          {23,30,37},
+                          {30,33,37,40,44,47,53,55,56,57},
+                          {40,45,53},
+                          {6,12,20},
+                          {4,6,9,11,20,23,25,28,30,33},
+                          {9,11,64},
+                          {50,56,67,68},
+                          {1,4,9},
+                          {18,21,25,28,32,35,44,47,48,50},
+                          {1,9,60,64},
+                          {29,36,42},
+                          {10,15,26},
+                          {0,1,60},
+                          {60,61,62,63,64},
+                          {51,54,58},
+                          {0,2,5},
+                          {36,39,42,45,49,51,53,55,58,59},
+                          {0,1,2,3,4,6,8,10,12,15},
+                          {34,39,49},
+                          {3,8,14},
+                          {8,10,14,17,26,29,31,34,36,39},
+                          {17,24,31},
+                          {24,27,31,34,38,41,49,51,52,54},
+                          {2,3,5,7,14,17,19,22,24,27} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
-   p = centralize<double>(p);
+   centralize<double>(p);
 
    p.set_description() << "Johnson solid J70: Metabiaugmented truncated dodecahedron" << endl;
-  return p;
+   return p;
 }
 
 perl::Object triaugmented_truncated_dodecahedron()
 {
    perl::Object p = metabiaugmented_truncated_dodecahedron();
-   p = augment(p,decagon(12,15,20,23,26,29,37,40,42,45));
+   p = augment(p, Set<int>{12,15,20,23,26,29,37,40,42,45});
 
-   IncidenceMatrix<> VIF(62,75);
-   VIF[0] = triangle(22,27,38);
-   VIF[1] = decagon(13,16,19,22,32,35,38,41,43,46);
-   VIF[2] = triangle(7,13,19);
-   VIF[3] = triangle(41,46,52);
-   VIF[4] = square(7,13,61,62);
-   VIF[5] = triangle(5,7,61);
-   VIF[6] = square(46,52,65,69);
-   VIF[7] = triangle(52,54,65);
-   VIF[8] = square(0,5,60,61);
-   VIF[9] = triangle(13,16,62);
-   VIF[10] = triangle(43,46,69);
-   VIF[11] = square(54,58,65,66);
-   VIF[12] = pentagon(65,66,67,68,69);
-   VIF[13] = square(16,21,62,63);
-   VIF[14] = triangle(16,21,32);
-   VIF[15] = square(43,48,68,69);
-   VIF[16] = triangle(35,43,48);
-   VIF[17] = triangle(58,59,66);
-   VIF[18] = square(15,26,70,74);
-   VIF[19] = triangle(26,29,74);
-   VIF[20] = square(29,42,73,74);
-   VIF[21] = square(57,59,66,67);
-   VIF[22] = square(11,18,63,64);
-   VIF[23] = triangle(18,21,63);
-   VIF[24] = triangle(48,50,68);
-   VIF[25] = triangle(55,57,59);
-   VIF[26] = triangle(56,57,67);
-   VIF[27] = decagon(4,6,9,11,20,23,25,28,30,33);
-   VIF[28] = square(12,20,70,71);
-   VIF[29] = triangle(6,12,20);
-   VIF[30] = square(40,45,72,73);
-   VIF[31] = triangle(40,45,53);
-   VIF[32] = decagon(30,33,37,40,44,47,53,55,56,57);
-   VIF[33] = triangle(20,23,71);
-   VIF[34] = triangle(37,40,72);
-   VIF[35] = square(23,37,71,72);
-   VIF[36] = triangle(23,30,37);
-   VIF[37] = triangle(28,33,44);
-   VIF[38] = triangle(47,50,56);
-   VIF[39] = triangle(11,18,25);
-   VIF[40] = pentagon(70,71,72,73,74);
-   VIF[41] = triangle(9,11,64);
-   VIF[42] = square(50,56,67,68);
-   VIF[43] = triangle(42,45,73);
-   VIF[44] = triangle(12,15,70);
-   VIF[45] = triangle(1,4,9);
-   VIF[46] = decagon(18,21,25,28,32,35,44,47,48,50);
-   VIF[47] = square(1,9,60,64);
-   VIF[48] = triangle(29,36,42);
-   VIF[49] = triangle(10,15,26);
-   VIF[50] = triangle(0,1,60);
-   VIF[51] = pentagon(60,61,62,63,64);
-   VIF[52] = triangle(51,54,58);
-   VIF[53] = triangle(0,2,5);
-   VIF[54] = decagon(36,39,42,45,49,51,53,55,58,59);
-   VIF[55] = decagon(0,1,2,3,4,6,8,10,12,15);
-   VIF[56] = triangle(34,39,49);
-   VIF[57] = triangle(3,8,14);
-   VIF[58] = decagon(8,10,14,17,26,29,31,34,36,39);
-   VIF[59] = triangle(17,24,31);
-   VIF[60] = decagon(24,27,31,34,38,41,49,51,52,54);
-   VIF[61] = decagon(2,3,5,7,14,17,19,22,24,27);
+   IncidenceMatrix<> VIF{ {22,27,38},
+                          {13,16,19,22,32,35,38,41,43,46},
+                          {7,13,19},
+                          {41,46,52},
+                          {7,13,61,62},
+                          {5,7,61},
+                          {46,52,65,69},
+                          {52,54,65},
+                          {0,5,60,61},
+                          {13,16,62},
+                          {43,46,69},
+                          {54,58,65,66},
+                          {65,66,67,68,69},
+                          {16,21,62,63},
+                          {16,21,32},
+                          {43,48,68,69},
+                          {35,43,48},
+                          {58,59,66},
+                          {15,26,70,74},
+                          {26,29,74},
+                          {29,42,73,74},
+                          {57,59,66,67},
+                          {11,18,63,64},
+                          {18,21,63},
+                          {48,50,68},
+                          {55,57,59},
+                          {56,57,67},
+                          {4,6,9,11,20,23,25,28,30,33},
+                          {12,20,70,71},
+                          {6,12,20},
+                          {40,45,72,73},
+                          {40,45,53},
+                          {30,33,37,40,44,47,53,55,56,57},
+                          {20,23,71},
+                          {37,40,72},
+                          {23,37,71,72},
+                          {23,30,37},
+                          {28,33,44},
+                          {47,50,56},
+                          {11,18,25},
+                          {70,71,72,73,74},
+                          {9,11,64},
+                          {50,56,67,68},
+                          {42,45,73},
+                          {12,15,70},
+                          {1,4,9},
+                          {18,21,25,28,32,35,44,47,48,50},
+                          {1,9,60,64},
+                          {29,36,42},
+                          {10,15,26},
+                          {0,1,60},
+                          {60,61,62,63,64},
+                          {51,54,58},
+                          {0,2,5},
+                          {36,39,42,45,49,51,53,55,58,59},
+                          {0,1,2,3,4,6,8,10,12,15},
+                          {34,39,49},
+                          {3,8,14},
+                          {8,10,14,17,26,29,31,34,36,39},
+                          {17,24,31},
+                          {24,27,31,34,38,41,49,51,52,54},
+                          {2,3,5,7,14,17,19,22,24,27} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
-   p = centralize<double>(p);
+   centralize<double>(p);
 
    p.set_description() << "Johnson solid J71: Triaugmented truncated dodecahedron" << endl;
    return p;
@@ -2912,75 +2777,76 @@ perl::Object triaugmented_truncated_dodecahedron()
 
 perl::Object gyrate_rhombicosidodecahedron()
 {
-  perl::Object p = CallPolymakeFunction("rhombicosidodecahedron");
-  p = rotate_facet(p,pentagon(5,8,12,16,21),M_PI/5);
+  perl::Object p = call_function("rhombicosidodecahedron");
+  p = rotate_facet(p, Set<int>{5,8,12,16,21}, M_PI/5);
 
-  IncidenceMatrix<> VIF(62,60);
-  VIF[0] = pentagon(27,32,37,41,45);
-  VIF[1] = square(18,27,28,37);
-  VIF[2] = square(3,11,56,58);
-  VIF[3] = triangle(11,18,58);
-  VIF[4] = pentagon(11,14,18,23,28);
-  VIF[5] = square(37,43,45,50);
-  VIF[6] = triangle(28,37,43);
-  VIF[7] = square(0,2,55,56);
-  VIF[8] = triangle(0,3,56);
-  VIF[9] = square(3,8,11,14);
-  VIF[10] = square(23,28,39,43);
-  VIF[11] = triangle(45,50,53);
-  VIF[12] = pentagon(2,4,6,9,12);
-  VIF[13] = pentagon(44,48,51,53,54);
-  VIF[14] = square(20,26,30,36);
-  VIF[15] = triangle(12,20,26);
-  VIF[16] = triangle(30,36,44);
-  VIF[17] = square(9,12,21,26);
-  VIF[18] = square(36,40,44,51);
-  VIF[19] = square(4,7,9,13);
-  VIF[20] = pentagon(21,26,31,36,40);
-  VIF[21] = square(46,49,51,54);
-  VIF[22] = triangle(9,13,21);
-  VIF[23] = triangle(40,46,51);
-  VIF[24] = square(10,15,17,24);
-  VIF[25] = square(24,33,34,42);
-  VIF[26] = pentagon(33,38,42,46,49);
-  VIF[27] = square(17,22,33,38);
-  VIF[28] = triangle(22,31,38);
-  VIF[29] = triangle(17,24,33);
-  VIF[30] = square(31,38,40,46);
-  VIF[31] = square(13,21,22,31);
-  VIF[32] = pentagon(7,10,13,17,22);
-  VIF[33] = triangle(34,42,47);
-  VIF[34] = triangle(5,10,15);
-  VIF[35] = triangle(49,52,54);
-  VIF[36] = square(42,47,49,52);
-  VIF[37] = pentagon(15,19,24,29,34);
-  VIF[38] = triangle(1,4,7);
-  VIF[39] = square(1,5,7,10);
-  VIF[40] = square(29,34,39,47);
-  VIF[41] = square(5,8,15,19);
-  VIF[42] = square(50,52,53,54);
-  VIF[43] = triangle(23,29,39);
-  VIF[44] = triangle(8,14,19);
-  VIF[45] = square(14,19,23,29);
-  VIF[46] = square(0,1,2,4);
-  VIF[47] = pentagon(39,43,47,50,52);
-  VIF[48] = pentagon(0,1,3,5,8);
-  VIF[49] = square(30,35,44,48);
-  VIF[50] = square(6,12,16,20);
-  VIF[51] = triangle(2,6,55);
-  VIF[52] = triangle(35,41,48);
-  VIF[53] = square(41,45,48,53);
-  VIF[54] = pentagon(16,20,25,30,35);
-  VIF[55] = triangle(16,25,57);
-  VIF[56] = square(6,16,55,57);
-  VIF[57] = square(25,32,35,41);
-  VIF[58] = triangle(27,32,59);
-  VIF[59] = square(25,32,57,59);
-  VIF[60] = pentagon(55,56,57,58,59);
-  VIF[61] = square(18,27,58,59);
+  IncidenceMatrix<> VIF{ {27,32,37,41,45},
+                         {18,27,28,37},
+                         {3,11,56,58},
+                         {11,18,58},
+                         {11,14,18,23,28},
+                         {37,43,45,50},
+                         {28,37,43},
+                         {0,2,55,56},
+                         {0,3,56},
+                         {3,8,11,14},
+                         {23,28,39,43},
+                         {45,50,53},
+                         {2,4,6,9,12},
+                         {44,48,51,53,54},
+                         {20,26,30,36},
+                         {12,20,26},
+                         {30,36,44},
+                         {9,12,21,26},
+                         {36,40,44,51},
+                         {4,7,9,13},
+                         {21,26,31,36,40},
+                         {46,49,51,54},
+                         {9,13,21},
+                         {40,46,51},
+                         {10,15,17,24},
+                         {24,33,34,42},
+                         {33,38,42,46,49},
+                         {17,22,33,38},
+                         {22,31,38},
+                         {17,24,33},
+                         {31,38,40,46},
+                         {13,21,22,31},
+                         {7,10,13,17,22},
+                         {34,42,47},
+                         {5,10,15},
+                         {49,52,54},
+                         {42,47,49,52},
+                         {15,19,24,29,34},
+                         {1,4,7},
+                         {1,5,7,10},
+                         {29,34,39,47},
+                         {5,8,15,19},
+                         {50,52,53,54},
+                         {23,29,39},
+                         {8,14,19},
+                         {14,19,23,29},
+                         {0,1,2,4},
+                         {39,43,47,50,52},
+                         {0,1,3,5,8},
+                         {30,35,44,48},
+                         {6,12,16,20},
+                         {2,6,55},
+                         {35,41,48},
+                         {41,45,48,53},
+                         {16,20,25,30,35},
+                         {16,25,57},
+                         {6,16,55,57},
+                         {25,32,35,41},
+                         {27,32,59},
+                         {25,32,57,59},
+                         {55,56,57,58,59},
+                         {18,27,58,59} };
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+
+  centralize<double>(p);
+
   p.set_description() << "Johnson solid J72: Gyrate rhombicosidodecahedron" << endl;
   return p;
 }
@@ -2988,73 +2854,74 @@ perl::Object gyrate_rhombicosidodecahedron()
 perl::Object parabigyrate_rhombicosidodecahedron()
 {
    perl::Object p = gyrate_rhombicosidodecahedron();
-   p = rotate_facet(p,pentagon(33,38,42,46,49),M_PI/5);
-  IncidenceMatrix<> VIF(62,60);
-  VIF[0] = pentagon(27,32,36,39,42);
-  VIF[1] = square(18,27,28,36);
-  VIF[2] = square(3,11,51,53);
-  VIF[3] = triangle(11,18,53);
-  VIF[4] = pentagon(11,14,18,23,28);
-  VIF[5] = square(36,40,42,45);
-  VIF[6] = triangle(28,36,40);
-  VIF[7] = square(0,2,50,51);
-  VIF[8] = triangle(0,3,51);
-  VIF[9] = square(3,8,11,14);
-  VIF[10] = square(23,28,37,40);
-  VIF[11] = triangle(42,45,48);
-  VIF[12] = pentagon(2,4,6,9,12);
-  VIF[13] = pentagon(41,44,46,48,49);
-  VIF[14] = square(20,26,30,35);
-  VIF[15] = triangle(12,20,26);
-  VIF[16] = triangle(30,35,41);
-  VIF[17] = square(9,12,21,26);
-  VIF[18] = square(35,38,41,46);
-  VIF[19] = square(4,7,9,13);
-  VIF[20] = pentagon(21,26,31,35,38);
-  VIF[21] = triangle(46,49,59);
-  VIF[22] = triangle(9,13,21);
-  VIF[23] = square(38,46,58,59);
-  VIF[24] = square(10,15,17,24);
-  VIF[25] = triangle(24,33,55);
-  VIF[26] = pentagon(55,56,57,58,59);
-  VIF[27] = square(17,24,55,56);
-  VIF[28] = triangle(17,22,56);
-  VIF[29] = square(22,31,56,58);
-  VIF[30] = triangle(31,38,58);
-  VIF[31] = square(13,21,22,31);
-  VIF[32] = pentagon(7,10,13,17,22);
-  VIF[33] = square(33,43,55,57);
-  VIF[34] = triangle(5,10,15);
-  VIF[35] = triangle(43,47,57);
-  VIF[36] = square(47,49,57,59);
-  VIF[37] = pentagon(15,19,24,29,33);
-  VIF[38] = triangle(1,4,7);
-  VIF[39] = square(1,5,7,10);
-  VIF[40] = square(29,33,37,43);
-  VIF[41] = square(5,8,15,19);
-  VIF[42] = square(45,47,48,49);
-  VIF[43] = triangle(23,29,37);
-  VIF[44] = triangle(8,14,19);
-  VIF[45] = square(14,19,23,29);
-  VIF[46] = square(0,1,2,4);
-  VIF[47] = pentagon(37,40,43,45,47);
-  VIF[48] = pentagon(0,1,3,5,8);
-  VIF[49] = square(30,34,41,44);
-  VIF[50] = square(6,12,16,20);
-  VIF[51] = triangle(2,6,50);
-  VIF[52] = triangle(34,39,44);
-  VIF[53] = square(39,42,44,48);
-  VIF[54] = pentagon(16,20,25,30,34);
-  VIF[55] = triangle(16,25,52);
-  VIF[56] = square(6,16,50,52);
-  VIF[57] = square(25,32,34,39);
-  VIF[58] = triangle(27,32,54);
-  VIF[59] = square(25,32,52,54);
-  VIF[60] = pentagon(50,51,52,53,54);
-  VIF[61] = square(18,27,53,54);
+   p = rotate_facet(p, Set<int>{33,38,42,46,49}, M_PI/5);
+
+   IncidenceMatrix<> VIF{ {27,32,36,39,42},
+                          {18,27,28,36},
+                          {3,11,51,53},
+                          {11,18,53},
+                          {11,14,18,23,28},
+                          {36,40,42,45},
+                          {28,36,40},
+                          {0,2,50,51},
+                          {0,3,51},
+                          {3,8,11,14},
+                          {23,28,37,40},
+                          {42,45,48},
+                          {2,4,6,9,12},
+                          {41,44,46,48,49},
+                          {20,26,30,35},
+                          {12,20,26},
+                          {30,35,41},
+                          {9,12,21,26},
+                          {35,38,41,46},
+                          {4,7,9,13},
+                          {21,26,31,35,38},
+                          {46,49,59},
+                          {9,13,21},
+                          {38,46,58,59},
+                          {10,15,17,24},
+                          {24,33,55},
+                          {55,56,57,58,59},
+                          {17,24,55,56},
+                          {17,22,56},
+                          {22,31,56,58},
+                          {31,38,58},
+                          {13,21,22,31},
+                          {7,10,13,17,22},
+                          {33,43,55,57},
+                          {5,10,15},
+                          {43,47,57},
+                          {47,49,57,59},
+                          {15,19,24,29,33},
+                          {1,4,7},
+                          {1,5,7,10},
+                          {29,33,37,43},
+                          {5,8,15,19},
+                          {45,47,48,49},
+                          {23,29,37},
+                          {8,14,19},
+                          {14,19,23,29},
+                          {0,1,2,4},
+                          {37,40,43,45,47},
+                          {0,1,3,5,8},
+                          {30,34,41,44},
+                          {6,12,16,20},
+                          {2,6,50},
+                          {34,39,44},
+                          {39,42,44,48},
+                          {16,20,25,30,34},
+                          {16,25,52},
+                          {6,16,50,52},
+                          {25,32,34,39},
+                          {27,32,54},
+                          {25,32,52,54},
+                          {50,51,52,53,54},
+                          {18,27,53,54} };
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+
+  centralize<double>(p);
 
   p.set_description() << "Johnson solid J73: Parabigyrate rhombicosidodecahedron" << endl;
   return p;
@@ -3063,74 +2930,75 @@ perl::Object parabigyrate_rhombicosidodecahedron()
 perl::Object metabigyrate_rhombicosidodecahedron()
 {
    perl::Object p = gyrate_rhombicosidodecahedron();
-  p = rotate_facet(p,pentagon(44,48,51,53,54),M_PI/5);
-  IncidenceMatrix<> VIF(62,60);
-  VIF[0] = pentagon(27,32,37,41,44);
-  VIF[1] = square(18,27,28,37);
-  VIF[2] = square(3,11,51,53);
-  VIF[3] = triangle(11,18,53);
-  VIF[4] = pentagon(11,14,18,23,28);
-  VIF[5] = square(37,43,44,48);
-  VIF[6] = triangle(28,37,43);
-  VIF[7] = square(0,2,50,51);
-  VIF[8] = triangle(0,3,51);
-  VIF[9] = square(3,8,11,14);
-  VIF[10] = square(23,28,39,43);
-  VIF[11] = square(44,48,58,59);
-  VIF[12] = pentagon(2,4,6,9,12);
-  VIF[13] = pentagon(55,56,57,58,59);
-  VIF[14] = square(20,26,30,36);
-  VIF[15] = triangle(12,20,26);
-  VIF[16] = square(30,36,55,56);
-  VIF[17] = triangle(48,49,59);
-  VIF[18] = square(9,12,21,26);
-  VIF[19] = square(47,49,57,59);
-  VIF[20] = square(4,7,9,13);
-  VIF[21] = pentagon(21,26,31,36,40);
-  VIF[22] = triangle(36,40,55);
-  VIF[23] = square(42,46,47,49);
-  VIF[24] = triangle(9,13,21);
-  VIF[25] = triangle(45,47,57);
-  VIF[26] = square(10,15,17,24);
-  VIF[27] = square(24,33,34,42);
-  VIF[28] = pentagon(33,38,42,45,47);
-  VIF[29] = square(17,22,33,38);
-  VIF[30] = triangle(22,31,38);
-  VIF[31] = triangle(17,24,33);
-  VIF[32] = square(31,38,40,45);
-  VIF[33] = square(13,21,22,31);
-  VIF[34] = pentagon(7,10,13,17,22);
-  VIF[35] = triangle(34,42,46);
-  VIF[36] = triangle(5,10,15);
-  VIF[37] = square(40,45,55,57);
-  VIF[38] = pentagon(15,19,24,29,34);
-  VIF[39] = triangle(1,4,7);
-  VIF[40] = square(1,5,7,10);
-  VIF[41] = square(29,34,39,46);
-  VIF[42] = square(5,8,15,19);
-  VIF[43] = triangle(23,29,39);
-  VIF[44] = triangle(8,14,19);
-  VIF[45] = square(14,19,23,29);
-  VIF[46] = square(0,1,2,4);
-  VIF[47] = pentagon(39,43,46,48,49);
-  VIF[48] = pentagon(0,1,3,5,8);
-  VIF[49] = triangle(30,35,56);
-  VIF[50] = square(6,12,16,20);
-  VIF[51] = triangle(2,6,50);
-  VIF[52] = triangle(41,44,58);
-  VIF[53] = square(35,41,56,58);
-  VIF[54] = pentagon(16,20,25,30,35);
-  VIF[55] = triangle(16,25,52);
-  VIF[56] = square(6,16,50,52);
-  VIF[57] = square(25,32,35,41);
-  VIF[58] = triangle(27,32,54);
-  VIF[59] = square(25,32,52,54);
-  VIF[60] = pentagon(50,51,52,53,54);
-  VIF[61] = square(18,27,53,54);
+   p = rotate_facet(p, Set<int>{44,48,51,53,54}, M_PI/5);
 
+   IncidenceMatrix<> VIF{ {27,32,37,41,44},
+                          {18,27,28,37},
+                          {3,11,51,53},
+                          {11,18,53},
+                          {11,14,18,23,28},
+                          {37,43,44,48},
+                          {28,37,43},
+                          {0,2,50,51},
+                          {0,3,51},
+                          {3,8,11,14},
+                          {23,28,39,43},
+                          {44,48,58,59},
+                          {2,4,6,9,12},
+                          {55,56,57,58,59},
+                          {20,26,30,36},
+                          {12,20,26},
+                          {30,36,55,56},
+                          {48,49,59},
+                          {9,12,21,26},
+                          {47,49,57,59},
+                          {4,7,9,13},
+                          {21,26,31,36,40},
+                          {36,40,55},
+                          {42,46,47,49},
+                          {9,13,21},
+                          {45,47,57},
+                          {10,15,17,24},
+                          {24,33,34,42},
+                          {33,38,42,45,47},
+                          {17,22,33,38},
+                          {22,31,38},
+                          {17,24,33},
+                          {31,38,40,45},
+                          {13,21,22,31},
+                          {7,10,13,17,22},
+                          {34,42,46},
+                          {5,10,15},
+                          {40,45,55,57},
+                          {15,19,24,29,34},
+                          {1,4,7},
+                          {1,5,7,10},
+                          {29,34,39,46},
+                          {5,8,15,19},
+                          {23,29,39},
+                          {8,14,19},
+                          {14,19,23,29},
+                          {0,1,2,4},
+                          {39,43,46,48,49},
+                          {0,1,3,5,8},
+                          {30,35,56},
+                          {6,12,16,20},
+                          {2,6,50},
+                          {41,44,58},
+                          {35,41,56,58},
+                          {16,20,25,30,35},
+                          {16,25,52},
+                          {6,16,50,52},
+                          {25,32,35,41},
+                          {27,32,54},
+                          {25,32,52,54},
+                          {50,51,52,53,54},
+                          {18,27,53,54} };
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+
+  centralize<double>(p);
+
   p.set_description() << "Johnson solid J74: Metabigyrate rhombicosidodecahedron" << endl;
   return p;
 }
@@ -3138,298 +3006,298 @@ perl::Object metabigyrate_rhombicosidodecahedron()
 perl::Object trigyrate_rhombicosidodecahedron()
 {
    perl::Object p = metabigyrate_rhombicosidodecahedron();
-  p = rotate_facet(p,pentagon(15,19,24,29,34),M_PI/5);
-  IncidenceMatrix<> VIF(62,60);
-  VIF[0] = pentagon(24,28,32,36,39);
-  VIF[1] = square(17,24,25,32);
-  VIF[2] = square(3,11,46,48);
-  VIF[3] = triangle(11,17,48);
-  VIF[4] = pentagon(11,14,17,21,25);
-  VIF[5] = square(32,38,39,43);
-  VIF[6] = triangle(25,32,38);
-  VIF[7] = square(0,2,45,46);
-  VIF[8] = triangle(0,3,46);
-  VIF[9] = square(3,8,11,14);
-  VIF[10] = square(21,25,34,38);
-  VIF[11] = square(39,43,53,54);
-  VIF[12] = pentagon(2,4,6,9,12);
-  VIF[13] = pentagon(50,51,52,53,54);
-  VIF[14] = square(18,23,26,31);
-  VIF[15] = triangle(12,18,23);
-  VIF[16] = square(26,31,50,51);
-  VIF[17] = triangle(43,44,54);
-  VIF[18] = square(9,12,19,23);
-  VIF[19] = square(42,44,52,54);
-  VIF[20] = square(1,5,7,10);
-  VIF[21] = triangle(1,4,7);
-  VIF[22] = pentagon(19,23,27,31,35);
-  VIF[23] = square(35,40,50,52);
-  VIF[24] = square(5,10,55,57);
-  VIF[25] = square(37,41,58,59);
-  VIF[26] = pentagon(7,10,13,16,20);
-  VIF[27] = square(27,33,35,40);
-  VIF[28] = triangle(10,16,57);
-  VIF[29] = triangle(29,37,59);
-  VIF[30] = square(16,29,57,59);
-  VIF[31] = square(16,20,29,33);
-  VIF[32] = triangle(20,27,33);
-  VIF[33] = pentagon(29,33,37,40,42);
-  VIF[34] = square(13,19,20,27);
-  VIF[35] = triangle(40,42,52);
-  VIF[36] = triangle(9,13,19);
-  VIF[37] = square(37,41,42,44);
-  VIF[38] = triangle(31,35,50);
-  VIF[39] = square(4,7,9,13);
-  VIF[40] = pentagon(55,56,57,58,59);
-  VIF[41] = triangle(34,41,58);
-  VIF[42] = triangle(5,8,55);
-  VIF[43] = square(21,34,56,58);
-  VIF[44] = triangle(14,21,56);
-  VIF[45] = square(8,14,55,56);
-  VIF[46] = square(0,1,2,4);
-  VIF[47] = pentagon(34,38,41,43,44);
-  VIF[48] = pentagon(0,1,3,5,8);
-  VIF[49] = triangle(26,30,51);
-  VIF[50] = square(6,12,15,18);
-  VIF[51] = triangle(2,6,45);
-  VIF[52] = triangle(36,39,53);
-  VIF[53] = square(30,36,51,53);
-  VIF[54] = pentagon(15,18,22,26,30);
-  VIF[55] = triangle(15,22,47);
-  VIF[56] = square(6,15,45,47);
-  VIF[57] = square(22,28,30,36);
-  VIF[58] = triangle(24,28,49);
-  VIF[59] = square(22,28,47,49);
-  VIF[60] = pentagon(45,46,47,48,49);
-  VIF[61] = square(17,24,48,49);
+   p = rotate_facet(p, Set<int>{15,19,24,29,34}, M_PI/5);
 
+   IncidenceMatrix<> VIF{ {24,28,32,36,39},
+                          {17,24,25,32},
+                          {3,11,46,48},
+                          {11,17,48},
+                          {11,14,17,21,25},
+                          {32,38,39,43},
+                          {25,32,38},
+                          {0,2,45,46},
+                          {0,3,46},
+                          {3,8,11,14},
+                          {21,25,34,38},
+                          {39,43,53,54},
+                          {2,4,6,9,12},
+                          {50,51,52,53,54},
+                          {18,23,26,31},
+                          {12,18,23},
+                          {26,31,50,51},
+                          {43,44,54},
+                          {9,12,19,23},
+                          {42,44,52,54},
+                          {1,5,7,10},
+                          {1,4,7},
+                          {19,23,27,31,35},
+                          {35,40,50,52},
+                          {5,10,55,57},
+                          {37,41,58,59},
+                          {7,10,13,16,20},
+                          {27,33,35,40},
+                          {10,16,57},
+                          {29,37,59},
+                          {16,29,57,59},
+                          {16,20,29,33},
+                          {20,27,33},
+                          {29,33,37,40,42},
+                          {13,19,20,27},
+                          {40,42,52},
+                          {9,13,19},
+                          {37,41,42,44},
+                          {31,35,50},
+                          {4,7,9,13},
+                          {55,56,57,58,59},
+                          {34,41,58},
+                          {5,8,55},
+                          {21,34,56,58},
+                          {14,21,56},
+                          {8,14,55,56},
+                          {0,1,2,4},
+                          {34,38,41,43,44},
+                          {0,1,3,5,8},
+                          {26,30,51},
+                          {6,12,15,18},
+                          {2,6,45},
+                          {36,39,53},
+                          {30,36,51,53},
+                          {15,18,22,26,30},
+                          {15,22,47},
+                          {6,15,45,47},
+                          {22,28,30,36},
+                          {24,28,49},
+                          {22,28,47,49},
+                          {45,46,47,48,49},
+                          {17,24,48,49} };
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+
+  centralize<double>(p);
+
   p.set_description() << "Johnson solid J75: trigyrate rhombicosidodecahedron" << endl;
   return p;
 }
 
 perl::Object diminished_rhombicosidodecahedron()
 {
-   perl::Object p = CallPolymakeFunction("rhombicosidodecahedron");
-   p = diminish<QE>(p,pentagon(5,8,12,16,21));
-   p = centralize<QE>(p);
+   perl::Object p = call_function("rhombicosidodecahedron");
+   p = diminish<QE>(p,  Set<int>{5,8,12,16,21});
+   centralize<QE>(p);
 
    p.set_description() << "Johnson solid J76: diminished rhombicosidodecahedron" << endl;
    return p;
 }
 
-  perl::Object paragyrate_diminished_rhombicosidodecahedron()
+perl::Object paragyrate_diminished_rhombicosidodecahedron()
 {
    perl::Object p = gyrate_rhombicosidodecahedron();
 
-   p = diminish<double>(p,pentagon(33,38,42,46,49));
-   IncidenceMatrix<> VIF(52,55);
-   VIF[0] = pentagon(27,32,36,39,42);
-   VIF[1] = square(18,27,28,36);
-   VIF[2] = square(3,11,51,53);
-   VIF[3] = triangle(11,18,53);
-   VIF[4] = pentagon(11,14,18,23,28);
-   VIF[5] = square(36,40,42,45);
-   VIF[6] = triangle(28,36,40);
-   VIF[7] = square(0,2,50,51);
-   VIF[8] = triangle(0,3,51);
-   VIF[9] = square(3,8,11,14);
-   VIF[10] = square(23,28,37,40);
-   VIF[11] = triangle(42,45,48);
-   VIF[12] = pentagon(2,4,6,9,12);
-   VIF[13] = pentagon(41,44,46,48,49);
-   VIF[14] = square(20,26,30,35);
-   VIF[15] = triangle(12,20,26);
-   VIF[16] = triangle(30,35,41);
-   VIF[17] = square(9,12,21,26);
-   VIF[18] = square(35,38,41,46);
-   VIF[19] = square(4,7,9,13);
-   VIF[20] = pentagon(21,26,31,35,38);
-   VIF[21] = triangle(9,13,21);
-   VIF[22] = square(10,15,17,24);
-   VIF[23] = square(13,21,22,31);
-   VIF[24] = pentagon(7,10,13,17,22);
-   VIF[25] = triangle(5,10,15);
-   VIF[26] = decagon(17,22,24,31,33,38,43,46,47,49);
-   VIF[27] = pentagon(15,19,24,29,33);
-   VIF[28] = triangle(1,4,7);
-   VIF[29] = square(1,5,7,10);
-   VIF[30] = square(29,33,37,43);
-   VIF[31] = square(5,8,15,19);
-   VIF[32] = square(45,47,48,49);
-   VIF[33] = triangle(23,29,37);
-   VIF[34] = triangle(8,14,19);
-   VIF[35] = square(14,19,23,29);
-   VIF[36] = square(0,1,2,4);
-   VIF[37] = pentagon(37,40,43,45,47);
-   VIF[38] = pentagon(0,1,3,5,8);
-   VIF[39] = square(30,34,41,44);
-   VIF[40] = square(6,12,16,20);
-   VIF[41] = triangle(2,6,50);
-   VIF[42] = triangle(34,39,44);
-   VIF[43] = square(39,42,44,48);
-   VIF[44] = pentagon(16,20,25,30,34);
-   VIF[45] = triangle(16,25,52);
-   VIF[46] = square(6,16,50,52);
-   VIF[47] = square(25,32,34,39);
-   VIF[48] = triangle(27,32,54);
-   VIF[49] = square(25,32,52,54);
-   VIF[50] = pentagon(50,51,52,53,54);
-   VIF[51] = square(18,27,53,54);
+   p = diminish<double>(p, Set<int>{33,38,42,46,49});
+
+   IncidenceMatrix<> VIF{ {27,32,36,39,42},
+                          {18,27,28,36},
+                          {3,11,51,53},
+                          {11,18,53},
+                          {11,14,18,23,28},
+                          {36,40,42,45},
+                          {28,36,40},
+                          {0,2,50,51},
+                          {0,3,51},
+                          {3,8,11,14},
+                          {23,28,37,40},
+                          {42,45,48},
+                          {2,4,6,9,12},
+                          {41,44,46,48,49},
+                          {20,26,30,35},
+                          {12,20,26},
+                          {30,35,41},
+                          {9,12,21,26},
+                          {35,38,41,46},
+                          {4,7,9,13},
+                          {21,26,31,35,38},
+                          {9,13,21},
+                          {10,15,17,24},
+                          {13,21,22,31},
+                          {7,10,13,17,22},
+                          {5,10,15},
+                          {17,22,24,31,33,38,43,46,47,49},
+                          {15,19,24,29,33},
+                          {1,4,7},
+                          {1,5,7,10},
+                          {29,33,37,43},
+                          {5,8,15,19},
+                          {45,47,48,49},
+                          {23,29,37},
+                          {8,14,19},
+                          {14,19,23,29},
+                          {0,1,2,4},
+                          {37,40,43,45,47},
+                          {0,1,3,5,8},
+                          {30,34,41,44},
+                          {6,12,16,20},
+                          {2,6,50},
+                          {34,39,44},
+                          {39,42,44,48},
+                          {16,20,25,30,34},
+                          {16,25,52},
+                          {6,16,50,52},
+                          {25,32,34,39},
+                          {27,32,54},
+                          {25,32,52,54},
+                          {50,51,52,53,54},
+                          {18,27,53,54} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+   centralize<double>(p);
    p.set_description() << "Johnson solid J77: paragyrate diminished rhombicosidodecahedron" << endl;
    return p;
 }
 
-  perl::Object metagyrate_diminished_rhombicosidodecahedron()
+perl::Object metagyrate_diminished_rhombicosidodecahedron()
 {
    perl::Object p = gyrate_rhombicosidodecahedron();
 
-   p = diminish<double>(p,pentagon(44,48,51,53,54));
-   IncidenceMatrix<> VIF(52,55);
-   VIF[0] = pentagon(27,32,37,41,44);
-   VIF[1] = square(18,27,28,37);
-   VIF[2] = square(3,11,51,53);
-   VIF[3] = triangle(11,18,53);
-   VIF[4] = pentagon(11,14,18,23,28);
-   VIF[5] = square(37,43,44,48);
-   VIF[6] = triangle(28,37,43);
-   VIF[7] = square(0,2,50,51);
-   VIF[8] = triangle(0,3,51);
-   VIF[9] = square(3,8,11,14);
-   VIF[10] = square(23,28,39,43);
-   VIF[11] = pentagon(2,4,6,9,12);
-   VIF[12] = square(0,1,2,4);
-   VIF[13] = square(14,19,23,29);
-   VIF[14] = triangle(8,14,19);
-   VIF[15] = triangle(23,29,39);
-   VIF[16] = square(9,12,21,26);
-   VIF[17] = square(1,5,7,10);
-   VIF[18] = triangle(1,4,7);
-   VIF[19] = pentagon(15,19,24,29,34);
-   VIF[20] = square(42,46,47,49);
-   VIF[21] = triangle(9,13,21);
-   VIF[22] = pentagon(7,10,13,17,22);
-   VIF[23] = square(13,21,22,31);
-   VIF[24] = square(31,38,40,45);
-   VIF[25] = triangle(17,24,33);
-   VIF[26] = triangle(22,31,38);
-   VIF[27] = square(17,22,33,38);
-   VIF[28] = pentagon(33,38,42,45,47);
-   VIF[29] = square(24,33,34,42);
-   VIF[30] = square(10,15,17,24);
-   VIF[31] = triangle(34,42,46);
-   VIF[32] = triangle(5,10,15);
-   VIF[33] = pentagon(21,26,31,36,40);
-   VIF[34] = square(4,7,9,13);
-   VIF[35] = square(29,34,39,46);
-   VIF[36] = square(5,8,15,19);
-   VIF[37] = triangle(12,20,26);
-   VIF[38] = square(20,26,30,36);
-   VIF[39] = pentagon(39,43,46,48,49);
-   VIF[40] = pentagon(0,1,3,5,8);
-   VIF[41] = square(6,12,16,20);
-   VIF[42] = triangle(2,6,50);
-   VIF[43] = decagon(30,35,36,40,41,44,45,47,48,49);
-   VIF[44] = pentagon(16,20,25,30,35);
-   VIF[45] = triangle(16,25,52);
-   VIF[46] = square(6,16,50,52);
-   VIF[47] = square(25,32,35,41);
-   VIF[48] = triangle(27,32,54);
-   VIF[49] = square(25,32,52,54);
-   VIF[50] = pentagon(50,51,52,53,54);
-   VIF[51] = square(18,27,53,54);
+   p = diminish<double>(p, Set<int>{44,48,51,53,54});
+
+   IncidenceMatrix<> VIF{ {27,32,37,41,44},
+                          {18,27,28,37},
+                          {3,11,51,53},
+                          {11,18,53},
+                          {11,14,18,23,28},
+                          {37,43,44,48},
+                          {28,37,43},
+                          {0,2,50,51},
+                          {0,3,51},
+                          {3,8,11,14},
+                          {23,28,39,43},
+                          {2,4,6,9,12},
+                          {0,1,2,4},
+                          {14,19,23,29},
+                          {8,14,19},
+                          {23,29,39},
+                          {9,12,21,26},
+                          {1,5,7,10},
+                          {1,4,7},
+                          {15,19,24,29,34},
+                          {42,46,47,49},
+                          {9,13,21},
+                          {7,10,13,17,22},
+                          {13,21,22,31},
+                          {31,38,40,45},
+                          {17,24,33},
+                          {22,31,38},
+                          {17,22,33,38},
+                          {33,38,42,45,47},
+                          {24,33,34,42},
+                          {10,15,17,24},
+                          {34,42,46},
+                          {5,10,15},
+                          {21,26,31,36,40},
+                          {4,7,9,13},
+                          {29,34,39,46},
+                          {5,8,15,19},
+                          {12,20,26},
+                          {20,26,30,36},
+                          {39,43,46,48,49},
+                          {0,1,3,5,8},
+                          {6,12,16,20},
+                          {2,6,50},
+                          {30,35,36,40,41,44,45,47,48,49},
+                          {16,20,25,30,35},
+                          {16,25,52},
+                          {6,16,50,52},
+                          {25,32,35,41},
+                          {27,32,54},
+                          {25,32,52,54},
+                          {50,51,52,53,54},
+                          {18,27,53,54} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+   centralize<double>(p);
    p.set_description() << "Johnson solid J78: metagyrate diminished rhombicosidodecahedron" << endl;
    return p;
 }
 
-  perl::Object bigyrate_diminished_rhombicosidodecahedron()
+perl::Object bigyrate_diminished_rhombicosidodecahedron()
 {
    perl::Object p = metabigyrate_rhombicosidodecahedron();
 
-   p = diminish<double>(p,pentagon(15,19,24,29,34));
-   IncidenceMatrix<> VIF(52,55);
-   VIF[0] = pentagon(24,28,32,36,39);
-   VIF[1] = square(17,24,25,32);
-   VIF[2] = square(3,11,46,48);
-   VIF[3] = triangle(11,17,48);
-   VIF[4] = pentagon(11,14,17,21,25);
-   VIF[5] = square(32,38,39,43);
-   VIF[6] = triangle(25,32,38);
-   VIF[7] = square(0,2,45,46);
-   VIF[8] = triangle(0,3,46);
-   VIF[9] = square(3,8,11,14);
-   VIF[10] = square(21,25,34,38);
-   VIF[11] = square(39,43,53,54);
-   VIF[12] = pentagon(2,4,6,9,12);
-   VIF[13] = pentagon(50,51,52,53,54);
-   VIF[14] = square(18,23,26,31);
-   VIF[15] = triangle(12,18,23);
-   VIF[16] = square(26,31,50,51);
-   VIF[17] = triangle(43,44,54);
-   VIF[18] = square(9,12,19,23);
-   VIF[19] = square(42,44,52,54);
-   VIF[20] = square(4,7,9,13);
-   VIF[21] = triangle(31,35,50);
-   VIF[22] = square(37,41,42,44);
-   VIF[23] = triangle(9,13,19);
-   VIF[24] = triangle(40,42,52);
-   VIF[25] = square(13,19,20,27);
-   VIF[26] = pentagon(29,33,37,40,42);
-   VIF[27] = triangle(20,27,33);
-   VIF[28] = square(16,20,29,33);
-   VIF[29] = square(27,33,35,40);
-   VIF[30] = pentagon(7,10,13,16,20);
-   VIF[31] = square(35,40,50,52);
-   VIF[32] = pentagon(19,23,27,31,35);
-   VIF[33] = triangle(1,4,7);
-   VIF[34] = square(1,5,7,10);
-   VIF[35] = decagon(5,8,10,14,16,21,29,34,37,41);
-   VIF[36] = square(0,1,2,4);
-   VIF[37] = pentagon(34,38,41,43,44);
-   VIF[38] = pentagon(0,1,3,5,8);
-   VIF[39] = triangle(26,30,51);
-   VIF[40] = square(6,12,15,18);
-   VIF[41] = triangle(2,6,45);
-   VIF[42] = triangle(36,39,53);
-   VIF[43] = square(30,36,51,53);
-   VIF[44] = pentagon(15,18,22,26,30);
-   VIF[45] = triangle(15,22,47);
-   VIF[46] = square(6,15,45,47);
-   VIF[47] = square(22,28,30,36);
-   VIF[48] = triangle(24,28,49);
-   VIF[49] = square(22,28,47,49);
-   VIF[50] = pentagon(45,46,47,48,49);
-   VIF[51] = square(17,24,48,49);
+   p = diminish<double>(p, Set<int>{15,19,24,29,34});
+   IncidenceMatrix<> VIF{ {24,28,32,36,39},
+                          {17,24,25,32},
+                          {3,11,46,48},
+                          {11,17,48},
+                          {11,14,17,21,25},
+                          {32,38,39,43},
+                          {25,32,38},
+                          {0,2,45,46},
+                          {0,3,46},
+                          {3,8,11,14},
+                          {21,25,34,38},
+                          {39,43,53,54},
+                          {2,4,6,9,12},
+                          {50,51,52,53,54},
+                          {18,23,26,31},
+                          {12,18,23},
+                          {26,31,50,51},
+                          {43,44,54},
+                          {9,12,19,23},
+                          {42,44,52,54},
+                          {4,7,9,13},
+                          {31,35,50},
+                          {37,41,42,44},
+                          {9,13,19},
+                          {40,42,52},
+                          {13,19,20,27},
+                          {29,33,37,40,42},
+                          {20,27,33},
+                          {16,20,29,33},
+                          {27,33,35,40},
+                          {7,10,13,16,20},
+                          {35,40,50,52},
+                          {19,23,27,31,35},
+                          {1,4,7},
+                          {1,5,7,10},
+                          {5,8,10,14,16,21,29,34,37,41},
+                          {0,1,2,4},
+                          {34,38,41,43,44},
+                          {0,1,3,5,8},
+                          {26,30,51},
+                          {6,12,15,18},
+                          {2,6,45},
+                          {36,39,53},
+                          {30,36,51,53},
+                          {15,18,22,26,30},
+                          {15,22,47},
+                          {6,15,45,47},
+                          {22,28,30,36},
+                          {24,28,49},
+                          {22,28,47,49},
+                          {45,46,47,48,49},
+                          {17,24,48,49} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+   centralize<double>(p);
    p.set_description() << "Johnson solid J79: bigyrate diminished rhombicosidodecahedron" << endl;
    return p;
 }
 
-  perl::Object parabidiminished_rhombicosidodecahedron()
+perl::Object parabidiminished_rhombicosidodecahedron()
 {
    perl::Object p = diminished_rhombicosidodecahedron();
-   p = diminish<QE>(p,pentagon(33,38,42,46,49));
-   p = centralize<QE>(p);
+   p = diminish<QE>(p, Set<int>{33,38,42,46,49});
+   centralize<QE>(p);
 
    p.set_description() << "Johnson solid J80: parabidiminished rhombicosidodecahedron" << endl;
    return p;
 }
 
-  perl::Object metabidiminished_rhombicosidodecahedron()
+perl::Object metabidiminished_rhombicosidodecahedron()
 {
    perl::Object p = diminished_rhombicosidodecahedron();
-   p = diminish<QE>(p,pentagon(7,10,13,17,22));
-   p = centralize<QE>(p);
+   p = diminish<QE>(p, Set<int>{7,10,13,17,22});
+   centralize<QE>(p);
 
    p.set_description() << "Johnson solid J81: metabidiminished rhombicosidodecahedron" << endl;
    return p;
@@ -3438,63 +3306,62 @@ perl::Object diminished_rhombicosidodecahedron()
 perl::Object gyrate_bidiminished_rhombicosidodecahedron()
 {
    perl::Object p = metabidiminished_rhombicosidodecahedron();
-   p = rotate_facet(p,pentagon(34,38,42,45,47),M_PI/5);
-   IncidenceMatrix<> VIF(42,50);
-   VIF[0] = square(20,27,30,35);
-   VIF[1] = pentagon(13,16,20,25,30);
-   VIF[2] = square(35,38,40,43);
-   VIF[3] = triangle(30,35,40);
-   VIF[4] = square(6,10,13,16);
-   VIF[5] = square(25,30,37,40);
-   VIF[6] = pentagon(0,1,3,5,7);
-   VIF[7] = pentagon(37,40,42,43,44);
-   VIF[8] = square(0,1,2,4);
-   VIF[9] = square(11,15,18,24);
-   VIF[10] = triangle(7,11,15);
-   VIF[11] = square(18,24,45,47);
-   VIF[12] = square(5,7,12,15);
-   VIF[13] = square(31,34,37,42);
-   VIF[14] = decagon(1,4,5,8,12,17,19,26,28,33);
-   VIF[15] = pentagon(12,15,19,24,29);
-   VIF[16] = triangle(24,29,47);
-   VIF[17] = square(29,36,47,49);
-   VIF[18] = triangle(34,39,42);
-   VIF[19] = square(19,28,29,36);
-   VIF[20] = pentagon(28,33,36,39,41);
-   VIF[21] = square(26,33,34,39);
-   VIF[22] = triangle(36,41,49);
-   VIF[23] = square(39,41,42,44);
-   VIF[24] = pentagon(17,21,26,31,34);
-   VIF[25] = square(41,44,48,49);
-   VIF[26] = square(8,10,17,21);
-   VIF[27] = triangle(43,44,48);
-   VIF[28] = triangle(25,31,37);
-   VIF[29] = triangle(10,16,21);
-   VIF[30] = square(16,21,25,31);
-   VIF[31] = pentagon(45,46,47,48,49);
-   VIF[32] = pentagon(2,4,6,8,10);
-   VIF[33] = square(38,43,46,48);
-   VIF[34] = triangle(18,23,45);
-   VIF[35] = square(3,7,9,11);
-   VIF[36] = triangle(32,38,46);
-   VIF[37] = square(23,32,45,46);
-   VIF[38] = pentagon(9,11,14,18,23);
-   VIF[39] = square(14,22,23,32);
-   VIF[40] = pentagon(22,27,32,35,38);
-   VIF[41] = decagon(0,2,3,6,9,13,14,20,22,27);
+   p = rotate_facet(p, Set<int>{34,38,42,45,47}, M_PI/5);
 
+   IncidenceMatrix<> VIF{ {20,27,30,35},
+                          {13,16,20,25,30},
+                          {35,38,40,43},
+                          {30,35,40},
+                          {6,10,13,16},
+                          {25,30,37,40},
+                          {0,1,3,5,7},
+                          {37,40,42,43,44},
+                          {0,1,2,4},
+                          {11,15,18,24},
+                          {7,11,15},
+                          {18,24,45,47},
+                          {5,7,12,15},
+                          {31,34,37,42},
+                          {1,4,5,8,12,17,19,26,28,33},
+                          {12,15,19,24,29},
+                          {24,29,47},
+                          {29,36,47,49},
+                          {34,39,42},
+                          {19,28,29,36},
+                          {28,33,36,39,41},
+                          {26,33,34,39},
+                          {36,41,49},
+                          {39,41,42,44},
+                          {17,21,26,31,34},
+                          {41,44,48,49},
+                          {8,10,17,21},
+                          {43,44,48},
+                          {25,31,37},
+                          {10,16,21},
+                          {16,21,25,31},
+                          {45,46,47,48,49},
+                          {2,4,6,8,10},
+                          {38,43,46,48},
+                          {18,23,45},
+                          {3,7,9,11},
+                          {32,38,46},
+                          {23,32,45,46},
+                          {9,11,14,18,23},
+                          {14,22,23,32},
+                          {22,27,32,35,38},
+                          {0,2,3,6,9,13,14,20,22,27} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
-   p = centralize<double>(p);
+   centralize<double>(p);
    p.set_description() << "Johnson solid J82: gyrate parabidiminished rhombicosidodecahedron" << endl;
    return p;
 }
 
-  perl::Object tridiminished_rhombicosidodecahedron()
+perl::Object tridiminished_rhombicosidodecahedron()
 {
    perl::Object p = metabidiminished_rhombicosidodecahedron();
-   p = diminish<QE>(p,pentagon(39,43,46,48,49));
-   p = centralize<QE>(p);
+   p = diminish<QE>(p, Set<int>{39,43,46,48,49});
+   centralize<QE>(p);
 
    p.set_description() << "Johnson solid J83: tridiminished rhombicosidodecahedron" << endl;
    return p;
@@ -3519,24 +3386,23 @@ perl::Object snub_disphenoid()
   V(6,1)=1; V(6,3)=-p1;
   V(7,1)=-1; V(7,3)=-p1;
 
-  IncidenceMatrix<> VIF(12,8);
-  VIF[0] = triangle(4,6,7);
-  VIF[1] = triangle(5,6,7);
-  VIF[2] = triangle(0,1,3);
-  VIF[3] = triangle(1,3,5);
-  VIF[4] = triangle(3,5,7);
-  VIF[5] = triangle(3,4,7);
-  VIF[6] = triangle(0,3,4);
-  VIF[7] = triangle(0,2,4);
-  VIF[8] = triangle(1,2,5);
-  VIF[9] = triangle(0,1,2);
-  VIF[10] = triangle(2,5,6);
-  VIF[11] = triangle(2,4,6);
+  IncidenceMatrix<> VIF{ {4,6,7},
+                         {5,6,7},
+                         {0,1,3},
+                         {1,3,5},
+                         {3,5,7},
+                         {3,4,7},
+                         {0,3,4},
+                         {0,2,4},
+                         {1,2,5},
+                         {0,1,2},
+                         {2,5,6},
+                         {2,4,6} };
 
-  perl::Object p(perl::ObjectType::construct<double>("Polytope"));
+  perl::Object p("Polytope<Float>");
   p.take("VERTICES") << V;
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+  centralize<double>(p);
   p.set_description() << "Johnson solid J84: snub disphenoid" << endl;
 
   return p;
@@ -3564,38 +3430,37 @@ perl::Object snub_square_antiprism()
   V(14,1)=0.900495; V(14,2)=0.392448; V(14,3)=0.735804;
   V(15,1)=1.19838; V(15,2)=-0.261824; V(15,3)=0.0406841;
 
-  IncidenceMatrix<> VIF(26,16);
-  VIF[0] = triangle(9,13,14);
-  VIF[1] = triangle(8,10,14);
-  VIF[2] = triangle(8,9,14);
-  VIF[3] = triangle(7,11,12);
-  VIF[4] = triangle(5,10,12);
-  VIF[5] = triangle(5,7,12);
-  VIF[6] = square(2,5,8,10);
-  VIF[7] = triangle(2,3,8);
-  VIF[8] = triangle(0,4,6);
-  VIF[9] = triangle(0,3,6);
-  VIF[10] = triangle(0,1,4);
-  VIF[11] = triangle(0,2,3);
-  VIF[12] = triangle(0,1,2);
-  VIF[13] = triangle(1,2,5);
-  VIF[14] = triangle(1,4,7);
-  VIF[15] = triangle(1,5,7);
-  VIF[16] = triangle(3,6,9);
-  VIF[17] = triangle(3,8,9);
-  VIF[18] = triangle(4,7,11);
-  VIF[19] = triangle(6,9,13);
-  VIF[20] = square(4,6,11,13);
-  VIF[21] = triangle(11,12,15);
-  VIF[22] = triangle(11,13,15);
-  VIF[23] = triangle(10,12,15);
-  VIF[24] = triangle(10,14,15);
-  VIF[25] = triangle(13,14,15);
+  IncidenceMatrix<> VIF{ {9,13,14},
+                         {8,10,14},
+                         {8,9,14},
+                         {7,11,12},
+                         {5,10,12},
+                         {5,7,12},
+                         {2,5,8,10},
+                         {2,3,8},
+                         {0,4,6},
+                         {0,3,6},
+                         {0,1,4},
+                         {0,2,3},
+                         {0,1,2},
+                         {1,2,5},
+                         {1,4,7},
+                         {1,5,7},
+                         {3,6,9},
+                         {3,8,9},
+                         {4,7,11},
+                         {6,9,13},
+                         {4,6,11,13},
+                         {11,12,15},
+                         {11,13,15},
+                         {10,12,15},
+                         {10,14,15},
+                         {13,14,15} };
 
-  perl::Object p(perl::ObjectType::construct<double>("Polytope"));
+  perl::Object p("Polytope<Float>");
   p.take("VERTICES") << V;
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+  centralize<double>(p);
   p.set_description() << "Johnson solid J85: snub square antiprism" << endl;
 
   return p;
@@ -3637,27 +3502,26 @@ perl::Object sphenocorona()
 
   V = ones_vector<double>(10) | V;
 
-  IncidenceMatrix<> VIF(14,10);
-  VIF[0] = triangle(6,7,9);
-  VIF[1] = triangle(0,7,9);
-  VIF[2] = triangle(1,2,8);
-  VIF[3] = triangle(2,3,8);
-  VIF[4] = triangle(0,4,9);
-  VIF[5] = triangle(3,4,9);
-  VIF[6] = triangle(2,3,4);
-  VIF[7] = square(0,1,2,4);
-  VIF[8] = triangle(3,6,9);
-  VIF[9] = triangle(3,6,8);
-  VIF[10] = triangle(5,6,8);
-  VIF[11] = triangle(1,5,8);
-  VIF[12] = triangle(5,6,7);
-  VIF[13] = square(0,1,5,7);
+  IncidenceMatrix<> VIF{ {6,7,9},
+                         {0,7,9},
+                         {1,2,8},
+                         {2,3,8},
+                         {0,4,9},
+                         {3,4,9},
+                         {2,3,4},
+                         {0,1,2,4},
+                         {3,6,9},
+                         {3,6,8},
+                         {5,6,8},
+                         {1,5,8},
+                         {5,6,7},
+                         {0,1,5,7} };
 
-  perl::Object p(perl::ObjectType::construct<double>("Polytope"));
+  perl::Object p("Polytope<Float>");
   p.take("VERTICES") << V;
   p.take("VERTICES_IN_FACETS") << VIF;
 
-  p = centralize<double>(p);
+  centralize<double>(p);
   p.set_description() << "Johnson solid J86: Sphenocorona" << endl;
 
   return p;
@@ -3667,29 +3531,28 @@ perl::Object sphenocorona()
 perl::Object augmented_sphenocorona()
 {
   perl::Object p = sphenocorona();
-  p = augment(p,square(0,1,2,4));
+  p = augment(p, Set<int>{0,1,2,4});
 
-  IncidenceMatrix<> VIF(17,11);
-  VIF[0] = triangle(6,7,9);
-  VIF[1] = triangle(0,7,9);
-  VIF[2] = triangle(1,2,8);
-  VIF[3] = triangle(2,3,8);
-  VIF[4] = triangle(0,4,9);
-  VIF[5] = triangle(0,4,10);
-  VIF[6] = triangle(2,4,10);
-  VIF[7] = triangle(2,3,4);
-  VIF[8] = triangle(3,4,9);
-  VIF[9] = triangle(1,2,10);
-  VIF[10] = triangle(0,1,10);
-  VIF[11] = triangle(3,6,9);
-  VIF[12] = triangle(3,6,8);
-  VIF[13] = triangle(5,6,8);
-  VIF[14] = triangle(1,5,8);
-  VIF[15] = triangle(5,6,7);
-  VIF[16] = square(0,1,5,7);
+  IncidenceMatrix<> VIF{ {6,7,9},
+                         {0,7,9},
+                         {1,2,8},
+                         {2,3,8},
+                         {0,4,9},
+                         {0,4,10},
+                         {2,4,10},
+                         {2,3,4},
+                         {3,4,9},
+                         {1,2,10},
+                         {0,1,10},
+                         {3,6,9},
+                         {3,6,8},
+                         {5,6,8},
+                         {1,5,8},
+                         {5,6,7},
+                         {0,1,5,7} };
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+  centralize<double>(p);
   p.set_description() << "Johnson solid J87: Augmented sphenocorona" << endl;
 
   return p;
@@ -3713,30 +3576,29 @@ perl::Object sphenomegacorona()
   V(10,1)=0.769159; V(10,2)=0.148034; V(10,3)=0.0281172;
   V(11,1)=0.781521; V(11,2)=0.633707; V(11,3)=-0.845936;
 
-  IncidenceMatrix<> VIF(18,12);
-  VIF[0] = square(5,7,9,10);
-  VIF[1] = triangle(6,7,10);
-  VIF[2] = triangle(6,8,10);
-  VIF[3] = triangle(2,6,8);
-  VIF[4] = triangle(2,4,8);
-  VIF[5] = triangle(1,2,6);
-  VIF[6] = triangle(0,2,4);
-  VIF[7] = triangle(0,1,3);
-  VIF[8] = triangle(0,1,2);
-  VIF[9] = triangle(0,3,5);
-  VIF[10] = square(0,4,5,9);
-  VIF[11] = triangle(1,3,7);
-  VIF[12] = triangle(3,5,7);
-  VIF[13] = triangle(1,6,7);
-  VIF[14] = triangle(4,8,11);
-  VIF[15] = triangle(4,9,11);
-  VIF[16] = triangle(8,10,11);
-  VIF[17] = triangle(9,10,11);
+  IncidenceMatrix<> VIF{ {5,7,9,10},
+                         {6,7,10},
+                         {6,8,10},
+                         {2,6,8},
+                         {2,4,8},
+                         {1,2,6},
+                         {0,2,4},
+                         {0,1,3},
+                         {0,1,2},
+                         {0,3,5},
+                         {0,4,5,9},
+                         {1,3,7},
+                         {3,5,7},
+                         {1,6,7},
+                         {4,8,11},
+                         {4,9,11},
+                         {8,10,11},
+                         {9,10,11} };
 
-  perl::Object p(perl::ObjectType::construct<double>("Polytope"));
+  perl::Object p("Polytope<Float>");
   p.take("VERTICES") << V;
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+  centralize<double>(p);
   p.set_description() << "Johnson solid J88: Sphenomegacorona" << endl;
 
   return p;
@@ -3762,33 +3624,32 @@ perl::Object hebesphenomegacorona()
   V(12,1)=0.800456; V(12,2)=-0.173203; V(12,3)=-0.744722;
   V(13,1)=0.842797; V(13,2)=-0.0807329; V(13,3)=0.250093;
 
-  IncidenceMatrix<> VIF(21,14);
-  VIF[0] = triangle(6,11,12);
-  VIF[1] = triangle(4,9,10);
-  VIF[2] = square(7,8,12,13);
-  VIF[3] = triangle(4,5,10);
-  VIF[4] = triangle(1,7,8);
-  VIF[5] = triangle(1,2,8);
-  VIF[6] = triangle(0,2,4);
-  VIF[7] = triangle(0,1,3);
-  VIF[8] = triangle(0,1,2);
-  VIF[9] = triangle(0,4,5);
-  VIF[10] = triangle(1,3,7);
-  VIF[11] = triangle(2,4,9);
-  VIF[12] = triangle(2,8,9);
-  VIF[13] = triangle(5,10,11);
-  VIF[14] = triangle(10,11,13);
-  VIF[15] = triangle(8,9,13);
-  VIF[16] = triangle(9,10,13);
-  VIF[17] = triangle(11,12,13);
-  VIF[18] = square(3,6,7,12);
-  VIF[19] = square(0,3,5,6);
-  VIF[20] = triangle(5,6,11);
+  IncidenceMatrix<> VIF{ {6,11,12},
+                         {4,9,10},
+                         {7,8,12,13},
+                         {4,5,10},
+                         {1,7,8},
+                         {1,2,8},
+                         {0,2,4},
+                         {0,1,3},
+                         {0,1,2},
+                         {0,4,5},
+                         {1,3,7},
+                         {2,4,9},
+                         {2,8,9},
+                         {5,10,11},
+                         {10,11,13},
+                         {8,9,13},
+                         {9,10,13},
+                         {11,12,13},
+                         {3,6,7,12},
+                         {0,3,5,6},
+                         {5,6,11} };
 
-  perl::Object p(perl::ObjectType::construct<double>("Polytope"));
+  perl::Object p("Polytope<Float>");
   p.take("VERTICES") << V;
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+  centralize<double>(p);
   p.set_description() << "Johnson solid J89: Hebesphenomegacorona" << endl;
 
   return p;
@@ -3816,36 +3677,35 @@ perl::Object disphenocingulum()
   V(14,1)=0.887588; V(14,2)=0.512075; V(14,3)=-0.0526646;
   V(15,1)=1.03423; V(15,2)=-0.246023; V(15,3)=0.582777;
 
-  IncidenceMatrix<> VIF(24,16);
-  VIF[0] = triangle(10,12,14);
-  VIF[1] = triangle(8,11,14);
-  VIF[2] = triangle(8,10,14);
-  VIF[3] = triangle(5,10,12);
-  VIF[4] = triangle(5,7,12);
-  VIF[5] = triangle(3,8,10);
-  VIF[6] = triangle(3,5,10);
-  VIF[7] = triangle(0,1,2);
-  VIF[8] = triangle(1,2,6);
-  VIF[9] = triangle(0,1,4);
-  VIF[10] = square(0,3,4,8);
-  VIF[11] = square(0,2,3,5);
-  VIF[12] = triangle(2,5,7);
-  VIF[13] = triangle(2,6,7);
-  VIF[14] = triangle(1,4,9);
-  VIF[15] = triangle(1,6,9);
-  VIF[16] = triangle(4,8,11);
-  VIF[17] = triangle(4,9,11);
-  VIF[18] = triangle(6,7,13);
-  VIF[19] = triangle(7,12,13);
-  VIF[20] = square(6,9,13,15);
-  VIF[21] = triangle(9,11,15);
-  VIF[22] = square(12,13,14,15);
-  VIF[23] = triangle(11,14,15);
+  IncidenceMatrix<> VIF{ {10,12,14},
+                         {8,11,14},
+                         {8,10,14},
+                         {5,10,12},
+                         {5,7,12},
+                         {3,8,10},
+                         {3,5,10},
+                         {0,1,2},
+                         {1,2,6},
+                         {0,1,4},
+                         {0,3,4,8},
+                         {0,2,3,5},
+                         {2,5,7},
+                         {2,6,7},
+                         {1,4,9},
+                         {1,6,9},
+                         {4,8,11},
+                         {4,9,11},
+                         {6,7,13},
+                         {7,12,13},
+                         {6,9,13,15},
+                         {9,11,15},
+                         {12,13,14,15},
+                         {11,14,15} };
 
-  perl::Object p(perl::ObjectType::construct<double>("Polytope"));
+  perl::Object p("Polytope<Float>");
   p.take("VERTICES") << V;
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+  centralize<double>(p);
   p.set_description() << "Johnson solid J90: Disphenocingulum" << endl;
 
   return p;
@@ -3874,9 +3734,7 @@ perl::Object bilunabirotunda()
   V(12,1)=-s; V(12,2)=-s*r; V(12,3)=s;
   V(13,1)=-s; V(13,2)=-s*r; V(13,3)=-s;
 
-  perl::Object p(perl::ObjectType::construct<QE>("Polytope"));
-  p.take("VERTICES") << V;
-  p = centralize<QE>(p);
+  perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J91: bilunabirotunda" << endl;
 
   return p;
@@ -3887,8 +3745,8 @@ perl::Object triangular_hebesphenorotunda()
 {
   //coordiantes from https://en.wikipedia.org/wiki/Triangular_hebesphenorotunda
   Rational s(1,2);
-  const double r = QE(s,s,5).to_double();
-  const double t = QE(0,1,3).to_double();
+  const double r(QE(s,s,5));
+  const double t(QE(0,1,3));
   Matrix<QE> V(18,4);
   V.col(0).fill(1);
   V(0,1)=1; V(0,2)=t;
@@ -3910,32 +3768,31 @@ perl::Object triangular_hebesphenorotunda()
   V(16,1)=1; V(16,2)=-1/t; V(16,3)=2*pow(r,2)/t;
   V(17,1)=-1; V(17,2)=-1/t; V(17,3)=2*pow(r,2)/t;
 
-  IncidenceMatrix<> VIF(20,18);
-  VIF[0] = triangle(11,13,16);
-  VIF[1] = triangle(1,8,13);
-  VIF[2] = triangle(1,3,8);
-  VIF[3] = triangle(3,8,14);
-  VIF[4] = triangle(2,5,7);
-  VIF[5] = triangle(5,7,12);
-  VIF[6] = triangle(12,14,17);
-  VIF[7] = triangle(2,7,10);
-  VIF[8] = triangle(15,16,17);
-  VIF[9] = triangle(9,10,15);
-  VIF[10] = triangle(0,6,9);
-  VIF[11] = triangle(0,4,6);
-  VIF[12] = triangle(4,6,11);
-  VIF[13] = square(1,4,11,13);
-  VIF[14] = square(3,5,12,14);
-  VIF[15] = square(0,2,9,10);
-  VIF[16] = pentagon(8,13,14,16,17);
-  VIF[17] = pentagon(7,10,12,15,17);
-  VIF[18] = pentagon(6,9,11,15,16);
-  VIF[19] = hexagon(0,1,2,3,4,5);
+  IncidenceMatrix<> VIF{ {11,13,16},
+                         {1,8,13},
+                         {1,3,8},
+                         {3,8,14},
+                         {2,5,7},
+                         {5,7,12},
+                         {12,14,17},
+                         {2,7,10},
+                         {15,16,17},
+                         {9,10,15},
+                         {0,6,9},
+                         {0,4,6},
+                         {4,6,11},
+                         {1,4,11,13},
+                         {3,5,12,14},
+                         {0,2,9,10},
+                         {8,13,14,16,17},
+                         {7,10,12,15,17},
+                         {6,9,11,15,16},
+                         {0,1,2,3,4,5} };
 
-  perl::Object p(perl::ObjectType::construct<double>("Polytope"));
+  perl::Object p("Polytope<Float>");
   p.take("VERTICES") << V;
   p.take("VERTICES_IN_FACETS") << VIF;
-  p = centralize<double>(p);
+  centralize<double>(p);
   p.set_description() << "Johnson solid J92: triangular hebesphenorotunda" << endl;
 
   return p;
@@ -4223,7 +4080,7 @@ UserFunction4perl("# @category Producing regular polytopes and their generalizat
                   "# @value s 'metabidiminished_rhombicosidodecahedron' Metabidiminished rhombicosidodecahedron with regular facets. Johnson solid J81."
                   "# @value s 'gyrate_bidiminished_rhombicosidodecahedron' Gyrate bidiminished rhombicosidodecahedron with regular facets. Johnson solid J82."
                   "#          The vertices are realized as floating point numbers."
-                  "# @value s 'triminished_rhombicosidodecahedron' Tridiminished rhombicosidodecahedron with regular facets. Johnson solid J83."
+                  "# @value s 'tridiminished_rhombicosidodecahedron' Tridiminished rhombicosidodecahedron with regular facets. Johnson solid J83."
                   "# @value s 'snub_disphenoid' Snub disphenoid with regular facets. Johnson solid J84."
                   "#          The vertices are realized as floating point numbers."
                   "# @value s 'snub_square_antisprim' Snub square antiprism with regular facets. Johnson solid J85."

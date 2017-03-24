@@ -96,7 +96,7 @@ perl::Object check_poly(const IncidenceMatrix<>& VIF, perl::OptionSet options)
         simplicial++);
 
    for (neighborly = 0;
-        neighborly < d && Integer(width[d-neighborly]) == Integer::binom(v,neighborly+1);
+        neighborly < d && width[d-neighborly] == Integer::binom(v,neighborly+1);
         neighborly++);
 
    if (verbose)

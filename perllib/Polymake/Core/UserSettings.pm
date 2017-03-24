@@ -37,6 +37,10 @@ sub init {
             ### TODO: select MacOS-specific default location if $^O eq "darwin" ?
             $PrivateDir=$ENV{POLYMAKE_USER_DIR} || "$ENV{HOME}/.polymake";
             next;
+         } 
+		 if ( $_ eq '@interactive' ) {
+			 require Polymake::Core::InteractiveHelp;
+			 next;
          }
          my $user= s/^user=//;
          my $location;

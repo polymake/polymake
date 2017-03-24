@@ -20,30 +20,31 @@ use Polymake::Struct (
    [ '$NodeLabels' => '$this->create_node_labels(#%)', default =>'undef' ],
    [ '$NodeColor' => 'unify_decor(#%)', default => 'undef' ],
    [ '$NodeBorderColor' => 'unify_decor(#%)', default => '"0 0 0"' ],
-
    [ '$top_node' => '#%', default => 'undef' ],
-
+   [ '$bottom_node' => '#%', default => 'undef'],
+   [ '$Dims' => '#%', default => 'undef' ],
    [ '$Mode' => '#%', default => '"primal"' ],
    [ '$Faces' => '#%', default => 'croak("Faces missing")' ],
    [ '$AtomLabels' => '#%', default => 'undef' ],
+
 );
 
 sub create_node_labels {
    my ($self, undef, $labels) = @_;
    if(!defined($labels)){
-   $labels =[ " ",		# top node
-		do {
-		   if (defined($self->AtomLabels)) {
-		      my @atom_labels=@{$self->AtomLabels};
-		      my $n=0;
-		      foreach (@atom_labels) { s/^_.*/\#$n/; ++$n; }
-		      map { join(" ", @atom_labels[@{$self->Faces->[$_]}]) } 1..$#{$self->Faces}-1
-		   } else {
-		      map { join(" ", @{$self->Faces->[$_]}) } 1..$#{$self->Faces}-1
-		   }
-		},
-		" "		# bottom node
-	      ];
+      my $get_face;
+      if(defined($self->AtomLabels)) {
+         my @atom_labels=@{$self->AtomLabels};
+         my $n = 0;
+         foreach (@atom_labels) { s/^_.*/\#$n/; ++$n; }
+         $get_face = sub { join(" ", @atom_labels[${$self->Faces->[shift]}])};
+      }
+      else {
+         $get_face = sub { join(" ", @{$self->Faces->[shift]})};
+      }
+      $labels = [ 
+         map { ($_ == $self->top_node or $_ == $self->bottom_node)? " " : &$get_face($_) } 0 .. $#{$self->Faces}
+      ];
    }
    sub { $labels->[shift] }
 }

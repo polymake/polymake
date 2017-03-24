@@ -13,13 +13,44 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-object CovectorLattice {
 
-	#@category Combinatorics
+declare object CovectorLattice : Lattice<CovectorDecoration, Nonsequential> {
+
+   #@category Combinatorics
 	# Each node in the face lattice is a cell of a covector decomposition (of either the tropical torus
 	# or the tropical span of some points). This property maps each cell to the corresponding covector.
-	# A covector is encoded as an IncidenceMatrix, where rows correspond to coordinates and columns to 
+	# A covector is encoded as an IncidenceMatrix, where rows correspond to coordinates and columns to
 	# [[POINTS]].
-	property COVECTORS : NodeMap<Directed,IncidenceMatrix> : construct(ADJACENCY);
+   # Note that this is already encoded in [[DECORATION]] and mainly kept for convenience and backwards
+   # compatibility.
+   property COVECTORS : NodeMap<Directed,IncidenceMatrix> : construct(ADJACENCY);
+
+   rule COVECTORS : ADJACENCY, DECORATION {
+      $this->COVECTORS(temporary) = covector_map_from_decoration($this->ADJACENCY, $this->DECORATION);
+   }
+   weight 1.0;
+
+   rule DECORATION, INVERSE_RANK_MAP, TOP_NODE, BOTTOM_NODE : FACES, DIMS, COVECTORS, ADJACENCY {
+      migrate_hasse_properties($this);
+      $this->remove("DIMS");
+      $this->remove("FACES"); #FIXME Does this have an effect?
+      $this->remove("COVECTORS");
+   }
+   weight 1.10;
+
+   user_method dim {
+      return shift->rank()-1;
+   }
+
+   user_method nodes_of_dim($) {
+      my ($this,$d) = @_;
+      return shift->nodes_of_rank($d+1);
+   }
+
+   user_method nodes_of_dim_range($,$) {
+      my ($this,$d1,$d2) = @_;
+      return shift->nodes_of_rank_range($d1+1,$d2+1);
+   }
+
 
 }

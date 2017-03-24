@@ -47,7 +47,9 @@ XXSObjects          := $(patsubst %,${PerlExtDir}/%.o, ${XXSModules})
 XSObjects           := $(patsubst %,${PerlExtDir}/%.o, ${XSModules})
 CallableGlueObjects := $(patsubst %,${PerlExtDir}/%.o, ${CallableGlueModules})
 
-GlueCXXFlags := -I${PERLarchlibexp}/CORE ${PERLccflags} -DPerlVersion=$(subst .,${.empty},${PERLversion})
+# gcc 5 seems to not understand a #pragma ignoring -Wliteral-suffix
+GlueCXXFlags := -I${PERLarchlibexp}/CORE ${PERLccflags} -DPerlVersion=$(subst .,${.empty},${PERLversion}) \
+                $(if $(filter 5.1%,${PERLversion}), $(if ${GCCversion}, -Wno-literal-suffix))
 
 ${GlueObjects} ${XXSObjects} : ExtraCXXFLAGS := ${GlueCXXFlags}
 ${CallableSharedObjects}     : ExtraCXXFLAGS := -I${ProjectTop}/include/callable

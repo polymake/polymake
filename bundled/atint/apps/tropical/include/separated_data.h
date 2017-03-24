@@ -28,14 +28,21 @@
 
 namespace polymake { namespace tropical {
 
-	/**
-	  @brief Check whether a given cone set is compatible with a given set of local restrictions
-	  @param Set<int> cone A set of (ray) indices
-	  @param IncidenceMatrix<> local_restriction A list of sets of ray indices
-	  @return true, if and only if cone contains one of the sets of local_restriction 
-	  */
-	bool is_coneset_compatible(const Set<int> &cone, const IncidenceMatrix<> &local_restriction);
+/**
+   @brief Check whether a given cone set is compatible with a given set of local restrictions
+   @param cone A set of (ray) indices
+   @param local_restriction A list of sets of ray indices
+   @return true, if and only if cone contains one of the sets of local_restriction 
+*/
+template <typename TSet, typename TMatrix>
+bool is_coneset_compatible(const GenericSet<TSet, int>& cone, const GenericIncidenceMatrix<TMatrix>& local_restriction)
+{
+  for (auto r=entire(rows(local_restriction)); !r.at_end(); ++r) {
+     if (incl(*r, cone)<=0) return true;
+  }
+  return false;
+}
 
-}}
+} }
 
 #endif

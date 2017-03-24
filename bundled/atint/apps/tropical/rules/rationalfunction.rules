@@ -23,7 +23,7 @@
 
 
 object RationalFunction {
-	
+
 	#Operator overload
 	#Fallback=> TRUE is needed to that perl can implement missing operators such as == in the usual manner.
 	use overload('*' => 'mult', '""' => 'to_string', bool => 'bool', '^' => 'power_operator', '+' => 'sum', '-' => 'minus', 'neg'=>'neg', fallback => 1);
@@ -46,12 +46,12 @@ object RationalFunction {
 	# @category Defining morphisms and functions
 	# When representing the function as a quotient of tropical polynomials, this
 	# is the numerator. Should be a homogeneous polynomial of the same degree as [[DENOMINATOR]].
-	property NUMERATOR : Polynomial<TropicalNumber<Addition> >;
+	property NUMERATOR : Polynomial<TropicalNumber<Addition>>;
 
 	# @category Defining morphisms and functions
 	# When representing the function as a quotient of tropical polynomials, this
 	# is the denominator. Should be a homogeneous polynomial of the same degree as [[NUMERATOR]]. 
-	property DENOMINATOR : Polynomial<TropicalNumber<Addition> >;
+	property DENOMINATOR : Polynomial<TropicalNumber<Addition>>;
 
 
 	# @category Defining morphisms and functions
@@ -77,11 +77,12 @@ object RationalFunction {
 		$this->POWER = 1;
 	}
 
-	rule DOMAIN, IS_GLOBALLY_DEFINED : NUMERATOR, DENOMINATOR {
+	rule DOMAIN.VERTICES, DOMAIN.MAXIMAL_POLYTOPES, DOMAIN.LINEALITY_SPACE, IS_GLOBALLY_DEFINED : NUMERATOR, DENOMINATOR {
 		computeDomain($this);
 		$this->IS_GLOBALLY_DEFINED = !(defined($this->lookup("VERTEX_VALUES")) || defined($this->lookup("LINEALITY_VALUES")));
 	}
 	weight 2.10;
+	incurs DOMAIN.RaysPerm;
 	#FIXME: THis property should maybe be used in some arithmetic functions...
 
 	rule IS_GLOBALLY_DEFINED : {
@@ -103,7 +104,7 @@ object RationalFunction {
 		computeGeometricFunctionData($this);
 	}
 	precondition : NUMERATOR, DENOMINATOR {
-		$this->NUMERATOR != (new Polynomial<TropicalNumber<Addition> >($this->NUMERATOR->get_ring)) 
+		$this->NUMERATOR != (new Polynomial<TropicalNumber<Addition>>($this->NUMERATOR->n_vars())) 
 			or die "Numerator cannot be the zero polynomial.";
 		polynomial_degree($this->NUMERATOR) == polynomial_degree($this->DENOMINATOR) 
 			or die "Both numerator and denominator must have the same degree";
@@ -119,18 +120,14 @@ object RationalFunction {
 	# @return RationalFunction<Addition>
 	user_method restrict(Cycle<Addition>) {
 		my ($f,$X) = @_;
-	
+
 		#Need to do that to be able to use it in rules of $X
 		my $Xcopy = new Cycle<Addition>(VERTICES=>$X->VERTICES, MAXIMAL_POLYTOPES=>$X->MAXIMAL_POLYTOPES, 
 													LINEALITY_SPACE=>$X->LINEALITY_SPACE, WEIGHTS=>$X->WEIGHTS);
 
 		#Define identity on X
 		my $vertexvalues = new Matrix<Rational>($Xcopy->SEPARATED_VERTICES->minor(All,~scalar2set(0)));
-		my $linealityvalues = new Matrix<Rational>($Xcopy->LINEALITY_SPACE);
-		if($linealityvalues->rows() > 0) {
-			$linealityvalues = $linealityvalues->minor(All,~scalar2set(0));
-		}
-
+		my $linealityvalues = new Matrix<Rational>($Xcopy->LINEALITY_SPACE->minor(All,~scalar2set(0)));
 	
 		my $emb = new Morphism<Addition>( DOMAIN=>$Xcopy, VERTEX_VALUES=>$vertexvalues,LINEALITY_VALUES=>$linealityvalues, MATRIX=>(unit_matrix<Rational>($f->DOMAIN->PROJECTIVE_AMBIENT_DIM+1)));
 		return pullback($emb,$f);
@@ -184,8 +181,8 @@ object RationalFunction {
 			die "Rational functions use different tropical additions.";
 		}
 		if(defined($f->lookup("NUMERATOR")) && defined($g->lookup("NUMERATOR"))) {
-			return new RationalFunction<Addition>(NUMERATOR=>(tolerant_multiplication($f->NUMERATOR ,$g->NUMERATOR)),
-				DENOMINATOR=>(tolerant_multiplication($f->DENOMINATOR, $g->DENOMINATOR)));
+			return new RationalFunction<Addition>(NUMERATOR=>($f->NUMERATOR * $g->NUMERATOR),
+				DENOMINATOR=>($f->DENOMINATOR * $g->DENOMINATOR));
 		}
 		else {
 			return add_rational_functions($f,$g);
@@ -202,23 +199,23 @@ object RationalFunction {
 	#Multiply by an integer
 	sub mult {
 		my ($this,$r) = @_;
-		if($r == 0) {
+		if ($r == 0) {
 			my $zero;
-			my $ring;
-			if(defined($this->lookup("NUMERATOR"))) {
-				$ring = $this->NUMERATOR->get_ring();
+			my $nvars;
+			if (defined($this->lookup("NUMERATOR"))) {
+				$nvars= $this->NUMERATOR->n_vars();
 			}
 			else {
 				$ambient_dim = $this->DOMAIN->FAN_AMBIENT_DIM;
-				my $ring = new Ring<TropicalNumber<Addition> >($ambient_dim);
+				$nvars = $ambient_dim;
 			}
-			$zero = new Polynomial<TropicalNumber<Addition> >( 
-				(new TropicalNumber<Addition>(0)),$ring);
-			return new RationalFunction<Addition>(NUMERATOR=>$zero,DENOMINATOR=>$zero);
+			$zero = new Polynomial<TropicalNumber<Addition>>( 
+				(new TropicalNumber<Addition>(0)), $nvars);
+			return new RationalFunction<Addition>(NUMERATOR=>$zero, DENOMINATOR=>$zero);
 		}
-		if(defined($this->lookup("NUMERATOR"))) {
-			my $num = new Polynomial<TropicalNumber<Addition> >($this->NUMERATOR);
-			my $den = new Polynomial<TropicalNumber<Addition> >($this->DENOMINATOR);
+		if (defined($this->lookup("NUMERATOR"))) {
+			my $num = new Polynomial<TropicalNumber<Addition>>($this->NUMERATOR);
+			my $den = new Polynomial<TropicalNumber<Addition>>($this->DENOMINATOR);
 			my $power = $r < 0? -$r : $r;
 			for my $i (1 .. $power-1) {
 				$num *= $num;
@@ -243,13 +240,13 @@ object RationalFunction {
 # @category Affine and projective coordinates
 # This takes a tropical polynomial defined on tropical affine coordinates and turns it into 
 # a rational function on tropical homogeneous coordinates
-# @param Polynomial<TropicalNumber<Addition> > p A polynomial on affine coordinates.
+# @param Polynomial<TropicalNumber<Addition>> p A polynomial on affine coordinates.
 # @param Int chart The index of the homogenizing coordinate. 0 by default.
 # @return RationalFunction A rational function, which on the given chart is described by p.
-user_function rational_fct_from_affine_numerator<Addition>(Polynomial<TropicalNumber<Addition> >; $=0) {
+user_function rational_fct_from_affine_numerator<Addition>(Polynomial<TropicalNumber<Addition>>; $=0) {
 	my ($p,$chart) = @_;
 	return homogenize_quotient($p,
-		(new Polynomial<TropicalNumber<Addition> >( (new TropicalNumber<Addition>(0)),$p->get_ring())),
+		(new Polynomial<TropicalNumber<Addition>>( (new TropicalNumber<Addition>(0)), $p->n_vars())),
 		$chart);	
 }
 
@@ -267,13 +264,13 @@ user_function rational_fct_from_affine_numerator(String; $=0) {
 # @category Affine and projective coordinates
 # This takes a tropical polynomial p defined on tropical affine coordinates and turns it into 
 # the rational function (1/p) on tropical homogeneous coordinates
-# @param Polynomial<TropicalNumber<Addition> > p A polynomial on affine coordinates.
+# @param Polynomial<TropicalNumber<Addition>> p A polynomial on affine coordinates.
 # @param Int chart The index of the homogenizing coordinate. 0 by default.
 # @return RationalFunction A rational function, which on the given chart is described by (1/p).
-user_function rational_fct_from_affine_denominator<Addition>(Polynomial<TropicalNumber<Addition> >; $=0) {
+user_function rational_fct_from_affine_denominator<Addition>(Polynomial<TropicalNumber<Addition>>; $=0) {
 	my ($p,$chart) = @_;
 	return homogenize_quotient(
-		(new Polynomial<TropicalNumber<Addition> >( (new TropicalNumber<Addition>(0)),$p->get_ring())),
+		(new Polynomial<TropicalNumber<Addition>>( (new TropicalNumber<Addition>(0)), $p->n_vars())),
 		$p,
 		$chart);	
 }
@@ -298,8 +295,7 @@ user_function rational_fct_from_affine_denominator(String; $=0) {
 user_function point_functions<Addition>($) {
 	my $v = new Vector<Rational>(shift);
 	my @result = ();
-	my $r = new Ring<TropicalNumber<Addition> >($v->dim());
-	my @vars = $r->variables;
+	my @vars = monomials<TropicalNumber<Addition> >($v->dim());
 	my $denom = $vars[0]; 
 	for my $i (1 .. $v->dim()-1) {
 		my $num = $vars[$i] + (new TropicalNumber<Addition>($v->[$i] - $v->[0]))*$vars[0];

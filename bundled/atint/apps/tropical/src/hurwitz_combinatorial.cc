@@ -34,7 +34,6 @@
 #include "polymake/tropical/convex_hull_tools.h"
 #include "polymake/tropical/moduli_rational.h"
 #include "polymake/tropical/solver_def.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/thomog.h"
 #include "polymake/tropical/morphism_thomog.h"
 #include "polymake/TropicalNumber.h"
@@ -42,9 +41,6 @@
 
 namespace polymake { namespace tropical {
 
-	using namespace atintlog::donotlog;
-	//using namespace atintlog::dolog;
-	   //using namespace atintlog::dotrace;
 
 	struct HurwitzResult {
 		perl::Object subdivision;
@@ -83,12 +79,13 @@ namespace polymake { namespace tropical {
 			else {
 				//Normalize the sets at the node to point away from it. Order them in an arbitrary way
 				//Intersect the first two, I_1 and I_2: I_1 points away from the node, if and only if
-				//I_1 cap I_2 = empty or I_1. The subsequent sets I_k only have to fulfill 
+				//I_1 cap I_2 = empty or I_1. The subsequent sets I_k only have to fulfill
 				//I_k cap I_1 = empty
 				Vector<int> adjacent_sets(nodes_by_sets.row(n));
 				Vector<Set<int> > normalized_sets;
+                                // FIXME: misuse of vector concatenation
 				Set<int> first_inter = sets[adjacent_sets[0]] * sets[adjacent_sets[1]];
-				normalized_sets |= 
+				normalized_sets |=
 					(first_inter.size() == 0 || first_inter.size() == sets[adjacent_sets[0]].size()) ? sets[adjacent_sets[0]] : (sequence(1, max_leaf-1) - sets[adjacent_sets[0]]);
 				for(int as = 1; as < adjacent_sets.dim(); as++) {
 					Set<int> subseq_inter = normalized_sets[0] * sets[adjacent_sets[as]];
@@ -97,15 +94,15 @@ namespace polymake { namespace tropical {
 				}
 				//Now for each set count, how many of the adjacent sets intersect it nontrivially
 				//It points away from the node, if and only if this number is 1 (otherwise its all)
-				for(int s = 0; s < sets.dim(); s++) {
+				for (int s = 0; s < sets.dim(); ++s) {
 					int inter_count = 0;
-					for(int ns = 0; ns < normalized_sets.dim(); ns++) {
-						if( (sets[s] * normalized_sets[ns]).size() > 0) inter_count++;
+					for (int ns = 0; ns < normalized_sets.dim(); ++ns) {
+						if( (sets[s] * normalized_sets[ns]).size() > 0) ++inter_count;
 						if(inter_count > 1) break;
 					}
-					if(inter_count > 1) {
-						sets[s] += max_leaf; 
-					}	    
+					if (inter_count > 1) {
+						sets[s] += max_leaf;
+					}
 				}
 			}//END if there are only bounded edges
 
@@ -118,7 +115,7 @@ namespace polymake { namespace tropical {
 		result.take("COEFFS") << coeffs;
 		result.take("N_LEAVES") << max_leaf;
 		return result;
-    
+
   }//END insert_leaves
 
 	///////////////////////////////////////////////////////////////////////////////////////
@@ -138,7 +135,7 @@ namespace polymake { namespace tropical {
 				rcurve.take("SETS") << sets.minor(scalar2set(s),All);
 				rcurve.take("N_LEAVES") << n;
 				rcurve.take("COEFFS") << ones_vector<Rational>(1);
-				Vector<Rational> rray = CallPolymakeFunction("matroid_vector",rcurve, Addition());
+				Vector<Rational> rray = call_function("matroid_vector", rcurve, Addition());
 				result /= rray;
 			}
 			return result;
@@ -156,15 +153,15 @@ namespace polymake { namespace tropical {
 		Matrix<int> result(0,k);
 
 		//Compute all k-choices of the set {0,..,n-1}
-		Array<Set<int> > kchoices = all_subsets_of_k(sequence(0,n),k);
+		Array<Set<int>> kchoices{ all_subsets_of_k(sequence(0,n),k) };
 
 		//Compute all permutations on a k-set
 		AllPermutations<> kperm = all_permutations(k);
 
-		for(int ch = 0; ch < kchoices.size(); ch++) {
-			Vector<int> kvec(kchoices[ch]);
-			for(Entire<AllPermutations<> >::iterator p = entire(kperm);!p.at_end(); p++) {
-				result /= (permuted(kvec,*p));
+		for (const auto& kchoice : kchoices) {
+			Vector<int> kvec(kchoice);
+			for (auto p = entire(kperm); !p.at_end(); p++) {
+				result /= permuted(kvec, *p);
 			}
 		}
 
@@ -176,13 +173,13 @@ namespace polymake { namespace tropical {
 	/**
 	  @brief Takes a matrix and computes the gcd of the absolute values of the maximal minors
 	  */
-	Integer gcd_maxminor(Matrix<Rational> map) {
-		Array<Set<int> > r_choices = all_subsets_of_k(sequence(0,map.cols()),map.rows());
-		int g = 0;
-		for(int r = 0; r < r_choices.size(); r++) {
-			g = gcd(g,det(map.minor(All,r_choices[r])).to_int());
+	Integer gcd_maxminor(const Matrix<Rational>& map) {
+                Array<Set<int>> r_choices{ all_subsets_of_k(sequence(0, map.cols()), map.rows()) };
+		Integer g = 0;
+		for (const auto& r_choice : r_choices) {
+                  g = gcd(g, Integer(det(map.minor(All, r_choice))));
 		}
-		return Integer(abs(g));
+		return abs(g);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////
@@ -258,30 +255,30 @@ namespace polymake { namespace tropical {
 
 			solver<Rational> sv;
 
-			//Make points default points ( = 0) 
-			if(points.dim() < degree.dim() - 3- k) {
+			//Make points default points ( = 0)
+			if (points.dim() < degree.dim() - 3- k) {
 				points = points | zero_vector<Rational>( degree.dim()-3-k-points.dim());
 			}
-			if(points.dim() > degree.dim() - 3 - k) {
+			if (points.dim() > degree.dim() - 3 - k) {
 				points = points.slice(sequence(0,degree.dim()-3-k));
 			}
 
 			int n = degree.dim();
 			int big_n = 2*n - k -2;
-			int big_moduli_dim = big_n * (big_n - 3) / 2;//Affine ambient dimension of the stable maps. 
+			int big_moduli_dim = big_n * (big_n - 3) / 2;//Affine ambient dimension of the stable maps.
 
 			//Compute M_0,n and extract cones
 			perl::Object m0n;
 			Vector<Rational> compare_vector;
 			bool restrict_local = false;
 
-			if(local_restriction.size() == 0) {
-				m0n = CallPolymakeFunction("m0n_wrap",n,Addition());
+			if (local_restriction.size() == 0) {
+				m0n = call_function("m0n_wrap", n, Addition());
 			}
 			else {
 				perl::Object lr_ray = local_restriction[0];
-				m0n = CallPolymakeFunction("local_m0n_wrap", Addition(), lr_ray); 
-				CallPolymakeFunction("matroid_vector",lr_ray,Addition()) >> compare_vector;
+				m0n = call_function("local_m0n_wrap", Addition(), lr_ray);
+				compare_vector = call_function("matroid_vector", lr_ray,Addition());
 				//We need to dehomogenize to make comparison possible.
 				compare_vector = tdehomog_vec(compare_vector);
 				restrict_local = true;	
@@ -295,7 +292,6 @@ namespace polymake { namespace tropical {
 			/*int restrict_index = -1;
 			if(restrict_local) {
 				restrict_index = *(mn_restrict.row(0).begin());
-				//dbgtrace << "Restricting at ray " << restrict_index << endl;
 			}*/
 
 
@@ -327,16 +323,14 @@ namespace polymake { namespace tropical {
 			Vector<Integer> cycle_weights;
 			//     Vector<Set<int> > cycle_local;
 
-			//Iterate all cones of M_0,n and compute their refinement as well as the 
+			//Iterate all cones of M_0,n and compute their refinement as well as the
 			//Hurwitz cycle cones within
 			for(int mc = 0; mc < mn_cones.rows(); mc++) {
 				if(output_progress)
 					pm::cout << "Refining cone " << mc << " of " << mn_cones.rows() << endl;
 
 				//Extract the combinatorial type to compute evaluation maps
-				perl::Object mc_type = CallPolymakeFunction("rational_curve_from_cone",m0n,degree.dim(),mc);
-				std::string mcs = mc_type.CallPolymakeMethod("to_string");
-				//dbgtrace << "Maximal cone " << mcs << endl;
+				perl::Object mc_type = call_function("rational_curve_from_cone", m0n, degree.dim(), mc);
 
 				//This will be a model of the subdivided cone of M_0,n
 				Matrix<Rational> model_rays = unit_matrix<Rational>(degree.dim()-2);
@@ -361,38 +355,32 @@ namespace polymake { namespace tropical {
 					model_complex.take("LOCAL_RESTRICTION") << model_local_restrict;
 				}
 
-				//Iterate over all possible ordered choices of (#vert-k)-subsets of nodes  
+				//Iterate over all possible ordered choices of (#vert-k)-subsets of nodes
 				Matrix<int> fix_node_sets = ordered_k_choices(n-2, n-2-k);
-				//dbgtrace << "Iterating all choices of fixed vertices " << fix_node_sets << endl;
 
 				//We save the evaluation matrices for use in the computation
 				//of tropical weights in the Hurwitz cycle
 				Vector<Matrix<Rational> > evmap_list;
 
-				for(int nchoice = 0 ; nchoice < fix_node_sets.rows(); nchoice++) {
+				for (int nchoice = 0 ; nchoice < fix_node_sets.rows(); ++nchoice) {
 					//Compute combinatorial type obtained by adding further ends to chosen nodes
 					perl::Object higher_type = insert_leaves(mc_type, fix_node_sets.row(nchoice));
-					std::string s = higher_type.CallPolymakeMethod("to_string");
-					//dbgtrace << "Intersecting with type " << s << endl;
 					//Convert evaluation maps to local basis of rays
 					Matrix<Rational> local_basis = tdehomog(edge_rays<Addition>(higher_type)).minor(All,~scalar2set(0));
 					Matrix<Rational> converted_maps = ev_maps * T(local_basis);
 
 					//Check if this choice of fixed vertices induces some valid Hurwitz type
 					//(in the generic case)
-					//dbgtrace << "Checking validity..." << endl;
 					if(is_valid_choice(converted_maps, sv)) {
-						//dbgtrace << "Is valid" << endl;
 						evmap_list |= converted_maps;
 					}
 
-					//dbgtrace << "Computing halfspace intersections"  << endl;
 					//Now refine along each evaluation map
-					for(int evmap = 0; evmap < converted_maps.rows(); evmap++) {
+					for (int evmap = 0; evmap < converted_maps.rows(); evmap++) {
 						//Compute half-space fan induced by the equation ev_i >= / = / <= p_i
 						//Then refine the model cone along this halfspace
-						if(converted_maps.row(evmap) != zero_vector<Rational>(converted_maps.cols())) {
-							//Create homogenized version of evaluation map 
+                                            if (!is_zero(converted_maps.row(evmap))) {
+							//Create homogenized version of evaluation map
 							Vector<Rational> hom_converted_map = converted_maps.row(evmap);
 							hom_converted_map = ( - ones_vector<Rational>(hom_converted_map.dim()) * hom_converted_map) | hom_converted_map;
 
@@ -407,31 +395,27 @@ namespace polymake { namespace tropical {
 				//corresponding to each choice of vertex placement. We then compute the k-cones
 				//in the subdivision on which this map is (p_1,..,p_r) and add the gcd of the maximal minors of the
 				//matrix as tropical weight to these cones
-				//dbgtrace << "Computing weights " << endl;
 				IncidenceMatrix<> model_hurwitz_cones;
 				Vector<Integer> model_hurwitz_weights;
 				Matrix<Rational> model_hurwitz_rays;
 				Vector<Set<int> > model_hurwitz_local;
-				if(compute_cycle) {
-					perl::Object skeleton = CallPolymakeFunction("skeleton_complex",model_complex,k,false);
+				if (compute_cycle) {
+					perl::Object skeleton = call_function("skeleton_complex", model_complex, k, false);
 					//We go through all dimension - k cones of the subdivision
 					Matrix<Rational> k_rays = skeleton.give("VERTICES");
 					k_rays = tdehomog(k_rays);
 					IncidenceMatrix<> k_cones = skeleton.give("MAXIMAL_POLYTOPES");
 					model_hurwitz_weights = zero_vector<Integer>(k_cones.rows());
-					//dbgtrace << "Rays: " << k_rays << endl;
-					//dbgtrace << "Cones: " << k_cones << endl;
 					Set<int> non_zero_cones;
 					for(int m = 0; m < evmap_list.dim(); m++) {
 						//Compute gcd of max-minors
-						//dbgtrace << "Matrix is " << evmap_list[m] << endl;
 						Integer g = gcd_maxminor(evmap_list[m]);
 						for(int c = 0; c < k_cones.rows(); c++) {
 							//Check if ev maps to the p_i on this cone (rays have to be mapped to 0!)
 							Set<int> cset = k_cones.row(c);
 							bool maps_to_pi = true;
 							for(Entire<Set<int> >::iterator cit = entire(cset);!cit.at_end(); cit++) {
-								Vector<Rational> cmp_vector = 
+								Vector<Rational> cmp_vector =
 									( k_rays(*cit,0) == 1? points : zero_vector<Rational>(points.dim())) ;
 								if( evmap_list[m] * k_rays.row(*cit).slice(~scalar2set(0)) != cmp_vector ){
 									maps_to_pi = false;break;
@@ -440,7 +424,6 @@ namespace polymake { namespace tropical {
 							if(maps_to_pi) {
 								model_hurwitz_weights[c] += g;
 								if(g != 0) non_zero_cones += c;
-								//dbgtrace << "Adding weight to cone " << c << endl;
 							}
 						}
 					}//END iterate evaluation maps
@@ -450,11 +433,9 @@ namespace polymake { namespace tropical {
 					model_hurwitz_cones = IncidenceMatrix<>(k_cones).minor(non_zero_cones,used_rays);
 					model_hurwitz_weights = model_hurwitz_weights.slice(non_zero_cones);
 
-					//dbgtrace << "Model weight: " << model_hurwitz_weights << endl;
 
 				}//END compute hurwitz weights
 
-				//dbgtrace << "Re-converting refined cone " << endl;
 
 				//Finally convert the model cones back to M_0,n-coordinates
 
@@ -472,13 +453,11 @@ namespace polymake { namespace tropical {
 					Vector<Integer> weights_to_convert = (i == 0? model_subdiv_weights : model_hurwitz_weights);
 					// 	  Vector<Set<int> > local_to_convert = (i == 0? model_subdiv_local : model_hurwitz_local);
 					//First convert the rays back
-					//dbgtrace << "Final rays are: " << model_subdiv_rays << endl;
 
-					Matrix<Rational> model_conv_rays = 
-						rays_to_convert.col(0) | 
-						(rays_to_convert.minor(All,~scalar2set(0)) * 
+					Matrix<Rational> model_conv_rays =
+						rays_to_convert.col(0) |
+						(rays_to_convert.minor(All, ~scalar2set(0)) *
 						 tdehomog(edge_rays<Addition>(mc_type)).minor(All,~scalar2set(0)));
-					//dbgtrace << "Converted rays are: " << model_conv_rays << endl;
 					Vector<int> model_rays_perm  = insert_rays(i == 0? subdiv_rays : cycle_rays, model_conv_rays,false);
 					Map<int,int> ray_index_map;
 					for(int mrp = 0; mrp < model_rays_perm.dim(); mrp++) {
@@ -486,19 +465,19 @@ namespace polymake { namespace tropical {
 					}
 					//Then use the above index list to transform the cones
 					for(int msc = 0; msc < cones_to_convert.rows(); msc++) {
-						insert_cone(i == 0? subdiv_cones : cycle_cones, 
-								i == 0? subdiv_weights : cycle_weights, 
-								attach_operation(cones_to_convert.row(msc), pm::operations::associative_access<Map<int,int>,int>(&ray_index_map)), 
-								weights_to_convert[msc]);
+						insert_cone(i == 0 ? subdiv_cones : cycle_cones,
+                                                            i == 0 ? subdiv_weights : cycle_weights,
+                                                            Set<int>{ ray_index_map.map(cones_to_convert.row(msc)) },
+                                                            weights_to_convert[msc]);
 					}
 					//Do the same for the local restriction
 					// 	  for(int lsc = 0; lsc < local_to_convert.dim(); lsc++) {
 					// 	    Vector<Integer> dummy;
 					// 	    insert_cone(i == 0? subdiv_local : cycle_local,
-					// 			dummy, 
+					// 			dummy,
 					// 			attach_operation(local_to_convert[lsc],
 					// 			pm::operations::associative_access<Map<int,int>,int>(&ray_index_map)),0);
-					//  		      
+					//
 					// 	  }
 				}
 
@@ -536,18 +515,16 @@ namespace polymake { namespace tropical {
 			result.take("VERTICES") << thomog(subdiv_rays);
 			result.take("MAXIMAL_POLYTOPES") << subdiv_cones;
 			result.take("WEIGHTS") << subdiv_weights;
-			if(restrict_local) {
-				Vector<Set<int> > subdiv_loc_inc; subdiv_loc_inc |= subdiv_local;
-				CallPolymakeFunction("local_restrict",result,IncidenceMatrix<>(subdiv_loc_inc)) >> result;
+			if (restrict_local) {
+				result=call_function("local_restrict", result, IncidenceMatrix<>(1, subdiv_local.back()+1, &subdiv_local));
 			}
 
 			perl::Object cycle(perl::ObjectType::construct<Addition>("Cycle"));
 			cycle.take("VERTICES") << thomog(cycle_rays);
 			cycle.take("MAXIMAL_POLYTOPES") << cycle_cones;
 			cycle.take("WEIGHTS") << cycle_weights;
-			if(restrict_local) {
-				Vector<Set<int> > cycle_loc_inc; cycle_loc_inc |= cycle_local;
-				CallPolymakeFunction("local_restrict",cycle,IncidenceMatrix<>(cycle_loc_inc)) >> cycle;
+			if (restrict_local) {
+				cycle=call_function("local_restrict", cycle, IncidenceMatrix<>(1, cycle_local.back()+1, &cycle_local));
 			}
 
 			HurwitzResult final_result;

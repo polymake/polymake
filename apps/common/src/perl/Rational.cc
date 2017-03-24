@@ -18,7 +18,7 @@
 
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
-#include "polymake/Polynomial.h"
+#include "polymake/Matrix.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/RationalFunction.h"
@@ -46,33 +46,26 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X_X, Rational, int, perl::Canned< const Integer >);
    FunctionInstance4perl(new_X_X, Rational, perl::Canned< const Integer >, int);
    OperatorInstance4perl(Binary__ne, perl::Canned< const Rational >, perl::Canned< const Rational >);
-   OperatorInstance4perl(Binary_add, perl::Canned< const Rational >, perl::Canned< const UniPolynomial< Rational, Rational > >);
    OperatorInstance4perl(Unary_not, perl::Canned< const Rational >);
    OperatorInstance4perl(Binary_add, perl::Canned< const Rational >, perl::Canned< const QuadraticExtension< Rational > >);
    OperatorInstance4perl(Binary_sub, perl::Canned< const Rational >, perl::Canned< const QuadraticExtension< Rational > >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Rational >, perl::Canned< const QuadraticExtension< Rational > >);
    OperatorInstance4perl(Binary_div, perl::Canned< const Rational >, perl::Canned< const QuadraticExtension< Rational > >);
    OperatorInstance4perl(Binary__le, perl::Canned< const Rational >, perl::Canned< const Rational >);
-   OperatorInstance4perl(Binary_mul, perl::Canned< const Rational >, perl::Canned< const UniMonomial< Rational, int > >);
-   OperatorInstance4perl(Binary_add, perl::Canned< const Rational >, perl::Canned< const UniMonomial< Rational, int > >);
-   OperatorInstance4perl(Binary_sub, perl::Canned< const Rational >, perl::Canned< const UniMonomial< Rational, int > >);
-   OperatorInstance4perl(Binary_mul, perl::Canned< const Rational >, perl::Canned< const UniTerm< Rational, int > >);
-   OperatorInstance4perl(Binary_add, perl::Canned< const Rational >, perl::Canned< const UniTerm< Rational, int > >);
-   OperatorInstance4perl(Binary_sub, perl::Canned< const Rational >, perl::Canned< const UniTerm< Rational, int > >);
-   OperatorInstance4perl(Binary_mul, perl::Canned< const Rational >, perl::Canned< const UniPolynomial< Rational, int > >);
-   OperatorInstance4perl(Binary_add, perl::Canned< const Rational >, perl::Canned< const UniPolynomial< Rational, int > >);
-   OperatorInstance4perl(Binary_sub, perl::Canned< const Rational >, perl::Canned< const UniPolynomial< Rational, int > >);
-   OperatorInstance4perl(Binary_div, perl::Canned< const Rational >, perl::Canned< const UniMonomial< Rational, int > >);
-   OperatorInstance4perl(Binary_div, perl::Canned< const Rational >, perl::Canned< const UniTerm< Rational, int > >);
-   OperatorInstance4perl(Binary_div, perl::Canned< const Rational >, perl::Canned< const UniPolynomial< Rational, int > >);
    OperatorInstance4perl(assign, Rational, perl::Canned< const pm::sparse_elem_proxy<pm::sparse_proxy_base<pm::sparse2d::line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::Rational, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > >, pm::unary_transform_iterator<pm::AVL::tree_iterator<pm::sparse2d::it_traits<pm::Rational, true, false>, (pm::AVL::link_index)1>, std::pair<pm::BuildUnary<pm::sparse2d::cell_accessor>, pm::BuildUnaryIt<pm::sparse2d::cell_index_accessor> > > >, pm::Rational, pm::NonSymmetric> >);
    OperatorInstance4perl(Binary__ne, perl::Canned< const Rational >, perl::Canned< const Integer >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Rational >, perl::Canned< const pm::SameElementVector<pm::Rational const&> >);
    FunctionInstance4perl(new_X, Rational, perl::Canned< const TropicalNumber< Max, Rational > >);
-   OperatorInstance4perl(Binary_add, perl::Canned< const Rational >, perl::Canned< const UniMonomial< Rational, Rational > >);
-   OperatorInstance4perl(Binary_div, perl::Canned< const Rational >, perl::Canned< const UniMonomial< Rational, Rational > >);
-   OperatorInstance4perl(Binary_mul, perl::Canned< const Rational >, perl::Canned< const UniMonomial< Rational, Rational > >);
-   OperatorInstance4perl(Binary_div, perl::Canned< const Rational >, perl::Canned< const UniTerm< Rational, Rational > >);
+   OperatorInstance4perl(Binary__ge, perl::Canned< const Rational >, int);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const Rational >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, mlist<> > >);
+   FunctionInstance4perl(new_X_X, Rational, long, long);
+   OperatorInstance4perl(Binary_add, perl::Canned< const Rational >, perl::Canned< const UniPolynomial< Rational, Rational > >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const Rational >, perl::Canned< const UniPolynomial< Rational, int > >);
+   OperatorInstance4perl(Binary_add, perl::Canned< const Rational >, perl::Canned< const UniPolynomial< Rational, int > >);
+   OperatorInstance4perl(Binary_sub, perl::Canned< const Rational >, perl::Canned< const UniPolynomial< Rational, int > >);
    OperatorInstance4perl(Binary_div, perl::Canned< const Rational >, perl::Canned< const UniPolynomial< Rational, Rational > >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const Rational >, perl::Canned< const UniPolynomial< Rational, Rational > >);
+   OperatorInstance4perl(Binary_div, perl::Canned< const Rational >, perl::Canned< const UniPolynomial< Rational, int > >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const Rational >, perl::Canned< const Matrix< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

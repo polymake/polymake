@@ -28,9 +28,9 @@ BEGIN {
    # variables used in the Makefiles
 
    @make_vars=qw( CC CXX Cflags CXXflags CsharedFlags CXXOPT CXXDEBUG CflagsSuppressWarnings
-                  GCCversion ICCversion CLANGversion CCache CPPStd
+                  GCCversion ICCversion CLANGversion CCache CPPStd AppleClang
                   LDflags LDsharedFlags LDcallableFlags LDsonameFlag Libs
-                  LIBXML2_CFLAGS LIBXML2_LIBS
+                  LIBXML2_CFLAGS LIBXML2_LIBS ExternalHeaders
                   Arch FinkBase BundledExts );
 
    @make_export_vars=qw( PERL InstallTop InstallArch InstallBin InstallInc InstallLib InstallDoc DirMask ARCHFLAGS );
@@ -244,7 +244,7 @@ sub load_extension_config_vars {
    my %result;
    foreach my $ext ($Polymake::Core::Application::extension, @{$Polymake::Core::Application::extension->requires}) {
       my $ext_dir=$ext->dir;
-      my $conf_file= $ext_dir =~ s{^${Polymake::InstallTop}/(ext|bundled)/}{${Polymake::InstallArch}/$1/}
+      my $conf_file= $ext_dir =~ s{^\Q${Polymake::InstallTop}\E/(ext|bundled)/}{${Polymake::InstallArch}/$1/}
                      ? "$ext_dir/conf.make"
                      : "$ext_dir/build/${Polymake::Arch}/conf.make";
       if (open my $CF, $conf_file) {
@@ -301,6 +301,8 @@ sub write_config_command_line {
          unless ($ext_failed && $ext_failed->{$item}) {
             print $conf " --without-$item";
          }
+      } elsif ($value eq ".true.") {
+         print $conf " --with-$item";
       } else {
          $value="'$value'" if $value =~ /[\s(){}\[\]\$]/;
          print $conf exists $allowed_with->{$item}
@@ -315,16 +317,26 @@ sub write_config_command_line {
 sub try_restore_config_command_line {
    my $argv=shift;
 
-   # look for --repeat option; it may be combined with PERL=XXX only.
+   # look for --repeat option; it may be combined with PERL=XXX and a new installation prefix only.
    return if !@$argv || @$argv > 3;
 
    my @argv=@$argv;
-   my $perl;
-   if (@argv > 1) {
+   my ($perl, $prefix);
+   while (@argv > 1) {
       if ($argv[0] =~ /^PERL=.*/) {
          $perl=shift @argv;
       } elsif ($argv[-1] =~ /^PERL=.*/) {
          $perl=pop @argv;
+      } elsif ($argv[0] =~ /^--prefix=.*/) {
+         $prefix=shift @argv;
+      } elsif ($argv[-1] =~ /^--prefix=.*/) {
+         $prefix=pop @argv;
+      } elsif ($argv[0] eq '--prefix') {
+         $prefix=join("=", splice @argv, 0, 2);
+      } elsif ($argv[-2] eq '--prefix') {
+         $prefix=join("=", splice @argv, -2);
+      } else {
+         last;
       }
    }
 
@@ -355,10 +367,11 @@ sub try_restore_config_command_line {
          }
       }
       if (defined($_)) {
-         while (/\G\s+ ([-\w]+ =?) (?: (['"]) ([^'])+ \2 | (\S+))? /gx) {
+         while (/\G\s+ ([-\w]+ =?) (?: (['"]) (.+?) \2 | (\S+))? /gx) {
             push @$argv, $1 . ($2 ? $3 : $4);
          }
          push @$argv, $perl if defined($perl);
+         push @$argv, $prefix if defined($prefix);
       } else {
          die <<".";
 Can't restore options given to the last `configure' command because the configuration file $builddir/conf.make lacks header lines.
@@ -373,7 +386,7 @@ Please run the configure command specifying all desired options on the command l
 sub get_libdir {
    my ($prefix, $name, $suffix)=@_;
    $suffix ||= $Config::Config{so};
-   if ($Config::Config{longsize}==8 && $CXXflags !~ /-m32/ && $Arch =~ /i?86/ && -f "$prefix/lib64/lib$name.$suffix") {
+   if ($Config::Config{longsize}==8 && $CXXflags !~ /-m32/ && -f "$prefix/lib64/lib$name.$suffix") {
       "$prefix/lib64"
    } elsif (($Config::Config{longsize}==4 || $CXXflags =~ /-m32/) && -f "$prefix/lib32/lib$name.$suffix") {
       "$prefix/lib32"
@@ -422,7 +435,7 @@ sub compile_test_program {
 
 # Run the program previously build with `build_test_program'.
 sub run_test_program {
-   `$tempdir/polymake_${$}_configure`
+   `$tempdir/polymake_${$}_configure 2>&1`
 }
 
 END {
@@ -669,6 +682,36 @@ sub required_extensions {
       ("RequireExtensions := ", join(" ", map { $_->is_bundled ? do { (my $dir=$_->URI) =~ tr|:|/|; "\${ProjectTop}/$dir" } : $_->dir } @{$ext->requires}), "\n");
    } else {
       ("RequireExtensions := ", join(" ", map { (my $dir=$_) =~ tr|:|/|; "\${ProjectTop}/$dir" } @{$ext->requires}), "\n");
+   }
+}
+
+# translate apple xcode to clang versions
+# some of the versions can be found here:
+# https://en.wikipedia.org/wiki/Xcode#Toolchain_versions
+sub clang_ver {
+   my $ver = shift;
+   return $ver unless defined($AppleClang);
+   # earlier versions are too old
+   if (v_cmp($ver,"4.6") < 0) {
+      return "3.1";
+   } elsif (v_cmp($ver,"5.0") < 0) {
+      return "3.2";
+   } elsif (v_cmp($ver,"5.1") < 0) {
+      return "3.3";
+   } elsif (v_cmp($ver,"6.0") < 0) {
+      return "3.4";
+   } elsif (v_cmp($ver,"6.3") < 0) {
+      return "3.5";
+   } elsif (v_cmp($ver,"7.0") < 0) {
+      return "3.6";
+   } elsif (v_cmp($ver,"7.3") < 0) {
+      return "3.7";
+   } elsif (v_cmp($ver,"8.0") < 0) {
+      return "3.8";
+   } elsif (v_cmp($ver,"8.0") >= 0) {
+      return "3.9";
+   } else {
+      die "invalid apple clang version string";
    }
 }
 

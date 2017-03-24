@@ -17,27 +17,26 @@
 #include "polymake/client.h"
 #include "polymake/topaz/complex_tools.h"
 #include "polymake/Matrix.h"
+#include "polymake/Rational.h"
 
 namespace polymake { namespace topaz {
   
-Array< Set<int> > torus_facets()
+Array<Set<int>> torus_facets()
 {
-   static const int Torus[][3]= { {0, 1, 2},
-                                  {0, 1, 3},
-                                  {0, 3, 4},
-                                  {1, 2, 5},
-                                  {0, 4, 5},
-                                  {1, 4, 5},
-                                  {2, 3, 4},
-                                  {2, 3, 5},
-                                  {0, 5, 6},
-                                  {1, 4, 6},
-                                  {3, 5, 6},
-                                  {2, 4, 6},
-                                  {1, 3, 6},
-                                  {0, 2, 6} };
-
-   return Array< Set<int> >(Torus);
+   return { {0, 1, 2},
+            {0, 1, 3},
+            {0, 3, 4},
+            {1, 2, 5},
+            {0, 4, 5},
+            {1, 4, 5},
+            {2, 3, 4},
+            {2, 3, 5},
+            {0, 5, 6},
+            {1, 4, 6},
+            {3, 5, 6},
+            {2, 4, 6},
+            {1, 3, 6},
+            {0, 2, 6} };
 }
 
 perl::Object torus()
@@ -45,17 +44,17 @@ perl::Object torus()
    perl::Object p("GeometricSimplicialComplex<Rational>");
    p.set_description() << "The Császár torus. Geometric realization by Frank Lutz, Electronic Geometry Model No. 2001.02.069\n";
 
-   static const int Coordinates[][3]= { {3, -3, 0},
-                                        {-3, 3, 0},
-                                        {-3, -3, 1},
-                                        {3, 3, 1},
-                                        {-1, -2, 3},
-                                        {1, 2, 3},
-                                        {0, 0, 15} };
+   Matrix<Rational> Coordinates={ {3, -3, 0},
+                                  {-3, 3, 0},
+                                  {-3, -3, 1},
+                                  {3, 3, 1},
+                                  {-1, -2, 3},
+                                  {1, 2, 3},
+                                  {0, 0, 15} };
 
    p.take("FACETS") << torus_facets();
    p.take("DIM") << 2;
-   p.take("COORDINATES") << Matrix<int>(Coordinates);
+   p.take("COORDINATES") << Coordinates;
    p.take("MANIFOLD") << true;
    p.take("CLOSED_PSEUDO_MANIFOLD") << true;
    p.take("ORIENTED_PSEUDO_MANIFOLD") << true;

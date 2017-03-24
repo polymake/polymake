@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,114 +17,126 @@
 #ifndef POLYMAKE_HASH_MAP_
 #define POLYMAKE_HASH_MAP_
 
-#if defined(__cplusplus) && __cplusplus >= 201103L && !defined(PM_FORCE_TR1)
 #include <unordered_map>
-#define PmTr1NS std
-#else
-#include <tr1/unordered_map>
-#define PmTr1NS std::tr1
-#endif
 
 #include "polymake/internal/assoc.h"
 #include "polymake/internal/hash_iterators.h"
 
 namespace pm {
 
-template <typename Key, typename Value, typename Params=void>
+template <typename Key, typename Value, typename... TParams>
 class hash_map
-   : public PmTr1NS::unordered_map<Key, Value, hash_func<Key>, typename hash_table_cmp_adapter<Key,Params>::type> {
-   typedef PmTr1NS::unordered_map<Key, Value, hash_func<Key>, typename hash_table_cmp_adapter<Key,Params>::type> _super;
+   : public std::unordered_map<Key, Value, hash_func<Key>, typename hash_table_cmp_adapter<Key, TParams...>::type> {
+   typedef std::unordered_map<Key, Value, hash_func<Key>, typename hash_table_cmp_adapter<Key, TParams...>::type> base_t;
 
-   typedef typename extract_type_param<Params, DefaultValue, operations::clear<Value> >::type default_value_supplier;
+   typedef typename mlist_wrap<TParams...>::type params;
+   typedef typename mtagged_list_extract<params, DefaultValueTag, operations::clear<Value>>::type default_value_supplier;
    default_value_supplier dflt;
 
 public:
+   typedef Key key_type;
+   typedef Value mapped_type;
+   typedef operations::cmp key_comparator_type;
+
    hash_map() {}
-   explicit hash_map(size_t start_cap) : _super(start_cap) {}
+   explicit hash_map(size_t start_cap) : base_t(start_cap) {}
 
    explicit hash_map(const default_value_supplier& dflt_arg) : dflt(dflt_arg) {}
 
-   hash_map(const default_value_supplier& dflt_arg, size_t start_cap) : _super(start_cap), dflt(dflt_arg) {}
+   hash_map(const default_value_supplier& dflt_arg, size_t start_cap) : base_t(start_cap), dflt(dflt_arg) {}
 
    template <typename Iterator>
-   hash_map(Iterator first, Iterator last) : _super(first,last) {}
+   hash_map(Iterator first, Iterator last) : base_t(first,last) {}
 
    template <typename Iterator>
-   hash_map(Iterator first, Iterator last, const default_value_supplier& dflt_arg) : _super(first,last), dflt(dflt_arg) {}
+   hash_map(Iterator first, Iterator last, const default_value_supplier& dflt_arg) : base_t(first,last), dflt(dflt_arg) {}
 
-   bool exists(typename function_argument<Key>::type k) const
+   bool exists(const Key& k) const
    {
-      return _super::find(k) != _super::end();
+      return this->find(k) != this->end();
    }
 
-   typename _super::iterator
-   insert(typename function_argument<Key>::type k)
+   typename base_t::iterator
+   insert(const Key& k)
    {
-      return _super::insert(typename _super::value_type(k, dflt())).first;
+      return this->emplace(k, dflt()).first;
    }
-#if 0
-   template <typename Operation>
-   typename _super::iterator
-   insert(typename function_argument<Key>::type k, const Operation& op, typename disable_if<void**, identical<Operation,Value>::value>::type=0)
+
+   template <typename ValueArg, typename... MoreArgs>
+   typename base_t::iterator
+   insert(const Key& k, ValueArg&& v, MoreArgs&& ...more_args)
    {
-      std::pair<typename _super::iterator,bool> ret=_super::insert(typename _super::value_type(k, dflt()));
-      if (!ret.second) op(ret.first->second);
+      auto ret=this->emplace(k, std::forward<ValueArg>(v), std::forward<MoreArgs>(more_args)...);
+      if (!ret.second) ret.first->second=Value(std::forward<ValueArg>(v), std::forward<MoreArgs>(more_args)...);
       return ret.first;
    }
-#endif
-   typename _super::iterator
-   insert(typename function_argument<Key>::type k, typename function_argument<Value>::type v)
-   {
-      std::pair<typename _super::iterator,bool> ret=_super::insert(typename _super::value_type(k,v));
-      if (!ret.second) ret.first->second=v;
-      return ret.first;
-   }
-#if 0
-   template <typename Operation>
-   typename _super::iterator
-   insert(typename function_argument<Key>::type k, typename function_argument<Value>::type v, const Operation& op)
-   {
-      std::pair<typename _super::iterator,bool> ret=_super::insert(typename _super::value_type(k,v));
-      if (!ret.second) op(ret.first->second,v);
-      return ret.first;
-   }
-#endif
 
-   std::pair<typename _super::iterator,bool>
-   find_or_insert(typename function_argument<Key>::type k)
+   std::pair<typename base_t::iterator, bool>
+   find_or_insert(const Key& k)
    {
-      return _super::insert(typename _super::value_type(k, dflt()));
+      return this->emplace(k, dflt());
    }
 
-   std::pair<typename _super::iterator,bool>
-   insert(const typename _super::value_type& p) { return _super::insert(p); }
+   std::pair<typename base_t::iterator, bool>
+   insert(const typename base_t::value_type& p)
+   {
+      return base_t::insert(p);
+   }
 
    template <typename Iterator>
-   void insert(Iterator first, Iterator last, typename disable_if<void**, identical<Iterator,Key>::value && identical<Iterator,Value>::value>::type=0)
+   void insert(Iterator first, Iterator last, typename std::enable_if<!(std::is_same<Iterator, Key>::value && std::is_same<Iterator, Value>::value), void**>::type=nullptr)
    {
-      _super::insert(first,last);
+      base_t::insert(first, last);
    }
 
-   bool operator== (const hash_map& other) const
+   /** @brief Associative search.
+
+       Find the data element associated with the given key. If it doesn't exist so far, it will be created with the default constructor.
+
+       Note that the type of the search key is not necessarily the same as of the map entries.
+       It suffices that both are comparable with each other.
+
+       k can also be a container with keys; the result will be a sequence of corresponding values.
+   */
+   template <typename TKeys>
+   typename assoc_helper<hash_map, TKeys>::result_type operator[] (const TKeys& k)
    {
-      if (this->size() != other.size()) return false;
-      typename _super::const_iterator not_found=this->end();
-      for (typename _super::const_iterator elem=other.begin(), other_end=other.end(); elem != other_end; ++elem) {
-         typename _super::const_iterator my=this->find(elem->first);
-         if (my==not_found || my->second != elem->second)
-            return false;
-      }
-      return true;
+      return assoc_helper<hash_map, TKeys>()(*this, k);
    }
 
-   bool operator!= (const hash_map& other) const { return !operator==(other); }
+   /** @brief Associative search (const).
+       Find the data element associated with the given key. If it doesn't exist so far, it will raise an exception.
+
+       Note that the type of the search key is not necessarily the same as of the map entries.
+       It suffices that both are comparable with each other.
+
+       k can also be a container with keys; the result will be a sequence of corresponding values.
+   */
+   template <typename TKeys>
+   typename assoc_helper<const hash_map, TKeys>::result_type operator[] (const TKeys& k) const
+   {
+      return assoc_helper<const hash_map, TKeys>()(*this, k);
+   }
+
+   // synonym for compatibility
+   template <typename TKeys>
+   typename assoc_helper<const hash_map, TKeys>::result_type
+   at(const TKeys& k) const
+   {
+      return assoc_helper<const hash_map, TKeys>()(*this, k);
+   }
 
    class filler {
    public:
       filler(hash_map& me_arg) : me(me_arg) {};
 
-      void operator() (const typename _super::value_type& p) const { me.insert(p); }
-      void operator() (typename function_argument<Key>::type k, typename function_argument<Value>::type v) const { me.insert(k,v); }
+      void operator() (const typename base_t::value_type& p) const { me.insert(p); }
+
+      template <typename... ValueArg>
+      void operator() (const Key& k, ValueArg&& ... v) const
+      {
+         me.insert(k, std::forward<ValueArg>(v)...);
+      }
    private:
       hash_map& me;
    };
@@ -132,48 +144,49 @@ public:
    filler make_filler() { return filler(*this); }
 };
 
-template <typename Key, typename Value, typename Params>
-struct spec_object_traits< hash_map<Key,Value,Params> >
+template <typename Key, typename Value, typename... TParams>
+struct spec_object_traits< hash_map<Key, Value, TParams...> >
    : spec_object_traits<is_container> {
    static const IO_separator_kind IO_separator=IO_sep_inherit;
 };
 
-// FIXME: soon deprecated
-template <typename Key, typename Value, typename HashFcn=hash_func<Key>, typename EqualKey=std::equal_to<Key> >
-class hash_map_as_property_map
-   : public PmTr1NS::unordered_map<Key, Value, HashFcn, EqualKey> {
-   typedef PmTr1NS::unordered_map<Key, Value, HashFcn, EqualKey> _super;
-public:
-   hash_map_as_property_map() {}
-
-   explicit hash_map_as_property_map(size_t start_cap)
-      : _super(start_cap) {}
-
-   Value& operator() (const Key& k)
-   {
-      return (_super::insert(typename _super::value_type(k, def_val))).first->second;
-   }
-
-   const Value& operator() (const Key& k) const
-   {
-      typename _super::const_iterator ii=this->find(k);
-      return ii==this->end() ? def_val : ii->second;
-   }
-
-   std::pair<typename _super::iterator, bool>
-   insert(const Key& k, typename function_argument<Value>::type v)
-   {
-      return _super::insert(typename _super::value_type(k, v));
-   }
-
-   void set_default_value(typename function_argument<Value>::type default_value)
-   {
-      def_val=default_value;
-   }
-protected:
-   Value def_val;
+template <typename Key, typename Value, typename... TParams>
+struct choose_generic_object_traits<hash_map<Key, Value, TParams...>, false, false>
+   : spec_object_traits<hash_map<Key, Value, TParams...>> {
+   typedef void generic_type;
+   typedef is_map generic_tag;
+   typedef hash_map<Key, Value, TParams...> persistent_type;
 };
 
+template <typename Key, typename Value, typename... TParams>
+struct is_ordered< hash_map<Key, Value, TParams...> >
+   : std::false_type { };
+
+
+template <typename TKeys, typename TValues>
+class assoc_helper<const hash_map<TKeys,TValues>, TKeys, true> {
+public:
+   typedef const hash_map<TKeys,TValues> TMap;
+   typedef typename inherit_const<typename TMap::mapped_type, TMap>::type& result_type;
+   result_type operator()(TMap& map, const TKeys& k) const
+   {
+      auto e=map.find(k);
+      if (e == map.end()) throw no_match();
+      return e->second;
+   }
+};
+
+template <typename TKeys, typename TValues>
+class assoc_helper<hash_map<TKeys,TValues>, TKeys, true> {
+public:
+   typedef hash_map<TKeys,TValues> TMap;
+   typedef typename inherit_const<typename TMap::mapped_type, TMap>::type& result_type;
+   result_type operator()(TMap& map, const TKeys& k)
+   {
+      return map.insert(k)->second;
+   }
+};
+   
 } // end namespace pm
 
 namespace polymake {

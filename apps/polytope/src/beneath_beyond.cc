@@ -22,12 +22,12 @@ namespace polymake { namespace polytope {
 template <typename Scalar>
 void beneath_beyond(perl::Object p, bool take_VERTICES, bool dual)
 {
-   Matrix<Scalar> Points=p.give(dual ? 
-                                (take_VERTICES ? "FACETS" : "INEQUALITIES") :                                      
-                                (take_VERTICES ? "RAYS" : "INPUT_RAYS"));
+   Matrix<Scalar> Points=p.give(dual ?
+                                (take_VERTICES ? Str("FACETS") : Str("INEQUALITIES")) :
+                                (take_VERTICES ? Str("RAYS") : Str("INPUT_RAYS")));
    beneath_beyond_algo<Scalar> algo(Points, take_VERTICES);
    algo.compute(entire(sequence(0,Points.rows())));
-   
+
    if (!dual) {
       p.take("FACETS") << algo.getFacets();
       p.take("LINEAR_SPAN") << algo.getAffineHull();

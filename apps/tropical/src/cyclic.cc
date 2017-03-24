@@ -32,7 +32,7 @@ namespace polymake { namespace tropical {
 			for (int i=0; i<n; ++i)
 				for (int j=0; j<=d; ++j)
 					V(i,j)= TropicalNumber<Addition>(Addition::orientation() * i*j);
-			perl::Object p(perl::ObjectType::construct<Addition>("Cone"));
+			perl::Object p(perl::ObjectType::construct<Addition>("Polytope"));
 			p.set_description()<<"Tropical cyclic "<<d<<"-polytope with "<<n<< " vertices"<<endl;
 			p.take("POINTS") << V;
 			return p;
@@ -45,7 +45,7 @@ namespace polymake { namespace tropical {
 			"# @param Int d the dimension"
 			"# @param Int n the number of generators"
 			"# @tparam Addition Min or Max."
-			"# @return Cone<Addition>",
+			"# @return Polytope<Addition>",
 			"cyclic<Addition>($,$)");
 } }
 

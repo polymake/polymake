@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -23,772 +23,1609 @@
 
 namespace pm {
 
+bool isfinite(const AccurateFloat& a) noexcept;
+int isinf(const AccurateFloat& a) noexcept;
+int sign(const AccurateFloat& a) noexcept;
+
 /// minimalistic wrapper for MPFR numbers
-class AccurateFloat {
-   friend class Integer;  friend class Rational;
-   template <typename> friend class std::numeric_limits;
-protected:
-   mpfr_t rep;
+class AccurateFloat
+   : protected __mpfr_struct {
 public:
-   AccurateFloat()
+   ~AccurateFloat() noexcept
    {
-      mpfr_init_set_ui(rep, 0, MPFR_RNDZ);
+      if (_mpfr_d) mpfr_clear(this);
    }
 
-   AccurateFloat(const AccurateFloat& a)
+   /// Constructors
+
+   AccurateFloat(const AccurateFloat& b)
    {
-      mpfr_init_set(rep, a.rep, MPFR_RNDN);
+      mpfr_init_set(this, &b, MPFR_RNDN);
    }
 
-   explicit AccurateFloat(const Integer& a)
+   AccurateFloat(AccurateFloat&& b) noexcept
    {
-      if (__builtin_expect(isfinite(a),1)) {
-         mpfr_init_set_z(rep, a.get_rep(), MPFR_RNDZ);
+      static_cast<__mpfr_struct&>(*this)=b;
+      b._mpfr_d=nullptr;
+   }
+
+   explicit AccurateFloat(const Integer& b)
+   {
+      if (__builtin_expect(isfinite(b), 1)) {
+         mpfr_init_set_z(this, &b, MPFR_RNDZ);
       } else {
-         mpfr_init(rep);
-         mpfr_set_inf(rep, sign(a));
+         mpfr_init(this);
+         mpfr_set_inf(this, sign(b));
       }
    }
 
-   explicit AccurateFloat(const Rational& a)
+   explicit AccurateFloat(const Rational& b)
    {
-      if (__builtin_expect(isfinite(a),1)) {
-         mpfr_init_set_q(rep, a.get_rep(), MPFR_RNDN);
+      if (__builtin_expect(isfinite(b), 1)) {
+         mpfr_init_set_q(this, &b, MPFR_RNDN);
       } else {
-         mpfr_init(rep);
-         mpfr_set_inf(rep, sign(a));
+         mpfr_init(this);
+         mpfr_set_inf(this, sign(b));
       }
    }
 
-   explicit AccurateFloat(long a)
+   explicit AccurateFloat(long b=0)
    {
-      mpfr_init_set_si(rep, a, MPFR_RNDZ);
+      mpfr_init_set_si(this, b, MPFR_RNDZ);
    }
 
-   explicit AccurateFloat(int a)
+   explicit AccurateFloat(int b)
    {
-      mpfr_init_set_si(rep, a, MPFR_RNDZ);
+      mpfr_init_set_si(this, b, MPFR_RNDZ);
    }
 
-   explicit AccurateFloat(double a)
+   explicit AccurateFloat(double b)
    {
-      mpfr_init_set_d(rep, a, MPFR_RNDN);
+      mpfr_init_set_d(this, b, MPFR_RNDN);
    }
 
-protected:
-   template <typename T>
-   explicit AccurateFloat(maximal<T>, int s=1)
+   explicit AccurateFloat(gmp_randstate_t rnd)
    {
-      mpfr_init(rep);
-      mpfr_set_inf(rep,s);
-   }
-public:
-   explicit AccurateFloat(int (*f)(mpfr_ptr,mpfr_rnd_t), mpfr_rnd_t r)
-   {
-      mpfr_init(rep);
-      f(rep,r);
-   }
-   explicit AccurateFloat(int (*f)(mpfr_ptr,mpfr_srcptr), mpfr_srcptr a)
-   {
-      mpfr_init(rep);
-      f(rep,a);
-   }
-   template <typename Arg>
-   explicit AccurateFloat(int (*f)(mpfr_ptr,Arg,mpfr_rnd_t), Arg a, mpfr_rnd_t r)
-   {
-      mpfr_init(rep);
-      f(rep,a,r);
-   }
-   template <typename Arg1, typename Arg2>
-   explicit AccurateFloat(int (*f)(mpfr_ptr,Arg1,Arg2,mpfr_rnd_t), Arg1 a, Arg2 b, mpfr_rnd_t r)
-   {
-      mpfr_init(rep);
-      f(rep,a,b,r);
+      mpfr_init(this);
+      mpfr_urandom(this, rnd, MPFR_RNDZ);
    }
 
-   template <bool inv> struct Add {};
-   struct Mul {};  struct Div {};
-
-   // for Float+/-Rational, Float+/-Integer
-   template <typename Arg2, bool inv2>
-   explicit AccurateFloat(int (*f)(mpfr_ptr,mpfr_srcptr,Arg2,mpfr_rnd_t), mpfr_srcptr a, Arg2 b, mpfr_rnd_t r, int s2, Add<inv2>)
+   /// Copy the value from a third party
+   explicit AccurateFloat(const __mpfr_struct& b)
    {
-      mpfr_init(rep);
-      if (__builtin_expect(s2,0)) {
-         const int s1=mpfr_inf_p(a) ? mpfr_sgn(a) : 0;
-         if (inv2) s2=-s2;
-         if (!s1 || s2 == s1)
-            mpfr_set_inf(rep, s2);  // else *this remains NaN
-      } else {
-         f(rep,a,b,r);
-      }
+      mpfr_set(this, &b, MPFR_RNDN);
    }
 
-   // for Float*Rational, Float*Integer
-   template <typename Arg2>
-   explicit AccurateFloat(int (*f)(mpfr_ptr,mpfr_srcptr,Arg2,mpfr_rnd_t), mpfr_srcptr a, Arg2 b, mpfr_rnd_t r, int s2, Mul)
-   {
-      mpfr_init(rep);
-      if (__builtin_expect(s2,0)) {
-         if (!mpfr_zero_p(a) && !mpfr_nan_p(a))
-            mpfr_set_inf(rep, mpfr_sgn(a)*s2);
-      } else {
-         f(rep,a,b,r);
-      }
-   }
-
-   // for Float/Rational, Float/Integer
-   template <typename Arg2>
-   explicit AccurateFloat(int (*f)(mpfr_ptr,mpfr_srcptr,Arg2,mpfr_rnd_t), mpfr_srcptr a, Arg2 b, mpfr_rnd_t r, int s2, Div)
-   {
-      mpfr_init(rep);
-      if (__builtin_expect(s2,0)) {
-         if (!mpfr_inf_p(a) && !mpfr_nan_p(a))
-            mpfr_set_zero(rep, mpfr_sgn(a)*s2);
-      } else {
-         f(rep,a,b,r);
-      }
-   }
-
+   /// Construct an infinite value with the given sign
    static
-   mpfr_srcptr _tmp_negate(mpfr_ptr temp, mpfr_srcptr src)
+   AccurateFloat infinity(int s)
    {
-      temp->_mpfr_prec =  src->_mpfr_prec;
-      temp->_mpfr_sign = -src->_mpfr_sign;
-      temp->_mpfr_exp  =  src->_mpfr_exp;
-      temp->_mpfr_d    =  src->_mpfr_d;
-      return temp;
+      assert(s==1 || s==-1);
+      AccurateFloat result;
+      mpfr_set_inf(&result, s);
+      return result;
    }
 
-   ~AccurateFloat()
+   AccurateFloat& operator= (const AccurateFloat& b)
    {
-      mpfr_clear(rep);
-#if POLYMAKE_DEBUG
-      POLYMAKE_DEBUG_METHOD(AccurateFloat,dump);
-#endif
-   }
-
-   mpfr_srcptr get_rep() const { return rep; }
-
-   friend int isfinite(const AccurateFloat& a)
-   {
-      return mpfr_number_p(a.rep);
-   }
-
-   friend int isinf(const AccurateFloat& a)
-   {
-      return mpfr_inf_p(a.rep) ? mpfr_sgn(a.rep) : 0;
-   }
-
-   AccurateFloat& operator= (const AccurateFloat& a)
-   {
-      mpfr_set(rep, a.rep, MPFR_RNDN);
+      mpfr_set(this, &b, MPFR_RNDN);
       return *this;
    }
 
-   AccurateFloat& set(mpfr_srcptr src)
+   AccurateFloat& operator= (AccurateFloat&& b)
    {
-      mpfr_set(rep, src, MPFR_RNDN);
-      return *this;
-   }
-
-   AccurateFloat& set_random(gmp_randstate_t rnd)
-   {
-      mpfr_urandom(rep, rnd, MPFR_RNDZ);
+      mpfr_swap(this, &b);
       return *this;
    }
 
    AccurateFloat& operator= (const Rational& b)
    {
       const int s2=isinf(b);
-      if (__builtin_expect(s2,0))
-         mpfr_set_inf(rep,s2);
+      if (__builtin_expect(s2, 0))
+         mpfr_set_inf(this, s2);
       else
-         mpfr_set_q(rep, b.get_rep(), MPFR_RNDN);
+         mpfr_set_q(this, &b, MPFR_RNDN);
       return *this;
    }
 
    AccurateFloat& operator= (const Integer& b)
    {
       const int s2=isinf(b);
-      if (__builtin_expect(s2,0))
-         mpfr_set_inf(rep,s2);
+      if (__builtin_expect(s2, 0))
+         mpfr_set_inf(this, s2);
       else
-         mpfr_set_z(rep, b.get_rep(), MPFR_RNDZ);
+         mpfr_set_z(this, &b, MPFR_RNDZ);
       return *this;
    }
 
    AccurateFloat& operator= (long b)
    {
-      mpfr_set_si(rep, b, MPFR_RNDZ);
+      mpfr_set_si(this, b, MPFR_RNDZ);
       return *this;
    }
 
    AccurateFloat& operator= (int b)
    {
-      mpfr_set_si(rep, b, MPFR_RNDZ);
+      mpfr_set_si(this, b, MPFR_RNDZ);
       return *this;
    }
 
    AccurateFloat& operator= (double b)
    {
-      mpfr_set_d(rep, b, MPFR_RNDN);
+      mpfr_set_d(this, b, MPFR_RNDN);
       return *this;
    }
 
-   void swap(AccurateFloat& b) { mpfr_swap(rep, b.rep); }
+   AccurateFloat& copy_from(mpfr_srcptr src)
+   {
+      mpfr_set(this, src, MPFR_RNDN);
+      return *this;
+   }
 
+   AccurateFloat& swap_with(mpfr_ptr src)
+   {
+      mpfr_swap(this, src);
+      return *this;
+   }
+
+   void swap(AccurateFloat& b)
+   {
+      mpfr_swap(this, &b);
+   }
+
+   // TODO: kill this
    friend void relocate(AccurateFloat* from, AccurateFloat* to)
    {
-      to->rep[0] = from->rep[0];
+      static_cast<__mpfr_struct&>(*to)=*from;
+   }
+
+   explicit operator double() const
+   {
+      return mpfr_get_d(this, MPFR_RNDN);
+   }
+
+   explicit operator int() const
+   {
+      return mpfr_get_si(this, MPFR_RNDN);
+   }
+
+   AccurateFloat& set_random(gmp_randstate_t rnd)
+   {
+      mpfr_urandom(this, rnd, MPFR_RNDZ);
+      return *this;
+   }
+
+   void set_precision(int precision)
+   {
+      if (__builtin_expect(precision < 2, 0))
+         throw std::runtime_error("invalid MPFR precision");
+      mpfr_prec_round(this, (mpfr_prec_t) precision, MPFR_RNDN);
+   }
+
+   int get_precision() const
+   {
+      return mpfr_get_prec(this);
+   }
+
+   friend
+   AccurateFloat operator+ (const AccurateFloat& a)
+   {
+      return a;
+   }
+
+   friend
+   AccurateFloat&& operator+ (AccurateFloat&& a)
+   {
+      return std::move(a);
    }
 
    AccurateFloat& operator++ ()
    {
-      mpfr_add_si(rep, rep, 1, MPFR_RNDZ);
+      mpfr_add_si(this, this, 1, MPFR_RNDZ);
       return *this;
    }
 
    AccurateFloat& operator-- ()
    {
-      mpfr_sub_si(rep, rep, 1, MPFR_RNDZ);
+      mpfr_sub_si(this, this, 1, MPFR_RNDZ);
       return *this;
    }
 
    AccurateFloat& negate()
    {
-      mpfr_neg(rep, rep, MPFR_RNDN);
+      mpfr_neg(this, this, MPFR_RNDN);
       return *this;
+   }
+
+   friend
+   AccurateFloat operator- (const AccurateFloat& a)
+   {
+      AccurateFloat result(a);
+      result.negate();
+      return result;
+   }
+
+   friend
+   AccurateFloat&& operator- (AccurateFloat&& a)
+   {
+      return std::move(a.negate());
    }
 
    AccurateFloat& operator+= (const AccurateFloat& b)
    {
-      mpfr_add(rep, rep, b.rep, MPFR_RNDN);
+      mpfr_add(this, this, &b, MPFR_RNDN);
       return *this;
    }
 
-   AccurateFloat& operator+= (long b)
+   friend
+   AccurateFloat operator+ (const AccurateFloat& a, const AccurateFloat& b)
    {
-      mpfr_add_si(rep, rep, b, MPFR_RNDN);
-      return *this;
+      AccurateFloat result;
+      mpfr_add(&result, &a, &b, MPFR_RNDN);
+      return result;
    }
 
-   AccurateFloat& operator+= (double b)
+   friend
+   AccurateFloat&& operator+ (AccurateFloat&& a, const AccurateFloat& b)
    {
-      mpfr_add_d(rep, rep, b, MPFR_RNDN);
-      return *this;
+      return std::move(a+=b);
    }
-protected:
-   bool assign_add_inf(int s2, int inv=1)
+   friend
+   AccurateFloat&& operator+ (const AccurateFloat& a, AccurateFloat&& b)
    {
-      if (__builtin_expect(s2,0)) {
-         const int s1=isinf(*this);
-         s2*=inv;
-         if (s1) {
-            if (s2 != s1) mpfr_set_nan(rep);
-         } else {
-            mpfr_set_inf(rep, s2);
-         }
-         return true;
-      }
-      return false;
+      return std::move(b+=a);
+   }
+   friend
+   AccurateFloat&& operator+ (AccurateFloat&& a, AccurateFloat&& b)
+   {
+      return a._mpfr_prec >= b._mpfr_prec ? std::move(a+=b) : std::move(b+=a);
    }
 
-   bool assign_mul_inf(int s2)
-   {
-      if (__builtin_expect(s2,0)) {
-         if (mpfr_zero_p(rep))
-            mpfr_set_nan(rep);
-         else if (!mpfr_nan_p(rep))
-            mpfr_set_inf(rep, mpfr_sgn(rep)*s2);
-         return true;
-      }
-      return false;
-   }
-
-   bool assign_div_inf(int s2)
-   {
-      if (__builtin_expect(s2,0)) {
-         if (mpfr_inf_p(rep))
-            mpfr_set_nan(rep);
-         else if (!mpfr_nan_p(rep))
-            mpfr_set_zero(rep, mpfr_sgn(rep)*s2);
-         return true;
-      }
-      return false;
-   }
-public:
    AccurateFloat& operator+= (const Integer& b)
    {
-      if (!assign_add_inf(isinf(b)))
-         mpfr_add_z(rep, rep, b.get_rep(), MPFR_RNDN);
+      if (!add_inf(isinf(b)))
+         mpfr_add_z(this, this, b.get_rep(), MPFR_RNDN);
       return *this;
+   }
+
+   friend
+   AccurateFloat operator+ (const AccurateFloat& a, const Integer& b)
+   {
+      AccurateFloat result;
+      if (!result.init_add_inf(a, isinf(b)))
+         mpfr_add_z(&result, &a, b.get_rep(), MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& operator+ (AccurateFloat&& a, const Integer& b)
+   {
+      return std::move(a+=b);
+   }
+   friend
+   AccurateFloat operator+ (const Integer& a, const AccurateFloat& b)
+   {
+      return b+a;
+   }
+   friend
+   AccurateFloat&& operator+ (const Integer& a, AccurateFloat&& b)
+   {
+      return std::move(b+=a);
    }
 
    AccurateFloat& operator+= (const Rational& b)
    {
-      if (!assign_add_inf(isinf(b)))
-         mpfr_add_q(rep, rep, b.get_rep(), MPFR_RNDN);
+      if (!add_inf(isinf(b)))
+         mpfr_add_q(this, this, b.get_rep(), MPFR_RNDN);
       return *this;
+   }
+
+   friend
+   AccurateFloat operator+ (const AccurateFloat& a, const Rational& b)
+   {
+      AccurateFloat result;
+      if (!result.init_add_inf(a, isinf(b)))
+         mpfr_add_q(&result, &a, b.get_rep(), MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& operator+ (AccurateFloat&& a, const Rational& b)
+   {
+      return std::move(a+=b);
+   }
+   friend
+   AccurateFloat operator+ (const Rational& a, const AccurateFloat& b)
+   {
+      return b+a;
+   }
+   friend
+   AccurateFloat&& operator+ (const Rational& a, AccurateFloat&& b)
+   {
+      return std::move(b+=a);
+   }
+
+   AccurateFloat& operator+= (long b)
+   {
+      mpfr_add_si(this, this, b, MPFR_RNDN);
+      return *this;
+   }
+   AccurateFloat& operator+= (int b)
+   {
+      return *this += long(b);
+   }
+
+   friend
+   AccurateFloat operator+ (const AccurateFloat& a, long b)
+   {
+      AccurateFloat result;
+      mpfr_add_si(&result, &a, b, MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& operator+ (AccurateFloat&& a, long b)
+   {
+      return std::move(a+=b);
+   }
+   friend
+   AccurateFloat operator+ (long a, const AccurateFloat& b)
+   {
+      return b+a;
+   }
+   friend
+   AccurateFloat operator+ (long a, AccurateFloat&& b)
+   {
+      return std::move(b+=a);
+   }
+   friend
+   AccurateFloat operator+ (const AccurateFloat& a, int b)
+   {
+      return a+long(b);
+   }
+   friend
+   AccurateFloat&& operator+ (AccurateFloat&& a, int b)
+   {
+      return std::move(a+=long(b));
+   }
+   friend AccurateFloat operator+ (int a, const AccurateFloat& b)
+   {
+      return b+long(a);
+   }
+   friend
+   AccurateFloat operator+ (int a, AccurateFloat&& b)
+   {
+      return std::move(b+=long(a));
+   }
+
+   AccurateFloat& operator+= (double b)
+   {
+      mpfr_add_d(this, this, b, MPFR_RNDN);
+      return *this;
+   }
+
+   friend
+   AccurateFloat operator+ (const AccurateFloat& a, double b)
+   {
+      AccurateFloat result;
+      mpfr_add_d(&result, &a, b, MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& operator+ (AccurateFloat&& a, double b)
+   {
+      return std::move(a+=b);
+   }
+   friend
+   AccurateFloat operator+ (double a, const AccurateFloat& b)
+   {
+      return b+a;
+   }
+   friend
+   AccurateFloat&& operator+ (double a, AccurateFloat&& b)
+   {
+      return std::move(b+=a);
    }
 
    AccurateFloat& operator-= (const AccurateFloat& b)
    {
-      mpfr_sub(rep, rep, b.rep, MPFR_RNDN);
+      mpfr_sub(this, this, &b, MPFR_RNDN);
       return *this;
    }
 
-   AccurateFloat& operator-= (long b)
+   friend
+   AccurateFloat operator- (const AccurateFloat& a, const AccurateFloat& b)
    {
-      mpfr_sub_si(rep, rep, b, MPFR_RNDN);
-      return *this;
+      AccurateFloat result;
+      mpfr_sub(&result, &a, &b, MPFR_RNDN);
+      return result;
    }
 
-   AccurateFloat& operator-= (double b)
+   friend
+   AccurateFloat&& operator- (AccurateFloat&& a, const AccurateFloat& b)
    {
-      mpfr_sub_d(rep, rep, b, MPFR_RNDN);
-      return *this;
+      return std::move(a-=b);
+   }
+   friend
+   AccurateFloat&& operator- (const AccurateFloat& a, AccurateFloat&& b)
+   {
+      return std::move((b-=a).negate());
+   }
+   friend
+   AccurateFloat&& operator- (AccurateFloat&& a, AccurateFloat&& b)
+   {
+      return a._mpfr_prec >= b._mpfr_prec ? std::move(a-=b) : std::move((b-=a).negate());
    }
 
    AccurateFloat& operator-= (const Integer& b)
    {
-      if (!assign_add_inf(isinf(b), -1))
-         mpfr_sub_z(rep, rep, b.get_rep(), MPFR_RNDN);
+      if (!add_inf(-isinf(b)))
+         mpfr_sub_z(this, this, b.get_rep(), MPFR_RNDN);
       return *this;
+   }
+
+   friend
+   AccurateFloat operator- (const AccurateFloat& a, const Integer& b)
+   {
+      AccurateFloat result;
+      if (!result.init_add_inf(a, -isinf(b)))
+         mpfr_sub_z(&result, &a, b.get_rep(), MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& operator- (AccurateFloat&& a, const Integer& b)
+   {
+      return std::move(a-=b);
+   }
+   friend
+   AccurateFloat operator- (const Integer& a, const AccurateFloat& b)
+   {
+      return (b-a).negate();
+   }
+   friend
+   AccurateFloat&& operator- (const Integer& a, AccurateFloat&& b)
+   {
+      return std::move((b-=a).negate());
    }
 
    AccurateFloat& operator-= (const Rational& b)
    {
-      if (!assign_add_inf(isinf(b), -1))
-         mpfr_sub_q(rep, rep, b.get_rep(), MPFR_RNDN);
+      if (!add_inf(-isinf(b)))
+         mpfr_sub_q(this, this, b.get_rep(), MPFR_RNDN);
       return *this;
-   }
-
-   AccurateFloat& operator*= (const AccurateFloat& b)
-   {
-      mpfr_mul(rep, rep, b.rep, MPFR_RNDN);
-      return *this;
-   }
-
-   AccurateFloat& operator*= (long b)
-   {
-      mpfr_mul_si(rep, rep, b, MPFR_RNDN);
-      return *this;
-   }
-
-   AccurateFloat& operator*= (double b)
-   {
-      mpfr_mul_d(rep, rep, b, MPFR_RNDN);
-      return *this;
-   }
-
-   AccurateFloat& operator*= (const Integer& b)
-   {
-      if (!assign_mul_inf(isinf(b)))
-         mpfr_mul_z(rep, rep, b.get_rep(), MPFR_RNDN);
-      return *this;
-   }
-
-   AccurateFloat& operator*= (const Rational& b)
-   {
-      if (!assign_mul_inf(isinf(b)))
-         mpfr_mul_q(rep, rep, b.get_rep(), MPFR_RNDN);
-      return *this;
-   }
-
-   AccurateFloat& operator/= (const AccurateFloat& b)
-   {
-      mpfr_div(rep, rep, b.rep, MPFR_RNDN);
-      return *this;
-   }
-
-   AccurateFloat& operator/= (long b)
-   {
-      mpfr_div_si(rep, rep, b, MPFR_RNDN);
-      return *this;
-   }
-
-   AccurateFloat& operator/= (double b)
-   {
-      mpfr_div_d(rep, rep, b, MPFR_RNDN);
-      return *this;
-   }
-
-   AccurateFloat& operator/= (const Integer& b)
-   {
-      if (!assign_div_inf(isinf(b)))
-         mpfr_div_z(rep, rep, b.get_rep(), MPFR_RNDN);
-      return *this;
-   }
-
-   AccurateFloat& operator/= (const Rational& b)
-   {
-      if (!assign_div_inf(isinf(b)))
-         mpfr_div_q(rep, rep, b.get_rep(), MPFR_RNDN);
-      return *this;
-   }
-
-   AccurateFloat& operator<<= (unsigned long k)
-   {
-      mpfr_mul_2ui(rep, rep, k, MPFR_RNDZ);
-      return *this;
-   }
-
-   AccurateFloat& operator>>= (unsigned long k)
-   {
-      mpfr_div_2ui(rep, rep, k, MPFR_RNDZ);
-      return *this;
-   }
-
-   friend AccurateFloat operator- (const AccurateFloat& a)
-   {
-      return AccurateFloat(mpfr_neg, a.rep, MPFR_RNDN);
-   }
-
-   friend AccurateFloat operator+ (const AccurateFloat& a, const AccurateFloat& b)
-   {
-      return AccurateFloat(mpfr_add, a.rep, b.rep, MPFR_RNDN);
-   }
-
-   friend AccurateFloat operator+ (const AccurateFloat& a, long b)
-   {
-      return AccurateFloat(mpfr_add_si, a.rep, b, MPFR_RNDN);
-   }
-
-   friend AccurateFloat operator+ (const AccurateFloat& a, double b)
-   {
-      return AccurateFloat(mpfr_add_d, a.rep, b, MPFR_RNDN);
-   }
-
-   friend AccurateFloat operator+ (const AccurateFloat& a, const Integer& b)
-   {
-      return AccurateFloat(mpfr_add_z, a.rep, b.get_rep(), MPFR_RNDN, isinf(b), Add<false>());
-   }
-
-   friend AccurateFloat operator+ (const AccurateFloat& a, const Rational& b)
-   {
-      return AccurateFloat(mpfr_add_q, a.rep, b.get_rep(), MPFR_RNDN, isinf(b), Add<false>());
-   }
-
-   friend AccurateFloat operator- (const AccurateFloat& a, const AccurateFloat& b)
-   {
-      return AccurateFloat(mpfr_sub, a.rep, b.rep, MPFR_RNDN);
-   }
-
-   friend AccurateFloat operator- (const AccurateFloat& a, long b)
-   {
-      return AccurateFloat(mpfr_sub_si, a.rep, b, MPFR_RNDN);
-   }
-
-   friend AccurateFloat operator- (const AccurateFloat& a, double b)
-   {
-      return AccurateFloat(mpfr_sub_d, a.rep, b, MPFR_RNDN);
-   }
-
-   friend AccurateFloat operator- (const AccurateFloat& a, const Integer& b)
-   {
-      return AccurateFloat(mpfr_sub_z, a.rep, b.get_rep(), MPFR_RNDN, isinf(b), Add<true>());
    }
 
    friend AccurateFloat operator- (const AccurateFloat& a, const Rational& b)
    {
-      return AccurateFloat(mpfr_sub_q, a.rep, b.get_rep(), MPFR_RNDN, isinf(b), Add<true>());
+      AccurateFloat result;
+      if (!result.init_add_inf(a, -isinf(b)))
+         mpfr_sub_q(&result, &a, b.get_rep(), MPFR_RNDN);
+      return result;
    }
 
-   friend AccurateFloat operator- (long a, const AccurateFloat& b)
+   friend
+   AccurateFloat&& operator- (AccurateFloat&& a, const Rational& b)
    {
-      return AccurateFloat(mpfr_si_sub, a, b.rep, MPFR_RNDN);
+      return std::move(a-=b);
+   }
+   friend
+   AccurateFloat operator- (const Rational& a, const AccurateFloat& b)
+   {
+      return (b-a).negate();
+   }
+   friend
+   AccurateFloat&& operator- (const Rational& a, AccurateFloat&& b)
+   {
+      return std::move((b-=a).negate());
    }
 
-   friend AccurateFloat operator- (double a, const AccurateFloat& b)
+   AccurateFloat& operator-= (long b)
    {
-      return AccurateFloat(mpfr_d_sub, a, b.rep, MPFR_RNDN);
+      mpfr_sub_si(this, this, b, MPFR_RNDN);
+      return *this;
+   }
+   AccurateFloat& operator-= (int b)
+   {
+      return *this -= long(b);
    }
 
-   friend AccurateFloat operator- (const Integer& a, const AccurateFloat& b)
+   friend
+   AccurateFloat operator- (const AccurateFloat& a, long b)
    {
-      mpfr_t temp;
-      return AccurateFloat(mpfr_add_z, _tmp_negate(temp, b.rep), a.get_rep(), MPFR_RNDN, isinf(a), Add<false>());
+      AccurateFloat result;
+      mpfr_sub_si(&result, &a, b, MPFR_RNDN);
+      return result;
    }
 
-   friend AccurateFloat operator- (const Rational& a, const AccurateFloat& b)
+   friend
+   AccurateFloat&& operator- (AccurateFloat&& a, long b)
    {
-      mpfr_t temp;
-      return AccurateFloat(mpfr_add_q, _tmp_negate(temp, b.rep), a.get_rep(), MPFR_RNDN, isinf(a), Add<false>());
+      return std::move(a-=b);
    }
 
-   friend AccurateFloat operator* (const AccurateFloat& a, const AccurateFloat& b)
+   friend
+   AccurateFloat operator- (long a, const AccurateFloat& b)
    {
-      return AccurateFloat(mpfr_mul, a.rep, b.rep, MPFR_RNDN);
+      AccurateFloat result;
+      mpfr_si_sub(&result, a, &b, MPFR_RNDN);
+      return result;
    }
 
-   friend AccurateFloat operator* (const AccurateFloat& a, long b)
+   friend
+   AccurateFloat&& operator- (long a, AccurateFloat&& b)
    {
-      return AccurateFloat(mpfr_mul_si, a.rep, b, MPFR_RNDN);
+      mpfr_si_sub(&b, a, &b, MPFR_RNDN);
+      return std::move(b);
+   }
+
+   friend
+   AccurateFloat operator- (const AccurateFloat& a, int b)
+   {
+      return a-long(b);
+   }
+   friend
+   AccurateFloat&& operator- (AccurateFloat&& a, int b)
+   {
+      return std::move(a-=long(b));
+   }
+   friend
+   AccurateFloat operator- (int a, const AccurateFloat& b)
+   {
+      return long(a)-b;
+   }
+   friend
+   AccurateFloat&& operator- (int a, AccurateFloat&& b)
+   {
+      return std::move(long(a)-std::move(b));
+   }
+
+   AccurateFloat& operator-= (double b)
+   {
+      mpfr_sub_d(this, this, b, MPFR_RNDN);
+      return *this;
+   }
+
+   friend
+   AccurateFloat operator- (const AccurateFloat& a, double b)
+   {
+      AccurateFloat result;
+      mpfr_sub_d(&result, &a, b, MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& operator- (AccurateFloat&& a, double b)
+   {
+      return std::move(a-=b);
+   }
+
+   friend
+   AccurateFloat operator- (double a, const AccurateFloat& b)
+   {
+      AccurateFloat result;
+      mpfr_d_sub(&result, a, &b, MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& operator- (double a, AccurateFloat&& b)
+   {
+      mpfr_d_sub(&b, a, &b, MPFR_RNDN);
+      return std::move(b);
+   }
+
+   AccurateFloat& operator*= (const AccurateFloat& b)
+   {
+      mpfr_mul(this, this, &b, MPFR_RNDN);
+      return *this;
+   }
+
+   friend
+   AccurateFloat operator* (const AccurateFloat& a, const AccurateFloat& b)
+   {
+      AccurateFloat result;
+      mpfr_mul(&result, &a, &b, MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& operator* (AccurateFloat&& a, const AccurateFloat& b)
+   {
+      return std::move(a*=b);
+   }
+   friend
+   AccurateFloat&& operator* (const AccurateFloat& a, AccurateFloat&& b)
+   {
+      return std::move(b*=a);
+   }
+   friend
+   AccurateFloat&& operator* (AccurateFloat&& a, AccurateFloat&& b)
+   {
+      return std::move(a*=b);
+   }
+
+   AccurateFloat& operator*= (const Integer& b)
+   {
+      if (!mul_inf(isinf(b)))
+         mpfr_mul_z(this, this, b.get_rep(), MPFR_RNDN);
+      return *this;
+   }
+
+   friend
+   AccurateFloat operator* (const AccurateFloat& a, const Integer& b)
+   {
+      AccurateFloat result;
+      if (!result.init_mul_inf(a, isinf(b)))
+         mpfr_mul_z(&result, &a, b.get_rep(), MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& operator* (AccurateFloat&& a, const Integer& b)
+   {
+      return std::move(a*=b);
+   }
+   friend
+   AccurateFloat operator* (const Integer& a, const AccurateFloat& b)
+   {
+      return b*a;
+   }
+   friend
+   AccurateFloat&& operator* (const Integer& a, AccurateFloat&& b)
+   {
+      return std::move(b*=a);
+   }
+
+   AccurateFloat& operator*= (const Rational& b)
+   {
+      if (!mul_inf(isinf(b)))
+         mpfr_mul_q(this, this, b.get_rep(), MPFR_RNDN);
+      return *this;
+   }
+
+   friend
+   AccurateFloat operator* (const AccurateFloat& a, const Rational& b)
+   {
+      AccurateFloat result;
+      if (!result.init_mul_inf(a, isinf(b)))
+         mpfr_mul_q(&result, &a, b.get_rep(), MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& operator* (AccurateFloat&& a, const Rational& b)
+   {
+      return std::move(a*=b);
+   }
+   friend
+   AccurateFloat operator* (const Rational& a, const AccurateFloat& b)
+   {
+      return b*a;
+   }
+   friend
+   AccurateFloat&& operator* (const Rational& a, AccurateFloat&& b)
+   {
+      return std::move(b*=a);
+   }
+
+   AccurateFloat& operator*= (long b)
+   {
+      mpfr_mul_si(this, this, b, MPFR_RNDN);
+      return *this;
+   }
+   AccurateFloat& operator*= (int b)
+   {
+      return *this *= long(b);
+   }
+
+   friend
+   AccurateFloat operator* (const AccurateFloat& a, long b)
+   {
+      AccurateFloat result;
+      mpfr_mul_si(&result, &a, b, MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& operator* (AccurateFloat&& a, long b)
+   {
+      return std::move(a*=b);
+   }
+   friend
+   AccurateFloat operator* (long a, const AccurateFloat& b)
+   {
+      return b*a;
+   }
+   friend
+   AccurateFloat&& operator* (long a, AccurateFloat&& b)
+   {
+      return std::move(b*=a);
+   }
+   friend
+   AccurateFloat operator* (const AccurateFloat& a, int b)
+   {
+      return a*long(b);
+   }
+   friend
+   AccurateFloat&& operator* (AccurateFloat&& a, int b)
+   {
+      return std::move(a*=long(b));
+   }
+   friend
+   AccurateFloat operator* (int a, const AccurateFloat& b)
+   {
+      return b*long(a);
+   }
+   friend
+   AccurateFloat&& operator* (int a, AccurateFloat&& b)
+   {
+      return std::move(b*=long(a));
+   }
+
+   AccurateFloat& operator*= (double b)
+   {
+      mpfr_mul_d(this, this, b, MPFR_RNDN);
+      return *this;
    }
 
    friend AccurateFloat operator* (const AccurateFloat& a, double b)
    {
-      return AccurateFloat(mpfr_mul_d, a.rep, b, MPFR_RNDN);
+      AccurateFloat result;
+      mpfr_mul_d(&result, &a, b, MPFR_RNDN);
+      return result;
    }
 
-   friend AccurateFloat operator* (const AccurateFloat& a, const Integer& b)
+   friend
+   AccurateFloat&& operator* (AccurateFloat&& a, double b)
    {
-      return AccurateFloat(mpfr_mul_z, a.rep, b.get_rep(), MPFR_RNDN, isinf(b), Mul());
+      return std::move(a*=b);
    }
-
-   friend AccurateFloat operator* (const AccurateFloat& a, const Rational& b)
+   friend AccurateFloat operator* (double a, const AccurateFloat& b)
    {
-      return AccurateFloat(mpfr_mul_q, a.rep, b.get_rep(), MPFR_RNDN, isinf(b), Mul());
+      return b+a;
    }
-
-   friend AccurateFloat operator/ (const AccurateFloat& a, const AccurateFloat& b)
+   friend
+   AccurateFloat&& operator* (double a, AccurateFloat&& b)
    {
-      return AccurateFloat(mpfr_div, a.rep, b.rep, MPFR_RNDN);
+      return std::move(b*=a);
    }
 
-   friend AccurateFloat operator/ (const AccurateFloat& a, long b)
+   AccurateFloat& operator/= (const AccurateFloat& b)
    {
-      return AccurateFloat(mpfr_div_si, a.rep, b, MPFR_RNDN);
+      mpfr_div(this, this, &b, MPFR_RNDN);
+      return *this;
    }
 
-   friend AccurateFloat operator/ (const AccurateFloat& a, double b)
+   friend
+   AccurateFloat operator/ (const AccurateFloat& a, const AccurateFloat& b)
    {
-      return AccurateFloat(mpfr_div_d, a.rep, b, MPFR_RNDN);
+      AccurateFloat result;
+      mpfr_div(&result, &a, &b, MPFR_RNDN);
+      return result;
    }
 
-   friend AccurateFloat operator/ (const AccurateFloat& a, const Integer& b)
+   friend
+   AccurateFloat&& operator/ (AccurateFloat&& a, const AccurateFloat& b)
    {
-      return AccurateFloat(mpfr_div_z, a.rep, b.get_rep(), MPFR_RNDN, isinf(b), Div());
+      return std::move(a/=b);
    }
 
-   friend AccurateFloat operator/ (const AccurateFloat& a, const Rational& b)
+   AccurateFloat& operator/= (const Integer& b)
    {
-      return AccurateFloat(mpfr_div_q, a.rep, b.get_rep(), MPFR_RNDN, isinf(b), Div());
+      if (!div_inf(isinf(b)))
+         mpfr_div_z(this, this, b.get_rep(), MPFR_RNDN);
+      return *this;
    }
 
-   friend AccurateFloat operator/ (long a, const AccurateFloat& b)
+   friend
+   AccurateFloat operator/ (const AccurateFloat& a, const Integer& b)
    {
-      return AccurateFloat(mpfr_si_div, a, b.rep, MPFR_RNDN);
+      AccurateFloat result;
+      if (!result.init_div_inf(a, isinf(b)))
+         mpfr_div_z(&result, &a, b.get_rep(), MPFR_RNDN);
+      return result;
    }
 
-   friend AccurateFloat operator/ (double a, const AccurateFloat& b)
+   friend
+   AccurateFloat&& operator/ (AccurateFloat&& a, const Integer& b)
    {
-      return AccurateFloat(mpfr_d_div, a, b.rep, MPFR_RNDN);
+      return std::move(a/=b);
    }
-
-   friend AccurateFloat operator/ (const Integer& a, const AccurateFloat& b)
+   friend
+   AccurateFloat operator/ (const Integer& a, const AccurateFloat& b)
    {
-      return (1L/b)*=a;
+      return AccurateFloat(a)/b;
    }
 
+   AccurateFloat& operator/= (const Rational& b)
+   {
+      if (!div_inf(isinf(b)))
+         mpfr_div_q(this, this, b.get_rep(), MPFR_RNDN);
+      return *this;
+   }
+
+   friend
+   AccurateFloat operator/ (const AccurateFloat& a, const Rational& b)
+   {
+      AccurateFloat result;
+      if (!result.init_div_inf(a, isinf(b)))
+         mpfr_div_q(&result, &a, b.get_rep(), MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& operator/ (AccurateFloat&& a, const Rational& b)
+   {
+      return std::move(a/=b);
+   }
    friend AccurateFloat operator/ (const Rational& a, const AccurateFloat& b)
    {
-      return (1L/b)*a;
+      return AccurateFloat(a)/b;
    }
 
-   friend AccurateFloat operator<< (const AccurateFloat& a, unsigned long k)
+   AccurateFloat& operator/= (long b)
    {
-      return AccurateFloat(mpfr_mul_2ui, a.rep, k, MPFR_RNDZ);
+      mpfr_div_si(this, this, b, MPFR_RNDN);
+      return *this;
+   }
+   AccurateFloat& operator/= (int b)
+   {
+      return *this /= long(b);
    }
 
-   friend AccurateFloat operator>> (const AccurateFloat& a, unsigned long k)
+   friend
+   AccurateFloat operator/ (const AccurateFloat& a, long b)
    {
-      return AccurateFloat(mpfr_div_2ui, a.rep, k, MPFR_RNDZ);
+      AccurateFloat result;
+      mpfr_div_si(&result, &a, b, MPFR_RNDN);
+      return result;
    }
 
-   friend AccurateFloat floor(const AccurateFloat& a)
+   friend
+   AccurateFloat&& operator/ (AccurateFloat&& a, long b)
    {
-      return AccurateFloat(mpfr_floor, a.rep);
+      return std::move(a/=b);
    }
 
-   friend AccurateFloat ceil(const AccurateFloat& a)
+   friend
+   AccurateFloat operator/ (long a, const AccurateFloat& b)
    {
-      return AccurateFloat(mpfr_ceil, a.rep);
+      AccurateFloat result;
+      mpfr_si_div(&result, a, &b, MPFR_RNDN);
+      return result;
    }
 
-   friend AccurateFloat abs(const AccurateFloat& a)
+   friend
+   AccurateFloat&& operator/ (long a, AccurateFloat&& b)
    {
-      return AccurateFloat(mpfr_abs, a.rep, MPFR_RNDN);
+      mpfr_si_div(&b, a, &b, MPFR_RNDN);
+      return std::move(b);
    }
 
-   int compare(long b) const
+   friend
+   AccurateFloat operator/ (const AccurateFloat& a, int b)
    {
-      return mpfr_cmp_si(rep, b);
+      return a/long(b);
+   }
+   friend
+   AccurateFloat&& operator/ (AccurateFloat&& a, int b)
+   {
+      return std::move(a/=long(b));
+   }
+   friend
+   AccurateFloat operator/ (int a, const AccurateFloat& b)
+   {
+      return long(a)/b;
+   }
+   friend
+   AccurateFloat&& operator/ (int a, AccurateFloat&& b)
+   {
+      return std::move(long(a)/std::move(b));
    }
 
-   int compare(int b) const { return compare(long(b)); }
-
-   int compare(double b) const
+   AccurateFloat& operator/= (double b)
    {
-      return mpfr_cmp_d(rep, b);
+      mpfr_div_d(this, this, b, MPFR_RNDN);
+      return *this;
    }
 
-   int compare(const Integer& b) const
+   friend
+   AccurateFloat operator/ (const AccurateFloat& a, double b)
    {
-      const int s1=isinf(*this), s2=isinf(b);
-      if (__builtin_expect(s1 || s2, 0)) {
-         return s1-s2;
+      AccurateFloat result;
+      mpfr_div_d(&result, &a, b, MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& operator/ (AccurateFloat&& a, double b)
+   {
+      return std::move(a/=b);
+   }
+
+   friend
+   AccurateFloat operator/ (double a, const AccurateFloat& b)
+   {
+      AccurateFloat result;
+      mpfr_d_div(&result, a, &b, MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& operator/ (double a, AccurateFloat&& b)
+   {
+      mpfr_d_div(&b, a, &b, MPFR_RNDN);
+      return std::move(b);
+   }
+
+   AccurateFloat& operator<<= (long k)
+   {
+      if (k >= 0)
+         mpfr_mul_2ui(this, this, k, MPFR_RNDZ);
+      else
+         mpfr_div_2ui(this, this, -k, MPFR_RNDZ);
+      return *this;
+   }
+   AccurateFloat& operator<<= (int k)
+   {
+      return *this <<= long(k);
+   }
+   AccurateFloat& operator>>= (long k)
+   {
+      return *this <<= -k;
+   }
+   AccurateFloat& operator>>= (int k)
+   {
+      return *this <<= long(-k);
+   }
+
+   friend
+   AccurateFloat operator<< (const AccurateFloat& a, long k)
+   {
+      AccurateFloat result;
+      if (k >= 0)
+         mpfr_mul_2ui(&result, &a, k, MPFR_RNDZ);
+      else
+         mpfr_div_2ui(&result, &a, k, MPFR_RNDZ);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& operator<< (AccurateFloat&& a, long k)
+   {
+      return std::move(a<<=k);
+   }
+   friend
+   AccurateFloat operator<< (const AccurateFloat& a, int k)
+   {
+      return a<<long(k);
+   }
+   friend
+   AccurateFloat&& operator<< (AccurateFloat&& a, int k)
+   {
+      return std::move(a<<=long(k));
+   }
+
+   friend
+   AccurateFloat operator>> (const AccurateFloat& a, long k)
+   {
+      return a << -k;
+   }
+   friend
+   AccurateFloat&& operator>> (AccurateFloat&& a, long k)
+   {
+      return std::move(a>>=k);
+   }
+   friend
+   AccurateFloat operator>> (const AccurateFloat& a, int k)
+   {
+      return a<<long(-k);
+   }
+   friend
+   AccurateFloat&& operator>> (AccurateFloat&& a, int k)
+   {
+      return std::move(a>>=long(k));
+   }
+
+   friend
+   AccurateFloat floor(const AccurateFloat& a)
+   {
+      AccurateFloat result;
+      mpfr_floor(&result, &a);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& floor(AccurateFloat&& a)
+   {
+      mpfr_floor(&a, &a);
+      return std::move(a);
+   }
+
+   friend
+   AccurateFloat ceil(const AccurateFloat& a)
+   {
+      AccurateFloat result;
+      mpfr_ceil(&result, &a);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& ceil(AccurateFloat&& a)
+   {
+      mpfr_ceil(&a, &a);
+      return std::move(a);
+   }
+
+   friend
+   int round(const AccurateFloat& a, bool& was_integer, mpfr_rnd_t rnd=MPFR_RNDN)
+   {
+      AccurateFloat rounded;
+      const int result = mpfr_rint(&rounded, &a, rnd);
+      if (result == 1 || result == -1) {
+         std::ostringstream oss;
+         wrap(oss) << "AccurateFloat " << a << " not representable as an integer";
+         throw std::runtime_error(oss.str());
       }
-      return mpfr_cmp_z(rep, b.get_rep());
+      was_integer = !result;
+      return int(rounded);
    }
 
-   int compare(const Rational& b) const
+   friend
+   AccurateFloat rounded_if_integer(const AccurateFloat& a, double prec=1e-10, mpfr_rnd_t rnd=MPFR_RNDN)
    {
-      const int s1=isinf(*this), s2=isinf(b);
-      if (__builtin_expect(s1 || s2, 0)) {
-         return s1-s2;
+      AccurateFloat rounded;
+      const int result = mpfr_rint(&rounded, &a, rnd);
+      if (result == 1 || result == -1) {
+         std::ostringstream oss;
+         wrap(oss) << "AccurateFloat " << a << " not representable as an integer";
+         throw std::runtime_error(oss.str());
       }
-      return mpfr_cmp_q(rep, b.get_rep());
+      if (result == 0 || abs(a-rounded) <= prec)
+         return rounded;
+      else
+         return a;
    }
 
-   int compare(const AccurateFloat& b) const
+   friend
+   AccurateFloat abs(const AccurateFloat& a)
    {
-      return mpfr_cmp(rep, b.rep);
+      AccurateFloat result;
+      mpfr_abs(&result, &a, MPFR_RNDN);
+      return result;
    }
 
-   typedef list comparable_with(int, long, double, Integer, Rational);
-
-   bool operator! () const
+   friend
+   AccurateFloat&& abs(AccurateFloat&& a)
    {
-      return mpfr_zero_p(rep);
+      mpfr_abs(&a, &a, MPFR_RNDN);
+      return std::move(a);
    }
 
-   friend bool operator== (const AccurateFloat& a, const AccurateFloat& b)
+   static
+   AccurateFloat pow(const AccurateFloat& a, const AccurateFloat& b)
    {
-      return mpfr_equal_p(a.rep, b.rep);
+      AccurateFloat result;
+      mpfr_pow(&result, &a, &b, MPFR_RNDN);
+      return result;
    }
 
-   friend bool operator< (const AccurateFloat& a, const AccurateFloat& b)
+   static
+   AccurateFloat&& pow(AccurateFloat&& a, const AccurateFloat& b)
    {
-      return mpfr_less_p(a.rep, b.rep);
+      mpfr_pow(&a, &a, &b, MPFR_RNDN);
+      return std::move(a);
    }
 
-   friend bool operator<= (const AccurateFloat& a, const AccurateFloat& b)
+   static
+   AccurateFloat pow(const AccurateFloat& a, long k)
    {
-      return mpfr_lessequal_p(a.rep, b.rep);
+      AccurateFloat result;
+      mpfr_pow_si(&result, &a, k, MPFR_RNDN);
+      return result;
    }
 
-   friend bool abs_equal(const AccurateFloat& a, const AccurateFloat& b)
+   static
+   AccurateFloat pow(const AccurateFloat& a, int k)
    {
-      return !mpfr_cmpabs(a.rep, b.rep);
+      return pow(a, long(k));
    }
 
-   static AccurateFloat pow(const AccurateFloat& a, const AccurateFloat& b)
+   static
+   AccurateFloat&& pow(AccurateFloat&& a, long k)
    {
-      return AccurateFloat(mpfr_pow, a.rep, b.rep, MPFR_RNDN);
+      mpfr_pow_si(&a, &a, k, MPFR_RNDN);
+      return std::move(a);
    }
 
-   static AccurateFloat pow(const AccurateFloat& a, long k)
+   static
+   AccurateFloat&& pow(AccurateFloat&& a, int k)
    {
-      return AccurateFloat(mpfr_pow_si, a.rep, k, MPFR_RNDN);
+      return std::move(pow(std::move(a), long(k)));
    }
 
-   static AccurateFloat pow(unsigned long a, unsigned long k)
+   static
+   AccurateFloat pow(long a, long k)
    {
-      return AccurateFloat(mpfr_ui_pow_ui, a, k, MPFR_RNDZ);
+      const bool neg= a<0 ? (a=-a, true) : false;
+      const bool inv= k<0 ? (k=-k, true) : false;
+      AccurateFloat result;
+      mpfr_ui_pow_ui(&result, a, k, MPFR_RNDZ);
+      if (inv) mpfr_si_div(&result, 1L, &result, MPFR_RNDN);
+      if (neg && k%2) result.negate();
+      return result;
    }
 
-   static AccurateFloat pow(unsigned long a, const AccurateFloat& b)
+   static
+   AccurateFloat pow(long a, int k)
    {
-      return AccurateFloat(mpfr_ui_pow, a, b.rep, MPFR_RNDN);
+      return pow(a, long(k));
+   }
+   static
+   AccurateFloat pow(int a, long k)
+   {
+      return pow(long(a), k);
+   }
+   static
+   AccurateFloat pow(int a, int k)
+   {
+      return pow(long(a), long(k));
    }
 
-   friend AccurateFloat sqrt(const AccurateFloat& a)
+   static
+   AccurateFloat pow(long a, const AccurateFloat& b)
    {
-      return AccurateFloat(mpfr_sqrt, a.rep, MPFR_RNDN);
+      AccurateFloat result;
+      if (a >= 0)
+         mpfr_ui_pow(&result, a, &b, MPFR_RNDN);
+      return result;
+   }
+
+   static
+   AccurateFloat pow(int a, const AccurateFloat& b)
+   {
+      return pow(long(a), b);
+   }
+
+   friend
+   AccurateFloat sqrt(const AccurateFloat& a)
+   {
+      AccurateFloat result;
+      mpfr_sqrt(&result, &a, MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& sqrt(AccurateFloat&& a)
+   {
+      mpfr_sqrt(&a, &a, MPFR_RNDN);
+      return std::move(a);
+   }
+
+   friend
+   AccurateFloat exp(const AccurateFloat& a)
+   {
+      AccurateFloat result;
+      mpfr_exp(&result, &a, MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& exp(AccurateFloat&& a)
+   {
+      mpfr_exp(&a, &a, MPFR_RNDN);
+      return std::move(a);
+   }
+
+   friend
+   AccurateFloat log(const AccurateFloat& a)
+   {
+      AccurateFloat result;
+      mpfr_log(&result, &a, MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& log(AccurateFloat&& a)
+   {
+      mpfr_log(&a, &a, MPFR_RNDN);
+      return std::move(a);
    }
 
    // basic trigonometric functions
-   friend AccurateFloat sin(const AccurateFloat& a)
+
+   static
+   AccurateFloat pi()
    {
-      return AccurateFloat(mpfr_sin, a.rep, MPFR_RNDN);
+      AccurateFloat result;
+      mpfr_const_pi(&result, MPFR_RNDN);
+      return result;
    }
 
-   friend AccurateFloat cos(const AccurateFloat& a)
+   friend
+   AccurateFloat sin(const AccurateFloat& a)
    {
-      return AccurateFloat(mpfr_cos, a.rep, MPFR_RNDN);
+      AccurateFloat result;
+      mpfr_sin(&result, &a, MPFR_RNDN);
+      return result;
    }
 
-   friend AccurateFloat tan(const AccurateFloat& a)
+   friend
+   AccurateFloat&& sin(AccurateFloat&& a)
    {
-      return AccurateFloat(mpfr_tan, a.rep, MPFR_RNDN);
+      mpfr_sin(&a, &a, MPFR_RNDN);
+      return std::move(a);
    }
 
-   friend void sin_cos(AccurateFloat& s, AccurateFloat& c, const AccurateFloat& a)
+   friend
+   AccurateFloat cos(const AccurateFloat& a)
    {
-      mpfr_sin_cos(s.rep, c.rep, a.rep, MPFR_RNDN);
+      AccurateFloat result;
+      mpfr_cos(&result, &a, MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& cos(AccurateFloat&& a)
+   {
+      mpfr_cos(&a, &a, MPFR_RNDN);
+      return std::move(a);
+   }
+
+   friend
+   AccurateFloat tan(const AccurateFloat& a)
+   {
+      AccurateFloat result;
+      mpfr_tan(&result, &a, MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& tan(AccurateFloat&& a)
+   {
+      mpfr_tan(&a, &a, MPFR_RNDN);
+      return std::move(a);
+   }
+
+   friend
+   void sin_cos(AccurateFloat& s, AccurateFloat& c, const AccurateFloat& a)
+   {
+      mpfr_sin_cos(&s, &c, &a, MPFR_RNDN);
    }
 
    // basic arc functions
-   friend AccurateFloat asin(const AccurateFloat& a)
+
+   friend
+   AccurateFloat asin(const AccurateFloat& a)
    {
-      return AccurateFloat(mpfr_asin, a.rep, MPFR_RNDN);
+      AccurateFloat result;
+      mpfr_asin(&result, &a, MPFR_RNDN);
+      return result;
    }
 
-   friend AccurateFloat acos(const AccurateFloat& a)
+   friend
+   AccurateFloat&& asin(AccurateFloat&& a)
    {
-      return AccurateFloat(mpfr_acos, a.rep, MPFR_RNDN);
+      mpfr_asin(&a, &a, MPFR_RNDN);
+      return std::move(a);
    }
 
-   friend AccurateFloat atan(const AccurateFloat& a)
+   friend
+   AccurateFloat acos(const AccurateFloat& a)
    {
-      return AccurateFloat(mpfr_atan, a.rep, MPFR_RNDN);
+      AccurateFloat result;
+      mpfr_acos(&result, &a, MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& acos(AccurateFloat&& a)
+   {
+      mpfr_acos(&a, &a, MPFR_RNDN);
+      return std::move(a);
+   }
+
+   friend
+   AccurateFloat atan(const AccurateFloat& a)
+   {
+      AccurateFloat result;
+      mpfr_atan(&result, &a, MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& atan(AccurateFloat&& a)
+   {
+      mpfr_atan(&a, &a, MPFR_RNDN);
+      return std::move(a);
    }
 
    // basic hyperbolic trigonometric functions
-   friend AccurateFloat sinh(const AccurateFloat& a)
+
+   friend
+   AccurateFloat sinh(const AccurateFloat& a)
    {
-      return AccurateFloat(mpfr_sinh, a.rep, MPFR_RNDN);
+      AccurateFloat result;
+      mpfr_sinh(&result, &a, MPFR_RNDN);
+      return result;
    }
 
-   friend AccurateFloat cosh(const AccurateFloat& a)
+   friend
+   AccurateFloat&& sinh(AccurateFloat&& a)
    {
-      return AccurateFloat(mpfr_cosh, a.rep, MPFR_RNDN);
+      mpfr_sinh(&a, &a, MPFR_RNDN);
+      return std::move(a);
    }
 
-   friend AccurateFloat tanh(const AccurateFloat& a)
+   friend
+   AccurateFloat cosh(const AccurateFloat& a)
    {
-      return AccurateFloat(mpfr_tanh, a.rep, MPFR_RNDN);
+      AccurateFloat result;
+      mpfr_cosh(&result, &a, MPFR_RNDN);
+      return result;
    }
 
-   friend void sinh_cosh(AccurateFloat& s, AccurateFloat& c, const AccurateFloat& a)
+   friend
+   AccurateFloat&& cosh(AccurateFloat&& a)
    {
-      mpfr_sinh_cosh(s.rep, c.rep, a.rep, MPFR_RNDN);
+      mpfr_cosh(&a, &a, MPFR_RNDN);
+      return std::move(a);
+   }
+
+   friend
+   AccurateFloat tanh(const AccurateFloat& a)
+   {
+      AccurateFloat result;
+      mpfr_tanh(&result, &a, MPFR_RNDN);
+      return result;
+   }
+
+   friend
+   AccurateFloat&& tanh(AccurateFloat&& a)
+   {
+      mpfr_tanh(&a, &a, MPFR_RNDN);
+      return std::move(a);
+   }
+
+   friend
+   void sinh_cosh(AccurateFloat& s, AccurateFloat& c, const AccurateFloat& a)
+   {
+      mpfr_sinh_cosh(&s, &c, &a, MPFR_RNDN);
    }
 
    // basic hyperbolic arc functions
-   friend AccurateFloat asinh(const AccurateFloat& a)
+
+   friend
+   AccurateFloat asinh(const AccurateFloat& a)
    {
-      return AccurateFloat(mpfr_asinh, a.rep, MPFR_RNDN);
+      AccurateFloat result;
+      mpfr_asinh(&result, &a, MPFR_RNDN);
+      return result;
    }
 
-   friend AccurateFloat acosh(const AccurateFloat& a)
+   friend
+   AccurateFloat&& asinh(AccurateFloat&& a)
    {
-      return AccurateFloat(mpfr_acosh, a.rep, MPFR_RNDN);
+      mpfr_asinh(&a, &a, MPFR_RNDN);
+      return std::move(a);
    }
 
-   friend AccurateFloat atanh(const AccurateFloat& a)
+   friend
+   AccurateFloat acosh(const AccurateFloat& a)
    {
-      return AccurateFloat(mpfr_atanh, a.rep, MPFR_RNDN);
+      AccurateFloat result;
+      mpfr_acosh(&result, &a, MPFR_RNDN);
+      return result;
    }
 
-
-   friend AccurateFloat log(const AccurateFloat& a)
+   friend
+   AccurateFloat&& acosh(AccurateFloat&& a)
    {
-      return AccurateFloat(mpfr_log, a.rep, MPFR_RNDN);
+      mpfr_acosh(&a, &a, MPFR_RNDN);
+      return std::move(a);
    }
 
-   static AccurateFloat pi() { return AccurateFloat(mpfr_const_pi, MPFR_RNDN); }
-
-   void putstr(std::ostream& os, std::ios::fmtflags) const;
-
-   std::string to_string(int base=10) const
+   friend
+   AccurateFloat atanh(const AccurateFloat& a)
    {
-      std::ostringstream os;
-      putstr(os, std::ios::dec);
-      return os.str();
+      AccurateFloat result;
+      mpfr_atanh(&result, &a, MPFR_RNDN);
+      return result;
    }
+
+   friend
+   AccurateFloat&& atanh(AccurateFloat&& a)
+   {
+      mpfr_atanh(&a, &a, MPFR_RNDN);
+      return std::move(a);
+   }
+
+   int compare(const AccurateFloat& b) const noexcept
+   {
+      return mpfr_cmp(this, &b);
+   }
+
+   int compare(const Integer& b) const noexcept
+   {
+      const int s1=isinf(*this), s2=isinf(b);
+      if (__builtin_expect(s1 || s2, 0)) {
+         return s1-s2;
+      }
+      return mpfr_cmp_z(this, &b);
+   }
+
+   int compare(const Rational& b) const noexcept
+   {
+      const int s1=isinf(*this), s2=isinf(b);
+      if (__builtin_expect(s1 || s2, 0)) {
+         return s1-s2;
+      }
+      return mpfr_cmp_q(this, &b);
+   }
+
+   int compare(long b) const noexcept
+   {
+      return mpfr_cmp_si(this, b);
+   }
+
+   int compare(int b) const noexcept
+   {
+      return compare(long(b));
+   }
+
+   int compare(double b) const noexcept
+   {
+      return mpfr_cmp_d(this, b);
+   }
+
+   typedef mlist<int, long, double, Integer, Rational> is_comparable_with;
+
+   bool is_zero() const noexcept
+   {
+      return mpfr_zero_p(this);
+   }
+
+   friend
+   bool operator== (const AccurateFloat& a, const AccurateFloat& b)
+   {
+      return mpfr_equal_p(&a, &b);
+   }
+
+   friend
+   bool operator!= (const AccurateFloat& a, const AccurateFloat& b)
+   {
+      return !(a==b);
+   }
+
+   friend
+   bool operator< (const AccurateFloat& a, const AccurateFloat& b)
+   {
+      return mpfr_less_p(&a, &b);
+   }
+
+   friend
+   bool operator<= (const AccurateFloat& a, const AccurateFloat& b)
+   {
+      return mpfr_lessequal_p(&a, &b);
+   }
+
+   friend
+   bool operator> (const AccurateFloat& a, const AccurateFloat& b)
+   {
+      return b<a;
+   }
+
+   friend
+   bool operator>= (const AccurateFloat& a, const AccurateFloat& b)
+   {
+      return b<=a;
+   }
+
+   template <typename T>
+   friend
+   typename std::enable_if<mlist_contains<is_comparable_with, T>::value, bool>::type
+   operator== (const AccurateFloat& a, const T& b) noexcept
+   {
+      return a.compare(b)==0;
+   }
+
+   template <typename T>
+   friend
+   typename std::enable_if<mlist_contains<is_comparable_with, T>::value, bool>::type
+   operator== (const T& a, const AccurateFloat& b) noexcept
+   {
+      return b==a;
+   }
+
+   template <typename T>
+   friend
+   typename std::enable_if<mlist_contains<is_comparable_with, T>::value, bool>::type
+   operator!= (const AccurateFloat& a, const T& b) noexcept
+   {
+      return !(a==b);
+   }
+
+   template <typename T>
+   friend
+   typename std::enable_if<mlist_contains<is_comparable_with, T>::value, bool>::type
+   operator!= (const T& a, const AccurateFloat& b) noexcept
+   {
+      return !(b==a);
+   }
+
+   template <typename T>
+   friend
+   typename std::enable_if<mlist_contains<is_comparable_with, T>::value, bool>::type
+   operator< (const AccurateFloat& a, const T& b) noexcept
+   {
+      return a.compare(b)<0;
+   }
+
+   template <typename T>
+   friend
+   typename std::enable_if<mlist_contains<is_comparable_with, T>::value, bool>::type
+   operator< (const T& a, const AccurateFloat& b) noexcept
+   {
+      return b>a;
+   }
+
+   template <typename T>
+   friend
+   typename std::enable_if<mlist_contains<is_comparable_with, T>::value, bool>::type
+   operator> (const AccurateFloat& a, const T& b) noexcept
+   {
+      return a.compare(b)>0;
+   }
+
+   template <typename T>
+   friend
+   typename std::enable_if<mlist_contains<is_comparable_with, T>::value, bool>::type
+   operator> (const T& a, const AccurateFloat& b) noexcept
+   {
+      return b<a;
+   }
+
+   template <typename T>
+   friend
+   typename std::enable_if<mlist_contains<is_comparable_with, T>::value, bool>::type
+   operator<= (const AccurateFloat& a, const T& b) noexcept
+   {
+      return a.compare(b)<=0;
+   }
+
+   template <typename T>
+   friend
+   typename std::enable_if<mlist_contains<is_comparable_with, T>::value, bool>::type
+   operator<= (const T& a, const AccurateFloat& b) noexcept
+   {
+      return b>=a;
+   }
+
+   template <typename T>
+   friend
+   typename std::enable_if<mlist_contains<is_comparable_with, T>::value, bool>::type
+   operator>= (const AccurateFloat& a, const T& b) noexcept
+   {
+      return a.compare(b)>=0;
+   }
+
+   template <typename T>
+   friend
+   typename std::enable_if<mlist_contains<is_comparable_with, T>::value, bool>::type
+   operator>= (const T& a, const AccurateFloat& b) noexcept
+   {
+      return b<=a;
+   }
+
+   friend
+   bool abs_equal(const AccurateFloat& a, const AccurateFloat& b) noexcept
+   {
+      return !mpfr_cmpabs(&a, &b);
+   }
+
+   mpfr_srcptr get_rep() const { return this; }
 
    friend
    std::ostream& operator<< (std::ostream& os, const AccurateFloat& a)
@@ -796,141 +1633,139 @@ public:
       a.putstr(os, os.flags());
       return os;
    }
+
+   void read(std::istream& is);
+
+   friend
+   std::istream& operator>> (std::istream& is, AccurateFloat& a)
+   {
+      a.read(is);
+      return is;
+   }
+
+
 #if POLYMAKE_DEBUG
-   void dump() const { std::cerr << *this << std::flush; }
+   void dump() const __attribute__((used)) { std::cerr << *this << std::flush; }
 #endif
+protected:
+   // +=,-= Rational, Integer
+   bool add_inf(int s2)
+   {
+      if (__builtin_expect(s2, 0)) {
+         const int s1=isinf(*this);
+         if (s1) {
+            if (s2 != s1) mpfr_set_nan(this);
+         } else {
+            mpfr_set_inf(this, s2);
+         }
+         return true;
+      }
+      return false;
+   }
+
+   // +,- Rational, Integer
+   bool init_add_inf(const AccurateFloat& a, int s2)
+   {
+      if (__builtin_expect(s2, 0)) {
+         const int s1=mpfr_inf_p(&a) ? mpfr_sgn(&a) : 0;
+         if (!s1 || s2 == s1)
+            mpfr_set_inf(this, s2);  // else *this remains NaN
+         return true;
+      }
+      return false;
+   }
+
+   // *= Rational, Integer
+   bool mul_inf(int s2)
+   {
+      if (__builtin_expect(s2, 0)) {
+         if (mpfr_zero_p(this))
+            mpfr_set_nan(this);
+         else if (!mpfr_nan_p(this))
+            mpfr_set_inf(this, mpfr_sgn(this)*s2);
+         return true;
+      }
+      return false;
+   }
+
+   // * Rational, Integer
+   bool init_mul_inf(const AccurateFloat& a, int s2)
+   {
+      if (__builtin_expect(s2, 0)) {
+         if (!mpfr_zero_p(&a) && !mpfr_nan_p(&a))
+            mpfr_set_inf(this, mpfr_sgn(&a)*s2);
+         return true;
+      }
+      return false;
+   }
+
+   // /= Rational, Integer
+   bool div_inf(int s2)
+   {
+      if (__builtin_expect(s2, 0)) {
+         if (mpfr_inf_p(this))
+            mpfr_set_nan(this);
+         else if (!mpfr_nan_p(this))
+            mpfr_set_zero(this, mpfr_sgn(this)*s2);
+         return true;
+      }
+      return false;
+   }
+
+   // / Rational, Integer
+   bool init_div_inf(const AccurateFloat& a, int s2)
+   {
+      if (__builtin_expect(s2, 0)) {
+         if (!mpfr_inf_p(&a) && !mpfr_nan_p(&a))
+            mpfr_set_zero(this, mpfr_sgn(&a)*s2);
+         return true;
+      }
+      return false;
+   }
+
+   void putstr(std::ostream& os, std::ios::fmtflags) const;
+
+   friend class Integer;
+   friend class Rational;
 };
 
+template <>
+struct spec_object_traits<AccurateFloat>
+   : spec_object_traits<is_scalar> {
+
+   static
+   bool is_zero(const AccurateFloat& a)
+   {
+      return a.is_zero();
+   }
+
+   static
+   bool is_one(const AccurateFloat& a)
+   {
+      return a==1;
+   }
+
+   static const AccurateFloat& zero();
+   static const AccurateFloat& one();
+};
+
+inline
+bool isfinite(const AccurateFloat& a) noexcept
+{
+   return mpfr_number_p(a.get_rep());
 }
-namespace std {
 
-inline void swap(pm::AccurateFloat& a, pm::AccurateFloat& b) { a.swap(b); }
-
-template <>
-class numeric_limits<pm::AccurateFloat> : public numeric_limits<pm::Rational> {
-public:
-   static const bool is_exact = false;
-   static pm::AccurateFloat min() throw() { return pm::AccurateFloat(pm::maximal<pm::AccurateFloat>(),-1); }
-   static pm::AccurateFloat infinity() throw() { return pm::AccurateFloat(pm::maximal<pm::AccurateFloat>()); }
-   static pm::AccurateFloat max() throw() { return pm::AccurateFloat(pm::maximal<pm::AccurateFloat>()); }
-};
-
+inline
+int isinf(const AccurateFloat& a) noexcept
+{
+   return mpfr_inf_p(a.get_rep()) ? mpfr_sgn(a.get_rep()) : 0;
 }
-namespace pm {
 
-inline AccurateFloat operator+ (const AccurateFloat& a) { return a; }
-inline AccurateFloat operator+ (const AccurateFloat& a, int b) { return a+long(b); }
-inline AccurateFloat operator+ (long a, const AccurateFloat& b) { return b+a; }
-inline AccurateFloat operator+ (int a, const AccurateFloat& b) { return b+long(a); }
-inline AccurateFloat operator+ (double a, const AccurateFloat& b) { return b+a; }
-inline AccurateFloat operator+ (const Integer& a, const AccurateFloat& b) { return b+a; }
-inline AccurateFloat operator+ (const Rational& a, const AccurateFloat& b) { return b+a; }
-inline AccurateFloat operator- (const AccurateFloat& a, int b) { return a-long(b); }
-inline AccurateFloat operator- (int a, const AccurateFloat& b) { return long(a)-b; }
-inline AccurateFloat operator* (const AccurateFloat& a, int b) { return a*long(b); }
-inline AccurateFloat operator* (long a, const AccurateFloat& b) { return b*a; }
-inline AccurateFloat operator* (int a, const AccurateFloat& b) { return b*long(a); }
-inline AccurateFloat operator* (double a, const AccurateFloat& b) { return b+a; }
-inline AccurateFloat operator* (const Integer& a, const AccurateFloat& b) { return b*a; }
-inline AccurateFloat operator* (const Rational& a, const AccurateFloat& b) { return b*a; }
-inline AccurateFloat operator/ (const AccurateFloat& a, int b) { return a/long(b); }
-inline AccurateFloat operator/ (int a, const AccurateFloat& b) { return long(a)/b; }
-
-inline bool operator!= (const AccurateFloat& a, const AccurateFloat& b) { return !(a==b); }
-inline bool operator> (const AccurateFloat& a, const AccurateFloat& b) { return b<a; }
-inline bool operator>= (const AccurateFloat& a, const AccurateFloat& b) { return b<=a; }
-
-inline bool operator== (const AccurateFloat& a, int b) { return a.compare(long(b))==0; }
-inline bool operator== (const AccurateFloat& a, long b) { return a.compare(b)==0; }
-inline bool operator== (const AccurateFloat& a, double b) { return a.compare(b)==0; }
-inline bool operator== (const AccurateFloat& a, const Integer& b) { return a.compare(b)==0; }
-inline bool operator== (const AccurateFloat& a, const Rational& b) { return a.compare(b)==0; }
-inline bool operator== (int a, const AccurateFloat& b) { return b.compare(long(a))==0; }
-inline bool operator== (long a, const AccurateFloat& b) { return b.compare(a)==0; }
-inline bool operator== (double a, const AccurateFloat& b) { return b.compare(a)==0; }
-inline bool operator== (const Integer& a, const AccurateFloat& b) { return b.compare(a)==0; }
-inline bool operator== (const Rational& a, const AccurateFloat& b) { return b.compare(a)==0; }
-
-inline bool operator!= (const AccurateFloat& a, int b) { return a.compare(long(b))!=0; }
-inline bool operator!= (const AccurateFloat& a, long b) { return a.compare(b)!=0; }
-inline bool operator!= (const AccurateFloat& a, double b) { return a.compare(b)!=0; }
-inline bool operator!= (const AccurateFloat& a, const Integer& b) { return a.compare(b)!=0; }
-inline bool operator!= (const AccurateFloat& a, const Rational& b) { return a.compare(b)!=0; }
-inline bool operator!= (int a, const AccurateFloat& b) { return b.compare(long(a))!=0; }
-inline bool operator!= (long a, const AccurateFloat& b) { return b.compare(a)!=0; }
-inline bool operator!= (double a, const AccurateFloat& b) { return b.compare(a)!=0; }
-inline bool operator!= (const Integer& a, const AccurateFloat& b) { return b.compare(a)!=0; }
-inline bool operator!= (const Rational& a, const AccurateFloat& b) { return b.compare(a)!=0; }
-
-inline bool operator<= (const AccurateFloat& a, int b) { return a.compare(long(b))<=0; }
-inline bool operator<= (const AccurateFloat& a, long b) { return a.compare(b)<=0; }
-inline bool operator<= (const AccurateFloat& a, double b) { return a.compare(b)<=0; }
-inline bool operator<= (const AccurateFloat& a, const Integer& b) { return a.compare(b)<=0; }
-inline bool operator<= (const AccurateFloat& a, const Rational& b) { return a.compare(b)<=0; }
-inline bool operator<= (int a, const AccurateFloat& b) { return b.compare(long(a))>=0; }
-inline bool operator<= (long a, const AccurateFloat& b) { return b.compare(a)>=0; }
-inline bool operator<= (double a, const AccurateFloat& b) { return b.compare(a)>=0; }
-inline bool operator<= (const Integer& a, const AccurateFloat& b) { return b.compare(a)>=0; }
-inline bool operator<= (const Rational& a, const AccurateFloat& b) { return b.compare(a)>=0; }
-
-inline bool operator>= (const AccurateFloat& a, int b) { return a.compare(long(b))>=0; }
-inline bool operator>= (const AccurateFloat& a, long b) { return a.compare(b)>=0; }
-inline bool operator>= (const AccurateFloat& a, double b) { return a.compare(b)>=0; }
-inline bool operator>= (const AccurateFloat& a, const Integer& b) { return a.compare(b)>=0; }
-inline bool operator>= (const AccurateFloat& a, const Rational& b) { return a.compare(b)>=0; }
-inline bool operator>= (int a, const AccurateFloat& b) { return b.compare(long(a))<=0; }
-inline bool operator>= (long a, const AccurateFloat& b) { return b.compare(a)<=0; }
-inline bool operator>= (double a, const AccurateFloat& b) { return b.compare(a)<=0; }
-inline bool operator>= (const Integer& a, const AccurateFloat& b) { return b.compare(a)<=0; }
-inline bool operator>= (const Rational& a, const AccurateFloat& b) { return b.compare(a)<=0; }
-
-inline bool operator< (const AccurateFloat& a, int b) { return a.compare(long(b))<0; }
-inline bool operator< (const AccurateFloat& a, long b) { return a.compare(b)<0; }
-inline bool operator< (const AccurateFloat& a, double b) { return a.compare(b)<0; }
-inline bool operator< (const AccurateFloat& a, const Integer& b) { return a.compare(b)<0; }
-inline bool operator< (const AccurateFloat& a, const Rational& b) { return a.compare(b)<0; }
-inline bool operator< (int a, const AccurateFloat& b) { return b.compare(long(a))>0; }
-inline bool operator< (long a, const AccurateFloat& b) { return b.compare(a)>0; }
-inline bool operator< (double a, const AccurateFloat& b) { return b.compare(a)>0; }
-inline bool operator< (const Integer& a, const AccurateFloat& b) { return b.compare(a)>0; }
-inline bool operator< (const Rational& a, const AccurateFloat& b) { return b.compare(a)>0; }
-
-inline bool operator> (const AccurateFloat& a, int b) { return a.compare(long(b))>0; }
-inline bool operator> (const AccurateFloat& a, long b) { return a.compare(b)>0; }
-inline bool operator> (const AccurateFloat& a, double b) { return a.compare(b)>0; }
-inline bool operator> (const AccurateFloat& a, const Integer& b) { return a.compare(b)>0; }
-inline bool operator> (const AccurateFloat& a, const Rational& b) { return a.compare(b)>0; }
-inline bool operator> (int a, const AccurateFloat& b) { return b.compare(long(a))<0; }
-inline bool operator> (long a, const AccurateFloat& b) { return b.compare(a)<0; }
-inline bool operator> (double a, const AccurateFloat& b) { return b.compare(a)<0; }
-inline bool operator> (const Integer& a, const AccurateFloat& b) { return b.compare(a)<0; }
-inline bool operator> (const Rational& a, const AccurateFloat& b) { return b.compare(a)<0; }
-
-template <> inline
-cmp_value sign(const AccurateFloat& a) { return sign(mpfr_sgn(a.get_rep())); }
-
-template <>
-class conv<AccurateFloat, Integer> : public conv_by_cast<AccurateFloat, Integer> {};
-
-template <>
-class conv<Integer, AccurateFloat> : public conv_by_cast<Integer, AccurateFloat> {};
-
-template <>
-class conv<AccurateFloat, Rational> : public conv_by_cast<AccurateFloat, Rational> {};
-
-template <>
-class conv<Rational, AccurateFloat> : public conv_by_cast<Rational, AccurateFloat> {};
-
-template <>
-class conv<double, AccurateFloat> : public conv_by_cast<double, AccurateFloat> {};
-
-template <>
-class conv<AccurateFloat, double> {
-public:
-   typedef AccurateFloat argument_type;
-   typedef double result_type;
-   result_type operator() (const AccurateFloat& a) const { return mpfr_get_d(a.get_rep(), MPFR_RNDN); }
-};
+inline
+int sign(const AccurateFloat& a) noexcept
+{
+   return sign(mpfr_sgn(a.get_rep()));
+}
 
 template <>
 struct algebraic_traits<AccurateFloat> {
@@ -938,10 +1773,31 @@ struct algebraic_traits<AccurateFloat> {
    typedef AccurateFloat field_type;
 };
 
+
+}
+namespace std {
+
+inline
+void swap(pm::AccurateFloat& a, pm::AccurateFloat& b)
+{
+   a.swap(b);
+}
+
+template <>
+class numeric_limits<pm::AccurateFloat> : public numeric_limits<pm::Rational> {
+public:
+   static const bool is_exact = false;
+   static pm::AccurateFloat min() { return pm::AccurateFloat::infinity(-1); }
+   static pm::AccurateFloat max() { return pm::AccurateFloat::infinity(1); }
+   static pm::AccurateFloat infinity() { return max(); }
+};
+
+}
+namespace pm {
 namespace operations {
 
 template <>
-struct cmp_scalar<AccurateFloat, AccurateFloat, true> : cmp_GMP_based<AccurateFloat> {};
+struct cmp_scalar<AccurateFloat, AccurateFloat, void> : cmp_GMP_based<AccurateFloat> {};
 
 } }
 namespace polymake {

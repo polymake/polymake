@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,24 +20,21 @@
 
 namespace polymake { namespace polytope {
 
-template<typename Scalar>
-bool check_inc(const Matrix<Scalar>& P, const Matrix<Scalar>& H, const char* sign_arg, bool verbose)
+template <typename Scalar>
+bool check_inc(const Matrix<Scalar>& P, const Matrix<Scalar>& H, std::string sign_arg, bool verbose)
 {
    bool ok=true,
      minus=false, equal=false, plus=false;  // what is allowed
    int n_minus=0, n_equal=0, n_plus=0;         // number of point/hyperplane pairs
 
    // analyze sign argument
-   char c;
-   for (int i=0; (c = sign_arg[i]); ++i) {
+   for (char c : sign_arg) {
       switch (c) {
       case '-' : minus = true; break;
       case '0' : equal = true; break;
       case '+' : plus  = true; break;
       default :
-         std::ostringstream err_msg;
-         err_msg << "check_inc: unrecognized sign argument " << sign_arg;
-         throw std::runtime_error(err_msg.str());
+         throw std::runtime_error("check_inc: unrecognized sign argument " + sign_arg);
       }
    }
 
@@ -46,11 +43,8 @@ bool check_inc(const Matrix<Scalar>& P, const Matrix<Scalar>& H, const char* sig
 
    if (!P.rows() || !H.rows())   // nothing to do
       return true;
-   if (P.cols() != H.cols()) {
-      std::ostringstream err_msg;
-      err_msg << "check_inc: the matrices must match in dimension";
-      throw std::runtime_error(err_msg.str());
-   }
+   if (P.cols() != H.cols())
+      throw std::runtime_error("check_inc: P/H matrix dimension mismatch");
 
    // check all pairs
    Scalar scp;
@@ -108,7 +102,7 @@ UserFunctionTemplate4perl("# @category Consistency check"
                   "# > print check_inc(cube(2)->VERTICES,$H,'0',1);"
                   "# | <1,0>   ( 1 1 -1 ) * [ 1 1 0 ] == 2"
                   "# | <3,0>   ( 1 1 1 ) * [ 1 1 0 ] == 2"
-                  "# | number of points==4, number of hyperplanes==1, -:0, 0:2, +:2, total:4"
+                  "# | \\#points==4, \\#hyperplanes==1, -:0, 0:2, +:2, total:4"
                   "# Thus, the first and third vertex don't lie on the hyperplane defined by the facet"
                   "# but on the positive side of it, and the remaining two lie on the hyperplane.",
                   "check_inc<Scalar>(Matrix<type_upgrade<Scalar>> Matrix<type_upgrade<Scalar>> $; $=0)");

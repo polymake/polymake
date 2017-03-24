@@ -54,30 +54,20 @@ rule LINEALITY_SPACE : FACETS | INEQUALITIES {
    my $cmp=$this->prepare_computations;
    $this->LINEALITY_SPACE=common::lineality_space($F);
 }
-precondition : CONE_AMBIENT_DIM {
-   $this->CONE_AMBIENT_DIM>=1;
-}
+precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM >= 1 }
+precondition : FEASIBLE;
 weight 1.10;
 override : SUPER::cone_only;
 
-rule FEASIBLE : { $this->FEASIBLE=1 }
-precondition : defined(ONE_VERTEX | VALID_POINT);
-weight 0.1;
-
-# the property FEASIBLE is geometric, hence it is strictly illegal to derive
-# it from, e.g., N_VERTICES (which is combinatorial)
-rule FEASIBLE : VERTICES | POINTS {
-   $this->FEASIBLE = ($this->VERTICES | POINTS)->rows() > 0;
-}
-weight 0.1;
-
 # @category Backward compatibility
 # The number of edges of the [[GRAPH]]
+# @return Int
 user_method N_EDGES = GRAPH.N_EDGES;
 
 # @category Combinatorics
 # The number of ridges (faces of codimension 2) of the polytope
 # equals the number of edges of the [[DUAL_GRAPH]]
+# @return Int
 user_method N_RIDGES = DUAL_GRAPH.N_EDGES;
 
 
@@ -173,13 +163,13 @@ precondition : GRAPH.BIPARTITE, COMBINATORIAL_DIM {
 }
 weight 1.10;
 
-rule GRAPH.ADJACENCY : HASSE_DIAGRAM {
+rule GRAPH.ADJACENCY : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    $this->GRAPH->ADJACENCY=vertex_graph($this->HASSE_DIAGRAM);
 }
 precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM>=2 };
 weight 1.20;
 
-rule DUAL_GRAPH.ADJACENCY : HASSE_DIAGRAM {
+rule DUAL_GRAPH.ADJACENCY : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    $this->DUAL_GRAPH->ADJACENCY=facet_graph($this->HASSE_DIAGRAM);
 }
 precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM>=2 };
@@ -284,7 +274,7 @@ rule COMPLEXITY : F_VECTOR, F2_VECTOR {
 precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM==4 }
 precondition : N_VERTICES { $this->N_VERTICES>=6 }
 
-rule TWO_FACE_SIZES : HASSE_DIAGRAM {
+rule TWO_FACE_SIZES : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    $this->TWO_FACE_SIZES=two_face_sizes($this->HASSE_DIAGRAM);
 }
 precondition : COMBINATORIAL_DIM {
@@ -299,7 +289,7 @@ precondition : COMBINATORIAL_DIM {
    $this->COMBINATORIAL_DIM>=2
 }
 
-rule SUBRIDGE_SIZES : HASSE_DIAGRAM {
+rule SUBRIDGE_SIZES : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    $this->SUBRIDGE_SIZES=subridge_sizes($this->HASSE_DIAGRAM);
 }
 precondition : COMBINATORIAL_DIM {
@@ -330,6 +320,17 @@ rule GRAPH.SQUARED_EDGE_LENGTHS : VERTICES, GRAPH.ADJACENCY, FAR_FACE {
 }
 precondition : FAR_FACE { $this->FAR_FACE->size()==0 }
 
+
+rule DUAL_GRAPH.DIHEDRAL_ANGLES : FACETS, DUAL_GRAPH.ADJACENCY {
+   my $da = new EdgeMap<Undirected, Float>($this->DUAL_GRAPH->ADJACENCY);
+   my $facets = $this->FACETS;
+   for ( my $e=entire(edges($this->DUAL_GRAPH->ADJACENCY)); $e; ++$e ) {
+      $da->[$$e] = dihedral_angle($facets->[$e->from_node],$facets->[$e->to_node]);
+   }
+   $this->DUAL_GRAPH->DIHEDRAL_ANGLES = $da;
+}
+precondition : FULL_DIM;
+precondition : FAR_FACE { $this->FAR_FACE->size()==0 }
 
 rule BOUNDED : VERTICES | POINTS, POINTED {
   if (!$this->POINTED) {
@@ -382,7 +383,6 @@ rule TRIANGULATION.REFINED_SPLITS : SPLITS, VERTICES, TRIANGULATION.FACETS {
    $this->TRIANGULATION->REFINED_SPLITS=splits_in_subdivision($this->VERTICES,$this->TRIANGULATION->FACETS,$this->SPLITS);
 }
 
-
 rule WEAKLY_CENTERED : FACETS, AFFINE_HULL {
    my $zero=0;
    foreach my $f (@{$this->FACETS}) {
@@ -401,6 +401,11 @@ rule WEAKLY_CENTERED : FACETS, AFFINE_HULL {
 }
 weight 1.10;
 
+rule WEAKLY_CENTERED : VERTICES | POINTS, LINEALITY_SPACE | INPUT_LINEALITY, CONE_AMBIENT_DIM{
+    $this->WEAKLY_CENTERED = $this->contains(unit_vector($this->CONE_AMBIENT_DIM, 0));
+}
+weight 4.10;
+
 rule CENTERED : FACETS, AFFINE_HULL {
    foreach my $f (@{$this->FACETS}) {
       if ($f->[0] <= 0) {
@@ -418,6 +423,11 @@ rule CENTERED : FACETS, AFFINE_HULL {
 }
 weight 1.10;
 
+rule CENTERED : VERTICES | POINTS, LINEALITY_SPACE | INPUT_LINEALITY, CONE_AMBIENT_DIM{
+    $this->CENTERED = $this->contains_in_interior(unit_vector($this->CONE_AMBIENT_DIM, 0));
+}
+weight 4.10;
+
 rule WEAKLY_CENTERED : {
     $this->WEAKLY_CENTERED=1;
 }
@@ -433,13 +443,14 @@ rule ALTSHULER_DET : VERTICES_IN_FACETS {
    $this->ALTSHULER_DET=altshuler_det($this->VERTICES_IN_FACETS);
 }
 
-rule TRIANGULATION.BOUNDARY.FACETS, TRIANGULATION.BOUNDARY.FACET_TRIANGULATIONS : TRIANGULATION.FACETS, VERTICES_IN_FACETS {
-   ($this->TRIANGULATION->BOUNDARY->FACETS, $this->TRIANGULATION->BOUNDARY->FACET_TRIANGULATIONS)=
+rule TRIANGULATION.BOUNDARY.FACETS, TRIANGULATION.BOUNDARY.VERTEX_MAP, TRIANGULATION.BOUNDARY.FACET_TRIANGULATIONS : TRIANGULATION.FACETS, VERTICES_IN_FACETS {
+   ($this->TRIANGULATION->BOUNDARY->FACETS, $this->TRIANGULATION->BOUNDARY->VERTEX_MAP, $this->TRIANGULATION->BOUNDARY->FACET_TRIANGULATIONS)=
      triang_boundary($this->TRIANGULATION->FACETS, $this->VERTICES_IN_FACETS);
 }
 
-rule TRIANGULATION(any).BOUNDARY.FACETS, TRIANGULATION(any).BOUNDARY.FACET_TRIANGULATIONS : VERTICES_IN_FACETS, N_FACETS {
+rule TRIANGULATION(any).BOUNDARY.FACETS, TRIANGULATION(any).BOUNDARY.VERTEX_MAP, TRIANGULATION(any).BOUNDARY.FACET_TRIANGULATIONS : VERTICES_IN_FACETS, N_FACETS, N_VERTICES {
    $this->TRIANGULATION->BOUNDARY->FACETS=[ @{$this->VERTICES_IN_FACETS} ];
+   $this->TRIANGULATION->BOUNDARY->VERTEX_MAP = sequence(0,$this->N_VERTICES);
    $this->TRIANGULATION->BOUNDARY->FACET_TRIANGULATIONS=[ map { scalar2set($_) } 0 .. $this->N_FACETS-1 ];
 }
 precondition : SIMPLICIAL;
@@ -477,12 +488,6 @@ user_method TRIANGULATION_INT_SIGNS : TRIANGULATION_INT, POINTS {
 
 
 # clients capable of handling different coordinate types
-
-
-rule AFFINE_HULL : CONE_AMBIENT_DIM {
-   $this->AFFINE_HULL=unit_matrix<Scalar>($this->CONE_AMBIENT_DIM);
-}
-precondition : !FEASIBLE;
 
 
 rule VERTEX_BARYCENTER : VERTICES, N_VERTICES {
@@ -541,7 +546,7 @@ rule MINIMAL_VERTEX_ANGLE : VERTICES, VERTEX_BARYCENTER {
 # quick fix for #302
 # compute minimal non-faces of a simplicial polytope 
 # using the corresponding functions from application topaz
-rule MINIMAL_NON_FACES : HASSE_DIAGRAM {    
+rule MINIMAL_NON_FACES : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {    
     $this->MINIMAL_NON_FACES=topaz::minimal_non_faces($this->HASSE_DIAGRAM);
 }
 weight 4.10 : CONE_DIM { $this->CONE_DIM <= 12 ? [0,0] : [4,10] }
@@ -591,6 +596,7 @@ weight 0.1;
 
 # @category Geometry
 # returns the dimension of the ambient space of the polytope
+# @return Int
 user_method AMBIENT_DIM {
   my ($self)=@_;
   return ($self->CONE_AMBIENT_DIM-1);
@@ -598,59 +604,13 @@ user_method AMBIENT_DIM {
 
 # @category Geometry
 # returns the dimension of the polytope
+# @return Int
 user_method DIM {
   my ($self)=@_;
   if (!defined ($self->lookup("LINEALITY_SPACE | INPUT_LINEALITY | INPUT_RAYS | RAYS | INEQUALITIES | EQUATIONS | FACETS | LINEAR_SPAN"))) {
     return $self->COMBINATORIAL_DIM;
   }
   return $self->CONE_DIM-1;
-}
-
-# @category Geometry
-# checks whether a given point is contained in a polytope
-# @param Polytope<Scalar> P polytope
-# @param Vector<Scalar> v point
-# @return Bool
-user_method contains {
-  my ($self,$v)=@_;
-  my $zero=0;
-  if (defined (my $f=$self->lookup("FACETS | INEQUALITIES"))) {
-    if (defined (my $ah=$self->lookup("AFFINE_HULL | EQUATIONS")) ) {
-      if ( $ah->rows ) {  
-        my $b=$ah*$v;
-        foreach (@{$b}) { if ( $_ != $zero ) { return; } }
-      }
-    }
-    my $b=$f*$v;
-    foreach (@{$b}) { if ( $_ < $zero ) { return; } }
-    return 1;
-  } else {
-    return polytope_contains_point($self,$v);
-  }
-}
-
-# FIXME #603
-# the implementation of the following  user_method is *not* efficient,
-# if the polytope is given via vertices it
-# should be done in the same way as the one above
-
-# @category Geometry
-# checks whether a given point is contained in the strict interior of a polytope
-# @param Polytope<Scalar> P polytope
-# @param Vector<Scalar> v point
-# @return Bool
-user_method contains_in_interior {
-  my ($self,$v)=@_;
-  my $f = $self->give("FACETS | INEQUALITIES");
-    if (defined (my $ah=$self->lookup("AFFINE_HULL | EQUATIONS")) ) {
-      if ( $ah->rows ) {  
-        my $b=$ah*$v;
-        foreach (@{$b}) { if ( $_ != 0 ) { return; } }
-      }
-    }
-  my $b=$f*$v;
-  foreach (@{$b}) { if ( $_ <= 0 ) { return; } }
-  return 1;
 }
 
 }
@@ -696,6 +656,22 @@ user_function dihedral_angle<Scalar> (Vector<Scalar>, Vector<Scalar>; { deg=>0, 
     $angle=$angle/$pi*180;
   }
   return $angle;
+}
+
+# @category Geometry
+# Compute the mean or median distance of the [[VERTICES]] to the [[VERTEX_BARYCENTER]].
+# @param Polytope p
+# @option Bool median use median instead of arithmetic mean
+# @return Float
+user_function center_distance (Polytope; {median=>0}) {
+    my ($p,$options) = @_;
+    die "center_distance only for bounded polytopes!" unless $p->BOUNDED;
+    my @dists = map { sqrt(convert_to<Float>(sqr($_))) } @{$p->VERTICES - repeat_row($p->VERTEX_BARYCENTER,$p->N_VERTICES)};
+    if ($options->{median}) {
+        return median(\@dists);
+    } else {
+        return average(\@dists);
+    }
 }
 
 # @category Producing a polytope from polytopes

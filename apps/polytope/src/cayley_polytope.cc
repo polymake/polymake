@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -23,36 +23,37 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object cayley_polytope(const Array<perl::Object> & pp, perl::OptionSet options)
+perl::Object cayley_polytope(const Array<perl::Object>& pp, perl::OptionSet options)
 {
    int d = pp.size();
 
-   Entire< Array<perl::Object> >::const_iterator pp_it = entire(pp);
+   auto pp_it = entire(pp);
 
    bool pointed=pp_it->give("POINTED");
    if (!pointed)
       throw std::runtime_error("cayley_polytope: input polyhedra not pointed");
 
-   if ( !pp_it->give("LATTICE") )
+   bool is_lattice=pp_it->give("LATTICE");
+   if (!is_lattice)
       throw std::runtime_error("cayley polytope construction only defined for lattice polytopes");
-   int adim = pp_it->give("CONE_AMBIENT_DIM");
+   const int adim = pp_it->give("CONE_AMBIENT_DIM");
 
    perl::Object p_out(pp_it->type());
    std::string names = pp_it->name();
    ListMatrix< Vector<Integer> > U = pp_it->give("VERTICES | POINTS");
-   U |= repeat_row(unit_vector<Integer>(d,0),U.rows());
+   U |= repeat_row(unit_vector<Integer>(d,0), U.rows());
 
    int i = 1;
    while ( !(++pp_it).at_end() ) {
-   bool pointed=pp_it->give("POINTED");
+      pointed=pp_it->give("POINTED");
       if (!pointed)
          throw std::runtime_error("cayley_polytope: input polyhedra not pointed");
-
-      if ( !pp_it->give("LATTICE") )
+      is_lattice=pp_it->give("LATTICE");
+      if (!is_lattice)
          throw std::runtime_error("cayley polytope construction only defined for lattice polytopes");
 
       int adim2 = pp_it->give("CONE_AMBIENT_DIM");
-      if ( adim != adim2 )
+      if (adim != adim2)
          throw std::runtime_error("cayley polytope construction only defined for polytopes with equal ambient dimension");
 
       Matrix<Integer> V = pp_it->give("VERTICES | POINTS");
@@ -63,13 +64,13 @@ perl::Object cayley_polytope(const Array<perl::Object> & pp, perl::OptionSet opt
    }
 
    p_out.set_description() << "cayley polytope of the polytopes " << names << endl;
-   if ( options["proj"] ) 
-      p_out.take("POINTS") << U.minor(All,~range(U.cols()-1,U.cols()-1));
-   else
+   if (options["proj"]) {
+      p_out.take("POINTS") << U.minor(All, range(0, U.cols()-2));
+      p_out.take("INPUT_LINEALITY") << Matrix<Rational>(0, U.cols()-1);
+   } else {
       p_out.take("POINTS") << U;
-
-   const Matrix<Rational> empty;
-   p_out.take("INPUT_LINEALITY") << empty;
+      p_out.take("INPUT_LINEALITY") << Matrix<Rational>(0, U.cols());
+   }
 
    return p_out;
 }

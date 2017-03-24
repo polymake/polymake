@@ -41,13 +41,15 @@ user_function degree<Addition>(Cycle<Addition>) {
 
 	my $ambient_dim = $X->PROJECTIVE_AMBIENT_DIM;
 
-	my $ring = new Ring<TropicalNumber<Addition> >($ambient_dim+1);
-	my $num = new Polynomial<TropicalNumber<Addition> >($ring);
-	my @vars = $ring->variables;
-	for my $v (@vars) { 
-		$num = $num + $v;
-	}
-	my $rat_fct = new RationalFunction<Addition>(NUMERATOR=>$num, DENOMINATOR=>$vars[0]);
+   my $expnum = unit_matrix<Int>($ambient_dim+1); 
+   my $coeffnum = ones_vector<TropicalNumber<Addition>>($ambient_dim+1); 
+	my $num = new Polynomial<TropicalNumber<Addition>>($coeffnum, $expnum);
+	my $expden = new Matrix<Int>(1,$ambient_dim+1);
+   $expden->elem(0,0) = 1;
+   my $coeffden = new Vector<TropicalNumber<Addition>>([0]);
+   my $den = new Polynomial<TropicalNumber<Addition>>($coeffden, $expden);
+   
+   my $rat_fct = new RationalFunction<Addition>(NUMERATOR=>$num, DENOMINATOR=>$den);
 
 	my $div = divisor( $X, $rat_fct^$dim);
 	return $div->WEIGHTS * ones_vector<Integer>($div->WEIGHTS->dim());

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -19,7 +19,7 @@ rule TRIANGULATION.FACETS : RAYS, TRIANGULATION.WEIGHTS {
    $this->TRIANGULATION->FACETS=regular_subdivision($this->RAYS, $this->TRIANGULATION->WEIGHTS);
 }
 weight 3.10;
-permutation : TRIANGULATION.FacetPerm;
+incurs TRIANGULATION.FacetPerm;
 
 rule TRIANGULATION.WEIGHTS : RAYS, TRIANGULATION.FACETS {
    $this->TRIANGULATION->WEIGHTS=is_regular($this->RAYS,$this->TRIANGULATION->FACETS);
@@ -30,12 +30,13 @@ rule TRIANGULATION.WEIGHTS : RAYS, TRIANGULATION.FACETS {
 object Polytope<Rational> {
 
 # @category Geometry
-# A polytope is lattice if each vertex has integer coordinates.
+# A rational polytope is lattice if each bounded vertex has integer coordinates.
 property LATTICE : Bool;
 
-rule LATTICE : VERTICES {
-   $this->LATTICE=is_integral($this->VERTICES);
+rule LATTICE : VERTICES , FAR_FACE {
+   $this->LATTICE=is_integral($this->VERTICES->minor(~$this->FAR_FACE,All));
 }
+precondition : POINTED;
 
 rule TRIANGULATION.GKZ_VECTOR : RAYS, TRIANGULATION.FACETS {
    $this->TRIANGULATION->GKZ_VECTOR=gkz_vector($this->RAYS,$this->TRIANGULATION->FACETS);

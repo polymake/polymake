@@ -1,10 +1,73 @@
+/* Copyright (c) 1997-2016
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+   http://www.polymake.org
+
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2, or (at your option) any
+   later version: http://www.gnu.org/licenses/gpl.txt.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+--------------------------------------------------------------------------------
+*/
+
 #ifndef POLYMAKE_POLYTOPE_SEPARATING_HYPERPLANE_H
 #define POLYMAKE_POLYTOPE_SEPARATING_HYPERPLANE_H
 
+#include "polymake/Vector.h"
+#include "polymake/Matrix.h"
+#include "polymake/linalg.h"
+#include "polymake/polytope/to_interface.h"
+
 namespace polymake { namespace polytope {
 
-void is_vertex_sub(const Vector<Rational>& q, const Matrix<Rational>& points, bool& answer, Vector<Rational>& sep_hyp);
+template<typename Scalar, typename VectorType, typename MatrixType>
+Vector<Scalar> separating_hyperplane(const GenericVector<VectorType, Scalar>& q, 
+                                     const GenericMatrix<MatrixType, Scalar>& points)
+{
+   /*
+     construction of LP according to cdd redundancy check for points, see
+     http://www.ifor.math.ethz.ch/~fukuda/polyfaq/node22.html#polytope:Vredundancy
+    */
+   const Matrix<Scalar> 
+      extension(zero_vector<Scalar>(points.rows()) / ones_vector<Scalar>(points.rows())),
+      ineqs(  (T(extension)|-points.minor(All,range(1,points.cols()-1))) 
+              // z^t p_i - z_0 <= 0; CAUTION: p_i is affine part of i-th point! 
+            / (ones_vector<Scalar>(2)|-q.slice(1)) ), 
+              // z^t q - z_0 <= 1, prevents unboundedness
+      affine_hull(null_space(points/q)),
+      extension2(affine_hull.rows(), 2);
+   Matrix<Scalar>
+      affine_hull_minor(affine_hull.rows(), affine_hull.cols()-1);
+   if (affine_hull.cols() > 1) {
+      affine_hull_minor = affine_hull.minor(All, range(1, affine_hull.cols()-1));
+   }
+   const Matrix<Scalar> eqs(extension2 | -affine_hull_minor);
+   const Vector<Scalar> obj(zero_vector<Scalar>(1) | -ones_vector<Scalar>(1) | q.slice(1)); // z^t q - z_0
+
+   to_interface::solver<Scalar> S;
+   /// @retval first: objective value, second: solution
+   typedef std::pair<Scalar, Vector<Scalar> > lp_solution;
+
+   lp_solution sol=S.solve_lp(ineqs, eqs, obj, true);
+   if (sol.first <= 0) //q non-red. <=> obj_val > 0
+      throw infeasible();
+
+   // H: z^t x = z_0, i.e., z_0 - z^t x = 0
+   Vector<Scalar> sep_hyp = -sol.second.slice(1); 
+   sep_hyp[0] = sol.second[1]; 
+   return sep_hyp;
+}
 
 }}
 
 #endif
+
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:

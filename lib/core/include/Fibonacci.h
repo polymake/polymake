@@ -74,10 +74,10 @@ namespace pm
    };
 
    template <typename Number>
-   struct check_iterator_feature<Fibonacci_iterator<Number>, unlimited> : True { };
+   struct check_iterator_feature<Fibonacci_iterator<Number>, unlimited> : std::true_type { };
 
    template <typename Number>
-   struct check_iterator_feature<Fibonacci_iterator<Number>, rewindable> : True { };
+   struct check_iterator_feature<Fibonacci_iterator<Number>, rewindable> : std::true_type { };
 
    template <typename Number>
    struct spec_object_traits< FibonacciNumbers<Number> > : spec_object_traits<is_container> { };

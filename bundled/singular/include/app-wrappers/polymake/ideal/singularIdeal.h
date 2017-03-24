@@ -22,6 +22,9 @@
 
 namespace polymake { namespace perl_bindings {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T>
+   RecognizeType4perl("Polymake::ideal::SingularIdeal", (), polymake::ideal::SingularIdeal)
+
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } }
 

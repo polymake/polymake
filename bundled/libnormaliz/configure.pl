@@ -22,62 +22,22 @@
 
 sub allowed_options {
    my ($allowed_options, $allowed_with)=@_;
-   @$allowed_with{ qw( openmp boost ) }=();
 }
 
 
 sub usage {
-   print STDERR "  --without-openmp        deactivate OpenMP support for libnormaliz\n",
-                "  --with-boost=PATH  installation path of boost library, if non-standard\n";
+
 }
 
 sub proceed {
    my ($options)=@_;
-   my $message = "";
+   my $message;
 
-   if (defined($Polymake::Configure::GCCversion) && Polymake::Configure::v_cmp($Polymake::Configure::GCCversion, "4.4") >= 0 && $options->{openmp} ne ".none.") {
-      $CXXflags = "-fopenmp";
-      $LDflags = "-fopenmp";
-   } else {
+# openmp flags are set in the main configure script
+   if (defined($Polymake::Configure::CXXflags) && $Polymake::Configure::CXXflags !~ /-fopenmp/) {
       $CXXflags = "-DOPENMP=no";
       $message = "OpenMP support disabled";
    }
-
-
-# libnormaliz uses the boost library
-# check for the headers and add the appropriate path to CXXflags if neccessary
-# uses the same config option as the extension group (where permlib requires boost)
-
-   my $boost_path;
-
-   if (defined ($boost_path=$options->{boost})) {
-      $boost_path .= '/include' if (-d "$boost_path/include/boost");
-      if (-f "$boost_path/boost/shared_ptr.hpp") {
-         $CXXflags.=" -I$boost_path";
-      } else {
-         die "Invalid installation location of boost library: header file boost/shared_ptr.hpp not found\n";
-      }
-
-   } else {
-      my $error=Polymake::Configure::build_test_program(<<'---');
-#include <boost/shared_ptr.hpp>
-#include <boost/iterator/counting_iterator.hpp>
-int main() {
-  return 0;
-}
----
-      if ($?) {
-         die "Could not compile a test program checking for boost library.\n",
-            "The most probable reasons are that the library is installed at a non-standard location,\n",
-            "or missing at all.\n",
-            "The complete error log follows:\n$error\n\n",
-            "Please install the library and specify its location using --with-boost option, if needed.\n";
-      }
-   }
-
-# add the boost location to the message printed during configuration
-   my $boost = $boost_path ? "boost=$boost_path" : "";
-   $message .= $message ? ", $boost" : $boost;
 
    # check GMP C++ bindings
    my $build_error=Polymake::Configure::build_test_program(<<'---', Libs => "-lgmpxx -lgmp");

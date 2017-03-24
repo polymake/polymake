@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -32,15 +32,15 @@ private:
    void cancel();
 protected:
    explicit PropertyOut(PerlInterpreter* pi_arg, property_type t_arg)
-      : val(value_flags(t_arg==_normal ? value_read_only :
-                        t_arg==temporary ? value_allow_non_persistent|value_read_only : 0)),
-        pi(pi_arg),
-        t(t_arg) {}
+      : val(t_arg==_normal ? value_read_only :
+            t_arg==temporary ? value_allow_non_persistent | value_read_only : value_mutable)
+      , pi(pi_arg)
+      , t(t_arg) {}
 public:
    template <typename Source>
-   void operator<< (const Source& x)
+   void operator<< (Source&& x)
    {
-      val << x;
+      val << std::forward<Source>(x);
       finish();
    }
 
@@ -54,177 +54,119 @@ public:
 
 
 class ObjectType {
-   friend class Value;
-   friend class Object;
-
-protected:
-   SV* obj_ref;
-
-   bool _isa(const char* type_name, size_t tl) const;
-   static SV* find_type(const char* type_name, size_t tl);
-   static SV* construct_parameterized_type(const char* type_name, size_t tl);
-
-   template <typename TypeList>
-   static SV* construct(const char* type_name, size_t tl)
-   {
-      Stack stack(true, 1+TypeListUtils<TypeList>::type_cnt);
-      if (TypeListUtils<TypeList>::push_types(stack)) {
-         return construct_parameterized_type(type_name, tl);
-      } else {
-         stack.cancel();
-         throw exception("one of the type arguments is not declared in the rules");
-      }
-   }
-   explicit ObjectType(SV* r) : obj_ref(r) {}
 public:
-   template <size_t nl>
-   explicit ObjectType(const char (&type_name)[nl]) :
-      obj_ref(find_type(type_name, nl-1)) {}
+   explicit ObjectType(const AnyString& type_name);
 
-   explicit ObjectType(const std::string& type_name) :
-      obj_ref(find_type(type_name.c_str(), type_name.size())) {}
-
-   ObjectType();
+   ObjectType() : obj_ref(nullptr) {}
 
    ObjectType(const ObjectType& o);
    ~ObjectType();
 
-   // construct a parameterized object type
-   template <typename TypeList, size_t tl>
-   static ObjectType construct(const char (&type_name)[tl])
+   ObjectType(ObjectType&& o) noexcept
+      : obj_ref(o.obj_ref)
    {
-      return ObjectType(construct<TypeList>(type_name, tl-1));
+      o.obj_ref=nullptr;
    }
 
+   bool valid() const { return obj_ref; }
+
+   // construct a parameterized object type
    template <typename TypeList>
-   static ObjectType construct(const std::string& type_name)
+   static ObjectType construct(const AnyString& type_name)
    {
-      return ObjectType(construct<TypeList>(type_name.c_str(), type_name.size()));
+      Stack stack(true, 1+TypeListUtils<TypeList>::type_cnt);
+      if (!TypeListUtils<TypeList>::push_types(stack)) {
+         stack.cancel();
+         throw exception("one of the type arguments is not declared in the rules");
+      }
+      return ObjectType(construct_parameterized_type(type_name));
    }
 
    ObjectType& operator= (const ObjectType& o);
+
+   ObjectType& operator= (ObjectType&& o) noexcept
+   {
+      std::swap(obj_ref, o.obj_ref);
+      return *this;
+   }
 
    std::string name() const;
  
    bool isa(const ObjectType& o) const;
 
-   template <size_t nl>
-   bool isa(const char (&type_name)[nl]) const
-   {
-      return _isa(type_name, nl-1);
-   }
-   bool isa(const std::string& type_name) const
-   {
-      return _isa(type_name.c_str(), type_name.size());
-   }
+   bool isa(const AnyString& type_name) const;
+
+   bool operator== (const ObjectType& o) const;
+   bool operator!= (const ObjectType& o) const { return !operator==(o); }
+
+protected:
+   static SV* construct_parameterized_type(const AnyString& type_name);
+
+   explicit ObjectType(SV* r)
+      : obj_ref(r) {}
+
+   SV* obj_ref;
+
+   friend class Value;
+   friend class Object;
+   friend class pm::Array<Object>;
 };
 
 
 class Object {
    friend class Value;  friend class Main;
-   template <typename> friend class Array_access;
+   friend class pm::Array<Object>;
 protected:
    SV* obj_ref;
-   mutable bool needs_commit;
-
-   void _create(const ObjectType& type, const char* name=NULL, size_t nl=0);
-   void _create_copy(const ObjectType& type, const Object& src);
-   bool _isa(const char* type_name, size_t tl) const;
 
    explicit Object(SV* ref_arg)
-      : obj_ref(ref_arg)
-      , needs_commit(false) {}
-
-   Object(SV* ref_arg, const Array_access<Object>&);
+      : obj_ref(ref_arg) {}
 
 public:
-   void create_new(const ObjectType& type);
+   bool valid() const { return obj_ref; }
 
-   bool valid() const;
+   // default constructor creates an invalid object
+   Object() : obj_ref(nullptr) {}
 
-   // construct an empty object of the given type
-   explicit Object(const ObjectType& type)
-      : obj_ref(NULL)
-   {
-      _create(type);
-   }
+   // construct an empty object of the given type and with an optional name
+   explicit Object(const ObjectType& type, const AnyString& name=AnyString());
 
-   template <size_t nl>
-   explicit Object(const char (&type_name)[nl])
-      : obj_ref(NULL)
-   {
-      _create(ObjectType(type_name));
-   }
-
-   explicit Object(const std::string& type_name)
-      : obj_ref(NULL)
-   {
-      _create(ObjectType(type_name));
-   }
-
-   // construct an empty object of the given type and with the given name
-   Object(const ObjectType& type, const std::string& name)
-      : obj_ref(NULL)
-   {
-      _create(type, name.c_str(), name.size());
-   }
-
-   template <size_t nl>
-   explicit Object(const char (&type_name)[nl], const std::string& name)
-      : obj_ref(NULL)
-   {
-      _create(ObjectType(type_name), name.c_str(), name.size());
-   }
-
-   explicit Object(const std::string& type_name, const std::string& name)
-      : obj_ref(NULL)
-   {
-      _create(ObjectType(type_name),name.c_str(), name.size());
-   }
+   // construct an empty object of the type given as a string and with an optional name
+   explicit Object(const AnyString& type_name, const AnyString& name=AnyString())
+      : Object(ObjectType(type_name)) {}
 
    // construct a copy of another object with possible property conversion
-   Object(const ObjectType& type, const Object& src)
-      : obj_ref(NULL)
-   {
-      _create_copy(type,src);
-   }
+   Object(const ObjectType& type, const Object& src);
 
-   template <size_t nl>
-   Object(const char (&type_name)[nl], const Object& src)
-      : obj_ref(NULL)
-   {
-      _create_copy(ObjectType(type_name), src);
-   }
-
-   Object(const std::string& type_name, const Object& src)
-      : obj_ref(NULL)
-   {
-      _create_copy(ObjectType(type_name), src);
-   }
+   Object(const AnyString& type_name, const Object& src)
+      : Object(ObjectType(type_name), src) {}
 
    // construct an exact copy (up to temporary properties and local extensions)
    Object copy() const;
 
-   // construct a really empty object without type
-   Object();
-
    // doesn't copy the Object, but merely creates a second reference to it!
    Object(const Object& o);
+
+   Object(Object&& o) noexcept
+      : obj_ref(o.obj_ref)
+   {
+      o.obj_ref=nullptr;
+   }
 
    ~Object();
 
    Object& operator= (const Object& o);
 
+   Object& operator= (Object&& o) noexcept
+   {
+      std::swap(obj_ref, o.obj_ref);
+      return *this;
+   }
+
    // change the object type, possibly converting or discarding properties
    Object& cast(const ObjectType& type);
 
-   template <size_t nl>
-   Object& cast(const char (&type_name)[nl])
-   {
-      return cast(ObjectType(type_name));
-   }
-
-   Object& cast(const std::string& type_name)
+   Object& cast(const AnyString& type_name)
    {
       return cast(ObjectType(type_name));
    }
@@ -260,290 +202,172 @@ public:
    description_ostream<true> append_description() { return this; }
 
 protected:
-   SV* _give(const char* name, size_t nl) const;
-   SV* _give_with_property_name(const char* name, size_t nl, std::string& given) const;
-   SV* _lookup(const char* name, size_t nl) const;
-   SV* _lookup_with_property_name(const char* name, size_t nl, std::string& given) const;
-   SV* _lookup(const char* name, size_t nl, const std::string& subobj_name) const;
-   SV* _give(const char* name, size_t nl, SV* props, property_type t) const;
-   SV* _lookup(const char* name, size_t nl, SV* props) const;
-   SV* _give_all(const char* name, size_t nl) const;
-   PerlInterpreter* _take(const char* name, size_t nl) const;
-   bool _exists(const char* name, size_t nl) const;
-   SV* _add(const char* name, size_t nl, SV* sub_obj, property_type t) const;
-   void _remove(const char* name, size_t nl) const;
-   SV* _get_attachment(const char* name, size_t nl) const;
-   void _remove_attachment(const char* name, size_t nl) const;
+   SV* give_impl(const AnyString& name) const;
+   SV* give_with_property_name_impl(const AnyString& name, std::string& given) const;
+   SV* lookup_impl(const AnyString& name) const;
+   SV* lookup_with_property_name_impl(const AnyString& name, std::string& given) const;
+
+   PerlInterpreter* take_impl(const AnyString& name) const;
+   SV* add_impl(const AnyString& name, SV* sub_obj, property_type t) const;
 public:
-   template <size_t nl>
-   PropertyValue give(const char (&name)[nl]) const
+   template <typename... TOptions>
+   PropertyValue give(const AnyString& name, const TOptions&... options) const
    {
-      return PropertyValue(_give(name, nl-1));
-   }
-   PropertyValue give(const std::string& name) const
-   {
-      return PropertyValue(_give(name.c_str(), name.size()));
+      return PropertyValue(give_impl(name), options...);
    }
 
-   template <size_t nl>
-   PropertyValue give_with_property_name(const char (&name)[nl], std::string& given) const
+   template <typename... TOptions>
+   PropertyValue give_with_property_name(const AnyString& name, std::string& given, const TOptions&... options) const
    {
-      return PropertyValue(_give_with_property_name(name, nl-1, given));
-   }
-   PropertyValue give_with_property_name(const std::string& name, std::string& given) const
-   {
-      return PropertyValue(_give_with_property_name(name.c_str(), name.size(), given));
+      return PropertyValue(give_with_property_name_impl(name, given), options...);
    }
 
-   template <size_t nl>
-   PropertyValue lookup(const char (&name)[nl]) const
+   template <typename... TOptions>
+   PropertyValue lookup(const AnyString& name, const TOptions&... options) const
    {
-      return PropertyValue(_lookup(name, nl-1), value_allow_undef);
-   }
-   PropertyValue lookup(const std::string& name) const
-   {
-      return PropertyValue(_lookup(name.c_str(), name.size()), value_allow_undef);
+      return PropertyValue(lookup_impl(name), value_allow_undef, options...);
    }
 
-   template <size_t nl>
-   PropertyValue lookup_with_property_name(const char (&name)[nl], std::string& given) const
+   template <typename... TOptions>
+   PropertyValue lookup_with_property_name(const AnyString& name, std::string& given, const TOptions&... options) const
    {
-      return PropertyValue(_lookup_with_property_name(name, nl-1, given), value_allow_undef);
-   }
-   PropertyValue lookup_with_property_name(const std::string& name, std::string& given) const
-   {
-      return PropertyValue(_lookup_with_property_name(name.c_str(), name.size(), given), value_allow_undef);
+      return PropertyValue(lookup_with_property_name_impl(name, given), value_allow_undef, options...);
    }
 
-   template <size_t nl>
-   PropertyValue lookup(const char (&name)[nl], const std::string& subobj_name) const
+   Object lookup_multi(const AnyString& name, const std::string& subobj_name) const;
+
+   Object give_multi(const AnyString& name, const OptionSet& props, property_type t=_normal) const;
+
+   Object lookup_multi(const AnyString& name, const OptionSet& props) const;
+
+   pm::Array<Object> lookup_multi(const AnyString& name, all_selector) const;
+
+   bool exists(const AnyString& name) const;
+
+   PropertyOut take(const AnyString& name, property_type t=_normal)
    {
-      return PropertyValue(_lookup(name, nl-1, subobj_name));
-   }
-   PropertyValue lookup(const std::string& name, const std::string& subobj_name) const
-   {
-      return PropertyValue(_lookup(name.c_str(), name.size(), subobj_name));
+      return PropertyOut(take_impl(name), t);
    }
 
-   template <size_t nl>
-   PropertyValue give(const char (&name)[nl], const Hash& props, property_type t=_normal) const
+   Object add(const AnyString& name, const Object& sub_obj, property_type t=_normal)
    {
-      return PropertyValue(_give(name, nl-1, props.get(), t));
-   }
-   PropertyValue give(const std::string& name, const Hash& props, property_type t=_normal) const
-   {
-      return PropertyValue(_give(name.c_str(), name.size(), props.get(), t));
+      return Object(add_impl(name, sub_obj.obj_ref, t));
    }
 
-   template <size_t nl>
-   PropertyValue give(const char (&name)[nl], TempOptions& props, property_type t=_normal) const
+   Object add(const AnyString& name, property_type t=_normal)
    {
-      return PropertyValue(_give(name, nl-1, props.get_temp(), t));
-   }
-   PropertyValue give(const std::string& name, TempOptions& props, property_type t=_normal) const
-   {
-      return PropertyValue(_give(name.c_str(), name.size(), props.get_temp(), t));
+      return Object(add_impl(name, nullptr, t));
    }
 
-   template <size_t nl>
-   PropertyValue lookup(const char (&name)[nl], const Hash& props) const
-   {
-      return PropertyValue(_lookup(name, nl-1, props.get()), value_allow_undef);
-   }
-   PropertyValue lookup(const std::string& name, const Hash& props) const
-   {
-      return PropertyValue(_lookup(name.c_str(), name.size(), props.get()), value_allow_undef);
-   }
-
-   template <size_t nl>
-   PropertyValue lookup(const char (&name)[nl], TempOptions& props) const
-   {
-      return PropertyValue(_lookup(name, nl-1, props.get_temp()), value_allow_undef);
-   }
-   PropertyValue lookup(const std::string& name, TempOptions& props) const
-   {
-      return PropertyValue(_lookup(name.c_str(), name.size(), props.get_temp()), value_allow_undef);
-   }
-
-   template <size_t nl>
-   pm::Array<Object> give_all(const char (&name)[nl]) const;
-
-   pm::Array<Object> give_all(const std::string& name) const;
-
-   template <size_t nl>
-   bool exists(const char (&name)[nl]) const
-   {
-      return _exists(name, nl-1);
-   }
-   bool exists(const std::string& name) const
-   {
-      return _exists(name.c_str(), name.size());
-   }
-
-   template <size_t nl>
-   PropertyOut take(const char (&name)[nl], property_type t=_normal)
-   {
-      return PropertyOut(_take(name, nl-1), t);
-   }
-   PropertyOut take(const std::string& name, property_type t=_normal)
-   {
-      return PropertyOut(_take(name.c_str(), name.size()), t);
-   }
-
-   template <size_t nl>
-   Object add(const char (&name)[nl], const Object& sub_obj, property_type t=_normal)
-   {
-      return Object(_add(name, nl-1, sub_obj.obj_ref, t));
-   }
-   Object add(const std::string& name, const Object& sub_obj, property_type t=_normal)
-   {
-      return Object(_add(name.c_str(), name.size(), sub_obj.obj_ref, t));
-   }
-
-   template <size_t nl>
-   Object add(const char (&name)[nl], property_type t=_normal)
-   {
-      needs_commit=true;
-      return Object(_add(name, nl-1, NULL, t));
-   }
-   Object add(const std::string& name, property_type t=_normal)
-   {
-      needs_commit=true;
-      return Object(_add(name.c_str(), name.size(), NULL, t));
-   }
-
-   template <size_t nl>
-   void remove(const char (&name)[nl])
-   {
-      _remove(name, nl-1);
-   }
-   void remove(const std::string& name)
-   {
-      _remove(name.c_str(), name.size());
-   }
+   void remove(const AnyString& name);
 
    void remove(const Object& sub_obj);
 
-   template <size_t nl>
-   PropertyValue get_attachment(const char (&name)[nl]) const
+   PropertyValue get_attachment(const AnyString& name) const;
+
+   PropertyOut attach(const AnyString& name)
    {
-      return PropertyValue(_get_attachment(name,nl-1), value_allow_undef);
-   }
-   PropertyValue get_attachment(const std::string& name) const
-   {
-      return PropertyValue(_get_attachment(name.c_str(), name.size()), value_allow_undef);
+      return PropertyOut(take_impl(name), attachment);
    }
 
-   template <size_t nl>
-   PropertyOut attach(const char (&name)[nl])
-   {
-      return PropertyOut(_take(name, nl-1), attachment);
-   }
-   PropertyOut attach(const std::string& name)
-   {
-      return PropertyOut(_take(name.c_str(), name.size()), attachment);
-   }
-
-   template <size_t nl>
-   void remove_attachment(const char (&name)[nl])
-   {
-      _remove_attachment(name, nl-1);
-   }
-   void remove_attachment(const std::string& name)
-   {
-      _remove_attachment(name.c_str(), name.size());
-   }
+   void remove_attachment(const AnyString& name);
 
    ObjectType type() const;
    bool isa(const ObjectType& type) const;
-
-   template <size_t nl>
-   bool isa(const char (&type_name)[nl]) const
-   {
-      return _isa(type_name, nl-1);
-   }
-   bool isa(const std::string& type_name) const
-   {
-      return _isa(type_name.c_str(), type_name.size());
-   }
+   bool isa(const AnyString& type_name) const;
 
    static Object load(const std::string& filename);
    void save(const std::string& filename) const;
 
    Object parent() const;
 
-   PropertyValue call_polymake_method(const std::string& name, const FunCall& funcall) const
+   template <typename... Args>
+   FunCall call_method(const AnyString& name, Args&&... args) const
    {
-      return PropertyValue(funcall.evaluate_method(obj_ref, name.c_str()),
-                           value_flags(value_allow_undef | value_not_trusted));
+      return FunCall::call_method(name, obj_ref, std::forward<Args>(args)...);
    }
-   PropertyValue call_polymake_method(const char* name, const FunCall& funcall) const
+   template <typename... Args>
+   [[deprecated("CallPolymakeMethod macros are deprecated, please use call_method() instead")]]
+   FunCall call_method_deprecated(const AnyString& name, Args&&... args) const
    {
-      return PropertyValue(funcall.evaluate_method(obj_ref, name),
-                           value_flags(value_allow_undef | value_not_trusted));
-   }
-
-   ListResult list_call_polymake_method(const std::string& name, const FunCall& funcall) const
-   {
-      return ListResult(funcall.list_evaluate_method(obj_ref, name.c_str()), funcall);
-   }
-   ListResult list_call_polymake_method(const char* name, const FunCall& funcall) const
-   {
-      return ListResult(funcall.list_evaluate_method(obj_ref, name), funcall);
-   }
-
-   void void_call_polymake_method(const std::string& name, const FunCall& funcall) const
-   {
-      funcall.void_evaluate_method(obj_ref, name.c_str());
-   }
-   void void_call_polymake_method(const char* name, const FunCall& funcall) const
-   {
-      funcall.void_evaluate_method(obj_ref, name);
+      return FunCall::call_method(name, obj_ref, std::forward<Args>(args)...);
    }
 
    class Schedule {
-      friend class Object;
-   protected:
-      SV* obj_ref;
    public:
-      Schedule();
+      Schedule() : obj_ref(nullptr) {}
+      ~Schedule();
+
       Schedule(const Schedule&);
       Schedule& operator= (const Schedule&);
 
-      // swallow the result of CallPolymakeMethod
-      Schedule(const PropertyValue&);
-      Schedule& operator= (const PropertyValue&);
+      // swallow the result of call_method
+      Schedule(FunCall&&);
+      Schedule& operator= (FunCall&&);
 
-      bool valid() const;
+      bool valid() const { return obj_ref; }
 
-      ListResult list_new_properties() const
-      {
-         FunCall fc;
-         return ListResult(fc.list_evaluate_method(obj_ref, "list_new_properties"), fc);
-      }
+      ListResult list_new_properties() const;
 
-      void apply(Object& o) const
-      {
-         FunCall fc;
-         fc.push(o.obj_ref);
-         fc.void_evaluate_method(obj_ref, "apply");
-      }
+      void apply(Object& o) const;
+
+   protected:
+      SV* obj_ref;
+
+      friend class Object;
    };
+
+   template <bool is_readonly>
+   class Array_element;
+   template <bool is_readonly>
+   class Array_element_factory;
 };
 
 template <typename Container>
-void read_labels(const Object& p, const char* label_prop, Container& labels)
+void read_labels(const Object& p, const std::string& label_prop, Container& labels)
 {
    if (!(p.lookup(label_prop) >> labels)) {
-      std::ostringstream label;
       int i=0;
-      for (typename Entire<Container>::iterator dst=entire(labels); !dst.at_end(); ++i, ++dst) {
-         label.str("");
-         label << i;
-         *dst = label.str();
-      }
+      for (auto dst=entire(labels); !dst.at_end(); ++i, ++dst)
+         *dst = std::to_string(i);
    }
 }
+
+template <bool is_readonly>
+class Object::Array_element
+   : public Object {
+public:
+   Array_element(Array_element&&) = default;
+
+   Array_element& operator= (const Object& o);
+
+   Array_element& operator= (const Array_element& o)
+   {
+      return operator=(static_cast<const Object&>(o));
+   }
+
+private:
+   Array_element(SV* ref_arg, const ObjectType& type);
+
+   Array_element(const Array_element&) = delete;
+
+   const ObjectType& allowed_type;
+   friend class Object;
+};
+
+template <bool is_readonly>
+class Object::Array_element_factory {
+public:
+   typedef int argument_type;
+   typedef Array_element<is_readonly> result_type;
+
+   explicit Array_element_factory(const ArrayHolder* array_arg=nullptr)
+      : array(array_arg) {}
+
+   result_type operator() (int i) const;
+protected:
+   const ArrayHolder* array;
+};
 
 }
 
@@ -559,75 +383,95 @@ template <>
 struct spec_object_traits<perl::ObjectType>
    : spec_object_traits<perl::Object> {};
 
+template <bool is_readonly>
+struct operation_cross_const_helper<perl::Object::Array_element_factory<is_readonly>> {
+   typedef perl::Object::Array_element_factory<false> operation;
+   typedef perl::Object::Array_element_factory<true> const_operation;
+};
+
 template <>
-class Array<perl::Object, void>
+class Array<perl::Object>
    : public perl::ArrayOwner<perl::Object> {
-   typedef perl::ArrayOwner<perl::Object> super;
-   friend class perl::Object;  friend class perl::Value;
-protected:
-   mutable bool needs_commit;
-
-   explicit Array(SV* sv_ref)
-      : super(sv_ref)
-      , needs_commit(false) {}
+   typedef perl::ArrayOwner<perl::Object> base_t;
 public:
-   /// Create an empty array.
-   /// Can be expanded later with resize() or push_back().
-   Array() : needs_commit(true) {}
+   /// Create an array of the given size and fill it with invalid objects.
+   explicit Array(int n=0)
+      : base_t(n) {}
 
-   /// Create an array of the given size and populate it with Objects in invalid state.
-   /// Each object must later be initialized with create_new() or assigned from another valid object.
-   explicit Array(int n)
-      : super(n)
-      , needs_commit(true) {}
+   /// Create an array with a prescribed type for elements.
+   /// It is populated with the given number of valid objects without properties.
+   explicit Array(const perl::ObjectType& type, int n=0);
 
-   /// Create an array of the given size and populate it with valid, empty objects of the given type.
-   Array(int n, const perl::ObjectType& type)
-      : super(n)
-      , needs_commit(true)
+   /// Construct an array from a sequence of Objects passed as arguments.
+   /// The prescribed element type is unspecified; it can be deduced later on demand.
+   Array(std::initializer_list<perl::Object> objects);
+
+   /// Construct an array from a sequence of Objects passed as arguments.
+   /// The elements must be compatible with the prescribed element type.
+   Array(const perl::ObjectType& type, std::initializer_list<perl::Object> objects);
+
+   Array(const Array& other) = default;
+   Array(Array&& other) = default;
+
+   Array& operator= (const Array& other) = default;
+   Array& operator= (Array&& other) = default;
+
+   /// Create an elementwise copy.
+   Array copy() const;
+
+   /// Change the number of elements.
+   /// If the array grows and the prescribed element type has been specified,
+   /// new elements are created as valid objects without properties.
+   /// Otherwise the new elements are in invalid state.
+   void resize(int n);
+
+   /// Add an elemnet at the end of the array.
+   /// If must be compatible with the prescribed element type, unless the latter is unspecified.
+   void push_back(perl::Object&& o);
+
+   void push_back(const perl::Object& o)
    {
-      for (Entire<Array>::iterator it=entire(*this); !it.at_end(); ++it)
-         it->create_new(type);
+      push_back(perl::Object(o));
    }
 
-   /// This does *not* copy the single objects from the source array.
-   /// Instead, the original array gets one more reference pointing to it.
-   Array(const Array& other)
-      : super(other)
-      , needs_commit(other.needs_commit)
-   {
-      other.needs_commit=false;
-   }
+   /// Tell the prescribed element type.
+   /// If it has been unspecified until now, it will be deduced as the common type of all contained objects.
+   /// It might turn out to be invalid if the objects are of incompatible types.
+   const perl::ObjectType& element_type() const;
 
-   /// This does *not* copy the single objects from the source array.
-   /// Instead, the original array gets one more reference pointing to it.
-   Array& operator= (const Array& other)
-   {
-      super::operator=(other);
-      needs_commit=other.needs_commit;
-      other.needs_commit=false;
-      return *this;
-   }
+   // prohibit low-level operations inherited from ArrayHolder
+   void upgrade(int) = delete;
+   void set_contains_aliases() = delete;
+   int dim(bool&) = delete;
+   int cols() const = delete;
+   SV* shift() = delete;
+   SV* pop() = delete;
+   void unshift(SV*) = delete;
+   void push(SV*) = delete;
+
+protected:
+   explicit Array(SV* sv_ref, perl::value_flags flags=perl::value_trusted)
+      : base_t(sv_ref, flags) {}
+
+   mutable perl::ObjectType el_type;
+
+   friend class perl::Object;
+   friend class perl::Value;
 };
 
 namespace perl {
 
-template <size_t nl> inline
-pm::Array<Object> Object::give_all(const char (&name)[nl]) const
-{
-   return pm::Array<Object>(_give_all(name, nl-1));
-}
-
 inline
-pm::Array<Object> Object::give_all(const std::string& name) const
-{
-   return pm::Array<Object>(_give_all(name.c_str(), name.size()));
-}
-
-inline
-False* Value::retrieve(pm::Array<Object>& x) const
+std::false_type* Value::retrieve(pm::Array<Object>& x) const
 {
    return retrieve(static_cast<Array&>(static_cast<ArrayHolder&>(x)));
+}
+
+template <bool is_readonly>
+inline
+Object::Array_element<is_readonly> Object::Array_element_factory<is_readonly>::operator() (int i) const
+{
+   return { (*array)[i], static_cast<const pm::Array<Object>*>(array)->el_type };
 }
 
 } }

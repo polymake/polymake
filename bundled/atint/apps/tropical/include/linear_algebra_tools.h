@@ -41,7 +41,7 @@ namespace polymake { namespace tropical {
 	  v is not in the span of the generators. An error is thrown if the dimensions of v and the generators mismatch
 
 	*/
-	Vector<Rational> linearRepresentation(const Vector<Rational> &v, const Matrix<Rational> &generators);
+	Vector<Rational> linearRepresentation(Vector<Rational> w, Matrix<Rational> A);
 
 	/**
 	  @brief  This method takes a set of row indices for [[SEPARATED_VERTICES]] and a vector that is supposed 

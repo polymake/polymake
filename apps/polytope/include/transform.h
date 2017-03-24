@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -33,12 +33,12 @@ namespace polymake { namespace polytope {
 */
 template <typename TransMatrix> inline
 void transform_section(perl::Object& p_out, perl::Object& p_in,
-                       const char* section_req,
+                       const AnyString& section_req,
                        const GenericMatrix<TransMatrix>& tau)
 {
    Matrix<typename TransMatrix::element_type> M;
    std::string name;
-   if (p_in.lookup_with_property_name(section_req, name) >> M) {
+   if (p_in.lookup_with_property_name(section_req, name, allow_conversion()) >> M) {
       if (M.rows())
          p_out.take(name) << M*tau;
       else

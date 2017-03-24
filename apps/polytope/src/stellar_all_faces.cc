@@ -18,7 +18,8 @@
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
-#include "polymake/graph/HasseDiagram.h"
+#include "polymake/graph/Lattice.h"
+#include "polymake/graph/Decoration.h"
 #include "polymake/Graph.h"
 #include "polymake/FacetList.h"
 #include "polymake/Array.h"
@@ -41,10 +42,11 @@ perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
    const Matrix<Scalar> lineality_space=p_in.give("LINEALITY_SPACE");
    const Vector<Scalar> rel_int_point=p_in.give("REL_INT_POINT");
    FacetList VIF=p_in.give("VERTICES_IN_FACETS");
-   const graph::HasseDiagram HD=p_in.give("HASSE_DIAGRAM");
+   perl::Object HD_obj =p_in.give("HASSE_DIAGRAM");
+   const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential>& HD = p_in.give("HASSE_DIAGRAM");
    Graph<Undirected> DG=p_in.give("DUAL_GRAPH.ADJACENCY");
 
-   const int dim = HD.dim();
+   const int dim = HD.rank()-1;
    if (end_dim < 0)
       end_dim += dim;
    if (end_dim >= dim || end_dim <= 0)
@@ -53,9 +55,9 @@ perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
    NodeMap<Undirected, Vector<Scalar> > facet_normals(DG, rows(F).begin());
 
    int v_count = V.rows();
-   int new_size = HD.node_range_of_dim(0).size();
+   int new_size = HD.nodes_of_rank(1).size();
    for (int d=dim-1; d>=end_dim; --d)
-      new_size += HD.node_range_of_dim(d).size();
+      new_size += HD.nodes_of_rank(d+1).size();
    V.resize(new_size, V.cols());
 
    // random access to the facets of VIF
@@ -79,7 +81,7 @@ perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
       Array< Set<int> > corr_new_facets(DG.nodes());
 
       int f_count = 0;
-      for (Entire<sequence>::iterator it=entire(HD.node_range_of_dim(d)); !it.at_end(); ++it) {
+      for (auto it=entire(HD.nodes_of_rank(d+1)); !it.at_end(); ++it) {
          const Set<int>& face = HD.face(*it);
 
          // produce all relevant inequalities = each neighbour (in the dual graph) of the nodes

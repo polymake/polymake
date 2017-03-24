@@ -19,7 +19,7 @@
 # Visualization of a polytope as a graph (if 1d), or as a solid object (if 2d or 3d),
 # or as a Schlegel diagram (4d).
 # @super Visual::Container
-# @relates Polytope
+# @relates objects/Polytope
 
 package Visual::Polytope;
 
@@ -509,6 +509,77 @@ precondition : BOUNDED;
 
 }
 
+# @topic objects/Visual::Cone
+# @category Visualization
+# Visualization of a Cone as a graph (if 1d), or as a solid object (if 2d or 3d)
+# @super Visual::Container
+# @relates objects/Polytope
+
+package Visual::Cone;
+use Polymake::Struct (
+   [ '@ISA' => 'Container' ],
+   [ '$Cone' => '#%' ],
+);
+
+object Cone {
+
+# @category Visualization
+# Visualizes the cone, intersected with the unit ball.
+# @return Visual::Cone
+
+user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cutoff}, {BoundingBox => undef}) : RAYS, LINEALITY_SPACE {
+   my ($this,$decor,$cutoff_decor, $bb)=@_;
+   $decor->{VertexStyle} ||= "hidden";
+   $cutoff_decor=$cutoff_decor->{CutOff};
+   my $cutoff_decor3d=$cutoff_decor;
+   my $cutoff_decor2d=$cutoff_decor;
+   unless (is_hash($cutoff_decor)) {
+     $cutoff_decor3d={ FacetColor => $cutoff_decor };
+     $cutoff_decor2d={ EdgeColor => $cutoff_decor };
+   }
+   my $d=$this->RAYS->cols;
+   my $rays=normalized(convert_to<Float>($this->RAYS));
+   my $lineality = convert_to<Float>($this->LINEALITY_SPACE);
+   if(!(defined $bb->{BoundingBox})) {
+       my $bbox = $lineality->rows > 0 ?
+           polytope::bounding_box<Float>((ones_vector<Float>()) | $rays, 6/5, 1)
+           : undef;
+       $bb->{BoundingBox} = $bbox;
+   }
+   my $zero=new Vector<Float>($d);
+   my @cells_visual = ();
+
+   my $all_ones=ones_vector<Float>($this->N_RAYS+1);
+   my $v= $all_ones | ($rays / $zero);
+
+   my $vif=new IncidenceMatrix($this->FACETS_THRU_RAYS->rows()+1,$this->N_RAYS+1);
+   $vif->minor(~[$this->FACETS_THRU_RAYS->rows()],~[$this->RAYS->rows()])=$this->FACETS_THRU_RAYS;
+   for(my $j=0; $j < $vif->rows()-1;++$j){
+       $vif->row($j) += $this->RAYS->rows();
+   }
+   $vif->row($this->FACETS_THRU_RAYS->rows()) += new Set(0..$this->RAYS->rows()-1);
+
+   my $p=new polytope::Polytope<Float>(VERTICES => $v, LINEALITY_SPACE => (zero_vector<Float>($lineality->rows())) | $lineality, VERTICES_IN_FACETS=>$vif);
+   
+   my $pv= ($lineality->rows > 0 && $this->CONE_DIM > 1) ?
+      $p->VISUAL( $decor , BoundingBox=>$bb->{BoundingBox} ) :
+      $p->VISUAL( $decor );
+   my (@cutoff_attrs);
+   my $dim=$p->DIM;
+   if ($dim==3) {
+     while (my @kv=each %$cutoff_decor3d) {
+       my ($attr, $value)=@kv;
+       push @cutoff_attrs, $attr, sub { $_[0] < $p->FACETS->rows && $p->FACETS->[shift]->[0] ? $value : undef };
+     }
+   }
+   $pv->basis_solid->merge(@cutoff_attrs);
+   
+   visualize(new Visual::Cone( Name => "fan:".$this->name,
+                               Cone => $this,
+                                  $pv));
+}
+
+}
 
 # Local Variables:
 # mode: perl

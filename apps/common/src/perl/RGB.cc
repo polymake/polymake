@@ -46,8 +46,8 @@ namespace polymake { namespace common { namespace {
 
    Class4perl("Polymake::common::RGB", RGB);
    FunctionInstance4perl(new, RGB);
-   FunctionInstance4perl(new_int_int_int, RGB);
    FunctionInstance4perl(new_double_double_double, RGB);
    FunctionInstance4perl(new_X, RGB, perl::Canned< const HSV >);
+   FunctionInstance4perl(new_int_int_int, RGB);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

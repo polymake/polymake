@@ -38,7 +38,6 @@ perl::Object center(perl::Object p_in)
    perl::Object p_out=transform<Scalar>(p_in, tau);
    p_out.set_description() << "Centered polytope transformed from " << p_in.name() << endl;
 
-
    p_out.take("CENTERED") << true;
    return p_out;
 }
@@ -52,7 +51,7 @@ UserFunctionTemplate4perl("# @category Transformations"
                           "# @example Consider this triangle not containing the origin:"
                           "# > $P = new Polytope(VERTICES => [[1,1,1],[1,2,1],[1,1,2]]);"
                           "# > $origin = new Vector([1,0,0]);"
-                          "# > print $PC->contains_in_interior($origin);"
+                          "# > print $P->contains_in_interior($origin);"
                           "# | "
                           "# To create a translate that contains the origin, do this:"
                           "# > $PC = center($P);"

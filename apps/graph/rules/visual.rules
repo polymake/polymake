@@ -165,7 +165,7 @@ function spring_embedding_3d {
     new Visual::GraphEmbedding(@_);
 }
 
-# FaceLattice object, { optional parameters } => Visual::HDEmbedding
+# Lattice object, { optional parameters } => Visual::HDEmbedding
 function hd_embedding {
    new Visual::HDEmbedding(@_);
 }
@@ -179,10 +179,15 @@ function enforce_static(Visual::Graph) {
 object Graph {
 
 # Visualizes the graph.
+# @category Visualization
 # Decorations may include ''Coord'', disabling the default spring embedder.
 # @options %Visual::Graph::decorations
 # @option Int seed random seed value for the spring embedder
 # @return Visual::Graph
+# @example [notest] The following visualizes the petersen graph with default settings:
+# > petersen()->VISUAL;
+# The following shows some modified visualization style of the same graph:
+# > petersen()->VISUAL(NodeColor=>"green",NodeThickness=>6,EdgeColor=>"purple",EdgeThickness=>4);
 
 user_method VISUAL(%Visual::Graph::decorations, { seed => undef }) : ADJACENCY {
    my ($this, $decor, $seed)=@_;
@@ -208,20 +213,29 @@ user_method VISUAL(%Visual::Graph::decorations, { seed => undef }) : ADJACENCY {
 
 ###############################################################################
 
-object FaceLattice {
+# @category Visualization
+object Lattice {
 
-# Visualize the FaceLattice.
+# Visualize the Lattice.
+# @category Visualization
 # @options %Visual::Lattice::decorations
 # @option Int seed random seed value for the node placement
 # @return Visual::Lattice
+# @example [notest] The following visualizes the face lattice of the 2-simplex (triangle) with default settings:
+# > simplex(2)->HASSE_DIAGRAM->VISUAL;
+# The following shows some modified visualization style of the same lattice:
+# > simplex(2)->HASSE_DIAGRAM->VISUAL(NodeColor=>"green",EdgeThickness=>2,EdgeColor=>"purple");
 
 user_method VISUAL(%Visual::Lattice::decorations, { seed => undef }) {
    my ($this, $decor, $seed)=@_;
-   my $top_node=$this->top_node;
+   my $top_node=$this->TOP_NODE;
+   my $bottom_node = $this->BOTTOM_NODE;
    my $VL=new Visual::Lattice( Name => $this->name,
                                Graph => $this,
                                Faces => $this->FACES,
                                top_node => $top_node,
+                               bottom_node => $bottom_node,
+                               Dims => $this->INVERSE_RANK_MAP,
                                ArrowStyle => 0,
                                NodeBorderColor => "0 0 0",
                                Coord => hd_embedding($this,$seed),
@@ -233,18 +247,27 @@ user_method VISUAL(%Visual::Lattice::decorations, { seed => undef }) {
    visualize($VL);
 }
 
-# Visualize the dual FaceLattice.
+# Visualize the dual Lattice.
+# @category Visualization
+# This only produces meaningful results for lattice where the
+# codimension one nodes generate the lattice under intersection.
 # @options %Visual::Lattice::decorations
 # @option Int seed random seed value for the node placement
 # @return Visual::Lattice
+# @example [notest] The following visualizes the dual face lattice of the 2-simplex (triangle) with default settings:
+# > simplex(2)->HASSE_DIAGRAM->VISUAL_DUAL;
+# The following shows some modified visualization style of the same lattice:
+# > simplex(2)->HASSE_DIAGRAM->VISUAL_DUAL(NodeColor=>"green",EdgeThickness=>2,EdgeColor=>"purple");
 user_method VISUAL_DUAL(%Visual::Lattice::decorations, { seed => undef }) {
    my ($this, $decor, $seed)=@_;
-   my $top_node=$this->top_node;
+   my $top_node=$this->TOP_NODE;
+   my $bottom_node = $this->BOTTOM_NODE;
    my $VL=new Visual::Lattice( Name => "Dual to ".$this->name,
                                Graph => $this,
                                Faces => $this->dual_faces,
                                Mode => "dual",
                                top_node => $top_node,
+                               bottom_node => $bottom_node,
                                ArrowStyle => 0,
                                NodeBorderColor => "0 0 0",
                                Coord => hd_embedding($this,$seed),

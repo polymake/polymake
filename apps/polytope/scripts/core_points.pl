@@ -41,20 +41,12 @@
 # The decision is made via comparing the number of vertices 
 # with the number of lattice points.
 # @param Vector v the given point
-# @param GroupOfPolytope g a group acting on the coordinates 
+# @param group::Group g a group acting on the coordinates 
 # @return Bool true if //v// is a core point with respect to //g//
 sub is_core_point {
     my ($v, $g) = @_;	
-    my $answer = 0;
-    my $p = orbit_polytope($v, $g);
-    my $N_lp = $p->N_LATTICE_POINTS;
-    my $diff = $N_lp - $p->N_VERTICES;
-    if ($diff == 0) {
-	$answer = 1;
-    } else {
-	$answer = 0; 
-  }
-    return $answer;
+    my $p = orbit_polytope($v, $g->COORDINATE_ACTION);
+    return ($p->N_LATTICE_POINTS == $p->N_VERTICES);
 }
 
 
@@ -62,10 +54,10 @@ sub is_core_point {
 # the group //g// that are not vertices of the orbit polytope
 # of //v// under //g// (They may be contained in a facet, though.)
 # @param Vector v the given point
-# @param GroupOfPolytope g a group acting on the coordinates 
+# @param group::Group g a group acting on the coordinates 
 sub inner_certifiers {
     my ($v, $g) = @_;
-    my $p = orbit_polytope($v, $g);
+    my $p = orbit_polytope($v, $g->COORDINATE_ACTION);
     my $latpoints = $p->LATTICE_POINTS;
     if ( $p->N_POINTS == $latpoints->rows ) {
 	return new Matrix(0,$latpoints->cols);
@@ -102,23 +94,25 @@ sub one_universal_cp_in_layer {
 
 # Computes all representatives of universal core points
 # in the given 1-//layer// w.r.t. the given group //g//.
-# @param GroupOfPolytope g a group acting on the coordinates 
+# @param group::Group g a group acting on the coordinates 
 # @param Int layer the number of the 1-layer
 # @return Array<Vector> an array containing all representatives 
 sub get_universal_cp_reps {
     my ($g, $layer) = @_;
-    my $g_copy = new group::GroupOfPolytope(GENERATORS=>$g->GENERATORS, DOMAIN=>$polytope::domain_OnCoords); # otherwise, orbit decomposition is stored in $g!
-    my @reps = ();
-    my $degree = $g->DEGREE;
-    my $sym=symmetric_group($g_copy->DEGREE,$polytope::domain_OnCoords);
+    my $degree = $g->COORDINATE_ACTION->DEGREE;
+    my $sym_g = new group::Group(COORDINATE_ACTION=>symmetric_group($degree)->PERMUTATION_ACTION);
 
-    my $p = new SymmetricPolytope( GENERATING_GROUP=>$sym, GEN_POINTS=>[one_universal_cp_in_layer($degree, $layer)] );
+#    my $p = new Polytope( GENERATING_GROUP=>$sym, GEN_POINTS=>[one_universal_cp_in_layer($degree, $layer)] );
+    my $p = new Polytope;
+    $p->GROUP = $sym_g;
+    $p->GROUP->COORDINATE_ACTION->VERTICES_GENERATORS = new Matrix([one_universal_cp_in_layer($degree, $layer)]);
+    $p->VERTICES;
+
+    my $g_copy = new group::Group(COORDINATE_ACTION=>$g->COORDINATE_ACTION); # otherwise, orbit decomposition is stored in $g!
+    $g_copy->name = "g_copy";
+
     $p->add("GROUP", $g_copy); #pos 0
-    my $orbits = $p->give("GROUP")->[0]->VERTICES_IN_ORBITS;
-    foreach my $orbit (@$orbits) {
-	push(@reps,$p->VERTICES->[$orbit->[0]]);
-    }
-    return new Array<Vector<Rational>>(\@reps);
+    return $p->GROUP("g_copy")->EXPLICIT_ORBIT_REPRESENTATIVES;
 }
 
 # Determines the number of the 1-layer in which 
@@ -160,7 +154,7 @@ sub isContainedInPoly {
 # The problem is solved via describing a suitable
 # polytope.
 # @param Vector v the generating point of the orbit polytope
-# @param GroupOfPolytope g a group acting on the coordinates 
+# @param group::Group g a group acting on the coordinates 
 # @param Vector contained_vec a vector which is contained in 
 #             the orbit polytope Orb_g(v)
 # @return Polytope a polytope whose points represent convex 

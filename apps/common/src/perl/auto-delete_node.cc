@@ -16,8 +16,8 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
 #include "polymake/Graph.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -28,5 +28,8 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(delete_node_x_f17, perl::Canned< Wary< Graph< Undirected > > >);
+   FunctionInstance4perl(delete_node_x_f17, perl::Canned< Wary< Graph< Directed > > >);
+   FunctionInstance4perl(delete_node_x_f17, perl::Canned< Wary< Graph< DirectedMulti > > >);
+   FunctionInstance4perl(delete_node_x_f17, perl::Canned< Wary< Graph< UndirectedMulti > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

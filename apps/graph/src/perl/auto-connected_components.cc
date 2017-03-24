@@ -16,8 +16,8 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
 #include "polymake/Graph.h"
+#include "polymake/client.h"
 #include "polymake/graph/connected.h"
 
 namespace polymake { namespace graph { namespace {
@@ -25,7 +25,7 @@ namespace polymake { namespace graph { namespace {
    template <typename T0>
    FunctionInterface4perl( connected_components_X, T0 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturn( connected_components(arg0.get<T0>()) );
+      WrapperReturn( (connected_components(arg0.get<T0>())) );
    };
 
    FunctionInstance4perl(connected_components_X, perl::Canned< const Graph< Undirected > >);

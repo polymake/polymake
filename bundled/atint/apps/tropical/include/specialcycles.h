@@ -24,7 +24,6 @@
 #define POLYMAKE_ATINT_SPECIALCYCLES_H
 
 #include "polymake/client.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/PowerSet.h"
 #include "polymake/Set.h"
 #include "polymake/Matrix.h"
@@ -39,18 +38,14 @@
 
 namespace polymake { namespace tropical {
 
-	//using namespace atintlog::donotlog;
-	//using namespace atintlog::dolog;
-	//using namespace atintlog::dotrace;
 
 	template <typename Addition>
 		perl::Object empty_cycle(int ambient_dim) {
 			perl::Object cycle(perl::ObjectType::construct<Addition>("Cycle"));
-				cycle.take("VERTICES") << Matrix<Rational>(0,ambient_dim);
+				cycle.take("VERTICES") << Matrix<Rational>(0,ambient_dim+2);
 				cycle.take("MAXIMAL_POLYTOPES") << Array<Set<int> >();
 				cycle.take("WEIGHTS") << Vector<Integer>();
 				cycle.take("PROJECTIVE_AMBIENT_DIM") << ambient_dim;
-				cycle.take("WEIGHTS") << Vector<Integer>();
 				cycle.set_description() << "Empty cycle in dimension " << ambient_dim;
 
 			return cycle;
@@ -101,8 +96,8 @@ namespace polymake { namespace tropical {
 			vertices = unit_vector<Rational>(n+2,0) / vertices;
 
 			//Create cones
-			Array<Set<int> > polytopes = all_subsets_of_k( sequence(1,n+1), k);
-			for(int i = 0; i < polytopes.size(); i++) 
+			Array<Set<int>> polytopes{ all_subsets_of_k(sequence(1,n+1), k) };
+			for (int i = 0; i < polytopes.size(); i++) 
 				polytopes[i] += 0;
 
 			//Create weights
@@ -119,12 +114,12 @@ namespace polymake { namespace tropical {
 		}//END uniform_linear_space
 
 	template <typename Addition>
-		perl::Object halfspace_subdivision(Rational a, Vector<Rational> g, Integer weight) {
+		perl::Object halfspace_subdivision(const Rational& a, const Vector<Rational>& g, const Integer& weight) {
 			//Sanity check
-			if(g == zero_vector<Rational>(g.dim())) 
-					throw std::runtime_error("Zero vector does not define a hyperplane.");
-			if(g*ones_vector<Rational>(g.dim()) != 0) 
-					throw std::runtime_error("Normal vector must be homogenous, i.e. sum of entries must be zero");
+                        if (is_zero(g))
+                           throw std::runtime_error("Zero vector does not define a hyperplane.");
+			if (!is_zero(accumulate(g, operations::add())))
+                           throw std::runtime_error("Normal vector must be homogenous, i.e. sum of entries must be zero");
 
 			//Create vertices
 			Matrix<Rational> vertices(0,g.dim());
@@ -133,13 +128,11 @@ namespace polymake { namespace tropical {
 			vertices = zero_vector<Rational>(2) | vertices;
 
 			//Create lineality
-			Matrix<Rational> lineality = null_space(g).minor(~scalar2set(0),All);
-			lineality = zero_vector<Rational>(lineality.rows()) | lineality;
+			Matrix<Rational> lineality = zero_vector<Rational>() | null_space(g).minor(~scalar2set(0), All);
 
 			//Compute apex
 			Rational sum = accumulate(attach_operation(g,operations::square()),operations::add());
-			Vector<Rational> apex = (a/sum) *g;
-				apex = Rational(1) | apex;
+			const Vector<Rational> apex = Rational(1) | (a/sum)*g;
 			vertices = apex / vertices;
 
 			Array<Set<int> > polytopes(2);
@@ -196,8 +189,8 @@ namespace polymake { namespace tropical {
 
 			//Create cones
 			Set<int> seq = sequence(0,dim);
-			Array<Set<int> > all_sets = pm::all_subsets(seq); //All possible sign choices
-			Vector<Set<int> > cones;
+			Array<Set<int>> all_sets( pm::all_subsets(seq) ); //All possible sign choices
+			Vector<Set<int>> cones;
 			for(int s = 0; s < all_sets.size(); s++) {
 				Set<int> rayset;
 				Set<int> complement = seq - all_sets[s];
@@ -282,8 +275,7 @@ namespace polymake { namespace tropical {
 			//Now create the k-skeleton of the n-cube: For each n-k-set S of 0,..,n-1 and for each vertex
 			// v of the n-k-dimensional cube: Insert the entries of v in S and then insert all possible 
 			//vertices of the k-dimensional cube in S^c to obtain a k-dimensional face of the cube
-			Array<Set<int> > nmkSets = all_subsets_of_k( sequence(0,n),n-k );
-			//pm::Subsets_of_k<Set<int> > ( sequence(0,n),n-k );
+			Array<Set<int>> nmkSets{ all_subsets_of_k(sequence(0,n), n-k) };
 			Matrix<Rational> nmkVertices = binaryMatrix(n-k);
 			Matrix<Rational> kVertices = binaryMatrix(k);
 
@@ -304,8 +296,7 @@ namespace polymake { namespace tropical {
 			int vertexnumber = rays.rows();
 
 			//Now we also create the k-1-skeleton of the cube to compute the ray faces
-			Array<Set<int> > nmlSets = all_subsets_of_k(sequence(0,n),n-k+1);
-			//pm::Subsets_of_k<Set<int> > (sequence(0,n),n-k+1);
+			Array<Set<int>> nmlSets{ all_subsets_of_k(sequence(0,n), n-k+1) };
 			Matrix<Rational> nmlVertices = binaryMatrix(n-k+1);
 			Matrix<Rational> lVertices = binaryMatrix(k-1);
 			Vector<Set<int> > raycones;

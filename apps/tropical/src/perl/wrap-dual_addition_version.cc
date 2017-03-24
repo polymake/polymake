@@ -16,11 +16,10 @@
 
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
-#include "polymake/Polynomial.h"
 #include "polymake/Rational.h"
-#include "polymake/Ring.h"
 #include "polymake/TropicalNumber.h"
 #include "polymake/Vector.h"
+#include "polymake/Polynomial.h"
 
 namespace polymake { namespace tropical { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -30,16 +29,9 @@ namespace polymake { namespace tropical { namespace {
       WrapperReturn( (dual_addition_version<T0,T1>(arg0.get<T2>(), arg1)) );
    };
 
-   template <typename T0, typename T1, typename T2>
-   FunctionInterface4perl( dual_addition_version_T_X, T0,T1,T2 ) {
-      perl::Value arg0(stack[0]);
-      WrapperReturn( (dual_addition_version<T0,T1>(arg0.get<T2>())) );
-   };
-
    FunctionInstance4perl(dual_addition_version_T_X_x, Min, Rational, perl::Canned< const TropicalNumber< Min, Rational > >);
    FunctionInstance4perl(dual_addition_version_T_X_x, Max, Rational, perl::Canned< const Vector< TropicalNumber< Max, Rational > > >);
    FunctionInstance4perl(dual_addition_version_T_X_x, Min, Rational, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >);
-   FunctionInstance4perl(dual_addition_version_T_X, Max, Rational, perl::Canned< const Ring< TropicalNumber< Max, Rational >, int > >);
    FunctionInstance4perl(dual_addition_version_T_X_x, Min, Rational, perl::Canned< const Polynomial< TropicalNumber< Min, Rational >, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

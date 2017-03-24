@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -33,7 +33,7 @@ perl::Object bipyramid(perl::Object p_in, const Scalar& z, const Scalar& z_prime
    p_out.set_description() << "Bipyramid over " << p_in.name() << endl;
 
    const bool noc = options["no_coordinates"],
-          relabel = options["relabel"];
+          relabel = !options["no_labels"];
 
    int n_vertices=0;
    if (noc || p_in.exists("VERTICES_IN_FACETS")) {
@@ -62,7 +62,6 @@ perl::Object bipyramid(perl::Object p_in, const Scalar& z, const Scalar& z_prime
                                    (z0 | z) /
                                    (z0 | z_prime);
       p_out.take("VERTICES") << V_out;
-      p_out.take("LINEALITY_SPACE") << Matrix<Scalar>();
    }
    if (relabel) {
       std::vector<std::string> labels(n_vertices+2);
@@ -86,13 +85,14 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# @param Scalar z_prime distance between the vertex barycenter and the second apex,"
                           "#  default value is -//z//."
                           "# @option Bool no_coordinates : don't compute the coordinates, purely combinatorial description is produced."
-                          "# @option Bool relabel copy the vertex labels from the original polytope,"
+                          "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytope. default: 0"
                           "#  label the new vertices with \"Apex\" and \"Apex'\"."
+                          "# @return Polytope"
                           "# @example Here's a way to construct the 3-dimensional cross polytope:"
                           "# > $p = bipyramid(bipyramid(cube(1)));"
                           "# > print equal_polyhedra($p,cross(3));"
                           "# | 1",
-                          "bipyramid<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=1, type_upgrade<Scalar>=(-$_[1]), {no_coordinates => undef, relabel => undef})");
+                          "bipyramid<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=1, type_upgrade<Scalar>=(-$_[1]), {no_coordinates => undef, no_labels => 0})");
 } }
 
 // Local Variables:

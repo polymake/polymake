@@ -21,7 +21,7 @@ namespace polymake { namespace topaz {
    
 perl::Object disjoint_union(perl::Object p1, perl::Object p2,perl::OptionSet options)
 {
-   const bool relabel=options["labels"];
+   const bool relabel=!options["no_labels"];
    Array< Set<int> > UNION = p1.give("FACETS");
    Array<std::string> Labels = p1.give("VERTEX_LABELS");
    const int n1 = Labels.size();
@@ -56,12 +56,12 @@ perl::Object disjoint_union(perl::Object p1, perl::Object p2,perl::OptionSet opt
 
 UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# Produce the __disjoint union__ of the two given complexes.\n"
-                  "# @option Bool labels creates [[VERTEX_LABELS]].\n"
+                  "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# The vertex labels are built from the original labels with a suffix ''_1'' or ''_2'' appended.\n"
                   "# @param SimplicialComplex complex1"
                   "# @param SimplicialComplex complex2"
                   "# @return SimplicialComplex",
-                  &disjoint_union, "disjoint_union(SimplicialComplex SimplicialComplex { labels => 0 })");
+                  &disjoint_union, "disjoint_union(SimplicialComplex SimplicialComplex { no_labels => 0 })");
 
 
 } }

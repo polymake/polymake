@@ -14,25 +14,25 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
+#include "polymake/Rational.h"
+
 namespace polymake { namespace tropical { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::Matrix<pm::Rational> (pm::Matrix<pm::Rational> const&, int) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Matrix< Rational > > >(), arg1 );
-   }
-   FunctionWrapperInstance4perl( pm::Matrix<pm::Rational> (pm::Matrix<pm::Rational> const&, int) );
-
-   FunctionWrapper4perl( pm::Matrix<pm::Rational> (pm::Matrix<pm::Rational> const&, int, bool) ) {
+   template <typename T0>
+   FunctionInterface4perl( thomog_X_x_x, T0 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Matrix< Rational > > >(), arg1, arg2 );
-   }
-   FunctionWrapperInstance4perl( pm::Matrix<pm::Rational> (pm::Matrix<pm::Rational> const&, int, bool) );
+      WrapperReturn( (thomog(arg0.get<T0>(), arg1, arg2)) );
+   };
 
-   FunctionWrapper4perl( pm::Vector<pm::Rational> (pm::Vector<pm::Rational> const&, int, bool) ) {
+   template <typename T0>
+   FunctionInterface4perl( tdehomog_X_x_x, T0 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Vector< Rational > > >(), arg1, arg2 );
-   }
-   FunctionWrapperInstance4perl( pm::Vector<pm::Rational> (pm::Vector<pm::Rational> const&, int, bool) );
+      WrapperReturn( (tdehomog(arg0.get<T0>(), arg1, arg2)) );
+   };
 
+   FunctionInstance4perl(tdehomog_X_x_x, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(thomog_X_x_x, perl::Canned< const Matrix< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

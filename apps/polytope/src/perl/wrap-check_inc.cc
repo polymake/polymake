@@ -14,9 +14,11 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
+#include "polymake/SparseMatrix.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -27,5 +29,6 @@ namespace polymake { namespace polytope { namespace {
    };
 
    FunctionInstance4perl(check_inc_T_X_X_x_x, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(check_inc_T_X_X_x_x, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, pm::Array<int> const&, pm::all_selector const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

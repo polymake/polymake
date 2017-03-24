@@ -63,9 +63,9 @@ Matrix<Rational> rand_cyclic_gale(int d, int n, const RandomSeed& seed)
    // now gdim >= 2
 
    Matrix<Rational> 
-      normal_vectors(Integer::binom(n,gdim-1).to_int(), gdim),
+      normal_vectors(int(Integer::binom(n, gdim-1)), gdim),
       G(n, gdim); // the rows will be the Gale vectors
-   Entire<Rows<Matrix<Rational> > >::iterator 
+   auto
       nrit = entire(rows(normal_vectors)),
       grit = entire(rows(G));
    int i=0; // how many vertices of G have been found already

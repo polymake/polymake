@@ -56,19 +56,19 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, Vector< double >, perl::Canned< const Vector< Rational > >);
    FunctionInstance4perl(new_X, Vector< int >, perl::Canned< const pm::SameElementSparseVector<pm::Set<int, pm::operations::cmp> const&, int> >);
    FunctionInstance4perl(new, Vector< Integer >);
-   FunctionInstance4perl(new_X, Vector< Rational >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(new_X, Vector< Rational >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>> >);
    FunctionInstance4perl(new_X, Vector< Rational >, perl::Canned< const Vector< Rational > >);
    FunctionInstance4perl(new_int, Vector< Rational >);
-   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>, perl::Canned< const Vector< Rational > >);
+   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>>, perl::Canned< const Vector< Rational > >);
    FunctionInstance4perl(new, Vector< int >);
    OperatorInstance4perl(assign, Vector< Rational >, perl::Canned< const SparseVector< Rational > >);
    FunctionInstance4perl(new_int, Vector< Integer >);
-   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer>&>, pm::Series<int, true>, void>, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer> const&>, pm::Series<int, true>, void> >);
-   FunctionInstance4perl(new_X, Vector< Integer >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer> const&>, pm::Series<int, true>, void> >);
-   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer>&>, pm::Series<int, true>, void>, perl::Canned< const Vector< Integer > >);
+   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer>&>, pm::Series<int, true>>, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer> const&>, pm::Series<int, true>> >);
+   FunctionInstance4perl(new_X, Vector< Integer >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer> const&>, pm::Series<int, true>> >);
+   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer>&>, pm::Series<int, true>>, perl::Canned< const Vector< Integer > >);
    FunctionInstance4perl(new_X, Vector< Integer >, perl::Canned< const Vector< Rational > >);
    FunctionInstance4perl(new_X, Vector< Rational >, perl::Canned< const Vector< Integer > >);
-   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::Rational> >);
+   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>>, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::Rational> >);
    OperatorInstance4perl(convert, Vector< double >, perl::Canned< const Vector< Rational > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< Vector< Rational > > >, perl::Canned< const Vector< Rational > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< Vector< int > > >, perl::Canned< const Vector< int > >);
@@ -76,11 +76,10 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< Vector< Rational > > >, perl::Canned< const pm::VectorChain<pm::SingleElementVector<pm::Rational>, pm::Vector<pm::Rational> const&> >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< Vector< Integer > > >, perl::Canned< const Vector< int > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Wary< Vector< Rational > > >, perl::Canned< const SparseVector< Rational > >);
-   OperatorInstance4perl(Binary_add, perl::Canned< const Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, void> > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, void> >);
+   OperatorInstance4perl(Binary_add, perl::Canned< const Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>> > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>> >);
    FunctionInstance4perl(new_X, Vector< Rational >, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSet<int>, pm::Rational> >);
-   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double>&>, pm::Series<int, true>, void>, perl::Canned< const Vector< double > >);
-   OperatorInstance4perl(assign, Vector< double >, perl::Canned< const Vector< Rational > >);
-   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, void>, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, void> >);
-   OperatorInstance4perl(assign, Vector< double >, perl::Canned< const pm::IndexedSlice<pm::Vector<pm::Rational>&, pm::Nodes<pm::graph::Graph<pm::graph::Undirected> > const&, void> >);
+   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double>&>, pm::Series<int, true>>, perl::Canned< const Vector< double > >);
+   OperatorInstance4perl(assign, pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>>, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>> >);
+   OperatorInstance4perl(assign, Vector< double >, perl::Canned< const pm::IndexedSlice<pm::Vector<pm::Rational>&, pm::Nodes<pm::graph::Graph<pm::graph::Undirected> > const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

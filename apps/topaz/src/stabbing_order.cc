@@ -58,12 +58,12 @@ Matrix<Scalar> inner_facet_normals(const Set<int>& facet,
                                    const Matrix<Scalar>& vertices)
 {
    Matrix<Scalar> inner_facet_normals(facet.size(), vertices.cols());
-   typename Entire<Rows<Matrix<Scalar> > >::iterator rit = entire(rows(inner_facet_normals));
-   for (Entire<Set<int> >::const_iterator fit = entire(facet); !fit.at_end(); ++fit, ++rit) {
+   auto rit = entire(rows(inner_facet_normals));
+   for (auto fit = entire(facet); !fit.at_end(); ++fit, ++rit) {
       const Vector<Scalar> normal = null_space(vertices.minor(facet - scalar2set(*fit), All))[0];
       if (sign(normal * vertices[*fit]) > 0)
          *rit = normal;
-      else 
+      else
          *rit = -normal;
    }
    return inner_facet_normals;
@@ -75,7 +75,7 @@ std::vector<int> indices_of_normals_towards_0(const Set<int>& facet,
 {
    std::vector<int> indices_of_normals_towards_0;
    int i(0);
-   for (typename Entire<Rows<Matrix<Scalar> > >::const_iterator nit = entire(rows(inner_facet_normals)); !nit.at_end(); ++nit, ++i) {
+   for (typename Entire<Rows<Matrix<Scalar>>>::const_iterator nit = entire(rows(inner_facet_normals)); !nit.at_end(); ++nit, ++i) {
       if ((*nit)[0] > 0)
          indices_of_normals_towards_0.push_back(i);
    }
@@ -87,9 +87,9 @@ std::vector<int> indices_of_normals_towards_0(const Set<int>& facet,
 template<typename Scalar>
 Set<int> ideal_of(int sigma,
                   const Matrix<Scalar>& vertices,
-                  const Array<Set<int> >& simplices,
-                  const Array<Matrix<Scalar> >& inner_facet_normals_of,
-                  const Array<std::vector<int> >& indices_of_normals_towards_0_of,
+                  const Array<Set<int>>& simplices,
+                  const Array<Matrix<Scalar>>& inner_facet_normals_of,
+                  const Array<std::vector<int>>& indices_of_normals_towards_0_of,
                   int ioz)
 {
    Set<int> ideal_of_sigma;
@@ -97,7 +97,7 @@ Set<int> ideal_of(int sigma,
 
    // check if zero is in sigma;
    bool zero_in_sigma = true;
-   for (typename Entire<Rows<Matrix<Scalar> > >::const_iterator fit = entire(rows(inner_facet_normals_of[sigma])); !fit.at_end(); ++fit) {
+   for (typename Entire<Rows<Matrix<Scalar>>>::const_iterator fit = entire(rows(inner_facet_normals_of[sigma])); !fit.at_end(); ++fit) {
       if((*fit)[0] < 0){
          zero_in_sigma = false;
          break;
@@ -108,22 +108,23 @@ Set<int> ideal_of(int sigma,
    for (int tau=0; tau<simplices.size(); ++tau) {
       if (tau==sigma) continue;
       /*
-        First Check if one of the two contains 0
+        First check if one of the two contains 0
         Then everything is easy as simplices containing 0 are the smallest ones
         They can be compared with every other simplex not containing 0
        */
 
       // check if zero is in tau
       bool zero_in_tau = true;
-      for (typename Entire<Rows<Matrix<Scalar> > >::const_iterator fit = entire(rows(inner_facet_normals_of[tau])); !fit.at_end(); ++fit) {
+      for (typename Entire<Rows<Matrix<Scalar>>>::const_iterator fit = entire(rows(inner_facet_normals_of[tau])); !fit.at_end(); ++fit) {
          if((*fit)[0] < 0){
             zero_in_tau = false;
             break;
          }
       }
 
-      if(zero_in_tau) continue;
-      if(zero_in_sigma){
+      if (zero_in_tau) continue;
+
+      if (zero_in_sigma) {
          ideal_of_sigma += tau;
          continue;
       }
@@ -137,19 +138,19 @@ Set<int> ideal_of(int sigma,
       perl::Object p_tau(perl::ObjectType::construct<Scalar>("polytope::Polytope"));
       p_tau.take("FACETS") << inner_facet_normals_of[tau];
 
-      perl::Object intersection = CallPolymakeFunction("polytope::intersection", p_sigma, p_tau);
+      perl::Object intersection = call_function("polytope::intersection", p_sigma, p_tau);
       Matrix<Scalar> affine_hull = intersection.give("AFFINE_HULL");
       bool sigma_tau_intersect = intersection.give("FEASIBLE");
       bool zero_in_affine_hull = true;
 
-      for (typename Entire<Rows<Matrix<Scalar> > >::const_iterator fit = entire(rows(affine_hull)); !fit.at_end(); ++fit) {
-         if((*fit)[0] != 0){
+      for (typename Entire<Rows<Matrix<Scalar>>>::const_iterator fit = entire(rows(affine_hull)); !fit.at_end(); ++fit) {
+         if ((*fit)[0] != 0) {
             zero_in_affine_hull = false;
             break;
          }
       }
       
-      if(zero_in_affine_hull && sigma_tau_intersect) continue;
+      if (zero_in_affine_hull && sigma_tau_intersect) continue;
 
       /*
         Take the intersection of tau and the cone over sigma.
@@ -173,15 +174,15 @@ Set<int> ideal_of(int sigma,
       perl::Object segment(perl::ObjectType::construct<Scalar>("polytope::Polytope"));
       segment.take("VERTICES") << segment_verts;
 
-      intersection = CallPolymakeFunction("polytope::intersection", p_sigma, segment);
+      intersection = call_function("polytope::intersection", p_sigma, segment);
 
       // check dimension of intersection. It is either -1, 0 or 1
       // hence CONE_DIM is either 0, 1 or 2
-      int dim_inter = intersection.give("CONE_DIM");
+      const int dim_inter = intersection.give("CONE_DIM");
 
-      if(dim_inter == 0) continue;
+      if (dim_inter == 0) continue;
 
-      if(dim_inter == 2){
+      if (dim_inter == 2) {
          ideal_of_sigma += tau;
          continue;
       }
@@ -189,7 +190,7 @@ Set<int> ideal_of(int sigma,
       // intersection is just one point since 0 dimensional
       // hence the vertices is precisely one point
       Matrix<Scalar> inter_p = intersection.give("VERTICES");
-      if(inter_p.row(0) == rel_int_p) continue;
+      if (inter_p.row(0) == rel_int_p) continue;
 
       ideal_of_sigma +=tau;
    }
@@ -200,10 +201,10 @@ Set<int> ideal_of(int sigma,
 } // end anonymous namespace
 
 
-template<typename Scalar>  
+template<typename Scalar>
 Graph<Directed> stabbing_order(perl::Object triangulation)
 {
-   const Array<Set<int> > simplices = triangulation.give("FACETS");
+   const Array<Set<int>> simplices = triangulation.give("FACETS");
    const Matrix<Scalar> _vertices = triangulation.give("COORDINATES");
    Array<int> vertex_indices;
    Matrix<Scalar> vertices;
@@ -215,8 +216,8 @@ Graph<Directed> stabbing_order(perl::Object triangulation)
 
    const int ioz = topaz::index_of_zero(vertices);
 
-   Array<std::vector<int> > indices_of_normals_towards_0_of(simplices.size());
-   Array<Matrix<Scalar> > inner_facet_normals_of(simplices.size());
+   Array<std::vector<int>> indices_of_normals_towards_0_of(simplices.size());
+   Array<Matrix<Scalar>> inner_facet_normals_of(simplices.size());
 
    for (int i=0; i<simplices.size(); ++i) {
       inner_facet_normals_of[i] = inner_facet_normals(simplices[i], vertices);
@@ -226,8 +227,8 @@ Graph<Directed> stabbing_order(perl::Object triangulation)
    Graph<Directed> stabbing_order(simplices.size());
    for (int sigma=0; sigma<simplices.size(); ++sigma) {
       const Set<int> ideal_of_sigma = ideal_of(sigma, vertices, simplices, inner_facet_normals_of, indices_of_normals_towards_0_of, ioz);
-      for (Entire<Set<int> >::const_iterator iit = entire(ideal_of_sigma); !iit.at_end(); ++iit)
-         stabbing_order.edge(sigma, *iit);
+      for (const auto& i : ideal_of_sigma)
+         stabbing_order.edge(sigma, i);
    }
    // if 0 is not a point of the configuration, we're done
    if (ioz < 0) return stabbing_order;
@@ -236,16 +237,16 @@ Graph<Directed> stabbing_order(perl::Object triangulation)
    Map<Set<int>, int> index_of;
    std::vector<int> st_0_indices;
    int index(-1);
-   for (Entire<Array<Set<int> > >::const_iterator ait = entire(simplices); !ait.at_end(); ++ait) {
-      index_of[*ait] = ++index;
-      if ((*ait).contains(ioz))
+   for (const auto& a : simplices) {
+      index_of[a] = ++index;
+      if (a.contains(ioz))
          st_0_indices.push_back(index);
    }
 
-   // if 0 is not a vertex of the triangulation, we're done   
+   // if 0 is not a vertex of the triangulation, we're done
    if (!st_0_indices.size()) return stabbing_order;
 
-   for (Entire< Subsets_of_k<const sequence&> >::const_iterator i=entire(all_subsets_of_k(sequence(0, st_0_indices.size()),2)); !i.at_end(); ++i) {
+   for (Entire<Subsets_of_k<const sequence&>>::const_iterator i=entire(all_subsets_of_k(sequence(0, st_0_indices.size()),2)); !i.at_end(); ++i) {
       const Set<int> pair(*i);
       stabbing_order.delete_edge(st_0_indices[pair.front()],
                                  st_0_indices[pair.back() ]);
@@ -262,7 +263,7 @@ UserFunctionTemplate4perl("# @category Other"
                           "# Webs of stars or how to triangulate sums of polytopes, to appear"
                           "# @param GeometricSimplicialComplex P"
                           "# @return graph::Graph<Directed>",
-                          "stabbing_order<Scalar>(GeometricSimplicialComplex<type_upgrade<Scalar>>)"); 
+                          "stabbing_order<Scalar>(GeometricSimplicialComplex<type_upgrade<Scalar>>)");
 
 } }
 

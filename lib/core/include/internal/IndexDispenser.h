@@ -31,7 +31,7 @@ class IndexDispenser : protected Traits {
    void init(int reserve_size)
    {
       if (reserve_size) {
-         copy(entire(sequence(1,reserve_size-1)), indices.begin());
+         copy_range(entire(sequence(1, reserve_size-1)), indices.begin());
          indices.back()=-1;
          first_free=0;
       } else {

@@ -41,7 +41,7 @@ perl::Object subcone(perl::Object c_in, const Set<int> selection, perl::OptionSe
    c_out.take("LINEALITY_SPACE") << L;
    c_out.take("CONE_AMBIENT_DIM") << adim;
 
-   if (options["relabel"]) {
+   if (!options["no_labels"]) {
       std::vector<std::string> labels(n_rays_out);
       read_labels(c_in, "RAY_LABELS", labels);
       c_out.take("RAY_LABELS") << select(labels, selection);
@@ -53,9 +53,9 @@ perl::Object subcone(perl::Object c_in, const Set<int> selection, perl::OptionSe
 UserFunctionTemplate4perl("# @category  Producing a cone"
                           "# Make a subcone from a cone."
                           "# @param Cone C the input cone"
-                          "# @option Bool relabel creates an additional section [[RAY_LABELS]];"
+                          "# @option Bool no_labels Do not create [[RAY_LABELS]]. default: 0"
                           "# @return Cone",
-                          "subcone<Scalar>(Cone<Scalar>, Set, { relabel => undef})");
+                          "subcone<Scalar>(Cone<Scalar>, Set, { no_labels => 0})");
 } }
 
 // Local Variables:

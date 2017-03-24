@@ -14,25 +14,26 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
+#include "polymake/graph/Decoration.h"
 
 namespace polymake { namespace topaz { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0>
-   FunctionInterface4perl( barycentric_subdivision_impl_T_x_o, T0 ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturn( (barycentric_subdivision_impl<T0>(arg0, arg1)) );
-   };
-
-   template <typename T0>
-   FunctionInterface4perl( iterated_barycentric_subdivision_impl_T_x_x_o, T0 ) {
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( iterated_barycentric_subdivision_impl_T_x_x_o, T0,T1,T2 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      WrapperReturn( (iterated_barycentric_subdivision_impl<T0>(arg0, arg1, arg2)) );
+      WrapperReturn( (iterated_barycentric_subdivision_impl<T0,T1,T2>(arg0, arg1, arg2)) );
    };
 
-   FunctionInstance4perl(barycentric_subdivision_impl_T_x_o, Rational);
-   FunctionInstance4perl(iterated_barycentric_subdivision_impl_T_x_x_o, Rational);
-   FunctionInstance4perl(iterated_barycentric_subdivision_impl_T_x_x_o, QuadraticExtension< Rational >);
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( barycentric_subdivision_impl_T_x_o, T0,T1,T2 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      WrapperReturn( (barycentric_subdivision_impl<T0,T1,T2>(arg0, arg1)) );
+   };
+
+   FunctionInstance4perl(barycentric_subdivision_impl_T_x_o, graph::lattice::BasicDecoration, graph::lattice::Sequential, Rational);
+   FunctionInstance4perl(iterated_barycentric_subdivision_impl_T_x_x_o, graph::lattice::BasicDecoration, graph::lattice::Sequential, Rational);
+   FunctionInstance4perl(barycentric_subdivision_impl_T_x_o, graph::lattice::BasicDecoration, graph::lattice::Nonsequential, Rational);
+   FunctionInstance4perl(iterated_barycentric_subdivision_impl_T_x_x_o, graph::lattice::BasicDecoration, graph::lattice::Nonsequential, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

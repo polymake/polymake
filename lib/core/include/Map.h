@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -41,13 +41,12 @@ namespace pm {
 
 template <typename K, typename D, typename Comparator=operations::cmp>
 class Map
-   : public modified_tree< Map<K,D,Comparator>,
-                           list( Container< AVL::tree< AVL::traits<K,D,Comparator> > >,
-                                 Operation< BuildUnary<AVL::node_accessor> > ) > {
-   typedef modified_tree<Map> _super;
+   : public modified_tree< Map<K, D, Comparator>,
+                           mlist< ContainerTag< AVL::tree< AVL::traits<K, D, Comparator> > >,
+                                  OperationTag< BuildUnary<AVL::node_accessor> > > > {
 protected:
    typedef AVL::tree< AVL::traits<K,D,Comparator> > tree_type;
-   shared_object<tree_type, AliasHandler<shared_alias_handler> > tree;
+   shared_object<tree_type, AliasHandlerTag<shared_alias_handler>> tree;
 
    friend Map& make_mutable_alias(Map& alias, Map& owner)
    {
@@ -59,31 +58,36 @@ public:
    typedef D mapped_type;
    typedef Comparator key_comparator_type;
 
+   static_assert(!std::is_same<Comparator, operations::cmp_unordered>::value, "comparator must define a total ordering");
+   static_assert(!std::is_same<Comparator, operations::cmp>::value || is_ordered<K>::value, "keys must have a total ordering");
+
    tree_type& get_container() { return *tree; }
    const tree_type& get_container() const { return *tree; }
 
-	/// Create an empty Map. Initialize the element comparator with its default constructor.
+   /// Create an empty Map. Initialize the element comparator with its default constructor.
    Map() {}
 
-	/// Create an empty Map with non-default comparator.
+   /// Create an empty Map with non-default comparator.
    explicit Map(const Comparator& cmp_arg)
-      : tree( make_constructor(cmp_arg, (tree_type*)0) ) {}
+      : tree(cmp_arg) {}
 
-	/// Construct from an iterator.
+   /// Construct from an iterator.
    template <typename Iterator>
-   Map(Iterator src, Iterator src_end)
-      : tree( make_constructor(src, src_end, (tree_type*)0) ) {}
+   Map(Iterator&& src, Iterator&& src_end)
+      : tree(make_iterator_range(src, src_end)) {}
 
    template <typename Iterator>
-   explicit Map(Iterator src, typename enable_if_iterator<Iterator,end_sensitive>::type=0)
-      : tree( make_constructor(src, (tree_type*)0) ) {}
+   explicit Map(Iterator&& src,
+                typename std::enable_if<assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value,
+                                        void**>::type=nullptr)
+      : tree(std::forward<Iterator>(src)) {}
 
-	/// Clear all contents.
+   /// Clear all contents.
    void clear() { tree.apply(shared_clear()); }
 
-	/** @brief Swap content with another Map in an efficient way.
-		@param m the other Map
-	*/
+   /** @brief Swap content with another Map in an efficient way.
+       @param m the other Map
+   */
    void swap(Map& m) { tree.swap(m.tree); }
 
    friend void relocate(Map* from, Map* to)
@@ -91,39 +95,67 @@ public:
       relocate(&from->tree, &to->tree);
    }
 
+   bool exists(const key_type& k) const
+   {
+      return tree->exists(k);
+   }
+
    /** @brief Associative search.
    
-	Find the data element associated with the given key. If it doesn't exist so far, it will be created with the default constructor.
+       Find the data element associated with the given key. If it doesn't exist so far, it will be created with the default constructor.
 
-   Note that the type of the search key is not necessarily the same as of the map entries.
-   It suffices that both are comparable with each other.
+       Note that the type of the search key is not necessarily the same as of the map entries.
+       It suffices that both are comparable with each other.
+
+       k can also be a container with keys; the result will be a sequence of corresponding values.
    */
-   template <typename Key>
-   typename assoc_helper<Map,Key>::type operator[] (const Key& k)
+   template <typename TKeys>
+   typename assoc_helper<Map, TKeys>::result_type operator[] (const TKeys& k)
    {
-      return assoc_helper<Map,Key>::doit(*this,k);
+      return assoc_helper<Map, TKeys>()(*this, k);
    }
 
    /** @brief Associative search (const).
-	Find the data element associated with the given key. If it doesn't exist so far, it will raise an exception.
+       Find the data element associated with the given key. If it doesn't exist so far, it will raise an exception.
 
-   Note that the type of the search key is not necessarily the same as of the map entries.
-   It suffices that both are comparable with each other.
+       Note that the type of the search key is not necessarily the same as of the map entries.
+       It suffices that both are comparable with each other.
+
+       k can also be a container with keys; the result will be a sequence of corresponding values.
    */
-   template <typename Key>
-   typename assoc_helper<Map,Key>::const_type operator[] (const Key& k) const
+   template <typename TKeys>
+   typename assoc_helper<const Map, TKeys>::result_type operator[] (const TKeys& k) const
    {
-      return assoc_helper<Map,Key>::doit(*this,k);
+      return assoc_helper<const Map, TKeys>()(*this, k);
+   }
+
+   /// synonym for const key lookup
+   template <typename TKeys>
+   typename assoc_helper<const Map, TKeys>::result_type map(const TKeys& k) const
+   {
+      return assoc_helper<const Map, TKeys>()(*this, k);
+   }
+
+   friend
+   bool operator== (const Map& l, const Map& r)
+   {
+      return l.size()==r.size() && equal_ranges(entire(l), r.begin());
+   }
+
+   friend
+   bool operator!= (const Map& l, const Map& r)
+   {
+      return !(l==r);
    }
 
 #if POLYMAKE_DEBUG
    void check(const char* label) const { tree->check(label); }
-   void tree_dump() const { tree->dump(); }
 
-   ~Map() { POLYMAKE_DEBUG_METHOD(Map,dump); }
-   void dump(False) const { cerr << "elements are not printable" << std::flush; }
-   void dump(True) const { cerr << *this << std::flush; }
-   void dump() const { dump(bool2type<is_printable<K>::value && is_printable<D>::value>()); }
+private:
+   void dump(std::false_type) const { cerr << "elements are not printable" << std::flush; }
+   void dump(std::true_type) const { cerr << *this << std::flush; }
+public:
+   void dump() const __attribute__((used)) { dump(bool_constant<is_printable<K>::value && is_printable<D>::value>()); }
 #endif
 };
 
@@ -131,6 +163,14 @@ template <typename K, typename D, typename Comparator>
 struct spec_object_traits< Map<K,D,Comparator> >
    : spec_object_traits<is_container> {
    static const IO_separator_kind IO_separator=IO_sep_inherit;
+};
+
+template <typename K, typename D, typename Comparator>
+struct choose_generic_object_traits< Map<K, D, Comparator>, false, false > :
+      spec_object_traits< Map<K,D,Comparator> > {
+   typedef void generic_type;
+   typedef is_map generic_tag;
+   typedef Map<K,D,Comparator> persistent_type;
 };
 
 } // end namespace pm

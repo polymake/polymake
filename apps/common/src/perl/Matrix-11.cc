@@ -23,7 +23,6 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/Set.h"
-#include "polymake/RationalFunction.h"
 #include "polymake/Vector.h"
 #include "polymake/linalg.h"
 
@@ -46,8 +45,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational>&, pm::all_selector const&, pm::Set<int, pm::operations::cmp> const&> >);
    FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational>&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> >);
    FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational>&, pm::Set<int, pm::operations::cmp> const&, pm::Set<int, pm::operations::cmp> const&> >);
-   Class4perl("Polymake::common::Matrix_A_UniPolynomial_A_Rational_I_Int_Z_I_NonSymmetric_Z", Matrix< UniPolynomial< Rational, int > >);
-   FunctionInstance4perl(new_int_int, Matrix< UniPolynomial< Rational, int > >);
    FunctionInstance4perl(new_X, Matrix< int >, perl::Canned< const Matrix< Rational > >);
    FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::Vector<int> const&>, pm::Matrix<int> const&> >);
    FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> >);

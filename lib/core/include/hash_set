@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,28 +17,27 @@
 #ifndef POLYMAKE_HASH_SET_
 #define POLYMAKE_HASH_SET_
 
-#if defined(__cplusplus) && __cplusplus >= 201103L && !defined(PM_FORCE_TR1)
 #include <unordered_set>
-#define PmTr1NS std
-#else
-#include <tr1/unordered_set>
-#define PmTr1NS std::tr1
-#endif
 
 #include "polymake/internal/hash_iterators.h"
 
 namespace pm {
 
-template <typename Key, typename Params=void>
+template <typename Key, typename... TParams>
 class hash_set
-   : public PmTr1NS::unordered_set<Key, hash_func<Key>, typename hash_table_cmp_adapter<Key,Params>::type> {
-   typedef PmTr1NS::unordered_set<Key, hash_func<Key>, typename hash_table_cmp_adapter<Key,Params>::type> _super;
+   : public std::unordered_set<Key, hash_func<Key>, typename hash_table_cmp_adapter<Key, TParams...>::type> {
+   typedef std::unordered_set<Key, hash_func<Key>, typename hash_table_cmp_adapter<Key, TParams...>::type> base_t;
 public:
    hash_set() {}
-   explicit hash_set(size_t start_cap) : _super(start_cap) {}
+   explicit hash_set(size_t start_cap) : base_t(start_cap) {}
 
    template <typename Iterator>
-   hash_set(Iterator first, Iterator last) : _super(first,last) {}
+   hash_set(Iterator first, Iterator last) : base_t(first, last) {}
+
+   template <typename Container,
+             typename enabled=typename std::enable_if<isomorphic_to_container_of<Container, Key, allow_conversion>::value>::type>
+   explicit hash_set(const Container& src)
+      : base_t(src.begin(), src.end()) {}
 
    // let's make it at least partially compatible with Set
 
@@ -48,15 +47,29 @@ public:
       return *this;
    }
 
+   hash_set& operator+= (const hash_set& other)
+   {
+      for (const auto& k : other)
+         this->insert(k);
+      return *this;
+   }
+
    hash_set& operator-= (const Key& k)
    {
       this->erase(k);
       return *this;
    }
 
+   hash_set& operator-= (const hash_set& other)
+   {
+      for (const auto& k : other)
+         this->erase(k);
+      return *this;
+   }
+
    hash_set& operator^= (const Key& k)
    {
-      std::pair<typename _super::iterator, bool> inserted=this->insert(k);
+      auto inserted=this->insert(k);
       if (!inserted.second) this->erase(inserted.first);
       return *this;
    }
@@ -66,25 +79,37 @@ public:
       return this->find(k) != this->end();
    }
 
-   bool operator== (const hash_set& other) const
+   bool contains(const Key& k) const
    {
-      if (this->size() != other.size()) return false;
-      typename _super::const_iterator not_found=this->end();
-      for (typename _super::const_iterator elem=other.begin(), other_end=other.end(); elem != other_end; ++elem)
-         if (this->find(*elem) == not_found)
-            return false;
-      return true;
+      return this->exists(k);
+   }
+
+   /// Add to the set, report true if existed formerly.
+   bool collect(const Key& k)
+   {
+      return !this->insert(k).second;
    }
 };
 
-template <typename Key, typename KeyComparator>
-struct choose_generic_object_traits< hash_set<Key,KeyComparator>, false, false >
+template <typename Key, typename... TParams>
+struct choose_generic_object_traits< hash_set<Key, TParams...>, false, false >
    : spec_object_traits<is_container> {
    typedef void generic_type;
-   typedef hash_set<Key,KeyComparator> persistent_type;
+   typedef hash_set<Key, TParams...> persistent_type;
    typedef is_unordered_set generic_tag;
    static const IO_separator_kind IO_separator=IO_sep_inherit;
 };
+
+template <typename Key, typename... TParams>
+struct spec_object_traits< hash_set<Key, TParams...> >
+   : spec_object_traits<is_container> {
+   static const IO_separator_kind IO_separator=IO_sep_inherit;
+};
+
+// can't be used as a search key in Set or Map!
+template <typename Key, typename... TParams>
+struct is_ordered< hash_set<Key, TParams...> >
+   : std::false_type { };
 
 } // end namespace pm
 

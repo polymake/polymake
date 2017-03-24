@@ -45,7 +45,7 @@ perl::Object cone(perl::Object p_in, int k, perl::OptionSet options)
    p_out.set_description() << k << "-cone of " << p_in.name() << endl;
    p_out.take("FACETS") << C;
 
-   if (!options["nol"]) {
+   if (!options["no_labels"]) {
       Array<std::string> L = p_in.give("VERTEX_LABELS");
       hash_set<std::string> old_L(L.begin(), L.end());
 
@@ -97,9 +97,16 @@ UserFunction4perl("# @category Producing a new simplicial complex from others"
                   "#  Default labels have the form ''apex_0, apex_1, ...''."
                   "#  In the case the input complex has already vertex labels of this kind,"
                   "#  the duplicates are avoided."
-                  "# @option Bool nol don't generate any vertex labels."
-                  "# @return SimplicialComplex",
-                  &cone, "cone(SimplicialComplex; $=0, { apex_labels => undef, nol => 0 })");
+                  "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
+                  "# @return SimplicialComplex"
+                  "# @example The following creates the cone with two apices over the triangle,"
+                  "# with custom apex labels. The resulting complex is the 4-simplex."
+                  "# > $c = cone(simplex(2),2,apex_labels=>['foo','bar']);"
+                  "# > print $c->FACETS;"
+                  "# | {0 1 2 3 4}"
+                  "# > print $c->VERTEX_LABELS;"
+                  "# | 0 1 2 foo bar",
+                  &cone, "cone(SimplicialComplex; $=0, { apex_labels => undef, no_labels => 0 })");
 } }
 
 // Local Variables:

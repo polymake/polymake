@@ -16,13 +16,14 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
-#include "polymake/common/lattice_tools.h"
-#include "polymake/SparseMatrix.h"
-#include "polymake/Rational.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
+#include "polymake/Rational.h"
+#include "polymake/Set.h"
+#include "polymake/SparseMatrix.h"
 #include "polymake/Vector.h"
+#include "polymake/client.h"
+#include "polymake/common/lattice_tools.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -33,9 +34,12 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(is_integral_X, perl::Canned< const Matrix<Rational> >);
-   FunctionInstance4perl(is_integral_X, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(is_integral_X, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>> >);
    FunctionInstance4perl(is_integral_X, perl::Canned< const Vector< Rational > >);
    FunctionInstance4perl(is_integral_X, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
    FunctionInstance4perl(is_integral_X, perl::Canned< const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::Rational, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric> >);
+   FunctionInstance4perl(is_integral_X, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> const&, pm::all_selector const&> >);
+   FunctionInstance4perl(is_integral_X, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> const&, pm::all_selector const&> >);
+   FunctionInstance4perl(is_integral_X, perl::Canned< const pm::VectorChain<pm::Vector<pm::Rational> const&, pm::SingleElementVector<pm::Rational const&> > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

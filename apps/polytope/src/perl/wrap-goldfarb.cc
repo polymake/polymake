@@ -14,10 +14,10 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/Rational.h"
 #include "polymake/SparseVector.h"
 #include "polymake/TropicalNumber.h"
-#include "polymake/PuiseuxFraction.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -34,11 +34,9 @@ namespace polymake { namespace polytope { namespace {
    };
 
    FunctionInstance4perl(goldfarb_T_int_C_C, Rational, perl::Canned< const Rational >, int);
-   FunctionInstance4perl(goldfarb_T_int_C_C, PuiseuxFraction< Max, Rational, Rational >, perl::Canned< const PuiseuxFraction< Max, Rational, Rational > >, int);
-   FunctionInstance4perl(goldfarb_T_int_C_C, PuiseuxFraction< Min, Rational, Rational >, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, int);
-   FunctionInstance4perl(goldfarb_T_int_C_C, PuiseuxFraction< Min, Rational, int >, perl::Canned< const PuiseuxFraction< Min, Rational, int > >, int);
    FunctionInstance4perl(goldfarb_T_int_C_C, Rational, perl::Canned< const Rational >, perl::Canned< const Rational >);
    FunctionInstance4perl(goldfarb_sit_T_int_C_C, Rational, perl::Canned< const Rational >, perl::Canned< const Rational >);
    FunctionInstance4perl(goldfarb_sit_T_int_C_C, PuiseuxFraction< Min, Rational, Rational >, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >);
+   FunctionInstance4perl(goldfarb_T_int_C_C, PuiseuxFraction< Min, Rational, Rational >, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

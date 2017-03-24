@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -646,7 +646,18 @@ sub full_name {
 
 #################################################################################
 sub printable_scalar {
-   defined($_[0]) ? is_numeric($_[0]) ? $_[0] : "'$_[0]'" : "undef";
+   my ($x)=@_;
+   if (defined $x) {
+      if (ref($x) eq "ARRAY") {
+         "[ " . join(", ", map { printable_scalar($_) } @{$_[0]}) . " ]"
+      } elsif (is_numeric($x)) {
+         $x
+      } else {
+         "'$x'"
+      }
+   } else {
+      "undef"
+   }
 }
 
 my $arch_prefix="ARCH('$Arch') and\n";
@@ -677,7 +688,7 @@ package Polymake::Core::Customize::perApplication;
 
 use Polymake::Struct (
    [ new => '$$' ],
-   [ '$handler' => 'weak( #1 )' ],
+   [ '$handler' => 'weak(#1)' ],
    '%per_pkg',                  # package_name->{"$var_name"}->Var
    '%pkg_help',                 # package_name => help text
    [ '$default_pkg' => '#2' ],

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -25,21 +25,27 @@ namespace polymake { namespace polytope {
 template <typename Scalar>
 perl::Object conv(const Array<perl::Object>& pp_in)
 {
-   Entire< Array<perl::Object> >::const_iterator p_in=entire(pp_in);
+   auto p_in=entire(pp_in);
+
+   if (p_in.at_end()) throw std::runtime_error("empty input");
+
    ListMatrix< Vector<Scalar> > Points=p_in->give("VERTICES | POINTS");
    ListMatrix< Vector<Scalar> > LinSpace=p_in->give("LINEALITY_SPACE");
 
-   perl::Object p_out(p_in->type());
+   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
    std::string descr_names=p_in->name();
 
    while (! (++p_in).at_end()) {
       const Matrix<Scalar> V=p_in->give("VERTICES | POINTS");
       const Matrix<Scalar> L=p_in->give("LINEALITY_SPACE");
-      LinSpace /= L;
       if (V.cols() == Points.cols())
          Points /= V;
       else
-         throw std::runtime_error("dimension mismatch");
+         throw std::runtime_error("conv - Points dimension mismatch");
+      if (L.cols() == LinSpace.cols())
+         LinSpace /= L;
+      else
+         throw std::runtime_error("conv - LinSpace dimension mismatch");
       descr_names+=", ";
       descr_names+=p_in->name();
    }
@@ -54,7 +60,15 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# Construct a new polyhedron as the convex hull of the polyhedra"
                           "# given in //P_Array//."
                           "# @param Array<Polytope> P_Array"
-                          "# @return PropagatedPolytope",
+                          "# @return PropagatedPolytope"
+                          " @example > $p = conv([cube(2,1,0),cube(2,6,5)]);"
+                          " > print $p->VERTICES;"
+                          " | 1 0 0"
+                          " | 1 1 0"
+                          " | 1 0 1"
+                          " | 1 6 5"
+                          " | 1 5 6"
+                          " | 1 6 6",
                           "conv<Scalar>(Polytope<type_upgrade<Scalar>> +)");
 } }
 

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -54,7 +54,7 @@ file_suffix poly
 # > $p = new Polytope(POINTS=>$M);
 # > print $p->VERTICES;
 # | 1 0 0 0
-# | 1 1 0 0 
+# | 1 1 0 0
 # | 1 0 1 0
 # | 1 0 0 1
 property POINTS = override INPUT_RAYS;
@@ -64,7 +64,7 @@ property POINTS = override INPUT_RAYS;
 # Vertices of the polyhedron. No redundancies are allowed.
 # All vectors in this section must be non-zero.
 # The coordinates are normalized the same way as [[POINTS]]. Dual to [[FACETS]].
-# This section is empty if and only if the polytope is empty. 
+# This section is empty if and only if the polytope is empty.
 # The property [[VERTICES]] appears only in conjunction with the property [[LINEALITY_SPACE]].
 # The specification of the property [[VERTICES]] requires the specification of [[LINEALITY_SPACE]], and vice versa.
 # @example To print the vertices (in homogeneous coordinates) of the standard 2-simplex, i.e. a right-angled isoceles triangle, type this:
@@ -104,17 +104,14 @@ property VERTICES = override RAYS;
 #
 # Input section only.  Ask for [[AFFINE_HULL]] if you want to see an irredundant description of the affine span.
 
-# @category Geometry 
-# Dual basis of the affine hull of the polyhedron. 
+# @category Geometry
+# Dual basis of the affine hull of the polyhedron.
 # The property [[AFFINE_HULL]] appears only in conjunction with the property [[FACETS]].
 # The specification of the property [[FACETS]] requires the specification of [[AFFINE_HULL]], and vice versa.
-property AFFINE_HULL = override LINEAR_SPAN; 
+property AFFINE_HULL = override LINEAR_SPAN;
 
 method canonical_ineq {
-   my ($self) = @_;
-   my $dim = $_[1]->cols() > 0 ? $_[1]->cols() : $self->lookup_ambient_dim($self->lookup("CONE_AMBIENT_DIM"));
-   die "Could not deduce CONE_AMBIENT_DIM. Giving an empty INEQUALITIES section requires setting CONE_AMBIENT_DIM first." unless defined($dim);
-   add_extra_polytope_ineq(@_,$dim);
+   add_extra_polytope_ineq($_[1]);
 }
 
 
@@ -123,7 +120,7 @@ method canonical_ineq {
 # This property is a by-product of redundant point elimination algorithm.
 # All vectors in this section must be non-zero.
 # @example This prints a matrix in which each row represents a normal vector of a hyperplane seperating one vertex of a centered square
-# with side length 2 from the other ones. The first and the last hyperplanes as well as the second and third hyperplanes are the same 
+# with side length 2 from the other ones. The first and the last hyperplanes as well as the second and third hyperplanes are the same
 # up to orientation.
 # > print cube(2)->VERTEX_NORMALS;
 # | 0 1/2 1/2
@@ -137,7 +134,7 @@ property VERTEX_NORMALS = override RAY_SEPARATORS;
 # @example This stores a (homogeneous) point belonging to the 3-cube as a vector and prints its coordinates:
 # > $v = cube(3)->VALID_POINT;
 # > print $v;
-# | 1 1 1 1
+# | 1 -1 -1 -1
 property VALID_POINT : Vector<Scalar> {
    sub canonical { &canonicalize_rays; }
 }
@@ -147,9 +144,9 @@ property VALID_POINT : Vector<Scalar> {
 property FEASIBLE : Bool;
 
 # @topic //properties//CONE_DIM
-# One more than the dimension of the affine hull of the polyhedron 
+# One more than the dimension of the affine hull of the polyhedron
 #   = one more than the dimension of the polyhedron.
-#   = dimension of the homogenization of the polyhedron 
+#   = dimension of the homogenization of the polyhedron
 # If the polytope is given purely combinatorially, this is the dimension of a minimal embedding space
 # @example This prints the cone dimension of a 3-cube. Since the dimension of its affine closure is 3, the result is 4.
 # > print cube(3)->CONE_DIM;
@@ -161,8 +158,8 @@ property FEASIBLE : Bool;
 
 # @topic //properties//POINTED
 # True if the polyhedron does not contain an affine line.
-# @example A square does not contain an affine line and is therefore pointed. Removing one facet doens not change this, although 
-# it is no longer bounded. After removing two opposing facets, it contains infinitely many affine lines parrallel to the 
+# @example A square does not contain an affine line and is therefore pointed. Removing one facet doens not change this, although
+# it is no longer bounded. After removing two opposing facets, it contains infinitely many affine lines parrallel to the
 # removed facets.
 # > $p = cube(2);
 # > print $p->POINTED;
@@ -170,13 +167,13 @@ property FEASIBLE : Bool;
 # > print facet_to_infinity($p,0)->POINTED;
 # | 1
 # > print new Polytope(INEQUALITIES=>$p->FACETS->minor([0,1],All))->POINTED;
-# |  
+# | 
 
 # @category Geometry
 # A vertex of a pointed polyhedron.
 # @example This prints the first vertex of the 3-cube (corresponding to the first row in the vertex matrix).
 # > print cube(3)->ONE_VERTEX;
-# | 1 -1 -1 -1 
+# | 1 -1 -1 -1
 property ONE_VERTEX = override ONE_RAY;
 
 
@@ -208,7 +205,7 @@ property CENTERED : Bool;
 
 # @category Geometry
 # True if (1, 0, 0, ...) is contained (possibly in the boundary).
-# @example The cube [0,1]^3 is only weakly centered, since the origin is on the boundary. 
+# @example The cube [0,1]^3 is only weakly centered, since the origin is on the boundary.
 # > $p = cube(3,0,0);
 # > print $p->WEAKLY_CENTERED;
 # | 1
@@ -225,9 +222,9 @@ property SPECIAL_FACETS : Set;
 
 # @category Geometry
 # True if P = -P.
-# @example A centered 3-cube is centrally symmetric. By stacking a single facet (5), this property is lost. We can 
+# @example A centered 3-cube is centrally symmetric. By stacking a single facet (5), this property is lost. We can
 # recover it by stacking the opposing facet (4) as well.
-# > $p = cube(2);
+# > $p = cube(3);
 # > print $p->CENTRALLY_SYMMETRIC;
 # | 1
 # > print stack($p,5)->CENTRALLY_SYMMETRIC;
@@ -270,7 +267,8 @@ property N_VERTEX_FACET_INC = override N_RAY_FACET_INC;
 #     combinatorics of the quotient modulo the lineality space.
 # Therefore: [[VERTICES_IN_FACETS]] and each other property which is grouped under "Combinatorics"
 # always refers to some polytope.
-# @example The following prints the vertex-facet incidence matrix of a 5-gon by listing all facets as a set of contained vertices
+# @example [prefer cdd]
+# The following prints the vertex-facet incidence matrix of a 5-gon by listing all facets as a set of contained vertices
 # in a cyclic order (each line corresponds to an edge):
 # > print n_gon(5)->VERTICES_IN_FACETS;
 # | {1 2}
@@ -317,9 +315,15 @@ property INEQUALITIES_THRU_VERTICES = override INEQUALITIES_THRU_RAYS;
 # Number of incident facets for each vertex.
 # @example The following prints the number of incident facets for each vertex of the elongated pentagonal pyramid (Johnson solid 9)
 # > print johnson_solid(9)->VERTEX_SIZES;
-# | [5 4 4 4 4 4 3 3 3 3 3]
+# | 5 4 4 4 4 4 3 3 3 3 3
 property VERTEX_SIZES = override RAY_SIZES;
 
+# @category Combinatorics
+# Measures the deviation of the cone from being simple in terms of the [[GRAPH]].
+# @example The excess vertex degree of an egyptian pyramid is one.
+# > print pyramid(cube(2))->EXCESS_VERTEX_DEGREE;
+# | 1
+property EXCESS_VERTEX_DEGREE = override EXCESS_RAY_DEGREE;
 
 # @topic //properties//HASSE_DIAGRAM
 # Number of incident vertices for each facet.
@@ -338,13 +342,25 @@ weight 1.10;
 
 property GRAPH {
 
+   # @category Geometry
    # Difference of the vertices for each edge (only defined up to signs).
    property EDGE_DIRECTIONS : EdgeMap<Undirected, Vector<Scalar>> : construct(ADJACENCY);
 
+   # @category Geometry
    # Squared Euclidean length of each edge
    property SQUARED_EDGE_LENGTHS : EdgeMap<Undirected, Scalar> : construct(ADJACENCY);
 
 }
+
+property DUAL_GRAPH {
+
+   # @category Geometry
+   # Dihedral angles (in radians) between the two facets corresponding to
+   # each edge of the dual graph, i.e. the ridges of the polytope.
+   property DIHEDRAL_ANGLES : EdgeMap<Undirected, Float> : construct(ADJACENCY);
+
+}
+
 
 # @category Combinatorics
 # Lists for each occurring size (= number of incident vertices or edges) of a 2-face how many there are.
@@ -371,22 +387,22 @@ property ALTSHULER_DET : Integer;
 # f<sub>k</sub> is the number of k-faces.
 # @example This prints the f-vector of a 3-dimensional cube. The first entry represents the vertices.
 # > print cube(3)->F_VECTOR;
-# | [8, 12, 6] 
+# | 8 12 6
 # @example This prints the f-vector of the 3-dimensional cross-polytope. Since the cube and the cross polytope
 # of equal dimension are dual, their f-vectors are the same up to reversion.
 # > print cross(3)->F_VECTOR;
-# | [6, 12, 8]
-# @example After truncating the first standard basis vector of the 3-dimensional cross-polytope the f-vector changes. 
-# Only segments of the incident edges of the cut off vertex remain and the intersection of these with the new hyperplane 
-# generate four new vertices. These also constitute four new edges and a new facet. 
+# | 6 12 8
+# @example After truncating the first standard basis vector of the 3-dimensional cross-polytope the f-vector changes.
+# Only segments of the incident edges of the cut off vertex remain and the intersection of these with the new hyperplane
+# generate four new vertices. These also constitute four new edges and a new facet.
 # > print truncation(cross(3),4)->F_VECTOR;
-# | [9, 16, 9]
+# | 9 16 9
 
 
 # @topic //properties//F2_VECTOR
 # f<sub>ik</sub> is the number of incident pairs of i-faces and k-faces; the main diagonal contains the [[F_VECTOR]].
 # @example The following prints the f2-vector of a 3-dimensional cube:
-# print cube(3)->F2_VECTOR;
+# > print cube(3)->F2_VECTOR;
 # | 8 24 24
 # | 24 12 24
 # | 24 24 6
@@ -428,27 +444,27 @@ property SIMPLICIALITY : Int;
 
 # @category Combinatorics
 # Maximal dimension in which all dual faces are simplices.
-# @example This checks the 3-dimensional cube for simplicity. Since the cube is dual to the cross-polytope of equal dimension and all its faces are simplices, 
-# the result is 2.  
+# @example This checks the 3-dimensional cube for simplicity. Since the cube is dual to the cross-polytope of equal dimension and all its faces are simplices,
+# the result is 2.
 # > print cube(3)->SIMPLICITY;
 # | 2
 property SIMPLICITY : Int;
 
 # @category Combinatorics
 # Maximal dimension in which all faces are simple polytopes.
-# This checks the 3-dimensional cube for face simplicity. Since the cube is dual to the cross-polytope of equal dimension and it is simplicial, 
-# the result is 3.  
+# This checks the 3-dimensional cube for face simplicity. Since the cube is dual to the cross-polytope of equal dimension and it is simplicial,
+# the result is 3.
 # > print cube(3)->SIMPLICITY;
 # | 3
 property FACE_SIMPLICITY : Int;
 
 # @category Combinatorics
 # True if all facets are cubes.
-# @example A k-dimensional cube has k-1-dimensional cubes as facets and is therefore cubical. The following checks if this holds for the 
+# @example A k-dimensional cube has k-1-dimensional cubes as facets and is therefore cubical. The following checks if this holds for the
 # 3-dimensional case:
 # > print cube(3)->CUBICAL;
 # | 1
-# @example This checks if a zonotope generated by 4 random points on the 3-dimensional sphere is cubical, which is always the case. 
+# @example This checks if a zonotope generated by 4 random points on the 3-dimensional sphere is cubical, which is always the case.
 # > print zonotope(rand_sphere(3,4)->VERTICES)->CUBICAL;
 # | 1
 property CUBICAL : Bool;
@@ -472,7 +488,7 @@ property COCUBICAL : Bool;
 
 # @category Combinatorics
 # Dual to [[CUBICALITY]].
-# @example After stacking a facet of the 3-dimensional cube, its cubicality is lowered to 2. Hence its dual polytope has cocubicality 2 as well. The 
+# @example After stacking a facet of the 3-dimensional cube, its cubicality is lowered to 2. Hence its dual polytope has cocubicality 2 as well. The
 # following produces such a stacked cube and asks for its cocubicality after polarization:
 # > $p = stack(cube(3),5);
 # > print polarize($p)->COCUBICALITY;
@@ -482,7 +498,7 @@ property COCUBICALITY : Int;
 # @category Combinatorics
 # True if the polytope is neighborly.
 # @example This checks the 4-dimensional cyclic polytope with 6 points on the moment curve for neighborliness, i.e. if it is &lfloor;dim/2&rfloor; neighborly:
-# > print cyclic(4,6)->NEIGHBORLINESS;
+# > print cyclic(4,6)->NEIGHBORLY;
 # | 1
 property NEIGHBORLY : Bool;
 
@@ -507,7 +523,7 @@ property BALANCED : Bool;
 # @category Combinatorics
 # Maximal dimension in which all facets are balanced.
 # @example The following full dimensional polytope given by 10 specific vertices on the 8-dimensional sphere is 3-neighborly. Hence the dual polytope is
-# 3-balanced, where we first center and then polarize it. 
+# 3-balanced, where we first center and then polarize it.
 # > $p = rand_sphere(8,10,seed=>8866463);
 # > $q = polarize(center($p));
 # > print $q->BALANCE;
@@ -541,11 +557,11 @@ property ZONOTOPE_INPUT_POINTS : Matrix<Scalar>;
 
 # @category Geometry
 # is the zonotope calculated from ZONOTOPE_INPUT_POINTS or ZONOTOPE_INPUT_VECTORS to be centered at the origin?
-# The zonotope is always calculated as the Minkowski sum of all segments conv {x,v}, where 
-# * v ranges over the ZONOTOPE_INPUT_POINTS or ZONOTOPE_INPUT_VECTORS, and 
+# The zonotope is always calculated as the Minkowski sum of all segments conv {x,v}, where
+# * v ranges over the ZONOTOPE_INPUT_POINTS or ZONOTOPE_INPUT_VECTORS, and
 # * x = -v if CENTERED_ZONOTOPE = 1,
 # * x = 0  if CENTERED_ZONOTOPE = 0.
-# Input section only.  
+# Input section only.
 property CENTERED_ZONOTOPE : Bool;
 
 } # /Polytope
@@ -556,10 +572,10 @@ property CENTERED_ZONOTOPE : Bool;
 declare object AffineLattice<Scalar=Rational> {
 
 # an affine point, ie first coordinate non-zero
-property ORIGIN : Vector<Scalar>; 
+property ORIGIN : Vector<Scalar>;
 
 # rows are vectors, ie first coordinate zero
-property BASIS : Matrix<Scalar>;  
+property BASIS : Matrix<Scalar>;
 
 
 property SQUARED_DETERMINANT : Scalar;
@@ -591,7 +607,7 @@ property TILING_LATTICE : AffineLattice<Scalar>;
 property VOLUME : Scalar;
 
 # @category Triangulation and volume
-# Array of the squared relative //k//-dimensional volumes of the simplices in 
+# Array of the squared relative //k//-dimensional volumes of the simplices in
 # a triangulation of a //d//-dimensional polytope.
 property SQUARED_RELATIVE_VOLUMES : Array<Scalar>;
 
@@ -653,10 +669,10 @@ property NEIGHBOR_VERTICES_CYCLIC_NORMAL = override NEIGHBOR_RAYS_CYCLIC_NORMAL;
 # either manually in a text editor, or with a client program.
 #
 # If you build a polytope with a construction function
-# taking some other input polytope(s), you can create the labels automatically if you
-# call the function with a //relabel// option. The exact format of the labels is dependent on the
-# construction, and is described in the corresponding help topic.
-# @option Bool relabel
+# taking some other input polytope(s), the labels are created the labels automatically
+# except if you call the function with a //no_labels// option. The exact format of the
+# abels is dependent on the construction, and is described in the corresponding help topic.
+# @option Bool no_labels
 property VERTEX_LABELS = override RAY_LABELS;
 
 # @category Visualization
@@ -703,7 +719,7 @@ property CHIROTOPE : Text;
 # @category Geometry
 # Returns the inner description of a Polytope:
 # [V,L] where V are the vertices and L is the lineality space
-# @return Array<Matrix<Scalar> >
+# @return Array<Matrix<Scalar>>
 user_method INNER_DESCRIPTION : VERTICES, LINEALITY_SPACE {
     my $this=shift;
     new Array<Matrix>([$this->VERTICES, $this->LINEALITY_SPACE]);
@@ -712,7 +728,7 @@ user_method INNER_DESCRIPTION : VERTICES, LINEALITY_SPACE {
 # @category Geometry
 # Returns the outer description of a Polytope:
 # [F,A] where F are the facets and A is the affine hull
-# @return Array<Matrix<Scalar> >
+# @return Array<Matrix<Scalar>>
 user_method OUTER_DESCRIPTION : FACETS, AFFINE_HULL {
     my $this=shift;
     new Array<Matrix>([$this->FACETS, $this->AFFINE_HULL]);

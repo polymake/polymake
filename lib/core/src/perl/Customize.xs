@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -15,11 +15,10 @@
 */
 
 #include "polymake/perl/Ext.h"
-#include <stdio.h>
 
 typedef OP* (*op_func)(pTHX);
 
-static op_func saved_op_sassign, saved_op_aassign, saved_op_anonlist, saved_op_anonhash;
+static op_func saved_op_sassign, saved_op_aassign;
 static SV *scalar_pkg, *array_pkg, *hash_pkg;
 
 static
@@ -58,39 +57,6 @@ OP* custom_op_aassign(pTHX)
    return ret;
 }
 
-static inline
-void tie_anon(pTHX_ SV *pkg)
-{
-   dSP;
-   SV *var=TOPs, *varref=var;
-   if (PL_op->op_flags & OPf_SPECIAL)
-      var=SvRV(varref);
-   else
-      varref=sv_2mortal(newRV(var));
-   PUSHMARK(PL_stack_sp);
-   PUSHs(var);
-   XPUSHs(pkg);
-   XPUSHs(varref);
-   PUTBACK;
-   Perl_pp_tie(aTHX);
-}
-
-static
-OP* custom_op_anonlist(pTHX)
-{
-   OP *ret=(*saved_op_anonlist)(aTHX);
-   tie_anon(aTHX_ array_pkg);
-   return ret;
-}
-
-static
-OP* custom_op_anonhash(pTHX)
-{
-   OP *ret=(*saved_op_anonhash)(aTHX);
-   tie_anon(aTHX_ hash_pkg);
-   return ret;
-}
-
 MODULE = Polymake::Core::Customize              PACKAGE = Polymake::Core::Customize
 
 PROTOTYPES: DISABLE
@@ -101,12 +67,8 @@ PPCODE:
 {
    saved_op_sassign=PL_ppaddr[OP_SASSIGN];
    saved_op_aassign=PL_ppaddr[OP_AASSIGN];
-   saved_op_anonlist=PL_ppaddr[OP_ANONLIST];
-   saved_op_anonhash=PL_ppaddr[OP_ANONHASH];
    PL_ppaddr[OP_SASSIGN]=&custom_op_sassign;
    PL_ppaddr[OP_AASSIGN]=&custom_op_aassign;
-   PL_ppaddr[OP_ANONLIST]=&custom_op_anonlist;
-   PL_ppaddr[OP_ANONHASH]=&custom_op_anonhash;
 }
 
 void
@@ -115,8 +77,6 @@ PPCODE:
 {
    PL_ppaddr[OP_SASSIGN]=saved_op_sassign;
    PL_ppaddr[OP_AASSIGN]=saved_op_aassign;
-   PL_ppaddr[OP_ANONLIST]=saved_op_anonlist;
-   PL_ppaddr[OP_ANONHASH]=saved_op_anonhash;
 }
 
 BOOT:

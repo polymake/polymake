@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -113,6 +113,8 @@ rule BARYCENTER : POINTS {
 precondition : BOUNDED;
 weight 1.10;
 
+rule CENTERED = CONVEX_HULL.CENTERED;
+
 
 rule TRIANGULATION.GKZ_VECTOR : POINTS, TRIANGULATION.FACETS {
    $this->TRIANGULATION->GKZ_VECTOR=gkz_vector($this->POINTS,$this->TRIANGULATION->FACETS);
@@ -130,8 +132,8 @@ rule TRIANGULATION.REFINED_SPLITS : SPLITS, POINTS, TRIANGULATION.FACETS {
    $this->TRIANGULATION->REFINED_SPLITS=splits_in_subdivision($this->POINTS,$this->TRIANGULATION->FACETS,$this->SPLITS);
 }
 
-rule TRIANGULATION.BOUNDARY.INPUT_FACES, TRIANGULATION.BOUNDARY.FACET_TRIANGULATIONS : TRIANGULATION.FACETS, CONVEX_HULL.POINTS_IN_FACETS {
-   ($this->TRIANGULATION->BOUNDARY->INPUT_FACES, $this->TRIANGULATION->BOUNDARY->FACET_TRIANGULATIONS)=
+rule TRIANGULATION.BOUNDARY.FACETS, TRIANGULATION.BOUNDARY.VERTEX_MAP, TRIANGULATION.BOUNDARY.FACET_TRIANGULATIONS : TRIANGULATION.FACETS, CONVEX_HULL.POINTS_IN_FACETS {
+   ($this->TRIANGULATION->BOUNDARY->FACETS, $this->TRIANGULATION->BOUNDARY->VERTEX_MAP, $this->TRIANGULATION->BOUNDARY->FACET_TRIANGULATIONS)=
      triang_boundary($this->TRIANGULATION->FACETS, $this->CONVEX_HULL->POINTS_IN_FACETS);
 }
 
@@ -203,34 +205,9 @@ rule TRIANGULATION.FACETS : POINTS, TRIANGULATION.WEIGHTS {
    $this->TRIANGULATION->FACETS=regular_subdivision($this->POINTS, $this->TRIANGULATION->WEIGHTS);
 }
 weight 3.10;
-permutation : TRIANGULATION.FacetPerm;
+incurs TRIANGULATION.FacetPerm;
 
 }
-
-
-# @category Triangulations, subdivisions and volume
-# Create a simplicial complex as the barycentric subdivision of a given point configuration.
-# Each vertex in the new complex corresponds to a face in the old complex.
-# @param PointConfiguration pc input point configuration
-# @option Bool relabel generate vertex labels from the faces of the original complex; default true
-# @option Bool geometric_realization read [[POINTS]] of the input complex,
-#  compute the coordinates of the new vertices and store them as
-#  [[POINTS]] of the produced complex; default false
-# @return PointConfiguration
-user_function barycentric_subdivision(PointConfiguration { relabel => 1, geometric_realization => 1, pin_hasse_section => 'TRIANGULATION.HASSE_DIAGRAM', label_section => 'LABELS', coord_section => 'POINTS' }) {
-   topaz::barycentric_subdivision_impl(@_);
-}
-
-# @category Triangulations, subdivisions and volume
-# Computes the complex obtained by stellar subdivision of all //faces// of the [[TRIANGULATION]] of the PointConfiguration.
-# @param PointConfiguration pc input point configuration
-# @param Array<Set<Int>> faces list of faces to subdivide
-# @option Bool no_labels : do not write any labels
-# @return PointConfiguration
-user_function stellar_subdivision(PointConfiguration, Array<Set<Int>>, { no_labels => 0}) {
-   topaz::stellar_subdivision(@_);
-}
-
 
 # @category Producing a point configuration
 # Produces the Minkowski sum of //P1// and //P2//.
@@ -272,7 +249,7 @@ user_function minkowski_sum<Scalar> (PointConfiguration<type_upgrade<Scalar>>, P
 # @return PointConfiguration
 # @example > $P1 = new PointConfiguration(POINTS=>simplex(2)->VERTICES);
 # > $P2 = new PointConfiguration(POINTS=>[[1,1,1],[1,-1,1],[1,1,-1],[1,-1,-1],[1,0,0]]);
-# > $m = minkowski_sum($P1,$P2);
+# > $m = minkowski_sum(1,$P1,3,$P2);
 # > print $m->POINTS;
 # | 1 3 3
 # | 1 -3 3

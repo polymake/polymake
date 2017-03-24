@@ -14,9 +14,19 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
 #include "polymake/client.h"
+#include "polymake/totally_unimodular.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0>
+   FunctionInterface4perl( totally_unimodular_X, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturn( (totally_unimodular(arg0.get<T0>())) );
+   };
+
+   FunctionInstance4perl(totally_unimodular_X, perl::Canned< const Matrix< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

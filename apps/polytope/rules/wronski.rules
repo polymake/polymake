@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -21,8 +21,7 @@
 # @param Array<Rational> coeff coefficients
 # @param Rational s additional Parameter in the polynomial
 # @option topaz::SimplicialComplex triangulation The triangulation of the pointset corresponding to the lifting function
-# @option Ring ring the ring in which the polynomial should be
-user_function wronski_polynomial(Matrix, Vector, Array<Rational>, $; {triangulation => undef,  ring => undef }) {
+user_function wronski_polynomial(Matrix, Vector, Array<Rational>, $; {triangulation => undef}) {
     my ($M, $lambda, $coeffs, $s, $options) = @_;
     my ($n, $d) = ($M->rows(), $M->cols()-1);
 
@@ -34,17 +33,12 @@ user_function wronski_polynomial(Matrix, Vector, Array<Rational>, $; {triangulat
     die "wronski_polynomial: triangulation not foldable" unless $T->FOLDABLE;
     die "wronski_polynomial: dimension mismatch" unless $coeffs->size() == $d+1;
 
-    my $Q_x0d_ = $options->{"ring"};
-    if (!defined($options->{"ring"})) { # default ring
-        $Q_x0d_ = new Ring($d);
-    }
-    die "wronski_polynomial: ring mismatch" unless $Q_x0d_->n_vars() == $d;
     my $i = 0;
     my $m = new Map<Int, Int>;
     map { $m->{$_}= $i++ } @{$T->FACETS->[0]};
 
     my $full_coeffs = new Vector<Rational>(map { $s**(convert_to<Int>($lambda->[$_]))*$coeffs->[$m->{$T->PROJ_DICTIONARY->[$_]}] } 0..($n-1));
-    return (new Polynomial((convert_to<Int>($M->minor(All,~[0]))),$full_coeffs,$Q_x0d_));
+    return (new Polynomial($full_coeffs, (convert_to<Int>($M->minor(All,~[0])))));
 }
 
 
@@ -55,8 +49,7 @@ user_function wronski_polynomial(Matrix, Vector, Array<Rational>, $; {triangulat
 # @param Array<Array<Rational>> coeff_array coefficients
 # @param Rational s additional Parameter in the polynomial
 # @option topaz::SimplicialComplex triangulation The triangulation of the pointset corresponding to the lifting function
-# @option Ring ring the ring in which the polynomial should be
-user_function wronski_system(Matrix, Vector, Array<Array<Rational> >, $; {triangulation => undef, ring => undef }) {
+user_function wronski_system(Matrix, Vector, Array<Array<Rational> >, $; {triangulation => undef}) {
     my ($M, $lambda, $coeffs_array,$s, $options) = @_;
     my ($n, $d) = ($M->rows(), $M->cols()-1);
 
@@ -67,13 +60,9 @@ user_function wronski_system(Matrix, Vector, Array<Array<Rational> >, $; {triang
 
     die "wronski_system: triangulation not foldable" unless $T->FOLDABLE;
     die "wronski_system: dimension mismatch" unless $coeffs_array->size() == $d;
-    my $RR = $options->{"ring"};
-    if (!defined($options->{"ring"})) { # default ring
-        $RR = new Ring($d);
-    }
 
     my @wSystem = ();
-    map { push @wSystem, wronski_polynomial($M,$lambda,$coeffs_array->[$_],$s, triangulation=>$T, ring=>$RR) } (0..$d-1);
+    map { push @wSystem, wronski_polynomial($M,$lambda,$coeffs_array->[$_],$s, triangulation=>$T) } (0..$d-1);
 
     return new ideal::Ideal(GENERATORS=>\@wSystem);
 }
@@ -85,7 +74,7 @@ user_function wronski_system(Matrix, Vector, Array<Array<Rational> >, $; {triang
 # compute eliminant e(s); this must not have a zero in (0,1)
 # @param Matrix<Int> L lattice points
 # @param Vector<Int> lambda height function on lattice points
-user_function wronski_center_ideal(Matrix, Vector; {ring => undef, triangulation => undef}) {
+user_function wronski_center_ideal(Matrix, Vector; {triangulation => undef}) {
   my ($L,$lambda, $options) = @_;
 
   my $d=$L->cols()-1; # ambient dimension
@@ -111,21 +100,13 @@ user_function wronski_center_ideal(Matrix, Vector; {ring => undef, triangulation
     push @{$points_by_color[$pt_color]}, $pt;
   }
 
-  my $RR = $options->{"ring"};
-  if (!defined($options->{"ring"})) { # default ring
-    my @vars = map { "x$_" } (0..$d-1); push @vars, "s";
-    $RR=new Ring(@vars); 
-  }  
- 
   my $monomials=new Matrix<Int>($L->minor(All,~[0])|$lambda);
 
   my @eqs=();
   for (my $col=0; $col<=$d; ++$col) {
     my $points_of_this_color=$points_by_color[$col];
     my $sz=scalar(@$points_of_this_color);
-    my @coeffs=(); map { push @coeffs, 1 } (1..$sz); 
-
-    my $eq=new Polynomial($monomials->minor($points_of_this_color,All),\@coeffs,$RR);
+    my $eq=new Polynomial((ones_vector<Rational>($sz)), $monomials->minor($points_of_this_color,All));
     push @eqs, $eq;
   }
 

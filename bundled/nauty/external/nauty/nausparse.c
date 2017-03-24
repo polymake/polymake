@@ -1,8 +1,8 @@
 /*****************************************************************************
 *                                                                            *
-*  Sparse-graph-specific auxiliary source file for version 2.5 of nauty.     *
+*  Sparse-graph-specific auxiliary source file for version 2.6 of nauty.     *
 *                                                                            *
-*   Copyright (2004-2014) Brendan McKay.  All rights reserved.               *
+*   Copyright (2004-2016) Brendan McKay.  All rights reserved.               *
 *   Subject to waivers and disclaimers in nauty.h.                           *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
@@ -16,6 +16,11 @@
 *       21-May-10 : fixes for nde,v fields becoming size_t                   *
 *       23-May-10 : add sparsenauty()                                        *
 *       15-Jan-12 : add TLS_ATTR attributes                                  *
+*       17-Dec-15 : extend sortlists_sg() to sort weights                    *
+*                 : add weights to copy_sg() and updatecan_sg()              *
+*       11-Mar-16 : add cleanup_sg().  This can be used in the cleanup       *
+*                   field of the dispatch vector to sort the lists of the    *
+*                   canonical graph, but isn't there by default.             *
 *                                                                            *
 *****************************************************************************/
 
@@ -293,9 +298,10 @@ updatecan_sg(graph *g, graph *canong, int *lab, int samerows, int m, int n)
     int *cd,*ce;
     int i,dli;
     size_t *v,*cv,vli,j,k;
+    sg_weight *wt,*cwt;
 
-    SG_VDE(g,v,d,e);
-    SG_VDE(canong,cv,cd,ce);
+    SWG_VDE(g,v,d,e,wt);
+    SWG_VDE(canong,cv,cd,ce,cwt);
 
 #if !MAXN
     DYNALLOC1(int,work1,work1_sz,n,"testcanlab_sg");
@@ -315,59 +321,76 @@ updatecan_sg(graph *g, graph *canong, int *lab, int samerows, int m, int n)
         cv[i] = k;
         cd[i] = dli = d[lab[i]];
         vli = v[lab[i]];
-        for (j = 0; j < dli; ++j) ce[k++] = INVLAB[e[vli+j]];
+	if (wt)
+	{
+            for (j = 0; j < dli; ++j)
+            {
+		ce[k] = INVLAB[e[vli+j]];
+		cwt[k] = wt[vli+j];
+	        ++k;
+            }
+	}
+	else
+            for (j = 0; j < dli; ++j) ce[k++] = INVLAB[e[vli+j]];
     }
 }
 
 /*****************************************************************************
 *                                                                            *
-*  comparelab_tr(g,lab1,invlab1,lab2,invlab2) compares g^lab1 to g^lab2      *
-*  and returns -1,0,1 according to the comparison.                           *
+*  comparelab_tr(g,lab1,invlab1,lab2,invlab2,cls,col) compares               *
+*  g^lab1 to g^lab2 and returns -1,0,1 according to the comparison.          *
 *  invlab1[] and invlab2[] are assumed to hold inverses of lab1,lab2.        *
 *                                                                            *
 *****************************************************************************/
 
 int
 comparelab_tr(sparsegraph *g,
-              int *lab1, int *invlab1, int *lab2, int *invlab2)
+       int *lab1, int *invlab1, int *lab2, int *invlab2, int *cls, int *col)
 {
     int d1,*e1,d2,*e2;
-    int i,j,k,n;
+    int i,j,k,n,c,end;
     int mina;
-
+    
     n = g->nv;
     PREPAREMARKS1(n);
-
-    for (i = 0; i < n; ++i)
+    
+    for (c=0; c<n; c+=cls[c])
     {
-	e1 = g->e + g->v[lab1[i]];
-	d1 = g->d[lab1[i]];
-	e2 = g->e + g->v[lab2[i]];
-	d2 = g->d[lab2[i]];
-	if (d1 < d2) return -1;
-        else if (d1 > d2) return 1;
-
-        RESETMARKS1;
-        mina = n;
-        for (j = 0; j < d1; ++j) MARK1(invlab1[e1[j]]);
-
-        for (j = 0; j < d1; ++j)
+        if (cls[c] == 1)
         {
-             k = invlab2[e2[j]];
-             if (ISMARKED1(k))  UNMARK1(k);
-             else if (k < mina) mina = k;
-        }
-        if (mina != n)
-        {
-            for (j = 0; j < d1; ++j)
+            end = c+cls[c];
+            for (i = c; i < end; ++i)
             {
-                k = invlab1[e1[j]];
-                if (ISMARKED1(k) && k < mina) return -1;
+                e1 = g->e + g->v[lab1[i]];
+                d1 = g->d[lab1[i]];
+                e2 = g->e + g->v[lab2[i]];
+                d2 = g->d[lab2[i]];
+                if (d1 < d2) return -1;
+                else if (d1 > d2) return 1;
+                
+                RESETMARKS1;
+                mina = n;
+                for (j = 0; j < d1; ++j) MARK1(col[invlab1[e1[j]]]);
+                
+                for (j = 0; j < d1; ++j)
+                {
+                    k = col[invlab2[e2[j]]];
+                    if (ISMARKED1(k))  UNMARK1(k);
+                    else if (k < mina) mina = k;
+                }
+                if (mina != n)
+                {
+                    for (j = 0; j < d1; ++j)
+                    {
+                        k = col[invlab1[e1[j]]];
+                        if (ISMARKED1(k) && k < mina) return -1;
+                    }
+                    return 1;
+                }
             }
-            return 1;
         }
     }
-
+    
     return 0;
 }
 
@@ -480,18 +503,27 @@ updatecan_tr(sparsegraph *g, sparsegraph *canong,
 
 #define SORT_OF_SORT 3
 #define SORT_NAME sortindirect
+#define SORT_TYPE1 int
+#define SORT_TYPE2 int
 #include "sorttemplates.c"
 
 #define SORT_OF_SORT 1
 #define SORT_NAME sortints
+#define SORT_TYPE1 int
+#include "sorttemplates.c"
+
+#define SORT_OF_SORT 2
+#define SORT_NAME sortweights
+#define SORT_TYPE1 int
+#define SORT_TYPE2 sg_weight
 #include "sorttemplates.c"
 
 /*****************************************************************************
 *                                                                            *
 *  init_sg(graph *gin, graph **gout, graph *hin, graph **hout,               *
 *          int *lab, int *ptn, set *active, optionblk *options,              *
-*          int *status, int m, int n)                                       *
-*  Initialse routine for dispatch vector.  This one just makes sure          *
+*          int *status, int m, int n)                                        *
+*  Initialise routine for dispatch vector.  This one just makes sure         *
 *  that *hin has enough space.                                               *
 *                                                                            *
 *****************************************************************************/
@@ -510,6 +542,30 @@ init_sg(graph *gin, graph **gout, graph *hin, graph **hout, int *lab,
         SG_ALLOC(*sh,sg->nv,sg->nde,"init_sg");
     }
     *status = 0;
+}
+
+/*****************************************************************************
+*                                                                            *
+*  cleanup_sg(graph *gin, graph **gout, graph *hin, graph **hout,            *
+*          int *lab, int *ptn, optionblk *options,                           *
+*          statsblk *stats, int m, int n)                                    *
+*  Cleanup routine for dispatch vector.  This one sorts the adjacency        *
+*  lists for the canonical labelling.                                        *
+*                                                                            *
+*****************************************************************************/
+
+void
+cleanup_sg(graph *gin, graph **gout, graph *hin, graph **hout, int *lab,
+           int *ptn, optionblk *options, statsblk *stats, int m, int n)
+{
+    sparsegraph *sg,*sh;
+
+    if (options->getcanon
+        && (stats->errstatus == 0 || stats->errstatus == NAUABORTED))
+    {
+        sh = (sparsegraph*)hin;
+        sortlists_sg(sh);
+    }
 }
 
 /*****************************************************************************
@@ -1090,7 +1146,7 @@ cheapautom_sg(int *ptn, int level, boolean digraph, int n)
         }
     }
 
-    return (k <= nnt + 1 || k <= 4);
+    return (k <= nnt + 1 || k <= 4); 
 }
 
 /*****************************************************************************
@@ -1237,12 +1293,21 @@ sortlists_sg(sparsegraph *g)
     int *d,*e;
     int n,i;
     size_t *v;
+    sg_weight *wt;
 
-    SG_VDE(g,v,d,e);
+    SWG_VDE(g,v,d,e,wt);
     n = g->nv;
 
-    for (i = 0; i < n; ++i)
-        if (d[i] > 1) sortints(e+v[i],d[i]);
+    if (wt)
+    {
+        for (i = 0; i < n; ++i)
+            if (d[i] > 1) sortweights(e+v[i],wt+v[i],d[i]);
+    }
+    else
+    {
+        for (i = 0; i < n; ++i)
+            if (d[i] > 1) sortints(e+v[i],d[i]);
+    }
 }
 
 /*****************************************************************************
@@ -1359,6 +1424,7 @@ copy_sg(sparsegraph *sg1, sparsegraph *sg2)
     int *d1,*e1,*d2,*e2;
     int i,n;
     size_t *v1,*v2,k;
+    sg_weight *wt1,*wt2;
 
     if (!sg2)
     {
@@ -1370,7 +1436,7 @@ copy_sg(sparsegraph *sg1, sparsegraph *sg2)
         SG_INIT(*sg2);
     }
 
-    SG_VDE(sg1,v1,d1,e1);
+    SWG_VDE(sg1,v1,d1,e1,wt1);
 
     n = sg1->nv; 
 
@@ -1378,14 +1444,21 @@ copy_sg(sparsegraph *sg1, sparsegraph *sg2)
     for (i = 0; i < n; ++i)
        if (v1[i]+d1[i]>k) k = v1[i] + d1[i];
 
-    SG_ALLOC(*sg2,n,k,"copy_sg malloc");
-    SG_VDE(sg2,v2,d2,e2);
+    if (wt1)
+        SWG_ALLOC(*sg2,n,k,"copy_sg malloc");
+    else
+    {
+        SG_ALLOC(*sg2,n,k,"copy_sg malloc");
+	DYNFREE(sg2->w,sg2->wlen);
+    }
+    SWG_VDE(sg2,v2,d2,e2,wt2);
 
     sg2->nv = n;
     sg2->nde = sg1->nde;
     memcpy(v2,v1,n*sizeof(size_t));
     memcpy(d2,d1,n*sizeof(int));
     memcpy(e2,e1,k*sizeof(int));
+    if (wt1) memcpy(wt2,wt1,k*sizeof(sg_weight));
 
     return sg2;
 }

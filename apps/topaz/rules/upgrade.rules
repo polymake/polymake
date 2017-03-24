@@ -162,7 +162,9 @@ object SimplicialComplex {
  
    method upgrade_plain_BOUNDARY_OF_PSEUDO_MANIFOLD {
       my ($this, $value)=@_;
-      $this->take("BOUNDARY.INPUT_FACES", $value);
+      my $res = squeeze_faces($value);
+      $this->take("BOUNDARY.FACETS", $res->first);
+      $this->take("BOUNDARY.VERTEX_MAP", $res->second);
    }
    
    method upgrade_plain_ODD_SUBCOMPLEX {

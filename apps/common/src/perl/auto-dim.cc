@@ -16,10 +16,18 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/Graph.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/IndexedSubgraph.h"
+#include "polymake/Integer.h"
+#include "polymake/Matrix.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/Rational.h"
+#include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/SparseVector.h"
 #include "polymake/TropicalNumber.h"
+#include "polymake/Vector.h"
 #include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
@@ -31,5 +39,12 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(dim_f1, perl::Canned< const SparseVector< TropicalNumber< Min, Rational > > >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const Graph< UndirectedMulti > >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Undirected> const&, pm::Set<int, pm::operations::cmp> const&, mlist<> > >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Undirected> const&, pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> const&, mlist<> > >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const SparseVector< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const Vector< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const Vector< int > >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double>&>, pm::Series<int, true>, mlist<> > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

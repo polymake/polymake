@@ -18,6 +18,7 @@
 #define POLYMAKE_POLYTOPE_SIMPLEX_TOOLS_H
 
 #include "polymake/Matrix.h"
+#include "polymake/PowerSet.h"
 
 namespace polymake { namespace polytope {
 

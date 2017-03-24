@@ -27,15 +27,23 @@ perl::Object rand_sphere(int d, int n, perl::OptionSet options)
       throw std::runtime_error("rand_sphere: 2 <= dim < #vertices\n");
    }
    const RandomSeed seed(options["seed"]);
+   const bool use_prec = options.exists("precision");
+   const int my_prec = use_prec ? options["precision"] : 0;
+   if (use_prec && my_prec < MPFR_PREC_MIN)
+      throw std::runtime_error("rand_sphere: MPFR precision too low ( < MPFR_PREC_MIN )");
 
    perl::Object p("Polytope<Rational>");
-   p.set_description() << "Random spherical polytope of dimension " << d << "; seed=" << seed.get() << endl;
+   p.set_description() << "Random spherical polytope of dimension " << d << "; seed=" << seed.get()
+      << "; precision=" << (use_prec ? std::to_string(my_prec) : "default") << endl;
 
    RandomSpherePoints<> random_source(d, seed);
+   if(use_prec)
+      random_source.set_precision(my_prec);
 
    Matrix<Rational> Points(n, d+1);
    Points.col(0).fill(1);
-   copy(random_source.begin(), entire(rows(Points.minor(All, range(1,d)).top())));
+   copy_range(random_source.begin(), entire(rows(Points.minor(All, range(1,d)).top())));
+
    p.take("POINTS") << Points;
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("BOUNDED") << true;
@@ -49,8 +57,9 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @param Int n the number of random vertices"
                   "# @option Int seed controls the outcome of the random number generator;"
                   "#   fixing a seed number guarantees the same outcome. "
+                  "# @option Int precision Number of bits for MPFR sphere approximation"
                   "# @return Polytope",
-                  &rand_sphere, "rand_sphere($$ { seed => undef })");
+                  &rand_sphere, "rand_sphere($$ { seed => undef, precision => undef })");
 } }
 
 // Local Variables:

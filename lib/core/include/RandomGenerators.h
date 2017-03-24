@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -81,7 +81,7 @@ public:
    SharedRandomState() {}
 
    explicit SharedRandomState(const RandomSeed& seed)
-      : s( constructor<RandomState(const RandomSeed&)>(seed) ) {}
+      : s(seed) {}
 
    void reset(const RandomSeed& seed=RandomSeed())
    {
@@ -96,7 +96,7 @@ protected:
    static void fix_for_mpfr() {}
 #endif
 
-   shared_object<RandomState, CopyOnWrite<False> > s;
+   shared_object<RandomState, CopyOnWriteTag<std::false_type>> s;
 };
 
 template <typename Generator, typename Eref>
@@ -131,7 +131,8 @@ template <typename T> class UniformlyRandom;
 template <typename T> class UniformlyRandomRanged;
 
 template <typename Top, typename Eref=typename Top::reference>
-class GenericRandomGenerator : public Generic<Top> {
+class GenericRandomGenerator
+   : public Generic<Top> {
 public:
    typedef typename deref<Eref>::type value_type;
    typedef Eref reference;
@@ -145,8 +146,8 @@ public:
 
 template <>
 class UniformlyRandom<long>
-   : public SharedRandomState,
-     public GenericRandomGenerator<UniformlyRandom<long>, long> {
+   : public SharedRandomState
+   , public GenericRandomGenerator<UniformlyRandom<long>, long> {
 public:
    explicit UniformlyRandom(const RandomSeed& seed=RandomSeed())
       : SharedRandomState(seed) {}
@@ -159,14 +160,16 @@ public:
 
 template <>
 class UniformlyRandomRanged<long>
-   : public SharedRandomState,
-     public GenericRandomGenerator< UniformlyRandomRanged<long>, long> {
+   : public SharedRandomState
+   , public GenericRandomGenerator< UniformlyRandomRanged<long>, long> {
 public:
-   explicit UniformlyRandomRanged(long max_arg, const RandomSeed& seed=RandomSeed()) :
-      SharedRandomState(seed), max(max_arg) {}
+   explicit UniformlyRandomRanged(long max_arg, const RandomSeed& seed=RandomSeed())
+      : SharedRandomState(seed)
+      , max(max_arg) {}
 
-   UniformlyRandomRanged(long max_arg, const SharedRandomState& s) :
-      SharedRandomState(s), max(max_arg) {}
+   UniformlyRandomRanged(long max_arg, const SharedRandomState& s)
+      : SharedRandomState(s)
+      , max(max_arg) {}
 
    long get()
    {
@@ -181,24 +184,28 @@ protected:
 
 template <>
 class UniformlyRandom<Integer>
-   : public SharedRandomState,
-     public GenericRandomGenerator<UniformlyRandom<Integer>, Integer> {
+   : public SharedRandomState
+   , public GenericRandomGenerator<UniformlyRandom<Integer>, Integer> {
 protected:
    static const unsigned long default_bits=48;
 public:
    explicit UniformlyRandom(unsigned long bitlength_arg=default_bits, const RandomSeed& seed=RandomSeed())
-      : SharedRandomState(seed), bitlength(bitlength_arg) {}
+      : SharedRandomState(seed)
+      , bitlength(bitlength_arg) {}
 
    explicit UniformlyRandom(const RandomSeed& seed)
-      : SharedRandomState(seed), bitlength(default_bits) {}
+      : SharedRandomState(seed)
+      , bitlength(default_bits) {}
 
    UniformlyRandom(unsigned long bitlength_arg, const SharedRandomState& s)
-      : SharedRandomState(s), bitlength(bitlength_arg) {}
+      : SharedRandomState(s)
+      , bitlength(bitlength_arg) {}
 
    explicit UniformlyRandom(const SharedRandomState& s)
-      : SharedRandomState(s), bitlength(default_bits) {}
+      : SharedRandomState(s)
+      , bitlength(default_bits) {}
 
-   Integer get() { return Integer(mpz_urandomb, state(), bitlength); }
+   Integer get() { return Integer(state(), bitlength); }
 
 protected:
    const unsigned long bitlength;
@@ -206,18 +213,20 @@ protected:
 
 template <>
 class UniformlyRandomRanged<Integer>
-   : public SharedRandomState,
-     public GenericRandomGenerator<UniformlyRandomRanged<Integer>, Integer> {
+   : public SharedRandomState
+   , public GenericRandomGenerator<UniformlyRandomRanged<Integer>, Integer> {
 public:
    explicit UniformlyRandomRanged(const Integer& max_arg, const RandomSeed& seed=RandomSeed())
-      : SharedRandomState(seed), max(max_arg) {}
+      : SharedRandomState(seed)
+      , max(max_arg) {}
 
    UniformlyRandomRanged(const Integer& max_arg, const SharedRandomState& s)
-      : SharedRandomState(s), max(max_arg) {}
+      : SharedRandomState(s)
+      , max(max_arg) {}
 
    Integer get()
    {
-      return Integer(mpz_urandomm, state(), max.get_rep());
+      return Integer(state(), max);
    }
 
    const Integer& upper_limit() const { return max; }
@@ -233,22 +242,26 @@ protected:
 */
 template <>
 class UniformlyRandom<Rational>
-   : public SharedRandomState,
-     public GenericRandomGenerator<UniformlyRandom<Rational>, Rational> {
+   : public SharedRandomState
+   , public GenericRandomGenerator<UniformlyRandom<Rational>, Rational> {
 protected:
    static const unsigned long default_bits=48;
 public:
    explicit UniformlyRandom(unsigned long bitlength_arg=default_bits, const RandomSeed& seed=RandomSeed())
-      : SharedRandomState(seed), bitlength(bitlength_arg) {}
+      : SharedRandomState(seed)
+      , bitlength(bitlength_arg) {}
 
    explicit UniformlyRandom(const RandomSeed& seed)
-      : SharedRandomState(seed), bitlength(default_bits) {}
+      : SharedRandomState(seed)
+      , bitlength(default_bits) {}
 
    UniformlyRandom(unsigned long bitlength_arg, const SharedRandomState& s)
-      : SharedRandomState(s), bitlength(bitlength_arg) {}
+      : SharedRandomState(s)
+      , bitlength(bitlength_arg) {}
 
    explicit UniformlyRandom(const SharedRandomState& s)
-      : SharedRandomState(s), bitlength(default_bits) {}
+      : SharedRandomState(s)
+      , bitlength(default_bits) {}
 
    Rational get()
    {
@@ -261,8 +274,8 @@ protected:
 /// Generator of random Bitset of a given maximal cardinality
 template <>
 class UniformlyRandom<Bitset>
-   : public SharedRandomState,
-     public GenericRandomGenerator<UniformlyRandom<Bitset>, Bitset> {
+   : public SharedRandomState
+   , public GenericRandomGenerator<UniformlyRandom<Bitset>, Bitset> {
 public:
    explicit UniformlyRandom(int max_arg, const RandomSeed& seed=RandomSeed())
       : SharedRandomState(seed), max_elem(max_arg) {}
@@ -272,7 +285,7 @@ public:
 
    Bitset get()
    {
-      return Bitset(mpz_urandomb, state(), (unsigned long)max_elem);
+      return Bitset(state(), max_elem);
    }
 protected:
    int max_elem;
@@ -281,8 +294,8 @@ protected:
 /// Generator of random AccurateFloat numbers from [0, 1)
 template <>
 class UniformlyRandom<AccurateFloat>
-   : public SharedRandomState,
-     public GenericRandomGenerator<UniformlyRandom<AccurateFloat>, AccurateFloat> {
+   : public SharedRandomState
+   , public GenericRandomGenerator<UniformlyRandom<AccurateFloat>, AccurateFloat> {
 public:
    explicit UniformlyRandom(const RandomSeed& seed=RandomSeed())
       : SharedRandomState(seed)
@@ -298,14 +311,14 @@ public:
 
    AccurateFloat get()
    {
-      return AccurateFloat(mpfr_urandom, state(), MPFR_RNDZ);
+      return AccurateFloat(state());
    }
 };
 
 template <>
 class UniformlyRandom<double>
-   : public SharedRandomState,
-     public GenericRandomGenerator<UniformlyRandom<double>, double> {
+   : public SharedRandomState
+   , public GenericRandomGenerator<UniformlyRandom<double>, double> {
 public:
    explicit UniformlyRandom(const RandomSeed& seed=RandomSeed())
       : SharedRandomState(seed)
@@ -330,17 +343,19 @@ protected:
 
 template <>
 class UniformlyRandomRanged<double>
-   : public SharedRandomState,
-     public GenericRandomGenerator<UniformlyRandomRanged<double>, double> {
+   : public SharedRandomState
+   , public GenericRandomGenerator<UniformlyRandomRanged<double>, double> {
 public:
    explicit UniformlyRandomRanged(double max_arg, const RandomSeed& seed=RandomSeed())
-      : SharedRandomState(seed), max(max_arg)
+      : SharedRandomState(seed)
+      , max(max_arg)
    {
       fix_for_mpfr();
    }
 
    UniformlyRandomRanged(double max_arg, const SharedRandomState& s)
-      : SharedRandomState(s), max(max_arg)
+      : SharedRandomState(s)
+      , max(max_arg)
    {
       fix_for_mpfr();
    }
@@ -361,17 +376,15 @@ protected:
 class DiscreteRandom
    : public GenericRandomGenerator<DiscreteRandom, int> {
 public:
-   template <typename Container>
-   DiscreteRandom(const Container& distrib_src, const RandomSeed& seed=RandomSeed(),
-                  typename enable_if<void**, isomorphic_to_container_of<Container,double>::value>::type=0)
+   template <typename Container, typename enabled=typename std::enable_if<isomorphic_to_container_of<Container,double>::value>::type>
+   DiscreteRandom(const Container& distrib_src, const RandomSeed& seed=RandomSeed())
       : rg(seed), distribution(distrib_src)
    {
       normalize();
    }
 
-   template <typename Container>
-   DiscreteRandom(const Container& distrib_src, const SharedRandomState& s,
-                  typename enable_if<void**, isomorphic_to_container_of<Container,double>::value>::type=0)
+   template <typename Container, typename enabled=typename std::enable_if<isomorphic_to_container_of<Container,double>::value>::type>
+   DiscreteRandom(const Container& distrib_src, const SharedRandomState& s)
       : rg(s), distribution(distrib_src)
    {
       normalize();
@@ -387,7 +400,7 @@ protected:
 
 
 template <typename Generator, typename E>
-struct check_iterator_feature<random_get_iterator<Generator, E>, unlimited> : True {};
+struct check_iterator_feature<random_get_iterator<Generator, E>, unlimited> : std::true_type {};
 
 template <typename Top, typename Eref>
 struct spec_object_traits< GenericRandomGenerator<Top, Eref> > :

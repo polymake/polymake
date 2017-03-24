@@ -57,10 +57,9 @@ CONFIGURE {
 user_function gfan_tropicalintersection(ideal::Ideal) {
    my ($I) = @_;
    my $tempfile=new Tempfile;
-   my $R = $I->RING;
 
    # Writing data to file:
-   write_ideal_to_file($tempfile, $I, $R);
+   write_ideal_to_file($tempfile, $I);
    
    # Accessing gfan:
    # print "Computing tropical intersecton\n";
@@ -77,10 +76,9 @@ user_function gfan_tropicalintersection(ideal::Ideal) {
 user_function gfan_tropicalhypersurface(Polynomial) {
    my ($g) = @_;
    my $tempfile=new Tempfile;
-   my $R = $g->get_ring;
 
    # Writing data to file:
-   write_ideal_to_file($tempfile, new ideal::Ideal(GENERATORS=>[$g]), $R);
+   write_ideal_to_file($tempfile, new ideal::Ideal(GENERATORS=>[$g]));
 
    # Accessing gfan:
    # It should be checked whether gfan_groebnerbla can really be left out.
@@ -99,10 +97,9 @@ user_function gfan_tropicalhypersurface(Polynomial) {
 user_function gfan_tropicalvariety_of_prime(ideal::Ideal) {
    my ($I) = @_;
    my $tempfile=new Tempfile;
-   my $R = $I->RING;
 
    # Writing data to file:
-   write_ideal_to_file($tempfile, $I, $R);
+   write_ideal_to_file($tempfile, $I);
    
    # Accessing gfan:
    # print "Buchberger\n";
@@ -124,10 +121,9 @@ user_function gfan_tropicalvariety_of_prime(ideal::Ideal) {
 user_function gfan_tropicalbruteforce(ideal::Ideal) {
    my ($I) = @_;
    my $tempfile=new Tempfile;
-   my $R = $I->RING;
 
    # Writing data to file:
-   write_ideal_to_file($tempfile, $I, $R);
+   write_ideal_to_file($tempfile, $I);
    
    # Accessing gfan:
    system "$gfan_tropicalbruteforce --xml < $tempfile.in >$tempfile.poly 2>/dev/null";
@@ -158,11 +154,11 @@ sub gfan_fix_lineality_space{
 }
 
 
-sub write_ideal_to_file{
-   my($tempfile, $ideal, $ring) = @_;
+sub write_ideal_to_file {
+   my($tempfile, $ideal) = @_;
    open(my $input, ">$tempfile.in") or die "Can't create temporary file $tempfile.in: $!";
    print $input "Q[";
-   print $input join(",",$ring->variables);
+   print $input join(",", monomials($ideal->N_VARIABLES));
    print $input "]{\n";
    print $input join(",",@{$ideal->GENERATORS});
    print $input "\n}";

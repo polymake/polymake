@@ -24,14 +24,10 @@
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
 #include "polymake/tropical/specialcycles.h"
-#include "polymake/tropical/LoggingPrinter.h"
 
 namespace polymake { namespace tropical {
 
 
-	using namespace atintlog::donotlog;
-	//   using namespace atintlog::dolog;
-	//using namespace atintlog::dotrace;
 	
 
 	//Documentation see header
@@ -72,14 +68,11 @@ namespace polymake { namespace tropical {
 		converted_rays = converted_rays.minor(All,~scalar2set(0));
 		basepoint = basepoint.slice(~scalar2set(0));
 
-		//dbgtrace << "Basepoint: " << basepoint << endl;
-		//dbgtrace << "Basepoint value: " << basepoint_value << endl;
 
 		//Compute basis of rays
 		Set<int> ray_basis = basis_rows(converted_rays);
 		converted_rays = converted_rays.minor(ray_basis,All);
 
-		//dbgtrace << "Converted rays: " << converted_rays << endl;
 
 		//Now compute a column basis for the computation of the transformation matrix
 		Set<int> I = basis_cols(converted_rays);
@@ -87,7 +80,6 @@ namespace polymake { namespace tropical {
 		Matrix<Rational> trafo(converted_rays.rows(), converted_rays.cols());
 		trafo.minor(All,I) = inverse;
 
-		//dbgtrace << "Trafo: " << trafo << endl;
 
 		//Compute function matrix:
 		Matrix<Rational> values = converted_values.minor(ray_basis,All);
@@ -100,7 +92,6 @@ namespace polymake { namespace tropical {
 			matrix = Matrix<Rational>(target_dim,domain_dim);
 		}
 
-		//dbgtrace << "Matrix: " << matrix << endl;
 
 		//Finally, compute the translate
 		translate = basepoint_value - matrix * basepoint;
@@ -157,8 +148,7 @@ namespace polymake { namespace tropical {
 		Vector<Rational> translate = morphism.give("TRANSLATE");
 
 		Matrix<Rational> vertex_values = T(matrix * T(rays.minor(All,~scalar2set(0))));
-		Matrix<Rational> lineality_values = lineality.rows() > 0 ? 
-			T(matrix * T(lineality.minor(All,~scalar2set(0)))) : Matrix<Rational>(0,0);
+		Matrix<Rational> lineality_values = T(matrix * T(lineality.minor(All,~scalar2set(0))));
 
 		//For each nonfar vertex, we have to add the translate
 		for(int r = 0; r < rays.rows(); r++) {

@@ -13,67 +13,60 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-
 object Group {
 
-# Some generating set for the group. All generators must have 
-# the same length [[DEGREE]]. 
-# FIXME: Concrete description as second row of permutation representation
-property GENERATORS : Array< Array<Int> >;
+   # @category Symmetry
+   # The number of elements in the group
+   property ORDER : Integer;
 
-rule initial : GENERATORS {
-   my $g=$this->GENERATORS;
-   my $length=$g->size && $g->[0]->size;
-   foreach (@$g) {
-      if ($_->size != $length) {
-         croak( "all generators must have the same length" );
-      }
-      my %vals;
-      foreach my $entry (@$_) {
-         if ($entry<0 || $entry>=$length) {
-            croak( "each generator must be a permutation of (0,...,DEGREE-1)" );
-         }
-         $vals{$entry}++;
-      }
-      if (keys %vals != $length) {
-         croak( "each generator must be a permutation of (0,...,DEGREE-1)" );
-      }
-   }
-}
+   # @category Symmetry
+   # The character table.
+   # NOTE: We do not support complex characters, but for the moment only real ones.
+   property CHARACTER_TABLE : Matrix<QuadraticExtension<Rational>>;
+   
+   # @category Symmetry
+   # The sizes of the conjugacy classes
+   property CONJUGACY_CLASS_SIZES : Array<Int>;
 
-# Strong generating set with respect to [[BASE]].
-property STRONG_GENERATORS : Array< Array<Int> >;
+   # @category Symmetry
+   # a permutation action on integers
+   property PERMUTATION_ACTION : PermutationAction : multiple;
 
-# The number of [[STRONG_GENERATORS]].
-property N_STRONG_GENERATORS : Int;
+   # @category Symmetry
+   # a permutation action on a collection of sets of integers
+   property SET_ACTION : PermutationAction<Set<Int>> : multiple;
 
-# A base for [[STRONG_GENERATORS]].
-property BASE : Array<Int>;
+   # @category Symmetry
+   # an action on sets where only one representative for each orbit is stored
+   property IMPLICIT_SET_ACTION : ImplicitActionOnSets : multiple;
 
-# The __degree__ of the permutation representation.
-property DEGREE : Int;
+   # @category Symmetry
+   # operates on indices
+   property INPUT_RAYS_ACTION : group::PermutationAction;
 
-# The __order__ of the group.
-property ORDER : Integer;
+   # @category Symmetry
+   # operates on indices
+   property RAYS_ACTION : group::PermutationAction;
 
-# Transversals along the stabilizer chain. 
-property TRANSVERSALS : Array < Array<Int> >;
+   # @category Symmetry
+   # operates on indices
+   property INEQUALITIES_ACTION : group::PermutationAction;
 
-# The number of group elements per transversal.
-property TRANSVERSAL_SIZES : Array<Int>;
+   # @category Symmetry
+   # operates on indices
+   property FACETS_ACTION : group::PermutationAction;
 
-# The character table.
-# NOTE: We do not support complex characters, but for the moment only real rational ones.
-property CHARACTER_TABLE : Matrix<Rational>;
+   # @category Symmetry
+   # operates on indices
+   property MAXIMAL_CONES_ACTION : group::PermutationAction;
 
-# A set of representatives for each conjugacy class
-property CONJUGACY_CLASS_REPRESENTATIVES : Array<Array<Int>>;
+   # @category Symmetry
+   # operates on indices, including the '0'-th homogeneous coordinate
+   property HOMOGENEOUS_COORDINATE_ACTION : group::PermutationAction;
 
-# The conjugacy classes themselves
-property CONJUGACY_CLASSES : Array<Set<Array<Int>>>;
-
-# The sizes of the conjugacy classes
-property CONJUGACY_CLASS_SIZES : Array<Int>;
+   # @category Symmetry
+   # operates on indices
+   property VECTOR_ACTION : group::PermutationAction;
 
 }
 

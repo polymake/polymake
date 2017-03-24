@@ -25,6 +25,10 @@
 # @topic category objects/Groebner/properties/Commutative algebra
 # Properties of an ideal with a monomial ordering from commutative algebra.
 
+# @topic category functions/Producing an ideal from scratch
+# With these clients you can create ideals belonging to various parameterized
+# families which occur frequently in comumutative algebra.
+
 # Local Variables:
 # mode: perl
 # cperl-indent-level: 3

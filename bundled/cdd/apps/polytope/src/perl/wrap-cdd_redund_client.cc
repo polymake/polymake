@@ -14,10 +14,18 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
 #include "polymake/Rational.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1>
+   FunctionInterface4perl( new_X, T0,T1 ) {
+      perl::Value arg0(stack[1]);
+      WrapperReturnNew(T0, (arg0.get<T1>()) );
+   };
+
    template <typename T0>
    FunctionInterface4perl( cdd_eliminate_redundant_points_T_x_f16, T0 ) {
       perl::Value arg0(stack[0]);
@@ -50,5 +58,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(cdd_canonicalize_T_x_x_f16, double);
    FunctionInstance4perl(cdd_vertex_normals_T_x_f16, double);
    FunctionInstance4perl(cdd_canonicalize_lineality_T_x_x_f16, double);
+   FunctionInstance4perl(new_X, Matrix< double >, perl::Canned< const pm::ListMatrix<pm::Vector<double> > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

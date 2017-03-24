@@ -16,7 +16,6 @@
 use strict;
 use namespaces;
 
-require Term::ReadLine;
 require Polymake::Core::InteractiveCommands;
 require Polymake::Core::InteractiveHelp;
 require Polymake::Core::ShellHelpers;
@@ -51,6 +50,7 @@ use Polymake::Struct (
    '$help_repeat_cnt',          # how many times F1 has been pressed without moving the cursor
 );
 
+declare @custom_tab_completion;
 
 # All arguments are optional.
 # Without arguments, starts an interactive shell.
@@ -69,6 +69,7 @@ sub start {
          or die "can't redirect STDERR: $!\n";
       }
    } else {
+      require Term::ReadLine;
       *Term::ReadLine::Gnu::AUTOLOAD=\&Term::ReadLine::Gnu::AU::AUTOLOAD;
       $Shell=new Shell(\*STDIN);
       defuse_environ_bug();
@@ -370,7 +371,7 @@ sub all_completions : method {
    }
 
    # try tab completion rules defined in extensions
-   foreach (@Core::Shell::custom_tab_completion) {
+   foreach (@custom_tab_completion) {
       return if $_->($self, substr($self->partial_input, 0, $pos), $word);
    }
 
@@ -747,7 +748,7 @@ package _::OverPipe;
 
 use Polymake::Struct (
    [ new => '$' ],
-   [ '$pipe' => 'new Pipe( #1 )' ],
+   [ '$pipe' => 'new Pipe(#1)' ],
    [ '$state' => '0' ],
 );
 

@@ -27,7 +27,7 @@
 
 IMPORT graph
 
-USE ideal
+USE group ideal
 
 file_suffix top
 

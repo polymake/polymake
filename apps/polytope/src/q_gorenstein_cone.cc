@@ -54,7 +54,7 @@ namespace polymake { namespace polytope {
     const Vector<Integer> normal = common::primitive(ns.row(0));
 
     gorenstein.first = true;
-    gorenstein.second = abs(NV.row(0)*normal).to_int();
+    gorenstein.second = int(abs(NV.row(0)*normal));
     return gorenstein;
   }
 

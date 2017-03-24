@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -115,11 +115,11 @@ public:
    SchedulerHeap(pTHX_ int max_weight, int n_props)
       : super(sizeof(ChainAgent) + sizeof(int) * max_weight, n_props)
       , heap(HeapPolicy(max_weight), 64)
-      , pi(getTHX)
-      , tell_dropped(NULL)
-      , chain_in_progress(NULL)
-      , ancestor_agent(NULL)
-      , tentative_agent(NULL)
+      , PmPerlInterpreterMemberInit(pi)
+        tell_dropped(nullptr)
+      , chain_in_progress(nullptr)
+      , ancestor_agent(nullptr)
+      , tentative_agent(nullptr)
       , popcount(0)
       , maxsize(0)
    {}
@@ -163,7 +163,7 @@ public:
       if (SvIOK_UV(sv))
          return INT2PTR(ChainAgent*, SvUVX(sv));
       else
-         return NULL;
+         return nullptr;
    }
 
    void add_to_vertex_filter(AV* set_list);
@@ -180,7 +180,7 @@ private:
    Set<int> vertex_filter;
    Set<int> tentative_vertex_set;
 
-   PerlInterpreter* pi;
+   PmPerlInterpreterMemberDecl(const pi);
    SV* tell_dropped;
    SV* chain_in_progress;
    ChainAgent* ancestor_agent;
@@ -190,10 +190,10 @@ private:
 
 void SchedulerHeap::new_tentative_agent(SV* chain)
 {
-   if (tentative_agent == NULL)
+   if (!tentative_agent)
       tentative_agent=new(facet_alloc.allocate()) ChainAgent();
 
-   if ((ancestor_agent=extract_agent_wary(chain)) != NULL) {
+   if ((ancestor_agent=extract_agent_wary(chain)) != nullptr) {
       tentative_agent->copy_weight(ancestor_agent, get_max_weight());
       tentative_vertex_set=ancestor_agent->as_vertex_set();
    } else {
@@ -213,7 +213,7 @@ bool SchedulerHeap::push(SV* chain)
    sv_setuv(agent_sv, PTR2UV(tentative_agent));
    SvIsUV_on(agent_sv);
 
-   for (fl_internal::subset_iterator<Set<int>, false> subs_it=findSubsets(tentative_vertex_set, False());
+   for (fl_internal::subset_iterator<Set<int>, false> subs_it=findSubsets(tentative_vertex_set, std::false_type());
         !subs_it.at_end();  ++subs_it) {
       const ChainAgent* smaller_chain_agent=static_cast<const ChainAgent*>(subs_it.operator->());
       if (smaller_chain_agent != ancestor_agent &&
@@ -221,9 +221,9 @@ bool SchedulerHeap::push(SV* chain)
          // found an inferior chain with the same or less new properties and equal or higher weight
          if (smaller_chain_agent->heap_index >= 0) {
             SV* smaller_chain=heap.erase_at(smaller_chain_agent->heap_index);
-            if (tell_dropped != NULL) {
-               PmStartFuncall;
-               XPUSHs(smaller_chain);
+            if (tell_dropped) {
+               PmStartFuncall(1);
+               PUSHs(smaller_chain);
                PUTBACK;
                glue::call_func_void(aTHX_ tell_dropped);
             }
@@ -239,9 +239,9 @@ bool SchedulerHeap::push(SV* chain)
    heap.push(SvREFCNT_inc_simple_NN(chain));
    assign_max(maxsize, heap.get_queue().size());
 
-   chain_in_progress=NULL;
-   ancestor_agent=NULL;
-   tentative_agent=NULL;
+   chain_in_progress=nullptr;
+   ancestor_agent=nullptr;
+   tentative_agent=nullptr;
    tentative_vertex_set.clear();
 
    return true;
@@ -250,7 +250,7 @@ bool SchedulerHeap::push(SV* chain)
 void SchedulerHeap::kill_chains()
 {
    dTHXa(pi);
-   for (Entire<heap_t::queue_t>::const_iterator q_it=entire(heap.get_queue());  !q_it.at_end();  ++q_it)
+   for (auto q_it=entire(heap.get_queue());  !q_it.at_end();  ++q_it)
       SvREFCNT_dec(*q_it);
 }
 
@@ -259,9 +259,9 @@ void SchedulerHeap::clear()
    kill_chains();
    super::clear_facets();
    heap.clear();
-   chain_in_progress=NULL;
-   ancestor_agent=NULL;
-   tentative_agent=NULL;
+   chain_in_progress=nullptr;
+   ancestor_agent=nullptr;
+   tentative_agent=nullptr;
    popcount=0;
    maxsize=0;
 }
@@ -307,9 +307,9 @@ void SchedulerHeap::sanity_check() const
 {
    dTHXa(pi);
    int pos=0;
-   for (Entire<heap_t::queue_t>::const_iterator q_it=entire(heap.get_queue());  !q_it.at_end();  ++q_it, ++pos) {
+   for (auto q_it=entire(heap.get_queue());  !q_it.at_end();  ++q_it, ++pos) {
       const ChainAgent* agent=extract_agent_wary(*q_it);
-      if (agent == NULL || agent->heap_index != pos) {
+      if (!agent || agent->heap_index != pos) {
          Perl_croak(aTHX_ "corruption in element %d", pos);
       }
    }
@@ -320,7 +320,7 @@ void SchedulerHeap::sanity_check() const
 #endif
 
 int SchedulerHeap::RuleChain_agent_index=0;
-SV* SchedulerHeap::class_descr=NULL;
+SV* SchedulerHeap::class_descr=nullptr;
 
 } }
 
@@ -341,13 +341,12 @@ new(pkg, max_weight, n_props)
    I32 n_props;
 PPCODE:
 {
-   if (SchedulerHeap::class_descr==NULL) {
+   if (!SchedulerHeap::class_descr) {
       // this initialization can't be done in the BOOT block because CPlusPlus is not yet initialized that early
-      static const char pkg_name[]="Polymake::Core::Scheduler::Heap";
-      SchedulerHeap::class_descr=OpaqueClassRegistrator<SchedulerHeap>::register_it(pkg_name, sizeof(pkg_name)-1, NULL);
+      SchedulerHeap::class_descr=OpaqueClassRegistrator<SchedulerHeap>::register_it("Polymake::Core::Scheduler::Heap", nullptr);
       SchedulerHeap::RuleChain_agent_index=CvDEPTH(get_cv("Polymake::Core::Scheduler::TentativeRuleChain::heap_agent", false));
    }
-   SV* ref=newSV(0);
+   SV* ref=newSV_type(SVt_NULL);
    MAGIC* mg=glue::allocate_canned_magic(aTHX_ ref, SchedulerHeap::class_descr, value_alloc_magic, 0);
    new(mg->mg_ptr) SchedulerHeap(aTHX_ max_weight, n_props);
    PUSHs(sv_2mortal(ref));
@@ -501,7 +500,7 @@ PPCODE:
 {
    RetrieveHeapArg(const);
    const SchedulerHeap::ChainAgent* agent=SchedulerHeap::extract_agent_wary(chain);
-   if (agent != NULL) {
+   if (agent) {
       const int limbs=heap->get_max_weight()+1;
       EXTEND(SP, limbs);
       for (const int *l=agent->weight+0, *end=l+limbs; l<end; ++l)
@@ -517,10 +516,10 @@ PPCODE:
 {
    PERL_UNUSED_ARG(self);
    const SchedulerHeap::ChainAgent* agent=SchedulerHeap::extract_agent_wary(chain);
-   if (agent != NULL) {
+   if (agent) {
       EXTEND(SP, agent->size() + 1);
       mPUSHi(agent->get_id());
-      for (SchedulerHeap::ChainAgent::const_iterator cell_it=agent->begin();  !cell_it.at_end();  ++cell_it)
+      for (auto cell_it=agent->begin();  !cell_it.at_end();  ++cell_it)
          mPUSHi(cell_it.index());
    }
 }

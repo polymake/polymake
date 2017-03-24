@@ -106,7 +106,7 @@ sub gfan_print_ideal {
   open(my $infile, ">$tempname.txt")
     or die "can't create temporary file $tempname.txt: $!";
 
-  print $infile "Q[", (join ",", $I->RING->variables), "]\n";
+  print $infile "Q[", (join ",", monomials($I->N_VARIABLES)), "]\n";
   print $infile "{", (join ",", @{$I->GENERATORS}), "}\n";
 
   close $infile;

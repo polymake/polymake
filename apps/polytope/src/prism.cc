@@ -91,17 +91,15 @@ perl::Object prism(perl::Object p_in, const Scalar& z, const Scalar& z_prime, pe
       const Matrix<Scalar> V=p_in.give("VERTICES");
       const Matrix<Scalar> V_out=prism_coord(V, n_vertices, n_vertices_out, rays, z, z_prime);
       p_out.take("VERTICES") << V_out;
-      const Matrix<Scalar> empty;
-      p_out.take("LINEALITY_SPACE") << empty;
    }
 
-   if (options["relabel"]) {
+   if (!options["no_labels"]) {
       std::vector<std::string> labels(n_vertices_out);
       read_labels(p_in, "VERTEX_LABELS", labels);
       const std::string tick="'";
-      copy(entire(attach_operation(select(labels, sequence(0,n_vertices)-rays),
-                                   constant(tick), operations::add())),
-           labels.begin()+n_vertices);
+      copy_range(entire(attach_operation(select(labels, sequence(0,n_vertices)-rays),
+                                         constant(tick), operations::add())),
+                 labels.begin()+n_vertices);
       p_out.take("VERTEX_LABELS") << labels;
    }
 
@@ -115,16 +113,16 @@ UserFunctionTemplate4perl("# @category  Producing a polytope from polytopes"
                           "# @param Scalar z1 the left endpoint of the interval; default value: -1"
                           "# @param Scalar z2 the right endpoint of the interval; default value: -//z1//"
                           "# @option Bool no_coordinates only combinatorial information is handled"
-                          "# @option Bool relabel creates an additional section [[VERTEX_LABELS]];"
+                          "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytope. default: 0"
                           "#   the bottom facet vertices get the labels from the original polytope;"
                           "#   the labels of their clones in the top facet get a tick (') appended."
                           "# @return Polytope"
                           "# @example The following saves the prism over the square and the interval [-2,2] to the"
-                          "# variable $p while relabeling, and then prints a nice representation of its vertices."
-                          "# > $p = prism(cube(2),-2,relabel=>1);"
+                          "# variable $p, and then prints a nice representation of its vertices."
+                          "# > $p = prism(cube(2),-2);"
                           "# > print labeled($p->VERTICES,$p->VERTEX_LABELS);"
                           "# | 0:1 -1 -1 -2 1:1 1 -1 -2 2:1 -1 1 -2 3:1 1 1 -2 0':1 -1 -1 2 1':1 1 -1 2 2':1 -1 1 2 3':1 1 1 2",
-                          "prism<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=-1, type_upgrade<Scalar>=-$_[1], { no_coordinates => undef, relabel => undef})");
+                          "prism<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=-1, type_upgrade<Scalar>=-$_[1], { no_coordinates => undef, no_labels => 0})");
 } }
 
 // Local Variables:

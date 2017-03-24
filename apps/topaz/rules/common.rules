@@ -32,7 +32,7 @@ rule FACETS, VERTEX_INDICES, N_VERTICES : INPUT_FACES {
    faces_to_facets($this, $this->INPUT_FACES);
 }
 
-rule FACETS : HASSE_DIAGRAM {
+rule FACETS : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    $this->FACETS=facets_from_hasse_diagram($this->HASSE_DIAGRAM);
 }
 
@@ -182,7 +182,7 @@ rule SHELLABLE : SHELLING {
 }
 precondition : PURE;
 
-rule F_VECTOR, F2_VECTOR : HASSE_DIAGRAM {
+rule F_VECTOR, F2_VECTOR : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    $this->F2_VECTOR=f2_vector($this->HASSE_DIAGRAM);
    $this->F_VECTOR=$this->F2_VECTOR->diagonal;
 }
@@ -250,7 +250,7 @@ rule ODD_SUBCOMPLEX.FACETS : FACETS {
 precondition : PURE;
 weight 3.10;
 
-rule ODD_SUBCOMPLEX.INPUT_FACES : FACETS, BOUNDARY.INPUT_FACES {
+rule ODD_SUBCOMPLEX.INPUT_FACES : FACETS, BOUNDARY.FACETS, BOUNDARY.VERTEX_MAP {
    odd_complex_of_manifold($this);
 }
 precondition : MANIFOLD;
@@ -290,7 +290,7 @@ precondition : DIM { $this->DIM < 4 }
 weight 4.10;
 
 # heuristics
-rule MANIFOLD : HASSE_DIAGRAM, CLOSED_PSEUDO_MANIFOLD {
+rule MANIFOLD : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE, CLOSED_PSEUDO_MANIFOLD {
    $this->MANIFOLD=ternary_to_bool(is_manifold_h($this));
 }
 precondition : PSEUDO_MANIFOLD;
@@ -308,7 +308,7 @@ rule PSEUDO_MANIFOLD : {  $this->PSEUDO_MANIFOLD=1; }
 precondition : ORIENTED_PSEUDO_MANIFOLD;
 weight 0.1;
 
-rule PSEUDO_MANIFOLD : HASSE_DIAGRAM {
+rule PSEUDO_MANIFOLD : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    is_pseudo_manifold($this);
 }
 precondition : PURE;
@@ -321,7 +321,7 @@ rule MANIFOLD, PSEUDO_MANIFOLD : {
 precondition : !PURE;
 weight 0.1;
 
-rule CLOSED_PSEUDO_MANIFOLD : HASSE_DIAGRAM {
+rule CLOSED_PSEUDO_MANIFOLD : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    is_closed_pseudo_manifold($this);
 }
 precondition : PURE;
@@ -337,7 +337,7 @@ rule ORIENTED_PSEUDO_MANIFOLD, ORIENTATION : FACETS, DUAL_GRAPH, PSEUDO_MANIFOLD
    orientation($this);
 }
 
-rule BALL : FACETS, DIM, N_VERTICES, HASSE_DIAGRAM {
+rule BALL : FACETS, DIM, N_VERTICES, HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    $this->BALL=ternary_to_bool(is_ball_or_sphere($this,0));
 }
 precondition : PSEUDO_MANIFOLD;
@@ -350,7 +350,7 @@ rule BALL : {
 precondition : CLOSED_PSEUDO_MANIFOLD;
 weight 0.1;
 
-rule SPHERE : FACETS, DIM, N_VERTICES, HASSE_DIAGRAM {
+rule SPHERE : FACETS, DIM, N_VERTICES, HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    $this->SPHERE=ternary_to_bool(is_ball_or_sphere($this,1));
 }
 precondition : CLOSED_PSEUDO_MANIFOLD;
@@ -363,13 +363,13 @@ precondition : !CLOSED_PSEUDO_MANIFOLD;
 weight 0.1;
 
 
-rule HASSE_DIAGRAM : FACETS, PURE, DIM {
-   hasse_diagram($this);
+rule HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE : FACETS {
+   $this->HASSE_DIAGRAM = hasse_diagram($this);
 }
 weight 4.10;
 
 
-rule MINIMAL_NON_FACES : HASSE_DIAGRAM {
+rule MINIMAL_NON_FACES : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    $this->MINIMAL_NON_FACES=minimal_non_faces($this->HASSE_DIAGRAM);
 }
 weight 4.10 : DIM { $this->DIM <= 10 ? [0,0] : [4,10] }
@@ -393,13 +393,14 @@ rule LOCALLY_STRONGLY_CONNECTED : {
 precondition : MANIFOLD;
 weight 0.1;
 
-rule LOCALLY_STRONGLY_CONNECTED : HASSE_DIAGRAM {
+rule LOCALLY_STRONGLY_CONNECTED : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    $this->LOCALLY_STRONGLY_CONNECTED=is_locally_strongly_connected($this);
 }
 weight 2.10;
 
-rule BOUNDARY.INPUT_FACES : HASSE_DIAGRAM {
-   $this->BOUNDARY->INPUT_FACES=boundary_of_pseudo_manifold($this->HASSE_DIAGRAM);
+#compute boundary complex
+rule BOUNDARY.FACETS, BOUNDARY.VERTEX_MAP : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
+   ($this->BOUNDARY->FACETS, $this->BOUNDARY->VERTEX_MAP) =  boundary_of_pseudo_manifold($this);
 }
 precondition : PSEUDO_MANIFOLD;
 weight 1.10;
@@ -419,6 +420,90 @@ weight 1.10;
 
 }
 
+declare property_type Cell : c++ (include => "polymake/topaz/Filtration.h", operators => '==') {
+
+   # Construct a filtration cell.
+   # @param Int deg Filtration degree of the cell.
+   # @param Int dim Dimension of the cell.
+   # @param Int idx Row number of the cell in the boundary matrix belonging to the Filtration.
+   method construct(*, *, *) : c++;
+
+}
+
+# A filtration of chain complexes.
+# @tparam MatrixType
+declare property_type Filtration<MatrixType> : c++ (include => "polymake/topaz/Filtration.h", operators => '=='){
+
+   # Construct a Filtration.
+   # @param Array<Cell> C An array containing all cells in the filtration.
+   # @param Array<MatrixType> bd The boundary matrices of the last frame of the filtration, indexed by dimension.
+   # @optional Bool s Indicates whether the cell array is already sorted by degree first and dimension second, default: 0
+   method construct(Array<Cell>:lvalue,Array<MatrixType>;$=0) : c++;
+
+   # Construct a Filtration from a HasseDiagram and an integer array.
+   # @param Lattice The last frame of the filtration.
+   # @param Array<Int> degs The degrees of the simplices in the input complex.
+   #                        Indexing after sorting them first by dimension, second lexicographically (like in the HasseDiagram)
+    method construct(Lattice<BasicDecoration>,Array<Int>) : c++;
+
+   # Returns the dimension of the maximal cells in the last frame of the filtration.
+   # @return Int
+   user_method dim() : c++;
+
+   # Returns the number of frames in of the filtration.
+   # @return Int
+   user_method n_frames() : c++;
+
+   # Returns the number of cells in the last frame of the filtration.
+   # @return Int
+   user_method n_cells() : c++;
+
+   # Returns the cells of the filtration, given as array of 3-tuples containing degree, dimension and
+   # boundary matrix row number of the cell.
+   # @return Array<Cell>
+   user_method cells() : c++;
+
+   # Returns the d-boundary matrix of the t-th frame of the filtration.
+   # @param Int d
+   # @param Int t
+   user_method boundary_matrix(Int, Int) : non_const : c++;
+}
+
+# A finite chain complex, represented as its boundary matrices.
+# Check out the tutorial on the polymake homepage for examples on constructing ChainComplexes and computing their homology.
+#
+# @example You can create a new ChainComplex by passing the Array of differential matrices (as maps via _left_ multiplication):
+# > $cc = new ChainComplex(new Array<SparseMatrix<Integer>>([[[2,0]]]));
+#
+# Note that this creates a ChainComplex consisting three differential matrices -- the trivial zeroth and last ones
+# are omitted in the constructor.
+#
+# You can look at the boundary matrices:
+# > print $cc->boundary_matrix(1);
+# | 2 0
+#
+# The functions ''homology'', ''homology_and_cycles'' and ''betti_numbers'' can be used to analyse your complex.
+# > print homology($cc,0);
+# | ({(2 1)} 1)
+# | ({} 0)
+# @tparam MatrixType The type of the differential matrices. default: SparseMatrix<Integer>
+declare property_type ChainComplex<MatrixType = SparseMatrix<Integer>> : c++ (include => "polymake/topaz/ChainComplex.h", operators => '=='){
+
+   # Construct a Chain Complex.
+   # @param Array<MatrixType> bd The boundary matrices of the chain complex, NOT including the trivial zeroth and last matrices. Indexed by dimension. The matrices are maps via left multiplication.
+   # @optional Bool sanity_check Indicates whether to test if the input matrices' dimensions match and the maps satisfy the differential condition. default: 0
+   method construct(Array<MatrixType>; $=0) : c++;
+
+   # Returns the number of non-empty modules in the complex.
+   # @return Int
+   user_method dim() : c++;
+
+   # Returns the d-boundary matrix of the chain complex.
+   # @param Int d
+   # @return MatrixType
+   user_method boundary_matrix(*) : c++;
+}
+
 # @category Producing a new simplicial complex from others
 # Computes the __barycentric subdivision__ of //complex//.
 # @param SimplicialComplex complex
@@ -427,7 +512,9 @@ weight 1.10;
 # @option String coord_section default: VERTICES
 # @option Bool geometric_realization set to 1 to obtain a [[GeometricSimplicialComplex]], default: 0
 # @return SimplicialComplex (or [[GeometricSimplicialComplex]])
-user_function barycentric_subdivision($ { relabel => 1, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", geometric_realization=>0, coord_section=>"VERTICES" }) {
+# @example To subdivide a triangle into six new triangles, do this:
+# > $b = barycentric_subdivision(simplex(2));
+user_function barycentric_subdivision($ { relabel => 1, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", geometric_realization=>0, coord_section=>"VERTICES"}) {
     barycentric_subdivision_impl(@_);
 }
 
@@ -440,11 +527,9 @@ user_function barycentric_subdivision($ { relabel => 1, pin_hasse_section=>"HASS
 # @option String coord_section default: VERTICES
 # @option Bool geometric_realization set to 1 to obtain a [[GeometricSimplicialComplex]], default: 0
 # @return SimplicialComplex (or [[GeometricSimplicialComplex]])
-user_function iterated_barycentric_subdivision($ $ { relabel => 1, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", geometric_realization=>0, coord_section=>"VERTICES" }) {
+user_function iterated_barycentric_subdivision(SimplicialComplex $ { relabel => 1, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", geometric_realization=>0, coord_section=>"VERTICES"}) {
   iterated_barycentric_subdivision_impl(@_);
 }
-
-
 
 # Local Variables:
 # mode: perl

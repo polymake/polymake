@@ -20,7 +20,6 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
-#include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
@@ -32,18 +31,6 @@
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T0>
-   FunctionInterface4perl( rows_X8, T0 ) {
-      perl::Value arg0(stack[0]);
-      WrapperReturnAnch( 1, (arg0), rows(arg0.get<T0>()) );
-   };
-
-   template <typename T0>
-   FunctionInterface4perl( rows_X, T0 ) {
-      perl::Value arg0(stack[0]);
-      WrapperReturn( rows(arg0.get<T0>()) );
-   };
-
    template <typename T0>
    FunctionInterface4perl( rows_f1, T0 ) {
       perl::Value arg0(stack[0]);
@@ -64,7 +51,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(rows_f1, perl::Canned< const SparseMatrix< int, NonSymmetric > >);
    FunctionInstance4perl(rows_f1, perl::Canned< const SparseMatrix< Rational, Symmetric > >);
    FunctionInstance4perl(rows_f1, perl::Canned< const SparseMatrix< Integer, NonSymmetric > >);
-   FunctionInstance4perl(rows_X, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::RowChain<pm::SingleRow<pm::Vector<pm::Rational> const&> const&, pm::RowChain<pm::RowChain<pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&> const&, pm::Matrix<pm::Rational> const&> const&> >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::RowChain<pm::SingleRow<pm::Vector<pm::Rational> const&> const&, pm::RowChain<pm::SingleRow<pm::Vector<pm::Rational> const&> const&, pm::RowChain<pm::RowChain<pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&> const&, pm::Matrix<pm::Rational> const&> const&> const&> >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::RowChain<pm::SingleRow<pm::Vector<pm::Rational> const&> const&, pm::RowChain<pm::SingleRow<pm::Vector<pm::Rational> const&> const&, pm::Matrix<pm::Rational> const&> const&> >);
@@ -74,21 +60,11 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(rows_f1, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::RowChain<pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&> >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Integer>&, pm::all_selector const&, pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> const&> >);
-   FunctionInstance4perl(rows_X8, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
-   FunctionInstance4perl(rows_X, perl::Canned< const Matrix< Rational > >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::RowChain<pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, pm::Matrix<pm::Rational> const&> >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::RowChain<pm::RowChain<pm::Matrix<pm::Integer> const&, pm::Matrix<pm::Integer> const&> const&, pm::Matrix<pm::Integer> const&> >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational>&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<pm::Rational const&> const&>, pm::Matrix<pm::Rational> const&> >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::Transposed<pm::Matrix<pm::Rational> > >);
-   FunctionInstance4perl(rows_X, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
    FunctionInstance4perl(rows_f1, perl::Canned< const pm::RowChain<pm::Matrix<pm::Rational> const&, pm::SingleRow<pm::VectorChain<pm::Vector<pm::Rational> const&, pm::SameElementVector<pm::Rational const&> const&> const&> > >);
-   FunctionInstance4perl(rows_f1, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
-   FunctionInstance4perl(rows_f1, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
-   FunctionInstance4perl(rows_f1, perl::Canned< const SparseMatrix< PuiseuxFraction< Min, Rational, Rational >, NonSymmetric > >);
-   FunctionInstance4perl(rows_f1, perl::Canned< const SparseMatrix< PuiseuxFraction< Max, Rational, Rational >, NonSymmetric > >);
-   FunctionInstance4perl(rows_f1, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, int > > >);
-   FunctionInstance4perl(rows_f1, perl::Canned< const Matrix< PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > > >);
-   FunctionInstance4perl(rows_X, perl::Canned< const Matrix< double > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

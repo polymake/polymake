@@ -24,7 +24,7 @@ object SimplicialComplex {
 #
 # You may use the [[fundamental2gap]] method to produce a ''GAP'' file.
 
-property FUNDAMENTAL_GROUP : Pair< Int, List< List< Pair<Int,Int> > > >;
+property FUNDAMENTAL_GROUP : Pair<Int,List<List<Pair<Int,Int>>>>;
 
 
 # @category Topology
@@ -46,6 +46,7 @@ precondition : GRAPH.CONNECTED;
 # Writes the [[FUNDAMENTAL_GROUP]] using [[FUNDAMENTAL_GROUP_GEN_LABELS]] to
 # the given file in [[wiki:external_software#GAP|GAP]] input format.
 # @param String filename
+# @return String
 user_method fundamental2gap(;$) {
    my ($this, $gap_file)=@_;
    $gap_file ||= $this->name . ".gap";

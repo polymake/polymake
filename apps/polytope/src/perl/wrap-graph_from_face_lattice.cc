@@ -14,13 +14,25 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/graph/Decoration.h"
+
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::graph::Graph<pm::graph::Undirected> (perl::Object) ) {
+   template <typename T0, typename T1>
+   FunctionInterface4perl( vertex_graph_T_x, T0,T1 ) {
       perl::Value arg0(stack[0]);
-      IndirectWrapperReturn(arg0);
-   }
-   FunctionWrapperInstance4perl( pm::graph::Graph<pm::graph::Undirected> (perl::Object) );
+      WrapperReturn( (vertex_graph<T0,T1>(arg0)) );
+   };
 
+   template <typename T0, typename T1>
+   FunctionInterface4perl( facet_graph_T_x, T0,T1 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturn( (facet_graph<T0,T1>(arg0)) );
+   };
+
+   FunctionInstance4perl(vertex_graph_T_x, graph::lattice::BasicDecoration, graph::lattice::Sequential);
+   FunctionInstance4perl(facet_graph_T_x, graph::lattice::BasicDecoration, graph::lattice::Sequential);
+   FunctionInstance4perl(vertex_graph_T_x, graph::lattice::BasicDecoration, graph::lattice::Nonsequential);
+   FunctionInstance4perl(facet_graph_T_x, graph::lattice::BasicDecoration, graph::lattice::Nonsequential);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

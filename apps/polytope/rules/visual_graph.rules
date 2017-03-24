@@ -17,7 +17,7 @@
 # @topic objects/Visual::PolytopeGraph
 # @category Visualization
 # Visualization of the graph of a polyhedron.
-# @relates Polytope
+# @relates objects/Polytope
 
 package Visual::PolytopeGraph;
 
@@ -44,13 +44,13 @@ sub LP_influence_on_embedding {
          if ($self->bounded) {
             $obj=$self->Polytope->VERTICES * $lp->LINEAR_OBJECTIVE;
          } else {
-            $obj=objective_values_for_embedding($self->Polytope,$lp);
+            $obj=objective_values_for_embedding($self->Polytope, $lp);
          }
       }
       if ($self->basis_graph->Graph->ADJACENCY->has_gaps) {
          $obj=$obj->slice(nodes($self->basis_graph->Graph->ADJACENCY));
       }
-      $self->basis_graph->Coord->merge_options('z-ordering' => $obj, 'z-factor' => $embedding_objective_factor);
+      $self->basis_graph->Coord->merge_options('z-ordering' => (convert_to<Float>($obj)), 'z-factor' => $embedding_objective_factor);
    }
 }
 
@@ -186,7 +186,7 @@ user_method VISUAL_DUAL_GRAPH(%Visual::Graph::decorations, { seed => undef }) {
 # @topic objects/Visual::PolytopeLattice
 # @category Visualization
 # Visualization of the [[HASSE_DIAGRAM]] of a polyhedron as a multi-layer graph..
-# @relates Polytope
+# @relates objects/Polytope
 
 package Visual::PolytopeLattice;
 
@@ -244,7 +244,8 @@ object Polytope {
 # @option Int seed random seed value for the node placement
 # @return Visual::PolytopeLattice
 
-user_method VISUAL_FACE_LATTICE(%Visual::Lattice::decorations, { seed => undef }) : HASSE_DIAGRAM {
+user_method VISUAL_FACE_LATTICE(%Visual::Lattice::decorations, { seed => undef }) : \
+            HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    my ($this, $decor, $seed)=@_;
    $decor->{Name} ||= $this->name;
    visualize( new Visual::PolytopeLattice( Name => "Face lattice of ".$this->name,
@@ -260,7 +261,8 @@ user_method VISUAL_FACE_LATTICE(%Visual::Lattice::decorations, { seed => undef }
 # @option Int seed random seed value for the node placement
 # @return Visual::PolytopeLattice
 
-user_method VISUAL_DUAL_FACE_LATTICE(%Visual::Lattice::decorations, { seed => undef }) : HASSE_DIAGRAM {
+user_method VISUAL_DUAL_FACE_LATTICE(%Visual::Lattice::decorations, { seed => undef }) : \
+            HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    my ($this, $decor, $seed)=@_;
    $decor->{Name} ||= $this->name;
    visualize( new Visual::PolytopeLattice( Name => "Dual face lattice of ".$this->name,

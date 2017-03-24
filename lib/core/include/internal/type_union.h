@@ -33,20 +33,20 @@ class table {
       static const int length=Definitions::length;
 
       template <int discr>
-      void _init(fpointer* ptr, int2type<discr>)
+      void init_impl(fpointer* ptr, int_constant<discr>)
       {
          *ptr=&Definitions::template defs<discr>::_do;
-         _init(ptr-1, int2type<discr-1>());
+         init_impl(ptr-1, int_constant<discr-1>());
       }
 
-      void _init(fpointer* ptr, int2type<-1>)
+      void init_impl(fpointer* ptr, int_constant<-1>)
       {
          *ptr=reinterpret_cast<fpointer>(&_nop);
       }
 
       fpointer _table[length+1];
 
-      _impl() { _init(_table+length, int2type<length-1>()); }
+      _impl() { init_impl(_table+length, int_constant<length-1>()); }
    };
 
    static _impl const vt;
@@ -115,7 +115,7 @@ struct basics {         // non-reference, const
 
    static void destroy(char* obj)
    {
-      std::_Destroy(reinterpret_cast<type*>(obj));
+      destroy_at(reinterpret_cast<type*>(obj));
    }
 };
 
@@ -224,7 +224,7 @@ struct union_traits {
       typedef isomorphic_types_helper<Head2> helper_for_head;
       typedef isomorphic_types_helper<Tail2> helper_for_tail;
       static const bool value = helper_for_head::value && helper_for_tail::value;
-      typedef typename identical<typename helper_for_head::discriminant, typename helper_for_tail::discriminant>::type discriminant;
+      typedef typename std::is_same<typename helper_for_head::discriminant, typename helper_for_tail::discriminant>::type discriminant;
    };
 };
 
@@ -239,7 +239,7 @@ struct union_traits< cons<Head, Tail> > {
       typedef typename traits_head::template isomorphic_types_helper<Object2> helper_for_head;
       typedef typename traits_tail::template isomorphic_types_helper<Object2> helper_for_tail;
       static const bool value = helper_for_head::value && helper_for_tail::value;
-      typedef typename identical<typename helper_for_head::discriminant, typename helper_for_tail::discriminant>::type discriminant;
+      typedef typename std::is_same<typename helper_for_head::discriminant, typename helper_for_tail::discriminant>::type discriminant;
    };
 };
 
@@ -267,40 +267,40 @@ protected:
    typedef virtuals::type_union_functions<TypeList> Functions;
 
    template <typename Source, int discr>
-   void _init_from_value(const Source& src, int2type<discr>)
+   void init_from_value(const Source& src, int_constant<discr>)
    {
       discriminant=discr;
       Functions::template basics<discr>::construct(this->area,src);
    }
 
    template <typename OtherList, bool other_heap>
-   void _init_from_value(const type_union<OtherList,other_heap>& src, int2type<-1>)
+   void init_from_value(const type_union<OtherList,other_heap>& src, int_constant<-1>)
    {
-      _init_from_union(src, bool2type<list_mapping<OtherList, TypeList>::mismatch>());
+      init_from_union(src, bool_constant<list_mapping<OtherList, TypeList>::mismatch>());
    }
 
    template <typename OtherList, bool other_heap>
-   void _init_from_union(const type_union<OtherList,other_heap>& src, False)
+   void init_from_union(const type_union<OtherList,other_heap>& src, std::false_type)
    {
       discriminant=virtuals::mapping< typename list_mapping<OtherList, TypeList>::type >::table[src.discriminant];
       virtuals::table<typename Functions::copy_constructor>::call(discriminant)(this->area,src.area);
    }
 
    template <typename Source>
-   void _init(const Source& src, False)
+   void init_impl(const Source& src, std::false_type)
    {
-      _init_from_value(src, int2type<list_search<TypeList, Source, identical_minus_const_ref>::pos>());
+      init_from_value(src, int_constant<list_search<TypeList, Source, identical_minus_const_ref>::pos>());
    }
 
    template <typename Source>
-   void _init(const Source& src, True)
+   void init_impl(const Source& src, std::true_type)
    {
       discriminant=src.discriminant;
       virtuals::table<typename Functions::copy_constructor>::call(discriminant)(this->area,src.area);
    }
 
    template <typename Source, int discr>
-   void _assign_value(const Source& src, int2type<discr>)
+   void assign_value(const Source& src, int_constant<discr>)
    {
       virtuals::table<typename Functions::destructor>::call(discriminant)(this->area);
       discriminant=discr;
@@ -308,13 +308,13 @@ protected:
    }
 
    template <typename OtherList, bool other_heap>
-   void _assign_value(const type_union<OtherList,other_heap>& src, int2type<-1>)
+   void assign_value(const type_union<OtherList,other_heap>& src, int_constant<-1>)
    {
-      _assign_union(src, bool2type<list_mapping<OtherList, TypeList>::mismatch>());
+      assign_union(src, bool_constant<list_mapping<OtherList, TypeList>::mismatch>());
    }
 
    template <typename OtherList, bool other_heap>
-   void _assign_union(const type_union<OtherList,other_heap>& src, False)
+   void assign_union(const type_union<OtherList,other_heap>& src, std::false_type)
    {
       const int discr=virtuals::mapping< typename list_mapping<OtherList, TypeList>::type >::table[src.discriminant];
       virtuals::table<typename Functions::destructor>::call(discriminant)(this->area);
@@ -323,35 +323,35 @@ protected:
    }
 
    template <typename Source>
-   void _assign(const Source& src, False)
+   void assign_impl(const Source& src, std::false_type)
    {
-      _assign_value(src, int2type<list_search<TypeList, Source, identical_minus_const_ref>::pos>());
+      assign_value(src, int_constant<list_search<TypeList, Source, identical_minus_const_ref>::pos>());
    }
 
    template <typename Source>
-   void _assign(const Source& src, True)
+   void assign_impl(const Source& src, std::true_type)
    {
       virtuals::table<typename Functions::destructor>::call(discriminant)(this->area);
-      _init(src, True());
+      init_impl(src, std::true_type());
    }
 public:
    type_union() : discriminant(-1) { }
 
    type_union(const type_union& src)
    {
-      _init(src, True());
+      init_impl(src, std::true_type());
    }
 
    template <typename Source>
    type_union(const Source& src)
    {
-      _init(src, derived_from<Source,type_union>());
+      init_impl(src, is_derived_from<Source, type_union>());
    }
 
    template <typename Source>
    Source* init()
    {
-      const int discr=list_search<TypeList, Source, identical>::pos;
+      const int discr=list_search<TypeList, Source, std::is_same>::pos;
       if (discriminant>=0) {
          if (discriminant != discr) return 0;
       } else {
@@ -368,14 +368,14 @@ public:
 
    type_union& operator= (const type_union& src)
    {
-      _assign(src, True());
+      assign_impl(src, std::true_type());
       return *this;
    }
 
    template <typename Source>
    type_union& operator= (const Source& src)
    {
-      _assign(src, derived_from<Source,type_union>());
+      assign_impl(src, is_derived_from<Source, type_union>());
       return *this;
    }
 

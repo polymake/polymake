@@ -41,13 +41,13 @@ public:
    
    virtual int dim() = 0;
 
-   virtual Polynomial<> contains_monomial(const Ring<>& poly_ring) const = 0;
+   virtual Polynomial<> contains_monomial() const = 0;
 
-   virtual Array<Polynomial<> > reduce(const Array<Polynomial<> >& ideal, const Ring<>& r) const = 0;
+   virtual Array<Polynomial<>> reduce(const Array<Polynomial<>>& ideal) const = 0;
 
-   virtual Polynomial<> reduce(const Polynomial<>& p, const Ring<>& r) const = 0;
+   virtual Polynomial<> reduce(const Polynomial<>& p) const = 0;
    
-   virtual Array< Polynomial<> > division(const Polynomial<>& p, const Ring<>& r, const bool is_std = 0) const = 0;
+   virtual Array<Polynomial<>> division(const Polynomial<>& p, const bool is_std = 0) const = 0;
 
    virtual SingularIdeal_wrap* radical() const = 0;
 
@@ -57,11 +57,11 @@ public:
    
    virtual Array<SingularIdeal_wrap*> primary_decomposition() const = 0;
 
-   virtual Array<Polynomial<> > polynomials(const Ring<>& r) const = 0;
+   virtual Array<Polynomial<>> polynomials() const = 0;
    
-   static SingularIdeal_wrap* create(const Array<Polynomial<> >& gens, const Vector<int>& order);
-   static SingularIdeal_wrap* create(const Array<Polynomial<> >& gens, const Matrix<int>& order);
-   static SingularIdeal_wrap* create(const Array<Polynomial<> >& gens, const std::string& order);
+   static SingularIdeal_wrap* create(const Array<Polynomial<>>& gens, const Vector<int>& order);
+   static SingularIdeal_wrap* create(const Array<Polynomial<>>& gens, const Matrix<int>& order);
+   static SingularIdeal_wrap* create(const Array<Polynomial<>>& gens, const std::string& order);
 
 //   static SingularIdeal_wrap* quotient(const SingularIdeal_wrap* I, const SingularIdeal_wrap* J);
 };
@@ -72,7 +72,7 @@ private:
 
 public:
    template <typename Ordertype>
-   SingularIdeal(const Array<Polynomial<> >& gens, const Ordertype& order) {
+   SingularIdeal(const Array<Polynomial<>>& gens, const Ordertype& order) {
       singIdeal = SingularIdeal_wrap::create(gens, order);
    }
 
@@ -92,24 +92,24 @@ public:
       return singIdeal->dim();
    }
    
-   Polynomial<> contains_monomial(const Ring<>& r) const {
-     return singIdeal->contains_monomial(r);
+   Polynomial<> contains_monomial() const {
+     return singIdeal->contains_monomial();
    }
 
    void groebner() const  {
       singIdeal->groebner();
    }
 
-   Array<Polynomial<> > reduce(const Array<Polynomial<> >& ideal, const Ring<>& r) const {
-      return singIdeal->reduce(ideal, r);
+   Array<Polynomial<>> reduce(const Array<Polynomial<>>& ideal) const {
+      return singIdeal->reduce(ideal);
    }
 
-   Polynomial<> reduce(const Polynomial<>& p, const Ring<>& r) const {
-      return singIdeal->reduce(p, r);
+   Polynomial<> reduce(const Polynomial<>& p) const {
+      return singIdeal->reduce(p);
    }
 
-   Array< Polynomial<> > division( const Polynomial<>& p, const Ring<>& r, const bool is_std = 0 ) const {
-      return singIdeal->division(p, r, is_std);
+   Array<Polynomial<>> division( const Polynomial<>& p, const bool is_std = 0 ) const {
+      return singIdeal->division(p, is_std);
    }
 
    SingularIdeal initial_ideal() const  {
@@ -133,8 +133,8 @@ public:
       return result;
    }
 
-   Array<Polynomial<> > polynomials(const Ring<>& r) const {
-      return singIdeal->polynomials(r);
+   Array<Polynomial<>> polynomials() const {
+      return singIdeal->polynomials();
    }
    
    friend perl::Object quotient(perl::Object I, perl::Object J);

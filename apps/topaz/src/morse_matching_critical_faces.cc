@@ -15,26 +15,29 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/graph/HasseDiagram.h"
 #include "polymake/topaz/morse_matching_tools.h"
+#include "polymake/graph/Lattice.h"
+#include "polymake/graph/Decoration.h"
 #include "polymake/PowerSet.h"
 
 namespace polymake { namespace topaz {
 
+typedef graph::Lattice<graph::lattice::BasicDecoration> Lattice;
 
 // Compute the critical faces of a Morse matching.
 // @param SimplicialComplex p a complex with a Morse matching
 void morse_matching_critical_faces (perl::Object p)
 {
-   const graph::HasseDiagram M = p.give("HASSE_DIAGRAM");
-   const int d = M.dim() - 1;
+   perl::Object HD_obj = p.give("HASSE_DIAGRAM");
+   const Lattice M(HD_obj);
+   const int d = M.rank() - 2;
    const HasseEdgeMap EM = p.give("HASSE_DIAGRAM.MORSE_MATCHING");
    Bitset critical = collectCriticalFaces(M, EM);
    Array<int> numCritical(d+1);
    for (int k = 0; k <= d; ++k) 
-      for (Entire<graph::HasseDiagram::nodes_of_dim_set>::const_iterator f = entire(M.nodes_of_dim(k)); !f.at_end(); ++f) 
+      for (auto f = entire(M.nodes_of_rank(k+1)); !f.at_end(); ++f) 
          if ( critical.contains(*f) ) {
-            const int dim = M.dim_of_node(*f);
+            const int dim = M.rank(*f)-1;
             assert( 0 <= dim && dim <= d );
             ++numCritical[dim];
          }

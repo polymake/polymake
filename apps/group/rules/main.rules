@@ -14,11 +14,18 @@
 #-------------------------------------------------------------------------------
 
 # @topic application
-# The application group provides basic functionality for working with permutation
-# groups. An object of type [[Group]] is defined by a list of [[Group::GENERATORS|GENERATORS]] describing the 
-# permutation of some indices. 
-# The object [[GroupOfCone]] encapsulates symmetry information of a [[polytope::Cone|Cone]].
-# It can act on the indices of rays ([[GroupOfCone::DOMAIN|DOMAIN]]=>1), of facets ([[GroupOfCone::DOMAIN|DOMAIN]]=>2), or on coordinates ([[GroupOfCone::DOMAIN|DOMAIN]]=>3).
+# The application group provides basic functionality for working with
+# permutation groups. An object of type [[Group]] records the abstract
+# properties of the groups that do not depend on any particular
+# representation, such as ([[Group::ORDER|ORDER]],
+# [[Group::CHARACTER_TABLE|CHARACTER_TABLE]] and [[Group::CONJUGACY_CLASS_SIZES|CONJUGACY_CLASS_SIZES]].
+# Moreover, it can contain several subobjects of type [[group::PermutationAction]], [[group::PermutationActionOnSets]] 
+# or [[group::ImplicitActionOnSets]] that encode representations of the group. (We use the terms //action//
+# and //representation// interchangeably). If the group object is not contained inside a [[polytope::Cone]] or 
+# [[polytope::Cone]], the representation in question is encoded as a [[Group::PERMUTATION_ACTION]], [[Group::SET_ACTION]] or 
+# [[Group::IMPLICIT_SET_ACTION]], otherwise it may be encoded more specifically as a RAY_ACTION, FACET_ACTION,
+# COORDINATE_ACTION, etc. Different representations of the same group are convertible
+# among each other either via specific rules, or by using the function [[group::induced_action]], for example.
 
 IMPORT
   common
@@ -26,16 +33,44 @@ IMPORT
 file_suffix grp
 
 HELP
-	help.rules
+  help.rules
 
-# A finite permutation group.
-# 
+# Object encoding a finite group.
 declare object Group;
+
+# parametrized object used for encoding group actions (representations).
+# //GeneratorType// is Array<Int> for permutation groups,
+#                   or Matrix<Scalar> for matrix groups.
+# //DomainType// is Int for permutation groups,
+#                   Vector<Scalar> for matrix groups acting on facets or vertices,
+#                   Set<Int> or Bitset for groups acting on simplices
+# //OrbitGeneratorScalarType// is the type of the entries of vectors that generate a geometric orbit; default Rational
+declare object Action<GeneratorType, DomainType, OrbitGeneratorScalarType=Rational>;
+
+# derived objects for permutation representations
+declare object PermutationAction<DomainType=Int, OrbitGeneratorScalarType=Rational> : Action<Array<Int>, DomainType, OrbitGeneratorScalarType>;
+
+# derived object for permuting collections of sets
+declare object PermutationActionOnSets : PermutationAction<Set<Int>>;
+
+# derived object encoding an action of a permutation group on a collection of sets,
+# but where only one representative of each orbit is stored explicitly
+declare object ImplicitActionOnSets : PermutationAction<Bitset>;
+
+# derived object for matrix groups
+declare object MatrixGroupActionOnVectors<Scalar> : Action<Matrix<Scalar>, Vector<Scalar>, Scalar>;
+
+
 
 # A template parameter used by [[action]] and [[orbit]] specifying that
 # the permutation acts on the given container. It will permute the order of
 # the elements
 declare property_type on_container : c++ (special => 'on_container', include => "polymake/group/orbit.h");
+
+# A template parameter used by [[action]] and [[orbit]] specifying that
+# the permutation acts on the given container. It will permute the order of
+# the elements, leaving the '0'-th one fixed and adjusting the indices of the permutation
+declare property_type on_nonhomog_container : c++ (special => 'on_nonhomog_container', include => "polymake/group/orbit.h");
 
 # A template parameter used by [[action]] and [[orbit]] specifying that
 # the permutation acts on the deepest elements inside a given container,
@@ -50,12 +85,18 @@ declare property_type on_rows: c++ (special => 'on_rows', include => "polymake/g
 # the permutation acts on the columns of a matrix.
 declare property_type on_cols: c++ (special => 'on_cols', include => "polymake/group/orbit.h");
 
+# A template parameter used by [[action]] and [[orbit]] specifying that
+# the permutation acts on all columns of a matrix, except the '0'-th one,
+# and adjusting the indices of the permutation
+declare property_type on_nonhomog_cols: c++ (special => 'on_nonhomog_cols', include => "polymake/group/orbit.h");
+
 INCLUDE
+  action_properties.rules
+  action.rules
   group_properties.rules
-  group_of_cone.rules
-  group_of_polytope.rules
   group.rules
-  representations.rules
+  permlib.rules
+  group_helpers.rules
 
 # Local Variables:
 # mode: perl

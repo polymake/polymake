@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 
 <!--
-  Copyright (c) 1997-2015
+  Copyright (c) 1997-2017
   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
   http://www.polymake.org
 
@@ -24,6 +24,8 @@
          xmlns:note="http://www.math.tu-berlin.de/polymake/note"
          ns="http://www.math.tu-berlin.de/polymake/#3">
 
+  <include href="common_grammar.rng" />
+
   <start>
     <choice>
       <ref name="TopObject" />
@@ -38,353 +40,37 @@
     </element>
   </define>
 
-  <define name="SubObject">
-    <element name="object">
-      <optional>
-        <note:a> The type defaults to the declared property type </note:a>
-        <attribute name="type" />
-      </optional>
-      <ref name="ObjectContent" />
-    </element>
-  </define>
-
-  <define name="SimpleName">
-    <attribute name="name">
-      <data type="string">
-        <param name="pattern">[a-zA-Z][a-zA-Z_0-9]*</param>
-      </data>
-    </attribute>
-  </define>
-
-  <define name="PropertyName">
-    <attribute name="name">
-      <data type="string">
-        <param name="pattern">([a-zA-Z][a-zA-Z_0-9]*::)?[a-zA-Z][a-zA-Z_0-9]*</param>
-      </data>
-    </attribute>
-  </define>
-
   <define name="TopAttribs">
-    <note:a>
-      - type must be prefixed by an application name.
-      - version refers to the polymake implementation which has
-        created this data instance.
-    </note:a>
-
+    <note:a> type prefixed by an application name </note:a>
     <attribute name="type">
       <data type="string">
         <param name="pattern">[a-zA-Z][a-zA-Z_0-9]*::.*</param>
       </data>
     </attribute>
 
+    <note:a>
+      version refers to the polymake implementation which has
+      created this data instance.
+    </note:a>
     <optional>
       <attribute name="version">
         <data type="string">
-          <param name="pattern">[\d.]+</param>
+          <param name="pattern">\d+(\.\d+)*</param>
         </data>
       </attribute>
     </optional>
-
-    <optional>
-      <attribute name="tm">
-        <data type="hexBinary" />
-      </attribute>
-    </optional>
-  </define>
-
-  <define name="ObjectContent">
-    <optional>
-      <attribute name="name" />
-    </optional>
-    <optional>
-      <attribute name="ext" />
-    </optional>
-    <optional>
-      <element name="description">
-        <text/>
-      </element>
-    </optional>
-    <zeroOrMore>
-      <element name="credit">
-        <attribute name="product" />
-        <text/>
-      </element>
-    </zeroOrMore>
-    <interleave>
-      <zeroOrMore>
-        <ref name="Property" />
-      </zeroOrMore>
-      <zeroOrMore>
-        <ref name="Attachment" />
-      </zeroOrMore>
-    </interleave>
-  </define>
-
-  <define name="Property">
-    <element name="property">
-      <ref name="PropertyName" />
-      <optional>
-        <attribute name="ext" />
-      </optional>
-
-      <choice>
-        <group>
-          <note:a>
-            undefined value is signaled by the special attribute
-          </note:a>
-          <attribute name="undef"><value>true</value></attribute>
-          <empty/>
-        </group>
-
-        <group>
- 	  <note:a>
-            type defaults to the declared property type
-          </note:a>
-          <optional>
-            <attribute name="type" />
-          </optional>
-          <ref name="PropertyData" />
-        </group>
-
-        <ref name="Text" />
-
-        <oneOrMore>
-	  <ref name="SubObject" />
-        </oneOrMore>
-      </choice>
-    </element>
-  </define>
-
-  <define name="Attachment">
-    <element name="attachment">
-      <ref name="SimpleName" />
-      <optional>
-        <attribute name="ext" />
-      </optional>
-      <ref name="AttachmentData" />
-    </element>
   </define>
 
   <define name="LooseData">
     <element name="data">
       <ref name="TopAttribs" />
-      <optional>
-        <attribute name="ext" />
-      </optional>
+      <ref name="Extensions" />
       <optional>
         <element name="description">
           <text/>
         </element>
       </optional>
       <ref name="PropertyData" />
-    </element>
-  </define>
-
-  <define name="PropertyData">
-    <choice>
-      <note:a>
-        Scalar property values may be stored in the value attribute,
-	saving space and improving legibility.
-      </note:a>
-      <group>
-        <attribute name="value" />
-        <empty/>
-      </group>
-
-      <ref name="IdReference" />
-      <ref name="Complex" />
-
-      <note:a> Array of (sub-)objects. </note:a>
-      <element name="m">
-        <oneOrMore>
-	  <ref name="SubObject" />
-        </oneOrMore>
-      </element>
-    </choice>
-  </define>
-
-  <define name="AttachmentData">
-    <choice>
-      <note:a>
-        Scalar property values may be stored in the value attribute,
-	saving space and improving legibility.
-	Default type is String.
-      </note:a>
-      <group>
-        <optional>
-          <attribute name="type" />
-        </optional>
-        <attribute name="value" />
-        <empty/>
-      </group>
-
-      <group>
-        <attribute name="type" />
-        <optional>
-          <attribute name="construct" />
-        </optional>
-        <ref name="Complex" />
-      </group>
-
-      <ref name="Text" />
-    </choice>
-  </define>
-
-  <define name="Text">
-    <note:a>
-      Unstructured text must be declared explicitly by the type attribute.
-      The contents are expected to be enclosed in CDATA brackets to preserve line breaks etc.
-    </note:a>
-    <attribute name="type"><value>text</value></attribute>
-    <text/>
-  </define>
-
-  <define name="Complex">
-    <choice>
-      <ref name="Vector" />
-      <ref name="Matrix" />
-      <ref name="Tuple" />
-    </choice>
-  </define>
-
-  <define name="VectorContents">
-    <note:a>
-      - dense vectors with scalar elements are represented as a
-        whitespace-delimited list 
-      - sparse vectors keep the dimension in the dim attribute,
-        each element enclosed in an own tag with index attribute
-    </note:a>
-    <choice>
-      <text/>
-      <group>
-        <optional>
-          <attribute name="dim">
-            <data type="nonNegativeInteger" />
-          </attribute>
-        </optional>
-        <choice>
-          <zeroOrMore>
-            <element name="e">
-              <ref name="ElementIndex" />
-              <text/>
-            </element>
-          </zeroOrMore>
-          <oneOrMore>
-            <element name="t">
-              <optional>
-                <ref name="ElementIndex" />
-              </optional>
-              <ref name="TupleContents" />
-            </element>
-          </oneOrMore>
-        </choice>
-      </group>
-    </choice>
-  </define>
-
-  <define name="ElementIndex">
-    <attribute name="i">
-      <data type="nonNegativeInteger" />
-    </attribute>
-  </define>
-
-  <define name="IdReference">
-    <note:a>
-      Reference to a data instance already introduced earlier in the document
-    </note:a>
-    <element name="r">
-      <optional>
-        <attribute name="id">
-          <data type="nonNegativeInteger" />
-        </attribute>
-      </optional>
-      <empty/>
-    </element>
-  </define>
-
-  <define name="Vector">
-    <element name="v">
-      <ref name="VectorContents" />
-    </element>
-  </define>
-
-  <define name="MatrixContents">
-    <note:a>
-      something like a matrix or a list of complex elements
-    </note:a>
-    <choice>
-      <group>
-        <note:a>
-          cols attribute applies to sparse matrices
-        </note:a>
-        <optional>
-          <attribute name="cols">
-            <data type="nonNegativeInteger" />
-          </attribute>
-        </optional>
-        <zeroOrMore>
-          <ref name="Vector" />
-        </zeroOrMore>
-      </group>
-      <group>
-        <note:a>
-          sparse container of complex elements, like graph with gaps left over from deleted nodes
-        </note:a>
-        <attribute name="dim">
-          <data type="nonNegativeInteger" />
-        </attribute>
-        <zeroOrMore>
-          <element name="v">
-            <ref name="ElementIndex" />
-            <ref name="VectorContents" />
-          </element>
-        </zeroOrMore>
-      </group>
-      <oneOrMore>
-        <ref name="Matrix" />
-      </oneOrMore>
-      <oneOrMore>
-        <ref name="Tuple" />
-      </oneOrMore>
-    </choice>
-  </define>
-
-  <define name="Matrix">
-    <element name="m">
-      <ref name="MatrixContents" />
-    </element>
-  </define>
-
-  <define name="TupleContents">
-    <note:a>
-      a heterogeneous ordered list
-      - entirely consisting of simple scalars delimited by white spaces
-      - otherwise each element packed in own tag
-    </note:a>
-    <optional>
-      <attribute name="id">
-        <data type="nonNegativeInteger"/>
-      </attribute>
-    </optional>
-    <choice>
-      <text/>
-      <oneOrMore>
-        <choice>
-          <ref name="Vector" />
-          <ref name="Matrix" />
-          <ref name="Tuple" />
-          <ref name="IdReference" />
-          <element name="e">
-            <text/>
-          </element>
-        </choice>
-      </oneOrMore>
-    </choice>
-  </define>
-
-  <define name="Tuple">
-    <element name="t">
-      <ref name="TupleContents" />
     </element>
   </define>
 

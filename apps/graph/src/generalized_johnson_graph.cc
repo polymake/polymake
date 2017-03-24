@@ -35,10 +35,10 @@ perl::Object generalized_johnson_graph (const int n,const int k,const int i) {
 
    perl::Object JGraph("Graph<Undirected>");
    Map<Set<int>, int> index_of;
-   Array<std::string> labels(Integer::binom(n,k).to_int());
+   Array<std::string> labels(int(Integer::binom(n,k)));
 
    int ct(0);
-   Entire<Array<std::string> >::iterator lit = entire(labels);
+   auto lit = entire(labels);
    std::ostringstream os;
    for (Entire<Subsets_of_k<const sequence&> >::const_iterator sit = entire(all_subsets_of_k(sequence(0,n), k)); !sit.at_end(); ++sit, ++lit) {
       const Set<int> the_set(*sit);
@@ -47,11 +47,11 @@ perl::Object generalized_johnson_graph (const int n,const int k,const int i) {
       *lit = os.str();
       os.str("");
    }
-      
+
    Graph<> jgraph(ct);
-      
-   for(Entire<Map<Set<int>, int> >::const_iterator mit1 = entire(index_of); !mit1.at_end(); ++mit1) 
-      for(Entire<Map<Set<int>, int> >::const_iterator mit2 = mit1; !mit2.at_end(); ++mit2) 
+
+   for (auto mit1 = entire(index_of); !mit1.at_end(); ++mit1)
+      for (auto mit2 = mit1; !mit2.at_end(); ++mit2)
          if ((mit1->first * mit2->first).size()==i)
 	    jgraph.edge(mit1->second, mit2->second);
 
@@ -77,7 +77,16 @@ UserFunction4perl("# @category Producing a graph"
                   "# @param Int n the size of the ground set"
                   "# @param Int k the size of the subsets"
                   "# @param Int i the size of the subsets"
-                  "# @return Graph",
+                  "# @return Graph"
+                  "# @example The following prints the adjacency representation of the generalized"
+                  "# johnson graph with the parameters 4,2,1:"
+                  "# > print generalized_johnson_graph(4,2,1)->ADJACENCY;"
+                  "# | {1 2 3 4}"
+                  "# | {0 2 3 5}"
+                  "# | {0 1 4 5}"
+                  "# | {0 1 4 5}"
+                  "# | {0 2 3 5}"
+                  "# | {1 2 3 4}",
                   &generalized_johnson_graph, "generalized_johnson_graph($$$)");
 
 UserFunction4perl("# @category Producing a graph"
@@ -86,7 +95,13 @@ UserFunction4perl("# @category Producing a graph"
                   "#   and an edge between two nodes iff the corresponding subsets are disjoint."
                   "# @param Int n the size of the ground set"
                   "# @param Int k the size of the subsets"
-                  "# @return Graph",
+                  "# @return Graph"
+                  "# @example The following prints the adjacency representation of the kneser"
+                  "# graph with the parameters 3,1:"
+                  "# > print kneser_graph(3,1)->ADJACENCY;"
+                  "# | {1 2}"
+                  "# | {0 2}"
+                  "# | {0 1}",
                   &kneser_graph, "kneser_graph($$)");
 
 
@@ -96,7 +111,14 @@ UserFunction4perl("# @category Producing a graph"
                   "#   and an edge between two nodes iff the intersection of the corresponding subsets is of size k-1."
                   "# @param Int n the size of the ground set"
                   "# @param Int k the size of the subsets"
-                  "# @return Graph",
+                  "# @return Graph"
+                  "# @example The following prints the adjacency representation of the johnson"
+                  "# graph with the parameters 4,3:"
+                  "# > print johnson_graph(4,3)->ADJACENCY;"
+                  "# | {1 2 3}"
+                  "# | {0 2 3}"
+                  "# | {0 1 3}"
+                  "# | {0 1 2}",
                   &johnson_graph, "johnson_graph($$)");
 
 } }

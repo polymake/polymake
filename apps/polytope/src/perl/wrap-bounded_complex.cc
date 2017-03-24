@@ -18,21 +18,39 @@ namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    FunctionWrapper4perl( pm::IncidenceMatrix<pm::NonSymmetric> (pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::Set<int, pm::operations::cmp> const&, int) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      IndirectWrapperReturn(arg0.get< perl::TryCanned< const IncidenceMatrix< NonSymmetric > > >(), arg1.get< perl::TryCanned< const Set< int > > >(), arg2);
+      IndirectWrapperReturn( arg0.get< perl::TryCanned< const IncidenceMatrix< NonSymmetric > > >(), arg1.get< perl::TryCanned< const Set< int > > >(), arg2 );
    }
    FunctionWrapperInstance4perl( pm::IncidenceMatrix<pm::NonSymmetric> (pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::Set<int, pm::operations::cmp> const&, int) );
 
    FunctionWrapper4perl( pm::FacetList (perl::Object, pm::Set<int, pm::operations::cmp> const&) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturn(arg0, arg1.get< perl::TryCanned< const Set< int > > >());
+      IndirectWrapperReturn( arg0, arg1.get< perl::TryCanned< const Set< int > > >() );
    }
    FunctionWrapperInstance4perl( pm::FacetList (perl::Object, pm::Set<int, pm::operations::cmp> const&) );
 
-   FunctionWrapper4perl( pm::IncidenceMatrix<pm::NonSymmetric> (perl::Object) ) {
-      perl::Value arg0(stack[0]);
-      IndirectWrapperReturn(arg0);
+   FunctionWrapper4perl( pm::Array<int> (pm::Array<int> const&, int) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Array< int > > >(), arg1 );
    }
-   FunctionWrapperInstance4perl( pm::IncidenceMatrix<pm::NonSymmetric> (perl::Object) );
+   FunctionWrapperInstance4perl( pm::Array<int> (pm::Array<int> const&, int) );
+
+   FunctionWrapper4perl( perl::Object (pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::Set<int, pm::operations::cmp> const&, pm::Array<int> const&) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      IndirectWrapperReturn( arg0.get< perl::TryCanned< const IncidenceMatrix< NonSymmetric > > >(), arg1.get< perl::TryCanned< const Set< int > > >(), arg2.get< perl::TryCanned< const Array< int > > >() );
+   }
+   FunctionWrapperInstance4perl( perl::Object (pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::Set<int, pm::operations::cmp> const&, pm::Array<int> const&) );
+
+   FunctionWrapper4perl( pm::FacetList (perl::Object, pm::Set<int, pm::operations::cmp> const&, pm::Array<int> const&, int) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
+      IndirectWrapperReturn( arg0, arg1.get< perl::TryCanned< const Set< int > > >(), arg2.get< perl::TryCanned< const Array< int > > >(), arg3 );
+   }
+   FunctionWrapperInstance4perl( pm::FacetList (perl::Object, pm::Set<int, pm::operations::cmp> const&, pm::Array<int> const&, int) );
+
+   FunctionWrapper4perl( pm::Array<int> (pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::Set<int, pm::operations::cmp> const&, pm::Array<int> const&) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
+      IndirectWrapperReturn( arg0.get< perl::TryCanned< const IncidenceMatrix< NonSymmetric > > >(), arg1.get< perl::TryCanned< const IncidenceMatrix< NonSymmetric > > >(), arg2.get< perl::TryCanned< const Set< int > > >(), arg3.get< perl::TryCanned< const Array< int > > >() );
+   }
+   FunctionWrapperInstance4perl( pm::Array<int> (pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::Set<int, pm::operations::cmp> const&, pm::Array<int> const&) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

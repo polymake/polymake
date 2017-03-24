@@ -14,7 +14,9 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 
 namespace polymake { namespace polytope { namespace {
@@ -27,5 +29,6 @@ namespace polymake { namespace polytope { namespace {
 
    FunctionInstance4perl(inner_point_X, perl::Canned< const Matrix< Rational > >);
    FunctionInstance4perl(inner_point_X, perl::Canned< const Matrix< double > >);
+   FunctionInstance4perl(inner_point_X, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

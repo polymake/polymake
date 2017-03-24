@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,75 +19,40 @@
 
 namespace pm {
 
-Integer::Integer(const AccurateFloat& a)
+Integer& Integer::operator= (const AccurateFloat& b)
 {
-   if (__builtin_expect(mpfr_nan_p(a.rep), 0))
+   if (__builtin_expect(mpfr_nan_p(&b), 0))
       throw GMP::NaN();
-   const int s=isinf(a);
-   if (__builtin_expect(s,0)) {
-      _init_set_inf(rep, s);
-   } else {
-      mpz_init(rep);
-      mpfr_get_z(rep, a.rep, MPFR_RNDZ);
-   }
-}
 
-Integer& Integer::operator=(const AccurateFloat& a)
-{
-   if (__builtin_expect(mpfr_nan_p(a.rep), 0))
-      throw GMP::NaN();
-   const int s=isinf(a);
-   if (__builtin_expect(s,0)) {
-      _set_inf(rep, s);
-   } else {
-      mpfr_get_z(rep, a.rep, MPFR_RNDZ);
-   }
+   const int s=isinf(b);
+   if (__builtin_expect(!s, 1))
+      mpfr_get_z(this, &b, MPFR_RNDZ);
+   else
+      set_inf(this, s);
    return *this;
 }
 
-Rational::Rational(const AccurateFloat& a)
+Rational& Rational::operator= (const AccurateFloat& b)
 {
-   if (__builtin_expect(mpfr_nan_p(a.rep), 0))
+   if (__builtin_expect(mpfr_nan_p(&b), 0))
       throw GMP::NaN();
-   const int s=isinf(a);
-   if (__builtin_expect(s, 0)) {
-      _init_set_inf(rep, s);
-   } else {
-      mpq_init(rep);
-      if (mpfr_sgn(a.rep)) {
-         const mpfr_exp_t e=mpfr_get_z_2exp(mpq_numref(rep), a.rep);
-         if (e<0) {
-            mpz_mul_2exp(mpq_denref(rep), mpq_denref(rep), -e);
-            mpq_canonicalize(rep);
-         } else if (e>0) {
-            mpz_mul_2exp(mpq_numref(rep), mpq_numref(rep), e);
-            mpq_canonicalize(rep);
-         }
-      }
-   }
-}
 
-Rational& Rational::operator= (const AccurateFloat& a)
-{
-   if (__builtin_expect(mpfr_nan_p(a.rep), 0))
-      throw GMP::NaN();
-   const int s=isinf(a);
-   if (__builtin_expect(s, 0)) {
-      _set_inf(rep, s);
-   } else {
-      mpz_set_ui(mpq_denref(rep), 1);
-      if (mpfr_sgn(a.rep)) {
-         const mpfr_exp_t e=mpfr_get_z_2exp(mpq_numref(rep), a.rep);
-         if (e<0) {
-            mpz_mul_2exp(mpq_denref(rep), mpq_denref(rep), -e);
-            mpq_canonicalize(rep);
-         } else if (e>0) {
-            mpz_mul_2exp(mpq_numref(rep), mpq_numref(rep), e);
-            mpq_canonicalize(rep);
-         }
+   if (__builtin_expect(isfinite(b), 1)) {
+      if (b.is_zero()) {
+         *this=0;
       } else {
-         mpz_set_ui(mpq_numref(rep), 0);
+         const mpfr_exp_t e=mpfr_get_z_2exp(mpq_numref(this), &b);
+         mpz_set_ui(mpq_denref(this), 1);
+         if (e<0) {
+            mpz_mul_2exp(mpq_denref(this), mpq_denref(this), -e);
+            mpq_canonicalize(this);
+         } else if (e>0) {
+            mpz_mul_2exp(mpq_numref(this), mpq_numref(this), e);
+            mpq_canonicalize(this);
+         }
       }
+   } else {
+      set_inf(this, isinf(b));
    }
    return *this;
 }
@@ -104,8 +69,8 @@ void AccurateFloat::putstr(std::ostream& os, std::ios::fmtflags flags) const
          os.write("inf", 3);
       return;
    }
-   if (mpfr_zero_p(rep)) {
-      if (mpfr_sgn(rep)<0)
+   if (is_zero()) {
+      if (mpfr_sgn(this)<0)
          os.write("-0", 2);
       else if (flags & std::ios::showpos)
          os.write("+0", 2);
@@ -115,9 +80,9 @@ void AccurateFloat::putstr(std::ostream& os, std::ios::fmtflags flags) const
    }
 
    mpfr_exp_t e;
-   char* const str0=mpfr_get_str(NULL, &e, 10, 0, rep, MPFR_RNDN);
+   char* const str0=mpfr_get_str(nullptr, &e, 10, 0, this, MPFR_RNDN);
    char* str=str0;
-   const bool neg=mpfr_sgn(rep)<0;
+   const bool neg=mpfr_sgn(this)<0;
    const int l=strlen(str);
    const int digits=l-neg;
 
@@ -143,6 +108,26 @@ void AccurateFloat::putstr(std::ostream& os, std::ios::fmtflags flags) const
       os.write(str, digits-1) << 'e' << e-1;
    }
    mpfr_free_str(str0);
+}
+
+void AccurateFloat::read(std::istream& is)
+{
+   std::string rep;
+   is >> rep;
+   if (mpfr_set_str(this, rep.c_str(), 10, MPFR_RNDN))
+      throw std::runtime_error("AccurateFloat: Could not parse '" + rep + "'");
+}
+
+const AccurateFloat& spec_object_traits<AccurateFloat>::zero()
+{
+   const static AccurateFloat z(0);
+   return z;
+}
+
+const AccurateFloat& spec_object_traits<AccurateFloat>::one()
+{
+   const static AccurateFloat e(1);
+   return e;
 }
 
 }

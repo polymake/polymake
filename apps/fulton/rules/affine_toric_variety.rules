@@ -43,7 +43,7 @@ declare object_specialization AffineNormalToricVariety = NormalToricVariety {
       $this->WEIGHT_CONE->INEQUALITIES = $this->RAYS;
    }
 
-   rule DIVISOR.MODULE_GENERATORS : DIVISOR.SECTION_POLYTOPE{
+   rule DIVISOR.MODULE_GENERATORS : DIVISOR.SECTION_POLYTOPE {
       my $section_polytope = $this->DIVISOR->SECTION_POLYTOPE;
       my $result = lower_lattice_points($section_polytope);
       $this->DIVISOR->MODULE_GENERATORS = $result->minor(All, ~[0]);

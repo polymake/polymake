@@ -26,10 +26,10 @@ namespace singular{
     SingularTermOrderMap stom_new;
 
    // If no monomial ordering is given:
-   idhdl check_ring(const Ring<> r){
+   idhdl check_ring(const int n_vars){
       std::string ord("dp");
-      SingularTermOrderData<std::string> TO(r, ord); 
-      return check_ring(r, TO);
+      SingularTermOrderData<std::string> TO(n_vars, ord); 
+      return check_ring(n_vars, TO);
    }
 
    idhdl check_ring(idhdl singRing) {
@@ -38,7 +38,7 @@ namespace singular{
       return singRing;
    }
 
-   int StringToSingularTermOrder(std::string ringOrderName){
+   singular_order_type StringToSingularTermOrder(std::string ringOrderName){
       return rOrderName(omStrDup(ringOrderName.c_str()));
    }
 

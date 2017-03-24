@@ -27,7 +27,6 @@
 #include "polymake/linalg.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/tropical/codim_one_with_locality.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/divisor.h"
 #include "polymake/tropical/solver_def.h"
 #include "polymake/tropical/linear_algebra_tools.h"
@@ -38,9 +37,6 @@
 
 namespace polymake { namespace tropical {
 
-	using namespace atintlog::donotlog;
-	//   using namespace atintlog::dolog;
-	//   using namespace atintlog::dotrace;
 
 
 	/**
@@ -98,50 +94,44 @@ namespace polymake { namespace tropical {
 	  @brief This takes a (two-dimensional) cone in R^3 in terms of a subset of rays and computes all codimension one faces. 
 	  @return A FacetData object (see above)
 	  */
-	FacetData computeFacets(const Matrix<Rational> &rays,const Set<int> &cone, solver<Rational> &sv) {
+	FacetData computeFacets(const Matrix<Rational>& rays, const Set<int>& cone, solver<Rational>& sv)
+        {
 		//Compute facet equations and store them
-		std::pair<Matrix<Rational>, Matrix<Rational> > ceq = sv.enumerate_facets(
-				rays.minor(cone,All),Matrix<Rational>(0,rays.cols()),false,false);
+		std::pair<Matrix<Rational>, Matrix<Rational>> ceq =
+                  sv.enumerate_facets(rays.minor(cone, All), Matrix<Rational>(0,rays.cols()), false, false);
 		FacetData result;
 		result.eq = ceq.second.row(0);
 		result.ineqs = ceq.first;
 		//Now go through all inequalities and find the corresponding vertices
-		Vector<Set<int> > facets;
-		for(int i = 0; i < result.ineqs.rows(); i++)  {
-			Set<int> iset;
-			for(Entire<Set<int> >::const_iterator c = entire(cone); !c.at_end(); c++) {
-				if(result.ineqs.row(i) * rays.row(*c) == 0) iset += (*c);
-			}
-			facets |= iset;
+                Set<int> exclude_ineqs;
+		RestrictedIncidenceMatrix<> facets;
+		for (auto ineq=ensure(rows(result.ineqs), (pm::cons<pm::end_sensitive, pm::indexed>*)0).begin();
+                     !ineq.at_end(); ++ineq) {
+                   Set<int> facet;
+                   bool vertex_seen=false;
+                   for (auto c=entire(cone); !c.at_end(); ++c) {
+                      if (is_zero((*ineq) * rays.row(*c))) {
+                         facet.push_back(*c);
+                         if (!vertex_seen && !is_zero(rays(*c, 0))) {
+                            vertex_seen=true;
+                         }
+                      }
+                   }
+                   //Each facet has to have at least one vertex
+                   if (vertex_seen) {
+                      facets /= facet;
+                   } else {
+                      exclude_ineqs += ineq.index();
+                   }
 		}
-		//Each facet has to have at least one vertex
-		for(int f = 0; f < facets.dim(); f++) {
-			if(rays.col(0).slice(facets[f]) == zero_vector<Rational>(facets[f].size())) {
-				facets = facets.slice(~scalar2set(f));
-				result.ineqs = result.ineqs.minor(~scalar2set(f),All);
-			}
-		}
-
-		result.facets = IncidenceMatrix<>(facets);
-
-		return result;
-	} 
-
-	// ------------------------------------------------------------------------------------------------  
-  
-	/**
-	  @brief This takes a result of computeFacets and finds all the facets visible from "direction", i.e. all facets whose outer normal has strict positive scalar product with direction (it doesn't matter which normal we take: The direction must lie in the span of the two-dimensional cone, so the equation g of the cone is zero on direction. Any two representatives of a facet normal only differ by a multiple of g).
-	  */
-	Vector<Set<int> > visibleFaces(FacetData fd, Vector<Rational> direction) {
-		Vector<Set<int> > result;
-		for(int f = 0; f < fd.ineqs.rows(); f++) {
-			if(fd.ineqs.row(f) * direction < 0) { //<0, since ineqs has the inner normals
-				result |= fd.facets.row(f);
-			}
-		}      
+                result.facets = std::move(facets);
+                if (!exclude_ineqs.empty()) {
+                   result.ineqs = result.ineqs.minor(~exclude_ineqs, All);
+                }
 		return result;
 	}
-  // ------------------------------------------------------------------------------------------------  
+
+	// ------------------------------------------------------------------------------------------------  
 
 	/**
 	  @brief This takes a vertex in the cubic (whose function's domain is describes by frays and fcones) and a direction and computes the vertex w farthest away from vertex in this direction, such that the convex hull of vertex and w still lies in X. It returns the empty vertex, if the complete half-line lies in X.
@@ -150,7 +140,7 @@ namespace polymake { namespace tropical {
 			const Matrix<Rational> &frays, const IncidenceMatrix<> &fcones, const Matrix<Rational> &funmat) {
 		//Create the one-dimensional half-line from vertex
 		Matrix<Rational> hl_rays = vertex / direction;
-		Vector<Set<int> > hl_cones; hl_cones |= sequence(0,2);
+		IncidenceMatrix<> hl_cones({ { 0, 1 } });
 		Matrix<Rational> lin(0, hl_rays.cols());
 		//Intersect with f-domain
 		DirectionIntersection ref_line = cleanUpIntersection(
@@ -243,12 +233,12 @@ namespace polymake { namespace tropical {
 
 		//First we project all vertices of the cone onto z_border
 		Matrix<Rational> z_edge_rays = z_border;
-		Vector<Set<int> > z_edges; z_edges |= sequence(0,2);
+		RestrictedIncidenceMatrix<> z_edges_grow={ {0, 1} };
 		Vector<Rational> direction = degree.row(0) + degree.row(leafAtZero);
 		Vector<int> rem(sequence(1,3) - leafAtZero);
 
-		for(int dr = 0; dr < cone.rays.rows(); dr++) {
-			if(cone.rays(dr,0) == 1) {
+		for (int dr = 0; dr < cone.rays.rows(); dr++) {
+			if (cone.rays(dr,0) == 1) {
 				//We go through all edges of z_edges until we find one that intersects (vertex + R_>=0 *direction)
 				//This is computed as follows: Assume p is a vertex of an edge of z_edges and that w is the direction 
 				//from p into that edge (either a ray or p2-p1, if the edge is bounded). Then we compute a linear representation of (vertex - p_1) in terms of w and 
@@ -256,8 +246,8 @@ namespace polymake { namespace tropical {
 				//that the coefficient of w = p2-p1 is in between 0 and 1, otherwise it has to be > 0
 				//
 				//If we find an intersecting edge, we refine it (in z_edges) such that it contains the intersection point.
-				for(int ze = 0; ze < z_edges.dim(); ze++) {
-					Matrix<Rational> edge_generators = z_border.minor(z_edges[ze],All);
+				for (int ze = 0; ze < z_edges_grow.rows(); ze++) {
+                                        Matrix<Rational> edge_generators = z_border.minor(z_edges_grow.row(ze), All);
 					Vector<Rational> p1 = edge_generators(0,0) == 0? edge_generators.row(1) : edge_generators.row(0);
 					bool bounded = edge_generators(0,0) == edge_generators(1,0);
 					Vector<Rational> w;
@@ -267,17 +257,16 @@ namespace polymake { namespace tropical {
 					// 	Check that: 
 					// 	- There is a representation
 					// 	- The coefficient of w is > 0 (and < 1 if bounded)
-					if(lin_rep.dim() > 0) {
-						if(lin_rep[0] > 0 && (!bounded || lin_rep[0] < 1)) {
+					if (lin_rep.dim() > 0) {
+						if (lin_rep[0] > 0 && (!bounded || lin_rep[0] < 1)) {
 							//Then we add a vertex, stop searching for an edge and go to the next vertex
 							Vector<Rational> new_vertex = p1 + lin_rep[0]*w;
 							z_edge_rays /= new_vertex;
-							Vector<int> edge_index_list(z_edges[ze]);
-							z_edges = z_edges.slice(~scalar2set(ze));
-							Set<int> one_cone; one_cone += edge_index_list[0]; one_cone += (z_edge_rays.rows()-1);
-							Set<int> other_cone; other_cone += edge_index_list[1]; other_cone += (z_edge_rays.rows()-1);
-							z_edges |= one_cone;
-							z_edges |= other_cone;
+							auto edge_index_list=z_edges_grow.row(ze).begin();
+							const Set<int> one_cone={ *edge_index_list, z_edge_rays.rows()-1 };
+							const Set<int> other_cone={ *++edge_index_list, z_edge_rays.rows()-1 };
+							z_edges_grow.row(ze)=one_cone;
+							z_edges_grow /= other_cone;
 							break;
 						}
 					}//END if linear rep exists
@@ -285,6 +274,7 @@ namespace polymake { namespace tropical {
 			}//END if vertex
 		}//END project vertices
 
+                const IncidenceMatrix<> z_edges(std::move(z_edges_grow));
 		//Then refine the cone along the new z_edges - direction
 		//and compute codim one data
 		Matrix<Rational> dummy_lineality(0, z_border.cols());
@@ -298,16 +288,7 @@ namespace polymake { namespace tropical {
 		IncidenceMatrix<> coInMax = codimData.codimOneInMaximal;
 		IncidenceMatrix<> maxInCo = T(coInMax);
 
-		// 	  dbgtrace << fir.rays << endl;
-		// 	  dbgtrace << fir.cones<< endl;
 		// 	   
-		// // 	   dbgtrace << cone.rays << endl;
-		// // 	   dbgtrace << cone.cells << endl;
-		// // 	   dbgtrace << z_edge_rays << endl;
-		// // 	   dbgtrace << z_edges << endl;
-		// // 	   dbgtrace << direction << endl;
-		// 	   dbgtrace << refined_cone.rays << endl;
-		// 	   dbgtrace << refined_cone.cells << endl;
 
 		//Find all edges that span direction
 		Set<int> direction_edges;
@@ -332,8 +313,8 @@ namespace polymake { namespace tropical {
 		Set<int> all_vertices_this_side;
 		Set<int> covered_vertices;	      
 
-		for(int ze = 0; ze < z_edges.dim(); ze++) {
-			Matrix<Rational> ze_rays = z_edge_rays.minor(z_edges[ze],All);
+		for (int ze = 0; ze < z_edges.rows(); ze++) {
+                        Matrix<Rational> ze_rays = z_edge_rays.minor(z_edges.row(ze), All);
 			//Find rays in refined cone
 			int index_1 = -1;
 			int index_2 = -1;
@@ -405,7 +386,6 @@ namespace polymake { namespace tropical {
 		Set<int> used_up_edges;
 		Set<int> used_up_vertices;
 		for(Entire<Set<int> >::iterator vtc = entire(vertices_to_check); !vtc.at_end(); vtc++) {
-			//dbgtrace << "Vertex " << (*vtc) << endl;
 			used_up_vertices += *vtc;
 
 			//Find first edge containing it
@@ -422,7 +402,6 @@ namespace polymake { namespace tropical {
 
 
 			int current_edge = *(current_edge_set.begin());
-			//dbgtrace << "Edge is " << current_edge << endl;
 
 			used_up_edges += current_edge;
 			int  vertex_index_other_side;
@@ -433,10 +412,7 @@ namespace polymake { namespace tropical {
 					accumulate( rows(refined_cone.rays.minor(codim.row(current_edge),All)), operations::add()) /	      accumulate(refined_cone.rays.minor(codim.row(current_edge),All).col(0),operations::add());
 				if(!maximumAttainedTwice(funmat * interior_point)) {
 					found_bad = true; break;
-					//dbgtrace << "Bad edge found" << endl;
 				}
-				//dbgtrace << "Edge is good" << endl;
-				//dbgtrace << codim.row(current_edge) << "," << used_up_vertices <<  endl;
 
 				//Find next edge. If there is none, we have arrived at the other side
 				int next_vertex = *( (codim.row(current_edge) - used_up_vertices).begin());
@@ -448,12 +424,10 @@ namespace polymake { namespace tropical {
 				}
 				else {
 					current_edge = *(next_edge_set.begin());
-					//dbgtrace << "Next edge " << current_edge << endl;
 					used_up_edges += current_edge;
 				}
 			}//END iterate edges to other side
 			if(!found_bad) {
-				//dbgtrace << "Done, saving..." << endl;
 				EdgeLine el;
 				el.leafAtZero = leafAtZero;
 				el.vertexAtZero = refined_cone.rays.row(*vtc);

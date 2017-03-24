@@ -16,15 +16,15 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
-#include "polymake/ideal/singularIdeal.h"
 #include "polymake/Array.h"
-#include "polymake/Polynomial.h"
-#include "polymake/Rational.h"
-#include "polymake/Vector.h"
-#include "polymake/SparseMatrix.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
+#include "polymake/Rational.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/Vector.h"
+#include "polymake/Polynomial.h"
+#include "polymake/client.h"
+#include "polymake/ideal/singularIdeal.h"
 
 namespace polymake { namespace ideal { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -42,8 +42,8 @@ namespace polymake { namespace ideal { namespace {
 
    Class4perl("Polymake::ideal::SingularIdeal", SingularIdeal);
    FunctionInstance4perl(new_X_std__string, SingularIdeal, perl::Canned< const Array< Polynomial< Rational, int > > >);
+   FunctionInstance4perl(new_X_X, SingularIdeal, perl::Canned< const Array< Polynomial< Rational, int > > >, perl::Canned< const Vector< int > >);
    FunctionInstance4perl(new_X_X, SingularIdeal, perl::Canned< const Array< Polynomial< Rational, int > > >, perl::Canned< const SparseMatrix< int, NonSymmetric > >);
    FunctionInstance4perl(new_X_X, SingularIdeal, perl::Canned< const Array< Polynomial< Rational, int > > >, perl::Canned< const Matrix< int > >);
-   FunctionInstance4perl(new_X_X, SingularIdeal, perl::Canned< const Array< Polynomial< Rational, int > > >, perl::Canned< const Vector< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

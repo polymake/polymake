@@ -60,7 +60,7 @@ namespace polymake { namespace tropical {
 	  (respectively the inverse for min).
 	  @return ReachableResult
 	  */
-	ReachableResult reachablePoints(Polynomial<TropicalNumber<Max> > f, perl::Object X, int direction); 
+	ReachableResult reachablePoints(const Polynomial<TropicalNumber<Max>>& f, perl::Object X, int direction); 
 
 }}
 

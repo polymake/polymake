@@ -28,7 +28,7 @@ object PolyhedralFan {
       facetsToRays($this);
    }
    weight 4.10;
-   permutation : RaysPerm;
+   incurs RaysPerm;
 }
 
 # Local Variables:

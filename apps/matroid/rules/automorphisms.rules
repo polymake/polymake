@@ -1,0 +1,42 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+REQUIRE graph::compare.rules
+
+object Matroid {
+
+    rule AUTOMORPHISM_GROUP.PERMUTATION_ACTION(new).DEGREE, AUTOMORPHISM_GROUP.PERMUTATION_ACTION(new).GENERATORS : BASES, N_ELEMENTS {
+        # Make sure the IncidenceMatrix has the right number of cols
+        my $total_matrix = new IncidenceMatrix(@{$this->BASES}, $this->N_ELEMENTS);
+        my @gens = map { $_->second } @{automorphisms($total_matrix)};
+        if (@gens == 0) {
+           # The identity is not returned by automorphisms
+           push @gens, [0 .. $this->N_ELEMENTS-1];
+        }
+
+        $this->AUTOMORPHISM_GROUP->PERMUTATION_ACTION->DEGREE = $this->N_ELEMENTS;
+        $this->AUTOMORPHISM_GROUP->PERMUTATION_ACTION->GENERATORS = \@gens;
+        $this->AUTOMORPHISM_GROUP->PERMUTATION_ACTION->description = "permutation action of automorphism group";
+        $this->AUTOMORPHISM_GROUP->description = "Automorphism group of ".$this->name if $this->name;
+        $this->AUTOMORPHISM_GROUP->name = "Aut";
+    }
+    weight 5.10;
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

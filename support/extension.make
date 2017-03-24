@@ -81,13 +81,6 @@ install-shared:
 distclean:
 	rm -rf ${BuildDir}
 
-tagsFLAGS = -R -e -f $@ --exclude=.svn --exclude='.\#*' --exclude='\#*' --exclude='*~'
-
-TAGS:
-	ctags ${tagsFLAGS} --language-force=c++ apps/*/{src,include}
-RTAGS:
-	ctags ${tagsFLAGS} --language-force=perl $(wildcard apps/*/{perllib,rules,scripts} scripts)
-
 AppsWithTests := $(foreach a,${Apps},$(if $(wildcard apps/$a/testsuite), $a))
 
 ifdef AppsWithTests

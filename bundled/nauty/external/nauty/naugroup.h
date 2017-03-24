@@ -47,6 +47,8 @@ extern void makecosetreps(grouprec*);
 extern int permcycles(int*,int,int*,boolean);
 extern void allgroup(grouprec*,void(*)(int*,int));
 extern int allgroup2(grouprec*,void(*)(int*,int,int*));
+extern int allgroup3(grouprec*,void(*)(int*,int,int*,void*),void*);
+extern void freegroup(grouprec*);
 
 #ifdef __cplusplus
 }

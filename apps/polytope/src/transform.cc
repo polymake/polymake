@@ -23,7 +23,7 @@ template <typename Scalar>
 perl::Object scale(perl::Object p_in, const Scalar& factor,
                    bool store_reverse_transformation)
 {
-   int amb_dim=p_in.CallPolymakeMethod("AMBIENT_DIM");
+   int amb_dim=p_in.call_method("AMBIENT_DIM");
    Matrix<Scalar> T(diag(1,(factor*unit_matrix<Scalar>(amb_dim))));
    return transform<Scalar>(p_in,T,store_reverse_transformation);
 }
@@ -33,7 +33,7 @@ template <typename Scalar>
 perl::Object translate(perl::Object p_in, const Vector<Scalar>& trans,
                        bool store_reverse_transformation)
 {
-   int amb_dim=p_in.CallPolymakeMethod("AMBIENT_DIM");
+   int amb_dim=p_in.call_method("AMBIENT_DIM");
    Matrix<Scalar> T((unit_vector<Scalar>(amb_dim+1,0)|(trans/unit_matrix<Scalar>(amb_dim))));
    return transform<Scalar>(p_in,T,store_reverse_transformation);
 }
@@ -60,7 +60,7 @@ UserFunctionTemplate4perl("# @category Transformations"
                           "# | 0 1 0"
                           "# | 0 0 1"
                           "# Check out the __revert__ function to learn how to undo the transformation."
-                          "# It might have been more comfortable to use the __translate__ function to achieve the above result.",
+                          "# It might be more comfortable to use the __translate__ function to achieve the same result.",
                           "transform<Scalar>(Polytope<type_upgrade<Scalar>> Matrix<type_upgrade<Scalar>>; $=1)");
 
 UserFunctionTemplate4perl("# @category Transformations"
@@ -70,7 +70,7 @@ UserFunctionTemplate4perl("# @category Transformations"
                           "# @param Bool store stores the reverse transformation as an attachment (REVERSE_TRANSFORMATION);"
                           "#   default value: 1."
                           "# @return Polytope"
-                          "# @example To sacle the square by 23, do this:"
+                          "# @example To scale the square by 23, do this:"
                           "# > $p = scale(cube(2),23);"
                           "# > print $p->VERTICES;"
                           "# | 1 -23 -23"

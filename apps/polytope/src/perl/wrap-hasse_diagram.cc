@@ -22,13 +22,13 @@ namespace polymake { namespace polytope { namespace {
    template <typename T0, typename T1>
    FunctionInterface4perl( bounded_hasse_diagram_X_X_x, T0,T1 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      WrapperReturn( bounded_hasse_diagram(arg0.get<T0>(), arg1.get<T1>(), arg2) );
+      WrapperReturn( (bounded_hasse_diagram(arg0.get<T0>(), arg1.get<T1>(), arg2)) );
    };
 
    template <typename T0>
    FunctionInterface4perl( hasse_diagram_X_x, T0 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturn( hasse_diagram(arg0.get<T0>(), arg1) );
+      WrapperReturn( (hasse_diagram(arg0.get<T0>(), arg1)) );
    };
 
    FunctionInstance4perl(hasse_diagram_X_x, perl::Canned< const IncidenceMatrix< NonSymmetric > >);

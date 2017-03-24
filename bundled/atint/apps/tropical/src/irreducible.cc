@@ -29,14 +29,11 @@
 #include "polymake/Array.h"
 #include "polymake/PowerSet.h"
 #include "polymake/linalg.h"
+#include "polymake/common/lattice_tools.h"
 #include "polymake/tropical/lattice.h"
 #include "polymake/tropical/thomog.h"
-#include "polymake/tropical/LoggingPrinter.h"
 
 namespace polymake { namespace tropical {
-	using namespace atintlog::donotlog;
-	//using namespace atintlog::dolog;
-	//   using namespace atintlog::dotrace;
 
 
 	///////////////////////////////////////////////////////////////////////////////////////
@@ -44,12 +41,15 @@ namespace polymake { namespace tropical {
 	Matrix<Rational> cycle_weight_space(perl::Object C) {
 
 		//Extract values
+		Matrix<Rational> rays = C.give("VERTICES");
+                if (rays.rows()==0)
+                  return Matrix<Rational>();
+                rays = tdehomog(rays);
+		Matrix<Rational> linspace = C.give("LINEALITY_SPACE");
+                linspace = tdehomog(linspace);
+
 		int ambient_dim = C.give("PROJECTIVE_AMBIENT_DIM");
 		int dim = C.give("PROJECTIVE_DIM");
-		Matrix<Rational> rays = C.give("VERTICES");
-			rays = tdehomog(rays);
-		Matrix<Rational> linspace = C.give("LINEALITY_SPACE");
-			linspace = tdehomog(linspace);
 		IncidenceMatrix<> maximal_cones = C.give("MAXIMAL_POLYTOPES");
 
 		//If there is only one maximal polytope, this is (possibly locally) only a linear space
@@ -63,15 +63,14 @@ namespace polymake { namespace tropical {
 		IncidenceMatrix<> maximal_to_codim = T(codim_in_maximal);
 		Map<std::pair<int,int>, Vector<Integer> > lattice_normals = C.give("LATTICE_NORMALS");
 		//Dehomogenize lattice normals as well
-		for(Entire<Map<std::pair<int,int>, Vector<Integer> > >::iterator ln = entire(lattice_normals); !ln.at_end(); ln++) {
-			lattice_normals[ (*ln).first] = tdehomog_vec( (*ln).second);
+		for (auto& ln : lattice_normals) {
+                  lattice_normals[ln.first] = tdehomog_vec(ln.second);
 		}
 
 		if(dim == 0) {
 			return unit_matrix<Rational>(maximal_cones.rows());
 		}
 
-		//dbgtrace << "Computing equivalence classes" << endl;
 
 		//Compute equivalence classes of maximal cones
 		//and while doing so identify those classes which can not be balanced (i.e. which have to have
@@ -114,18 +113,14 @@ namespace polymake { namespace tropical {
 			}//END if not in a class yet
 		}//END iterate maximal cones to find equiv. classes
 
-		//dbgtrace << "Zero classes: " << zero_classes << endl;
-		//dbgtrace << "Clas indices: " << class_index << endl;
 
 		//Linear system matrix
 		Matrix<Rational> system_matrix(0,subdivision_classes.dim());
 
-		//dbgtrace << "Computing system matrices" << endl;
 
 		//Iterate codimension one faces to compute local signature systems
 		for(int tau = 0; tau < codim_1_faces.rows(); tau++) {
 
-			//dbgtrace << "Computing signature neighbours" << endl;
 			//Create local system matrix for tau
 			Matrix<Rational> Mtau(ambient_dim+1,0);
 			//Find signature neighbours
@@ -141,13 +136,11 @@ namespace polymake { namespace tropical {
 			}//END iterate all neighbours to find signature ones
 			Vector<int> sig_neighbours(all_neighbours - nonsig_neighbours);
 
-			//dbgtrace << "Signature neighbours " << sig_neighbours << endl;
 
 			for(int smc = 0; smc < sig_neighbours.dim(); smc++) {
 				Mtau |= lattice_normals[std::make_pair(tau, sig_neighbours[smc])];
 			}//END iterate signature neighbours
 
-			//dbgtrace << "Computing lattice basis" << endl;
 
 			if(dim > 1) {
 				Matrix<Integer> lbasis = 	
@@ -156,11 +149,9 @@ namespace polymake { namespace tropical {
 			}//END compute lattice basis
 
 
-			//dbgtrace << "Appending result " << endl;
 
 			//Compute kernel
 			Matrix<Rational> Ktau = null_space(Mtau);
-			//dbgtrace << "Kernel: " << Ktau << endl;
 			//Compute the conversion to the total weight space:
 			Set<int> remaining_classes = sequence(0,subdivision_classes.dim());
 			Matrix<Rational> Ptau(Ktau.rows(), subdivision_classes.dim());
@@ -174,7 +165,6 @@ namespace polymake { namespace tropical {
 				Ptau /= unit_vector<Rational>(subdivision_classes.dim(),*rc);
 			}//END add unit vectors for remaining classes
 
-			//dbgtrace << "Transform: " << Ptau << endl;
 
 			//Compute equations, attach to total system and reduce
 			system_matrix /= null_space(Ptau);
@@ -183,7 +173,6 @@ namespace polymake { namespace tropical {
 
 		}//END iterate codimension one faces
 
-		//dbgtrace << "Transforming..." << endl;
 
 		//To compute the final subdivision weight space, we add the equation that all zero classes
 		// must have weight 0
@@ -268,7 +257,7 @@ namespace polymake { namespace tropical {
 		//Compute equations: The linear combination of the rays of the cone must be the weight vector of the variety
 		Vector<Rational> rweights(weights);
 		Matrix<Rational> crays = cone.give("RAYS");
-		crays = Matrix<Rational>(makePrimitiveInteger(crays));
+		crays = Matrix<Rational>(common::primitive(crays));
 		crays = (- rweights) | T(crays);
 
 		//Facets = positive orthant

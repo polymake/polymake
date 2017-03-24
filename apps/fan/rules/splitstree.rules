@@ -1,0 +1,124 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+CREDIT splitstree
+  SplitsTree4 is the leading application for computing evolutionary networks from molecular sequence data.
+  Copyright by Daniel Huson and David Bryant.
+  http://www.splitstree.org/
+
+
+package SplitsTree::Viewer;
+
+# path to SplitsTree
+custom $splitstree;
+
+CONFIGURE {
+   find_program($splitstree, "SplitsTree");
+}
+
+###########################################################################################
+#
+#  Object type to visualize with SplitsTree
+#
+
+package Visual::FiniteMetricSpace;
+
+use Polymake::Struct (
+   [ '@ISA' => 'Object' ],
+   [ '$metric' => '#%' ],
+   [ '$taxa' => 'unify_labels(#%)', default => 'undef' ],
+);
+
+
+###########################################################################################
+#
+#  Static (file-based) implementation of the Viewer interface
+#
+
+package SplitsTree::Viewer;
+
+use SplitsTree;
+use BackgroundViewer;
+
+use Polymake::Struct [ '@ISA' => 'SimpleViewer' ];
+
+sub file_suffix { ".nex" }
+
+sub command {
+   my ($self, $filename)=@_;
+   "$splitstree -i $filename";
+}
+
+# @category Visualization
+# Use [[wiki:external_software#SplitsTree]] to show planar images of tight spans.
+label splitstree
+
+global_method splitstree.tight_span: draw(Visual::FiniteMetricSpace) {
+   my ($self, $M)=@_;
+   $self->graphics->metric=$M->metric;
+   $self->graphics->taxa=$M->taxa;
+}
+
+
+package SplitsTree::File::Writer;
+import Visual::FileWriter;
+
+package application;
+
+# @category Visualization
+# Visualize the splits of a finite metric space (that is, a planar image of a tight span).  Calls SplitsTree.
+# @param Matrix<Rational> M Matrix defining a metric
+# @option Array<String> taxa Labels for the taxa
+# @option String name Name of the file
+# @return Visual::Object
+user_function visual_splitstree ($;{taxa=>undef, name=>undef}) {
+    my $mat = new Matrix(shift);
+    my $opt = shift;
+    my $label = $opt->{taxa}; 
+    my $name = $opt->{name};
+    if(!defined($label)){ $label = [0..$mat->rows-1];}
+    if(!defined($name)){ $name = 'polymake_splitstree'}
+   
+   my $M= new Visual::FiniteMetricSpace(Name => $name,
+					metric => (convert_to<Float>( $mat )),
+					taxa => $label);
+   visualize($M);
+}
+
+# @category Visualization
+# Call [[wiki:external_software#SplitsTree]] with the given visual objects.
+#
+# @param Visual::Object vis_obj ... objects to display
+#
+# @option String File "filename" or "AUTO"
+#  Only create a NEXUS format file, don't start the GUI.
+#
+#  The ''.nex'' suffix is automatically added to the file name.
+#
+#  Specify //AUTO// if you want the filename be automatically derived from the drawing title.
+#
+#  You can also use any expression allowed for the ''open'' function,
+#  including "-" for terminal output, "&HANDLE" for an already opened file handle,
+#  or "| program" for a pipe.
+
+user_function splitstree(Visual::Object+, { File => undef }) {
+   visualize_explicit(@_, "SplitsTree");
+}
+
+
+# Local Variables:
+# cperl-indent-level:3
+# mode: perl
+# End:

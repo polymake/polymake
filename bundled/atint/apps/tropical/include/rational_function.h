@@ -35,18 +35,17 @@
 #include "polymake/tropical/misc_tools.h"
 #include "polymake/tropical/linear_algebra_tools.h"
 #include "polymake/tropical/polynomial_tools.h"
-#include "polymake/tropical/LoggingPrinter.h"
 
 #ifndef POLYMAKE_ATINT_RATIONAL_FUNCTION_H
 #define POLYMAKE_ATINT_RATIONAL_FUNCTION_H
 
 namespace polymake { namespace tropical {
 	template <typename Addition>
-		perl::Object computePolynomialDomain(const Polynomial<TropicalNumber<Addition> > &p) {
+		perl::Object computePolynomialDomain(const Polynomial<TropicalNumber<Addition>>& p) {
 			Matrix<Rational> monoms(p.monomials_as_matrix());
-			Vector<TropicalNumber<Addition> > coefs = p.coefficients_as_vector();
+			Vector<TropicalNumber<Addition>> coefs = p.coefficients_as_vector();
 
-			if(monoms.rows() <= 1) {
+			if (monoms.rows() <= 1) {
 				return projective_torus<Addition>(monoms.cols()-1,0);
 			}
 
@@ -74,7 +73,7 @@ namespace polymake { namespace tropical {
 					ineq /= Addition::orientation()*(Rational(coefs[i])|monoms[i]);
 			}
 
-			perl::Object dome(perl::ObjectType::construct<Rational>("polytope::Polytope"));
+			perl::Object dome("polytope::Polytope<Rational>");
 			dome.take("INEQUALITIES") << ineq;
 			dome.take("FEASIBLE") << true;
 			dome.take("BOUNDED") << false;

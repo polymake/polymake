@@ -1,10 +1,11 @@
-/* sorttemplates.c version 1.0, May 11, 2010.
+/* sorttemplates.c version 1.1, Oct 9, 2013.
  * Author: Brendan McKay; bdm@cs.anu.edu.au
  *
  * This file contains templates for creating in-place sorting procedures
  * for different data types.  It cannot be compiled separately but
  * should be #included after defining a few preprocessor variables.
- *   SORT_OF_SORT and SORT_NAME are required, the rest have defaults.
+ *   SORT_OF_SORT, SORT_NAME and SORT_TYPE1 are required, and
+ *   SORT_TYPE2 is needed for SORT_OF_SORT > 1.
  * 
  *   SORT_OF_SORT = 1: Creates a procedure
  *         static void SORT_NAME(SORT_TYPE1 *x, int n)
@@ -20,10 +21,10 @@
  * 
  *   SORT_NAME = the name of the procedure to be created
  *
- *   SORT_TYPE1 = type of the first or only array (default "int")
+ *   SORT_TYPE1 = type of the first or only array (no default)
  *   	 This can be any numeric type for SORT_OF_SORT=1,2, but
  *   	 should be an integer type for SORT_OF_SORT=3.
- *   SORT_TYPE2 = type of the second array if needed (default "int")
+ *   SORT_TYPE2 = type of the second array if needed (no default)
  *       This can be any assignable type (including a structure) for
  *       SORT_OF_SORT=2, but must be a numeric type for SORT_OF_SORT=3.
  *
@@ -50,15 +51,11 @@
 #endif
 
 #ifndef SORT_TYPE1
-#define SORT_TYPE1 int
-#endif
-
-#ifndef SORT_TYPE2
-#define SORT_TYPE2 int
+ #error "SORT_TYPE1 must be defined before including sorttemplates.c"
 #endif
 
 #ifndef SORT_MINPARTITION
-#define SORT_MINPARTITION 10
+#define SORT_MINPARTITION 11
 #endif
 
 #ifndef SORT_MINMEDIAN9
@@ -191,6 +188,10 @@ SORT_NAME(SORT_TYPE1 *x, int n)
 #endif
 
 #if SORT_OF_SORT == 2
+#ifndef SORT_TYPE2
+ #error "SORT_TYPE2 must be defined before including sorttemplates.c"
+#endif
+
 SORT_FUNCTYPE
 SORT_NAME(SORT_TYPE1 *x, SORT_TYPE2 *y, int n)
 {
@@ -318,6 +319,10 @@ SORT_NAME(SORT_TYPE1 *x, SORT_TYPE2 *y, int n)
 #endif
 
 #if SORT_OF_SORT == 3
+#ifndef SORT_TYPE2
+ #error "SORT_TYPE2 must be defined before including sorttemplates.c"
+#endif
+
 SORT_FUNCTYPE
 SORT_NAME(SORT_TYPE1 *x, SORT_TYPE2 *y, int n)
 {
@@ -436,3 +441,5 @@ SORT_NAME(SORT_TYPE1 *x, SORT_TYPE2 *y, int n)
 
 #undef SORT_NAME
 #undef SORT_OF_SORT
+#undef SORT_TYPE1
+#undef SORT_TYPE2

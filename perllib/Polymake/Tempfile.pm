@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -18,6 +18,7 @@ use namespaces;
 use feature 'state';
 
 require 'Polymake/file_utils.pl';
+require Cwd;
 
 package Polymake::Tempfile;
 use POSIX ':errno_h';
@@ -46,6 +47,9 @@ use overload '""' => sub { $ {$_[0]} ||= dir()."/".unique_name(); };
 sub basename { $ {$_[0]} =~ m|/(poly[^/]+)$|; $1 }
 sub dirname { $ {$_[0]} =~ m|(.*)/poly[^/]+$|; $1 }
 sub rename { my $name="$_[0]"; ++$rename_cnt; $name=~s/T(?=\w+$)/N${rename_cnt}_/; $name }
+
+# filename => boolean
+sub is_a { index($_[1], dir())==0 }
 
 sub DESTROY {
    my ($self)=@_;
@@ -88,6 +92,19 @@ sub new_dir {
                 });
       1 };
    $path
+}
+
+package Polymake::TempChangeDir;
+
+sub new {
+   my ($pkg, $to_dir)=@_;
+   my $cwd=Cwd::getcwd;
+   chdir $to_dir or die "can't change into $to_dir: $!\n";
+   bless \$cwd, $pkg;
+}
+
+sub DESTROY {
+   chdir ${$_[0]} or warn "can't change back into ${$_[0]}: $!\n";
 }
 
 1

@@ -39,29 +39,27 @@ namespace singular {
 
    idhdl check_ring(idhdl singularRinghdl);
    // idhdl check_ring(const Ring<> r, const Matrix<int> order);
-   idhdl check_ring(const Ring<> r);
+   idhdl check_ring(const int n_vars);
     
    template <typename OrderType>
-   idhdl check_ring(const Ring<> polymakeRing, SingularTermOrderData<OrderType> termOrder) {
+   idhdl check_ring(const int n_vars, SingularTermOrderData<OrderType> termOrder) {
       init_singular();
-      Ring<>::id_type id = polymakeRing.id();
-      std::pair<Ring<>::id_type, SingularTermOrderData<OrderType > > pair_to(id, termOrder);
+      std::pair<int, SingularTermOrderData<OrderType > > pair_to(n_vars, termOrder);
       if(!stom_new.exists(pair_to)){
-           int nvars = polymakeRing.n_vars();
-           if(nvars == 0) 
+           if(n_vars == 0) 
              throw std::runtime_error("Given ring is not a polynomial ring.");
            // Create variables:
-           char **variableNames=(char**)omalloc(nvars*sizeof(char*));
-           for(int i=0; i<nvars; i++)
+           char **variableNames=(char**)omalloc(n_vars*sizeof(char*));
+           for(int i=0; i<n_vars; i++)
            {
-             variableNames[i] = omStrDup(polymakeRing.names()[i].c_str());
+             variableNames[i] = omStrDup(("x_" + std::to_string(i)).c_str());
            }
            int ord_size = termOrder.get_ord_size();
-           int *ord = termOrder.get_ord();
+           singular_order_type *ord = termOrder.get_ord();
            int *block0 = termOrder.get_block0();
            int *block1 = termOrder.get_block1();
            int **wvhdl = termOrder.get_wvhdl();
-           ring singularRing = rDefault(0,nvars,variableNames,ord_size,ord,block0,block1,wvhdl);
+           ring singularRing = rDefault(0,n_vars,variableNames,ord_size,ord,block0,block1,wvhdl);
            // ceil(log_10(2))=3
            char* ringid = (char*) malloc(2+3*sizeof(unsigned int)+1);
            sprintf(ringid,"R_%0u",ringidcounter++); 

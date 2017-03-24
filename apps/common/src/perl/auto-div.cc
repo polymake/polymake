@@ -16,10 +16,11 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/Rational.h"
+#include "polymake/RationalFunction.h"
 #include "polymake/client.h"
 #include "polymake/numerical_functions.h"
-#include "polymake/RationalFunction.h"
-#include "polymake/Rational.h"
+
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1>
@@ -29,5 +30,6 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(div_X_X, perl::Canned< const UniPolynomial< Rational, int > >, perl::Canned< const UniPolynomial< Rational, int > >);
+   FunctionInstance4perl(div_X_X, int, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

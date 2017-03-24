@@ -19,25 +19,17 @@ GNU General Public License for more details.
 
 #include "polymake/tropical/arithmetic.h"
 #include "polymake/linalg.h"
+#include "polymake/common/hadamard_product.h"
 
 namespace polymake { namespace tropical {
 
-
-
-	//FIXME This is terrible and can probably be done in a better way.
-	/*
-	 * Converts a Matrix<Scalar> to a Matrix<TropicalNumber>
-	 */
-	template <typename Addition, typename Scalar, typename VectorTop>
-		Vector<TropicalNumber<Addition,Scalar> > convert_to_tropical_vector(const GenericVector<VectorTop, Scalar> &V) {
-			Vector<TropicalNumber<Addition,Scalar> > result(V.dim());
-			int v_index = 0;
-			for(typename Entire<VectorTop >::const_iterator it = entire(V.top()); !it.at_end(); it++) {
-				result[v_index] = TropicalNumber<Addition,Scalar>(*it);
-				v_index++;
-			}
-			return result;
-		}	
+   struct CovectorDecoration : public GenericStruct<CovectorDecoration> {
+      DeclSTRUCT( DeclFIELD(face, Set<int>)
+                  DeclFIELD(rank,int)
+                  DeclFIELD(covector,IncidenceMatrix<>) );
+      CovectorDecoration() {}
+      CovectorDecoration(Set<int> f, int r, IncidenceMatrix<> cv) : face(f), rank(r), covector(cv) {}
+   };
 
 	/*
 	 * @brief compute the covector of a single point in tropical projective space wrt a matrix of generators
@@ -50,7 +42,7 @@ namespace polymake { namespace tropical {
 	  Set<int> non_support = sequence(0, point.dim()) - support(point);
 
 	  Array<Set<int> > pt_covector(dimension);
-	  
+
 	  int gn_index = 0;
 	  for(typename Entire< Rows< Matrix<TNumber> > >::const_iterator gn = entire(rows(generators)); !gn.at_end(); gn++, gn_index++) {
 	    Vector<TNumber> tdiff = rel_coord(*gn, point.top());
@@ -60,7 +52,7 @@ namespace polymake { namespace tropical {
 	    // determine the extremal entries
 	    for(typename Entire<Vector<TNumber> >::iterator td = entire(tdiff); !td.at_end(); td++, td_index++) {
 	      if(*td == extremum) extremal_entries += td_index;
-	    } 
+	    }
 	    // add the containing sectors to the covector of pt
 	    for(Entire<Set<int> >::iterator ext_it = entire(extremal_entries); !ext_it.at_end(); ext_it++) {
 	      pt_covector[*ext_it] += gn_index;
@@ -68,35 +60,33 @@ namespace polymake { namespace tropical {
 	  }
 	  return IncidenceMatrix<>(pt_covector);
 	}
-	
+
 
 	/*
 	 * @brief determine the covector of a 0-1-ray wrt a matrix of generators
 	 * for this only the index set of the 1 entries and the supports of the generators are taken into account
 	 */
 	template <typename Addition, typename Scalar>
-	  IncidenceMatrix<> artificial_ray_covector ( const Set<int> &one_entries, 
-						      const Matrix<TropicalNumber<Addition, Scalar> > &generators) {
+	  IncidenceMatrix<> artificial_ray_covector(const Set<int> &one_entries,
+						    const Matrix<TropicalNumber<Addition, Scalar>> &generators) {
 	  const int dimension(generators.cols());
-	  Array<Set<int> > pt_covector(dimension);
+	  RestrictedIncidenceMatrix<> pt_covector(dimension);
 	  int gn_index = 0;
-	  for(typename Entire< Rows< Matrix< TropicalNumber<Addition, Scalar> > > >::const_iterator gn = entire(rows(generators)); 
-	      !gn.at_end(); gn++, gn_index++) {
+	  for (auto gn = entire(rows(generators)); !gn.at_end(); ++gn, ++gn_index) {
 
-	    if ( pm::incl(one_entries, sequence(0, dimension) - support(*gn)) <= 0 ) {
-	      //FIXME: Maybe this can be executed more efficiently be directly applying the operation
-	      pt_covector = attach_operation(pt_covector, 
-					     pm::operations::fix2<int, operations::add>(gn_index));
+	    if ( incl(one_entries, sequence(0, dimension) - support(*gn)) <= 0 ) {
+              for (int r=0; r<dimension; ++r)
+                pt_covector(r, gn_index)=true;
 	    }
 	    else {
-	      for(Entire<Set<int> >::const_iterator covector_index_it = entire(one_entries); !covector_index_it.at_end(); covector_index_it++) {
-		pt_covector[*covector_index_it] += gn_index;
+	      for (int covector_index : one_entries) {
+		pt_covector(covector_index, gn_index)=true;
 	      }
 	    }
 	  }
-	  return pt_covector;
+	  return IncidenceMatrix<>(std::move(pt_covector));
 	}
-		
+
 
 	//Documentation see perl wrapper
 	template <typename Addition, typename Scalar>
@@ -109,7 +99,7 @@ namespace polymake { namespace tropical {
 	  for(typename Entire< Rows <Matrix<TNumber> > >::const_iterator pt = entire(rows(points)); !pt.at_end(); pt++, pt_index++) {
 	    //call the computation of the covector for every single point
 	    result[pt_index] = single_covector(*pt, generators);
-	  }//END iterate points	
+	  }//END iterate points
 	return result;
 
 	}
@@ -119,24 +109,56 @@ namespace polymake { namespace tropical {
 
 	template <typename Addition, typename Scalar>
 		Array<IncidenceMatrix<> > covectors_of_scalar_vertices( const Matrix<Scalar> &points,
-									const Matrix<TropicalNumber<Addition,Scalar> > &generators) {
+									const Matrix<TropicalNumber<Addition,Scalar> > &generators)
+        {
 	  const int dimension(generators.cols());
 	  Array<IncidenceMatrix<> > result(points.rows());
 	  int pt_index = 0;
-	  for(typename Entire< Rows <Matrix<Scalar> > >::const_iterator pt = entire(rows(points)); !pt.at_end(); pt++, pt_index++) {
+	  for (auto pt = entire(rows(points)); !pt.at_end(); pt++, pt_index++) {
 	    if ((*pt)[0] == 1) {
-	      result[pt_index] = single_covector(convert_to_tropical_vector<Addition>((*pt).slice(sequence(1,dimension))), generators);
+	      result[pt_index] = single_covector(Vector<TropicalNumber<Addition, Scalar>>(pt->slice(1)), generators);
 	    }
-	  
-	    else {
-	      Set<int> one_entries = support((*pt).slice(sequence(1,dimension))); //the indices of the 1-entries of the 0/1-ray
-	      if ( (*pt)[ *(one_entries.begin())+1 ] * Addition::orientation() < 0 ) one_entries = sequence(0, dimension) - one_entries;
+            else {
+	      Set<int> one_entries = support(pt->slice(1)); //the indices of the 1-entries of the 0/1-ray
+	      if ( (*pt)[ one_entries.front()+1 ] * Addition::orientation() < 0 )
+                one_entries = sequence(0, dimension) - one_entries;
 
 	      result[pt_index] = artificial_ray_covector (one_entries, generators);
 	    }
 	  }
 	  return result;
-	  } 
-}}
+        }
+
+		/*
+	 * @brief compute the generalized covector of a single point w.r.t. apices defining inequalities
+	 *
+	 */
+    template <typename Addition, typename Scalar, typename VectorTop, typename MatrixTop>
+      IncidenceMatrix<> generalized_apex_covector( const GenericVector<VectorTop, TropicalNumber<Addition,Scalar> > &point, const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> > &apices) {
+	  typedef TropicalNumber<Addition, Scalar> TNumber;
+	  const int dimension(apices.rows());
+
+	  Array<Set<int> > pt_covector(dimension);
+
+	  for(auto apex = ensure(rows(apices),(pm::cons<pm::end_sensitive, pm::indexed>*)0).begin(); !apex.at_end(); apex++) {
+	    TNumber extremum = *apex*point;
+	    if (!is_zero(extremum)) {
+	      Vector<TNumber> hadaprod(attach_operation(*apex,point.top(),operations::mul()));
+	      Set<int> extremal_entries = indices(attach_selector(hadaprod, operations::fix2<TNumber,operations::eq>(extremum)));
+
+	      // add the containing sectors to the covector of pt
+	      pt_covector[apex.index()] = extremal_entries;
+	    }
+	  }
+	  return IncidenceMatrix<>(pt_covector);
+	}
+
+}
+
+using tropical::CovectorDecoration;
+
+}
+
+
 
 #endif

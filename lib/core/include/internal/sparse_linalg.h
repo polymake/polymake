@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -22,21 +22,20 @@
 namespace pm {
 
 template <typename E>
-typename enable_if<E, is_field<E>::value>::type
+typename std::enable_if<is_field<E>::value, E>::type
 det(SparseMatrix<E> M)
 {
    const int dim = M.rows();
    if (!dim) return zero_value<E>();
 
    std::vector<int> column_permutation(dim);
-   copy(entire(sequence(0,dim)), column_permutation.begin());
+   copy_range(entire(sequence(0, dim)), column_permutation.begin());
    E result = one_value<E>();
 
-   for (typename Entire< Rows< SparseMatrix<E> > >::iterator pivotrow=entire(rows(M));
-        !pivotrow.at_end(); ++pivotrow) {
+   for (auto pivotrow=entire(rows(M)); !pivotrow.at_end(); ++pivotrow) {
       if (pivotrow->empty()) return zero_value<E>();
 
-      typename SparseMatrix<E>::row_type::iterator pivot=pivotrow->begin();
+      auto pivot=pivotrow->begin();
       const int pr=pivotrow.index(), pc=pivot.index();   // row and column index
       result *= *pivot;
       if (column_permutation[pr] != pc) {
@@ -44,7 +43,7 @@ det(SparseMatrix<E> M)
          negate(result);
       }
 
-      typename SparseMatrix<E>::col_type::iterator beneath=cross_direction(pivot);
+      auto beneath=cross_direction(pivot);
       ++beneath;
       while (!beneath.at_end()) {
          // delete all elements below pivot
@@ -58,37 +57,21 @@ det(SparseMatrix<E> M)
 }
 
 template <typename E>
-E
-trace(SparseMatrix<E> M)
-{
-   E trace(zero_value<E>());
-   int i(0);
-   for (typename Entire< Rows< SparseMatrix<E> > >::iterator rowit=entire(rows(M)); !rowit.at_end(); ++rowit, ++i) {
-      typename SparseMatrix<E>::row_type::iterator eltit = rowit->begin();
-      while (!eltit.at_end() && eltit.index() < i)
-         ++eltit;
-      if (!eltit.at_end() && eltit.index() == i)
-         trace += *eltit;
-   }
-   return trace;
-}
-
-template <typename E>
-typename enable_if<SparseVector<E>, is_field<E>::value>::type
+typename std::enable_if<is_field<E>::value, SparseVector<E>>::type
 reduce(SparseMatrix<E> M, SparseVector<E> V)
 {
    const int n_cols=M.cols();
    int col=0;
-   for (typename Entire< Rows< SparseMatrix<E> > >::iterator pivotrow=entire(rows(M));
+   for (auto pivotrow=entire(rows(M));
         !pivotrow.at_end() && col < n_cols; ++pivotrow) {
       if (pivotrow->empty()) continue;
 
-      typename SparseMatrix<E>::row_type::iterator pivot=pivotrow->begin();
+      auto pivot=pivotrow->begin();
       const E pivotelem=*pivot;
 
       (*pivotrow) /= pivotelem;
 
-      typename SparseMatrix<E>::col_type::iterator in_col = cross_direction(pivotrow->begin());
+      auto in_col = cross_direction(pivotrow->begin());
       for (++in_col; !in_col.at_end(); ) {
          const E factor=*in_col;
          const int r2=in_col.index();
@@ -103,17 +86,17 @@ reduce(SparseMatrix<E> M, SparseVector<E> V)
 }
 
 template <typename E>
-typename enable_if<SparseMatrix<E>, is_field<E>::value>::type
+typename std::enable_if<is_field<E>::value, SparseMatrix<E>>::type
 inv(SparseMatrix<E> M)
 {
    const int dim=M.rows();
    SparseMatrix<E> L=unit_matrix<E>(dim), R=unit_matrix<E>(dim);
 
-   for (typename Entire< Cols< SparseMatrix<E> > >::iterator c=entire(cols(M)); !c.at_end(); ++c) {
+   for (auto c=entire(cols(M)); !c.at_end(); ++c) {
       if (c->empty()) throw degenerate_matrix();
 
-      typename SparseMatrix<E>::col_type::iterator in_col=c->begin();
-      typename SparseMatrix<E>::row_type::iterator in_row=cross_direction(in_col);
+      auto in_col=c->begin();
+      auto in_row=cross_direction(in_col);
       int pr=in_col.index(), pc=c.index();
       const E pivotelem=*in_col;
       M.row(pr) /= pivotelem;  L.row(pr) /= pivotelem;  ++in_col;
@@ -128,27 +111,27 @@ inv(SparseMatrix<E> M)
          M.row(pr).erase(in_row++);
       }
    }
-   R.permute_cols(attach_operation(rows(M), BuildUnary<operations::front_index>()).begin());
+   R.permute_cols(attach_operation(rows(M), BuildUnary<operations::front_index>()));
    return R*L;
 }
 
 template <typename E>
-typename enable_if<Vector<E>, is_field<E>::value>::type
+typename std::enable_if<is_field<E>::value, Vector<E>>::type
 lin_solve(SparseMatrix<E> A, Vector<E> B)
 {
    const int m=A.rows(), n=A.cols();
    int non_empty_rows=m-n;
    if (non_empty_rows<0) throw degenerate_matrix();
 
-   for (typename Entire< Rows< SparseMatrix<E> > >::iterator r=entire(rows(A)); !r.at_end(); ++r) {
+   for (auto r=entire(rows(A)); !r.at_end(); ++r) {
       const int pr=r.index();
       if (r->empty()) {
          if (--non_empty_rows<0) throw degenerate_matrix();
          if (!is_zero(B[pr])) throw infeasible();
          continue;
       }
-      typename SparseMatrix<E>::row_type::iterator in_row=r->begin();
-      typename SparseMatrix<E>::col_type::iterator in_col=cross_direction(in_row);
+      auto in_row=r->begin();
+      auto in_col=cross_direction(in_row);
       const E pivotelem=*in_row;
       if (!is_one(pivotelem)) {
          (*r) /= pivotelem;
@@ -165,7 +148,7 @@ lin_solve(SparseMatrix<E> A, Vector<E> B)
    }
 
    Vector<E> result(A.cols());
-   for (typename Entire< Rows< SparseMatrix<E> > >::reverse_iterator r=entire(reversed(rows(A))); !r.at_end(); ++r) {
+   for (auto r=entire(reversed(rows(A))); !r.at_end(); ++r) {
       if (r->empty()) continue;
       typename SparseMatrix<E>::row_type::iterator in_row=r->begin();
       typename SparseMatrix<E>::col_type::iterator in_col=cross_direction(in_row);

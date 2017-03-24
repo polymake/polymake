@@ -30,15 +30,14 @@
 #include "polymake/Rational.h"
 #include "polymake/Polynomial.h"
 #include "polymake/TropicalNumber.h"
-#include "polymake/tropical/LoggingPrinter.h"
 
 
 namespace polymake { namespace tropical {
 
 	template <typename Addition>
-		Rational evaluate_polynomial(const Polynomial<TropicalNumber<Addition> > &p, const Vector<Rational> &v){
+		Rational evaluate_polynomial(const Polynomial<TropicalNumber<Addition>> &p, const Vector<Rational> &v){
 			Matrix<Rational> monoms(p.monomials_as_matrix());
-			Vector<TropicalNumber<Addition> > coefs(p.coefficients_as_vector());
+			Vector<TropicalNumber<Addition>> coefs(p.coefficients_as_vector());
 
 			TropicalNumber<Addition> result = TropicalNumber<Addition>::zero();
 			for(int m = 0; m < monoms.rows(); m++) {
@@ -50,7 +49,7 @@ namespace polymake { namespace tropical {
 
 	template <typename Coefficient>
 		Vector<int> degree_vector(const Polynomial<Coefficient> &p){
-			return p.monomials_as_matrix()* ones_vector<int>(p.get_ring().n_vars());
+			return accumulate( cols(p.monomials_as_matrix()), operations::add());
 		}
 
 	template <typename Coefficient>
@@ -65,35 +64,6 @@ namespace polymake { namespace tropical {
 			Vector<int> dv = degree_vector(p);
 			return dv == dv[0] * ones_vector<int>(dv.dim());
 		}
-
-/*	template <typename Coefficient>
-		Polynomial<Coefficient> homogenize(const Polynomial<Coefficient> &p){
-			if(p.monomials_as_matrix().rows() == 0) return Polynomial<Coefficient>(p);
-			
-		}*/
-
-	template <typename Coefficient>
-		Polynomial<Coefficient> tolerant_addition(const Polynomial<Coefficient> &p, 
-																const Polynomial<Coefficient> &q) {
-			Ring<Coefficient> rp = p.get_ring();
-			Matrix<int> monoms = q.monomials_as_matrix();
-			Vector<Coefficient> coeffs = q.coefficients_as_vector();
-			Polynomial<Coefficient> newq(monoms,coeffs,rp);
-			return p + newq;
-		}
-
-	template <typename Coefficient>
-		Polynomial<Coefficient> tolerant_multiplication(const Polynomial<Coefficient> &p, 
-																const Polynomial<Coefficient> &q) {
-			Ring<Coefficient> rp = p.get_ring();
-			Matrix<int> monoms = q.monomials_as_matrix();
-			Vector<Coefficient> coeffs = q.coefficients_as_vector();
-			Polynomial<Coefficient> newq(monoms,coeffs,rp);
-			return p * newq;
-		}
-
-
-
-}}
+} }
 
 #endif

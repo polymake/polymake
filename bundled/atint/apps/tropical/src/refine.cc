@@ -30,7 +30,6 @@
 #include "polymake/linalg.h"
 #include "polymake/tropical/solver_def.h"
 #include "polymake/tropical/thomog.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/separated_data.h"
 #include "polymake/tropical/linear_algebra_tools.h"
 #include "polymake/tropical/minimal_interior.h"
@@ -41,9 +40,6 @@
 namespace polymake { namespace tropical {
 
 
-	using namespace atintlog::donotlog;
-	// using namespace atintlog::dolog;
-	//using namespace atintlog::dotrace;
 	
 	typedef std::pair<Matrix<Rational>, Matrix<Rational> > matrix_pair;
 
@@ -51,40 +47,45 @@ namespace polymake { namespace tropical {
 
 	///////////////////////////////////////////////////////////////////////////////////////
 
-	RefinementResult refinement(perl::Object X, perl::Object Y, 
+	RefinementResult refinement(perl::Object X, perl::Object Y,
 			bool repFromX, bool repFromY,bool computeAssoc,bool refine, bool forceLatticeComputation) {
 		solver<Rational> sv;
 
 
-		//Sanity check 
-		if(CallPolymakeFunction("is_empty", X)) {
+		//Sanity check
+		if (call_function("is_empty", X)) {
+                  int ambient_dim=X.give("PROJECTIVE_AMBIENT_DIM");
+                  ambient_dim+=2;
 			RefinementResult r;
 				r.complex = X;
-				r.rayRepFromX = Matrix<Rational>();
-				r.linRepFromX = Matrix<Rational>();
-				r.rayRepFromY = Matrix<Rational>();
-				r.linRepFromY = Matrix<Rational>();
+				r.rayRepFromX = Matrix<Rational>(0, ambient_dim);
+				r.linRepFromX = Matrix<Rational>(0, ambient_dim);
+				r.rayRepFromY = Matrix<Rational>(0, ambient_dim);
+				r.linRepFromY = Matrix<Rational>(0, ambient_dim);
 				r.associatedRep = Vector<int>();
 			return r;
 		}
 
-		//All computations will be done on affine charts of X and Y, the result will then be lifted 
+		//All computations will be done on affine charts of X and Y, the result will then be lifted
 		// at the end.
 		//This is to reduce the amount of work we have to do in convex hull computations
 
 		//Extract values of the variety
 
-		Matrix<Rational> x_rays = X.give("VERTICES");
-		x_rays = tdehomog(x_rays);
-		IncidenceMatrix<> x_cones = X.give("MAXIMAL_POLYTOPES");
-		Matrix<Rational> x_cmplx_rays = repFromX? X.give("SEPARATED_VERTICES") : Matrix<Rational>();
-		x_cmplx_rays = tdehomog(x_cmplx_rays);
-		IncidenceMatrix<> x_cmplx_cones = repFromX? X.give("SEPARATED_MAXIMAL_POLYTOPES") : IncidenceMatrix<>();
-		Matrix<Rational> x_lineality = X.give("LINEALITY_SPACE");
-		x_lineality = tdehomog(x_lineality);
-		int x_lineality_dim = X.give("LINEALITY_DIM");
-		int ambient_dim = std::max(x_lineality.cols(),x_rays.cols());
-		int x_dimension = X.give("PROJECTIVE_DIM");	
+		const Matrix<Rational> &x_rays_ref = X.give("VERTICES");
+		const Matrix<Rational> x_rays = tdehomog(x_rays_ref);
+		const IncidenceMatrix<> &x_cones = X.give("MAXIMAL_POLYTOPES");
+		Matrix<Rational> x_cmplx_rays(0, x_rays.cols());
+                if (repFromX) {
+                  X.give("SEPARATED_VERTICES") >> x_cmplx_rays;
+                  x_cmplx_rays = tdehomog(x_cmplx_rays);
+                }
+		const IncidenceMatrix<> &x_cmplx_cones = repFromX? X.give("SEPARATED_MAXIMAL_POLYTOPES") : IncidenceMatrix<>();
+		const Matrix<Rational> &x_lineality_ref = X.give("LINEALITY_SPACE");
+		const Matrix<Rational> x_lineality = tdehomog(x_lineality_ref);
+		const int x_lineality_dim = X.give("LINEALITY_DIM");
+		const int ambient_dim = x_rays.cols();
+		const int x_dimension = X.give("PROJECTIVE_DIM");	
 		Vector<Integer> weights; bool weightsExist = false;
 		if(X.exists("WEIGHTS")) {
 			X.give("WEIGHTS") >> weights;
@@ -105,16 +106,18 @@ namespace polymake { namespace tropical {
 		}
 
 		//Extract values of the container
-		Matrix<Rational> y_rays = Y.give("VERTICES");
-		y_rays = tdehomog(y_rays);
-		Matrix<Rational> y_cmplx_rays = repFromY? Y.give("SEPARATED_VERTICES") : Matrix<Rational>();
-		y_cmplx_rays = tdehomog(y_cmplx_rays);
-		IncidenceMatrix<> y_cmplx_cones = repFromY? Y.give("SEPARATED_MAXIMAL_POLYTOPES") : IncidenceMatrix<>();
-		IncidenceMatrix<> y_cones = Y.give("MAXIMAL_POLYTOPES");
-		Matrix<Rational> y_lineality = Y.give("LINEALITY_SPACE");
-		y_lineality  = tdehomog(y_lineality);
+		const Matrix<Rational> &y_rays_ref = Y.give("VERTICES");
+		const Matrix<Rational> y_rays = tdehomog(y_rays_ref);
+		Matrix<Rational> y_cmplx_rays(0, y_rays.cols());
+                if (repFromY) {
+                  Y.give("SEPARATED_VERTICES") >> y_cmplx_rays;
+                  y_cmplx_rays = tdehomog(y_cmplx_rays);
+                }
+		const IncidenceMatrix<> &y_cmplx_cones = repFromY? Y.give("SEPARATED_MAXIMAL_POLYTOPES") : IncidenceMatrix<>();
+		const IncidenceMatrix<> &y_cones = Y.give("MAXIMAL_POLYTOPES");
+		const Matrix<Rational> &y_lineality_ref = Y.give("LINEALITY_SPACE");
+		const Matrix<Rational> y_lineality  = tdehomog(y_lineality_ref);
 
-		//dbgtrace << "Extracted Y-values" << endl;
 
 		//Prepare result variables
 		perl::Object complex(X.type());
@@ -149,10 +152,8 @@ namespace polymake { namespace tropical {
 				//Compute the intersection of the two spaces
 				//We compute the kernel of (x_lineality | -y_lineality)
 				Matrix<Rational> i_lineality = T(x_lineality  / (-y_lineality));
-				//dbgtrace << "Computing kernel of " << i_lineality << endl;
 				Matrix<Rational> dependence =  null_space(i_lineality);
 				c_lineality = dependence.minor(All,sequence(0,x_lineality.rows())) * x_lineality;
-				//dbgtrace << "Result: " << c_lineality << endl;
 				c_lineality_dim = rank(c_lineality);
 				//Compute X-rep if necessary
 				if(repFromX) {
@@ -164,7 +165,7 @@ namespace polymake { namespace tropical {
 			}
 			else {
 				c_lineality = x_lineality;
-				c_lineality_dim = x_lineality_dim; 
+				c_lineality_dim = x_lineality_dim;
 				if(repFromX) {
 					linRepFromX = unit_matrix<Rational>(x_lineality.rows());
 				}
@@ -177,19 +178,18 @@ namespace polymake { namespace tropical {
 			}
 		}//END compute lineality space
 
-		//dbgtrace << "Computed lineality space" << endl;
 
 		//Step 2: Compute cone refinement and ray representations. -----------------
 
 		//If any of the two is just a lineality space, we still have to consider this as a single
 		//maximal cone for refinement / representation
-		bool x_onlylineality = x_cones.rows() == 0; 
-		bool y_onlylineality = y_cones.rows() == 0; 
+		bool x_onlylineality = x_cones.rows() == 0;
+		bool y_onlylineality = y_cones.rows() == 0;
 
 		//Compute a facet representation for the Y-cones
 		Vector<matrix_pair > y_equations;
 		for(int yc = 0; yc < (y_onlylineality? 1 : y_cones.rows()); yc++) {
-			y_equations |= 
+			y_equations |=
 				sv.enumerate_facets(
 						y_onlylineality? Matrix<Rational>(0,y_lineality.cols()) : \
 						y_rays.minor(y_cones.row(yc),All),
@@ -208,14 +208,14 @@ namespace polymake { namespace tropical {
 		//Data on local restriction
 		//This variable declares whether local cone i has been subdivided yet
 		Array<bool> local_subdivided(local_restriction.rows());
-		//The list of new local cones. 
-		Vector<Set<int> > new_local_restriction;
+		//The list of new local cones.
+		IncidenceMatrix<> new_local_restriction;
 
 		// -----------------------------------------------------------------------------------
-		if(refine || repFromX || repFromY) { 
+		if (refine || repFromX || repFromY) {
 			//Iterate all cones of X
-			for(int xc = 0; xc < (x_onlylineality? 1 : x_cones.rows()); xc++)  {
-				//If we have local restriction, we have to find all not-yet-subdivided local cones 
+			for (int xc = 0; xc < (x_onlylineality? 1 : x_cones.rows()); ++xc) {
+				//If we have local restriction, we have to find all not-yet-subdivided local cones
 				//contained in xc
 				Vector<int> xc_local_cones; //Saves position indices in array local_restriction
 				if(local_restriction.rows() > 0) {
@@ -230,8 +230,8 @@ namespace polymake { namespace tropical {
 				//Initalize refinement cone set
 				xrefinements[xc] = Set<Set<int> >();
 				//Compute a facet representation for the X-cone
-				matrix_pair x_equations = 
-					sv.enumerate_facets( x_onlylineality? Matrix<Rational>(0,x_lineality.cols()) : 
+				matrix_pair x_equations =
+					sv.enumerate_facets( x_onlylineality? Matrix<Rational>(0,x_lineality.cols()) :
 							x_rays.minor(x_cones.row(xc),All),x_lineality, false,false);
 
 				//Iterate all cones of Y
@@ -242,17 +242,15 @@ namespace polymake { namespace tropical {
 						interrays = sv.enumerate_vertices(x_equations.first / y_equations[yc].first,
 							x_equations.second / y_equations[yc].second,false,true).first;
 					}
-					catch(...) {
+					catch(const infeasible&) {
 						//This just means the polyhedron is empty
 						interrays = Matrix<Rational>(0,ambient_dim);
 					}
 
-					//dbgtrace << interrays << endl;
 
 					//Check if it is full-dimensional (and has at least one ray - lin.spaces are not interesting)
 					if(interrays.rows() > 0 && rank(interrays) + c_lineality_dim - 1 == x_dimension) {
 						//If we refine, add the cone. Otherwise just remember the indices
-						//dbgtrace << "Inter rays: " << interrays << endl;
 						Set<int> interIndices;
 						if(!refine) {
 							//Copy indices
@@ -277,7 +275,6 @@ namespace polymake { namespace tropical {
 									}
 								}
 
-								//dbgtrace << "Considering row " << interrays.row(rw) << endl;
 
 								//Go through the existing rays and compare
 								int nrays = c_rays.rows();
@@ -296,8 +293,6 @@ namespace polymake { namespace tropical {
 								interIndices += newrayindex;
 							} //END canonicalize rays
 
-							//dbgtrace << "Ray indices " << interIndices << endl;
-							//dbgtrace << "new rays: " << newRays << endl;
 
 
 							//Check if the cone exists - if there are new rays, then the cone must be new as well
@@ -305,7 +300,6 @@ namespace polymake { namespace tropical {
 							if(!addCone) addCone = !xrefinements[xc].contains(interIndices);
 							//If the cone is new, add it
 							if(addCone) {
-								//dbgtrace << "Adding new cone" << endl;
 								c_cones |= interIndices;
 								if(weightsExist) c_weights |= weights[xc];
 								if(lattice_exists) {
@@ -319,7 +313,7 @@ namespace polymake { namespace tropical {
 						} //END canonicalize intersection cone and add it
 
 						//If we do not refine, we only need to find one y-cone containing the x-cone
-						if(!refine) break;	  
+						if (!refine) break;
 					} //END if full-dimensional
 				}//END iterate y-cones
 
@@ -329,36 +323,27 @@ namespace polymake { namespace tropical {
 				// lies in the local cone. If the cone spanned by these has the right dimension
 				// add it as a local cone
 				if(local_restriction.rows() > 0 && refine) {
-					//dbgtrace << "Recomputing local restriction " << endl;
 					for(int t = 0; t < xc_local_cones.dim(); t++) {
 						//Will contain the subdivision cones of the local cone we currently study
-						Vector<Set<int> > local_subdivision_cones;
-						Set<Set<int> > set_local_subdivision_cones;
+						Set<Set<int>> local_subdivision_cones;
 						Matrix<Rational> lrays = x_rays.minor(local_restriction[xc_local_cones[t]],All);
 						int local_cone_dim = rank(lrays) + x_lineality_dim;
 						for(Entire<Set<Set<int> > >::iterator s = entire(xrefinements[xc]); !s.at_end(); s++) {
 							//Check which rays of refinement cone lie in local cone
 							Set<int> cone_subset;
-							for(Entire<Set<int> >::const_iterator cs = entire(*s); !cs.at_end(); cs++) {
-								if(is_ray_in_cone(lrays,x_lineality,c_rays.row(*cs),false, sv)) {
-									cone_subset += *cs;				      
+							for (auto cs = entire(*s); !cs.at_end(); cs++) {
+								if (is_ray_in_cone(lrays,x_lineality,c_rays.row(*cs),false, sv)) {
+									cone_subset += *cs;
 								}
 							}
 							//If the dimension is correct, add the new local cone
-							if(rank(c_rays.minor(cone_subset,All)) + c_lineality_dim == local_cone_dim) {
-								if(!set_local_subdivision_cones.contains(cone_subset)) {
-									local_subdivision_cones |= cone_subset;
-									set_local_subdivision_cones += cone_subset;
-								}
+							if (rank(c_rays.minor(cone_subset,All)) + c_lineality_dim == local_cone_dim) {
+                                                          local_subdivision_cones += cone_subset;
 							}
 							local_subdivided[xc_local_cones[t]] = true;
 						}//END iterate all refinement cones of xc
 						//Finally we add the minimal interior faces of the subdivision as new local cones
-						//dbgtrace << "Computing minimal interior cones" << endl;
-						IncidenceMatrix<> minint = minimal_interior(c_rays, local_subdivision_cones,sv );
-						for(int minint_row = 0; minint_row < minint.rows(); minint_row++) {
-							new_local_restriction |= minint.row(minint_row);
-						}
+						new_local_restriction = minimal_interior(c_rays, IncidenceMatrix<>(local_subdivision_cones), sv);
 					}//END iterate all remaining local cones in xc
 				}//END refine local cones and remove non compatible maximal cones
 
@@ -366,15 +351,13 @@ namespace polymake { namespace tropical {
 		} //END if intersection is necessary?
 
 		IncidenceMatrix<> c_cones_result(c_cones); //Copy result cones for local restriction clean-up
-		IncidenceMatrix<> local_restriction_as_matrix(new_local_restriction);
-		IncidenceMatrix<> local_restriction_result(local_restriction_as_matrix.rows(), c_rays.rows());
-			local_restriction_result.minor(All, sequence(0, local_restriction_as_matrix.cols())) = local_restriction_as_matrix;
+		IncidenceMatrix<> local_restriction_result(new_local_restriction.rows(), c_rays.rows());
+			local_restriction_result.minor(All, sequence(0, new_local_restriction.cols())) = new_local_restriction;
 					
 
 		//At the end we still have to check if all maximal cones are still compatible
 		//and remove those that aren't
-		if(local_restriction.rows() > 0 && refine) {
-			//dbgtrace << "Cleaning up for local restriction " << local_restriction_result << endl;
+		if (local_restriction.rows() > 0 && refine) {
 			Set<int> removableCones;
 			for(int c = 0; c < c_cones.dim(); c++) {
 				if(!is_coneset_compatible(c_cones[c],local_restriction_result)) {
@@ -393,8 +376,7 @@ namespace polymake { namespace tropical {
 				c_lattice_b = c_lattice_b.slice(~removableCones);
 			}
 			c_cones_result = c_cones_result.minor(~removableCones,used_rays);
-			local_restriction_result = local_restriction_result.minor(All,used_rays);      
-			//dbgtrace << "Done" << endl;
+			local_restriction_result = local_restriction_result.minor(All,used_rays);
 		}//END finish up locality computation
 
 		//Copy return values into the fan
@@ -414,11 +396,9 @@ namespace polymake { namespace tropical {
 			complex = X;
 		}
 
-		//To compute representations of SEPARATED_VERTICES, we naturally 
+		//To compute representations of SEPARATED_VERTICES, we naturally
 		//have to compute the SEPARATED_VERTICES first
-		//dbgtrace << repFromX << "," << repFromY << "," << computeAssoc << endl;
 		if((repFromX && refine) || repFromY || computeAssoc) {
-			//dbgtrace << "Computing representations" << endl;
 			Matrix<Rational> c_cmplx_rays = complex.give("SEPARATED_VERTICES");
 				c_cmplx_rays = tdehomog(c_cmplx_rays);
 			IncidenceMatrix<> c_cmplx_cones = complex.give("SEPARATED_MAXIMAL_POLYTOPES");
@@ -427,7 +407,6 @@ namespace polymake { namespace tropical {
 			rayRepFromY = Matrix<Rational>(c_cmplx_rays.rows(),y_cmplx_rays.rows() + y_lineality.rows());
 			//Compute representations for X (mode 0) and/or Y (mode 1)
 			for(int mode = 0; mode <= 1; mode++) {
-				//dbgtrace << "Computing in mode " << mode << endl;
 				if((mode == 0 && repFromX) || (mode == 1 && repFromY)) {
 					//Recalls for which ray we already computed a representation
 					Vector<bool> repComputed(c_cmplx_rays.rows());
@@ -435,7 +414,6 @@ namespace polymake { namespace tropical {
 					Matrix<Rational> linForComputation = (mode == 0? x_lineality : y_lineality);
 					//Go through all complex cones
 					for(int cone = 0; cone < c_cmplx_cones.rows(); cone++) {
-						//dbgtrace << "Computing rep in cone " << cone << endl;
 						//Go through all rays for which we have not yet computed a representation
 						Set<int> raysOfCone = c_cmplx_cones.row(cone);
 						for(Entire<Set<int> >::iterator r = entire(raysOfCone); !r.at_end(); r++) {
@@ -444,12 +422,12 @@ namespace polymake { namespace tropical {
 								//The ray used for computing the representation are the rays of the containing
 								//cone (or none, if the corr. fan is only a lineality space)
 								Set<int> rfc;
-								if(mode == 0 && !x_onlylineality) 
+								if (mode == 0 && !x_onlylineality)
 									rfc = x_cmplx_cones.row(xcontainers[cone]);
-								if(mode == 1 && !y_onlylineality)
+								if (mode == 1 && !y_onlylineality)
 									rfc = y_cmplx_cones.row(ycontainers[cone]);
 								//Compute representation vector
-								Vector<Rational> repv = linearRepresentation(c_cmplx_rays.row(*r), 
+								Vector<Rational> repv = linearRepresentation(c_cmplx_rays.row(*r),
 										raysForComputation.minor(rfc,All)/ linForComputation);
 								if(repv.dim() == 0)
 									throw std::runtime_error("Error computing representations during refinement. Rays is not in span of refined cone.");
@@ -459,7 +437,6 @@ namespace polymake { namespace tropical {
 					}//END iterate all cones
 				}//END if mode
 			}//END go through X- and Y-mode
-			//dbgtrace << "Computing associated vertices " << endl;
 			if(computeAssoc) {
 				//For each cmplx_ray, in which cone does it lie?
 				IncidenceMatrix<> c_cmplx_cones_t = T(c_cmplx_cones);
@@ -480,12 +457,11 @@ namespace polymake { namespace tropical {
 						}
 					}
 				}
-			}//END if computeAssoc      
+			}//END if computeAssoc
 		}//END compute nontrivial representations
 
 		//Insert values
 
-		//dbgtrace << "Returning result " << endl;
 		RefinementResult result;
 		result.complex = complex;
 		result.rayRepFromX = rayRepFromX;
@@ -498,14 +474,11 @@ namespace polymake { namespace tropical {
 	}//END refinement
 
 
-	perl::Object intersect_container(perl::Object cycle, perl::Object container, 
+	perl::Object intersect_container(perl::Object cycle, perl::Object container,
 			bool forceLatticeComputation) {
 		RefinementResult r = refinement(cycle,container,false,false,false,true,forceLatticeComputation);
 		return r.complex;
 	}//END intersect_container
-
- 
-
 
 
 	// PERL WRAPPER ///////////////////////////////////////////
@@ -523,10 +496,9 @@ namespace polymake { namespace tropical {
 			"# @param Bool forceLatticeComputation Whether the properties"
 			"# [[LATTICE_BASES]] and [[LATTICE_GENERATORS]] of cycle should be computed"
 			"# before refining. False by default."
-			"# @return Cycle The intersection of both complexes" 
+			"# @return Cycle The intersection of both complexes"
 			"# (whose support is equal to the support of cycle)."
-			"# It uses the same tropical addition as cycle.", 
+			"# It uses the same tropical addition as cycle.",
 			&intersect_container,"intersect_container(Cycle,Cycle;$=0)");
-  
 
-}}
+} }

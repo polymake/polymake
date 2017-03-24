@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -72,21 +72,19 @@ use Polymake::Struct (
    [ '$embedded' => '#%', default => 'undef' ],
    [ '$macro_call' => '#%', default => '$this->flags & $func_is_void ? "Void( " : "( "' ],
    '@all_args',
+   '@anchor_args',
    '@template_params',
    [ '$explicit_template_params' => '#%', default => '[]' ],
    '@lvalue_args',
    '@arg_flags',
-   [ '$via_object' => '#%', default => 'undef' ],
    '%inst_cache',
-   [ '&builtin_code' => '#%' ],
    '%seen_in',                  # "sourcefile" => number of instantiations
 );
 
 sub prepare {
-   my ($self, $arg_types, $arg_attrs, $pkg)=@_;
+   my ($self, $arg_types, $arg_attrs, $pkg, $internal)=@_;
    my ($min, $max, @arg_types)=@$arg_types;
-   my $internal=@_<4  and  $pkg="Polymake";
-   my $tpcount_before_explicit=defined($self->via_object)+0;
+   my $tpcount_before_explicit=0;
    my $tpcount=$tpcount_before_explicit;
    if (is_integer($self->explicit_template_params)) {
       $tpcount+=$self->explicit_template_params;
@@ -96,7 +94,7 @@ sub prepare {
    }
    my $perl_arg_index=0;
    my $cpp_arg_index=0;
-   my ($arg_for_lvalue_opt, @anchor_args);
+   my $arg_for_lvalue_opt;
 
    if ($self->perl_name ne "construct") {
       $self->name ||= $self->perl_name;
@@ -123,25 +121,13 @@ sub prepare {
    }
 
    if ($self->flags & $func_is_method) {
-      unless ($internal) {
+      if ($Application::plausibility_checks && !$internal) {
          my $proto=&{UNIVERSAL::can($pkg, "typeof_gen") || croak( "pure perl package $pkg has no C++ binding" )}(undef);
          if (defined (my $opts=$proto->cppoptions)) {
             if ($opts->builtin) {
-               if ($opts == $BigObject_cpp_options) {
-                  if ($self->flags & $func_is_static) {
-                     croak( "can't declare static methods with C++ binding for `big' objects" );
-                  }
-                  $self->flags |= $func_is_top_object_method;
-                  if ($self->via_object) {
-                     push @{$self->all_args}, "self.";
-                     $self->wrapper_name.="_O";
-                  }
-                  goto NOMETHOD;
-               }
-               if ($opts == $BigObjectArray_cpp_options) {
-                  croak( "Can't declare methods with C++ binding for `big' object arrays" );
-               }
-               unless ($self->flags & $func_is_static) {
+               if ($opts == $BigObject_cpp_options || $opts == $BigObjectArray_cpp_options) {
+                  croak( "Can't declare methods with C++ binding for `big' objects or arrays thereof" );
+               } elsif (not $self->flags & $func_is_static) {
                   croak( "can't declare methods for C++ primitive type ", $opts->builtin );
                }
             }
@@ -166,12 +152,11 @@ sub prepare {
          push @{$self->template_params}, [ $perl_arg_index, $self->flags & $func_is_non_const ? $func_is_lvalue : $self->flags & ($func_is_lvalue|$func_is_lvalue_opt) ];
          $self->arg_flags->[$perl_arg_index]=$self->flags & $func_is_wary;
          $arg_for_lvalue_opt=$tpcount if $self->flags & ($func_is_lvalue | $func_is_lvalue_opt);
-         push @anchor_args, "arg0" if $self->flags & $func_has_anchor;
+         push @{$self->anchor_args}, "arg0" if $self->flags & $func_has_anchor;
          ++$cpp_arg_index;
       }
       ++$perl_arg_index;
       ++$tpcount;
-    NOMETHOD: ;
    }
 
    my $sig_index=0;
@@ -185,6 +170,7 @@ sub prepare {
       my $lval_flag=0;
       my $arg_flag=0;
       my $anchor_flag=0;
+      my $static_flag=0;
       my $cpp_arg="arg$cpp_arg_index";
       my $cast_to_target_type;
 
@@ -203,6 +189,8 @@ sub prepare {
             }
          } elsif ($& eq "anchor") {
             $anchor_flag=$func_has_anchor;
+         } elsif ($& eq "static") {
+            $static_flag=$func_is_static_via_arg;
          } else {
             croak( "unknown argument attribute '$&'" );
          }
@@ -212,6 +200,20 @@ sub prepare {
       }
       if ($lval_flag && $sig_index>=$min) {
          croak( "an lvalue argument can't be optional" );
+      }
+      if ($static_flag) {
+         if ($sig_index) {
+            croak( "temporary implementation restriction: argument with static attribute must be the first one" );
+         }
+         if ($arg_flag || $lval_flag || $anchor_flag) {
+            croak( "static attribute conflicts with other attributes" );
+         }
+         if ($self->flags & $func_is_method) {
+            croak( "a method can't have arguments with static attribute" );
+         }
+         $wrapper_suffix="S";
+         $self->flags |= $static_flag;
+         $arg_flag=$static_flag;
       }
 
       if (is_object($arg_type)) {
@@ -253,14 +255,17 @@ sub prepare {
 
       } elsif ($arg_type eq '$') {
          $as_template_arg= substr($arg_attr,0,1) eq '*';
-
+         if ($static_flag && !$as_template_arg) {
+            croak( "static attribute must be assigned to a typed argument or a type wildcard" );
+         }
       } else {
          croak( "pure perl package '$arg_type' can't be passed to C++ subroutine" );
       }
 
       if ($as_template_arg || $lval_flag==$func_is_lvalue_opt) {
-         push @{$self->all_args},
-              "$cpp_arg.get<T$tpcount" . (defined($cast_to_target_type) && ", T$cast_to_target_type") . ">()";
+         push @{$self->all_args}, $static_flag
+                                  ? "T${tpcount}::"
+                                  : "$cpp_arg.get<T$tpcount" . (defined($cast_to_target_type) && ", T$cast_to_target_type") . ">()";
          push @{$self->template_params}, [ $perl_arg_index, $lval_flag ];
          ++$tpcount;
       } else {
@@ -270,15 +275,17 @@ sub prepare {
       $self->arg_flags->[$perl_arg_index]=$arg_flag;
       $self->wrapper_name.="_".($wrapper_suffix || ($as_template_arg ? "X" : "x"));
       $self->wrapper_name.=$lval_flag+$anchor_flag if $lval_flag+$anchor_flag;
-      push @anchor_args, $cpp_arg if $anchor_flag;
+      push @{$self->anchor_args}, $cpp_arg if $anchor_flag;
       ++$perl_arg_index;
-      ++$cpp_arg_index;
+      ++$cpp_arg_index unless $static_flag;
       ++$sig_index;
    }
 
    if ($max & $Overload::has_trailing_list) {
       $self->wrapper_name.="_e";
-      $self->flags |= $func_is_ellipsis;
+      unless ($self->flags & $func_has_collapsed_trailing_arg) {
+         $self->flags |= $func_is_ellipsis;
+      }
       push @{$self->all_args}, "arg$cpp_arg_index";
    } elsif ($max & $Overload::has_keywords) {
       $self->wrapper_name.="_o";
@@ -288,13 +295,10 @@ sub prepare {
       $self->inst_cache=undef;
    }
 
-   if (@anchor_args) {
-      $self->macro_call="Anch".$self->macro_call.scalar(@anchor_args).", ".join("", map { "($_)" } @anchor_args).", ";
-   }
    if ($self->flags & ($func_is_lvalue|$func_is_lvalue_opt)) {
       $self->macro_call="Lvalue".$self->macro_call."T$arg_for_lvalue_opt, ";
    }
-   if (my $fl=($self->flags & ($func_is_method|$func_is_lvalue|$func_is_lvalue_opt|$func_is_void))) {
+   if (my $fl=($self->flags & ($func_is_method | $func_is_lvalue | $func_is_lvalue_opt | $func_is_void | $func_has_anchor))) {
       $self->wrapper_name .= "_f$fl";
    }
    $self->wrapper_name =~ tr/:/_/;
@@ -305,7 +309,7 @@ sub prepare_wrapper_code {
    my $n_args=@{$self->all_args};
    ++$n_args if $self->flags & $func_has_prescribed_ret_type;
    set_number_of_args($code, $n_args, $self->flags & $func_is_ellipsis, undef);
-   declare_lvalue($code, 1) if $self->flags & ($func_is_lvalue|$func_is_lvalue_opt);
+   declare_lvalue($code) if $self->flags & ($func_is_lvalue|$func_is_lvalue_opt);
 }
 
 sub deduce_extra_params {
@@ -322,14 +326,13 @@ sub gen_source_code {
    my ($self, $debug_code)=@_;
 
    my $t_args= $self->template_params ? @{$self->explicit_template_params} + $#{$self->template_params} : -1;
-   ++$t_args if $self->via_object;
    my $typelist=join(",", map { "T$_" } 0..$t_args);
    my $call_name= ($self->name eq "stack" && $self->application->name."::") . $self->name;
    my @args=@{$self->all_args};
    my $arg_off= $self->flags & $func_has_prescribed_ret_type ? 1 : 0;
    my $arg_last=$#args;
-   my $call_as_method= ($self->flags & $func_is_method) && (defined($self->via_object) || !($self->flags & $func_is_top_object_method)) && shift(@args);
-   if ($self->flags & $func_is_static) {
+   my $call_as_method= ($self->flags & ($func_is_method | $func_is_static_via_arg)) && shift(@args);
+   if ($self->flags & ($func_is_static | $func_is_static_via_arg)) {
       --$arg_last;  ++$arg_off;
    }
 
@@ -337,9 +340,9 @@ sub gen_source_code {
      "   FunctionInterface4perl( " . $self->wrapper_name . ($t_args>=0 && ", $typelist") . " ) {\n",
      $arg_last >= 0 &&
      "      perl::Value " . join(", ", map { "arg$_(stack[".($_+$arg_off)."])" } 0..$arg_last) . ";\n",
-     $self->via_object &&
-     "      perl::Object arg0o;  arg0 >> arg0o;  const T0 self(arg0o);\n",
-     "      WrapperReturn" . $self->macro_call . ($call_as_method or $call_name && "(") . "$call_name(" . join(", ", @args) . ")" . (!$call_as_method && $call_name && ")") . " );\n",
+     "      WrapperReturn" . $self->macro_call . ($call_as_method or $call_name && "(")
+     . "$call_name(" . join(", ", @args) . ")" . (!$call_as_method && $call_name && ")")
+     . join(", ", "", @{$self->anchor_args}) . " );\n",
      "   };\n",
      "\n",
    )
@@ -349,10 +352,6 @@ sub find_instance {
    my ($self, $args, $arg_flags)=@_;
    $arg_flags //= $self->arg_flags;
    my $instance=$self->inst_cache;
-   if (defined($self->via_object)) {
-      $instance=$instance->{$self->via_object} or return;
-   }
-   my $builtin_code=$self->builtin_code;
    if (@{$self->explicit_template_params}) {
       foreach my $proto ($self->deduce_extra_params($args)) {
          $instance &&= $instance->{$proto->cpp_type_descr->typeid};
@@ -362,7 +361,6 @@ sub find_instance {
       my ($arg, $lval_flag)=($args->[$_->[0]], $_->[1]);
       my $typeid=get_magic_typeid($arg, $lval_flag);
       if (defined $typeid) {
-         undef $builtin_code;
          $instance &&= $instance->{$typeid};
          if ($lval_flag) {
             if ($lval_flag == $func_is_lvalue_opt) {
@@ -372,14 +370,20 @@ sub find_instance {
             }
          }
       } else {
-         my $proto=guess_builtin_type($arg, (my $int_flag=$arg_flags->[$_->[0]] & $func_is_integral));
-         if ($lval_flag) {
-            croak( "Can't pass a primitive type ", $proto->full_name, " by reference to a C++ function" );
-         }
-         if ($int_flag && $proto->cppoptions->name ne "long" && @_==3 && @$arg_flags==2) {
-            # it is an operator and the numeric argument must be first converted to the type of another argument
-            $proto=$args->[1-$_->[0]]->type;
-            splice @$args, $_->[0], 1, StdConstr::std_parsing_constructor($proto, $args->[$_->[0]]);
+         my $proto;
+         my $flags=$arg_flags->[$_->[0]];
+         if ($flags==$func_is_static_via_arg) {
+            $proto=$arg;
+         } else {
+            $proto=guess_builtin_type($arg, (my $int_flag=$flags & $func_is_integral));
+            if ($lval_flag) {
+               croak( "Can't pass a primitive type ", $proto->full_name, " by reference to a C++ function" );
+            }
+            if ($int_flag && $proto->cppoptions->name ne "long" && @_==3 && @$arg_flags==2) {
+               # it is an operator and the numeric argument must be first converted to the type of another argument
+               $proto=$args->[1-$_->[0]]->type;
+               splice @$args, $_->[0], 1, StdConstr::std_parsing_constructor($proto, $args->[$_->[0]]);
+            }
          }
          my $descr=$proto->cppoptions->descr || provide_cpp_type_descr($proto, 1);
          if (is_code($descr)) {
@@ -389,11 +393,11 @@ sub find_instance {
       }
    }
    $self->check_lvalue_args($args);
-   $builtin_code // $instance;
+   $instance;
 }
 
 sub is_private { 0 }
-sub instance_macro { defined($_[0]->via_object) ? "MethodInstance4perl" : "FunctionInstance4perl" }
+sub instance_macro { "FunctionInstance4perl" }
 
 sub source_file { "auto-".$_[0]->perl_name.".cc" }
 
@@ -453,10 +457,6 @@ sub new {
    set_application($self, $auto_func->embedded, $auto_func->application, $auto_func->cross_apps);
    set_extension($self->extension, $auto_func->extension // ($auto_func->application && $auto_func->application->origin_extension));
 
-   if ($auto_func->via_object) {
-      push @{$self->args}, $auto_func->via_object;
-   }
-
    if (@{$auto_func->explicit_template_params}) {
       foreach ($auto_func->deduce_extra_params($args)) {
          my ($arg_type, $includes, $embedded, $app, $cross_apps, $extension)=$_->get_cpp_representation;
@@ -474,16 +474,17 @@ sub new {
          my $const= $lval_flag && $typeid==0 ? "" : "const ";
          ($arg_type, $includes, $embedded, $app, $cross_apps, $extension)=($root->typeids->{$typeid} || die "unregistered C++ typeid $typeid\n")->get_cpp_representation;
          $arg_type="Wary< $arg_type >" if $arg_flags->[$arg_no] & $func_is_wary;
-         $arg_type="perl::Canned< $const$arg_type >";
+         $arg_type="perl::Canned< $const$arg_type >" unless $arg_flags->[$arg_no] & $func_is_static_via_arg;
       } else {
-         my $proto=guess_builtin_type($args->[$arg_no], $arg_flags->[$arg_no] & $func_is_integral);
+         my $flags=$arg_flags->[$arg_no];
+         my $proto=$flags==$func_is_static_via_arg ? $args->[$arg_no] : guess_builtin_type($args->[$arg_no], $flags & $func_is_integral);
          my $opts=$proto->cppoptions->finalize;
          if (ref($opts->builtin) eq "Polymake::Enum") {
             $arg_type="perl::Enum<" . $opts->name . ">";
          } elsif ($opts->template_params) {
             $arg_type=$opts->name;
-            $arg_type="Wary< $arg_type >" if $arg_flags->[$arg_no] & $func_is_wary;
-            $arg_type="perl::Canned< const $arg_type >";
+            $arg_type="Wary< $arg_type >" if $flags & $func_is_wary;
+            $arg_type="perl::Canned< const $arg_type >" unless $flags & $func_is_static_via_arg;
          } else {
             $arg_type=$opts->name;
          }
@@ -549,9 +550,24 @@ sub analyze_provenience {
    my $file;
    my $depth=1;
    my $is_saving;
-   while (defined ($file=(caller(++$depth))[1])) {
-      if ($file =~ m{Core/XMLfile\.pm$}) {
-         $is_saving=1 if (caller($depth))[3] =~ /::save(?:_data)?$/;
+   while (my ($file, $sub)=(caller(++$depth))[1,3]) {
+      if ($sub eq "(eval)") {
+         # clients may trigger creation of new types too
+         if ($file =~ m{/perllib/Polymake/Core/CPlusPlus\.pm}) {
+            if (ref(my $descr=get_cur_func_descr())) {
+               $file=$descr->source_file;
+            } else {
+               if (defined($descr) && defined ($descr=$root->typeids->{$descr})) {
+                  set_extension($self->extension, $descr->extension);
+               }
+               next;
+            }
+         } else {
+            next;
+         }
+      } elsif ($sub =~ /XMLwriter::save(?:_data|_schema)?$/) {
+         $is_saving=1;
+         next;
       }
       if ($file =~ m{^\Q${InstallTop}/perllib/Polymake/Test/\E}o) {
          # most probably a comparison operator needed for a unit test
@@ -559,8 +575,10 @@ sub analyze_provenience {
       }
       if ($file !~ $skip_core_functions_re) {
          if ($file =~ $called_from_app_tree) {
-            return if $+{top} eq $InstallTop ||
-                      defined ($self->used_in_extension= $+{bundled} ? $Extension::registered_by_URI{"bundled:$+{bundled}"} : $Extension::registered_by_dir{$+{top}});
+            my ($top, $bundled, $where)=@+{qw(top bundled where)};
+            next if $where eq "rules" && $sub =~ /::add_template_instance$/;
+            return if $top eq $InstallTop ||
+                      defined ($self->used_in_extension= $bundled ? $Extension::registered_by_URI{"bundled:$bundled"} : $Extension::registered_by_dir{$top});
          }
          last;
       }
@@ -574,7 +592,7 @@ use Polymake::Struct (
    [ new => '$$' ],
    [ '$is_instance_of' => '#1' ],
    '$func_ptr_type',
-   [ '$embedded | source_file' => '#1 ->embedded' ],
+   [ '$embedded | source_file' => '#1->embedded' ],
    '$is_private',
 );
 
@@ -667,6 +685,8 @@ sub gen_source_code { "" }
 
 sub instance_macro { "OperatorInstance4perl" }
 
+sub execute { croak( "invalid conversion from ", $_[1]->type->full_name, " to ", $_[0]->full_name ) }
+
 #######################################################################################
 package Polymake::Core::CPlusPlus::IndirectWrapper;
 
@@ -675,7 +695,6 @@ use Polymake::Struct (
    '%inst_cache',
    [ '$seen_in' => '1' ],
    [ '$template_params' => '0' ],
-   [ '$via_object' => 'undef' ],
 );
 
 #######################################################################################
@@ -712,22 +731,21 @@ sub new {
 sub code {
    my ($self, $attrs)=@_;
    my $arg_flags=[$attrs & $func_is_wary, $attrs & $func_is_integral];
-   my $code;
    if ($self->flags & 1) {
       if ($self->flags & $func_is_lvalue) {
          # binary operation with assignment, operands swapping can't occur
-         $code=sub { pop; &{ resolve_auto_function($self, \@_, $arg_flags) } };
-         declare_lvalue($code, 1);
+         use namespaces::AnonLvalue 1 ();
+         sub { pop; &{ resolve_auto_function($self, \@_, $arg_flags) } };
 
       } elsif ($self->flags & $func_is_lvalue_opt) {
          # internal function mapped to an operator, no additional arguments
-         $code=sub { &{ resolve_auto_function($self, \@_, $arg_flags) } };
-         declare_lvalue($code, 1);
+         use namespaces::AnonLvalue 1 ();
+         sub { &{ resolve_auto_function($self, \@_, $arg_flags) } };
 
       } else {
          # binary operation, operands may be swapped
          my $arg_flags_swapped=[ reverse @$arg_flags ];
-         $code=sub {
+         sub {
             if (pop) {
                local_scalar($self->flags, $func_is_void);
                swap_array_elems(\@_,0,1);
@@ -739,12 +757,10 @@ sub code {
       }
    } else {
       # unary operation
-      $code=sub { splice @_,-2; &{ resolve_auto_function($self, \@_, $arg_flags) } };
-      if ($self->flags & ($func_is_lvalue|$func_is_lvalue_opt)) {
-         declare_lvalue($code, 1);
-      }
+      use namespaces::AnonLvalue '$is_lvalue';
+      my $is_lvalue= ($self->flags & ($func_is_lvalue|$func_is_lvalue_opt)) != 0;
+      sub { $is_lvalue; splice @_,-2; &{ resolve_auto_function($self, \@_, $arg_flags) } };
    }
-   $code;
 }
 
 sub gen_source_code { "" }
@@ -765,10 +781,9 @@ sub instance_macro { "OperatorInstance4perl" }
 package Polymake::Core::CPlusPlus::TypeDescr;
 
 use Polymake::Struct (
-   '$pkg',
-   '$vtbl | source_file',          # source_file is filled by duplicates only
-   '$typeid',
-   '$kind',                        # Enum class_is_*
+   '$pkg',                         # reference to the stash, not the package name!
+   '$vtbl | source_file',          # vtbl should only be accessed in XS code; source_file is filled by duplicates only
+   '$typeid',                      # std::type_info name
    [ '$generated_by' => 'undef' ], # FuncDescr of a function created such an object if it does not correspond to any declared property type
                                    #     or typeid of a container/composite which this class belongs as element to
    [ '$source_name' => 'undef' ],
@@ -962,7 +977,7 @@ sub recognizing_template {
 
 sub recognizing_class {
    my ($self, $app, $pkg)=@_;
-   my $declared= $self->name !~ /::/ && namespace_prefix($self, $app->name) . $self->name;
+   my $declared= ($self->name !~ /::/ ? namespace_prefix($self, $app->name) : "" ). $self->name;
    return <<".";
    template <typename T>
    RecognizeType4perl("$pkg", (), $declared)
@@ -983,38 +998,8 @@ sub gen_source_code {
    "   ".($self->builtin || $self->special ? "Builtin" : "Class")."4perl(\"$pkg\", ".$self->name.");\n"
 }
 *gen_temp_code=\&gen_source_code;
+*analyze_provenience=\&LackingInstance::analyze_provenience;
 
-sub analyze_provenience {
-   my ($self)=@_;
-   my $depth=1;
-   while ((my ($file, $sub)=(caller(++$depth))[1,3])) {
-      if ($sub eq "(eval)") {
-         # clients may trigger creation of new types too
-         if ($file =~ m{/perllib/Polymake/Core/CPlusPlus\.pm}) {
-            if (ref(my $descr=get_cur_func_descr())) {
-               $file=$descr->source_file;
-            } else {
-               if (defined($descr) && defined ($descr=$root->typeids->{$descr})) {
-                  set_extension($self->extension, $descr->extension);
-               }
-               next;
-            }
-         } else {
-            next;
-         }
-      } elsif ($file =~ $skip_core_functions_re) {
-         next;
-      }
-      if ($file =~ $called_from_app_tree) {
-         my ($top, $bundled, $where)=@+{qw(top bundled where)};
-         next if $where eq "rules" && $sub =~ /::add_template_instance$/;
-         return if $top eq $InstallTop ||
-                   defined ($self->used_in_extension= $+{bundled} ? $Extension::registered_by_URI{"bundled:$+{bundled}"} : $Extension::registered_by_dir{$+{top}});
-      }
-      last;
-   }
-   $self->is_private=1;
-}
 #######################################################################################
 # bind all Object types involved in template arg deduction to the C++ Object class
 
@@ -1255,7 +1240,7 @@ package Polymake::Core::CPlusPlus::perApplication;
 
 use Polymake::Struct (
    [ 'new' => '$' ],
-   [ '$application' => 'weak( #1 )' ],
+   [ '$application' => 'weak(#1)' ],
    [ '$functions_begin' => '0' ],
    [ '$functions_end' => '-1' ],
    '$embedded_rules_begin',
@@ -1535,12 +1520,10 @@ sub add_auto_function {
          $flags |= $func_has_prescribed_ret_type;
       }
    }
-   my $const_creation=delete $func_attrs->{const_creation};
-   if (delete $func_attrs->{builtin_sub}) {
-      $options->{builtin_code}=$ext_code
-         or croak("builtin_sub attribute without corresponding perl code");
-      undef $ext_code;
+   if (delete $func_attrs->{collapsed}) {
+      $flags |= $func_has_collapsed_trailing_arg;
    }
+   my $const_creation=delete $func_attrs->{const_creation};
    if (keys %$func_attrs) {
       croak("Unknown attribute", keys(%$func_attrs)>1 && "s", " for a C++ function: ", join(", ", keys %$func_attrs));
    }
@@ -1593,23 +1576,29 @@ sub add_auto_function {
       }
       check_twins($auto_func);
 
+      use namespaces::AnonLvalue '$is_lvalue';
+      my $is_lvalue= ($auto_func->flags & ($func_is_lvalue|$func_is_lvalue_opt)) != 0;
       $code= defined($ext_code)
              ? (defined($returns)
-                ? sub { return &$ext_code;
+                ? sub { $is_lvalue;
+                        return &$ext_code;
                         unshift @_, $returns;
                         &{resolve_auto_function($auto_func, \@_)}
                       }
-                : sub { return &$ext_code;
+                : sub { $is_lvalue;
+                        return &$ext_code;
                         &{resolve_auto_function($auto_func, \@_)}
                       })
              : (defined($returns)
-                ? sub { unshift @_, $returns;
+                ? sub { $is_lvalue;
+                        unshift @_, $returns;
                         &{resolve_auto_function($auto_func, \@_)}
                       }
-                : sub { &{resolve_auto_function($auto_func, \@_)} });
+                : sub { $is_lvalue;
+                        &{resolve_auto_function($auto_func, \@_)}
+                      });
 
       set_method($code) if $flags & $func_is_method;
-      declare_lvalue($code, 1) if $auto_func->flags & ($func_is_lvalue|$func_is_lvalue_opt);
    }
 
    if (defined $const_creation) {
@@ -1666,8 +1655,15 @@ sub bind_functions {
       if (ref($auto_func->template_params)) {
          $descr->auto_func=$auto_func;                  # help guessing the right set of headers for non-persistent return types
 
-         my $sub=create_function_wrapper($descr, $self->application->pkg);
-         $auto_func->prepare_wrapper_code($sub);
+         my $sub;
+         if (defined $descr->wrapper) {
+            $sub=create_function_wrapper($descr, $self->application->pkg);
+            $auto_func->prepare_wrapper_code($sub);
+         } elsif ($auto_func==$root->auto_assignment || $auto_func==$root->auto_conversion) {
+            $sub=\&SpecialOperator::execute;
+         } else {
+            croak( "internal error: undefined function instance registered for ", $auto_func->name );
+         }
 
          my $last=$#{$descr->arg_types};
          my ($inst_cache, $extra);
@@ -2048,7 +2044,8 @@ namespace { void delete_temp_file() __attribute__((destructor));
           ($lacking->is_private && defined($lacking->extension) && "RequireExtensions='" . join(" ", map { $_->dir } map { ($_, @{$_->requires}) } is_object($lacking->extension) ? ($lacking->extension) : @{$lacking->extension}) . "'") .
           ($Verbose::cpp ? ">&2 " : ">/dev/null") . " 2>$file.err")
      and
-   die "Shared module compilation failed; see the error log below\n\n" . `cat $file.err`;
+       die ($Verbose::cpp ? "Shared module compilation failed; see the error log below\n\n" . `cat $file.err` :
+            "Shared module compilation failed; most likely due to a type mismatch.  Set the variable \$Polymake::User::Verbose::cpp to a positive value and repeat for more details.\n");
 
    if (defined $type_proto) {
       load_shared_module($so_name);
@@ -2109,13 +2106,9 @@ use Polymake::Struct (
 
 # auto-function flags:
 # The values in the first row contribute to auto-generated wrapper names.
-use Polymake::Enum qw( func: is_method=0x1 is_lvalue=0x2 is_lvalue_opt=0x4 has_anchor=0x8 is_void=0x10
-                             is_wary=0x20 is_ellipsis=0x40 is_integral=0x80 is_non_const=0x100
-                             is_top_object_method=0x200 has_prescribed_ret_type=0x400 is_static=0x800 );
-
-# class description kind:    (keep in sync with lib/core/include/perl/constants.h)
-use Polymake::Enum qw( class_is: scalar container composite opaque kind_mask=0xf
-                       assoc_container=0x100 sparse_container=0x200 set=0x400 serializable=0x800 );
+use Polymake::Enum qw( func: is_method=0x1 is_lvalue=0x2 is_lvalue_opt=0x4 is_void=0x10 has_anchor=0x20
+                             is_wary=0x8 is_ellipsis=0x40 is_integral=0x80 is_non_const=0x100
+                             has_collapsed_trailing_arg=0x200 has_prescribed_ret_type=0x400 is_static=0x800 is_static_via_arg=0x1000 );
 
 use Polymake::Enum qw( assoc: helem find exists delete_void delete_ret );
 
@@ -2166,12 +2159,12 @@ Note that debug output in some clients only appears at high debug levels (-dd an
 
    # create the standard constructors right now
    my $dc=new Constructor;
-   $dc->prepare(@$void_signature);
+   $dc->prepare(@$void_signature, "Polymake", 1);
    $dc->name="";
    $root->auto_default_constructor=$root->auto_functions->{$dc->wrapper_name}=$dc;
 
    my $cc=$root->auto_convert_constructor=new Constructor;
-   $cc->prepare(@$unary_op_signature);
+   $cc->prepare(@$unary_op_signature, "Polymake", 1);
    $cc->name="";
    $root->auto_convert_constructor=$root->auto_functions->{$cc->wrapper_name}=$cc;
 
@@ -2250,12 +2243,12 @@ sub get_magic_cpp_class {
    }
 }
 
-sub Polymake::Core::PropertyType::get_element_type {
+sub Polymake::Core::PropertyType::get_array_element_type {
    my ($proto)=@_;
    if ($proto->cppoptions && !$proto->cppoptions->builtin) {
       my $descr=$proto->cpp_type_descr;
-      if (($descr->kind & $class_is_kind_mask) == $class_is_container) {
-         get_type_proto($descr->vtbl, 1)
+      if ($descr->is_container) {
+         $descr->value_type
       } else {
          undef
       }
@@ -2270,17 +2263,17 @@ sub Polymake::Core::PropertyType::get_field_type {
    my ($proto, $field_name)=@_;
    if ($proto->cppoptions && $proto->cppoptions->fields) {
       my $i=string_list_index($proto->cppoptions->fields, $field_name);
-      if ($i>=0 && defined (my $elem_protos=get_type_proto($proto->cpp_type_descr->vtbl, 2))) {
-         return $elem_protos->[$i];
+      if ($i>=0 && defined (my $member_protos=$proto->cpp_type_descr->member_types)) {
+         return $member_protos->[$i];
       }
    }
    undef;
 }
 
-sub Polymake::Core::PropertyType::guess_element_type {
+sub Polymake::Core::PropertyType::guess_array_element_type {
    my ($data)=@_;
    if (is_object($data) && UNIVERSAL::can($data, "type") &&
-       defined (my $type=$data->type->get_element_type)) {
+       defined (my $type=$data->type->get_array_element_type)) {
       return $type;
    }
    my $first=$data->[0];
@@ -2506,12 +2499,12 @@ my %op_groups=( arith => [ qw( neg + - * / += -= *= /= ) ],
 
 my @assoc_descr=(
    [ $assoc_helem,       ":brk",          "[]",                                 1+$func_is_lvalue_opt ],
-   [ $assoc_find,        "assoc_find",    $binary_op_signature,                 0,
+   [ $assoc_find,        "assoc_find",    [[2, 2, qw($ $)], [qw(*:anchor *)]],  0,
      name => "pm::perl::find_element", include => [ "polymake/perl/assoc.h" ] ],
    [ $assoc_exists,      "exists",        $unary_op_signature,                  $func_is_method ],
    [ $assoc_delete_void, "erase",         $unary_op_signature,                  $func_is_method+$func_is_non_const+$func_is_void ],
    [ $assoc_delete_ret,  "assoc_delete",  [[2, 2, qw($ $)], [qw(*:lvalue *)]],  0,
-     name => "pm::perl::delayed_erase", include => [ "polymake/perl/assoc.h" ], macro_call => "Tmp( " ],
+     name => "pm::perl::delayed_erase", include => [ "polymake/perl/assoc.h" ], ],
 );
 
 sub create_assoc_methods {
@@ -2520,11 +2513,12 @@ sub create_assoc_methods {
       my ($i, $name, $signature, $flags, @options)=@$descr;
       if ($name =~ /^\w/) {
          my $auto_func=new AutoFunction($name, $flags, undef, @options);
-         $auto_func->prepare(@$signature);
+         $auto_func->prepare(@$signature, "Polymake", 1);
          $root->auto_functions->{$auto_func->wrapper_name}=$auto_func;
-         my $code=$root->auto_assoc_methods->[$i]=sub { &{resolve_auto_function($auto_func, \@_)} };
+         use namespaces::AnonLvalue '$is_lvalue';
+         my $is_lvalue= ($flags & ($func_is_lvalue|$func_is_lvalue_opt)) != 0;
+         my $code=$root->auto_assoc_methods->[$i]=sub { $is_lvalue; &{resolve_auto_function($auto_func, \@_)} };
          set_method($code) if $flags & $func_is_method;
-         declare_lvalue($code, 1) if $flags & ($func_is_lvalue|$func_is_lvalue_opt);
       } else {
          my $op=new Operator($name, $flags, $signature);
          $root->auto_functions->{$name}=$op;
@@ -2578,7 +2572,7 @@ sub add_operator {
          $signature= $descr->[1] ? $binary_op_signature : $unary_op_signature;
       }
       $op=new AutoFunction($descr->[0], $flags, $self->application);
-      $op->prepare(@$signature, $pkg);
+      $op->prepare(@$signature, $pkg, 1);
 
       if (($flags & $func_is_method) == 0 && $pkg ne $self->application->pkg) {
          my $app=$self->application->pkg;
@@ -2695,7 +2689,7 @@ Struct::pass_original_object(\&construct_parsed);
 
 sub construct_composite_cpp_value {
    my ($proto)=@_;
-   if (($proto->cppoptions->descr->kind & $class_is_kind_mask) == $class_is_composite &&
+   if ($proto->cppoptions->descr->is_composite &&
        @_>2 && !($#_%2)) {
       my ($i,$last)=(1,$#_-1);
       for (; $i<=$last; $i+=2) {
@@ -2739,7 +2733,7 @@ sub std_deserializing_constructor : method {
    }
 }
 
-package _::StdConstr;
+package Polymake::Core::CPlusPlus::StdConstr;
 
 sub set_construct_node {
    state $construct_node = do {
@@ -2754,7 +2748,7 @@ sub set_construct_node {
    $proto->parse=\&construct_parsed;
 }
 
-package __::Deserializing;
+package Polymake::Core::CPlusPlus::Deserializing;
 
 sub set_construct_node {
    state $construct_node = do {
@@ -2766,7 +2760,7 @@ sub set_construct_node {
    $proto->construct_node=$construct_node;
 }
 
-package __;
+package Polymake::Core::CPlusPlus;
 
 sub define_constructors {
    my ($proto)=@_;
@@ -2785,25 +2779,19 @@ sub create_methods {
    my $descr=provide_cpp_type_descr($proto, defined($generic_opts));
    # this is only called for types declared in perl (i.e. "persistent types"),
    # the relation between PropertyType and C++ class descriptors is unambigous
-   $proto->dimension=obj_dimension($descr->vtbl);
+   $proto->dimension=$descr->dimension;
    my $opts=$proto->cppoptions;
    $opts->descr=$descr;
 
    my $symtab=get_pkg($proto->pkg);
-   my $kind=$descr->kind & $class_is_kind_mask;
-   my $bespoke_toXML=$proto->toXML;
-
-   if ($kind==$class_is_container) {
-      if ($descr->kind & $class_is_assoc_container) {
-         $proto->toXML=\&assoc_container_toXML;
+   if ($descr->is_container) {
+      $proto->toXML=\&XMLwriter::set_methods;
+      if ($descr->is_assoc_container) {
+         $proto->toString=\&convert_to_string;
          no strict 'refs';
          push @{$proto->pkg."::ISA"}, "Polymake::Core::CPlusPlus::TiedHash";
-         $proto->toString=\&convert_to_string;
       } else {
-         $proto->toXML=\&container_toXML;
-         no strict 'refs';
-         push @{$proto->pkg."::ISA"}, "Polymake::Core::CPlusPlus::TiedArray";
-         if ($descr->kind & $class_is_set) {
+         if ($descr->is_set) {
             $proto->toString=\&convert_to_string;
          } else {
             $proto->toString=sub {
@@ -2813,21 +2801,23 @@ sub create_methods {
                } else { &convert_to_string }
             };
          }
+         no strict 'refs';
+         push @{$proto->pkg."::ISA"}, "Polymake::Core::CPlusPlus::TiedArray";
       }
 
-   } elsif ($kind==$class_is_composite) {
+   } elsif ($descr->is_composite) {
+      $proto->toXML=\&XMLwriter::set_methods;
       if ($proto->cppoptions->fields) {
-         if (get_type_proto($descr->vtbl, 3) != scalar(@{$proto->cppoptions->fields})) {
+         if ($descr->num_members != scalar(@{$proto->cppoptions->fields})) {
             croak( "number of field names does not match the C++ description of class ", $proto->full_name );
          }
-      } elsif ($proto->cppoptions->fields=get_type_proto($descr->vtbl, 5)) {
+      } elsif (defined ($proto->cppoptions->fields=$descr->member_names)) {
          $proto->cppoptions->operators ||= '@eq';
          define_operators($self, $proto->cppoptions, $proto->pkg);
       }
-      $proto->toXML=\&composite_toXML;
+      $proto->toString=sub { $PropertyType::nesting_level ? "(".&convert_to_string.")" : &convert_to_string };
       no strict 'refs';
       push @{$proto->pkg."::ISA"}, "Polymake::Core::CPlusPlus::TiedCompositeArray";
-      $proto->toString=sub { $PropertyType::nesting_level ? "(".&convert_to_string.")" : &convert_to_string };
 
    } else {
       if (!length($proto->cppoptions->operators)) {
@@ -2839,7 +2829,7 @@ sub create_methods {
                            );
       }
       $proto->toString=\&convert_to_string;
-      if ($kind==$class_is_scalar) {
+      if ($descr->is_scalar) {
          if (my $int_type=$root->builtins->{int}) {
             $int_type->add_constructor("construct", \&convert_to_int, [1, 1, $proto]);
          }
@@ -2847,9 +2837,9 @@ sub create_methods {
             $float_type->add_constructor("construct", \&convert_to_float, [1, 1, $proto]);
          }
       }
-   }
-   if ($descr->kind & $class_is_serializable and !defined($bespoke_toXML)) {
-      $proto->toXML=\&serialized_toXML;
+      if ($descr->is_serializable) {
+         $proto->toXML=\&XMLwriter::set_methods;
+      }
    }
 
    if (!defined($generic_opts)) {
@@ -2863,106 +2853,13 @@ sub create_methods {
 sub container_toXML : method {
    my $proto=shift;
    my $descr=$proto->cppoptions->descr;
-   $proto->toXML= do {
-      if (defined (my $val_proto=get_type_proto($descr->vtbl, 1))) {
-         if ($descr->kind & $class_is_sparse_container) {
-            if (defined (my $elem_proto=get_type_proto($descr->vtbl, 0))) {
-               my $own_dim=$proto->dimension-$elem_proto->dimension;
-               if ($own_dim==1) {
-                  sub { PropertyType::sparseArray_toXML($elem_proto, @_) };
-               } elsif ($own_dim==2) {
-                  sub { PropertyType::sparseMatrix_toXML($val_proto, @_) };
-               } else {
-                  undef;
-               }
-            } else {
-               undef;
-            }
-         } else {
-            $val_proto->toXML
-            ? sub { PropertyType::nontrivialArray_toXML($val_proto, @_) }
-            : sub { PropertyType::trivialArray_toXML($val_proto, @_) };
-         }
-      } else {
-         undef;
-      }
-   };
-   $proto->toXML->(@_);
-}
-
-sub assoc_container_toXML : method {
-   my $proto=shift;
-   my $descr=$proto->cppoptions->descr;
-   $proto->toXML= do {
-      my @kv_proto=map { get_type_proto($descr->vtbl, $_) } 0,1;
-      if (defined($kv_proto[0]) && defined($kv_proto[1])) {
-         my $pair_proto=$root->builtins->{pair}->typeof(@kv_proto);
-         sub { PropertyType::assocContainer_toXML($pair_proto, @_) }
-      } else {
-         undef
-      }
-   };
-   $proto->toXML->(@_);
-}
-
-sub composite_toXML : method {
-   my $proto=shift;
-   my $descr=$proto->cppoptions->descr;
-   $proto->toXML= do {
-      my $elem_protos=get_type_proto($descr->vtbl, 2);
-      my $trivial=1;
-      foreach my $elem_proto (@$elem_protos) {
-         if (defined $elem_proto) {
-            if ($elem_proto->toXML) {
-               $trivial=0;
-            }
-         } else {
-            undef $trivial; last;
-         }
-      }
-      if (defined $trivial) {
-         $trivial
-         ? \&PropertyType::trivialComposite_toXML
-         : sub { PropertyType::nontrivialComposite_toXML($elem_protos, @_) };
-      } else {
-         undef;
-      }
-   };
-   $proto->toXML->(@_);
-}
-
-sub serialized_toXML : method {
-   my $proto=shift;
-   my $descr=$proto->cppoptions->descr;
-   my $serialized_proto=get_type_proto($descr->vtbl, 4);
-   $proto->toXML= sub {
-      my $serialized=convert_to_serialized(shift);
-      $serialized_proto->toXML->($serialized, @_)
-   };
-   $proto->toXML->(@_);
-}
-
-sub serialized_with_id_toXML : method {
-   my $proto=shift;
-   my $descr=$proto->cppoptions->descr;
-   my $serialized_proto=get_type_proto($descr->vtbl, 4);
-   $proto->toXML= sub {
-      my ($obj, $writer, @attrs)=@_;
-      my $new_id;
-      my $id=(($writer->{':ids'}->{$proto} //= { })->{$obj->id} //= ($new_id=++$writer->{':global_id'}));
-      if (defined $new_id) {
-         $writer->{':last_id'}=$id;
-         my $serialized=convert_to_serialized($obj);
-         $serialized_proto->toXML->($serialized, $writer, @attrs, id=>$id);
-      } else {
-         if ($id != $writer->{':last_id'}) {
-            push @attrs, id => $id;
-            $writer->{':last_id'}=$id;
-         }
-         $writer->emptyTag("r", @attrs);
-      }
-   };
-   $proto->toXML->(@_);
+   my $elem_proto=$descr->key_type;
+   my $val_proto=$descr->value_type;
+   if ($descr->is_sparse_container) {
+      XMLwriter::set_methods_for_sparse_container($proto, $elem_proto, $val_proto);
+   } else {
+      XMLwriter::set_methods_for_dense_container($proto, $elem_proto, $val_proto);
+   }
 }
 
 #######################################################################################

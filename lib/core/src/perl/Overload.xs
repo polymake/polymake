@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,15 +20,6 @@ static HV *string_stash, *integer_stash, *float_stash, *UNIVERSAL_stash;
 
 static MGVTBL pkg_retrieval_index_vtbl={ 0, 0, 0, 0, 0 };
 static MGVTBL stored_kw_vtbl={ 0, 0, 0, 0, 0 };
-
-#if PerlVersion < 5101
-# define mro_meta_init(s) Perl_mro_meta_init(aTHX_ s)
-
-struct mro_alg {
-    const char *name;
-    AV *(*resolve)(pTHX_ HV* stash, I32 level);
-};
-#endif
 
 static inline
 HV* pkg_of_object(pTHX_ SV* obj, I32 try_repeated, I32* bundled_repeated)

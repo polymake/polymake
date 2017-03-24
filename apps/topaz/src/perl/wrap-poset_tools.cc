@@ -16,47 +16,23 @@
 
 namespace polymake { namespace topaz { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::Array<pm::Array<int, void>, void> (pm::graph::Graph<pm::graph::Directed> const&, pm::graph::Graph<pm::graph::Directed> const&) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Graph< Directed > > >(), arg1.get< perl::TryCanned< const Graph< Directed > > >() );
-   }
-   FunctionWrapperInstance4perl( pm::Array<pm::Array<int, void>, void> (pm::graph::Graph<pm::graph::Directed> const&, pm::graph::Graph<pm::graph::Directed> const&) );
-
-   FunctionWrapper4perl( pm::Array<pm::Array<int, void>, void> (perl::Object, perl::Object) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturn( arg0, arg1 );
-   }
-   FunctionWrapperInstance4perl( pm::Array<pm::Array<int, void>, void> (perl::Object, perl::Object) );
-
-   FunctionWrapper4perl( pm::Set<pm::Array<int, void>, pm::operations::cmp> (perl::Object, perl::Object) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturn( arg0, arg1 );
-   }
-   FunctionWrapperInstance4perl( pm::Set<pm::Array<int, void>, pm::operations::cmp> (perl::Object, perl::Object) );
-
-   FunctionWrapper4perl( pm::Set<pm::Array<int, void>, pm::operations::cmp> (perl::Object, perl::Object, perl::OptionSet) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      IndirectWrapperReturn( arg0, arg1, arg2 );
-   }
-   FunctionWrapperInstance4perl( pm::Set<pm::Array<int, void>, pm::operations::cmp> (perl::Object, perl::Object, perl::OptionSet) );
-
    FunctionWrapper4perl( pm::graph::Graph<pm::graph::Directed> (perl::Object, perl::Object) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
       IndirectWrapperReturn( arg0, arg1 );
    }
    FunctionWrapperInstance4perl( pm::graph::Graph<pm::graph::Directed> (perl::Object, perl::Object) );
 
+   FunctionWrapper4perl( pm::graph::Graph<pm::graph::Directed> (pm::Array<pm::Array<int>> const&, perl::Object) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Array< Array< int > > > >(), arg1 );
+   }
+   FunctionWrapperInstance4perl( pm::graph::Graph<pm::graph::Directed> (pm::Array<pm::Array<int>> const&, perl::Object) );
+
    FunctionWrapper4perl( pm::graph::Graph<pm::graph::Directed> (perl::Object) ) {
       perl::Value arg0(stack[0]);
       IndirectWrapperReturn( arg0 );
    }
    FunctionWrapperInstance4perl( pm::graph::Graph<pm::graph::Directed> (perl::Object) );
-
-   FunctionWrapper4perl( pm::graph::Graph<pm::graph::Directed> (pm::Set<pm::Array<int, void>, pm::operations::cmp> const&, perl::Object) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Set< Array< int > > > >(), arg1 );
-   }
-   FunctionWrapperInstance4perl( pm::graph::Graph<pm::graph::Directed> (pm::Set<pm::Array<int, void>, pm::operations::cmp> const&, perl::Object) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

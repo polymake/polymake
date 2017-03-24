@@ -33,14 +33,9 @@ namespace polymake { namespace tropical {
 				dual_addition_version(points,1);
 
 			//Construct the linear polynomials
-			Ring<TNumber > r(points.cols());
-			Polynomial<TNumber > h ( 
-					TNumber::one(), r);
-			for(typename Entire< Rows<Matrix<TNumber > > >::const_iterator vec=entire(rows(dual_points.top())); 
-					!vec.at_end(); ++vec){
-				Matrix<int> point_monoms = unit_matrix<int>(points.cols());
-				Vector<TNumber > coeffs( *vec);
-				h *= Polynomial<TNumber > (point_monoms, coeffs,r);
+			Polynomial<TNumber> h (TNumber::one(), points.cols());
+			for (auto vec=entire(rows(dual_points.top())); !vec.at_end(); ++vec) {
+				h *= Polynomial<TNumber>(*vec, unit_matrix<int>(points.cols()));
 			}
 			
 			return h;

@@ -18,20 +18,20 @@ object PlanarNet {
 # @category Geometry
 # The corresponding 3-polytope.
 
-property POLYTOPE : polytope::Polytope;
+property POLYTOPE : polytope::Polytope<Scalar>;
 
 # @category Combinatorics
 # Counter clockwise ordering of the [[VERTICES]] in each [[MAXIMAL_POLYTOPES]].
 # This is a copy of the property [[Polytope::VIF_CYCLIC_NORMAL]] of [[POLYTOPE]].
 
-property VIF_CYCLIC_NORMAL : Array< Array<Int> >;
+property VIF_CYCLIC_NORMAL : Array<Array<Int>>;
 
 # @category Combinatorics
 # Map which tells which vertex/facet pair of the 3-polytope is mapped to which vertex of the planar net.
 # The dependence on the facets comes from the fact that most [[Polytope::VERTICES]] occur more than once in the planar net.
 # The inverse is [[VF_MAP_INV]].
 
-property VF_MAP : Map< Pair<Int,Int>, Int >;
+property VF_MAP : Map<Pair<Int,Int>,Int>;
 
 # @category Combinatorics
 # Map which tells how the [[VERTICES]] of the planar net are mapped to the [[Polytope::VERTICES]] of the 3-polytope.
@@ -44,14 +44,14 @@ property VF_MAP_INV : Array<Int>;
 # Endoded as a list of edges, directed away from the root facet.
 # Indices correspond to [[MAXIMAL_POLYTOPES]] as well as [[Polytope::FACETS]].
 
-property DUAL_TREE : Array< Pair<Int,Int> >;
+property DUAL_TREE : Array<Pair<Int,Int>>;
 
 # @category Combinatorics
 # List of directed edges in the primal graph [[Polytope::GRAPH]] which need flaps for gluing.
 # Indices correspond to [[VERTICES]].  The orientation is chosen such that the facet in the layout is always on the left.
 # In fact, the flaps define a spanning tree of [[Polytope::GRAPH]].
 
-property FLAPS : Array< Pair<Int,Int> >;
+property FLAPS : Array<Pair<Int,Int>>;
 
 rule VIF_CYCLIC_NORMAL : POLYTOPE.VIF_CYCLIC_NORMAL {
    $this->VIF_CYCLIC_NORMAL(temporary) = $this->POLYTOPE->VIF_CYCLIC_NORMAL;
@@ -59,6 +59,29 @@ rule VIF_CYCLIC_NORMAL : POLYTOPE.VIF_CYCLIC_NORMAL {
 weight 0.10;
 
 }
+
+# @topic objects/Visual::PlanarNet::Polygons
+# @category Visualization
+# Special variant of Visual::Polygons with extra data for
+# folding planar nets via threejs:
+#   Axes: vertex indices of all edges
+#   DihedralAngles: angle at each edge in the graph of the polytope (in radians)
+#   DependendVertices: all vertices that are affected by a rotation around an edge
+#   PolytopeRoot: [ coordinates of the first vertex -> mapped to (0,0) in the net,
+#                   outer normal of the first facet -> mapped to (0, 0, 1),
+#                   up direction for the first edge -> mapped to (0, 1, 0) ]
+# @super Visual::Polygons
+# @relates PlanarNet
+package Visual::PlanarNet::Polygons;
+
+use Polymake::Struct (
+   [ '@ISA' => 'Visual::Polygons' ],
+   [ '$Axes' => '#%', default => 'undef' ],
+   [ '$DihedralAngles' => '#%', default => 'undef' ],
+   [ '$DependendVertices' => '#%', default => 'undef' ],
+   [ '$PolytopeRoot' => '#%', default => 'undef' ],
+);
+
 
 # @topic objects/Visual::PlanarNet
 # @category Visualization
@@ -154,14 +177,15 @@ object PlanarNet {
 # @options %Visual::Polygons::decorations
 # @return Visual::PlanarNet
 
-user_method VISUAL(%Visual::Polygons::decorations) : VERTICES, MAXIMAL_POLYTOPES, VIF_CYCLIC_NORMAL, VF_MAP, VF_MAP_INV, FLAPS , POLYTOPE.N_VERTICES {
+user_method VISUAL(%Visual::Polygons::decorations) : VERTICES, MAXIMAL_POLYTOPES, VIF_CYCLIC_NORMAL, VF_MAP, VF_MAP_INV, FLAPS, DUAL_TREE, POLYTOPE.N_VERTICES, POLYTOPE.DUAL_GRAPH.DIHEDRAL_ANGLES {
    my ($this,$decor)=@_;
    
    my $vif=$this->VIF_CYCLIC_NORMAL;
    my $vf_map=$this->VF_MAP;
    my $vf_map_inv=$this->VF_MAP_INV;
 
-   my $n_facets=$this->MAXIMAL_POLYTOPES->rows();
+   my $mp = $this->MAXIMAL_POLYTOPES;
+   my $n_facets=$mp->rows();
    die "VIF_CYCLIC_NORMAL and MAXIMAL_POLYTOPES sizes do not match" unless $vif->size() == $n_facets;
 
    # faces of the planar net
@@ -171,12 +195,37 @@ user_method VISUAL(%Visual::Polygons::decorations) : VERTICES, MAXIMAL_POLYTOPES
       my @this_face = map { $vf_map->{new Pair<Int,Int>($_,$i)} } @{$vif->[$i]};
       push @polygons, \@this_face;
    }
+   
+   my %dependmap = map { $_ => new Set } (0..$n_facets-1);
+   my @angles;
+   my @axes;
+   my @edgedepend;
+   foreach my $pair (reverse(@{$this->DUAL_TREE})) {
+      my ($f,$t) = @$pair;
+      my @a = grep { $mp->[$f]->contains($_) } @{$polygons[$t]};
+      push @axes, $a[0] == $polygons[$t]->[0] && $a[1] == $polygons[$t]->[-1] ? [reverse(@a)] : \@a;
+      push @angles, $this->POLYTOPE->DUAL_GRAPH->DIHEDRAL_ANGLES->edge($f,$t);
+      my $depend = $dependmap{$t} + $mp->[$t] - $mp->[$f];
+      push @edgedepend, [@$depend];
+      $dependmap{$f} += $depend;
+   }
+   my ($first,$second) = @$vf_map_inv[0..1];
+   my $rootfirst = convert_to<Float>($this->POLYTOPE->VERTICES->[$first]->slice(1));
+   my $edge = (convert_to<Float>($this->POLYTOPE->VERTICES->[$second]->slice(1))) - $rootfirst;
+   my $rootnormal = convert_to<Float>(-1 * $this->POLYTOPE->FACETS->[$this->DUAL_TREE->[0]->first]->slice(1));
+   my $rootup = [ $rootnormal->[1] * $edge->[2] - $rootnormal->[2] * $edge->[1],
+                  $rootnormal->[2] * $edge->[0] - $rootnormal->[0] * $edge->[2],
+                  $rootnormal->[0] * $edge->[1] - $rootnormal->[1] * $edge->[0] ];
 
-   my $Layout = new Visual::Polygons( Name => "planar_net_".$this->name,
+   my $Layout = new Visual::PlanarNet::Polygons( Name => "planar_net_".$this->name,
                                       Points => $vertices,
                                       PointLabels => $vf_map_inv,
                                       Facets => \@polygons,
                                       NEdges => $n_facets-1 + 2*($this->POLYTOPE->N_VERTICES-1),
+                                      Axes => \@axes,
+                                      DihedralAngles => \@angles,
+                                      DependendVertices => \@edgedepend,
+                                      PolytopeRoot => [[@$rootfirst],[@$rootnormal],$rootup],
                                       $decor
        );
    visualize( new Visual::PlanarNet(Name => $this->name, PlanarNet => $this, $Layout) );

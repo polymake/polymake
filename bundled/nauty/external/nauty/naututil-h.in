@@ -1,5 +1,5 @@
 /*****************************************************************************
-* This is the header file for versions 2.5 of naututil.c and dreadnaut.c.    *
+* This is the header file for versions 2.6 of naututil.c and dreadnaut.c.    *
 * @configure_input@
 *****************************************************************************/
 
@@ -20,7 +20,7 @@ used, it is necessary to check they are correct.
 
 /*****************************************************************************
 *                                                                            *
-*   Copyright (1984-2013) Brendan McKay.  All rights reserved.               *
+*   Copyright (1984-2016) Brendan McKay.  All rights reserved.               *
 *   Subject to the waivers and disclaimers in nauty.h.                       *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
@@ -106,6 +106,10 @@ used, it is necessary to check they are correct.
 *       15-Jan-12 : added TLS_ATTR to static declarations                    *
 *        3-Mar-12 : added putorbitsplus() and putset_firstbold()             *
 *       17-Mar-12 : include naurng.h and remove redundant lines              *
+*        1-Nov-15 : changes for version 2.6 :                                *
+*                 - prototypes for putdegseq(), putdegseq_sg()               *
+*       17-Dec-15 : prototype for readgraph_swg()                            *
+*        6-Apr-16 : prototype for countcells()                               *
 *                                                                            *
 * @edit_msg@
 *                                                                            *
@@ -127,9 +131,11 @@ extern void converse(graph*,int,int);
 extern void converse_sg(sparsegraph*, sparsegraph*);
 extern void copycomment(FILE*,FILE*,int);
 extern void complement_sg(sparsegraph*, sparsegraph*);
+extern int countcells(int*,int,int);
 extern void flushline(FILE*);
 extern void fixit(int*,int*,int*,int,int);
 extern int getint(FILE*);
+extern int getint_sl(FILE*);
 extern long hash(set*,long,int);
 extern long hashgraph(graph*,int,int,long);
 extern long hashgraph_sg(sparsegraph*,long);
@@ -143,6 +149,8 @@ extern void putcanon(FILE*,int*,graph*,int,int,int);
 extern void putcanon_sg(FILE*,int*,sparsegraph*,int);
 extern void putdegs(FILE*,graph*,int,int,int);
 extern void putdegs_sg(FILE*,sparsegraph*,int);
+extern void putdegseq(FILE*,graph*,int,int,int);
+extern void putdegseq_sg(FILE*,sparsegraph*,int);
 extern void putgraph(FILE*,graph*,int,int,int);
 extern void putgraph_sg(FILE*,sparsegraph*,int);
 extern void putmapping(FILE*,int*,int,int*,int,int,int);
@@ -160,7 +168,9 @@ extern void ranreg_sg(sparsegraph *sg, int degree, int n);
 extern void ranperm(int*,int);
 extern void readgraph(FILE*,graph*,boolean,boolean,boolean,int,int,int);
 extern void readgraph_sg(FILE*,sparsegraph*,boolean,boolean,int,int);
+extern void readgraph_swg(FILE*,sparsegraph*,boolean,boolean,int,int);
 extern boolean readinteger(FILE*,int*);
+extern boolean readinteger_sl(FILE*,int*);
 extern void readperm(FILE*,int*,boolean,int);
 extern void readptn(FILE*,int*,int*,int*,boolean,int);
 extern void readvperm(FILE*,int*,boolean,int,int*);
@@ -172,6 +182,7 @@ extern int setinter(set*,set*,int);
 extern int setsize(set*,int);
 extern void sublabel(graph*,int*,int,graph*,int,int);
 extern void sublabel_sg(sparsegraph*,int*,int,sparsegraph*);
+extern int subpartition(int*,int*,int,int*,int);
 extern void unitptn(int*,int*,int*,int);
 
 #ifdef __cplusplus

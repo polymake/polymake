@@ -13,6 +13,9 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+# TODO: introduce "tropical Monomials" interpreting "DD x" as "x ** DD"
+# and get rid of this function
+
 # This file contains methods to parse a tropical polynomial in the form
 # "max(3x+4,...)" and the like.
 
@@ -173,59 +176,7 @@ user_function toTropicalPolynomial(String; @) {
 		}
 	}
 
-	#Create a tropical ring
-	my $ring = $uses_min? (new Ring<TropicalNumber<Min> >(scalar(@vars))) :
-								(new Ring<TropicalNumber<Max> >(scalar(@vars)));
-	return $uses_min?
-		(new Polynomial<TropicalNumber<Min> >($monom_matrix,$coefficients,$ring)) :
-		(new Polynomial<TropicalNumber<Max> >($monom_matrix,$coefficients,$ring));
+	my $min= $uses_min ? typeof Min : typeof Max;
+	return new Polynomial<TropicalNumber<$min>>($coefficients, $monom_matrix);
 
 }#END toTropicalPolynomial(String,...)
-
-# @category Data Conversion
-# Same as [[toTropicalPolynomial]](String,...), except that the result will live in
-# the specified ring.
-# @param String s The string to be parsed
-# @param Ring<TropicalNumber<Addition,Rational> > r The polynomial ring in which the result will live.
-# By default, all variables in s must match variables of the ring (this can be changed with the next argument)
-# and the ring must be over the TropicalNumbers.
-# @param Bool match_variables_by_order Optional and false by default. If true, variables in //s// can be arbitrary,
-# though their total number has to match the total number of ring variables. The variables of the string
-# will be assigned to ring variables in alphabetical order.
-# @return Polynomial<TropicalNumber<Addition,Rational> >
-user_function toTropicalPolynomial<Addition>(String,Ring<TropicalNumber<Addition> >; $=0) {
-	my ($string,$ring,$match_variables_by_order) = @_;
-	#Need to convert variables to strings
-	my $f = toTropicalPolynomial($string, $match_variables_by_order? () : (map {"$_"} $ring->variables) );
-
-	#Need to check if number of variables match
-	if(!$match_variables_by_order) {
-		if($f->monomials_as_matrix->cols() != $ring->n_vars()) {
-			die "Number of variables of polynomial and ring do not match.";
-		}
-	}
-
-	#Now convert to polynomial in the given ring
-	return map_poly($f,$ring,!$match_variables_by_order);
-}
-
-# This functions converts a polynomial in the same number of variables as a given ring
-# to a polynomial in that ring. Additionally, it gives out a helpful error message, if the
-# tropical additions don't match (Without this additional function, one just gets a long
-# compiler error).
-function map_poly<Addition1,Addition2>(Polynomial<TropicalNumber<Addition1> >, Ring<TropicalNumber<Addition2> >, $) {
-	my ($f,$ring, $fill_up_variables) = @_;
-	if(Addition1->orientation() != Addition2->orientation()) {
-		die "Error: Polynomial uses a different tropical addition than the ring";
-	}
-	else {
-		my $mon_matrix = $f->monomials_as_matrix;
-		if($fill_up_variables) {
-			if($mon_matrix->cols() > $ring->n_vars()) {
-				die "Polynomial cannot lie in ring. Too many variables.";
-			}
-			$mon_matrix = $mon_matrix | new Matrix<Int>($mon_matrix->rows(), $ring->n_vars - $mon_matrix->cols());
-		}
-		return new Polynomial<TropicalNumber<Addition2> >($mon_matrix, $f->coefficients_as_vector,$ring);
-	}
-}

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -27,7 +27,7 @@ CONFIGURE_OPT {
    find_file_and_confirm($RGBtxt_path, "rgb.txt",
                          qw( /usr/X11/lib/X11 /usr/share/X11 /usr/X11/share/X11 /usr/X11R6/lib/X11
                              /usr/local/X11/lib/X11 /usr/local/X11R6/lib/X11 /usr/openwin/lib/X11 
-                             /usr/local/lib/X11 ),
+                             /usr/local/lib/X11 /opt/X11/share/X11 ),
                          { prompt => "color name database",
                            abort => "disable\nusing symbolic color names in visualization methods" });
 }
@@ -71,7 +71,9 @@ require Visual::Polygons;
 declare property_type RGB : c++ (include=>["polymake/color.h"]) {
 
    type_method parse {
-      if ($_[1] =~ /[^\s\d.]/) {
+      if ($_[1] =~ /^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})/) {
+         $_[0]->construct->(hex($1), hex($2), hex($3));
+      } elsif ($_[1] =~ /[^\s\d.]/) {
          # symbolic color name?
          Visual::get_sym_color($_[1]) // croak("unknown color name '$_[1]'");
       } else {
@@ -298,7 +300,8 @@ options %Visual::Polygons::decorations=(
 # @option String Title name of the whole drawing; per default the name of the first Object is taken.
 # @options %Visual::Polygons::decorations
 # @return Visual::Container if called in void context, immediately starts the preferred rendering program.
-# @example Draw a pretty 8-pointed star:
+# @example [application polytope]
+# Draw a pretty 8-pointed star:
 # > compose(cube(2)->VISUAL,cross(2,sqrt(2))->VISUAL,Title=>"A pretty star.",VertexLabels=>"hidden");
 
 user_function compose(Visual::Object+, %) {

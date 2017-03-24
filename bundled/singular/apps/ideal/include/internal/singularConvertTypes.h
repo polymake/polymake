@@ -34,8 +34,8 @@ namespace singular {
    // Convert functions:
    Rational convert_number_to_Rational(number singularNumber, ring singularRing);
    number convert_Rational_to_number(const Rational& gmpRational);
-   Polynomial<> convert_poly_to_Polynomial(const poly singularPolynomial, const Ring<>& polymakeRing);
-   std::pair<ListMatrix<Vector<int> >, std::vector<Rational> > convert_poly_to_matrix_and_vector(const poly q);
+   Polynomial<> convert_poly_to_Polynomial(const poly singularPolynomial);
+   std::pair<std::vector<Rational>, ListMatrix<Vector<int>>> convert_poly_to_vector_and_matrix(const poly q);
    poly convert_Polynomial_to_poly(const Polynomial<>& polymakePolynomial, ring singularRing);
 
    

@@ -61,7 +61,7 @@ template <typename T1, typename T2,
           typename Model2=typename object_traits<typename deref<T2>::type>::model>
 struct union_reference_helper {
    typedef type_union< typename merge_list<typename extract_union_list<T1>::type,
-                                           typename extract_union_list<T2>::type, identical>::type >
+                                           typename extract_union_list<T2>::type, std::is_same>::type >
       type;
 };
 
@@ -79,16 +79,15 @@ struct union_iterator_traits< cons<Head,Tail> > {
    typedef union_iterator_traits<Head> traits1;
    typedef union_iterator_traits<Tail> traits2;
 
-   typedef typename least_derived< cons<typename traits1::iterator_category, typename traits2::iterator_category> >::type
-      iterator_category;
+   typedef typename least_derived_class<typename traits1::iterator_category, typename traits2::iterator_category>::type iterator_category;
    typedef typename union_reference<typename traits1::reference, typename traits2::reference>::type reference;
    typedef typename deref<reference>::type value_type;
    typedef value_type *pointer;
-   typedef typename identical<typename traits1::difference_type, typename traits2::difference_type>::type difference_type;
+   typedef typename std::common_type<typename traits1::difference_type, typename traits2::difference_type>::type difference_type;
 
-   typedef typename merge_list<typename traits1::iterator_list, typename traits2::iterator_list, identical>::type
+   typedef typename merge_list<typename traits1::iterator_list, typename traits2::iterator_list, std::is_same>::type
       iterator_list;
-   typedef typename merge_list<typename traits1::const_iterator_list, typename traits2::const_iterator_list, identical>::type
+   typedef typename merge_list<typename traits1::const_iterator_list, typename traits2::const_iterator_list, std::is_same>::type
       const_iterator_list;
 };
 
@@ -273,7 +272,7 @@ protected:
    template <int discr> struct basics : virtuals::basics<typename n_th<IteratorList,discr>::type> {};
 
    template <typename Iterator, int own_discr, int alt_discr>
-   void _init_from_value(const Iterator& it, cons< int2type<own_discr>, int2type<alt_discr> >)
+   void init_from_value(const Iterator& it, cons< int_constant<own_discr>, int_constant<alt_discr> >)
    {
       const int discr=const_first_nonnegative<own_discr,alt_discr>::value;
       this->discriminant=discr;
@@ -281,47 +280,47 @@ protected:
    }
 
    template <typename OtherList>
-   void _init_from_value(const iterator_union<OtherList>& it, cons< int2type<-1>, int2type<-1> >)
+   void init_from_value(const iterator_union<OtherList>& it, cons< int_constant<-1>, int_constant<-1> >)
    {
-      _init_from_union(it, bool2type< list_mapping<OtherList, IteratorList>::mismatch >(),
-                           bool2type< list_mapping<OtherList, typename traits::iterator_list>::mismatch >() );
+      init_from_union(it, bool_constant< list_mapping<OtherList, IteratorList>::mismatch >(),
+                          bool_constant< list_mapping<OtherList, typename traits::iterator_list>::mismatch >() );
    }
 
-   template <typename OtherList, typename _discr2>
-   void _init_from_union(const iterator_union<OtherList>& it, False, _discr2)
+   template <typename OtherList, typename discr2>
+   void init_from_union(const iterator_union<OtherList>& it, std::false_type, discr2)
    {
-      super::_init_from_union(it, False());
+      super::init_from_union(it, std::false_type());
    }
 
    template <typename OtherList>
-   void _init_from_union(const iterator_union<OtherList>& it, True, False)
+   void init_from_union(const iterator_union<OtherList>& it, std::true_type, std::false_type)
    {
       this->discriminant=virtuals::mapping< typename list_mapping<OtherList, typename traits::iterator_list>::type >::table[it.discriminant];
       virtuals::table<typename Functions::alt_copy_constructor>::call(this->discriminant)(this->area,it.area);
    }
 
    template <typename Iterator>
-   void _init(const Iterator& it, False, False)
+   void init_impl(const Iterator& it, std::false_type, std::false_type)
    {
-      _init_from_value(it, cons< int2type<list_search<IteratorList, Iterator, identical>::pos>,
-                                 int2type<list_search<typename traits::iterator_list, Iterator, identical>::pos> >());
+      init_from_value(it, cons< int_constant<list_search<IteratorList, Iterator, std::is_same>::pos>,
+                                int_constant<list_search<typename traits::iterator_list, Iterator, std::is_same>::pos> >());
    }
 
-   template <typename Iterator, typename _discr2>
-   void _init(const Iterator& it, True, _discr2)
+   template <typename Iterator, typename discr2>
+   void init_impl(const Iterator& it, std::true_type, discr2)
    {
-      super::_init(it, True());
+      super::init_impl(it, std::true_type());
    }
 
    template <typename Iterator>
-   void _init(const Iterator& it, False, True)
+   void init_impl(const Iterator& it, std::false_type, std::true_type)
    {
       this->discriminant=it.discriminant;
       virtuals::table<typename Functions::alt_copy_constructor>::call(this->discriminant)(this->area,it.area);
    }
 
    template <typename Iterator, int own_discr, int alt_discr>
-   void _assign_value(const Iterator& it, cons< int2type<own_discr>, int2type<alt_discr> >)
+   void assign_value(const Iterator& it, cons< int_constant<own_discr>, int_constant<alt_discr> >)
    {
       const int discr=const_first_nonnegative<own_discr,alt_discr>::value;
       if (this->discriminant==discr) {
@@ -334,20 +333,20 @@ protected:
    }
 
    template <typename OtherList>
-   void _assign_value(const iterator_union<OtherList>& it, cons< int2type<-1>, int2type<-1> >)
+   void assign_value(const iterator_union<OtherList>& it, cons< int_constant<-1>, int_constant<-1> >)
    {
-      _assign_union(it, bool2type< list_mapping<OtherList, IteratorList>::mismatch >(),
-                        bool2type< list_mapping<OtherList, typename traits::iterator_list>::mismatch >() );
+      assign_union(it, bool_constant< list_mapping<OtherList, IteratorList>::mismatch >(),
+                       bool_constant< list_mapping<OtherList, typename traits::iterator_list>::mismatch >() );
    }
 
-   template <typename OtherList, typename _discr2>
-   void _assign_union(const iterator_union<OtherList>& it, False, _discr2)
+   template <typename OtherList, typename discr2>
+   void assign_union(const iterator_union<OtherList>& it, std::false_type, discr2)
    {
-      super::_assign_union(it, False());
+      super::assign_union(it, std::false_type());
    }
 
    template <typename OtherList>
-   void _assign_union(const iterator_union<OtherList>& it, True, False)
+   void assign_union(const iterator_union<OtherList>& it, std::true_type, std::false_type)
    {
       const int discr=virtuals::mapping< typename list_mapping<OtherList, typename traits::iterator_list>::type >::table[it.discriminant];
       if (this->discriminant==discr) {
@@ -360,26 +359,26 @@ protected:
    }
 
    template <typename Iterator>
-   void _assign(const Iterator& it, False, False)
+   void assign_impl(const Iterator& it, std::false_type, std::false_type)
    {
-      _assign_value(it, cons< int2type<list_search<IteratorList, Iterator, identical>::pos>,
-                              int2type<list_search<typename traits::iterator_list, Iterator, identical>::pos> >());
+      assign_value(it, cons< int_constant<list_search<IteratorList, Iterator, std::is_same>::pos>,
+                             int_constant<list_search<typename traits::iterator_list, Iterator, std::is_same>::pos> >());
    }
 
-   template <typename Iterator, typename _discr2>
-   void _assign(const Iterator& src, True, _discr2)
+   template <typename Iterator, typename discr2>
+   void assign_impl(const Iterator& src, std::true_type, discr2)
    {
-      super::_assign(src, True());
+      super::assign_impl(src, std::true_type());
    }
 
    template <typename Iterator>
-   void _assign(const Iterator& it, False, True)
+   void assign_impl(const Iterator& it, std::false_type, std::true_type)
    {
       if (this->discriminant==it.discriminant) {
          virtuals::table<typename Functions::alt_assignment>::call(this->discriminant)(this->area,it.area);
       } else {
          virtuals::table<typename Functions::destructor>::call(this->discriminant)(this->area);
-         _init(it, False(), True());
+         init_impl(it, std::false_type(), std::true_type());
       }
    }
 
@@ -398,27 +397,27 @@ public:
 
    iterator_union(const iterator_union& it)
    {
-      super::_init(it, True());
+      super::init_impl(it, std::true_type());
    }
 
    template <typename Iterator>
    iterator_union(const Iterator& it)
    {
-      _init(it, derived_from<Iterator,iterator_union>(),
-                derived_from<Iterator,iterator>());
+      init_impl(it, is_derived_from<Iterator, iterator_union>(),
+                    is_derived_from<Iterator, iterator>());
    }
 
    iterator_union& operator= (const iterator_union& it)
    {
-      super::_assign(it, True());
+      super::assign_impl(it, std::true_type());
       return *this;
    }
 
    template <typename Iterator>
    iterator_union& operator= (const Iterator& it)
    {
-      _assign(it, derived_from<Iterator,iterator_union>(),
-                  derived_from<Iterator,iterator>());
+      assign_impl(it, is_derived_from<Iterator, iterator_union>(),
+                      is_derived_from<Iterator, iterator>());
       return *this;
    }
 
@@ -444,22 +443,19 @@ public:
 
    bool at_end() const
    {
-      typedef typename enable_if<void, check_iterator_feature<iterator_union, end_sensitive>::value>::type
-         error_if_unimplemented __attribute__((unused));
+      static_assert(check_iterator_feature<iterator_union, end_sensitive>::value, "iterator is not end-sensitive");
       return virtuals::table<typename Functions::at_end>::call(this->discriminant)(this->area);
    }
 
    int index() const
    {
-      typedef typename enable_if<void, check_iterator_feature<iterator_union, indexed>::value>::type
-         error_if_unimplemented __attribute__((unused));
+      static_assert(check_iterator_feature<iterator_union, indexed>::value, "iterator is not indexed");
       return virtuals::table<typename Functions::index>::call(this->discriminant)(this->area);
    }
 
    void rewind()
    {
-      typedef typename enable_if<void, check_iterator_feature<iterator_union, rewindable>::value>::type
-         error_if_unimplemented __attribute__((unused));
+      static_assert(check_iterator_feature<iterator_union, rewindable>::value, "iterator is not rewindable");
       virtuals::table<typename Functions::rewind>::call(this->discriminant)(this->area);
    }
 };
@@ -518,9 +514,9 @@ public:
       virtuals::table<typename _super::Functions::advance_minus>::call(this->discriminant)(this->area);
       return *this;
    }
-   const iterator_union operator+ (int i) const { iterator_union copy=*this; return copy+=i; }
-   const iterator_union operator- (int i) const { iterator_union copy=*this; return copy-=i; }
-   friend const iterator_union operator+ (int i, const iterator_union& it) { return it+i; }
+   iterator_union operator+ (int i) const { iterator_union copy=*this; return copy+=i; }
+   iterator_union operator- (int i) const { iterator_union copy=*this; return copy-=i; }
+   friend iterator_union operator+ (int i, const iterator_union& it) { return it+i; }
 
    typename _super::difference_type operator- (const iterator_union& it) const
    {
@@ -571,20 +567,20 @@ template <typename ContainerRef, typename Features=void>
 struct union_container_traits : union_container_traits_helper<ContainerRef, Features> {};
 
 template <typename C1, typename C2, typename Features,
-          bool _need_union=!identical<typename union_container_traits<C1, Features>::iterator,
-                                      typename union_container_traits<C2, Features>::iterator>::value,
-          bool _reversible=union_container_traits<C1, Features>::is_reversible &&
-                           union_container_traits<C2, Features>::is_reversible>
+          bool need_union=!std::is_same<typename union_container_traits<C1, Features>::iterator,
+                                        typename union_container_traits<C2, Features>::iterator>::value,
+          bool reversible=union_container_traits<C1, Features>::is_reversible &&
+                          union_container_traits<C2, Features>::is_reversible>
 struct union_container_traits_helper2
    : union_container_traits<C1, Features> {};
 
 template <typename C1, typename C2, typename Features>
 struct union_container_traits_helper2<C1, C2, Features, true, false> {
    typedef typename merge_list<typename union_container_traits<C1, Features>::iterator_list,
-                               typename union_container_traits<C2, Features>::iterator_list, identical>::type
+                               typename union_container_traits<C2, Features>::iterator_list, std::is_same>::type
       iterator_list;
    typedef typename merge_list<typename union_container_traits<C1, Features>::const_iterator_list,
-                               typename union_container_traits<C2, Features>::const_iterator_list, identical>::type
+                               typename union_container_traits<C2, Features>::const_iterator_list, std::is_same>::type
       const_iterator_list;
    typedef iterator_union<iterator_list> iterator;
    typedef iterator_union<const_iterator_list> const_iterator;
@@ -594,10 +590,10 @@ template <typename C1, typename C2, class Features>
 struct union_container_traits_helper2<C1, C2, Features, true, true>
    : union_container_traits_helper2<C1, C2, Features, true, false> {
    typedef typename merge_list<typename union_container_traits<C1, Features>::reverse_iterator_list,
-                               typename union_container_traits<C2, Features>::reverse_iterator_list, identical>::type
+                               typename union_container_traits<C2, Features>::reverse_iterator_list, std::is_same>::type
       reverse_iterator_list;
    typedef typename merge_list<typename union_container_traits<C1, Features>::const_reverse_iterator_list,
-                               typename union_container_traits<C2, Features>::const_reverse_iterator_list, identical>::type
+                               typename union_container_traits<C2, Features>::const_reverse_iterator_list, std::is_same>::type
       const_reverse_iterator_list;
    typedef iterator_union<reverse_iterator_list> reverse_iterator;
    typedef iterator_union<const_reverse_iterator_list> const_reverse_iterator;
@@ -608,12 +604,9 @@ struct union_container_traits<cons<Head, Tail>, Features>
    : union_container_traits_helper2<Head, Tail, Features> {
    typedef union_container_traits<Head, Features> traits1;
    typedef union_container_traits<Tail, Features> traits2;
-   typedef typename least_derived< cons<typename traits1::category, typename traits2::category> >::type
-      category;
-   typedef typename union_reference<typename traits1::reference, typename traits2::reference>::type
-      reference;
-   typedef typename union_reference<typename traits1::const_reference, typename traits2::const_reference>::type
-      const_reference;
+   typedef typename least_derived_class<typename traits1::category, typename traits2::category>::type category;
+   typedef typename union_reference<typename traits1::reference, typename traits2::reference>::type reference;
+   typedef typename union_reference<typename traits1::const_reference, typename traits2::const_reference>::type const_reference;
    static const bool
       is_reversible=traits1::is_reversible && traits2::is_reversible,
       is_resizeable=traits1::is_resizeable && traits2::is_resizeable,
@@ -815,9 +808,9 @@ protected:
    static const bool _provide_sparse=
       list_accumulate_binary<list_or, check_container_ref_feature, ContainerList, same<sparse> >::value &&
       !list_accumulate_binary<list_and, check_container_ref_feature, ContainerList, same<sparse> >::value &&
-      !list_search<ProvidedFeatures, dense, identical>::value;
-   typedef typename if_else<_provide_sparse, typename mix_features<ProvidedFeatures, sparse_compatible>::type,
-                                             ProvidedFeatures>::type
+      !list_search<ProvidedFeatures, dense, std::is_same>::value;
+   typedef typename std::conditional<_provide_sparse, typename mix_features<ProvidedFeatures, sparse_compatible>::type,
+                                                      ProvidedFeatures>::type
       needed_features;
 
    typedef union_container_traits<ContainerList, needed_features> traits;
@@ -1004,7 +997,7 @@ template <typename ContainerList, typename ProvidedFeatures>
 struct check_container_feature<ContainerUnion<ContainerList,ProvidedFeatures>, sparse> {
    static const bool value=
       list_accumulate_binary<list_or, check_container_ref_feature, ContainerList, same<sparse> >::value &&
-      !list_search<ProvidedFeatures, dense, identical>::value;
+      !list_search<ProvidedFeatures, dense, std::is_same>::value;
 };
 
 template <typename ContainerList, typename ProvidedFeatures>
@@ -1019,7 +1012,7 @@ struct extract_union_list< ContainerUnion<ContainerList, ProvidedFeatures> > {
 template <typename T1, typename T2>
 struct union_reference_helper<T1, T2, is_container, is_container> {
    typedef ContainerUnion< typename merge_list<typename extract_union_list<T1>::type,
-                                               typename extract_union_list<T2>::type, identical>::type >
+                                               typename extract_union_list<T2>::type, std::is_same>::type >
       type;
 };
 

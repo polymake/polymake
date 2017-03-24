@@ -16,45 +16,38 @@
 
 #include "polymake/client.h"
 #include "polymake/Array.h"
-#include "polymake/graph/HasseDiagram.h"
+#include "polymake/graph/Lattice.h"
+#include "polymake/graph/Decoration.h"
 
 namespace polymake { namespace polytope {
 
-void edge_colored_bounded_graph(perl::Object g, const graph::HasseDiagram& HD, const Set<int>& far_face, const int upper_bound)
+using namespace graph;
+using namespace graph::lattice;
+
+void edge_colored_bounded_graph(
+		const Array<int>& max_poly_comb_dims,
+		const IncidenceMatrix<>& max_polys,
+		perl::Object g)
 {
-   const int n=HD.nodes();
-   Array<int> highest_rank_seen(n,-1);
-
-   for (int k= upper_bound>=0? upper_bound : HD.dim()-1; k>=2; --k)
-      for (Entire<sequence>::iterator it=entire(HD.node_range_of_dim(k)); !it.at_end(); ++it) {
-         const int this_idx=*it;
-         const Set<int>& this_face = HD.face(this_idx);
-         if ((this_face*far_face).empty()) {
-            int rank=k;
-            for (Graph<Directed>::out_edge_list::const_iterator e=HD.out_edges(this_idx).begin(); !e.at_end(); ++e)
-               rank=std::max(rank,highest_rank_seen[e.to_node()]);
-            highest_rank_seen[this_idx]=rank;
-         }
-      }
-
    const Graph<> BG=g.give("ADJACENCY");
+	const Array<Set<int> > edges = g.call_method("EDGES");
    EdgeMap<Undirected, int> edge_colors(BG);
 
-   for (Entire<sequence>::iterator it=entire(HD.node_range_of_dim(1)); !it.at_end(); ++it) {
-      const int this_idx=*it;
-      const Set<int>& this_edge = HD.face(this_idx);
-      if ((this_edge*far_face).empty()) {
-         int rank=1;
-         for (Graph<Directed>::out_edge_list::const_iterator e=HD.out_edges(this_idx).begin(); !e.at_end(); ++e)
-            assign_max(rank,highest_rank_seen[e.to_node()]);
-         edge_colors(this_edge.front(), this_edge.back())=rank;
-      }
-   }
+	for(auto e = ensure(edges, (pm::cons<pm::indexed, pm::end_sensitive>*)0).begin(); !e.at_end(); ++e) {
+		int rank = 1;
+		auto mc_dim_it = entire(max_poly_comb_dims);
+		auto mc_it = entire(rows(max_polys));
+		for(;!mc_it.at_end(); ++mc_it, ++mc_dim_it) {
+			if(incl(*e,*mc_it) <= 0)
+				assign_max(rank, *mc_dim_it);
+		}
+		edge_colors[e.index()] = rank;
+	}
 
    g.take("EDGE_COLORS") << edge_colors;
 }
 
-Function4perl(&edge_colored_bounded_graph, "edge_colored_bounded_graph(Graph FaceLattice $; $=-1)");
+Function4perl(&edge_colored_bounded_graph, "edge_colored_bounded_graph(Array<Int>, IncidenceMatrix, Graph<Undirected>)");
 
 } }
 

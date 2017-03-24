@@ -32,23 +32,20 @@ void print_constraints_sub(const Matrix<Scalar>& M, Array<std::string> coord_lab
 
    const int start = homogeneous ? 0 : 1;
 
-   std::string var="x";
-
    if (coord_labels.size() > 0) {
       if (!homogeneous && coord_labels.size() == M.cols()-1) {
-         Array<std::string> new_coord(1,"inhomog_var");
-         new_coord.append(coord_labels.size(),coord_labels.begin());
+         Array<std::string> new_coord(1, "inhomog_var");
+         new_coord.append(coord_labels.size(), coord_labels.begin());
          coord_labels = new_coord;
       }
-      if (coord_labels.size()!=M.cols())
+      if (coord_labels.size() != M.cols())
          throw std::runtime_error("print_constraints - Wrong number of variables!");
    } else {
+      const std::string var("x");
       coord_labels.resize(M.cols());
-      for (int i=start; i<M.cols(); ++i) {
-         std::ostringstream var_name;
-         var_name << var << i;
-         coord_labels[i]=var_name.str();
-      }
+      for (int i=start; i<M.cols(); ++i)
+         coord_labels[i]=var+std::to_string(i);
+
       // the coordinate label we assign below will not be used
       if (!homogeneous)
          coord_labels[0] = "inhomog_var";
@@ -60,12 +57,12 @@ void print_constraints_sub(const Matrix<Scalar>& M, Array<std::string> coord_lab
       else
          cout << i;
       cout << ": ";
-      if (M.row(i).slice(range(start,M.cols()-1)) == zero_vector<Rational>(M.cols()-start)) {
+      if (is_zero(M.row(i).slice(start))) {
          cout << "0";
       } else {
          bool first=true;
          for (int j=start; j < M.cols(); ++j) {
-            Scalar cur_coeff = M.row(i)[j];
+            const Scalar cur_coeff = M.row(i)[j];
             if ( cur_coeff != 0 ) {
                if ( ! first )
                   cout << " ";

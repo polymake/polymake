@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -30,14 +30,14 @@ template <typename Container1, typename Container2, typename ComparatorFamily,
 struct cmp_lex_containers;
 
 template <typename Matrix1, typename Matrix2, typename ComparatorFamily>
-struct cmp_lex_containers<Matrix1, Matrix2, ComparatorFamily, 2, 2> :
-   cmp_extremal_if_ordered< Rows<Matrix1>, Rows<Matrix2> > {
+struct cmp_lex_containers<Matrix1, Matrix2, ComparatorFamily, 2, 2>
+   : cmp_extremal {
 
    typedef Matrix1 first_argument_type;
    typedef Matrix2 second_argument_type;
    typedef cmp_value result_type;
 
-   using cmp_extremal_if_ordered< Rows<Matrix1>, Rows<Matrix2> >::operator();
+   using cmp_extremal::operator();
 
    typedef cmp_lex_containers<Rows<Matrix1>, Rows<Matrix2>, ComparatorFamily> cmp_rows;
 
@@ -49,14 +49,14 @@ struct cmp_lex_containers<Matrix1, Matrix2, ComparatorFamily, 2, 2> :
    }
 
    template <typename Iterator2>
-   typename enable_if<typename cons<cmp_value, Iterator2>::head, partially_defined>::type
+   typename std::enable_if<partially_defined, typename mproject1st<cmp_value, Iterator2>::type>::type
    operator() (partial_left, const Matrix1& a, const Iterator2& b) const
    {
       return cmp_rows()(partial_left(), rows(a), b);
    }
 
    template <typename Iterator1>
-   typename enable_if<typename cons<cmp_value, Iterator1>::head, partially_defined>::type
+   typename std::enable_if<partially_defined, typename mproject1st<cmp_value, Iterator1>::type>::type
    operator() (partial_right, const Iterator1& a, const Matrix2& b) const
    {
       return cmp_rows()(partial_right(), a, rows(b));
@@ -64,156 +64,122 @@ struct cmp_lex_containers<Matrix1, Matrix2, ComparatorFamily, 2, 2> :
 };
 
 template <typename Container1, typename Container2, typename ComparatorFamily>
-struct cmp_lex_containers<Container1, Container2, ComparatorFamily, 1, 1> :
-   cmp_extremal_if_ordered<typename Container1::value_type, typename Container2::value_type> {
+struct cmp_lex_containers<Container1, Container2, ComparatorFamily, 1, 1>
+   : cmp_extremal {
 
    typedef Container1 first_argument_type;
    typedef Container2 second_argument_type;
    typedef cmp_value result_type;
 
-   using cmp_extremal_if_ordered<typename Container1::value_type, typename Container2::value_type>::operator();
+   using cmp_extremal::operator();
 
-   static const bool
-      ordered=is_ordered<typename Container1::value_type>::value && is_ordered<typename Container2::value_type>::value,
-      partially_defined=build_comparator<typename Container1::value_type, typename Container2::value_type, ComparatorFamily>::partially_defined;
+   static const bool partially_defined=std::is_same<ComparatorFamily, cmp>::value &&
+      define_comparator<typename container_element_type<Container1>::type, typename container_element_type<Container2>::type, ComparatorFamily>::partially_defined;
 
 protected:
    template <typename Iterator> static
-   bool at_end1(const Iterator& it, end_sensitive*)
+   bool at_end1(const Iterator& it, mlist<end_sensitive>)
    {
       return static_cast<const typename Iterator::first_type&>(it).at_end();
    }
    template <typename Iterator> static
-   bool at_end1(const Iterator&, void*)
+   bool at_end1(const Iterator&, mlist<void>)
    {
       return false;
    }
    template <typename Iterator> static
-   bool at_end2(const Iterator& it, end_sensitive*)
+   bool at_end2(const Iterator& it, mlist<end_sensitive>)
    {
       return it.second.at_end();
    }
    template <typename Iterator> static
-   bool at_end2(const Iterator&, void*)
+   bool at_end2(const Iterator&, mlist<void>)
    {
       return false;
    }
 
-   template <typename Iterator, typename _end1, typename _end2> static
-   cmp_value run(Iterator it, _end1 *e1, _end2 *e2, True)
-   {
-      for (;;) {
-         if (at_end1(it, e1))
-            return at_end2(it, e2) ? cmp_eq : cmp_lt;
-         if (at_end2(it, e2))
-            return cmp_gt;
-         cmp_value result=*it;
-         if (result != cmp_eq)
-            return result;
-         ++it;
-      }
-   }
-
-   template <typename Iterator, typename _end1, typename _end2> static
-   cmp_value run(Iterator it, _end1*, _end2*, False)
-   {
-      return first_differ(it, cmp_eq);
-   }
-
    static
-   cmp_value compare(const Container1& a, const Container2& b, False, bool2type<ordered>)
+   cmp_value compare(const Container1& a, const Container2& b, std::false_type)
    {
-      typedef typename if_else<object_classifier::what_is<Container1>::value==object_classifier::is_constant,
-                               void, end_sensitive>::type
-         feature1;
-      typedef typename if_else<object_classifier::what_is<Container2>::value==object_classifier::is_constant,
-                               void, end_sensitive>::type
+      typedef typename std::conditional<object_classifier::what_is<Container1>::value==object_classifier::is_constant,
+                                        void, end_sensitive>::type
+        feature1;
+      typedef typename std::conditional<object_classifier::what_is<Container2>::value==object_classifier::is_constant,
+                                        void, end_sensitive>::type
          feature2;
 
-      if (!ordered &&
-          object_classifier::what_is<Container1>::value != object_classifier::is_constant &&
-          object_classifier::what_is<Container2>::value != object_classifier::is_constant &&
-          a.size() != b.size())
+      const TransformedContainerPair< masquerade_add_features<const Container1&, feature1>,
+                                      masquerade_add_features<const Container2&, feature2>,
+                                      ComparatorFamily > TP(a, b, ComparatorFamily());
+      auto it=entire(TP);
+      for ( ; !at_end1(it, mlist<feature1>()); ++it) {
+         if (at_end2(it, mlist<feature2>()))
+            return cmp_gt;
+         const cmp_value result=*it;
+         if (result != cmp_eq)
+            return result;
+      }
+      return at_end2(it, mlist<feature2>()) ? cmp_eq : std::is_same<ComparatorFamily, cmp_unordered>::value ? cmp_ne : cmp_lt;
+   }
+
+   static
+   cmp_value compare(const Container1& a, const Container2& b, std::true_type)
+   {
+      if (std::is_same<ComparatorFamily, cmp_unordered>::value && get_dim(a) != get_dim(b))
          return cmp_ne;
-
-      typedef TransformedContainerPair< masquerade_add_features<const Container1&, feature1>,
-                                        masquerade_add_features<const Container2&, feature2>,
-                                        ComparatorFamily > TP;
-      return run(entire(TP(a, b, ComparatorFamily())), (feature1*)0, (feature2*)0, bool2type<ordered>());
-   }
-
-   static
-   cmp_value compare(const Container1& a, const Container2& b, True, True)
-   {
-      const cmp_value result=first_differ(entire(attach_operation(a, b, ComparatorFamily())), cmp_eq);
-      return result!=cmp_eq ? result : pm::sign(get_dim(a) - get_dim(b));
-   }
-
-   static
-   cmp_value compare(const Container1& a, const Container2& b, True, False)
-   {
-      return get_dim(a)==get_dim(b)
-             ? first_differ(entire(attach_operation(a, b, ComparatorFamily())), cmp_eq)
-             : cmp_ne;
-   }
-
-   static
-   cmp_value compare(partial_left, const Container1& c, True)
-   {
-      ComparatorFamily cmp_el;
-      cmp_value ret=cmp_eq;
-      for (typename Entire<Container1>::const_iterator it=entire(c); !it.at_end(); ++it)
-         if ((ret=cmp_el(partial_left(), *it, it)) != cmp_eq) break;
-      return ret;
-   }
-
-   static
-   cmp_value compare(partial_right, const Container2& c, True)
-   {
-      ComparatorFamily cmp_el;
-      cmp_value ret=cmp_eq;
-      for (typename Entire<Container2>::const_iterator it=entire(c); !it.at_end(); ++it)
-         if ((ret=cmp_el(partial_right(), it, *it)) != cmp_eq) break;
-      return ret;
-   }
-
-   static
-   cmp_value compare(partial_left, const Container1& a, False)
-   {
-      return a.empty() ? cmp_eq : cmp_ne;
-   }
-
-   static
-   cmp_value compare(partial_right, const Container2& a, False)
-   {
-      return a.empty() ? cmp_eq : cmp_ne;
+      const cmp_value result=first_differ_in_range(entire(attach_operation(a, b, ComparatorFamily())), cmp_eq);
+      if (result != cmp_eq || std::is_same<ComparatorFamily, cmp_unordered>::value)
+         return result;
+      return cmp_value(sign(get_dim(a) - get_dim(b)));
    }
 
 public:
    cmp_value operator() (const Container1& a, const Container2& b) const
    {
-      const bool got_sparse=check_container_feature<Container1,sparse>::value ||
-                            check_container_feature<Container2,sparse>::value;
-      return compare(a, b, bool2type<got_sparse>(), bool2type<ordered>());
+      const bool got_sparse=check_container_feature<Container1, sparse>::value ||
+                            check_container_feature<Container2, sparse>::value;
+      return compare(a, b, bool_constant<got_sparse>());
    }
 
    template <typename Iterator2>
-   typename enable_if<typename cons<cmp_value, Iterator2>::head, partially_defined>::type
+   typename std::enable_if<partially_defined, typename mproject1st<cmp_value, Iterator2>::type>::type
    operator() (partial_left, const Container1& a, const Iterator2&) const
    {
-      return compare(partial_left(), a, bool2type<ordered>());
+      ComparatorFamily cmp_el;
+      cmp_value ret=cmp_eq;
+      for (auto it=entire(a); !it.at_end(); ++it)
+         if ((ret=cmp_el(partial_left(), *it, it)) != cmp_eq) break;
+      return ret;
    }
 
    template <typename Iterator1>
-   typename enable_if<typename cons<cmp_value, Iterator1>::head, partially_defined>::type
+   typename std::enable_if<partially_defined, typename mproject1st<cmp_value, Iterator1>::type>::type
    operator() (partial_right, const Iterator1&, const Container2& b) const
    {
-      return compare(partial_right(), b, bool2type<ordered>());
+      ComparatorFamily cmp_el;
+      cmp_value ret=cmp_eq;
+      for (auto it=entire(b); !it.at_end(); ++it)
+         if ((ret=cmp_el(partial_right(), it, *it)) != cmp_eq) break;
+      return ret;
    }
 };
 
+template <typename T, typename ComparatorFamily>
+struct is_comparable_container : std::true_type { };
+
+template <typename T>
+struct is_comparable_container<T, cmp>
+   : is_ordered<typename container_element_type<T>::type> { };
+
+template <typename T>
+struct is_comparable_container<T, cmp_unordered>
+   : is_unordered_comparable<typename container_element_type<T>::type> { };
+
 template <typename T1, typename T2, typename ComparatorFamily, typename Tag>
-struct build_comparator<T1, T2, ComparatorFamily, is_container, is_container, cons<Tag,Tag>, true> {
+struct define_comparator<T1, T2, ComparatorFamily, is_container, is_container, cons<Tag, Tag>,
+                         typename std::enable_if<(isomorphic_types<T1, T2>::value &&
+                                                  is_comparable_container<T1, ComparatorFamily>::value &&
+                                                  is_comparable_container<T2, ComparatorFamily>::value), cmp_value>::type> {
    typedef cmp_lex_containers<T1, T2, ComparatorFamily> type;
    static const bool partially_defined=type::partially_defined;
 };
@@ -230,105 +196,121 @@ struct cmp_lex_composite<Composite1, Composite2, ComparatorFamily, l, l> {
    typedef Composite2 second_argument_type;
    typedef cmp_value result_type;
 
-   static const bool ordered= list_accumulate_unary<list_and, is_ordered, typename object_traits<Composite1>::elements>::value &&
-                              list_accumulate_unary<list_and, is_ordered, typename object_traits<Composite2>::elements>::value;
 protected:
    static const int last=l-1;
 
    // SUGGESTION: make provisions for a list of comparators?
 
    template <int i> static
-   cmp_value compare_step(const Composite1& a, const Composite2& b, int2type<i>)
+   cmp_value compare_step(const Composite1& a, const Composite2& b, int_constant<i>)
    {
-      cmp_value result=ComparatorFamily()(visit_n_th(a, int2type<i>()), visit_n_th(b, int2type<i>()));
+      cmp_value result=ComparatorFamily()(visit_n_th(a, int_constant<i>()), visit_n_th(b, int_constant<i>()));
       const int next= i+1<l ? i+1 : i;
-      if (i<next && result==cmp_eq) result=compare_step(a, b, int2type<next>());
+      if (i<next && result==cmp_eq) result=compare_step(a, b, int_constant<next>());
       return result;
    }
 
 public:
    cmp_value operator() (const Composite1& a, const Composite2& b) const
    {
-      return compare_step(a, b, int2type<0>());
+      return compare_step(a, b, int_constant<0>());
    }
 };
 
+template <typename T, typename ComparatorFamily>
+struct is_comparable_composite : std::true_type { };
+
+template <typename T>
+struct is_comparable_composite<T, cmp>
+   : list_accumulate_unary<list_and, is_ordered, typename object_traits<T>::elements> { };
+
+template <typename T>
+struct is_comparable_composite<T, cmp_unordered>
+   : list_accumulate_unary<list_and, is_unordered_comparable, typename object_traits<T>::elements> { };
+
 template <typename T1, typename T2, typename ComparatorFamily, typename Tag>
-struct build_comparator<T1, T2, ComparatorFamily, is_composite, is_composite, cons<Tag,Tag>, true> {
+struct define_comparator<T1, T2, ComparatorFamily, is_composite, is_composite, cons<Tag, Tag>,
+                         typename std::enable_if<(isomorphic_types<T1, T2>::value &&
+                                                  is_comparable_composite<T1, ComparatorFamily>::value &&
+                                                  is_comparable_composite<T2, ComparatorFamily>::value), cmp_value>::type> {
    typedef cmp_lex_composite<T1, T2, ComparatorFamily> type;
    static const bool partially_defined=false;
 };
 
 } // end namespace operations
 
-namespace operators {
-
-template <typename Left, typename Right> inline
-bool operator!= (const Left& l, const Right& r)
-{
-   return !(l==r);
-}
-
-template <typename Left, typename Right> inline
-bool operator> (const Left& l, const Right& r)
-{
-   return r<l;
-}
-
-template <typename Left, typename Right> inline
-bool operator<= (const Left& l, const Right& r)
-{
-   return !(r<l);
-}
-
-template <typename Left, typename Right> inline
-bool operator>= (const Left& l, const Right& r)
-{
-   return !(l<r);
-}
-
-} // end namespace operators
-
-template <typename T, bool _is_max> inline
+template <typename T, bool _is_max> constexpr
 bool operator== (const T&, const extremal<T,_is_max>&) { return false; }
-template <typename T, bool _is_max> inline
+template <typename T, bool _is_max> constexpr
 bool operator!= (const T&, const extremal<T,_is_max>&) { return true; }
-template <typename T, bool _is_max> inline
+template <typename T, bool _is_max> constexpr
 bool operator< (const T&, const extremal<T,_is_max>&) { return _is_max; }
-template <typename T, bool _is_max> inline
+template <typename T, bool _is_max> constexpr
 bool operator<= (const T&, const extremal<T,_is_max>&) { return _is_max; }
-template <typename T, bool _is_max> inline
+template <typename T, bool _is_max> constexpr
 bool operator> (const T&, const extremal<T,_is_max>&) { return !_is_max; }
-template <typename T, bool _is_max> inline
+template <typename T, bool _is_max> constexpr
 bool operator>= (const T&, const extremal<T,_is_max>&) { return !_is_max; }
-template <typename T, bool _is_max> inline
+template <typename T, bool _is_max> constexpr
 bool operator== (const extremal<T,_is_max>&, const T&) { return false; }
-template <typename T, bool _is_max> inline
+template <typename T, bool _is_max> constexpr
 bool operator!= (const extremal<T,_is_max>&, const T&) { return true; }
-template <typename T, bool _is_max> inline
+template <typename T, bool _is_max> constexpr
 bool operator< (const extremal<T,_is_max>&, const T&) { return !_is_max; }
-template <typename T, bool _is_max> inline
+template <typename T, bool _is_max> constexpr
 bool operator<= (const extremal<T,_is_max>&, const T&) { return !_is_max; }
-template <typename T, bool _is_max> inline
+template <typename T, bool _is_max> constexpr
 bool operator> (const extremal<T,_is_max>&, const T&) { return _is_max; }
-template <typename T, bool _is_max> inline
+template <typename T, bool _is_max> constexpr
 bool operator>= (const extremal<T,_is_max>&, const T&) { return _is_max; }
 
-template <typename T, bool _is_max1, bool _is_max2> inline
+template <typename T, bool _is_max1, bool _is_max2> constexpr
 bool operator== (const extremal<T,_is_max1>&, const extremal<T,_is_max2>&) { return _is_max1==_is_max2; }
-template <typename T, bool _is_max1, bool _is_max2> inline
+template <typename T, bool _is_max1, bool _is_max2> constexpr
 bool operator!= (const extremal<T,_is_max1>&, const extremal<T,_is_max2>&) { return _is_max1!=_is_max2; }
-template <typename T, bool _is_max1, bool _is_max2> inline
+template <typename T, bool _is_max1, bool _is_max2> constexpr
 bool operator< (const extremal<T,_is_max1>&, const extremal<T,_is_max2>&) { return _is_max1<_is_max2; }
-template <typename T, bool _is_max1, bool _is_max2> inline
+template <typename T, bool _is_max1, bool _is_max2> constexpr
 bool operator<= (const extremal<T,_is_max1>&, const extremal<T,_is_max2>&) { return _is_max1<=_is_max2; }
-template <typename T, bool _is_max1, bool _is_max2> inline
+template <typename T, bool _is_max1, bool _is_max2> constexpr
 bool operator> (const extremal<T,_is_max1>&, const extremal<T,_is_max2>&) { return _is_max1>_is_max2; }
-template <typename T, bool _is_max1, bool _is_max2> inline
+template <typename T, bool _is_max1, bool _is_max2> constexpr
 bool operator>= (const extremal<T,_is_max1>&, const extremal<T,_is_max2>&) { return _is_max1>=_is_max2; }
 
 // for hash_set and similar
 struct is_unordered_set;
+
+// copied from boost/functional/hash.hpp
+template <typename SizeT>
+inline
+typename std::enable_if<sizeof(SizeT)==sizeof(uint64_t)>::type hash_combine(SizeT& h, SizeT k)
+{
+   const uint64_t m = 0xc6a4a7935bd1e995ul;
+   const int r = 47;
+
+   k *= m;
+   k ^= k >> r;
+   k *= m;
+
+   h ^= k;
+   h *= m;
+}
+
+template <typename SizeT>
+inline
+typename std::enable_if<sizeof(SizeT)==sizeof(uint32_t)>::type hash_combine(SizeT& h, SizeT k)
+{
+   const size_t c1 = 0xcc9e2d51;
+   const size_t c2 = 0x1b873593;
+
+   k *= c1;
+   k = (k << 15) | (k >> (32 - 15));
+   k *= c2;
+
+   h ^= k;
+   h = (h << 13) | (h >> (32 - 13));
+   h = h*5+0xe6546b64;
+}
 
 template <typename T>
 struct hash_func<T, is_container> {
@@ -339,9 +321,8 @@ public:
    size_t operator() (const T& x) const
    {
       size_t h=0;
-      int i=1;
-      for (typename Entire<T>::const_iterator it=entire(x); !it.at_end(); ++it, ++i) {
-         h += hash_elem(*it) * i;
+      for (auto it=entire(x); !it.at_end(); ++it) {
+         hash_combine(h, hash_elem(*it));
       }
       return h;
    }
@@ -350,14 +331,12 @@ public:
 template <typename T>
 struct hash_composite : hash_composite<typename list_tail<T>::type> {
    typedef hash_composite<typename list_tail<T>::type> super;
-   static const int magic_number=137;
 
    typedef typename list_head<T>::type element_type;
    typedef typename deref<element_type>::type value_type;
    super& operator<< (typename attrib<element_type>::plus_const_ref x)
    {
-      if (super::magic_number) this->value *= super::magic_number;
-      this->value += hash_elem(x);
+      hash_combine(this->value, hash_elem(x));
       return *this;
    }
 
@@ -366,10 +345,7 @@ struct hash_composite : hash_composite<typename list_tail<T>::type> {
 
 template <>
 struct hash_composite<void> {
-   static const int magic_number=0;
-   size_t value;
-
-   hash_composite() : value(0) {}
+   size_t value = 0;
 };
 
 template <typename T>
@@ -386,37 +362,49 @@ public:
 } // end namespace pm
 
 namespace polymake {
-   using pm::sign;
-   using pm::assign_max;
-   using pm::assign_min;
-   using pm::assign_min_max;
-   using pm::maximal;
-   using pm::minimal;
-   using std::abs;
-   using pm::abs;
-   using pm::isinf;
-   using pm::isfinite;
-   using pm::local_epsilon;
+using pm::sign;
+using pm::assign_max;
+using pm::assign_min;
+using pm::assign_min_max;
+using pm::maximal;
+using pm::minimal;
+using std::abs;
+using pm::abs;
+using pm::isinf;
+using pm::isfinite;
+using pm::local_epsilon;
 
-   namespace operations {
-      typedef BuildUnary<pm::operations::positive> positive;
-      typedef BuildUnary<pm::operations::negative> negative;
-      typedef BuildUnary<pm::operations::non_zero> non_zero;
-      typedef BuildUnary<pm::operations::equals_to_zero> is_zero;
+namespace operations {
+typedef BuildUnary<pm::operations::positive> positive;
+typedef BuildUnary<pm::operations::negative> negative;
+typedef BuildUnary<pm::operations::non_zero> non_zero;
+typedef BuildUnary<pm::operations::equals_to_zero> is_zero;
 
-      using pm::operations::cmp;
-      using pm::operations::cmp_with_leeway;
-      typedef BuildBinary<pm::operations::eq> eq;
-      typedef BuildBinary<pm::operations::ne> ne;
-      typedef BuildBinary<pm::operations::lt> lt;
-      typedef BuildBinary<pm::operations::le> le;
-      typedef BuildBinary<pm::operations::gt> gt;
-      typedef BuildBinary<pm::operations::ge> ge;
-      typedef BuildBinary<pm::operations::max> max;
-      typedef BuildBinary<pm::operations::min> min;
-      typedef BuildUnary<pm::operations::abs_value> abs_value;
+using pm::operations::cmp;
+using pm::operations::cmp_with_leeway;
+typedef BuildBinary<pm::operations::eq> eq;
+typedef BuildBinary<pm::operations::ne> ne;
+typedef BuildBinary<pm::operations::lt> lt;
+typedef BuildBinary<pm::operations::le> le;
+typedef BuildBinary<pm::operations::gt> gt;
+typedef BuildBinary<pm::operations::ge> ge;
+typedef BuildBinary<pm::operations::max> max;
+typedef BuildBinary<pm::operations::min> min;
+typedef BuildUnary<pm::operations::abs_value> abs_value;
+
+// replacement for std::less performing lexicographic comparison
+// to be used with STL algorithms and associative containers
+struct lex_less {
+   typedef bool result_type;
+
+   template <typename Left, typename Right>
+   bool operator() (const Left& l, const Right& r) const
+   {
+      return lex_compare(l, r)==pm::cmp_lt;
    }
-}
+};
+
+} }
 
 #endif // POLYMAKE_INTERNAL_COMPARATORS_H
 

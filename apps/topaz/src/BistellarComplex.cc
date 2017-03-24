@@ -15,10 +15,11 @@
 */
 
 #include "polymake/topaz/BistellarComplex.h"
+#include "polymake/topaz/hasse_diagram.h"
 
 namespace polymake { namespace topaz {
-   
-void BistellarComplex::init(const HasseDiagram& HD)
+
+void BistellarComplex::init(const Lattice<BasicDecoration>& HD)
 {
    // test if the complex is closed.
    if (!closed) {
@@ -26,28 +27,27 @@ void BistellarComplex::init(const HasseDiagram& HD)
       bool closed = B.empty();
 
       if (!closed) {
-
          // compute C + cone(bound(C))
          std::list< Set<int> > S;
-            
-         for (Entire<HasseDiagram::nodes_of_dim_set>::const_iterator f=entire(HD.nodes_of_dim(HD.dim()-1));
+
+         for (auto f=entire(HD.nodes_of_rank(HD.rank()-1));
               !f.at_end(); ++f) {
             S.push_back(HD.face(*f));
             const int w = HD.face(*f).back();
             if (w >= verts)
                verts = w+1;
          }
-         apex = verts;           
+         apex = verts;
          ++verts;
 
          for (Entire<polymake::topaz::Boundary_of_PseudoManifold>::const_iterator b=entire(B);
               !b.at_end(); ++b)
-            S.push_back(*b+apex);
-         const HasseDiagram new_HD = polymake::topaz::pure_hasse_diagram(S);
+            S.push_back(b->face+apex);
+         const Lattice<BasicDecoration> new_HD = hasse_diagram_from_facets(Array<Set<int> >(S));
 
          // compute raw options
          for (int d=0; d<=dim; ++d)
-            for (Entire<HasseDiagram::nodes_of_dim_set>::const_iterator n=entire(new_HD.nodes_of_dim(d));
+            for (auto n=entire(new_HD.nodes_of_rank(d+1));
                  !n.at_end(); ++n) {
                const Set<int> face = new_HD.face(*n);
 
@@ -71,7 +71,7 @@ void BistellarComplex::init(const HasseDiagram& HD)
 
    if (closed)
       for (int d=0; d<=dim; ++d)
-         for (Entire<HasseDiagram::nodes_of_dim_set>::const_iterator n=entire(HD.nodes_of_dim(d));
+         for (auto n=entire(HD.nodes_of_rank(d+1));
               !n.at_end(); ++n) {
             const Set<int> face=HD.face(*n);
 
@@ -94,7 +94,7 @@ void BistellarComplex::init(const HasseDiagram& HD)
             }
          }
 }
-   
+
 int BistellarComplex::find_move(const int dim_min, const int dim_max)
 {
    for (int d=dim_min; d<=dim_max; ++d) {
@@ -107,7 +107,7 @@ int BistellarComplex::find_move(const int dim_min, const int dim_max)
             return opt->first.size() - 1;
          }
    }
-      
+
    throw std::runtime_error("BistellarComplex: No move found.");
 }
 
@@ -123,7 +123,7 @@ bool BistellarComplex::is_option(const Set<int>& f, Set<int>& V) const
 
    return V.size()+f.size()==dim+2;
 }
-   
+
 void BistellarComplex::execute_move()
 {
    const Set<int> face = next_move.first;
@@ -131,7 +131,7 @@ void BistellarComplex::execute_move()
    if (face_dim==dim)  // allocate an index for the new vertex
       next_move.second = scalar2set(verts++);
    const Set<int> co_face= next_move.second;
-   if (!allow_rev_move)  rev_move = co_face;      
+   if (!allow_rev_move)  rev_move = co_face;
 
    if (verbose)
       cout << "BistellarComplex: executing move of dim "
@@ -149,9 +149,9 @@ void BistellarComplex::execute_move()
    std::list< Set<int> > star;
    the_facets.eraseSupersets(face, std::back_inserter(star));
 
-   HasseDiagram star_HD = polymake::topaz::pure_hasse_diagram(star);
+   Lattice<BasicDecoration> star_HD = hasse_diagram_from_facets(Array<Set<int> >(star));
    for (int d=0; d<=dim; ++d)
-      for (Entire<HasseDiagram::nodes_of_dim_set>::const_iterator n=entire(star_HD.nodes_of_dim(d));
+      for (auto n=entire(star_HD.nodes_of_rank(d+1));
            !n.at_end(); ++n)
          raw_options[d].remove(star_HD.face(*n));
 
@@ -168,9 +168,9 @@ void BistellarComplex::execute_move()
    }
 
    // find new raw_options
-   HasseDiagram local_HD = pure_hasse_diagram(new_facets);
+   Lattice<BasicDecoration> local_HD = hasse_diagram_from_facets(Array<Set<int> >(new_facets));
    for (int d=0; d<=dim; ++d)
-      for (Entire<HasseDiagram::nodes_of_dim_set>::const_iterator n=entire(local_HD.nodes_of_dim(d));
+      for (auto n=entire(local_HD.nodes_of_rank(d+1));
            !n.at_end(); ++n) {
          const Set<int> f = local_HD.face(*n);
 
@@ -183,7 +183,7 @@ void BistellarComplex::execute_move()
          }
       }
 }
-   
+
 } }
 
 // Local Variables:

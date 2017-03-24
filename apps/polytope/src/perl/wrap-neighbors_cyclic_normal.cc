@@ -17,7 +17,6 @@
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/TropicalNumber.h"
-#include "polymake/PuiseuxFraction.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -37,6 +36,5 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(neighbors_cyclic_normal_primal_T_x_f16, double);
    FunctionInstance4perl(neighbors_cyclic_normal_dual_T_x_f16, Rational);
    FunctionInstance4perl(neighbors_cyclic_normal_primal_T_x_f16, QuadraticExtension< Rational >);
-   FunctionInstance4perl(neighbors_cyclic_normal_primal_T_x_f16, PuiseuxFraction< Max, Rational, Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

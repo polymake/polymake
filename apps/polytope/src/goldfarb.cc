@@ -26,11 +26,9 @@ perl::Object goldfarb(int d, const Scalar& e, const Scalar& g)
 {
    // restriction on d, e, and g
    const int m=8 * sizeof(int) - 2; // maximal dimension that can be handled
-   if (d < 1 || d > m) {
-      std::ostringstream error;
-      error << "goldfarb: 1 <= d <= " << m;
-      throw std::runtime_error(error.str());
-   }
+   if (d < 1 || d > m)
+      throw std::runtime_error("goldfarb: dimension ot of range (1.." + std::to_string(m) + ")");
+
    if (e>=Rational(1,2))
       throw std::runtime_error("goldfarb: e < 1/2");
    if (g>e/4)
@@ -66,14 +64,12 @@ perl::Object goldfarb_sit(int d, const Scalar& eps, const Scalar& delta)
 {
    // restriction on d, e, and g
    const int m=8 * sizeof(int) - 2; // maximal dimension that can be handled
-   if (d < 2 || d > m) {
-      std::ostringstream error;
-      error << "goldfarb_sit: 2 <= d <= " << m;
-      throw std::runtime_error(error.str());
-   }
-   if (eps>=Rational(1,2))// 1/theta
-    throw std::runtime_error("goldfarb_sit: eps < 1/2");
-   if (delta>Rational(1,2))// 1/beta
+   if (d < 2 || d > m)
+      throw std::runtime_error("goldfarb_sit: dimension out of range (2.." + std::to_string(m) + ")");
+
+   if (eps>=Rational(1,2)) // 1/theta
+      throw std::runtime_error("goldfarb_sit: eps < 1/2");
+   if (delta>Rational(1,2)) // 1/beta
       throw std::runtime_error("goldfarb_sit: delta <= 1/2");
 
    perl::Object p(perl::ObjectType::construct<Scalar>("Polytope"));

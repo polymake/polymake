@@ -71,7 +71,7 @@ template <typename Coord>
 perl::Object wreath(perl::Object p_in1, perl::Object p_in2, perl::OptionSet options)
 {
    const bool dual=options["dual"];
-   const bool relabel=options["relabel"];
+   const bool relabel=!options["no_labels"];
 
    const bool bounded1=p_in1.give("BOUNDED"),
       centered1 = p_in1.give("CENTERED");
@@ -84,37 +84,27 @@ perl::Object wreath(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opti
       throw std::runtime_error("wreath: second polytope must be BOUNDED and CENTERED.");
    }
   
-   std::ostringstream section, lineality_section;
-   std::ostringstream labels_section;
-   if (!dual) {
-      section << "VERTICES";
-      lineality_section << "LINEALITY_SPACE";
-      labels_section << "VERTEX";
-   } else {
-      section << "FACETS";
-      lineality_section << "AFFINE_HULL";
-      labels_section << "FACET";
-   }
-   const Matrix<Coord> M1=p_in1.give(section.str().c_str()),
-      M2=p_in2.give(section.str().c_str());
-   const int n_rows1(M1.rows()), n_rows2(M2.rows()),
-      n_rows_out(n_rows1*n_rows2);
-  
+   const std::string coord_section(dual ? "FACETS" : "VERTICES");
+
+   const Matrix<Coord> M1=p_in1.give(coord_section),
+                       M2=p_in2.give(coord_section);
+   const int n_rows1 = M1.rows(),
+             n_rows2 = M2.rows(),
+             n_rows_out = n_rows1*n_rows2;
+
    const Matrix<Coord> M_out = wreath_coord<Coord>(M1, M2);
-  
 
    perl::Object p_out("Polytope");
-   p_out.take(section.str().c_str()) << M_out;
-   const Matrix<Coord> empty;
-   p_out.take(lineality_section.str().c_str()) << empty;
+   p_out.take(coord_section) << M_out;
+
    if (relabel) {
+      const std::string labels_section(dual ? "FACET_LABELS" : "VERTEX_LABELS");
       std::vector<std::string> labels1(n_rows1), labels2(n_rows2),
-         labels_out(n_rows_out);
-      labels_section << "_LABELS";
-      read_labels(p_in1, labels_section.str().c_str(), labels1);
-      read_labels(p_in2, labels_section.str().c_str(), labels2);
-      copy(entire(product(labels2, labels1, wreath_label())), labels_out.begin());
-      p_out.take(labels_section.str().c_str()) << labels_out;
+                               labels_out(n_rows_out);
+      read_labels(p_in1, labels_section, labels1);
+      read_labels(p_in2, labels_section, labels2);
+      copy_range(entire(product(labels2, labels1, wreath_label())), labels_out.begin());
+      p_out.take(labels_section) << labels_out;
    }
 
    return p_out;
@@ -126,11 +116,11 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# @param Polytope P1"
                           "# @param Polytope P2"
                           "# @option Bool dual invokes the computation of the dual wreath product"
-                          "# @option Bool relabel creates an additional section [[VERTEX_LABELS]];" 
+                          "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytopes. default: 0"
                           "#   the label of a new vertex corresponding to v<sub>1</sub> &oplus; v<sub>2</sub> will" 
                           "#   have the form LABEL_1*LABEL_2."
                           "# @return Polytope",
-                          "wreath<Coord>(Polytope<type_upgrade<Coord>> Polytope<type_upgrade<Coord>> { dual => 0, relabel => 0})");
+                          "wreath<Coord>(Polytope<type_upgrade<Coord>> Polytope<type_upgrade<Coord>> { dual => 0, no_labels => 0})");
 } }
 
 // Local Variables:

@@ -31,11 +31,11 @@ namespace polymake { namespace polytope {
 perl::Object stable_set(const perl::Object& G_in)
 {
     const Graph<> G = G_in.give("ADJACENCY");          // getting the Graph
-    SparseMatrix<int> ineqs(G.edges(), G.nodes()+1);   // inequalities of the new polytope
+    SparseMatrix<Rational> ineqs(G.edges(), G.nodes()+1);   // inequalities of the new polytope
     int row(0);                                        // keeping track of the rows
  
     // For every edge {i,j} create the inequality x_i + x_j <= 1
-    for (Entire<Edges<Graph<> > >::const_iterator eit = entire(edges(G)); !eit.at_end(); ++eit, ++row) {
+    for (auto eit = entire(edges(G)); !eit.at_end(); ++eit, ++row) {
        ineqs(row, 0) = 1;
        ineqs(row, eit.from_node()+1) = -1;
        ineqs(row, eit.to_node()+1) = -1;
@@ -47,9 +47,9 @@ perl::Object stable_set(const perl::Object& G_in)
     // adding constraints x_i <= 1 for nodes with degree 0
     // so it does not happen to be unbounded
     int i = 0;
-    for (Entire<Nodes<Graph<> > >::const_iterator vit = entire(nodes(G)); !vit.at_end(); ++vit, ++i) {
-       if(vit.degree() == 0){
-         ineqs /= SparseVector<Rational> (1 | -unit_vector<Rational>(G.nodes(), i));
+    for (auto vit = entire(nodes(G)); !vit.at_end(); ++vit, ++i) {
+       if (vit.degree() == 0) {
+         ineqs /= (1 | -unit_vector<Rational>(G.nodes(), i));
        }
     }
 

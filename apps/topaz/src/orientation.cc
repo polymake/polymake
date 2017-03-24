@@ -22,19 +22,6 @@
 #include "polymake/hash_map"
 
 namespace polymake { namespace topaz {
-namespace {
-
-bool consistent(const int f1, const int f2, const bool o1, const bool o2,
-                const Array< Set<int> >& F,
-                const Array< hash_map<int,int> >& indices)
-{
-   const int n1 =indices[f1].find( (F[f1]-F[f2]).front() )->second;
-   const int n2 =indices[f2].find( (F[f2]-F[f1]).front() )->second;
-   
-   return o1==o2 ? (n1-n2)%2!=0 : (n1-n2)%2==0;
-}
-   
-}
 
 void orientation(perl::Object p)
 {
@@ -44,20 +31,9 @@ void orientation(perl::Object p)
    if (!is_pmf)
       throw std::runtime_error("orientation: Complex is not a PSEUDO_MANIFOLD");
 
-   // compute indices of the vertices for each facet
-   Array< hash_map<int,int> > indices(F.size());
-   int count1=0;
-   for (Entire< Array< Set<int> > >::const_iterator f=entire(F);
-        !f.at_end(); ++f, ++count1) {
-      
-      int count2=0;
-      for (Entire< Set<int> >::const_iterator v=entire(*f);
-           !v.at_end(); ++v, ++count2)
-         indices[count1][*v] = count2;
-   }
-   
-   Array<bool> orientation(F.size());  // 0 for not visited
-   orientation[0] = true;
+   Array<bool> orientation(F.size()); 
+   Array<bool> visited(F.size());
+   orientation[0] = true; visited[0] = true;
    std::list<int> node_queue;
    node_queue.push_back(0);
    bool orientable = true;
@@ -66,16 +42,15 @@ void orientation(perl::Object p)
       const int n=node_queue.front();
       node_queue.pop_front();
 
-      for (Entire< Graph<>::out_edge_list >::const_iterator e=entire(DG.out_edges(n));
-           !e.at_end(); ++e) {
+      for (auto e=entire(DG.out_edges(n)); !e.at_end(); ++e) {
          const int nn=e.to_node();
          
-         if (!orientation[nn]) {  // nn not been visited yet, compute orientation
-            orientation[nn]= consistent(n,nn,orientation[n],true,F,indices);
+         if (!visited[nn]) {  // nn has not been visited yet, compute orientation
+            orientation[nn]= !orientation[n];
             node_queue.push_back(nn);
-            
+            visited[nn] = true;
          } else  // check consistency of orientation
-            if ( n<nn && !consistent(n,nn,orientation[n],orientation[nn],F,indices) ) {
+            if (orientation[nn] == orientation[n]) {
                orientable = false;
                break;
             }

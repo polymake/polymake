@@ -41,5 +41,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(cross_T_int_C_o, Rational, perl::Canned< const Rational >);
    FunctionInstance4perl(cross_T_int_C_o, Rational, int);
    FunctionInstance4perl(cross_T_int_C_o, QuadraticExtension< Rational >, int);
+   FunctionInstance4perl(cross_T_int_C_o, double, double);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

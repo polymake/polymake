@@ -16,7 +16,7 @@
 
 # @category Optimization
 # A linear program specified by a linear or abstract objective function
-# @relates Polytope
+# @relates objects/Polytope
 declare object LinearProgram<Scalar=Rational> {
 
 # Linear objective function. In d-space a linear objective function is given by a (d+1)-vector. 
@@ -61,9 +61,9 @@ property MINIMAL_FACE : Set;
 
 
 # Coordinates of a (possibly not unique) affine vertex at which the maximum of the objective function is attained.
-# @example The following defines a LinearProgram together with a linear objective for the centered square with side length 2 and asks
-# for a maximal vertex:
-# > $c = new Vector([0, 1, 0]);
+# @example The following defines a LinearProgram together with a linear objective for the centered square with
+# side length 2 and asks for a maximal vertex:
+# > $c = new Vector([0, 1, -1/2]);
 # > $p = cube(2);
 # > $p->LP(LINEAR_OBJECTIVE=>$c);
 # > print $p->LP->MAXIMAL_VERTEX;
@@ -137,10 +137,12 @@ property DIRECTED_GRAPH : Graph<Directed>;
 
 # Array of out-degrees for all nodes of [[DIRECTED_GRAPH]]
 # or numbers of objective increasing edges at each vertex
+# @return Array<Int>
 user_method VERTEX_OUT_DEGREES = DIRECTED_GRAPH.NODE_OUT_DEGREES;
 
 # Array of in-degrees for all nodes of [[DIRECTED_GRAPH]]
 # or numbers of objective decreasing edges at each vertex
+# @return Array<Int>
 user_method VERTEX_IN_DEGREES = DIRECTED_GRAPH.NODE_IN_DEGREES;
 
 

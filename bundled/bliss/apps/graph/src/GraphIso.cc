@@ -18,6 +18,7 @@
 #include <cstddef> // needed for gcc 4.9, see http://gcc.gnu.org/gcc-4.9/porting_to.html
 #include <bliss/graph.hh>
 #include "polymake/graph/GraphIso.h"
+#include "polymake/permutations.h"
 
 namespace polymake { namespace graph {
 
@@ -184,6 +185,21 @@ GraphIso::find_permutations(const GraphIso& g2, int n_cols) const
    delete[] invCanonLabels;
 
    return std::make_pair(row_perm, col_perm);
+}
+
+Array<int> GraphIso::canonical_perm() const
+{
+   const Array<int> perm(p_impl->src_graph->get_nof_vertices(), p_impl->canon_labels);
+   Array<int> iperm;
+   // the canonical labels from bliss are an inverse permutation for the nodes
+   inverse_permutation(perm,iperm);
+   return iperm;
+}
+
+long GraphIso::hash(long key) const
+{
+   // the key is ignored here but needed for compatibility with nauty
+   return p_impl->canon_graph->get_hash();
 }
 
 } }

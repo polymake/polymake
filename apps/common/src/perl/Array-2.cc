@@ -21,7 +21,6 @@
 #include "polymake/Set.h"
 #include "polymake/list"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/Polynomial.h"
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
 #include "polymake/Integer.h"
@@ -54,11 +53,9 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::Array__Array__String", Array< Array< std::string > >);
    FunctionInstance4perl(new_X, Array< bool >, perl::Canned< const Array< bool > >);
    FunctionInstance4perl(new_X, Array< IncidenceMatrix< NonSymmetric > >, perl::Canned< const Array< IncidenceMatrix< NonSymmetric > > >);
-   Class4perl("Polymake::common::Array__Polynomial_A_Rational_I_Int_Z", Array< Polynomial< Rational, int > >);
-   FunctionInstance4perl(new, Array< Polynomial< Rational, int > >);
    Class4perl("Polymake::common::Array__Set__Set__Int", Array< Set< Set< int > > >);
    FunctionInstance4perl(new, Array< Set< Set< int > > >);
-   FunctionInstance4perl(new_X, Array< int >, perl::Canned< const pm::IndexedSlice<pm::ConcatRows<pm::Matrix<int> > const&, pm::Series<int, false>, void> >);
+   FunctionInstance4perl(new_X, Array< int >, perl::Canned< const pm::IndexedSlice<pm::ConcatRows<pm::Matrix<int> > const&, pm::Series<int, false>> >);
    Class4perl("Polymake::common::Array__Set__Set__Set__Int", Array< Set< Set< Set< int > > > >);
    FunctionInstance4perl(new, Array< Set< Set< Set< int > > > >);
    OperatorInstance4perl(assign, Array< Array< int > >, perl::Canned< const Array< Set< int > > >);

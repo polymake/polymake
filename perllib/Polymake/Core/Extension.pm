@@ -28,6 +28,9 @@ declare (%registered_by_dir,     # "AbsPath" => active or disabled Extension
          %conflicts,             # "URI" => conflicting Extension
         );
 
+# List of obsoleted bundled extensions:
+$refused{'bundled:group'} = 'ignore';
+
 use Polymake::Struct (
    [ new => '$;$$' ],
    [ '$dir' => '#1' ],              # top-level directory

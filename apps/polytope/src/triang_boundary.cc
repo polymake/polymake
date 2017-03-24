@@ -18,6 +18,7 @@
 #include "polymake/Array.h"
 #include "polymake/PowerSet.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/topaz/boundary_tools.h"
 
 namespace polymake { namespace polytope {
 
@@ -50,8 +51,9 @@ perl::ListReturn triang_boundary(const Array< Set<int> >& triang, const Incidenc
     }
   }
 
+  auto sq = polymake::topaz::squeeze_faces(IncidenceMatrix<>(triang_boundary));
   perl::ListReturn result;
-  result << Array< Set<int> >(n_simplices,entire(triang_boundary))
+  result << sq.first << sq.second
          << facet_triag;
   return result;
 }

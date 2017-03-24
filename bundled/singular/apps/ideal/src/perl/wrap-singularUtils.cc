@@ -16,13 +16,18 @@
 
 #include "polymake/Array.h"
 #include "polymake/Matrix.h"
-#include "polymake/Polynomial.h"
 #include "polymake/Rational.h"
-#include "polymake/Ring.h"
 #include "polymake/Vector.h"
+#include "polymake/Polynomial.h"
 
 namespace polymake { namespace ideal { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( new_X_X, T0,T1,T2 ) {
+      perl::Value arg0(stack[1]), arg1(stack[2]);
+      WrapperReturnNew(T0, (arg0.get<T1>(), arg1.get<T2>()) );
+   };
+
    template <typename T0, typename T1, typename T2, typename T3>
    FunctionInterface4perl( new_X_X_X, T0,T1,T2,T3 ) {
       perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]);
@@ -41,7 +46,6 @@ namespace polymake { namespace ideal { namespace {
    }
    FunctionWrapperInstance4perl( pm::perl::ListReturn (std::string) );
 
-   FunctionInstance4perl(new_X_X_X, Polynomial< Rational, int >, perl::Canned< const pm::ListMatrix<pm::Vector<int> > >, perl::Canned< const Vector< Rational > >, perl::Canned< const Ring< Rational, int > >);
-   FunctionInstance4perl(new_X_X_X, Polynomial< Rational, int >, perl::Canned< const pm::ListMatrix<pm::Vector<int> > >, perl::Canned< const Array< Rational > >, perl::Canned< const Ring< Rational, int > >);
+   FunctionInstance4perl(new_X_X, Polynomial< Rational, int >, perl::Canned< const Array< Rational > >, perl::Canned< const pm::ListMatrix<pm::Vector<int> > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

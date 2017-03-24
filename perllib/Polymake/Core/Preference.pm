@@ -125,14 +125,7 @@ sub DESTROY {
    }
 }
 
-END {
-   if ($] >= 5.012) {
-      undef &DESTROY;
-   } else {
-      # perl 5.10.1 crashes when a destructor becomes undefined
-      *DESTROY=sub {}
-   }
-}
+END { undef &DESTROY; }
 ####################################################################################
 # return the items from a control list, removing duplicates
 sub get_items {
@@ -205,7 +198,7 @@ package Polymake::Core::Preference::Label;
 use Polymake::Struct (
    [ new => '$;$$$$' ],
    [ '$name' => '#1' ],
-   [ '$parent' => 'weak( #2 )' ],       # Label higher in the hierarchy
+   [ '$parent' => 'weak(#2)' ],         # Label higher in the hierarchy
    [ '$wildcard_name' => '#3 || "*"' ],
    '%children',                         # Labels lower in the hierarchy
    '%controls',                         # control list -> number of items in this list
@@ -596,7 +589,7 @@ sub belongs_to {
             $app->imported->{$label->application->name} or return 0;
          }
       } else {
-         warn_print( "label ", $label->full_name, " seems to be obsolete" );
+         warn_print( "label ", $label->full_name, " might to be obsolete" ) if $DeveloperMode && ! -d "$InstallTop/bundled/".($label->parent_name);
          return 0;
       }
    }
@@ -616,8 +609,8 @@ package Polymake::Core::Preference::perApplication;
 
 use Polymake::Struct (
    [ new => '$$' ],
-   [ '$handler' => 'weak( #1 )' ],
-   [ '$application' => 'weak( #2 )' ],
+   [ '$handler' => 'weak(#1)' ],
+   [ '$application' => 'weak(#2)' ],
    '@imported',                      # perApplication objects of imported applications
    '%labels',
    '@default_prefs',

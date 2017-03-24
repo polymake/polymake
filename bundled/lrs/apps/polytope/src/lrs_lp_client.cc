@@ -25,8 +25,13 @@ void lrs_solve_lp(perl::Object p, perl::Object lp, bool maximize)
 {
    typedef lrs_interface::solver Solver;
    const Matrix<Rational> H=p.give("FACETS | INEQUALITIES"),
-      E=p.lookup("AFFINE_HULL | EQUATIONS");
+                          E=p.lookup("AFFINE_HULL | EQUATIONS");
    const Vector<Rational> Obj=lp.give("LINEAR_OBJECTIVE");
+
+   if (H.cols() != E.cols() &&
+       H.cols() && E.cols())
+      throw std::runtime_error("lrs_solve_lp - dimension mismatch between Inequalities and Equations");
+
    int lineality_dim;
 
    try {
@@ -35,7 +40,6 @@ void lrs_solve_lp(perl::Object p, perl::Object lp, bool maximize)
       lp.take(maximize ? "MAXIMAL_VALUE" : "MINIMAL_VALUE") << S.first;
       lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << S.second;
       p.take("FEASIBLE") << true;
-      p.take("POINTED") << !lineality_dim;
       p.take("LINEALITY_DIM") << lineality_dim;
    }
    catch (unbounded) {
@@ -45,14 +49,12 @@ void lrs_solve_lp(perl::Object p, perl::Object lp, bool maximize)
          lp.take("MINIMAL_VALUE") << -std::numeric_limits<Rational>::infinity();
       lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << perl::undefined();
       p.take("FEASIBLE") << true;
-      p.take("POINTED") << !lineality_dim;
       p.take("LINEALITY_DIM") << lineality_dim;
    }
    catch (infeasible) {
       lp.take(maximize ? "MAXIMAL_VALUE" : "MINIMAL_VALUE") << perl::undefined();
       lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << perl::undefined();
       p.take("FEASIBLE") << false;
-      p.take("POINTED") << true;
       p.take("LINEALITY_DIM") << 0;
    }
 }

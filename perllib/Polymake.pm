@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -38,11 +38,10 @@ use Polymake::Ext;
 # Global variables
 #
 
-declare $Version="3.0";
+declare $Version="3.1";
 declare $VersionNumber=eval "v$Version";        # for string comparisons with vM.N literals
 
 declare ($Scope,                # Scope object for the current cycle
-         $DebugLevel,           # enables the debugging output and various internal checks
          $PrivateDir,           # where the user's private settings, wrappers, etc. dwell
         );
 
@@ -97,13 +96,13 @@ sub greeting {
    my $verbose = $_[0] // 2;
    my $full_version="$Version";
    if ($DeveloperMode && -d "$InstallTop/.git") {
-      my $branch = `cd "$InstallTop"; git rev-parse --abbrev-ref HEAD`;
+      my $branch = `cd '$InstallTop'; git rev-parse --abbrev-ref HEAD`;
       chomp $branch;
       $full_version .= ", branch $branch ";
-      my $upstream = `cd "$InstallTop"; git rev-parse --abbrev-ref --symbolic-full-name \@{u} 2>&1`;
+      my $upstream = `cd '$InstallTop'; git rev-parse --abbrev-ref --symbolic-full-name \@{u} 2>&1`;
       chomp $upstream;
       unless ($?) {
-         my ($ahead,$behind) = split '\t',`cd "$InstallTop"; git rev-list --left-right --count $branch...$upstream`;
+         my ($ahead,$behind) = split '\t',`cd '$InstallTop'; git rev-list --left-right --count $branch...$upstream`;
          chomp $ahead;
          chomp $behind;
          $full_version .= "[";
@@ -115,7 +114,7 @@ sub greeting {
 
    my @messages = ("polymake version $full_version", <<'.', <<'.');
 
-Copyright (c) 1997-2015
+Copyright (c) 1997-2017
 Ewgenij Gawrilow, Michael Joswig (TU Berlin)
 http://www.polymake.org
 .

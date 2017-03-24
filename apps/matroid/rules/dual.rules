@@ -1,0 +1,166 @@
+#  Copyright (c) 1997-2016
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# This contains rules for computing/converting properties between a matroid and its dual.
+
+object Matroid {
+
+   # @category Duality
+   # The dual matroid.
+   property DUAL : Matroid : twin;
+
+
+   rule DUAL.N_ELEMENTS = N_ELEMENTS;
+
+   rule DUAL.LABELS = LABELS;
+
+   rule DUAL.RANK : N_ELEMENTS, RANK {
+      $this->DUAL->RANK = $this->N_ELEMENTS - $this->RANK;
+   }
+   weight 0.1;
+
+   rule DUAL.BASES : BASES, N_ELEMENTS {
+      $this->DUAL->BASES = dual_bases_from_bases($this->N_ELEMENTS, $this->BASES);
+   }
+   weight 1.10;
+
+   rule DUAL.NON_BASES : NON_BASES, N_ELEMENTS {
+      $this->DUAL->NON_BASES = dual_bases_from_bases($this->N_ELEMENTS, $this->NON_BASES);
+   }
+   weight 1.10;
+
+   rule DUAL.CIRCUITS : BASES, N_ELEMENTS {
+      $this->DUAL->CIRCUITS = dual_circuits_from_bases($this->N_ELEMENTS, $this->BASES);
+   }
+   weight 4.10;
+
+   rule BASES : DUAL.CIRCUITS, N_ELEMENTS {
+      $this->BASES = bases_from_dual_circuits($this->N_ELEMENTS, $this->DUAL->CIRCUITS);
+   }
+   weight 4.10;
+
+   rule BASES : DUAL.CIRCUITS, RANK, N_ELEMENTS {
+      $this->BASES = bases_from_dual_circuits_and_rank($this->N_ELEMENTS, $this->RANK, $this->DUAL->CIRCUITS);
+   }
+   weight 3.10;
+
+   rule DUAL.VECTORS : VECTORS {
+      $this->DUAL->VECTORS = transpose(null_space(transpose($this->VECTORS)));
+   }
+   weight 3.10;
+   precondition : RANK, N_ELEMENTS {
+      $this->RANK < $this->N_ELEMENTS;
+   }
+
+   rule DUAL.VECTORS : VECTORS, N_ELEMENTS {
+      $this->DUAL->VECTORS = new Matrix<Rational>($this->N_ELEMENTS, 1);
+   }
+   weight 0.10;
+   precondition : RANK, N_ELEMENTS {
+      $this->RANK == $this->N_ELEMENTS;
+   }
+
+   rule MATROID_HYPERPLANES : DUAL.CIRCUITS, N_ELEMENTS {
+      my $total = sequence(0,$this->N_ELEMENTS);
+      $this->MATROID_HYPERPLANES = [ map { $total - $_} @{$this->DUAL->CIRCUITS}];
+   }
+   weight 1.10;
+
+   rule DUAL.CIRCUITS : MATROID_HYPERPLANES, N_ELEMENTS {
+      my $total =  sequence(0,$this->N_ELEMENTS);
+      $this->DUAL->CIRCUITS = [ map { $total - $_} @{$this->MATROID_HYPERPLANES}];
+   }
+   weight 1.10;
+
+   rule SPARSE_PAVING : PAVING, DUAL.PAVING {
+      $this->SPARSE_PAVING = $this->PAVING && $this->DUAL->PAVING;
+   }
+   weight 0.1;
+
+   rule IDENTICALLY_SELF_DUAL : CIRCUITS, DUAL.CIRCUITS {
+      $this->IDENTICALLY_SELF_DUAL = defined(eval { find_permutation($this->CIRCUITS, $this->DUAL->CIRCUITS) });
+   }
+   weight 2.10;
+   precondition : N_ELEMENTS, RANK {
+      2*$this->RANK == $this->N_ELEMENTS;
+   }
+
+   rule SELF_DUAL : CIRCUITS, DUAL.CIRCUITS {
+      $this->SELF_DUAL = defined(eval { find_row_col_permutation( (new IncidenceMatrix($this->CIRCUITS)), new IncidenceMatrix($this->DUAL->CIRCUITS)) });
+   }
+   weight 5.10;
+   precondition : N_ELEMENTS, RANK {
+      2*$this->RANK == $this->N_ELEMENTS;
+   }
+
+   rule CONNECTED_COMPONENTS : DUAL.CIRCUITS, N_ELEMENTS{
+       $this->CONNECTED_COMPONENTS = connected_components_from_circuits($this->DUAL->CIRCUITS, $this->N_ELEMENTS);
+   }
+   weight 1.10;  
+
+
+   rule SELF_DUAL, IDENTICALLY_SELF_DUAL : {
+      $this->SELF_DUAL = 0;
+      $this->IDENTICALLY_SELF_DUAL = 0;
+   }
+   weight 0.1;
+   precondition : N_ELEMENTS, RANK {
+      2*$this->RANK != $this->N_ELEMENTS;
+   }
+   
+   rule SELF_DUAL : IDENTICALLY_SELF_DUAL {
+      $this->SELF_DUAL = 1;
+   }
+   weight 0.1;
+   precondition : IDENTICALLY_SELF_DUAL;
+   
+   rule IDENTICALLY_SELF_DUAL : BASES, DUAL.BASES {
+      $this->IDENTICALLY_SELF_DUAL = defined(eval { find_permutation($this->BASES, $this->DUAL->BASES) });
+   }
+   weight 2.10;
+   precondition : N_ELEMENTS, RANK {
+      2*$this->RANK == $this->N_ELEMENTS;
+   }
+
+   rule SELF_DUAL : BASES, DUAL.BASES {
+      $this->SELF_DUAL = defined(eval { find_row_col_permutation( (new IncidenceMatrix($this->BASES)), new IncidenceMatrix($this->DUAL->BASES)) });
+   }
+   weight 5.10;
+   precondition : N_ELEMENTS, RANK {
+      2*$this->RANK == $this->N_ELEMENTS;
+   }
+
+
+   rule SPLIT : {
+      $this->SPLIT=1;
+   }
+   precondition : PAVING || DUAL.PAVING;
+   weight 0.10;
+
+   # @category Advanced properties
+   # Whether the dual of the matroid is transversal,
+   # i.e. same as [[DUAL.TRANSVERSAL]]
+   user_method COTRANSVERSAL {
+      return $_[0]->DUAL->TRANSVERSAL;
+   }
+   
+   # @category Advanced properties
+   # Alias for [[COTRANSVERSAL]]
+   user_method STRICT_GAMMOID {
+      return $_[0]->COTRANSVERSAL();
+   }
+
+}

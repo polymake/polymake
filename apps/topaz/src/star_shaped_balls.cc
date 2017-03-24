@@ -17,7 +17,8 @@
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/graph/HasseDiagram.h"
+#include "polymake/graph/Lattice.h"
+#include "polymake/graph/Decoration.h"
 #include "polymake/Set.h"
 #include "polymake/hash_set"
 #include "polymake/PowerSet.h"
@@ -41,14 +42,14 @@ bool still_star_shaped_after_extension(const Matrix<Scalar>& vertices,
                                        const face_type& simplex,
                                        int new_vertex)
 {
-   for (Entire<face_type>::const_iterator sit = entire(simplex); !sit.at_end(); ++sit) {
-      if (*sit == new_vertex) continue;
+   for (const auto& s : simplex) {
+      if (s == new_vertex) continue;
       try {
-         const Vector<Scalar> normal_vector = null_space(vertices.minor(simplex-scalar2set(*sit), All))[0]; 
-         if (normal_vector == zero_vector<Scalar>(vertices.cols()+1))
+         const Vector<Scalar> normal_vector = null_space(vertices.minor(simplex-scalar2set(s), All))[0]; 
+         if (is_zero(normal_vector))
             throw std::runtime_error("Found zero normal vector");
-         if (sign(normal_vector * vertices[*sit]) != sign(normal_vector[0]))
-            // the affine span of (simplex - *sit) separates *sit from 0
+         if (sign(normal_vector * vertices[s]) != sign(normal_vector[0]))
+            // the affine span of (simplex - s) separates s from 0
             return false;
       } catch (degenerate_matrix) {
          // this occurs if the affine span of a ridge contains 0
@@ -65,22 +66,22 @@ void extensible_ridges_and_facets(const Matrix<Scalar>& vertices,
                                   const complex_type& candidate_ridges,
                                   const complex_type& current_ball,
                                   const Set<int>& current_support,
-                                  const Map<face_type, std::vector<int> >& link_of_ridge,
+                                  const Map<face_type, std::vector<int>>& link_of_ridge,
                                   std::vector<face_type>& extensible_ridges,
                                   std::vector<face_type>& extensible_facets)
 {
-   for (Entire<complex_type>::const_iterator cit = entire(candidate_ridges); !cit.at_end(); ++cit) {
-      const std::vector<int>& link(link_of_ridge[*cit]);
+   for (const auto& cr : candidate_ridges) {
+      const std::vector<int>& link(link_of_ridge[cr]);
       if (link.size() < 2) continue; // the ridge is not on the global boundary
       
       if (current_support.contains(link[0]) &&
           current_support.contains(link[1])) { // all vertices of the neighboring simplex are already in the ball, so just add it
-         for (Entire<std::vector<int> >::const_iterator lit = entire(link); !lit.at_end(); ++lit) {
-            const face_type new_simplex(*cit + scalar2set(*lit));
+         for (const auto& l : link) {
+            const face_type new_simplex(cr + scalar2set(l));
             if (!current_ball.contains(new_simplex)) {
-               extensible_ridges.push_back(*cit);
+               extensible_ridges.push_back(cr);
                extensible_facets.push_back(new_simplex);
-               break; // this can only happen once, as one element of the star of *cit is already in the ball
+               break; // this can only happen once, as one element of the star of cr is already in the ball
             }
          }
       } else { // one vertex in the link is outside the ball, so we have to test for star-shapedness
@@ -88,9 +89,9 @@ void extensible_ridges_and_facets(const Matrix<Scalar>& vertices,
             // Of the two vertices in the link, which one is outside the current support?
             ? link[1]
             : link[0];
-         if (still_star_shaped_after_extension(vertices, *cit + scalar2set(v), v)) {
-            extensible_ridges.push_back(*cit);
-            extensible_facets.push_back(*cit + scalar2set(v));
+         if (still_star_shaped_after_extension(vertices, cr + scalar2set(v), v)) {
+            extensible_ridges.push_back(cr);
+            extensible_facets.push_back(cr + scalar2set(v));
          }
       }
    }
@@ -98,11 +99,11 @@ void extensible_ridges_and_facets(const Matrix<Scalar>& vertices,
 
 // update the boundary and the candidate ridges with the ridges of new_facet
 void update_boundary_ridges(const face_type& new_facet,
-                            const Map<face_type, std::vector<int> >& link_of_ridge,
+                            const Map<face_type, std::vector<int>>& link_of_ridge,
                             complex_type& new_boundary,
                             complex_type& new_candidate_ridges)
 {
-   for (Entire<Subsets_less_1<const face_type&> >::const_iterator rit = entire(all_subsets_less_1(new_facet)); !rit.at_end(); ++rit) {
+   for (Entire<Subsets_less_1<const face_type&>>::const_iterator rit = entire(all_subsets_less_1(new_facet)); !rit.at_end(); ++rit) {
       const face_type ridge(*rit);
       if (new_boundary.contains(ridge)) {
          new_boundary -= ridge;
@@ -121,7 +122,7 @@ void enumerate_star_shaped_balls(const Matrix<Scalar>& vertices,
                                  const complex_type& current_boundary,    // all ridges in the boundary of B
                                  const complex_type& candidate_ridges,    // for extension across them
                                  const face_type& current_support,
-                                 const Map<face_type, std::vector<int> >& link_of_ridge,
+                                 const Map<face_type, std::vector<int>>& link_of_ridge,
                                  ballhash_type &balls_processed)
 {
    std::vector<face_type> extensible_ridges, extensible_facets;
@@ -136,7 +137,7 @@ void enumerate_star_shaped_balls(const Matrix<Scalar>& vertices,
       complex_type new_candidate_ridges(candidate_ridges);
       update_boundary_ridges(extensible_facets[i], link_of_ridge, new_boundary, new_candidate_ridges);
       if (!balls_processed.exists(new_ball)) {
-         balls_processed+=new_ball;
+         balls_processed += new_ball;
          // now recurse
          enumerate_star_shaped_balls(vertices, new_ball, new_boundary, new_candidate_ridges, new_support, link_of_ridge, balls_processed);
       }
@@ -158,15 +159,16 @@ Array<complex_type> star_shaped_balls(perl::Object triangulation)
    else
       vertices = ones_vector<Scalar>(_vertices.rows()) | _vertices; // we work with homogeneous coordinates
 
-   const graph::HasseDiagram HD = triangulation.give("HASSE_DIAGRAM");
-   const Map<face_type, std::vector<int> > link_of_ridge = links_of_ridges(HD);
+   perl::Object HD_obj = triangulation.give("HASSE_DIAGRAM");
+   const graph::Lattice<graph::lattice::BasicDecoration> HD(HD_obj);
+   const Map<face_type, std::vector<int>> link_of_ridge = links_of_ridges(HD);
 
    const complex_type st0(star_of_zero_impl(vertices, facets));
    complex_type current_ball(st0);
 
    face_type current_support;
-   for (Entire<complex_type>::const_iterator bit = entire(current_ball); !bit.at_end(); ++bit)
-      current_support += *bit;
+   for (const auto& b : current_ball)
+      current_support += b;
 
    const complex_type boundary_of_star = boundary_of(st0);
    ballhash_type balls_processed;
@@ -178,11 +180,11 @@ Array<complex_type> star_shaped_balls(perl::Object triangulation)
    if (!must_rename) return Array<complex_type>(balls_processed.size(), entire(balls_processed));
 
    Array<complex_type> ssb(balls_processed.size());
-   Entire<Array<complex_type> >::iterator oit = entire(ssb);
+   Entire<Array<complex_type>>::iterator oit = entire(ssb);
    for (Entire<ballhash_type>::const_iterator iit = entire(balls_processed); !iit.at_end(); ++iit, ++oit) {
       complex_type ball;
-      for (Entire<complex_type>::const_iterator sit = entire(*iit); !sit.at_end(); ++sit)
-         ball += permuted_inv(*sit, vertex_indices);
+      for (const auto& s : *iit)
+         ball += permuted_inv(s, vertex_indices);
       *oit = ball;
    }
    return ssb;

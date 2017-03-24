@@ -38,6 +38,7 @@ public:
    infeasible(const std::string& what) : linalg_error(what) {}
 };
 
+
 } // end namespace pm
 
 namespace polymake {

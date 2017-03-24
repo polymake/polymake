@@ -14,13 +14,17 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/graph/Decoration.h"
+
 namespace polymake { namespace graph { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::Matrix<pm::Integer> (perl::Object) ) {
+   template <typename T0, typename T1>
+   FunctionInterface4perl( f2_vector_T_x, T0,T1 ) {
       perl::Value arg0(stack[0]);
-      IndirectWrapperReturn(arg0);
-   }
-   FunctionWrapperInstance4perl( pm::Matrix<pm::Integer> (perl::Object) );
+      WrapperReturn( (f2_vector<T0,T1>(arg0)) );
+   };
 
+   FunctionInstance4perl(f2_vector_T_x, graph::lattice::BasicDecoration, graph::lattice::Sequential);
+   FunctionInstance4perl(f2_vector_T_x, graph::lattice::BasicDecoration, graph::lattice::Nonsequential);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

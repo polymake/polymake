@@ -37,14 +37,14 @@ void relocate(std::vector<Value,Alloc>* from, std::vector<Value,Alloc>* to)
 #if defined(_LIBCPP_VERSION)
 
 template <typename Iterator>
-struct iterator_cross_const_helper<std::__1::__bit_iterator<Iterator,true>, true>{
-   typedef std::__1::__bit_iterator<Iterator, false> iterator;
-   typedef std::__1::__bit_iterator<Iterator, true> const_iterator;
+struct iterator_cross_const_helper<std::__bit_iterator<Iterator,true>, true>{
+   typedef std::__bit_iterator<Iterator, false> iterator;
+   typedef std::__bit_iterator<Iterator, true> const_iterator;
 };
 template <typename Iterator>
-struct iterator_cross_const_helper<std::__1::__bit_iterator<Iterator,false>, true>{
-   typedef std::__1::__bit_iterator<Iterator, false> iterator;
-   typedef std::__1::__bit_iterator<Iterator, true> const_iterator;
+struct iterator_cross_const_helper<std::__bit_iterator<Iterator,false>, true>{
+   typedef std::__bit_iterator<Iterator, false> iterator;
+   typedef std::__bit_iterator<Iterator, true> const_iterator;
 };
 
 #endif
@@ -86,8 +86,8 @@ struct unary_op_builder<Build_random_iterator_assoc_adapter<Container>, Iterator
    }
    static const operation& create(const operation& op) { return op; }
 
-   typedef typename if_else<attrib<ElemRef>::is_const,
-                            const random_iterator_assoc_adapter<typename attrib<ElemRef>::minus_const, Container>, operation>::type
+   typedef typename std::conditional<attrib<ElemRef>::is_const,
+                                     const random_iterator_assoc_adapter<typename attrib<ElemRef>::minus_const, Container>, operation>::type
       alt_operation;
    static operation create(alt_operation& op) { return operation(op); }
 };
@@ -95,11 +95,11 @@ struct unary_op_builder<Build_random_iterator_assoc_adapter<Container>, Iterator
 template <typename Value>
 class vector_as_property_map
    : public modified_container_impl< vector_as_property_map<Value>,
-                                     list( Container< std::vector<Value> >,
-                                           Operation< Build_random_iterator_assoc_adapter< std::vector<Value> > >) > {
-   typedef modified_container_impl<vector_as_property_map> _super;
+                                     mlist< ContainerTag< std::vector<Value> >,
+                                            OperationTag< Build_random_iterator_assoc_adapter< std::vector<Value> > > > > {
+   typedef modified_container_impl<vector_as_property_map> base_t;
 public:
-   typedef typename _super::container vec_type;
+   typedef typename base_t::container vec_type;
    typedef int key_type;
    typedef Value mapped_type;
    typedef typename vec_type::reference reference;
@@ -107,9 +107,9 @@ public:
 
    vec_type& get_container() { return vec; }
    const vec_type& get_container() const { return vec; }
-   const typename _super::operation& get_operation() const
+   const typename base_t::operation& get_operation() const
    {
-      return reinterpret_cast<const typename _super::operation&>(vec);
+      return reinterpret_cast<const typename base_t::operation&>(vec);
    }
 
    typedef pair<int, Value> value_type;
@@ -135,13 +135,13 @@ public:
    reference operator[] (size_t k) { return vec[k]; }
    const_reference operator[] (size_t k) const { return vec[k]; }
 
-   pair<typename _super::iterator, bool> insert(int k, typename function_argument<Value>::type v)
+   pair<typename base_t::iterator, bool> insert(int k, typename function_argument<Value>::type v)
    {
       if ((size_t)k >= vec.size() || vec[k]==def_val) {
          (*this)(k)=v;
-         return std::make_pair(typename _super::iterator(vec.begin()+k), true);
+         return std::make_pair(typename base_t::iterator(vec.begin()+k), true);
       }
-      return std::make_pair(typename _super::iterator(vec.begin()+k), false);
+      return std::make_pair(typename base_t::iterator(vec.begin()+k), false);
    }
 
    void set_default_value(typename function_argument<Value>::type default_value)

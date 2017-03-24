@@ -25,11 +25,11 @@ namespace polymake { namespace polytope { namespace {
       WrapperReturn( (stellar_indep_faces<T0>(arg0, arg1)) );
    };
 
-   FunctionWrapper4perl( perl::Object (perl::Object, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&) ) {
+   FunctionWrapper4perl( perl::Object (perl::Object, pm::Array<pm::Set<int, pm::operations::cmp>> const&) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
       IndirectWrapperReturn(arg0, arg1.get< perl::TryCanned< const Array< Set< int > > > >());
    }
-   FunctionWrapperInstance4perl( perl::Object (perl::Object, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&) );
+   FunctionWrapperInstance4perl( perl::Object (perl::Object, pm::Array<pm::Set<int, pm::operations::cmp>> const&) );
 
    FunctionInstance4perl(stellar_indep_faces_T_x_x, Rational);
    FunctionInstance4perl(stellar_indep_faces_T_x_x, QuadraticExtension< Rational >);

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -38,98 +38,80 @@ template <typename E> class SparseVector;
     @brief @ref generic "Generic type" for @ref vector_sec "vectors"
  */
 
-template <typename VectorTop, typename E=typename VectorTop::element_type>
-class GenericVector : public Generic<VectorTop>, public operators::base {
+template <typename TVector, typename E=typename TVector::element_type>
+class GenericVector
+   : public Generic<TVector>
+   , public operators::base {
    template <typename, typename> friend class GenericVector;
 
 protected:
    GenericVector() {}
    GenericVector(const GenericVector&) {}
-#if POLYMAKE_DEBUG
-   ~GenericVector() { POLYMAKE_DEBUG_METHOD(GenericVector,dump); }
-   void dump() const { cerr << *this << endl; }
-#endif
-
 public:
    /// element type
    typedef E element_type;
    /// determine if the persistent type is sparse
-   static const bool is_sparse=check_container_feature<VectorTop, sparse>::value;
+   static const bool is_sparse=check_container_feature<TVector, sparse>::value;
    /// @ref generic "persistent type"
-   typedef typename if_else<is_sparse, SparseVector<E>, Vector<E> >::type persistent_type;
+   typedef typename std::conditional<is_sparse, SparseVector<E>, Vector<E> >::type persistent_type;
    /// top type
-   typedef typename Generic<VectorTop>::top_type top_type;
+   typedef typename Generic<TVector>::top_type top_type;
    /// @ref generic "generic type"
    typedef GenericVector generic_type;
-   typedef typename if_else<check_container_feature<VectorTop, pure_sparse>::value, pure_sparse,
-           typename if_else<is_sparse, sparse, dense>::type>::type
+   typedef typename std::conditional<check_container_feature<TVector, pure_sparse>::value, pure_sparse,
+                                     typename std::conditional<is_sparse, sparse, dense>::type>::type
       sparse_discr;
+
 protected:
-   template <typename Vector2>
-   typename enable_if<void, convertible_to<typename Vector2::value_type, E>::value>::type
-   _assign(const Vector2& v, dense)
+   template <typename TVector2>
+   void assign_impl(const TVector2& v, dense)
    {
-      copy(ensure(v, (dense*)0).begin(), entire(this->top()));
+      copy_range(ensure(v, (dense*)0).begin(), entire(this->top()));
    }
 
-   template <typename Vector2>
-   typename enable_if<void, explicitly_convertible_to<typename Vector2::value_type, E>::value>::type
-   _assign(const Vector2& v, dense)
-   {
-      copy(ensure(attach_converter<E>(v), (dense*)0).begin(), entire(this->top()));
-   }
-
-   template <typename Vector2>
-   typename enable_if<void, convertible_to<typename Vector2::value_type, E>::value>::type
-   _assign(const Vector2& v, pure_sparse)
+   template <typename TVector2>
+   void assign_impl(const TVector2& v, pure_sparse)
    {
       assign_sparse(this->top(), ensure(v, (pure_sparse*)0).begin());
    }
 
-   template <typename Vector2>
-   typename enable_if<void, explicitly_convertible_to<typename Vector2::value_type, E>::value>::type
-   _assign(const Vector2& v, pure_sparse)
-   {
-      assign_sparse(this->top(), make_converting_iterator<E>(ensure(v, (pure_sparse*)0).begin()));
-   }
+   template <typename TVector2, typename E2>
+   constexpr bool trivial_assignment(const GenericVector<TVector2, E2>&) const { return false; }
 
-   template <typename Vector2>
-   bool trivial_assignment(const GenericVector<Vector2, E>&) const { return false; }
+   constexpr bool trivial_assignment(const GenericVector& v) const { return this==&v; }
 
-   bool trivial_assignment(const GenericVector& v) const { return this==&v; }
-
-   template <typename Vector2>
-   void swap(GenericVector<Vector2, E>& v, dense)
+   template <typename TVector2>
+   void swap(GenericVector<TVector2, E>& v, dense)
    {
       swap_ranges(entire(this->top()), v.top().begin());
    }
 
-   template <typename Vector2>
-   void swap(GenericVector<Vector2, E>& v, pure_sparse)
+   template <typename TVector2>
+   void swap(GenericVector<TVector2, E>& v, pure_sparse)
    {
       swap_sparse(this->top(), ensure(v.top(), (pure_sparse*)0));
    }
 
-   template <typename Vector2>
-   void assign(const Vector2& v)
+   template <typename TVector2>
+   void assign(const TVector2& v)
    {
-      _assign(v, sparse_discr());
+      assign_impl(v, sparse_discr());
    }
 
-   template <typename Vector2, typename Operation>
-   void _assign_op(const Vector2& v, const Operation& op_arg, dense, dense)
+   template <typename TVector2, typename Operation>
+   void assign_op_impl(const TVector2& v, const Operation& op_arg, dense, dense)
    {
       perform_assign(entire(this->top()), v.begin(), op_arg);
    }
 
-   template <typename Vector2, typename Operation>
-   void _assign_op(const Vector2& v, const Operation& op_arg, dense, sparse)
+   template <typename TVector2, typename Operation>
+   void assign_op_impl(const TVector2& v, const Operation& op_arg, dense, sparse)
    {
-      typedef typename Entire<Vector2>::const_iterator iterator2;
-      typedef binary_op_builder<Operation, typename VectorTop::const_iterator, iterator2> opb;
+      typedef typename Entire<TVector2>::const_iterator iterator2;
+      typedef binary_op_builder<Operation, typename TVector::const_iterator, iterator2> opb;
       const typename opb::operation& op=opb::create(op_arg);
       int i_prev=0;
-      typename VectorTop::iterator dst=this->top().begin();
+      typename TVector::iterator dst=this->top().begin();
       for (iterator2 src2=entire(v); !src2.at_end(); ++src2) {
          int i=src2.index();
          std::advance(dst, i-i_prev);
@@ -138,30 +120,30 @@ protected:
       }
    }
 
-   template <typename Vector2, typename Operation, typename discr2>
-   typename disable_if<void, operations::is_partially_defined_for<Operation, VectorTop, Vector2>::value>::type
-   _assign_op(const Vector2& v, const Operation& op, sparse, discr2)
+   template <typename TVector2, typename Operation, typename discr2>
+   typename std::enable_if<!operations::is_partially_defined_for<Operation, TVector, TVector2>::value, void>::type
+   assign_op_impl(const TVector2& v, const Operation& op, sparse, discr2)
    {
       perform_assign(entire(this->top()), v.begin(), op);
    }
 
-   template <typename Vector2, typename Operation, typename discr2>
-   typename enable_if<void, operations::is_partially_defined_for<Operation, VectorTop, Vector2>::value>::type
-   _assign_op(const Vector2& v, const Operation& op, sparse, discr2)
+   template <typename TVector2, typename Operation, typename discr2>
+   typename std::enable_if<operations::is_partially_defined_for<Operation, TVector, TVector2>::value, void>::type
+   assign_op_impl(const TVector2& v, const Operation& op, sparse, discr2)
    {
       perform_assign_sparse(this->top(), ensure(v, (pure_sparse*)0).begin(), op);
    }
 
    template <typename E2>
-   void _fill(const E2& x, dense)
+   void fill_impl(const E2& x, dense)
    {
-      pm::fill(entire(this->top()), x);
+      fill_range(entire(this->top()), x);
    }
 
    template <typename E2>
-   void _fill(const E2& x, pure_sparse)
+   void fill_impl(const E2& x, pure_sparse)
    {
-      if (x)
+      if (!is_zero(x))
          fill_sparse(this->top(), ensure(constant(x), (indexed*)0).begin());
       else
          this->top().clear();
@@ -173,27 +155,34 @@ protected:
    void remove0s(pure_sparse)
    {
       top_type& me=this->top();
-      typename VectorTop::iterator e=me.begin();
-      while (!e.at_end())
-         if (*e) ++e;
-         else me.erase(e++);
+      for (auto e=me.begin(); !e.at_end(); ) {
+         if (!is_zero(*e))
+            ++e;
+         else
+            me.erase(e++);
+      }
    }
 
 public:
    int dim() const { return get_dim(this->top()); }
 
-   template <typename Vector2>
-   void swap(GenericVector<Vector2,E>& v)
+   bool prefer_sparse_representation() const
+   {
+      return is_sparse && this->top().size()*2 < dim();
+   }
+
+   template <typename TVector2>
+   void swap(GenericVector<TVector2, E>& v)
    {
       if (trivial_assignment(v)) return;
 
-      if (POLYMAKE_DEBUG || !Unwary<VectorTop>::value || !Unwary<Vector2>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TVector>::value || !Unwary<TVector2>::value) {
          if (dim() != v.dim())
             throw std::runtime_error("GenericVector::swap - dimension mismatch");
       }
-      typedef typename if_else<check_container_feature<VectorTop, sparse>::value ||
-                               check_container_feature<Vector2, sparse>::value,
-                               pure_sparse, dense>::type
+      typedef typename std::conditional<check_container_feature<TVector, sparse>::value ||
+                                        check_container_feature<TVector2, sparse>::value,
+                                        pure_sparse, dense>::type
          sparse_discr2;
       swap(v, sparse_discr2());
    }
@@ -204,23 +193,23 @@ public:
       perform_assign(entire(this->top()), op);
    }
 
-   template <typename Vector2, typename Operation>
-   void assign_op(const Vector2& v, const Operation& op)
+   template <typename TVector2, typename Operation>
+   void assign_op(const TVector2& v, const Operation& op)
    {
-      typedef typename if_else<check_container_feature<Vector2,sparse>::value, sparse, dense>::type sparse_discr2;
-      _assign_op(v, op, sparse_discr(), sparse_discr2());
+      typedef typename std::conditional<check_container_feature<TVector2, sparse>::value, sparse, dense>::type sparse_discr2;
+      assign_op_impl(v, op, sparse_discr(), sparse_discr2());
    }
 
    template <typename E2>
    void fill(const E2& x)
    {
-      this->top()._fill(x, sparse_discr());
+      this->top().fill_impl(x, sparse_discr());
    }
 
    top_type& operator= (const GenericVector& v)
    {
       if (!trivial_assignment(v)) {
-         if (!object_traits<VectorTop>::is_resizeable && (POLYMAKE_DEBUG || !Unwary<VectorTop>::value)) {
+         if (!object_traits<TVector>::is_resizeable && (POLYMAKE_DEBUG || !Unwary<TVector>::value)) {
             if (dim() != v.dim())
                throw std::runtime_error("GenericVector::operator= - dimension mismatch");
          }
@@ -229,11 +218,11 @@ public:
       return this->top();
    }
 
-   template <typename Vector2, typename E2>
-   typename enable_if<top_type, (convertible_to<E2, E>::value || explicitly_convertible_to<E2, E>::value)>::type&
-   operator= (const GenericVector<Vector2, E2>& v)
+   template <typename TVector2, typename E2,
+             typename=typename std::enable_if<can_assign_to<E2, E>::value>::type>
+   top_type& operator= (const GenericVector<TVector2, E2>& v)
    {
-      if (!object_traits<VectorTop>::is_resizeable && (POLYMAKE_DEBUG || !Unwary<VectorTop>::value)) {
+      if (!object_traits<TVector>::is_resizeable && (POLYMAKE_DEBUG || !Unwary<TVector>::value)) {
          if (dim() != v.dim())
             throw std::runtime_error("GenericVector::operator= - dimension mismatch");
       }
@@ -241,15 +230,15 @@ public:
       return this->top();
    }
 
-   template <typename E2, size_t size>
-   typename enable_if<top_type, (convertible_to<E2, E>::value || explicitly_convertible_to<E2, E>::value)>::type&
-   operator= (const E2 (&a)[size])
+   template <typename E2,
+             typename=typename std::enable_if<can_assign_to<E2, E>::value>::type>
+   top_type& operator= (std::initializer_list<E2> l)
    {
-      if (!object_traits<VectorTop>::is_resizeable && (POLYMAKE_DEBUG || !Unwary<VectorTop>::value)) {
-         if (dim() != size)
+      if (!object_traits<TVector>::is_resizeable && (POLYMAKE_DEBUG || !Unwary<TVector>::value)) {
+         if (dim() != l.size())
             throw std::runtime_error("GenericVector::operator= - dimension mismatch");
       }
-      this->top().assign(array2container(a));
+      this->top().assign(l);
       return this->top();
    }
 
@@ -259,11 +248,12 @@ public:
       return this->top();
    }
 
-   /// adding a GenericVector
-   template <typename Vector2>
-   top_type& operator+= (const GenericVector<Vector2>& v)
+   /// adding a vector
+   /// TODO: check whether addition is defined for both element types
+   template <typename TVector2>
+   top_type& operator+= (const GenericVector<TVector2>& v)
    {
-      if (POLYMAKE_DEBUG || !Unwary<VectorTop>::value || !Unwary<Vector2>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TVector>::value || !Unwary<TVector>::value) {
          if (dim() != v.dim())
             throw std::runtime_error("GenericVector::operator+= - dimension mismatch");
       }
@@ -271,11 +261,12 @@ public:
       return this->top();
    }
 
-   /// subtracting a GenericVector
-   template <typename Vector2>
-   top_type& operator-= (const GenericVector<Vector2>& v)
+   /// subtracting a vector
+   /// TODO: check whether subtraction is defined for both element types
+   template <typename TVector2>
+   top_type& operator-= (const GenericVector<TVector2>& v)
    {
-      if (POLYMAKE_DEBUG || !Unwary<VectorTop>::value || !Unwary<Vector2>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TVector>::value || !Unwary<TVector>::value) {
          if (dim() != v.dim())
             throw std::runtime_error("GenericVector::operator-= - dimension mismatch");
       }
@@ -337,58 +328,58 @@ public:
     * Select a vector slice consisting of elements with given indices. 
     * The last variant selects a contiguous range of indices beginning 
     * with start. 
-    * size==0 means up to the end of the vector. 
+    * size==-1 means up to the end of the vector.
     * The const variants of these methods create immutable slice objects.
     * The indices must lie in the valid range.
     */
    template <typename IndexSet>
-   typename enable_if< IndexedSlice<typename Unwary<VectorTop>::type&, const typename Concrete<IndexSet>::type&>,
-                       isomorphic_to_container_of<IndexSet, int>::value >::type
+   typename std::enable_if<isomorphic_to_container_of<IndexSet, int>::value,
+                           IndexedSlice<unwary_t<TVector>&, const typename Concrete<IndexSet>::type&> >::type
    slice(const IndexSet& indices)
    {
-      if (POLYMAKE_DEBUG || !Unwary<VectorTop>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TVector>::value) {
          if (!set_within_range(indices, dim()))
             throw std::runtime_error("GenericVector::slice - indices out of range");
       }
-      return IndexedSlice<typename Unwary<VectorTop>::type&, const typename Concrete<IndexSet>::type&>(this->top(), concrete(indices));
+      return IndexedSlice<unwary_t<TVector>&, const typename Concrete<IndexSet>::type&>(this->top(), concrete(indices));
    }
 
    template <typename IndexSet>
-   typename enable_if< const IndexedSlice<const typename Unwary<VectorTop>::type&, const typename Concrete<IndexSet>::type&>,
-                       isomorphic_to_container_of<IndexSet, int>::value >::type
+   typename std::enable_if<isomorphic_to_container_of<IndexSet, int>::value,
+                           const IndexedSlice<const unwary_t<TVector>&, const typename Concrete<IndexSet>::type&> >::type
    slice(const IndexSet& indices) const
    {
-      if (POLYMAKE_DEBUG || !Unwary<VectorTop>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TVector>::value) {
          if (!set_within_range(indices, dim()))
             throw std::runtime_error("GenericVector::slice - indices out of range");
       }
-      return IndexedSlice<const typename Unwary<VectorTop>::type&, const typename Concrete<IndexSet>::type&>(this->top(), concrete(indices));
+      return IndexedSlice<const unwary_t<TVector>&, const typename Concrete<IndexSet>::type&>(this->top(), concrete(indices));
    }
 
 
-   IndexedSlice<typename Unwary<VectorTop>::type&, sequence>
-   slice(int sstart, int ssize=0)
+   IndexedSlice<unwary_t<TVector>&, sequence>
+   slice(int sstart, int ssize=-1)
    {
       if (sstart<0) sstart+=dim();
-      if (!ssize) ssize=dim()-sstart;
-      if (POLYMAKE_DEBUG || !Unwary<VectorTop>::value) {
+      if (ssize==-1) ssize=dim()-sstart;
+      if (POLYMAKE_DEBUG || !Unwary<TVector>::value) {
          if (ssize<0 || sstart<0 || sstart+ssize>dim())
             throw std::runtime_error("GenericVector::slice - indices out of range");
       }
-      return IndexedSlice<typename Unwary<VectorTop>::type&, sequence>(this->top(), sequence(sstart,ssize));
+      return IndexedSlice<unwary_t<TVector>&, sequence>(this->top(), sequence(sstart,ssize));
    }
 
 
-   const IndexedSlice<const typename Unwary<VectorTop>::type&, sequence>
-   slice(int sstart, int ssize=0) const
+   const IndexedSlice<const unwary_t<TVector>&, sequence>
+   slice(int sstart, int ssize=-1) const
    {
       if (sstart<0) sstart+=dim();
-      if (!ssize) ssize=dim()-sstart;
-      if (POLYMAKE_DEBUG || !Unwary<VectorTop>::value) {
+      if (ssize==-1) ssize=dim()-sstart;
+      if (POLYMAKE_DEBUG || !Unwary<TVector>::value) {
          if (ssize<0 || sstart<0 || sstart+ssize>dim())
             throw std::runtime_error("GenericVector::slice - indices out of range");
       }
-      return IndexedSlice<const typename Unwary<VectorTop>::type&, sequence>(this->top(), sequence(sstart,ssize));
+      return IndexedSlice<const unwary_t<TVector>&, sequence>(this->top(), sequence(sstart,ssize));
    }
    //@}
 
@@ -402,17 +393,39 @@ public:
    {
       if (d) throw std::runtime_error("dimension mismatch");
    }
+
+   // comparisons
+
+   template <typename TVector2,
+             typename=typename std::enable_if<are_comparable<E, typename TVector2::element_type>::value>::type>
+   friend
+   bool operator== (const GenericVector& l, const GenericVector<TVector2>& r)
+   {
+      return operations::cmp_unordered()(l.top(), r.top()) == cmp_eq;
+   }
+
+   template <typename TVector2,
+             typename=typename std::enable_if<are_comparable<E, typename TVector2::element_type>::value>::type>
+   friend
+   bool operator!= (const GenericVector& l, const GenericVector<TVector2>& r)
+   {
+      return !(l==r);
+   }
+
+#if POLYMAKE_DEBUG
+   void dump() const __attribute__((used)) { cerr << this->top() << endl; }
+#endif
 };
 
 struct is_vector;
 
-template <typename Vector, typename E>
-struct spec_object_traits< GenericVector<Vector, E> >
-   : spec_or_model_traits<Vector,is_container> {
+template <typename TVector, typename E>
+struct spec_object_traits< GenericVector<TVector, E> >
+   : spec_or_model_traits<TVector, is_container> {
    typedef is_vector generic_tag;
    static const bool allow_sparse=true;
 
-   static bool is_zero(const Vector& v)
+   static bool is_zero(const TVector& v)
    {
       return entire(attach_selector(v, BuildUnary<operations::non_zero>())).at_end();
    }
@@ -423,61 +436,61 @@ struct spec_object_traits< GenericVector<Vector, E> >
     @brief Built-in array decorated as a vector
 */
 
-template <typename E, size_t _size>
+template <typename E, size_t TSize>
 class FixedVector
-   : public fixed_array<E,_size>,
-     public GenericVector<FixedVector<E,_size>, E> {
+   : public fixed_array<E, TSize>
+   , public GenericVector<FixedVector<E, TSize>, E> {
 public:
    /// create empty vector
    FixedVector(int=0)
    {
-      if (is_pod<E>::value) clear();
+      if (std::is_pod<E>::value) clear();
    }
 
    /// create vector of given length with constant element 
    FixedVector(int, const E& init)
    {
-      fill(entire(*this), init);
+      fill_range(entire(*this), init);
    }
 
-   FixedVector(const E (&init)[_size])
+   FixedVector(const E (&init)[TSize])
    {
-      copy(entire(*this), init+0);
+      copy_range(init+0, entire(*this));
    }
 
    template <typename E2>
-   explicit FixedVector(const E2 (&init)[_size])
+   explicit FixedVector(const E2 (&init)[TSize])
    {
-      copy(entire(*this), attach_converter<E>(array2container(init)).begin());
+      copy_range(attach_converter<E>(array2container(init)).begin(), entire(*this));
    }
 
    /// create vector from iterator
    template <typename Iterator>
    FixedVector(int, Iterator src)
    {
-      copy(src, entire(*this));
+      copy_range(src, entire(*this));
    }
 
    /// create vector from GenericVector
-   template <typename Vector>
-   FixedVector(const GenericVector<Vector, E>& v)
+   template <typename TVector>
+   FixedVector(const GenericVector<TVector, E>& v)
    {
       if (POLYMAKE_DEBUG) {
          if (v.dim() != this->size())
             throw std::runtime_error("FixedVector constructor - dimension mismatch");
       }
-      this->_assign(v.top(), dense());
+      this->assign_impl(v.top(), dense());
    }
 
-   template <typename Vector, typename E2>
-   explicit FixedVector(const GenericVector<Vector, E2>& v,
-                        typename enable_if<void**, (convertible_to<E2, E>::value || explicitly_convertible_to<E2, E>::value)>::type=0)
+   template <typename Vector, typename E2,
+             typename enabled=typename std::enable_if<can_initialize<E2, E>::value>::type>
+   explicit FixedVector(const GenericVector<Vector, E2>& v)
    {
       if (POLYMAKE_DEBUG) {
          if (v.dim() != this->size())
             throw std::runtime_error("FixedVector constructor - dimension mismatch");
       }
-      this->_assign(v.top(), dense());
+      this->assign_impl(v.top(), dense());
    }
 
    FixedVector& operator= (const FixedVector& other) { return FixedVector::generic_type::operator=(other); }
@@ -486,28 +499,28 @@ public:
    /// fill with zeroes
    void clear()
    {
-      fill(entire(*this), zero_value<E>());
+      fill_range(entire(*this), zero_value<E>());
    }
 protected:
    friend class GenericVector<FixedVector>;
 };
 
-template <typename E, size_t size>
-struct spec_object_traits< FixedVector<E,size> >
+template <typename E, size_t TSize>
+struct spec_object_traits< FixedVector<E, TSize> >
    : spec_object_traits<is_container> {
    static const int is_resizeable=0;
 };
 
-template <typename E, size_t size> inline
-FixedVector<E,size>& array2vector(E (&a)[size])
+template <typename E, size_t TSize> inline
+FixedVector<E, TSize>& array2vector(E (&a)[TSize])
 {
-   return reinterpret_cast<FixedVector<E,size>&>(a);
+   return reinterpret_cast<FixedVector<E, TSize>&>(a);
 }
 
-template <typename E, size_t size> inline
-const FixedVector<E,size>& array2vector(const E (&a)[size])
+template <typename E, size_t TSize> inline
+const FixedVector<E, TSize>& array2vector(const E (&a)[TSize])
 {
-   return reinterpret_cast<const FixedVector<E,size>&>(a);
+   return reinterpret_cast<const FixedVector<E, TSize>&>(a);
 }
 
 /* --------------------------------------------
@@ -517,8 +530,8 @@ const FixedVector<E,size>& array2vector(const E (&a)[size])
 
 template <typename VectorRef, typename Operation>
 class LazyVector1
-   : public TransformedContainer<VectorRef, Operation>,
-     public GenericVector< LazyVector1<VectorRef,Operation>,
+   : public TransformedContainer<VectorRef, Operation>
+   , public GenericVector< LazyVector1<VectorRef,Operation>,
                            typename object_traits<typename TransformedContainer<VectorRef,Operation>::value_type>::persistent_type > {
    typedef TransformedContainer<VectorRef, Operation> _super;
 public:
@@ -545,20 +558,20 @@ struct check_container_feature<LazyVector1<VectorRef,Operation>, Feature>
 
 template <typename VectorRef1, typename VectorRef2, typename Operation>
 class LazyVector2
-   : public TransformedContainerPair<VectorRef1, VectorRef2, Operation>,
-     public GenericVector< LazyVector2<VectorRef1,VectorRef2,Operation>,
+   : public TransformedContainerPair<VectorRef1, VectorRef2, Operation>
+   , public GenericVector< LazyVector2<VectorRef1,VectorRef2,Operation>,
                            typename object_traits<typename TransformedContainerPair<VectorRef1,VectorRef2,Operation>::value_type>::persistent_type > {
-   typedef TransformedContainerPair<VectorRef1, VectorRef2, Operation> _super;
+   typedef TransformedContainerPair<VectorRef1, VectorRef2, Operation> base_t;
 protected:
-   int dim(True) const { return get_dim(this->get_container2()); }
-   int dim(False) const { return get_dim(this->get_container1()); }
+   int dim_impl(std::true_type) const { return get_dim(this->get_container2()); }
+   int dim_impl(std::false_type) const { return get_dim(this->get_container1()); }
 public:
-   LazyVector2(typename _super::first_arg_type src1_arg, typename _super::second_arg_type src2_arg, const Operation& op_arg=Operation())
-      : _super(src1_arg, src2_arg, op_arg) {}
+   LazyVector2(typename base_t::first_arg_type src1_arg, typename base_t::second_arg_type src2_arg, const Operation& op_arg=Operation())
+      : base_t(src1_arg, src2_arg, op_arg) {}
 
    int dim() const
    {
-      return dim(bool2type< check_container_ref_feature<VectorRef1,unlimited>::value >());
+      return dim_impl(bool_constant< check_container_ref_feature<VectorRef1,unlimited>::value >());
    }
 };
 
@@ -580,18 +593,25 @@ convert_to(const GenericVector<Vector, TargetType>& v)
    return v.top();
 }
 
-template <typename TargetType, typename Vector, typename E> inline
-const LazyVector1<const Vector&, conv_by_cast<E, TargetType> >
-convert_to(const GenericVector<Vector, E>& v,
-           typename enable_if<void**, (convertible_to<E, TargetType>::value && !identical<E, TargetType>::value)>::type=0)
+template <typename TargetType, typename TVector, typename E,
+          typename enabled=typename std::enable_if<can_initialize<E, TargetType>::value && !std::is_same<E, TargetType>::value>::type> inline
+const LazyVector1<const TVector&, conv<E, TargetType> >
+convert_to(const GenericVector<TVector, E>& v)
 {
    return v.top();
 }
 
-template <typename TargetType, typename Vector, typename E> inline
-const LazyVector1<const Vector&, conv<E, TargetType> >
-convert_to(const GenericVector<Vector, E>& v,
-           typename enable_if<void**, explicitly_convertible_to<E, TargetType>::value>::type=0)
+template <typename TargetType, typename TVector, typename E> inline
+const typename TVector::top_type& convert_lazily(const GenericVector<TVector, E>& v,
+                                                 typename std::enable_if<std::is_convertible<E, TargetType>::value, void**>::type=nullptr)
+{
+   return v.top();
+}
+
+template <typename TargetType, typename TVector, typename E> inline
+const LazyVector1<const TVector&, conv<E, TargetType> >
+convert_lazily(const GenericVector<TVector, E>& v,
+               typename std::enable_if<can_initialize<E, TargetType>::value && !std::is_convertible<E, TargetType>::value, void**>::type=nullptr)
 {
    return v.top();
 }
@@ -637,18 +657,20 @@ struct check_container_feature<VectorTensorProduct<VectorRef1,VectorRef2,Operati
 
 template <typename VectorRef1, typename VectorRef2>
 class VectorChain
-   : public ContainerChain<VectorRef1, VectorRef2>,
-     public GenericVector< VectorChain<VectorRef1,VectorRef2>,
-                           typename identical<typename deref<VectorRef1>::type::element_type,
-                                              typename deref<VectorRef2>::type::element_type>::type > {
-   typedef ContainerChain<VectorRef1, VectorRef2> _super;
+   : public ContainerChain<VectorRef1, VectorRef2>
+   , public GenericVector< VectorChain<VectorRef1,VectorRef2>,
+                           typename deref<VectorRef1>::type::element_type > {
+   typedef ContainerChain<VectorRef1, VectorRef2> base_t;
 public:
-   VectorChain(typename _super::first_arg_type src1_arg, typename _super::second_arg_type src2_arg)
-      : _super(src1_arg,src2_arg) {}
+   static_assert(std::is_same<typename VectorChain::element_type, typename deref<VectorRef2>::type::element_type>::value,
+                 "concatenated vectors of different element types");
+
+   VectorChain(typename base_t::first_arg_type src1_arg, typename base_t::second_arg_type src2_arg)
+      : base_t(src1_arg,src2_arg) {}
 
    VectorChain& operator= (const VectorChain& other) { return VectorChain::generic_type::operator=(other); }
    using VectorChain::generic_type::operator=;
-   using _super::dim;
+   using base_t::dim;
 };
 
 template <typename VectorRef1, typename VectorRef2>
@@ -667,10 +689,10 @@ template <typename E>
 class SingleElementVector
    : public single_value_container<E>,
      public GenericVector<SingleElementVector<E>, typename deref<E>::type> {
-   typedef single_value_container<E> _super;
+   typedef single_value_container<E> base_t;
 public:
-   SingleElementVector(typename _super::arg_type arg)
-      : _super(arg) {}
+   SingleElementVector(typename base_t::arg_type arg)
+      : base_t(arg) {}
 
    using SingleElementVector::generic_type::operator=;
 };
@@ -696,7 +718,7 @@ struct spec_object_traits< SingleElementSparseVector<E> > : spec_object_traits< 
 };
 
 template <typename E>
-struct check_container_feature<SingleElementSparseVector<E>, pure_sparse> : True {};
+struct check_container_feature<SingleElementSparseVector<E>, pure_sparse> : std::true_type {};
 
 template <typename ElementRef, typename IndexRef>
 struct SingleElementSparseVector_factory {
@@ -836,19 +858,19 @@ protected:
 template <typename SetRef, typename ElemRef>
 class SameElementSparseVector
    : public modified_container_impl< SameElementSparseVector<SetRef,ElemRef>,
-                                     list( Container< typename attrib<typename Set_with_dim_helper<SetRef>::container>::plus_const >,
-                                           Operation< pair<apparent_data_accessor<ElemRef, complement_helper<SetRef>::value>,
-                                                           operations::identity<int> > > ) >,
+                                     mlist< ContainerTag< typename attrib<typename Set_with_dim_helper<SetRef>::container>::plus_const >,
+                                            OperationTag< pair<apparent_data_accessor<ElemRef, complement_helper<SetRef>::value>,
+                                                               operations::identity<int> > > > >,
      public GenericVector< SameElementSparseVector<SetRef,ElemRef>,
                            typename object_traits<typename deref<ElemRef>::type>::persistent_type > {
-   typedef modified_container_impl<SameElementSparseVector> _super;
+   typedef modified_container_impl<SameElementSparseVector> base_t;
 protected:
    typedef Set_with_dim_helper<SetRef> helper;
    typename helper::alias_type set;
    alias<ElemRef> apparent_elem;
 
 public:
-   typedef typename least_derived<cons< bidirectional_iterator_tag, typename container_traits<SetRef>::category> >::type container_category;
+   typedef typename least_derived_class<bidirectional_iterator_tag, typename container_traits<SetRef>::category>::type container_category;
    typedef typename helper::alias_type::arg_type first_arg_type;
    typedef typename alias<ElemRef>::arg_type second_arg_type;
 
@@ -858,29 +880,29 @@ public:
    SameElementSparseVector(first_arg_type set_arg, second_arg_type data_arg, int dim_arg)
       : set(helper::create(set_arg,dim_arg)), apparent_elem(data_arg) {}
 
-   const typename _super::container& get_container() const
+   const typename base_t::container& get_container() const
    {
       return helper::deref(set);
    }
-   typename _super::operation get_operation() const
+   typename base_t::operation get_operation() const
    {
-      return typename _super::operation(apparent_elem, operations::identity<int>());
+      return typename base_t::operation(apparent_elem, operations::identity<int>());
    }
-   typename _super::const_iterator find(int i) const
+   typename base_t::const_iterator find(int i) const
    {
-      return typename _super::const_iterator(get_container().find(i), get_operation());
+      return typename base_t::const_iterator(get_container().find(i), get_operation());
    }
 
-   typename _super::const_reference operator[] (int i) const
+   typename base_t::const_reference operator[] (int i) const
    {
-      if (i<0 || i>=_super::dim())
+      if (i<0 || i>=base_t::dim())
          throw std::runtime_error("same_element_sparse_vector - index out of range");
       if (get_container().contains(i))
          return *apparent_elem;
       return zero_value<typename deref<ElemRef>::type>();
    }
 
-   using _super::dim;
+   using base_t::dim;
 };
 
 template <typename SetRef, typename ElemRef>
@@ -890,72 +912,74 @@ struct spec_object_traits< SameElementSparseVector<SetRef,ElemRef> >
 };
 
 template <typename SetRef, typename ElemRef>
-struct check_container_feature<SameElementSparseVector<SetRef,ElemRef>, pure_sparse> : True {};
+struct check_container_feature<SameElementSparseVector<SetRef,ElemRef>, pure_sparse> : std::true_type {};
 
-template <typename E, typename Set> inline
-const SameElementSparseVector<const typename Unwary<Set>::type&, E>
-same_element_sparse_vector(const GenericSet<Set,int>& s, int dim)
+template <typename E, typename TSet> inline
+const SameElementSparseVector<const unwary_t<TSet>&, E>
+same_element_sparse_vector(const GenericSet<TSet, int>& s, int dim)
 {
-   if (POLYMAKE_DEBUG || !Unwary<Set>::value) {
+   if (POLYMAKE_DEBUG || !Unwary<TSet>::value) {
       if (!set_within_range(s.top(),dim))
          throw std::runtime_error("same_element_sparse_vector - dimension mismatch");
    }
-   return SameElementSparseVector<const typename Unwary<Set>::type&, E>(s.top(), one_value<E>(), dim);
+   return SameElementSparseVector<const unwary_t<TSet>&, E>(s.top(), one_value<E>(), dim);
 }
 
-template <typename E, typename Set> inline
-const SameElementSparseVector<const typename Unwary<Set>::type&, const E&>
-same_element_sparse_vector(const GenericSet<Set,int>& s, const E& x, int dim)
+template <typename E, typename TSet> inline
+const SameElementSparseVector<const unwary_t<TSet>&, const E&>
+same_element_sparse_vector(const GenericSet<TSet, int>& s, const E& x, int dim)
 {
-   if (POLYMAKE_DEBUG || !Unwary<Set>::value) {
-      if (!set_within_range(s.top(),dim))
+   if (POLYMAKE_DEBUG || !Unwary<TSet>::value) {
+      if (!set_within_range(s.top(), dim))
          throw std::runtime_error("same_element_sparse_vector - dimension mismatch");
    }
-   return SameElementSparseVector<const typename Unwary<Set>::type&, const E&>(s.top(), x, dim);
+   return SameElementSparseVector<const unwary_t<TSet>&, const E&>(s.top(), x, dim);
 }
 
-template <typename E, typename Set> inline
-const SameElementSparseVector<const Complement<Set>&, E>
-same_element_sparse_vector(const Complement<Set,int>& s, int dim)
+template <typename E, typename TSet> inline
+const SameElementSparseVector<const Complement<TSet>&, E>
+same_element_sparse_vector(const Complement<TSet, int>& s, int dim)
 {
-   return SameElementSparseVector<const Complement<Set>&, E>(s, one_value<E>(), dim);
+   return SameElementSparseVector<const Complement<TSet>&, E>(s, one_value<E>(), dim);
 }
 
-template <typename E, typename Set> inline
-const SameElementSparseVector<const Complement<Set>&, const E&>
-same_element_sparse_vector(const Complement<Set,int>& s, const E& x, int dim)
+template <typename E, typename TSet> inline
+const SameElementSparseVector<const Complement<TSet>&, const E&>
+same_element_sparse_vector(const Complement<TSet, int>& s, const E& x, int dim)
 {
-   return SameElementSparseVector<const Complement<Set>&, const E&>(s, x, dim);
+   return SameElementSparseVector<const Complement<TSet>&, const E&>(s, x, dim);
 }
 
-template <typename E, typename Set> inline
-typename enable_if<const SameElementSparseVector<const Set&, E>, Set_with_dim_helper<Set>::value>::type
-same_element_sparse_vector(const GenericSet<Set,int>& s)
+template <typename E, typename TSet> inline
+typename std::enable_if<Set_with_dim_helper<unwary_t<TSet>>::value,
+                        const SameElementSparseVector<const unwary_t<TSet>&, E>>::type
+same_element_sparse_vector(const GenericSet<TSet, int>& s)
 {
-   return SameElementSparseVector<const Set&, E>(s.top(), one_value<E>());
+   return SameElementSparseVector<const unwary_t<TSet>&, E>(s.top(), one_value<E>());
 }
 
 /// Create a SparseVector with all entries equal to the given element x
 /// at the coordinates defined in the GenericSet s.
-template <typename E, typename Set> inline
-typename enable_if<const SameElementSparseVector<const Set&, const E&>, Set_with_dim_helper<Set>::value>::type
-same_element_sparse_vector(const GenericSet<Set,int>& s, const E& x)
+template <typename E, typename TSet> inline
+typename std::enable_if<Set_with_dim_helper<unwary_t<TSet>>::value,
+                        const SameElementSparseVector<const unwary_t<TSet>&, const E&>>::type
+same_element_sparse_vector(const GenericSet<TSet, int>& s, const E& x)
 {
-   return SameElementSparseVector<const Set&, const E&>(s.top(), x);
+   return SameElementSparseVector<const unwary_t<TSet>&, const E&>(s.top(), x);
 }
 
-template <typename E, typename Set> inline
-typename enable_if<const SameElementSparseVector<const Complement<Set>&, E>, Set_with_dim_helper<Set>::value>::type
-same_element_sparse_vector(const Complement<Set,int>& s)
+template <typename E, typename TSet> inline
+typename std::enable_if<Set_with_dim_helper<TSet>::value, const SameElementSparseVector<const Complement<TSet>&, E>>::type
+same_element_sparse_vector(const Complement<TSet, int>& s)
 {
-   return SameElementSparseVector<const Complement<Set>&, E>(s, one_value<E>());
+   return SameElementSparseVector<const Complement<TSet>&, E>(s, one_value<E>());
 }
 
-template <typename E, typename Set> inline
-typename enable_if<const SameElementSparseVector<const Complement<Set>&, const E&>, Set_with_dim_helper<Set>::value>::type
-same_element_sparse_vector(const Complement<Set,int>& s, const E& x)
+template <typename E, typename TSet> inline
+typename std::enable_if<Set_with_dim_helper<TSet>::value, const SameElementSparseVector<const Complement<TSet>&, const E&>>::type
+same_element_sparse_vector(const Complement<TSet, int>& s, const E& x)
 {
-   return SameElementSparseVector<const Complement<Set>&, const E&>(s, x);
+   return SameElementSparseVector<const Complement<TSet>&, const E&>(s, x);
 }
 
 /* kind = 1: constructs SameElementSparseVector<sequence> of full size or empty
@@ -969,7 +993,7 @@ protected:
 public:
    typedef int first_argument_type;
    typedef ElemRef second_argument_type;
-   typedef SameElementSparseVector<typename if_else<kind==2, SingleElementSet<int>, sequence>::type, ElemRef>
+   typedef SameElementSparseVector<typename std::conditional<kind==2, SingleElementSet<int>, sequence>::type, ElemRef>
       result_type;
 
    SameElementSparseVector_factory(int dim_arg=0) : dim(dim_arg) {}
@@ -977,7 +1001,7 @@ public:
    result_type operator() (first_argument_type pos,
                            typename function_argument<ElemRef>::type elem) const
    {
-      return result_type(index_set(pos,int2type<kind>()), elem, dim);
+      return result_type(index_set(pos, int_constant<kind>()), elem, dim);
    }
 
    template <typename Iterator2>
@@ -994,15 +1018,15 @@ public:
    }
 
 protected:
-   sequence index_set(int, int2type<1>) const
+   sequence index_set(int, int_constant<1>) const
    {
       return sequence(0,dim);
    }
-   int index_set(int pos, int2type<2>) const
+   int index_set(int pos, int_constant<2>) const
    {
       return pos;
    }
-   sequence index_set(int pos, int2type<3>) const
+   sequence index_set(int pos, int_constant<3>) const
    {
       return sequence(pos,1);
    }
@@ -1076,7 +1100,7 @@ struct spec_object_traits< ExpandedVector<VectorRef> > :
 };
 
 template <typename VectorRef>
-struct check_container_feature<ExpandedVector<VectorRef>, sparse> : True {};
+struct check_container_feature<ExpandedVector<VectorRef>, sparse> : std::true_type {};
 
 template <typename VectorRef>
 struct check_container_feature<ExpandedVector<VectorRef>, pure_sparse>
@@ -1133,7 +1157,7 @@ namespace operations {
 template <typename OpRef>
 struct neg_impl<OpRef, is_vector> {
    typedef OpRef argument_type;
-   typedef LazyVector1<typename attrib<typename Unwary<OpRef>::type>::plus_const, BuildUnary<neg> > result_type;
+   typedef LazyVector1<typename attrib<unwary_t<OpRef>>::plus_const, BuildUnary<neg> > result_type;
 
    result_type operator() (typename function_argument<OpRef>::const_type x) const
    {
@@ -1150,8 +1174,8 @@ template <typename LeftRef, typename RightRef>
 struct add_impl<LeftRef, RightRef, cons<is_vector, is_vector> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef LazyVector2<typename attrib<typename Unwary<LeftRef>::type>::plus_const,
-                       typename attrib<typename Unwary<RightRef>::type>::plus_const,
+   typedef LazyVector2<typename attrib<unwary_t<LeftRef>>::plus_const,
+                       typename attrib<unwary_t<RightRef>>::plus_const,
                        BuildBinary<add> >
       result_type;
 
@@ -1189,8 +1213,8 @@ template <typename LeftRef, typename RightRef>
 struct sub_impl<LeftRef, RightRef, cons<is_vector, is_vector> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef LazyVector2<typename attrib<typename Unwary<LeftRef>::type>::plus_const,
-                       typename attrib<typename Unwary<RightRef>::type>::plus_const,
+   typedef LazyVector2<typename attrib<unwary_t<LeftRef>>::plus_const,
+                       typename attrib<unwary_t<RightRef>>::plus_const,
                        BuildBinary<sub> >
       result_type;
 
@@ -1228,8 +1252,8 @@ template <typename LeftRef, typename RightRef>
 struct mul_impl<LeftRef, RightRef, cons<is_vector, is_scalar> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef LazyVector2<typename attrib<typename Unwary<LeftRef>::type>::plus_const,
-                       constant_value_container<typename Diligent<typename Unwary<RightRef>::type>::type>,
+   typedef LazyVector2<typename attrib<unwary_t<LeftRef>>::plus_const,
+                       constant_value_container<typename Diligent<unwary_t<RightRef>>::type>,
                        BuildBinary<mul> >
       result_type;
 
@@ -1248,8 +1272,8 @@ template <typename LeftRef, typename RightRef>
 struct mul_impl<LeftRef, RightRef, cons<is_scalar, is_vector> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef LazyVector2<constant_value_container<typename Diligent<typename Unwary<LeftRef>::type>::type>,
-                       typename attrib<typename Unwary<RightRef>::type>::plus_const,
+   typedef LazyVector2<constant_value_container<typename Diligent<unwary_t<LeftRef>>::type>,
+                       typename attrib<unwary_t<RightRef>>::plus_const,
                        BuildBinary<mul> >
       result_type;
 
@@ -1283,8 +1307,8 @@ template <typename LeftRef, typename RightRef>
 struct tensor_impl<LeftRef, RightRef, cons<is_vector, is_vector> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef VectorTensorProduct<typename attrib<typename Unwary<LeftRef>::type>::plus_const,
-                               typename attrib<typename Unwary<RightRef>::type>::plus_const,
+   typedef VectorTensorProduct<typename attrib<unwary_t<LeftRef>>::plus_const,
+                               typename attrib<unwary_t<RightRef>>::plus_const,
                                BuildBinary<mul> >
       result_type;
 
@@ -1299,8 +1323,8 @@ template <typename LeftRef, typename RightRef>
 struct div_impl<LeftRef, RightRef, cons<is_vector, is_scalar> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef LazyVector2<typename attrib<typename Unwary<LeftRef>::type>::plus_const,
-                       constant_value_container<typename Diligent<typename Unwary<RightRef>::type>::type>,
+   typedef LazyVector2<typename attrib<unwary_t<LeftRef>>::plus_const,
+                       constant_value_container<typename Diligent<unwary_t<RightRef>>::type>,
                        BuildBinary<div> >
       result_type;
 
@@ -1320,8 +1344,8 @@ template <typename LeftRef, typename RightRef>
 struct divexact_impl<LeftRef, RightRef, cons<is_vector, is_scalar> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef LazyVector2<typename attrib<typename Unwary<LeftRef>::type>::plus_const,
-                       constant_value_container<typename Diligent<typename Unwary<RightRef>::type>::type>,
+   typedef LazyVector2<typename attrib<unwary_t<LeftRef>>::plus_const,
+                       constant_value_container<typename Diligent<unwary_t<RightRef>>::type>,
                        BuildBinary<divexact> >
       result_type;
 
@@ -1340,7 +1364,7 @@ struct divexact_impl<LeftRef, RightRef, cons<is_vector, is_scalar> > {
 template <typename OpRef>
 struct square_impl<OpRef, is_vector> {
    typedef OpRef argument_type;
-   typedef typename mul_impl<typename Unwary<OpRef>::type, typename Unwary<OpRef>::type, cons<is_vector, is_vector> >::result_type
+   typedef typename mul_impl<unwary_t<OpRef>, unwary_t<OpRef>, cons<is_vector, is_vector> >::result_type
       result_type;
 
    result_type operator() (typename function_argument<OpRef>::const_type x) const
@@ -1353,8 +1377,8 @@ template <typename LeftRef, typename RightRef>
 struct concat_impl<LeftRef, RightRef, cons<is_vector, is_vector> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef VectorChain<typename coherent_const<typename Unwary<LeftRef>::type, typename Unwary<RightRef>::type>::first_type,
-                       typename coherent_const<typename Unwary<LeftRef>::type, typename Unwary<RightRef>::type>::second_type>
+   typedef VectorChain<typename coherent_const<unwary_t<LeftRef>, unwary_t<RightRef>>::first_type,
+                       typename coherent_const<unwary_t<LeftRef>, unwary_t<RightRef>>::second_type>
       result_type;
 
    result_type operator() (typename function_argument<LeftRef>::type l,
@@ -1376,12 +1400,12 @@ struct concat_impl<LeftRef, RightRef, cons<is_vector, is_scalar> > {
 
    // provisions for the type-heterogeneous case, where the scalar value needs to be converted first
    typedef typename deref<LeftRef>::type::element_type element_type;
-   typedef typename deref<typename Unwary<RightRef>::type>::type right_src_type;
-   static const bool homogeneous=identical<right_src_type, element_type>::value;
-   typedef SingleElementVector<typename if_else<homogeneous, typename Unwary<RightRef>::type, element_type>::type> Right;
+   typedef typename deref<unwary_t<RightRef>>::type right_src_type;
+   static const bool homogeneous=std::is_same<right_src_type, element_type>::value;
+   typedef SingleElementVector<typename std::conditional<homogeneous, unwary_t<RightRef>, element_type>::type> Right;
 
-   typedef VectorChain<typename coherent_const<typename Unwary<LeftRef>::type, Right>::first_type,
-                       typename coherent_const<typename Unwary<LeftRef>::type, Right>::second_type>
+   typedef VectorChain<typename coherent_const<unwary_t<LeftRef>, Right>::first_type,
+                       typename coherent_const<unwary_t<LeftRef>, Right>::second_type>
       result_type;
 
    result_type operator() (typename function_argument<LeftRef>::type l,
@@ -1403,12 +1427,12 @@ struct concat_impl<LeftRef, RightRef, cons<is_scalar, is_vector> > {
 
    // provisions for the type-heterogeneous case, where the scalar value needs to be converted first
    typedef typename deref<RightRef>::type::element_type element_type;
-   typedef typename deref<typename Unwary<LeftRef>::type>::type left_src_type;
-   static const bool homogeneous=identical<left_src_type, element_type>::value;
-   typedef SingleElementVector<typename if_else<homogeneous, typename Unwary<LeftRef>::type, element_type>::type> Left;
+   typedef typename deref<unwary_t<LeftRef>>::type left_src_type;
+   static const bool homogeneous=std::is_same<left_src_type, element_type>::value;
+   typedef SingleElementVector<typename std::conditional<homogeneous, unwary_t<LeftRef>, element_type>::type> Left;
 
-   typedef VectorChain<typename coherent_const<Left, typename Unwary<RightRef>::type>::first_type,
-                       typename coherent_const<Left, typename Unwary<RightRef>::type>::second_type>
+   typedef VectorChain<typename coherent_const<Left, unwary_t<RightRef>>::first_type,
+                       typename coherent_const<Left, unwary_t<RightRef>>::second_type>
       result_type;
 
    result_type operator() (typename function_argument<LeftRef>::type l,
@@ -1449,26 +1473,6 @@ operator- (const GenericVector<Vector1>& l, const GenericVector<Vector2>& r)
    return op(concrete(l), concrete(r));
 }
 
-template <typename Vector1, typename Vector2> inline
-bool operator== (const GenericVector<Vector1>& l, const GenericVector<Vector2>& r)
-{
-   if (l.dim() != r.dim()) return false;
-   operations::eq<const typename Unwary<Vector1>::type&, const typename Unwary<Vector2>::type&> op;
-   return op(l.top(), r.top());
-}
-
-template <typename Vector1, typename Vector2> inline
-typename enable_if<bool, (is_ordered<typename Vector1::element_type>::value && is_ordered<typename Vector2::element_type>::value)>::type
-operator< (const GenericVector<Vector1>& l, const GenericVector<Vector2>& r)
-{
-   if (POLYMAKE_DEBUG || !Unwary<Vector1>::value || !Unwary<Vector2>::value) {
-      if (l.dim() != r.dim())
-         throw std::runtime_error("operator<(GenericVector,GenericVector) - dimension mismatch");
-   }
-   operations::lt<const typename Unwary<Vector1>::type&, const typename Unwary<Vector2>::type&> op;
-   return op(l.top(), r.top());
-}
-
 } // end namespace operators
 
 template <typename Vector, typename Right> inline
@@ -1479,28 +1483,32 @@ div_exact(const GenericVector<Vector>& l, const Right& r)
    return op(concrete(l), r);
 }
 
-template <typename Vector>
-struct hash_func<Vector, is_vector> {
+template <typename TVector>
+struct hash_func<TVector, is_vector> {
 protected:
-   hash_func<typename Vector::value_type> hash_elem;
+   hash_func<typename TVector::value_type> hash_elem;
 public:
-   size_t operator() (const Vector& v) const
+   size_t operator() (const TVector& v) const
    {
       size_t h=1;
-      for (typename ensure_features<Vector, cons<end_sensitive,sparse_compatible> >::const_iterator e=ensure(v, (cons<end_sensitive, sparse_compatible>*)0).begin(); !e.at_end(); ++e)
+      for (auto e=ensure(v, (sparse_compatible*)0).begin(); !e.at_end(); ++e)
          h += (hash_elem(*e) * (e.index()+1));
       return h;
    }
 };
 
-template<typename Vector>
-typename enable_if<Indices<SelectedSubset<const GenericVector<Vector>&, BuildUnary<operations::non_zero> > >, !Vector::is_sparse>::type
-indices(const GenericVector<Vector>& v) 
+template <typename TVector>
+typename std::enable_if<!TVector::is_sparse, Indices<SelectedSubset<const GenericVector<TVector>&, BuildUnary<operations::non_zero>>>>::type
+indices(const GenericVector<TVector>& v) 
 { 
    return indices(attach_selector(v, BuildUnary<operations::non_zero>())); 
 }
 
-
+template <typename TVector1, typename TVector2, typename E> inline
+cmp_value lex_compare(const GenericVector<TVector1, E>& l, const GenericVector<TVector2, E>& r)
+{
+   return operations::cmp()(l.top(), r.top());
+}
 
 } // end namespace pm
 
@@ -1518,24 +1526,26 @@ namespace polymake {
 }
 
 namespace std {
-   template <typename Vector1, typename Vector2, typename E> inline
-   void swap(pm::GenericVector<Vector1,E>& v1, pm::GenericVector<Vector2,E>& v2)
-   {
-      v1.top().swap(v2.top());
-   }
 
-   // due to silly overloading rules
-   template <typename VectorRef1, typename VectorRef2> inline
-   void swap(pm::VectorChain<VectorRef1,VectorRef2>& v1, pm::VectorChain<VectorRef1,VectorRef2>& v2)
-   {
-      v1.swap(v2);
-   }
+template <typename Vector1, typename Vector2, typename E> inline
+void swap(pm::GenericVector<Vector1,E>& v1, pm::GenericVector<Vector2,E>& v2)
+{
+   v1.top().swap(v2.top());
+}
 
-   template <typename E, int _size> inline
-   void swap(pm::FixedVector<E,_size>& v1, pm::FixedVector<E,_size>& v2)
-   {
-      v1.swap(v2);
-   }
+// due to silly overloading rules
+template <typename VectorRef1, typename VectorRef2> inline
+void swap(pm::VectorChain<VectorRef1,VectorRef2>& v1, pm::VectorChain<VectorRef1,VectorRef2>& v2)
+{
+   v1.swap(v2);
+}
+
+template <typename E, int _size> inline
+void swap(pm::FixedVector<E,_size>& v1, pm::FixedVector<E,_size>& v2)
+{
+   v1.swap(v2);
+}
+
 }
 
 #endif // POLYMAKE_GENERIC_VECTOR_H

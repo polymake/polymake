@@ -1,0 +1,41 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object Polytope {
+
+# @category Combinatorics
+# A lower bound for the minimal number of simplices in a triangulation
+property SIMPLEXITY_LOWER_BOUND : Int;
+
+# @category Combinatorics
+# An upper bound for the maximal signature of a foldable triangulation of a polytope
+# The signature is the absolute difference of the normalized volumes of black minus white maximal simplices,
+# where only odd normalized volumes are taken into account.
+property FOLDABLE_MAX_SIGNATURE_UPPER_BOUND : Int;
+
+rule SIMPLEXITY_LOWER_BOUND : COMBINATORIAL_DIM, VERTICES, MAX_INTERIOR_SIMPLICES, VOLUME, COCIRCUIT_EQUATIONS {
+   $this->SIMPLEXITY_LOWER_BOUND = simplexity_lower_bound($this->COMBINATORIAL_DIM, $this->VERTICES, $this->MAX_INTERIOR_SIMPLICES, $this->VOLUME, $this->COCIRCUIT_EQUATIONS);
+}
+
+rule FOLDABLE_MAX_SIGNATURE_UPPER_BOUND : COMBINATORIAL_DIM, VERTICES, MAX_INTERIOR_SIMPLICES, VOLUME, FOLDABLE_COCIRCUIT_EQUATIONS {
+   $this->FOLDABLE_MAX_SIGNATURE_UPPER_BOUND = foldable_max_signature_upper_bound($this->COMBINATORIAL_DIM, $this->VERTICES, $this->MAX_INTERIOR_SIMPLICES, $this->VOLUME, $this->FOLDABLE_COCIRCUIT_EQUATIONS);
+}
+
+}
+
+# Local Variables:
+# c-basic-offset:3
+# mode: perl
+# End:

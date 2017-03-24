@@ -17,7 +17,7 @@
 #  Building and installation
 #
 .PHONY: all compile install install-arch install-shared \
-	install-arch-prep docs release-docs clean clean-arch distclean TAGS RTAGS test
+	install-arch-prep docs release-docs clean clean-arch clean-xs distclean TAGS RTAGS test
 
 .shell := $(firstword $(wildcard /bin/bash /usr/bin/bash /usr/local/bin/bash))
 ifdef .shell
@@ -107,6 +107,10 @@ define _InstallShared
 	$(foreach a, ${Apps}, $(call _InstallSharedInApp,apps/$a))
 	$(foreach e, ${BundledExts}, $(call _InstallSharedInExt,$e))
 endef
+define _InstallExternalHeaders
+	$(foreach d, ${ExternalHeaders}, ${PERL} ${INSTALL_PL} -m ${DirMask} include/external/$d ${InstallInc}/polymake/external/$d)
+
+endef
 
 install : install-shared install-arch
 
@@ -139,6 +143,7 @@ install-shared:
 	$(call _InstallSubdir,perllib)
 	$(call _InstallShared)
 	@+$(call _MakeApps, install-src)
+	$(call _InstallExternalHeaders)
 	$(call _InstallSubdir,povray)
 	$(call _InstallSubdir,resources)
 	$(call _InstallSubdir,scripts)
@@ -146,24 +151,21 @@ install-shared:
 	$(call _InstallSubdir,support,$(foreach f, ${InstHelpers}, -X $f))
 	@+$(call _MakeInBundledExtensions,install-shared)
 
+
+### run the tests
+
+ifdef DeveloperMode
+  test : compile
+	$(if $(filter y% Y%,${Debug}),POLYMAKE_CLIENT_SUFFIX=-d) ${CallPolymake} \
+	  --script run_testcases $(if ${Shuffle},--shuffle $(filter-out y% Y%,${Shuffle}))
+else
+  test : compile
+	${CallPolymake} --script run_testcases --examples '*'
+endif
+
 ifdef DeveloperMode
 
-### unit tests
-
-test : compile
-	$(if $(filter y% Y%,${Debug}),POLYMAKE_CLIENT_SUFFIX=-d) ${CallPolymake} \
-	  --script run_testcases $(if ${Shuffle},--shuffle $(filter-out y% Y%,${Shuffle})) --applications ${Apps}
-
 ### maintenance
-
-tagsFLAGS = -R -e -f $@ --exclude=.svn --exclude='.\#*' --exclude='\#*' --exclude='*~'
-
-TAGS:
-	ctags ${tagsFLAGS} --language-force=c++ lib apps/*/{src,include} bundled/*/apps/*/{src,include}
-RTAGS:
-	ctags ${tagsFLAGS} --language-force=perl --exclude=testsuite \
-			   perl perllib apps/*/{perllib,rules,scripts} scripts support/*.pl apps/*/testsuite/*/test*.pl \
-			   $(wildcard $(addprefix bundled/*/apps/*/, perllib rules scripts testsuite/*/test*.pl))
 
 include support/export.make
 
@@ -190,6 +192,10 @@ release-docs:
 clean-arch:
 	@+$(call _MakeApps,clean)
 	@+$(call _MakeInBundledExtensions,clean)
+
+# fully clean up current and old perl-xs trees
+clean-xs:
+	rm -rf ${BuildDir}/perlx*
 
 clean : clean-arch
 	rm -rf doc_build

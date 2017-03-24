@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -49,15 +49,15 @@ package Polymake::Core::Transaction;
 
 use Polymake::Struct (
    [ new => '$@' ],
-   [ '$content_end' => '$#{ #1 ->contents}' ],  # length of Object->contents at the transaction start
+   [ '$content_end' => '$#{#1->contents}' ],    # length of Object->contents at the transaction start
    '%subobjects',                               # subobjects with active transactions
    '@temporaries',                              # properties and subobjects temporarily added during the transaction
    [ '$changed' => 'undef' ],                   # boolean:  object was changed during the transaction
-   [ '$outer' => '#1 ->transaction' ],
+   [ '$outer' => '#1->transaction' ],
    [ '$entirely_temp' => '$this->outer && $this->outer->entirely_temp' ],  # all changes are temporary by default
    [ '$dependent' => 'undef' ],
    '%backup',                                   # overwritten or deleted leaf or singular properties: content_index => PropertyValue
-                                                # multiple subobject properties with added/deleted instances: content_index => original PropertyMultipleValue
+                                                # multiple subobject properties with added/deleted instances: content_index => original PropertyValue::Multiple
 );
 
 sub rule { undef }
@@ -244,11 +244,14 @@ sub descend {
    my ($self, $sub_obj, $sub_obj_is_new)=@_;
    $self->subobjects->{$sub_obj} ||= do {
       my $sub_trans_type= $sub_obj_is_new && ref($self) eq __PACKAGE__ ? "Polymake::Core::InitTransaction" : __PACKAGE__;
-      if (defined($sub_obj->transaction)) {
-         die "internal error: unexpected transaction within rule\n" if defined($sub_obj->transaction->rule);
-         bless $sub_obj->transaction, $sub_trans_type;
-      } else {
+      if (!defined($sub_obj->transaction)
+            or
+          defined($sub_obj->transaction->rule)
+            ? croak( "nested transaction within rule ", $sub_obj->transaction->rule->header )
+            : $sub_obj->transaction->dependent) {
          $sub_obj->transaction=_new($sub_trans_type, $sub_obj);
+      } else {
+         bless $sub_obj->transaction, $sub_trans_type;
       }
       $sub_obj->transaction->dependent=1;
    };
@@ -326,12 +329,14 @@ sub new {
          if (defined (my $content_index=$obj->dictionary->{$prop->key})) {
             if (defined (my $pv_old=$obj->contents->[$content_index])) {
                $obj->transaction->backup->{$content_index}=$pv_old;
+            } else {
+               $self->changed=0;   # enforce rule execution
             }
             $obj->contents->[$content_index]=$pv;
          } else {
             push @{$obj->contents}, $pv;
             $obj->dictionary->{$prop->key}=$#{$obj->contents};
-            $self->changed=0;
+            $self->changed=0;   # enforce rule execution
          }
       }
    }
@@ -340,9 +345,9 @@ sub new {
 
 sub descend {
    my ($self, $sub_obj)=@_;
-   $self->subobjects->{$sub_obj} //= do {
+   $self->subobjects->{$sub_obj} ||= do {
       if (defined($sub_obj->transaction) && defined($sub_obj->transaction->rule)) {
-         die "internal error: unexpected nested transaction within rule\n";
+         croak( "nested transaction within rule ", $sub_obj->transaction->rule->header );
       }
       $sub_obj->transaction=_new(__PACKAGE__, $sub_obj, $self->rule);
       $sub_obj->transaction->dependent=1;
@@ -459,32 +464,16 @@ sub new_named : method {
 sub new_filled : method {
    my $proto=shift;
    if (ref($_[0])) {
-      croak( "Can't convert ", UNIVERSAL::can($_[0],"type") ? $_[0]->type->full_name : ref($_[0]), " to ", $proto->full_name );
+      croak( "Can't convert ", UNIVERSAL::can($_[0], "type") ? $_[0]->type->full_name : ref($_[0]), " to ", $proto->full_name );
    }
    my $self=new($proto->pkg, @_%2 ? shift : name_of_ret_var());
    fill_properties_and_commit($self, $proto, @_);
 }
 
 sub new_copy : method {
-   my ($proto, $src, $new_parent)=@_;
+   my ($proto, $src)=@_;
    my $self=new($proto->pkg, $src->name);
-   weak($self->parent=$new_parent) if defined($new_parent);
-   if ($proto->isa($src->type)) {
-      # a direct heir
-      copy_contents($src, $self);
-   } else {
-      my $prop;
-      foreach my $pv (@{stable_contents($src)}) {
-         if (defined($pv) && !$pv->is_temporary && $proto->isa(($prop=$pv->property->declared)->belongs_to)) {
-            $prop->upcast($proto);
-            if ($prop->flags & $Property::is_multiple) {
-               !$_->is_temporary && _add_multi($self, $prop, $_) for @{$pv->values};
-            } else {
-               _add($self, $prop, $pv->value);
-            }
-         }
-      }
-   }
+   copy_contents($self, $src, $proto != $src->type);
    $self->description=$src->description;
    copy_attachments($self, $src);
    $self;
@@ -502,7 +491,7 @@ sub fill_properties {
    my ($self, $proto)=splice @_, 0, 2;
    for (my ($i, $e)=(0, $#_); $i<$e; $i+=2) {
       my ($name, $value)=@_[$i, $i+1];
-      my ($obj, $prop)= $name =~ /\./ ? descend_and_create($self, [ $proto->encode_property_list($name, $self) ])
+      my ($obj, $prop)= $name =~ /\./ ? descend_and_create($self, [ $proto->encode_property_path($name) ])
                                       : ($self, $proto->property($name));
       if ($prop->flags & $Property::is_multiple) {
          _add_multi($obj, $prop, $value);
@@ -539,7 +528,7 @@ sub _add_multi {
       $pv=$self->contents->[$content_index];
       push @{$pv->values}, $value;
    } else {
-      $pv=new PropertyMultipleValue($value->property, [ $value ]);
+      $pv=new PropertyValue::Multiple($value->property, [ $value ]);
       push @{$self->contents}, $pv;
       $self->dictionary->{$prop->key}=$#{$self->contents};
    }
@@ -559,7 +548,7 @@ sub _add_multis {
       }
    }
    push @{$self->contents},
-        new PropertyMultipleValue($prop->concrete($self), [ map { $prop->accept->($_, $self, $trusted) } @$values ]);
+        new PropertyValue::Multiple($prop, [ map { $prop->accept->($_, $self, $trusted) } @$values ]);
    $self->dictionary->{$prop->key}=$#{$self->contents};
 }
 ####################################################################################
@@ -642,39 +631,31 @@ sub reset_to_empty {
 sub isa { $_[0]->type->isa($_[1]) }
 ####################################################################################
 sub copy {
-   my ($self, $new_parent, $filter)=@_;
-   if (@_==1) {
-      if ($self->parent && $self->property->flags & $Property::is_locally_derived) {
-         # strip off local extensions
-         return $self->type->pure_type->construct->($self);
-      }
-   }
-   my $copy=new($self, $self->name);
-   $copy->description=$self->description;
+   my ($self, $new_parent, $parent_property, $filter)=@_;
+   my ($copy, $adjust_types);
    if (defined $new_parent) {
-      weak($copy->parent=$new_parent);
-      $copy->property=$self->property;
-      $new_parent->transaction->descend($copy) if defined($filter);
-      if ($self->property->flags & $Property::is_locally_derived) {
-         update_locally_derived($copy, $new_parent);
+      if (defined($parent_property) && $parent_property != $self->property) {
+         $adjust_types=1;
+         $copy=new($parent_property->subobject_type->pkg, $self->name);
+      } else {
+         $copy=new($self, $self->name);
       }
-   } elsif (defined $filter) {
-      begin_transaction($copy);
+      weak($copy->parent=$new_parent);
+      $copy->property=$parent_property // $self->property;
+      $new_parent->transaction->descend($copy) if defined $filter;
+   } else {
+      $adjust_types=defined($self->parent) && $self->property->flags & $Property::is_augmented;
+      $copy=new($self->type->pure_type->pkg, $self->name);
+      $copy->description=$self->description;
+      begin_transaction($copy) if defined $filter;
    }
-   copy_contents($self, $copy, $filter);
+   copy_contents($copy, $self, $adjust_types, $filter);
    if (defined($new_parent) && !@{$copy->contents}) {
       delete $new_parent->transaction->subobjects->{$copy};
       undef
    } else {
       $copy
    }
-}
-
-# private:
-sub update_locally_derived {
-   my ($self, $parent)=@_;
-   $self->property=$self->property->concrete($parent);
-   bless $self, $self->property->type->local_type($self->type->pure_type)->pkg;
 }
 
 # private:
@@ -693,10 +674,17 @@ sub stable_contents {
 
 # private:
 sub copy_contents {
-   my ($self, $dst, $filter)=@_;
-   foreach my $pv (@{stable_contents($self)}) {
+   my ($self, $src, $adjust_types, $filter)=@_;
+   foreach my $pv (@{stable_contents($src)}) {
       if (defined($pv) && !$pv->is_temporary) {
-         my ($subobj, $pv_copy)= defined($filter) ? $filter->($dst, $pv) : ($dst, $pv->copy($dst));
+         my ($subobj, $pv_copy);
+         if ($adjust_types) {
+            my $new_prop=$pv->property->instance_for_owner($self->type)
+              or next;
+            ($subobj, $pv_copy)= defined($filter) ? $filter->($self, $pv, $new_prop) : ($self, $pv->copy($self, $new_prop));
+         } else {
+            ($subobj, $pv_copy)= defined($filter) ? $filter->($self, $pv) : ($self, $pv->copy($self));
+         }
          if (defined $pv_copy) {
             push @{$subobj->contents}, $pv_copy;
             $subobj->dictionary->{$pv_copy->property->key}=$#{$subobj->contents};
@@ -722,18 +710,23 @@ sub name_filter : method {
          $parent=$self->parent;
       }
    }
-   if (defined($self->transaction)) {
-      $self->transaction->changed=1;
-   } elsif (!$self->changed) {
-      $self->changed=1;
-      $self->ensure_save_changes if $self->persistent;
-   }
+   set_changed($self);
    return $new_name;
 }
 
 # to be called from C++ library
 sub set_name {
    $_[0]->name=$_[1];
+}
+
+sub set_changed {
+   my ($self)=@_;
+   if (defined($self->transaction)) {
+      $self->transaction->changed=1;
+   } elsif (!$self->changed) {
+      $self->changed=1;
+      $self->ensure_save_changes if $self->persistent;
+   }
 }
 
 # protected:
@@ -751,11 +744,11 @@ sub cast_me {
       or croak( "invalid cast from ", $proto->full_name, " to ", $target_proto->full_name, "; use copy instead" );
 
    if (defined($self->property)) {
-      if ($self->property->flags & $Property::is_locally_derived) {
-         if (!$self->property->type->super->[1]->isa($target_proto)) {
+      if ($self->property->flags & $Property::is_augmented) {
+         if (!$self->property->type->pure_type->isa($target_proto)) {
             croak( "can't cast a subobject under ", $self->property->name, " to ", $target_proto->full_name );
          }
-         $target_proto=$self->property->type->local_type($target_proto);
+         $target_proto=$self->property->type->final_type($target_proto);
       } else {
          if (!$self->property->type->isa($target_proto)) {
             croak( "can't cast a subobject under ", $self->property->name, " to ", $target_proto->full_name );
@@ -770,11 +763,37 @@ sub cast_me {
       $need_commit=1;
       begin_transaction($self);
    }
-   # upcast: remove properties defined in the subtypes
+   perform_cast($self, $target_proto);
+   $self->transaction->changed=1;
+   $self->transaction->commit($self) if $need_commit;
+   $self;
+}
+
+# protected:
+# change the type to/from the augmented type
+# remove properties undefined for the target type
+sub perform_cast {
+   my ($self, $target_proto, $down)=@_;
    foreach my $pv (@{$self->contents}) {
       if (defined($pv)) {
-         if ($target_proto->isa($pv->property->belongs_to)) {
-            $pv->property->upcast($target_proto);
+         my $old_prop=$pv->property;
+         next if $down && !($old_prop->flags & $Property::is_augmented);
+         if (defined (my $prop=$old_prop->instance_for_owner($target_proto, $down))) {
+            if ($prop != $old_prop) {
+               $pv->property=$prop;
+               if ($prop->type != $old_prop->type) {
+                  $old_prop->flags & $Property::is_augmented
+                    or croak( "internal error: upcast from ", $self->type->full_name, " to ", $target_proto->full_name,
+                              " changed the type of property ", $prop->name );
+                  foreach my $subobj ($prop->flags & $Property::is_subobject_array
+                                      ? @{$pv->value} :
+                                      $prop->flags & $Property::is_multiple
+                                      ? @{$pv->values} : ($pv)) {
+                     $self->transaction->descend($subobj) unless $down;
+                     perform_cast($subobj, $prop->subobject_type->final_type($subobj->type), $down);
+                  }
+               }
+            }
          } else {
             assign_min($self->transaction->temporaries->[0], delete $self->dictionary->{$pv->property->key});
             undef $pv;
@@ -782,9 +801,6 @@ sub cast_me {
       }
    }
    bless $self, $target_proto->pkg;
-   $self->transaction->changed=1;
-   $self->transaction->commit($self) if $need_commit;
-   $self;
 }
 ####################################################################################
 # four different sorts of descending into subobjects,
@@ -875,7 +891,7 @@ sub descend_and_create {
       my $pv=$prop->create_subobject($self, $trans->entirely_temp);
       if (($prop->flags & ($Property::is_multiple | $Property::is_multiple_new)) == $Property::is_multiple) {
          # a new multiple subobject instance created outside rules, e.g. by take()
-         $pv=new PropertyMultipleValue($pv->property, [ $pv ]);
+         $pv=new PropertyValue::Multiple($pv->property, [ $pv ]);
       }
       if (defined $content_index) {
          $self->contents->[$content_index]=$pv;
@@ -967,24 +983,17 @@ sub lookup_property_path {
       defined($self) or return;
    }
 
-   return 0 if $for_planning;
+   # shortcuts are not applied when a rule chain is composed or a production or initial rule is being executed
+   return 0 if $for_planning or defined($self->transaction) && defined($self->transaction->rule);
 
    # try to find a shortcut
-   my ($rule, $rc, @types);
+   my ($rule, $rc);
    if (@$path==1) {
       $existing_path[0]=$self;
-      $types[0]=$self->type;
-   } else {
-      @types=map { $_->type } @existing_path;
-      # deduce the types of lacking subobjects
-      while (@types < @$path) {
-         my $prop_type=$path->[$#types]->type;
-         push @types, $prop_type->abstract ? $prop_type->concrete_type($types[-1]) : $prop_type;
-      }
    }
 
    # iterate for all missing properties in the request path, starting with the last one
-   for (my $depth=$#types; $depth>=$#existing_path; --$depth) {
+   for (my $depth=$#$path; $depth>=$#existing_path; --$depth) {
       my $top=$self;
       $prop=$path->[$depth];
       my $prod_key=$prop->key;
@@ -993,9 +1002,9 @@ sub lookup_property_path {
       for (my $cur_depth=$depth; ;) {
          # only look for shortcuts rooted in existing subobjects
          if ($cur_depth <= $#existing_path) {
-            my ($cur_obj, $cur_obj_type)= $cur_depth>=0 ? ($existing_path[$cur_depth], $types[$cur_depth]) : ($top, $top->type);
-            my $shortcuts=$cur_obj_type->get_shortcuts_for($prop);
-            if ($depth==$#types) {
+            my $cur_obj= $cur_depth>=0 ? $existing_path[$cur_depth] : $top;
+            my $shortcuts=$cur_obj->type->get_shortcuts_for($prop);
+            if ($depth==$#$path) {
                # consider all shortcuts delivering the requested property directly
                # but only those without preconditions as we do not want to check these here!
                foreach $rule (@$shortcuts) {
@@ -1050,7 +1059,7 @@ sub lookup_request {
 
 sub lookup_pv {         # 'request' => PropertyValue or Object or 0 or undef
    my ($self, $req_string)=@_;
-   lookup_request($self, $self->type->encode_read_request($req_string, $self));
+   lookup_request($self, $self->type->encode_read_request($req_string));
 }
 
 sub lookup {
@@ -1102,7 +1111,7 @@ sub _put_pv {
    } else {
       # new property created outside of a production rule
       if ($prop->flags & $Property::is_multiple) {
-         $pv=new PropertyMultipleValue($pv->property, [ $pv ]);
+         $pv=new PropertyValue::Multiple($pv->property, [ $pv ]);
       }
       push @{$self->contents}, $pv;
       $self->dictionary->{$prop->key}=$content_index=$#{$self->contents};
@@ -1117,7 +1126,7 @@ sub put {
       ($self, $temp, $prop, $value)=@_;
    }
    my $need_commit;
-   if (defined($self->transaction)) {
+   if (defined $self->transaction) {
       $temp ||= $self->transaction->entirely_temp;
    } else {
       if ($prop->flags & ($Property::is_multiple | $Property::is_mutable)) {
@@ -1147,11 +1156,10 @@ sub put_ref {
 sub add {
    my ($self, $prop_name)=splice @_, 0, 2;
    my $need_commit;
-   my $prop=$self->type->lookup_property($prop_name) ||
-            croak( "unknown property ", $self->type->full_name, "::$prop_name" );
+   my $prop=$self->type->property($prop_name);
    if ($prop->flags & $Property::is_multiple) {
       my $temp= is_integer($_[0]) && $_[0] == $PropertyValue::is_temporary && shift;
-      my $value = is_object($_[0]) ? shift : new_named($prop->concrete($self)->type, @_%2 ? shift : undef);
+      my $value = is_object($_[0]) ? shift : new_named($prop->type, @_%2 ? shift : undef);
 
       if (defined($self->transaction)) {
          if (!$temp) {
@@ -1187,12 +1195,10 @@ sub add {
       croak( "only subobjects declared as 'multiple' can be added" );
    }
 }
-
-sub add_temp { add(@_, 1) }
 ####################################################################################
 sub take {
    my ($self, $prop_name, $value, $temp)=@_;
-   my @req=$self->type->encode_property_list($prop_name, $self);
+   my @req=$self->type->encode_property_path($prop_name);
    my $need_commit;
    if (!defined($self->transaction)) {
       if ($req[-1]->flags & ($Property::is_multiple & $Property::is_mutable)) {
@@ -1206,11 +1212,39 @@ sub take {
    put($obj, $temp, $prop, $value);
    $self->transaction->commit($self) if $need_commit;
 }
-
-sub take_temp { take(@_, 1) }
+####################################################################################
+sub add_twin_backref {
+   my ($self, $prop, $parent)=@_;
+   push @{$self->contents},
+        defined($parent) && $parent != $self->parent
+        ? new PropertyValue($prop, $parent, $PropertyValue::is_weak_ref)
+        : new PropertyValue::BackRefToParent($self);
+   $self->dictionary->{$prop->key}=$#{$self->contents};
+}
+####################################################################################
+sub forget_parent_property {
+   my ($self)=@_;
+   my $prop=$self->property;
+   undef $self->property;
+   if ($prop->flags & ($Property::is_augmented | $Property::is_twin)) {
+      begin_transaction($self);
+      if ($prop->flags & $Property::is_twin) {
+         my $content_index=delete $self->dictionary->{$prop->key};
+         defined($content_index)
+           or die "internal error: missing back-reference for twin property ", $prop->name, "\n";
+         undef $self->contents->[$content_index];
+         assign_min($self->transaction->temporaries->[0], $content_index);
+      }
+      if ($prop->flags & $Property::is_augmented) {
+         perform_cast($self, $prop->type->pure_type);
+      }
+      $self->transaction->changed=1;
+      $self->transaction->commit($self);
+   }
+}
 ####################################################################################
 sub remove {
-   my $need_commit;
+   my ($need_commit, @adjust_subobjects);
    if (@_==1) {
       my ($sub_obj)=@_;
       my $self=$sub_obj->parent;
@@ -1241,9 +1275,7 @@ sub remove {
             undef $self->contents->[$content_index];
             assign_min($self->transaction->temporaries->[0], $content_index);
          }
-         undef $sub_obj->parent;
-         undef $sub_obj->property;
-         undef $sub_obj->is_temporary;
+         push @adjust_subobjects, $sub_obj;
       } else {
          $self->rollback;
          croak( "internal inconsistency: parent object has lost the property ", $sub_obj->property->name );
@@ -1255,7 +1287,7 @@ sub remove {
       my $self=shift;
       my $from_production_rule=defined($self->transaction) && defined($self->transaction->rule);
       my @to_remove=map {
-         my @req=$self->type->encode_property_list($_, $self);
+         my @req=$self->type->encode_property_path($_);
          if ($Application::plausibility_checks && $from_production_rule) {
             $self->transaction->rule->has_matching_input(\@req)
               or croak( "a production rule can only remove its own source properties" );
@@ -1277,14 +1309,30 @@ sub remove {
              defined (my $content_index=delete $obj->dictionary->{$prop->key})) {
 
             my $pv=$obj->contents->[$content_index];
-            if (defined($pv) and not($from_production_rule or $prop->flags & ($Property::is_multiple | $Property::is_mutable))) {
-               if (instanceof Object($pv) && !($prop->flags & $Property::is_produced_as_whole)) {
-                  push @reconstruct_request, enumerate_atomic_properties($pv, $req);
-               } else {
-                  push @reconstruct_request, [ $req ];
+            if (defined($pv)) {
+               unless ($from_production_rule or $prop->flags & ($Property::is_multiple | $Property::is_mutable)) {
+                  if (($pv->property->flags & ($Property::is_subobject | $Property::is_subobject_array | $Property::is_produced_as_whole)) == $Property::is_subobject) {
+                     push @reconstruct_request, enumerate_atomic_properties($pv, $req);
+                  } else {
+                     push @reconstruct_request, [ $req ];
+                  }
+               }
+               if ($pv->property->flags & $Property::is_subobject) {
+                  if ($pv->property->flags & $Property::is_multiple) {
+                     push @adjust_subobjects, grep { refcnt($_)>1 } @{$pv->values};
+                  } elsif ($pv->property->flags & $Property::is_twin &&
+                           instanceof PropertyValue($pv) &&
+                           $pv->flags & $PropertyValue::is_weak_ref) {
+                     $obj->dictionary->{$prop->key}=$content_index;
+                     $self->rollback if $need_commit;
+                     croak( "back-reference of a twin property ", $prop->name, " cannot be removed separately" );
+                  } elsif (refcnt($pv)>2) {
+                     # refcnt==2 when the subobject is only stored in $obj->contents and in $pv
+                     push @adjust_subobjects, $pv;
+                  }
                }
             }
-            $obj->transaction->backup->{$content_index} ||= $pv;
+            $obj->transaction->backup->{$content_index} //= $pv;
             undef $obj->contents->[$content_index];
             assign_min($obj->transaction->temporaries->[0], $content_index);
             $obj->transaction->changed=1 unless $prop->flags & $Property::is_non_storable;
@@ -1309,6 +1357,12 @@ sub remove {
          }
       }
       $self->transaction->commit($self) if $need_commit;
+   }
+
+   foreach my $sub_obj (@adjust_subobjects) {
+      # automatically triggers forget_parent_property($sub_obj)
+      undef $sub_obj->parent;
+      undef $sub_obj->is_temporary;
    }
 }
 ####################################################################################
@@ -1388,7 +1442,7 @@ sub cleanup {
 }
 
 sub cleanup_now {
-   my $self=shift;
+   my ($self)=@_;
    cleanup($self, delete $Scope->cleanup->{$self});
 }
 ####################################################################################
@@ -1440,7 +1494,7 @@ sub DESTROY {
 }
 
 sub dont_save {
-   my $self=shift;
+   my ($self)=@_;
    if (!defined($self->property) && defined($Scope) && defined($self->persistent)) {
       if (defined($self->transaction)) {
          $self->transaction->rollback($self);
@@ -1467,7 +1521,7 @@ sub allow_undef_value {
 
 sub give_pv {
    my ($self, $req_string)=@_;
-   my $req=$self->type->encode_read_request($req_string, $self);
+   my $req=$self->type->encode_read_request($req_string);
    my $pv;
    $pv=lookup_request($self, $req)
      or
@@ -1491,14 +1545,14 @@ sub give {
    if (@_==2) {
       if (my $pv=&give_pv) {
          $pv->value;
-      } elsif (defined($self->transaction) && defined($self->transaction->rule)) {
+      } elsif (defined($_[0]->transaction) && defined($_[0]->transaction->rule)) {
          die "attempt to access an undefined property $_[1]\n";
       } else {
          undef
       }
    } else {
       my ($self, $req_string)=splice @_, 0, 2;
-      my $req=$self->type->encode_read_request($req_string, $self);
+      my $req=$self->type->encode_read_request($req_string);
       if (@$req > 1) {
          croak( "mixing alternatives with property-based lookup of multiple sub-objects is not allowed" );
       }
@@ -1579,7 +1633,7 @@ sub provide {
          commit($self);
       }
    }
-   provide_request($self, [ map { $self->type->encode_read_request($_, $self) } @_ ]);
+   provide_request($self, [ map { $self->type->encode_read_request($_) } @_ ]);
 }
 ####################################################################################
 sub get_schedule {
@@ -1591,7 +1645,7 @@ sub get_schedule {
          commit($self);
       }
    }
-   Scheduler::get_chain($self, [ map { $self->type->encode_read_request($_, $self) } @_ ]);
+   Scheduler::get_chain($self, [ map { $self->type->encode_read_request($_) } @_ ]);
 }
 ####################################################################################
 sub disable_rules {
@@ -1635,7 +1689,7 @@ sub list_properties {
       if ($rec) {
          if ($prop->flags & $Property::is_multiple) {
             map { my $prefix="$prop_name\[".$_->name."]"; map { "$prefix.$_" } list_properties($_, $rec) } @{$_->values}
-         } elsif ($prop->flags & $Property::is_subobject) {
+         } elsif ($prop->flags & $Property::is_subobject and !instanceof PropertyValue::BackRefToParent($_) ) {
             map { "$prop_name.$_" } list_properties($_, $rec)
          } else {
             $prop_name
@@ -1651,9 +1705,9 @@ sub enumerate_atomic_properties {
    map {
       if (defined($_) && !($_->property->flags & ($Property::is_multiple | $Property::is_mutable))) {
          if (instanceof PropertyValue($_)) {
-            [ [ @$descent_path, $_->property->declared ] ]
+            [ [ @$descent_path, $_->property ] ]
          } else {
-            enumerate_atomic_properties($_, local_push($descent_path, $_->property->declared));
+            enumerate_atomic_properties($_, local_push($descent_path, $_->property));
          }
       } else {
          ()
@@ -1662,9 +1716,35 @@ sub enumerate_atomic_properties {
 }
 ####################################################################################
 sub properties {
-    my ($self)=@_;
-    print $self->name, "\n", $self->description, "\n";
-    map { print $_, "\n", $self->$_,"\n\n" } $self->list_properties;
+   my ($self,%options)=@_;
+   my $depth = $options{maxdepth}+0 // 0;
+   my @data;
+   push @data, "name: ".$self->name if $self->name;
+   push @data, "type: ".$self->type->full_name;
+   push @data, "description: ".$self->description if $self->description;
+   $data[-1] .= "\n";
+   foreach ($self->list_properties) {
+      my $pv = $self->give_pv($_);
+      if ($pv->property->flags & $Property::is_subobject) {
+         push @data, $_;
+         if ($depth != 0 and !instanceof PropertyValue::BackRefToParent($pv)) {
+            foreach my $value ($pv->property->flags & $Property::is_multiple ? @{$pv->values} : ($pv->value)) {
+               push @data, ">>",$value->properties(maxdepth=>$depth-1) =~ s/^/  /gmr, "<<\n";
+               chomp $data[-2];
+            }
+         } else {
+            push @data, "type: ".$pv->property->type->full_name;
+            if (instanceof PropertyValue::BackRefToParent($pv)) {
+               push @data, "-- backreference to parent object";
+            }
+            $data[-1] .= "\n";
+         }
+      } else {
+         push @data, $_, $pv->value."\n";
+      }
+   }
+   my $text = join "\n", @data;
+   defined(wantarray()) ? $text : print $text;
 }
 ####################################################################################
 sub schedule {
@@ -1679,7 +1759,6 @@ sub get {
       _get_alternatives();
    } else {
     TRY_ALT: {
-         my $sub_type=$prop->type;
          my $sub_prop_names;
          my @alt= ($prop->flags & $Property::is_subobject) ? _get_alternatives($sub_prop_names) : _get_alternatives();
 
@@ -1691,13 +1770,14 @@ sub get {
                }
                $self->commit;
             }
-
+            $prop=$prop->instance_for_owner($self->type, 1);
+            my $sub_type=$prop->type;
             my @req_path=($prop);
             foreach (@$sub_prop_names) {
                if (defined (my $sub_prop=$sub_type->lookup_property($_))) {
                   push @req_path, $sub_prop;
                   last unless $sub_prop->flags & $Property::is_subobject;
-                  $sub_type=$sub_prop->specialization($sub_type)->type;
+                  $sub_type=$sub_prop->type;
                } else {
                   last;
                }
@@ -1705,16 +1785,14 @@ sub get {
             my @req=( \@req_path );
             if (@alt && @$sub_prop_names==$#req_path) {
                local_pop(\@req_path);
-               push @req, map { [ @req_path,
-                                  $sub_type->lookup_property($_) // croak( "unknown property ", Property::print_path(\@req_path), ".$_" )
-                                ] } @alt;
+               push @req, map { [ @req_path, $sub_type->property($_) ] } @alt;
             }
             provide_request($self, [ \@req ]);
             $content_index=$self->dictionary->{$prop->key};
 
          } elsif (@alt) {
             foreach my $alt_prop (@alt) {
-               $alt_prop=$self->type->lookup_property($alt_prop) // croak( "unknown property $alt_prop" );
+               $alt_prop=$self->type->property($alt_prop);
                last TRY_ALT if defined ($content_index=$self->dictionary->{$alt_prop->key});
             }
 
@@ -1774,7 +1852,11 @@ sub get_multi {
             return defined($content_index) ? $self->contents->[$content_index]->find_by_name(@_) : undef;
          }
       }
-      (defined($content_index) ? $self->contents->[$content_index] : new PropertyMultipleValue($prop->concrete($self), [ ]))->find_or_create($self, @_);
+      if (defined $content_index) {
+         $self->contents->[$content_index]->find_or_create($self, @_);
+      } else {
+         (new PropertyValue::Multiple($prop->instance_for_owner($self->type, 1), [ ]))->find_or_create($self, @_);
+      }
    }
 }
 ####################################################################################
@@ -1793,7 +1875,8 @@ sub put_multi {
       if (defined $content_index) {
          $self->contents->[$content_index]->replace_or_add($self, @_, $value);
       } else {
-         push @{$self->contents}, $prop->accept->($value, $self);
+         $value = $prop->accept->($value, $self);
+         push @{$self->contents}, new PropertyValue::Multiple($value->property, [ $value ]);
          $self->dictionary->{$prop->key}=$#{$self->contents};
       }
       $self->transaction->changed=1;
@@ -1883,10 +1966,7 @@ sub add_credit {
 ####################################################################################
 sub copy_permuted {
    my $self=shift;
-   my $proto=$self->type;
-   if ($self->parent && $self->property->flags & $Property::is_locally_derived) {
-      $proto=$proto->pure_type;
-   }
+   my $proto=$self->type->pure_type;
    my @perms;
    if ($_[0] eq "permutation") {
       my $perm_name=splice @_, 0, 2;
@@ -1894,12 +1974,12 @@ sub copy_permuted {
          @$perm_name or croak( "invalid option 'permutation => empty ARRAY'" );
          $perms[0]=$perm_name;
       } else {
-         $perms[0]=[ $proto->encode_property_list($perm_name, $self) ];
+         $perms[0]=[ $proto->encode_property_path($perm_name, $self) ];
       }
       $perms[0]->[-1]->flags & $Property::is_permutation
         or croak( "invalid option 'permutation => $perm_name' which is not a permutation" );
    } else {
-      my @path=$proto->encode_property_list($_[0], $self);
+      my @path=$proto->encode_property_path($_[0]);
       @perms = map { bless [ $_ ], "Polymake::Core::Rule::PermutationPath" }
                grep { defined($_->find_sensitive_sub_property(@path)) }
                     $proto->list_permutations;
@@ -1922,28 +2002,21 @@ sub copy_permuted {
          @perms or croak( "copy_permuted: $_[0] is not affected by any permutation" );
       }
       for (my $i=2; $i<$#_; $i+=2) {
-         @path=$proto->encode_property_list($_[$i], $self);
+         @path=$proto->encode_property_path($_[$i]);
          @perms= grep { defined($_->find_sensitive_sub_property(@path)) } @perms
-            or croak( "copy_permuted: no permutation type known which would simultaneously affect ", join(", ", map { $_[$_*2] } 0..$i/2));
+           or croak( "copy_permuted: no permutation type known which would simultaneously affect ", join(", ", map { $_[$_*2] } 0..$i/2));
       }
       if (@perms!=1) {
          croak( "copy_permuted: permutation type can't be unambiguously chosen; permutations in question are ",
                 join(", ", map { Property::print_path($_) } @perms) );
       }
    }
+
    my ($rule, $filter)=permuting Rule($proto, @perms);
    my $copy=new($proto->pkg, $self->name);
-   $copy->description=$self->description;
    begin_transaction($copy);
-
-   if ($self->parent && $self->property->flags & $Property::is_locally_derived) {
-      copy_contents($self, $copy,
-                    sub {
-                       $proto->isa($_[1]->property->declared->belongs_to) ? &$filter : ()
-                    });
-   } else {
-      copy_contents($self, $copy, $filter);
-   }
+   copy_contents($copy, $self, defined($self->parent) && $self->property->flags & $Property::is_augmented, $filter);
+   $copy->description=$self->description;
 
    for (my $i=0; $i<$#_; $i+=2) {
       take($copy, $_[$i], $_[$i+1]);
@@ -2017,34 +2090,39 @@ sub has_sensitive_to {
 # PropertyValue1, PropertyValue2, [ ignore list ] => scalar context: >0 if not equal, undef if equal
 #                                                 => list context:   (pv1, pv2) if not equal, () if equal
 sub diff_properties {
-   my ($self, $pv1, $pv2, $ignore)=@_;
+   my ($self, $pv1, $pv2, $ignore, $ignore_shortcuts)=@_;
    if ($pv1->property->flags & $Property::is_multiple) {
-      my $v2=instanceof PropertyMultipleValue($pv2) ? $pv2->values : $pv2;
+      my $v2=instanceof PropertyValue::Multiple($pv2) ? $pv2->values : $pv2;
       if ((my $l=$#{$pv1->values}) == $#$v2) {
+         my @options=(ignore_subproperties($ignore, $pv1->property->name), ignore_shortcuts => $ignore_shortcuts);
          if (wantarray) {
-            map { my $o1=$pv1->values->[$_]; map { $_->[2] ||= $o1; $_ } $o1->diff($v2->[$_], ignore_subproperties($ignore, $pv1->property->name)) } 0..$l;
+            map { my $o1=$pv1->values->[$_]; map { $_->[2] //= $o1; $_ } $o1->diff($v2->[$_], @options) } 0..$l;
          } else {
-            $pv1->values->[$_]->diff($v2->[$_], ignore_subproperties($ignore, $pv1->property->name)) and return 1 for 0..$l;
+            $pv1->values->[$_]->diff($v2->[$_], @options) and return 1 for 0..$l;
             ()
          }
       } else {
          !wantarray || [ $pv1, $pv2 ]
       }
+   } elsif (instanceof PropertyValue::BackRefToParent($pv1) ||
+            instanceof PropertyValue::BackRefToParent($pv2)) {
+      ref($pv1) eq ref($pv2) ? () : !wantarray || [ $pv1, $pv2 ]
    } else {
       my $v2=instanceof PropertyValue($pv2) ? $pv2->value : $pv2;
       if (defined($pv1->value) && defined($v2)) {
          if (instanceof Object($pv1->value)) {
             if (ref($pv1->value) eq ref($v2)) {
+               my @options=(ignore_subproperties($ignore, $pv1->property->name), ignore_shortcuts => $ignore_shortcuts);
                if (wantarray) {
-                  map { $_->[2] ||= $pv1->value; $_ } $pv1->value->diff($v2, ignore_subproperties($ignore, $pv1->property->name));
+                  map { $_->[2] //= $pv1->value; $_ } $pv1->value->diff($v2, @options);
                } else {
-                  $pv1->value->diff($v2, ignore_subproperties($ignore, $pv1->property->name));
+                  $pv1->value->diff($v2, @options);
                }
             } else {
                !wantarray || [ $pv1, $pv2 ]
             }
          } else {
-            (defined($pv1->property->equal) ? select_method($pv1->property->equal,$self,1)
+            (defined($pv1->property->equal) ? select_method($pv1->property->equal, $self, 1)
                                             : $pv1->property->type->equal)
             ->($pv1->value, $v2) ? () : !wantarray || [ $pv1, $pv2 ]
          }
@@ -2070,6 +2148,7 @@ sub diff {
    my ($self, $other, %options)=@_;
    my @diff;
    my $ignore=delete $options{ignore};
+   my $ignore_shortcuts=delete $options{ignore_shortcuts};
    if (keys %options) {
       croak( "Object::diff - unrecognized option(s) ", join(", ", keys %options) );
    }
@@ -2079,10 +2158,14 @@ sub diff {
       @ignore{@$ignore}=@_;
    }
 
-   my ($my_contents, $other_contents)=
-      ( map { [ grep { defined($_) && !exists $ignore{$_->property->name} } @{$_->contents} ] } $self, $other );
+   my ($self_contents, $other_contents)=
+      ( map { [ grep { defined($_)  and
+                       !exists $ignore{$_->property->name}  and
+                       !( $ignore_shortcuts && instanceof PropertyValue($_) && $_->flags & $PropertyValue::is_ref )
+                     } @{$_->contents} ]
+            } $self, $other );
 
-   if (@$my_contents != @$other_contents) {
+   if (@$self_contents != @$other_contents) {
       if (wantarray) {
          push @diff, map { [ undef, $_ ] } grep { defined($_) && !exists $self->dictionary->{$_->property->key} } @$other_contents;
       } else {
@@ -2090,13 +2173,13 @@ sub diff {
       }
    }
 
-   foreach my $pv (@$my_contents) {
+   foreach my $pv (@$self_contents) {
       my $other_index=$other->dictionary->{$pv->property->key};
       if (defined $other_index) {
          if (wantarray) {
-            push @diff, diff_properties($self, $pv, $other->contents->[$other_index], $ignore);
+            push @diff, diff_properties($self, $pv, $other->contents->[$other_index], $ignore, $ignore_shortcuts);
          } else {
-            diff_properties($self, $pv, $other->contents->[$other_index], $ignore) and return 1;
+            diff_properties($self, $pv, $other->contents->[$other_index], $ignore, $ignore_shortcuts) and return 1;
          }
       } elsif (wantarray) {
          push @diff, [ $pv, undef ];
@@ -2149,11 +2232,31 @@ sub new {
    $self;
 }
 
+sub add {
+   my ($self, $name, $subobj)=@_;
+   undef $subobj->parent;
+   undef $subobj->property;
+   undef $subobj->transaction;
+   push @{$self->properties}, $name, $subobj;
+}
+
 sub attach {
    my ($self, $name, $value)=@_;
    $self->attachments->{$name}=$value;
 }
 
+# compares known properties, ignores others
+sub equal {
+   my ($self, $object)=@_;
+   my $proto=$object->type;
+   my $pv;
+   for (my ($i, $last)=(0, $#{$self->properties}); $i<$last; $i+=2) {
+      is_object($pv=$object->lookup_request($proto->encode_read_request($self->properties->[$i]), 1))
+        && !diff_properties($object, $pv, $self->properties->[$i+1])
+        or return 0;
+   }
+   1
+}
 
 1
 

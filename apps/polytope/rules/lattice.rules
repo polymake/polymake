@@ -106,7 +106,7 @@ object Polytope<Rational> {
     }
     precondition : BOUNDED;
     weight 1.10;
-    
+
     rule N_INTERIOR_LATTICE_POINTS , N_LATTICE_POINTS : {
       $this->N_LATTICE_POINTS = 0;
       $this->N_INTERIOR_LATTICE_POINTS = 0;
@@ -122,7 +122,8 @@ object Polytope<Rational> {
     weight 0.10;
     
 
-    rule MINKOWSKI_CONE : HASSE_DIAGRAM, GRAPH.ADJACENCY, GRAPH.EDGE_DIRECTIONS, FAR_FACE {
+    rule MINKOWSKI_CONE : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE, \
+         GRAPH.ADJACENCY, GRAPH.EDGE_DIRECTIONS, FAR_FACE {
         $this->MINKOWSKI_CONE = minkowski_cone($this->HASSE_DIAGRAM, $this->GRAPH->ADJACENCY, $this->GRAPH->EDGE_DIRECTIONS, $this->FAR_FACE);
     }
     precondition : CONE_DIM { $this->CONE_DIM > 2; }
@@ -206,19 +207,19 @@ object_specialization Polytope::Lattice {
     user_method POLYTOPE_IN_STD_BASIS {
         my $this=shift;
         my $p=new Polytope<Rational>;
-        if ( defined(my $v=$this->VERTICES) ) {
+        if ( defined (my $v=$this->VERTICES) ) {
             $p->VERTICES=(ones_vector<Rational>($v->rows))|($v->minor(All,~[0])*$this->LATTICE_BASIS);
-        } elsif(defined(my $v=$this->POINTS)) {
+        } elsif(defined ($v=$this->POINTS)) {
             $p->POINTS=(ones_vector<Rational>($v->rows))|($v->minor(All,~[0])*$this->LATTICE_BASIS);
         }
 
-        if ( defined(my $f=$this->FACETS) ) {
+        if ( defined (my $f=$this->FACETS) ) {
             $p->FACETS=$f->col(0)|($f->minor(All,~[0])*inv($this->LATTICE_BASIS));
-        } elsif(defined(my $f=$this->INEQUALITIES)) {
+        } elsif( defined ($f=$this->INEQUALITIES) ) {
             $p->INEQUALITIES=$f->col(0)|($f->minor(All,~[0])*inv($this->LATTICE_BASIS));
         }
 
-        if ( defined(my $f=$this->VERTICES_IN_FACETS) ) {
+        if ( defined (my $f=$this->VERTICES_IN_FACETS) ) {
             $p->VERTICES_IN_FACETS=$this->VERTICES_IN_FACETS;
         }
 
@@ -246,6 +247,7 @@ object_specialization Polytope::Lattice {
     # @category Lattice points in cones
     # The number of [[LATTICE_POINTS]] in the //n//-th dilation of the polytope
     # @param Int n dilation factor
+	# @return Int
     user_method N_LATTICE_POINTS_IN_DILATION {
         my ($this, $n)=@_;
         my $ev = $this->EHRHART_POLYNOMIAL_COEFF;
@@ -281,15 +283,13 @@ object_specialization Polytope::Lattice {
         $this->N_INTERIOR_LATTICE_POINTS = $this->H_STAR_VECTOR->[-1];
     }
     weight 0.1;
+	
+	rule N_INTERIOR_LATTICE_POINTS : { 
+		$this->N_INTERIOR_LATTICE_POINTS = 1; 
+	}
+	precondition : REFLEXIVE;
+	weight 0.10;
 
-    rule EHRHART_POLYNOMIAL_COEFF, N_INTERIOR_LATTICE_POINTS, N_LATTICE_POINTS :  {
-      $this->EHRHART_POLYNOMIAL_COEFF=new Vector<Rational>();
-      $this->N_LATTICE_POINTS = 0;
-      $this->N_INTERIOR_LATTICE_POINTS = 0;
-    }
-    weight 0.1;
-    precondition : !FEASIBLE;
-    
     # Check, whether the polar dual is also a lattice polytope.
     rule REFLEXIVE : FACETS {
         my $n_int = $this->lookup("N_INTERIOR_LATTICE_POINTS");

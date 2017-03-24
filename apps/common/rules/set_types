@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -20,7 +20,7 @@
 # This category contains functions performing operations on [[Set|Sets]].
 
 # @category Set Types
-# A type for sets containing elements of type //Element//.
+# A type for ordered sets containing elements of type //Element//.
 #
 # You can for example create a new Set by:
 #	$s = new Set(2, 3, 5, 7);
@@ -33,7 +33,10 @@
 # @tparam Element default: [[Int]]
 declare property_type Set<Element=Int> : c++ (include => "polymake/Set.h", operators => '@sets @compare') {
 
-   method contains {
+   # Check if e is contained in the set.
+   # @param Element e element check for
+   # @return Bool
+   user_method contains {
       my ($self, $key)=@_;
       exists $self->{$key};
    }
@@ -42,13 +45,18 @@ declare property_type Set<Element=Int> : c++ (include => "polymake/Set.h", opera
    # @return Int
    user_method size() : c++;
 
-   # The first element of the (implicitly sorted) set
+   # The first element of the set, that is, the smallest element
    # @return Int
    user_method front() : c++;
 
-   # The last element of the (implicitly sorted) set
+   # The last element of the set, that is, the largest element
    # @return Int
    user_method back() : c++;
+
+   # Add to the set, report true if existed formerly.
+   # @param Element e element to insert into the set
+   # @return Bool
+   user_method collect(*) : c++ : non_const;
 }
 
 # @category Set Operations
@@ -56,25 +64,25 @@ declare property_type Set<Element=Int> : c++ (include => "polymake/Set.h", opera
 # @param Set s1
 # @param Set s2
 # @return Int 	0	if s1 = s2,
-#				-1 	if s1 &sub; s2,
-#				1	if s1 &sup; s2,
-#				2	otherwise.
+#		-1 	if s1 &sub; s2,
+#		1	if s1 &sup; s2,
+#		2	otherwise.
 # @example > $s1 = new Set(1,2,3);
-# $s2 = $s2 - 1;
-# > print incl($s1,$s2);
+# > $s2 = $s1 - 1;
+# > print incl($s1, $s2);
 # | 1
-# > print incl($s2,$s1);
+# > print incl($s2, $s1);
 # | -1
-# > print incl($s1,$s1);
+# > print incl($s1, $s1);
 # | 0
-# > print incl($s2,$s1-$s2);
+# > print incl($s2, $s1-$s2);
 # | 2
 
 user_function incl(Set,Set) : c++ (include => "polymake/Set.h");
 
 
 # @category Set Operations
-# Creates the [[Set]] {//a//, //a//+1, ..., //b//-1, //b//} for //a// &le; //b//.
+# Creates the [[Set]] {//a//, //a//+1, ..., //b//-1, //b//} for //a// &le; //b//. See also: sequence
 # @param Int a minimal element of the set
 # @param Int b maximal element of the set
 # @return Set<Int>
@@ -88,7 +96,7 @@ user_function range(Int,Int) : c++ (include => "polymake/Set.h") {
 }
 
 # @category Set Operations
-# Creates the [[Set]] {//a//, //a//+1, ..., //a//+//c//-1}.
+# Creates the [[Set]] {//a//, //a//+1, ..., //a//+//c//-1}. See also: range
 # @param Int a the smallest element
 # @param Int c the cardinality
 # @return Set<Int>
@@ -100,10 +108,6 @@ user_function sequence(Int,Int) : c++ (include => "polymake/Set.h") {
       croak( "invalid sequence: negative size" );
    }
 }
-
-function permuted(Set, *) : c++;
-
-function permuted_inv(Set, *) : c++;
 
 # @category Set Operations
 # Returns the subset of //s// given by the //indices//.
@@ -128,15 +132,22 @@ user_function select_subset(*:wary:anchor,*) : c++ (name => 'select', include =>
 user_function scalar2set(*) : c++ (name => 'pm::scalarcopy2set', include => "polymake/Set.h");
 
 # @category Set Types
+# Container class for dense sets of integers.
+#
+# A special class optimized for representation of a constrained range of
+# non-negative integer numbers.
+declare property_type Bitset : Set<Int> : c++ (include => "polymake/Bitset.h", operators => '@sets @compare', default_constructor => 'Deserializing') {
+
+   # The cardinality of the set.
+   # @return Int
+   user_method size() : c++;
+
+}
+
+# @category Set Types
 # A [[Set]] whose elements are of type Set<//Element//>.
 # @tparam Element default: [[Int]]
 declare property_type PowerSet<Element=Int> : Set<Set<Element>> : c++ (include => "polymake/PowerSet.h");
-
-function permuted(PowerSet, *) : c++;
-
-function permuted_inv(PowerSet, *) : c++;
-
-
 
 # allow to write ~[0,1,2] in contexts where a Set<Int> is expected
 sub _construct_set {
@@ -199,7 +210,7 @@ declare property_type FacetList : c++ (include => "polymake/FacetList.h") {
    # Look up a facet.
    # @param Set f facet to find
    # @return Iterator pointing to the facet or in an invalid state
-   user_method find(Set) : c++ : returns(SparseIterator);
+   user_method find(Set) : c++ : returns(Iterator);
 
    # Add a new facet.  It may be a proper subset or a proper superset of existing facets.
    # It must not be empty or coincide with any existing facet.
@@ -214,12 +225,12 @@ declare property_type FacetList : c++ (include => "polymake/FacetList.h") {
    # Find all supersets of a given set.
    # @param Set s
    # @return Iterator all facets equal to or including //s//, visited in reverse chronological order
-   user_method findSupersets(Set) : c++ : returns(SparseIterator);
+   user_method findSupersets(Set) : c++ : returns(Iterator);
 
    # Find all subsets of a given set.
    # @param Set s
    # @return Iterator all facets equal to or included in //s//, visited in lexicographical order
-   user_method findSubsets(Set) : c++ : returns(SparseIterator);
+   user_method findSubsets(Set) : c++ : returns(Iterator);
 
    # Add a new facet if and only if there are no facets including it.
    # If this holds, remove all facets that are included in the new one.
@@ -249,9 +260,10 @@ declare property_type FacetList : c++ (include => "polymake/FacetList.h") {
 # Visit the facets of //f// sorted lexicographically.
 # @param FacetList f
 # @return PowerSet<Int>
-# @example > $f = new FacetList(cube(2)->VERTICES_IN_FACETS);
+# @example [application polytope]
+# > $f = new FacetList(cube(2)->VERTICES_IN_FACETS);
 # > print lex_ordered($f);
-# {{0 1} {0 2} {1 3} {2 3}}
+# | {{0 1} {0 2} {1 3} {2 3}}
 
 user_function lex_ordered(FacetList:anchor) : c++ (include => "polymake/PowerSet.h");  # TODO: try to get rid of this #include
 
@@ -330,17 +342,9 @@ declare property_type IncidenceMatrix<Sym=NonSymmetric> \
    use overload '&{}' => \&deprecated_elem_access;
 }
 
-user_function rows(IncidenceMatrix:anchor) : c++;
+user_function rows(IncidenceMatrix:anchor) : c++ : returns(Container);
 
-user_function cols(IncidenceMatrix:anchor) : c++;
-
-function permuted_rows(IncidenceMatrix *) : c++;
-
-function permuted_inv_rows(IncidenceMatrix *) : c++;
-
-function permuted_cols(IncidenceMatrix *) : c++;
-
-function permuted_inv_cols(IncidenceMatrix *) : c++;
+user_function cols(IncidenceMatrix:anchor) : c++ : returns(Container);
 
 
 # @category Linear Algebra
@@ -368,7 +372,7 @@ user_function transpose(IncidenceMatrix:anchor) : c++ (name => 'T');
 #	print $mymap->{1};
 # @tparam Key type of the key values
 # @tparam Value	type of the mapped value
-declare property_type Map<Key,Value> : c++ (include => "polymake/Map.h", operators => '@string') {
+declare property_type Map<Key,Value> : c++ (include => "polymake/Map.h", operators => '@string', operators => '== !=') {
 
    type_method equal {
       my ($proto, $m1, $m2)=@_;
@@ -384,17 +388,27 @@ declare property_type Map<Key,Value> : c++ (include => "polymake/Map.h", operato
 ##################################################################################
 
 # @category Set Types
-# Similar to [[Set]].
-# (But keep in mind differences in performance and memory demand.)
+# An unordered set of elements based on a hash table.
+# Can be traversed as a normal container, but the order of elements is not stable across polymake sessions,
+# even if the set is restored from the same data file every time.
 # @tparam Element
-declare property_type HashSet<Element> : c++ (name => 'hash_set', include => "polymake/hash_set", operators => '+= -= ^=');
+declare property_type HashSet<Element> : c++ (name => 'hash_set', include => "polymake/hash_set", operators => '+= -= ^= == !=') {
+
+   method contains {
+      my ($self, $key)=@_;
+      exists $self->{$key};
+   }
+
+   # The cardinality of the set.
+   # @return Int
+   user_method size() : c++;
+}
 
 # @category Set Types
-# Similar to [[Map]].
-# HashMaps are associative containers that contain unique key/value pairs. 
+# An unordered map based on a hash table.  Its interface is similar to that of [[Map]],
+# but the order of elements is not stable across polymake sessions and does not correlate with key values.
 #
-# The values are stored in a hash table. Accessing and interserting a value by its key 
-# works in constant time O(1).
+# Accessing and inserting a value by its key works in constant time O(1).
 #
 # You can create a new HashMap mapping Ints to Strings by 
 #	$myhashmap = new HashMap<Int, String>([1, "Monday"], [2, "Tuesday"]);
@@ -403,8 +417,12 @@ declare property_type HashSet<Element> : c++ (name => 'hash_set', include => "po
 # and memory demand).
 # @tparam Key type of the key values
 # @tparam Value	type of the mapped value
-declare property_type HashMap<Key,Value> : c++ (name => 'hash_map', include => "polymake/hash_map");
+declare property_type HashMap<Key,Value> : c++ (name => 'hash_map', include => "polymake/hash_map", operators => '== !=') {
 
+   # Size of the map
+   # @return Int
+   user_method size() : c++;
+}
 
 # Local Variables:
 # mode: perl

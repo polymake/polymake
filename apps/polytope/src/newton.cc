@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -43,10 +43,8 @@ UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
                           "# Produce the Newton polytope of a polynomial //p//."
                           "# @param Polynomial p"
                           "# @return Polytope<Rational>"
-                          "# @example Create the newton polytope of 1+x^2+y like so:"
-                          "# > $r=new Ring(qw(x y));"
-                          "# > ($x,$y)=$r->variables;"
-                          "# > $p=1+($x^2)+$y;"
+                          "# @example [nocompare] Create the newton polytope of 1+x^2+y like so:"
+                          "# > local_var_names<Polynomial>(qw(x y));  $p=new Polynomial('1+x^2+y');"
                           "# > $n = newton($p);"
                           "# > print $n->VERTICES;"
                           "# | 1 0 0"

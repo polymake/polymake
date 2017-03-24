@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -36,7 +36,7 @@ namespace {
 
 const char globalScope[]="Polymake::Scope";
 
-GV *globalScope_gv=NULL;
+GV* globalScope_gv=nullptr;
 
 void destroy_perl(pTHXx)
 {
@@ -46,10 +46,6 @@ void destroy_perl(pTHXx)
    PERL_SYS_TERM();
 }
 
-#ifndef PERL_IMPLICIT_CONTEXT
-PerlInterpreter *static_perl = NULL;
-#endif
-
 void emergency_cleanup() __attribute__((destructor));
 void emergency_cleanup()
 {
@@ -58,7 +54,7 @@ void emergency_cleanup()
       dTHX;
       destroy_perl(aTHX);
 #else
-      destroy_perl(static_perl);
+      destroy_perl(PL_curinterp);
 #endif
    }
 }
@@ -109,10 +105,10 @@ scr_debug2
 
 Main::Main(const std::string& user_opts, const std::string& install_top, const std::string& install_arch)
 {
-   if (PL_curinterp != NULL) return;
+   if (PL_curinterp) return;
 
    Dl_info dli;
-   void *polyhandle = NULL;
+   void* polyhandle = nullptr;
    int dlreturn;
    if ((dlreturn = dladdr((void*)&destroy_perl, &dli))) {
       polyhandle = dlopen(dli.dli_fname, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL );
@@ -123,7 +119,7 @@ Main::Main(const std::string& user_opts, const std::string& install_top, const s
                    "    Application modules might fail to load." << std::endl;
    }
 
-   void *perlhandle = NULL;
+   void* perlhandle = nullptr;
    if ((dlreturn = dladdr((void*)&perl_destruct, &dli))) {
       perlhandle = dlopen(dli.dli_fname, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL );
    }
@@ -162,8 +158,8 @@ Main::Main(const std::string& user_opts, const std::string& install_top, const s
       destroy_perl(aTHXx);
       throw std::runtime_error("could not initialize the perl interpreter");
    }
-#ifndef PERL_IMPLICIT_CONTEXT
-   static_perl=aTHXx;
+#ifdef PERL_IMPLICIT_CONTEXT
+   pi=aTHXx;
 #endif
    perl_run(aTHXx);
 
@@ -174,8 +170,8 @@ unsigned int Scope::depth=0;
 
 Scope::~Scope()
 {
-   if (saved != NULL) {
-      dTHX;
+   if (saved) {
+      dTHXa(pm_main->pi);
       if (depth-- != id) {
          // can't throw an exception from a destructor
          std::cerr << "polymake::perl::Scope nesting violation" << std::endl;

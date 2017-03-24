@@ -39,8 +39,6 @@ perl::Object spherize(perl::Object p_in)
    p_out.take("POINTS") << points;
    p_out.take("BOUNDED") << true;
    p_out.take("CENTERED") << true;
-   const Matrix<Rational> empty;
-   p_out.take("INPUT_LINEALITY") << empty;
    return p_out;
 }
 

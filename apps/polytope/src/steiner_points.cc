@@ -21,7 +21,8 @@
 #include "polymake/Graph.h"
 #include "polymake/Rational.h"
 #include "polymake/RandomSpherePoints.h"
-#include "polymake/graph/HasseDiagram.h"
+#include "polymake/graph/Lattice.h"
+#include "polymake/graph/Decoration.h"
 #include <cmath>
 
 namespace polymake { namespace polytope {
@@ -78,16 +79,17 @@ template <typename Coord>
 Matrix<Coord> all_steiner_points(perl::Object p, perl::OptionSet options)
 {
    //FIXME: check dim-type!
-   const int dim=p.CallPolymakeMethod("DIM");
+   const int dim=p.call_method("DIM");
    const Matrix<Coord> V=p.give("VERTICES");
    const Graph<> G=p.give("GRAPH.ADJACENCY");
-   const graph::HasseDiagram HDiagram=p.give("HASSE_DIAGRAM");
+   perl::Object HD_obj = p.give("HASSE_DIAGRAM");
+   const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential> HDiagram(HD_obj);
 
    RandomSpherePoints<> random_source(dim, RandomSeed(options["seed"]));
 
    const double eps=options["eps"];
 
-   const int n_stp = HDiagram.nodes() - HDiagram.node_range_of_dim(1).size() - HDiagram.node_range_of_dim(0).size() - 1;
+   const int n_stp = HDiagram.nodes() - HDiagram.nodes_of_rank(2).size() - HDiagram.nodes_of_rank(1).size() - 1;
    Matrix<Coord> steiner_points(n_stp,dim+1);
    typename Rows< Matrix<Coord> >::iterator si=rows(steiner_points).begin();
 
@@ -95,7 +97,7 @@ Matrix<Coord> all_steiner_points(perl::Object p, perl::OptionSet options)
       const int nop = 10*(1<<d);
 
       //iterate over the faces of current dimension d
-      for (Entire<graph::HasseDiagram::nodes_of_dim_set>::iterator fi=entire(HDiagram.node_range_of_dim(d)); !fi.at_end(); ++fi, ++si) {
+      for (auto fi=entire(HDiagram.nodes_of_rank(d+1)); !fi.at_end(); ++fi, ++si) {
 
          const Set<int>& face = HDiagram.face(*fi);
          Vector<Coord> weights(face.size());
@@ -122,7 +124,7 @@ template <typename Coord>
 Vector<Coord> steiner_point(perl::Object p, perl::OptionSet options)
 {
    //FIXME: check dim-type!
-   const int dim=p.CallPolymakeMethod("DIM");
+   const int dim=p.call_method("DIM");
    const Matrix<Coord> V=p.give("VERTICES");
    const Graph<> G=p.give("GRAPH.ADJACENCY");
 

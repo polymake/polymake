@@ -81,7 +81,7 @@ void Bitset::fill1s(const sequence& s)
    }
 }
 
-int incl(const Bitset& s1, const Bitset& s2)
+int incl(const Bitset& s1, const Bitset& s2) noexcept
 {
    mpz_srcptr rep1=s1.get_rep(), rep2=s2.get_rep();
    int size1=mpz_size(rep1), size2=mpz_size(rep2), result=sign(size1-size2);

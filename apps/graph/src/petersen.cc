@@ -39,7 +39,10 @@ perl::Object petersen()
 }
 UserFunction4perl("# @category Producing a graph\n"
                   "# Constructs the __Petersen graph__."
-                  "# @return Graph",
+                  "# @return Graph"
+                  "# @example The following prints the adjacency matrix of the petersen graph:"
+                  "# > print petersen()->N_NODES;"
+                  "# | 10",
                   &petersen, "petersen");
 
 

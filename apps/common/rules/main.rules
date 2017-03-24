@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -31,6 +31,7 @@ HELP help.rules
 INCLUDE
   basic_types
   misc_functions
+  permutations
   formatting_filters
   visual.rules
   geomview.rules
@@ -39,10 +40,10 @@ INCLUDE
   sketch.rules
   threejs.rules
   tikz.rules
+  svg.rules
   lattice.rules
-  property_viewer.rules
-  poly_parser.rules
   tropical_parser.rules
+  polydb.rules
 
 # for algorithms shipped with polymake, as opposed to those imported from external software packages
 label default

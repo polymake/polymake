@@ -38,10 +38,10 @@ namespace polymake { namespace polytope { namespace {
 
    FunctionInstance4perl(beneath_beyond_T_x_x_x_f16, Rational);
    FunctionInstance4perl(beneath_beyond_T_x_x_x_f16, QuadraticExtension< Rational >);
-   FunctionInstance4perl(beneath_beyond_T_x_x_x_f16, PuiseuxFraction< Min, Rational, Rational >);
-   FunctionInstance4perl(beneath_beyond_T_x_x_x_f16, PuiseuxFraction< Max, Rational, Rational >);
-   FunctionInstance4perl(beneath_beyond_T_x_x_x_f16, PuiseuxFraction< Min, Rational, int >);
    FunctionInstance4perl(placing_triangulation_X_o, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(placing_triangulation_X_o, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
+   FunctionInstance4perl(beneath_beyond_T_x_x_x_f16, PuiseuxFraction< Min, Rational, Rational >);
    FunctionInstance4perl(placing_triangulation_X_o, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(beneath_beyond_T_x_x_x_f16, PuiseuxFraction< Max, Rational, Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

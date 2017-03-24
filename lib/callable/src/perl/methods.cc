@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -27,109 +27,136 @@ glue::cached_cv application_cv={ "Polymake::User::application", 0 },
                  set_custom_cv={ "Polymake::Main::set_custom", 0 },
                reset_custom_cv={ "Polymake::Main::reset_custom", 0 },
                local_custom_cv={ "Polymake::Main::local_custom", 0 },
-                   greeting_cv={ "Polymake::Main::greeting", 0 };
+               greeting_cv={ "Polymake::Main::greeting", 0 },
+               simulate_shell_cv={ "Polymake::Main::simulate_shell_input", 0 };
 
 const char Extension[]="Polymake::Core::Extension";
 }
 
-void Main::set_application(const char* name, size_t nl)
+void Main::set_application(const AnyString& appname)
 {
-   dTHX;
-   PmStartFuncall;
-   mXPUSHp(name, nl);
+   dTHXa(pi);
+   PmStartFuncall(1);
+   mPUSHp(appname.ptr, appname.len);
    PUTBACK;
    glue::call_func_void(aTHX_ application_cv);
 }
 
 void Main::set_application_of(const Object& x)
 {
-   dTHX;
-   PmStartFuncall;
-   XPUSHs(x.obj_ref);
+   dTHXa(pi);
+   PmStartFuncall(1);
+   PUSHs(x.obj_ref);
    PUTBACK;
    glue::call_func_void(aTHX_ app_from_object_cv);
 }
 
-void Main::add_extension(const char* path, size_t pl)
+void Main::add_extension(const AnyString& path)
 {
-   dTHX;
-   PmStartFuncall;
-   mXPUSHp(Extension, sizeof(Extension)-1);
-   mXPUSHp(path, pl);
+   dTHXa(pi);
+   PmStartFuncall(2);
+   mPUSHp(Extension, sizeof(Extension)-1);
+   mPUSHp(path.ptr, path.len);
    PUTBACK;
    glue::call_method_void(aTHX_ "add");
 }
 
-SV* Main::lookup_extension(const char* path, size_t pl)
+void Main::include(const AnyString& path)
 {
-   dTHX;
-   PmStartFuncall;
-   mXPUSHp(Extension, sizeof(Extension)-1);
-   mXPUSHp(path, pl);
+   call_app_method("include_rules", path); 
+}
+
+void Main::set_preference(const AnyString& label_exp)
+{ 
+   call_app_method("set_preference", label_exp); 
+}
+
+void Main::reset_preference(const AnyString& label_exp)
+{ 
+   call_app_method("reset_preference", label_exp); 
+}
+
+SV* Main::lookup_extension(const AnyString& path)
+{
+   dTHXa(pi);
+   PmStartFuncall(2);
+   mPUSHp(Extension, sizeof(Extension)-1);
+   mPUSHp(path.ptr, path.len);
    PUTBACK;
    return glue::call_method_scalar(aTHX_ "lookup");
 }
 
-void Main::call_app_method(const char* method, const char *arg, size_t argl)
+void Main::call_app_method(const char* method, const AnyString& arg)
 {
-   dTHX;
-   PmStartFuncall;
+   dTHXa(pi);
+   PmStartFuncall(2);
    SP=glue::push_current_application(aTHX_ SP);
-   mXPUSHp(arg, argl);
+   mPUSHp(arg.ptr, arg.len);
    PUTBACK;
    glue::call_method_void(aTHX_ method);
 }
 
-void Main::_set_custom(const char* name, size_t ll, const char* key, size_t kl, Value& x)
+void Main::set_custom_var(const AnyString& name, const AnyString& key, Value& x)
 {
-   dTHX;
-   PmStartFuncall;
-   mXPUSHp(name, ll);
-   if (key) mXPUSHp(key, kl);
-   XPUSHs(x.get_temp());
+   dTHXa(pi);
+   PmStartFuncall(3);
+   mPUSHp(name.ptr, name.len);
+   if (key.ptr) mPUSHp(key.ptr, key.len);
+   PUSHs(x.get_temp());
    PUTBACK;
    glue::call_func_void(aTHX_ set_custom_cv);
 }
 
-void Main::_reset_custom(const char* name, size_t ll, const char* key, size_t kl)
+void Main::reset_custom(const AnyString& name, const AnyString& key)
 {
-   dTHX;
-   PmStartFuncall;
-   mXPUSHp(name, ll);
-   if (key) mXPUSHp(key, kl);
+   dTHXa(pi);
+   PmStartFuncall(2);
+   mPUSHp(name.ptr, name.len);
+   if (key.ptr) mPUSHp(key.ptr, key.len);
    PUTBACK;
    glue::call_func_void(aTHX_ reset_custom_cv);
 }
 
 Scope Main::newScope()
 {
-   dTHX;
-   PmStartFuncall;
-   PUTBACK;
-   return call_func_scalar(aTHX_ new_scope_cv);
+   dTHXa(pi);
+   PmStartFuncall(0);
+   return Scope(this, call_func_scalar(aTHX_ new_scope_cv));
 }
 
-void Scope::_set_custom(const char* name, size_t ll, const char* key, size_t kl, Value& x)
+void Scope::prefer_now(const AnyString& labels) const
 {
-   dTHX;
-   PmStartFuncall;
-   mXPUSHp(name, ll);
-   if (key) mXPUSHp(key, kl);
-   XPUSHs(x.get_temp());
+   pm_main->call_app_method("prefer_now", labels);
+}
+
+void Scope::set_custom_var(const AnyString& name, const AnyString& key, Value& x) const
+{
+   dTHXa(pm_main->pi);
+   PmStartFuncall(3);
+   mPUSHp(name.ptr, name.len);
+   if (key.ptr) mPUSHp(key.ptr, key.len);
+   PUSHs(x.get_temp());
    PUTBACK;
    glue::call_func_void(aTHX_ local_custom_cv);
 }
 
 std::string Main::greeting(int verbose)
 {
-   dTHX;
-   PmStartFuncall;
-   mXPUSHi(verbose);
+   dTHXa(pi);
+   PmStartFuncall(1);
+   mPUSHi(verbose);
    PUTBACK;
-   size_t l=0;
-   SV* greeting_sv = glue::call_func_scalar(aTHX_ greeting_cv);
-   const char* greeting=SvPV(greeting_sv, l);
-   return std::string(greeting,l);
+   return glue::call_func_string(aTHX_ greeting_cv);
+}
+
+std::string Main::simulate_shell_input(const std::string& input)
+{
+   if (input.empty()) return input;
+   dTHXa(pi);
+   PmStartFuncall(1);
+   mPUSHp(input.c_str(), input.size());
+   PUTBACK;
+   return glue::call_func_string(aTHX_ simulate_shell_cv, false);
 }
 
 } }

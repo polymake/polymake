@@ -31,31 +31,34 @@
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1>
-   FunctionInterface4perl( slice_X8_f5, T0,T1 ) {
+   FunctionInterface4perl( slice_X32_f37, T0,T1 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturnLvalueAnch( 2, (arg0)(arg1), T0, arg0.get<T0>().slice(arg1.get<T1>()) );
+      WrapperReturnLvalue( T0, arg0.get<T0>().slice(arg1.get<T1>()), arg0, arg1 );
    };
 
    template <typename T0>
-   FunctionInterface4perl( slice_x_x_f5, T0 ) {
+   FunctionInterface4perl( slice_x_x_f37, T0 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      WrapperReturnLvalueAnch( 1, (arg0), T0, arg0.get<T0>().slice(arg1, arg2) );
+      WrapperReturnLvalue( T0, arg0.get<T0>().slice(arg1, arg2), arg0 );
    };
 
-   FunctionInstance4perl(slice_X8_f5, perl::Canned< Wary< Vector< Rational > > >, perl::Canned< const pm::Nodes<pm::graph::Graph<pm::graph::Undirected> > >);
-   FunctionInstance4perl(slice_X8_f5, perl::Canned< const Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>, void> > >, int);
-   FunctionInstance4perl(slice_X8_f5, perl::Canned< const Wary< Vector< Rational > > >, perl::Canned< const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&> >);
-   FunctionInstance4perl(slice_X8_f5, perl::Canned< const Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, void> > >, int);
-   FunctionInstance4perl(slice_X8_f5, perl::Canned< const Wary< Vector< Rational > > >, int);
-   FunctionInstance4perl(slice_x_x_f5, perl::Canned< Wary< Vector< double > > >);
-   FunctionInstance4perl(slice_X8_f5, perl::Canned< Wary< Vector< double > > >, int);
-   FunctionInstance4perl(slice_x_x_f5, perl::Canned< Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double>&>, pm::Series<int, true>, void> > >);
-   FunctionInstance4perl(slice_X8_f5, perl::Canned< const Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer> const&>, pm::Series<int, true>, void> > >, int);
-   FunctionInstance4perl(slice_X8_f5, perl::Canned< Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer>&>, pm::Series<int, true>, void> > >, int);
-   FunctionInstance4perl(slice_x_x_f5, perl::Canned< const Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, void> > >);
-   FunctionInstance4perl(slice_X8_f5, perl::Canned< Wary< Vector< Rational > > >, int);
-   FunctionInstance4perl(slice_X8_f5, perl::Canned< const Wary< pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::Rational, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric> > >, int);
-   FunctionInstance4perl(slice_x_x_f5, perl::Canned< const Wary< Vector< Integer > > >);
-   FunctionInstance4perl(slice_x_x_f5, perl::Canned< const Wary< Vector< Rational > > >);
+   FunctionInstance4perl(slice_X32_f37, perl::Canned< const Wary< Vector< Rational > > >, perl::Canned< const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&> >);
+   FunctionInstance4perl(slice_X32_f37, perl::Canned< const Wary< pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::Rational, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric> > >, int);
+   FunctionInstance4perl(slice_X32_f37, perl::Canned< const Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::QuadraticExtension<pm::Rational> > const&>, pm::Series<int, true>, mlist<> > > >, int);
+   FunctionInstance4perl(slice_X32_f37, perl::Canned< const Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>, mlist<> > > >, int);
+   FunctionInstance4perl(slice_x_x_f37, perl::Canned< const Wary< Vector< Integer > > >);
+   FunctionInstance4perl(slice_x_x_f37, perl::Canned< const Wary< Vector< Rational > > >);
+   FunctionInstance4perl(slice_X32_f37, perl::Canned< const Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer> const&>, pm::Series<int, true>, mlist<> > > >, int);
+   FunctionInstance4perl(slice_X32_f37, perl::Canned< const Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, mlist<> > > >, int);
+   FunctionInstance4perl(slice_X32_f37, perl::Canned< const Wary< Vector< Rational > > >, int);
+   FunctionInstance4perl(slice_X32_f37, perl::Canned< Wary< Vector< Rational > > >, int);
+   FunctionInstance4perl(slice_x_x_f37, perl::Canned< Wary< Vector< double > > >);
+   FunctionInstance4perl(slice_X32_f37, perl::Canned< Wary< Vector< double > > >, int);
+   FunctionInstance4perl(slice_x_x_f37, perl::Canned< Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double>&>, pm::Series<int, true>, mlist<> > > >);
+   FunctionInstance4perl(slice_X32_f37, perl::Canned< Wary< Vector< Rational > > >, perl::Canned< const pm::Nodes<pm::graph::Graph<pm::graph::Undirected> > >);
+   FunctionInstance4perl(slice_X32_f37, perl::Canned< Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, mlist<> > > >, perl::Canned< const pm::Complement<pm::SingleElementSetCmp<int, pm::operations::cmp>, int, pm::operations::cmp> >);
+   FunctionInstance4perl(slice_x_x_f37, perl::Canned< const Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, mlist<> > > >);
+   FunctionInstance4perl(slice_X32_f37, perl::Canned< const Wary< pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::QuadraticExtension<pm::Rational>, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric> > >, int);
+   FunctionInstance4perl(slice_x_x_f37, perl::Canned< Wary< Vector< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

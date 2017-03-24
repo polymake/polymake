@@ -245,11 +245,12 @@ const facet* cell_iterator<links, _rev>::get_facet() const
 
 class Facet
    : public modified_container_impl< Facet,
-                                     list( Hidden<facet>,
-                                           Operation< BuildUnaryIt<operations::index2element> > ) >,
+                                     mlist< HiddenTag<facet>,
+                                            OperationTag< BuildUnaryIt<operations::index2element> > > >,
    public GenericSet<Facet, int, operations::cmp> {
 public:
    operations::cmp get_comparator() const { return operations::cmp(); }
+   facet_id_t get_id() const { return this->hidden().get_id(); }
 protected:
    Facet();
    ~Facet();
@@ -311,10 +312,8 @@ public:
 
    bool at_end() const { return Q.empty(); }
 
-   bool operator== (const iterator& it) const
-   {
-      return equal(entire(Q), entire(it.Q));
-   }
+   bool operator== (const iterator& it) const { return Q==it.Q; }
+   bool operator!= (const iterator& it) const { return !operator==(it); }
 
    int index() const
    {
@@ -469,6 +468,8 @@ public:
    }
 };
 
+typedef sparse2d::ruler<vertex_list> col_ruler;
+
 class superset_iterator {
 public:
    typedef forward_iterator_tag iterator_category;
@@ -489,14 +490,14 @@ protected:
 public:
    superset_iterator() {}
 
-   template <typename Set>
-   superset_iterator(const vertex_list* columns, const GenericSet<Set>& f, bool show_empty_facet)
+   template <typename TSet>
+   superset_iterator(col_ruler::const_iterator columns, const GenericSet<TSet>& f, bool show_empty_facet)
    {
-      its_size= iterator_traits<typename Set::const_iterator>::is_bidirectional
+      its_size= iterator_traits<typename TSet::const_iterator>::is_bidirectional
                 ? f.top().size() : 0;
-      for (typename Entire<Set>::const_iterator v=entire(f.top());  !v.at_end();  ++v) {
+      for (auto v=entire(f.top());  !v.at_end();  ++v) {
          its.push_back(columns[*v].begin());
-         if (!iterator_traits<typename Set::const_iterator>::is_bidirectional)
+         if (!iterator_traits<typename TSet::const_iterator>::is_bidirectional)
             ++its_size;
       }
       if (its_size)
@@ -528,7 +529,7 @@ private:
    template <typename,bool> friend class subset_iterator;
 };
 
-template <typename Set, bool check_range>
+template <typename TSet, bool check_range>
 class subset_iterator {
 public:
    typedef forward_iterator_tag iterator_category;
@@ -539,11 +540,11 @@ public:
    typedef subset_iterator iterator;
    typedef iterator const_iterator;
 protected:
-   typedef typename Entire<Set>::const_iterator set_iterator;
+   typedef typename Entire<TSet>::const_iterator set_iterator;
    typedef std::pair<facet::iterator, set_iterator> it_pair;
    typedef std::list<it_pair> it_list;
 
-   const vertex_list* columns;
+   col_ruler::const_iterator columns;
    int n_columns;
    set_iterator start;
    it_list Q;
@@ -552,15 +553,18 @@ protected:
 public:
    subset_iterator() {}
 
-   subset_iterator(const vertex_list* columns_arg, const GenericSet<Set>& f)
-      : columns(columns_arg), start(entire(f.top()))
+   subset_iterator(col_ruler::const_iterator columns_arg, const GenericSet<TSet>& f)
+      : columns(columns_arg)
+      , start(entire(f.top()))
    {
       assert(!check_range);
       valid_position();
    }
 
-   subset_iterator(const vertex_list* columns_arg, int n_columns_arg, const GenericSet<Set>& f)
-      : columns(columns_arg), n_columns(n_columns_arg), start(entire(f.top()))
+   subset_iterator(col_ruler::const_iterator columns_arg, int n_columns_arg, const GenericSet<TSet>& f)
+      : columns(columns_arg)
+      , n_columns(n_columns_arg)
+      , start(entire(f.top()))
    {
       valid_position();
    }
@@ -584,8 +588,8 @@ private:
    void valid_position();
 };
 
-template <typename Set, bool check_range>
-void subset_iterator<Set,check_range>::valid_position()
+template <typename TSet, bool check_range>
+void subset_iterator<TSet, check_range>::valid_position()
 {
    for (;;) {
       while (!Q.empty()) {
@@ -627,30 +631,28 @@ void subset_iterator<Set,check_range>::valid_position()
 } // end namespace fl_internal;
 
 template <ptr_pair<fl_internal::cell> fl_internal::cell::* links, bool _rev>
-struct check_iterator_feature<fl_internal::cell_iterator<links, _rev>, end_sensitive> : True {};
+struct check_iterator_feature<fl_internal::cell_iterator<links, _rev>, end_sensitive> : std::true_type {};
 template <ptr_pair<fl_internal::cell> fl_internal::cell::* links, bool _rev>
-struct check_iterator_feature<fl_internal::cell_iterator<links, _rev>, indexed> : True {};
+struct check_iterator_feature<fl_internal::cell_iterator<links, _rev>, indexed> : std::true_type {};
 
-template <> struct check_iterator_feature<fl_internal::col_order_iterator, end_sensitive> : True {};
-template <> struct check_iterator_feature<fl_internal::col_order_iterator, indexed> : True {};
+template <> struct check_iterator_feature<fl_internal::col_order_iterator, end_sensitive> : std::true_type {};
+template <> struct check_iterator_feature<fl_internal::col_order_iterator, indexed> : std::true_type {};
 
-template <> struct check_iterator_feature<fl_internal::lex_order_iterator, end_sensitive> : True {};
-template <> struct check_iterator_feature<fl_internal::lex_order_iterator, indexed> : True {};
+template <> struct check_iterator_feature<fl_internal::lex_order_iterator, end_sensitive> : std::true_type {};
+template <> struct check_iterator_feature<fl_internal::lex_order_iterator, indexed> : std::true_type {};
 
-template <> struct check_iterator_feature<fl_internal::superset_iterator, end_sensitive> : True {};
-template <> struct check_iterator_feature<fl_internal::superset_iterator, indexed> : True {};
+template <> struct check_iterator_feature<fl_internal::superset_iterator, end_sensitive> : std::true_type {};
+template <> struct check_iterator_feature<fl_internal::superset_iterator, indexed> : std::true_type {};
 
-template <typename Set, bool check_range>
-struct check_iterator_feature<fl_internal::subset_iterator<Set, check_range>, end_sensitive> : True {};
-template <typename Set, bool check_range>
-struct check_iterator_feature<fl_internal::subset_iterator<Set, check_range>, indexed> : True {};
+template <typename TSet, bool check_range>
+struct check_iterator_feature<fl_internal::subset_iterator<TSet, check_range>, end_sensitive> : std::true_type {};
+template <typename TSet, bool check_range>
+struct check_iterator_feature<fl_internal::subset_iterator<TSet, check_range>, indexed> : std::true_type {};
 
 namespace fl_internal {
 
 class Table {
 public:
-   typedef sparse2d::ruler<vertex_list> col_ruler;
-
    typedef facet value_type;
    typedef const value_type& reference;
    typedef reference const_reference;
@@ -664,8 +666,7 @@ public:
    Table(const Table& c);
 
 private:
-   // deleted
-   void operator= (const Table&);
+   void operator= (const Table&) = delete;
 
 public:
    ~Table() { col_ruler::destroy(columns); }
@@ -687,15 +688,15 @@ public:
    void squeeze(const IndexConsumer& ic)
    {
       int new_vertex=0;
-      for (vertex_list *column=columns->begin(), *end=columns->end(); column!=end; ++column) {
-         if (cell* c=column->first_col) {
-            const int old_vertex=column->vertex;
+      for (auto column_it=columns->begin(), end=columns->end(); column_it != end; ++column_it) {
+         if (cell* c=column_it->first_col) {
+            const int old_vertex=column_it->vertex;
             if (old_vertex != new_vertex) {
                do
                   c->vertex = new_vertex;
                while ((c=c->col.next) != NULL);
-               vertex_list* column_new=column+(new_vertex - old_vertex);
-               relocate(column, column_new);
+               vertex_list* column_new=&column_it[new_vertex - old_vertex];
+               relocate(column_it.operator->(), column_new);
                column_new->vertex=new_vertex;
             }
             ic(old_vertex, new_vertex);  ++new_vertex;
@@ -706,9 +707,8 @@ public:
       if (next_id != _size) squeeze_ids();
    }
 
-protected:
    template <typename Iterator>
-   Table(size_t facet_size, Iterator src, False)
+   Table(size_t facet_size, Iterator src, std::false_type)
       : facet_alloc(facet_size)
       , cell_alloc(sizeof(cell))
       , facets(&facet::list_ptrs)
@@ -721,20 +721,7 @@ protected:
    }
 
    template <typename Iterator>
-   Table(size_t facet_size, Iterator src, Iterator src_end, False)
-      : facet_alloc(facet_size)
-      , cell_alloc(sizeof(cell))
-      , facets(&facet::list_ptrs)
-      , columns(col_ruler::construct(0))
-      , _size(0)
-      , next_id(0)
-   {
-      for (; src!=src_end; ++src)
-         insert(*src);
-   }
-
-   template <typename Iterator>
-   Table(size_t facet_size, int n_vertices, Iterator src, False)
+   Table(size_t facet_size, int n_vertices, Iterator src, std::false_type)
       : facet_alloc(facet_size)
       , cell_alloc(sizeof(cell))
       , facets(&facet::list_ptrs)
@@ -747,7 +734,7 @@ protected:
    }
 
    template <typename Iterator>
-   Table(size_t facet_size, Iterator src, True)
+   Table(size_t facet_size, Iterator src, std::true_type)
       : facet_alloc(facet_size)
       , cell_alloc(sizeof(cell))
       , facets(&facet::list_ptrs)
@@ -760,7 +747,7 @@ protected:
    }
 
    template <typename Iterator>
-   Table(size_t facet_size, int n_vertices, Iterator src, True)
+   Table(size_t facet_size, int n_vertices, Iterator src, std::true_type)
       : facet_alloc(facet_size)
       , cell_alloc(sizeof(cell))
       , facets(&facet::list_ptrs)
@@ -781,12 +768,11 @@ protected:
       return reverse_cast(&facets, &facet::list_ptrs);
    }
 
-public:
    class LexOrdered_helper
       : public modified_container_impl< LexOrdered_helper,
-                                        list( Container< col_ruler >,
-                                              Operation< operations::reinterpret<lex_ordered_vertex_list> >,
-                                              Hidden< Table > ) > {
+                                        mlist< ContainerTag< col_ruler >,
+                                               OperationTag< operations::reinterpret<lex_ordered_vertex_list> >,
+                                               HiddenTag< Table > > > {
    public:
       const col_ruler& get_container() const { return *hidden().columns; }
    };
@@ -807,13 +793,13 @@ protected:
             throw std::runtime_error("attempt to insert a duplicate or empty facet into FacetList");
          }
          v=*src;  ++src;
-         if (identical<typename iterator_traits<Iterator>::iterator_category, input_iterator_tag>::value)
+         if (std::is_same<typename iterator_traits<Iterator>::iterator_category, input_iterator_tag>::value)
             extend_cols(v);
       } while (!inserter.push((*columns)[v], f->push_back(v, cell_alloc)));
 
       for (; !src.at_end(); ++src) {
          v=*src;
-         if (identical<typename iterator_traits<Iterator>::iterator_category, input_iterator_tag>::value)
+         if (std::is_same<typename iterator_traits<Iterator>::iterator_category, input_iterator_tag>::value)
             extend_cols(v);
          (*columns)[v].push_front(f->push_back(v, cell_alloc));
       }
@@ -868,16 +854,16 @@ protected:
    }
 
 public:
-   template <typename Set>
-   const facet* find_facet(const GenericSet<Set>& f) const
+   template <typename TSet>
+   const facet* find_facet(const GenericSet<TSet>& f) const
    {
-      typename Entire<Set>::const_iterator v_it=entire(f.top());
-      if (v_it.at_end()) return NULL;
+      auto v_it=entire(f.top());
+      if (v_it.at_end()) return nullptr;
       int v=*v_it;
-      if (v>=n_vertices()) return NULL;
+      if (v>=n_vertices()) return nullptr;
 
       const cell* c=(*columns)[v].first_lex;
-      if (c==NULL) return NULL;
+      if (!c) return nullptr;
 
       for (facet::iterator cur(c); ;) {
          ++v_it;  ++cur;
@@ -890,48 +876,48 @@ public:
          if (v_it.at_end()) break;
          v=*v_it;
          while (cur->vertex != v) {
-            if (cur->vertex > v) return NULL;
+            if (cur->vertex > v) return nullptr;
             --cur;
-            if (!cur.down(&cell::lex)) return NULL;
+            if (!cur.down(&cell::lex)) return nullptr;
             ++cur;
          }
       }
-      return NULL;
+      return nullptr;
    }
 
-   template <typename Set>
-   facet* insert(const GenericSet<Set, int, operations::cmp>& f)
+   template <typename TSet>
+   facet* insert(const GenericSet<TSet, int, operations::cmp>& f)
    {
       extend_cols(f.top().back());
       return insert_from_it(entire(f.top()), new_id());
    }
 
-   template <typename Set>
-   void push_back(const GenericSet<Set, int, operations::cmp>& f)
+   template <typename TSet>
+   void push_back(const GenericSet<TSet, int, operations::cmp>& f)
    {
       extend_cols(f.top().back());
       push_back_from_it(entire(f.top()));
    }
 
-   template <typename Set>
-   int erase(const GenericSet<Set, int, operations::cmp>& f)
+   template <typename TSet>
+   int erase(const GenericSet<TSet, int, operations::cmp>& f)
    {
       const facet* fp=find_facet(f);
-      return fp != NULL ? (erase_facet(*fp), 1) : 0;
+      return fp ? (erase_facet(*fp), 1) : 0;
    }
 
    void erase_facet(const facet& f);
 
-   template <typename Set>
-   superset_iterator findSupersets(const GenericSet<Set, int, operations::cmp>& f, bool show_empty_facet) const
+   template <typename TSet>
+   superset_iterator findSupersets(const GenericSet<TSet, int, operations::cmp>& f, bool show_empty_facet) const
    {
       return superset_iterator(columns->begin(), f, show_empty_facet);
    }
 
-   template <typename Set, bool check_range>
-   subset_iterator<Set, check_range> findSubsets(const GenericSet<Set, int, operations::cmp>& f, bool2type<check_range>) const
+   template <typename TSet, bool check_range>
+   subset_iterator<TSet, check_range> findSubsets(const GenericSet<TSet, int, operations::cmp>& f, bool_constant<check_range>) const
    {
-      return subset_iterator<Set, check_range>(columns->begin(), n_vertices(), f);
+      return subset_iterator<TSet, check_range>(columns->begin(), n_vertices(), f);
    }
 
 protected:
@@ -957,26 +943,26 @@ protected:
    static void consume_erased(const Iterator&, black_hole<Data>&) {}
 
 public:
-   template <typename Set> static
-   int back_or_nothing(const Set& f)
+   template <typename TSet> static
+   int back_or_nothing(const TSet& f)
    {
-      typename Entire<Set>::const_reverse_iterator last=entire(reversed(f));
+      auto last=entire(reversed(f));
       return last.at_end() ? -1 : *last;
    }
 
-   template <typename Set, typename Consumer>
-   int eraseSubsets(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
+   template <typename TSet, typename Consumer>
+   int eraseSubsets(const GenericSet<TSet, int, operations::cmp>& f, Consumer consumer)
    {
       const size_t orig_size=_size;
-      for (subset_iterator<Set> ss=findSubsets(f, True()); !ss.at_end(); ++ss) {
+      for (subset_iterator<TSet> ss=findSubsets(f, std::true_type()); !ss.at_end(); ++ss) {
          consume_erased(ss, consumer);
          erase_facet(*ss);
       }
       return orig_size-_size;
    }
 
-   template <typename Set, typename Consumer>
-   int eraseSupersets(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
+   template <typename TSet, typename Consumer>
+   int eraseSupersets(const GenericSet<TSet, int, operations::cmp>& f, Consumer consumer)
    {
       if (back_or_nothing(f.top()) >= n_vertices()) {
          return 0;
@@ -989,9 +975,9 @@ public:
       return orig_size-_size;
    }
 
-   template <typename Set, bool can_extend, typename Consumer>
-   facet* insertMax(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer,
-                    bool2type<can_extend>)
+   template <typename TSet, bool can_extend, typename Consumer>
+   facet* insertMax(const GenericSet<TSet, int, operations::cmp>& f, Consumer consumer,
+                    bool_constant<can_extend>)
    {
       int v_last;
       facet_id_t nid=new_id();
@@ -1002,16 +988,16 @@ public:
          if (!ss.at_end()) return NULL;
       }
 
-      for (subset_iterator<Set,false> ss=findSubsets(f, False());  !ss.at_end();  ++ss) {
+      for (subset_iterator<TSet, false> ss=findSubsets(f, std::false_type());  !ss.at_end();  ++ss) {
          consume_erased(ss, consumer);
          erase_facet(*ss);
       }
       return insert_from_it(entire(f.top()), nid);
    }
 
-   template <typename Set, bool can_extend, typename Consumer>
-   facet* insertMin(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer,
-                    bool2type<can_extend>)
+   template <typename TSet, bool can_extend, typename Consumer>
+   facet* insertMin(const GenericSet<TSet, int, operations::cmp>& f, Consumer consumer,
+                    bool_constant<can_extend>)
    {
       bool accept=false;
       int v_last;
@@ -1021,7 +1007,7 @@ public:
       } else {
          superset_iterator ss=findSupersets(f, true);
          if (!ss.at_end()) {
-            if (ss.exact_match()) return NULL;
+            if (ss.exact_match()) return nullptr;
             do {
                consume_erased(ss,consumer);
                erase_facet(*ss); 
@@ -1031,8 +1017,8 @@ public:
       }
 
       if (!accept) {
-         subset_iterator<Set,false> ss=findSubsets(f, False());
-         if (!ss.at_end()) return NULL;
+         subset_iterator<TSet, false> ss=findSubsets(f, std::false_type());
+         if (!ss.at_end()) return nullptr;
       }
       return insert_from_it(entire(f.top()), nid);
    }
@@ -1075,7 +1061,6 @@ protected:
 
    friend class pm::FacetList;
    friend class pm::Cols<pm::FacetList>;
-   template <typename> friend class pm::constructor;
 #if POLYMAKE_DEBUG
    bool sanity_check() const;
 #endif
@@ -1086,8 +1071,8 @@ protected:
 template <>
 class Cols<FacetList>
    : public redirected_container< Cols<FacetList>,
-                                  list( Container< const fl_internal::Table::col_ruler >,
-                                        Hidden< FacetList > ) > {
+                                  mlist< ContainerTag< const fl_internal::col_ruler >,
+                                         HiddenTag< FacetList > > > {
 protected:
    ~Cols();
 public:
@@ -1138,11 +1123,11 @@ public:
 
 class FacetList
    : public modified_container_impl< FacetList,
-                                     list( Container< const fl_internal::Table >,
-                                           Operation< pair< operations::reinterpret<fl_internal::Facet>, fl_internal::facet::id2index> > ) >,
-     public matrix_col_methods<FacetList> {
+                                     mlist< ContainerTag< const fl_internal::Table >,
+                                            OperationTag< pair< operations::reinterpret<fl_internal::Facet>, fl_internal::facet::id2index> > > >
+   , public matrix_col_methods<FacetList> {
 protected:
-   shared_object<fl_internal::Table, AliasHandler<shared_alias_handler> > table;
+   shared_object<fl_internal::Table, AliasHandlerTag<shared_alias_handler>> table;
 
    friend FacetList& make_mutable_alias(FacetList& alias, FacetList& owner)
    {
@@ -1161,42 +1146,47 @@ public:
       with reallocation costs O(@a n_vertices).
    */
    explicit FacetList(int n_vertices=0)
-      : table( constructor<fl_internal::Table(size_t, int)>(sizeof(fl_internal::facet), n_vertices) ) {}
+      : table(sizeof(fl_internal::facet), n_vertices) {}
 
    template <typename Iterator>
-   explicit FacetList(Iterator src, typename enable_if_iterator<Iterator,end_sensitive>::type=0)
-      : table( constructor<fl_internal::Table(size_t, Iterator&, False)>(sizeof(fl_internal::facet), src, False()) ) {}
+   explicit FacetList(Iterator&& src,
+                      typename std::enable_if<assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value &&
+                                              assess_iterator_value<Iterator, isomorphic_types, Set<int>>::value,
+                                              void**>::type=nullptr)
+      : table(sizeof(fl_internal::facet), std::forward<Iterator>(src), std::false_type()) {}
 
    /** @brief Initialize the facets from the input sequence.
        The items obtained by dereferencing @a src must be sets of cardinals (of type GenericSet).
    */
    template <typename Iterator>
-   FacetList(Iterator src, Iterator src_end)
-      : table( constructor<fl_internal::Table(size_t, Iterator&, Iterator&, False)>(sizeof(fl_internal::facet), src, src_end, False()) ) {}
+   FacetList(Iterator&& src, Iterator&& src_end)
+      : table(sizeof(fl_internal::facet), make_iterator_range(src, src_end), std::false_type()) {}
 
    /** @brief As above, but avoiding reallocation during the construction.
        The facets supplied by @a src may not contain vertices outside the range [0, @a n_vertices-1].
    */
    template <typename Iterator>
-   FacetList(int n_vertices, Iterator src)
-      : table( constructor<fl_internal::Table(size_t, int, Iterator&, False)>(sizeof(fl_internal::facet), n_vertices, src, False()) ) {}
+   FacetList(int n_vertices, Iterator&& src,
+             typename std::enable_if<assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value &&
+                                     assess_iterator_value<Iterator, isomorphic_types, Set<int>>::value,
+                                     void**>::type=nullptr)
+      : table(sizeof(fl_internal::facet), n_vertices, std::forward<Iterator>(src), std::false_type()) {}
 
-   template <typename Set>
-   FacetList(const GenericSet<Set, fl_internal::Facet::persistent_type, operations::cmp>& ps)
-      : table( constructor<fl_internal::Table(size_t, typename Entire<Set>::const_iterator, True)>(sizeof(fl_internal::facet), entire(ps.top()), True()) ) {}
+   template <typename TSet>
+   FacetList(const GenericSet<TSet, fl_internal::Facet::persistent_type, operations::cmp>& ps)
+      : table(sizeof(fl_internal::facet), entire(ps.top()), std::true_type()) {}
 
-   template <typename Set>
-   FacetList(int n_vertices, const GenericSet<Set, fl_internal::Facet::persistent_type, operations::cmp>& ps)
-      : table( constructor<fl_internal::Table(size_t, int, typename Entire<Set>::const_iterator, True)>(sizeof(fl_internal::facet), n_vertices, entire(ps.top()), True()) ) {}
+   template <typename TSet>
+   FacetList(int n_vertices, const GenericSet<TSet, fl_internal::Facet::persistent_type, operations::cmp>& ps)
+      : table(sizeof(fl_internal::facet), n_vertices, entire(ps.top()), std::true_type()) {}
 
-   template <typename Matrix>
-   FacetList(const GenericIncidenceMatrix<Matrix>& m)
-      : table( constructor<fl_internal::Table(size_t, int, typename Entire< Rows<Matrix> >::const_iterator, False)>(sizeof(fl_internal::facet), m.cols(), entire(rows(m)), False()) ) {}
+   template <typename TMatrix>
+   FacetList(const GenericIncidenceMatrix<TMatrix>& m)
+      : table(sizeof(fl_internal::facet), m.cols(), entire(rows(m)), std::false_type()) {}
 
-   template <typename Container>
-   FacetList(const Container& src,
-             typename enable_if<void**, isomorphic_to_container_of<Container, Set<int>, is_set>::value>::type=0)
-      : table( constructor<fl_internal::Table(size_t, typename Entire<Container>::const_iterator, False)>(sizeof(fl_internal::facet), entire(src), False()) ) {}
+   template <typename Container, typename enabled=typename std::enable_if<isomorphic_to_container_of<Container, Set<int>, is_set>::value>::type>
+   FacetList(const Container& src)
+      : table(sizeof(fl_internal::facet), entire(src), std::false_type()) {}
 
    /// Swap the contents of two lists in a most efficient way.
    void swap(FacetList& l) { table.swap(l.table); }
@@ -1233,9 +1223,9 @@ public:
 
    class LexOrdered
       : public cascade_impl< LexOrdered,
-                             list( Container< fl_internal::Table::LexOrdered_helper >,
-                                   CascadeDepth< int2type<2> >,
-                                   Hidden< fl_internal::Table > ) >,
+                             mlist< ContainerTag< fl_internal::Table::LexOrdered_helper >,
+                                    CascadeDepth< int_constant<2> >,
+                                    HiddenTag< fl_internal::Table > > >,
         public GenericSet< LexOrdered, fl_internal::Facet::persistent_type, operations::cmp> {
    protected:
       ~LexOrdered();
@@ -1257,10 +1247,10 @@ public:
     *
     *  The operation costs are O(dim + deg).
     */
-   template <typename Set>
-   iterator insert(const GenericSet<Set, int, operations::cmp>& f)
+   template <typename TSet>
+   iterator insert(const GenericSet<TSet, int, operations::cmp>& f)
    {
-      if (POLYMAKE_DEBUG || !Unwary<Set>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TSet>::value) {
          if (f.top().empty())
             throw std::runtime_error("FacetList::insert - empty facet");
       }
@@ -1276,10 +1266,10 @@ public:
     *  The given facet must be lexicographically greater than all facets added
     *  before.  This can only be checked in debugging mode.
     */
-   template <typename Set>
-   void push_back(const GenericSet<Set, int, operations::cmp>& f)
+   template <typename TSet>
+   void push_back(const GenericSet<TSet, int, operations::cmp>& f)
    {
-      if (POLYMAKE_DEBUG || !Unwary<Set>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TSet>::value) {
          if (f.top().empty())
             throw std::runtime_error("FacetList::push_back - empty facet");
       }
@@ -1292,8 +1282,8 @@ public:
     *
     *  The operation costs are O(dim + deg).
     */
-   template <typename Set>
-   int erase(const GenericSet<Set, int, operations::cmp>& f)
+   template <typename TSet>
+   int erase(const GenericSet<TSet, int, operations::cmp>& f)
    {
       return table->erase(f);
    }
@@ -1304,8 +1294,8 @@ public:
       return table->erase_facet(reinterpret_cast<const fl_internal::facet&>(*where));
    }
 
-   template <typename Set>
-   iterator find(const GenericSet<Set, int, operations::cmp>& f) const
+   template <typename TSet>
+   iterator find(const GenericSet<TSet, int, operations::cmp>& f) const
    {
       const fl_internal::facet* facet=table->find_facet(f);
       return facet != NULL ? iterator(fl_internal::Table::iterator(facet)) : end();
@@ -1314,31 +1304,31 @@ public:
    typedef unary_transform_iterator<fl_internal::superset_iterator, operations::reinterpret<fl_internal::Facet> >
       superset_iterator;
 
-   template <typename Set>
-   superset_iterator findSupersets(const GenericSet<Set, int, operations::cmp>& f) const
+   template <typename TSet>
+   superset_iterator findSupersets(const GenericSet<TSet, int, operations::cmp>& f) const
    {
       return superset_iterator(table->findSupersets(f, false));
    }
 
-   template <typename Set>
+   template <typename TSet>
    class subset_iterator
-      : public unary_transform_iterator<fl_internal::subset_iterator<Set>, operations::reinterpret<fl_internal::Facet> > {
-      typedef unary_transform_iterator<fl_internal::subset_iterator<Set>, operations::reinterpret<fl_internal::Facet> > _super;
+      : public unary_transform_iterator<fl_internal::subset_iterator<TSet>, operations::reinterpret<fl_internal::Facet> > {
+      typedef unary_transform_iterator<fl_internal::subset_iterator<TSet>, operations::reinterpret<fl_internal::Facet> > base_t;
    public:
-      subset_iterator(const fl_internal::subset_iterator<Set>& it) : _super(it) {}
+      subset_iterator(const fl_internal::subset_iterator<TSet>& it) : base_t(it) {}
    };
 
-   template <typename Set>
-   subset_iterator<Set> findSubsets(const GenericSet<Set, int, operations::cmp>& f) const
+   template <typename TSet>
+   subset_iterator<TSet> findSubsets(const GenericSet<TSet, int, operations::cmp>& f) const
    {
-      return subset_iterator<Set>(table->findSubsets(f, True()));
+      return subset_iterator<TSet>(table->findSubsets(f, std::true_type()));
    }
 
    /** @brief Erase all supersets of a given set.
        @return the number of facets actually removed.
    */
-   template <typename Set>
-   int eraseSupersets(const GenericSet<Set, int, operations::cmp>& f)
+   template <typename TSet>
+   int eraseSupersets(const GenericSet<TSet, int, operations::cmp>& f)
    {
       return table->eraseSupersets(f, black_hole<int>());
    }
@@ -1347,8 +1337,8 @@ public:
        @param consumer an output iterator swallowing all erased facets or their IDs
        @return the number of facets actually removed.
    */
-   template <typename Set, typename Consumer>
-   int eraseSupersets(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
+   template <typename TSet, typename Consumer>
+   int eraseSupersets(const GenericSet<TSet, int, operations::cmp>& f, Consumer consumer)
    {
       return table->eraseSupersets(f, consumer);
    }
@@ -1356,8 +1346,8 @@ public:
    /** @brief Erase all subsets of a given set.
     *  @return the number of facets actually removed.
    */
-   template <typename Set>
-   int eraseSubsets(const GenericSet<Set, int, operations::cmp>& f)
+   template <typename TSet>
+   int eraseSubsets(const GenericSet<TSet, int, operations::cmp>& f)
    {
       return table->eraseSubsets(f, black_hole<int>());
    }
@@ -1366,8 +1356,8 @@ public:
     *  @param consumer an output iterator swallowing all erased facets or their IDs
     *  @return the number of facets actually removed.
    */
-   template <typename Set, typename Consumer>
-   int eraseSubsets(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
+   template <typename TSet, typename Consumer>
+   int eraseSubsets(const GenericSet<TSet, int, operations::cmp>& f, Consumer consumer)
    {
       return table->eraseSubsets(f, consumer);
    }
@@ -1378,10 +1368,10 @@ public:
     *
     *  @return @c true if the new facet was really included.
     */
-   template <typename Set>
-   bool insertMax(const GenericSet<Set, int, operations::cmp>& f)
+   template <typename TSet>
+   bool insertMax(const GenericSet<TSet, int, operations::cmp>& f)
    {
-      return table->insertMax(f, black_hole<int>(), True()) != NULL;
+      return table->insertMax(f, black_hole<int>(), std::true_type());
    }
 
    /** Add a new facet @em{if and only if} there are no facets included in it.
@@ -1389,10 +1379,10 @@ public:
     *
     *  @return @c true if the new facet was really included.
     */
-   template <typename Set>
-   bool insertMin(const GenericSet<Set, int, operations::cmp>& f)
+   template <typename TSet>
+   bool insertMin(const GenericSet<TSet, int, operations::cmp>& f)
    {
-      return table->insertMin(f, black_hole<int>(), True()) != NULL;
+      return table->insertMin(f, black_hole<int>(), std::true_type());
    }
 
    /** Add a new facet @em{if and only if} there are no facets including it.
@@ -1401,10 +1391,10 @@ public:
     *
     *  @return @c true if the new facet was really included.
     */
-   template <typename Set, typename Consumer>
-   bool insertMax(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
+   template <typename TSet, typename Consumer>
+   bool insertMax(const GenericSet<TSet, int, operations::cmp>& f, Consumer consumer)
    {
-      return table->insertMax(f, consumer, True()) != NULL;
+      return table->insertMax(f, consumer, std::true_type());
    }
 
    /** Add a new facet @em{if and only if} there are no facets included in it.
@@ -1413,58 +1403,58 @@ public:
     *
     *  @return @c true if the new facet was really included.
     */
-   template <typename Set, typename Consumer>
-   bool insertMin(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
+   template <typename TSet, typename Consumer>
+   bool insertMin(const GenericSet<TSet, int, operations::cmp>& f, Consumer consumer)
    {
-      return table->insertMin(f, consumer, True()) != NULL;
+      return table->insertMin(f, consumer, std::true_type());
    }
 
    /** Slightly optimized versions of @see insertMax.  Assumes that the
        @c FacetList object already has all columns corresponding to the vertices
        of a new facet, and therefore does not need to be expanded.
    */
-   template <typename Set>
-   bool replaceMax(const GenericSet<Set, int, operations::cmp>& f)
+   template <typename TSet>
+   bool replaceMax(const GenericSet<TSet, int, operations::cmp>& f)
    {
-      if (POLYMAKE_DEBUG || !Unwary<Set>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TSet>::value) {
          if (!set_within_range(f.top(), this->cols()))
             throw std::runtime_error("FacetList::replaceMax - invalid face");
       }
-      return table->insertMax(f, black_hole<int>(), False()) != NULL;
+      return table->insertMax(f, black_hole<int>(), std::false_type());
    }
 
    /** Slightly optimized versions of @see insertMin.  Assumes that the
        @c FacetList object already has all columns corresponding to the vertices
        of a new facet, and therefore does not need to be expanded.
    */
-   template <typename Set>
-   bool replaceMin(const GenericSet<Set, int, operations::cmp>& f)
+   template <typename TSet>
+   bool replaceMin(const GenericSet<TSet, int, operations::cmp>& f)
    {
-      if (POLYMAKE_DEBUG || !Unwary<Set>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TSet>::value) {
          if (!set_within_range(f.top(), this->cols()))
             throw std::runtime_error("FacetList::replaceMin - invalid face");
       }
-      return table->insertMin(f, black_hole<int>(), False()) != NULL;
+      return table->insertMin(f, black_hole<int>(), std::false_type());
    }
 
-   template <typename Set, typename Consumer>
-   bool replaceMax(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
+   template <typename TSet, typename Consumer>
+   bool replaceMax(const GenericSet<TSet, int, operations::cmp>& f, Consumer consumer)
    {
-      if (POLYMAKE_DEBUG || !Unwary<Set>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TSet>::value) {
          if (!set_within_range(f.top(), this->cols()))
             throw std::runtime_error("FacetList::replaceMax - invalid face");
       }
-      return table->insertMax(f, consumer, False()) != NULL;
+      return table->insertMax(f, consumer, std::false_type());
    }
 
-   template <typename Set, typename Consumer>
-   bool replaceMin(const GenericSet<Set, int, operations::cmp>& f, Consumer consumer)
+   template <typename TSet, typename Consumer>
+   bool replaceMin(const GenericSet<TSet, int, operations::cmp>& f, Consumer consumer)
    {
-      if (POLYMAKE_DEBUG || !Unwary<Set>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TSet>::value) {
          if (!set_within_range(f.top(), this->cols()))
             throw std::runtime_error("FacetList::replaceMin - invalid face");
       }
-      return table->insertMin(f, consumer, False()) != NULL;
+      return table->insertMin(f, consumer, std::false_type());
    }
 
    friend class Cols<FacetList>;
@@ -1488,10 +1478,10 @@ struct spec_object_traits<FacetList::LexOrdered>
    typedef FacetList masquerade_for;
 };
 
-template <typename Set>
-struct check_iterator_feature<FacetList::subset_iterator<Set>, end_sensitive> : True {};
-template <typename Set>
-struct check_iterator_feature<FacetList::subset_iterator<Set>, indexed> : True {};
+template <typename TSet>
+struct check_iterator_feature<FacetList::subset_iterator<TSet>, end_sensitive> : std::true_type {};
+template <typename TSet>
+struct check_iterator_feature<FacetList::subset_iterator<TSet>, indexed> : std::true_type {};
 
 } // end namespace pm
 

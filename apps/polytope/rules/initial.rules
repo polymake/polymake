@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -16,22 +16,16 @@
 object Cone {
 
    # A Cone defined by [[RAYS]] only gets a trivial [[LINEALITY_SPACE]] assigned.
-   rule initial : LINEALITY_SPACE : {
-      if (defined ($this->RAYS)) {
-         my $empty=new Matrix<Scalar>();
-         $this->LINEALITY_SPACE = $empty;
-      }
+   rule LINEALITY_SPACE : RAYS {
+      $this->LINEALITY_SPACE=new Matrix<Scalar>(0, $this->RAYS->cols);
    }
-   precondition : exists(RAYS);
+   weight 0.10;
 
    # A Cone defined by [[FACETS]] only gets a trivial [[LINEAR_SPAN]] assigned.
-   rule initial : LINEAR_SPAN : {
-      if (defined ($this->FACETS)) {
-         my $empty=new Matrix<Scalar>();
-         $this->LINEAR_SPAN = $empty;
-      }
+   rule LINEAR_SPAN : FACETS {
+      $this->LINEAR_SPAN=new Matrix<Scalar>(0, $this->FACETS->cols);
    }
-   precondition : exists(FACETS);
+   weight 0.10;
 
    # Defining a cone or polytope with one of the linear span/lineality properties only is not allowed
    # For the non-reduced properties [[INPUT_LINEALITY]] or [[EQUATIONS]] we require that [[INPUT_RAYS]] or [[INEQUALITIES]] are defined, resp.
@@ -47,17 +41,29 @@ object Cone {
    #   e.g. write [[VERTICES]]/[[LINEALITY_SPACE]] and [[AFFINE_HULL]], but not [[FACETS]]. 
    # * An initial rule checking for [[AFFINE_HULL]] without [[FACETS]] would erroneously make [[FACETS]] empty.
 
-   rule initial : INPUT_RAYS : {
+   rule initial : {
      croak("\ninvalid input: to define a linear or affine space you have to specify INPUT_RAYS/POINTS explicitely\nThis should be an empty matrix for an object of type Cone and a single point for an object of type Polytope");
 
    }
    precondition : exists(INPUT_LINEALITY);
+   precondition : !exists(INPUT_RAYS);
 
-   rule initial : INEQUALITIES : {
+   rule initial : {
      croak("\ninvalid input: to define a linear or affine space you have to specify INEQUALITIES explicitely\nThis should be an empty matrix for an object of type Cone and the single inequality [1,0,0,...] for an object of type Polytope");
 
    }
    precondition : exists(EQUATIONS);
+   precondition : !exists(INEQUALITIES);
+
+   rule CONE_AMBIENT_DIM : RAYS | FACETS | LINEAR_SPAN | LINEALITY_SPACE | INPUT_RAYS | INPUT_LINEALITY | INEQUALITIES | EQUATIONS {
+      my $d=0;
+      foreach (qw(RAYS FACETS LINEAR_SPAN LINEALITY_SPACE INPUT_RAYS INPUT_LINEALITY INEQUALITIES EQUATIONS)) {
+         my $m=$this->lookup($_);
+         last if defined($m) && ($d=$m->cols) > 0;
+      }
+      $this->CONE_AMBIENT_DIM=$d;
+   }
+   weight 0.1;
 
 }
 
@@ -69,75 +75,101 @@ function H_input_is_feasible(Polytope) {
 object Polytope {
 
    # A Polytope defined in terms of [[INEQUALITIES]] and/or [[EQUATIONS]] is checked for [[FEASIBLE]] right away.
-   # An infeasible one is replaced by the unique representation of the empty polytope.
-   rule initial : FEASIBLE : {
-      my $feasible = H_input_is_feasible($this);
-      if ($feasible) {
-         $this->FEASIBLE = 1;
-      } else {
-         my $empty=new Matrix<Scalar>();
-         my $cone_ambient_dim=$this->lookup("CONE_AMBIENT_DIM") // do {
-            my $M;
-            if (defined ($M=$this->lookup("INEQUALITIES")) && $M->cols > 0) {
-               $M->cols;
-            } else { # due to precondition EQUATIONS must be defined
-               $this->EQUATIONS->cols;
-            }
-         };
-         my $repl=new Core::Object::Replacement(VERTICES => $empty, FACETS => $empty, AFFINE_HULL => $empty,
-                                                LINEALITY_SPACE => $empty, CONE_DIM => 0, CONE_AMBIENT_DIM => $cone_ambient_dim,
-                                                FEASIBLE => 0);
-         foreach my $prop (qw(INEQUALITIES EQUATIONS INPUT_LINEALITY)) {
-            if (defined (my $val=$this->lookup($prop))) {
-               $repl->attach($prop, $val);
-            }
-         }
-         die $repl;
-      }
+   rule FEASIBLE : INEQUALITIES | EQUATIONS {
+      $this->FEASIBLE = H_input_is_feasible($this);
    }
-   precondition : exists(INEQUALITIES | EQUATIONS);
-
 
    # A Polytope defined by a non-empty set of [[VERTICES]] or [[POINTS]] is always [[FEASIBLE]].
-   # An infeasible one is replaced by the unique representation of the empty polytope.
-   rule initial : FEASIBLE : {
-      my $p=$this->VERTICES | POINTS;
-      if (defined $p) {
-         if ($p->rows > 0) {
-            $this->FEASIBLE = 1;
-         } else {
-            my $empty = $p;
-            my $cone_ambient_dim=$this->lookup("CONE_AMBIENT_DIM") // do {
-               my $M;
-               if (defined ($M=$this->lookup("INPUT_LINEALITY"))) {
-                  $M->cols;
+   rule FEASIBLE : VERTICES | POINTS {
+      $this->FEASIBLE = ($this->VERTICES | POINTS)->rows > 0;
+   }
+   weight 0.1;
+
+   rule FEASIBLE : { $this->FEASIBLE=1 }
+   precondition : defined(ONE_VERTEX | VALID_POINT);
+   weight 0.1;
+
+   # A Polytope defined by a non-empty set of [[FACETS]] is [[FEASIBLE]].
+   rule FEASIBLE : FACETS {
+      $this->FEASIBLE = $this->FACETS->rows > 0;
+   }
+   weight 0.1;
+
+}
+
+object Cone {
+
+   # Sanity checks for all initial properties related to coordinates
+
+   # first those for cones and polytopes
+   # the non-input properties might also be empty
+   rule initial: CONE_AMBIENT_DIM {
+      my $dim=$this->CONE_AMBIENT_DIM;
+      my $M;
+      foreach (qw(RAYS LINEALITY_SPACE FACETS LINEAR_SPAN INPUT_RAYS INPUT_LINEALITY INEQUALITIES EQUATIONS)) {
+         if (defined ($M = $this->lookup($_))) {
+            if ($M->cols != $dim) {
+               if ($M->rows==0 && $M->cols==0) {
+                  $this->take($_, new Matrix<Scalar>(0, $dim));
                } else {
-                  0
-               }
-            };
-            my $repl=new Core::Object::Replacement(VERTICES => $empty, FACETS => $empty, AFFINE_HULL => $empty,
-                                                   LINEALITY_SPACE => $empty, CONE_DIM => 0, CONE_AMBIENT_DIM => $cone_ambient_dim,
-                                                   FEASIBLE => 0);
-            foreach my $prop (qw(INPUT_LINEALITY)) {
-               if (defined (my $val=$this->lookup($prop))) {
-                  $repl->attach($prop, $val);
+                  die "dimension mismatch between $_ and CONE_AMBIENT_DIM\n";
                }
             }
-            die $repl;
          }
       }
    }
-   precondition : exists(VERTICES | POINTS);
+   precondition : exists(RAYS | LINEALITY_SPACE | FACETS | LINEAR_SPAN | INPUT_RAYS | INPUT_LINEALITY | INEQUALITIES | EQUATIONS);
 
-
-   # A Polytope defined by a non-empty set of [[FACETS]] is [[FEASIBLE]].
-   rule initial : FEASIBLE : {
-      my $f=$this->FACETS;
-      if (defined $f) {
-         $this->FEASIBLE = $f->rows > 0;
+   rule initial: CONE_AMBIENT_DIM {
+      my $dim=$this->CONE_AMBIENT_DIM;
+      my $A;
+      foreach (qw(COORDINATE_LABELS)) {
+         if (defined ($A = $this->lookup($_)) && $A->size != $dim) {
+            die "size mismatch between $_ and CONE_AMBIENT_DIM\n";
+         }
       }
    }
-   precondition : exists(FACETS);
+   precondition : exists(COORDINATE_LABELS);
+}
+
+
+object Polytope {
+
+   # sanity checks which apply only to polytopes
+
+   rule initial: CONE_AMBIENT_DIM {
+      my $dim=$this->CONE_AMBIENT_DIM;
+      my $V;
+      foreach (qw(VALID_POINT ONE_VERTEX)) {
+         if (defined ($V = $this->lookup($_)) && $V->dim != $dim) {
+            die "dimension mismatch between $_ and CONE_AMBIENT_DIM\n";
+         }
+      }
+   }
+   precondition : exists(VALID_POINT | ONE_VERTEX);
+
+
+   # Unique representation of infeasible polytopes
+
+   rule FACETS, AFFINE_HULL, CONE_DIM : CONE_AMBIENT_DIM {
+      my $dim=$this->CONE_AMBIENT_DIM;
+      my $empty=new Matrix<Scalar>(0, $dim);
+      $this->FACETS = $empty;
+      $this->AFFINE_HULL = $empty;
+      $this->CONE_DIM = 0;
+   }
+   precondition : !FEASIBLE;
+   weight 0.10;
+
+   rule VERTICES, LINEALITY_SPACE, CONE_DIM : CONE_AMBIENT_DIM {
+      my $dim=$this->CONE_AMBIENT_DIM;
+      my $empty=new Matrix<Scalar>(0, $dim);
+      $this->VERTICES = $empty;
+      $this->LINEALITY_SPACE = $empty;
+      $this->CONE_DIM = 0;
+   }
+   precondition : !FEASIBLE;
+   weight 0.10;
 
 }
 

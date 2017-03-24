@@ -15,52 +15,56 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/graph/HasseDiagram.h"
+#include "polymake/PowerSet.h"
+#include "polymake/graph/Lattice.h"
+#include "polymake/graph/Decoration.h"
+#include "polymake/graph/lattice_migration.h"
 
 namespace polymake { namespace polytope {
-namespace {
 
-template <typename Iterator> inline
-void fill_graph(Graph<>& G, Iterator vertex_set_i, int first_vertex)
+template <typename Decoration, typename SeqType>
+Graph<> vertex_graph(perl::Object HD_obj)
 {
-   for (; !vertex_set_i.at_end(); ++vertex_set_i)
-      G.edge(vertex_set_i->front() - first_vertex,
-             vertex_set_i->back() - first_vertex);
-}
-}
-
-Graph<> vertex_graph_from_face_lattice(perl::Object HD_obj)
-{
-   const graph::HasseDiagram HD(HD_obj);
-   if (HD.dim()<0) return Graph<>(0);
-   const graph::HasseDiagram::nodes_of_dim_set vertex_nodes=HD.nodes_of_dim(0);
-   Graph<> G(vertex_nodes.size());
+   const graph::Lattice<Decoration, SeqType> HD(HD_obj);
+   const int hd_rank = HD.rank();
+   if (hd_rank<=0) return Graph<>(0);
+   Graph<> G(HD.nodes_of_rank(1).size());
 
    // vertex sets stored by the polytope edge faces (dim==1)
    // are exactly the vertex pairs we need for the graph
-   if(HD.dim() > 0) {
-      fill_graph(G, entire(select(HD.faces(), HD.nodes_of_dim(1))), 0);
+   if(hd_rank > 1) {
+      for(auto f_it = entire(attach_member_accessor(select(HD.decoration(), HD.nodes_of_rank(2)), ptr2type<graph::lattice::BasicDecoration, Set<int>, &graph::lattice::BasicDecoration::face>())); !f_it.at_end(); ++f_it) {
+         G.edge(f_it->front(), f_it->back());
+      }
    }
    return G;
 }
 
-Graph<> facet_graph_from_face_lattice(perl::Object HD_obj)
+template <typename Decoration, typename SeqType>
+Graph<> facet_graph(perl::Object HD_obj)
 {
-   const graph::HasseDiagram HD(HD_obj);
-   if (HD.dim()<0) return Graph<>(0);
-   const graph::HasseDiagram::nodes_of_dim_set facet_nodes=HD.nodes_of_dim(-1);
+   const graph::Lattice<Decoration, SeqType> HD(HD_obj);
+   const int hd_rank = HD.rank();
+   if (hd_rank<=0) return Graph<>(0);
+   const typename graph::Lattice<Decoration, SeqType>::nodes_of_rank_type facet_nodes = HD.nodes_of_rank(hd_rank-1);
    Graph<> G(facet_nodes.size());
 
    // the node numbers of the polytope facets (which are neighbors of the ridge faces, dim==-2)
    // relate to the whole Hasse diagram graph!
-   if(HD.dim() > 0) {
-      fill_graph(G, entire(select(rows(adjacency_matrix(HD.graph())), HD.nodes_of_dim(-2))), facet_nodes.front());
+   int node_shift = facet_nodes.front();
+   if(hd_rank > 1) {
+      for(auto f_it = entire(select(rows(adjacency_matrix(HD.graph())), HD.nodes_of_rank(hd_rank-2)));
+            !f_it.at_end(); ++f_it) {
+         if(f_it->size() > 1)
+            for(auto pair_it = entire(all_subsets_of_k(*f_it,2)); !pair_it.at_end(); ++pair_it)
+               G.edge( pair_it->front() - node_shift, pair_it->back() - node_shift);
+      }
    }
    return G;
 }
 
-Function4perl(&vertex_graph_from_face_lattice, "vertex_graph(FaceLattice)");
-Function4perl(&facet_graph_from_face_lattice, "facet_graph(FaceLattice)");
+FunctionTemplate4perl("vertex_graph<Decoration,SeqType>(Lattice<Decoration, SeqType>)");
+FunctionTemplate4perl("facet_graph<Decoration,SeqType>(Lattice<Decoration, SeqType>)");
 
 } }
 

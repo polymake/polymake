@@ -14,18 +14,18 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/Rational.h"
-#include "polymake/Matrix.h"
-#include "polymake/IncidenceMatrix.h"
 #include "polymake/Array.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
+#include "polymake/Rational.h"
 #include "polymake/Set.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1, typename T2>
-   FunctionInterface4perl( secondary_cone_T_X_X_o, T0,T1,T2 ) {
+   FunctionInterface4perl( secondary_cone_ineq_T_X_X_o, T0,T1,T2 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      WrapperReturn( (secondary_cone<T0>(arg0.get<T1>(), arg1.get<T2>(), arg2)) );
+      WrapperReturn( (secondary_cone_ineq<T0>(arg0.get<T1>(), arg1.get<T2>(), arg2)) );
    };
 
    template <typename T0, typename T1>
@@ -40,20 +40,20 @@ namespace polymake { namespace polytope { namespace {
       WrapperReturn( (is_regular<T0>(arg0.get<T1>(), arg1, arg2)) );
    };
 
-   FunctionWrapper4perl( std::pair<bool, pm::Vector<pm::Rational> > (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, perl::OptionSet) ) {
+   FunctionWrapper4perl( std::pair<bool, pm::Vector<pm::Rational> > (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>> const&, perl::OptionSet) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
       IndirectWrapperReturn( arg0.get< perl::TryCanned< const Matrix< Rational > > >(), arg1.get< perl::TryCanned< const Array< Set< int > > > >(), arg2 );
    }
-   FunctionWrapperInstance4perl( std::pair<bool, pm::Vector<pm::Rational> > (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, perl::OptionSet) );
+   FunctionWrapperInstance4perl( std::pair<bool, pm::Vector<pm::Rational> > (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>> const&, perl::OptionSet) );
 
-   FunctionWrapper4perl( perl::Object (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, perl::OptionSet) ) {
+   FunctionWrapper4perl( perl::Object (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>> const&, perl::OptionSet) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
       IndirectWrapperReturn( arg0.get< perl::TryCanned< const Matrix< Rational > > >(), arg1.get< perl::TryCanned< const Array< Set< int > > > >(), arg2 );
    }
-   FunctionWrapperInstance4perl( perl::Object (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, perl::OptionSet) );
+   FunctionWrapperInstance4perl( perl::Object (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>> const&, perl::OptionSet) );
 
-   FunctionInstance4perl(secondary_cone_T_X_X_o, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< Set< int > > >);
    FunctionInstance4perl(regularity_lp_T_X_x_o, Rational, perl::Canned< const Matrix< Rational > >);
    FunctionInstance4perl(is_regular_T_X_x_o, Rational, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(secondary_cone_ineq_T_X_X_o, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< Set< int > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -35,7 +35,7 @@ namespace polymake { namespace polytope { namespace {
 
    FunctionInstance4perl(binomial_to_power_basis_X, perl::Canned< const Vector< Rational > >);
    FunctionInstance4perl(power_to_binomial_basis_X, perl::Canned< const Vector< Rational > >);
-   FunctionInstance4perl(binomial_to_power_basis_X, perl::Canned< const pm::IndexedSlice<pm::Vector<pm::Integer> const&, pm::Series<int, true>, void> >);
-   FunctionInstance4perl(power_to_binomial_basis_X, perl::Canned< const pm::IndexedSlice<pm::Vector<pm::Rational> const&, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(binomial_to_power_basis_X, perl::Canned< const pm::IndexedSlice<pm::Vector<pm::Integer> const&, pm::Series<int, true>> >);
+   FunctionInstance4perl(power_to_binomial_basis_X, perl::Canned< const pm::IndexedSlice<pm::Vector<pm::Rational> const&, pm::Series<int, true>> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

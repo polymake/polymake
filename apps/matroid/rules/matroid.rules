@@ -13,35 +13,11 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-# @category Other
-# calculate the internal activity of a base with respect to a given ordering of all bases.
-# Let the given base B = B_j be the j-th one in the given ordering B_1, B_2, ...
-# The internal activity of B_j is the number of "necessary" elements in B_j, 
-# i.e., the number of elements i in B_j such that B_j - {i} is not a subset of any B_k, k<j.
-# @return Int
-user_function internal_activity(Set<Int>, Array<Set<Int>>) {
-   my ($B, $bases) = @_;
-   my $activity = $B->size();
-   foreach my $r (all_subsets_of_k($B->size()-1, @{$B})) {
-      my $ridge = new Set($r);
-      foreach my $basis (@{$bases}) {
-         if ($basis == $B) {
-            last;
-         }
-         if (incl($ridge,$basis) < 0) {
-            $activity--;
-            last;
-         }
-      }
-   }
-   return $activity;
-}
-
 object Matroid {
 
 rule RANK : BASES {
   $this->RANK = $this->BASES->[0]->size();
-} 
+}
 weight 0.1;
 
 rule BASES, N_BASES, RANK, N_ELEMENTS : VECTORS {
@@ -64,12 +40,27 @@ rule BASES, N_BASES, RANK : LATTICE_OF_FLATS, N_ELEMENTS {
 }
 weight 4.50;
 
-rule POLYTOPE.VERTICES, POLYTOPE.CONE_AMBIENT_DIM : BASES, N_ELEMENTS {
+rule POLYTOPE.CONE_AMBIENT_DIM : N_ELEMENTS {
+   $this->POLYTOPE->CONE_AMBIENT_DIM = $this->N_ELEMENTS+1;
+}
+weight 0.10;
+
+rule POLYTOPE.FEASIBLE : N_BASES {
+   $this->POLYTOPE->FEASIBLE = $this->N_BASES > 0;
+}
+weight 0.10;
+
+rule POLYTOPE.BOUNDED : {
+   $this->POLYTOPE->BOUNDED = 1;
+}
+weight 0.10;
+
+rule POLYTOPE.VERTICES, POLYTOPE.CONE_AMBIENT_DIM, POLYTOPE.FEASIBLE, POLYTOPE.BOUNDED : BASES, N_ELEMENTS {
    polytope::matroid_polytope($this)
 }
 weight 1.12;
 
-rule POLYTOPE.VERTICES, POLYTOPE.CONE_AMBIENT_DIM, POLYTOPE.INEQUALITIES, POLYTOPE.EQUATIONS : BASES, N_ELEMENTS, RANK, CONNECTED, LATTICE_OF_FLATS {
+rule POLYTOPE.VERTICES, POLYTOPE.CONE_AMBIENT_DIM, POLYTOPE.INEQUALITIES, POLYTOPE.EQUATIONS, POLYTOPE.FEASIBLE, POLYTOPE.BOUNDED: BASES, N_ELEMENTS, RANK, CONNECTED, LATTICE_OF_FLATS {
    polytope::matroid_polytope($this, inequalities=>1)
 }
 precondition : CONNECTED;
@@ -84,7 +75,7 @@ precondition : NON_BASES {
 weight 0.1;
 
 rule BASES : RANK, N_ELEMENTS {
-   $this->BASES=new Set<Set>(all_subsets_of_k($this->RANK, 0..$this->N_ELEMENTS-1));
+   $this->BASES=new Set<Set>([all_subsets_of_k($this->RANK, 0..$this->N_ELEMENTS-1)]);
 }
 precondition : NON_BASES {
    $this->NON_BASES->size() == 0;
@@ -109,19 +100,8 @@ rule CIRCUITS : BASES, N_ELEMENTS {
 }
 weight 4.10;
 
-rule COCIRCUITS : BASES, N_ELEMENTS {
-   $this->COCIRCUITS = bases_to_cocircuits($this->BASES, $this->N_ELEMENTS);
-}
-weight 4.10;
-
-
 rule BASES : CIRCUITS, N_ELEMENTS {
    $this->BASES = circuits_to_bases($this->CIRCUITS, $this->N_ELEMENTS);
-}
-weight 4.10;
-
-rule BASES : COCIRCUITS, N_ELEMENTS {
-   $this->BASES = cocircuits_to_bases($this->COCIRCUITS, $this->N_ELEMENTS);
 }
 weight 4.10;
 
@@ -135,13 +115,13 @@ rule MATROID_HYPERPLANES : CIRCUITS, N_ELEMENTS, RANK {
 }
 weight 3.10;
 
-rule BASES : COCIRCUITS, N_ELEMENTS, RANK {
-   $this->BASES = cocircuits_to_bases_rank($this->COCIRCUITS, $this->N_ELEMENTS, $this->RANK);
+rule N_MATROID_HYPERPLANES : MATROID_HYPERPLANES {
+    $this->N_MATROID_HYPERPLANES = $this->MATROID_HYPERPLANES->size();
 }
-weight 3.10;
+weight 0.10;
 
-rule LOOPS, COLOOPS : BASES, N_ELEMENTS {
-    loops_coloops($this);
+rule LOOPS : BASES, N_ELEMENTS {
+    loops($this);
 }
 weight 1.10;
 
@@ -155,24 +135,15 @@ rule N_CIRCUITS : CIRCUITS {
 }
 weight 0.1;
 
-rule N_COCIRCUITS : COCIRCUITS {
-   $this->N_COCIRCUITS = $this->COCIRCUITS->size();
-}
-weight 0.1;
-
 rule N_LOOPS : LOOPS {
    $this->N_LOOPS = $this->LOOPS->size();
 }
 weight 0.1;
 
-rule N_COLOOPS : COLOOPS {
-   $this->N_COLOOPS = $this->COLOOPS->size();
-}
-weight 0.1;
 
 rule BASES, MAXIMAL_TRANSVERSAL_PRESENTATION : N_ELEMENTS, TRANSVERSAL_PRESENTATION {
    #Create bipartite graph from edges
-   # Elements from the ground set are nodes 0,..,n-1. 
+   # Elements from the ground set are nodes 0,..,n-1.
    # Sets from the set system are nodes n,..,n+k
    my @edges = ();
    my $n = $this->N_ELEMENTS;
@@ -188,66 +159,94 @@ rule BASES, MAXIMAL_TRANSVERSAL_PRESENTATION : N_ELEMENTS, TRANSVERSAL_PRESENTAT
    my $maxverts = new Matrix<Rational>($p->VERTICES->minor($p->LP->MAXIMAL_FACE,~[0]));
    my @basislist = map { new Set<Int>(map {  min(@{$g->EDGES->[$_]}) } @{support($_)}) } @{rows($maxverts)};
    #Need to make the list of bases irredundant, some might occur multiple times
-   $this->BASES = new Array<Set<Int> >( new Set<Set<Int> >(\@basislist));
+   $this->BASES = new Array<Set<Int>>( new Set<Set<Int>>(\@basislist));
    if($maxverts->rows() > 0) {
       my $one_matching = new Set<Int>( map { max(@{$g->EDGES->[$_]}) - $n} @{support($maxverts->row(0))});
-      $this->MAXIMAL_TRANSVERSAL_PRESENTATION = 
-      maximal_transversal_presentation($n,$this->BASES,$tp, $one_matching); 
+      $this->MAXIMAL_TRANSVERSAL_PRESENTATION =
+      maximal_transversal_presentation($n,$this->BASES,$tp, $one_matching);
    }
    else {
       $this->MAXIMAL_TRANSVERSAL_PRESENTATION = new IncidenceMatrix(0,$this->N_ELEMENTS);
    }
 }
 weight 2.10;
+precondition : defined(TRANSVERSAL_PRESENTATION);
 
-rule PAVING : CIRCUITS, RANK {
-    $this->PAVING=($this->RANK<=minimum([map{$_->size()}@{$this->CIRCUITS}]));
+rule TRANSVERSAL : {
+   $this->TRANSVERSAL = 1;
+}
+weight 0.10;
+precondition : defined(TRANSVERSAL_PRESENTATION | MAXIMAL_TRANSVERSAL_PRESENTATION);
+
+rule TRANSVERSAL, TRANSVERSAL_PRESENTATION : N_ELEMENTS, RANK, LOOPS, LATTICE_OF_FLATS, LATTICE_OF_CYCLIC_FLATS {
+   my @a = check_transversality($this);
+   $this->TRANSVERSAL = $a[0];
+   if($a[0]) {
+      $this->TRANSVERSAL_PRESENTATION = $a[1];
+   }
+   else {
+      $this->TRANSVERSAL_PRESENTATION = new Array<Set<Int>>();
+   }
+}
+weight 2.10;
+
+rule TRANSVERSAL, MAXIMAL_TRANSVERSAL_PRESENTATION : LATTICE_OF_CYCLIC_FLATS {
+   $this->TRANSVERSAL = 1;
+   $this->MAXIMAL_TRANSVERSAL_PRESENTATION = nested_presentation($this);
+}
+weight 1.10;
+precondition : NESTED;
+
+rule NESTED : LATTICE_OF_CYCLIC_FLATS {
+   $this->NESTED = is_nested_matroid($this);
 }
 weight 1.10;
 
-rule BINARY, BINARY_VECTORS, TERNARY, TERNARY_VECTORS : BASES, NON_BASES, N_ELEMENTS, RANK {
-    finite_representation($this);
+rule SIMPLE : CIRCUITS {
+    $this->SIMPLE = 1;
+    foreach (@{$this->CIRCUITS}){
+        if($_->size() < 3){
+            $this->SIMPLE = 0;
+            last;
+        }
+    }
+}
+weight 1.10;
+
+rule PAVING : CIRCUITS, RANK {
+    $this->PAVING=( $this->CIRCUITS->size() == 0 or $this->RANK<=minimum([map{$_->size()}@{$this->CIRCUITS}]));
+}
+weight 1.10;
+
+
+
+rule BINARY, BINARY_VECTORS : BASES, N_ELEMENTS, RANK {
+    binary_representation($this);
 }
 weight 2.10;
+
+rule TERNARY, TERNARY_VECTORS : BASES, N_ELEMENTS, RANK {
+    ternary_representation($this);
+}
+weight 5.10;
 
 rule REGULAR : BINARY, TERNARY {
     $this->REGULAR=$this->BINARY && $this->TERNARY; # See [Oxley:matroid theory (2nd ed.) Thm. 6.6.3]
 }
-precondition :  defined(TERNARY);
 weight 0.1;
 
 rule VECTORS : BINARY_VECTORS, TERNARY_VECTORS {
-    $this->VECTORS=3*($this->BINARY_VECTORS)-2*($this->TERNARY_VECTORS); #this rule is based on the specific computation in finite_representation
+   #Normalize such that entries 0,1(,2) are used for binary/ternary rep
+   my $normalized_ternary = new Matrix( [ map { [map {$_ % 3} @{$_}]} @{rows($this->TERNARY_VECTORS)}]);
+   my $normalized_binary  = new Matrix( [ map { [map {$_ % 2} @{$_}]} @{rows($this->BINARY_VECTORS)}]);
+   $this->VECTORS=3*($normalized_binary)-2*($normalized_ternary);
 }
 precondition : REGULAR;
-weight 0.1;
+weight 1.10;
 
-rule TUTTE_POLYNOMIAL: LOOPS, COLOOPS, BASES, N_ELEMENTS {
-    my $ring=new Ring(qw(x y));
-    my $n=$this->N_ELEMENTS;
-    my $tutte=new Polynomial($ring,"1");
-    my $matroid=$this;
-    if($this->LOOPS->size()>0){
-        $tutte=new Polynomial($ring,"x^".$this->LOOPS->size());
-        $n=$n-$this->LOOPS->size();
-        my @temp=@{$this->LOOPS};
-        for(my $i=$this->LOOPS->size()-1;$i>=0;--$i){
-            $matroid=deletion($matroid,$temp[$i]);
-        }
-    }
-    my $newthis=$matroid;
-    if($this->COLOOPS->size()>0){
-            $tutte=$tutte*new Polynomial($ring,"y^".$this->COLOOPS->size());
-        $n=$n-$this->COLOOPS->size();
-        my @temp=@{$newthis->COLOOPS};
-        for(my $i=$this->COLOOPS->size()-1;$i>=0;--$i){
-            $matroid=contraction($matroid,$temp[$i]);
-        }
-    }
-    if($n>0){
-        $tutte=$tutte*(deletion($matroid,0)->TUTTE_POLYNOMIAL+contraction($matroid,0)->TUTTE_POLYNOMIAL);
-    }
-    $this->TUTTE_POLYNOMIAL=$tutte;
+rule TUTTE_POLYNOMIAL: CIRCUITS, N_ELEMENTS {
+    $this->TUTTE_POLYNOMIAL = tutte_polynomial_from_circuits( $this->N_ELEMENTS,
+                                                              $this->CIRCUITS);
 }
 weight 5.10;
 
@@ -257,11 +256,11 @@ rule BETA_INVARIANT : TUTTE_POLYNOMIAL {
     for(my $i=0;$i<$this->TUTTE_POLYNOMIAL->monomials_as_matrix->rows();++$i){
         if($this->TUTTE_POLYNOMIAL->monomials_as_matrix->row($i)==new Vector("1 0")){
            $beta = new Integer($this->TUTTE_POLYNOMIAL->coefficients_as_vector->[$i]);
+           last;
         }
     }
     $this->BETA_INVARIANT=$beta;
 }
-precondition :  N_ELEMENTS { $this->N_ELEMENTS>1 };
 weight 1.10;
 
 rule SERIES_PARALLEL, CONNECTED : BETA_INVARIANT { # See [David Speyer:tropical linear spaces prop. 6.3]
@@ -278,8 +277,24 @@ rule SERIES_PARALLEL, CONNECTED : BETA_INVARIANT { # See [David Speyer:tropical 
    }
 }
 weight 0.1;
+precondition : N_ELEMENTS {
+   $this->N_ELEMENTS >= 2;
+}
 
-rule LATTICE_OF_FLATS : MATROID_HYPERPLANES, N_ELEMENTS {
+rule SERIES_PARALLEL : {
+   $this->SERIES_PARALLEL = $this->N_ELEMENTS;
+}
+weight 0.10;
+precondition : N_ELEMENTS {
+   $this->N_ELEMENTS <= 1;
+}
+
+rule UNIFORM : N_ELEMENTS, RANK, N_BASES {
+   $this->UNIFORM = ( $this->N_BASES == binomial( $this->N_ELEMENTS, $this->RANK));
+}
+weight 0.10;
+
+rule LATTICE_OF_FLATS.ADJACENCY, LATTICE_OF_FLATS.DECORATION, LATTICE_OF_FLATS.INVERSE_RANK_MAP, LATTICE_OF_FLATS.TOP_NODE, LATTICE_OF_FLATS.BOTTOM_NODE : MATROID_HYPERPLANES, N_ELEMENTS, RANK {
 	my $hy;
 	#A rank-0-matroid has no hyperplanes, so we need to treat this separately
 	if($this->MATROID_HYPERPLANES->size() == 0) {
@@ -289,29 +304,83 @@ rule LATTICE_OF_FLATS : MATROID_HYPERPLANES, N_ELEMENTS {
 		#If the empty set is a hyperplane, we need to tell the incidence matrix its dimension.
 		$hy=new IncidenceMatrix<NonSymmetric>(@{$this->MATROID_HYPERPLANES}, $this->N_ELEMENTS);
 	}
-	$this->LATTICE_OF_FLATS = lattice_of_flats($hy);
+	$this->LATTICE_OF_FLATS = lattice_of_flats($hy, $this->RANK);
 }
 weight 6.20;
 
-rule SPLITTING_FLACETS : N_ELEMENTS, RANK, POLYTOPE.FACETS {
-    splitting_flacets($this);
+rule MATROID_HYPERPLANES, N_ELEMENTS, RANK : LATTICE_OF_FLATS {
+   my $lof = $this->LATTICE_OF_FLATS;
+   $this->N_ELEMENTS = $lof->FACES->[$lof->TOP_NODE]->size();
+   my $rank = $this->LATTICE_OF_FLATS->rank();
+   $this->RANK = max(0,$rank);
+   if($rank  <= 0 ) {
+      $this->MATROID_HYPERPLANES = new Array<Set<Int>>();
+   }
+   else {
+      $this->MATROID_HYPERPLANES = new Array<Set<Int>> ([
+         map {$lof->FACES->[$_]} @{$lof->nodes_of_rank($rank-1)}
+         ]);
+   }
 }
-precondition : CONNECTED;
+weight 1.10;
+incurs HyperplanePerm;
+
+rule N_FLATS : LATTICE_OF_FLATS {
+   $this->N_FLATS = $this->LATTICE_OF_FLATS->N_NODES;
+}
+weight 0.10;
+
+rule LATTICE_OF_CYCLIC_FLATS.ADJACENCY, LATTICE_OF_CYCLIC_FLATS.DECORATION, LATTICE_OF_CYCLIC_FLATS.INVERSE_RANK_MAP, LATTICE_OF_CYCLIC_FLATS.TOP_NODE, LATTICE_OF_CYCLIC_FLATS.BOTTOM_NODE : LATTICE_OF_FLATS, CIRCUITS, RANK {
+   $this->LATTICE_OF_CYCLIC_FLATS = lattice_of_cyclic_flats($this);
+}
+weight 6.20;
+
+rule N_CYCLIC_FLATS : LATTICE_OF_CYCLIC_FLATS {
+   $this->N_CYCLIC_FLATS = $this->LATTICE_OF_CYCLIC_FLATS->N_NODES;
+}
+weight 0.10;
+
+rule BASES, RANK : LATTICE_OF_CYCLIC_FLATS, N_ELEMENTS {
+   my $loc = $this->LATTICE_OF_CYCLIC_FLATS;
+   $this->RANK = $loc->rank() + $this->N_ELEMENTS - $loc->DECORATION->[$loc->TOP_NODE]->face->size();
+   $this->BASES = bases_from_cyclic_flats($this->N_ELEMENTS, $this->RANK, $loc);
+}
+weight 6.10;
+
+rule SPLIT_FLACETS : N_ELEMENTS, RANK, POLYTOPE.FACETS, POLYTOPE.AFFINE_HULL, CONNECTED_COMPONENTS {
+    split_flacets($this);
+}
+weight 2.10;
+
+rule SPLIT : SPLIT_FLACETS, CONNECTED_COMPONENTS, CIRCUITS {
+    $this->SPLIT=split_compatibility_check($this);
+}
+weight 2.10;
+
+
+
 
 rule CONNECTED_COMPONENTS : CIRCUITS, N_ELEMENTS{
     $this->CONNECTED_COMPONENTS = connected_components_from_circuits($this->CIRCUITS, $this->N_ELEMENTS);
 }
 weight 1.10;
 
-rule CONNECTED_COMPONENTS : COCIRCUITS, N_ELEMENTS{
-    $this->CONNECTED_COMPONENTS = connected_components_from_circuits($this->COCIRCUITS, $this->N_ELEMENTS);
-}
-weight 1.10;  
 
-rule CONNECTED : CONNECTED_COMPONENTS {
-   $this->CONNECTED= ($this->CONNECTED_COMPONENTS->size() <= 1);
+
+rule CONNECTED : N_CONNECTED_COMPONENTS {
+   $this->CONNECTED = ($this->N_CONNECTED_COMPONENTS <= 1);
 }
 weight 0.1;
+
+rule N_CONNECTED_COMPONENTS : CONNECTED_COMPONENTS {
+   $this->N_CONNECTED_COMPONENTS = $this->CONNECTED_COMPONENTS->size();
+}
+weight 0.1;
+
+rule LAMINAR : CIRCUITS, LATTICE_OF_FLATS {
+   $this->LAMINAR = is_laminar_matroid($this);
+}
+weight 2.10;
 
 rule H_VECTOR : BASES, RANK {
    my $bases = $this->BASES;
@@ -364,6 +433,45 @@ rule BASES : REVLEX_BASIS_ENCODING, RANK, N_ELEMENTS {
     $this->BASES = bases_from_revlex_encoding($this->REVLEX_BASIS_ENCODING, $this->RANK, $this->N_ELEMENTS);
 }
 
+rule N_AUTOMORPHISMS = AUTOMORPHISM_GROUP.ORDER;
+
+rule CATENARY_G_INVARIANT : LATTICE_OF_FLATS, RANK {
+   $this->CATENARY_G_INVARIANT = catenary_g_invariant($this);
+}
+weight 3.10;
+
+rule G_INVARIANT : N_ELEMENTS, CATENARY_G_INVARIANT {
+   $this->G_INVARIANT = g_invariant_from_catenary($this->N_ELEMENTS, $this->CATENARY_G_INVARIANT);
+}
+weight 3.10;
+
+## USER METHODS ###
+
+# The following four are mainly for backwards compat and convenience, since cocircuits and coloops
+# are common terms. However, we want to avoid duplicating data.
+
+# @category Axiom systems
+user_method COCIRCUITS {
+   return shift->DUAL->CIRCUITS;
+}
+
+# @category Enumerative properties
+user_method N_COCIRCUITS {
+   return shift->DUAL->N_CIRCUITS;
+}
+
+# @category Axiom systems
+user_method COLOOPS {
+   return shift->DUAL->LOOPS;
+}
+
+# @category Enumerative properties
+user_method N_COLOOPS {
+   return shift->DUAL->N_LOOPS;
+}
+
+
+# @category Axiom systems
 # calculate the rank of a set with respect to a given matroid
 # @return Int
 user_method rank(Set) {
@@ -376,7 +484,55 @@ user_method rank(Set) {
    return $rk;
 }
 
+# @category Advanced properties
+# @param Matroid M
+# @return Bool Whether this matroid is isomorphic to M
+user_method is_isomorphic_to(Matroid) {
+   my ($self, $M) = @_;
+   my $result = eval {
+      find_row_col_permutation( (new IncidenceMatrix($self->BASES)), (new IncidenceMatrix($M->BASES)));
+   };
+   return defined($result);
 }
+
+}
+
+# @category Producing a matroid from matroids
+# Produces the __dual__ of a given matroid //m//.
+# Not quite the same as calling m->[[DUAL]]. The latter returns a subobject and properties of this subobject
+# are only computed upon demand.
+# This function returns the dual as an independent object by computing its [[BASES]].
+# @param Matroid m"
+# @return Matroid"
+user_function dual(Matroid) {
+   my $m = shift;
+   return new Matroid(N_ELEMENTS=>$m->N_ELEMENTS, BASES=>$m->DUAL->BASES);
+}
+
+# @category Other
+# calculate the internal activity of a base with respect to a given ordering of all bases.
+# Let the given base B = B_j be the j-th one in the given ordering B_1, B_2, ...
+# The internal activity of B_j is the number of "necessary" elements in B_j,
+# i.e., the number of elements i in B_j such that B_j - {i} is not a subset of any B_k, k<j.
+# @return Int
+user_function internal_activity(Set<Int>, Array<Set<Int>>) {
+   my ($B, $bases) = @_;
+   my $activity = $B->size();
+   foreach my $r (all_subsets_of_k($B->size()-1, @{$B})) {
+      my $ridge = new Set($r);
+      foreach my $basis (@{$bases}) {
+         if ($basis == $B) {
+            last;
+         }
+         if (incl($ridge,$basis) < 0) {
+            $activity--;
+            last;
+         }
+      }
+   }
+   return $activity;
+}
+
 
 # Local Variables:
 # mode: perl

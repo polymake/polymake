@@ -23,7 +23,6 @@
 // polymake includes
 #include "polymake/client.h"
 #include "polymake/Map.h"
-// #include "polymake/Polynomial.h"
 
 namespace polymake { 
 namespace ideal {

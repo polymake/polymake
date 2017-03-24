@@ -24,7 +24,7 @@ object Cone {
 
 property FLAG_VECTOR : Vector<Integer>;
 
-rule FLAG_VECTOR : HASSE_DIAGRAM, COMBINATORIAL_DIM {
+rule FLAG_VECTOR : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE, COMBINATORIAL_DIM {
   # FIXME temporary fix for #322: HASSE_DIAGRAM has wrong dimensions for points and empty polytopes
     my $d=$this->COMBINATORIAL_DIM;
   if ( $d <= 0 ) {
@@ -126,6 +126,7 @@ sub recursive_n_flags {
 # //type// must belong to {0,...,[[COMBINATORIAL_DIM]]-1}.
 # Example: "N_FLAGS(0,3,4)" determines the entry f<sub>034</sub> of the flag vector.
 # @param Int type ... flag type
+# @return Int
 user_method N_FLAGS {
    my $self=shift;
    my @set=num_sorted_uniq(sort {$b <=> $a} @_);        # in descending order
@@ -315,7 +316,7 @@ sub monomial_string {
 
 # @category Combinatorics
 # Prettily print the cd-index given in [[CD_INDEX_COEFFICIENTS]]
-
+# @return String
 user_method CD_INDEX() {
    my ($self)=@_;
    my @Fib=fibonacci($self->COMBINATORIAL_DIM+1);

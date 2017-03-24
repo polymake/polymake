@@ -19,10 +19,10 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
-#include "polymake/PuiseuxFraction.h"
 #include "polymake/Rational.h"
-#include "polymake/RationalFunction.h"
 #include "polymake/TropicalNumber.h"
+#include "polymake/PuiseuxFraction.h"
+#include "polymake/RationalFunction.h"
 #include "polymake/client.h"
 #include "polymake/linalg.h"
 
@@ -35,9 +35,9 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(inv_X, perl::Canned< const Wary< Matrix<Rational> > >);
-   FunctionInstance4perl(inv_X, perl::Canned< const Wary< Matrix< RationalFunction< Rational, int > > > >);
    FunctionInstance4perl(inv_X, perl::Canned< const Wary< Matrix< double > > >);
    FunctionInstance4perl(inv_X, perl::Canned< const Wary< Matrix< Integer > > >);
    FunctionInstance4perl(inv_X, perl::Canned< const Wary< Matrix< PuiseuxFraction< Max, Rational, Rational > > > >);
+   FunctionInstance4perl(inv_X, perl::Canned< const Wary< Matrix< RationalFunction< Rational, int > > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

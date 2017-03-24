@@ -1,0 +1,542 @@
+#  Copyright (c) 1997-2017
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# persisted polynomial variable names by package
+custom %polynomial_var_names=();
+
+# @category Algebraic Types
+# @tparam Coefficient default: [[Rational]]
+# @tparam Exponent default: [[Int]]
+declare property_type Polynomial<Coefficient=Rational, Exponent=Int> \
+   : upgrades(Coefficient) \
+   : c++ (operators => '@arith **(pow(*):method) ^ ^= @compare', include => "polymake/Polynomial.h", default_constructor => 'Deserializing') {
+
+   method construct(Int) : c++;
+
+   # coefficients as vector, exponents as sparse matrix =>
+   method construct(*,*) : c++;
+
+   type_method parse { &parse_polynomial }
+
+   # with explicitly given number of variables
+   method construct(String, Int) { &parse_polynomial; }
+
+   # The degree of the polynomial
+   # @return Int
+   user_method deg() : c++;
+
+   # The exponent of the leading monomial.
+   # @return Int
+   user_method lm() : c++;
+
+   # The __leading coefficient__.
+   # @return Int
+   user_method lc() : c++;
+
+   # Print a polynomial with terms sorted according to a given [[Matrix]] //m//.
+   # @param Matrix m
+   user_method print_ordered(Matrix<Exponent>) : c++ : void;
+
+   # The initial form with respect to a weight-vector //v//
+   # @param Vector<Exponent> v weights
+   # @return Polynomial
+   user_method initial_form(Vector<Exponent>) : c++;
+
+   # The matrix of all exponent vectors (row-wise).
+   # The sorting agrees with [[coefficients_as_vector]].
+   # @return SparseMatrix<Exponent>
+   user_method monomials_as_matrix() : c++;
+
+   # Number of variables
+   # @return Int
+   user_method n_vars() : c++;
+
+   # The polynomial is zero.
+   # @return Bool
+   user_method trivial() : c++;
+
+   # The vector of all coefficients.
+   # The sorting agrees with [[monomials_as_matrix]].
+   # @return Vector<Coefficient>
+   user_method coefficients_as_vector() : c++;
+
+   # construct a monomial of degree 1 with a given variable
+   # @param Int var_index index of the variable
+   # @param Int n_vars number of variables
+   user_method monomial(Int, Int) : static : c++;
+
+   # set the variable names
+   user_method get_var_names() : static : c++;
+
+   # set the variable names
+   user_method set_var_names($) : static : c++ : void;
+
+   # reset the variable names according to the default naming scheme
+   user_method reset_var_names() : static : c++ : void;
+
+   type_method init {
+      my ($proto)=@_;
+      if (defined (my $names=$polynomial_var_names{$proto->pkg})) {
+         set_var_names($proto, $names);
+      }
+   }
+
+   method polynomial_type() { $_[0]->type }
+}
+
+# @category Algebraic Types
+# A class for __univariate__ polynomials.
+# @tparam Coefficient default: [[Rational]]
+# @tparam Exponent default: [[Int]]
+declare property_type UniPolynomial<Coefficient=Rational, Exponent=Int> \
+   : upgrades(Coefficient) \
+   : c++ (operators => '@arith % %= **(pow(*):method) ^ ^= @compare', include => "polymake/RationalFunction.h") {
+
+   method construct(type_upgrades_to<Coefficient>) : c++;
+
+   # coefficients, exponents =>
+   method construct(*,*) : c++;
+
+   type_method parse { &parse_polynomial }
+
+   # The highest degree occuring in the polynomial.
+   # @return Exponent
+   user_method deg() : c++;
+
+   # The lowest degree occuring in the polynomial.
+   # @return Exponent
+   user_method lower_deg() : c++;
+
+   # The __leading coefficient__.
+   # @return Int
+   user_method lc() : c++;
+
+   # Number of variables
+   user_method n_vars() {
+      return 1;
+   }
+
+   # Print a polynomial with terms sorted according to //exponent*x//.
+   # @param Exponent x
+   user_method print_ordered($) : c++ : void;
+
+   # Approximate evaluation of the polynomial at a [[Float]] //x//.
+   # @param Float x
+   # @return Float
+   user_method evaluate_float($) : c++;
+
+   # Evaluate a [[UniPolynomial]] at a number (//x^exp//).
+   # Note that for non-integral exponents this may require intermediate floating point
+   # computations depending on the input:
+   # Let //explcm// be the lcm of the denominators of all exponents.
+   # If there are no denominators or //explcm// divides //exp//, then the evaluation
+   # is computed exactly.
+   # Otherwise, some rational number close to the root //(x^exp)^-explcm// will be chosen
+   # via an intermediate floating point number.
+   # @param Coefficient x
+   # @param Exponent exp (default: 1)
+   # @return Coefficient
+   user_method evaluate(*;$=1) : c++;
+
+   # The vector of all coefficients.
+   # The sorting agrees with [[monomials_as_vector]].
+   # @return Vector<Coefficient>
+   user_method coefficients_as_vector() : c++;
+
+   # The vector of all exponents.
+   # The order agrees with [[coefficients_as_vector]].
+   # @return Vector<Exponent>
+   user_method monomials_as_vector() : c++;
+
+   # create a monomial of degree 1
+   user_method monomial() : static : c++;
+
+   # get the variable name
+   user_method get_var_names() : static : c++;
+
+   # set the variable name
+   user_method set_var_names($) : static : c++ : void;
+
+   # reset the variable name according to the default naming scheme
+   user_method reset_var_names() : static : c++ : void;
+
+   type_method init {
+      my ($proto)=@_;
+      if (defined (my $names=$polynomial_var_names{$proto->pkg})) {
+         set_var_names($proto, $names);
+      }
+   }
+
+   method polynomial_type() { $_[0]->type }
+}
+
+
+# @category Arithmetic
+# Get the current list of variable names used for pretty printing and string parsing of the given polynomial class
+# @return Array<String>
+
+user_function get_var_names<PolynomialType>[ UNIVERSAL::can(PolynomialType, "polynomial_type") ]() {
+   PolynomialType->polynomial_type->pkg->get_var_names;
+}
+
+
+# @category Arithmetic
+# Set the list of variable names used for pretty printing and string parsing of the given polynomial class
+#
+# When the number of variables in a polynomial is greater than the size of the name list, the excess variable names
+# are produced from a template "${last_var_name}_{EXCESS}", where EXCESS starts at 0 for the variable corresponding
+# to the last name in the list.  If the last name already has a form "{Name}_{Number}", the following variables are enumerated
+# starting from that Number plus 1.
+#
+# The default naming scheme consists of a single letter "x", "y", "z", "u", "v", or "w" chosen according to the nesting depth
+# of polynomial types in the coefficient type.  That is, variables of simple polynomials (those with pure numerical coefficients)
+# are named x_0, x_1, ..., variables of polynomials with simple polynomial coefficients are named y_0, y_1, etc.
+#
+# @param String names ... variable names; may also be bundled in an array
+#                         an empty list resets to the default naming scheme
+
+user_function set_var_names<PolynomialType>[ UNIVERSAL::can(PolynomialType, "polynomial_type") ](@) {
+   my $pkg=PolynomialType->polynomial_type->pkg;
+
+   if (@_==0) {
+      self()->_reset_custom(undef, "%polynomial_var_names", $pkg);
+      $pkg->reset_var_names;
+      return;
+   }
+   my $names=prepare_var_names(@_, $pkg);
+   self()->_set_custom(undef, "%polynomial_var_names", $pkg, $names);
+   $pkg->set_var_names($names);
+}
+
+# @category Arithmetic
+# Set the list of variable names for given polynomial class temporarily.
+# The existing name list or the default scheme is restored at the end of the current user cycle,
+# similarly to [[core::prefer_now]].
+# @param String names ... variable names, see [[set_var_names]].
+
+user_function local_var_names<PolynomialType>[ UNIVERSAL::can(PolynomialType, "polynomial_type") ](@) {
+   my $pkg=PolynomialType->polynomial_type->pkg;
+   my $names=prepare_var_names(@_, $pkg);
+   my $saver=new VarNameSaver($pkg, exists $polynomial_var_names{$pkg} ? @{ $pkg->get_var_names } : ());
+   $Scope->begin_locals;
+   local $polynomial_var_names{$pkg}=$saver;
+   $Scope->end_locals;
+   if (@$names) {
+      $pkg->set_var_names($names);
+   } else {
+      $pkg->reset_var_names;
+   }
+}
+
+package VarNameSaver;
+use Polymake::Struct(
+   [ new => '$@' ],
+   [ '$pkg' => '#1' ],
+   [ '@names' => '@' ],
+);
+
+sub DESTROY {
+   my ($self)=@_;
+   if (@{$self->names}) {
+      $self->pkg->set_var_names($self->names);
+   } else {
+      $self->pkg->reset_var_names;
+   }
+}
+
+package application;
+
+sub prepare_var_names {
+   my $pkg=pop;
+
+   my $names;
+   if (@_>1 || is_string($_[0])) {
+      $names=[ @_ ];
+   } else {
+      $names=shift;
+   }
+
+   if (instanceof Polynomial($pkg)) {
+      # sanity checks for duplicates and conflicts with the trailing pattern
+      my %seen;
+      my $excess_pattern=qr/^$names->[-1]_\d+$/;
+      my $cnt=@$names;
+      foreach (@$names) {
+         /^($id_re)(?<!_)$/o or croak( "invalid variable name $_: must be an ID without trailing underscore" );
+         $seen{$_}++ and croak( "duplicate variable name $_" );
+         --$cnt && /$excess_pattern/ and croak( "variable name $_ conflicts with the trailing name pattern" );
+      }
+   } elsif (@$names != 1) {
+      croak( "more than one variable name specified for a univariate polynomial class" );
+   }
+   $names
+}
+
+
+# @category Arithmetic
+# Create degree one monomials of the desired polynomial type.
+# @param Int n The number of variables
+# @tparam Coefficient The polynomial coefficient type. Rational by default.
+# @tparam Exponent The exponent type. Int by default.
+# @return UniPolynomial<Coefficient,Exponent> when //n// == 1, Polynomial<Coefficient,Exponent> when //n// > 1
+user_function monomials<Coefficient=Rational, Exponent=Int>($) {
+   my ($n)=@_;
+   if ($n <= 0) {
+      croak("Number of variables needs to be at least 1");
+   } elsif ($n == 1) {
+      (typeof UniPolynomial<Coefficient, Exponent>)->pkg->monomial;
+   } else {
+      my $p=typeof Polynomial<Coefficient, Exponent>;
+      map { $p->pkg->monomial($_, $n) } (0 .. $n-1);
+   }
+}
+
+
+# Parse a polynomial-like expression and produce a Polynomial or UniPolynomial object of the desired type.
+#
+# All ID-like names occurring in the string are interpreted as variable names; they must match the current
+# variable name lists establshed for the polynomial type itself and, recursively, its coefficient type(s)
+#
+# The following syntactical sloppiness is allowed:
+#   - omitted multiplication operator '*' is inserted in subexpressions like "5x", "5 x", "x y", "x (u-w)" etc.
+#   - omitted power operator '**' is inserted in subexpressions like "x5", "x 5", "(x+y)2" etc.
+#   - alternative power operator '^' is assumed to bind stronger than multiplicative operators, unlike in C++ or perl
+
+sub parse_polynomial {
+   my ($proto, $string, $prescribed_num_vars)=@_;
+
+   # first, descend through coefficient types and collect all variable names;
+   # no conflicts should arise
+   my (%all_varnames, %patterns, @num_vars, @monoms);
+   do {
+      my $layer=@num_vars;
+      my $varnames=get_var_names<$proto>();
+      my $index=0;
+      foreach (@$varnames) {
+         ($all_varnames{$_} &&= croak( "variable name $_ occur in different polynomial types, unambiguous parsing not possible" )) //= [ $layer, $index ];
+      } continue { ++$index }
+
+      if (instanceof Polynomial($proto->pkg)) {
+         $patterns{$varnames->[-1]}=[ $layer, $index-1 ];
+      }
+      push @num_vars, [ $proto, 0 ];
+
+      $proto=$proto->params->[0];
+   } while (UNIVERSAL::can($proto->pkg, "polynomial_type"));
+
+   # recognize agglutinated monomials like x5y3 if they do not occur as variable names on their own
+   pos($string)=0;
+   while ($string =~ /\G .*? (([a-zA-Z]+)(\d+)(?:$id_re)?)/gxo) {
+      if (!exists $all_varnames{$1}) {
+         my ($monomial, $added);
+         if (exists $all_varnames{"$2$3"}) {
+            $monomial="$2$3 ";
+            $added=1;
+         } elsif (exists $all_varnames{$2}) {
+            $monomial="$2**$3";
+            $added=2;
+         }
+         if ($added) {
+            substr($string, $-[2], $+[3]-$-[2])=$monomial;
+            pos($string)=$+[3]+$added;
+         }
+      }
+   }
+   # insert omitted * and ** operators
+   $string =~ s{(?: [\w\)]) \s* \K (?= [a-zA-Z\(])}{*}gx;
+   $string =~ s{(?: [a-zA-Z\)]) \s* \K (?= \d)}{**}gx;
+
+   # replace ^ with ** because of preference rules, embrace rational exponents
+   $string =~ s{\^}{**}g;
+   $string =~ s{\*\*\s* \K (-?\d+/\d+)}{($1)}gx;
+
+   # replace every ID-like word with a reference to @monoms, update the number of variables
+   $string =~ s{$id_re}{
+      my $name=$&;
+      my ($layer, $index);
+      if (defined (my $var=$all_varnames{$name})) {
+         ($layer, $index)=@$var;
+      } elsif ($name =~ /_(\d+)$/ && defined ($var=$patterns{$`})) {
+         ($layer, $index)=@$var;
+         $index+=$1;
+      } else {
+         croak( "invalid variable name $name" );
+      }
+      if ($layer==0 && defined($prescribed_num_vars) && $index >= $prescribed_num_vars) {
+         croak( "variable $name exceeds the prescribed number of variables for type ", $num_vars[$layer]->[0]->full_name );
+      }
+      assign_max($num_vars[$layer]->[1], $index+1);
+      "\$monoms[$layer]->[$index]"
+   }goe;
+
+   # create the monomials
+   if (defined($prescribed_num_vars) && $num_vars[0]->[1] > 0) {
+      $num_vars[0]->[1]=$prescribed_num_vars;
+   }
+   @monoms=map { my @coeff_exp_types=@{$_->[0]->params}; $_->[1]>0 ? [ monomials<@coeff_exp_types>($_->[1]) ] : undef } @num_vars;
+
+   # now the string should contain a valid perl expression and can be evaluated directly
+   my $result=eval $string;
+   die $@ if $@;
+
+   defined($monoms[0])
+     ? # the expression contains monomials of the target type
+       $result
+     : # the expression is a coefficient of the degree zero monomial
+       $_[0]->construct->($result, defined($prescribed_num_vars) ? $prescribed_num_vars : ());
+}
+
+
+# @category Arithmetic
+# Returns the __greatest common divisor__ of two univariate polynomials.
+# @param UniPolynomial p
+# @param UniPolynomial q
+# @return UniPolynomial
+# @example We create two UniPolynomials with said coefficient and exponent type:
+# > $p = new UniPolynomial<Rational,Int>([2,2],[3,2]);
+# > $q = new UniPolynomial<Rational,Int>([6,4],[4,2]);
+# Printing them reveals what the constructor does:
+# > print $p;
+# | 2*x^3 + 2*x^2
+# > print $q;
+# | 6*x^4 + 4*x^2
+# Now we can calculate their gcd:
+# > print gcd($p,$q);
+# | x^2
+
+user_function gcd(UniPolynomial, UniPolynomial) : c++;
+
+
+# the same with type deduction
+# @category Algebraic Types
+# @tparam Coefficient default: [[Rational]]
+# @tparam Exponent default: [[Int]]
+declare property_type RationalFunction<Coefficient=Rational, Exponent=Int> \
+   : upgrades( UniPolynomial<Coefficient, Exponent> ) \
+   : c++ (operators => '@arith @eq', include => "polymake/RationalFunction.h") {
+
+   method construct() : c++;
+
+   method construct(type_upgrades_to<Coefficient>) : c++;
+
+   method construct(*,*) : c++;
+
+   method polynomial_type() { typeof UniPolynomial<Coefficient, Exponent> }
+}
+
+# @category Arithmetic
+# Returns the __numerator__ of a [[RationalFunction]] //f//.
+# @param RationalFunction f
+# @return Polynomial
+user_function numerator(RationalFunction:anchor) : c++;
+
+# @category Arithmetic
+# Returns the __denominator__ of a [[RationalFunction]] //f//.
+# @param RationalFunction f
+# @return Polynomial
+user_function denominator(RationalFunction:anchor) : c++;
+
+
+# @category Algebraic Types
+# @tparam MinMax type of tropical addition: either [[Min]] or [[Max]]
+# @tparam Coefficient default: [[Rational]]
+# @tparam Exponent default: [[Rational]]
+declare property_type PuiseuxFraction<MinMax, Coefficient=Rational, Exponent=Rational> \
+   : upgrades( Coefficient ) \
+   : c++ (operators => '@arith @compare', include => "polymake/PuiseuxFraction.h") {
+
+   method construct(type_upgrades_to< RationalFunction<Coefficient,Exponent> >) : c++;
+
+   method construct(type_upgrades_to< UniPolynomial<Coefficient,Exponent> >, type_upgrades_to< UniPolynomial<Coefficient,Exponent> >) : c++;
+
+   # The __valuation__.
+   # @return TropicalNumber<MinMax>
+   user_method val() : c++;
+
+   # Approximate evaluation at //x//
+   # @param Float x
+   # @return Float
+   user_method evaluate_float($) : c++;
+
+   # Approximate evaluation of a [[Matrix]] at //x//
+   # @param Matrix m
+   # @param Float x
+   # @return Float
+   user_method evaluate_float(Matrix,*) : static : c++;
+
+   # Approximate evaluation of a [[Vector]] at //x//
+   # @param Vector v
+   # @param Float x
+   # @return Float
+   user_method evaluate_float(Vector,*) : static : c++;
+
+   # Evaluate all [[PuiseuxFraction]]s in a [[Matrix]] at a [[Rational]] number (//x^exp//).
+   # Let //explcm// be the lcm of the denominators of all exponents.
+   # If there are no denominators or //explcm// divides //exp//, then the evaluation
+   # is computed exactly.
+   # Otherwise, some rational number close to the root //(x^exp)^-explcm// will be chosen
+   # via an intermediate floating point number.
+   # @param Matrix m
+   # @param Coefficient x
+   # @param Int exp (default: 1)
+   # @return Matrix<Coefficient>
+   user_method evaluate(Matrix,*;$=1) : static : c++;
+
+   # Evaluate all [[PuiseuxFraction]]s in a [[Vector]] at a [[Rational]] number (//x^exp//).
+   # Let //explcm// be the lcm of the denominators of all exponents.
+   # If there are no denominators or //explcm// divides //exp//, then the evaluation
+   # is computed exactly.
+   # Otherwise, some rational number close to the root //(x^exp)^-explcm// will be chosen
+   # via an intermediate floating point number.
+   # @param Vector v
+   # @param Coefficient x
+   # @param Int exp (default: 1)
+   # @return Vector<Coefficient>
+   user_method evaluate(Vector,*;$=1) : static : c++;
+
+   # Evaluate a [[PuiseuxFraction]] at a [[Rational]] number (//x^exp//).
+   # Let //explcm// be the lcm of the denominators of all exponents.
+   # If there are no denominators or //explcm// divides //exp//, then the evaluation
+   # is computed exactly.
+   # Otherwise, some rational number close to the root //(x^exp)^-explcm// will be chosen
+   # via an intermediate floating point number.
+   # @param Coefficient x
+   # @param Int exp (default: 1)
+   # @return Coefficient
+   user_method evaluate(*;$=1) : c++;
+
+   method polynomial_type() { typeof UniPolynomial<Coefficient, Exponent> }
+}
+
+function is_ordered_field_with_unlimited_precision(PuiseuxFraction) { 1 }
+
+# @category Arithmetic
+# Returns the __numerator__ of a [[PuiseuxFraction]] //f//.
+# @param PuiseuxFraction f
+# @return Polynomial
+user_function numerator(PuiseuxFraction:anchor) : c++;
+
+# @category Arithmetic
+# Returns the __denominator__ of a [[PuiseuxFraction]] //f//.
+# @param PuiseuxFraction f
+# @return Polynomial
+user_function denominator(PuiseuxFraction:anchor) : c++;
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

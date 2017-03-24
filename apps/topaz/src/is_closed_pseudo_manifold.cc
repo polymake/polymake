@@ -18,8 +18,8 @@
 #include "polymake/topaz/complex_tools.h"
 
 namespace polymake { namespace topaz {
-  
-bool is_closed_pseudo_manifold(const HasseDiagram& HD, bool known_pure)
+
+bool is_closed_pseudo_manifold(const Lattice<BasicDecoration>& HD, bool known_pure)
 {
    if (HD.in_degree(HD.top_node())==0)
       return true;
@@ -27,7 +27,7 @@ bool is_closed_pseudo_manifold(const HasseDiagram& HD, bool known_pure)
    if (!known_pure && !is_pure(HD))
       return false;
 
-   for (Entire<HasseDiagram::nodes_of_dim_set>::const_iterator it=entire(HD.nodes_of_dim(-2)); !it.at_end(); ++it)
+   for (auto it=entire(HD.nodes_of_rank(HD.rank()-2)); !it.at_end(); ++it)
       if ( HD.out_degree(*it) != 2 )     // ridge contained in one facet only
          return false;
 
@@ -36,7 +36,7 @@ bool is_closed_pseudo_manifold(const HasseDiagram& HD, bool known_pure)
 
 void is_closed_pseudo_manifold_client(perl::Object p)
 {
-   HasseDiagram HD=p.give("HASSE_DIAGRAM");
+   const Lattice<BasicDecoration> &HD = p.give("HASSE_DIAGRAM");
    p.take("CLOSED_PSEUDO_MANIFOLD") << is_closed_pseudo_manifold(HD,true);
 }
 

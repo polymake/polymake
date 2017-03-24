@@ -16,11 +16,17 @@
 
 namespace polymake { namespace group { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::Array<pm::Set<pm::Array<int, void>, pm::operations::cmp>, void> (pm::Array<pm::Array<int, void>, void> const&, pm::Array<pm::Array<int, void>, void> const&) ) {
+   FunctionWrapper4perl( pm::Array<pm::Set<pm::Array<int>, pm::operations::cmp>> (pm::Array<pm::Array<int>> const&, pm::Array<pm::Array<int>> const&) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
       IndirectWrapperReturn( arg0.get< perl::TryCanned< const Array< Array< int > > > >(), arg1.get< perl::TryCanned< const Array< Array< int > > > >() );
    }
-   FunctionWrapperInstance4perl( pm::Array<pm::Set<pm::Array<int, void>, pm::operations::cmp>, void> (pm::Array<pm::Array<int, void>, void> const&, pm::Array<pm::Array<int, void>, void> const&) );
+   FunctionWrapperInstance4perl( pm::Array<pm::Set<pm::Array<int>, pm::operations::cmp>> (pm::Array<pm::Array<int>> const&, pm::Array<pm::Array<int>> const&) );
+
+   FunctionWrapper4perl( pm::Array<pm::Array<pm::Array<int>>> (pm::Array<pm::Array<int>> const&, pm::Array<pm::Array<int>> const&) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Array< Array< int > > > >(), arg1.get< perl::TryCanned< const Array< Array< int > > > >() );
+   }
+   FunctionWrapperInstance4perl( pm::Array<pm::Array<pm::Array<int>>> (pm::Array<pm::Array<int>> const&, pm::Array<pm::Array<int>> const&) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

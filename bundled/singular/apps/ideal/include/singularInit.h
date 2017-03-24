@@ -20,11 +20,8 @@
 
 // polymake includes
 #include "polymake/client.h"
-// #include "polymake/Array.h"
-#include "polymake/Ring.h"
 #include "polymake/Map.h"
 #include "polymake/ListMatrix.h"
-// #include "polymake/Polynomial.h"
 
 namespace polymake { 
 namespace ideal {

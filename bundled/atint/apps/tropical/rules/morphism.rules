@@ -117,7 +117,7 @@ object Morphism {
 	# it with the domain of the affine function. 0 by default.
 	# @param Int target_chart Which coordinate of the homogenized target space is shifted to zero to identify
 	# it with the target of the affine function. 0 by default.
-	# @return Pair<Matrix<Rational>, Vector<Rational> > A matrix and a translate in affine coordinates.
+	# @return Pair<Matrix<Rational>, Vector<Rational>> A matrix and a translate in affine coordinates.
 	user_method affine_representation(;$=0,$=0) {
 		my ($morphism, $domain_chart, $target_chart) = @_;
 		if(!defined($morphism->lookup("MATRIX"))) {
@@ -158,10 +158,7 @@ object Morphism {
 
 		#Define identity on X
 		my $vertexvalues = $X->SEPARATED_VERTICES->minor(All,~scalar2set(0));
-		my $linealityvalues = $X->LINEALITY_SPACE;
-		if($linealityvalues->rows() > 0) {
-			$linealityvalues = $linealityvalues->minor(All,~scalar2set(0));
-		}
+		my $linealityvalues = $X->LINEALITY_SPACE->minor(All,~scalar2set(0));
 
 		my $emb = new Morphism<Addition>( DOMAIN=>$X, VERTEX_VALUES=>$vertexvalues,LINEALITY_VALUES=>$linealityvalues, MATRIX=>(unit_matrix<Rational>($f->DOMAIN->PROJECTIVE_AMBIENT_DIM+1)));
 

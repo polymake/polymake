@@ -18,10 +18,10 @@
 
 #include "polymake/Set.h"
 #include "polymake/client.h"
-#include "polymake/graph/HasseDiagram.h"
+#include "polymake/graph/Decoration.h"
 
 namespace polymake { namespace graph { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   OperatorInstance4perl(convert, Set< int >, perl::Canned< const pm::ContainerUnion<pm::cons<pm::Series<int, true>, pm::SelectedSubset<pm::Series<int, true>, polymake::graph::HasseDiagram::node_exists_pred> >, void> >);
+   OperatorInstance4perl(convert, Set< int >, perl::Canned< const pm::Series<int, true> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

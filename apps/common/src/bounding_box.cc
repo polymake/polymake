@@ -19,8 +19,28 @@
 
 namespace polymake { namespace common {
 
+   //for sparse matrices
+   template<typename MatrixTop, typename Coord>
+      typename std::enable_if<MatrixTop::is_sparse, Matrix<Coord>>::type bounding_box(const GenericMatrix<MatrixTop, Coord>& V){
+         const int d=V.cols();
+         Matrix<Coord> BB(2,d);
+         if(d){
+            for(typename Entire< Cols<MatrixTop> >::const_iterator c =  entire(cols(V.top())); !c.at_end(); ++c){
+               if((*c).size() == V.rows()){ //non-sparse col
+                  BB(0,c.index()) = (*c)[0];
+                  BB(1,c.index()) = (*c)[0];
+               }
+               for(auto it = entire(*c); !it.at_end(); ++it){
+                  assign_min_max(BB(0,c.index()), BB(1,c.index()),(*it));
+               }
+            }
+         }
+         return BB;
+      }
+
+   //for non-sparse matrices
 template <typename MatrixTop, typename Coord>
-Matrix<Coord> bounding_box(const GenericMatrix<MatrixTop, Coord>& V)
+      typename std::enable_if<!MatrixTop::is_sparse, Matrix<Coord>>::type bounding_box(const GenericMatrix<MatrixTop, Coord>& V)
 {
    const int d=V.cols();
    Matrix<Coord> BB(2,d);
@@ -42,8 +62,8 @@ void extend_bounding_box(Matrix<Coord>& BB, const Matrix<Coord>& BB2)
 {
    if (BB.rows()) {
       const int d=BB.cols();
-      const Coord *src=concat_rows(BB2).begin();
-      Coord *dst=concat_rows(BB).begin();
+      auto src=concat_rows(BB2).begin();
+      auto dst=concat_rows(BB).begin();
       for (int j=0; j<d; ++j, ++dst, ++src) assign_min(*dst, *src);
       for (int j=0; j<d; ++j, ++dst, ++src) assign_max(*dst, *src);
    } else {

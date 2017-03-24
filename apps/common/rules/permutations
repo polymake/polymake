@@ -1,0 +1,172 @@
+#  Copyright (c) 1997-2017
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @category Combinatorics
+# Base class for permutations of `big' objects
+declare object PermBase {
+
+   # Mapping of features stored in this subobject onto their order in the parent (non-permuted) object.
+   # The features to be permuted can be any discrete objects with identity imparted by their involvement
+   # in a larger structure, like graph nodes, cone rays, facets, complex celles, etc.
+   property PERMUTATION : Array<Int>;
+}
+
+#######################################
+#
+#  Utilities for permutation rules
+
+# Create a new Array with elements permuted in the given order.
+function permuted(Array, *) : c++ (include => "polymake/permutations.h");
+
+function permuted(Vector, *) : c++;
+
+# Create a new Set consisting of images of the original Set elements under the given permutation.
+function permuted(Set, *) : c++;
+
+function permuted(PowerSet, *) : c++;
+
+# Like permuted(), treating the given permutation as an inverted one.
+function permuted_inv(Array, *) : c++ (include => "polymake/permutations.h");
+
+function permuted_inv(Vector, *) : c++;
+
+function permuted_inv(Set, *) : c++;
+
+function permuted_inv(PowerSet, *) : c++;
+
+# Apply the given permutation to every element of an Array
+# (the elements are supposed to be permutable containers).
+function permuted_elements(Array, $) {
+   my ($array, $perm)=@_;
+   local $Core::PropertyType::trusted_value=1;
+   $array->type->construct->([ map { permuted($_,$perm) } @$array ]);
+}
+
+# Create a new matrix by permuting the rows of the given one.
+function permuted_rows(Matrix, *) : c++;
+
+function permuted_rows(IncidenceMatrix *) : c++;
+
+function permuted_inv_rows(Matrix, *) : c++;
+
+function permuted_inv_rows(IncidenceMatrix, *) : c++;
+
+# Create a new matrix by permuting the columns of the given one.
+function permuted_cols(Matrix, *) : c++;
+
+function permuted_cols(IncidenceMatrix, *) : c++;
+
+function permuted_inv_cols(Matrix, *) : c++;
+
+function permuted_inv_cols(IncidenceMatrix, *) : c++;
+
+# Create a new graph by permuting the nodes of the given one.
+function permuted_nodes(Graph, *) : c++;
+
+function permuted_inv_nodes(Graph, *) : c++;
+
+
+# @category Combinatorics
+# Returns the permutation that maps //a// to //b//.
+# @param Array a
+# @param Array b
+# @return Array<Int>
+# @example > $p = find_permutation([1,8,3,4],[3,8,4,1]);
+# > print $p;
+# | 2 1 3 0
+
+user_function find_permutation(*,*) : c++ (include => "polymake/permutations.h");
+
+
+# @category Combinatorics
+# Returns the __cycles__ of a permutation given by //p//.
+# @param Array<Int> p
+# @return Array<List<Int>>
+# @example > print permutation_cycles([1,0,3,2]);
+# | {0 1}{2 3}
+
+user_function permutation_cycles(*) : c++ (include => "polymake/permutations.h") : returns(@);
+
+# @category Combinatorics
+# Returns the __sign__ of the permutation given by //p//.
+# @param Array<Int> p
+# @return Int +1 or -1
+# @example > print permutation_sign([1,0,3,2]);
+# | 1
+
+user_function permutation_sign(*) : c++ (include => "polymake/permutations.h");
+
+# @category Combinatorics
+# Returns the number of fixed points of the permutation given by //p//.
+# @param Array<Int> p
+# @return Int 
+# @example > print n_fixed_points([1,0,2,4,3]);
+# | 1
+
+user_function n_fixed_points(*) : c++ (include => "polymake/permutations.h");
+
+# @category Combinatorics
+# Determine whether two arrays //a// and //b// are permuted copies of each other.
+# @param Array a
+# @param Array b
+# @return Bool
+# @example > print are_permuted([1,8,3,4],[3,8,4,1]);
+# | 1
+
+user_function are_permuted(*,*) : c++ (include => "polymake/permutations.h");
+
+
+#FIXME: ticket 725 and 727 return type should be masqueraded Array<Array <Int> > instead of perl-Array
+
+# @category Combinatorics
+# Returns a list of all permutations of the set {0...n-1} as a perl-array
+# @param Int n
+# @return ARRAY
+# @example To store the result in the perl array @a, type this:
+# > @a = all_permutations(3);
+# The array contains pointers to arrays. To access the 0-th pointer, do this:
+# > $a0 = $a[0];
+# To print the 0-th array itself, you have to dereference it as follows:
+# > print @{ $a0 };
+# | 012
+# You can loop through @a using foreach. The print statement produces the string obtained by dereferencing
+# the current entry concatenated with the string " ".
+# > foreach( @a ){
+# > print @{ $_ }, " ";
+# > }
+# | 012 102 201 021 120 210
+
+user_function all_permutations($) : c++  (include => "polymake/permutations.h") : returns(@);
+
+# @category Combinatorics
+# Returns the __permutation matrix__ of the permutation given by //p//.
+# @tparam Scalar default: [[Int]]
+# @param Array<Int> p
+# @return Matrix<Scalar>
+# @example The following prints the permutation matrix in sparse representation.
+# > print permutation_matrix([1,0,3,2]);
+# | (4) (1 1)
+# | (4) (0 1)
+# | (4) (3 1)
+# | (4) (2 1)
+
+user_function permutation_matrix<Scalar=Int>(*:anchor) : c++ (include => [ "polymake/permutations.h", "polymake/SparseMatrix.h" ]);
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

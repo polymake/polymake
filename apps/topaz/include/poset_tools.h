@@ -30,94 +30,216 @@
 
 namespace polymake { namespace topaz {
 
+typedef Array<int> Homomorphism;
+typedef std::vector<Homomorphism> HomList;
+   
+template<typename Record>
+class RecordKeeper {
+   Record record;
+public:
+   RecordKeeper() : record(Record()) {}
+   void add(const Homomorphism& h) {}
+   Record result() const { return record; }
+   Record& result() { return record; }
+};
+
+template<>
+void RecordKeeper<HomList>::add(const Homomorphism& h) {
+   record.push_back(h);
+}
+
+template<>
+void RecordKeeper<int>::add(const Homomorphism&) {
+   ++record;
+}
+      
 namespace {
 
-template<typename Poset>
-void complete_map(const Poset& P,
-                  const Poset& Q,
-                  const typename Entire<Edges<Poset> >::const_iterator& peit,
-                  Array<int> current_map, // intentionally pass a copy
-                  Set<Array<int> >& homs)
-{
-   typedef typename Entire<Edges<Poset> >::const_iterator EdgesIterator;
+typedef std::vector<std::pair<int,int>> EdgeList;
 
-   for (EdgesIterator e=peit; !e.at_end(); ++e) {
-      if (current_map[e.from_node()] < 0 &&
-          current_map[e.to_node()] < 0) { // both nodes of the edge of P are still unassigned under current_map
-         for (EdgesIterator qit = entire(edges(Q)); !qit.at_end(); ++qit) {
-            // assign the edge of P to all edges of Q in turn and recurse
-            current_map[e.from_node()]  = qit.from_node();
-            current_map[e.to_node()] = qit.to_node();
-            EdgesIterator next_e(e); ++next_e;
-            complete_map(P, Q, next_e, current_map, homs);
-         }
-      } else if (current_map[e.from_node()] < 0) { // the from node is still unassigned
-         for (typename Entire<typename Poset::in_adjacent_node_list>::const_iterator iit = entire(Q.in_adjacent_nodes(current_map[e.to_node()])); !iit.at_end(); ++iit) {
-            // assign the edge of P to all edges of Q that enter e.to_node() in turn and recurse
-            current_map[e.from_node()] = *iit;
-            EdgesIterator next_e(e); ++next_e;
-            complete_map(P, Q, next_e, current_map, homs);
-         }
-      } else if (current_map[e.to_node()] < 0) { // the to node is still unassigned
-         for (typename Entire<typename Poset::out_adjacent_node_list>::const_iterator oit = entire(Q.out_adjacent_nodes(current_map[e.from_node()])); !oit.at_end(); ++oit) {
-            // assign the edge of P to all edges of Q that leave e.from_node() in turn and recurse
-            current_map[e.to_node()] = *oit;
-            EdgesIterator next_e(e); ++next_e;
-            complete_map(P, Q, next_e, current_map, homs);
-         }
-      } else if (!Q.edge_exists(current_map[e.from_node()], current_map[e.to_node()])) { // the induced edge is invalid
-         return;
+enum PEdgeStatus {
+   not_fixed,
+   compatible_with_map,
+   incompatible_with_map
+};   
+   
+template<typename Poset, typename Iterator>
+PEdgeStatus compatibility_status(const Poset& Q, const Iterator& it, const Array<int>& mapping) {
+   if (mapping[it.from_node()] == -1 ||
+       mapping[it.  to_node()] == -1) {
+      return not_fixed;
+   } else {
+      return Q.edge_exists(mapping[it.from_node()],
+                           mapping[it.  to_node()])
+         ? compatible_with_map
+         : incompatible_with_map;
+   }
+}
+
+// all edges of Q are relevant if both images of it.front(), it.back() are variable
+// otherwise, an edge q of Q is relevant if exactly one of the images is variable, and q is incident to the non-variable end;
+template<typename Poset, typename Iterator>
+const EdgeList& relevant_q_edges(const Poset& Q,
+                                 const Iterator& it,
+                                 const Array<int>& mapping,
+                                 const EdgeList& Qedges,
+                                 EdgeList& relevant_q_edges) 
+{
+   const int 
+      mf (mapping[it.from_node()]),
+      mt (mapping[it.  to_node()]);
+   if (mf == -1 && mt != -1) {
+      for (auto qit = entire(Q.in_adjacent_nodes(mt)); !qit.at_end(); ++qit) {
+         relevant_q_edges.push_back({ *qit, mt });
       }
    }
-   // all edges of P are now assigned
-   homs += current_map;
+   if (mf != -1 && mt == -1) {
+      for (auto qit = entire(Q.out_adjacent_nodes(mf)); !qit.at_end(); ++qit) {
+         relevant_q_edges.push_back({ mf, *qit });
+      }
+   }
+   return relevant_q_edges.size()
+      ? relevant_q_edges
+      : Qedges;
+}
+
+// check if the edge of P indicated by peit can be added to the current map, then recurse, produce output or return because of incompatibility   
+template<typename PosetP, typename PosetQ, typename Record>
+void complete_map(const PosetP& P,
+                  const PosetQ& Q,
+                  const EdgeList& Qedges,
+                  const typename Entire<Edges<PosetP>>::const_iterator peit,
+                  int p_edges_placed, // edge count of edges in P; synchronized with peit 
+                  Array<int> current_map, // intentionally pass a copy
+                  RecordKeeper<Record>& record_keeper)
+{
+   assert(p_edges_placed < P.edges()); // cannot handle P with no edges 
+   const PEdgeStatus es(compatibility_status(Q, peit, current_map));
+   if (es == incompatible_with_map) {
+      return;
+   }
+   if (es == compatible_with_map) { // no modification of current_map necessary, placed compatible p-edge
+      ++p_edges_placed;
+      if (p_edges_placed == P.edges()) { // map is complete
+         record_keeper.add(current_map);
+         return;
+      }
+      // compatible edge, recursing further
+      auto next_peit(peit); ++next_peit;
+      complete_map(P, Q, Qedges, next_peit, p_edges_placed, current_map, record_keeper);
+      return;
+   }
+   // now es == not_fixed
+   const int 
+      pf(peit.from_node()),
+      pt(peit.  to_node()),
+      old_f(current_map[pf]),
+      old_t(current_map[pt]);
+   assert(old_f == -1 || old_t == -1);
+   EdgeList relevant_q_edge_list;
+   for (auto qeit = entire(relevant_q_edges(Q, peit, current_map, Qedges, relevant_q_edge_list)); !qeit.at_end(); ++qeit) {
+      // map *peit to *qeit
+      assert(current_map[pf] == -1 || current_map[pf] == qeit->first);
+      current_map[pf] = qeit->first;
+
+      assert(current_map[pt] == -1 || current_map[pt] == qeit->second);
+      current_map[pt] = qeit->second;
+
+      auto next_peit(peit);
+      ++p_edges_placed; ++next_peit;
+
+      if (p_edges_placed == P.edges()) {
+         record_keeper.add(current_map);
+      } else {
+         complete_map(P, Q, Qedges, next_peit, p_edges_placed, current_map, record_keeper);
+      }
+      --p_edges_placed;
+
+      // reinstate map
+      current_map[pf] = old_f;
+      current_map[pt] = old_t;
+   }
 }
 
 template<typename Poset>
-void map_isolated_vertices(const Poset& P,
-                           const Poset& Q,
+void
+classify_isolated_vertices(const Poset& P,
                            const Array<int>& prescribed_map,
-                           Set<Array<int> >& homs)
+                           Set<int>&     prescribed,
+                           Set<int>& not_prescribed)
 {
    Set<int> isolated_vertices(sequence(0, P.nodes()));
 
    // first remove vertices incident to edges
-   for(typename Entire<Edges<Poset> >::const_iterator eit = entire(edges(P)); !eit.at_end(); ++eit) {
+   for(auto eit = entire(edges(P)); !eit.at_end(); ++eit) {
       isolated_vertices -= eit.from_node();
       isolated_vertices -= eit.to_node();
    }
 
    // then classify isolated vertices according to whether their image is prescribed or not
+   for (auto iit = entire(isolated_vertices); !iit.at_end(); ++iit) {
+      if (prescribed_map[*iit] == -1) 
+         not_prescribed += *iit;
+      else
+             prescribed += *iit;
+   }
+}
+
+template<typename PosetP, typename PosetQ>
+void map_isolated_vertices(const PosetP& P,
+                           const PosetQ& Q,
+                           const Array<int>& prescribed_map,
+                           RecordKeeper<HomList>& record_keeper)
+{
    Set<int> 
           prescribed_isolated_vertices,
       not_prescribed_isolated_vertices;
-   for (Entire<Set<int> >::const_iterator iit = entire(isolated_vertices); !iit.at_end(); ++iit) {
-      if (prescribed_map[*iit] == -1) 
-         not_prescribed_isolated_vertices += *iit;
-      else
-             prescribed_isolated_vertices += *iit;
-   }
+   classify_isolated_vertices(P, prescribed_map, prescribed_isolated_vertices, not_prescribed_isolated_vertices);
 
-   for (Entire<Set<int> >::const_iterator vit = entire(not_prescribed_isolated_vertices); !vit.at_end(); ++vit) {
+   if (record_keeper.result().size() == 0) {
+      record_keeper.result().push_back(Array<int>(P.nodes(), -1));
+   }
+   
+   for (auto vit = entire(not_prescribed_isolated_vertices); !vit.at_end(); ++vit) {
       // the image of *vit will be -1 in all homomorphisms, so first replace that -1 with the first node of Q throughout
-      Set<Array<int> > tmp_homs;
-      for (Entire<Set<Array<int> > >::const_iterator hit = entire(homs); !hit.at_end(); ++hit) {
+      HomList tmp_homs;
+      for (auto hit = entire(record_keeper.result()); !hit.at_end(); ++hit) {
          Array<int> hom(*hit);
          hom[*vit] = 0;
-         for (Entire<Set<int> >::const_iterator pvit = entire(prescribed_isolated_vertices); !pvit.at_end(); ++pvit)
+         for (auto pvit = entire(prescribed_isolated_vertices); !pvit.at_end(); ++pvit)
             hom[*pvit] = prescribed_map[*pvit];
-         tmp_homs += hom;
+         tmp_homs.push_back(hom);
       }
-      homs.swap(tmp_homs); // do it like this so that the Set tree doesn't have to be rebuilt so often by removing the array with -1 and adding the one with 0 back in
+      record_keeper.result().swap(tmp_homs); // do it like this so that the Set tree doesn't have to be rebuilt so often by removing the array with -1 and adding the one with 0 back in
 
       // now process the rest of the vertices
       for (int i=1; i<Q.nodes(); ++i) {
-         for (Entire<Set<Array<int> > >::const_iterator hit = entire(tmp_homs); !hit.at_end(); ++hit) {
+         for (auto hit = entire(tmp_homs); !hit.at_end(); ++hit) {
             Array<int> hom(*hit);
             hom[*vit] = i;
-            homs += hom;
+            record_keeper.result().push_back(hom);
          }
       }
+   }
+}
+
+template<typename PosetP, typename PosetQ>
+void map_isolated_vertices(const PosetP& P,
+                           const PosetQ& Q,
+                           const Array<int>& prescribed_map,
+                           RecordKeeper<int>& record_keeper)
+{
+   Set<int> 
+          prescribed_isolated_vertices,
+      not_prescribed_isolated_vertices;
+   classify_isolated_vertices(P, prescribed_map, prescribed_isolated_vertices, not_prescribed_isolated_vertices);
+
+   // any not prescribed isolated vertex can go to any vertex in Q
+   if (not_prescribed_isolated_vertices.size()) {
+      if (record_keeper.result() == 0) { // no edges
+         record_keeper.result() = 1;
+      }
+      record_keeper.result() *= not_prescribed_isolated_vertices.size() * Q.nodes();
    }
 }
 
@@ -138,38 +260,46 @@ bool f_less_or_equal_g(const Array<int>& f, const Array<int>& g, const Poset& Q)
 } // end anonymous namespace
 
 
-template<typename Poset>
-Set<Array<int> > poset_homomorphisms_impl(const Poset& P, 
-                                          const Poset& _Q,
-                                          Array<int> prescribed_map = Array<int>())
+template<typename PosetP, typename PosetQ, typename Record>
+auto poset_homomorphisms_impl(const PosetP& P, 
+                              const PosetQ& _Q,
+                              RecordKeeper<Record>& record_keeper,
+                              Array<int> prescribed_map = Array<int>(),
+                              bool allow_loops = true)
 {
-   Poset Q(_Q);
- 
-   // include loops in Q, to allow for contracting edges of P
-   for (int i=0; i<Q.nodes(); ++i)
-      Q.edge(i,i);
+   PosetQ Q(_Q);
 
+   if (allow_loops) {
+      // include loops in Q, to allow for contracting edges of P
+      for (int i=0; i<Q.nodes(); ++i)
+         Q.edge(i,i);
+   }
+   
    if (!prescribed_map.size())
       prescribed_map = Array<int>(P.nodes(), -1);
    else if (prescribed_map.size() != P.nodes())
       throw std::runtime_error("The size of the given prescribed map does not match that of the domain poset");
 
-   Set<Array<int> > homs;
-   complete_map(P, Q, entire(edges(P)), prescribed_map, homs);
+   EdgeList Qedges;
+   for (auto eit = entire(edges(Q)); !eit.at_end(); ++eit)
+      Qedges.push_back({ eit.from_node(), eit.to_node() });
 
-   map_isolated_vertices(P, Q, prescribed_map, homs);
+   if (P.edges()) {
+      complete_map(P, Q, Qedges, entire(edges(P)), 0, prescribed_map, record_keeper);
+   }
+   map_isolated_vertices(P, Q, prescribed_map, record_keeper);
 
-   return homs;
+   return record_keeper.result();
 }
 
 
-template<typename Poset>
-Poset hom_poset_impl(const Set<Array<int> >& homs, const Poset& Q)
+template<typename PosetQ>
+PosetQ hom_poset_impl(const HomList& homs, const PosetQ& Q)
 {
-   Poset H(homs.size());
+   PosetQ H(homs.size());
    int i(0), j(0);
-   for (Entire<Set<Array<int> > >::const_iterator hit1 = entire(homs); !hit1.at_end(); ++hit1, ++i) {
-      Entire<Set<Array<int> > >::const_iterator hit2 = hit1;
+   for (auto hit1 = entire(homs); !hit1.at_end(); ++hit1, ++i) {
+      auto hit2 = hit1;
       for (++hit2, j=i+1; !hit2.at_end(); ++hit2, ++j) {
          if (f_less_or_equal_g(*hit1, *hit2, Q))
             H.edge(i,j);
@@ -180,16 +310,23 @@ Poset hom_poset_impl(const Set<Array<int> >& homs, const Poset& Q)
    return H;
 }
 
-template<typename Poset>
-Poset hom_poset_impl(const Poset& P, const Poset& Q)
+template<typename PosetQ>
+PosetQ hom_poset_impl(const Array<Array<int>>& homs, const PosetQ& Q)
 {
-   return hom_poset_impl(poset_homomorphisms_impl(P, Q), Q);
+   return hom_poset_impl(HomList(homs.begin(), homs.end()), Q);
+}
+
+template<typename PosetP, typename PosetQ>
+auto hom_poset_impl(const PosetP& P, const PosetQ& Q)
+{
+   RecordKeeper<HomList> record_keeper;
+   return hom_poset_impl(poset_homomorphisms_impl(P, Q, record_keeper), Q);
 }
 
 template<typename Poset>
 Poset covering_relations_impl(const Poset& P)
 {
-   std::list<std::vector<int> > path_queue;
+   std::list<std::vector<int>> path_queue;
    Poset covers(P);
    for (int i=0; i<P.nodes(); ++i)
       if (!P.in_degree(i) && P.out_degree(i)) {
@@ -200,7 +337,7 @@ Poset covering_relations_impl(const Poset& P)
    
    while (path_queue.size()) {
       const std::vector<int> path(path_queue.front()); path_queue.pop_front();
-      for (typename Entire<typename Poset::out_adjacent_node_list>::const_iterator oit = entire(P.out_adjacent_nodes(path.back())); !oit.at_end(); ++oit) {
+      for (auto oit = entire(P.out_adjacent_nodes(path.back())); !oit.at_end(); ++oit) {
          for (size_t j=0; j<path.size()-1; ++j)
             covers.delete_edge(path[j], *oit);
          if (P.out_degree(*oit))  {

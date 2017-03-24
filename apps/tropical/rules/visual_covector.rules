@@ -24,7 +24,7 @@ options %Visual::CovectorLattice::decorations=(
 	%Visual::Lattice::decorations,
 
 	# String if set to "hidden", the covectors are not displayed.
-	Covectors => enum("hidden"), 
+	Covectors => enum("hidden"),
 
 );
 
@@ -50,7 +50,7 @@ object CovectorLattice {
 			my @s = ();
 			for my $i (0 .. $this->N_NODES-1) {
 				#No label for extreme nodes
-				if($i == 0 || $i == $this->N_NODES-1) {
+				if($i == $this->BOTTOM_NODE || $i == $this->TOP_NODE) {
 					push @s, ""; next;
 				}
 				my @covector_string = map {$_->size() == 0? "-" : join(" ", @{$_})} @{rows($this->COVECTORS->[$i])};
@@ -58,7 +58,7 @@ object CovectorLattice {
 			}
 			$$decor{"NodeLabels"} = \@s;
 		}
-	
+
 		$this->SUPER::VISUAL($decor,$seed);
 
 	}

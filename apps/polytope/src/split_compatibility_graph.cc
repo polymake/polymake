@@ -29,11 +29,10 @@ Graph<> split_compatibility_graph(const Matrix<Scalar>& SplitEquations, perl::Ob
 
    Graph<> S(n_splits);
    perl::ObjectType Polytope(perl::ObjectType::construct<Scalar>("Polytope"));
-   perl::Object Intersection;
 
    for (int s1=0; s1<n_splits; ++s1) {
       for (int s2=s1+1; s2<n_splits; ++s2) {
-         Intersection.create_new(Polytope);
+         perl::Object Intersection(Polytope);
          Matrix<Scalar> SplitIntersection(0,Facets.cols());
          SplitIntersection = SplitIntersection / SplitEquations.row(s1) / SplitEquations.row(s2)/ AffineHull;
          Intersection.take("INEQUALITIES") << Facets;
@@ -41,9 +40,9 @@ Graph<> split_compatibility_graph(const Matrix<Scalar>& SplitEquations, perl::Ob
          bool InterSectionNonEmpty = Intersection.give("FEASIBLE");
          if (InterSectionNonEmpty) {
             Vector<Scalar> IntersectionPoint = Intersection.give("REL_INT_POINT");
-            for (typename Entire< Rows<Matrix<Scalar> > >::const_iterator f=entire(rows(Facets)); !f.at_end();  ++f)
+            for (auto f=entire(rows(Facets)); !f.at_end();  ++f)
                if ((*f) * IntersectionPoint == 0) {
-                  S.edge(s1,s2);
+                  S.edge(s1, s2);
                   break;
                }
          } else {

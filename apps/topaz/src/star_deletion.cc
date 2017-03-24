@@ -29,9 +29,9 @@ perl::Object star_deletion_complex(perl::Object p_in, const Set<int>& face, perl
       throw std::runtime_error("star_deletion: specified vertex indices out of range");
    
    std::list< Set<int> > Deletion;
-   copy(entire(deletion(C,face)), std::back_inserter(Deletion));
+   copy_range(entire(deletion(C,face)), std::back_inserter(Deletion));
    
-   if ( int(Deletion.size())==int(C.size()) ) {
+   if (int(Deletion.size())==int(C.size())) {
       std::ostringstream e;
       wrap(e) << "star_deletion: " << face << " does not specify a face.";
       throw std::runtime_error(e.str());
@@ -63,7 +63,7 @@ UserFunction4perl("# @category Producing a new simplicial complex from others"
                   "# @param SimplicialComplex complex"
                   "# @param Set<Int> face specified by vertex indices."
                   "#  Please use [[labeled_vertices]] if you want to specify the face by vertex labels."
-                  "# @option Bool no_labels do not write vertex labels."
+                  "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @return SimplicialComplex",
                   &star_deletion_complex, "star_deletion(SimplicialComplex $ { no_labels => 0 } )");
 } }

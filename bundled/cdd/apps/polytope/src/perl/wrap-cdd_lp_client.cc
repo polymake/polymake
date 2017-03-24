@@ -15,15 +15,13 @@
 */
 
 #include "polymake/Rational.h"
-#include "polymake/Vector.h"
-#include "polymake/linalg.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( cdd_input_bounded_T_x, T0 ) {
-      perl::Value arg0(stack[0]);
-      WrapperReturn( (cdd_input_bounded<T0>(arg0)) );
+   FunctionInterface4perl( cdd_solve_lp_T_x_x_x_f16, T0 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      WrapperReturnVoid( (cdd_solve_lp<T0>(arg0, arg1, arg2)) );
    };
 
    template <typename T0>
@@ -33,16 +31,16 @@ namespace polymake { namespace polytope { namespace {
    };
 
    template <typename T0>
-   FunctionInterface4perl( cdd_solve_lp_T_x_x_x_f16, T0 ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      WrapperReturnVoid( (cdd_solve_lp<T0>(arg0, arg1, arg2)) );
+   FunctionInterface4perl( cdd_input_bounded_T_x, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturn( (cdd_input_bounded<T0>(arg0)) );
    };
 
-   FunctionInstance4perl(cdd_input_bounded_T_x, Rational);
-   FunctionInstance4perl(cdd_input_feasible_T_x, Rational);
-   FunctionInstance4perl(cdd_solve_lp_T_x_x_x_f16, Rational);
    FunctionInstance4perl(cdd_solve_lp_T_x_x_x_f16, double);
+   FunctionInstance4perl(cdd_solve_lp_T_x_x_x_f16, Rational);
+   FunctionInstance4perl(cdd_input_feasible_T_x, Rational);
    FunctionInstance4perl(cdd_input_feasible_T_x, double);
    FunctionInstance4perl(cdd_input_bounded_T_x, double);
+   FunctionInstance4perl(cdd_input_bounded_T_x, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

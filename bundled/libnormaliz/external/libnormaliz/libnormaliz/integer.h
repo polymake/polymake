@@ -28,7 +28,7 @@
 
 #include <list>
 #include <vector>
-#include <iostream>
+#include <string>
 #include <limits.h>
 
 
@@ -145,7 +145,27 @@ template<typename Integer> size_t decimal_length(Integer a);
 template<typename Integer> Integer permutations(const size_t& a, const size_t& b);
 template<typename Integer> Integer permutations_modulo(const size_t& a, const size_t& b, long m);
 
+//---------------------------------------------------------------------------
+//                     String conversion functions
+//---------------------------------------------------------------------------
+
+// forward declaration to silence clang error:
+// 'operator<<' should be declared prior to the call site or in the global namespace
+template <typename T> std::ostream& operator<< (std::ostream& out, const vector<T>& vec);
+
+template<typename Integer> string toString(Integer a) {
+    ostringstream ostream;
+    ostream << a;
+    return ostream.str();
 }
+template<> inline string toString(mpz_class a) {
+    return a.get_str();
+}
+template<> inline string toString(mpq_class a) {
+    return a.get_str();
+}
+
+} // end libnormaliz
 
 //---------------------------------------------------------------------------
 #endif /* INTEGER_H_ */

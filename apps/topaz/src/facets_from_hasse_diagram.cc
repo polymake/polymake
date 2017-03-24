@@ -15,18 +15,24 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/topaz/complex_tools.h"
+#include "polymake/graph/Lattice.h"
+#include "polymake/graph/Decoration.h"
 
 namespace polymake { namespace topaz {
-  
+
+using graph::Lattice;
+using graph::lattice::BasicDecoration;
+
 Array< Set<int> > facets_from_hasse_diagram(perl::Object p)
 {
-   const HasseDiagram HD(p);
-   Array< Set<int> > F(select(HD.faces(), HD.in_adjacent_nodes(HD.top_node())));
+   const Lattice<BasicDecoration> HD(p);
+   Array< Set<int> > F( attach_member_accessor( select(HD.decoration(), HD.in_adjacent_nodes(HD.top_node())),
+               ptr2type<BasicDecoration, Set<int>,&BasicDecoration::face>()
+               ));
    return F;
 }
 
-Function4perl(&facets_from_hasse_diagram, "facets_from_hasse_diagram(FaceLattice)");
+Function4perl(&facets_from_hasse_diagram, "facets_from_hasse_diagram(Lattice<BasicDecoration>)");
 
 } }
 

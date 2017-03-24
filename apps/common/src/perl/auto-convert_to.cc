@@ -17,16 +17,17 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/Array.h"
+#include "polymake/Graph.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/SparseVector.h"
 #include "polymake/TropicalNumber.h"
-#include "polymake/PuiseuxFraction.h"
 #include "polymake/Vector.h"
 #include "polymake/client.h"
 
@@ -52,8 +53,18 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(convert_to_T_X, int, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational>&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
    FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
    FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<pm::QuadraticExtension<pm::Rational>, pm::NonSymmetric> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
-   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Array<int, void> const&, pm::all_selector const&> >);
-   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
+   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Array<int> const&, pm::all_selector const&> >);
    FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
+   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, polymake::mlist<> > >);
+   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::IndexedSlice<pm::Vector<pm::Rational>&, pm::Nodes<pm::graph::Graph<pm::graph::Undirected> > const&, polymake::mlist<> > >);
+   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::IndexedSlice<pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::Rational, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric> const&, pm::Series<int, true>, mlist<> > >);
+   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::QuadraticExtension<pm::Rational> > const&>, pm::Series<int, true>, mlist<> > const&, pm::Series<int, true>, mlist<> > >);
+   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, mlist<> > const&, pm::Series<int, true>, mlist<> > >);
+   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const SparseVector< Rational > >);
+   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&, pm::all_selector const&, pm::Complement<pm::SingleElementSetCmp<int, pm::operations::cmp>, int, pm::operations::cmp> const&> >);
+   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::IndexedSlice<pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::QuadraticExtension<pm::Rational>, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric> const&, pm::Series<int, true>, mlist<> > >);
+   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const Vector< QuadraticExtension< Rational > > >);
+   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::IndexedSlice<pm::Vector<pm::Rational>&, pm::Series<int, true>, mlist<> > >);
+   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

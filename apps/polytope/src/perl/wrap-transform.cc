@@ -45,6 +45,7 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(translate_T_x_X_x, Rational, perl::Canned< const Vector< Rational > >);
    FunctionInstance4perl(scale_T_x_C_x, Rational, perl::Canned< const Rational >);
    FunctionInstance4perl(scale_T_x_C_x, Rational, int);
-   FunctionInstance4perl(translate_T_x_X_x, Rational, perl::Canned< const pm::IndexedSlice<pm::Vector<pm::Rational>&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&, void> >);
+   FunctionInstance4perl(translate_T_x_X_x, Rational, perl::Canned< const pm::IndexedSlice<pm::Vector<pm::Rational>&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
+   FunctionInstance4perl(scale_T_x_C_x, double, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

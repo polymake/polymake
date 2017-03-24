@@ -61,7 +61,11 @@ UserFunction4perl("# @category Comparing"
                   "# If the polytopes are not isomorphic, an exception is thrown."
                   "# @param Cone P1 the first cone/polytope"
                   "# @param Cone P2 the second cone/polytope"
-                  "# @return Pair<Array<Int>, Array<Int>> the facet and the vertex permutations",
+                  "# @return Pair<Array<Int>, Array<Int>> the facet and the vertex permutations"
+                  "# @example [prefer cdd] To print the vertex permutation that maps the 3-simplex to its mirror image, type this:"
+                  "# > $p = find_facet_vertex_permutations(simplex(3),scale(simplex(3),-1));"
+                  "# > print $p->first;"
+                  "# | 1 2 3 0",
                   &find_facet_vertex_permutations, "find_facet_vertex_permutations(Cone,Cone)");
 
 Function4perl(&is_self_dual, "is_self_dual(Cone)");

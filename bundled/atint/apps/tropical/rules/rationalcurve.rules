@@ -222,8 +222,7 @@ object RationalCurve {
 		#We keep the old curves as INPUT_*
 		my @input_sets = (@{$a->SETS}, @{$b->SETS});
 		my $r = rational_curve_from_metric($vr);
-		my $c = new RationalCurve(SETS=>$r->SETS,COEFFS=>$r->COEFFS,INPUT_SETS=>(new Vector<Set<Int> >(\@input_sets)),INPUT_COEFFS=>($a->COEFFS | $b->COEFFS),N_LEAVES=>$r->N_LEAVES);
-		return $c;
+		return new RationalCurve(SETS=>$r->SETS,COEFFS=>$r->COEFFS,INPUT_SETS=>(new Vector<Set<Int>>(\@input_sets)),INPUT_COEFFS=>($a->COEFFS | $b->COEFFS),N_LEAVES=>$r->N_LEAVES);
 	}
 
 	#For some reason the arguments seem to be sorted s.t. the scalar is always at the end
@@ -231,21 +230,19 @@ object RationalCurve {
 		my ($r,$c) = @_;
 		my $vc = $r->metric_vector();
 		my $x = rational_curve_from_metric($c * $vc);
-		my $c = new RationalCurve(SETS=>$x->SETS,COEFFS=>$x->COEFFS,INPUT_SETS=>$r->SETS,INPUT_COEFFS=>($c * $r->COEFFS),N_LEAVES=>$x->N_LEAVES);
-		return $c;
+		return new RationalCurve(SETS=>$x->SETS,COEFFS=>$x->COEFFS,INPUT_SETS=>$r->SETS,INPUT_COEFFS=>($c * $r->COEFFS),N_LEAVES=>$x->N_LEAVES);
 	}
 
 	sub subtract {
 		my ($a,$b) = @_;
 		my $va = $a->metric_vector();
 		my $vb = $b->metric_vector();
-		if($va->dim() != $vb->dim()) {
+		if ($va->dim() != $vb->dim()) {
 			die "Cannot add curves: Dimension mismatch.";
 		}
 		my $vr = $va-$vb;
 		my $r = rational_curve_from_metric($vr);
-		my $c = new RationalCurve(SETS=>$r->SETS,COEFFS=>$r->COEFFS,INPUT_SETS=>($a->SETS / $b->SETS),INPUT_COEFFS=>(($a->COEFFS) | (-$b->COEFFS)),N_LEAVES=>$r->N_LEAVES);
-		return $c;
+		return new RationalCurve(SETS=>$r->SETS,COEFFS=>$r->COEFFS,INPUT_SETS=>($a->SETS / $b->SETS),INPUT_COEFFS=>(($a->COEFFS) | (-$b->COEFFS)),N_LEAVES=>$r->N_LEAVES);
 	}
 
 	sub to_string {

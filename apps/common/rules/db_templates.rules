@@ -1,0 +1,196 @@
+# Copyright (c) 2013-2016 Silke Horn, Andreas Paffenholz
+# http://solros.de/polymake/poly_db
+# http://www.mathematik.tu-darmstadt.de/~paffenholz
+# 
+# This file is part of the polymake extension polyDB.
+# 
+# polyDB is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# polyDB is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with polyDB.  If not, see <http://www.gnu.org/licenses/>.
+
+sub add_properties {
+	my ($flat_properties, $initial, $t) = @_;
+	foreach (keys %$t ) {
+		if ( ref($t->{$_}) eq "HASH" ) {
+			my @k = keys %{$t->{$_}};
+			if ( $k[0] =~ /[A-Z]+/ ) {
+				my $ini = $initial.".".$_;
+				add_properties($flat_properties, $ini, $t->{$_});
+			} else {
+				my $props = " [";
+				foreach ( keys %{$t->{$_}} ) {
+					$props .= ", ".$_;
+				}
+				$props =~ s/, (.*)/$1/;
+				$props .= "]";
+				push @{$flat_properties}, $initial.".".$_." ".$props;
+			}
+		} else {
+			if ( $t->{$_} != 0 ) {
+				push @{$flat_properties}, $initial.".".$_;
+			}
+		}
+	}
+}
+
+
+# @category Database Write Access
+# Returns the template object for the collection //col// of the database //db// (if this is set).
+# returns the full template record for a given collection and a given key
+# 
+# Contained in extension ''polyDB''.
+# @param String db name of the database, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available databases
+# @param String collection name of the collection, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available collections
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @option String template_key   template name to load from the database
+# @option MongoClient client
+# @return HASH
+user_function db_get_type_info($, $, {local => 0, client => undef, template_key=>"default"}) {
+	my ($db, $col, $options) = @_;
+	my $local = $options->{local};
+	my $template_key = $options->{"template_key"};
+	
+	my $client;
+	unless(defined($client = $options->{client})) {
+		$client	= get_client($local, "", "");
+	}
+		
+	my $tcol = $client->get_database($db)->get_collection("type_information");
+	unless ($tcol) {croak("No connection to database type_information"); }
+	my $template = $tcol->find({db => $db, col => $col, key=>$template_key })->next;
+	unless ($template) {croak("no template data for collection $col in database $db with key $template_key");}
+	
+	return $template;
+}
+
+
+# @category Database
+# Return the list of property names that can be searched in the database for a given database //db//, 
+# collection //col// and optional template key.
+# @param String db name of the database, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available databases
+# @param String collection name of the collection, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available collections
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @return Array<String>
+user_function db_searchable_fields ($, $, {local => 0, client => undef, template_key => 'default'}) {
+	my ($db, $col, $options) = @_;
+	
+	my $t = db_get_type_info ( $db, $col, $options);
+	
+	my $flat_properties = [];
+	add_properties($flat_properties,"",$t);
+	foreach (@$flat_properties) {
+		s/^\.(.*)/$1/;
+	}
+	
+	return new Array<String>(@{$flat_properties});
+}
+
+# @category Database Admin
+# Set or update type (and template) information for collection //col// in the database //db//.
+# 
+# Note that you need write access to the type database for this.
+# 
+# Contained in extension ''polyDB''.
+# @param String db database name
+# @param String col collection name
+# @option String id id of the template
+# @option String app application name for the objects
+# @option String type type name for the objects
+# @option String version polymake version, will be set to the current version by default
+# @option String contributor
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @option String username
+# @option String password
+# @option Core::Object template
+# @option Bool verbose
+user_function db_set_type_info($, $, {id => "", app => "", basic_type => "", modifier => "", type => "", version => "", contributor => "", local => 0, username => "", password => "", template_key => 'default', template => undef, verbose => 0}) {
+	my ($db, $col, $options) = @_;
+
+	my $client = get_client($options);
+		
+	my $tdb = $client->get_database($db);
+	my $tcol = $tdb->get_collection("type_information");
+
+	my $update = 0;
+	my $h = {};
+	my $id = "";
+	if (my $res=$tcol->find_one({'db'=>$db, 'col'=>$col, 'key' => $options->{template_key} })) {
+		$update = 1;
+		$id = $res->{"_id"};
+	} else {
+		$h = {'db'=>$db, 'col'=>$col, 'key' => $options->{template_key} };
+	}
+
+	if ( !$update && ( !$options->{basic_type} || !$options->{id} || !$options->{app} ) ) {
+		croak ("for new type info records you mast define basic_type, app, and id");
+	}
+
+	if ($options->{app}) {
+		# TODO: check whether old template object matches type and app
+		$h->{app} = $options->{app};
+	}
+	if ($options->{type}) {
+		$h->{type} = $options->{type};
+	}
+	if ($options->{id}) {
+		if ( $update ) {
+			if ( $options->{"id"} != $id ) {
+				croak("cannot change id of type info");
+			}
+		} else {
+			$h->{_id} = $options->{id};
+		}
+	}
+	if ($options->{version}) {
+		$h->{version} = $options->{version};
+	} elsif (!$update) {
+		$h->{version} = $Version;
+	}
+	if ($options->{contributor}) {
+		$h->{contributor} = $options->{contributor};
+	}
+	if ($options->{modifier}) {
+		$h->{modifier} = $options->{modifier};
+	}
+	if ($options->{basic_type}) {
+		$h->{basic_type} = $options->{basic_type};
+	}
+
+	if (defined(my $t = $options->{template})) {
+		$h->{template} = $t;
+	}
+	if (defined(my $t = $options->{template_key})) {
+		$h->{template_key} = $t;
+	}	
+	if ($update) {
+		my $output = $tcol->update_one({'db'=>$db, 'col'=>$col, 'key'=>$options->{template_key}}, {'$set' => $h});
+		if ($options->{verbose}) {
+			if ($output->acknowledged) {
+				print "successfully updated type information for $db.$col\n"
+			} else {
+				print "an error occurred when trying to update type information for $db.$col:\n$output\n";
+			}
+		}
+	
+	} else {
+		my $output = $tcol->insert_one($h);
+		if ($options->{verbose}) {
+			if ($output->acknowledged) {
+				print "successfully saved type information for $db.$col\n";
+			} else {
+				print "an error occurred when trying to save type information for $db.$col:\n$output\n";
+			}
+		}
+	}
+		
+	undef $client;
+}

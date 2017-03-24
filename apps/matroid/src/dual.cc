@@ -20,68 +20,97 @@
 #include "polymake/Matrix.h"
 #include "polymake/linalg.h"
 #include "polymake/Rational.h"
+#include "polymake/PowerSet.h"
 
 namespace polymake { namespace matroid {
 
-perl::Object dual(perl::Object m)
-{
-  perl::Object m_new("Matroid");
-  const int n=m.give("N_ELEMENTS");
-  m_new.set_description()<<"Dual matroid of "<<m.name()<<"."<<endl;
-  m_new.take("N_ELEMENTS")<<n;
+   Array<Set<int> > dual_bases_from_bases(int n_elements, const Array<Set<int> >&bases) {
+      Array<Set<int> > result(bases.size());
+      Set<int> total_set = sequence(0,n_elements);
+      for(pm::ensure_features< Array< Set<int> >, pm::cons<pm::end_sensitive, pm::indexed> >::const_iterator b = ensure( bases, (pm::cons<pm::end_sensitive, pm::indexed>*)0).begin(); !b.at_end(); b++) {
+         result[b.index()] = total_set - *b;
+      }
+      return result;
+   }
 
-  bool found_defined = false;
+   Array<Set<int> > dual_circuits_from_bases(const int n, const Array<Set<int> >& bases)
+   {
+      if(bases.empty()) {
+         return Array<Set<int> >();
+      }
+      const int  r=bases[0].size();
+      if (r==0) return Array<Set<int> >(0);
+      if (r==n) {
+         Array<Set<int> > c(n);
+         for (int i=0; i<n;++i)
+            c[i]=scalar2set(i);
+         return c;
+      } 
+      int n_cocircuits=0;
+      std::vector<Set<int> > cocircuits;
+      for (int k=1; k<=n-r+1; ++k)
+         for (Entire< Subsets_of_k<const sequence&> >::const_iterator j=entire(all_subsets_of_k(sequence(0,n),k));!j.at_end();++j) {
+            bool is_cocircuit=true;
+            for (Entire<std::vector<Set<int> > >::const_iterator i=entire(cocircuits); is_cocircuit&&!i.at_end();++i) 
+               if (incl(*i,*j)<=0) is_cocircuit=false;
+            for (Entire<Array<Set<int> > >::const_iterator i = entire(bases); is_cocircuit&&!i.at_end(); ++i){
+               if (((*i)*(*j)).empty()) is_cocircuit=false;
+            }
+            if (is_cocircuit) {
+               cocircuits.push_back(Set<int>(*j));
+               ++n_cocircuits;
+            }
+         }
+      return Array<Set<int> >(n_cocircuits,entire(cocircuits));
+   }
 
-  int rank;
-  if (m.lookup("RANK")>>rank) {
-     m_new.take("RANK")<<n-rank;
-  }
+	Array<Set<int> > bases_from_dual_circuits(const int n, const Array<Set<int> >& cocircuits)
+	{
+		if (cocircuits.empty()) return Array<Set<int> >(1);
+		int n_bases=0;
+		std::vector<Set<int> > bases;
+		int r=n;
+		for (int k=1; k<=r; ++k)
+			for (Entire< Subsets_of_k<const sequence&> >::const_iterator j=entire(all_subsets_of_k(sequence(0,n),k));!j.at_end();++j) {
+				bool is_basis=true;
+				for (Entire<Array<Set<int> > >::const_iterator i = entire(cocircuits); is_basis&&!i.at_end(); ++i){
+					if (((*i)*(*j)).empty()) is_basis=false;
+				}
+				if (is_basis) {
+					bases.push_back(Set<int>(*j));
+					++n_bases;
+					r=k;
+				}
+			}
+		return Array<Set<int> >(n_bases,entire(bases));
+	}
 
-  Array<std::string> labels;
-  if ((m.lookup("LABELS")>>labels)) {
-     m_new.take("LABELS")<<labels;
-  }
+
+	Array<Set<int> > bases_from_dual_circuits_and_rank(const int n, const int rank, const Array<Set<int> >& cocircuits)
+	{
+		if (cocircuits.empty()) return Array<Set<int> >(1);
+		int n_bases=0;
+		std::vector<Set<int> > bases;
+		for (Entire< Subsets_of_k<const sequence&> >::const_iterator j=entire(all_subsets_of_k(sequence(0,n),rank));!j.at_end();++j) {
+			bool is_basis=true;
+			for (Entire<Array<Set<int> > >::const_iterator i = entire(cocircuits); is_basis&&!i.at_end(); ++i){
+				if (((*i)*(*j)).empty()) is_basis=false;
+			}
+			if (is_basis) {
+				bases.push_back(Set<int>(*j));
+				++n_bases;
+			}
+		}
+		return Array<Set<int> >(n_bases,entire(bases));
+	}
 
 
-  Array<Set<int> > circuits;
-  if (m.lookup("COCIRCUITS")>>circuits) m_new.take("CIRCUITS")<<circuits;
-  if (m.lookup("CIRCUITS")>>circuits) {
-     m_new.take("COCIRCUITS")<<circuits;
-     found_defined = true;
-  }
 
-  Matrix<Rational> points;
-  if (m.lookup("VECTORS")>>points) {
-    m_new.take("VECTORS")<<T(null_space(T(points)));
-    found_defined = true;
-  }
+   Function4perl(&dual_bases_from_bases, "dual_bases_from_bases");
+   Function4perl(&dual_circuits_from_bases, "dual_circuits_from_bases");
+   Function4perl(&bases_from_dual_circuits, "bases_from_dual_circuits");
+   Function4perl(&bases_from_dual_circuits_and_rank, "bases_from_dual_circuits_and_rank");
 
-  //Bases are also a fallback which we always compute if neither CIRCUITS nor VECTORS are present.
-  Array<Set<int> > bases;
-  bool has_bases = (m.lookup("BASES")>>bases);
-  if (!found_defined || has_bases) {
-    if(!found_defined) bases = m.give("BASES");
-    Array<Set<int> > new_bases(bases.size());
-    for (int i=0;i<bases.size();++i)
-      new_bases[i]=sequence(0,n)-bases[i];
-    m_new.take("BASES")<<new_bases;
-  }
-
-  if (m.lookup("NON_BASES")>>bases) {
-    Array<Set<int> > new_bases(bases.size());
-    for (int i=0;i<bases.size();++i)
-      new_bases[i]=sequence(0,n)-bases[i];
-    m_new.take("NON_BASES")<<new_bases;
-  }
-
-  return m_new;
-}
-
-UserFunction4perl("# @category Producing a matroid from matroids"
-                  "# Produces the __dual__ of a given matroid //m//."
-                  "# @param Matroid m"
-                  "# @return Matroid",
-                  &dual, "dual(Matroid)");
 } }
 
 // Local Variables:

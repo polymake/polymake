@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -44,6 +44,24 @@ property FULL_DIM : Bool;
 
 property POINTED : Bool;
 
+# @category Geometry
+# Since we do not require our cones to be pointed: a basis of the lineality space of the fan. Co-exists with [[RAYS]].
+
+property LINEALITY_SPACE : Matrix<Scalar>;
+
+
+# @category Geometry
+# A basis of the orthogonal complement to [[LINEALITY_SPACE]].
+
+property ORTH_LINEALITY_SPACE : Matrix<Scalar>;
+
+
+# @category Geometry
+# Dimension of [[LINEALITY_SPACE]].
+
+property LINEALITY_DIM : Int;
+
+
 # @category Input property
 # Rays from which the cones are formed.  May be redundant. All vectors in the input must be non-zero.
 # You also need to provide [[INPUT_CONES]] to define a fan completely.
@@ -62,7 +80,7 @@ property INPUT_RAYS : Matrix<Scalar>;
 #
 # Input section only. Ask for [[MAXIMAL_CONES]] if you want to know the maximal cones (indexed by [[RAYS]]).
 
-property INPUT_CONES : Array<Set<Int> >;
+property INPUT_CONES : Array<Set<Int>>;
 
 # @category Input property
 # Vectors whose linear span defines a subset of the lineality space of the fan; 
@@ -80,15 +98,12 @@ property RAYS : Matrix<Scalar> {
    sub canonical { &canonicalize_rays; }
 }
 
-declare permutation RaysPerm {
+# permuting the [[RAYS]]
+permutation RaysPerm : PermBase;
 
-   # transforming [[RAYS]] from this into basic object
-   property PERMUTATION : Array<Int>;
-}
-
-rule RaysPerm.PERMUTATION : RaysPerm.RAYS, RAYS  {
+rule RaysPerm.PERMUTATION : RaysPerm.RAYS, RAYS, LINEALITY_SPACE {
    my $cmp=$this->prepare_computations;
-   $this->RaysPerm->PERMUTATION=find_representation_permutation($this->RaysPerm->RAYS, $this->RAYS,$this->LINEALITY_SPACE,0);
+   $this->RaysPerm->PERMUTATION=find_representation_permutation($this->RaysPerm->RAYS, $this->RAYS, $this->LINEALITY_SPACE, 0);
 }
 
 rule RAYS : RaysPerm.RAYS, RaysPerm.PERMUTATION {
@@ -116,14 +131,11 @@ rule MAXIMAL_CONES : RaysPerm.MAXIMAL_CONES, RaysPerm.PERMUTATION {
    $this->MAXIMAL_CONES=permuted_cols($this->RaysPerm->MAXIMAL_CONES, $this->RaysPerm->PERMUTATION);
 }
 
-declare permutation ConesPerm {
-
-   # transforming [[MAXIMAL_CONES]] from this into basic object
-   property PERMUTATION : Array<Int>;
-}
+# permuting the [[MAXIMAL_CONES]]
+permutation ConesPerm : PermBase;
 
 rule ConesPerm.PERMUTATION : ConesPerm.MAXIMAL_CONES, MAXIMAL_CONES  {
-   $this->ConesPerm->PERMUTATION=find_permutation((new Array<Set<Int> >(rows($this->ConesPerm->MAXIMAL_CONES))), (new Array<Set<Int> >(rows($this->MAXIMAL_CONES))));
+   $this->ConesPerm->PERMUTATION=find_permutation((new Array<Set<Int>>(rows($this->ConesPerm->MAXIMAL_CONES))), (new Array<Set<Int>>(rows($this->MAXIMAL_CONES))));
 }
 weight 1.10;
 
@@ -191,24 +203,6 @@ user_method MAXIMAL_CONES_DIMS : FAN_DIM, MAXIMAL_CONES_COMBINATORIAL_DIMS {
 }
 
 
-# @category Geometry
-# Since we do not require our cones to be pointed: a basis of the lineality space of the fan. Co-exists with [[RAYS]].
-
-property LINEALITY_SPACE : Matrix<Scalar>;
-
-
-# @category Geometry
-# A basis of the orthogonal complement to [[LINEALITY_SPACE]].
-
-property ORTH_LINEALITY_SPACE : Matrix<Scalar>;
-
-
-# @category Geometry
-# Dimension of [[LINEALITY_SPACE]].
-
-property LINEALITY_DIM : Int;
-
-
 # @category Visualization
 # Unique names assigned to the [[RAYS]].
 # If specified, they are shown by visualization tools instead of vertex indices.
@@ -236,20 +230,51 @@ property MAXIMAL_CONE_LABELS : Array<String> : mutable;
 # @category Combinatorics
 # The poset of subcones of the polyhedral fan organized as a directed graph.
 # Each node corresponds to some proper subcone of the fan.
-# The nodes corresponding to the rays and maximal cones appear in the same order
-# as the elements of [[RAYS]] and [[MAXIMAL_CONES]] properties.
+# The nodes corresponding to the maximal cones appear in the same order
+# as the elements of [[MAXIMAL_CONES]].
 #
-# One special node represents the origin.
+# One special node represents the origin and one special node represents the full fan
+# (even if the fan only has one maximal cone).
 
-property HASSE_DIAGRAM : FaceLattice;
+property HASSE_DIAGRAM : Lattice<BasicDecoration> {
 
-rule HASSE_DIAGRAM : RaysPerm.HASSE_DIAGRAM, RaysPerm.PERMUTATION {
-   $this->HASSE_DIAGRAM=permuted_atoms($this->RaysPerm->HASSE_DIAGRAM, $this->RaysPerm->PERMUTATION);
-}
+	method get_shift() {
+		my $this = shift;
+		return $this->parent->isa("fan::PolyhedralComplex") ? 1 : 0;
+	}
 
-rule HASSE_DIAGRAM : ConesPerm.HASSE_DIAGRAM, ConesPerm.PERMUTATION {
-   $this->HASSE_DIAGRAM=permuted_coatoms($this->ConesPerm->HASSE_DIAGRAM, $this->ConesPerm->PERMUTATION);
-}
+   # @category Combinatorics
+   # @return Int
+   user_method dim {
+		my $this = shift;
+      return $this->rank() - $this->get_shift();
+   }
+
+   # @category Combinatorics
+   # @param Int d dimension
+   # @return Set<Int>
+   user_method nodes_of_dim($) {
+      my ($this,$d) = @_;
+      return $this->nodes_of_rank($d + $this->get_shift());
+   }
+
+   # @category Combinatorics
+   # @param Int d1 lower dimension
+   # @param Int d1 upper dimension
+   # @return Set<Int>
+   user_method nodes_of_dim_range($,$) {
+      my ($this,$d1,$d2) = @_;
+		my $st = $this->get_shift();
+      return shift->nodes_of_rank_range($d1+$st,$d2+$st);
+   }}
+
+#rule HASSE_DIAGRAM : RaysPerm.HASSE_DIAGRAM, RaysPerm.PERMUTATION {
+#   $this->HASSE_DIAGRAM=permuted_atoms($this->RaysPerm->HASSE_DIAGRAM, $this->RaysPerm->PERMUTATION);
+#}
+#
+#rule HASSE_DIAGRAM : ConesPerm.HASSE_DIAGRAM, ConesPerm.PERMUTATION {
+#   $this->HASSE_DIAGRAM=permuted_coatoms($this->ConesPerm->HASSE_DIAGRAM, $this->ConesPerm->PERMUTATION);
+#}
 
 # @category Combinatorics
 # f<sub>ik</sub> is the number of incident pairs of i-dimensional cones and k-dimensional cones; the main diagonal contains the [[F_VECTOR]].
@@ -272,6 +297,7 @@ property PURE : Bool;
 #
 # Due to undecidability issues this is checked heuristically only.
 # See the remarks on [[topaz::SimplicialComplex::SPHERE|SPHERE]] for details.
+# Note that in the case of a polyhedral complex, this refers to the underlying fan, so should always be false.
 
 property COMPLETE : Bool;
 
@@ -298,6 +324,7 @@ rule GRAPH.NodePerm.PERMUTATION = RaysPerm.PERMUTATION;
 # @category Combinatorics
 # The graph whose nodes are the maximal cones which
 # are connected if they share a common facet.
+# Only defined if [[PURE]]
 
 property DUAL_GRAPH : objects::Graph;
 

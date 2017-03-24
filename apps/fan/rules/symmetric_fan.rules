@@ -14,6 +14,7 @@
 #-------------------------------------------------------------------------------
 
 
+# @category Geometry
 # A [[PolyhedralFan]] with a symmetry group acting on the coordinates.
 declare object SymmetricFan<Scalar=Rational> [ is_ordered_field(Scalar) ] : PolyhedralFan<Scalar>;
 
@@ -24,11 +25,11 @@ object SymmetricFan {
 # Each element of the array is a generator of the subgroup of the symmetric group
 # acting on the coordintates. Each generator is represented by an Array whose ith
 # entry is the image of ith coordinate.
-property SYMMETRY_GENERATORS : Array<Array<Int> >;
+property SYMMETRY_GENERATORS : Array<Array<Int>>;
 
 # @category Symmetry
 # Each element of the array is an element of the symmetry group.
-property SYMMETRY_GROUP : Array<Array<Int> >;
+property SYMMETRY_GROUP : Array<Array<Int>>;
 
 
 # @category Symmetry
@@ -46,7 +47,7 @@ property N_SYMMETRIES : Int;
 # Maybe redundant list of not necessarily maximal cones, one from each orbit.  
 # All vectors in the input must be non-zero.
 # Indices refer to [[INPUT_RAYS]].
-property INPUT_CONES_REPS : Array<Set<Int> >;
+property INPUT_CONES_REPS : Array<Set<Int>>;
 
 
 # @category Symmetry
@@ -55,7 +56,7 @@ property RAYS_REPS : Matrix<Scalar>;
 
 # @category Symmetry
 # Tells which ray is in the orbit of which representative, indices refers to rows of [[RAYS]].
-property RAYS_IN_ORBITS : Array<Set<Int> >;
+property RAYS_IN_ORBITS : Array<Set<Int>>;
 
 # @category Symmetry
 # Number of orbits of [[RAYS]].
@@ -64,7 +65,7 @@ property N_RAY_ORBITS : Int;
 
 # @category Symmetry 
 # Each row contains the image of all [[RAYS]] under one element of the symmetry group.
-property RAYS_IMAGES : Array<Array<Int> >;
+property RAYS_IMAGES : Array<Array<Int>>;
 
 # @category Symmetry 
 # Number of elements of each orbit of [[RAYS]].
@@ -74,11 +75,11 @@ property RAYS_ORBIT_SIZES : Array<Int>;
 
 # @category Symmetry
 # Non redundant list of maximal cones, one from each orbit.  Indices refer to [[RAYS]].
-property MAXIMAL_CONES_REPS : Array<Set<Int> >;
+property MAXIMAL_CONES_REPS : Array<Set<Int>>;
 
 # @category Symmetry
 # Tells which maximal cone is in the orbit of which representative, indices refers to rows of [[MAXIMAL_CONES]].
-property MAXIMAL_CONES_IN_ORBITS : Array<Set<Int> >;
+property MAXIMAL_CONES_IN_ORBITS : Array<Set<Int>>;
 
 # @category Symmetry
 # Number of orbits of [[MAXIMAL_CONES]].
@@ -96,7 +97,7 @@ property MAXIMAL_CONES_REPS_DIMS : Array<Int>;
 
 # @category Symmetry
 # List of all cones of all dimensions of the fan, one from each orbit.  Indices refer to [[RAYS]].
-property CONES_REPS : Array<Array<Set<Int> > >;
+property CONES_REPS : Array<Array<Set<Int>>>;
 
 # @category Symmetry
 # f<sub>k</sub> is the number of k-dimensional cones up to symmetry.
@@ -104,7 +105,7 @@ property ORBITS_F_VECTOR  : Vector<Integer>;
 
 # @category Symmetry
 # Number of [[CONES_REPS]] in each orbit.
-property CONES_ORBIT_SIZES : Array<Array<Int> >;
+property CONES_ORBIT_SIZES : Array<Array<Int>>;
 
 
 
@@ -160,7 +161,7 @@ precondition : PURE;
 weight 0.10;
 
 rule LINEALITY_SPACE : RAYS, MAXIMAL_CONES_REPS {
-   $this->LINEALITY_SPACE=new Matrix<Scalar>();
+   $this->LINEALITY_SPACE=new Matrix<Scalar>(0, $this->RAYS->cols);
 }
 weight 0.10;
 

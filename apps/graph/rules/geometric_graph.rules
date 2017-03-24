@@ -15,10 +15,11 @@
 
 # An undirected graph with given node coordinates and a bounding box.
 
+# @category Combinatorics
 declare object GeometricGraph<Scalar=Rational> : Graph {
 
    # The coordinates of the nodes of the graph.
-   property COORDINATES : NodeMap<Undirected, Vector<Scalar> > : construct(ADJACENCY);
+   property COORDINATES : NodeMap<Undirected,Vector<Scalar>> : construct(ADJACENCY);
 
    # Since a Voronoi polyhedron is unbounded it must be artificially bounded for visualization purposes.
    # Allowed is any set of hyperplanes which makes the projection onto the last d-1 coordinates bounded.

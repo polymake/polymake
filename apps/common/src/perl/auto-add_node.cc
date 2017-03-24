@@ -28,5 +28,6 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(add_node_f1, perl::Canned< Graph< Undirected > >);
+   FunctionInstance4perl(add_node_f1, perl::Canned< Graph< Directed > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

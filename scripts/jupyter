@@ -1,0 +1,55 @@
+sub install_jupymake(){
+    # installation of jupyter, where the used polymake version is employed in the jupyter_kernel_polymake
+    print <<".";
+This function installs the jupyter polymake kernel for the current user (into ~/.local)
+You need to have a running version of the jupyter notebook for python3 installed.
+Are you sure you want to continue installing the jupyter polymake kernel? [y/N] 
+.
+    chomp ($_=<STDIN>);
+    if( /^[Yy](?:es)?$/ )  {
+	my $temp = new Tempfile;
+	$temp->descend_dir;
+	my $dir = $temp->dir;
+	my $poly = Cwd::abs_path($0);
+	my $cmd = <<".";
+( cp -Rp $InstallTop/resources/jupyter-polymake $dir && \\
+ sed -i s+#___replace_polymake_run_command___+polymake_run_command=\\'$poly\\'+ $dir/jupyter-polymake/jupyter_kernel_polymake/kernel.py && \\
+ cd $dir/jupyter-polymake/ && python3 setup.py install --user ) 2>&1
+.
+        my $install_jupymake = `$cmd`;
+	if($?==0) {
+	    print << ".";
+Installation complete.
+Do you want to start a jupyter notebook now? [y/N]
+.
+	    chomp ($_=<STDIN>);
+	    if( /^[Yy](?:es)?$/ ){
+		File::Path::rmtree($dir);
+		start_jupymake();
+	    }
+	} else {
+	    print "Installation failed, please check the output:\n$install_jupymake";
+	}
+    }
+}
+
+sub start_jupymake {
+    # starts jupymake
+    # currently no polymake kernel is running on start up
+    exec("jupyter notebook");
+}
+
+#check if the user has a polymake kernel in jupyter installed, if not install it else run jupymake
+my $out=`jupyter kernelspec list` ;
+if ($out=~/^\s+polymake/m){
+    start_jupymake();
+} else {
+    install_jupymake();
+}
+    
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

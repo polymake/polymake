@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -83,15 +83,15 @@ class access<Given, const std::string>
    : public access<const std::string, const std::string> {};
 
 template <typename Target>
-struct canned_may_be_missing : False {};
+struct canned_may_be_missing : std::false_type {};
 
-template <typename E, typename SharedParams>
-struct canned_may_be_missing< pm::Array<E, SharedParams> > : True {};
+template <typename E, typename... SharedParams>
+struct canned_may_be_missing< pm::Array<E, SharedParams...> > : std::true_type {};
 
 // TODO: add a declaration for representative of HashMaps when CPlusPlus.pm learns to generate them for anonymous hash maps
 
-template <typename Given, typename Target, bool _try_conv>
-class access_canned<Given, Target, _try_conv, true> {
+template <typename Given, typename Target, bool try_conv>
+class access_canned<Given, Target, try_conv, true> {
 public:
    typedef Target type;
    typedef typename inherit_const<Target&, Given>::type return_type;
@@ -101,86 +101,86 @@ public:
    static return_type get(const Value& v)
    {
       const Value::canned_data_t canned=Value::get_canned_data(v.sv);
-      const bool maybe_missing=_try_conv || canned_may_be_missing<typename attrib<Given>::minus_const>::value;
+      const bool maybe_missing=try_conv || canned_may_be_missing<typename attrib<Given>::minus_const>::value;
 
       if (!maybe_missing || canned.second) {
-         if (identical<value_type, given_value_type>::value) {
-            if (!_try_conv || *canned.first == typeid(value_type))
+         if (std::is_same<value_type, given_value_type>::value) {
+            if (!try_conv || *canned.first == typeid(value_type))
                return *reinterpret_cast<type*>(canned.second);
          } else {
-            if (!_try_conv || *canned.first == typeid(given_value_type))
-               return convert_input(v, canned, identical<value_type, given_value_type>());
+            if (!try_conv || *canned.first == typeid(given_value_type))
+               return convert_input(v, canned, std::is_same<value_type, given_value_type>());
          }
 
          if (wrapper_type conversion=type_cache<value_type>::get_conversion_constructor(v.sv)) {
             // It is a wrapper for new<T0>(T1), it expects the prototype at stack[0] and the argument at stack[1]
             SV* mini_stack[2]={ NULL, v.sv };
-            if (SV* ret=conversion(mini_stack, reinterpret_cast<char*>(&mini_stack)))
+            if (SV* ret=conversion(mini_stack))
                return *reinterpret_cast<value_type*>(Value::get_canned_data(ret).second);
             else
                throw exception();
          }
       }
 
-      return parse_input(v, bool2type<maybe_missing>());
+      return parse_input(v, bool_constant<maybe_missing>());
    }
 
 private:
-   static return_type parse_input(const Value& v, True)
+   static return_type parse_input(const Value& v, std::true_type)
    {
       Value temp_can;
-      value_type* value=new(temp_can.allocate_canned(type_cache<value_type>::get_descr())) value_type;
+      value_type* value=new(temp_can.allocate_canned(type_cache<value_type>::get_descr(0))) value_type;
       v >> *value;
-      const_cast<Value&>(v).sv=temp_can.get_temp();
+      const_cast<Value&>(v).sv=temp_can.get_constructed_canned();
       return *value;
    }
 
-   static return_type convert_input(const Value& v, const Value::canned_data_t& canned, False)
+   static return_type convert_input(const Value& v, const Value::canned_data_t& canned, std::false_type)
    {
       Value temp_can;
-      value_type* value=new(temp_can.allocate_canned(type_cache<value_type>::get_descr())) value_type(*reinterpret_cast<Given*>(canned.second));
-      const_cast<Value&>(v).sv=temp_can.get_temp();
+      value_type* value=new(temp_can.allocate_canned(type_cache<value_type>::get_descr(0))) value_type(*reinterpret_cast<Given*>(canned.second));
+      const_cast<Value&>(v).sv=temp_can.get_constructed_canned();
       return *value;
    }
 
-   static return_type parse_input(const Value& v, False)
+   static return_type parse_input(const Value& v, std::false_type)
    {
       // should never happen
-      return *reinterpret_cast<value_type*>(0);
+      throw std::runtime_error("internal error: wrong use of access_canned::parse_input");
    }
 
-   static return_type convert_input(const Value& v, const Value::canned_data_t& canned, True)
+   static return_type convert_input(const Value& v, const Value::canned_data_t& canned, std::true_type)
    {
       // should never happen
-      return *reinterpret_cast<value_type*>(0);
+      throw std::runtime_error("internal error: wrong use of access_canned::convert_input");
    }
 };
 
-template <typename Target, bool _try_conv>
-class access_canned<Target, Target, _try_conv, false> {
+template <typename Target, bool try_conv>
+class access_canned<Target, Target, try_conv, false> {
 public:
-   typedef typename inherit_const<typename Unwary<typename attrib<Target>::minus_const>::type, Target>::type type;
+   typedef typename inherit_const<unwary_t<typename attrib<Target>::minus_const>, Target>::type type;
    typedef Target& return_type;
    typedef typename attrib<type>::minus_const value_type;
 
    static return_type get(const Value& v)
    {
-      return wary(access_canned<type, type, _try_conv, true>::get(v));
+      return wary(access_canned<type, type, try_conv, true>::get(v));
    }
 };
 
-template <typename Given, typename Target, bool _try_conv>
-class access_canned<Given, Target, _try_conv, false> {
+template <typename Given, typename Target, bool try_conv>
+class access_canned<Given, Target, try_conv, false> {
 public:
    typedef typename inherit_const<Target, Given>::type type;
    typedef typename inherit_const<Wary<Target>, Given>::type& return_type;
-   typedef typename Unwary<typename attrib<Given>::minus_const>::type given_value_type;
+   typedef unwary_t<typename attrib<Given>::minus_const> given_value_type;
    typedef typename inherit_const<given_value_type, Given>::type given_type;
    typedef typename attrib<type>::minus_const value_type;
 
    static return_type get(const Value& v)
    {
-      return wary(access_canned<given_type, Target, _try_conv, true>::get(v));
+      return wary(access_canned<given_type, Target, try_conv, true>::get(v));
    }
 };
 
@@ -212,27 +212,27 @@ public:
 class FunctionBase {
 protected:
    static
-   int register_func(wrapper_type wrapper, const char* sig, size_t siglen, const char* file, size_t filelen, int line,
-                     SV* arg_types, SV* cross_apps, void* func_ptr=NULL, const char* func_ptr_type=NULL);
+   int register_func(wrapper_type wrapper, const AnyString& sig, const AnyString& file, int line,
+                     SV* arg_types, SV* cross_apps, void* func_ptr=nullptr, const char* func_ptr_type=nullptr);
 
    static
-   int register_func(wrapper_type wrapper, const char* sig, size_t siglen, const char* file, size_t filelen, int line,
+   int register_func(wrapper_type wrapper, const AnyString& sig, const AnyString& file, int line,
                      SV* arg_types, int=0)
    {
-      return register_func(wrapper, sig, siglen, file, filelen, line, arg_types, NULL, NULL, NULL);
+      return register_func(wrapper, sig, file, line, arg_types, nullptr, nullptr, nullptr);
    }
 
    static
-   void add_rules(const char* file, int line, const char* text, ...);
+   void add_rules(const AnyString& file, int line, const char* text, ...);
 };
 
 class Function : protected FunctionBase {
 public:
-   template <typename Fptr, size_t filelen>
-   Function(Fptr* fptr, const char (&file)[filelen], int line, const char* text)
+   template <typename Fptr>
+   Function(Fptr* fptr, const AnyString& file, int line, const char* text)
    {
-      const int i=register_func(&TypeListUtils<Fptr>::get_flags, NULL, 0, file, filelen-1, line,
-                                TypeListUtils<Fptr>::get_types(), NULL, (void*)fptr, typeid(type2type<Fptr>).name());
+      const int i=register_func(&TypeListUtils<Fptr>::get_flags, nullptr, file, line,
+                                TypeListUtils<Fptr>::get_type_names(), nullptr, (void*)fptr, typeid(type2type<Fptr>).name());
       add_rules(file, line, text, i);
    }
 };
@@ -240,38 +240,32 @@ public:
 template <typename Wrapper>
 class WrapperBase : protected FunctionBase {
 public:
-   template <size_t namelen, size_t filelen> static
-   void register_it(const char (&name)[namelen], const char (&file)[filelen], int line, const char* arg0)
+   template <typename TAppList>
+   static
+   void register_it(const AnyString& name, const AnyString& file, int line, TAppList cross_apps)
    {
-      register_func(&Wrapper::call, name, namelen-1, file, filelen-1, line,
-                    TypeListUtils<typename Wrapper::arg_list>::get_types(arg0));
-   }
-
-   template <size_t namelen, size_t filelen, typename _app_list> static
-   void register_it(const char (&name)[namelen], const char (&file)[filelen], int line, _app_list cross_apps)
-   {
-      register_func(&Wrapper::call, name, namelen-1, file, filelen-1, line,
-                    TypeListUtils<typename Wrapper::arg_list>::get_types(), cross_apps);
+      register_func(&Wrapper::call, name, file, line,
+                    TypeListUtils<typename Wrapper::arg_list>::get_type_names(), cross_apps);
    }
 };
 
-template <typename T, bool _enable=!(has_trivial_destructor<T>::value || is_masquerade<T>::value)>
+template <typename T, bool enabled=!(std::is_trivially_destructible<T>::value || is_masquerade<T>::value)>
 class Destroy {
-   static void _do(T* dst)
+   static void impl(T* dst)
    {
       dst->~T();
    }
 public:
-   static destructor_type func() { return reinterpret_cast<destructor_type>(&_do); }
+   static destructor_type func() { return reinterpret_cast<destructor_type>(&impl); }
 };
 
 template <typename T>
 class Destroy<T, false> {
 public:
-   static destructor_type func() { return 0; }
+   static destructor_type func() { return nullptr; }
 };
 
-template <typename T, bool _enable=(identical<T,typename object_traits<T>::persistent_type>::value && is_mutable<T>::value && !is_masquerade<T>::value)>
+template <typename T, bool enabled=(std::is_same<T, typename object_traits<T>::persistent_type>::value && is_mutable<T>::value && !is_masquerade<T>::value)>
 class Copy {
    static void construct(void* place, const T* src)
    {
@@ -284,63 +278,59 @@ public:
 template <typename T>
 class Copy<T, false> {
 public:
-   static copy_constructor_type func() { return NULL; }
+   static copy_constructor_type func() { return nullptr; }
+};
+
+
+template <typename T, typename enabled=void>
+class Assign {
+public:
+   static assignment_type func() { return nullptr; }
 };
 
 template <typename T>
-struct assign_helper {
-   static const bool value=is_mutable<T>::value && is_parseable_or_serializable<T>::value;
-};
-
-template <typename Base, typename E, typename Params>
-struct assign_helper< sparse_elem_proxy<Base, E, Params> > : assign_helper<E> {};
-
-template <>
-struct assign_helper<Value> : False {};
-
-template <typename T, bool _enable=assign_helper<T>::value>
-class Assign {
+class Assign<T, typename std::enable_if<is_mutable<type_behind_t<T>>::value &&
+                                        is_readable<type_behind_t<T>>::value &&
+                                        !std::is_same<T, Value>::value>::type> {
 protected:
-   static void assign(T* dst, SV* sv, value_flags flags)
+   template <typename, typename> friend class Assign;
+
+   static void assign(T* dst, SV* sv, value_flags flags, std::true_type)
    {
       Value src(sv, flags);
       src >> *dst;
    }
-public:
-   static assignment_type func() { return reinterpret_cast<assignment_type>(&assign); }
-};
 
-template <typename Base, typename E, typename Params>
-class Assign<sparse_elem_proxy<Base, E, Params>, true>
-   : protected Assign<E> {
-protected:
-   static void assign(sparse_elem_proxy<Base, E, Params>* dst, SV* sv, value_flags flags)
+   static void assign(T* dst, SV* sv, value_flags flags, std::false_type)
    {
-      E x;
-      Assign<E>::assign(&x, sv, flags);
-      *dst = x;
+      type_behind_t<T> x;
+      Assign<type_behind_t<T>>::assign(&x, sv, flags, std::true_type());
+      *dst = std::move(x);
+   }
+
+   static void impl(T* dst, SV* sv, value_flags flags)
+   {
+      assign(dst, sv, flags, std::is_same<typename object_traits<T>::proxy_for, void>());
    }
 public:
-   static assignment_type func() { return reinterpret_cast<assignment_type>(&assign); }
-};
-
-template <typename T>
-class Assign<T, false> {
-public:
-   static assignment_type func() { return NULL; }
+   static assignment_type func() { return reinterpret_cast<assignment_type>(&impl); }
 };
 
 
-template <typename T>
-struct to_string_helper : is_printable<T> {};
-
-template <typename Base, typename E, typename Params>
-struct to_string_helper< sparse_elem_proxy<Base, E, Params> > : to_string_helper<E> {};
-
-template <typename T, bool _enable=to_string_helper<T>::value>
-class ToString {
+class Unprintable {
 protected:
-   static SV* _to_string(const T& src)
+   static SV* impl(const char*);
+public:
+   static conv_to_string_type func() { return &impl; }
+};
+
+template <typename T, typename enabled=void>
+class ToString : public Unprintable {};
+
+template <typename T>
+class ToString<T, typename std::enable_if<is_printable<type_behind_t<T>>::value>::type> {
+protected:
+   static SV* to_string(const type_behind_t<T>& src)
    {
       Value ret;
       ostream my_stream(ret);
@@ -348,96 +338,75 @@ protected:
       printer << src;
       return ret.get_temp();
    }
-   static SV* to_string(const T* src) { return _to_string(*src); }
+   static SV* impl(const T* src) { return to_string(*src); }
 public:
-   static conv_to_SV_type func() { return reinterpret_cast<conv_to_SV_type>(&to_string); }
+   static conv_to_string_type func() { return reinterpret_cast<conv_to_string_type>(&impl); }
 };
 
-template <typename Base, typename E, typename Params>
-class ToString<sparse_elem_proxy<Base, E, Params>, true>
-   : protected ToString<E> {
-protected:
-   static SV* to_string(const sparse_elem_proxy<Base, E, Params>* src)
-   {
-      return ToString<E>::_to_string(src->get());
-   }
-public:
-   static conv_to_SV_type func() { return reinterpret_cast<conv_to_SV_type>(&to_string); }
-};
 
-class Unprintable {
-protected:
-   static SV* to_string(const char*, const char*);
-public:
-   static conv_to_SV_type func() { return &to_string; }
-};
-
-template <typename T>
-class ToString<T, false> : public Unprintable {};
-
-template <typename T>
-struct serializable_helper : has_serialized<T> {};
-
-template <typename Base, typename E, typename Params>
-struct serializable_helper< sparse_elem_proxy<Base, E, Params> > : has_serialized<E> {};
-
-template <typename T, bool _enable=serializable_helper<T>::value>
+template <typename T, typename enabled=void>
 class Serializable {
+public:
+   static constexpr class_kind flag_value() { return class_kind_null; }
+   static conv_to_serialized_type conv() { return nullptr; }
+   static provide_type provide() { return nullptr; }
+   static provide_type provide_descr() { return nullptr; }
+};
+
+template <typename T>
+class Serializable<T, typename std::enable_if<has_serialized<type_behind_t<T>>::value>::type> {
 protected:
-   static SV* _conv(const T* src, const char* frame_upper_bound)
+   static SV* store_serialized(const type_behind_t<T>& src, SV* holder)
    {
-      Value ret(value_flags(value_allow_non_persistent | value_read_only));
-      ret.put(serialize(*src), frame_upper_bound, 0);
+      Value ret(value_allow_non_persistent | value_allow_store_ref | value_read_only);
+      ret.put(serialize(src), 0, holder);
       return ret.get_temp();
    }
-public:
-   static const class_kind flag_value=class_is_serializable;
-   static conv_to_SV_type conv() { return reinterpret_cast<conv_to_SV_type>(&_conv); }
-   static provide_type provide() { return &type_cache< Serialized<T> >::provide; }
-};
 
-template <typename Base, typename E, typename Params>
-class Serializable<sparse_elem_proxy<Base, E, Params>, true>
-   : public Serializable<E> {
-protected:
-   static SV* _conv(const sparse_elem_proxy<Base, E, Params>* src, const char* frame_upper_bound)
+   static SV* impl(const T* src, SV* holder)
    {
-      return Serializable<E>::_conv(&serialize(src->get()), frame_upper_bound);
+      return store_serialized(*src, holder);
+   }
+public:
+   typedef pure_type_t<decltype(serialize(std::declval<const type_behind_t<T>&>()))> serialized_t;
+
+   static constexpr class_kind flag_value()
+   {
+      return check_container_feature<serialized_t, sparse>::value
+             ? class_is_serializable | class_is_sparse_serialized
+             : class_is_serializable;
    }
 
-public:
-   static conv_to_SV_type conv() { return reinterpret_cast<conv_to_SV_type>(&_conv); }
+   static conv_to_serialized_type conv() { return reinterpret_cast<conv_to_serialized_type>(&impl); }
+   static provide_type provide() { return &type_cache<serialized_t>::provide; }
+   static provide_type provide_descr() { return &type_cache<serialized_t>::provide_descr; }
 };
 
-template <typename T>
-class Serializable<T, false> {
-public:
-   static const class_kind flag_value=class_kind(0);
-   static conv_to_SV_type conv() { return NULL; }
-   static provide_type provide() { return NULL; }
-};
-
-template <typename Base, typename E, typename Params>
-class Serializable<sparse_elem_proxy<Base, E, Params>, false>
-   : public Serializable<E> {
+// This one is used in overloaded operators for sparse proxies of primitive types.
+// It should just retrieve the data element.
+template <typename TProxy>
+class Serializable<TProxy, typename std::enable_if<!std::is_same<TProxy, type_behind_t<TProxy>>::value &&
+                                                   std::is_arithmetic<type_behind_t<TProxy>>::value>::type>
+   : public Serializable<type_behind_t<TProxy>> {
 protected:
-   static SV* _conv(const sparse_elem_proxy<Base, E, Params>* src, const char*)
+   static SV* impl(const TProxy* src, SV*)
    {
       Value ret;
-      ret << src->get();
+      ret << static_cast<type_behind_t<TProxy>>(*src);
       return ret.get_temp();
    }
 
 public:
-   static conv_to_SV_type conv() { return reinterpret_cast<conv_to_SV_type>(&_conv); }
+   static conv_to_serialized_type conv() { return reinterpret_cast<conv_to_serialized_type>(&impl); }
 };
+
 
 class ClassRegistratorBase {
 protected:
    static
-   SV* register_class(const char* name, size_t namelen, const char* file, size_t filelen, int line,
+   SV* register_class(const AnyString& name, const AnyString& file, int line,
                       SV* someref,
-                      const char* typeid_name, const char* const_typeid_name,
+                      const char* typeid_name,
                       bool is_mutable, class_kind kind,
                       SV* vtbl_sv);
 
@@ -458,11 +427,12 @@ protected:
       copy_constructor_type copy_constructor,
       assignment_type assignment,
       destructor_type destructor,
-      conv_to_SV_type to_string,
-      conv_to_SV_type to_serialized,
+      conv_to_string_type to_string,
+      conv_to_serialized_type to_serialized,
       provide_type provide_serialized_type,
+      provide_type provide_serialized_descr,
       conv_to_int_type to_int,
-      conv_to_double_type to_double
+      conv_to_float_type to_float
    );
 
    static
@@ -473,7 +443,8 @@ protected:
       destructor_type destructor,
       iterator_deref_type deref,
       iterator_incr_type incr,
-      conv_to_int_type at_end
+      conv_to_int_type at_end,
+      conv_to_int_type index
    );
 
    static
@@ -483,9 +454,10 @@ protected:
       copy_constructor_type copy_constructor,
       assignment_type assignment,
       destructor_type destructor,
-      conv_to_SV_type to_string,
-      conv_to_SV_type to_serialized,
-      provide_type provide_serialized_type
+      conv_to_string_type to_string,
+      conv_to_serialized_type to_serialized,
+      provide_type provide_serialized_type,
+      provide_type provide_serialized_descr
    );
 
    static
@@ -495,14 +467,17 @@ protected:
       copy_constructor_type copy_constructor,
       assignment_type assignment,
       destructor_type destructor,
-      conv_to_SV_type to_string,
-      conv_to_SV_type to_serialized,
+      conv_to_string_type to_string,
+      conv_to_serialized_type to_serialized,
       provide_type provide_serialized_type,
+      provide_type provide_serialized_descr,
       conv_to_int_type size,
       container_resize_type resize,
       container_store_type store_at_ref,
       provide_type provide_key_type,
-      provide_type provide_value_type
+      provide_type provide_key_descr,
+      provide_type provide_value_type,
+      provide_type provide_value_descr
    );
 
    static
@@ -531,12 +506,14 @@ protected:
       copy_constructor_type copy_constructor,
       assignment_type assignment,
       destructor_type destructor,
-      conv_to_SV_type to_string,
-      conv_to_SV_type to_serialized,
+      conv_to_string_type to_string,
+      conv_to_serialized_type to_serialized,
       provide_type provide_serialized_type,
-      int n_elems,
-      provide_type provide_elem_types,
-      provide_type provide_field_names,
+      provide_type provide_serialized_descr,
+      int n_members,
+      provide_type provide_member_types,
+      provide_type provide_member_descrs,
+      provide_type provide_member_names,
       void (*fill)(composite_access_vtbl*)
    );
 };
@@ -545,16 +522,15 @@ template <typename T>
 class Builtin : protected ClassRegistratorBase {
 public:
    static
-   SV* register_it(const char* name, size_t namelen, const char* file=NULL, size_t filelen=0, int line=0)
+   SV* register_it(const AnyString& name, const AnyString& file=AnyString(), int line=0)
    {
-      const char* const typeid_name=typeid(T).name();
       return register_class(
-         name, namelen, file, filelen, line,
-         NULL,
-         typeid_name, typeid_name,
+         name, file, line,
+         nullptr,
+         typeid(T).name(),
          false, class_is_scalar,
          create_builtin_vtbl(
-            typeid(T), sizeof(T), list_contains<primitive_lvalues,T>::value,
+            typeid(T), sizeof(T), mlist_contains<primitive_lvalues, T>::value,
             Copy<T>::func(),
             Assign<T>::func(),
             Destroy<T>::func()
@@ -562,10 +538,9 @@ public:
       );
    }
 
-   template <size_t namelen, size_t filelen>
-   Builtin(const char (&name)[namelen], const char (&file)[filelen], int line)
+   Builtin(const AnyString& name, const AnyString& file, int line)
    {
-      register_it(name, namelen-1, file, filelen-1, line);
+      register_it(name, file, line);
    }
 };
 
@@ -580,23 +555,51 @@ class ClassRegistrator<Array,is_container> {};
 template <typename T>
 class ClassRegistrator<T, is_scalar> : protected ClassRegistratorBase {
 protected:
+   typedef typename object_traits<T>::persistent_type persistent_type;
+
+   template <typename Target, typename=void>
+   struct conv;
+
    template <typename Target>
-   struct do_conv {
+   struct conv<Target,
+               typename std::enable_if<std::is_constructible<Target, T>::value>::type>
+   {
       static Target func(const T* obj)
       {
-         conv<T,Target> c;
-         return c(*obj);
+         return static_cast<Target>(*obj);
+      }
+   };
+
+   template <typename Target>
+   struct conv<Target,
+               typename std::enable_if<!std::is_constructible<Target, T>::value &&
+                                       std::is_constructible<Target, persistent_type>::value>::type>
+   {
+      static Target func(const T* obj)
+      {
+         return static_cast<Target>(static_cast<const persistent_type&>(*obj));
+      }
+   };
+
+   template <typename Target>
+   struct conv<Target,
+               typename std::enable_if<!std::is_constructible<Target, T>::value &&
+                                       !std::is_constructible<Target, persistent_type>::value>::type>
+   {
+      static Target func(const T* obj)
+      {
+         throw std::runtime_error("can't convert " + legible_typename<T>() + " to " + legible_typename<Target>());
       }
    };
 
 public:
-   static SV* register_it(const char* name, size_t namelen, SV* someref, const char* file=NULL, size_t filelen=0, int line=0)
+   static SV* register_it(const AnyString& name, SV* someref, const AnyString& file=AnyString(), int line=0)
    {
       return register_class(
-         name, namelen, file, filelen, line, someref,
-         typeid(T).name(), typeid(typename const_equivalent<T>::type).name(),
+         name, file, line, someref,
+         typeid(T).name(),
          is_mutable<T>::value,
-         class_kind(class_is_scalar | Serializable<T>::flag_value),
+         class_is_scalar | Serializable<T>::flag_value(),
          create_scalar_vtbl(
             typeid(T), sizeof(T),
             Copy<T>::func(),
@@ -605,23 +608,25 @@ public:
             ToString<T>::func(),
             Serializable<T>::conv(),
             Serializable<T>::provide(),
-            reinterpret_cast<conv_to_int_type>(&do_conv<int>::func),
-            reinterpret_cast<conv_to_double_type>(&do_conv<double>::func)
+            Serializable<T>::provide_descr(),
+            reinterpret_cast<conv_to_int_type>(&conv<int>::func),
+            reinterpret_cast<conv_to_float_type>(&conv<double>::func)
          )
       );
    }
 };
 
-template <typename T, bool _is_iterator=check_iterator_feature<T,end_sensitive>::value>
-class OpaqueClassRegistrator : protected ClassRegistratorBase {
+template <typename T, bool is_iterator=check_iterator_feature<T, end_sensitive>::value>
+class OpaqueClassRegistrator
+   : protected ClassRegistratorBase {
 public:
-   static SV* register_it(const char* name, size_t namelen, SV* someref, const char* file=NULL, size_t filelen=0, int line=0)
+   static SV* register_it(const AnyString& name, SV* someref, const AnyString& file=AnyString(), int line=0)
    {
       return register_class(
-         name, namelen, file, filelen, line, someref,
-         typeid(T).name(), typeid(typename const_equivalent<T>::type).name(),
+         name, file, line, someref,
+         typeid(T).name(),
          is_mutable<T>::value,
-         class_kind(class_is_opaque | Serializable<T>::flag_value),
+         class_is_opaque | Serializable<T>::flag_value(),
          create_opaque_vtbl(
             typeid(T), sizeof(T),
             Copy<T>::func(),
@@ -629,22 +634,24 @@ public:
             Destroy<T>::func(),
             ToString<T>::func(),
             Serializable<T>::conv(),
-            Serializable<T>::provide()
+            Serializable<T>::provide(),
+            Serializable<T>::provide_descr()
          )
       );
    }
 };
 
 template <typename T>
-class OpaqueClassRegistrator<T, true> : protected ClassRegistratorBase {
+class OpaqueClassRegistrator<T, true>
+   : protected ClassRegistratorBase {
 protected:
    static const bool read_only=attrib<typename iterator_traits<T>::reference>::is_const;
 
-   static SV* deref(const T* it, const char* frame_upper_bound)
+   static SV* deref(const T* it)
    {
-      Value ret(value_flags(read_only ? value_expect_lval | value_allow_non_persistent | value_read_only
-                                      : value_expect_lval | value_allow_non_persistent));
-      ret.put_lval(**it, frame_upper_bound, 0, 0, (char*)0);
+      Value ret((read_only ? value_read_only : value_mutable) |
+                value_expect_lval | value_allow_non_persistent | value_allow_store_ref);
+      ret.put_lvalue(**it, 0, nullptr, (nothing*)nullptr);
       return ret.get_temp();
    }
 
@@ -657,12 +664,23 @@ protected:
    {
       return it->at_end();
    }
+
+   static int index_impl(const T* it)
+   {
+      return it->index();
+   }
+
+   static conv_to_int_type index(std::false_type) { return nullptr; }
+   static conv_to_int_type index(std::true_type) { return reinterpret_cast<conv_to_int_type>(&index_impl); }
+   static conv_to_int_type index() { return index(bool_constant<check_iterator_feature<T, indexed>::value>()); }
+
 public:
-   static SV* register_it(const char* name, size_t namelen, SV* someref, const char* file=NULL, size_t filelen=0, int line=0)
+
+   static SV* register_it(const AnyString& name, SV* someref, const AnyString& file=AnyString(), int line=0)
    {
       return register_class(
-         name, namelen, file, filelen, line, someref,
-         typeid(T).name(), typeid(T).name(),
+         name, file, line, someref,
+         typeid(T).name(),
          true,
          class_is_opaque,
          create_iterator_vtbl(
@@ -671,7 +689,8 @@ public:
             Destroy<T>::func(),
             reinterpret_cast<iterator_deref_type>(&deref),
             reinterpret_cast<iterator_incr_type>(&incr),
-            reinterpret_cast<conv_to_int_type>(&at_end)
+            reinterpret_cast<conv_to_int_type>(&at_end),
+            index()
          )
       );
    }
@@ -681,20 +700,26 @@ template <typename T>
 class ClassRegistrator<T, is_opaque>
    : public OpaqueClassRegistrator<T> {};
 
-template <typename T, bool _enabled=true, bool _is_mutable=!object_traits<T>::is_always_const>
-struct input_mode : io_test::input_mode<T,false> {};
-
-template <typename T, bool _is_mutable>
-struct input_mode<T,false,_is_mutable> {
-   typedef False type;
+template <typename Mode, bool TEnableSparse>
+struct transform_input_mode {
+   typedef Mode type;
 };
 
-template <typename T, bool _enabled>
-struct input_mode<T,_enabled,false> {
-   typedef False type;
+template <int TResizeable>
+struct transform_input_mode<io_test::as_sparse<TResizeable>, false> {
+   typedef io_test::as_array<TResizeable, true> type;
 };
 
-template <typename T, int _dim=object_traits<T>::dimension>
+template <typename T, bool TEnable=true, bool TEnableSparse=true, bool TMutable=TEnable && !object_traits<T>::is_always_const>
+struct input_mode
+   : transform_input_mode<typename io_test::input_mode<T, false>::type, TEnableSparse> {};
+
+template <typename T, bool TEnable, bool TEnableSparse>
+struct input_mode<T, TEnable, TEnableSparse, false> {
+   typedef std::false_type type;
+};
+
+template <typename T, int TDim=object_traits<T>::dimension>
 struct container_helper;
 
 template <typename T>
@@ -717,24 +742,26 @@ class ContainerClassRegistrator : protected ClassRegistratorBase {
 public:
    typedef container_helper<T> helper;
    typedef typename helper::type Obj;
-   static const bool
+   static constexpr bool
         is_associative=is_assoc_container<Obj>::value,
-             is_sparse=check_container_feature<Obj,sparse>::value,
-      is_sparse_native=check_container_feature<T,sparse>::value ||
-                       io_test::unknown_columns<T>::value==0,   // enforce the cols= attribute in XML representation
-              like_set=list_contains< list(is_set, is_unordered_set), typename object_traits<Obj>::generic_tag>::value;
-   typedef typename if_else<is_associative, end_sensitive, void>::type iterator_feature;
+             is_sparse=check_container_feature<Obj, sparse>::value,
+      is_sparse_native=check_container_feature<T, sparse>::value,
+              like_set=is_among<typename object_traits<Obj>::generic_tag, is_set, is_unordered_set>::value;
+   typedef typename std::conditional<is_associative, end_sensitive, void>::type iterator_feature;
    typedef typename ensure_features<Obj, iterator_feature>::iterator iterator;
    typedef typename ensure_features<Obj, iterator_feature>::const_iterator const_iterator;
 
    static const bool allow_non_const_access= !object_traits<T>::is_always_const &&
-                                             !identical<iterator,const_iterator>::value &&
+                                             !std::is_same<iterator, const_iterator>::value &&
                                              !attrib<typename iterator_traits<iterator>::reference>::is_const &&
                                              !object_traits<typename iterator_traits<iterator>::value_type>::is_always_const;
 
-   typedef bool2type<allow_non_const_access> non_const_access;
+   typedef bool_constant<allow_non_const_access> non_const_access;
+
+   static const int element_dim=object_traits<typename Obj::value_type>::total_dimension;
+
 protected:
-   static int do_size(const T* obj)
+   static int size_impl(const T* obj)
    {
       return helper::streamline(*obj).size();
    }
@@ -744,7 +771,7 @@ protected:
       return helper::streamline(*obj).dim();
    }
 
-   static void _resize(T* obj, int n)
+   static void resize_impl(T* obj, int n)
    {
       helper::streamline(*obj).resize(n);
    }
@@ -761,9 +788,9 @@ protected:
    }
 
    template <typename E>
-   static void check_insertion(const Obj&, const E&, False) {}
+   static void check_insertion(const Obj&, const E&, std::false_type) {}
 
-   static void check_insertion(const Obj& obj, int x, True)
+   static void check_insertion(const Obj& obj, int x, std::true_type)
    {
       if (x<0 || x>=obj.dim())
          throw std::runtime_error("element out of range");
@@ -775,7 +802,7 @@ protected:
       Value v(src);
       v >> x;
       check_insertion(helper::streamline(*obj), x,
-                      bool2type<check_container_feature<Obj,sparse_compatible>::value>());
+                      bool_constant<check_container_feature<Obj, sparse_compatible>::value>());
       helper::streamline(*obj).insert(*it, x);
    }
 
@@ -786,7 +813,7 @@ protected:
       Value v(src);
       v >> x;
       check_insertion(helper::streamline(*obj), x,
-                      bool2type<check_container_feature<Obj,sparse_compatible>::value>());
+                      bool_constant<check_container_feature<Obj, sparse_compatible>::value>());
       helper::streamline(*obj).insert(x);
    }
 
@@ -806,11 +833,11 @@ protected:
          if (!it->at_end() && it->index()==index) {
             **it=x; ++(*it);
          } else {
-            helper::streamline(*obj).insert(*it,index,x);
+            obj->insert(*it, index, x);
          }
       } else {
          if (!it->at_end() && it->index()==index)
-            helper::streamline(*obj).erase((*it)++);
+            obj->erase((*it)++);
       }
    }
 
@@ -828,58 +855,84 @@ protected:
          new(it_place) Iterator(ensure(helper::streamline(*obj), (iterator_feature*)0).rbegin());
       }
 
-      static void deref(ObjPtr, Iterator* it, int, SV* dst, SV* container_sv, const char* frame_upper_bound)
+      static void deref(ObjPtr, Iterator* it, int, SV* dst, SV* container_sv)
       {
-         Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent | (non_const ? 0 : value_read_only)), 1);
-         pv.put_lval(**it, frame_upper_bound, 0, 0, (nothing*)0)->store_anchor(container_sv);
+         Value pv(dst, (non_const ? value_mutable : value_read_only) | value_expect_lval | value_allow_non_persistent | value_allow_store_ref);
+         pv.put_lvalue(**it, 0, nullptr, (nothing*)nullptr, container_sv);
          ++(*it);
       }
 
-      static void deref_pair(ObjPtr, Iterator* it, int i, SV* dst, SV* container_sv, const char* frame_upper_bound)
+      static void deref_pair(ObjPtr, Iterator* it, int i, SV* dst, SV* container_sv)
       {
          if (i<=0) {
             // i==-1: FIRSTKEY;  i==0: NEXTKEY
             if (i==0) ++(*it);
             if (!it->at_end()) {
-               Value pv(dst, value_flags(value_read_only | value_allow_non_persistent), 1);
-               pv.put((*it)->first, frame_upper_bound, 0)->store_anchor(container_sv);
+               Value pv(dst, value_read_only | value_allow_non_persistent | value_allow_store_ref);
+               pv.put((*it)->first, 0, container_sv);
             }
          } else {
             // i==1: fetch value
-            Value pv(dst, value_flags(value_allow_non_persistent | (non_const ? 0 : value_read_only)), 1);
-            pv.put((*it)->second, frame_upper_bound, 0)->store_anchor(container_sv);
+            Value pv(dst, (non_const ? value_mutable : value_read_only) | value_allow_non_persistent | value_allow_store_ref);
+            pv.put((*it)->second, 0, container_sv);
+         }
+      }
+   };
+
+   template <typename Iterator, bool TDim=element_dim>
+   struct do_sparse {
+      static void deref(T* obj, Iterator* it, int index, SV* dst, SV* container_sv)
+      {
+         if (it->at_end() || index < it->index()) {
+            Value pv(dst);
+            pv.put(undefined(), 0);
+         } else {
+            do_it<Iterator, true>::deref(obj, it, index, dst, container_sv);
          }
       }
    };
 
    template <typename Iterator>
-   struct do_sparse {
-      static void deref(T* obj, Iterator* it, int index, SV* dst, SV* container_sv, const char*)
+   struct do_sparse<Iterator, 0> {
+      static void deref(T* obj, Iterator* it, int index, SV* dst, SV* container_sv)
       {
-         Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent), 1);
-         sparse_elem_proxy< sparse_proxy_it_base<Obj,Iterator>, typename Obj::value_type, typename Obj::reference::parameters >
-            x(sparse_proxy_it_base<Obj,Iterator>(helper::streamline(*obj), *it, index));
+         Value pv(dst, value_expect_lval | value_allow_non_persistent);
+         sparse_elem_proxy< sparse_proxy_it_base<Obj, Iterator>, typename Obj::value_type, typename Obj::reference::parameters >
+            x(sparse_proxy_it_base<Obj, Iterator>(*obj, *it, index));
          if (x.exists()) ++(*it);
-         pv.put(x, 0, 0)->store_anchor(container_sv);
+         pv.put(std::move(x), 0, container_sv);
+      }
+   };
+
+   template <typename Iterator, bool TDim=element_dim>
+   struct do_const_sparse {
+      static void deref(const T* obj, Iterator* it, int index, SV* dst, SV* container_sv)
+      {
+         if (it->at_end() || index < it->index()) {
+            Value pv(dst);
+            pv.put(undefined(), 0);
+         } else {
+            do_it<Iterator, false>::deref(obj, it, index, dst, container_sv);
+         }
       }
    };
 
    template <typename Iterator>
-   struct do_const_sparse {
-      static void deref(const T*, Iterator* it, int index, SV* dst, SV* container_sv, const char* frame_upper_bound)
+   struct do_const_sparse<Iterator, 0> {
+      static void deref(const T*, Iterator* it, int index, SV* dst, SV* container_sv)
       {
-         Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent | value_read_only), 1);
+         Value pv(dst, value_read_only | value_expect_lval | value_allow_non_persistent | value_allow_store_ref);
          if (!it->at_end() && index==it->index()) {
-            pv.put_lval(**it, frame_upper_bound, 0, 0, (nothing*)0)->store_anchor(container_sv);
+            pv.put_lvalue(**it, 0, nullptr, (nothing*)nullptr, container_sv);
             ++(*it);
          } else {
-            pv.put_lval(zero_value<typename Obj::value_type>(), frame_upper_bound, 0, 0, (nothing*)0);
+            pv.put(zero_value<typename Obj::value_type>(), 0);
          }
       }
    };
 
-   static conv_to_int_type size(False) { return reinterpret_cast<conv_to_int_type>(&do_size); }
-   static conv_to_int_type size(True)  { return reinterpret_cast<conv_to_int_type>(&dim); }
+   static conv_to_int_type size(std::false_type) { return reinterpret_cast<conv_to_int_type>(&size_impl); }
+   static conv_to_int_type size(std::true_type)  { return reinterpret_cast<conv_to_int_type>(&dim); }
 
    static container_resize_type resize(io_test::as_list<Obj>)
    {
@@ -889,18 +942,18 @@ protected:
    {
       return reinterpret_cast<container_resize_type>(&clear_by_resize);
    }
-   template <bool _allow_sparse>
-   static container_resize_type resize(io_test::as_array<1,_allow_sparse>)
+   template <bool allow_sparse>
+   static container_resize_type resize(io_test::as_array<1, allow_sparse>)
    {
-      return reinterpret_cast<container_resize_type>(&_resize);
+      return reinterpret_cast<container_resize_type>(&resize_impl);
    }
-   template <bool _allow_sparse>
-   static container_resize_type resize(io_test::as_array<0,_allow_sparse>)
+   template <bool allow_sparse>
+   static container_resize_type resize(io_test::as_array<0, allow_sparse>)
    {
       return reinterpret_cast<container_resize_type>(&fixed_size);
    }
-   static container_resize_type resize(io_test::as_sparse<-1>) { return NULL; }
-   static container_resize_type resize(False) { return NULL; }
+   static container_resize_type resize(io_test::as_sparse<-1>) { return nullptr; }
+   static container_resize_type resize(std::false_type) { return nullptr; }
 
    static container_store_type store_at_ref(io_test::as_list<Obj>)
    {
@@ -910,70 +963,87 @@ protected:
    {
       return reinterpret_cast<container_store_type>(&insert);
    }
-   template <int _resizeable, bool _allow_sparse>
-   static container_store_type store_at_ref(io_test::as_array<_resizeable, _allow_sparse>)
+   template <int resizeable, bool allow_sparse>
+   static container_store_type store_at_ref(io_test::as_array<resizeable, allow_sparse>)
    {
       return reinterpret_cast<container_store_type>(&store_dense);
    }
-   template <int _resizeable>
-   static container_store_type store_at_ref(io_test::as_sparse<_resizeable>)
+   template <int resizeable>
+   static container_store_type store_at_ref(io_test::as_sparse<resizeable>)
    {
       return reinterpret_cast<container_store_type>(&store_sparse);
    }
-   static container_store_type store_at_ref(False) { return NULL; }
+   static container_store_type store_at_ref(std::false_type) { return nullptr; }
 
-   static destructor_type it_destructor(True) { return Destroy<iterator>::func(); }
-   static destructor_type it_destructor(False) { return Destroy<const_iterator>::func(); }
+   static destructor_type it_destructor(std::true_type) { return Destroy<iterator>::func(); }
+   static destructor_type it_destructor(std::false_type) { return Destroy<const_iterator>::func(); }
 
-   static container_begin_type begin(True)
+   static container_begin_type begin(std::true_type)
    {
       return reinterpret_cast<container_begin_type>(&do_it<iterator, true>::begin);
    }
-   static container_begin_type begin(False)
+   static container_begin_type begin(std::false_type)
    {
       return reinterpret_cast<container_begin_type>(&do_it<const_iterator, false>::begin);
    }
 
-   static container_access_type deref(False,False,True)
+   static container_access_type deref(std::false_type, std::false_type, std::true_type)
    {
       return reinterpret_cast<container_access_type>(&do_it<iterator, true>::deref);
    }
-   static container_access_type deref(False,False,False)
+   static container_access_type deref(std::false_type, std::false_type, std::false_type)
    {
       return reinterpret_cast<container_access_type>(&do_it<const_iterator, false>::deref);
    }
-   static container_access_type deref(True,False,True)
+   static container_access_type deref(std::true_type, std::false_type, std::true_type)
    {
       return reinterpret_cast<container_access_type>(&do_it<iterator, true>::deref_pair);
    }
-   static container_access_type deref(True,False,False)
+   static container_access_type deref(std::true_type, std::false_type, std::false_type)
    {
       return reinterpret_cast<container_access_type>(&do_it<const_iterator, false>::deref_pair);
    }
-   static container_access_type deref(False,True,True)
+   static container_access_type deref(std::false_type, std::true_type, std::true_type)
    {
       return reinterpret_cast<container_access_type>(&do_sparse<iterator>::deref);
    }
-   static container_access_type deref(False,True,False)
+   static container_access_type deref(std::false_type, std::true_type, std::false_type)
    {
       return reinterpret_cast<container_access_type>(&do_const_sparse<const_iterator>::deref);
    }
 
-   static provide_type provide_key_type(True)
+   static provide_type provide_key_type(std::true_type)
    {
       return &type_cache<typename T::key_type>::provide;
    }
-   static provide_type provide_key_type(False)
+   static provide_type provide_key_type(std::false_type)
    {
       return &type_cache<typename object_traits<typename T::value_type>::persistent_type>::provide;
    }
-   static provide_type provide_value_type(True)
+   static provide_type provide_value_type(std::true_type)
    {
       return &type_cache<typename T::mapped_type>::provide;
    }
-   static provide_type provide_value_type(False)
+   static provide_type provide_value_type(std::false_type)
    {
       return &type_cache<typename object_traits<typename Obj::value_type>::persistent_type>::provide;
+   }
+
+   static provide_type provide_key_descr(std::true_type)
+   {
+      return &type_cache<typename T::key_type>::provide_descr;
+   }
+   static provide_type provide_key_descr(std::false_type)
+   {
+      return &type_cache<typename object_traits<typename T::value_type>::persistent_type>::provide_descr;
+   }
+   static provide_type provide_value_descr(std::true_type)
+   {
+      return &type_cache<typename T::mapped_type>::provide_descr;
+   }
+   static provide_type provide_value_descr(std::false_type)
+   {
+      return &type_cache<typename object_traits<typename Obj::value_type>::persistent_type>::provide_descr;
    }
 
    static SV* create_vtbl()
@@ -987,42 +1057,46 @@ protected:
          ToString<T>::func(),
          Serializable<T>::conv(),
          Serializable<T>::provide(),
-         size(bool2type<is_sparse>()),
+         Serializable<T>::provide_descr(),
+         size(bool_constant<is_sparse>()),
          resize(typename input_mode<Obj>::type()),
-         store_at_ref(typename input_mode<Obj, !is_associative>::type()),
-         provide_key_type(bool2type<is_associative>()),
-         provide_value_type(bool2type<is_associative>())
+         store_at_ref(typename input_mode<Obj, !is_associative, element_dim==0>::type()),
+         provide_key_type(bool_constant<is_associative>()),
+         provide_key_descr(bool_constant<is_associative>()),
+         provide_value_type(bool_constant<is_associative>()),
+         provide_value_descr(bool_constant<is_associative>())
       );
       fill_iterator_access_vtbl(
          vtbl, 0,
          sizeof(iterator), sizeof(const_iterator),
          it_destructor(non_const_access()),
-         it_destructor(False()),
+         it_destructor(std::false_type()),
          begin(non_const_access()),
-         begin(False()),
-         deref(bool2type<is_associative>(), bool2type<is_sparse>(), non_const_access()),
-         deref(bool2type<is_associative>(), bool2type<is_sparse>(), False())
+         begin(std::false_type()),
+         deref(bool_constant<is_associative>(), bool_constant<is_sparse>(), non_const_access()),
+         deref(bool_constant<is_associative>(), bool_constant<is_sparse>(), std::false_type())
       );
       return vtbl;
    }
 
-   static SV* register_me(const char* name, size_t namelen, const char* file, size_t filelen, int line, SV* someref, SV* vtbl)
+   static SV* register_me(const AnyString& name, const AnyString& file, int line, SV* someref, SV* vtbl)
    {
       return register_class(
-         name, namelen, file, filelen, line, someref,
-         typeid(T).name(), typeid(typename const_equivalent<T>::type).name(),
+         name, file, line, someref,
+         typeid(T).name(),
          is_mutable<T>::value,
-         class_kind(class_is_container | Serializable<T>::flag_value |
-                    (is_associative   ? class_is_assoc_container :
-                     is_sparse_native ? class_is_sparse_container :
-                     like_set         ? class_is_set : 0)),
+         class_is_container | Serializable<T>::flag_value() |
+            (is_sparse && !std::is_same<T, Obj>::value ? class_is_sparse_serialized : class_kind_null) |
+            (is_associative   ? class_is_assoc_container :
+             is_sparse_native ? class_is_sparse_container :
+             like_set         ? class_is_set : class_kind_null),
          vtbl);
    }
 
 public:
-   static SV* register_it(const char* name, size_t namelen, SV* someref, const char* file=NULL, size_t filelen=0, int line=0)
+   static SV* register_it(const AnyString& name, SV* someref, const AnyString& file=AnyString(), int line=0)
    {
-      return register_me(name, namelen, file, filelen, line, someref, create_vtbl());
+      return register_me(name, file, line, someref, create_vtbl());
    }
 };
 
@@ -1034,63 +1108,63 @@ public:
    typedef typename super::Obj::reverse_iterator reverse_iterator;
    typedef typename super::Obj::const_reverse_iterator const_reverse_iterator;
 protected:
-   static container_begin_type rbegin(True)
+   static container_begin_type rbegin(std::true_type)
    {
       return reinterpret_cast<container_begin_type>(&super::template do_it<reverse_iterator, true>::rbegin);
    }
-   static container_begin_type rbegin(False)
+   static container_begin_type rbegin(std::false_type)
    {
       return reinterpret_cast<container_begin_type>(&super::template do_it<const_reverse_iterator, false>::rbegin);
    }
 
-   static container_access_type rderef(False,True)
+   static container_access_type rderef(std::false_type, std::true_type)
    {
       return reinterpret_cast<container_access_type>(&super::template do_it<reverse_iterator, true>::deref);
    }
-   static container_access_type rderef(False,False)
+   static container_access_type rderef(std::false_type, std::false_type)
    {
       return reinterpret_cast<container_access_type>(&super::template do_it<const_reverse_iterator, false>::deref);
    }
-   static container_access_type rderef(True,True)
+   static container_access_type rderef(std::true_type, std::true_type)
    {
       return reinterpret_cast<container_access_type>(&super::template do_sparse<reverse_iterator>::deref);
    }
-   static container_access_type rderef(True,False)
+   static container_access_type rderef(std::true_type, std::false_type)
    {
       return reinterpret_cast<container_access_type>(&super::template do_const_sparse<const_reverse_iterator>::deref);
    }
 
-   static destructor_type rit_destructor(True) { return Destroy<reverse_iterator>::func(); }
-   static destructor_type rit_destructor(False) { return Destroy<const_reverse_iterator>::func(); }
+   static destructor_type rit_destructor(std::true_type) { return Destroy<reverse_iterator>::func(); }
+   static destructor_type rit_destructor(std::false_type) { return Destroy<const_reverse_iterator>::func(); }
 public:
-   static SV* create_vtbl(False)
+   static SV* create_vtbl(std::false_type)
    {
       SV* vtbl=super::create_vtbl();
       super::fill_iterator_access_vtbl(
          vtbl, 2,
          sizeof(reverse_iterator), sizeof(const_reverse_iterator),
          rit_destructor(typename super::non_const_access()),
-         rit_destructor(False()),
+         rit_destructor(std::false_type()),
          rbegin(typename super::non_const_access()),
-         rbegin(False()),
-         rderef(bool2type<super::is_sparse>(), typename super::non_const_access()),
-         rderef(bool2type<super::is_sparse>(), False())
+         rbegin(std::false_type()),
+         rderef(bool_constant<super::is_sparse>(), typename super::non_const_access()),
+         rderef(bool_constant<super::is_sparse>(), std::false_type())
       );
       return vtbl;
    }
 
-   static SV* create_vtbl(True)
+   static SV* create_vtbl(std::true_type)
    {
       return super::create_vtbl();
    }
    static SV* create_vtbl()
    {
-      return create_vtbl(bool2type<super::is_associative>());
+      return create_vtbl(bool_constant<super::is_associative>());
    }
 public:
-   static SV* register_it(const char* name, size_t namelen, SV* someref, const char* file=NULL, size_t filelen=0, int line=0)
+   static SV* register_it(const AnyString& name, SV* someref, const AnyString& file=AnyString(), int line=0)
    {
-      return super::register_me(name, namelen, file, filelen, line, someref, create_vtbl());
+      return super::register_me(name, file, line, someref, create_vtbl());
    }
 };
 
@@ -1099,61 +1173,61 @@ class ContainerClassRegistrator<T, random_access_iterator_tag, false>
    : public ContainerClassRegistrator<T, bidirectional_iterator_tag, false> {
    typedef ContainerClassRegistrator<T, bidirectional_iterator_tag, false> super;
 protected:
-   static void _random(T* obj, char*, int index, SV* dst, SV* container_sv, const char* frame_upper_bound)
+   static void random_impl(T* obj, char*, int index, SV* dst, SV* container_sv)
    {
       index=index_within_range(super::helper::streamline(*obj), index);
-      Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent), 1);
-      pv.put_lval(super::helper::streamline(*obj)[index], frame_upper_bound, 0, 0, (nothing*)0)->store_anchor(container_sv);
+      Value pv(dst, value_expect_lval | value_allow_non_persistent | value_allow_store_ref);
+      pv.put_lvalue(super::helper::streamline(*obj)[index], 0, nullptr, (nothing*)nullptr, container_sv);
    }
 
-   static void crandom(const T* obj, char*, int index, SV* dst, SV* container_sv, const char* frame_upper_bound)
+   static void crandom(const T* obj, char*, int index, SV* dst, SV* container_sv)
    {
       index=index_within_range(super::helper::streamline(*obj), index);
-      Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent | value_read_only), 1);
-      pv.put_lval(super::helper::streamline(*obj)[index], frame_upper_bound, 0, 0, (nothing*)0)->store_anchor(container_sv);
+      Value pv(dst, value_read_only | value_expect_lval | value_allow_non_persistent | value_allow_store_ref);
+      pv.put_lvalue(super::helper::streamline(*obj)[index], 0, nullptr, (nothing*)nullptr, container_sv);
    }
 
-   static void random_sparse(T* obj, char*, int index, SV* dst, SV* container_sv, const char*)
+   static void random_sparse(T* obj, char*, int index, SV* dst, SV* container_sv)
    {
       index=index_within_range(super::helper::streamline(*obj), index);
-      Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent), 1);
-      pv.put(super::helper::streamline(*obj)[index], 0, 0)->store_anchor(container_sv);
+      Value pv(dst, value_expect_lval | value_allow_non_persistent);
+      pv.put(super::helper::streamline(*obj)[index], 0, container_sv);
    }
 
-   static container_access_type random(False, True)
+   static container_access_type random(std::false_type, std::true_type)
    {
-      return reinterpret_cast<container_access_type>(&_random);
+      return reinterpret_cast<container_access_type>(&random_impl);
    }
-   static container_access_type random(True, True)
+   static container_access_type random(std::true_type, std::true_type)
    {
       return reinterpret_cast<container_access_type>(&random_sparse);
    }
-   template <typename _is_sparse>
-   static container_access_type random(_is_sparse, False)
+   template <typename is_sparse>
+   static container_access_type random(is_sparse, std::false_type)
    {
       return reinterpret_cast<container_access_type>(&crandom);
    }
 public:
-   static SV* register_it(const char* name, size_t namelen, SV* someref, const char* file=NULL, size_t filelen=0, int line=0)
+   static SV* register_it(const AnyString& name, SV* someref, const AnyString& file=AnyString(), int line=0)
    {
       SV* vtbl=super::create_vtbl();
       super::fill_random_access_vtbl(
          vtbl,
-         random(bool2type<super::is_sparse>(), typename super::non_const_access()),
-         random(bool2type<super::is_sparse>(), False())
+         random(bool_constant<super::is_sparse>(), typename super::non_const_access()),
+         random(bool_constant<super::is_sparse>(), std::false_type())
       );
-      return super::register_me(name, namelen, file, filelen, line, someref, vtbl);
+      return super::register_me(name, file, line, someref, vtbl);
    }
 };
 
 template <typename T, typename Category>
 class ContainerClassRegistrator<T, Category, true> : protected ClassRegistratorBase {
 public:
-   static SV* register_it(const char* name, size_t namelen, SV* someref, const char* file=NULL, size_t filelen=0, int line=0)
+   static SV* register_it(const AnyString& name, SV* someref, const AnyString& file=AnyString(), int line=0)
    {
       return register_class(
-         name, namelen, file, filelen, line, someref,
-         typeid(T).name(), typeid(T).name(),
+         name, file, line, someref,
+         typeid(T).name(),
          false, class_is_opaque,
          create_builtin_vtbl(
             typeid(T), sizeof(T),
@@ -1173,38 +1247,38 @@ struct CompositeClassRegistrator {
    static const bool allow_non_const_access = !attrib<member_type>::is_const &&
                                               !object_traits<typename deref<member_type>::type>::is_always_const;
 
-   static void _get(T* obj, SV* dst, SV* container_sv, const char* frame_upper_bound)
+   static void get_impl(T* obj, SV* dst, SV* container_sv)
    {
-      Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent), 1);
-      pv.put_lval(visit_n_th(*obj, int2type<n>()), frame_upper_bound, 0, 0, (nothing*)0)->store_anchor(container_sv);
+      Value pv(dst, value_expect_lval | value_allow_non_persistent | value_allow_store_ref);
+      pv.put_lvalue(visit_n_th(*obj, int_constant<n>()), 0, nullptr, (nothing*)nullptr, container_sv);
    }
 
-   static void cget(const T* obj, SV* dst, SV* container_sv, const char* frame_upper_bound)
+   static void cget(const T* obj, SV* dst, SV* container_sv)
    {
-      Value pv(dst, value_flags(value_expect_lval | value_allow_non_persistent | value_read_only), 1);
-      pv.put_lval(visit_n_th(*obj, int2type<n>()), frame_upper_bound, 0, 0, (nothing*)0)->store_anchor(container_sv);
+      Value pv(dst, value_read_only | value_expect_lval | value_allow_non_persistent | value_allow_store_ref);
+      pv.put_lvalue(visit_n_th(*obj, int_constant<n>()), 0, nullptr, (nothing*)nullptr, container_sv);
    }
 
-   static void _store(T* obj, SV* src)
+   static void store_impl(T* obj, SV* src)
    {
       Value v(src, value_not_trusted);
-      v >> visit_n_th(*obj, int2type<n>());
+      v >> visit_n_th(*obj, int_constant<n>());
    }
 
-   static composite_access_type get(True)  { return reinterpret_cast<composite_access_type>(&_get); }
-   static composite_access_type get(False) { return reinterpret_cast<composite_access_type>(&cget); }
-   static composite_store_type store(True)  { return reinterpret_cast<composite_store_type>(&_store); }
-   static composite_store_type store(False) { return NULL; }
+   static composite_access_type get(std::true_type)  { return reinterpret_cast<composite_access_type>(&get_impl); }
+   static composite_access_type get(std::false_type) { return reinterpret_cast<composite_access_type>(&cget); }
+   static composite_store_type store(std::true_type)  { return reinterpret_cast<composite_store_type>(&store_impl); }
+   static composite_store_type store(std::false_type) { return nullptr; }
 
    static void init(composite_access_vtbl* acct)
    {
-      acct->get[0]=get(bool2type<allow_non_const_access>());
-      acct->get[1]=get(False());
-      acct->store=store(bool2type<allow_non_const_access>());
-      CompositeClassRegistrator<T,n+1,l>::init(++acct);
+      acct->get[0]=get(bool_constant<allow_non_const_access>());
+      acct->get[1]=get(std::false_type());
+      acct->store=store(bool_constant<allow_non_const_access>());
+      CompositeClassRegistrator<T, n+1, l>::init(++acct);
    }
 
-   static SV* provide_field_names() { return field_names(recognizer_bait(0), (T*)0); }
+   static SV* provide_member_names() { return member_names(recognizer_bait(0), (T*)0); }
 };
 
 template <typename T, int l>
@@ -1222,13 +1296,13 @@ class ClassRegistrator<T, is_composite> : protected ClassRegistratorBase {
 public:
    typedef typename list_transform_unary<get_persistent_type, typename object_traits<T>::elements>::type elements;
 
-   static SV* register_it(const char* name, size_t namelen, SV* someref, const char* file=NULL, size_t filelen=0, int line=0)
+   static SV* register_it(const AnyString& name, SV* someref, const AnyString& file=AnyString(), int line=0)
    {
       return register_class(
-         name, namelen, file, filelen, line, someref,
-         typeid(T).name(), typeid(typename const_equivalent<T>::type).name(),
+         name, file, line, someref,
+         typeid(T).name(),
          is_mutable<T>::value,
-         class_kind(class_is_composite | Serializable<T>::flag_value),
+         class_is_composite | Serializable<T>::flag_value(),
          create_composite_vtbl(
             typeid(T), sizeof(T), object_traits<T>::total_dimension,
             Copy<T>::func(),
@@ -1237,9 +1311,11 @@ public:
             ToString<T>::func(),
             Serializable<T>::conv(),
             Serializable<T>::provide(),
+            Serializable<T>::provide_descr(),
             list_length<elements>::value,
             &TypeListUtils<elements>::provide_types,
-            &CompositeClassRegistrator<T>::provide_field_names,
+            &TypeListUtils<elements>::provide_descrs,
+            &CompositeClassRegistrator<T>::provide_member_names,
             &CompositeClassRegistrator<T>::init
          )
       );
@@ -1252,10 +1328,9 @@ namespace polymake { namespace perl_bindings {
 template <typename T>
 class Class : public pm::perl::ClassRegistrator<T> {
 public:
-   template <size_t namelen, size_t filelen>
-   Class(const char (&name)[namelen], const char (&file)[filelen], int line)
+   Class(const AnyString& name, const AnyString& file, int line)
    {
-      pm::perl::ClassRegistrator<T>::register_it(name, namelen-1, 0, file, filelen-1, line);
+      pm::perl::ClassRegistrator<T>::register_it(name, nullptr, file, line);
    }
 };
 
@@ -1263,29 +1338,18 @@ public:
 namespace pm { namespace perl {
 
 class ClassTemplate {
-private:
-   static void register_class(const char* name, size_t l);
 public:
-   ClassTemplate(const char* name, size_t l)
-   {
-      register_class(name,l);
-   }
-
-   template <size_t nl>
-   ClassTemplate(const char (&name)[nl])
-   {
-      register_class(name,nl-1);
-   }
+   explicit ClassTemplate(const AnyString& name);
 };
 
-SV* get_parameterized_type(const char* pkg, size_t pkgl, bool exact_match);
+SV* get_parameterized_type_impl(const AnyString& pkg, bool exact_match);
 
-template <typename TypeList, size_t pkgl, bool exact_match> inline
-SV* get_parameterized_type(const char (&pkg)[pkgl], bool2type<exact_match>)
+template <typename TypeList, bool exact_match> inline
+SV* get_parameterized_type(const AnyString& pkg, bool_constant<exact_match>)
 {
    Stack stack(true, 1+TypeListUtils<TypeList>::type_cnt);
    if (TypeListUtils<TypeList>::push_types(stack)) {
-      return get_parameterized_type(pkg, pkgl-1, exact_match);
+      return get_parameterized_type_impl(pkg, exact_match);
    } else {
       stack.cancel();
       return NULL;
@@ -1297,39 +1361,22 @@ protected:
    EmbeddedRule() {}
 
    static
-   void add(const char* file, int line, const char* text, size_t l);
+   void add(const AnyString& file, int line, const AnyString& text);
 public:
-   template <size_t l>
-   EmbeddedRule(const char* file, int line, const char (&text)[l])
+   EmbeddedRule(const AnyString& file, int line, const AnyString& text)
    {
-      add(file,line,text,l-1);
+      add(file, line, text);
    }
 };
 
-template <typename Source, typename Target>
-struct assignable_to : pm::assignable_to<typename access<Source>::type, Target> {};
-
-template <typename Source, typename Target,
-          bool _implicitly=pm::convertible_to<typename access<Source>::type, Target>::value,
-          bool _isomorphic=isomorphic_types<typename access<Source>::value_type, Target>::value &&
-                           assignable_to<Source,Target>::value,
-          typename discr=typename isomorphic_types<typename access<Source>::value_type, Target>::discriminant>
-struct convertible_to : bool2type<_implicitly> {};
-
-// two isomorphic types belong to the same generic family and assignable:
-// there is a good chance to have an explicit conversion constructor too
-template <typename Source, typename Target, typename Tag>
-struct convertible_to<Source, Target, false, true, cons<Tag,Tag> > : True {};
-
-template <typename Target, typename Source, bool _enabled=assignable_to<Source,Target>::value>
-struct Operator_assign;
+template <typename Target, typename Source,
+          bool enabled=can_assign_to<typename access<Source>::type, Target>::value>
+struct Operator_assign_impl {
+   static wrapper_type func() { return nullptr; }
+};
 
 template <typename Target, typename Source>
-struct Operator_assign<Target, Source, true>
-   : protected FunctionBase {
-
-   typedef cons<Target,Source> arg_list;
-
+struct Operator_assign_impl<Target, Source, true> {
    static void call(Target& dst, const Value& src)
    {
       if (MaybeWary<Target>::value && (src.get_flags() & value_not_trusted))
@@ -1337,34 +1384,49 @@ struct Operator_assign<Target, Source, true>
       else
          dst=src.get<Source>();
    }
+   static wrapper_type func() { return reinterpret_cast<wrapper_type>(&call); }
+};
 
-   template <size_t filelen, typename _app_list>
-   Operator_assign(const char (&file)[filelen], int line, _app_list cross_apps)
+template <typename Target, typename Source>
+struct Operator_assign
+   : protected FunctionBase {
+
+   typedef cons<Target, Source> arg_list;
+
+   template <typename TAppList>
+   Operator_assign(const AnyString& file, int line, TAppList cross_apps)
    {
-      register_func(reinterpret_cast<wrapper_type>(&call),
-                    "=ass", 4, file, filelen-1, line, TypeListUtils<arg_list>::get_types(), cross_apps);
+      register_func(Operator_assign_impl<Target, Source>::func(),
+                    "=ass", file, line, TypeListUtils<arg_list>::get_type_names(), cross_apps);
    }
 };
 
-template <typename Target, typename Source, bool _enabled=convertible_to<Source,Target>::value>
-struct Operator_convert;
+template <typename Target, typename Source,
+          bool enabled=std::is_constructible<Target, typename access<Source>::type>::value>
+struct Operator_convert_impl {
+   static wrapper_type func() { return nullptr; }
+};
 
 template <typename Target, typename Source>
-struct Operator_convert<Target, Source, true>
-   : protected FunctionBase {
-
-   typedef cons<Target,Source> arg_list;
-
+struct Operator_convert_impl<Target, Source, true> {
    static Target call(const Value& src)
    {
       return Target(src.get<Source>());
    }
+   static wrapper_type func() { return reinterpret_cast<wrapper_type>(&call); }
+};
 
-   template <size_t filelen, typename _app_list>
-   Operator_convert(const char (&file)[filelen], int line, _app_list cross_apps)
+template <typename Target, typename Source>
+struct Operator_convert
+   : protected FunctionBase {
+
+   typedef cons<Target, Source> arg_list;
+
+   template <typename TAppList>
+   Operator_convert(const AnyString& file, int line, TAppList cross_apps)
    {
-      register_func(reinterpret_cast<wrapper_type>(&call),
-                    ".cnv", 4, file, filelen-1, line, TypeListUtils<arg_list>::get_types(), cross_apps);
+      register_func(Operator_convert_impl<Target, Source>::func(),
+                    ".cnv", file, line, TypeListUtils<arg_list>::get_type_names(), cross_apps);
    }
 };
 

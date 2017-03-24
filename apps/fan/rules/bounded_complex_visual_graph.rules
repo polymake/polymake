@@ -53,65 +53,6 @@ user_method EDGE_COLORS {
 
 
 
-
-object polytope::TightSpan{
-
-
-# @category Visualization
-# This is a variation of [[Polytope::VISUAL_BOUNDED_GRAPH]] for the special case of a tight span.
-# The vertices are embedded according to the [[METRIC]], the others are hanged in between.
-# @options %Visual::Graph::decorations
-# @option Int seed random seed value for the string embedder
-# @option String norm which norm to use when calculating the distances between metric vectors ("max" or "square")
-# @return Visual::Graph
-
-user_method VISUAL_TIGHT_SPAN(%Visual::Graph::decorations, { norm => enum("max=default", "square"), seed => undef }) {
-   my ($this, $decor, $options)=@_;
-   my $BG=$this->BOUNDED_COMPLEX->GRAPH;
-   my @metric_indices=@{$this->VERTICES_IN_METRIC};
-   
-   my (@tentacles, @tentacle_indices);
-   for (my $i=0; $i<$this->N_VERTICES; ++$i) {
-      if ((my $t=$metric_indices[$i])>=0  and  $BG->ADJACENCY->degree($i) ==1) {
-	 push @tentacle_indices, $i;
-	 push @tentacles, $t;
-      }
-   }
-   my ($tentacle_graph, $edge_weights)=tentacle_graph(\@tentacles, $this->METRIC);
-  
-   my $node_colors=sub { $metric_indices[$_[0]]>=0 ? $Visual::Color::vertices : $Visual::Color::non_tax_vertices };
-   
-   my $float_vertices = convert_to<Float>($this->VERTICES);
-   my $Graph=new Visual::Graph($decor, Name => "Tight Span of " . $this->name,
-				Graph => $BG,
-				Coord => bounded_embedder($BG->ADJACENCY,$float_vertices,$this->FAR_FACE,\@tentacle_indices,spring_embedding_3d($tentacle_graph, 'edge-weights' => $edge_weights, $options)->compute, $options->{norm} eq "max"),
-				NodeLabels => $this->VERTEX_LABELS,
-				NodeColor => $node_colors,
-			      );
-   visualize($Graph);
-}
-
-# @category Visualization
-# Visualize the [[Polytope::BOUNDED_COMPLEX.GRAPH|BOUNDED_COMPLEX.GRAPH]] of a tight span.
-# @options %Visual::Graph::decorations
-# @option Int seed random seed value for the string embedder
-# @return Visual::PolytopeGraph
-
-user_method VISUAL_BOUNDED_GRAPH(%Visual::Graph::decorations, { seed => undef }) {
-   my ($this, $decor, $seed)=@_;
-   my $VB=$this->SUPER::VISUAL_BOUNDED_GRAPH($decor, $seed);
-   $VB->basis_graph->merge(NodeColor => sub { $this->VERTICES_IN_METRIC->[$_[0]]<0 ? $Visual::Color::non_tax_vertices : undef });
-   visualize($VB);
-}
-
-}
-
-package Visual::Color;
-
-# Color for the vertices of a tight span not corresponding to taxa
-custom $non_tax_vertices="255 255 0";
-
-
 # Local Variables:
 # mode: perl
 # c-basic-offset:3

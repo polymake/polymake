@@ -36,7 +36,7 @@ perl::Object k_cyclic(int n, Vector<Rational> s)
    p.take("N_VERTICES") << n;
 
    Matrix<Rational> vertices(n,2*k+1);
-   Rational* v=concat_rows(vertices).begin();
+   auto v=concat_rows(vertices).begin();
    s*=2; s/=n;
 
    AccurateFloat sinK, cosK;
@@ -59,7 +59,6 @@ perl::Object k_cyclic(int n, Vector<Rational> s)
       }
    }
    p.take("VERTICES") << vertices;
-   p.take("LINEALITY_SPACE") << Matrix<Rational>();
    p.take("BOUNDED") << true;
 
    return p;

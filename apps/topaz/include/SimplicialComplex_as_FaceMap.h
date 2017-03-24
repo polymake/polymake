@@ -81,10 +81,10 @@ public:
 
    template <typename Container>
    SimplicialComplex_as_FaceMap(const Container& src,
-                                typename pm::enable_if<nothing*, pm::isomorphic_to_container_of<Container, Set<Vertex> >::value>::type=0)
+                                typename std::enable_if<pm::isomorphic_to_container_of<Container, Set<Vertex> >::value, nothing*>::type=nullptr)
       : faces_complete(scalar2set(0))
    {
-      for (typename Entire<Container>::const_iterator f=entire(src); !f.at_end(); ++f)
+      for (auto f=entire(src); !f.at_end(); ++f)
          insert_face(*f);
    }
 
@@ -282,7 +282,7 @@ SparseMatrix<R> SimplicialComplex_as_FaceMap<Vertex, Visitor>::_boundary_matrix(
       }
    }
    faces_complete += d-1;
-   return SparseMatrix<R>(Delta);
+   return SparseMatrix<R>(std::move(Delta));
 }
 
 } }

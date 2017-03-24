@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -47,6 +47,15 @@ sub application {
       $application;
    }
 }
+
+namespaces::set_autolookup(
+  sub {
+     my ($pkg)=@_;
+     if ($pkg =~ /^($id_re)::\w/o) {
+        my $app_name=$1;
+        !lookup Core::Application($app_name) && defined(try_add Core::Application($app_name));
+     }
+  });
 
 #################################################################################
 sub include {
@@ -134,7 +143,25 @@ sub save {
 
    $obj->save;
 }
-
+#################################################################################
+sub save_schema {
+   if (@_<2) {
+      die "usage: save_schema(Object or ObjectType, ..., \"filename\"\n";
+   }
+   my $filename=pop;
+   if ($filename !~ /\.\w+$/) {
+      $filename .= ".rng";
+   }
+   replace_special_paths($filename);
+   my $xf=new Core::XMLfile($filename);
+   $xf->save_schema(map {
+           if (is_object($_) && UNIVERSAL::can($_, "type")) {
+              $_->type
+           } else {
+              die "argument ", ref($_) || "'$_'", " is not an object or a type expression\n";
+           }
+        } @_);
+}
 #################################################################################
 sub load_data {
    my ($filename)=@_;

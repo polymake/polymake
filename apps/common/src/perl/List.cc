@@ -16,8 +16,10 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
 #include "polymake/Set.h"
+#include "polymake/SparseMatrix.h"
 #include "polymake/client.h"
 #include "polymake/list"
 
@@ -38,5 +40,6 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::List__Pair_A_Int_I_Int_Z", std::list< std::pair< int, int > >);
    Class4perl("Polymake::common::List__Int", std::list< int >);
    FunctionInstance4perl(new_X, std::list< int >, int);
+   Class4perl("Polymake::common::List__Pair_A_Integer_I_SparseMatrix_A_Integer_I_NonSymmetric_Z_Z", std::list< std::pair< Integer, SparseMatrix< Integer, NonSymmetric > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -111,7 +111,6 @@ namespace polymake { namespace tropical {
 				}
 			}
 
-			//dbgtrace << "Delta: " << delta << endl;
 
 			return evaluation_map<Addition>(n,delta,i);
 		}

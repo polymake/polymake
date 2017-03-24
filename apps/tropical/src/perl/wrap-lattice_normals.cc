@@ -16,11 +16,11 @@
 
 namespace polymake { namespace tropical { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( bool (pm::Matrix<pm::Rational>&, pm::Matrix<pm::Rational>&, pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::Map<std::pair<int, int>, pm::Vector<pm::Integer>, pm::operations::cmp>, pm::Map<std::pair<int, int>, pm::Vector<pm::Integer>, pm::operations::cmp>) ) {
+   FunctionWrapper4perl( bool (pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&, pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::Map<std::pair<int, int>, pm::Vector<pm::Integer>, pm::operations::cmp> const&, pm::Map<std::pair<int, int>, pm::Vector<pm::Integer>, pm::operations::cmp> const&) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]), arg4(stack[4]);
-      IndirectWrapperReturn( arg0.get< perl::TryCanned< Matrix< Rational > > >(), arg1.get< perl::TryCanned< Matrix< Rational > > >(), arg2.get< perl::TryCanned< const IncidenceMatrix< NonSymmetric > > >(), arg3.get< perl::TryCanned< const Map< std::pair< int, int >, Vector< Integer > > > >(), arg4.get< perl::TryCanned< const Map< std::pair< int, int >, Vector< Integer > > > >() );
+      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Matrix< Rational > > >(), arg1.get< perl::TryCanned< const Matrix< Rational > > >(), arg2.get< perl::TryCanned< const IncidenceMatrix< NonSymmetric > > >(), arg3.get< perl::TryCanned< const Map< std::pair< int, int >, Vector< Integer > > > >(), arg4.get< perl::TryCanned< const Map< std::pair< int, int >, Vector< Integer > > > >() );
    }
-   FunctionWrapperInstance4perl( bool (pm::Matrix<pm::Rational>&, pm::Matrix<pm::Rational>&, pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::Map<std::pair<int, int>, pm::Vector<pm::Integer>, pm::operations::cmp>, pm::Map<std::pair<int, int>, pm::Vector<pm::Integer>, pm::operations::cmp>) );
+   FunctionWrapperInstance4perl( bool (pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&, pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::Map<std::pair<int, int>, pm::Vector<pm::Integer>, pm::operations::cmp> const&, pm::Map<std::pair<int, int>, pm::Vector<pm::Integer>, pm::operations::cmp> const&) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

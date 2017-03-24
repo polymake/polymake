@@ -70,7 +70,7 @@ perl::Object deletion_complex(perl::Object p_in, const Set<int>& face, perl::Opt
    if (facets.empty()) {
       p_out.take("FACETS") << Array< Set<int> >(1);
    } else {
-      Array< Set<int> > array_facets = as_array(lex_ordered(facets));
+      Array<Set<int>> array_facets{ lex_ordered(facets) };
       V = accumulate(array_facets, operations::add());
       adj_numbering(array_facets,V);
       p_out.take("FACETS") << array_facets;
@@ -90,7 +90,7 @@ UserFunction4perl("# @category Producing a new simplicial complex from others"
                   "# @param SimplicialComplex complex"
                   "# @param Set<Int> face specified by vertex indices."
                   "#  Please use [[labeled_vertices]] if you want to specify the face by vertex labels."
-                  "# @option Bool no_labels do not write vertex labels."
+                  "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @return SimplicialComplex",
                   &deletion_complex, "deletion(SimplicialComplex $ { no_labels => 0 } )");
 } }

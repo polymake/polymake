@@ -44,7 +44,14 @@ UserFunction4perl("# @category Producing a graph\n"
                   "# Constructs a __complete bipartite graph__ on //k// + //l// nodes."
                   "# @param Int k"
                   "# @param Int l"
-                  "# @return Graph",
+                  "# @return Graph"
+                  "# @example To print the adjacency representation of a complete bipartite graph"
+                  "# with two nodes per partition, type this:"
+                  "# > print complete_bipartite(2,2)->ADJACENCY;"
+                  "# | {2 3}"
+                  "# | {2 3}"
+                  "# | {0 1}"
+                  "# | {0 1}",
                   &complete_bipartite, "complete_bipartite");
 
 

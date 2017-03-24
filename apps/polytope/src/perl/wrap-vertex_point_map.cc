@@ -14,9 +14,10 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/Matrix.h"
-#include "polymake/Rational.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -28,5 +29,6 @@ namespace polymake { namespace polytope { namespace {
 
    FunctionInstance4perl(vertex_point_map_X_X, perl::Canned< const Matrix< Rational > >, perl::Canned< const Matrix< Rational > >);
    FunctionInstance4perl(vertex_point_map_X_X, perl::Canned< const Matrix< double > >, perl::Canned< const Matrix< double > >);
+   FunctionInstance4perl(vertex_point_map_X_X, perl::Canned< const Matrix< QuadraticExtension< Rational > > >, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

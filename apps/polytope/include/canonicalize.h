@@ -25,16 +25,16 @@
 namespace polymake { namespace polytope {
 
 template <typename Iterator> inline
-void canonicalize_oriented(Iterator e)
+void canonicalize_oriented(Iterator&& it)
 {
-   typedef typename Iterator::value_type Scalar;
-   if (!e.at_end() && !abs_equal(*e,one_value<Scalar>())) {
-      const Scalar leading=abs(*e);
-      do *e /= leading; while (!(++e).at_end());
+  typedef typename pm::iterator_traits<Iterator>::value_type Scalar;
+   if (!it.at_end() && !abs_equal(*it, one_value<Scalar>())) {
+      const Scalar leading=abs(*it);
+      auto&& tail=ensure_private_mutable(std::forward<Iterator>(it));
+      do *tail /= leading; while (!(++tail).at_end());
    }
 }
 
-  }
-}
+} }
 
 #endif

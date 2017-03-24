@@ -14,8 +14,9 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/Rational.h"
 #include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
+#include "polymake/TropicalNumber.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====

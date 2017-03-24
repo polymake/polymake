@@ -30,20 +30,28 @@ rule LP.DIRECTED_GRAPH.ADJACENCY, LP.MAXIMAL_VALUE, LP.MINIMAL_VALUE, LP.MAXIMAL
    $this->LP->DIRECTED_GRAPH->ADJACENCY=dgraph($this, $this->LP);
 }
 weight 2.50;
+precondition : POINTED;
+precondition : FEASIBLE;
 
 rule LP.DIRECTED_GRAPH.ADJACENCY, LP.MAXIMAL_VALUE, LP.MINIMAL_VALUE, LP.MAXIMAL_FACE, LP.MINIMAL_FACE \
      : LP.ABSTRACT_OBJECTIVE, GRAPH.ADJACENCY, VERTICES {
    $this->LP->DIRECTED_GRAPH->ADJACENCY=dgraph($this, $this->LP);
 }
 weight 2.50;
+precondition : POINTED;
+precondition : FEASIBLE;
 
 rule LP.MAXIMAL_FACE, LP.MAXIMAL_VALUE : LP.LINEAR_OBJECTIVE, VERTICES, GRAPH.ADJACENCY, FAR_FACE {
    pseudo_simplex($this, $this->LP, 1);
 }
+precondition : POINTED;
+precondition : FEASIBLE;
 
 rule LP.MINIMAL_FACE, LP.MINIMAL_VALUE : LP.LINEAR_OBJECTIVE, VERTICES, GRAPH.ADJACENCY, FAR_FACE {
    pseudo_simplex($this, $this->LP, 0);
 }
+precondition : POINTED;
+precondition : FEASIBLE;
 
 rule LP.MAXIMAL_VERTEX : VERTICES, FAR_FACE, LP.MAXIMAL_FACE {
    my $f=$this->LP->MAXIMAL_FACE-$this->FAR_FACE;
@@ -73,6 +81,8 @@ rule ONE_VERTEX, FEASIBLE : FACETS | INEQUALITIES, CONE_AMBIENT_DIM {
    $this->FEASIBLE=defined($lp->MINIMAL_VERTEX);
 }
 weight 3.20;
+
+rule VALID_POINT = ONE_VERTEX;
 
 }
 

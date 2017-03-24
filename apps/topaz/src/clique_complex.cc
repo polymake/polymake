@@ -41,11 +41,19 @@ perl::Object clique_complex(perl::Object graph, perl::OptionSet options)
 }
 
 UserFunction4perl("# @category Producing a simplicial complex from other objects\n"
-                  "# Produce the __clique complex__ of a given graph.\n"
+                  "# Produce the __clique complex__ of a given graph, that is, the simplicial"
+                  "# complex that has an n-dimensional facet for each n+1-clique.\n"
                   "# If //no_labels// is set to 1, the labels are not copied.\n"
                   "# @param Graph graph"
-                  "# @option Bool no_labels\n"
-                  "# @return SimplicialComplex",
+                  "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
+                  "# @return SimplicialComplex"
+                  "# @example Create the clique complex of a simple graph with one 3-clique and"
+                  "#  one 2-clique, not creating labels."
+                  "# > $g = graph_from_edges([[0,1],[0,2],[1,2],[2,3]]);"
+                  "# > $c = clique_complex($g,no_labels=>1);"
+                  "# > print $c->FACETS;"
+                  "# | {0 1 2}"
+                  "# | {2 3}",
                   &clique_complex,"clique_complex(Graph; { no_labels => 0 })");
 } }
 

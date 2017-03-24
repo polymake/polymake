@@ -31,7 +31,7 @@ INCLUDE
   graph_properties.rules
   common.rules
   geometric_graph.rules
-  face_lattice.rules
+  lattice.rules
   visual.rules
 
 # self-configuring rules
@@ -44,6 +44,7 @@ INCLUDE
   sketch.rules
   threejs.rules
   tikz.rules
+  svg.rules
 
 # Local Variables:
 # mode: perl

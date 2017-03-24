@@ -26,6 +26,9 @@
 # @topic category properties/any/Toric Varieties
 # Properties coming from associated toric varieties
 
+# @topic category functions/Finite metric spaces
+# All around Tight spans of finite metric spaces and their conections to polyhedral geometry
+
 # Local Variables:
 # mode: perl
 # cperl-indent-level: 3

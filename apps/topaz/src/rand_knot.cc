@@ -49,7 +49,7 @@ perl::Object rand_knot(const int n_edges, perl::OptionSet options)
    Matrix<Rational> Points(n_edges*n_comp, 3);
    if (options["on_sphere"] || options["brownian"]) {
       RandomSpherePoints<> random_source(3, seed);
-      copy(random_source.begin(), entire(rows(Points)));
+      copy_range(random_source.begin(), entire(rows(Points)));
     
       if (options["brownian"])
          for (int i=1; i<Points.rows(); ++i)
@@ -57,7 +57,7 @@ perl::Object rand_knot(const int n_edges, perl::OptionSet options)
 
    } else {
       UniformlyRandom<AccurateFloat> rg(seed);
-      copy(rg.begin(), entire(concat_rows(Points)));
+      copy_range(rg.begin(), entire(concat_rows(Points)));
    }
 
    p.take("FACETS") << C;

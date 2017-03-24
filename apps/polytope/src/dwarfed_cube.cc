@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -45,7 +45,6 @@ perl::Object dwarfed_cube(int d)
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("CONE_DIM") << d+1;
    p.take("FACETS") << F;
-   p.take("LINEAR_SPAN") << Matrix<Rational>();
    p.take("BOUNDED") << true;
    p.take("POSITIVE") << true;
    return p;

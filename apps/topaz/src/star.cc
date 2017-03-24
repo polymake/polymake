@@ -21,7 +21,7 @@ namespace polymake { namespace topaz {
   
 perl::Object stars(perl::Object p_in, const Set<int> &F,perl::OptionSet options)
 {
-   const bool relabel=options["labels"];
+   const bool relabel=!options["no_labels"];
    const Array< Set<int> > C = p_in.give("FACETS");
    //   const Array<std::string> L = p_in.give("VERTEX_LABELS");
    const int n_vert = p_in.give("N_VERTICES");
@@ -33,7 +33,7 @@ perl::Object stars(perl::Object p_in, const Set<int> &F,perl::OptionSet options)
       throw std::runtime_error("t_star: Specified vertex indices out of range");
 
    std::list< Set<int> > Star;
-   copy(entire(star(C,F)), std::back_inserter(Star));
+   copy_range(entire(star(C,F)), std::back_inserter(Star));
 
    if (Star.empty()) {
       std::ostringstream e;
@@ -59,11 +59,11 @@ perl::Object stars(perl::Object p_in, const Set<int> &F,perl::OptionSet options)
 
 UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# Produce the __star__ of the //face// of the //complex//.\n"
-                  "# @option Bool labels creates [[VERTEX_LABELS]].\n"
+                  "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @param SimplicialComplex complex"
                   "# @param Set<int> face"
                   "# @return SimplicialComplex",
-                  &stars, "star(SimplicialComplex $ { labels => 0 })"); 
+                  &stars, "star(SimplicialComplex $ { no_labels => 0 })");
 
 } }
 

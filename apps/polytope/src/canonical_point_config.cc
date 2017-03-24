@@ -21,15 +21,15 @@
 
 namespace polymake { namespace polytope {
 
-template <typename Vector>
-typename pm::enable_if<void, pm::check_container_feature<Vector, pm::sparse>::value>::type
-canonicalize_point_configuration(GenericVector<Vector>& V)
+template <typename TVector>
+typename std::enable_if<pm::check_container_feature<TVector, pm::sparse>::value, void>::type
+canonicalize_point_configuration(GenericVector<TVector>& V)
 {
-   typename Vector::iterator it=V.top().begin();
+   auto it=V.top().begin();
    if (!it.at_end()) {
       if (it.index()==0) {
          if (!is_one(*it)) {
-            const typename Vector::element_type first=*it;
+            const auto first=*it;
             V.top() /= first;
          }
       } else {
@@ -38,38 +38,36 @@ canonicalize_point_configuration(GenericVector<Vector>& V)
    }
 }
 
-template <typename Vector>
-typename pm::disable_if<void, pm::check_container_feature<Vector,pm::sparse>::value>::type
-canonicalize_point_configuration(GenericVector<Vector>& V)
+template <typename TVector>
+typename std::enable_if<!pm::check_container_feature<TVector, pm::sparse>::value, void>::type
+canonicalize_point_configuration(GenericVector<TVector>& V)
 {
    if (!V.top().empty() && !is_one(V.top().front())) {
       if (!is_zero(V.top().front())) {
-         const typename Vector::element_type first=V.top().front();
+         const auto first=V.top().front();
          V.top() /= first;
       } else {
-         canonicalize_oriented(find_if(entire(V.top()), operations::non_zero()));
+         canonicalize_oriented(find_in_range_if(entire(V.top()), operations::non_zero()));
       }
    }
 }
 
-template <typename Matrix> inline
-void canonicalize_point_configuration(GenericMatrix<Matrix>& M)
+template <typename TMatrix> inline
+void canonicalize_point_configuration(GenericMatrix<TMatrix>& M)
 {
    Set<int> neg;
    int i = 0;
-   for (typename Entire< Rows<Matrix> >::iterator r=entire(rows(M)); !r.at_end();  ++r, ++i) {
+   for (auto r=entire(rows(M)); !r.at_end();  ++r, ++i) {
       if ( r->top()[0] < 0 )
          neg.push_back(i);
       else
-      canonicalize_point_configuration(r->top());
+         canonicalize_point_configuration(r->top());
    }
    M = M.minor(~neg,All);
 }
 
 FunctionTemplate4perl("canonicalize_point_configuration(Vector&) : void");
 FunctionTemplate4perl("canonicalize_point_configuration(Matrix&) : void");
-
-
 
 } }
 

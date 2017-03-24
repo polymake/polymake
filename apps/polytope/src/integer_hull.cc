@@ -31,15 +31,17 @@ perl::Object integer_hull(perl::Object p_in)
 {
   // compute the lattice points contained in the polyhedron
   // FIXME: use LATTICE_POINTS_GENERATORS instead
-  Matrix<Rational> Lattice_Points = p_in.CallPolymakeMethod("LATTICE_POINTS");
+  Matrix<Rational> Lattice_Points = p_in.call_method("LATTICE_POINTS");
+  const int dim = p_in.give("CONE_AMBIENT_DIM");
 
-  perl::Object p_out(perl::ObjectType::construct<Rational>("Polytope"));
-  
+  perl::Object p_out("Polytope<Rational>");
+
   // define a new polyhedron as a convex hull of all the lattice points
   p_out.take("POINTS") << Lattice_Points;
   p_out.take("FEASIBLE") << (Lattice_Points.rows() > 0);
   p_out.take("BOUNDED") << true;
   p_out.take("POINTED") << true;
+  p_out.take("CONE_AMBIENT_DIM") << dim;
 
   return p_out;	
 }

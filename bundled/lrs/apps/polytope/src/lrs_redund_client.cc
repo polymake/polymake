@@ -31,9 +31,9 @@ void lrs_eliminate_redundant_points(perl::Object p)
                     L=p.give("LINEALITY_SPACE");
    const bool isCone = !p.isa("Polytope");
    if (isCone) {
-     if ( P.rows() )  // leave matrix empty otherwise
+     if (P.cols())
        P = zero_vector<Rational>()|P;
-     if ( L.rows() )  // leave matrix empty otherwise
+     if (L.cols())
        L = zero_vector<Rational>()|L;
    }
 
@@ -55,9 +55,9 @@ void lrs_eliminate_redundant_ineqs(perl::Object p)
                     L=p.give("LINEAR_SPAN");
    const bool isCone = !p.isa("Polytope");
    if (isCone) {
-     if ( P.rows() )  // leave matrix empty otherwise
+     if (P.cols())
        P = zero_vector<Rational>()|P;
-     if ( L.rows() )  // leave matrix empty otherwise
+     if (L.cols())
        L = zero_vector<Rational>()|L;
    }
 

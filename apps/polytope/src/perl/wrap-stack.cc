@@ -27,5 +27,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(stack_x_X_o, perl::Canned< const Array< int > >);
    FunctionInstance4perl(stack_x_X_o, perl::Enum<pm::all_selector>);
    FunctionInstance4perl(stack_x_X_o, int);
+   FunctionInstance4perl(stack_x_X_o, perl::Canned< const Set< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -50,15 +50,15 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new, Graph< Directed >);
    FunctionInstance4perl(new_int, Graph< Undirected >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Graph< Undirected > >, perl::Canned< const Graph< Undirected > >);
-   OperatorInstance4perl(Binary__eq, perl::Canned< const Graph< Undirected > >, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Undirected> const&, pm::Set<int, pm::operations::cmp> const&, void> >);
-   OperatorInstance4perl(Binary__eq, perl::Canned< const Graph< Undirected > >, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Undirected> const&, pm::Series<int, true> const&, pm::Renumber<pm::bool2type<true> > > >);
-   OperatorInstance4perl(Binary__eq, perl::Canned< const Graph< Undirected > >, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Undirected> const&, pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> const&, void> >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Graph< Undirected > >, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Undirected> const&, pm::Set<int, pm::operations::cmp> const&> >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Graph< Undirected > >, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Undirected> const&, pm::Series<int, true> const&, polymake::mlist<pm::RenumberTag<std::true_type>>>>);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Graph< Undirected > >, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Undirected> const&, pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> const&> >);
    FunctionInstance4perl(new_X, Graph< Undirected >, perl::Canned< const Graph< Undirected > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Graph< Directed > >, perl::Canned< const Graph< Directed > >);
    OperatorInstance4perl(convert, Graph< Directed >, perl::Canned< const Graph< Undirected > >);
-   FunctionInstance4perl(new_X, Graph< Undirected >, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Undirected> const&, pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> const&, void> >);
-   FunctionInstance4perl(new_X, Graph< Directed >, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Directed> const&, pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> const&, void> >);
-   FunctionInstance4perl(new_X, Graph< Undirected >, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Undirected> const&, pm::Series<int, true> const&, pm::Renumber<pm::bool2type<true> > > >);
+   FunctionInstance4perl(new_X, Graph< Undirected >, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Undirected> const&, pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> const&> >);
+   FunctionInstance4perl(new_X, Graph< Directed >, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Directed> const&, pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> const&> >);
+   FunctionInstance4perl(new_X, Graph< Undirected >, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Undirected> const&, pm::Series<int, true> const&, polymake::mlist<pm::RenumberTag<std::true_type>>>>);
    FunctionInstance4perl(new_X, Graph< Directed >, perl::Canned< const Graph< Directed > >);
    OperatorInstance4perl(Binary_sub, perl::Canned< const Wary< Graph< Undirected > > >, perl::Canned< const Graph< Directed > >);
    OperatorInstance4perl(Binary_sub, perl::Canned< const Wary< Graph< Undirected > > >, perl::Canned< const Graph< Undirected > >);
@@ -69,8 +69,12 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, Graph< DirectedMulti >, perl::Canned< const Graph< DirectedMulti > >);
    Class4perl("Polymake::common::Graph__UndirectedMulti", Graph< UndirectedMulti >);
    FunctionInstance4perl(new, Graph< UndirectedMulti >);
-   FunctionInstance4perl(new_X, Graph< Undirected >, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Directed> const&, pm::Nodes<pm::graph::Graph<pm::graph::Undirected> > const&, void> >);
+   FunctionInstance4perl(new_X, Graph< Undirected >, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Directed> const&, pm::Nodes<pm::graph::Graph<pm::graph::Undirected> > const&> >);
    FunctionInstance4perl(new_X, Graph< Undirected >, perl::Canned< const IncidenceMatrix< Symmetric > >);
    OperatorInstance4perl(convert, Graph< Undirected >, perl::Canned< const Graph< Directed > >);
+   OperatorInstance4perl(Binary__ne, perl::Canned< const Graph< Undirected > >, perl::Canned< const Graph< Undirected > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Graph< DirectedMulti > >, perl::Canned< const Graph< DirectedMulti > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Graph< UndirectedMulti > >, perl::Canned< const Graph< UndirectedMulti > >);
+   FunctionInstance4perl(new_X, Graph< Undirected >, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

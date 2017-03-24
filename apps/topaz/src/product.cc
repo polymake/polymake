@@ -156,12 +156,9 @@ void combinatorial_simplicial_product_impl (perl::Object p_in1, perl::Object p_i
       Array<std::string> L(L1.size()*L2.size());
       
       c=0;
-      for (Entire< Array<int> >::const_iterator v2=entire(order2); !v2.at_end(); ++v2)
-         for (Entire< Array<int> >::const_iterator v1=entire(order1); !v1.at_end(); ++v1, ++c) {
-            std::ostringstream label;
-            label << "(" << L1[*v1] << "," << L2[*v2] << ")";
-            L[c] = label.str();
-         }
+      for (auto v2=entire(order2); !v2.at_end(); ++v2)
+         for (auto v1=entire(order1); !v1.at_end(); ++v1, ++c)
+            L[c] = '(' + L1[*v1] + ',' + L2[*v2] + ')';
 
       p_out.take("VERTEX_LABELS") << L;
    }
@@ -212,7 +209,7 @@ UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# @option Array<Int> vertex_order2"
                   "# @option Bool geometric_realization default 0"
                   "# @option Bool color_cons"
-                  "# @option Bool no_labels"
+                  "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @return SimplicialComplex",
                   &combinatorial_simplicial_product, "simplicial_product(SimplicialComplex, SimplicialComplex, {vertex_order1 => undef, vertex_order2 => undef, geometric_realization => 0, color_cons => 0, no_labels => 0})");
 
@@ -226,7 +223,7 @@ UserFunctionTemplate4perl("# @category Producing a new simplicial complex from o
                   "# @option Array<Int> vertex_order2"
                   "# @option Bool geometric_realization default 1"
                   "# @option Bool color_cons"
-                  "# @option Bool no_labels"
+                  "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @return GeometricSimplicialComplex<Scalar>",
                   "simplicial_product<Scalar>(GeometricSimplicialComplex<Scalar>, GeometricSimplicialComplex<Scalar>, {vertex_order1 => undef, vertex_order2 => undef, geometric_realization => 1, color_cons => 0, no_labels => 0})");
 

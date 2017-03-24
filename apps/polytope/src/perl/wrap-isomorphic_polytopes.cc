@@ -28,11 +28,11 @@ namespace polymake { namespace polytope { namespace {
    }
    FunctionWrapperInstance4perl( bool (perl::Object, perl::Object) );
 
-   FunctionWrapper4perl( std::pair<pm::Array<int, void>, pm::Array<int, void> > (perl::Object, perl::Object) ) {
+   FunctionWrapper4perl( std::pair<pm::Array<int>, pm::Array<int> > (perl::Object, perl::Object) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
       IndirectWrapperReturn(arg0, arg1);
    }
-   FunctionWrapperInstance4perl( std::pair<pm::Array<int, void>, pm::Array<int, void> > (perl::Object, perl::Object) );
+   FunctionWrapperInstance4perl( std::pair<pm::Array<int>, pm::Array<int> > (perl::Object, perl::Object) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

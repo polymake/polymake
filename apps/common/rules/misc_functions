@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -67,6 +67,22 @@ user_function average($) {
    return $s/$n;
 }
 
+# @category Utilities
+# Returns the median value of the array elements.
+# @param ARRAY array
+# @example > print median([1,2,3,9]);
+# | 2.5
+
+user_function median($) {
+   my ($data)=@_;
+   my $n=@$data or return;
+   my @sorted = sort { $a <=> $b } @$data;
+   if ($n % 2 == 1) {
+      return $sorted[($n-1)/2];
+   } else {
+      return ($sorted[$n/2-1] + $sorted[$n/2])/2;
+   }
+}
 
 # @category Utilities
 # Produce a histogram of an array: each different element value is mapped on the number of its occurences.
@@ -79,7 +95,7 @@ user_function average($) {
 user_function histogram {
    my ($data)=@_;
    return unless @$data;
-   my $element_type=Core::PropertyType::guess_element_type($data);
+   my $element_type=Core::PropertyType::guess_array_element_type($data);
    my $map=(typeof Map($element_type, typeof Int))->construct->();
    ++$map->{$_} for @$data;
    $map
@@ -171,22 +187,54 @@ function find_labels {
 # @category Utilities
 # Return a map indexing an array of sets
 # @param Array<Set<Int>> array
-# @return Map<Array<Set<Int>>, Int>
-# @example > $s1 = new Set(1,2,3);
-# > $s2 = $s2 - 1;
+# @return HashMap<Array<Set<Int>>, Int>
+# @example [nocompare]
+# > $s1 = new Set(1,2,3);
+# > $s2 = $s1 - 1;
 # > $a = new Array<Set>($s1,$s2,$s1);
 # > print index_of($a);
 # | {({1 2 3} 2) ({2 3} 1)}
 
-user_function index_of {
+user_function index_of(Array<Set<Int>>) {
     my $array = shift;
-    my $index_of = new Map<Set<Int>, Int>;
+    my $index_of = new HashMap<Set<Int>, Int>;
     my $i=0;
     foreach (@{$array}) {
         $index_of->{$_} = $i++;
     }
     $index_of;
 }
+
+
+# @category Utilities
+# Given a metric, return a triangle matrix whose (i,j)-entry contains the distance between point i and j of the point set //S// for i<j. All entrys below the diagonal are zero. The metric is passed as a perl subroutine mapping two input vectors to a real value.
+# @param Matrix S
+# @param CODE d
+# @return Matrix
+# @example [application polytope]
+# The following defines the perl subroutine dist as the euclidean metric and then saves the distance matrix of the 3-cubes vertices in the variable $M:
+# > sub dist($$) {
+# >    my $v = $_[0] - $_[1];
+# >    return sqrt(new Float($v*$v)); }
+# > $M = distance_matrix(cube(3)->VERTICES, \&dist);
+user_function distance_matrix($$){
+	my ($S, $d) = @_;
+	my $n = $S->rows;
+	my $M = new Matrix($n,$n);
+	for (my $i = 0; $i<$n; $i++){
+		for (my $j = $i+1; $j<$n; $j++){
+			$M->elem($i,$j) = &$d( $S->row($i) , $S->row($j));
+		}
+	}
+	return $M;
+                     }
+
+# @category Linear Algebra
+# Compute the Hadamard product of two matrices with same dimensions.
+# @param Matrix M1
+# @param Matrix M2
+# @return Matrix"
+user_function hadamard_product<Scalar>(Matrix<type_upgrade<Scalar>,_>, Matrix<type_upgrade<Scalar>,_>): c++ (include => "polymake/common/hadamard_product.h");
 
 
 # Local Variables:

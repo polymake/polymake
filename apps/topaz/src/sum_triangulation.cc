@@ -29,27 +29,27 @@ namespace polymake { namespace topaz {
 // which contains all the facets indicated by WEB. 
 void glue_facet(const Set<int>& _F, 
                 const Array<int>& F_vertex_indices, 
-                const Array<Set<int> >& facets, 
+                const Array<Set<int>>& facets, 
                 const Array<int>& facets_vertex_indices, 
                 const Set<int>& web, 
                 int shift, 
                 bool shift_facet,
-                std::vector<Set<int> >& result)
+                std::vector<Set<int>>& result)
 {
-   // computing the boundary ridges
-   hash_set< Set< int > > boundary;
+   // compute the boundary ridges
+   hash_set<Set<int>> boundary;
 
-   for (Entire< const Set<int>& >::const_iterator sfit = entire(web); !sfit.at_end(); ++sfit){
-      for (Entire< Subsets_less_1<const Set<int>& > >::const_iterator rit = entire(all_subsets_less_1(facets[*sfit])); !rit.at_end(); ++rit) {
-         if(boundary.exists(*rit)){
+   for (const auto& sf : web) {
+      for (auto rit = entire(all_subsets_less_1(facets[sf])); !rit.at_end(); ++rit) {
+         if (boundary.exists(*rit)) {
             boundary -= *rit;
-         }else{
-            boundary +=*rit;
+         } else {
+            boundary += *rit;
          }
       }
    }
 
-   // taking care of index shifting for unused points
+   // take care of index shifting for unused points
    Array<int> vertex_indices = facets_vertex_indices;
 
    // take into account the vertex indices of F
@@ -57,16 +57,18 @@ void glue_facet(const Set<int>& _F,
    
    // shift the indices of F or boundary facet
    if (shift_facet) {
-      F = attach_operation(F, operations::fix2<int,operations::add>(operations::fix2<int,operations::add>(shift)));
+      // TODO: introduce Set::transpose instead of this madness
+      Set<int> F_shifted(entire(attach_operation(F, constant(shift), operations::add())));
+      F=F_shifted;
    } else {
       // we shift the vertex indices of the boundary facet via the
       // vertex permutation so that we don't have to do it later
-      vertex_indices = attach_operation(vertex_indices, operations::fix2<int,operations::add>(operations::fix2<int,operations::add>(shift)));
+      for (int& v : vertex_indices) v+=shift;
    }
 
    // glue everything together
-   for (Entire<hash_set<Set<int> > >::const_iterator bfit = entire(boundary); !bfit.at_end(); ++bfit){
-      result.push_back(F + permuted_inv(*bfit, vertex_indices));
+   for (const auto& bf : boundary) {
+      result.push_back(F + permuted_inv(bf, vertex_indices));
    }    
 }
 
@@ -77,7 +79,7 @@ perl::Object sum_triangulation(perl::Object p_in,
                                const IncidenceMatrix<> webOfStars_in,
                                perl::OptionSet options)
 {
-   return sum_triangulation_impl<Scalar>(p_in,q_in,webOfStars_in, options);
+   return sum_triangulation_impl<Scalar>(p_in, q_in, webOfStars_in, options);
 }
 
 UserFunctionTemplate4perl("# @category Producing a new simplicial complex from others\n"

@@ -77,6 +77,7 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::Pair_A_Set__Int_I_Set__Set__Int_Z", std::pair< Set< int >, Set< Set< int > > >);
    FunctionInstance4perl(new, std::pair< Set< int >, Set< Set< int > > >);
    Class4perl("Polymake::common::Pair_A_Set__Set__Int_I_Set__Set__Set__Int_Z", std::pair< Set< Set< int > >, Set< Set< Set< int > > > >);
+   Class4perl("Polymake::common::Pair_A_Set__Int_I_Rational_Z", std::pair< Set< int >, Rational >);
    FunctionInstance4perl(new, std::pair< Set< Set< int > >, Set< Set< Set< int > > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

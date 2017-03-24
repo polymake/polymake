@@ -21,14 +21,17 @@
 #include "polymake/Vector.h"
 #include "polymake/Graph.h"
 #include "polymake/linalg.h"
-#include "polymake/graph/HasseDiagram.h"
+#include "polymake/graph/Lattice.h"
+#include "polymake/graph/Decoration.h"
 
 namespace polymake { namespace polytope {
+
+   typedef graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential> Lattice;
         
 // computes the cone defined in R^d, where d is the number of edges of the graph G
 // defined by the intersection of the positive orthant with all equations given by
 // the condition that the edge lengths around any 2-face should add to 0
-perl::Object minkowski_cone ( const graph::HasseDiagram H, // we only need the 2-faces
+perl::Object minkowski_cone ( const Lattice H, // we only need the 2-faces
                               const Graph<> G,      // the graph of the polytope
                               EdgeMap<Undirected,Vector<Rational> > edge_directions, // the edge directions of the polytope
                               const Set<int> far_face
@@ -53,7 +56,7 @@ perl::Object minkowski_cone ( const graph::HasseDiagram H, // we only need the 2
   // collect the equations given by the 2-faces
   // order the nodes: smallest, smaller neighbour, then consecutively
   Matrix<Rational> equations(0,G.edges());
-  for ( Entire<graph::HasseDiagram::nodes_of_dim_set>::const_iterator node = entire(H.nodes_of_dim(2)); 
+  for ( auto node = entire(H.nodes_of_rank(3)); 
         !node.at_end(); ++node ) {
         
     Matrix<Rational> M(edge_directions[0].dim(),G.edges()-far_edges);

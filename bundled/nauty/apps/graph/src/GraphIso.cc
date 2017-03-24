@@ -19,6 +19,7 @@
 #define permutation nauty_permutation
 
 #include <nauty.h>
+#include <naututil.h>
 
 namespace {
 inline nauty_set* graph_row(nauty_graph *g, int v, int m) { return GRAPHROW(g,v,m); }
@@ -102,7 +103,7 @@ void GraphIso::partition(int at)
 {
    p_impl->options.defaultptn=false;
    std::fill(p_impl->partitions, p_impl->partitions+p_impl->n-1, 1);
-   copy(entire(sequence(0,p_impl->n)), p_impl->canon_labels);
+   copy_range(entire(sequence(0,p_impl->n)), p_impl->canon_labels);
    p_impl->partitions[at-1]=0;
    p_impl->partitions[p_impl->n-1]=0;
 }
@@ -134,7 +135,8 @@ Array<int> GraphIso::find_permutation(const GraphIso& g2) const
       throw no_match("not isomorphic");
 
    Array<int> perm(p_impl->n);
-   for (int *dst=perm.begin(), *lab1=p_impl->canon_labels, *lab1_end=lab1+p_impl->n, *lab2=g2.p_impl->canon_labels;
+   auto dst=perm.begin();
+   for (int *lab1=p_impl->canon_labels, *lab1_end=lab1+p_impl->n, *lab2=g2.p_impl->canon_labels;
         lab1<lab1_end; ++lab1, ++lab2)
       dst[*lab2]=*lab1;
    return perm;
@@ -148,12 +150,14 @@ GraphIso::find_permutations(const GraphIso& g2, int n_cols) const
 
    Array<int> row_perm(p_impl->n-n_cols), col_perm(n_cols);
 
+   auto dst=col_perm.begin();
    int *lab1=p_impl->canon_labels, *lab1_end=lab1+n_cols, *lab2=g2.p_impl->canon_labels;
-   for (int *dst=col_perm.begin(); lab1<lab1_end; ++lab1, ++lab2)
+   for (; lab1<lab1_end; ++lab1, ++lab2)
       dst[*lab2]=*lab1;
 
+   dst=row_perm.begin();
    lab1_end=p_impl->canon_labels+p_impl->n;
-   for (int *dst=row_perm.begin(); lab1<lab1_end; ++lab1, ++lab2)
+   for (; lab1<lab1_end; ++lab1, ++lab2)
       dst[*lab2-n_cols]=*lab1-n_cols;
 
    return std::make_pair(row_perm, col_perm);
@@ -177,6 +181,17 @@ void GraphIso::copy_colors(const GraphIso& g1)
 void GraphIso::set_node_color(int i, std::pair<int, int>& c)
 {
    p_impl->canon_labels[(c.second++) - (c.first & p_impl->is_second)]=i;
+}
+
+Array<int> GraphIso::canonical_perm() const
+{
+   Array<int> perm(p_impl->n, p_impl->canon_labels);
+   return perm;
+}
+
+long GraphIso::hash(long key) const
+{
+   return hashgraph(p_impl->canon_graph, p_impl->m, p_impl->n, key);
 }
 
 } }

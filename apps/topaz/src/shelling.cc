@@ -99,8 +99,8 @@ Array<int> binomial_expansion(const int n, const int k)
    while (0 < tmp_n && tmp_k != 0) {
       Integer tmp;
       for (tmp=tmp_k-1; Integer::binom(tmp+1,tmp_k) <= tmp_n; ++tmp);
-      bexp[k - tmp_k] = tmp.to_int();
-      tmp_n -= Integer::binom(tmp, tmp_k).to_int();
+      bexp[k - tmp_k] = int(tmp);
+      tmp_n -= int(Integer::binom(tmp, tmp_k));
       --tmp_k;
    }
    for (; tmp_k > 0; --tmp_k)
@@ -115,7 +115,7 @@ int binomial_delta(const Array<int>& bexp)
    if (bexp[0] == 0) return bdelta;
    for(int i=0; i < k-1; ++i) {
       if (bexp[i] == 0) break;
-      bdelta += Integer::binom(bexp[i]-1,k-i-1).to_int();
+      bdelta += int(Integer::binom(bexp[i]-1,k-i-1));
    }
    return bdelta;
 }
@@ -141,13 +141,13 @@ bool is_M_sequence(const Array<int>& vec, hash_map<pair_int,Array<int> >& expans
 // returns an ordered list of facets consituting a shelling if p_in is shellable,
 // returns a list containing only the empty set otherwise
 // note: the simplicial complex has to be pure
-Array< Set<int> > shelling(perl::Object p_in)
+Array<Set<int>> shelling(perl::Object p_in)
 {       
    facet_vector facets_to_assign= p_in.give("FACETS");
    Array<int > h_vector = p_in.give("H_VECTOR");
    const unsigned int nf = facets_to_assign.size();
    const int dim = h_vector.size()-2;
-   std::list<Set<int> > shell;
+   std::list<Set<int>> shell;
         
    unsigned int cur_index = 0;
    bool found = next_candidate(facets_to_assign, h_vector, 0, &cur_index);
@@ -155,11 +155,15 @@ Array< Set<int> > shelling(perl::Object p_in)
         
    // compute the binomial expansions of the h-vector coordinates
    // at the same time check if any of them is negative
-   if (h_vector[0]<0)   return as_array(shell); 
+   if (h_vector[0]<0)
+      return Array<Set<int>>(shell); 
+
    hash_map<pair_int,Array<int> > binom_exp;
    for ( int i=1; i < h_vector.size(); ++i ) {
-      if (h_vector[0]<0) return as_array(shell); 
-      if (binom_exp.find(pair_int(i,h_vector[i]))==binom_exp.end()) binom_exp[pair_int(i,h_vector[i])] = binomial_expansion(h_vector[i],i);
+      if (h_vector[0]<0)
+         return Array<Set<int>>(shell); 
+      if (binom_exp.find(pair_int(i,h_vector[i]))==binom_exp.end())
+         binom_exp[pair_int(i,h_vector[i])] = binomial_expansion(h_vector[i],i);
    }
 
    while ( assigned_facets.size() < nf ) {
@@ -171,9 +175,9 @@ Array< Set<int> > shelling(perl::Object p_in)
             --h_vector[dim+1-k];
             found = next_candidate(facets_to_assign, h_vector, 0, &cur_index) && is_M_sequence(h_vector,binom_exp,dim+1-k);                     
          }              
-      } else if ( assigned_facets.size() == 0){
+      } else if (assigned_facets.empty()) {
          shell.push_back(Set<int>());
-         return shell;
+         return Array<Set<int>>(shell);
       }
       else {
          LabeledFacet to_remove = assigned_facets.back();
@@ -185,9 +189,9 @@ Array< Set<int> > shelling(perl::Object p_in)
          found = next_candidate(facets_to_assign, h_vector, new_index, &cur_index);
       }
    }
-   for (LabeledFacetList::const_iterator i=assigned_facets.begin(); i!=assigned_facets.end(); ++i)
-      shell.push_front(i->facet);
-   return as_array(shell);
+   for (const auto& af : assigned_facets)
+      shell.push_front(af.facet);
+   return Array<Set<int>>(shell);
 }
 
 Function4perl(&shelling, "shelling");

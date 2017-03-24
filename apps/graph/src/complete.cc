@@ -42,7 +42,12 @@ perl::Object complete(const int n)
 UserFunction4perl("# @category Producing a graph\n"
                   "# Constructs a __complete graph__ on //n// nodes."
                   "# @param Int n"
-                  "# @return Graph",
+                  "# @return Graph"
+                  "# @example To print the adjacency representation of the complete graph on 3 nodes, type this:"
+                  "# > print complete(3)->ADJACENCY"
+                  "# | {1 2}"
+                  "# | {0 2}"
+                  "# | {0 1}",
                   &complete, "complete");
 
 

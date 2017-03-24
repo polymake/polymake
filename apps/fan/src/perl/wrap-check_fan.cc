@@ -24,11 +24,11 @@ namespace polymake { namespace fan { namespace {
       WrapperReturn( (check_fan_objects<T0>(arg0, arg1)) );
    };
 
-   FunctionWrapper4perl( perl::Object (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, perl::OptionSet) ) {
+   FunctionWrapper4perl( perl::Object (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>> const&, perl::OptionSet) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
       IndirectWrapperReturn( arg0.get< perl::TryCanned< const Matrix< Rational > > >(), arg1.get< perl::TryCanned< const Array< Set< int > > > >(), arg2 );
    }
-   FunctionWrapperInstance4perl( perl::Object (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, perl::OptionSet) );
+   FunctionWrapperInstance4perl( perl::Object (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>> const&, perl::OptionSet) );
 
    FunctionInstance4perl(check_fan_objects_T_x_o, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====

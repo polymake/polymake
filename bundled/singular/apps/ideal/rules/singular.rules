@@ -13,6 +13,7 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+# @category Singular interface
 # An intermediate object wrapping the ideal on the Singular side and providing its methods.
 declare property_type SingularIdeal : c++ (include => ["polymake/ideal/singularIdeal.h"]) {
 
@@ -32,36 +33,27 @@ declare property_type SingularIdeal : c++ (include => ["polymake/ideal/singularI
    # Compute the Groebner basis.
    method groebner() : void : c++ ;
 
-   # @category Singular interface
    # Compute the dimension of the ideal.
    method dim() : c++ ;
 
-   # @category Singular interface
    # Check via saturation whether the ideal contains a monomial.
-   method contains_monomial(Ring) : c++ ;
+   method contains_monomial() : c++ ;
 
-   # @category Singular interface
    # Compute the initial ideal. Depends on monomial ordering.
    method initial_ideal() : c++;
 
-   # @category Singular interface
    # Compute the radical of the ideal.
    method radical() : c++ ;
 
-   # @category Singular interface
-   method division(Polynomial, Ring) : c++;
+   method division(Polynomial) : c++;
 
-   # @category Singular interface
    method solve() : c++;
 
-   # @category Singular interface
    # Reduce a polynomial modulo the ideal, i.e. check ideal membership.
-   method reduce(Polynomial, Ring) : c++;
+   method reduce(Polynomial) : c++;
 
-   # @category Singular interface
-   method polynomials(Ring) : c++;
+   method polynomials() : c++;
 
-   # @category Singular interface
    # Compute the primary decomposition of the ideal.
    method primary_decomposition() : c++;
 
@@ -73,25 +65,28 @@ object Groebner {
    # Intermediate object wrapping the Singular objects, i.e. the ring with the monomial ordering and the ideal.
    property SINGULAR_IDEAL : SingularIdeal : non_storable;
 
+   # Reduce a [[Polynomial]] //p// with respect to the Groebner basis.
+   # @param Polynomial p
+   # @return Polynomial
    user_method reduce(Polynomial) {
       my ($self, $p) = @_;
-      # TODO: Take care if ring is correct.
-      return $self->SINGULAR_IDEAL->reduce($p, $p->get_ring());
+      $self->parent->N_VARIABLES == $p->n_vars() or croak ("incompatible rings");
+      return $self->SINGULAR_IDEAL->reduce($p);
    }
 
    user_method division(Polynomial) {
       my ($self, $p) = @_;
-      # TODO: Take care if ring is correct.
-      return $self->SINGULAR_IDEAL->division($p, $p->get_ring());
+      $self->parent->N_VARIABLES == $p->n_vars() or croak ("incompatible rings");
+      return $self->SINGULAR_IDEAL->division($p);
    }
 
 }
 
 object Ideal {
 
-   rule GROEBNER.INITIAL_IDEAL : GROEBNER.SINGULAR_IDEAL, RING {
+   rule GROEBNER.INITIAL_IDEAL : GROEBNER.SINGULAR_IDEAL, N_VARIABLES {
       my $i = $this->GROEBNER->SINGULAR_IDEAL->initial_ideal();
-      $this->GROEBNER->INITIAL_IDEAL = new Ideal(GENERATORS=>$i->polynomials($this->RING), RING=>$this->RING);
+      $this->GROEBNER->INITIAL_IDEAL = new Ideal(GENERATORS=>$i->polynomials(), N_VARIABLES=>$this->N_VARIABLES);
    }
 
    rule GROEBNER.SINGULAR_IDEAL : GENERATORS, GROEBNER.ORDER_MATRIX {
@@ -112,83 +107,92 @@ object Ideal {
    }
    precondition : !ZERO;
 
-   rule GROEBNER.BASIS : GROEBNER.SINGULAR_IDEAL, RING {
-      $this->GROEBNER->BASIS = $this->GROEBNER->SINGULAR_IDEAL->polynomials($this->RING);
+   rule GROEBNER.BASIS : GROEBNER.SINGULAR_IDEAL, N_VARIABLES{
+      $this->GROEBNER->BASIS = $this->GROEBNER->SINGULAR_IDEAL->polynomials();
    }
 
-   rule GROEBNER.INITIAL_IDEAL.GENERATORS, GROEBNER.INITIAL_IDEAL.RING, GROEBNER.BASIS : GENERATORS, GROEBNER.ORDER_MATRIX , RING {
+   rule GROEBNER.INITIAL_IDEAL.GENERATORS, GROEBNER.INITIAL_IDEAL.N_VARIABLES, GROEBNER.BASIS : GENERATORS, GROEBNER.ORDER_MATRIX , N_VARIABLES {
       my $si;
       unless ( defined($si = $this->lookup("GROEBNER.SINGULAR_IDEAL"))) {
          $si = new SingularIdeal($this->GENERATORS, $this->GROEBNER->ORDER_MATRIX);
          $si->groebner();
       }
-      $this->GROEBNER->BASIS = $si->polynomials($this->RING);
+      $this->GROEBNER->BASIS = $si->polynomials();
       my $i = $si->initial_ideal();
-      $this->GROEBNER->INITIAL_IDEAL->GENERATORS = $i->polynomials($this->RING);
-      $this->GROEBNER->INITIAL_IDEAL->RING = $this->RING;
+      $this->GROEBNER->INITIAL_IDEAL->GENERATORS = $i->polynomials();
+      $this->GROEBNER->INITIAL_IDEAL->N_VARIABLES = $this->N_VARIABLES;
    }
    precondition : !ZERO;
 
 
-   rule GROEBNER.SINGULAR_IDEAL : GROEBNER.BASIS , GROEBNER.ORDER_MATRIX {
-      $this->GROEBNER->SINGULAR_IDEAL = new SingularIdeal($this->GROEBNER->BASIS, $this->GROEBNER->ORDER_MATRIX);
-      $this->GROEBNER->SINGULAR_IDEAL->groebner();
-   }
+	rule GROEBNER.SINGULAR_IDEAL : GROEBNER.BASIS , GROEBNER.ORDER_MATRIX {
+  	   $this->GROEBNER->SINGULAR_IDEAL = new SingularIdeal($this->GROEBNER->BASIS, $this->GROEBNER->ORDER_MATRIX);
+  	   $this->GROEBNER->SINGULAR_IDEAL->groebner();
+  	}
 
-   rule MONOMIAL : RING , GENERATORS {
-      my $si;
-      unless (defined($si = $this->lookup("GROEBNER"))) {
-         $si = $this->GROEBNER(ORDER_NAME=>"dp",temporary);
-      }
-      my $result = 1;
-      # One can easily show that it suffices to check whether the generators
-      # of the initial ideal are contained in the ideal.
-      foreach my $mon (@{$si->INITIAL_IDEAL->GENERATORS}){
-         $result &&= ($si->reduce($mon)->trivial);
-      }
-      $this->MONOMIAL = $result;
-   }
+  	rule MONOMIAL : GENERATORS {
+  	   my $si;
+  	   unless (defined($si = $this->lookup("GROEBNER"))) {
+  	      $si = $this->GROEBNER(ORDER_NAME=>"dp",temporary);
+  	   }
+  	   my $result = 1;
+  	   # One can easily show that it suffices to check whether the generators
+  	   # of the initial ideal are contained in the ideal.
+  	   foreach my $mon (@{$si->INITIAL_IDEAL->GENERATORS}){
+  	      $result &&= ($si->reduce($mon)->trivial);
+  	   }
+  	   $this->MONOMIAL = $result;
+  	}
 
-   rule DIM : RING , GENERATORS {
-      my $si;
-      unless (defined($si = $this->lookup("GROEBNER.SINGULAR_IDEAL"))) {
-         $si = $this->GROEBNER(ORDER_NAME=>"dp",temporary)->SINGULAR_IDEAL;
-      }
+  	rule DIM : GENERATORS {
+  	   my $si;
+  	   unless (defined($si = $this->lookup("GROEBNER.SINGULAR_IDEAL"))) {
+  	      $si = $this->GROEBNER(ORDER_NAME=>"dp",temporary)->SINGULAR_IDEAL;
+  	   }
 
-      $this->DIM = $si->dim();
-   }
+  	   $this->DIM = $si->dim();
+  	}
 
-   user_method SOLVE : RING, GENERATORS {
-     my $this = shift;
-     my $si;
-     unless (defined($si = $this->lookup("GROEBNER.SINGULAR_IDEAL"))) {
-         $si = $this->GROEBNER(ORDER_NAME=>"dp",temporary)->SINGULAR_IDEAL;
-     }
-     $si->solve();
-   }
+	user_method SOLVE : N_VARIABLES, GENERATORS {
+  	  my $this = shift;
+  	  my $si;
+  	  unless (defined($si = $this->lookup("GROEBNER.SINGULAR_IDEAL"))) {
+  	      $si = $this->GROEBNER(ORDER_NAME=>"dp",temporary)->SINGULAR_IDEAL;
+  	  }
+  	  $si->solve();
+  	}
 
-   rule PRIMARY_DECOMPOSITION : RING, GENERATORS {
-      my $ring = $this->RING;
-      my $si;
-      unless (defined($si = $this->lookup("GROEBNER.SINGULAR_IDEAL"))) {
-         $si = $this->GROEBNER(ORDER_NAME=>"dp",temporary)->SINGULAR_IDEAL;
-      }
-      my @pd = $si->primary_decomposition();
-      my @res;
-      foreach my $id (@pd) {
-         push @res, new Ideal(GENERATORS=>$id->polynomials($ring),RING=>$ring,PRIMARY=>1);
-      }
-      $this->PRIMARY_DECOMPOSITION = \@res;
-   }
+  	rule PRIMARY_DECOMPOSITION : N_VARIABLES, GENERATORS {
+  	   my $n_vars = $this->N_VARIABLES;
+  	   my $si;
+  	   unless (defined($si = $this->lookup("GROEBNER.SINGULAR_IDEAL"))) {
+  	      $si = $this->GROEBNER(ORDER_NAME=>"dp",temporary)->SINGULAR_IDEAL;
+  	   }
+  	   my @pd = $si->primary_decomposition();
+  	   my @res;
+  	   foreach my $id (@pd) {
+  	      push @res, new Ideal(GENERATORS=>$id->polynomials(),N_VARIABLES=>$n_vars,PRIMARY=>1);
+  	   }
+  	   $this->PRIMARY_DECOMPOSITION = \@res;
+  	}
 
-   rule RADICAL : RING, GENERATORS {
-      my $si;
-      unless (defined($si = $this->lookup("GROEBNER.SINGULAR_IDEAL"))) {
-         $si = $this->GROEBNER(ORDER_NAME=>"dp",temporary)->SINGULAR_IDEAL;
-      }
-      my $radical = $si->radical();
-      $this->RADICAL = new Ideal(GENERATORS=>$radical->polynomials($this->RING),RING=>$this->RING);
-   }
+  	rule RADICAL : N_VARIABLES, GENERATORS {
+  	   my $si;
+  	   unless (defined($si = $this->lookup("GROEBNER.SINGULAR_IDEAL"))) {
+  	      $si = $this->GROEBNER(ORDER_NAME=>"dp",temporary)->SINGULAR_IDEAL;
+  	   }
+  	   my $radical = $si->radical();
+  	   $this->RADICAL = new Ideal(GENERATORS=>$radical->polynomials(),N_VARIABLES=>$this->N_VARIABLES);
+  	}
+
+  	# Check via saturation whether the ideal contains a monomial.
+  	# Returns a monomial from the ideal or the trivial monomial if there is none.
+  	# @param String s Optional term order (see [[ORDER_NAME]]) for intermediate Groebner bases, default: "dp"
+  	# @return Polynomial
+  	user_method contains_monomial(;$="dp") {
+  	   my ($I,$order) = @_;
+  	   return $I->GROEBNER(ORDER_NAME=>$order)->SINGULAR_IDEAL->contains_monomial();
+  	}
 }
 
 

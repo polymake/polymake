@@ -31,7 +31,6 @@
 #include "polymake/TropicalNumber.h"
 #include "polymake/Polynomial.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/morphism_composition.h"
 
 namespace polymake { namespace tropical {
@@ -42,12 +41,12 @@ namespace polymake { namespace tropical {
 	 * @return A pair of (numerator, denominator).
 	 */
 	template <typename Addition>
-		std::pair<Polynomial<TropicalNumber<Addition> >, Polynomial<TropicalNumber<Addition> > >
+		std::pair<Polynomial<TropicalNumber<Addition>>, Polynomial<TropicalNumber<Addition>>>
 		polynomialPullback(const Matrix<Rational> &matrix, const Vector<Rational> &translate,
-								const Polynomial<TropicalNumber<Addition> > &numerator, 
-								const Polynomial<TropicalNumber<Addition> > &denominator) {
+								const Polynomial<TropicalNumber<Addition>>& numerator, 
+								const Polynomial<TropicalNumber<Addition>>& denominator) {
 			Matrix<Rational> numerator_monoms( numerator.monomials_as_matrix());
-			Vector<Rational > numerator_coeffs(numerator.coefficients_as_vector());
+			Vector<Rational> numerator_coeffs(numerator.coefficients_as_vector());
 			Matrix<Rational> denominator_monoms( denominator.monomials_as_matrix());
 			Vector<Rational> denominator_coeffs(denominator.coefficients_as_vector());
 
@@ -58,15 +57,12 @@ namespace polymake { namespace tropical {
 			Vector<Rational> newden_coeffs_rational = denominator_monoms*translate + denominator_coeffs;
 
 
-			Vector<TropicalNumber<Addition> > newnum_coeffs(newnum_coeffs_rational.dim());
-			for(int i = 0; i < newnum_coeffs.dim(); i++) newnum_coeffs[i] = TropicalNumber<Addition>(newnum_coeffs_rational[i]);
-			Vector<TropicalNumber<Addition> > newden_coeffs(newden_coeffs_rational.dim());
-			for(int i = 0; i < newden_coeffs_rational.dim(); i++) newden_coeffs[i] = TropicalNumber<Addition>(newden_coeffs_rational[i]);
+			Vector<TropicalNumber<Addition>> newnum_coeffs( newnum_coeffs_rational.dim(), newnum_coeffs_rational.begin());
+			Vector<TropicalNumber<Addition>> newden_coeffs( newden_coeffs_rational.dim(), newden_coeffs_rational.begin());
 
 						
-			Ring<TropicalNumber<Addition> > newring(matrix.cols());
-			Polynomial<TropicalNumber<Addition> > newnum( (Matrix<int>(newnum_monoms)), newnum_coeffs, newring);
-			Polynomial<TropicalNumber<Addition> > newden( (Matrix<int>(newden_monoms)), newden_coeffs, newring);
+			Polynomial<TropicalNumber<Addition>> newnum(newnum_coeffs, Matrix<int>(newnum_monoms));
+			Polynomial<TropicalNumber<Addition>> newden(newden_coeffs, Matrix<int>(newden_monoms));
 			return std::make_pair(newnum, newden);
 		}
 
@@ -76,24 +72,24 @@ namespace polymake { namespace tropical {
 			perl::Object fmorphism(perl::ObjectType::construct<Addition>("Morphism"));
 			perl::Object function_domain = function.give("DOMAIN");
 
-			bool is_function_global = function.give("IS_GLOBALLY_DEFINED");
-			bool is_morphism_global = morphism.give("IS_GLOBALLY_AFFINE_LINEAR");
+			const bool is_function_global = function.give("IS_GLOBALLY_DEFINED");
+			const bool is_morphism_global = morphism.give("IS_GLOBALLY_AFFINE_LINEAR");
 			//If both are global, we're quickly done
-			if(is_function_global && is_morphism_global) {
-				Matrix<Rational> matrix = morphism.give("MATRIX");
-				Vector<Rational> translate = morphism.give("TRANSLATE");
-				Polynomial<TropicalNumber<Addition> > numerator = function.give("NUMERATOR");
-				Polynomial<TropicalNumber<Addition> > denominator = function.give("DENOMINATOR");
+			if (is_function_global && is_morphism_global) {
+				const Matrix<Rational>& matrix = morphism.give("MATRIX");
+				const Vector<Rational>& translate = morphism.give("TRANSLATE");
+				const Polynomial<TropicalNumber<Addition>>& numerator = function.give("NUMERATOR");
+				const Polynomial<TropicalNumber<Addition>>& denominator = function.give("DENOMINATOR");
 				perl::Object newfunction(perl::ObjectType::construct<Addition>("RationalFunction"));
-				std::pair<Polynomial<TropicalNumber<Addition> >, Polynomial<TropicalNumber<Addition> > > newpair =
+				std::pair<Polynomial<TropicalNumber<Addition>>, Polynomial<TropicalNumber<Addition>>> newpair =
 					polynomialPullback(matrix, translate, numerator, denominator);
 				newfunction.take("NUMERATOR") << newpair.first;
 				newfunction.take("DENOMINATOR") << newpair.second;
 				return newfunction;
 			}
 
-			Vector<Rational> function_vvalues = function.give("VERTEX_VALUES");
-			Vector<Rational> function_lvalues = function.give("LINEALITY_VALUES");
+			const Vector<Rational>& function_vvalues = function.give("VERTEX_VALUES");
+			const Vector<Rational>& function_lvalues = function.give("LINEALITY_VALUES");
 			Matrix<Rational> fmorph_vvalues(function_vvalues.dim(),0);
 			Matrix<Rational> fmorph_lvalues(function_lvalues.dim(),0);
 				fmorph_vvalues |= function_vvalues;
@@ -107,8 +103,8 @@ namespace polymake { namespace tropical {
 
 			//Now convert back to rational function
 			perl::Object resultDomain = comp.give("DOMAIN");
-			Matrix<Rational> result_vvalues = comp.give("VERTEX_VALUES");
-			Matrix<Rational> result_lvalues = comp.give("LINEALITY_VALUES");
+			const Matrix<Rational>& result_vvalues = comp.give("VERTEX_VALUES");
+			const Matrix<Rational>& result_lvalues = comp.give("LINEALITY_VALUES");
 
 			perl::Object result(perl::ObjectType::construct<Addition>("RationalFunction"));
 				result.take("DOMAIN") << resultDomain;
@@ -116,10 +112,10 @@ namespace polymake { namespace tropical {
 				result.take("LINEALITY_VALUES") << (result_lvalues.rows() > 0? tdehomog(result_lvalues,0,false).col(0) : Vector<Rational>());
 			if( (function.exists("NUMERATOR") || function.exists("DENOMINATOR")) &&
 				 (morphism.exists("MATRIX") || morphism.exists("TRANSLATE")) ) {
-				Matrix<Rational> matrix = morphism.give("MATRIX");
-				Vector<Rational> translate = morphism.give("TRANSLATE");
-				Polynomial<TropicalNumber<Addition> > numerator = function.give("NUMERATOR");
-				Polynomial<TropicalNumber<Addition> > denominator= function.give("DENOMINATOR");
+				const Matrix<Rational>& matrix = morphism.give("MATRIX");
+				const Vector<Rational>& translate = morphism.give("TRANSLATE");
+				const Polynomial<TropicalNumber<Addition>>& numerator = function.give("NUMERATOR");
+				const Polynomial<TropicalNumber<Addition>>& denominator= function.give("DENOMINATOR");
 				perl::Object newfunction(perl::ObjectType::construct<Addition>("RationalFunction"));
 				std::pair<Polynomial<TropicalNumber<Addition> >, Polynomial<TropicalNumber<Addition> > > newpair =
 					polynomialPullback(matrix, translate, numerator, denominator);

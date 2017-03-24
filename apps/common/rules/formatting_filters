@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -23,7 +23,8 @@
 # @param Array<String> elem_labels  optional labels for elements;
 #  if //data// is an [[IncidenceMatrix]], [[Array<Set>]], or similar, each element will be replaced by its label.
 # @return Array<String> each string ending with end-of-line
-# @example > print rows_labeled(cube(2)->VERTICES,['a','b','c','d']);
+# @example [application polytope]
+# > print rows_labeled(cube(2)->VERTICES,['a','b','c','d']);
 # | a:1 -1 -1
 # | b:1 1 -1
 # | c:1 -1 1
@@ -49,7 +50,8 @@ user_function rows_labeled($;$$) {
 # @param Graph graph to be printed
 # @param Array<String> elem_labels labels for the elements
 # @return Array<String> each string ending with end-of-line
-# @example > print rows_labeled(cycle_graph(4)->ADJACENCY,['a','b','c','d']);
+# @example [application graph]
+# > print rows_labeled(cycle_graph(4)->ADJACENCY,['a','b','c','d']);
 # | a:b d
 # | b:a c
 # | c:b d
@@ -65,7 +67,8 @@ user_function rows_labeled(Graph;$) {
 # Formerly called "numbered".
 # @param Matrix data to be printed
 # @return Array<String> each string ending with end-of-line
-# @example > print rows_numbered(cube(2)->VERTICES);
+# @example [application polytope]
+# > print rows_numbered(cube(2)->VERTICES);
 # | 0:1 -1 -1
 # | 1:1 1 -1
 # | 2:1 -1 1
@@ -108,7 +111,7 @@ user_function latex($;$) {
 # @return String
 # @example > $v = new Vector(0,1,2);
 # > print labeled($v,["zeroth","first","second"]);
-# zeroth:0 first:1 second:2
+# | zeroth:0 first:1 second:2
 
 user_function labeled($;$) {
    my ($data, $elem_labels)=@_;

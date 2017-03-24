@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.de
 #
@@ -23,7 +23,7 @@ object Cone<Rational> {
    weight 4.10;
    precondition : N_RAYS | N_INPUT_RAYS;
    precondition : POINTED;
-   permutation : FacetPerm;
+   incurs FacetPerm;
 
    rule libnormaliz.convex_hull.dual: RAYS , LINEALITY_SPACE : FACETS | INEQUALITIES {
       my ($r) = normaliz_compute($this,from_facets=>1,rays=>1,verbose=>0,skip_long=>0);
@@ -33,7 +33,7 @@ object Cone<Rational> {
    weight 4.10;
    precondition : FULL_DIM;
    precondition : POINTED;
-   permutation : VertexPerm;
+   incurs VertexPerm;
 
 }
 

@@ -16,17 +16,8 @@
 # @topic category property_types/SingularIdeal/Constructors
 # Constructing a Singular ideal from a polymake ideal with a monomial ordering, i.e. from a Groebner subobject of a polymake ideal.
 
-# @topic category property_types/SingularIdeal/Singular interface
-# Methods attached from Singular.
-
-# @topic category functions/Singular interface
-# functions attached from/to Singular.
-
-# @topic category objects/Groebner/Singular interface
-# Intermediate objects for interfacing with Singular.
-
-# @topic category objects/Groebner/properties/Singular interface
-# Intermediate objects for interfacing with Singular.
+# @topic category any/Singular interface
+# Functions, methods and objects and attached from/to Singular.
 
 
 # Local Variables:

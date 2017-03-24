@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -25,7 +25,7 @@ Matrix<double> inv(Matrix<double> m)
 {
    const int dim=m.rows();
    std::vector<int> row_index(dim);
-   copy(entire(sequence(0,dim)), row_index.begin());
+   copy_range(entire(sequence(0, dim)), row_index.begin());
    Matrix<double> u=unit_matrix<double>(dim);
    const double epsilon=1e-8;
 

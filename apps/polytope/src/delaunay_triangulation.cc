@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,6 +17,7 @@
 #include "polymake/client.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Array.h"
+#include "polymake/vector"
 #include "polymake/Set.h"
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
@@ -24,75 +25,58 @@
 
 namespace polymake { namespace polytope {
 
+template <typename E>
 Array<Set<int> > delaunay_triangulation(perl::Object p)
 {
    const IncidenceMatrix<> v_i_f = p.give("VERTICES_IN_FACETS");
 
-   //delete the unbounded vertices
+   // delete the unbounded vertices and the facet at infinity
    const Set<int> far_face= p.give("FAR_FACE");
-   const IncidenceMatrix<> v_i_f_without_far_face=v_i_f.minor(All,~far_face); 
-   
-   const int dim = p.CallPolymakeMethod("DIM");
-   const Matrix<Rational> points = p.give("FACETS");
-   const Matrix<Rational> sites = p.give("SITES");
-   
-   int n_sims=0;
+   const IncidenceMatrix<> v_i_f_without_far_face=v_i_f.minor(sequence(0, v_i_f.rows()-1), ~far_face);
 
-   for (Entire< Cols < IncidenceMatrix<> > >::const_iterator sim=entire(cols(v_i_f_without_far_face)); !sim.at_end(); ++sim) {
-      if (sim->size()==dim) {
-         Set<int> rows = *sim;
-         if (det(sites.minor(rows,All)) != 0) ++n_sims;
-      }
-      else if (sim->size()>dim) { //we have to triangulate ourselves
-         Set<int> rows = *sim;
-         const Matrix<Rational> poly=points.minor(rows,All);
-       
-         perl::Object pol("Polytope<Rational>");
-         pol.take("VERTICES")<<poly;
-         const Array<Set<int> > tri=pol.give("TRIANGULATION.FACETS");
-         const int n_s=tri.size();
-         n_sims+=n_s;
-      }
+   const int dim = p.call_method("DIM");
+   const Matrix<E> points = p.give("FACETS");
+   Matrix<E> sites = p.give("SITES");
+   if (sites.cols()+2 == points.cols()) {
+      // SITES is a vector configuration
+      sites = ones_vector<E>() | sites;
    }
-   
-   Array < Set <int> > triang(n_sims);
-   int index=0;
-   for (Entire< Cols < IncidenceMatrix<> > >::const_iterator sim=entire(cols(v_i_f_without_far_face)); !sim.at_end(); ++sim) {
+
+   std::vector<Set<int>> triang;
+   perl::ObjectType poly_type=perl::ObjectType::construct<E>("Polytope");
+
+   for (auto sim=entire(cols(v_i_f_without_far_face)); !sim.at_end(); ++sim) {
       if (sim->size()==dim) {
-         Set<int> rows = *sim;
-         if (det(sites.minor(rows,All)) != 0) triang[index++]=*sim;
+         if (det(sites.minor(*sim, All)) != 0) triang.emplace_back(*sim);
       }
       else if (sim->size()>dim) { //we have to triangulate ourselves
-         Set<int> rows = *sim;
-         const Matrix<Rational> poly=points.minor(rows,All);
-       
-         perl::Object pol("Polytope<Rational>");
-         pol.take("VERTICES")<<poly;
-         const Array< Set <int> > potriag=pol.give("TRIANGULATION.FACETS");
-         for (Entire< Array< Set<int> > >::const_iterator j=entire(potriag); !j.at_end(); ++j) {
-            Set<int> sim2(entire(select(*sim,*j)));
-            if (det(sites.minor(sim2,All)) != 0) triang[index++]=sim2;
+         const Matrix<E> facet_points=points.minor(*sim, All);
+         perl::Object facet_poly(poly_type);
+         facet_poly.take("VERTICES") << facet_points;
+         const Array<Set<int>> facet_triang=facet_poly.give("TRIANGULATION.FACETS");
+         for (const Set<int>& j : facet_triang) {
+            const Set<int> sim2(select(*sim, j));
+            if (det(sites.minor(sim2, All)) != 0) triang.push_back(sim2);
          }
       }
-   } 
-   return triang;        
+   }
+   return Array<Set<int>>(triang);
 }
 
-UserFunction4perl("# @category Triangulations, subdivisions and volume"
-                  "# Compute the Delaunay triangulation of the given [[SITES]] of a VoronoiDiagram //V//. If the sites are"
-                  "# not in general position, the non-triangular facets of the Delaunay subdivision are"
-                  "# triangulated (by applying the beneath-beyond algorithm)."
-                  "# @param VoronoiDiagram V"
-                  "# @return Array<Set<Int>>"
-                  "# @example > $VD = new VoronoiDiagram(SITES=>[[1,1,1],[1,0,1],[1,-1,1],[1,1,-1],[1,0,-1],[1,-1,-1]]);"
-                  "# > $D = delaunay_triangulation($VD);"
-                  "# > print $D;"
-                  "# | {1 2 4}"
-                  "# | {2 4 5}"
-                  "# | {0 1 3}"
-                  "# | {1 3 4}"
-                  "# @author Sven Herrmann",
-                  &delaunay_triangulation,"delaunay_triangulation(VoronoiDiagram)");
+UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
+                          "# Compute the Delaunay triangulation of the given [[SITES]] of a VoronoiDiagram //V//. If the sites are"
+                          "# not in general position, the non-triangular facets of the Delaunay subdivision are"
+                          "# triangulated (by applying the beneath-beyond algorithm)."
+                          "# @param VoronoiDiagram V"
+                          "# @return Array<Set<Int>>"
+                          "# @example [prefer cdd] > $VD = new VoronoiDiagram(SITES=>[[1,1,1],[1,0,1],[1,-1,1],[1,1,-1],[1,0,-1],[1,-1,-1]]);"
+                          "# > $D = delaunay_triangulation($VD);"
+                          "# > print $D;"
+                          "# | {0 1 3}"
+                          "# | {1 3 4}"
+                          "# | {1 2 4}"
+                          "# | {2 4 5}",
+                          "delaunay_triangulation<Scalar>(VoronoiDiagram<Scalar>)");
 } }
 
 // Local Variables:

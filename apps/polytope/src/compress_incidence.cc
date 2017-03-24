@@ -43,11 +43,8 @@ void compress_incidence_primal(perl::Object p)
    if ( VIF.rows() > 1 ) {
       const std::pair< Set<int>, Set<int> > non_vertices=compress_incidence(T(VIF));
 
-      if (non_vertices.second.size() == VIF.cols() ) {
-         std::ostringstream err_msg;
-         wrap(err_msg) << "illegal point section: pointed part of polyhedron must be specified even for affine spaces";
-         throw std::runtime_error(err_msg.str());
-      }
+      if (non_vertices.second.size() == VIF.cols())
+         throw std::runtime_error("illegal point section: pointed part of polyhedron must be specified even for affine spaces");
 
       L /= V.minor(non_vertices.second,All); // add points contained in all facets to input lineality, taken care of later
       
@@ -61,11 +58,8 @@ void compress_incidence_primal(perl::Object p)
          // we have a single point
          // NOTE: we cannot specify an empty polytope via POINTS, so we don't have to catch this case here
          // in that case  the one facet does not meet the point
-         if (VIF.row(0).size() == VIF.cols() ) {
-            std::ostringstream err_msg;
-            wrap(err_msg) << "illegal point section: pointed part of polyhedron must be specified even for affine spaces";
-            throw std::runtime_error(err_msg.str());
-         }
+         if (VIF.row(0).size() == VIF.cols())
+            throw std::runtime_error("illegal point section: pointed part of polyhedron must be specified even for affine spaces");
          
          L /= V.minor(VIF.row(0),All);   // add points contained in the one facet to input lineality, taken care of later
          const int c = (sequence(0,VIF.cols())-VIF.row(0)).front(); // pick any of the remaining points to span the pointed part
@@ -99,11 +93,8 @@ void compress_incidence_dual(perl::Object p)
    IncidenceMatrix<> VIF=p.give("RAYS_IN_INEQUALITIES");
    Matrix<Scalar> E=p.lookup("EQUATIONS");
 
-   if (VIF.rows() != F.rows() ) {
-      std::ostringstream err_msg;
-      wrap(err_msg) << "dimension mismatch. Note: the far hyperplane must always be specified explicitly in INEQUALITIES and RAYS_IN_INEQUALITIES";
-      throw std::runtime_error(err_msg.str());
-   }
+   if (VIF.rows() != F.rows())
+      throw std::runtime_error("dimension mismatch. Note: the far hyperplane must always be specified explicitly in INEQUALITIES and RAYS_IN_INEQUALITIES");
 
    if (VIF.cols() == 0 ) {  // empty polytope
       E /= F;                      // we still have to keep the linear span: otherwise dimension is wrong

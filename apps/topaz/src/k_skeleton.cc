@@ -31,7 +31,7 @@ void combinatorial_k_skeleton_impl(perl::Object p_in, perl::Object& p_out, const
    p_out.set_description() << k << "-skeleton of " << p_in.name() << endl;
    p_out.take("FACETS") << Skeleton;
 
-   if (!options["nol"]) {
+   if (!options["no_labels"]) {
       const Array<std::string> L = p_in.give("VERTEX_LABELS");
       p_out.take("VERTEX_LABELS") << L;
    }
@@ -64,17 +64,17 @@ UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# Produce the //k//-skeleton.\n"
                   "# @param SimplicialComplex complex"
                   "# @param Int k"
-                  "# @option Bool vertex_labels whether to create [[VERTEX_LABELS]]"
+                  "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @return SimplicialComplex",
-                  &combinatorial_k_skeleton, "k_skeleton(SimplicialComplex $ { vertex_labels=>0 })");
+                  &combinatorial_k_skeleton, "k_skeleton(SimplicialComplex $ { no_labels=>0 })");
 
 UserFunctionTemplate4perl("# @category Producing a new simplicial complex from others\n"
                           "# Produce the //k//-skeleton.\n"
                           "# @param GeometricSimplicialComplex complex"
                           "# @param Int k"
-                          "# @option Bool vertex_labels whether to create [[VERTEX_LABELS]]"
+                          "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                           "# @return GeometricSimplicialComplex",
-                          "k_skeleton<Scalar>(GeometricSimplicialComplex<Scalar> $ { vertex_labels=>0 })");
+                          "k_skeleton<Scalar>(GeometricSimplicialComplex<Scalar> $ { no_labels=>0 })");
 } }
 
 // Local Variables:

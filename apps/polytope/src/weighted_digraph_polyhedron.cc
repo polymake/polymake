@@ -19,11 +19,12 @@
 #include "polymake/SparseMatrix.h"
 #include "polymake/GenericMatrix.h"
 #include "polymake/ListMatrix.h"
+#include "polymake/Matrix.h"
 
 namespace polymake { namespace polytope {
 
-template <typename Scalar, typename Matrix>
-perl::Object weighted_digraph_polyhedron(const GenericMatrix<Matrix, Scalar>& W)
+template <typename Scalar, typename MatrixType>
+perl::Object weighted_digraph_polyhedron(const GenericMatrix<MatrixType, Scalar>& W)
 {
    const int k(W.rows());
    if (W.cols() != k)
@@ -43,6 +44,8 @@ perl::Object weighted_digraph_polyhedron(const GenericMatrix<Matrix, Scalar>& W)
    perl::Object p_out(perl::ObjectType::construct<Scalar>("polytope::Polytope"));
    p_out.set_description() << "Weighted digraph polyhedron" <<endl;
    p_out.take("INEQUALITIES") << Ineq;
+   Matrix<Scalar> wd(W);
+   p_out.attach("WEIGHTED_DIGRAPH") << wd;
    return p_out;
 }
 

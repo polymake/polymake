@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -33,8 +33,12 @@ const char* skip_contexts[]={ "/Polymake/Core/CPlusPlus.pm",
 // had to be copied from mg.c
 struct magic_state {
     SV* mgs_sv;
-    U32 mgs_flags;
     I32 mgs_ss_ix;
+    U32 mgs_flags;
+#if PerlVersion < 5220
+    bool mgs_readonly;
+#endif
+    bool mgs_bumped;
 };
 
 inline
@@ -50,13 +54,13 @@ bool report_position(pTHX_ COP* o)
 
 void raise_exception(pTHX) __attribute__noreturn__;
 
-template <size_t ll> inline
-void raise_exception(pTHX_ const char (&errmsg)[ll]) __attribute__noreturn__;
+inline
+void raise_exception(pTHX_ const polymake::AnyString& errmsg) __attribute__noreturn__;
 
 void raise_exception(pTHX)
 {
    STRLEN l;
-   const char* errmsg=SvPV(ERRSV,l);
+   const char* errmsg=SvPV(ERRSV, l);
    if (l>0 && errmsg[l-1] != '\n') {
       if (!report_position(aTHX_ PL_curcop)) {
          for (PERL_CONTEXT *cx_bottom=cxstack, *cx=cx_bottom+cxstack_ix;
@@ -67,14 +71,14 @@ void raise_exception(pTHX)
    Perl_croak(aTHX_ Nullch);
 }
 
-template <size_t ll> inline
-void raise_exception(pTHX_ const char (&errmsg)[ll])
+inline
+void raise_exception(pTHX_ const polymake::AnyString& errmsg)
 {
-   sv_setpvn(ERRSV, errmsg, ll-1);
+   sv_setpvn(ERRSV, errmsg.ptr, errmsg.len);
    raise_exception(aTHX);
 }
 
-#define GuardedCallImpl(save,expr,restore,cleanup)        \
+#define GuardedCallImpl(save, expr, restore, cleanup)     \
    do {                                                   \
       save;                                               \
       try { expr; restore; break; }                       \
@@ -107,26 +111,27 @@ void raise_exception(pTHX_ const char (&errmsg)[ll])
 
 namespace pm { namespace perl { namespace glue {
 
-HV *FuncDescr_stash=NULL,
-   *TypeDescr_stash=NULL,
-   *User_stash=NULL;
-SV *cur_wrapper_cv=NULL;
-const base_vtbl *cur_class_vtbl=NULL;
-GV *CPP_root=NULL,
-   *PropertyType_nesting_level=NULL,
-   *User_application=NULL,
-   *Debug_level=NULL;
-SV *negative_indices_key=NULL;
+HV *FuncDescr_stash=nullptr,
+   *TypeDescr_stash=nullptr,
+   *User_stash=nullptr,
+   *Object_InitTransaction_stash=nullptr;
+SV *cur_wrapper_cv=nullptr;
+const base_vtbl *cur_class_vtbl=nullptr;
+GV *CPP_root=nullptr,
+   *PropertyType_nesting_level=nullptr,
+   *User_application=nullptr,
+   *Debug_level=nullptr;
+SV *negative_indices_key=nullptr;
 
 int Object_name_index, Object_description_index,
     Object_parent_index, Object_transaction_index, Object_attachments_index,
     Application_pkg_index, Application_eval_expr_index,
-    TypeDescr_pkg_index, TypeDescr_vtbl_index,
+    TypeDescr_pkg_index, TypeDescr_vtbl_index, TypeDescr_typeid_index, TypeDescr_generated_by_index,
     CPPOptions_builtin_index, CPPOptions_descr_index,
     FuncDescr_wrapper_index,
-    PropertyType_pkg_index, PropertyType_cppoptions_index,
+    PropertyType_pkg_index, PropertyType_cppoptions_index, PropertyType_params_index,
     CPP_functions_index, CPP_regular_functions_index, CPP_embedded_rules_index,
-    CPP_duplicate_class_instances_index, CPP_classes_index, CPP_templates_index, CPP_typeids_index,
+    CPP_duplicate_class_instances_index, CPP_classes_index, CPP_builtins_index, CPP_templates_index, CPP_typeids_index,
     CPP_auto_convert_constructor_index, CPP_auto_assignment_index, CPP_auto_conversion_index,
     CPP_auto_assoc_methods_index, CPP_auto_set_methods_index,
     FuncDescr_fill, TypeDescr_fill;
@@ -140,14 +145,16 @@ MAGIC* allocate_canned_magic(pTHX_ SV* sv, SV* descr, unsigned int flags, unsign
 
 int destroy_canned(pTHX_ SV* sv, MAGIC* mg)
 {
-   if (mg->mg_len) {
-      const base_vtbl *t=(const base_vtbl*)mg->mg_virtual;
-      if (t->destructor) (t->destructor)(mg->mg_ptr);
-   }
-   if (mg->mg_private) {
-      for (Value::Anchor *anchor_ptr=MagicAnchors::first(mg), *anchor_end=anchor_ptr+mg->mg_private;
-           anchor_ptr < anchor_end; ++anchor_ptr)
-         SvREFCNT_dec(anchor_ptr->stored);
+   if (!(mg->mg_flags & MGf_GSKIP)) {
+      if (mg->mg_len) {
+         const base_vtbl *t=(const base_vtbl*)mg->mg_virtual;
+         if (t->destructor) (t->destructor)(mg->mg_ptr);
+      }
+      if (mg->mg_private) {
+         for (Value::Anchor *anchor_ptr=MagicAnchors::first(mg), *anchor_end=anchor_ptr+mg->mg_private;
+              anchor_ptr < anchor_end; ++anchor_ptr)
+            SvREFCNT_dec(anchor_ptr->stored);
+      }
    }
    return 0;
 }
@@ -157,8 +164,8 @@ void defuse_lval_magic(pTHX_ SV* sv)
 {
    MGS *mgs;
    I32 mgs_ix;
-   assert(PL_savestack[PL_savestack_ix-1].any_i32==SAVEt_DESTRUCTOR_X);
-   mgs_ix=PL_savestack[PL_savestack_ix-2].any_i32;
+   assert(PL_savestack[PL_savestack_ix-1].any_uv==SAVEt_DESTRUCTOR_X);
+   mgs_ix=static_cast<I32>(PL_savestack[PL_savestack_ix-2].any_uv);
    mgs=SSPTR(mgs_ix, MGS*);
    assert(mgs->mgs_sv==sv);
    mgs->mgs_flags=0;
@@ -301,7 +308,7 @@ int destroy_canned_assoc_container(pTHX_ SV *sv, MAGIC* mg)
 U32 canned_composite_size(pTHX_ SV *sv, MAGIC* mg)
 {
    const composite_vtbl *t=(const composite_vtbl*)mg->mg_virtual;
-   return t->n_elems-1;         /* compatible to AvFILL */
+   return t->n_members-1;         // compatible to AvFILL
 }
 
 #ifdef SVs_PADBUSY
@@ -337,7 +344,6 @@ SV* new_magic_ref(pTHX_ SV* dst_ref, SV* sv, SV* pkg_ref, int flags)
 static inline
 MAGIC* allocate_magic(pTHX_ SV* sv, char how, const base_vtbl* vtab, unsigned int flags, unsigned int n_anchors)
 {
-   (void)SvUPGRADE(sv, SVt_PVMG);
    const size_t mgsz= n_anchors ? sizeof(MagicAnchors)+(n_anchors-1)*sizeof(Value::Anchor) : sizeof(MAGIC);
    char* mg_raw;
    Newxz(mg_raw, mgsz, char);
@@ -359,13 +365,14 @@ MAGIC* allocate_magic(pTHX_ SV* sv, char how, const base_vtbl* vtab, unsigned in
 static inline
 SV* new_builtin_magic_sv(pTHX_ const base_vtbl* t, unsigned int flags, unsigned int n_anchors)
 {
-   SV *sv=newSV(0);
+   SV *sv=newSV_type(SVt_PVMG);
    allocate_magic(aTHX_ sv, PERL_MAGIC_ext, t, flags, n_anchors);
    return sv;
 }
 
 MAGIC* upgrade_to_builtin_magic_sv(pTHX_ SV* dst, SV* descr_ref, unsigned int n_anchors)
 {
+   (void)SvUPGRADE(dst, SVt_PVMG);
    return allocate_magic(aTHX_ dst, PERL_MAGIC_ext, (const base_vtbl*)SvPVX(PmArray(descr_ref)[TypeDescr_vtbl_index]), 0, n_anchors);
 }
 
@@ -384,7 +391,7 @@ SV* clone_builtin_magic_sv(pTHX_ SV* src)
 }
 
 static inline
-SV* prepare_scalar_magic_sv(pTHX_ SV *sv, const base_vtbl* t, unsigned int flags, unsigned int n_anchors)
+SV* prepare_scalar_magic_sv(pTHX_ SV* sv, const base_vtbl* t, unsigned int flags, unsigned int n_anchors)
 {
    MAGIC* mg=allocate_magic(aTHX_ sv, PERL_MAGIC_ext, t, flags, n_anchors);
    mg->mg_flags |= (flags | SvIVX(t->typeid_name_sv)) & value_read_only;
@@ -394,18 +401,18 @@ SV* prepare_scalar_magic_sv(pTHX_ SV *sv, const base_vtbl* t, unsigned int flags
 
 SV* create_scalar_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, unsigned int flags, unsigned int n_anchors)
 {
-   SV **descr=PmArray(descr_ref);
+   SV** descr=PmArray(descr_ref);
    return new_magic_ref(aTHX_ dst_ref,
-                        prepare_scalar_magic_sv(aTHX_ newSV(0), (const base_vtbl*)SvPVX(descr[TypeDescr_vtbl_index]), flags, n_anchors),
+                        prepare_scalar_magic_sv(aTHX_ newSV_type(SVt_PVMG), (const base_vtbl*)SvPVX(descr[TypeDescr_vtbl_index]), flags, n_anchors),
                         descr[TypeDescr_pkg_index], flags);
 }
 
 SV* clone_scalar_magic_sv(pTHX_ SV* src)
 {
-   MAGIC *mg=SvMAGIC(src);
-   SV *sv=prepare_scalar_magic_sv(aTHX_
+   MAGIC* mg=SvMAGIC(src);
+   SV* sv=prepare_scalar_magic_sv(aTHX_
                                   SvFLAGS(src) & (SVf_ROK|SVf_POK|SVp_POK|SVf_IOK|SVp_IOK|SVf_NOK|SVp_NOK)
-                                  ? newSVsv(src) : newSV(0),
+                                  ? newSVsv(src) : newSV_type(SVt_PVMG),
                                   (const base_vtbl*)mg->mg_virtual, value_alloc_magic, 0);
    return sv_bless(newRV_noinc(sv), SvSTASH(src));
 }
@@ -416,7 +423,7 @@ SV* new_container_magic_sv(pTHX_ const container_vtbl* t, unsigned int flags, un
    AV* av=newAV();
    int last_it= t->acc[2].begin ? 2 : 1; // has reverse_iterator?
    av_extend(av, last_it);
-   *(int*)(AvARRAY(av))=-1;              // loop context index
+   AvARRAY(av)[0]=reinterpret_cast<SV *>((IV)-1); // loop context index
    AvFILLp(av)=-1;                       // cached real container size 
    AvREAL_off(av);                       // we'll destroy the iterator SVs manually
 
@@ -493,13 +500,37 @@ SV* clone_assoc_container_magic_sv(pTHX_ SV* src)
    return sv_bless(newRV_noinc(new_assoc_container_magic_sv(aTHX_ (const container_vtbl*)mg->mg_virtual, value_alloc_magic, 0)), SvSTASH(src));
 }
 
+template <typename VirtTable> static
+SV* extract_type_descr(pTHX_ SV* descr_ref, provide_type VirtTable::* func_mem, class_kind mask, class_kind expected)
+{
+   const VirtTable* const t=reinterpret_cast<const VirtTable*>(SvPVX(PmArray(descr_ref)[TypeDescr_vtbl_index]));
+   if ((t->flags & mask) == expected) {
+      if (const provide_type func=t->*func_mem) {
+         const base_vtbl* const saved_t=cur_class_vtbl;
+         try {
+            cur_class_vtbl=t;
+            SV* result=func();
+            cur_class_vtbl=saved_t;
+            return result;
+         }
+         catch (const pm::perl::exception&) {}
+         catch (const std::exception& ex) {
+            sv_setpv(ERRSV, ex.what());
+         }
+         cur_class_vtbl=saved_t;
+         raise_exception(aTHX);
+      }
+   }
+   return &PL_sv_undef;
+}
+
 #if PerlVersion >= 5220
 # define IsRandomAccessOp(opc) (opc==OP_AELEM || opc==OP_ASLICE || opc==OP_MULTIDEREF)
 #else
 # define IsRandomAccessOp(opc) (opc==OP_AELEM || opc==OP_ASLICE)
 #endif
 
-int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy, PM_svt_copy_klen_arg index)
+int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy, I32 index)
 {
    const OPCODE opc=PL_op ? PL_op->op_type : OP_AELEM;   // assume a plain array access when called directly from the callable library
    const container_vtbl* const t=(const container_vtbl*)mg->mg_virtual;
@@ -513,14 +544,14 @@ int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy,
    if (opc==OP_ITER) {
       cix=cxstack_ix;
       cx=cxstack+cix;
-      if (ForLoopArray(cx)==my_av) {
+      if (cx->blk_loop.state_u.ary.ary==my_av) {
          // direct iterating over a C++ container: each loop requires its own iterator
          if (PL_op->op_private & OPpITER_REVERSED) {
             it_index=2;  it_incr=-1;  acct+=2;
          } else {
             it_index=1;  it_incr=1;
          }
-         if (*(int*)(AvARRAY(my_av)) != cix) {
+         if (AvARRAY(my_av)[0] != reinterpret_cast<SV *>((IV)cix)) {
             // new loop detected: need a new iterator
 
             if (!acct->begin)
@@ -534,11 +565,10 @@ int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy,
                my_av=(AV*)sv;
                mg=SvMAGIC(sv);
                mg->mg_ptr=(char*)obj;
-               ForLoopArray(cx)=my_av;
+               cx->blk_loop.state_u.ary.ary=my_av;
             }
-            *(int*)(AvARRAY(my_av))=cix;
-            AvARRAY(my_av)[it_index]=it_sv=newSV(0);
-            sv_upgrade(it_sv, SVt_PVIV);
+            AvARRAY(my_av)[0]=reinterpret_cast<SV *>((IV)cix);
+            AvARRAY(my_av)[it_index]=it_sv=newSV_type(SVt_PVIV);
             sv_grow(it_sv, acct->obj_size);
             it=SvPVX(it_sv);
             goto InitIt;
@@ -551,7 +581,7 @@ int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy,
       }
 
    } else if (IsRandomAccessOp(opc) && acct->random) {
-      GuardedCallSaveVtbl((acct->random)(obj, 0, index, nsv, sv, (char*)&obj), t);
+      GuardedCallSaveVtbl((acct->random)(obj, 0, index, nsv, sv), t);
       return 1;
    }
 
@@ -569,8 +599,7 @@ int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy,
       if (acct->destructor) (acct->destructor)(it);
       SvIOK_off(it_sv);
    } else {
-      AvARRAY(my_av)[it_index]=it_sv=newSV(0);
-      sv_upgrade(it_sv, SVt_PVIV);
+      AvARRAY(my_av)[it_index]=it_sv=newSV_type(SVt_PVIV);
       sv_grow(it_sv, acct->obj_size);
       it=SvPVX(it_sv);
    }
@@ -593,27 +622,27 @@ int canned_container_access(pTHX_ SV *sv, MAGIC* mg, SV *nsv, const char *dummy,
 
  DerefIt:
    if (SvOK(nsv)) {
-      /* we are called from av_store (during aassign): nsv carries the RHS value */
+      // we are called from av_store (during aassign): nsv carries the RHS value
       GuardedCallSaveVtbl((t->store_at_ref)(obj, it, index, nsv), t);
    } else {
-      GuardedCallSaveVtbl((acct->deref)(obj, it, index, nsv, sv, (char*)&obj), t);
+      GuardedCallSaveVtbl((acct->deref)(obj, it, index, nsv, sv), t);
    }
    return 1;
 }
 
-int canned_assoc_container_access(pTHX_ SV* obj_sv, MAGIC* mg, SV *val_sv, const char *key, PM_svt_copy_klen_arg klen)
+int canned_assoc_container_access(pTHX_ SV* obj_sv, MAGIC* mg, SV* val_sv, const char* key, I32 klen)
 {
    const container_vtbl* const t=(const container_vtbl*)mg->mg_virtual;
    const container_access_vtbl* const acct=t->acc+(mg->mg_flags & value_read_only);
    char* it=(char*)HvARRAY(obj_sv);
-   GuardedCallSaveVtbl((acct->deref)(0, it, 1, val_sv, obj_sv, (char*)&it), t);
+   GuardedCallSaveVtbl((acct->deref)(0, it, 1, val_sv, obj_sv), t);
    return 1;
 }
 
-int canned_composite_access(pTHX_ SV* sv, MAGIC* mg, SV* nsv, const char *dummy, PM_svt_copy_klen_arg index)
+int canned_composite_access(pTHX_ SV* sv, MAGIC* mg, SV* nsv, const char *dummy, I32 index)
 {
    const composite_vtbl* const t=(const composite_vtbl*)mg->mg_virtual;
-   const composite_access_vtbl *acct=t->acc+index;
+   const composite_access_vtbl* acct=t->acc+index;
    char* obj=mg->mg_ptr;
 
    if (SvOK(nsv)) {
@@ -622,7 +651,7 @@ int canned_composite_access(pTHX_ SV* sv, MAGIC* mg, SV* nsv, const char *dummy,
          raise_exception(aTHX_ "Attempt to modify a read-only C++ object");
       GuardedCallSaveVtbl((acct->store)(obj, nsv), t);
    } else {
-      GuardedCallSaveVtbl((acct->get[mg->mg_flags & value_read_only])(obj, nsv, sv, (char*)&obj), t);
+      GuardedCallSaveVtbl((acct->get[mg->mg_flags & value_read_only])(obj, nsv, sv), t);
    }
    return 1;
 }
@@ -630,12 +659,11 @@ int canned_composite_access(pTHX_ SV* sv, MAGIC* mg, SV* nsv, const char *dummy,
 static int get_sizeof(pTHX_ HV *stash)
 {
    dSP;
-   int s;
    CV* sizeof_cv=GvCV((GV*)*hv_fetch(stash, "sizeof", 6, FALSE));
    PUSHMARK(SP);
    call_sv((SV*)sizeof_cv, G_SCALAR);
    SPAGAIN;
-   s=POPi;
+   int s=POPi;
    PUTBACK;
    return s;
 }
@@ -647,10 +675,10 @@ SV** call_function(pTHX_ SV *cur_wrapper, SV *wrap_sv, SV *func_ptr_sv, SV** SP)
    PUTBACK;
    if (SvFLAGS(func_ptr_sv) & SVp_POK) {
       indirect_wrapper_type wrapper=(indirect_wrapper_type)SvPVX(wrap_sv);
-      GuardedCallSaveCurWrapper(ret=wrapper(SvPVX(func_ptr_sv), SP+1, (char*)&ret), cur_wrapper);
+      GuardedCallSaveCurWrapper(ret=wrapper(SvPVX(func_ptr_sv), SP+1), cur_wrapper);
    } else {
       wrapper_type wrapper=(wrapper_type)SvPVX(wrap_sv);
-      GuardedCallSaveCurWrapper(ret=wrapper(SP+1, (char*)&ret), cur_wrapper);
+      GuardedCallSaveCurWrapper(ret=wrapper(SP+1), cur_wrapper);
    }
    SPAGAIN;
    if (ret) PUSHs(ret);
@@ -663,54 +691,50 @@ using namespace pm::perl;
 using namespace pm::perl::glue;
 
 extern "C"
-OP* pm_perl_cpp_helem(pTHX_ HV *hv, const MAGIC *mg)
+OP* pm_perl_cpp_helem(pTHX_ HV* hv, const MAGIC* mg)
 {
    dSP;
    U8 save_private=PL_op->op_private;
-   const container_vtbl *t=(const container_vtbl*)mg->mg_virtual;
-   OP* next;
-   TOPm1s=sv_2mortal(newRV((SV*)hv));   /* Restore the reference to the map object */
+   const container_vtbl* t=(const container_vtbl*)mg->mg_virtual;
+   TOPm1s=sv_2mortal(newRV((SV*)hv));   // Restore the reference to the map object
    PUSHMARK(SP-2);
    XPUSHs(AvARRAY(t->assoc_methods)[PL_op->op_flags & OPf_MOD ? CPP_assoc_helem_index : CPP_assoc_find_index]);
    PUTBACK;
    PL_op->op_flags |= OPf_STACKED;
    PL_op->op_private=0;
-   next=Perl_pp_entersub(aTHX);
+   OP* next=Perl_pp_entersub(aTHX);
    PL_op->op_private=save_private;
    return next;
 }
 
 extern "C"
-OP* pm_perl_cpp_hslice(pTHX_ HV* hv, const MAGIC *mg)
+OP* pm_perl_cpp_hslice(pTHX_ HV* hv, const MAGIC* mg)
 {
    dSP;
-   const container_vtbl *t=(const container_vtbl*)mg->mg_virtual;
-   SV* hvref;
+   const container_vtbl* t=(const container_vtbl*)mg->mg_virtual;
    SV* brk_cv=AvARRAY(t->assoc_methods)[PL_op->op_flags & OPf_MOD ? CPP_assoc_helem_index : CPP_assoc_find_index];
    EXTEND(SP,3);
-   {
-      dMARK;
-      I32 key=MARK-SP, key1=key;
-      SV* val=NULL;
-      I32 gimme=GIMME_V;
-      hvref=sv_2mortal(newRV((SV*)hv));
-      while (++key <= 0) {
-         ENTER;
-         PUSHMARK(SP);
-         val=SP[key];
-         PUSHs(hvref);
-         PUSHs(val);
-         PUTBACK;
-         call_sv(brk_cv, G_SCALAR);
-         SPAGAIN;
-         val=POPs;
-         SP[key]=val;
-         LEAVE;
-      }
-      if (gimme != G_ARRAY) {
-         SP-=key1-1;
-         SETs(val);
-      }
+   dMARK;
+   I32 key=MARK-SP, key1=key;
+   SV* val=nullptr;
+   I32 gimme=GIMME_V;
+   SV* hvref=sv_2mortal(newRV((SV*)hv));
+   while (++key <= 0) {
+      ENTER;
+      PUSHMARK(SP);
+      val=SP[key];
+      PUSHs(hvref);
+      PUSHs(val);
+      PUTBACK;
+      call_sv(brk_cv, G_SCALAR);
+      SPAGAIN;
+      val=POPs;
+      SP[key]=val;
+      LEAVE;
+   }
+   if (gimme != G_ARRAY) {
+      SP-=key1-1;
+      SETs(val);
    }
    RETURN;
 }
@@ -720,15 +744,14 @@ OP* pm_perl_cpp_exists(pTHX_ HV* hv, const MAGIC* mg)
 {
    dSP;
    U8 save_private=PL_op->op_private;
-   const container_vtbl *t=(const container_vtbl*)mg->mg_virtual;
-   OP *next;
-   TOPm1s=sv_2mortal(newRV((SV*)hv));   /* Restore the reference to the map object */
+   const container_vtbl* t=(const container_vtbl*)mg->mg_virtual;
+   TOPm1s=sv_2mortal(newRV((SV*)hv));   // Restore the reference to the map object
    PUSHMARK(SP-2);
    XPUSHs(AvARRAY(t->assoc_methods)[CPP_assoc_exists_index]);
    PUTBACK;
    PL_op->op_flags |= OPf_STACKED;
    PL_op->op_private=0;
-   next=Perl_pp_entersub(aTHX);
+   OP* next=Perl_pp_entersub(aTHX);
    PL_op->op_private=save_private;
    return next;
 }
@@ -737,34 +760,32 @@ extern "C"
 OP* pm_perl_cpp_delete_hslice(pTHX_ HV* hv, const MAGIC* mg)
 {
    dSP;
-   const container_vtbl *t=(const container_vtbl*)mg->mg_virtual;
-   SV *hvref=sv_2mortal(newRV((SV*)hv)), *brk_cv;
+   const container_vtbl* t=(const container_vtbl*)mg->mg_virtual;
+   SV* hvref=sv_2mortal(newRV((SV*)hv)), *brk_cv;
    I32 gimme = GIMME_V;
    brk_cv=AvARRAY(t->assoc_methods)[gimme == G_VOID ? CPP_assoc_delete_void_index : CPP_assoc_delete_ret_index];
    I32 discard= gimme == G_VOID ? G_DISCARD : G_SCALAR;
    EXTEND(SP,3);
-   {
-      dMARK;
-      I32 key=MARK-SP, key1=key;
-      SV* val=NULL;
-      while (++key <= 0) {
-         ENTER;
-         PUSHMARK(SP);
-         val=SP[key];
-         PUSHs(hvref);
-         PUSHs(val);
-         PUTBACK;
-         call_sv(brk_cv, discard);
-         SPAGAIN;
-         if (gimme != G_VOID) {
-            val=POPs; SP[key]=val;
-         }
-         LEAVE;
+   dMARK;
+   I32 key=MARK-SP, key1=key;
+   SV* val=nullptr;
+   while (++key <= 0) {
+      ENTER;
+      PUSHMARK(SP);
+      val=SP[key];
+      PUSHs(hvref);
+      PUSHs(val);
+      PUTBACK;
+      call_sv(brk_cv, discard);
+      SPAGAIN;
+      if (gimme != G_VOID) {
+         val=POPs; SP[key]=val;
       }
-      if (gimme != G_ARRAY) {
-         SP-=key1;
-         if (gimme == G_SCALAR) *++SP=val;
-      }
+      LEAVE;
+   }
+   if (gimme != G_ARRAY) {
+      SP-=key1;
+      if (gimme == G_SCALAR) *++SP=val;
    }
    RETURN;
 }
@@ -774,24 +795,23 @@ OP* pm_perl_cpp_delete_helem(pTHX_ HV* hv, const MAGIC* mg)
 {
    dSP;
    U8 save_private=PL_op->op_private;
-   const container_vtbl *t=(const container_vtbl*)mg->mg_virtual;
-   OP *next;
+   const container_vtbl* t=(const container_vtbl*)mg->mg_virtual;
    I32 gimme = GIMME_V;
-   TOPm1s=sv_2mortal(newRV((SV*)hv));   /* Restore the reference to the map object */
+   TOPm1s=sv_2mortal(newRV((SV*)hv));   // Restore the reference to the map object
    PUSHMARK(SP-2);
    XPUSHs(AvARRAY(t->assoc_methods)[gimme == G_VOID ? CPP_assoc_delete_void_index : CPP_assoc_delete_ret_index]);
    PUTBACK;
    PL_op->op_flags |= OPf_STACKED;
    PL_op->op_private=0;
-   next=Perl_pp_entersub(aTHX);
+   OP* next=Perl_pp_entersub(aTHX);
    PL_op->op_private=save_private;
    return next;
 }
 
 extern "C"
-OP* pm_perl_cpp_keycnt(pTHX_ HV* hv, const MAGIC *mg)
+OP* pm_perl_cpp_keycnt(pTHX_ HV* hv, const MAGIC* mg)
 {
-   const container_vtbl *t=(const container_vtbl*)mg->mg_virtual;
+   const container_vtbl* t=(const container_vtbl*)mg->mg_virtual;
    const I32 s=(t->size)(mg->mg_ptr);
    dSP;
    SETs(sv_2mortal(newSViv(s)));
@@ -799,26 +819,25 @@ OP* pm_perl_cpp_keycnt(pTHX_ HV* hv, const MAGIC *mg)
 }
 
 extern "C"
-int pm_perl_cpp_hassign(pTHX_ HV* hv, MAGIC *mg, I32 *firstRp, I32 lastR, int return_size)
+int pm_perl_cpp_hassign(pTHX_ HV* hv, MAGIC* mg, I32* firstRp, I32 lastR, int return_size)
 {
    dSP;
    I32 firstR=*firstRp;
    clear_canned_assoc_container(aTHX_ (SV*)hv, mg);
    if (firstR < lastR) {
-      const container_vtbl *t=(const container_vtbl*)mg->mg_virtual;
-      SV *hvref, *brk_cv=AvARRAY(t->assoc_methods)[CPP_assoc_helem_index];
+      const container_vtbl* t=(const container_vtbl*)mg->mg_virtual;
+      SV* brk_cv=AvARRAY(t->assoc_methods)[CPP_assoc_helem_index];
       EXTEND(SP,3);
       ENTER; SAVETMPS;
-      hvref=sv_2mortal(newRV((SV*)hv));
+      SV* hvref=sv_2mortal(newRV((SV*)hv));
       do {
-         SV *helem;
          PUSHMARK(SP);
          PUSHs(hvref);
          PUSHs(PL_stack_base[firstR]);  ++firstR;
          PUTBACK;
          call_sv(brk_cv, G_SCALAR);
          SPAGAIN;
-         helem=POPs;
+         SV* helem=POPs;
          if (firstR <= lastR) {
             SvSetMagicSV(helem, PL_stack_base[firstR]); ++firstR;
          } else {
@@ -838,20 +857,43 @@ int pm_perl_cpp_has_assoc_methods(const MAGIC* mg)
    return ((const container_vtbl*)mg->mg_virtual)->assoc_methods != NULL;
 }
 
+
+// copied from perl-5.10.0/mathoms.c - disappeared in 5.12.0
+// TODO: avoid allocating from heap here
+static
+AV* av_fake(pTHX_ I32 size, SV** strp)
+{
+   SV** ary;
+   AV* const av = (AV*)newSV_type(SVt_PVAV);
+   Newx(ary, size+1, SV*);
+   AvALLOC(av) = ary;
+   Copy(strp, ary, size, SV*);
+   AvREIFY_only(av);
+   AvARRAY(av) = ary;
+   AvFILLp(av) = size - 1;
+   AvMAX(av) = size - 1;
+   while (size--) {
+      assert(*strp);
+      SvTEMP_off(*strp);
+      strp++;
+   }
+   return av;
+}
+
 MODULE = Polymake::Core::CPlusPlus              PACKAGE = Polymake::Core::CPlusPlus
 
 PROTOTYPES: DISABLE
 
 void
 assign_to_cpp_object(obj, value, flags_sv)
-   SV *obj;
-   SV *value;
-   SV *flags_sv;
+   SV* obj;
+   SV* value;
+   SV* flags_sv;
 PPCODE:
 {
-   MAGIC *mg=pm_perl_get_cpp_magic(SvRV(obj));
+   MAGIC* mg=pm_perl_get_cpp_magic(SvRV(obj));
    const base_vtbl* t=(const base_vtbl*)mg->mg_virtual;
-   const value_flags flags= value_flags((SvTRUE(flags_sv) ? value_trusted : value_not_trusted) | value_ignore_magic);
+   const value_flags flags= (SvTRUE(flags_sv) ? value_trusted : value_not_trusted) | value_ignore_magic;
    PUTBACK;
    GuardedCallSaveVtbl((t->assignment)(mg->mg_ptr, value, flags), t);
    XSprePUSH;
@@ -860,13 +902,13 @@ PPCODE:
 
 void
 assign_array_to_cpp_object(obj, ...)
-   SV *obj;
+   SV* obj;
 PPCODE:
 {
-   MAGIC *mg=pm_perl_get_cpp_magic(SvRV(obj));
+   MAGIC* mg=pm_perl_get_cpp_magic(SvRV(obj));
    const base_vtbl* t=(const base_vtbl*)mg->mg_virtual;
-   const value_flags flags= value_flags((SvTRUE(ST(items-1)) ? value_trusted : value_not_trusted) | value_ignore_magic);
-   AV *args=Perl_av_fake(aTHX_ items-2, SP+2);
+   const value_flags flags= (SvTRUE(ST(items-1)) ? value_trusted : value_not_trusted) | value_ignore_magic;
+   AV* args=av_fake(aTHX_ items-2, SP+2);
    PUTBACK;
    GuardedCallSaveVtbl((t->assignment)(mg->mg_ptr, sv_2mortal(newRV_noinc((SV*)args)), flags), t);
    XSprePUSH;
@@ -875,132 +917,65 @@ PPCODE:
 
 void
 convert_to_string(src, ...)
-   SV *src;
+   SV* src;
 PPCODE:
 {
-   SV *result;
-   MAGIC *mg=pm_perl_get_cpp_magic(SvRV(src));
-   const common_vtbl *t=(const common_vtbl*)mg->mg_virtual;
+   SV* result;
+   MAGIC* mg=pm_perl_get_cpp_magic(SvRV(src));
+   const common_vtbl* t=(const common_vtbl*)mg->mg_virtual;
    PUTBACK;
-   GuardedCall(result=(t->to_string)(mg->mg_ptr, NULL));
+   GuardedCall(result=(t->to_string)(mg->mg_ptr));
    XSprePUSH;
    PUSHs(result);
 }
 
 void
 convert_to_serialized(src, ...)
-   SV *src;
+   SV* src;
 PPCODE:
 {
-   SV *result;
-   MAGIC *mg=pm_perl_get_cpp_magic(SvRV(src));
-   const common_vtbl *t=(const common_vtbl*)mg->mg_virtual;
+   src=SvRV(src);
+   SV* result;
+   MAGIC* mg=pm_perl_get_cpp_magic(src);
+   const common_vtbl* t=(const common_vtbl*)mg->mg_virtual;
    PUTBACK;
-   GuardedCallSaveVtbl(result=(t->to_serialized)(mg->mg_ptr, (char*)&src), t);
+   GuardedCallSaveVtbl(result=(t->to_serialized)(mg->mg_ptr, src), t);
    XSprePUSH;
    PUSHs(result);
 }
 
 void
 get_magic_typeid(x, lval_flags)
-   SV *x;
+   SV* x;
    I32 lval_flags;
 PPCODE:
 {
    PUSHs(&PL_sv_undef);
    if (SvROK(x) && (x=SvRV(x), SvOBJECT(x))) {
-      MAGIC *mg;
-      for (mg=SvMAGIC(x); mg; mg=mg->mg_moremagic)
+      for (MAGIC* mg=SvMAGIC(x); mg; mg=mg->mg_moremagic) {
          if (mg->mg_virtual->svt_dup == &pm_perl_canned_dup) {
             const base_vtbl *t=(const base_vtbl*)mg->mg_virtual;
             SETs(!lval_flags || (mg->mg_flags & value_read_only) ? t->const_typeid_name_sv : t->typeid_name_sv);
             break;
          }
+      }
    }
 }
 
 void
-must_be_copied(x,is_temp,check_readonly)
-   SV *x;
-   SV *is_temp;
-   SV *check_readonly;
+must_be_copied(x, is_temp, check_readonly)
+   SV* x;
+   SV* is_temp;
+   SV* check_readonly;
 PPCODE:
 {
-   MAGIC *mg;
+   MAGIC* mg;
    PUSHs(&PL_sv_yes);
    if (SvROK(x) && (x=SvRV(x), SvOBJECT(x) && (mg=pm_perl_get_cpp_magic(x))))
       if (mg->mg_len &&
           (SvTRUE(is_temp) || (((const base_vtbl*)mg->mg_virtual)->flags & class_is_declared)) &&
           (!SvTRUE(check_readonly) || !(mg->mg_flags & value_read_only)))
          SETs(&PL_sv_no);
-}
-
-void
-obj_dimension(vtbl_sv)
-   SV *vtbl_sv;
-PPCODE:
-{
-   const base_vtbl *t=(const base_vtbl*)SvPVX(vtbl_sv);
-   PUSHs(sv_2mortal(newSViv(t->obj_dimension)));
-}
-
-void
-get_type_proto(vtbl_sv, ix)
-   SV *vtbl_sv;
-   I32 ix;
-PPCODE:
-{
-   SV *result;
-   const base_vtbl* const t=(const base_vtbl*)SvPVX(vtbl_sv);
-   do {
-      const base_vtbl* const saved_t=cur_class_vtbl;
-      try {
-         cur_class_vtbl=t;
-         PUTBACK;
-         switch (ix) {
-         case 0: {
-            result=(static_cast<const container_vtbl*>(t)->provide_key_type)();
-            break;
-         }
-         case 1: {
-            result=(static_cast<const container_vtbl*>(t)->provide_value_type)();
-            break;
-         }
-         case 2: {
-            result=(static_cast<const composite_vtbl*>(t)->provide_elem_types)();
-            break;
-         }
-         case 3: {
-            result=sv_2mortal(newSViv(static_cast<const composite_vtbl*>(t)->n_elems));
-            break;
-         }
-         case 4: {
-            result=(static_cast<const common_vtbl*>(t)->provide_serialized_type)();
-            break;
-         }
-         case 5: {
-            result=(static_cast<const composite_vtbl*>(t)->provide_field_names)();
-            break;
-         }
-         default:
-            cur_class_vtbl=saved_t;
-            croak_xs_usage(cv, "vtbl, 0..5");
-         }
-         cur_class_vtbl=saved_t;
-         break;
-      }
-      catch (const pm::perl::exception&) {}
-      catch (const std::exception& ex) {
-         sv_setpv(ERRSV, ex.what());
-      }
-      cur_class_vtbl=saved_t;
-      raise_exception(aTHX);
-   } while (false);
-   XSprePUSH;
-   if (result)
-      PUSHs(result);
-   else
-      PUSHs(&PL_sv_undef);
 }
 
 void
@@ -1013,7 +988,7 @@ PPCODE:
    const composite_vtbl* const t=(const composite_vtbl*)mg->mg_virtual;
    SV *result=sv_newmortal();
    PUTBACK;
-   GuardedCallSaveVtbl((t->acc[CvDEPTH(cv)].get[mg->mg_flags & value_read_only])(mg->mg_ptr, result, src, (char*)&src), t);
+   GuardedCallSaveVtbl((t->acc[CvDEPTH(cv)].get[mg->mg_flags & value_read_only])(mg->mg_ptr, result, src), t);
    XSprePUSH;
    PUSHs(result);
 }
@@ -1065,7 +1040,7 @@ PPCODE:
       XPUSHs(sv_2mortal(newRV_noinc((SV*)newAV())));
    } else {
       int n_trail=items-n_args;
-      SV *trailing=sv_2mortal(newRV_noinc((SV*)Perl_av_fake(aTHX_ n_trail, ++SP)));
+      SV *trailing=sv_2mortal(newRV_noinc((SV*)av_fake(aTHX_ n_trail, ++SP)));
       SETs(trailing);
    }
    PUTBACK;
@@ -1078,9 +1053,8 @@ create_function_wrapper(descr, pkg)
    SV *pkg;
 PPCODE:
 {
-   SV *sub=newSV(0);
-   HV *stash=Nullhv;
-   sv_upgrade(sub, SVt_PVCV);
+   SV* sub=newSV_type(SVt_PVCV);
+   HV* stash=Nullhv;
    CvXSUB(sub)=&XS_Polymake__Core__CPlusPlus_call_function;
    CvFLAGS(sub)=CvFLAGS(cv) | CVf_ANON;
    CvXSUBANY(sub).any_ptr=SvRV(descr);
@@ -1147,7 +1121,7 @@ PPCODE:
          We shall return the same reference, it won't be checked by perl afterwards. */
       ++SP;
    } else {
-      MAGIC *mg=pm_perl_get_cpp_magic(obj);
+      MAGIC* mg=pm_perl_get_cpp_magic(obj);
       const base_vtbl* const t=(const base_vtbl*)mg->mg_virtual;
       if (!(mg->mg_flags & value_read_only) && t->copy_constructor) {
          // Should clone only if persistent and really mutable
@@ -1169,7 +1143,9 @@ convert_to_int(proto, obj)
 PPCODE:
 {
    dTARGET;
-   PUSHi(pm::perl::Scalar::convert_to_int(obj));
+   int result;
+   GuardedCall(result=pm::perl::Scalar::convert_to_int(obj));
+   PUSHi(result);
    PERL_UNUSED_ARG(proto);
 }
 
@@ -1180,7 +1156,9 @@ convert_to_float(proto, obj)
 PPCODE:
 {
    dTARGET;
-   PUSHn(pm::perl::Scalar::convert_to_float(obj));
+   double result;
+   GuardedCall(result=pm::perl::Scalar::convert_to_float(obj));
+   PUSHn(result);
    PERL_UNUSED_ARG(proto);
 }
 
@@ -1237,14 +1215,269 @@ demangle(sym)
    const char* sym;
 PPCODE:
 {
-   int status;
-   char* result=abi::__cxa_demangle(sym, NULL, NULL, &status);
-   if (status==0) {
-      XPUSHs(sv_2mortal(newSVpv(result, 0)));
-      free(result);
-   } else {
-      Perl_croak(aTHX_ "__cxa_demangle failed with code %d", status);
-   }
+   dTARGET;
+   std::string s=polymake::legible_typename(sym);
+   PUSHp(s.c_str(), s.size());
+}
+
+MODULE = Polymake::Core::CPlusPlus              PACKAGE = Polymake::Core::CPlusPlus::TypeDescr
+
+void
+value_type(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   PUTBACK;
+   SV* result=extract_type_descr(aTHX_ descr_ref, &container_vtbl::provide_value_type,
+                                 class_is_kind_mask, class_is_container);
+   XSprePUSH;
+   PUSHs(result);
+}
+
+void
+value_descr(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   PUTBACK;
+   SV* result=extract_type_descr(aTHX_ descr_ref, &container_vtbl::provide_value_descr,
+                                 class_is_kind_mask, class_is_container);
+   XSprePUSH;
+   PUSHs(result);
+}
+
+void
+element_type(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   PUTBACK;
+   SV* result=extract_type_descr(aTHX_ descr_ref, &container_vtbl::provide_key_type,
+                                 class_is_kind_mask | class_is_assoc_container, class_is_container);
+   XSprePUSH;
+   PUSHs(result);
+}
+
+void
+element_descr(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   PUTBACK;
+   SV* result=extract_type_descr(aTHX_ descr_ref, &container_vtbl::provide_key_descr,
+                                 class_is_kind_mask | class_is_assoc_container, class_is_container);
+   XSprePUSH;
+   PUSHs(result);
+}
+
+void
+key_type(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   PUTBACK;
+   SV* result=extract_type_descr(aTHX_ descr_ref, &container_vtbl::provide_key_type,
+                                 class_is_kind_mask | class_is_assoc_container, class_is_container | class_is_assoc_container);
+   XSprePUSH;
+   PUSHs(result);
+}
+
+void
+key_descr(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   PUTBACK;
+   SV* result=extract_type_descr(aTHX_ descr_ref, &container_vtbl::provide_key_descr,
+                                 class_is_kind_mask | class_is_assoc_container, class_is_container | class_is_assoc_container);
+   XSprePUSH;
+   PUSHs(result);
+}
+
+void
+member_types(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   PUTBACK;
+   SV* result=extract_type_descr(aTHX_ descr_ref, &composite_vtbl::provide_member_types,
+                                 class_is_kind_mask, class_is_composite);
+   XSprePUSH;
+   PUSHs(result);
+}
+
+void
+member_descrs(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   PUTBACK;
+   SV* result=extract_type_descr(aTHX_ descr_ref, &composite_vtbl::provide_member_descrs,
+                                 class_is_kind_mask, class_is_composite);
+   XSprePUSH;
+   PUSHs(result);
+}
+
+void
+member_names(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   PUTBACK;
+   SV* result=extract_type_descr(aTHX_ descr_ref, &composite_vtbl::provide_member_names,
+                                 class_is_kind_mask, class_is_composite);
+   XSprePUSH;
+   PUSHs(result);
+}
+
+void
+num_members(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   dTARGET;
+   const composite_vtbl* const t=reinterpret_cast<const composite_vtbl*>(SvPVX(PmArray(descr_ref)[TypeDescr_vtbl_index]));
+   if ((t->flags & class_is_kind_mask) == class_is_composite)
+      PUSHi(t->n_members);
+   else
+      PUSHs(&PL_sv_undef);
+}
+
+void
+serialized_type(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   PUTBACK;
+   SV* result=extract_type_descr(aTHX_ descr_ref, &common_vtbl::provide_serialized_type,
+                                 class_is_serializable, class_is_serializable);
+   XSprePUSH;
+   PUSHs(result);
+}
+
+void
+serialized_descr(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   PUTBACK;
+   SV* result=extract_type_descr(aTHX_ descr_ref, &common_vtbl::provide_serialized_descr,
+                                 class_is_serializable, class_is_serializable);
+   XSprePUSH;
+   PUSHs(result);
+}
+
+void
+dimension(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   dTARGET;
+   const base_vtbl* const t=reinterpret_cast<const base_vtbl*>(SvPVX(PmArray(descr_ref)[TypeDescr_vtbl_index]));
+   PUSHi(t->obj_dimension);
+}
+
+void
+own_dimension(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   dTARGET;
+   const container_vtbl* const t=reinterpret_cast<const container_vtbl*>(SvPVX(PmArray(descr_ref)[TypeDescr_vtbl_index]));
+   if ((t->flags & class_is_kind_mask) == class_is_container)
+      PUSHi(t->own_dimension);
+   else
+      PUSHs(&PL_sv_undef);
+}
+
+void
+is_scalar(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   dTARGET;
+   const base_vtbl* const t=reinterpret_cast<const base_vtbl*>(SvPVX(PmArray(descr_ref)[TypeDescr_vtbl_index]));
+   PUSHi((t->flags & class_is_kind_mask) == class_is_scalar);
+}
+
+void
+is_container(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   dTARGET;
+   const base_vtbl* const t=reinterpret_cast<const base_vtbl*>(SvPVX(PmArray(descr_ref)[TypeDescr_vtbl_index]));
+   PUSHi((t->flags & class_is_kind_mask) == class_is_container);
+}
+
+void
+is_composite(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   dTARGET;
+   const base_vtbl* const t=reinterpret_cast<const base_vtbl*>(SvPVX(PmArray(descr_ref)[TypeDescr_vtbl_index]));
+   PUSHi((t->flags & class_is_kind_mask) == class_is_composite);
+}
+
+void
+is_opaque(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   dTARGET;
+   const base_vtbl* const t=reinterpret_cast<const base_vtbl*>(SvPVX(PmArray(descr_ref)[TypeDescr_vtbl_index]));
+   PUSHi((t->flags & class_is_kind_mask) == class_is_opaque);
+}
+
+void
+is_assoc_container(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   dTARGET;
+   const base_vtbl* const t=reinterpret_cast<const base_vtbl*>(SvPVX(PmArray(descr_ref)[TypeDescr_vtbl_index]));
+   PUSHi((t->flags & (class_is_kind_mask | class_is_assoc_container)) == (class_is_container | class_is_assoc_container));
+}
+
+void
+is_sparse_container(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   dTARGET;
+   const base_vtbl* const t=reinterpret_cast<const base_vtbl*>(SvPVX(PmArray(descr_ref)[TypeDescr_vtbl_index]));
+   PUSHi((t->flags & (class_is_kind_mask | class_is_sparse_container)) == (class_is_container | class_is_sparse_container));
+}
+
+void
+is_set(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   dTARGET;
+   const base_vtbl* const t=reinterpret_cast<const base_vtbl*>(SvPVX(PmArray(descr_ref)[TypeDescr_vtbl_index]));
+   PUSHi((t->flags & class_is_set) != 0);
+}
+
+void
+is_serializable(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   dTARGET;
+   const base_vtbl* const t=reinterpret_cast<const base_vtbl*>(SvPVX(PmArray(descr_ref)[TypeDescr_vtbl_index]));
+   PUSHi((t->flags & class_is_serializable) != 0);
+}
+
+void
+is_sparse_serialized(descr_ref)
+   SV* descr_ref;
+PPCODE:
+{
+   dTARGET;
+   const base_vtbl* const t=reinterpret_cast<const base_vtbl*>(SvPVX(PmArray(descr_ref)[TypeDescr_vtbl_index]));
+   PUSHi((t->flags & class_is_sparse_serialized) != 0);
 }
 
 MODULE = Polymake::Core::CPlusPlus              PACKAGE = Polymake::Core::CPlusPlus::Iterator
@@ -1287,7 +1520,7 @@ PPCODE:
    const iterator_vtbl* const t=(const iterator_vtbl*)mg->mg_virtual;
    SV *result;
    PUTBACK;
-   GuardedCallSaveVtbl(result=(t->deref)(mg->mg_ptr,(char*)&t), t);
+   GuardedCallSaveVtbl(result=(t->deref)(mg->mg_ptr), t);
    XSprePUSH;
    PUSHs(result);
 }
@@ -1297,13 +1530,31 @@ deref_to_scalar(ref, ...)
    SV *ref;
 PPCODE:
 {
-   MAGIC *mg=SvMAGIC(SvRV(ref));
+   MAGIC* mg=SvMAGIC(SvRV(ref));
    const iterator_vtbl* const t=(const iterator_vtbl*)mg->mg_virtual;
-   SV *result;
+   SV* result;
    PUTBACK;
-   GuardedCallSaveVtbl(result=(t->deref)(mg->mg_ptr,(char*)&t), t);
+   GuardedCallSaveVtbl(result=(t->deref)(mg->mg_ptr), t);
    XSprePUSH;
    PUSHs(sv_2mortal(newRV(result)));
+}
+
+void
+index(ref)
+   SV *ref;
+PPCODE:
+{
+   MAGIC* mg=SvMAGIC(SvRV(ref));
+   const iterator_vtbl* const t=(const iterator_vtbl*)mg->mg_virtual;
+   // we don't expect any perl objects be accessed or created in index() methods, therefore the stack can't change
+   if (t->index) {
+      dTARGET;
+      int ret;
+      GuardedCall(ret=(t->index)(mg->mg_ptr));
+      PUSHi(ret);
+   } else {
+      PUSHs(&PL_sv_undef);
+   }
 }
 
 void
@@ -1338,8 +1589,8 @@ EXTEND(obj, n)
 PPCODE:
 {
    MAGIC *mg=pm_perl_get_cpp_magic(SvRV(obj));
-   const composite_vtbl *t=(const composite_vtbl*)mg->mg_virtual;
-   if (n != t->n_elems)
+   const composite_vtbl* t=(const composite_vtbl*)mg->mg_virtual;
+   if (n != t->n_members)
       raise_exception(aTHX_ "Wrong number of elements in a composite assignment");
 }
 
@@ -1364,7 +1615,7 @@ PPCODE:
    PUTBACK;
    GuardedCall((acct->begin)(it, obj));
    it[acct->obj_size]=1;
-   GuardedCallSaveVtbl((acct->deref)(0, it, -1, key_sv, obj_sv, (char*)&it), t);
+   GuardedCallSaveVtbl((acct->deref)(0, it, -1, key_sv, obj_sv), t);
    XSprePUSH;
    PUSHs(key_sv);
 }
@@ -1382,40 +1633,45 @@ PPCODE:
    char *it=(char*)HvARRAY(obj_sv);
    key_sv=sv_newmortal();
    PUTBACK;
-   GuardedCallSaveVtbl((acct->deref)(0, it, 0, key_sv, obj_sv, (char*)&it), t);
+   GuardedCallSaveVtbl((acct->deref)(0, it, 0, key_sv, obj_sv), t);
    XSprePUSH;
    PUSHs(key_sv);
 }
 
 BOOT:
 {
-   static const char FuncDescr_name[]="Polymake::Core::CPlusPlus::FuncDescr",
-                     TypeDescr_name[]="Polymake::Core::CPlusPlus::TypeDescr",
-                          User_name[]="Polymake::User";
+   static const char FuncDescr_pkg[]="Polymake::Core::CPlusPlus::FuncDescr",
+                     TypeDescr_pkg[]="Polymake::Core::CPlusPlus::TypeDescr",
+                          User_pkg[]="Polymake::User",
+               InitTransaction_pkg[]="Polymake::Core::InitTransaction";
 
    CPP_root=gv_fetchpv("Polymake::Core::CPlusPlus::root", false, SVt_PV);
    PropertyType_nesting_level=gv_fetchpv("Polymake::Core::PropertyType::nesting_level", false, SVt_PV);
    User_application=gv_fetchpv("Polymake::User::application", false, SVt_PV);
    Debug_level=gv_fetchpv("Polymake::DebugLevel", false, SVt_PV);
-   FuncDescr_stash=gv_stashpvn(FuncDescr_name, sizeof(FuncDescr_name)-1, false);
+   FuncDescr_stash=gv_stashpvn(FuncDescr_pkg, sizeof(FuncDescr_pkg)-1, false);
    FuncDescr_fill=get_sizeof(aTHX_ FuncDescr_stash)-1;
    FuncDescr_wrapper_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::FuncDescr::wrapper", false));
    FuncDescr_func_ptr_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::FuncDescr::func_ptr", false));
    FuncDescr_name_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::FuncDescr::name", false));
-   TypeDescr_stash=gv_stashpvn(TypeDescr_name, sizeof(TypeDescr_name)-1, false);
+   TypeDescr_stash=gv_stashpvn(TypeDescr_pkg, sizeof(TypeDescr_pkg)-1, false);
    TypeDescr_fill=get_sizeof(aTHX_ TypeDescr_stash)-1;
    TypeDescr_pkg_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::TypeDescr::pkg", false));
    TypeDescr_vtbl_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::TypeDescr::vtbl", false));
-   User_stash=gv_stashpvn(User_name, sizeof(User_name)-1, false);
+   TypeDescr_typeid_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::TypeDescr::typeid", false));
+   TypeDescr_generated_by_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::TypeDescr::generated_by", false));
+   User_stash=gv_stashpvn(User_pkg, sizeof(User_pkg)-1, false);
    CPPOptions_builtin_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::Options::builtin", false));
    CPPOptions_descr_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::Options::descr", false));
    PropertyType_pkg_index=CvDEPTH(get_cv("Polymake::Core::PropertyType::pkg", false));
    PropertyType_cppoptions_index=CvDEPTH(get_cv("Polymake::Core::PropertyType::cppoptions", false));
+   PropertyType_params_index=CvDEPTH(get_cv("Polymake::Core::PropertyParamedType::params", false));
    CPP_functions_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::functions", false));
    CPP_regular_functions_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::regular_functions", false));
    CPP_embedded_rules_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::embedded_rules", false));
    CPP_duplicate_class_instances_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::duplicate_class_instances", false));
    CPP_classes_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::classes", false));
+   CPP_builtins_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::builtins", false));
    CPP_templates_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::templates", false));
    CPP_typeids_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::typeids", false));
    CPP_auto_convert_constructor_index=CvDEPTH(get_cv("Polymake::Core::CPlusPlus::auto_convert_constructor", false));
@@ -1435,6 +1691,7 @@ BOOT:
    Object_parent_index=CvDEPTH(get_cv("Polymake::Core::Object::parent", false));
    Object_transaction_index=CvDEPTH(get_cv("Polymake::Core::Object::transaction", false));
    Object_attachments_index=CvDEPTH(get_cv("Polymake::Core::Object::attachments", false));
+   Object_InitTransaction_stash=gv_stashpvn(InitTransaction_pkg, sizeof(InitTransaction_pkg)-1, TRUE);
 
    CvLVALUE_on(get_cv("Polymake::Core::CPlusPlus::Iterator::hidden", false));
    CvMETHOD_on(get_cv("Polymake::Core::CPlusPlus::convert_to_int", false));

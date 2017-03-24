@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -26,7 +26,7 @@ BEGIN {
 package Polymake;
 
 use strict;
-use vars qw($InstallTop $InstallArch $Arch $DeveloperMode);
+use vars qw($InstallTop $InstallArch $Arch $DeveloperMode $DebugLevel);
 
 use Polymake;
 use namespaces;
@@ -82,6 +82,22 @@ sub local_custom {
    ? local_hash(*{$var->name}, $_[0])
    : (local ${$var->name}{$_[0]}=$_[1]);
    $Scope->end_locals;
+}
+
+# TODO: support incomplete expressions
+sub simulate_shell_input {
+   if (!defined $User::application) {
+      $@="current application not set";
+      return;
+   }
+   open my $saved_STDOUT, ">&=STDOUT";
+   close STDOUT;
+   my $gather_output="";
+   open STDOUT, ">", \$gather_output;
+   $User::application->eval_expr->(@_);
+   close STDOUT;
+   open STDOUT, ">&=", $saved_STDOUT;
+   $gather_output
 }
 
 1;

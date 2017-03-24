@@ -16,16 +16,31 @@
 
 #include "polymake/client.h"
 #include "polymake/topaz/complex_tools.h"
+#include "polymake/topaz/boundary_tools.h"
+#include "polymake/graph/Lattice.h"
+#include "polymake/graph/Decoration.h"
 
 namespace polymake { namespace topaz {
-  
-Array<Set<int> > boundary_of_pseudo_manifold_client(perl::Object hd)
+
+   // returns (facets, vertex_map)
+perl::ListReturn boundary_of_pseudo_manifold_client(perl::Object sc)
 {
-   HasseDiagram HD(hd);
-   return boundary_of_pseudo_manifold(HD);
+   Lattice<BasicDecoration> HD = sc.give("HASSE_DIAGRAM");
+   auto faces = IncidenceMatrix<>{ attach_member_accessor( boundary_of_pseudo_manifold(HD),
+         ptr2type<BasicDecoration, Set<int>, &BasicDecoration::face>()) };
+
+   perl::ListReturn result;
+   auto sq = squeeze_faces(faces);
+   result << sq.first << sq.second;
+   return result;
 }
 
-Function4perl(&boundary_of_pseudo_manifold_client, "boundary_of_pseudo_manifold(graph::FaceLattice)");
+std::pair< Array<Set<int>>, Array<int> > squeeze_faces_client(IncidenceMatrix<> in){
+   return squeeze_faces(in);
+}
+
+Function4perl(&boundary_of_pseudo_manifold_client, "boundary_of_pseudo_manifold(SimplicialComplex)");
+Function4perl(&squeeze_faces_client, "squeeze_faces($)");
 
 } }
 

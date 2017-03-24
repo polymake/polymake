@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -31,32 +31,38 @@ void voronoi(perl::Object p)
 
    // if not all SITES have first coordinate 1, we consider
    // the sites as a vector configuration
-   int vector_configuration = 0;
-   for (int i=0; !vector_configuration&&i<n; ++i) {
-     if (sites(i,0)!=1) vector_configuration=1;
+   bool is_vector_configuration = false;
+   for (int i=0; i<n; ++i) {
+      if (sites(i,0) != 1) {
+         is_vector_configuration=true;
+         break;
+      }
    }
 
-   ListMatrix< Vector<E> > voronoi_ineq(0,d+1+vector_configuration);
+   const int poly_dim=d+1+is_vector_configuration;
+   Matrix<E> voronoi_ineq(n+1, poly_dim);
+   auto ineq_it = concat_rows(voronoi_ineq).begin();
 
-   for (int i=0; i<n; ++i) {
-      Vector<E> next_voronoi_ineq=unit_vector<E>(d+1+vector_configuration,d+vector_configuration);
-      next_voronoi_ineq[0]=sqr(sites[i])-1+vector_configuration; // -1 compensates for homogenizing coordinate
-      for (int k=1-vector_configuration; k<d; ++k) {
-         const E& x(sites(i,k));
-         next_voronoi_ineq[k]=(-2)*x;
-      }
-      voronoi_ineq /= next_voronoi_ineq;
+   for (int i=0; i<n; ++i, ++ineq_it) {
+      *ineq_it = sqr(sites[i])+(is_vector_configuration-1); // -1 compensates for homogenizing coordinate
+      ++ineq_it;
+      for (int k=1-is_vector_configuration; k<d; ++k, ++ineq_it)
+         *ineq_it = -2 * sites(i, k);
+
+      *ineq_it = 1;
    }
 
    // since all SITES are required to be distinct, the defining inequalities are, in fact, facets;
    // e.g., for the computation of DELAUNAY_GRAPH it is essential that the first facets correspond
    // to the sites
-   voronoi_ineq /= unit_vector<E>(d+1,0); // facet at infinity
+   *ineq_it = 1;  // facet at infinity, since all remaining elements are still 0
+
    p.take("FACETS") << voronoi_ineq;
-   p.take("AFFINE_HULL") << Matrix<E>(); // always full-dimensional
+   p.take("AFFINE_HULL") << Matrix<E>(0, poly_dim); // always full-dimensional
 
    // to simplify subsequent computations we also provide an obvious interior point and other basic information
-   Vector<E> rip(d+1); rip[0]=rip[d]=1;
+   Vector<E> rip(poly_dim);
+   rip.front()=1;  rip.back()=1;
    p.take("REL_INT_POINT") << rip;
    p.take("FEASIBLE") << true;
    p.take("BOUNDED") << false;

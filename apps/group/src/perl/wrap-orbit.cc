@@ -17,12 +17,12 @@
 #include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
-#include "polymake/Polynomial.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/SparseVector.h"
 #include "polymake/Vector.h"
+#include "polymake/Polynomial.h"
 #include "polymake/client.h"
 #include "polymake/group/orbit.h"
 
@@ -40,12 +40,19 @@ namespace polymake { namespace group { namespace {
       WrapperReturn( (action_inv<T0>(arg0.get<T1>(), arg1.get<T2>())) );
    };
 
+   template <typename T0, typename T1>
+   FunctionInterface4perl( orbit_representatives_T_X, T0,T1 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturn( (orbit_representatives<T0>(arg0.get<T1>())) );
+   };
+
    template <typename T0, typename T1, typename T2>
    FunctionInterface4perl( orbit_T_X_X, T0,T1,T2 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
       WrapperReturn( (orbit<T0>(arg0.get<T1>(), arg1.get<T2>())) );
    };
 
+   FunctionInstance4perl(orbit_representatives_T_X, Array< int >, perl::Canned< const Array< Array< int > > >);
    FunctionInstance4perl(orbit_T_X_X, on_elements, perl::Canned< const Array< Matrix< Rational > > >, perl::Canned< const SparseVector< Rational > >);
    FunctionInstance4perl(orbit_T_X_X, on_elements, perl::Canned< const Array< Matrix< Rational > > >, perl::Canned< const Vector< Rational > >);
    FunctionInstance4perl(orbit_T_X_X, on_container, perl::Canned< const Array< Array< int > > >, perl::Canned< const Set< int > >);
@@ -59,8 +66,8 @@ namespace polymake { namespace group { namespace {
    FunctionInstance4perl(orbit_T_X_X, on_elements, perl::Canned< const Array< Array< int > > >, perl::Canned< const Vector< int > >);
    FunctionInstance4perl(orbit_T_X_X, on_elements, perl::Canned< const Array< Array< int > > >, perl::Canned< const Matrix< int > >);
    FunctionInstance4perl(orbit_T_X_X, on_container, perl::Canned< const Array< Array< int > > >, perl::Canned< const Polynomial< Rational, int > >);
-   FunctionInstance4perl(orbit_T_X_X, on_container, perl::Canned< const Array< Array< int > > >, perl::Canned< const Monomial< Rational, int > >);
    FunctionInstance4perl(action_T_X_X, on_container, perl::Canned< const Array< int > >, perl::Canned< const Array< int > >);
    FunctionInstance4perl(action_inv_T_X_X, on_container, perl::Canned< const Array< int > >, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(orbit_T_X_X, on_nonhomog_container, perl::Canned< const Array< Array< int > > >, perl::Canned< const Vector< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

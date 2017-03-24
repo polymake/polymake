@@ -80,7 +80,11 @@ UserFunction4perl("# @category Producing a graph\n"
                   "#   how many times to try to make a connected random graph before giving up."
                   "# @option Int seed controls the outcome of the random number generator;"
                   "#   fixing a seed number guarantees the same outcome."
-                  "# @return Graph",
+                  "# @return Graph"
+                  "# @example The following produces a connected graph on 10 nodes using a specific seed for a random graph model, where an edge between two nodes occurs with probabilty 0.1."
+                  "# > $g = random_graph(10,p=>0.1,try_connected=>1,max_attempts=>10,seed=>100000);"
+                  "# > print $g->N_EDGES;"
+                  "# | 9",
                   &random_graph, "random_graph($ { p => 1/2, try_connected => 1, max_attempts => 1000, seed => undef } )");
 
 

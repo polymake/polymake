@@ -33,9 +33,8 @@ namespace polymake { namespace fan {
       const IncidenceMatrix<> MaxCones1=f_in1.give("MAXIMAL_CONES"),
 	MaxCones2=f_in2.give("MAXIMAL_CONES");
 
-      IncidenceMatrix<> MaxCones_out(MaxCones1.rows() * MaxCones2.rows(), MaxCones1.cols() + MaxCones2.cols());
-      copy(entire(pm::product(rows(MaxCones1), rows(MaxCones2), operations::concat())),
-	   rows(MaxCones_out).begin());
+      IncidenceMatrix<> MaxCones_out(MaxCones1.rows() * MaxCones2.rows(), MaxCones1.cols() + MaxCones2.cols(),
+                                     polymake::product(rows(MaxCones1), rows(MaxCones2), operations::concat()).begin());
 
       f_out.take("N_RAYS") << MaxCones_out.cols();
       f_out.take("MAXIMAL_CONES") << MaxCones_out;

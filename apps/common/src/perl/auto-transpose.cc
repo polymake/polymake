@@ -29,18 +29,16 @@
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( transpose_X8, T0 ) {
+   FunctionInterface4perl( transpose_X32, T0 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturnAnch( 1, (arg0), T(arg0.get<T0>()) );
+      WrapperReturn( (T(arg0.get<T0>())), arg0 );
    };
 
-   FunctionInstance4perl(transpose_X8, perl::Canned< const Matrix< Rational > >);
-   FunctionInstance4perl(transpose_X8, perl::Canned< const Matrix< double > >);
-   FunctionInstance4perl(transpose_X8, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
-   FunctionInstance4perl(transpose_X8, perl::Canned< const Matrix< Integer > >);
-   FunctionInstance4perl(transpose_X8, perl::Canned< const SparseMatrix< int, NonSymmetric > >);
-   FunctionInstance4perl(transpose_X8, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
-   FunctionInstance4perl(transpose_X8, perl::Canned< const pm::ColChain<pm::Matrix<pm::Rational> const&, pm::SingleCol<pm::Vector<pm::Rational> const&> > >);
-   FunctionInstance4perl(transpose_X8, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
+   FunctionInstance4perl(transpose_X32, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(transpose_X32, perl::Canned< const Matrix< double > >);
+   FunctionInstance4perl(transpose_X32, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
+   FunctionInstance4perl(transpose_X32, perl::Canned< const Matrix< Integer > >);
+   FunctionInstance4perl(transpose_X32, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
+   FunctionInstance4perl(transpose_X32, perl::Canned< const SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

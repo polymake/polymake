@@ -82,6 +82,9 @@ namespace pm {
     - Set is a container class for sparse sets of ordered elements.  Data
       representation as a modified kind of AVL tree.
 
+    - PowerSet is a Set of Sets, providing methods for adding elements while
+      preserving subset or superset independence.
+
     @subsection vector_sec Vector Types
 
     The vector class family implement vectors in the usual algebraic notion.

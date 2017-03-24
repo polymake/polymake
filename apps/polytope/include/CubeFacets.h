@@ -158,12 +158,10 @@ protected:
 namespace pm {
 
 template <typename E>
-struct check_iterator_feature<polymake::polytope::CubeFacet_iterator<E>, end_sensitive>
-   : True { };
+struct check_iterator_feature<polymake::polytope::CubeFacet_iterator<E>, end_sensitive> : std::true_type { };
 
 template <typename E>
-struct check_iterator_feature<polymake::polytope::CubeFacets_iterator<E>, end_sensitive>
-   : True { };
+struct check_iterator_feature<polymake::polytope::CubeFacets_iterator<E>, end_sensitive> : std::true_type { };
 }
 
 #endif // POLYMAKE_POLYTOPE_CUBE_FACETS_H

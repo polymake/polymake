@@ -38,8 +38,7 @@ perl::Object rss_associahedron(const int n)
          if (i!=1 || j!=n) {
             I(k,0) = -(i-j)*(i-j);
             I(k,i) = -1; I(k,j) = 1;
-            std::ostringstream os; os << i << "," << j;
-            facet_labels[k] = os.str();
+            facet_labels[k] = std::to_string(i) + "," + std::to_string(j);
             ++k;
          }
       }

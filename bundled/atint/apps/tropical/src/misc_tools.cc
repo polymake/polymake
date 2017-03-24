@@ -17,7 +17,7 @@
 	---
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
-	Implementations of miscelleaneous tools
+	Implementations of miscellaneous tools
 	*/
 
 #include "polymake/client.h"
@@ -27,7 +27,6 @@
 #include "polymake/Rational.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/linalg.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/thomog.h"
 #include "polymake/tropical/morphism_values.h"
 #include "polymake/tropical/homogeneous_convex_hull.h"
@@ -35,83 +34,38 @@
 #include "polymake/tropical/misc_tools.h"
 
 
-namespace polymake { namespace tropical { 
+namespace polymake { namespace tropical {
 
-    using namespace atintlog::donotlog;
-    //using namespace atintlog::dolog;
-//     using namespace atintlog::dotrace;
 	
-	typedef std::pair<Matrix<Rational>, Matrix<Rational> > matrix_pair;
+	typedef std::pair<Matrix<Rational>, Matrix<Rational>> matrix_pair;
 
-
-	std::pair<Set<int>, Set<int> > far_and_nonfar_vertices(const Matrix<Rational> &m) {
-		Set<int> nonfar;
-		Set<int> far;
-		for(int r = 0; r < m.rows(); r++) {
-			(m(r,0) == 0 ? far : nonfar) += r;
-		}
-		return std::pair<Set<int>,Set<int> >(far,nonfar);
-	}
-
-
-	IncidenceMatrix<> all_cones_as_incidence(perl::Object complex) {
-		Array<IncidenceMatrix<> > all_cones = complex.give("CONES");
-		if(all_cones.size() == 0) return IncidenceMatrix<>();
-		IncidenceMatrix<> result(0,all_cones[0].cols());
-		for(int i = 0; i < all_cones.size(); i++) {
-			result /= all_cones[i];
-		}
-		return result;
-	}
-
-
-	Vector<Set<int> > incMatrixToVector(const IncidenceMatrix<> &i) {
-		Vector<Set<int> > result;
-		for(int r = 0; r < i.rows(); r++) {
-			result |= i.row(r);
-		}
-		return result;
-	}
-
-
-	Array<Integer> randomInteger(const int& max_arg, const int &n) {
-		static Integer upperBound = 0;
-		static UniformlyRandomRanged<Integer> rg(max_arg);
-		if(max_arg != upperBound)  {
-			rg = UniformlyRandomRanged<Integer>(max_arg);
-			upperBound = max_arg;
-		}
-		Array<Integer> result(n);
-		for(int i = 0; i < n; i++) {
-			result[i] = rg.get();
-		}
-		return result;
+	IncidenceMatrix<> all_cones_as_incidence(perl::Object complex)
+        {
+          Array<IncidenceMatrix<>> all_cones = complex.give("CONES");
+          if (all_cones.size() == 0) return IncidenceMatrix<>();
+          return IncidenceMatrix<>(rowwise(), all_cones);
 	}
 
 	Matrix<Rational> binaryMatrix(int n) {
-		Matrix<Rational> result(0,n);
-		result /= (- ones_vector<Rational>(n));
+		ListMatrix<Vector<Rational> > result(0,n);
+      Vector<Rational> prev_row = -ones_vector<Rational>(n);
+		result /= prev_row;
 		//Now increase the last row of result by "one" in each iteration and append the new row to result
-		Integer iterations = pow(2,n)-1;
-		int i = 1;
-		while(i <= iterations) {
+		Integer iterations = Integer::pow(2,n)-1;
+		for(int i = 1; i <= iterations; i++) {
 			//Find the first -1-entry
-			int index = 0;
-			while(result(i-1,index) == 1) { index++;}
-			//Now toggle this and all preceding entries
-			Vector<Rational> newrow(result.row(i-1));
-			newrow[index] = 1;
-			for(int j = 0; j < index; j++) newrow[j] = -1;
-			result /= newrow;
-			i++;
-		}
-		return result;
-	}
-
-	int binaryIndex(Vector<Rational> v) {
-		int result = 0;
-		for(int i = 0; i < v.dim(); i++) {
-			if(v[i] == 1) result += pow(2,i);
+			Vector<Rational> newrow(prev_row);
+         auto neg_it = find_in_range_if( entire(newrow), operations::negative());
+			//Now toggle this and all previous entries
+         auto nr_it = entire(newrow);
+         while(nr_it != neg_it) {
+            *nr_it = -1;
+            ++nr_it;
+         }
+         *nr_it = 1;
+         result /= newrow;
+         prev_row = newrow;
+			//i++;
 		}
 		return result;
 	}
@@ -127,11 +81,11 @@ namespace polymake { namespace tropical {
 	  */
 	perl::ListReturn computeFunctionLabels(perl::Object domain, Matrix<Rational> ray_values, Matrix<Rational> lin_values, bool values_are_homogeneous) {
 		//Extract values
-		Matrix<Rational> rays = domain.give("SEPARATED_VERTICES");
-		rays = tdehomog(rays,0);
-		IncidenceMatrix<> cones = domain.give("SEPARATED_MAXIMAL_POLYTOPES");
-		Matrix<Rational> lineality = domain.give("LINEALITY_SPACE");
-		lineality = tdehomog(lineality,0);
+		const Matrix<Rational> &rays_ref = domain.give("SEPARATED_VERTICES");
+		const Matrix<Rational> rays = tdehomog(rays_ref,0);
+		const IncidenceMatrix<> &cones = domain.give("SEPARATED_MAXIMAL_POLYTOPES");
+		const Matrix<Rational> &lineality_ref = domain.give("LINEALITY_SPACE");
+		const Matrix<Rational> lineality = tdehomog(lineality_ref,0);
 
 		if(values_are_homogeneous) {
 			ray_values = tdehomog(ray_values,0);
@@ -140,45 +94,42 @@ namespace polymake { namespace tropical {
 
 		perl::ListReturn result;
 
-		for(int mc = 0; mc < cones.rows(); mc++) {
-			//dbgtrace << "Computing representation of cone " << mc << endl;
+		for (auto mc = entire(rows(cones)); !mc.at_end(); ++mc) {
 			Matrix<Rational> matrix;
 			Vector<Rational> translate;
-			computeConeFunction(rays.minor(cones.row(mc),All), lineality, ray_values.minor(cones.row(mc),All), lin_values, translate, matrix);
+			computeConeFunction(rays.minor(*mc,All), lineality, ray_values.minor(*mc,All), lin_values, translate, matrix);
 
 			matrix = thomog(matrix,0,false);
 			translate = thomog_vec(translate,0,false);
 
-			std::ostringstream sstream;
-			pm::PlainPrinter<> rep(sstream);
-			if(matrix.rows() > 1) {
-				rep << "(" << translate << ")" << " + ";
-				for(int i = 0; i < matrix.rows(); i++) {
-					rep << "[" << matrix.row(i) << "]";
-				}
+			std::ostringstream rep;
+			if (matrix.rows() > 1) {
+                          wrap(rep) << "(" << translate << ")" << " + ";
+                          for (auto i = entire(rows(matrix)); !i.at_end(); ++i)
+                            wrap(rep) << "[" << (*i) << "]";
 			}
 			//We have a special representation format for functions to R
 			else {
 				bool hadnonzeroterm = false;
-				for(int i = 0; i < matrix.cols(); i++) {
-					if(matrix(0,i) != 0) {
-						if(hadnonzeroterm) rep << " + ";
+				for (int i = 0; i < matrix.cols(); i++) {
+					if (matrix(0,i) != 0) {
+						if (hadnonzeroterm) rep << " + ";
 						hadnonzeroterm = true;
-						if(matrix(0,i) < 0) rep << "(" << matrix(0,i) << ")";
-						else rep << matrix(0,i);
+						if (matrix(0,i) < 0)
+                                                  rep << "(" << matrix(0,i) << ")";
+						else
+                                                  rep << matrix(0,i);
 						rep << "*x_" << (i+1);
 					}
 				}
-				if(translate[0] < 0 && hadnonzeroterm) rep << " - " << (-translate[0]);
-				if(translate[0] > 0 && hadnonzeroterm) rep << " + " << translate[0];
-				if(!hadnonzeroterm) rep << translate[0];
+				if (translate[0] < 0 && hadnonzeroterm) rep << " - " << (-translate[0]);
+				if (translate[0] > 0 && hadnonzeroterm) rep << " + " << translate[0];
+				if (!hadnonzeroterm) rep << translate[0];
 			}
-			result << sstream.str();
-
+			result << rep.str();
 		}
 
 		return result;
-
 	}
 
 
@@ -186,7 +137,7 @@ namespace polymake { namespace tropical {
 	bool contains_point(perl::Object complex, Vector<Rational> point) {
 
 		//Special case: Empty cycle
-		if(CallPolymakeFunction("is_empty",complex))
+		if (call_function("is_empty", complex))
 			return false;
 
 		//Extract values

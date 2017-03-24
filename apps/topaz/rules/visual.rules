@@ -114,8 +114,12 @@ object SimplicialComplex {
 # the [[DUAL_GRAPH]]. Additional to the primal and dual edges, there is
 # an edge between a primal and a dual node iff the primal node represents
 # a vertex of the corresponding facet of the dual node.
-# **FIXME:** temporary
-property MIXED_GRAPH : EdgeWeightedGraph;
+
+property MIXED_GRAPH : Graph<Undirected> {
+
+   # Associated edge weights.
+   property EDGE_WEIGHTS : EdgeMap<Undirected,Float> : construct(ADJACENCY);
+}
 
 
 rule MIXED_GRAPH.ADJACENCY, MIXED_GRAPH.EDGE_WEIGHTS : FACETS, GRAPH.ADJACENCY, DUAL_GRAPH.ADJACENCY, DIM {
@@ -194,6 +198,7 @@ user_method VISUAL_DUAL_GRAPH(%Visual::Graph::decorations, { seed => undef }) {
 # @category Visualization
 # Uses the spring embedder to visualize the [[MIXED_GRAPH]].
 # @option Int seed  random seed value for the string embedder
+# @return Visual::Container
 
 user_method VISUAL_MIXED_GRAPH(%Visual::Graph::decorations, { seed => undef }) {
    my ($this, $decor, $seed)=@_;
@@ -295,79 +300,78 @@ user_method FACES($ %Visual::Polygon::decorations) {
 }
 
 # Add the [[SimplicialComplex::MORSE_MATCHING|MORSE_MATCHING]] to the visualization of the [[SimplicialComplex]].
-user_method MORSE_MATCHING(%Visual::Graph::decorations) {
-   my ($this, $decor)=@_;
-   my $complex = $this->SimplicialComplex;
-   my @mm = @{$complex->MORSE_MATCHING};
-   my $complex_dim = $complex->DIM;
-   my @vertices = @{$this->elements->[-1]->Coord};
-   my $dim = 0;
-   my @dims = split(/\s+/,$mm[0]);
-   shift @dims;
-   shift @mm;
-   my @graph;
-   my $i = 0;
-   my %arrow_colors;
+#user_method MORSE_MATCHING(%Visual::Graph::decorations) {
+#   my ($this, $decor)=@_;
+#   my $complex = $this->SimplicialComplex;
+#   my @mm = @{$complex->MORSE_MATCHING};
+#   my $complex_dim = $complex->DIM;
+#   my @vertices = @{$this->elements->[-1]->Coord};
+#   my $dim = 0;
+#   my @dims = split(/\s+/,$mm[0]);
+#   shift @dims;
+#  shift @mm;
+#   my @graph;
+#   my $i = 0;
+#   my %arrow_colors;
+#
+#   my @colors;
+#   my @rgb_1 = split(/\s+/,$Visual::Color::morse_matching_dim_1);
+#   my @rgb_DIM = split(/\s+/,$Visual::Color::morse_matching_dim_DIM);
+#   for (my $d=0; $d<$complex_dim; ++$d) {
+#     my @this_color;
+#     for (my $j=0; $j<3; ++$j) {
+#       $this_color[$j] = int( ($d*$rgb_1[$j]+($complex_dim-1-$d)*$rgb_DIM[$j])/($complex_dim-1) );
+#     }
+#     push(@colors,join(" ",@this_color));
+#   }
+#
+#   my @barycenters;
+#   foreach my $line (@mm) {
+#      ++$dim if ($i+1 >= $dims[$dim]);
+#      my $barycenter;
+#      chomp $line;
+#      my ($face, $edges) = ($line =~ m/^<?\(\{(\d+(?:\s+\d+)*)\}\s+{((?:\(\d+\s+[01]\)\s*)+)?}\)$/);
+#      next if($face eq "");
+#      my @face = split(/\s+/,$face);
+#      $barycenters[$i] = barycenter(@vertices[@face]);
+#      my @edges = ($edges =~ m/\(\d+\s+[01]\)/g);
+#      foreach my $edge(@edges) {
+#         my ($to_node, $matched) = ($edge =~ m/\((\d+)\s+([01])\)/);
+#         if ($matched) {
+#            $graph[$i] = "{".($to_node-1)."}";
+#            $arrow_colors{"$i ".($to_node-1)} = $colors[$dim-1];
+#           last;
+#         } else {
+#            $graph[$i] = "{}";
+#         }
+#      }
+#     ++$i;
+#   }
+#   $this->defaults->{FacetStyle} ||= "transparency 0.5";
+#   my $mmatching = new Visual::Graph(
+#                                     Name => "MORSE_MATCHING of " . $this->SimplicialComplex->name,
+#                                     Graph => \@graph,
+#                                    Coord => \@barycenters,
+#                                     Directed => 1,
+#                                     NodeStyle => "hidden",
+#                                     EdgeColor => \%arrow_colors,
+#                                     $decor
+#                                    );
+#   compose($this,$mmatching);
+#}
 
-   my @colors;
-   my @rgb_1 = split(/\s+/,$Visual::Color::morse_matching_dim_1);
-   my @rgb_DIM = split(/\s+/,$Visual::Color::morse_matching_dim_DIM);
-   for (my $d=0; $d<$complex_dim; ++$d) {
-     my @this_color;
-     for (my $j=0; $j<3; ++$j) {
-       $this_color[$j] = int( ($d*$rgb_1[$j]+($complex_dim-1-$d)*$rgb_DIM[$j])/($complex_dim-1) );
-     }
-     push(@colors,join(" ",@this_color));
-   }
-
-   my @barycenters;
-   foreach my $line (@mm) {
-      ++$dim if ($i+1 >= $dims[$dim]);
-      my $barycenter;
-      chomp $line;
-      my ($face, $edges) = ($line =~ m/^<?\(\{(\d+(?:\s+\d+)*)\}\s+{((?:\(\d+\s+[01]\)\s*)+)?}\)$/);
-      next if($face eq "");
-      my @face = split(/\s+/,$face);
-      $barycenters[$i] = barycenter(@vertices[@face]);
-      my @edges = ($edges =~ m/\(\d+\s+[01]\)/g);
-      foreach my $edge(@edges) {
-         my ($to_node, $matched) = ($edge =~ m/\((\d+)\s+([01])\)/);
-         if ($matched) {
-            $graph[$i] = "{".($to_node-1)."}";
-            $arrow_colors{"$i ".($to_node-1)} = $colors[$dim-1];
-            last;
-         } else {
-            $graph[$i] = "{}";
-         }
-      }
-      ++$i;
-   }
-   $this->defaults->{FacetStyle} ||= "transparency 0.5";
-   my $mmatching = new Visual::Graph(
-                                     Name => "MORSE_MATCHING of " . $this->SimplicialComplex->name,
-                                     Graph => \@graph,
-                                     Coord => \@barycenters,
-                                     Directed => 1,
-                                     NodeStyle => "hidden",
-                                     EdgeColor => \%arrow_colors,
-                                     $decor
-                                    );
-   compose($this,$mmatching);
-}
-
-
-sub barycenter(@) {
-   my @vertices = @_;
-   my @barycenter;
-   foreach my $vertex (@vertices) {
-      my @vertex = split(/\s+/,$vertex);
-      for ( my $j = 0; $j <= $#vertex; ++$j) {
-         $barycenter[$j] += $vertex[$j];
-      }
-   }
-   map { $_ /= (scalar @vertices) } @barycenter;
-   return join(" ",@barycenter);
-}
+#sub barycenter(@) {
+#   my @vertices = @_;
+#   my @barycenter;
+#   foreach my $vertex (@vertices) {
+#      my @vertex = split(/\s+/,$vertex);
+#      for ( my $j = 0; $j <= $#vertex; ++$j) {
+#         $barycenter[$j] += $vertex[$j];
+#      }
+#   }
+#   map { $_ /= (scalar @vertices) } @barycenter;
+#   return join(" ",@barycenter);
+#}
 
 object SimplicialComplex {
 
@@ -376,7 +380,8 @@ object SimplicialComplex {
 # @option Int seed  random seed value for the node placement
 # @return Visual::SimplicialComplexLattice
 
-user_method VISUAL_FACE_LATTICE(%Visual::Lattice::decorations, { seed => undef }) : HASSE_DIAGRAM {
+user_method VISUAL_FACE_LATTICE(%Visual::Lattice::decorations, { seed => undef }) : \
+            HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    my ($this, $decor, $seed)=@_;
    $decor->{Name} ||= $this->name;
    visualize( new Visual::SimplicialComplexLattice( Name => "Face lattice of ".$this->name,
@@ -388,7 +393,7 @@ user_method VISUAL_FACE_LATTICE(%Visual::Lattice::decorations, { seed => undef }
 
 }
 
-package Visual::SimplicialComplexLattice;
+# package Visual::SimplicialComplexLattice;
 
 ### FIXME: MORSE_MATCHING not migrated yet.
 # Add the [[SimplicialComplex.MORSE_MATCHING]] to the visualization of the face lattice of the simplicial complex.
@@ -400,31 +405,32 @@ package Visual::SimplicialComplexLattice;
 #   visualize($self);
 #}
 
-
+### FIXME: #967
 # Add a subcomplex with different graphical attributes.
 # @param String property name of the subcomplex property (to be changed in the near future)
-user_method SUBCOMPLEX($ %Visual::Lattice::decorations) {
-   my ($self, $subcomplex, $decor)=@_;
-   if (!ref($subcomplex)) {
-      $subcomplex=$self->SimplicialComplex->give($subcomplex);
-   }
-   $decor->{NodeColor} ||= $Visual::Color::distinguished_subcomplex;
-   $decor->{EdgeColor} ||= $decor->{NodeColor};
-   $self->add_subcomplex($self->SimplicialComplex->HASSE_DIAGRAM, $subcomplex, $decor);
-   visualize($self);
-}
+#user_method SUBCOMPLEX($ %Visual::Lattice::decorations) {
+#   my ($self, $subcomplex, $decor)=@_;
+#   if (!ref($subcomplex)) {
+#      $subcomplex=$self->SimplicialComplex->give($subcomplex);
+#   }
+#   $decor->{NodeColor} ||= $Visual::Color::distinguished_subcomplex;
+#   $decor->{EdgeColor} ||= $decor->{NodeColor};
+#   $self->add_subcomplex($self->SimplicialComplex->HASSE_DIAGRAM, $subcomplex, $decor);
+#   visualize($self);
+#}
 
+### FIXME: #967
 # Add distinguished faces with different graphical attributes //NodeColor// and //NodeStyle//.
 # @param Array<Set> faces (to be changed in the near future)
-user_method FACES($ %Visual::Lattice::decorations) {
-   my ($self, $faces, $decor)=@_;
-   if (!ref($faces)) {
-      $faces=$self->SimplicialComplex->give($faces);
-   }
-   $decor->{NodeColor} ||= $Visual::Color::distinguished_face;
-   $self->add_faces($self->SimplicialComplex->HASSE_DIAGRAM, $faces, $decor);
-   visualize($self);
-}
+#user_method FACES($ %Visual::Lattice::decorations) {
+#   my ($self, $faces, $decor)=@_;
+#   if (!ref($faces)) {
+#      $faces=$self->SimplicialComplex->give($faces);
+#   }
+#   $decor->{NodeColor} ||= $Visual::Color::distinguished_face;
+#   $self->add_faces($self->SimplicialComplex->HASSE_DIAGRAM, $faces, $decor);
+#   visualize($self);
+#}
 
 
 # Local Variables:

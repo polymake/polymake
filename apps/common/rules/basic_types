@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -66,6 +66,8 @@ declare property_type String : c++ (builtin => 'std::string') {
    }
 
    type_method equal { $_[1] eq $_[2] }
+
+   type_method XMLdatatype { "text-pattern: \\S+|'.*'" }
 }
 
 ##################################################################################
@@ -84,6 +86,8 @@ declare property_type Int : c++ (builtin => 'int') {
    type_method parse { extract_integer($_[1]) }
 
    type_method isa { is_integer($_[1]) }
+
+   type_method XMLdatatype { "integer" }
 }
 
 # @category Basic Types
@@ -111,6 +115,8 @@ declare property_type Bool : c++ (builtin => 'bool') {
    type_method isa { is_boolean($_[1]) }
 
    type_method toString { $_[1] ? "true" : "false" }
+
+   type_method XMLdatatype { "boolean" }
 }
 
 # @category Basic Types
@@ -125,6 +131,9 @@ declare property_type Float : upgrades(Int) : c++ (builtin => 'double') {
 
    type_method equal {
       my ($proto, $a, $b)=@_;
+      if (isinf($a) || isinf($b)) {
+         return isinf($a) == isinf($b);
+      }
       my $max=max(abs($a), abs($b));
       $max<=1e-7 || abs($a-$b)<=1e-7*$max;
    }
@@ -136,6 +145,11 @@ declare property_type Float : upgrades(Int) : c++ (builtin => 'double') {
 
    # produce an infinitely large negative value
    user_method minus_inf() { -&inf }
+
+   # the XSD library type allows only INF for infinite values,
+   # while perl prints them as Inf and c++ library as inf
+   # fortunately, the input method is case-insensitive
+   type_method XMLdatatype { ("double", "pattern: -?[Ii]nf") }
 }
 
 # @category Artificial
@@ -161,6 +175,8 @@ declare property_type Integer : upgrades(Int) : c++ \
    user_method minus_inf() : static : c++ (name => 'std::numeric_limits<Integer>::min');
 
    use overload '0+' => \&inhibited_num;
+
+   type_method XMLdatatype { "pattern: -?(\\d+|inf)" }
 }
 
 
@@ -173,6 +189,9 @@ namespaces::intercept_const_creation(undef, 'I', sub { (typeof Integer)->constru
 # @param Int n
 # @param Int k
 # @return Int //n// choose //k//
+# @example Print 6 choose 4 like this:
+# > print binomial(6,4);
+# | 15
 user_function binomial(*,$) : c++ (name => 'Integer::binom', include => "polymake/Integer.h");
 
 # @category Basic Types
@@ -193,8 +212,20 @@ declare property_type Rational : upgrades(Integer) : c++ \
    user_method minus_inf() : static : c++ (name => 'std::numeric_limits<Rational>::min');
 
    use overload '0+' => \&inhibited_num;
+
+   type_method XMLdatatype { "pattern: -?(\\d+(/\\d+)?|inf)" }
 }
 
+# @category Basic Types
+# A wrapper for AccurateFloat.
+declare property_type AccurateFloat : c++ \
+   (operators => 'bool neg ! +:int -:int *:int /:int +=:int -=:int *=:int /=:int  \
+                  abs(abs(*)) @compare <=>(compare(*) : method)',         \
+    include => "polymake/AccurateFloat.h") {
+
+#   method construct(*) : c++ : const_creation( );
+
+}  
 
 # @category Arithmetic
 # Returns the __numerator__ of //a// in a reduced representation.
@@ -229,10 +260,10 @@ user_function ceil(*) : c++ (include => "polymake/Rational.h");
 
 # @category Arithmetic
 # Check whether the given number has a finite value.
-# @param Integer a
+# @param SCALAR a
 # @return Bool
 # @example > print isfinite('inf');
-# | 0
+# | 
 # > print isfinite(23);
 # | 1
 
@@ -241,8 +272,8 @@ user_function isfinite(*) : c++ (include => "polymake/Integer.h");
 
 # @category Arithmetic
 # Check whether the given number has an infinite value.  Return -1/+1 for infinity and 0 for all finite values.
-# @param Integer a
-# @return Bool
+# @param SCALAR a
+# @return Int
 # @example > print isinf('inf');
 # | 1
 # > print isinf(23);
@@ -252,9 +283,9 @@ user_function isinf(*) : c++ (include => "polymake/Integer.h");
 
 # @category Arithmetic
 # Computes the ratio of two given integral numbers under the assumption that the dividend is a multiple of the divisor.
-# @param Int a
-# @param Int b a divisor of //a//
-# @return Int
+# @param Integer a
+# @param Integer b a divisor of //a//
+# @return Integer
 # @example  > print div_exact(10,5);
 # | 2
 user_function div_exact(*:int, *:int) : c++ (include => "polymake/numerical_functions.h");
@@ -281,7 +312,7 @@ declare property_type Div<Scalar> : c++ (include => "polymake/numerical_function
 # @param Int a
 # @param Int b
 # @return Div
-# @example $d = div(10,3);
+# @example > $d = div(10,3);
 # > print $d->quot;
 # | 3
 # > print $d->rem;
@@ -419,17 +450,19 @@ user_function convert_to<Target>($) {
 # You can construct the value a+b\(\sqrt r\) via QuadraticExtension(a, b, r) (where a, b, r are of type //Field//).
 # @tparam Field default: [[Rational]]
 declare property_type QuadraticExtension<Field=Rational> : upgrades(Field) : c++ \
-   (operators => '! @arith @compare', include => "polymake/QuadraticExtension.h") {
+   (operators => '! @arith @compare abs(abs(*))', include => "polymake/QuadraticExtension.h") {
 
-    # Construct q=a+b*sqrt(r).
-    # @param Field a
-    # @param Field b
-    # @param Field r
-    method construct(*, *, *) : c++;
+   # Construct q=a+b*sqrt(r).
+   # @param Field a
+   # @param Field b
+   # @param Field r
+   method construct(*, *, *) : c++;
 
-    # construct q=a
-    # @param Field a
-    method construct(type_upgrades_to<Field>) : c++;
+   # construct q=a
+   # @param Field a
+   method construct(type_upgrades_to<Field>) : c++;
+
+   use overload '0+' => \&inhibited_num;
 }
 
 function conjugate(QuadraticExtension) : c++;
@@ -454,7 +487,13 @@ declare property_type ARRAY : c++ (special => 'perl::Array');
 # @category Basic Types
 # Corresponds to the C++ type __std::list__.
 # @tparam Element
-declare property_type List<Element> : c++ (name => 'std::list', include => "polymake/list", operators => '@compare');
+declare property_type List<Element> : c++ (name => 'std::list', include => "polymake/list", operators => '@compare'){
+
+   # Return size of the list in constant time.
+   # @return Int
+   method size() : c++;
+
+}
 
 ##################################################################################
 
@@ -493,79 +532,6 @@ declare property_type Array<Element> : (instanceof Polymake::Core::ObjectType(El
    }
 }
 
-function permuted(Array, *) : c++ (include => "polymake/permutations.h") : builtin_sub {
-   my ($array, $perm)=@_;
-   local $Core::PropertyType::trusted_value=1;
-   $array->type->construct->([ @$array[ @$perm ] ]);
-}
-
-function permuted_inv(Array, *) : c++ (include => "polymake/permutations.h") : builtin_sub {
-   my ($array, $perm)=@_;
-   my @inv; $#inv=$#$array;
-   $inv[$perm->[$_]]=$array->[$_] for 0..$#inv;
-   local $Core::PropertyType::trusted_value=1;
-   $array->type->construct->(\@inv);
-}
-
-function permuted_elements(Array, $) {
-   my ($array, $perm)=@_;
-   local $Core::PropertyType::trusted_value=1;
-   $array->type->construct->([ map { permuted($_,$perm) } @$array ]);
-}
-
-
-# @category Combinatorics
-# Returns the permutation that maps //a// to //b//.
-# @param Array a
-# @param Array b
-# @return Array<Int>
-# @example > $p = find_permutation([1,8,3,4],[3,8,4,1]);
-# > print $p;
-# 2 1 3 0
-
-user_function find_permutation(*,*) : c++ (include => "polymake/permutations.h");
-
-
-# @category Combinatorics
-# Returns the __cycles__ of a permutation given by //p//.
-# @param Array<Int> p
-# @return Array<List<Int>>
-# @example > print permutation_cycles([1,0,3,2]);
-# | {0 1}{2 3}
-
-user_function permutation_cycles(*) : c++ (include => "polymake/permutations.h") : returns(@);
-
-# @category Combinatorics
-# Returns the __sign__ of the permutation given by //p//.
-# @param Array<Int> p
-# @return Int +1 or -1
-# @example > print permutation_sign([1,0,3,2]);
-# | 1
-
-user_function permutation_sign(*) : c++ (include => "polymake/permutations.h");
-
-#FIXME: ticket 725 and 727 return type should be masqueraded Array<Array <Int> > instead of perl-Array
-
-# @category Combinatorics
-# Returns a list of all permutations of the set {0...n-1} as a perl-array
-# @param Int n
-# @return ARRAY
-# @example To store the result in the perl array @a, type this:
-# > @a = all_permutations(3);
-# The array contains pointers to arrays. To access the 0-th pointer, do this:
-# > $a0 = $a[0];
-# To print the 0-th array itself, you have to dereference it as follows:
-# > print @{ $a0 };
-# | 012
-# You can loop through @a by using foreach. The print statement gets the string obtained by dereferencing
-# the current entry concatenated with the string " ".
-# > foreach( @a ){
-# > print @{ $_ }," ";
-# > }
-# | 012 102 201 021 120 210
-
-user_function all_permutations($) : c++  (include => "polymake/permutations.h") : returns(@);
-
 ##################################################################################
 
 # @category Artificial
@@ -576,25 +542,32 @@ declare property_type Iterator<*> : c++ {
 
    # inherit the overloaded ++, bool, and deref
    @ISA=qw( Polymake::Core::CPlusPlus::Iterator );
+
+   # The index of the current element.
+   # If the iterator does not support indexing, returns undef.
+   # @return Int
+   method index() : c++;
 }
 
 # Create an iterator visiting all elements in a container implemented as a C++ object.
 function entire(*:anchor) : c++ : returns(Iterator);
 
 # @category Artificial
-# Iterator over a sequence of objects having indexes.
-# Examples are non-zero elements of a [[SparseVector]] or of a row/column of a [[SparseMatrix]].
-declare property_type SparseIterator<*> : Iterator : c++ {
+# One-dimensional collection of objects, aka container in STL
+# It can be accessed like a perl array.  Sequential iteration via foreach() is always supported;
+# random access might be supported depending on the underlying C++ object.
+declare property_type Container<*> : c++ {
 
-   # The index of the current element.
-   # @return Int
-   method index() : c++;
+   # The number of elements in the container
+   # Note that for a sparse container, this number can be less or equal to scalar(@$container)
+   # because the latter includes all implicit zeros and/or deleted elements
+   method size() : c++;
 }
 
 ##################################################################################
 
 # @category Basic Types
-# Corresponds to the C++ type __std::Pair__.
+# Corresponds to the C++ type __std::pair__.
 # @tparam First
 # @tparam Second
 declare property_type Pair<First,Second> \
@@ -619,14 +592,14 @@ sub deprecated_elem_access {
       $told{"$file#$line"} //=
         warn_print("Deprecated matrix element access operator still in use at $file, line $line.\nPlease replace with method `elem': \$Matrix->elem(\$i,\$j)");
    }
-   my $closure=sub { $obj->elem(@_) };
-   declare_lvalue($closure, 1);
-   $closure;
+   use namespaces::AnonLvalue 1 ();
+   sub { $obj->elem(@_) };
 }
 
 INCLUDE
   set_types
   algebraic_types
+  polynomial_types
   graph_types
 
 

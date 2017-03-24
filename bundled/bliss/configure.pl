@@ -32,7 +32,8 @@ sub proceed {
       my $bliss_lib=Polymake::Configure::get_libdir($bliss_path, "bliss");
       if (-f "$bliss_inc/bliss/graph.hh" && -f "$bliss_lib/libbliss.$Config::Config{dlext}" ) {
          $CXXflags="-I$bliss_inc";
-         $LDflags="-L$bliss_lib -Wl,-rpath,$bliss_lib";
+         $LDflags="-L$bliss_lib";
+         $LDflags.=" -Wl,-rpath,$bliss_lib" unless $bliss_path =~ m|^/usr$|;
       } elsif (-f "$bliss_inc/bliss/graph.hh" && -f "$bliss_lib/libbliss.a" ) {
          $CXXflags="-I$bliss_inc";
          $LDflags="-L$bliss_lib";
@@ -43,34 +44,46 @@ sub proceed {
          die "Invalid installation location of bliss library: header file bliss/graph.hh and/or library libbliss.$Config::Config{dlext} / libbliss.a not found\n";
       }
 
-   } else {
-      # the gmp libary needs to be here because some ubuntu bliss packages are not linked to gmp
-      my $error=Polymake::Configure::build_test_program(<<'---', Libs => "-lbliss -lgmp");
+   }
+   my $testfile = <<'---';
 #include "bliss/graph.hh"
+#include <stdio.h>
 int main() {
   bliss::Graph g1(5);
+  bliss::Stats stats;
+  g1.find_automorphisms(stats,NULL,NULL);
+  stats.print(stdout);
   bliss::Graph g2(5);
-  g1.add_edge(0,1);
+  g2.add_edge(0,1);
   return !g1.cmp(g2);
 }
 ---
-      if ($?==0) {
-         $error=Polymake::Configure::run_test_program();
-         if ($?) {
-            die "Could not run a test program checking for bliss library.\n",
-                "The complete error log follows:\n\n$error\n",
-                "Please investigate the reasons and fix the installation.\n";
-         }
-      } else {
-         die "Could not compile a test program checking for bliss library.\n",
-             "The most probable reasons are that the library is installed at a non-standard location,\n",
-             "is not configured to build a shared module, or missing at all.\n",
+   RETRY:
+   # the gmp libary needs to be here because some (old) ubuntu bliss packages are not linked to gmp
+   # it is also needed if we try with the gmp flag
+   my $error=Polymake::Configure::build_test_program($testfile, CXXflags => $CXXflags, LDflags => $LDflags, Libs => "-lbliss -lgmp");
+   if ($?==0) {
+      $error=Polymake::Configure::run_test_program();
+      # there does not seem to be a way to determine whether bliss was built with BLISS_USE_GMP
+      # but this determines whether some internal variables (Stats::group_size) are gmp based or double
+      # if printing the number of automorphisms of 5 disjoint nodes segfaults or
+      # gives something other than 120 we retry with the flag
+      if ($? or $error !~ /Aut.*120$/m) {
+         $CXXflags .= " -DBLISS_USE_GMP" and goto RETRY
+            unless $CXXflags =~ /-DBLISS_USE_GMP/;
+         die "Could not run a test program checking for bliss library.\n",
              "The complete error log follows:\n\n$error\n",
-             "Please install the library and specify its location using --with-bliss option, if needed.\n",
-             "Please remember to enable shared modules when configuring the bliss library!\n\n",
-	     "If you are running a Debian system and now see some missing GMP functions in the error message,\n",
-	     "then you've got an old broken bliss package;  please upgrade it to the latest version.\n";
+             "Please investigate the reasons and fix the installation.\n";
       }
+   } else {
+      die "Could not compile a test program checking for bliss library.\n",
+          "The most probable reasons are that the library is installed at a non-standard location,\n",
+          "is not configured to build a shared module, or missing at all.\n",
+          "The complete error log follows:\n\n$error\n",
+          "Please install the library and specify its location using --with-bliss option, if needed.\n",
+          "Please remember to enable shared modules when configuring the bliss library!\n\n",
+          "If you are running a Debian system and now see some missing GMP functions in the error message,\n",
+          "then you've got an old broken bliss package;  please upgrade it to the latest version.\n";
    }
 
    $Libs="-lbliss";

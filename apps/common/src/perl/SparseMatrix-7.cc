@@ -26,7 +26,6 @@
 #include "polymake/Rational.h"
 #include "polymake/Vector.h"
 #include "polymake/Integer.h"
-#include "polymake/RationalFunction.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -44,7 +43,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, SparseMatrix< Rational, NonSymmetric >, perl::Canned< const pm::ColChain<pm::Matrix<pm::Rational> const&, pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true> const&> >);
    FunctionInstance4perl(new_X, SparseMatrix< Rational, NonSymmetric >, perl::Canned< const pm::RowChain<pm::ColChain<pm::Matrix<pm::Rational> const&, pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true> const&> const&, pm::ColChain<pm::ColChain<pm::SingleCol<pm::SameElementVector<pm::Rational const&> const&>, pm::RepeatedRow<pm::SameElementVector<pm::Rational const&> > const&> const&, pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true> const&> const&> >);
    FunctionInstance4perl(new_X, SparseMatrix< Rational, NonSymmetric >, perl::Canned< const SparseMatrix< int, NonSymmetric > >);
-   Class4perl("Polymake::common::SparseMatrix_A_UniPolynomial_A_Rational_I_Int_Z_I_Symmetric_Z", SparseMatrix< UniPolynomial< Rational, int >, Symmetric >);
    OperatorInstance4perl(BinaryAssign__or, perl::Canned< Wary< SparseMatrix< int, NonSymmetric > > >, perl::Canned< const Matrix< int > >);
    OperatorInstance4perl(BinaryAssign_div, perl::Canned< Wary< SparseMatrix< int, NonSymmetric > > >, perl::Canned< const pm::ColChain<pm::Matrix<int> const&, pm::Matrix<int> const&> >);
    OperatorInstance4perl(Binary__ne, perl::Canned< const Wary< SparseMatrix< int, NonSymmetric > > >, perl::Canned< const SparseMatrix< int, NonSymmetric > >);

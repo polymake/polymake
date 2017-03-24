@@ -25,16 +25,14 @@ namespace polymake { namespace polytope {
 perl::Object birkhoff(int n, bool even)
 {
    perl::Object p("Polytope<Rational>");
-   std::ostringstream out_name;
-   out_name << "B" << n;
-   p.set_name(out_name.str());
+   p.set_name("B" + std::to_string(n));
    if (even)
       p.set_description() << "Even Birkhoff polytope for n=" << n << endl;
    else
       p.set_description() << "Birkhoff polytope for n=" << n << endl;
 
-   Matrix<int> V((even ? Integer::fac(n)/2 : Integer::fac(n)).to_int(),  n*n+1);
-   Rows< Matrix<int> >::iterator v_i=rows(V).begin();
+   Matrix<int> V(int(even ? Integer::fac(n)/2 : Integer::fac(n)), n*n+1);
+   auto v_i=rows(V).begin();
   
    AllPermutations<> perms(n);
    for (AllPermutations<>::const_iterator perm=entire(perms);  !perm.at_end();  ++perm, ++v_i) {
@@ -45,7 +43,6 @@ perl::Object birkhoff(int n, bool even)
          ++perm;
    }
    p.take("VERTICES") << V;
-   p.take("LINEALITY_SPACE") << Matrix<Rational>();
    return p;
 }
 

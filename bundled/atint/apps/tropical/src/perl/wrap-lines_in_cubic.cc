@@ -22,5 +22,11 @@ namespace polymake { namespace tropical { namespace {
    }
    FunctionWrapperInstance4perl( perl::Object (pm::Polynomial<pm::TropicalNumber<pm::Max, pm::Rational>, int>) );
 
+   FunctionWrapper4perl( perl::Object (pm::Polynomial<pm::TropicalNumber<pm::Max, pm::Rational>, int> const&) ) {
+      perl::Value arg0(stack[0]);
+      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Polynomial< TropicalNumber< Max, Rational >, int > > >() );
+   }
+   FunctionWrapperInstance4perl( perl::Object (pm::Polynomial<pm::TropicalNumber<pm::Max, pm::Rational>, int> const&) );
+
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

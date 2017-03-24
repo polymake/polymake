@@ -95,7 +95,8 @@ UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# Default is the 0-th facet of both.\n"
                   "# "
                   "# The vertices in the selected facets are identified with each other according to their order in the facet\n"
-                  "# (that is, in icreasing index order).  The option //permutation// allows to get an alternative identification. It should specify a\n"
+                  "# (that is, in icreasing index order). The glueing facet iteself is not included in the connected sum.\n"
+                  "#  The option //permutation// allows to get an alternative identification. It should specify a\n"
                   "# permutation of the vertices of the second facet.\n"
                   "# "
                   "# The vertices of the new complex get the original labels with ''_1'' or ''_2'' appended, according to the input complex\n"
@@ -105,8 +106,12 @@ UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# @param Int f1 default: 0"
                   "# @param Int f2 default: 0"
                   "# @option Array<Int> permutation"
-                  "# @option Bool no_lables"
-                  "# @return SimplicialComplex",
+                  "# @option Bool no_labels"
+                  "# @return SimplicialComplex"
+                  "# @example Glueing together two tori to make a genus 2 double torus, rotating the second one clockwise:"
+                  "# > $cs = connected_sum(torus(),torus(),permutation=>[1,2,0]);"
+                  "# > print $cs->SURFACE.','.$cs->GENUS;"
+                  "# | 1,2",
                   &connected_sum_complex,"connected_sum(SimplicialComplex SimplicialComplex; $=0,$=0, { permutation => undef, no_labels => 0 })");
 } }
 

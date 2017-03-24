@@ -47,13 +47,13 @@ perl::Object facet_to_infinity(perl::Object p_in, const int inf_facet)
                             "# @param Int i the facet index"
                             "# @return Polytope"
                             "# @author Sven Herrmann"
-                            "# @example This generates the polytope that is the positive quadrant in 2-space:"
-                            "# > $p = new Polytope(VERTICES=>[[1,-1,-1],[1,0,1],[1,1,0]]);"
+                            "# @example [prefer cdd] This generates the polytope that is the positive quadrant in 2-space:"
+                            "# > $q = new Polytope(VERTICES=>[[1,-1,-1],[1,0,1],[1,1,0]]);"
                             "# > $pf = facet_to_infinity($q,2);"
                             "# > print $pf->VERTICES;"
-                            "# | 1 0 0"
+                            "# | 0 -1 -1"
                             "# | 0 0 1"
-                            "# | 0 1 0",
+                            "# | 1 0 1",
                             "facet_to_infinity<Scalar>(Polytope<Scalar> $)");
 } }
 

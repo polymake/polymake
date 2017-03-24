@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,12 +16,6 @@
 
 #include "polymake/perl/Ext.h"
 
-#if PerlVersion < 5120
-# define LineNumCorr +1
-#else
-# define LineNumCorr
-#endif
-
 MODULE = Polymake::Core::Shell          PACKAGE = Polymake::Core::Shell
 
 PROTOTYPES: DISABLE
@@ -33,7 +27,24 @@ PPCODE:
    if (PL_parser->lex_brackets==0 && PL_parser->lex_state==LEX_NORMAL && PL_parser->expect==XSTATE)
       XPUSHs(&PL_sv_undef);
    else
-      XPUSHs(sv_2mortal(newSViv(CopLINE(&PL_compiling) LineNumCorr)));
+      XPUSHs(sv_2mortal(newSViv(CopLINE(&PL_compiling))));
+}
+
+void
+enforce_scalar_context()
+PPCODE:
+{
+   // visit all top-level ENTERSUB OPs and make them believe they are running in scalar context
+   // this is necessary for running test code snippets which may contain VISUAL calls
+   // current OP is supposed to be an ENTERSUB followed by a NEXTSTATE
+   OP* o;
+   for (o=PL_op->op_next; OpHAS_SIBLING(o); o=OpSIBLING(o)) {
+      OP* sub_op= o->op_type == OP_NULL ? cUNOPo->op_first : o;
+      if (sub_op->op_type == OP_ENTERSUB &&
+          (sub_op->op_flags & OPf_WANT) == OPf_WANT_VOID) {
+         sub_op->op_flags ^= OPf_WANT_SCALAR | OPf_WANT_VOID;
+      }
+   }
 }
 
 BOOT:

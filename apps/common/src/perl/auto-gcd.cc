@@ -16,15 +16,16 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Integer.h"
+#include "polymake/Matrix.h"
+#include "polymake/Rational.h"
+#include "polymake/RationalFunction.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/Vector.h"
 #include "polymake/client.h"
 #include "polymake/linalg.h"
-#include "polymake/Matrix.h"
-#include "polymake/Integer.h"
-#include "polymake/Vector.h"
-#include "polymake/Rational.h"
-#include "polymake/SparseMatrix.h"
-#include "polymake/IncidenceMatrix.h"
-#include "polymake/RationalFunction.h"
+#include "polymake/numerical_functions.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -40,11 +41,13 @@ namespace polymake { namespace common { namespace {
       WrapperReturn( gcd(arg0.get<T0>(), arg1.get<T1>()) );
    };
 
-   FunctionInstance4perl(gcd_X, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer>&>, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(gcd_X, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer>&>, pm::Series<int, true>> >);
    FunctionInstance4perl(gcd_X, perl::Canned< const Vector< Integer > >);
    FunctionInstance4perl(gcd_X_X, perl::Canned< const Integer >, perl::Canned< const Integer >);
    FunctionInstance4perl(gcd_X_X, long, perl::Canned< const Integer >);
    FunctionInstance4perl(gcd_X, perl::Canned< const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::Integer, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> >&, pm::NonSymmetric> >);
    FunctionInstance4perl(gcd_X_X, perl::Canned< const UniPolynomial< Rational, int > >, perl::Canned< const UniPolynomial< Rational, int > >);
+   FunctionInstance4perl(gcd_X_X, long, long);
+   FunctionInstance4perl(gcd_X, perl::Canned< const Vector< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

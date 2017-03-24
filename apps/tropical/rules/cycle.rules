@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2014
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -35,6 +35,15 @@ object Cycle {
 		}
 		$this->VERTICES = $m;
 	}
+
+        rule RaysPerm.PERMUTATION : RaysPerm.PROJECTIVE_VERTICES, PROJECTIVE_VERTICES {
+           $this->RaysPerm->PERMUTATION=find_matrix_row_permutation($this->RaysPerm->PROJECTIVE_VERTICES, $this->PROJECTIVE_VERTICES);
+        }
+
+        rule PROJECTIVE_VERTICES : RaysPerm.PROJECTIVE_VERTICES, RaysPerm.PERMUTATION {
+           $this->PROJECTIVE_VERTICES=permuted_rows($this->RaysPerm->PROJECTIVE_VERTICES, $this->RaysPerm->PERMUTATION);
+        }
+        weight 1.10;
 
 	# @Category Weights and lattices
 	# These are the integer weights associated to the maximal cells of the complex.
@@ -73,14 +82,11 @@ object Cycle {
 	}
 	weight 1.10;
 
-
-	declare permutation CodimPerm {
-
-		property PERMUTATION : Array<Int>;
-	}
+        # permuting [[CODIMENSION_ONE_POLYTOPES]]
+	permutation CodimPerm : PermBase;
 
 	rule CodimPerm.PERMUTATION : CodimPerm.CODIMENSION_ONE_POLYTOPES, CODIMENSION_ONE_POLYTOPES {
-		$this->CodimPerm->PERMUTATION=find_permutation((new Array<Set<Int> >(rows($this->CodimPerm->CODIMENSION_ONE_POLYTOPES))), (new Array<Set<Int> >(rows($this->CODIMENSION_ONE_POLYTOPES))));
+		$this->CodimPerm->PERMUTATION=find_permutation((new Array<Set<Int>>(rows($this->CodimPerm->CODIMENSION_ONE_POLYTOPES))), (new Array<Set<Int>>(rows($this->CODIMENSION_ONE_POLYTOPES))));
 	}
 	weight 5.10;
 
@@ -105,7 +111,7 @@ object Cycle {
 		compute_codimension_one_polytopes($this);
 	}
 	weight 2.10;
-	permutation : CodimPerm;
+	incurs CodimPerm;
 
 
 	# @Category Weights and lattices
@@ -117,11 +123,11 @@ object Cycle {
 	# the saturated lattice of the maximal cell by the saturated lattice of the
 	# codimension one face. It is chosen such that it "points into the maximal cell"
 	# and is only unique modulo the lattice spanned by the codimension one cell.
-	property LATTICE_NORMALS : Map< Pair<Int,Int>, Vector<Integer> > {
+	property LATTICE_NORMALS : Map<Pair<Int,Int>,Vector<Integer>> {
 		
 		method equal {
 			my ($this,$l1,$l2) = @_;
-			return compare_lattice_normals( (new Matrix($this->VERTICES)), (new Matrix($this->LINEALITY_SPACE)), (new IncidenceMatrix($this->CODIMENSION_ONE_POLYTOPES)), $l1,$l2);
+			return compare_lattice_normals($this->VERTICES, $this->LINEALITY_SPACE, $this->CODIMENSION_ONE_POLYTOPES, $l1, $l2);
 		}
 
 	};
@@ -189,6 +195,18 @@ object Cycle {
 	}
 	weight 0.1;
 
+   # @category Weights and lattices
+   # For a onedimensional cycle, this produces the lengths of the [[MAXIMAL_POLYTOPES]], as multiples of the
+   # corresponding [[LATTICE_NORMALS]]. The i-th entry is the length of cell i. For unbounded cells
+   # this number is inf
+   # @return Array<Rational>
+   user_method CURVE_EDGE_LENGTHS : VERTICES, FAR_VERTICES, LATTICE_NORMALS, MAXIMAL_POLYTOPES, MAXIMAL_AT_CODIM_ONE {
+      return cycle_edge_lengths(shift);
+   }
+   precondition : PROJECTIVE_DIM {
+      $this->PROJECTIVE_DIM == 1;
+   }
+
 	# @category Affine and projective coordinates
 	# This produces a version of the cycle in the coordinates of a standard
 	# tropical chart, i.e. one coordinate is set to 0. 
@@ -198,14 +216,18 @@ object Cycle {
 	# 0 to [[AMBIENT_DIM]]-1 and 0 by default.
 	# @return fan::PolyhedralComplex<Rational>
 	user_method affine_chart(;$=0) {
-		my ($this,$chart) = @_;
-		return new fan::PolyhedralComplex(VERTICES=>tdehomog($this->VERTICES,$chart),
-			MAXIMAL_POLYTOPES=>$this->MAXIMAL_POLYTOPES,
-			LINEALITY_SPACE=>tdehomog($this->LINEALITY_SPACE,$chart));
+           my ($this,$chart) = @_;
+           if ($this->FAN_AMBIENT_DIM==0) {
+              $this
+           } else {
+              new fan::PolyhedralComplex(VERTICES=>tdehomog($this->VERTICES,$chart),
+                                         MAXIMAL_POLYTOPES=>$this->MAXIMAL_POLYTOPES,
+                                         LINEALITY_SPACE=>tdehomog($this->LINEALITY_SPACE,$chart));
+           }
 	}
 
 	# @category Weights and lattices
-	# Convenience function to ask for [[LATTICE_NORMALS]]->{new Pair<Int,Int>(i,i)}
+	# Convenience function to ask for [[LATTICE_NORMALS]]->{new Pair<Int,Int>(i,j)}
 	# @param Int i Row index in [[CODIMENSION_ONE_POLYTOPES]].
 	# @param Int j Row index in [[MAXIMAL_POLYTOPES]].
 	# @return Vector<Integer>

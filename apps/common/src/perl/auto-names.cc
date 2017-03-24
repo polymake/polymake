@@ -17,7 +17,6 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/client.h"
-#include "polymake/Ring.h"
 #include "polymake/Rational.h"
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -27,6 +26,5 @@ namespace polymake { namespace common { namespace {
       WrapperReturn( arg0.get<T0>().names() );
    };
 
-   FunctionInstance4perl(names_f1, perl::Canned< const Ring< Rational, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

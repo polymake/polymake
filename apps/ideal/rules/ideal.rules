@@ -19,16 +19,12 @@ object Ideal {
       $this->PRIMARY = 1;
    }
    precondition : PRIME;
+   weight 0.10;
 
    rule PRIMARY : RADICAL.PRIME {
       $this->PRIMARY = $this->RADICAL->PRIME;
    }
-
-   rule RING : GENERATORS {
-      my $gens = $this->GENERATORS;
-      $this->RING = $gens->[0]->get_ring;
-   }
-   precondition : !ZERO;
+   weight 0.10;
 
    rule ZERO : GENERATORS {
       foreach my $p (@{$this->GENERATORS}){
@@ -39,6 +35,15 @@ object Ideal {
       }
       $this->ZERO = 1;
    }
+   weight 1.10;
+
+	rule N_VARIABLES : GENERATORS {
+		$this->N_VARIABLES = $this->GENERATORS->[0]->n_vars();	
+	}
+	precondition : GENERATORS {
+		$this->GENERATORS->size() > 0;
+	}
+	weight 0.10;
 
 }
 
@@ -51,6 +56,16 @@ object Groebner {
          croak ("no term order specified");
       }
    }
+
+   rule INITIAL_FORMS : BASIS, ORDER_VECTOR {
+      $this->INITIAL_FORMS = [ map { $_->initial_form($this->ORDER_VECTOR) } @{$this->BASIS} ];
+   }
+   weight 1.10;
+
+   rule INITIAL_FORMS : BASIS, ORDER_MATRIX {
+      $this->INITIAL_FORMS = [ map { $_->initial_form($this->ORDER_MATRIX->row(0)) } @{$this->BASIS} ];
+   }
+   weight 1.10;
 
 }
 

@@ -1,4 +1,4 @@
-#  copyright (c) 1997-2014
+#  copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -12,7 +12,7 @@
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
-  
+
 object PolyhedralFan {
 
 rule FAN_AMBIENT_DIM : {
@@ -23,7 +23,7 @@ rule FAN_AMBIENT_DIM : {
       $d=$M->cols();
       last;
     }
-  } 
+  }
   $this->FAN_AMBIENT_DIM=$d;
 }
 precondition : defined(RAYS | INPUT_RAYS | LINEALITY_SPACE | INPUT_LINEALITY | FACET_NORMALS | LINEAR_SPAN_NORMALS);
@@ -96,7 +96,7 @@ weight 0.1;
 # If no [[LINEALITY_SPACE]] is given, it is assumed to be trivial.
 # Note: as there is only one target this rule is only called if LINEALITY_SPACE has not been written by the user, but RAYS have been.
 rule LINEALITY_SPACE : RAYS, MAXIMAL_CONES {
-   $this->LINEALITY_SPACE=new Matrix<Scalar>();
+   $this->LINEALITY_SPACE=new Matrix<Scalar>(0, $this->RAYS->cols);
 }
 weight 0.10;
 
@@ -111,7 +111,7 @@ rule MAXIMAL_CONES_COMBINATORIAL_DIMS : COMBINATORIAL_DIM, N_MAXIMAL_CONES {
    $this->MAXIMAL_CONES_COMBINATORIAL_DIMS(temporary)=\@dims;
 }
 precondition : PURE;
-weight 1.10;   
+weight 1.10;
 
 rule COMBINATORIAL_DIM, PURE : MAXIMAL_CONES_COMBINATORIAL_DIMS {
    if ($this->MAXIMAL_CONES_COMBINATORIAL_DIMS->size == 0) {
@@ -173,30 +173,46 @@ rule MAXIMAL_CONES_INCIDENCES : RAYS, MAXIMAL_CONES, FACET_NORMALS, MAXIMAL_CONE
   $this->MAXIMAL_CONES_INCIDENCES=$mci;
 }
 
-rule HASSE_DIAGRAM : MAXIMAL_CONES {
-   $this->HASSE_DIAGRAM=polytope::hasse_diagram($this->MAXIMAL_CONES);
-}
-precondition : COMPLETE;
-weight 6.20;
-
-# FIXME no testcases with non-pointed cones   
-rule HASSE_DIAGRAM : MAXIMAL_CONES, MAXIMAL_CONES_INCIDENCES, MAXIMAL_CONES_COMBINATORIAL_DIMS, COMBINATORIAL_DIM {
-      $this->HASSE_DIAGRAM=hasse_diagram($this->MAXIMAL_CONES,$this->MAXIMAL_CONES_INCIDENCES,$this->MAXIMAL_CONES_COMBINATORIAL_DIMS,$this->COMBINATORIAL_DIM);
+rule HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE : \
+     MAXIMAL_CONES, MAXIMAL_CONES_INCIDENCES, MAXIMAL_CONES_COMBINATORIAL_DIMS, COMBINATORIAL_DIM {
+   $this->HASSE_DIAGRAM=hasse_diagram($this);
 }
 weight 6.50;
 
-rule CONES : HASSE_DIAGRAM, N_RAYS {
-   my $d=$this->HASSE_DIAGRAM->dim;
-   $this->CONES=[ map {
-                     my @rows=map { $this->HASSE_DIAGRAM->FACES->[$_] } @{$this->HASSE_DIAGRAM->nodes_of_dim($_)};
-                     @rows ? new IncidenceMatrix(\@rows, $this->N_RAYS) : new IncidenceMatrix(0, $this->N_RAYS)
-                  } 0..$d-1 ];
+rule HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE : \
+     MAXIMAL_CONES, COMBINATORIAL_DIM {
+   $this->HASSE_DIAGRAM=hasse_diagram($this,1,1);
 }
+precondition : COMPLETE;
+weight 6.10;
 
-rule F_VECTOR : HASSE_DIAGRAM {
-   my $dims = $this->HASSE_DIAGRAM->DIMS;
-   my @f = map { ${$dims}[$_]-${$dims}[$_-1] } 1..$#{$dims};
-   $this->F_VECTOR= $this->HASSE_DIAGRAM->top_node ? \@f : [ reverse @f ];
+rule HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE : \
+     MAXIMAL_CONES, COMBINATORIAL_DIM, MAXIMAL_CONES_INCIDENCES {
+   $this->HASSE_DIAGRAM=hasse_diagram($this,1,0);
+}
+precondition : PURE;
+weight 6.20;
+
+rule MAXIMAL_CONES : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.TOP_NODE {
+   my @cones = map { $this->HASSE_DIAGRAM->DECORATION->[$_]->face } @{$this->HASSE_DIAGRAM->ADJACENCY->in_adjacent_nodes($this->HASSE_DIAGRAM->TOP_NODE)};
+   $this->MAXIMAL_CONES = new IncidenceMatrix(\@cones);
+}
+weight 1.10;
+
+rule CONES : HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE, N_RAYS {
+   my $d=$this->HASSE_DIAGRAM->rank;
+   $this->CONES=[ map {
+                     my @rows=map { $this->HASSE_DIAGRAM->DECORATION->[$_]->face } @{$this->HASSE_DIAGRAM->nodes_of_rank($_)};
+                     @rows ? new IncidenceMatrix(\@rows, $this->N_RAYS) : new IncidenceMatrix(0, $this->N_RAYS)
+                  } 1..$d-1 ];
+}
+weight 1.20;
+
+
+rule F_VECTOR : HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
+   my $rk = $this->HASSE_DIAGRAM->rank();
+   my @f = map { scalar(@{$this->HASSE_DIAGRAM->nodes_of_rank($_)}) } (1 .. $rk-1);
+   $this->F_VECTOR= \@f;
 }
 weight 0.10;
 
@@ -214,7 +230,7 @@ precondition : !DUAL_GRAPH.CONNECTED;
 weight 0.1;
 
 rule COMPLETE, REGULAR :  {
-   $this->REGULAR=0;   
+   $this->REGULAR=0;
    $this->COMPLETE=0;
 }
 precondition : !FULL_DIM;
@@ -260,27 +276,22 @@ rule GRAPH.ADJACENCY : MAXIMAL_CONES {
 	  }
 	}
      }
-   }	
+   }
    $this->GRAPH->ADJACENCY=$G;
 }
 precondition : SIMPLICIAL;
 weight 3.10;
 
-rule DUAL_GRAPH.ADJACENCY : MAXIMAL_CONES{
-   $this->DUAL_GRAPH->ADJACENCY=dual_graph_from_incidence($this->MAXIMAL_CONES);
-}
-weight 3.10;
-
-rule GRAPH.ADJACENCY : HASSE_DIAGRAM {
+rule GRAPH.ADJACENCY : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    $this->GRAPH->ADJACENCY=vertex_graph($this->HASSE_DIAGRAM);
 }
 precondition : FAN_DIM { $this->FAN_DIM>=2 };
 weight 1.20;
 
-rule DUAL_GRAPH.ADJACENCY : HASSE_DIAGRAM {
+rule DUAL_GRAPH.ADJACENCY : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    $this->DUAL_GRAPH->ADJACENCY=facet_graph($this->HASSE_DIAGRAM);
 }
-precondition : FAN_DIM, PURE { $this->PURE && $this->FAN_DIM>=2 };
+precondition : PURE;
 weight 1.20;
 
 rule FAN_DIM = FAN_AMBIENT_DIM;
@@ -329,13 +340,7 @@ rule RAYS, MAXIMAL_CONES, LINEALITY_SPACE : INPUT_RAYS, INPUT_CONES, FAN_AMBIENT
   remove_redundancies($this);
 }
 weight 3.10;
-permutation : RaysPerm;
-
-rule MAXIMAL_CONES : RAYS, INPUT_CONES {
-  remove_redundant_cones($this);
-}
-weight 3.10;
-permutation : RaysPerm;
+incurs RaysPerm;
 
 }
 
@@ -345,7 +350,7 @@ permutation : RaysPerm;
 
 # @category Producing a fan
 # Orthogonally project a pointed fan to a coordinate subspace.
-# 
+#
 # The subspace the fan //P// is projected on is given by indices in the set //indices//.
 # The option //revert// inverts the coordinate list.
 # @param PolyhedralFan P
@@ -363,10 +368,10 @@ user_function projection<Scalar>(PolyhedralFan<Scalar>; $=[ ], { revert=>0 }) {
 # Orthogonally project a fan to a coordinate subspace such that redundant columns are omitted,
 # i.e., the projection becomes full-dimensional without changing the combinatorial type.
 # @param PolyhedralFan P
-# @option Bool relabel copy labels to projection
+# @option Bool no_labels VERTEX_LABELS]] to the projection. default: 0
 # @return PolyhedralFan
-user_function projection_full<Scalar>(PolyhedralFan<Scalar>; {relabel=>0}) { 
-   projection(@_); 
+user_function projection_full<Scalar>(PolyhedralFan<Scalar>; {no_labels=>0}) {
+   projection(@_);
 }
 
 

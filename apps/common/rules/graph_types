@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -36,7 +36,7 @@ declare property_type UndirectedMulti : c++ (special => 'UndirectedMulti', inclu
 declare property_type DirectedMulti : c++ (special => 'DirectedMulti', include => "polymake/Graph.h");
 
 # @category Artificial
-declare property_type EdgeList<*> : c++;
+declare property_type EdgeList<*> : Container : c++;
 
 # @category Artificial
 declare property_type EdgeIterator<*> : Iterator : c++ {
@@ -192,30 +192,20 @@ declare property_type Graph<Dir=Undirected> : c++ (include => "polymake/Graph.h"
    # @return Int
    user_method dim() : c++;
 
+   # permute the nodes
+   # param perm permutation of node indexes
+   user_method permute_nodes(*) : wary : non_const : void : c++;
+
+   # permute the nodes
+   # param perm inverse permutation of node indexes
+   user_method permute_inv_nodes(*) : wary : non_const : void : c++;
+
    # Create a graph with //n// isolated nodes.
    # @param Int n
    method construct(Int) : c++;
 
    # Create a (non-multi) graph with adjacency relation between nodes dictated by the given matrix.
    method construct(IncidenceMatrix) : c++;
-
-   type_method toXML {
-      my ($proto, $g)=splice @_, 0, 2;
-      if ($g->has_gaps) {
-         my ($writer, @attr)=@_;
-         $writer->startTag("m", @attr, dim => $g->dim);
-         local $writer->{"!dim"}=1;
-         my $row_type;
-         for (my $n=entire(common::nodes($g)); $n; ++$n) {
-            my $nodelist=$n->out_adjacent_nodes;
-            ($row_type //= $nodelist->type)->toXML->($nodelist, $writer, i=>$$n);
-         }
-         $writer->endTag("m");
-      } else {
-         my $am=adjacency_matrix($g);
-         $am->type->toXML->($am, @_);
-      }
-   }
 
    method init_node_map(*:lvalue:wary) : void : c++;
 
@@ -233,8 +223,6 @@ declare property_type Graph<Dir=Undirected> : c++ (include => "polymake/Graph.h"
 # @return IncidenceMatrix both rows and columns correspond to the nodes
 user_function adjacency_matrix(Graph:lvalue_opt:anchor) : c++;
 
-function permuted_nodes(Graph, *) : c++;
-
 function renumber_nodes(Graph:anchor) : c++;
 
 
@@ -246,40 +234,14 @@ function renumber_nodes(Graph:anchor) : c++;
 # @return EdgeList
 user_function edges(Graph) : c++ : returns(EdgeList);
 
-# @category Artificial
-declare property_type NodeSet<*> : c++;
-
-# @category Artificial
-declare property_type NodeIterator<*> : Iterator : c++ {
-
-   method out_edges() : c++ : anchor : returns(EdgeList);
-
-   method in_edges() : c++ : anchor : returns(EdgeList);
-
-   method adjacent_nodes() : c++ : anchor;
-
-   method out_adjacent_nodes() : c++ : anchor;
-
-   method in_adjacent_nodes() : c++ : anchor;
-
-   method degree() : c++;
-
-   method in_degree() : c++;
-
-   method out_degree() : c++;
-}
-
-
 # @category Graph Operations
 # Returns the sequence of all valid nodes of a graph.
 # @param Graph graph
-# @return NodeSet
-# @example > print nodes(cycle_graph(5)->ADJACENCY);
-# {0 1 2 3 4}
-
-user_function nodes(Graph:anchor) : c++ : returns(NodeSet);
-
-function entire(NodeSet:anchor) : c++ : returns(NodeIterator);
+# @return Set<Int>
+# @example [application graph]
+# > print nodes(cycle_graph(5)->ADJACENCY);
+# | {0 1 2 3 4}
+user_function nodes(Graph:anchor) : c++ : returns(Container);
 
 # @category Graph Types
 # The common abstract base class for all kinds of associative containers that can be attached to a [[Graph]].
@@ -374,12 +336,14 @@ function createEdgeHashMap<Element,Dir>(Graph<Dir>) { new EdgeHashMap<Dir,Elemen
 # @param Graph graph
 # @param Set set indices of selected nodes
 # @return Graph
-# @example $g = new props::Graph(cycle_graph(5)->ADJACENCY);
+# @example [application graph]
+# > $g = new props::Graph(cycle_graph(5)->ADJACENCY);
 # > $s1 = new Set(1,2,3);
 # > print induced_subgraph($g,$s1);
-# | {2}
-# | {1 3}
-# | {2}
+# | (5)
+# | (1 {2})
+# | (2 {1 3})
+# | (3 {2})
 
 user_function induced_subgraph(Graph:wary:anchor, *:anchor) : c++ ( include => "polymake/IndexedSubgraph.h" );
 
@@ -389,7 +353,8 @@ user_function induced_subgraph(Graph:wary:anchor, *:anchor) : c++ ( include => "
 # @param Graph graph
 # @tparam Coord coordinate type for the resulting matrix, default: [[Int]]
 # @return SparseMatrix<Coord>
-# @example > print node_edge_incidences(cycle_graph(5)->ADJACENCY);
+# @example [application graph]
+# > print node_edge_incidences(cycle_graph(5)->ADJACENCY);
 # | (5) (0 1) (3 1)
 # | (5) (0 1) (1 1)
 # | (5) (1 1) (2 1)

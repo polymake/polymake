@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,14 +16,13 @@
 
 #ifndef POLYMAKE_HUNGARIAN_METHOD_H
 #define POLYMAKE_HUNGARIAN_METHOD_H
-#undef DOMAIN
 
 #include "polymake/client.h"
 #include "polymake/Graph.h"
 #include "polymake/Set.h"
 #include "polymake/Vector.h"
 #include "polymake/Matrix.h"
-#include "polymake/graph/BFSiterator.h"
+#include "polymake/graph/graph_iterators.h"
 
 namespace polymake { namespace graph {
 
@@ -43,38 +42,59 @@ class HungarianMethod;
 template <typename E>
 class HungarianMethod {
 protected:
-   const Matrix<E> weights;
+   Matrix<E> weights;
    const int dim;
 
    class TreeGrowVisitor;
    friend class TreeGrowVisitor;
 
-   Vector<E> a, b, slack, labeledColMin;
+   std::vector<E> a, b, slack, labeledColMin;
    Graph<Directed> equality_subgraph;
    Set<int> exposed_points;
-   Entire<Set<int> >::const_iterator r; /* an iterator over the exposed points */
+   Entire<Set<int> >::const_iterator r;  // an iterator over the exposed points
    int start_node;
-   BFSiterator< Graph<Directed>, Visitor< TreeGrowVisitor > > it; /* helps growing the hungarian trees from a start node */
+   BFSiterator<Graph<Directed>, VisitorTag<TreeGrowVisitor>> it; // helps growing the hungarian trees from a start node
    Graph<Directed> test_graph;
    Matrix<E> wmatrix;
    Set<int> labeled_points;
+   Array<int> matching;
+   const E INF = std::numeric_limits<E>::infinity();
+   bool finished;
+   bool inf_matching;
 
 public: 
    HungarianMethod() {}
     
-   HungarianMethod(const Matrix<E>& weights)  
-      : weights(weights), dim(weights.cols()),
-        a(dim,0), b(dim), 
-        slack(dim,-1), labeledColMin(dim,-1), equality_subgraph(2*dim), 
-        exposed_points(sequence(0,dim)), r(entire(exposed_points)), 
-        start_node(*r), it(equality_subgraph, start_node)
-   {        
+   HungarianMethod(const Matrix<E>& input_weights)  
+      : dim(input_weights.cols())
+      , a(dim, 0)
+      , b(dim)
+      , slack(dim, -1)
+      , labeledColMin(dim, -1)
+      , equality_subgraph(2*dim)
+      , exposed_points(sequence(0,dim))
+      , r(entire(exposed_points))
+      , start_node(*r)
+      , it(equality_subgraph, start_node)
+      , matching(dim)
+      , finished(false)
+      , inf_matching(false)
+   {
+
+      // ensure that the weights are non-negative
+      Vector<E> minvector(dim); int vec_ind = 0;
+      for (auto r = entire(rows(weights)); !r.at_end(); r++, vec_ind++) {
+         minvector[vec_ind] = accumulate(*r, operations::min());
+      }
+
+      weights =  input_weights - repeat_col(minvector,dim);
+
       // Initialisation of vectors for rows and columns
       for ( int j = 0; j < dim; ++j) {
          b[j] = accumulate(weights.col(j), operations::min());
       }
 
-      // Build equality subgraph; it is a bipartite graph with vertex sets {0, ..., n-1} and {n, ..., 2n-1}          
+      // Build equality subgraph; it is a bipartite graph with vertex sets {0, ..., n-1} and {n, ..., 2n-1}
       for ( int j = 0; j < dim; ++j) {
          for ( int i = 0; i < dim; ++i) {
             if ((a[i] + b[j]) == weights[i][j]) {
@@ -82,74 +102,71 @@ public:
             }
          }
       }
-
    }
 
    // This nested class provides the appropriate methods for the required BFS to grow hungarian trees
 protected:
-   class TreeGrowVisitor {
+   class TreeGrowVisitor
+      : public NodeVisitor<> {
+      typedef NodeVisitor<> base_t;
       friend class HungarianMethod;
    protected:
       // label encodes the path in the hungarian trees from an exposed point to the selected node
       std::vector<int> label;
-      std::vector<bool> visited;
       int leaf;
       const int dim;
       const Graph<Directed>* H;
-      Set<int > start_nodes;
+      Set<int> start_nodes;
    public:
       TreeGrowVisitor() {}
 
-      TreeGrowVisitor(const Graph<Directed>& G, int start_node)
-         : label(G.top().dim(), -1), visited(G.top().dim(), false), 
-           dim((G.top().dim() + 1)/2), H(&G), start_nodes()
-      {
-         leaf = -1;
-         start_nodes += start_node;
-         if (!label.empty()){
-            label[start_node] = start_node;
-            visited[start_node] = true;
-         }
-      }
+      TreeGrowVisitor(const Graph<Directed>& G)
+         : base_t(G)
+         , label(G.top().dim(), -1)
+         , leaf(-1)
+         , dim((G.top().dim() + 1)/2)
+         , H(&G)
+      {}
          
+      void clear(const Graph<Directed>&) {}
+
       // This method provides two functionalities: If the search had found a augmenting path and hence the equality subgraph was modified, it initializes a new search. Otherwise only another starting node for the growing of an hungarian tree is set.
-      void reset(const Graph<Directed>&, int start_node) {
-         if( (start_nodes.collect(start_node)) || (leaf > -1) ) reset_values();
-         leaf = -1;
+      bool operator()(int start_node)
+      {
+         if (start_nodes.contains(start_node) || leaf >= 0) {
+            start_nodes.clear();
+            std::fill(label.begin(), label.end(), -1);
+            visited.clear();
+            leaf = -1;
+         }
          label[start_node] = start_node;
-         visited[start_node] = true;
-         start_nodes +=start_node;
+         visited += start_node;
+         start_nodes += start_node;
+         return true;
       }
 
-      void reset_values() {
-         start_nodes.clear();
-         fill(pm::entire(label),-1);
-         fill(pm::entire(visited),false);
-      }
+      bool operator() (int n_from, int n_to)
+      {
+         if (visited.contains(n_to)) return false;
 
-      bool seen(int n) const { return visited[n]; }
-
-      void add(int n, int n_from) {
-         visited[n] = true;
+         visited += n_to;
          // here the label is set during a BFS step in the equality subgraph 
-         if(H->edge_exists(n_from, n)) { 
-            label[n] = n_from; 
+         if (H->edge_exists(n_from, n_to)) { 
+            label[n_to] = n_from;
          } 
          // checking, if n is a leaf and is on the right side and so the path to n is augmenting 
-         if ((n >= dim) && (H->out_degree(n) == 0)) leaf = n;
-      } 
-
-      static const bool check_edges=false;
-
-      void check(int,int) {}
+         if ((n_to >= dim) && (H->out_degree(n_to) == 0)) leaf = n_to;
+         return true;
+      }
 
       const int& operator[] (int n) const { return label[n]; }
-
    };
 
 public:
+   
    // removes in the directed graph G the directed edge with starting point 'start' and end point 'end' and adds the reverse edge
-   void reverse_edge (int start, int end) {
+   void reverse_edge (int start, int end)
+   {
       assert(start >= 0 && end >= 0);
       equality_subgraph.delete_edge(start,end);
       equality_subgraph.add_edge(end,start);
@@ -158,7 +175,8 @@ public:
 
    /* searches in the equality subgraph for an augmenting path starting with the exposed point 'start_node' 
       returns true, if such a path is found, and augments the matching by reversing edges in the equality subgraph. */
-   bool augment() {
+   bool augment()
+   {
       int node = it.node_visitor().leaf;
       int predecessor;
       // Going backwards in the hungarian tree from the leaf which was just found.  
@@ -173,56 +191,76 @@ public:
       // reset iterator over exposed_points 
       r = entire(exposed_points);
       // reset slack to -1 since the equality subgraph has changed 
-      fill(pm::entire(slack),-1);
-      fill(pm::entire(labeledColMin),-1); 
+      std::fill(slack.begin(), slack.end(), -1);
+      std::fill(labeledColMin.begin(), labeledColMin.end(), -1); 
       
       // initialize the growing of hungarian trees if there are still exposed points left 
       if (!r.at_end()) {  
-         it.reset(*r);
+         it.reset(*r); 
          return false;
       }
-      else { return true; }
+      else { return true; } 
    }
 
    // checks for every right node (dual variable b) if the corresponding slack should be adjusted with the left node 'index' (dual variable a); the lowest value is chosen for it.
-   void compare_slack(int index) { 
+   void compare_slack(int index)
+   { 
       E sl;
-      for (int k = 0; k < b.dim(); k++) {
+      for (size_t k = 0; k < b.size(); k++) {
          sl = weights[index][k] - a[index] - b[k];
          if((sl < slack[k] || slack[k] == -1 || slack[k] == 0)) {
-            if(sl > 0) {
-               slack[k] = sl; 
-               if (labeledColMin[k] != 0) {
+            if(sl > 0) { //this excludes the case where sl == 0
+               slack[k] = sl;
+                 if (labeledColMin[k] != 0) {
                   labeledColMin[k] = sl;
-               }
+                  } 
             }
          }
-         if(sl == 0) labeledColMin[k] = 0;
+         if(sl == 0) labeledColMin[k] = 0; // records that (k +dim) is indeed a matched node
       }
    }
 
    // auxiliary method for compare_slack
-   void change_slack(int n) {
-      if (n == start_node) compare_slack(n);               
+   void change_slack(int n)
+   {
+      if (n == start_node) compare_slack(n);
+      // sets new slack if n is a node on the right shore
       if  (n >= dim) {                     
          for (Entire<Graph<Directed>::out_edge_list>::const_iterator e=entire(equality_subgraph.out_edges(n)); !e.at_end(); ++e)
             compare_slack(e.to_node());               
       }  
    }
 
-   // here the dual variables a and b are changed in case that the equality subgraph does not contain enough edges and so a maximal matching is not perfect
-   void modify() {
-      E theta = -1;
-      // theta is the lowest positive value of the weights[i][j], where i corresponds to labeled left nodes and j runs from 0 to dim-1 
-      for (int k = 0; k < dim; k++) {
-         if ((slack[k] > 0) && ((slack[k] < theta) || (theta == -1) ) ) theta = slack[k]; 
+   // auxiliary method to find an infty entry in weights to create a minimizing permutation in the case that it is infty
+   std::pair<int,int> inf_entry() {
+      for (auto i : sequence(0,dim)) {
+         for (auto j : sequence(0,dim)) {
+            if (weights[i][j] == INF) return std::make_pair(i,j);
+         }
       }
+      throw std::runtime_error("no inf entry found but slack is inf; this happened due to an implementation error");
+   }
+
+   // here the dual variables a and b are changed in case that the equality subgraph does not contain enough edges and so a maximal matching is not perfect
+   void modify()
+   {
+      E theta = -1;
+      // theta is the lowest positive value of the weights[i][j], where i corresponds to labeled left nodes and j runs from 0 to dim-1
+      for (int k = 0; k < dim; k++) {
+         if ((labeledColMin[k] > 0) && (slack[k] > 0) && ((slack[k] < theta) || (theta == -1) ) ) theta = slack[k]; 
+      } 
+
+      if (theta == INF) {finished = true; inf_matching = true; return;}
+      
       for ( int k = 0; k < dim; k++) 
          if (it.node_visitor()[k] != -1) a[k] = a[k] + theta;
 
       for ( int k = 0; k < dim; k++) {
-         if (labeledColMin[k] == 0 )
+         if (it.node_visitor()[k+dim] != -1) //(labeledColMin[k] == 0 )
             b[k] = b[k] - theta; 
+      }
+      
+      for ( int k = 0; k < dim; k++) {
          for (int j = 0; j < dim; j++) {
             if ( (a[j] + b[k] != weights[j][k]) ) {
                equality_subgraph.delete_edge(j, k + dim);
@@ -244,14 +282,15 @@ public:
             if (labeledColMin[k] > 0) labeledColMin[k] = slack[k];
          }
       }
-      fill(pm::entire(slack),-1);
-      fill(pm::entire(labeledColMin),-1);
+      std::fill(slack.begin(), slack.end(), -1);
+      std::fill(labeledColMin.begin(), labeledColMin.end(), -1);
       r = entire(exposed_points);
    }
 
 
    // initializes a bfs with start node start_node 
-   int growTree () {
+   int growTree ()
+   {
       it.reset(start_node);
       // search stops, if there is no further edge to go or a leaf of the hungarian tree is found, so that one can augment 
       while (!it.at_end() && (it.node_visitor().leaf == -1) ) {
@@ -263,28 +302,47 @@ public:
    }
       
    // repeats the process of growing trees from exposed nodes until a perfect matching is found 
-   Array<int> stage () {
+   void stage ()
+   {
       if (dim != 0) {
-         bool finished = false;
          while (!finished) {
             while(!r.at_end()) {
                start_node = *r; 
-               if (!(growTree() == -1)) finished = augment();
+               if (!(growTree() == -1)) {finished = augment();}
                else ++r;
             }
             if (!finished) {
                modify();
-               it.reset(start_node);
-               it.reset(*r);
+               if (!inf_matching) {
+                  it.reset(start_node);
+                  it.reset(*r);
+               }
             }
          }
-      }
 
-      Array<int > matching(dim) ;
-      for (int k = 0; k < dim; k++) {
-         matching[k] = equality_subgraph.in_adjacent_nodes(k).front() - dim;
+         if(!inf_matching) {
+            for (int k = 0; k < dim; k++) {
+               matching[k] = equality_subgraph.in_adjacent_nodes(k).front() - dim;
+            }
+         } else {
+            // inf matching recognized
+            std::pair<int,int> trans = inf_entry();
+            matching = Array<int>(sequence(0,dim));
+            matching[trans.first] = trans.second;
+            matching[trans.second] = trans.first;
+         }
       }
+   }
+
+   Array<int> get_matching()
+   {
       return matching;
+   }
+
+   E get_value()
+   {
+      if (inf_matching) return INF;
+      else return (accumulate(a, operations::add()) + accumulate(b, operations::add()));
    }
 };
 

@@ -87,8 +87,7 @@ sub edgeColor {
 
 sub pointsToString {
    my ($self)=@_;
-   my $text="";
-   return $text if $self->source->Hidden;
+   return "" if $self->source->Hidden;
    my $name=$self->name;
    my $n_points=@{$self->source->Points};
    my $text = "#declare vertex_list_$name = array[$n_points] {\n" .

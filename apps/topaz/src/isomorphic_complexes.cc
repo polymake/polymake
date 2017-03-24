@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -47,11 +47,7 @@ UserFunction4perl("# @category Comparing\n"
                   "# If the complexes are not isomorphic, an exception is thrown.\n"
                   "# @param SimplicialComplex complex1"
                   "# @param SimplicialComplex complex2"
-                  "# @return Pair<Array<Int>, Array<int>>"
-                  "# @example To print the vertex permutation that maps the 3-simplex to its mirror image, type this:"
-                  "# > $p = find_facet_vertex_permutations(simplex(3),scale(simplex(3),-1));"
-                  "# > print $p->first;"
-                  "# | 3 2 1 0",
+                  "# @return Pair<Array<Int>, Array<int>>",
                   &find_facet_vertex_permutations, "find_facet_vertex_permutations(SimplicialComplex,SimplicialComplex)");
 } }
 

@@ -16,10 +16,10 @@
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::Map<pm::Rational, pm::Rational, pm::operations::cmp> (pm::Array<pm::Rational, void> const&) ) {
+   FunctionWrapper4perl( pm::Map<pm::Rational, pm::Rational, pm::operations::cmp> (pm::Array<pm::Rational> const&) ) {
       perl::Value arg0(stack[0]);
       IndirectWrapperReturn( arg0.get< perl::TryCanned< const Array< Rational > > >() );
    }
-   FunctionWrapperInstance4perl( pm::Map<pm::Rational, pm::Rational, pm::operations::cmp> (pm::Array<pm::Rational, void> const&) );
+   FunctionWrapperInstance4perl( pm::Map<pm::Rational, pm::Rational, pm::operations::cmp> (pm::Array<pm::Rational> const&) );
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

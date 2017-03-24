@@ -55,19 +55,16 @@ pair_init_second(const pair<U1,U2>& u)
 }
 
 template <typename Data, typename NonPair>
-struct isomorphic_to_first : False {};
+struct isomorphic_to_first : std::false_type {};
 
 template <typename Data, typename T1, typename T2>
 struct isomorphic_to_first< Data, pair<T1,T2> > : isomorphic_types<typename deref<T1>::type, Data> {};
 
 template <typename Data, typename NonPair>
-struct isomorphic_to_second : False {};
+struct isomorphic_to_second : std::false_type {};
 
 template <typename Data, typename T1, typename T2>
 struct isomorphic_to_second< Data, pair<T1,T2> > : isomorphic_types<typename deref<T2>::type, Data> {};
-
-template<typename T1, typename T2>
-struct is_ordered< std::pair<T1,T2> >  : bool2type<is_ordered_impl<T1>::value && is_ordered_impl<T2>::value> {};
 
 }
 namespace std {
@@ -136,12 +133,17 @@ struct pair<T1, pm::nothing> {
 
    pair() {}
 
-   explicit pair(const T1& first_arg) : first(first_arg) {}
+   template <typename U1, typename=typename enable_if<is_constructible<T1, polymake::pure_type_t<U1>>::value>::type>
+   explicit pair(U1&& first_arg)
+      : first(forward<U1>(first_arg)) {}
 
-   pair(const T1& first_arg, const pm::nothing&) : first(first_arg) {}
+   template <typename U1, typename=typename enable_if<is_constructible<T1, polymake::pure_type_t<U1>>::value>::type>
+   pair(U1&& first_arg, const pm::nothing&)
+      : first(forward<U1>(first_arg)) {}
 
-   template <typename U1, typename U2>
-   explicit pair(const pair<U1,U2>& u) : first(pm::pair_init_first<T1>(u)) {}
+   template <typename U1, typename U2, typename=typename enable_if<is_constructible<T1, polymake::pure_type_t<U1>>::value>::type>
+   explicit pair(const pair<U1, U2>& u)
+      : first(pm::pair_init_first<T1>(u)) {}
 };
 
 template <typename T1> pm::nothing pair<T1,pm::nothing>::second;
@@ -162,7 +164,7 @@ struct pair<T1&, pm::nothing> {
    pair(T1& first_arg, const pm::nothing&) : first(first_arg) {}
 
    template <typename U1, typename U2>
-   explicit pair(const pair<U1&,U2>& u) : first(pm::pair_init_first<T1>(u)) {}
+   explicit pair(const pair<U1&, U2>& u) : first(pm::pair_init_first<T1>(u)) {}
 };
 
 template <typename T1> pm::nothing pair<T1&, pm::nothing>::second;
@@ -180,12 +182,17 @@ struct pair<pm::nothing, T2> {
 
    pair() {}
 
-   explicit pair(const T2& second_arg) : second(second_arg) {}
+   template <typename U2, typename=typename enable_if<is_constructible<T2, polymake::pure_type_t<U2>>::value>::type>
+   explicit pair(U2&& second_arg)
+      : second(forward<U2>(second_arg)) {}
 
-   pair(const pm::nothing&, const T2& second_arg) : second(second_arg) {}
+   template <typename U2, typename=typename enable_if<is_constructible<T2, polymake::pure_type_t<U2>>::value>::type>
+   pair(const pm::nothing&, U2&& second_arg)
+      : second(forward<U2>(second_arg)) {}
 
-   template <typename U1, typename U2>
-   explicit pair(const pair<U1,U2>& u) : second(pm::pair_init_second<T2>(u)) {}
+   template <typename U1, typename U2, typename=typename enable_if<is_constructible<T2, polymake::pure_type_t<U2>>::value>::type>
+   explicit pair(const pair<U1, U2>& u)
+      : second(pm::pair_init_second<T2>(u)) {}
 };
 
 template <typename T2> pm::nothing pair<pm::nothing, T2>::first;
@@ -201,12 +208,14 @@ struct pair<pm::nothing, T2&> {
    static pm::nothing first;
    second_type second;
 
-   explicit pair(T2& second_arg) : second(second_arg) {}
+   explicit pair(T2& second_arg)
+      : second(second_arg) {}
 
-   pair(const pm::nothing&, T2& second_arg) : second(second_arg) {}
+   pair(const pm::nothing&, T2& second_arg)
+      : second(second_arg) {}
 
    template <typename U1, typename U2>
-   explicit pair(const pair<U1,U2&>& u) : second(pm::pair_init_second<T2>(u)) {}
+   explicit pair(const pair<U1, U2&>& u) : second(pm::pair_init_second<T2>(u)) {}
 };
 
 template <typename T2> pm::nothing pair<pm::nothing, T2&>::first;

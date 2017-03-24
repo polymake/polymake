@@ -23,7 +23,7 @@
 namespace polymake { namespace polytope {
 
 template <typename Faces>
-typename pm::enable_if<Set<int>, pm::isomorphic_to_container_of<Faces, Set<int> >::value>::type
+typename std::enable_if<pm::isomorphic_to_container_of<Faces, Set<int> >::value, Set<int>>::type
 splits_in_subdivision(const Matrix<Rational>& verts, const Faces& subdivision, const Matrix<Rational>& splits)
 {
    const int n=verts.rows();  

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -44,8 +44,6 @@
 
 #define FunctionInstance4perl(f_class, ...) \
    RegisterFunctionInstance4perl(0,                                    Wrapper4perl_##f_class< __VA_ARGS__ >)
-#define MethodInstance4perl(f_class, ...) \
-   RegisterFunctionInstance4perl(FirstArgAsString(__VA_ARGS__),        Wrapper4perl_##f_class< __VA_ARGS__ >)
 #define OperatorInstance4perl(op_class, ...) \
    RegisterFunctionInstance4perl(0,                                    pm::perl::Operator_##op_class< __VA_ARGS__ >)
 #define FunctionCrossAppInstance4perl(f_class, app_list, ...) \
@@ -59,15 +57,15 @@
 #define WrapperStart(name, perlname, ...)                       \
 struct name {                                                   \
    typedef pm::list arg_list(__VA_ARGS__);                      \
-   template <size_t fl, typename first_arg_type>                \
-   name(const char (&file)[fl], int line, first_arg_type arg0) { pm::perl::WrapperBase<name>::register_it(perlname,file,line,arg0); } \
-   static SV* call(SV **stack __attribute__((unused)), char *Stack_Frame_Upper_Bound __attribute__((unused)) )
+   template <typename first_arg_type>                \
+   name(const AnyString& file, int line, first_arg_type arg0) { pm::perl::WrapperBase<name>::register_it(perlname, file, line, arg0); } \
+   static SV* call(SV **stack __attribute__((unused)))
 
 #define FunctionInterface4perl(name, ...) WrapperStart(Wrapper4perl_##name, #name, __VA_ARGS__)
 
 #define FunctionWrapper4perl(...) \
    template <>                    \
-   SV* IndirectFunctionWrapper<__VA_ARGS__>::call(fptr_type func, SV **stack __attribute__((unused)), char *Stack_Frame_Upper_Bound __attribute__((unused)) )
+   SV* IndirectFunctionWrapper<__VA_ARGS__>::call(fptr_type func, SV **stack __attribute__((unused)))
 
 #define FunctionWrapperInstance4perl(...) \
    template<> IndirectFunctionWrapper<__VA_ARGS__> \
@@ -75,56 +73,50 @@ struct name {                                                   \
 
 #define WrapperCloseFunction } enum { _unused }
 
-#define WrapperBodyWithValue(pkg, n_anchors, anchors, fup, expr)            \
-      perl::Value Result_Value(pm::perl::value_allow_non_persistent, n_anchors); \
-      pkg;                                                                        \
-      Result_Value.put(expr, fup, Prescribed_Result_Pkg) anchors;   \
-      return Result_Value.get_temp()
+// __VA_ARGS__ = anchors
+#define WrapperBodyWithValue(pkg, expr, ...)                         \
+   perl::Value Result_Value(pm::perl::value_allow_non_persistent | pm::perl::value_allow_store_ref); \
+   pkg;                                                              \
+   Result_Value.put(expr, Prescribed_Result_Pkg, ## __VA_ARGS__);      \
+   return Result_Value.get_temp()
 
-#define WrapperBodyWithLvalue(pkg, n_anchors, anchors, ownerType, expr)    \
-      perl::Value Result_Value(pm::perl::value_flags(pm::attrib<typename pm::perl::access<ownerType>::type>::is_const  \
-                                                     ? pm::perl::value_expect_lval | pm::perl::value_allow_non_persistent | pm::perl::value_read_only \
-                                                     : pm::perl::value_expect_lval | pm::perl::value_allow_non_persistent), \
-                               n_anchors);                                       \
-      pkg;                                                              \
-      Result_Value.put_lval(expr, Stack_Frame_Upper_Bound, Prescribed_Result_Pkg, &arg0, (ownerType*)0) anchors; \
-      return Result_Value.get()
+#define WrapperBodyWithLvalue(pkg, ownerType, expr, ...)    \
+   perl::Value Result_Value(                      \
+         (pm::attrib<typename pm::perl::access<ownerType>::type>::is_const ? pm::perl::value_read_only : pm::perl::value_mutable) | \
+         pm::perl::value_expect_lval | pm::perl::value_allow_non_persistent | pm::perl::value_allow_store_ref); \
+   pkg;                                                              \
+   Result_Value.put_lvalue(expr, Prescribed_Result_Pkg, &arg0, (ownerType*)nullptr, ## __VA_ARGS__); \
+   return Result_Value.get()
 
 #define WrapperBodyWithoutValue(expr) \
-      expr;                           \
-      return NULL
+   expr;                           \
+   return nullptr
 
-#define IndirectWrapperReturn(...)     WrapperBodyWithValue(int Prescribed_Result_Pkg=0, 0, , Stack_Frame_Upper_Bound, func(__VA_ARGS__))
+#define IndirectWrapperReturn(...)     WrapperBodyWithValue(int Prescribed_Result_Pkg=0, func(__VA_ARGS__))
 #define IndirectWrapperReturnVoid(...) WrapperBodyWithoutValue(func(__VA_ARGS__))
 
 // stack in the wrappers points to the first given argument = now it's the first empty slot
 
 #define WrapperReturnList(expr)              \
-      pm::perl::ListSlurp Result_List(stack-1);        \
-      WrapperBodyWithoutValue(Result_List << (expr));  \
+   pm::perl::ListSlurp Result_List(stack-1);        \
+   WrapperBodyWithoutValue(Result_List << (expr));  \
    WrapperCloseFunction
 
-#define WrapperReturnPkg(expr) \
-   WrapperBodyWithValue(SV* Prescribed_Result_Pkg=stack[0], 0, ,    Stack_Frame_Upper_Bound, expr);   WrapperCloseFunction
-#define WrapperReturn(expr) \
-   WrapperBodyWithValue(int Prescribed_Result_Pkg=0,        0, ,    Stack_Frame_Upper_Bound, expr);   WrapperCloseFunction
-#define WrapperReturnTmpPkg(expr) \
-   WrapperBodyWithValue(SV* Prescribed_Result_Pkg=stack[0], 0, ,    0,                       expr);   WrapperCloseFunction
-#define WrapperReturnTmp(expr) \
-   WrapperBodyWithValue(int Prescribed_Result_Pkg=0,        0, ,    0,                       expr);   WrapperCloseFunction
-#define WrapperReturnAnchPkg(n_anchors, anchors, expr) \
-   WrapperBodyWithValue(SV* Prescribed_Result_Pkg=stack[0], n_anchors, ->store_anchors anchors,  Stack_Frame_Upper_Bound, expr);   WrapperCloseFunction
-#define WrapperReturnAnch(n_anchors, anchors, expr) \
-   WrapperBodyWithValue(int Prescribed_Result_Pkg=0,        n_anchors, ->store_anchors anchors,  Stack_Frame_Upper_Bound, expr);   WrapperCloseFunction
+#define WrapperReturnPkg(...) \
+   WrapperBodyWithValue(SV* Prescribed_Result_Pkg=stack[0], __VA_ARGS__);   WrapperCloseFunction
+#define WrapperReturn(...) \
+   WrapperBodyWithValue(int Prescribed_Result_Pkg=0,        __VA_ARGS__);   WrapperCloseFunction
 
-#define WrapperReturnLvaluePkg(ownerType, expr) \
-   WrapperBodyWithLvalue(SV* Prescribed_Result_Pkg=stack[0], 0, ,   ownerType, expr);      WrapperCloseFunction
-#define WrapperReturnLvalue(ownerType, expr) \
-   WrapperBodyWithLvalue(int Prescribed_Result_Pkg=0,        0, ,   ownerType, expr);      WrapperCloseFunction
-#define WrapperReturnLvalueAnchPkg(n_anchors, anchors, ownerType, expr) \
-   WrapperBodyWithLvalue(SV* Prescribed_Result_Pkg=stack[0], n_anchors, ->store_anchors anchors, ownerType, expr);   WrapperCloseFunction
-#define WrapperReturnLvalueAnch(n_anchors, anchors, ownerType, expr) \
-   WrapperBodyWithLvalue(int Prescribed_Result_Pkg=0,        n_anchors, ->store_anchors anchors, ownerType, expr);   WrapperCloseFunction
+#define WrapperReturnLvaluePkg(ownerType, ...) \
+   WrapperBodyWithLvalue(SV* Prescribed_Result_Pkg=stack[0], ownerType, __VA_ARGS__);      WrapperCloseFunction
+#define WrapperReturnLvalue(ownerType, ...) \
+   WrapperBodyWithLvalue(int Prescribed_Result_Pkg=0,        ownerType, __VA_ARGS__);      WrapperCloseFunction
+
+// deprecated:
+#define WrapperReturnAnchPkg(n_anchors, anchors, expr)                    return nullptr; WrapperCloseFunction
+#define WrapperReturnAnch(n_anchors, anchors, expr)                       return nullptr; WrapperCloseFunction
+#define WrapperReturnLvalueAnchPkg(n_anchors, anchors, ownerType, expr)   return nullptr; WrapperCloseFunction
+#define WrapperReturnLvalueAnch(n_anchors, anchors, ownerType, expr)      return nullptr; WrapperCloseFunction
 
 #define WrapperReturnVoid(expr)    WrapperBodyWithoutValue(expr);  WrapperCloseFunction
 
@@ -132,7 +124,7 @@ struct name {                                                   \
    perl::Value Result_Value;                                   \
    SV* const Result_Proto=stack[0];                            \
    new(Result_Value.allocate<Type>(Result_Proto)) Type expr;   \
-   return Result_Value.get_temp();                             \
+   return Result_Value.get_constructed_canned();               \
    WrapperCloseFunction
 
 // the following macro calls can only be produced on the fly by the script guarded_compiler.pl
@@ -140,9 +132,7 @@ struct name {                                                   \
 #define ThrowObsoleteWrapper(file, line, text) return pm::perl::complain_obsolete_wrapper(file,line,text); WrapperCloseFunction
 
 #define ObsoleteWrapper(expr)                ThrowObsoleteWrapper(__FILE__, __LINE__, #expr)
-#define ObsoleteWrapperAnch(skip,...)        ThrowObsoleteWrapper(__FILE__, __LINE__, #__VA_ARGS__)
 #define ObsoleteWrapperLvalue(skip,...)      ThrowObsoleteWrapper(__FILE__, __LINE__, #__VA_ARGS__)
-#define ObsoleteWrapperLvalueAnch(skip,...)  ThrowObsoleteWrapper(__FILE__, __LINE__, #__VA_ARGS__)
 #define ObsoleteWrapperNew(Type,expr)        ThrowObsoleteWrapper(__FILE__, __LINE__, FirstArgAsString(new Type expr))
 
 // ---
@@ -158,7 +148,7 @@ WrapperStart( Operator_Unary_##name, "." #name, Arg0 ) { \
 template <typename Arg0>                                         \
 WrapperStart( Operator_Unary_##name##a, "." #name "a" , Arg0 ) { \
    Value arg0(stack[0]);                                         \
-   WrapperReturnAnch( 1, (arg0), sign( arg0.get<Arg0>() ) );     \
+   WrapperReturn( sign( arg0.get<Arg0>() ), arg0);        \
 }
 
 #define Wrapper4UnaryAssignOperator(sign, name)                \
@@ -179,7 +169,7 @@ WrapperStart( Operator_Binary_##name, ":" #name, Arg0,Arg1 ) { \
 template <typename Arg0, typename Arg1>                        \
 WrapperStart( Operator_Binary_##name##a, ":" #name "a", Arg0,Arg1 ) { \
    Value arg0(stack[0]), arg1(stack[1]);                       \
-   WrapperReturnAnch( 2, (arg0)(arg1), arg0.get<Arg0>() sign arg1.get<Arg1>() ); \
+   WrapperReturn( arg0.get<Arg0>() sign arg1.get<Arg1>(), arg0, arg1); \
 }
 
 #define Wrapper4BinaryAssignOperator(sign, name)                        \
@@ -195,10 +185,10 @@ WrapperStart( Operator_BinaryAssign_##name, "=" #name, Arg0,Arg1 ) {    \
 # define InsertEmbeddedRule(...) namespace { }
 #else
 
-# define DeclareEmbeddedFunction(pre, fptr, decl, post) \
-namespace {                                             \
-   template<> pm::perl::Function                        \
-   StaticRegistrator4perl<pm::perl::Function,__LINE__>::r(fptr,__FILE__,__LINE__, pre " " decl " : c++ (embedded=>%d);\n" post); \
+# define DeclareEmbeddedFunction(pre, fptr, decl) \
+namespace {                                       \
+   template<> pm::perl::Function                  \
+   StaticRegistrator4perl<pm::perl::Function,__LINE__>::r(fptr,__FILE__,__LINE__, pre " " decl " : c++ (embedded=>%d);\n"); \
 }
 
 # define InsertEmbeddedRule(text)                                                      \
@@ -209,15 +199,11 @@ namespace {                                                                     
 
 #endif
 
-#define Function4perl(fptr, decl)                DeclareEmbeddedFunction(            "function",fptr,decl,"")
-#define UserFunction4perl(help, fptr, decl)      DeclareEmbeddedFunction(help "\nuser_function",fptr,decl,"")
-#define Method4perl(fptr, scope, decl)           DeclareEmbeddedFunction(scope " {\n\nmethod",fptr,decl,"}\n")
-#define UserMethod4perl(help, fptr, scope, decl) DeclareEmbeddedFunction(scope " {\n\n" help "\nuser_method",fptr,decl,"}\n")
+#define Function4perl(fptr, decl)                DeclareEmbeddedFunction(            "function",fptr,decl)
+#define UserFunction4perl(help, fptr, decl)      DeclareEmbeddedFunction(help "\nuser_function",fptr,decl)
 
 #define FunctionTemplate4perl(decl)                InsertEmbeddedRule("function " decl " : c++;\n")
 #define UserFunctionTemplate4perl(help, decl)      InsertEmbeddedRule(help "\nuser_function " decl " : c++;\n")
-#define MethodTemplate4perl(scope, decl)           InsertEmbeddedRule(scope " {\n\nmethod " decl " : c++;\n}\n")
-#define UserMethodTemplate4perl(help, scope, decl) InsertEmbeddedRule(scope " {\n\n" help "\nuser_method " decl " : c++;\n}\n")
 
 #define FullPackage4perl(pkg, app) "Polymake::" FirstArgAsString(app) "::" pkg
 
@@ -232,33 +218,26 @@ InsertEmbeddedRule("# @hide\n"                                                  
 
 #define OpaqueMethod4perl(decl) "\nmethod " decl " : c++;\n"
 
-#define RecognizeType4perl(name, typelist, ...) inline                                                   \
-recognized<pm::identical<T, __VA_ARGS__ >::value>* recognize(SV** proto_p, bait*, T*, __VA_ARGS__*)      \
-{                                                                                                        \
-   *proto_p=pm::perl::get_parameterized_type<pm::list typelist>(name, pm::identical<T, __VA_ARGS__ >()); \
-   return (recognized<pm::identical<T, __VA_ARGS__ >::value>*)0;                                         \
+#define RecognizeType4perl(name, typelist, ...) inline                                                  \
+recognized<std::is_same<T, __VA_ARGS__ >::value>* recognize(pm::perl::type_infos& ti, bait*, T*, __VA_ARGS__*) \
+{                                                                                                       \
+   if (SV* proto=pm::perl::get_parameterized_type<pm::list typelist>(name, std::is_same<T, __VA_ARGS__ >())) \
+      ti.set_proto(proto);                                              \
+   return nullptr;                                                      \
 }
 
+// deprecated macros
+
 #define CallPolymakeFunction(name, ...) \
-(pm::perl::FunCall(name), ## __VA_ARGS__).evaluate()
+polymake::call_function_deprecated(name, ## __VA_ARGS__)
 
 #define CallPolymakeMethod(name, ...) \
-call_polymake_method(name, (pm::perl::FunCall(), ## __VA_ARGS__))
+call_method_deprecated(name, ## __VA_ARGS__)
 
-#define ListCallPolymakeFunction(name, ...) \
-(pm::perl::FunCall(name), ## __VA_ARGS__).list_evaluate()
-
-#define ListCallPolymakeMethod(name, ...) \
-list_call_polymake_method(name, (pm::perl::FunCall(), ## __VA_ARGS__))
-
-#define VoidCallPolymakeFunction(name, ...) \
-(pm::perl::FunCall(name), ## __VA_ARGS__).void_evaluate()
-
-#define VoidCallPolymakeMethod(name, ...) \
-void_call_polymake_method(name, (pm::perl::FunCall(), ## __VA_ARGS__))
-
-#define PolymakeOptions(...) \
-(pm::perl::TempOptions(), ## __VA_ARGS__)
+#define ListCallPolymakeFunction(...) CallPolymakeFunction(__VA_ARGS__)
+#define ListCallPolymakeMethod(...) CallPolymakeMethod(__VA_ARGS__)
+#define VoidCallPolymakeFunction(...) CallPolymakeFunction(__VA_ARGS__)
+#define VoidCallPolymakeMethod(...) CallPolymakeMethod(__VA_ARGS__)
 
 #endif // POLYMAKE_MACROS_H
 

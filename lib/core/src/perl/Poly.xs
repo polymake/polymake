@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -74,32 +74,29 @@ OP* pp_first(pTHX)
    RETURN;
 }
 
-#if PerlVersion >= 5160
-static
-OP* safe_magic_lvalue_return_op(pTHX)
-{
-   if (cxstack[cxstack_ix].blk_gimme==G_SCALAR) {
-      dSP;
-      OP* next_op;
-      SV* retval=TOPs;
-      U32 retval_flags= SvTEMP(retval) && SvREFCNT(retval)==1 ? SvMAGICAL(retval) : 0;
-      if (retval_flags) {
-         SvMAGICAL_off(retval);
-         next_op=Perl_pp_leavesub(aTHX);
-         SvFLAGS(retval) |= retval_flags;
-         return next_op;
-      }
-   }
-   return Perl_pp_leavesub(aTHX);
-}
-#endif
-
 static const MGVTBL array_flags_vtbl={ 0, 0, 0, 0, 0 };
 
 MAGIC* pm_perl_array_flags_magic(pTHX_ SV* sv)
 {
    return mg_findext(sv, PERL_MAGIC_ext, &array_flags_vtbl);
 }
+
+static int clear_weakref_wrapper(pTHX_ SV* sv, MAGIC* mg)
+{
+   SV* owner=(SV*)mg->mg_ptr;
+   if (SvROK(sv)) Perl_croak(aTHX_ "attempt to re-parent a subobject");
+   if (SvREFCNT(owner) > 1) {
+      int ret;
+      dSP;
+      PUSHMARK(SP);
+      XPUSHs(sv_2mortal(newRV(owner)));
+      PUTBACK;
+      call_sv(mg->mg_obj, G_VOID | G_DISCARD);
+   }
+   return 0;
+}
+
+static const MGVTBL clear_weakref_vtbl={ 0, &clear_weakref_wrapper, 0, 0, 0 };
 
 static inline
 GV* retrieve_gv(pTHX_ OP* o, OP* const_op, SV** const_sv, PERL_CONTEXT* cx, PERL_CONTEXT* cx_bottom)
@@ -205,10 +202,24 @@ void
 is_weak(ref)
    SV *ref;
 PROTOTYPE: $
-CODE:
+PPCODE:
 {
    if (SvWEAKREF(ref)) XSRETURN_YES;
    XSRETURN_NO;
+}
+
+void
+guarded_weak(ref, owner, clear_cv)
+   SV *ref;
+   SV *owner;
+   SV *clear_cv;
+PROTOTYPE: $$$
+PPCODE:
+{
+   MAGIC* mg;
+   sv_rvweaken(ref);
+   mg=sv_magicext(ref, SvRV(clear_cv), PERL_MAGIC_ext, &clear_weakref_vtbl, Nullch, 0);
+   mg->mg_ptr=(char*)SvRV(owner);
 }
 
 void
@@ -269,60 +280,41 @@ PPCODE:
       PUSHs(&PL_sv_no);
 }
 
-void
+I32
 is_lvalue(subref)
-   SV *subref;
-PROTOTYPE: $
-PPCODE:
-{
-   CV *sub;
-   if (!SvROK(subref) || (sub=(CV*)SvRV(subref), SvTYPE(sub) != SVt_PVCV))
-      croak_xs_usage(cv, "\\&sub");
-   if (GIMME_V!=G_ARRAY) {
-      if (CvFLAGS(sub) & CVf_LVALUE)
-         PUSHs(&PL_sv_yes);
-      else
-         PUSHs(&PL_sv_no);
-   } else if (CvFLAGS(sub) & CVf_LVALUE) {
-      if (!CvISXSUB(sub) && CvROOT(sub)->op_type==OP_LEAVESUBLV)
-         PUSHs(&PL_sv_no);      /* not faked */
-      else
-         PUSHs(&PL_sv_yes);
-   }
-}
-
-
-void
-declare_lvalue(subref,...)
    SV *subref;
 PROTOTYPE: $
 CODE:
 {
-   CV *sub;
+   // result: 0: rvalue, 1: magic lvalue (from C++), 2: pure lvalue
+   // this must correspond to the decision logic for maybe-lvalue closures in namespaces.xs
+   CV* sub;
    if (!SvROK(subref) || (sub=(CV*)SvRV(subref), SvTYPE(sub) != SVt_PVCV))
-      croak_xs_usage(cv, "\\&sub [, TRUE_if_faked ]");
-   CvFLAGS(sub) |= CVf_LVALUE | CVf_NODEBUG;
-   if (!CvISXSUB(sub)) {
-      OP *leave_op=CvROOT(sub);
-      if (items==1 || !SvTRUE(ST(1))) {
-         /* not faked */
-         leave_op->op_type=OP_LEAVESUBLV;
-         leave_op->op_ppaddr=PL_ppaddr[OP_LEAVESUBLV];
-      }
-#if PerlVersion >= 5160
-      else {
-         /* nowadays perl is fond of copying return values if they show any magic */ 
-         leave_op->op_ppaddr=&safe_magic_lvalue_return_op;
-      }
-#endif
+      croak_xs_usage(cv, "\\&sub");
+   if (CvLVALUE(sub)) {
+      RETVAL= CvISXSUB(sub) || CvROOT(sub)->op_type != OP_LEAVESUBLV ? 1 : 2;
+   } else {
+      RETVAL=0;
    }
+}
+OUTPUT:
+   RETVAL
+
+void
+declare_lvalue(subref)
+   SV *subref;
+PPCODE:
+{
+   CV* sub;
+   if (!SvROK(subref) || (sub=(CV*)SvRV(subref), SvTYPE(sub) != SVt_PVCV || !CvISXSUB(sub)))
+      croak_xs_usage(cv, "\\&XSUB");
+   CvFLAGS(sub) |= CVf_LVALUE | CVf_NODEBUG;
 }
 
 void
 declare_nodebug(subref,...)
    SV *subref;
-PROTOTYPE: $
-CODE:
+PPCODE:
 {
    CV *sub;
    if (!SvROK(subref) || (sub=(CV*)SvRV(subref), SvTYPE(sub) != SVt_PVCV))
@@ -1035,7 +1027,6 @@ PROTOTYPE: $
 PPCODE:
 {
    CvMETHOD_on(SvRV(sub));
-   ++SP;
 }
 
 void
@@ -1368,24 +1359,6 @@ PPCODE:
       if (mg) {
          dTARGET;
          PUSHi(mg->mg_len);
-      } else {
-         PUSHs(&PL_sv_undef);
-      }
-   } else {
-      croak_xs_usage(cv, "\\@array");
-   }
-}
-
-void
-get_array_annex(avref)
-   SV *avref;
-PPCODE:
-{
-   SV* av;
-   if (SvROK(avref) && (av=SvRV(avref), SvTYPE(av)==SVt_PVAV)) {
-      MAGIC* mg=pm_perl_array_flags_magic(aTHX_ av);
-      if (mg && mg->mg_obj) {
-         PUSHs(mg->mg_obj);
       } else {
          PUSHs(&PL_sv_undef);
       }

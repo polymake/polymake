@@ -25,6 +25,103 @@
 
 namespace polymake { namespace fan {
 
+   // Compute the root of a scalar, we just want the integral part. This is not
+   // really important.
+   template <typename Scalar>
+   Integer pseudo_root(Scalar in){
+      Integer result = convert_to<Integer>(floor(in));
+      return sqrt(result);
+   }
+
+   // Rescale the ray generators to have almost the same length. As desired
+   // length we take the maximum length of all rays multiplied with a factor.
+   template <typename Scalar>
+   Matrix<Scalar> rescale_rays(const Matrix<Scalar> input_rays, const Vector<Scalar> lengths, Scalar desired_len)
+   {
+      Matrix<Scalar> result(input_rays);
+      Integer scaling;
+      for(auto rowit = ensure(rows(result), (pm::cons<pm::end_sensitive, pm::indexed>*)0).begin(); !rowit.at_end(); ++rowit){
+         scaling = pseudo_root(desired_len / lengths[rowit.index()]);
+         if(scaling == 0) { scaling = 1;}
+         *rowit *= scaling;
+      }
+      return result;
+   }
+  
+   
+   // We want to determine whether the ray generators form the vertices of a
+   // polytope. In this method we use the vertices as hyperplanes as well. Fix
+   // a ray generator p, then we check whether <p,p> > <p,v> for all other ray
+   // generators v. We do this for all p. If this is true, then the ray
+   // generators form the vertices of a polytope.
+   // This can be solved without double dualizing a polytope, the only backdraw
+   // is that this condition is a little stronger than what we need.
+   template <typename Scalar>
+   bool check_rays(const Matrix<Scalar> input_rays)
+   {
+      Matrix<Scalar> check = input_rays * T(input_rays);
+      for(int i=0; i<check.cols(); i++){
+         for(int j=0; j<check.rows(); j++){
+            if(i!=j) {
+               if(check(j,i) >= check(i,i)){
+                  return false;
+               }
+            }
+         }
+      }
+      return true;
+   }
+   
+   
+   /*   
+   // This method takes the rays (or more precise the ray generators) of the
+   // fan and constructs a polytope with these rays as points. It then checks
+   // whether the number of vertices of the resulting polytope is the same as
+   // the number of rays.
+   template <typename Scalar>
+   bool check_rays(const Matrix<Scalar> input_rays)
+   {
+      Matrix<Scalar> points(input_rays);
+      int n = points.rows();
+      points = ones_vector<Scalar>(n) | points;
+      perl::Object p(perl::ObjectType::construct<Scalar>("Polytope"));
+      p.take("POINTS") << points;
+      int check = p.give("N_VERTICES");
+      return check == n;
+   }
+   */
+   
+
+   // Check whether the given ray generators of a fan satisfy the condition of
+   // Shephard that they form the vertices of a polytope. If not, rescale them
+   // until they do. See
+   // Shephard: SPHERICAL COMPLEXES AND RADIAL PROJECTIONS OF POLYTOPES
+   // (Shephard, G.C. Israel J. Math. (1971) 9: 257. doi:10.1007/BF02771591)
+   template <typename Scalar>
+   const Matrix<Scalar> prepare_rays(const Matrix<Scalar> input_rays)
+   {
+      bool check = check_rays(input_rays);
+      if(check) { return input_rays;}
+      const int debug_level = perl::get_debug_level();
+      const Vector<Scalar> lengths(attach_operation( rows(input_rays), rows(input_rays), operations::mul()));
+      Matrix<Scalar> result(input_rays);
+      const Scalar max = accumulate(lengths, operations::max());
+      Integer factor = 2;
+      while(!check){
+         if (debug_level > 1){
+            cerr << "Ray generators do not form vertices of polytope. Rescaling." << endl;
+         }
+         result = rescale_rays(input_rays, lengths, factor * max);
+         check = check_rays(result);
+         factor *= 2;
+      }
+      if (debug_level > 1){
+         cerr << "Found proper rescaling." << endl;
+      }
+      return result;
+   }
+   
+
     // decide whether a fan is the face fan (equivalently: normal fan) of a polytope
     // we use the method of Theorem 4.8 in Chapter V of Ewald
     // Let K be the Gale dual of the rays of the fan
@@ -45,13 +142,10 @@ namespace polymake { namespace fan {
        perl::ObjectType polytope_type=perl::ObjectType::construct<Scalar>("Polytope");
        perl::ObjectType linear_program_type=perl::ObjectType::construct<Scalar>("LinearProgram");
 
-       const Matrix<Scalar> rays = fan.give("RAYS");
+       const Matrix<Scalar> input_rays = fan.give("RAYS");
+       const Matrix<Scalar> rays = prepare_rays(input_rays);
        const IncidenceMatrix<> max_cones = fan.give("MAXIMAL_CONES");
        const Matrix<Scalar> ker = T(null_space(T(ones_vector<Scalar>() | rays)));
-       const int dim = rays.rows() - rank(rays) + 1;
-       // catch degenerate cases early on to avoid problems with empty matrices
-       if (ker.rows() == 0 || ker.cols() == 0)
-          return true;
 
        perl::Object c(polytope_type);
        const Matrix<Scalar> Pt = ones_vector<Scalar>() | ker.minor(~max_cones[0], All);
@@ -75,18 +169,16 @@ namespace polymake { namespace fan {
           A /= At | -(ones_vector<Scalar>(At.rows()));
        }
 
-       if (L.rows() > 0)
-          L = L | zero_vector<Scalar>();
+       L = L | zero_vector<Scalar>();
 
        perl::Object p(polytope_type);
-       p.take("CONE_AMBIENT_DIM") << dim;
        p.take("INEQUALITIES") << A;
        p.take("EQUATIONS") << L;
 
        bool feasible = p.give("FEASIBLE");
        if (feasible) {
           perl::Object lp(linear_program_type);
-          lp.take("LINEAR_OBJECTIVE") << unit_vector<Scalar>(dim, dim-1);
+          lp.take("LINEAR_OBJECTIVE") << unit_vector<Scalar>(A.cols(), A.cols()-1);
           p.add("LP", lp);
 
           const Scalar max = lp.give("MAXIMAL_VALUE");

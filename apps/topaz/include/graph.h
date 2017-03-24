@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,19 +19,29 @@
 
 #include "polymake/Graph.h"
 #include "polymake/FacetList.h"
+#include "polymake/topaz/complex_tools.h"
 
 namespace polymake { namespace topaz {
 
 // Computes the graph of a simplicial complex.
-template <typename Complex> inline
-Graph<> vertex_graph(const Complex& C);
+template <typename Complex>
+Graph<> vertex_graph(const Complex& C)
+{
+   const PowerSet<int> OSK=k_skeleton(C,1);
+   const Set<int> V = accumulate(OSK, operations::add());
+
+   Graph<> G(V.size());
+   for (auto c_it=entire(OSK); !c_it.at_end(); ++c_it)
+      if (c_it->size() == 2)  // is edge
+         G.edge(c_it->front(), c_it->back());
+
+   return G;
+}
 
 // Computes the dual graph of a simplicial complex.
 Graph<> dual_graph(const FacetList& C);
 
 } }
-
-#include "polymake/topaz/graph.tcc"
 
 #endif // POLYMAKE_TOPAZ_GRAPH_H
 

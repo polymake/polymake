@@ -1,5 +1,5 @@
 /*****************************************************************************
-* This is the main header file for gtools.  nauty version 2.5.               *
+* This is the main header file for gtools.  nauty version 2.6.               *
 * Subject to the copyright notice in nauty.h.                                *
 * @configure_input@
 *****************************************************************************/
@@ -28,11 +28,14 @@ used, it is necessary to check they are correct.
 #define SETENV_DEC @setenv_dec@   /* setenv() is declared in stdlib.h */
 #define HAVE_PUTENV @have_putenv@   /* putenv() exists */
 #define HAVE_SETENV @have_setenv@   /* setenv() exists */
+#define HAVE_FORK @have_fork@   /* fork() exists */
 #define HAVE_PTHREADS @have_pthread@   /* Posix threads exist */
 #define HAVE_PTHREAD_H  @header_pthread_h@      /* <pthread.h> exists */
+#define HAVE_SIGNAL_H  @header_signal_h@      /* <signal.h> exists */
 #define HAVE_FSEEKO @have_fseeko@  /* fseeko() and ftello() exist */
 #define HAVE_SIGACTION @have_sigaction@  /* sigaction() exists */
 #define HAVE_SIGPROCMASK @have_sigprocmask@  /* sigprocmask() exists */
+#define ALLOW_INTERRUPT @allow_interrupt@ /* no --disable-interrupt */
 
 /* @edit_msg@ */
 
@@ -44,10 +47,17 @@ used, it is necessary to check they are correct.
 
 #define SIZELEN(n) ((n)<=SMALLN?1:((n)<=SMALLISHN?4:8))
 	/* length of size code in bytes */
-#define G6LEN(n) (SIZELEN(n) \
- + ((size_t)(n)/12)*((size_t)(n)-1) + (((size_t)(n)%12)*((size_t)(n)-1)+11)/12)
-  /* exactly graph6 string length excluding \n\0 
+#define G6BODYLEN(n) \
+   (((size_t)(n)/12)*((size_t)(n)-1) + (((size_t)(n)%12)*((size_t)(n)-1)+11)/12)
+#define G6LEN(n) (SIZELEN(n) + G6BODYLEN(n))
+  /* exact graph6 string length excluding \n\0 
      This twisted expression works up to n=227023 in 32-bit arithmetic
+     and for larger n if size_t has 64 bits.  */
+#define D6BODYLEN(n) \
+   ((n)*(size_t)((n)/6) + (((n)*(size_t)((n)%6)+5)/6))
+#define D6LEN(n) (1 + SIZELEN(n) + D6BODYLEN(n))
+  /* exact digraph6 string length excluding \n\0 
+     This twisted expression works up to n=160529 in 32-bit arithmetic
      and for larger n if size_t has 64 bits.  */
 
 #include "naututil.h"      /* which includes stdio.h */
@@ -63,7 +73,7 @@ extern int errno;
 #include <sys/wait.h>
 #endif
 
-#if HAVE_SIGACTION
+#if HAVE_SIGNAL_H
 #include <signal.h>
 #endif
 
@@ -110,6 +120,7 @@ int setenv(const char*,const char*,int);
 
 #define GRAPH6_HEADER ">>graph6<<"
 #define SPARSE6_HEADER ">>sparse6<<"
+#define DIGRAPH6_HEADER ">>digraph6<<"
 #define PLANARCODE_HEADER ">>planar_code<<"
 #define PLANARCODELE_HEADER ">>planar_code le<<"
 #define PLANARCODEBE_HEADER ">>planar_code be<<"
@@ -121,9 +132,14 @@ int setenv(const char*,const char*,int);
 #define PLANARCODELE   8
 #define PLANARCODEBE  16
 #define EDGECODE      32
+#define INCSPARSE6    64
 #define PLANARCODEANY (PLANARCODE|PLANARCODELE|PLANARCODEBE)
+#define DIGRAPH6     128
 #define UNKNOWN_TYPE 256
 #define HAS_HEADER   512
+
+#define NODIGRAPHSYET(code) if (((code)&DIGRAPH6)) \
+  gt_abort(">E Sorry, this program doesn't support digraphs yet.\n")
 
 #define ARG_OK 0
 #define ARG_MISSING 1
@@ -133,13 +149,19 @@ int setenv(const char*,const char*,int);
 #define MAXARG 2000000000L
 #define NOLIMIT (MAXARG+31L)
 
-#define SWBOOLEAN(c,bool) if (sw==c) bool=TRUE;
-#define SWINT(c,bool,val,id) if (sw==c) \
-        {bool=TRUE;arg_int(&arg,&val,id);}
-#define SWLONG(c,bool,val,id) if (sw==c) \
-        {bool=TRUE;arg_long(&arg,&val,id);}
-#define SWRANGE(c,sep,bool,val1,val2,id) if (sw==c) \
-	{bool=TRUE;arg_range(&arg,sep,&val1,&val2,id);}
+#define SWBOOLEAN(c,boool) if (sw==c) boool=TRUE;
+#define SWINT(c,boool,val,id) if (sw==c) \
+        {boool=TRUE;arg_int(&arg,&val,id);}
+#define SWLONG(c,boool,val,id) if (sw==c) \
+        {boool=TRUE;arg_long(&arg,&val,id);}
+#define SWRANGE(c,sep,boool,val1,val2,id) if (sw==c) \
+	{boool=TRUE;arg_range(&arg,sep,&val1,&val2,id);}
+#define SWREAL(c,boool,val,id) if (sw==c) \
+        {boool=TRUE;arg_double(&arg,&val,id);}
+#define SWREALRANGE(c,sep,boool,val1,val2,id) if (sw==c) \
+	{boool=TRUE;arg_doublerange(&arg,sep,&val1,&val2,id);}
+#define SWSEQUENCE(c,sep,boool,val,maxval,numvals,id) if (sw==c) \
+        {boool=TRUE;arg_sequence(&arg,sep,val,maxval,&numvals,id);}
 
 #ifdef HELPTEXT2 
 #define PUTHELPTEXT printf("\nUsage: %s\n\n%s",USAGE,HELPTEXT1);\
@@ -151,7 +173,13 @@ int setenv(const char*,const char*,int);
 #define HELP if (argc > 1 && (strcmp(argv[1],"-help")==0 \
 			   || strcmp(argv[1],"/?")==0 \
 			   || strcmp(argv[1],"--help")==0)) \
-       { PUTHELPTEXT; return 0;}
+       { PUTHELPTEXT; return 0; }
+
+#define PUTVERSION if (argc > 1 && (strcmp(argv[1],"-version")==0 \
+			   || strcmp(argv[1],"--version")==0)) \
+       { printf("Nauty&Traces version %.4f (%d bits)\n",\
+       NAUTYVERSIONID/10000.0,WORDSIZE); return 0; }
+
 #define GETHELP \
 fprintf(stderr,"   Use %s -help to see more detailed instructions.\n",argv[0])
 
@@ -179,22 +207,35 @@ extern FILE *opengraphfile(char*,int*,boolean,long);
 extern void writeline(FILE*,char*);
 extern char *gtools_getline(FILE*);     /* formerly getline() */
 extern int graphsize(char*);
+extern void encodegraphsize(int,char**);
 extern void stringcounts(char*,int*,size_t*);
 extern void stringtograph(char*,graph*,int);
+extern void stringtograph_inc(char*,graph*,int,graph*,int);
 extern size_t edgecount(char*);
+extern int checkgline(char*);
+extern graph *readgg(FILE*,graph*,int,int*,int*,boolean*);
 extern graph *readg(FILE*,graph*,int,int*,int*);
+extern graph *readgg_inc(FILE*,graph*,int,int*,int*,graph*,int,int,boolean*);
+extern graph *readg_inc(FILE*,graph*,int,int*,int*,graph*,int,int);
 extern char *ntog6(graph*,int,int);
 extern char *ntos6(graph*,int,int);
+extern char *ntod6(graph*,int,int);
 extern char *sgtos6(sparsegraph*);
 extern char *sgtog6(sparsegraph*);
+extern char *sgtod6(sparsegraph*);
 extern void writeg6(FILE*,graph*,int,int);
+extern void writed6(FILE*,graph*,int,int);
 extern void writes6(FILE*,graph*,int,int);
 extern void writeg6_sg(FILE*,sparsegraph*);
 extern void writes6_sg(FILE*,sparsegraph*);
+extern void writed6_sg(FILE*,sparsegraph*);
+extern char *ntois6(graph*,graph*,int,int);
+extern void writeis6(FILE*,graph*,graph*,int,int);
 extern void writepc_sg(FILE*,sparsegraph*);
 extern void stringtosparsegraph(char*,sparsegraph*,int*);
 extern sparsegraph *read_sg(FILE*,sparsegraph*);
 extern sparsegraph *read_sg_loops(FILE*,sparsegraph*,int*);
+extern sparsegraph *read_sgg_loops(FILE*,sparsegraph*,int*,boolean*);
 extern sparsegraph *readpc_sg(FILE*,sparsegraph*);
 extern sparsegraph *readpcle_sg(FILE*,sparsegraph*);
 extern char *getecline(FILE*);
@@ -203,8 +244,13 @@ extern int longval(char**,long*);
 extern void arg_int(char**,int*,char*);
 extern void arg_long(char**,long*,char*);
 extern void arg_range(char**,char*,long*,long*,char*);
+extern int doublevalue(char**,double*);
+extern void arg_double(char**,double*,char*);
+extern void arg_doublerange(char**,char*,double*,double*,char*);
+extern void arg_sequence(char**,char*,long*,int,int*,char*);
+
 extern void writerange(FILE*,int,long,long);
-extern void gt_abort(char*);
+extern void gt_abort(const char*);
 extern char *stringcopy(char*);
 extern boolean strhaschar(char*,int);
 
@@ -215,6 +261,7 @@ extern void fcanonise_inv
 extern void fcanonise_inv_sg
            (sparsegraph*,int,int,sparsegraph*,char*,void(*)(graph*,int*,int*,
              int,int,int,int*,int,boolean,int,int),int,int,int,boolean);
+extern void setlabptn(int*,int*,int*,int);
 extern void fgroup(graph*,int,int,char*,int*,int*);
 extern void fgroup_inv
 	     (graph*,int,int,char*,int*,int*,void(*)(graph*,int*,int*,int,

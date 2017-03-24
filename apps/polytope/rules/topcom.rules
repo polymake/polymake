@@ -34,7 +34,7 @@ require Polymake::ProgramPipe;
 
 label topcom
 
-#Converts an Array<Array<Int> > of symmetries into a text that TOPCOM understands
+#Converts an Array<Array<Int>> of symmetries into a text that TOPCOM understands
 sub symmetry_to_text {
    return "[[".join("],[", map { join(",", @{$_}) } @{ $_[0]})."]]";
 }
@@ -42,7 +42,7 @@ sub symmetry_to_text {
 # @category Triangulations, subdivisions and volume
 # This computes the chirotope of a point or vector configuration.
 # @param Matrix V The points or vectors, given as rows.
-# @option Array<Array<Int> > symmetry A list of generators of a symmetry group of the points, given as permutations on the indices. If specified, the chirotope is only computed up to symmetry.
+# @option Array<Array<Int>> symmetry A list of generators of a symmetry group of the points, given as permutations on the indices. If specified, the chirotope is only computed up to symmetry.
 # @return String
 user_function chirotope(Matrix; {symmetry=>undef}) {
    my ($matrix, $symmetry_options) = @_;
@@ -152,7 +152,7 @@ sub call_topcom_chiro2alltriangs($) {
 # Computes all triangulations of a point configuration that are connected by bistellar 
 # flips to the regular triangulations. The triangulations are computed via the chirotope.
 # @param PointConfiguration pc input point configuration
-# @option Array<Array<int> > symmetry A list of generators of a symmetry group of the points. If specified, only triangulations up to symmetry will be computed.
+# @option Array<Array<int>> symmetry A list of generators of a symmetry group of the points. If specified, only triangulations up to symmetry will be computed.
 # @return Array<Array<Set<Int>>>
 user_function topcom_regular_and_connected_triangulations(PointConfiguration; {symmetry=>undef} ) {
     my ($self, $symmetry_options) = @_;
@@ -168,7 +168,7 @@ user_function topcom_regular_and_connected_triangulations(PointConfiguration; {s
 # @category Triangulations, subdivisions and volume
 # Computes all fine triangulations of a point configuration that are connected by bistellar flips 
 # to a fine seed triangulation. The triangulations are computed via the chirotope.
-# @option Array<Array<int> > symmetry A list of generators of a symmetry group of the points. If specified, only triangulations up to symmetry will be computed.
+# @option Array<Array<int>> symmetry A list of generators of a symmetry group of the points. If specified, only triangulations up to symmetry will be computed.
 # @param PointConfiguration pc input point configuration
 # @return Array<Array<Set<Int>>>
 user_function topcom_fine_and_connected_triangulations(PointConfiguration; {symmetry=>undef} ){

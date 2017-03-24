@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,21 +13,12 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-
-package ThreeJS;
+REQUIRE
+   webbrowser.rules
 
 CREDIT threejs
    Three.js is a lightweight cross-browser JavaScript library/API used to create and display animated 3D computer graphics on a Web browser.
    See http://github.com/mrdoob for the source code.
-
-  
-# webbrowser
-custom $webbrowser;
-
-CONFIGURE_OPT {
-   find_program($webbrowser, qw( sensible-browser xdg-open chrome safari firefox ), { prompt => "the web browser" });
-}
-
 
 package ThreeJS::default;
 
@@ -73,10 +64,10 @@ use Polymake::Struct [ '@ISA' => 'SimpleViewer' ];
 sub file_suffix { ".html" }
 
 sub new {
-   unless (defined($webbrowser)) {
+   unless (defined($Visual::webbrowser)) {
       die <<'.';
 requires web browser;
-please specify the output File option or call reconfigure("common::threejs.rules");
+please specify the output File option or call reconfigure("common::webbrowser.rules");
 .
    }
    my $self = &_new;
@@ -87,10 +78,10 @@ please specify the output File option or call reconfigure("common::threejs.rules
 sub command {
    my ($self, $filename)=@_;
 
-	my $polydir = $Polymake::InstallTop;
+   my $polydir = $Polymake::InstallTop;
 
    my $outdir = $self->tempfile->dir;
-	"cp -R -L $polydir/resources/threejs/js $outdir; $webbrowser $filename 1>/dev/null 2>&1";
+   "cp -R -L $polydir/resources/threejs/js $outdir; $Visual::webbrowser $filename 1>/dev/null 2>&1";
 }
 
 sub new_drawing {

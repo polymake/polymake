@@ -85,7 +85,7 @@ Possible InputTypes (from libnormaliz.h):
 
 You can give up to 3 input type/matrix combinations directly in the constructor.
 To combine more input types, build a
-std::map <libnormaliz::InputType, vector< vector<Integer> >
+std::map <libnormaliz::InputType, vector< vector<Integer> > >
 and construct the libnormaliz::Cone from it.
 
 See cone_property.h for a complete list of possible properties.

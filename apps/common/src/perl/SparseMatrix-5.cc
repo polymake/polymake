@@ -24,7 +24,6 @@
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
 #include "polymake/Integer.h"
-#include "polymake/RationalFunction.h"
 #include "polymake/Set.h"
 
 namespace polymake { namespace common { namespace {
@@ -47,7 +46,6 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< SparseMatrix< Integer, NonSymmetric > > >, perl::Canned< const Vector< Integer > >);
    OperatorInstance4perl(BinaryAssign_div, perl::Canned< Wary< SparseMatrix< Integer, NonSymmetric > > >, perl::Canned< const pm::RowChain<pm::Matrix<pm::Integer> const&, pm::Matrix<pm::Integer> const&> >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< SparseMatrix< Integer, NonSymmetric > > >, perl::Canned< const pm::Transposed<pm::Matrix<pm::Integer> > >);
-   Class4perl("Polymake::common::SparseMatrix_A_RationalFunction_A_Rational_I_Int_Z_I_Symmetric_Z", SparseMatrix< RationalFunction< Rational, int >, Symmetric >);
    FunctionInstance4perl(new_X, SparseMatrix< Rational, NonSymmetric >, perl::Canned< const SparseMatrix< double, NonSymmetric > >);
    Class4perl("Polymake::common::SparseMatrix_A_Integer_I_Symmetric_Z", SparseMatrix< Integer, Symmetric >);
    FunctionInstance4perl(new_X, SparseMatrix< int, NonSymmetric >, perl::Canned< const SparseMatrix< int, NonSymmetric > >);

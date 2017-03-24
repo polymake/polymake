@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -29,14 +29,14 @@ namespace pm {
 template <typename ContainerRef>
 class Subsets_of_1
    : public modified_container_impl< Subsets_of_1<ContainerRef>,
-                                     list( Container< ContainerRef >,
-                                           Operation< operations::construct_unary2<
-                                                         SingleElementSetCmp,
-                                                         typename generic_of_subsets< Subsets_of_1<ContainerRef>,
-                                                                                      typename deref<ContainerRef>::type >::subset_element_comparator
-                                                      > > ) >,
+                                     mlist< ContainerTag< ContainerRef >,
+                                            OperationTag< operations::construct_unary2<
+                                                             SingleElementSetCmp,
+                                                             typename generic_of_subsets< Subsets_of_1<ContainerRef>,
+                                                                                          typename deref<ContainerRef>::type >::subset_element_comparator
+                                                                       > > > >,
      public generic_of_subsets< Subsets_of_1<ContainerRef>, typename deref<ContainerRef>::type > {
-   typedef modified_container_impl<Subsets_of_1> _super;
+   typedef modified_container_impl<Subsets_of_1> impl_t;
 protected:
    typedef alias<typename attrib<ContainerRef>::plus_const> alias_type;
    typedef typename alias_type::arg_type arg_type;
@@ -44,7 +44,7 @@ protected:
 public:
    Subsets_of_1(arg_type base_arg) : base(base_arg) {}
 
-   const typename _super::container& get_container() const { return *base; }
+   const typename impl_t::container& get_container() const { return *base; }
 };
 
 template <typename ContainerRef>
@@ -58,7 +58,7 @@ const Subsets_of_1<const Container&>
 all_subsets_of_1(const Container& c) { return c; }
 
 template <typename SkipIterator,
-          bool _from_std=derived_from_instance<SkipIterator, std::reverse_iterator>::value>
+          bool is_std_rev=is_derived_from_instance_of<SkipIterator, std::reverse_iterator>::value>
 class skip_predicate {
 public:
    typedef void argument_type;
@@ -80,18 +80,14 @@ public:
    typedef bool result_type;
 
    skip_predicate(const SkipIterator& skip_arg)
-      : skip(skip_arg), skip_base(skip.base())
+      : skip(skip_arg)
+      , skip_base(skip.base())
    {
       --skip_base;
    }
 
    bool operator() (const SkipIterator& it) const { return it!=skip; }
    bool operator() (const BaseIterator& it) const { return it!=skip_base; }
-
-   typedef typename if_else< identical<BaseIterator, typename iterator_traits<BaseIterator>::derivable_type>::value,
-                             BaseIterator, const typename iterator_traits<BaseIterator>::derivable_type>::type
-      alt_arg_type;
-   bool operator() (alt_arg_type& it) const { return it!=skip_base; }
 private:
    SkipIterator skip;
    BaseIterator skip_base;
@@ -100,8 +96,7 @@ private:
 template <typename ContainerRef, typename SkipIterator> class Subsets_less_1_iterator;
 
 template <typename ContainerRef, typename SkipIterator,
-          typename Category=typename least_derived< cons<typename container_traits<ContainerRef>::category,
-                                                         bidirectional_iterator_tag> >::type>
+          typename Category=typename least_derived_class<typename container_traits<ContainerRef>::category, bidirectional_iterator_tag>::type>
 class Subset_less_1
    : public generic_of_subset< Subset_less_1<ContainerRef,SkipIterator>, typename deref<ContainerRef>::type> {
    friend class Subsets_less_1_iterator<ContainerRef, SkipIterator>;
@@ -147,11 +142,11 @@ public:
 template <typename ContainerRef, typename SkipIterator>
 class Subset_less_1<ContainerRef, SkipIterator, bidirectional_iterator_tag>
    : public Subset_less_1<ContainerRef, SkipIterator, forward_iterator_tag> {
-   typedef Subset_less_1<ContainerRef, SkipIterator, forward_iterator_tag> _super;
+   typedef Subset_less_1<ContainerRef, SkipIterator, forward_iterator_tag> base_t;
    friend class Subsets_less_1_iterator<ContainerRef, SkipIterator>;
 public:
-   Subset_less_1(const typename _super::alias_type& base_arg, const SkipIterator& skip_arg)
-      : _super(base_arg, skip_arg) {}
+   Subset_less_1(const typename base_t::alias_type& base_arg, const SkipIterator& skip_arg)
+      : base_t(base_arg, skip_arg) {}
 
    typedef unary_predicate_selector<typename ensure_features<typename deref<ContainerRef>::type, end_sensitive>::const_reverse_iterator,
                                     skip_predicate<SkipIterator> >
@@ -229,7 +224,7 @@ public:
 };
 
 template <typename ContainerRef, typename SkipIterator>
-struct check_iterator_feature<Subsets_less_1_iterator<ContainerRef, SkipIterator>, end_sensitive> : True {};
+struct check_iterator_feature<Subsets_less_1_iterator<ContainerRef, SkipIterator>, end_sensitive> : std::true_type {};
 
 template <typename ContainerRef>
 struct spec_object_traits< Subsets_less_1<ContainerRef> >
@@ -247,17 +242,17 @@ template <typename ContainerRef> class AllSubsets_iterator;
 template <typename BaseContainer>
 class PointedSubset
    : public modified_container_impl< PointedSubset<BaseContainer>,
-                                     list( Container< std::vector<typename container_traits<BaseContainer>::const_iterator> >,
-                                           Operation< BuildUnary<operations::dereference> > ) >,
-     public generic_of_subset<PointedSubset<BaseContainer>, BaseContainer> {
-   typedef modified_container_impl<PointedSubset> _super;
+                                     mlist< ContainerTag< std::vector<typename container_traits<BaseContainer>::const_iterator> >,
+                                            OperationTag< BuildUnary<operations::dereference> > > >
+   , public generic_of_subset<PointedSubset<BaseContainer>, BaseContainer> {
+   typedef modified_container_impl<PointedSubset> base_t;
 
    template <typename> friend class Subsets_of_k_iterator;
    template <typename> friend class AllSubsets_iterator;
 protected:
    typedef typename container_traits<BaseContainer>::const_iterator elem_iterator;
-   typedef typename _super::container it_vector;
-   shared_object<typename _super::container> ptr;
+   typedef typename base_t::container it_vector;
+   shared_object<typename base_t::container> ptr;
 public:
    const it_vector& get_container() const { return *ptr; }
 
@@ -269,10 +264,10 @@ public:
    }
 
    PointedSubset(const BaseContainer& src, int k)
-      : ptr(make_constructor(k, (it_vector*)0))
+      : ptr(k)
    {
       elem_iterator e=src.begin();
-      for (typename Entire<it_vector>::iterator pp=entire(*ptr);  !pp.at_end(); ++e, ++pp)
+      for (auto pp=entire(*ptr);  !pp.at_end(); ++e, ++pp)
          *pp=e;
    }
 };
@@ -301,7 +296,7 @@ public:
    iterator& operator++()
    {
       typename value_type::elem_iterator stop=e_end;
-      for (typename value_type::container::iterator ptr_first=value.ptr->begin(), ptr_last=value.ptr->end(), ptr_i=ptr_last;
+      for (auto ptr_first=value.ptr->begin(), ptr_last=value.ptr->end(), ptr_i=ptr_last;
            ptr_i != ptr_first; --ptr_i) {
          typename value_type::elem_iterator new_stop=(ptr_i[-1])++;
          if (ptr_i[-1] != stop) {
@@ -319,7 +314,7 @@ public:
 
    bool operator== (const iterator& it) const
    {
-      return _at_end==it._at_end && (_at_end || equal(entire(*value.ptr), it.value.ptr->begin()));
+      return _at_end==it._at_end && (_at_end || *value.ptr==*it.value.ptr);
    }
    bool operator!= (const iterator& it) const { return !operator==(it); }
 
@@ -419,7 +414,7 @@ public:
 
    bool operator== (const iterator& it) const
    {
-      return _at_end==it._at_end && (_at_end || equal(entire(*value.ptr), it.value.ptr->begin()));
+      return _at_end==it._at_end && (_at_end || *value.ptr==*it.value.ptr);
    }
    bool operator!= (const iterator& it) const { return !operator==(it); }
 
@@ -457,10 +452,10 @@ protected:
 };
 
 template <typename ContainerRef>
-struct check_iterator_feature<Subsets_of_k_iterator<ContainerRef>, end_sensitive> : True {};
+struct check_iterator_feature<Subsets_of_k_iterator<ContainerRef>, end_sensitive> : std::true_type {};
 
 template <typename ContainerRef>
-struct check_iterator_feature<AllSubsets_iterator<ContainerRef>, end_sensitive> : True {};
+struct check_iterator_feature<AllSubsets_iterator<ContainerRef>, end_sensitive> : std::true_type {};
 
 template <typename ContainerRef>
 struct spec_object_traits< Subsets_of_k<ContainerRef> >
@@ -522,25 +517,25 @@ int insertMin(PowerSet& power_set, const GenericSet<ElementSet>& _element_set)
    return 1;
 }
 
+/** @class PowerSet
+    @brief A Set with elements of type Set<E>, providing methods for adding elements while preserving subset or superset independence.
+    @c Comparator is a functor defining a total ordering on Set<E>.
+*/
+
 template <typename E, typename Comparator>
-class PowerSet : public Set< Set<E,Comparator> > {
-   typedef Set< Set<E,Comparator> > super;
+class PowerSet : public Set<Set<E, Comparator>> {
+   typedef Set<Set<E, Comparator>> base_t;
 public:
    /// Create as empty.
    PowerSet() {}
 
+   /// Create from a Set of Sets.
    template <typename Top>
-   PowerSet(const GenericSet<Top, Set<E,Comparator> >& S) : super(S) {}
+   PowerSet(const GenericSet<Top, Set<E, Comparator>>& S)
+      : base_t(S) {}
 
-   template <typename Top>
-   PowerSet& operator= (const GenericSet<Top, Set<E,Comparator> >& S)
-   {
-      super::operator=(S);
-      return *this;
-   }
-
-   /** Reads subsets from an input sequence.
-       They must be sorted in the lexicographical order.
+   /** @brief Reads subsets from an input sequence.
+       They must be sorted lexicographically.
    */
    template <typename Iterator>
    PowerSet(Iterator first, Iterator last)
@@ -548,42 +543,54 @@ public:
       std::copy(first, last, std::back_inserter(*this));
    }
 
-   template <typename InputIterator>
-   explicit PowerSet(InputIterator src, typename enable_if_iterator<InputIterator,end_sensitive>::type=0)
+   /// Create from an iterator.
+   template <typename Iterator>
+   explicit PowerSet(Iterator&& src,
+                     typename std::enable_if<assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value &&
+                                             assess_iterator_value<Iterator, isomorphic_types, Set<E>>::value,
+                                             void**>::type=nullptr)
+      : base_t(std::forward<Iterator>(src)) {}
+
+   /// Compare two PowerSets.
+   template <typename TSet2>
+   PowerSet& operator= (const GenericSet<TSet2, Set<E, Comparator>>& S)
    {
-      copy(src, std::back_inserter(*this));
+      base_t::operator=(S);
+      return *this;
    }
 
-   /** Adds an independent subset.
-       The new subset will not be added if there is already another subset that includes the given one.
-       All subsets in the PowerSet that are included in the new one are removed.
-       @returnval  1 new subset inserted, smaller subsets possibly deleted
-       @returnval  0 new subset not inserted, because the same subset was already there
-       @returnval -1 new subset not inserted, because there already is a bigger one
+   /** @brief Adds an independent subset.
+
+       The new subset will not be added if there already is another subset that includes the given one.
+       All subsets in the %PowerSet that are included in the new one are removed.
+       @return 1 new subset inserted, smaller subsets possibly deleted.
+       @return  0 new subset not inserted, because the same subset was already there
+       @return -1 new subset not inserted, because there already is a bigger one
    */
-   template <typename Top>
-   int insertMax(const GenericSet<Top,E,Comparator>& s)
+   template <typename TSet2>
+   int insertMax(const GenericSet<TSet2, E, Comparator>& s)
    {
-      return pm::insertMax(*this,s);
+      return pm::insertMax(*this, s);
    }
 
-   /** Adds an independent subset.
-       The new subset will not be added if there is already another subset that is contained in the given one.
-       All subsets in the PowerSet that contain in the new one are removed.
-       @returnval  1 new subset inserted, larger subsets possibly deleted
-       @returnval  0 new subset not inserted, because the same subset was already there
-       @returnval -1 new subset not inserted, because there already is a smaller one
+   /** @brief Adds an independent subset.
+
+       The new subset will not be added if there already is another subset that is contained in the given one.
+       All subsets in the %PowerSet that contain the new one are removed.
+       @return  1 new subset inserted, larger subsets possibly deleted
+       @return  0 new subset not inserted, because the same subset was already there
+       @return -1 new subset not inserted, because there already is a smaller one
    */
-   template <typename Top>
-   int insertMin(const GenericSet<Top,E,Comparator>& s)
+   template <typename TSet2>
+   int insertMin(const GenericSet<TSet2, E, Comparator>& s)
    {
-      return pm::insertMin(*this,s);
+      return pm::insertMin(*this, s);
    }
 #if POLYMAKE_DEBUG
    void check(const char* label) const
    {
-      super::check(label);
-      for (typename super::const_iterator e=this->begin(); !e.at_end(); ++e) {
+      base_t::check(label);
+      for (typename base_t::const_iterator e=this->begin(); !e.at_end(); ++e) {
          std::ostringstream elabel;
          wrap(elabel) << label << '[' << *e << ']';
          e->check(elabel.str().c_str());
@@ -592,7 +599,7 @@ public:
 #endif
 };
 
-// Gather all independent intersections of subsets from the given PowerSet.
+/// Gather all independent intersections of subsets from the given PowerSet.
 template <typename Iterator>
 PowerSet<typename iterator_traits<Iterator>::value_type::element_type,
          typename iterator_traits<Iterator>::value_type::element_comparator>

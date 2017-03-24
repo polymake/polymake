@@ -16,6 +16,7 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/Graph.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
@@ -31,6 +32,12 @@
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
+   FunctionInterface4perl( cols_R_X32, T0 ) {
+      perl::Value arg0(stack[1]);
+      WrapperReturnPkg( (cols(arg0.get<T0>())), arg0 );
+   };
+
+   template <typename T0>
    FunctionInterface4perl( cols_f1, T0 ) {
       perl::Value arg0(stack[0]);
       WrapperReturn( arg0.get<T0>().cols() );
@@ -43,17 +50,15 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(cols_f1, perl::Canned< const Matrix< TropicalNumber< Max, Rational > > >);
    FunctionInstance4perl(cols_f1, perl::Canned< const SparseMatrix< TropicalNumber< Min, Rational >, Symmetric > >);
    FunctionInstance4perl(cols_f1, perl::Canned< const SparseMatrix< TropicalNumber< Max, Rational >, Symmetric > >);
-   FunctionInstance4perl(cols_f1, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<pm::PuiseuxFraction<pm::Min, pm::Rational, pm::Rational> const&> const&>, pm::ColChain<pm::SingleCol<pm::SameElementVector<pm::PuiseuxFraction<pm::Min, pm::Rational, pm::Rational> const&> const&>, pm::Matrix<pm::PuiseuxFraction<pm::Min, pm::Rational, pm::Rational> > const&> const&> >);
-   FunctionInstance4perl(cols_f1, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
-   FunctionInstance4perl(cols_f1, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<pm::PuiseuxFraction<pm::Max, pm::Rational, pm::Rational> const&> const&>, pm::ColChain<pm::SingleCol<pm::SameElementVector<pm::PuiseuxFraction<pm::Max, pm::Rational, pm::Rational> const&> const&>, pm::Matrix<pm::PuiseuxFraction<pm::Max, pm::Rational, pm::Rational> > const&> const&> >);
-   FunctionInstance4perl(cols_f1, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
-   FunctionInstance4perl(cols_f1, perl::Canned< const SparseMatrix< PuiseuxFraction< Max, Rational, Rational >, NonSymmetric > >);
-   FunctionInstance4perl(cols_f1, perl::Canned< const SparseMatrix< PuiseuxFraction< Min, Rational, Integer >, NonSymmetric > >);
-   FunctionInstance4perl(cols_f1, perl::Canned< const SparseMatrix< PuiseuxFraction< Min, Rational, Rational >, NonSymmetric > >);
-   FunctionInstance4perl(cols_f1, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, int > > >);
-   FunctionInstance4perl(cols_f1, perl::Canned< const Matrix< PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > > >);
    FunctionInstance4perl(cols_f1, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
    FunctionInstance4perl(cols_f1, perl::Canned< const pm::RowChain<pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&> >);
    FunctionInstance4perl(cols_f1, perl::Canned< const pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true> >);
+   FunctionInstance4perl(cols_f1, perl::Canned< const pm::AdjacencyMatrix<pm::graph::Graph<pm::graph::Undirected>, false> >);
+   FunctionInstance4perl(cols_f1, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&, pm::all_selector const&, pm::Complement<pm::SingleElementSetCmp<int, pm::operations::cmp>, int, pm::operations::cmp> const&> >);
+   FunctionInstance4perl(cols_f1, perl::Canned< const pm::AdjacencyMatrix<pm::graph::Graph<pm::graph::UndirectedMulti>, true> >);
+   FunctionInstance4perl(cols_f1, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(cols_f1, perl::Canned< const SparseMatrix< PuiseuxFraction< Max, Rational, Rational >, NonSymmetric > >);
+   FunctionInstance4perl(cols_f1, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
+   FunctionInstance4perl(cols_R_X32, perl::Canned< const Matrix< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

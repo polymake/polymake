@@ -375,12 +375,12 @@ Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s, Co
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-void SimplexEvaluator<Integer>::take_care_of_0vector(Collector<Integer>& Coll){
-
+void SimplexEvaluator<Integer>::find_excluded_facets(){
+    
     size_t i,j;
     Integer Test;
-    size_t Deg0_offset=0;
-    long level_offset=0; // level_offset is the level of the lement in par + its offset in the Stanley dec
+    Deg0_offset=0;
+    level_offset=0; // level_offset is the level of the lement in par + its offset in the Stanley dec
     for(i=0;i<dim;i++)
         Excluded[i]=false;
     for(i=0;i<dim;i++){ // excluded facets and degree shift for 0-vector
@@ -409,8 +409,15 @@ void SimplexEvaluator<Integer>::take_care_of_0vector(Collector<Integer>& Coll){
                     break;
             }
         }
-    }
+    }    
+}
 
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+void SimplexEvaluator<Integer>::take_care_of_0vector(Collector<Integer>& Coll){    
+
+    size_t i;
     if (C_ptr->do_h_vector) {
         if(C_ptr->inhomogeneous){
             if(level_offset<=1)
@@ -710,11 +717,17 @@ bool SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
     s.vol=volume;
     if(C_ptr->do_only_multiplicity)
         return true;
+    find_excluded_facets();
+    if(C_ptr->do_cone_dec)
+        s.Excluded=Excluded;
     // large simplicies to be postponed for parallel evaluation
     if ( (volume > SimplexParallelEvaluationBound ||
            (volume > SimplexParallelEvaluationBound/10 && C_ptr->do_Hilbert_basis) )
-       && !C_ptr->do_Stanley_dec) //&& omp_get_max_threads()>1)
-        return false;
+       && !C_ptr->do_Stanley_dec){ //&& omp_get_max_threads()>1)
+        return false;        
+    }
+    if(C_ptr->stop_after_cone_dec)
+        return true;
     take_care_of_0vector(C_ptr->Results[tn]);
     if(volume!=1)
         evaluate_block(1,convertTo<long>(volume)-1,C_ptr->Results[tn]);
@@ -775,6 +788,7 @@ void SimplexEvaluator<Integer>::evaluation_loop_parallel() {
     
     do{
     skip_remaining=false;
+    sequential_evaluation=false;
 
     #pragma omp parallel
     {
@@ -810,6 +824,8 @@ void SimplexEvaluator<Integer>::evaluation_loop_parallel() {
     } // for
     
     } // parallel
+    
+    sequential_evaluation=true;
 
 #ifndef NCATCH
     if (!(tmp_exception == 0)) std::rethrow_exception(tmp_exception);
@@ -1055,14 +1071,12 @@ void SimplexEvaluator<Integer>::Simplex_parallel_evaluation(){
     }
 
     take_care_of_0vector(C_ptr->Results[0]);
-    sequential_evaluation=false;
 
     evaluation_loop_parallel();
 
     collect_vectors();   // --> Results[0]
     for(size_t i=1;i<C_ptr->Results.size();++i)  // takes care of h-vectors
-        add_hvect_to_HS(C_ptr->Results[i]);
-    sequential_evaluation=true;   
+        add_hvect_to_HS(C_ptr->Results[i]); 
     conclude_evaluation(C_ptr->Results[0]);  // h-vector in Results[0] and collected elements
 
     if(C_ptr->verbose){
@@ -1294,8 +1308,7 @@ Collector<Integer>::Collector(Full_Cone<Integer>& fc):
         // we need the generators to be sorted by degree
         hv_max = C_ptr->gen_degrees[C_ptr->nr_gen-1] * C_ptr->dim;
         if (hv_max > 1000000) {
-            errorOutput() << "Error: generator degrees are to huge, h-vector would contain more than 10^6 entires." << endl;
-            throw BadInputException();
+            throw BadInputException("Generator degrees are too huge, h-vector would contain more than 10^6 entires.");
         }
 
         hvector.resize(hv_max,0);

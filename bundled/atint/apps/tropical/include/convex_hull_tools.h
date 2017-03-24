@@ -51,10 +51,10 @@ namespace polymake { namespace tropical {
 
 	/**
 	  @brief Normalizes a ray matrix: Vertices begin with a 1 and the first non-zero coordinate of a ray is +-1
-	  @param Matrix<Rational> The row vectors to be normalized. This method modifies this matrix!
-	  @param Whether the rays contain a leading coordinate distinguishing far and nonfar vertices.
+	  @param Matrix The row vectors to be normalized. This method modifies this matrix!
 	  */
-	void cdd_normalize_rays(Matrix<Rational> &rays, bool has_leading_coordinate );
+   template <typename MType>
+      void cdd_normalize_rays(GenericMatrix<MType> &rays );
 
 	/**
 	  @brief Computes the intersection of two rational polyhedra, x and y, given in terms of rays and lineality space
@@ -85,8 +85,8 @@ namespace polymake { namespace tropical {
 	  5) IncidenceMatrix<> ycontainers For the i-th cone of the intersection, the i-th row gives the indices of all maximal cones in y containing it
 	  */
 	fan_intersection_result cdd_fan_intersection(	
-			Matrix<Rational> xrays, Matrix<Rational> xlin, IncidenceMatrix<> xcones,
-			Matrix<Rational> yrays, Matrix<Rational> ylin, IncidenceMatrix<> ycones);
+			const Matrix<Rational> &xrays, const Matrix<Rational> &xlin, const IncidenceMatrix<> &xcones,
+			const Matrix<Rational> &yrays, const Matrix<Rational> &ylin, const IncidenceMatrix<> &ycones);
 
 }}
 

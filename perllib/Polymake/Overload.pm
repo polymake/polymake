@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -488,8 +488,6 @@ sub analyze_signature_element {
 # private:
 sub compare_typechecks {
    my ($node, $arg, $min, $max, $typecheck, $signature)=@_;
-   my $sibling_node;
-
    if (defined $typecheck) {
       for (my $similar_node=$node; ;) {
          if (defined($similar_node->typecheck)) {
@@ -505,7 +503,7 @@ sub compare_typechecks {
          is_object($similar_node) && index($similar_node->signature, $signature)==0 or last;
       }
       # Assume the new instance being more specific than all ones defined prior to it: insert at the beginning of the candidate list
-      $sibling_node=$node->clone_and_drop_code;
+      my $sibling_node=$node->clone_and_drop_code;
       $sibling_node->min_arg=$min;
       $sibling_node->max_arg=$max - ($typecheck->[0] & $has_repeated);
       $sibling_node->cur_arg=$arg;
@@ -515,7 +513,7 @@ sub compare_typechecks {
          $node->backtrack->typecheck //= [ $has_typecheck_sub, \&check_explicit_typelist, 0, 0 ];
       }
       $sibling_node
-   } else {
+   } elsif (defined $node->typecheck) {
       # A generic signature introduced after a specific one (or an instance without repeats after an instance with repeats):
       # append to the end of the candidate list
       while (is_object($node->backtrack) && index($node->backtrack->signature, $signature)==0) {
@@ -526,12 +524,14 @@ sub compare_typechecks {
          $_[0]=$node;
          return;
       }
-      $sibling_node=$node->new($min, $max, $node->backtrack);
+      my $sibling_node=$node->new($min, $max, $node->backtrack);
       if (!defined($arg)) {
          # The new root node describes functions without type parameters: must protect them against parameterized cousins
          $sibling_node->typecheck=[ $has_typecheck_sub, \&check_explicit_typelist, 0, 0 ];
       }
       $node->backtrack=$sibling_node;
+   } else {
+      undef
    }
 }
 ####################################################################################
@@ -539,7 +539,7 @@ sub add_instance {
    my ($caller, $name, $code, $labels, $arg_types, $tparams, $root_node)=@_;
    my ($min, $max, @arg_list)=@$arg_types;
    my $pkg=$name =~ s/^(.*)::([^:]+)$/$2/ ? $1 : $caller;
-   my ($is_method, @is_lvalue)= is_object($code) ? (1) : (is_method($code), is_lvalue($code));
+   my ($is_method, $is_lvalue)= is_object($code) ? (1, 0) : (is_method($code), is_lvalue($code));
    my $method_context_pkg;
    if ($is_method) {
       ++$min;
@@ -568,8 +568,7 @@ sub add_instance {
 
       ($signature)=$node->signature =~ /^([^,\[]+)/;
 
-      if (not(defined($typecheck) || defined($node->typecheck)) ||
-          not(defined( $sibling_node=compare_typechecks($node, undef, $min, $max, $typecheck, $signature) ))) {
+      if (!defined( $sibling_node=compare_typechecks($node, undef, $min, $max, $typecheck, $signature))) {
 
          if ($typecheck) {
             $signature.=sprintf("[%x]", $node->typecheck);
@@ -594,8 +593,7 @@ sub add_instance {
                      my $next_node_sub=UNIVERSAL::can($arg_pkg, $signature);
                      if (defined($next_node_sub)  &&  $arg_pkg eq method_owner($next_node_sub)) {
                         $node=&$next_node_sub;
-                        if (not(defined($typecheck) || defined($node->typecheck)) ||
-                            not(defined( $sibling_node=compare_typechecks($node, $arg, $min, $max, $typecheck, $signature) ))) {
+                        if (!defined( $sibling_node=compare_typechecks($node, $arg, $min, $max, $typecheck, $signature))) {
 
                            # the argument types themselves coincide too: the distinction will be based on a following argument
                            $signature .= ",$arg_pkg";
@@ -680,14 +678,15 @@ sub add_instance {
                   }
                   # create a new intermediate node for UNIVERSAL package or follow the existing one
                   if (defined (my $next_node_sub=UNIVERSAL->can($node->signature))) {
-                     $min=$next_arg+1 if $min<=$next_arg;
                      $node=&$next_node_sub;
+                     last if defined( $sibling_node=compare_typechecks($node, $arg, $min, $max, $typecheck, $signature));
+                     $min=$next_arg+1 if $min<=$next_arg;
                   } else {
-                     --$arg;
                      @last_glob=("UNIVERSAL", $node->signature);
                      last;
                   }
                }
+               --$arg;
             }
          }
       }
@@ -729,11 +728,11 @@ sub add_instance {
             }
             undef $backtrack_node;
          } else {
+            use namespaces::AnonLvalue '$is_lvalue';
             $dictionary{$pkg}->{$name}=$node;
             my $head_code=define_function($pkg, $name,
-                                          sub { &{ $node->resolve(\@_) // complain($pkg, $name, $is_method, \@_) } });
+                                          sub { $is_lvalue; &{ $node->resolve(\@_) // complain($pkg, $name, $is_method, \@_) } });
             set_method($head_code) if $is_method;
-            declare_lvalue($head_code, @is_lvalue) if @is_lvalue;
          }
          $node->typecheck=$typecheck;
       }
@@ -788,14 +787,15 @@ sub add {
       # without signature
       croak( "neither labels nor signature specified" ) unless defined($label);
       my $is_method=is_method($code);
-      my @is_lvalue=is_lvalue($code);
       my $pkg= $name =~ s/^(.*)::([^:]+)$/$2/ ? $1 : $caller;
       my $node=dict_node($pkg, $name, $is_method, "Polymake::Overload::Labeled");
       if (!defined($node)) {
+         use namespaces::AnonLvalue '$is_lvalue';
+         my $is_lvalue=is_lvalue($code);
          $node=$dictionary{$pkg}->{$name}=new Labeled;
-         my $head_code=define_function($pkg, $name, sub { &{ $node->resolve } });
+         my $head_code=define_function($pkg, $name,
+                                       sub { $is_lvalue; &{ $node->resolve } });
          set_method($head_code) if $is_method;
-         declare_lvalue($head_code, @is_lvalue) if @is_lvalue;
       }
       LabeledNode::create_controls($node->control_list, $code, $label);
    }

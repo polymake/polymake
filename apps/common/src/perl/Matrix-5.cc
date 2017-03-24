@@ -34,8 +34,8 @@ namespace polymake { namespace common { namespace {
       WrapperReturnNew(T0, (arg0.get<T1>()) );
    };
 
-   FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::VectorChain<pm::Vector<pm::Rational> const&, pm::IndexedSlice<pm::Vector<pm::Rational>&, pm::Series<int, true>, void> const&> const&>, pm::MatrixMinor<pm::Matrix<pm::Rational>&, pm::Series<int, true> const&, pm::Series<int, true> const&> const&> >);
-   FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::VectorChain<pm::Vector<pm::Rational> const&, pm::IndexedSlice<pm::Vector<pm::Rational>&, pm::Series<int, true>, void> const&> const&>, pm::MatrixMinor<pm::Matrix<pm::Rational>&, pm::Series<int, true> const&, pm::Set<int, pm::operations::cmp> const&> const&> >);
+   FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::VectorChain<pm::Vector<pm::Rational> const&, pm::IndexedSlice<pm::Vector<pm::Rational>&, pm::Series<int, true>> const&> const&>, pm::MatrixMinor<pm::Matrix<pm::Rational>&, pm::Series<int, true> const&, pm::Series<int, true> const&> const&> >);
+   FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const pm::ColChain<pm::SingleCol<pm::VectorChain<pm::Vector<pm::Rational> const&, pm::IndexedSlice<pm::Vector<pm::Rational>&, pm::Series<int, true>> const&> const&>, pm::MatrixMinor<pm::Matrix<pm::Rational>&, pm::Series<int, true> const&, pm::Set<int, pm::operations::cmp> const&> const&> >);
    OperatorInstance4perl(Unary_neg, perl::Canned< const Wary< pm::RowChain<pm::MatrixMinor<pm::Matrix<double>&, pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&> const&, pm::all_selector const&> const&, pm::SingleRow<pm::Vector<double> const&> > > >);
    FunctionInstance4perl(new_X, Matrix< Rational >, perl::Canned< const SparseMatrix< Rational, Symmetric > >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< Matrix< double > > >, double);
@@ -43,7 +43,7 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(convert, Matrix< Rational >, perl::Canned< const SparseMatrix< Rational, Symmetric > >);
    FunctionInstance4perl(new_X, Matrix<double>, perl::Canned< const pm::MatrixMinor<pm::Matrix<double>&, pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&> const&, pm::all_selector const&> >);
    OperatorInstance4perl(Unary_neg, perl::Canned< const Wary< Matrix<Rational> > >);
-   FunctionInstance4perl(new_X, Matrix<Rational>, perl::Canned< const pm::ColChain<pm::SingleCol<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, false>, void> const&>, pm::Matrix<pm::Rational> const&> >);
-   FunctionInstance4perl(new_X, Matrix<Rational>, perl::Canned< const pm::ColChain<pm::SingleCol<pm::Vector<pm::Rational> const&>, pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Array<int, void> const&, pm::Series<int, true> const&> const&> >);
+   FunctionInstance4perl(new_X, Matrix<Rational>, perl::Canned< const pm::ColChain<pm::SingleCol<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, false>> const&>, pm::Matrix<pm::Rational> const&> >);
+   FunctionInstance4perl(new_X, Matrix<Rational>, perl::Canned< const pm::ColChain<pm::SingleCol<pm::Vector<pm::Rational> const&>, pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Array<int> const&, pm::Series<int, true> const&> const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

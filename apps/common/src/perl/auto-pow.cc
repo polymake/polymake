@@ -17,11 +17,19 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/Integer.h"
+#include "polymake/Polynomial.h"
 #include "polymake/Rational.h"
+#include "polymake/RationalFunction.h"
 #include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1>
+   FunctionInterface4perl( pow_X_f1, T0,T1 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      WrapperReturn( arg0.get<T0>().pow(arg1.get<T1>()) );
+   };
+
    template <typename T0, typename T1>
    FunctionInterface4perl( Integer__pow_X_X, T0,T1 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
@@ -36,5 +44,9 @@ namespace polymake { namespace common { namespace {
 
    FunctionInstance4perl(Integer__pow_X_X, perl::Canned< const Integer >, long);
    FunctionInstance4perl(Rational__pow_X_X, perl::Canned< const Rational >, long);
+   FunctionInstance4perl(pow_X_f1, perl::Canned< const Polynomial< Rational, int > >, int);
+   FunctionInstance4perl(pow_X_f1, perl::Canned< const UniPolynomial< Rational, int > >, int);
+   FunctionInstance4perl(pow_X_f1, perl::Canned< const UniPolynomial< UniPolynomial< Rational, int >, Rational > >, int);
+   FunctionInstance4perl(pow_X_f1, perl::Canned< const UniPolynomial< UniPolynomial< Rational, int >, Rational > >, perl::Canned< const Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -16,9 +16,9 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/Polynomial.h"
 #include "polymake/Rational.h"
 #include "polymake/TropicalNumber.h"
+#include "polymake/Polynomial.h"
 #include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
@@ -29,8 +29,7 @@ namespace polymake { namespace common { namespace {
       WrapperReturn( arg0.get<T0>().coefficients_as_vector() );
    };
 
-   FunctionInstance4perl(coefficients_as_vector_f1, perl::Canned< const Polynomial< Rational, int > >);
    FunctionInstance4perl(coefficients_as_vector_f1, perl::Canned< const Polynomial< TropicalNumber< Max, Rational >, int > >);
-   FunctionInstance4perl(coefficients_as_vector_f1, perl::Canned< const Polynomial< TropicalNumber< Min, Rational >, int > >);
+   FunctionInstance4perl(coefficients_as_vector_f1, perl::Canned< const Polynomial< Rational, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

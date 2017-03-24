@@ -14,7 +14,7 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/graph/BFSiterator.h"
+#include "polymake/graph/graph_iterators.h"
 #include "polymake/graph/bipartite.h"
 #include "polymake/graph/connected.h"
 #include <cstdlib>
@@ -26,54 +26,59 @@ protected:
    std::vector<int> color;
    int sign;
 public:
+   static const bool visit_all_edges=true;
+
    BipartiteColoring();
 
-   template <typename Graph>
-   BipartiteColoring(const GenericGraph<Graph>& G, int start_node)
-      : color(G.top().dim(),0), sign(1)
+   template <typename TGraph>
+   explicit BipartiteColoring(const GenericGraph<TGraph>& G)
+      : color(G.top().dim(), 0)
+      , sign(0)
+   {}
+
+   template <typename TGraph>
+   void clear(const GenericGraph<TGraph>& G)
    {
-      if (!color.empty()) color[start_node]=1; else sign=0;
+      std::fill(color.begin(), color.end(), 0);
+      sign=0;
    }
 
-   template <typename Graph>
-   void reset(const GenericGraph<Graph>&, int start_node)
+   bool operator()(int n)
    {
-      fill(entire(color),0);
-      if (!color.empty()) color[start_node]=1, sign=1; else sign=0;
+      color[n]=1;
+      sign=1;
+      return true;
    }
 
-   bool seen(int n) const { return color[n]!=0; }
-
-   void add(int n, int n_from)
+   bool operator()(int n_from, int n_to)
    {
-      sign += color[n]=-color[n_from];
-   }
-
-   static const bool check_edges=true;
-   void check(int n, int n_from)
-   {
-      if (color[n]==color[n_from]) throw n;
+      if (color[n_to]==0) {
+         sign += color[n_to]=-color[n_from];
+         return true;
+      } else if (color[n_to]==color[n_from]) {
+         throw n_to;
+      } else {
+         return false;
+      }
    }
 
    int get_sign() const { return std::abs(sign); }
    int get_color(int n) const { return color[n]; }
 };
 
-template <typename Graph>
-int bipartite_sign(const GenericGraph<Graph,Undirected>& G)
+template <typename TGraph>
+int bipartite_sign(const GenericGraph<TGraph,Undirected>& G)
 {
-   connected_components_iterator<Graph> C(G);
    int signature=0;
-   while (!C.at_end()) {
+   for (connected_components_iterator<TGraph> C(G);  !C.at_end();  ++C) {
       int this_node=C->front();
-      BFSiterator<Graph, Visitor<BipartiteColoring> > it(G, this_node);
+      BFSiterator<TGraph, VisitorTag<BipartiteColoring> > it(G, this_node);
       try {
          while (!it.at_end()) ++it;
       } catch (int) {
          return -1;
       }
       signature += it.node_visitor().get_sign();
-      ++C;
    }
    return signature;
 }

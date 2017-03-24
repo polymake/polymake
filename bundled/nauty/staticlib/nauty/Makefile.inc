@@ -25,7 +25,10 @@ ifeq "$(wildcard nauty.h)" ""
   override _dummy := $(shell ${_hide} CC=${CC} CFLAGS="${Cflags}" ${src}/configure --quiet 2>/dev/null; rm makefile ${_restore})
 endif
 
-ExtraCFLAGS := -DBIGNAUTY -I. -I${src}
+# force include nauty headers here on the command line to make sure that we pick
+# up the newly generated ones instead (wrong?) ones from the original tarball
+# (current directory of the source file is always searched first and -I- is deprecated)
+ExtraCFLAGS := -DBIGNAUTY -I. -include $(CURDIR)/nauty.h -include $(CURDIR)/naututil.h -include $(CURDIR)/gtools.h -I${src}
 ExtraCLEAN := nauty.h naututil.h gtools.h config.*
 
 # Local Variables:

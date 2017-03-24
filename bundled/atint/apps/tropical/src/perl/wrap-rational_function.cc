@@ -14,9 +14,9 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/Polynomial.h"
 #include "polymake/Rational.h"
 #include "polymake/TropicalNumber.h"
+#include "polymake/Polynomial.h"
 
 namespace polymake { namespace tropical { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -44,12 +44,12 @@ namespace polymake { namespace tropical { namespace {
       WrapperReturnVoid( (computeGeometricFunctionData<T0>(arg0)) );
    };
 
-   FunctionInstance4perl(computeGeometricFunctionData_T_x_f16, Min);
-   FunctionInstance4perl(computeGeometricFunctionData_T_x_f16, Max);
    FunctionInstance4perl(computeDomain_T_x_f16, Min);
+   FunctionInstance4perl(computeGeometricFunctionData_T_x_f16, Min);
    FunctionInstance4perl(computeDomain_T_x_f16, Max);
-   FunctionInstance4perl(homogenize_quotient_T_X_X_x, Min, perl::Canned< const Polynomial< TropicalNumber< Min, Rational >, int > >, perl::Canned< const Polynomial< TropicalNumber< Min, Rational >, int > >);
+   FunctionInstance4perl(computeGeometricFunctionData_T_x_f16, Max);
    FunctionInstance4perl(homogenize_quotient_T_X_X_x, Max, perl::Canned< const Polynomial< TropicalNumber< Max, Rational >, int > >, perl::Canned< const Polynomial< TropicalNumber< Max, Rational >, int > >);
+   FunctionInstance4perl(homogenize_quotient_T_X_X_x, Min, perl::Canned< const Polynomial< TropicalNumber< Min, Rational >, int > >, perl::Canned< const Polynomial< TropicalNumber< Min, Rational >, int > >);
    FunctionInstance4perl(add_rational_functions_T_x_x, Max);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -47,11 +47,11 @@ method lookup_ambient_dim($) {
 }
 
 # @category Input property
-# (Non-homogenous) vectors whose linear span defines a subset of the lineality space of the cone; 
+# (Non-homogenous) vectors whose linear span defines a subset of the lineality space of the cone;
 # redundancies are allowed. All vectors in the input must be non-zero.
 # Dual to [[EQUATIONS]].
 #
-# Input section only.  Ask for [[LINEALITY_SPACE]] if 
+# Input section only.  Ask for [[LINEALITY_SPACE]] if
 # you want to compute a V-representation from an H-representation.
 property INPUT_LINEALITY : Matrix<Scalar> {
   sub canonical { &canonicalize_rays; }
@@ -65,9 +65,9 @@ property INPUT_LINEALITY : Matrix<Scalar> {
 # Input section only.  Ask for [[RAYS]] if you want to compute a V-representation from an H-representation.
 property INPUT_RAYS : Matrix<Scalar> {
 
-  method canonical { 
+  method canonical {
       my ($this,$M)=@_;
-      canonicalize_rays($M); 
+      canonicalize_rays($M);
       if ($this->isa("Polytope")) {
           canonicalize_polytope_generators($M);
       }
@@ -91,8 +91,8 @@ property CONE_AMBIENT_DIM : Int;
 # This is the dimension all combinatorial properties of the cone
 # like e.g. [[RAYS_IN_FACETS]] or the [[HASSE_DIAGRAM]] refer to.
 #
-# Geometrically, the combinatorial dimension is the dimension 
-# of the intersection of the pointed part of the cone 
+# Geometrically, the combinatorial dimension is the dimension
+# of the intersection of the pointed part of the cone
 # with a hyperplane that creates a bounded intersection.
 property COMBINATORIAL_DIM : Int;
 
@@ -118,13 +118,30 @@ property RAYS : Matrix<Scalar> {
    sub canonical { &canonicalize_rays; }
 }
 
-declare permutation VertexPerm {
+# @category Geometry
+# Basis of the linear subspace orthogonal to all [[INEQUALITIES]] and [[EQUATIONS]]
+# All vectors in this section must be non-zero.
+# The property [[LINEALITY_SPACE]] appears only in conjunction with the property [[RAYS]], or [[VERTICES]], respectively.
+# The specification of the property [[RAYS]] or [[VERTICES]] requires the specification of [[LINEALITY_SPACE]], and vice versa.
+property LINEALITY_SPACE : Matrix<Scalar> {
+   sub canonical { &orthogonalize_subspace; }
 
-   # Transforming [[RAYS]] from this into basic object
-   property PERMUTATION : Array<Int>;
+   method equal {
+     my ($this,$M1,$M2)=@_;
+     $this->prepare_computations;
+     equal_bases($M1,$M2);
+   }
 }
 
-rule VertexPerm.PERMUTATION : VertexPerm.RAYS, RAYS {
+# @category Geometry
+# Dimension of the [[LINEALITY_SPACE]] (>0 in the non-POINTED case)
+property LINEALITY_DIM : Int;
+
+# permuting the [[RAYS]]
+# TODO: rename into RaysPerm and introduce an overriding alias in Polytope
+permutation VertexPerm : PermBase;
+
+rule VertexPerm.PERMUTATION : VertexPerm.RAYS, RAYS, LINEALITY_SPACE {
    my $cmp=$this->prepare_computations;
    $this->VertexPerm->PERMUTATION=find_representation_permutation($this->VertexPerm->RAYS, $this->RAYS, $this->LINEALITY_SPACE, 0);
 }
@@ -176,7 +193,7 @@ property LINEAR_SPAN : Matrix<Scalar> {
 
 
 # @category Geometry
-# Facets of the cone, encoded as inequalities. 
+# Facets of the cone, encoded as inequalities.
 # All vectors in this section must be non-zero.
 # Dual to [[RAYS]].
 # This section is empty if and only if the cone is trivial (e.g. if it encodes an empty polytope).
@@ -186,11 +203,8 @@ property LINEAR_SPAN : Matrix<Scalar> {
 # or [[AFFINE_HULL]], respectively, and vice versa.
 property FACETS : Matrix<Scalar>;
 
-declare permutation FacetPerm {
-
-   # Transforming [[FACETS]] from this into basic object
-   property PERMUTATION : Array<Int>;
-}
+# permuting the [[FACETS]]
+permutation FacetPerm : PermBase;
 
 rule FacetPerm.PERMUTATION : FacetPerm.FACETS, FACETS, LINEAR_SPAN {
    my $cmp=$this->prepare_computations;
@@ -248,26 +262,7 @@ property FULL_DIM : Bool;
 property REL_INT_POINT : Vector<Scalar>;
 
 # @category Geometry
-# Basis of the linear subspace orthogonal to all [[INEQUALITIES]] and [[EQUATIONS]]
-# All vectors in this section must be non-zero.
-# The property [[LINEALITY_SPACE]] appears only in conjunction with the property [[RAYS]], or [[VERTICES]], respectively.
-# The specification of the property [[RAYS]] or [[VERTICES]] requires the specification of [[LINEALITY_SPACE]], and vice versa.
-property LINEALITY_SPACE : Matrix<Scalar> {
-   sub canonical { &orthogonalize_subspace; }
-
-   method equal {
-     my ($this,$M1,$M2)=@_;
-     $this->prepare_computations;
-     equal_bases($M1,$M2);
-   }
-}
-
-# @category Geometry
-# Dimension of the [[LINEALITY_SPACE]] (>0 in the non-POINTED case)
-property LINEALITY_DIM : Int;
-
-# @category Geometry
-# True if all [[RAYS]] of the cone have non-negative coordinates, 
+# True if all [[RAYS]] of the cone have non-negative coordinates,
 # that is, if the pointed part of the cone lies entirely in the positive orthant.
 property POSITIVE : Bool;
 
@@ -352,20 +347,58 @@ rule INEQUALITIES_THRU_RAYS : RAYS_IN_INEQUALITIES{
 
 # @category Combinatorics
 # The face lattice of the cone organized as a directed graph.
-# Each node corresponds to some proper face of the cone.
-# The nodes corresponding to the rays and facets appear in the same order
-# as the elements of [[RAYS]] and [[FACETS]] properties.
+# Top and bottom nodes represent the whole cone and the empty face.
+# Every other node corresponds to some proper face of the cone.
+property HASSE_DIAGRAM : Lattice<BasicDecoration, Sequential> {
+
+	method get_shift() {
+		my $this = shift;
+		return $this->parent->isa("polytope::Polytope") ? 1 : 0;
+	}
+
+   # @category Combinatorics
+   # The dimension of the underlying object
+   # @return Int
+   user_method dim {
+		my $this = shift;
+      return $this->rank() - $this->get_shift();
+   }
+
+   # @category Combinatorics
+   # The indices of nodes in the [[HASSE_DIAGRAM]] corredponding to faces of dimension d in the underlying object
+   # @param Int d dimension
+   # @return Set<Int>
+   user_method nodes_of_dim($) {
+      my ($this,$d) = @_;
+      return $this->nodes_of_rank($d + $this->get_shift());
+   }
+
+   # @category Combinatorics
+   # The indices of nodes in the [[HASSE_DIAGRAM]] corredponding to faces with dimension in the range (d1,d2) in the underlying object
+   # @param Int d1 lower dimension of the range
+   # @param Int d2 upper dimension of the range
+   # @return Set<Int>
+   user_method nodes_of_dim_range($,$) {
+      my ($this,$d1,$d2) = @_;
+		my $st = $this->get_shift();
+      return shift->nodes_of_rank_range($d1+$st,$d2+$st);
+   }
+
+}
+
+# FIXME #851  these rules are wrongly designed
 #
-# Two special nodes represent the whole cone and the empty face.
-property HASSE_DIAGRAM : FaceLattice;
+# rule HASSE_DIAGRAM.NodePerm.PERMUTATION : VertexPerm.PERMUTATION, VertexPerm.HASSE_DIAGRAM.DECORATION, VertexPerm.HASSE_DIAGRAM.INVERSE_RANK_MAP, \
+#          HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
+#    $this->HASSE_DIAGRAM->NodePerm->PERMUTATION = find_lattice_permutation($this->HASSE_DIAGRAM, $this->VertexPerm->HASSE_DIAGRAM, $this->VertexPerm->PERMUTATION);
+# }
+#
+#
+# rule HASSE_DIAGRAM.NodePerm.PERMUTATION : FacetPerm.PERMUTATION, FacetPerm.HASSE_DIAGRAM.DECORATION, FacetPerm.HASSE_DIAGRAM.INVERSE_RANK_MAP, \
+#          HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
+#    $this->HASSE_DIAGRAM->NodePerm->PERMUTATION = find_lattice_permutation($this->HASSE_DIAGRAM, $this->FacetPerm->HASSE_DIAGRAM, new Array<Int>(sequence($this->HASSE_DIAGRAM->nodes_of_rank(1))));
+# }
 
-rule HASSE_DIAGRAM : VertexPerm.HASSE_DIAGRAM, VertexPerm.PERMUTATION {
-   $this->HASSE_DIAGRAM=permuted_atoms($this->VertexPerm->HASSE_DIAGRAM, $this->VertexPerm->PERMUTATION);
-}
-
-rule HASSE_DIAGRAM : FacetPerm.HASSE_DIAGRAM, FacetPerm.PERMUTATION {
-   $this->HASSE_DIAGRAM=permuted_coatoms($this->FacetPerm->HASSE_DIAGRAM, $this->FacetPerm->PERMUTATION);
-}
 
 # @category Combinatorics
 # Number of incident facets for each ray.
@@ -375,6 +408,16 @@ property RAY_SIZES : Array<Int>;
 # @category Combinatorics
 # Number of incident rays for each facet.
 property FACET_SIZES : Array<Int>;
+
+
+# @category Combinatorics
+# Measures the deviation of the cone from being simple in terms of the [[GRAPH]].
+property EXCESS_RAY_DEGREE : Int;
+
+
+# @category Combinatorics
+# Measures the deviation of the cone from being simple in terms of the [[DUAL_GRAPH]].
+property EXCESS_FACET_DEGREE : Int;
 
 
 # @category Combinatorics
@@ -395,7 +438,7 @@ property F_VECTOR : Vector<Integer>;
 
 # @category Combinatorics
 # The vector counting the number of incidences between pairs of faces.
-# `f<sub>ik</sub>` is the number of incident pairs of `(i+1)`-faces and `(k+1)`-faces. 
+# `f<sub>ik</sub>` is the number of incident pairs of `(i+1)`-faces and `(k+1)`-faces.
 # The main diagonal contains the [[F_VECTOR]].
 property F2_VECTOR : Matrix<Integer>;
 
@@ -439,11 +482,11 @@ weight 1.10;
 
 # @category Combinatorics
 # True if the facets of the cone are simplicial.
-property SIMPLICIAL : Bool; 
+property SIMPLICIAL : Bool;
 
 # @category Combinatorics
 # True if the cone is simplicial.
-property SIMPLICIAL_CONE : Bool; 
+property SIMPLICIAL_CONE : Bool;
 
 # @category Triangulation and volume
 # Conceptually, similar to [[TRIANGULATION]], but using [[INPUT_RAYS]].
@@ -453,6 +496,28 @@ property SIMPLICIAL_CONE : Bool;
 # to throw away.  Use big objects of type [[VectorConfiguration]] if you want to work with
 # triangulations using redundant points.
 property TRIANGULATION_INT : Array<Set>;
+
+# @category Combinatorics
+# The interior //d//-dimensional simplices of a cone of combinatorial dimension //d//
+property MAX_INTERIOR_SIMPLICES : Array<Set>;
+
+# @category Combinatorics
+# The boundary (//d//-1)-dimensional simplices of a cone of combinatorial dimension //d//
+property MAX_BOUNDARY_SIMPLICES : Array<Set>;
+
+# @category Combinatorics
+# The (//d//-1)-dimensional simplices in the interior.
+property INTERIOR_RIDGE_SIMPLICES : Array<Set>;
+
+# @category Combinatorics
+# A matrix whose rows contain the cocircuit equations of P. The columns correspond to the [[MAX_INTERIOR_SIMPLICES]].
+property COCIRCUIT_EQUATIONS : SparseMatrix;
+
+# @category Combinatorics
+# A matrix whose rows contain the foldable cocircuit equations of P.  The columns correspond to 2 * [[MAX_INTERIOR_SIMPLICES]].
+# col 0 = 0, col 1 = first simplex (black copy), col 2 = first simplex (white copy), col 3 = second simplex (black copy), ...
+property FOLDABLE_COCIRCUIT_EQUATIONS : SparseMatrix;
+
 
 # @category Combinatorics
 # True if the facets of the cone are simple. Dual to [[SIMPLICIAL]].
@@ -523,22 +588,22 @@ property COORDINATE_LABELS : Array<String> : mutable {
 # Reordered [[RAYS_IN_FACETS]] for 2d and 3d-cones.
 # Rays are listed in the order of their appearance
 # when traversing the facet border counterclockwise seen from outside of the origin.
-property RIF_CYCLIC_NORMAL : Array< Array<Int> >;
+property RIF_CYCLIC_NORMAL : Array<Array<Int>>;
 
 # @category Visualization
 # Reordered [[DUAL_GRAPH]] for 3d-cones.
 # The neighbor facets are listed in the order corresponding to [[RIF_CYCLIC_NORMAL]],
 # so that the first two vertices in RIF_CYCLIC_NORMAL make up the ridge to the first neighbor
 # facet and so on.
-property NEIGHBOR_FACETS_CYCLIC_NORMAL : Array< Array<Int> >;
+property NEIGHBOR_FACETS_CYCLIC_NORMAL : Array<Array<Int>>;
 
 # @category Visualization
 # Reordered transposed [[RAYS_IN_FACETS]]. Dual to [[RIF_CYCLIC_NORMAL]].
-property FTR_CYCLIC_NORMAL : Array< Array<Int> >;
+property FTR_CYCLIC_NORMAL : Array<Array<Int>>;
 
 # @category Visualization
 # Reordered [[GRAPH]]. Dual to [[NEIGHBOR_FACETS_CYCLIC_NORMAL]].
-property NEIGHBOR_RAYS_CYCLIC_NORMAL : Array< Array<Int> >;
+property NEIGHBOR_RAYS_CYCLIC_NORMAL : Array<Array<Int>>;
 
 
 }

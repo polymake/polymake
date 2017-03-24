@@ -1,0 +1,194 @@
+# Copyright (c) 2013-2016 Silke Horn, Andreas Paffenholz
+# http://solros.de/polymake/poly_db
+# http://www.mathematik.tu-darmstadt.de/~paffenholz
+# 
+# This file is part of the polymake extension polyDB.
+# 
+# polyDB is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# polyDB is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with polyDB.  If not, see <http://www.gnu.org/licenses/>.
+
+use MongoDB;
+use MongoDB::OID;
+use PolyDB;
+
+# @category Database
+
+# polyDB: The hostname of the database, default 'polymake.org'
+custom $db_host = "db.polymake.org";
+#custom $db_host = "130.83.68.137";
+
+# polyDB: The port of the database, default 27017
+custom $db_port = "27027";
+
+# polyDB: The database username, default 'polymake'
+custom $db_user = "polymake";
+
+# polyDB: The database password, default 'database'
+custom $db_pwd = "database";
+
+# polyDB: The name of the authentication database, default 'admin'
+custom $db_auth_db = "admin";
+
+# polyDB: The name of the type database, default 'pm'
+custom $db_type_db = "pm";
+
+# polyDB: The name of the info database, default 'pm'
+custom $db_info_db = "pm";
+
+# polyDB: The name of the database you want to access. Set this if you want to access a certain database all (or most of) the time.
+custom $db_database_name = "";
+
+# polyDB: The name of the collection you want to access. Set this if you want to access a certain collection all (or most of) the time.
+custom $db_collection_name = "";
+
+
+# @category Database
+# Returns all objects in the database //db// in //collection// that match the //query//. This is only recommended for a reasonably small number of matching objects. If you expect many such objects you should instead use a database cursor.
+# @param HASH query
+# @option String db name of the database, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available databases
+# @option String collection name of the collection, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available collections
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @option Int limit limit the number of objects that will be returned (default: no limit)
+# @option String username Some databases might have access control.
+# @option String password Some databases might have access control.
+# @option MongoClient client
+# @option Int skip skip the first elements, default: 0
+# @option HASH sort_by specify a sorting order
+# @return Array<Core::Object>
+user_function db_query ($, {db => $db_database_name, collection => $db_collection_name, local => 0, limit => 0, username => $db_user, password => $db_pwd, client => undef, skip => 0, sort_by => {_id => 1}}){
+	my ($query, $options) = @_;
+
+	check_options($options);
+	my ($client, $type, $col) = prepare_query({db=>$options->{"db"}, collection=>$options->{"collection"}, client=>$options->{"client"} });
+	
+	my $output = $col->find($query)->limit($options->{limit})->sort($options->{sort_by})->skip($options->{skip});
+	unless ($output) { croak("No such object.\n"); }
+
+	
+	unless (defined($options->{client})){
+		undef $client;
+	}
+	return cursor2objectarray($output, $type, $options->{db}, $options->{collection});
+}
+
+
+
+# @category Database
+# Returns one object in the database //db// in //collection// that matches the //query//.
+# @param HASH query
+# @option String db name of the database, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available databases
+# @option String collection name of the collection, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available collections
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @option String username Some databases might have access control.
+# @option String password Some databases might have access control.
+# @option MongoClient client
+# @return Core::Object
+user_function db_query_one ($, {db => $db_database_name, collection => $db_collection_name, local => 0, username => $db_user, password => $db_pwd, client => undef}){
+	my ($query, $options) = @_;
+
+	check_options($options);
+	my ($client, $type, $col) = prepare_query({db=>$options->{"db"}, collection=>$options->{"collection"}, client=>$options->{"client"} });
+
+	# query the database
+	# NOTE: the return is a perl hash of the json in the datatbase!
+	my $output = $col->find_one($query);
+	unless ($output) { croak("No such object.\n"); }
+
+	
+	unless (defined($options->{client})){
+		undef $client;
+	}
+	return db_data_to_polymake($output,$options->{db}, $options->{collection});
+}
+
+# @category Database
+# Returns a list of distinct values for a property for the database //db// in //collection//. 
+# @param HASH query
+# @option String db name of the database, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available databases
+# @option String collection name of the collection, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available collections
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @option String username Some databases might have access control.
+# @option String password Some databases might have access control.
+# @option MongoClient client
+# @return Array<Core::Object>
+user_function db_distinct ($,$, {db => $db_database_name, collection => $db_collection_name, local => 0, username => $db_user, password => $db_pwd, client => undef }){
+	my ($distinct, $query, $options) = @_;
+
+	check_options($options);
+	my ($client, $type, $col) = prepare_query({db=>$options->{"db"}, collection=>$options->{"collection"}, client=>$options->{"client"} });
+	
+	my $output = $col->distinct($distinct, $query);
+	unless ($output) { croak("No such object.\n"); }
+	
+	unless (defined($options->{client})){
+		undef $client;
+	}
+	return cursor2array($output);
+}
+
+
+# @category Database
+# Returns the number of objects in the database //db// in //collection// that match the //query//.
+# @param HASH query
+# @option String db name of the database, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available databases
+# @option String collection name of the collection, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available collections
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @option String username Some databases might have access control.
+# @option String password Some databases might have access control.
+# @option MongoClient client
+# @return Int
+user_function db_count($, {db => $db_database_name, collection => $db_collection_name, local => 0, username => $db_user, password => $db_pwd, client => undef}) {
+	my ($query, $options) = @_;
+
+	check_options($options);
+	my ($client, $type, $col) = prepare_query({db=>$options->{"db"}, collection=>$options->{"collection"}, client=>$options->{"client"} });
+	my $output = $col->count($query);
+	
+	unless (defined($options->{client})){
+		undef $client;
+	}
+	
+	return $output;
+}
+
+
+# @category Database
+# Returns the IDs of all objects in the database //db// in //collection// that match the //query//. This is only recommended for a reasonably small number of matching objects. If you expect many such objects you should instead construct a [[DBCursor]].
+# @param HASH query
+# @option String db name of the database, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available databases
+# @option String collection name of the collection, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available collections
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @option Int limit limit the number of objects that will be returned (default: no limit)
+# @option HASH sort_by specify a sorting order
+# @option Int skip skip the first elements, default: 0
+# @option String username Some databases might have access control.
+# @option String password Some databases might have access control.
+# @option MongoClient client
+# @return Array<String>
+user_function db_ids ($, {db => $db_database_name, collection => $db_collection_name, local => 0, limit => 0, username => $db_user, password => $db_pwd, client => undef, skip => 0, sort_by => {}}){
+	my ($query, $options) = @_;
+
+	check_options($options);
+	my ($client, $type, $col) = prepare_query({db=>$options->{"db"}, collection=>$options->{"collection"}, client=>$options->{"client"} });
+
+	my $output = $col->find($query)->fields({'_id'=>1})->limit($options->{limit})->sort($options->{sort_by})->skip($options->{skip});
+	unless ($output) { croak("No such object.\n"); }
+	
+	
+	unless (defined($options->{client})){
+		undef $client;
+	}
+	return new Array<String>(cursor2stringarray($output));
+}
+
+

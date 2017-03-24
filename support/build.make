@@ -100,9 +100,13 @@ ifneq ($(findstring /staticlib/, ${CURDIR}),)
 
 else
   ifdef InSourceTree
-    IncludesXX += $(addprefix ${ProjectTop}/, include/core-wrappers include/core)
-  else ifneq ($(filter-out /usr/include /usr/local/include /sw/include, ${InstallInc}),)
-    IncludesXX += ${InstallInc}
+    IncludesXX += $(addprefix ${ProjectTop}/, include/core-wrappers include/core \
+      $(foreach h,${ExternalHeaders},include/external/${h}))
+  else
+    ifneq ($(filter-out /usr/include /usr/local/include /sw/include, ${InstallInc}),)
+      IncludesXX += ${InstallInc}
+    endif
+    IncludesXX += $(foreach h,${ExternalHeaders},${InstallInc}/polymake/external/${h})
   endif
 
   ifneq ($(filter %/lib/core, ${CURDIR}),)
@@ -129,20 +133,25 @@ override CXXFLAGS += ${CXXflags}
 override LDFLAGS += ${LDflags} ${LDflagsDebug}
 override LIBS += ${Libs}
 
+_ExtraCXXflags = ${ExtraCXXFLAGS}
+ifdef DeveloperMode
+  _ExtraCXXflags += $(if $(filter -Wno-error, ${CXXFLAGS} ${ExtraCXXFLAGS}),,-Werror)
+endif
+
 ### compilation rules
 define _do_deps
 	$(call _process_d,$(@:.o=.d))
 
 endef
 define _C_compile
-	${CC} -c -o $@ ${CsharedFlags} ${CFLAGS} $(if ${doOPT},${COptFlags},${CDebugFlags}) $(make_dep) ${ExtraCFLAGS} \
-	      $(if ${withInclude}, $(call addinclude, ${withInclude})) $<
+	${CC} -c -o $@ ${CsharedFlags} -Wall ${CFLAGS} $(if ${doOPT},${COptFlags},${CDebugFlags}) ${ExtraCFLAGS} \
+	      $(make_dep) $(if ${withInclude}, $(call addinclude, ${withInclude})) $<
 
 endef
 define _CXX_compile
 	$(if $(filter yes,${guardedCompiler}),${PERL} ${ProjectTop}/support/guarded_compiler.pl) \
-	${CXX} -c -o $@ ${CsharedFlags} ${CXXFLAGS} $(if ${doOPT},${COptFlags},${CDebugFlags}) $(make_dep) ${ExtraCXXFLAGS} \
-	       $(if ${includeSource}, ${includeSource}, $(if ${withInclude}, $(call addinclude,${withInclude})) $<)
+	${CXX} -c -o $@ ${CsharedFlags} -Wall ${CXXFLAGS} $(if ${doOPT},${COptFlags},${CDebugFlags}) $(_ExtraCXXflags) \
+	       $(make_dep) $(if ${includeSource}, ${includeSource}, $(if ${withInclude}, $(call addinclude,${withInclude})) $<)
 
 endef
 

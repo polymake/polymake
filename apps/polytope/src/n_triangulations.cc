@@ -29,16 +29,16 @@
 #include <algorithm>
 
 namespace polymake { namespace polytope {
-  
+
 namespace {
 
 //calculates the legal edges, i.e. the edges containing no other points in their interior
 template <typename Scalar>
-IncidenceMatrix<> calc_illegal_edges(const Array< Vector<Scalar> >& points) 
+IncidenceMatrix<> calc_illegal_edges(const Array< Vector<Scalar> >& points)
 {
    const int n = points.size();
    IncidenceMatrix<> illegal_edges(n,n);
-   typedef typename pm::algebraic_traits<Scalar>::field_type field;    
+   typedef typename pm::algebraic_traits<Scalar>::field_type field;
    for (int i=0; i<n; ++i)
       for (int j=i+2; j<n; ++j)
          for (int k=i+1; k<j; ++k) {
@@ -51,22 +51,22 @@ IncidenceMatrix<> calc_illegal_edges(const Array< Vector<Scalar> >& points)
          }
    return illegal_edges;
 }
-  
+
 //container class for precalculated pieces of information about an edge
-struct EdgeData{
+struct EdgeData {
    Bitset adv1, adv2, vis;
    bool monotony;
    bool trivial;
-   EdgeData() : trivial(true) {}
+   EdgeData() : monotony(false), trivial(true) {}
    EdgeData(const Bitset& a1, const Bitset& a2, const Bitset& v, const bool& m) : adv1(a1), adv2(a2), vis(v), monotony(m), trivial(false) {}
 };
 
 //calculates the following informations for all edges: possible advances, upper visible points to the right of the left endpoint, monotony
-template <typename Scalar> 
-Array<Array<EdgeData > > edge_precalc(const Array< Vector<Scalar> > points) 
+template <typename Scalar>
+Array<Array<EdgeData > > edge_precalc(const Array< Vector<Scalar> > points)
 {
-   typedef typename pm::algebraic_traits<Scalar>::field_type field;   
-   const int n = points.size();    
+   typedef typename pm::algebraic_traits<Scalar>::field_type field;
+   const int n = points.size();
    Array<Array<EdgeData > > edges(n-2);
    for (int i=0; i<n-2; i++) {
       Array<EdgeData > tmp(n-i-1);
@@ -80,29 +80,26 @@ Array<Array<EdgeData > > edge_precalc(const Array< Vector<Scalar> > points)
       for (int j=i+1; j<n; ++j) {
          if (0==illegal_edges(i,j)) {
             Bitset adv_type1(j-i-1);
-            Bitset adv_type2(j-i-1); 
+            Bitset adv_type2(j-i-1);
             Bitset vis_from_above(n-i-2);
             for (int k=i+1; k<n; ++k) {
                if (k!=j && (0==illegal_edges(i,k)) && (0==illegal_edges(j,k))) {
-                  perl::Object p = perl::Object(perl::ObjectType::construct<field>("Polytope")); 
+                  perl::Object p = perl::Object(perl::ObjectType::construct<field>("Polytope"));
                   V.row(0) = points[i];
                   V.row(1) = points[k];
                   V.row(2) = points[j];
                   p.take("VERTICES") << V;
-                  if (!s.valid()) {
-                     p.take("FEASIBLE") << true;
-                     p.take("BOUNDED") << true;
-                     s = p.CallPolymakeMethod("get_schedule","FACETS","VERTICES_IN_FACETS");
-                  }
-                  s.apply(p);  
+                  if (!s.valid())
+                     s = p.call_method("get_schedule", "FACETS", "VERTICES_IN_FACETS");
+                  s.apply(p);
 
                   const Matrix<field> facets = p.give("FACETS");
                   const IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
-                  
+
                   //for each point in the segment wrt. the x-coordinate check if the corresponding triangle constitutes an advance triangle
                   if (k < j) {
                      candidate = true;
-                     //the triangle is an advance triangle iff there is no other point of the input in its interior 
+                     //the triangle is an advance triangle iff there is no other point of the input in its interior
                      for (int l= i+1; l<j; ++l) {
                         if (l!=k) {
                            Vector<field> eval = facets*points[l];
@@ -113,23 +110,25 @@ Array<Array<EdgeData > > edge_precalc(const Array< Vector<Scalar> > points)
                   }
                   //calculate the index of the facet which contains the points i and j
                   int index = 0;
-                  for (int l=0; l<3; ++l) { 
+                  for (int l=0; l<3; ++l) {
                      if (VIF.exists(l,0) && VIF.exists(l,2))
                         index = l;
                   }
-                  //check if the additional point satifies the visibility condition and determine the advance type in the case of constituting an advance triangle 
+                  // check if the additional point satifies the visibility condition
+                  // and determine the advance type in the case of constituting an advance triangle
                   if (facets(index,2)>0) {
                      if (k<j) {
-                        if (candidate) 
+                        if (candidate)
                            adv_type1 += k-i-1;
                         vis_from_above += k-i-1;
                      }
-                     else
+                     else {
                         vis_from_above += k-i-2;
+                     }
                   }
-                  else 
-                     if (candidate && (k<j)) 
-                        adv_type2 += k-i-1;
+                  else if (candidate && (k<j)) {
+                     adv_type2 += k-i-1;
+                  }
                }
             }
             EdgeData ed(adv_type1,adv_type2,vis_from_above, Rational(points[j][2]-points[i][2]) < 0 ? true : false);
@@ -141,7 +140,7 @@ Array<Array<EdgeData > > edge_precalc(const Array< Vector<Scalar> > points)
 }
 
 //calculates the lower and the upper boundary for the input polytope (including all such points specified in POINTS)
-template <typename Scalar> 
+template <typename Scalar>
 int lower_upper_boundary(Bitset& lower, Bitset& upper, perl::Object p)
 {
    typedef typename pm::algebraic_traits<Scalar>::field_type field;
@@ -150,7 +149,7 @@ int lower_upper_boundary(Bitset& lower, Bitset& upper, perl::Object p)
    Set<int> boundary_points;
    const IncidenceMatrix<> PIF = p.give("POINTS_IN_FACETS");
    const Matrix<field> F = p.give("FACETS");
-   
+
    upper+= n;
    for (Entire<Rows<IncidenceMatrix<> > >::const_iterator rit = entire(rows(PIF)); !rit.at_end(); ++rit) {
       const Set<int>& ps((*rit));	
@@ -171,21 +170,21 @@ int lower_upper_boundary(Bitset& lower, Bitset& upper, perl::Object p)
 template <typename Scalar>
 Integer n_triangulations(const Matrix<Scalar>& points, perl::OptionSet options)
 {
-   const bool opt(options["optimization"]);    
+   const bool opt(options["optimization"]);
    const int n = points.rows();
 
    //throw exception if n < 3
    if (n < 3)
       throw std::runtime_error("insufficient number of points");
 
-   Array< Vector<Scalar> > ordered_points(rows(points));
-   std::sort(ordered_points.begin(),ordered_points.end());
-   
+   Array<Vector<Scalar>> ordered_points(rows(points));
+   std::sort(ordered_points.begin(), ordered_points.end(), operations::lex_less());
+
    //precalculations for the edges
-   Array<Array<EdgeData > > advance_triangles = edge_precalc<Scalar>(ordered_points);
+   Array<Array<EdgeData>> advance_triangles = edge_precalc<Scalar>(ordered_points);
    perl::Object p = perl::Object(perl::ObjectType::construct<Scalar>("Polytope"));
    Matrix<Scalar> ordered_points_matrix(n,points.cols(),entire(ordered_points));
-   
+
    p.take("FEASIBLE") << true;
    p.take("BOUNDED") << true;
    p.take("POINTS") << ordered_points_matrix;
@@ -221,9 +220,9 @@ Integer n_triangulations(const Matrix<Scalar>& points, perl::OptionSet options)
             }
          }
          //calculate the marking from the corresponding bitset
-         int mark(0); 
+         int mark(0);
          Entire<Bitset>::const_iterator leading_one = current_mchain.begin();
-         while (*leading_one < n) 
+         while (*leading_one < n)
             leading_one++;
          for (int j = size-1; j >= *leading_one; --j) {
             if (current_mchain.contains(j)) {
@@ -241,7 +240,7 @@ Integer n_triangulations(const Matrix<Scalar>& points, perl::OptionSet options)
          if (mark > 1) {
             unmarked++;
             right = *(unmarked);
-            //decrement the mark in binary of the chain 
+            //decrement the mark in binary of the chain
             int j = size-1;
             while (!current_mchain.contains(j)) {
               current_mchain += j;
@@ -265,11 +264,11 @@ Integer n_triangulations(const Matrix<Scalar>& points, perl::OptionSet options)
                   current_mchain -= mid;
                   if (opt) {
                      on_or_above -= mid;
-                     bool visible = true;  
+                     bool visible = true;
                      Entire<Bitset>::const_iterator untreated = current_mchain.begin();
                      untreated++;
                      int tmp(0);
-                     for (size_t m=0; m<left && visible; m=tmp) {
+                     for (int m=0; m<left && visible; m=tmp) {
                         tmp = *untreated;
                         untreated++;
                         if ((upper_boundary.contains(m) && upper_boundary.contains(tmp)) || advance_triangles[m][tmp-m-1].monotony)
@@ -283,9 +282,9 @@ Integer n_triangulations(const Matrix<Scalar>& points, perl::OptionSet options)
                               else {
                                  bool retrace = false;
                                  //check for a possible retrace
-                                 for (int s = tmp+1; s < n && !retrace; ++s) 
-                                    if (advance_triangles[m][tmp-m-1].vis.contains(s-m-2) && on_or_above.contains(s) && 
-                                       advance_triangles[m][s-m-1].adv2.contains(tmp-m-1)) 
+                                 for (int s = tmp+1; s < n && !retrace; ++s)
+                                    if (advance_triangles[m][tmp-m-1].vis.contains(s-m-2) && on_or_above.contains(s) &&
+                                       advance_triangles[m][s-m-1].adv2.contains(tmp-m-1))
                                        retrace = true;
                                  if (retrace)
                                     continue;
@@ -328,7 +327,7 @@ Integer n_triangulations(const Matrix<Scalar>& points, perl::OptionSet options)
                            if ((upper_boundary.contains(m) && upper_boundary.contains(tmp)) || advance_triangles[m][tmp-m-1].monotony)
                               continue;
                            else
-                              if (upper_boundary.contains(tmp)) 
+                              if (upper_boundary.contains(tmp))
                                  visible = false;
                               else
                                  if (tmp < mid && !(advance_triangles[tmp][*untreated-tmp-1].monotony))
@@ -336,13 +335,13 @@ Integer n_triangulations(const Matrix<Scalar>& points, perl::OptionSet options)
                                  else {
                                     bool retrace = false;
                                     //check for a possible retrace
-                                    for (int s = tmp+1; s < n && !retrace; ++s) 
-                                       if (advance_triangles[m][tmp-m-1].vis.contains(s-m-2) && on_or_above.contains(s) && 
-                                          advance_triangles[m][s-m-1].adv2.contains(tmp-m-1)) 
+                                    for (int s = tmp+1; s < n && !retrace; ++s)
+                                       if (advance_triangles[m][tmp-m-1].vis.contains(s-m-2) && on_or_above.contains(s) &&
+                                          advance_triangles[m][s-m-1].adv2.contains(tmp-m-1))
                                           retrace = true;
                                     if (retrace)
                                        continue;
-                                    else 
+                                    else
                                        visible = false;
                                  }
                         }
@@ -367,7 +366,7 @@ Integer n_triangulations(const Matrix<Scalar>& points, perl::OptionSet options)
    return tr;
 }
 
-/* The implementation is based on the following paper: 
+/* The implementation is based on the following paper:
 "Victor Alvarez, Raimund Seidel. A Simple Aggregative Algorithm for Counting Triangulations of Planar Point Sets and Related Problems. In Proc. of the 29th Symposium on Computational Geometry (SoCG '13), pages 1 – 8, Rio de Janeiro, Brazil, 2013"
 */
 

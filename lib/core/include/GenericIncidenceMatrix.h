@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -26,63 +26,80 @@ namespace pm {
  *  GenericIncidenceMatrix
  * ------------------------ */
 
-template <typename _symmetric=NonSymmetric> class IncidenceMatrix;
+template <typename symmetric=NonSymmetric> class IncidenceMatrix;
 
-template <typename Matrix, typename Other>
-struct expandable_incidence_matrix
-   : public enable_if<typename Unwary<Matrix>::type, (!Matrix::is_symmetric && object_traits<Matrix>::is_resizeable!=0)> {};
-
-template <typename Matrix>
+template <typename TMatrix>
 class GenericIncidenceMatrix
-   : public Generic<Matrix>,
-     public matrix_methods<Matrix, bool>,
-     public operators::base {
+   : public Generic<TMatrix>
+   , public matrix_methods<TMatrix, bool>
+   , public operators::base {
    template <typename> friend class GenericIncidenceMatrix;
 protected:
    GenericIncidenceMatrix() {}
    GenericIncidenceMatrix(const GenericIncidenceMatrix&) {}
-#if POLYMAKE_DEBUG
-   ~GenericIncidenceMatrix() { POLYMAKE_DEBUG_METHOD(GenericIncidenceMatrix,dump); }
-   void dump() const { cerr << this->top() << std::flush; }
-#endif
 
 public:
    typedef bool element_type;
-   static const bool is_symmetric=check_container_feature<Matrix, Symmetric>::value,
-                          is_flat=check_container_feature<Matrix, FlatStorage>::value;
-   typedef typename if_else<is_symmetric, Symmetric, NonSymmetric>::type symmetric;
-   typedef typename Generic<Matrix>::top_type top_type;
+   static const bool is_symmetric=check_container_feature<TMatrix, Symmetric>::value,
+                          is_flat=check_container_feature<TMatrix, FlatStorage>::value;
+   typedef typename std::conditional<is_symmetric, Symmetric, NonSymmetric>::type symmetric;
+   typedef typename Generic<TMatrix>::top_type top_type;
    typedef IncidenceMatrix<symmetric> persistent_type;
    typedef GenericIncidenceMatrix generic_type;
-protected:
-   template <typename Matrix2>
-   void assign(const GenericIncidenceMatrix<Matrix2>& m)
+
+   template <typename Other>
+   static constexpr bool is_expandable_by()
    {
-      copy(pm::rows(m).begin(), entire(pm::rows(*this)));
+      return !is_symmetric && object_traits<TMatrix>::is_resizeable!=0;
    }
 
-   template <typename Matrix2, typename Operation>
-   void assign_op(const GenericIncidenceMatrix<Matrix2>& m, const Operation& op, True)
+   template <typename TMatrix2>
+   static constexpr bool compatible_symmetry_types()
+   {
+      return !is_symmetric || TMatrix2::is_symmetric;
+   }
+
+protected:
+   template <typename TMatrix2>
+   void assign(const GenericIncidenceMatrix<TMatrix2>& m)
+   {
+      copy_range(pm::rows(m).begin(), entire(pm::rows(*this)));
+   }
+
+   template <typename TMatrix2, typename Operation>
+   void assign_op(const GenericIncidenceMatrix<TMatrix2>& m, const Operation& op, std::true_type)
    {
       perform_assign(pm::entire(pm::rows(*this)), pm::rows(m).begin(), op);
    }
 
-   template <typename Matrix2, typename Operation>
-   void assign_op(const GenericIncidenceMatrix<Matrix2>& m, const Operation& op, False)
+   template <typename TMatrix2, typename Operation>
+   void assign_op(const GenericIncidenceMatrix<TMatrix2>& m, const Operation& op, std::false_type)
    {
-      assign_op(m+T(m), op, True());
+      assign_op(m+T(m), op, std::true_type());
    }
 
-   template <typename Matrix2>
-   bool trivial_assignment(const GenericIncidenceMatrix<Matrix2>&) const { return false; }
+   template <typename TMatrix2>
+   constexpr bool trivial_assignment(const GenericIncidenceMatrix<TMatrix2>&) const { return false; }
 
-   bool trivial_assignment(const GenericIncidenceMatrix& m) const { return this==&m; }
+   constexpr bool trivial_assignment(const GenericIncidenceMatrix& m) const { return this==&m; }
+
+   template <typename TMatrix2>
+   void assign_impl(const GenericIncidenceMatrix<TMatrix2>& m, std::false_type)
+   {
+      this->top().assign(m+T(m));
+   }
+
+   template <typename TMatrix2>
+   void assign_impl(const GenericIncidenceMatrix<TMatrix2>& m, std::true_type)
+   {
+      this->top().assign(m.top());
+   }
 
 public:
    top_type& operator= (const GenericIncidenceMatrix& m)
    {
       if (!trivial_assignment(m)) {
-         if (!object_traits<Matrix>::is_resizeable && (POLYMAKE_DEBUG || !Unwary<Matrix>::value)) {
+         if (!object_traits<TMatrix>::is_resizeable && (POLYMAKE_DEBUG || !Unwary<TMatrix>::value)) {
             if (this->rows() != m.rows() || this->cols() != m.cols())
                throw std::runtime_error("GenericIncidenceMatrix::operator= - dimension mismatch");
          }
@@ -91,80 +108,66 @@ public:
       return this->top();
    }
 
-   template <typename Matrix2>
-   typename enable_if<top_type, !is_symmetric || Matrix2::is_symmetric>::type&
-   operator= (const GenericIncidenceMatrix<Matrix2>& m)
+   template <typename TMatrix2>
+   top_type& operator= (const GenericIncidenceMatrix<TMatrix2>& m)
    {
-      if (!object_traits<Matrix>::is_resizeable && (POLYMAKE_DEBUG || !Unwary<Matrix>::value)) {
+      if (!object_traits<TMatrix>::is_resizeable && (POLYMAKE_DEBUG || !Unwary<TMatrix>::value)) {
          if (this->rows() != m.rows() || this->cols() != m.cols())
             throw std::runtime_error("GenericIncidenceMatrix::operator= - dimension mismatch");
       }
-      this->top().assign(m.top());
+      assign_impl(m, bool_constant<!is_symmetric || TMatrix2::is_symmetric>());
       return this->top();
    }
 
-   template <typename Matrix2>
-   typename disable_if<top_type, !is_symmetric || Matrix2::is_symmetric>::type&
-   operator= (const GenericIncidenceMatrix<Matrix2>& m)
+   template <typename TMatrix2>
+   top_type& operator+= (const GenericIncidenceMatrix<TMatrix2>& m)
    {
-      if (!object_traits<Matrix>::is_resizeable && (POLYMAKE_DEBUG || !Unwary<Matrix>::value)) {
-         if (this->rows() != m.rows() || this->cols() != m.cols())
-            throw std::runtime_error("GenericIncidenceMatrix::operator= - dimension mismatch");
-      }
-      this->top().assign(m+T(m));
-      return this->top();
-   }
-
-   template <typename Matrix2>
-   top_type& operator+= (const GenericIncidenceMatrix<Matrix2>& m)
-   {
-      if (POLYMAKE_DEBUG || !Unwary<Matrix>::value || !Unwary<Matrix2>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TMatrix2>::value) {
          if (this->rows() != m.rows() || this->cols() != m.cols())
             throw std::runtime_error("GenericIncidenceMatrix::operator+= - dimension mismatch");
       }
-      this->top().assign_op(m.top(), BuildBinary<operations::add>(), bool2type<!is_symmetric || Matrix2::is_symmetric>());
+      this->top().assign_op(m.top(), BuildBinary<operations::add>(), bool_constant<!is_symmetric || TMatrix2::is_symmetric>());
       return this->top();
    }
 
-   template <typename Matrix2>
-   top_type& operator-= (const GenericIncidenceMatrix<Matrix2>& m)
+   template <typename TMatrix2>
+   top_type& operator-= (const GenericIncidenceMatrix<TMatrix2>& m)
    {
-      if (POLYMAKE_DEBUG || !Unwary<Matrix>::value || !Unwary<Matrix2>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TMatrix2>::value) {
          if (this->rows() != m.rows() || this->cols() != m.cols())
             throw std::runtime_error("GenericIncidenceMatrix::operator-= - dimension mismatch");
       }
-      this->top().assign_op(m.top(), BuildBinary<operations::sub>(), bool2type<!is_symmetric || Matrix2::is_symmetric>());
+      this->top().assign_op(m.top(), BuildBinary<operations::sub>(), bool_constant<!is_symmetric || TMatrix2::is_symmetric>());
       return this->top();
    }
 
-   template <typename Matrix2>
-   top_type& operator*= (const GenericIncidenceMatrix<Matrix2>& m)
+   template <typename TMatrix2>
+   top_type& operator*= (const GenericIncidenceMatrix<TMatrix2>& m)
    {
-      if (POLYMAKE_DEBUG || !Unwary<Matrix>::value || !Unwary<Matrix2>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TMatrix2>::value) {
          if (this->rows() != m.rows() || this->cols() != m.cols())
             throw std::runtime_error("GenericIncidenceMatrix::operator*= - dimension mismatch");
       }
-      this->top().assign_op(m.top(), BuildBinary<operations::mul>(), bool2type<!is_symmetric || Matrix2::is_symmetric>());
+      this->top().assign_op(m.top(), BuildBinary<operations::mul>(), bool_constant<!is_symmetric || TMatrix2::is_symmetric>());
       return this->top();
    }
 
-   template <typename Matrix2>
-   top_type& operator^= (const GenericIncidenceMatrix<Matrix2>& m)
+   template <typename TMatrix2>
+   top_type& operator^= (const GenericIncidenceMatrix<TMatrix2>& m)
    {
-      if (POLYMAKE_DEBUG || !Unwary<Matrix>::value || !Unwary<Matrix2>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TMatrix2>::value) {
          if (this->rows() != m.rows() || this->cols() != m.cols())
             throw std::runtime_error("GenericIncidenceMatrix::operator^= - dimension mismatch");
       }
-      this->top().assign_op(m.top(), BuildBinary<operations::bitwise_xor>(), bool2type<!is_symmetric || Matrix2::is_symmetric>());
+      this->top().assign_op(m.top(), BuildBinary<operations::bitwise_xor>(), bool_constant<!is_symmetric || TMatrix2::is_symmetric>());
       return this->top();
    }
 
-   template <typename Matrix2>
-   typename expandable_incidence_matrix<Matrix,Matrix2>::type&
-   operator/= (const GenericIncidenceMatrix<Matrix2>& m)
+   template <typename TMatrix2, typename=typename std::enable_if<is_expandable_by<TMatrix2>()>::type>
+   top_type& operator/= (const GenericIncidenceMatrix<TMatrix2>& m)
    {
       if (m.rows()) {
-         if (POLYMAKE_DEBUG || !Unwary<Matrix>::value || !Unwary<Matrix2>::value) {
+         if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TMatrix2>::value) {
             if (this->cols() != m.cols())
                throw std::runtime_error("GenericIncidenceMatrix::operator/= - dimension mismatch");
          }
@@ -173,35 +176,32 @@ public:
       return this->top();
    }
 
-   template <typename Set2>
-   typename expandable_incidence_matrix<Matrix,Set2>::type&
-   operator/= (const GenericSet<Set2, int, operations::cmp>& s)
+   template <typename TSet, typename=typename std::enable_if<is_expandable_by<TSet>()>::type>
+   top_type& operator/= (const GenericSet<TSet, int, operations::cmp>& s)
    {
-      if (POLYMAKE_DEBUG || !Unwary<Matrix>::value || !Unwary<Set2>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TSet>::value) {
          if (!s.top().empty() && (s.top().front() < 0 || s.top().back() >= this->cols()))
-            throw std::runtime_error("GenericMatrix::operator/= - set elements out of range");
+            throw std::runtime_error("GenericIncidenceMatrix::operator/= - set elements out of range");
       }
       this->top().append_row(s.top());
       return this->top();
    }
 
-   template <typename Set2>
-   typename expandable_incidence_matrix<Matrix,Set2>::type&
-   operator/= (const Complement<Set2, int, operations::cmp>& s)
+   template <typename TSet, typename=typename std::enable_if<is_expandable_by<TSet>()>::type>
+   top_type& operator/= (const Complement<TSet, int, operations::cmp>& s)
    {
-      if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
          if (!s.base().empty() && (s.base().front() < 0 || s.base().back() >= this->cols()))
-            throw std::runtime_error("GenericMatrix::operator/= - set elements out of range");
+            throw std::runtime_error("GenericIncidenceMatrix::operator/= - set elements out of range");
       }
       this->top().append_row(sequence(0,this->cols()) * s);
    }
 
-   template <typename Matrix2>
-   typename expandable_incidence_matrix<Matrix,Matrix2>::type&
-   operator|= (const GenericIncidenceMatrix<Matrix2>& m)
+   template <typename TMatrix2, typename=typename std::enable_if<is_expandable_by<TMatrix2>()>::type>
+   top_type& operator|= (const GenericIncidenceMatrix<TMatrix2>& m)
    {
       if (m.cols()) {
-         if (POLYMAKE_DEBUG || !Unwary<Matrix>::value || !Unwary<Matrix2>::value) {
+         if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TMatrix2>::value) {
             if (this->rows() != m.rows())
                throw std::runtime_error("GenericIncidenceMatrix::operator|= - dimension mismatch");
          }
@@ -210,35 +210,33 @@ public:
       return this->top();
    }
 
-   template <typename Set2>
-   typename expandable_incidence_matrix<Matrix,Set2>::type&
-   operator|= (const GenericSet<Set2, int, operations::cmp>& s)
+   template <typename TSet, typename=typename std::enable_if<is_expandable_by<TSet>()>::type>
+   top_type& operator|= (const GenericSet<TSet, int, operations::cmp>& s)
    {
-      if (POLYMAKE_DEBUG || !Unwary<Matrix>::value || !Unwary<Set2>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TSet>::value) {
          if (!s.top().empty() && (s.top().front() < 0 || s.top().back() >= this->rows()))
-            throw std::runtime_error("GenericMatrix::operator|= - set elements out of range");
+            throw std::runtime_error("GenericIncidenceMatrix::operator|= - set elements out of range");
       }
       this->top().append_col(s.top());
       return this->top();
    }
 
-   template <typename Set2>
-   typename expandable_incidence_matrix<Matrix,Set2>::type&
-   operator|= (const Complement<Set2, int, operations::cmp>& s)
+   template <typename TSet, typename=typename std::enable_if<is_expandable_by<TSet>()>::type>
+   top_type& operator|= (const Complement<TSet, int, operations::cmp>& s)
    {
-      if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
          if (!s.base().empty() && (s.base().front() < 0 || s.base().back() >= this->rows()))
-            throw std::runtime_error("GenericMatrix::operator|= - set elements out of range");
+            throw std::runtime_error("GenericIncidenceMatrix::operator|= - set elements out of range");
       }
       this->top().append_col(sequence(0,this->rows()) * s);
    }
 
-   template <typename Matrix2>
-   void swap(GenericIncidenceMatrix<Matrix2>& m, typename enable_if<void**, is_symmetric==Matrix2::is_symmetric>::type=0)
+   template <typename TMatrix2, typename=typename std::enable_if<is_symmetric==TMatrix2::is_symmetric>::type>
+   void swap(GenericIncidenceMatrix<TMatrix2>& m)
    {
       if (trivial_assignment(m)) return;
 
-      if (POLYMAKE_DEBUG || !Unwary<Matrix>::value || !Unwary<Matrix2>::value) {
+      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TMatrix2>::value) {
          if (this->rows() != m.rows() || this->cols() != m.cols())
             throw std::runtime_error("GenericIncidenceMatrix::swap - dimension mismatch");
       }
@@ -251,35 +249,52 @@ public:
    struct rebind_generic {
       typedef GenericIncidenceMatrix<Result> type;
    };
+
+   template <typename TMatrix2> friend
+   bool operator== (const GenericIncidenceMatrix& l, const GenericIncidenceMatrix<TMatrix2>& r)
+   {
+      if (l.rows() != r.rows() || l.cols() != r.cols()) return false;
+      return operations::cmp_unordered()(rows(l), rows(r)) == cmp_eq;
+   }
+
+   template <typename TMatrix2> friend
+   bool operator!= (const GenericIncidenceMatrix& l, const GenericIncidenceMatrix<TMatrix2>& r)
+   {
+      return !(l==r);
+   }
+
+#if POLYMAKE_DEBUG
+   void dump() const __attribute__((used)) { cerr << this->top() << std::flush; }
+#endif
 };
 
 struct is_incidence_matrix;
 
-template <typename Matrix>
-struct spec_object_traits< GenericIncidenceMatrix<Matrix> >
-   : spec_or_model_traits<Matrix,is_container> {
+template <typename TMatrix>
+struct spec_object_traits< GenericIncidenceMatrix<TMatrix> >
+   : spec_or_model_traits<TMatrix, is_container> {
 private:
-   typedef spec_or_model_traits<Matrix,is_container> _super;
+   typedef spec_or_model_traits<TMatrix, is_container> base_t;
 public:
    static const int dimension=2,
-                    is_symmetric=check_container_feature<Matrix,Symmetric>::value,
-                    is_resizeable= _super::is_specialized ? _super::is_resizeable : 2-is_symmetric;
+                    is_symmetric=check_container_feature<TMatrix, Symmetric>::value,
+                    is_resizeable= base_t::is_specialized ? base_t::is_resizeable : 2-is_symmetric;
    typedef is_incidence_matrix generic_tag;
 };
 
-template <typename Matrix>
-typename GenericIncidenceMatrix<Matrix>::top_type& GenericIncidenceMatrix<Matrix>::transitive_closure()
+template <typename TMatrix>
+typename GenericIncidenceMatrix<TMatrix>::top_type& GenericIncidenceMatrix<TMatrix>::transitive_closure()
 {
-   if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
       if (this->rows() != this->cols())
          throw std::runtime_error("GenericIncidenceMatrix::transitive_closure - matrix not square");
    }
    bool changed;
    do {
       changed=false;
-      for (typename Entire< Rows<Matrix> >::iterator r_i=entire(pm::rows(this->top()));  !r_i.at_end();  ++r_i) {
+      for (auto r_i=entire(pm::rows(this->top()));  !r_i.at_end();  ++r_i) {
          const int ones=r_i->size();
-         for (typename Matrix::row_type::iterator e=r_i->begin(); !e.at_end(); ++e)
+         for (auto e=r_i->begin(); !e.at_end(); ++e)
             if (e.index() != r_i.index())
                (*r_i) += this->row(e.index());
          if (r_i->size() > ones) changed=true;
@@ -294,28 +309,28 @@ typename GenericIncidenceMatrix<Matrix>::top_type& GenericIncidenceMatrix<Matrix
 
 template <typename SetRef>
 class SingleIncidenceRow
-   : protected single_line_matrix<SetRef>,
-     public GenericIncidenceMatrix< SingleIncidenceRow<SetRef> > {
-   typedef single_line_matrix<SetRef> _super;
+   : protected single_line_matrix<SetRef>
+   , public GenericIncidenceMatrix< SingleIncidenceRow<SetRef> > {
+   typedef single_line_matrix<SetRef> base_t;
 public:
    typedef bool value_type;
    typedef bool reference;
    typedef const bool const_reference;
-   SingleIncidenceRow(typename _super::arg_type arg) : _super(arg) {}
+   SingleIncidenceRow(typename base_t::arg_type arg) : base_t(arg) {}
 
    friend class Rows<SingleIncidenceRow>;
 };
 
 template <typename SetRef>
 class SingleIncidenceCol
-   : protected single_line_matrix<SetRef>,
-     public GenericIncidenceMatrix< SingleIncidenceCol<SetRef> > {
-   typedef single_line_matrix<SetRef> _super;
+   : protected single_line_matrix<SetRef>
+   , public GenericIncidenceMatrix< SingleIncidenceCol<SetRef> > {
+   typedef single_line_matrix<SetRef> base_t;
 public:
    typedef bool value_type;
    typedef bool reference;
    typedef const bool const_reference;
-   SingleIncidenceCol(typename _super::arg_type arg) : _super(arg) {}
+   SingleIncidenceCol(typename base_t::arg_type arg) : base_t(arg) {}
 };
 
 template <typename SetRef>
@@ -328,9 +343,9 @@ struct spec_object_traits< SingleIncidenceCol<SetRef> >
 
 class SingleElementIncidenceLine
    : public modified_container_impl< SingleElementIncidenceLine,
-                                     list( Container< single_value_container<int, true> >,
-                                           Operation< BuildUnaryIt<operations::index2element> > ) >,
-     public GenericSet<SingleElementIncidenceLine, int, operations::cmp> {
+                                     mlist< ContainerTag< single_value_container<int, true> >,
+                                            OperationTag< BuildUnaryIt<operations::index2element> > > >
+   , public GenericSet<SingleElementIncidenceLine, int, operations::cmp> {
 protected:
    single_value_container<int, true> _index;
 public:
@@ -342,7 +357,7 @@ public:
 };
 
 template <>
-struct check_container_feature<SingleElementIncidenceLine, sparse_compatible> : True {};
+struct check_container_feature<SingleElementIncidenceLine, sparse_compatible> : std::true_type {};
 
 template <typename Iterator1Ref, typename Iterator2Ref>
 struct SingleElementIncidenceLine_factory {
@@ -364,11 +379,11 @@ struct SingleElementIncidenceLine_factory {
 template <typename SetRef>
 class IncidenceLines_across
    : public modified_container_pair_impl< IncidenceLines_across<SetRef>,
-                                          list( Container1< sequence >,
-                                                Container2< SetRef >,
-                                                IteratorCoupler< zipping_coupler<operations::cmp, set_union_zipper> >,
-                                                Operation< BuildBinaryIt<SingleElementIncidenceLine_factory> >,
-                                                Hidden< single_line_matrix<SetRef> > ) > {
+                                          mlist< Container1Tag< sequence >,
+                                                 Container2Tag< SetRef >,
+                                                 IteratorCouplerTag< zipping_coupler<operations::cmp, set_union_zipper> >,
+                                                 OperationTag< BuildBinaryIt<SingleElementIncidenceLine_factory> >,
+                                                 HiddenTag< single_line_matrix<SetRef> > > > {
 public:
    sequence get_container1() const { return sequence(0, size()); }
    typename single_value_container<SetRef>::const_reference get_container2() const { return this->hidden().get_line(); }
@@ -378,8 +393,8 @@ public:
 template <typename SetRef>
 class Rows< SingleIncidenceRow<SetRef> >
    : public redirected_container< Rows< SingleIncidenceRow<SetRef> >,
-                                  list( Container< single_value_container<SetRef> >,
-                                        MasqueradedTop ) > {
+                                  mlist< ContainerTag< single_value_container<SetRef> >,
+                                         MasqueradedTop > > {
 protected:
    ~Rows();
 public:
@@ -407,18 +422,18 @@ protected:
 template <typename ContainerRef1, typename ContainerRef2>
 class IncidenceLineChain
    : public modified_container_impl< IncidenceLineChain<ContainerRef1,ContainerRef2>,
-                                     list( Container< ContainerChain<ContainerRef1,ContainerRef2> >,
-                                           Operation< BuildUnaryIt<operations::index2element> >,
-                                           ExpectedFeatures< indexed > ) >,
+                                     mlist< ContainerTag< ContainerChain<ContainerRef1,ContainerRef2> >,
+                                            OperationTag< BuildUnaryIt<operations::index2element> >,
+                                            ExpectedFeaturesTag< indexed > > >,
      public GenericSet<IncidenceLineChain<ContainerRef1,ContainerRef2>, int, operations::cmp> {
-   typedef modified_container_impl<IncidenceLineChain> _super;
+   typedef modified_container_impl<IncidenceLineChain> base_t;
 protected:
-   typename _super::container chain;
+   typename base_t::container chain;
 public:
-   const typename _super::container& get_container() const { return chain; }
+   const typename base_t::container& get_container() const { return chain; }
 
-   IncidenceLineChain(typename _super::container::first_arg_type arg1,
-                      typename _super::container::second_arg_type arg2)
+   IncidenceLineChain(typename base_t::container::first_arg_type arg1,
+                      typename base_t::container::second_arg_type arg2)
       : chain(arg1,arg2) {}
 
    int dim() const
@@ -428,7 +443,7 @@ public:
 };
 
 template <typename ContainerRef1, typename ContainerRef2>
-struct check_container_feature<IncidenceLineChain<ContainerRef1, ContainerRef2>, sparse_compatible> : True {};
+struct check_container_feature<IncidenceLineChain<ContainerRef1, ContainerRef2>, sparse_compatible> : std::true_type {};
 
 template <typename ContainerRef1, typename ContainerRef2>
 struct spec_object_traits< IncidenceLineChain<ContainerRef1, ContainerRef2> >
@@ -470,9 +485,9 @@ protected:
 template <bool elem>
 class SameElementIncidenceLine
    : public modified_container_impl< SameElementIncidenceLine<elem>,
-                                     list( Container< sequence >,
-                                           Operation< pair<nothing, operations::identity<int> > >,
-                                           ExpectedFeatures< end_sensitive > ) >,
+                                     mlist< ContainerTag< sequence >,
+                                            OperationTag< pair<nothing, operations::identity<int> > >,
+                                            ExpectedFeaturesTag< end_sensitive > > >,
      public GenericSet<SameElementIncidenceLine<elem>, int, operations::cmp> {
 public:
    int dim() const { return reinterpret_cast<const int&>(*this); }
@@ -483,13 +498,13 @@ public:
 };
 
 template <bool elem>
-struct check_container_feature< SameElementIncidenceLine<elem>, sparse_compatible> : True {};
+struct check_container_feature< SameElementIncidenceLine<elem>, sparse_compatible> : std::true_type {};
 
 template <bool elem>
 class Rows< SameElementIncidenceMatrix<elem> >
    : public redirected_container< Rows< SameElementIncidenceMatrix<elem> >,
-                                  list( Container< constant_masquerade_container< SameElementIncidenceLine<elem> > >,
-                                        MasqueradedTop ) > {
+                                  mlist< ContainerTag< constant_masquerade_container< SameElementIncidenceLine<elem> > >,
+                                         MasqueradedTop > > {
    typedef redirected_container<Rows> _super;
 protected:
    ~Rows();
@@ -505,45 +520,48 @@ public:
 template <bool elem>
 class Cols< SameElementIncidenceMatrix<elem> >
    : public redirected_container< Cols< SameElementIncidenceMatrix<elem> >,
-                                  list( Container< constant_masquerade_container< SameElementIncidenceLine<elem> > >,
-                                        MasqueradedTop ) > {
-   typedef redirected_container<Cols> _super;
+                                  mlist< ContainerTag< constant_masquerade_container< SameElementIncidenceLine<elem> > >,
+                                         MasqueradedTop > > {
+   typedef redirected_container<Cols> base_t;
 protected:
    ~Cols();
 public:
-   const typename _super::container& get_container() const
+   const typename base_t::container& get_container() const
    {
-      return reinterpret_cast<const typename _super::container&>(this->hidden().r);
+      return reinterpret_cast<const typename base_t::container&>(this->hidden().r);
    }
    int size() const { return this->hidden().c; }
    bool empty() const { return !size(); }
 };
 
+// TODO: decltype(auto) would be a nice abberviation of the following singatures,
+// but GCC has still a bug thwarting this: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66690
+
 template <typename Matrix1, typename Matrix2> inline
-RowChain< ColChain<const typename Unwary<Matrix1>::type&, SameElementIncidenceMatrix<false> >,
-          ColChain<SameElementIncidenceMatrix<false>, const typename Unwary<Matrix2>::type&> >
+RowChain< ColChain<const unwary_t<Matrix1>&, SameElementIncidenceMatrix<false> >,
+          ColChain<SameElementIncidenceMatrix<false>, const unwary_t<Matrix2>&> >
 diag(const GenericIncidenceMatrix<Matrix1>& m1, const GenericIncidenceMatrix<Matrix2>& m2)
 {
-   return RowChain< ColChain<const typename Unwary<Matrix1>::type&, SameElementIncidenceMatrix<false> >,
-                    ColChain<SameElementIncidenceMatrix<false>, const typename Unwary<Matrix2>::type&> >
-             ( ColChain<const typename Unwary<Matrix1>::type&, SameElementIncidenceMatrix<false> >
+   return RowChain< ColChain<const unwary_t<Matrix1>&, SameElementIncidenceMatrix<false> >,
+                    ColChain<SameElementIncidenceMatrix<false>, const unwary_t<Matrix2>&> >
+             ( ColChain<const unwary_t<Matrix1>&, SameElementIncidenceMatrix<false> >
                   ( m1.top(), SameElementIncidenceMatrix<false>(m1.rows(), m2.cols()) ),
-               ColChain<SameElementIncidenceMatrix<false>, const typename Unwary<Matrix2>::type&>
+               ColChain<SameElementIncidenceMatrix<false>, const unwary_t<Matrix2>&>
                   ( SameElementIncidenceMatrix<false>(m2.rows(), m1.cols()), m2.top() )
              );
 }
 
 /// the same, but with corner blocks filled with 1
 template <typename Matrix1, typename Matrix2> inline
-RowChain< ColChain<const typename Unwary<Matrix1>::type&, SameElementIncidenceMatrix<true> >,
-          ColChain<SameElementIncidenceMatrix<true>, const typename Unwary<Matrix2>::type&> >
+RowChain< ColChain<const unwary_t<Matrix1>&, SameElementIncidenceMatrix<true> >,
+          ColChain<SameElementIncidenceMatrix<true>, const unwary_t<Matrix2>&> >
 diag_1(const GenericIncidenceMatrix<Matrix1>& m1, const GenericIncidenceMatrix<Matrix2>& m2)
 {
-   return RowChain< ColChain<const typename Unwary<Matrix1>::type&, SameElementIncidenceMatrix<true> >,
-                    ColChain<SameElementIncidenceMatrix<true>, const typename Unwary<Matrix2>::type&> >
-             ( ColChain<const typename Unwary<Matrix1>::type&, SameElementIncidenceMatrix<true> >
+   return RowChain< ColChain<const unwary_t<Matrix1>&, SameElementIncidenceMatrix<true> >,
+                    ColChain<SameElementIncidenceMatrix<true>, const unwary_t<Matrix2>&> >
+             ( ColChain<const unwary_t<Matrix1>&, SameElementIncidenceMatrix<true> >
                   ( m1.top(), SameElementIncidenceMatrix<true>(m1.rows(), m2.cols()) ),
-               ColChain<SameElementIncidenceMatrix<true>, const typename Unwary<Matrix2>::type&>
+               ColChain<SameElementIncidenceMatrix<true>, const unwary_t<Matrix2>&>
                   ( SameElementIncidenceMatrix<true>(m2.rows(), m1.cols()), m2.top() )
              );
 }
@@ -601,8 +619,8 @@ struct ComplementIncidenceLine_factory {
 template <typename Matrix>
 class Rows< ComplementIncidenceMatrix<Matrix> >
    : public modified_container_impl< Rows< ComplementIncidenceMatrix<Matrix> >,
-                                     list( Hidden< Rows<Matrix> >,
-                                           Operation< BuildUnary<ComplementIncidenceLine_factory> > ) > {
+                                     mlist< HiddenTag< Rows<Matrix> >,
+                                            OperationTag< BuildUnary<ComplementIncidenceLine_factory> > > > {
 protected:
    ~Rows();
 };
@@ -610,8 +628,8 @@ protected:
 template <typename Matrix>
 class Cols< ComplementIncidenceMatrix<Matrix> >
    : public modified_container_impl< Cols< ComplementIncidenceMatrix<Matrix> >,
-                                     list( Hidden< Cols<Matrix> >,
-                                           Operation< BuildUnary<ComplementIncidenceLine_factory> > ) > {
+                                     mlist< HiddenTag< Cols<Matrix> >,
+                                            OperationTag< BuildUnary<ComplementIncidenceLine_factory> > > > {
 protected:
    ~Cols();
 };
@@ -660,23 +678,23 @@ public:
 template <typename MatrixRef1, typename MatrixRef2, typename Controller>
 class Rows< LazyIncidenceMatrix2<MatrixRef1, MatrixRef2, Controller> >
    : public modified_container_pair_impl< Rows< LazyIncidenceMatrix2<MatrixRef1,MatrixRef2,Controller> >,
-                                          list( Container1< masquerade<pm::Rows,MatrixRef1> >,
-                                                Container2< masquerade<pm::Rows,MatrixRef2> >,
-                                                Operation< operations::construct_binary2_with_arg<LazySet2,Controller> >,
-                                                MasqueradedTop ) > {
-   typedef modified_container_pair_impl<Rows> _super;
+                                          mlist< Container1Tag< masquerade<pm::Rows, MatrixRef1> >,
+                                                 Container2Tag< masquerade<pm::Rows, MatrixRef2> >,
+                                                 OperationTag< operations::construct_binary2_with_arg<LazySet2,Controller> >,
+                                                 MasqueradedTop > > {
+   typedef modified_container_pair_impl<Rows> base_t;
 protected:
    ~Rows();
 public:
-   const typename _super::container1& get_container1() const
+   const typename base_t::container1& get_container1() const
    {
       return rows(this->hidden().get_container1());
    }
-   const typename _super::container2& get_container2() const
+   const typename base_t::container2& get_container2() const
    {
       return rows(this->hidden().get_container2());
    }
-   typename _super::operation get_operation() const
+   typename base_t::operation get_operation() const
    {
       return this->hidden().get_operation();
    }
@@ -685,23 +703,23 @@ public:
 template <typename MatrixRef1, typename MatrixRef2, typename Controller>
 class Cols< LazyIncidenceMatrix2<MatrixRef1, MatrixRef2, Controller> >
    : public modified_container_pair_impl< Cols< LazyIncidenceMatrix2<MatrixRef1,MatrixRef2,Controller> >,
-                                          list( Container1< masquerade<pm::Cols,MatrixRef1> >,
-                                                Container2< masquerade<pm::Cols,MatrixRef2> >,
-                                                Operation< operations::construct_binary2_with_arg<LazySet2,Controller> >,
-                                                MasqueradedTop ) > {
-   typedef modified_container_pair_impl<Cols> _super;
+                                          mlist< Container1Tag< masquerade<pm::Cols, MatrixRef1> >,
+                                                 Container2Tag< masquerade<pm::Cols, MatrixRef2> >,
+                                                 OperationTag< operations::construct_binary2_with_arg<LazySet2,Controller> >,
+                                                 MasqueradedTop > > {
+   typedef modified_container_pair_impl<Cols> base_t;
 protected:
    ~Cols();
 public:
-   const typename _super::container1& get_container1() const
+   const typename base_t::container1& get_container1() const
    {
       return cols(this->hidden().get_container1());
    }
-   const typename _super::container2& get_container2() const
+   const typename base_t::container2& get_container2() const
    {
       return cols(this->hidden().get_container2());
    }
-   typename _super::operation get_operation() const
+   typename base_t::operation get_operation() const
    {
       return this->hidden().get_operation();
    }
@@ -715,7 +733,7 @@ namespace operations {
 
 template <typename OpRef>
 struct bitwise_inv_impl<OpRef, is_incidence_matrix>
-   : reinterpret_impl<OpRef, const ComplementIncidenceMatrix<typename deref<typename Unwary<OpRef>::type>::type>&> {};
+   : reinterpret_impl<OpRef, const ComplementIncidenceMatrix<typename deref<unwary_t<OpRef>>::type>&> {};
 
 template <typename Matrix>
 struct bitwise_inv_impl<const ComplementIncidenceMatrix<Matrix>&, is_incidence_matrix> {
@@ -732,8 +750,8 @@ template <typename LeftRef, typename RightRef>
 struct add_impl<LeftRef, RightRef, cons<is_incidence_matrix, is_incidence_matrix> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef LazyIncidenceMatrix2<typename attrib<typename Unwary<LeftRef>::type>::plus_const,
-                                typename attrib<typename Unwary<RightRef>::type>::plus_const, set_union_zipper>
+   typedef LazyIncidenceMatrix2<typename attrib<unwary_t<LeftRef>>::plus_const,
+                                typename attrib<unwary_t<RightRef>>::plus_const, set_union_zipper>
       result_type;
 
    result_type operator() (typename function_argument<LeftRef>::const_type l,
@@ -756,8 +774,8 @@ template <typename LeftRef, typename RightRef>
 struct sub_impl<LeftRef, RightRef, cons<is_incidence_matrix, is_incidence_matrix> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef LazyIncidenceMatrix2<typename attrib<typename Unwary<LeftRef>::type>::plus_const,
-                                typename attrib<typename Unwary<RightRef>::type>::plus_const, set_difference_zipper>
+   typedef LazyIncidenceMatrix2<typename attrib<unwary_t<LeftRef>>::plus_const,
+                                typename attrib<unwary_t<RightRef>>::plus_const, set_difference_zipper>
       result_type;
 
    result_type operator() (typename function_argument<LeftRef>::const_type l,
@@ -780,8 +798,8 @@ template <typename LeftRef, typename RightRef>
 struct mul_impl<LeftRef, RightRef, cons<is_incidence_matrix, is_incidence_matrix> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef LazyIncidenceMatrix2<typename attrib<typename Unwary<LeftRef>::type>::plus_const,
-                                typename attrib<typename Unwary<RightRef>::type>::plus_const, set_intersection_zipper>
+   typedef LazyIncidenceMatrix2<typename attrib<unwary_t<LeftRef>>::plus_const,
+                                typename attrib<unwary_t<RightRef>>::plus_const, set_intersection_zipper>
       result_type;
 
    result_type operator() (typename function_argument<LeftRef>::const_type l,
@@ -804,8 +822,8 @@ template <typename LeftRef, typename RightRef>
 struct bitwise_xor_impl<LeftRef, RightRef, cons<is_incidence_matrix, is_incidence_matrix> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef LazyIncidenceMatrix2<typename attrib<typename Unwary<LeftRef>::type>::plus_const,
-                                typename attrib<typename Unwary<RightRef>::type>::plus_const, set_symdifference_zipper>
+   typedef LazyIncidenceMatrix2<typename attrib<unwary_t<LeftRef>>::plus_const,
+                                typename attrib<unwary_t<RightRef>>::plus_const, set_symdifference_zipper>
       result_type;
 
    result_type operator() (typename function_argument<LeftRef>::const_type l,
@@ -828,8 +846,8 @@ template <typename LeftRef, typename RightRef>
 struct concat_impl<LeftRef, RightRef, cons<is_set, is_set> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef IncidenceLineChain<typename attrib<typename Unwary<LeftRef>::type>::plus_const,
-                              typename attrib<typename Unwary<RightRef>::type>::plus_const>
+   typedef IncidenceLineChain<typename attrib<unwary_t<LeftRef>>::plus_const,
+                              typename attrib<unwary_t<RightRef>>::plus_const>
       result_type;
 
    result_type operator() (typename function_argument<LeftRef>::const_type l,
@@ -843,8 +861,8 @@ template <typename LeftRef, typename RightRef>
 struct div_impl<LeftRef, RightRef, cons<is_incidence_matrix, is_incidence_matrix> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef RowChain<typename attrib<typename Unwary<LeftRef>::type>::plus_const,
-                    typename attrib<typename Unwary<RightRef>::type>::plus_const> result_type;
+   typedef RowChain<typename attrib<unwary_t<LeftRef>>::plus_const,
+                    typename attrib<unwary_t<RightRef>>::plus_const> result_type;
 
    result_type operator() (typename function_argument<LeftRef>::const_type l,
                            typename function_argument<RightRef>::const_type r) const
@@ -862,8 +880,8 @@ template <typename LeftRef, typename RightRef>
 struct div_impl<LeftRef, RightRef, cons<is_incidence_matrix, is_set> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef Set_with_dim<typename attrib<typename Unwary<RightRef>::type>::plus_const> Right;
-   typedef RowChain<typename attrib<typename Unwary<LeftRef>::type>::plus_const, SingleIncidenceRow<Right> > result_type;
+   typedef Set_with_dim<typename attrib<unwary_t<RightRef>>::plus_const> Right;
+   typedef RowChain<typename attrib<unwary_t<LeftRef>>::plus_const, SingleIncidenceRow<Right> > result_type;
 
    result_type operator() (typename function_argument<LeftRef>::const_type l,
                            typename function_argument<RightRef>::const_type r)
@@ -885,8 +903,8 @@ template <typename LeftRef, typename RightRef>
 struct div_impl<LeftRef, RightRef, cons<is_set, is_incidence_matrix> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef Set_with_dim<typename attrib<typename Unwary<LeftRef>::type>::plus_const> Left;
-   typedef RowChain<SingleIncidenceRow<Left>, typename attrib<typename Unwary<RightRef>::type>::plus_const> result_type;
+   typedef Set_with_dim<typename attrib<unwary_t<LeftRef>>::plus_const> Left;
+   typedef RowChain<SingleIncidenceRow<Left>, typename attrib<unwary_t<RightRef>>::plus_const> result_type;
 
    result_type operator() (typename function_argument<LeftRef>::const_type l,
                            typename function_argument<RightRef>::const_type r)
@@ -903,8 +921,8 @@ template <typename LeftRef, typename RightRef>
 struct bitwise_or_impl<LeftRef, RightRef, cons<is_incidence_matrix, is_incidence_matrix> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef ColChain<typename attrib<typename Unwary<LeftRef>::type>::plus_const,
-                    typename attrib<typename Unwary<RightRef>::type>::plus_const> result_type;
+   typedef ColChain<typename attrib<unwary_t<LeftRef>>::plus_const,
+                    typename attrib<unwary_t<RightRef>>::plus_const> result_type;
 
    result_type operator() (typename function_argument<LeftRef>::const_type l,
                            typename function_argument<RightRef>::const_type r) const
@@ -922,8 +940,8 @@ template <typename LeftRef, typename RightRef>
 struct bitwise_or_impl<LeftRef, RightRef, cons<is_incidence_matrix, is_set> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef Set_with_dim<typename attrib<typename Unwary<RightRef>::type>::plus_const> Right;
-   typedef ColChain<typename attrib<typename Unwary<LeftRef>::type>::plus_const, SingleIncidenceCol<Right> > result_type;
+   typedef Set_with_dim<typename attrib<unwary_t<RightRef>>::plus_const> Right;
+   typedef ColChain<typename attrib<unwary_t<LeftRef>>::plus_const, SingleIncidenceCol<Right> > result_type;
 
    result_type operator() (typename function_argument<LeftRef>::const_type l,
                            typename function_argument<RightRef>::const_type r)
@@ -945,8 +963,8 @@ template <typename LeftRef, typename RightRef>
 struct bitwise_or_impl<LeftRef, RightRef, cons<is_set, is_incidence_matrix> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef Set_with_dim<typename attrib<typename Unwary<LeftRef>::type>::plus_const> Left;
-   typedef ColChain<SingleIncidenceCol<Left>, typename attrib<typename Unwary<RightRef>::type>::plus_const> result_type;
+   typedef Set_with_dim<typename attrib<unwary_t<LeftRef>>::plus_const> Left;
+   typedef ColChain<SingleIncidenceCol<Left>, typename attrib<unwary_t<RightRef>>::plus_const> result_type;
 
    result_type operator() (typename function_argument<LeftRef>::const_type l,
                            typename function_argument<RightRef>::const_type r)
@@ -976,27 +994,6 @@ operator- (const GenericIncidenceMatrix<Matrix1>& l, const GenericIncidenceMatri
 {
    operations::sub_impl<const Matrix1&, const Matrix2&> op;
    return op(concrete(l), concrete(r));
-}
-
-template <typename Matrix1, typename Matrix2> inline
-bool operator== (const GenericIncidenceMatrix<Matrix1>& l, const GenericIncidenceMatrix<Matrix2>& r)
-{
-   if ((l.rows()==0 && r.rows()==0) || (l.cols()==0 && r.cols()==0)) return true;
-   if (l.rows() != r.rows() || l.cols() != r.cols()) return false;
-   operations::eq<const typename Unwary<Matrix1>::type&, const typename Unwary<Matrix2>::type&> op;
-   return op(l.top(), r.top());
-}
-
-template <typename Matrix1, typename Matrix2> inline
-bool operator< (const GenericIncidenceMatrix<Matrix1>& l, const GenericIncidenceMatrix<Matrix2>& r)
-{
-   if ((l.rows()==0 && r.rows()==0) || (l.cols()==0 && r.cols()==0)) return false;
-   if (POLYMAKE_DEBUG || !Unwary<Matrix1>::type || !Unwary<Matrix2>::type) {
-      if (l.rows() != r.rows() || l.cols() != r.cols())
-         throw std::runtime_error("operator<(GenericIncidenceMatrix,GenericIncidenceMatrix) - dimension mismatch");
-   }
-   operations::lt<const typename Unwary<Matrix1>::type&, const typename Unwary<Matrix2>::type&> op;
-   return op(l.top(), r.top());
 }
 
 } // end namespace operators

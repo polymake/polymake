@@ -48,7 +48,7 @@ bool improved(const Array<int>& min, const Array<int>& cand, const int obj)
       */
 
    default: return accumulate(cand, operations::add()) < accumulate(min, operations::add());
-   }      
+   }
 }
 
 } // end empty namespace
@@ -59,14 +59,14 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
    bool dist = options["distribution"]>>distribution_src;
 
    const int verbose=options["verbose"];
-   
+
    if (verbose)
       cout << "initialising ...\n";
-   
-   const HasseDiagram HD = p_in.give("HASSE_DIAGRAM");
-   const int dim = HD.dim()-1;
-   const int size = HD.nodes_of_dim(dim).size();
-   
+
+   const Lattice<BasicDecoration>& HD = p_in.give("HASSE_DIAGRAM");
+   const int dim = HD.rank()-2;
+   const int size = HD.nodes_of_rank(dim+1).size();
+
    const bool is_closed = p_in.give("CLOSED_PSEUDO_MANIFOLD");
    const bool is_pmf = p_in.give("PSEUDO_MANIFOLD");
    if (!is_pmf)
@@ -95,7 +95,7 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
    if (!( options["obj"] >> obj)) obj=1;
    if (obj<0 || obj>2)
       throw std::runtime_error("bistellar: no objective function {0|1|2} specified.");
-   
+
    int max_relax;
    if (!(options["max_relax"]>>max_relax)) max_relax=std::max(dim,size/10);
    const int init_max_relax = max_relax;
@@ -104,7 +104,7 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
    if (!( options["heat"]>>heat))heat = std::max(dim,size/10);
    const int init_heat = heat;
    int min_heat_dim = dist? dim-distribution_src.size()+1 : (dim+1)/2;
-   
+
    // compute distribution
    if (!dist) {  // no distribution specified
       distribution_src = Array<int>(dim-min_heat_dim+1,10);
@@ -113,19 +113,20 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
    else {
       if (distribution_src.size()>dim+1)
          throw std::runtime_error("bistellar: distribution has too many values.");
-      if (distribution_src.empty())   
+      if (distribution_src.empty())
          throw std::runtime_error("bistellar: distribution is empty.");
    }
 
    UniformlyRandom<Integer> random_source(seed);
    DiscreteRandom distribution(distribution_src, random_source);
-   
+
    BistellarComplex BC(HD, random_source, verbose==1, is_closed, options["allow_rev_move"]);
-   
+
+
    Array<int> min_f_vector, min_flip_vector;
    FacetList F = BC.facets();
    min_flip_vector = BC.flip_vector();
-   
+
    if (verbose) {
       cout << "\nseed:           " << seed.get()
            << "\ndim:            " << dim
@@ -142,12 +143,12 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
       if (compare) cout << "\nTESTING FOR PL-HOMEOMORPHY";
       cout << "\n\n... done\n";
    }
-   
+
    // check for ball or sphere
    bool bos = false;
    bool mnf = false;
    bool is_pl = false;
-   
+
    const bool quiet =options["quiet"];
    if (is_closed && BC.n_facets() == dim+2) {
       if (!quiet)
@@ -176,7 +177,7 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
          mnf = true;
       }
    }
-   
+
    int rounds=0;
    if (!bos && !mnf && !is_pl) {
       int stable_rounds=0, relax=0, heating=0;
@@ -187,18 +188,18 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
             if (verbose==1)
                cout << "flip_vector: " << BC.flip_vector() << "     n_facets: " << BC.n_facets() << endl;
          }
-         
+
          if (relax >= max_relax) {  // heating up
             relax = 0;
             heating = heat;
          }
-         
+
          if (verbose==1 && heating>0)
             cout << "HEATING UP for another " << heating << " moves\n";
          if (verbose>1 && heating>0 && verbose<=5*init_heat && heating==heat)
             cout << rounds << ": current flip_vector: " << BC.flip_vector()
                  << "\nHEATING UP for " << heating << " moves\n";
-         
+
          if (heating>0) {
             --heating;
             const int rnd_d = min_heat_dim + distribution.get();
@@ -207,31 +208,31 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
                BC.min_rev_move(min_heat_dim);
             else
                BC.execute_move();
-            
+
             continue;
          }
-         
+
          // make smallest reversed move
          const int move_dim= BC.min_rev_move();
-         
+
          if ( move_dim >= (dim+1)/2 )   // up or eaven move
             ++relax;
-         
+
          else // down move
             if ( improved(min_flip_vector,BC.flip_vector(),obj)) {  // new triangulation found
                stable_rounds = 0;
                relax = 0;
-               
+
                min_flip_vector = BC.flip_vector();
                F=BC.facets();
                if (!my_constant) {
                   max_relax = std::min( init_max_relax, std::max(dim,init_max_relax*BC.n_facets()/size) );
                   heat = std::min( init_heat, std::max(dim,init_heat*BC.n_facets()/size) );
                }
-               
+
                if (verbose == 1)
                   cout << "new smallest triangulation found\n";
-               
+
                // check for sphere
                if ( is_closed && BC.n_facets()==dim+2) {
                   if (!quiet)
@@ -241,7 +242,7 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
                           << "\n\nThe complex is a " << dim << "-sphere.\n\n";
                   break;
                }
-               
+
                // check for ball
                if ( BC.n_facets()==1 ) {
                   if (!quiet)
@@ -263,7 +264,7 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
                  break;
                }
             }
-         
+
          // check for comb. isomorphism
          if (compare) {
             if (BC.n_facets()==n_facets_comp && graph::isomorphic(BC.as_incidence_matrix(),facets_comp)) {
@@ -284,7 +285,7 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
             }
          }
       }  // end searching
-      
+
       if (!quiet && (stable_rounds==n_rounds || rounds==n_rounds) ) {
          cout << "\nAll " << n_rounds
               << " moves were executed";
@@ -294,12 +295,12 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
          if (compare)
             cout << "no pl-homeomorphism found\n\n";
       }
-      
+
    }  // end !bos
-   
+
    if (!compare) {  // output small traingulation
-      F.squeeze();   
-      if (verbose)   
+      F.squeeze();
+      if (verbose)
          p1.set_description() << "Simplicial complex obtained from " << p_in.name()
                               << " by a series of " << "bistellar flips."
                               << "\nparameters for the bistellar function:"
@@ -317,7 +318,7 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
       else
          p1.set_description() << "Simplicial complex obtained from " << p_in.name()
                               << " by a series of " << "bistellar flips."<<endl;
-         
+
       p1.take("FACETS") << F;
    }
    return is_pl;
@@ -373,7 +374,7 @@ UserFunction4perl("# @category Comparing"
                   "# @option Int heat"
                   "# @option Bool constant"
                   "# @option Bool allow_rev_move"
-                  "# @option Int min_n_facets"            
+                  "# @option Int min_n_facets"
                   "# @option Int verbose"
                   "# @option Int seed"
                   "# @option Bool quiet"
@@ -418,7 +419,7 @@ UserFunction4perl("CREDIT none\n\n"
                   "# @option Int heat"
                   "# @option Bool constant"
                   "# @option Bool allow_rev_move"
-                  "# @option Int min_n_facets"            
+                  "# @option Int min_n_facets"
                   "# @option Int verbose"
                   "# @option Int seed"
                   "# @option Bool quiet"

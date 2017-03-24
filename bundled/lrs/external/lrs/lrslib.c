@@ -1796,8 +1796,6 @@ lrs_getfirstbasis (lrs_dic ** D_p, lrs_dat * Q, lrs_mp_matrix * Lin, long no_out
 /* P may get changed if lin. space Lin found    */
 /* no_output is TRUE supresses output headers   */
 {
-  lrs_mp scale, Temp;
-
   long i, j, k;
 
 /* assign local variables to structures */
@@ -1808,8 +1806,6 @@ lrs_getfirstbasis (lrs_dic ** D_p, lrs_dat * Q, lrs_mp_matrix * Lin, long no_out
   long *linearity;
   long hull = Q->hull;
   long m, d, lastdv, nlinearity, nredundcol;
-
-  lrs_alloc_mp(Temp); lrs_alloc_mp(scale);
 
   if (Q->lponly)
     no_output = TRUE;
@@ -1893,6 +1889,9 @@ lrs_getfirstbasis (lrs_dic ** D_p, lrs_dat * Q, lrs_mp_matrix * Lin, long no_out
     printA (D, Q);
   if (Q->voronoi)
     {
+      lrs_mp scale, Temp;
+      lrs_alloc_mp(Temp); lrs_alloc_mp(scale);
+
       Q->hull = FALSE;
       hull = FALSE;
       for (i = 1; i <= m; i++)
@@ -1900,6 +1899,7 @@ lrs_getfirstbasis (lrs_dic ** D_p, lrs_dat * Q, lrs_mp_matrix * Lin, long no_out
 	  if (zero (A[i][1]))
 	    {
               printf("\nWith voronoi option column one must be all one\n");
+              lrs_clear_mp(Temp); lrs_clear_mp(scale);
 	      return (FALSE);
 	    }
 	  copy (scale, A[i][1]);	/*adjust for scaling to integers of rationals */
@@ -1919,6 +1919,7 @@ lrs_getfirstbasis (lrs_dic ** D_p, lrs_dat * Q, lrs_mp_matrix * Lin, long no_out
 	      if (Q->debug)
 		printA (D, Q);
 	#endif
+        lrs_clear_mp(Temp); lrs_clear_mp(scale);
     }				/* end of if(voronoi)     */
   if (!Q->maximize && !Q->minimize)
     for (j = 0; j <= d; j++)
@@ -2153,7 +2154,6 @@ lrs_getfirstbasis (lrs_dic ** D_p, lrs_dat * Q, lrs_mp_matrix * Lin, long no_out
            printA (D, Q);
           }
 	#endif
-          lrs_clear_mp(Temp); lrs_clear_mp(scale);
           return TRUE;
         }
 
@@ -2232,7 +2232,6 @@ lrs_getfirstbasis (lrs_dic ** D_p, lrs_dat * Q, lrs_mp_matrix * Lin, long no_out
   if (Q->inputd > d)
     *D_p = resize (D, Q);
 
-  lrs_clear_mp(Temp); lrs_clear_mp(scale);
   return TRUE;
 }
 /********* end of lrs_getfirstbasis  ***************/

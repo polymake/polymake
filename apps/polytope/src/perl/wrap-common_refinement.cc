@@ -14,10 +14,18 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
 #include "polymake/Rational.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( common_refinement_X_X_X_x, T0,T1,T2 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
+      WrapperReturn( (common_refinement(arg0.get<T0>(), arg1.get<T1>(), arg2.get<T2>(), arg3)) );
+   };
+
    template <typename T0>
    FunctionInterface4perl( common_refinement_T_x_x, T0 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
@@ -30,12 +38,13 @@ namespace polymake { namespace polytope { namespace {
    }
    FunctionWrapperInstance4perl( perl::Object (perl::Object, perl::Object) );
 
-   FunctionWrapper4perl( pm::Array<pm::Set<int, pm::operations::cmp>, void> (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, int) ) {
+   FunctionWrapper4perl( pm::Array<pm::Set<int, pm::operations::cmp>> (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>> const&, pm::Array<pm::Set<int, pm::operations::cmp>> const&, int) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
       IndirectWrapperReturn( arg0.get< perl::TryCanned< const Matrix<Rational> > >(), arg1.get< perl::TryCanned< const Array< Set< int > > > >(), arg2.get< perl::TryCanned< const Array< Set< int > > > >(), arg3 );
    }
-   FunctionWrapperInstance4perl( pm::Array<pm::Set<int, pm::operations::cmp>, void> (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, pm::Array<pm::Set<int, pm::operations::cmp>, void> const&, int) );
+   FunctionWrapperInstance4perl( pm::Array<pm::Set<int, pm::operations::cmp>> (pm::Matrix<pm::Rational> const&, pm::Array<pm::Set<int, pm::operations::cmp>> const&, pm::Array<pm::Set<int, pm::operations::cmp>> const&, int) );
 
    FunctionInstance4perl(common_refinement_T_x_x, Rational);
+   FunctionInstance4perl(common_refinement_X_X_X_x, perl::Canned< const Matrix< Rational > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

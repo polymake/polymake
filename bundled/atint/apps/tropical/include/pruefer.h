@@ -30,7 +30,6 @@
 #include "polymake/Array.h"
 #include "polymake/Set.h"
 #include "polymake/PowerSet.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/moduli_rational.h"
 
 
@@ -71,7 +70,6 @@ namespace polymake { namespace tropical {
 			Matrix<int> E(n-1,n-1);
 			for(int i = 0; i < n-2; i++) {
 				for(int j = i+1; j < n-1; j++) {
-					//dbgtrace << "Setting E(" << i << "," << j << ") = " << nextindex << endl;
 					E(i,j) = nextindex;
 					E(j,i) = nextindex;
 					nextindex++;
@@ -115,7 +113,6 @@ namespace polymake { namespace tropical {
 								}
 							}
 						}
-						//dbgtrace << "Ray: " << rset << " has bergman ray " << newray << endl;
 						bergman_rays /= newray; 
 					}
 					else {

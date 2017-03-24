@@ -15,28 +15,13 @@
 */
 
 #ifndef POLYMAKE_CORE_WRAPPERS_Polynomial_H
-#define POLYMAKE_CORE_WRAPPERS_Polynomial_H
+#define POLYMAKE_CORE_WRAPPERS_Polynomial_H 
 
 #include_next "polymake/Polynomial.h"
 #include "polymake/client.h"
 
 namespace polymake { namespace perl_bindings {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T, typename T0, typename T1>
-   RecognizeType4perl("Polymake::common::UniMonomial", (T0,T1), UniMonomial<T0,T1>)
-
-   template <typename T, typename T0, typename T1>
-   RecognizeType4perl("Polymake::common::Monomial", (T0,T1), Monomial<T0,T1>)
-
-   template <typename T, typename T0, typename T1>
-   RecognizeType4perl("Polymake::common::UniPolynomial", (T0,T1), UniPolynomial<T0,T1>)
-
-   template <typename T, typename T0, typename T1>
-   RecognizeType4perl("Polymake::common::UniTerm", (T0,T1), UniTerm<T0,T1>)
-
-   template <typename T, typename T0, typename T1>
-   RecognizeType4perl("Polymake::common::Term", (T0,T1), Term<T0,T1>)
-
    template <typename T, typename T0, typename T1>
    RecognizeType4perl("Polymake::common::Polynomial", (T0,T1), Polynomial<T0,T1>)
 

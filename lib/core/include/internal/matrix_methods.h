@@ -29,49 +29,66 @@
 
 namespace pm {
 
-struct Symmetric : True {};
-struct NonSymmetric : False {};
+struct Symmetric : std::true_type {};
+struct NonSymmetric : std::false_type {};
 struct SkewSymmetric : Symmetric {};
 struct FlatStorage {};
 
-template <typename Matrix>
-struct default_check_container_feature<Matrix, Symmetric> : False {};
+template <typename TMatrix>
+struct default_check_container_feature<TMatrix, Symmetric> : std::false_type {};
 
-template <typename Matrix>
-struct default_check_container_feature<Matrix, SkewSymmetric> : False {};
+template <typename TMatrix>
+struct default_check_container_feature<TMatrix, SkewSymmetric> : std::false_type {};
 
-template <typename Matrix>
-struct default_check_container_feature<Matrix, FlatStorage> : False {};
+template <typename TMatrix>
+struct default_check_container_feature<TMatrix, FlatStorage> : std::false_type {};
 
-template <typename Matrix>
-struct default_check_container_feature<Matrix, NonSymmetric> {
-   static const bool value= !check_container_feature<Matrix,Symmetric>::value &&
-                            !check_container_feature<Matrix,SkewSymmetric>::value;
+template <typename TMatrix>
+struct default_check_container_feature<TMatrix, NonSymmetric> {
+   static const bool value= !check_container_feature<TMatrix, Symmetric>::value &&
+                            !check_container_feature<TMatrix, SkewSymmetric>::value;
 };
 
-template <typename Matrix>
+template <typename TMatrix>
 struct matrix_symmetry_type
-   : choice< if_else< check_container_feature<Matrix,Symmetric>::value, Symmetric,
-             if_else< check_container_feature<Matrix,SkewSymmetric>::value, SkewSymmetric,
-                      NonSymmetric > > > {};
+   : mselect< std::enable_if<check_container_feature<TMatrix, Symmetric>::value, Symmetric>,
+              std::enable_if<check_container_feature<TMatrix, SkewSymmetric>::value, SkewSymmetric>,
+              NonSymmetric > {};
 
 
-template <typename Matrix> inline
-int empty_rows(const Matrix& m)
+template <typename TMatrix> inline
+int empty_rows(const TMatrix& m)
 {
    int cnt=0;
-   for (typename Entire< Rows<Matrix> >::const_iterator r=entire(rows(m)); !r.at_end(); ++r)
+   for (auto r=entire(rows(m)); !r.at_end(); ++r)
       if (!r->size()) ++cnt;
    return cnt;
 }
 
-template <typename Matrix> inline
-int empty_cols(const Matrix& m)
+template <typename TMatrix> inline
+int empty_cols(const TMatrix& m)
 {
    int cnt=0;
-   for (typename Entire< Cols<Matrix> >::const_iterator c=entire(cols(m)); !c.at_end(); ++c)
+   for (auto c=entire(cols(m)); !c.at_end(); ++c)
       if (!c->size()) ++cnt;
    return cnt;
+}
+
+template <typename E> inline
+int count_columns(const std::initializer_list<std::initializer_list<E>>& l)
+{
+   if (l.size()==0) return 0;
+#if POLYMAKE_DEBUG
+   auto r=l.begin(), e=l.end();
+   const size_t c=r->size();
+   while (++r != e) {
+      if (r->size() != c)
+         throw std::runtime_error("Matrix initializer list does not have a rectangular shape");
+   }
+   return c;
+#else
+   return l.begin()->size();
+#endif
 }
 
 /* -------------------------------
@@ -155,6 +172,9 @@ public:
 };
 
 template <typename Matrix>
+class matrix_row_methods<Matrix, output_iterator_tag> {};
+
+template <typename Matrix>
 class matrix_row_methods<Matrix, random_access_iterator_tag>
    : public matrix_row_methods<Matrix, forward_iterator_tag> {
 public:
@@ -215,6 +235,9 @@ public:
 };
 
 template <typename Matrix>
+class matrix_col_methods<Matrix, output_iterator_tag> {};
+
+template <typename Matrix>
 class matrix_col_methods<Matrix, random_access_iterator_tag>
    : public matrix_col_methods<Matrix, forward_iterator_tag> {
 public:
@@ -242,16 +265,18 @@ template <typename Matrix, typename E=typename Matrix::element_type,
           typename RowCategory=typename container_traits< Rows<Matrix> >::category,
           typename ColCategory=typename container_traits< Cols<Matrix> >::category>
 class matrix_methods
-   : public matrix_row_methods<Matrix>,
-     public matrix_col_methods<Matrix> {
+   : public matrix_row_methods<Matrix>
+   , public matrix_col_methods<Matrix> {
 public:
    typedef E element_type;
-   typedef typename least_derived< cons< typename container_traits< Rows<Matrix> >::category,
-                                         typename container_traits< Cols<Matrix> >::category > >::type
+
+   typedef typename mevaluate<least_derived_class<typename container_traits< Rows<Matrix> >::category,
+                                                  typename container_traits< Cols<Matrix> >::category>,
+                              output_iterator_tag>::type
       container_category;
 
    template <typename RowIndexSet, typename ColIndexSet>
-   MatrixMinor<typename Unwary<Matrix>::type&,
+   MatrixMinor<unwary_t<Matrix>&,
                typename Diligent<const RowIndexSet&>::type,
                typename Diligent<const ColIndexSet&>::type>
    minor(const RowIndexSet& row_indices, const ColIndexSet& col_indices)
@@ -264,14 +289,14 @@ public:
             throw std::runtime_error("matrix minor - column indices out of range");
       }
                                                                                             
-      return MatrixMinor<typename Unwary<Matrix>::type&,
+      return MatrixMinor<unwary_t<Matrix>&,
                          typename Diligent<const RowIndexSet&>::type,
                          typename Diligent<const ColIndexSet&>::type>
                         (static_cast<Matrix&>(*this).top(), diligent(row_indices), diligent(col_indices));
    }
 
    template <typename RowIndexSet, typename ColIndexSet>
-   const MatrixMinor<const typename Unwary<Matrix>::type&,
+   const MatrixMinor<const unwary_t<Matrix>&,
                      typename Diligent<const RowIndexSet&>::type,
                      typename Diligent<const ColIndexSet&>::type>
    minor(const RowIndexSet& row_indices, const ColIndexSet& col_indices) const
@@ -284,7 +309,7 @@ public:
             throw std::runtime_error("matrix minor - column indices out of range");
       }
                                                                                             
-      return MatrixMinor<const typename Unwary<Matrix>::type&,
+      return MatrixMinor<const unwary_t<Matrix>&,
                          typename Diligent<const RowIndexSet&>::type,
                          typename Diligent<const ColIndexSet&>::type>
                         (static_cast<const Matrix&>(*this).top(), diligent(row_indices), diligent(col_indices));
@@ -345,8 +370,6 @@ protected:
  *  MatrixMinor
  * ------------- */
 
-enum all_selector { All };
-
 template <>
 class alias<const all_selector&, object_classifier::alias_ref> {
 public:
@@ -385,15 +408,15 @@ public:
    typename alias<MatrixRef>::reference get_matrix() { return *matrix; }
    typename alias<MatrixRef>::const_reference get_matrix() const { return *matrix; }
 
-   const alias<RowIndexSetRef>& get_subset_alias(int2type<1>) const { return rset; }
-   const alias<ColIndexSetRef>& get_subset_alias(int2type<2>) const { return cset; }
-   typename alias<RowIndexSetRef>::const_reference get_subset(int2type<1>) const { return *rset; }
-   typename alias<ColIndexSetRef>::const_reference get_subset(int2type<2>) const { return *cset; }
+   const alias<RowIndexSetRef>& get_subset_alias(int_constant<1>) const { return rset; }
+   const alias<ColIndexSetRef>& get_subset_alias(int_constant<2>) const { return cset; }
+   typename alias<RowIndexSetRef>::const_reference get_subset(int_constant<1>) const { return *rset; }
+   typename alias<ColIndexSetRef>::const_reference get_subset(int_constant<2>) const { return *cset; }
 
    template <typename RowIndexSet>
-   int random_row(int i, type2type<RowIndexSet>) const { return get_subset(int2type<1>())[i]; }
+   int random_row(int i, type2type<RowIndexSet>) const { return get_subset(int_constant<1>())[i]; }
    template <typename ColIndexSet>
-   int random_col(int i, type2type<ColIndexSet>) const { return get_subset(int2type<2>())[i]; }
+   int random_col(int i, type2type<ColIndexSet>) const { return get_subset(int_constant<2>())[i]; }
    int random_row(int i, type2type<all_selector>) const { return i; }
    int random_col(int i, type2type<all_selector>) const { return i; }
 
@@ -403,40 +426,40 @@ public:
 
 template <typename MatrixRef, typename RowIndexSetRef, typename ColIndexSetRef>
 class MatrixMinor
-   : public minor_base<MatrixRef, RowIndexSetRef, ColIndexSetRef>,
-     public inherit_generic<MatrixMinor<MatrixRef,RowIndexSetRef,ColIndexSetRef>, typename deref<MatrixRef>::type>::type {
-   typedef minor_base<MatrixRef, RowIndexSetRef, ColIndexSetRef> _base;
+   : public minor_base<MatrixRef, RowIndexSetRef, ColIndexSetRef>
+   , public inherit_generic<MatrixMinor<MatrixRef,RowIndexSetRef,ColIndexSetRef>, typename deref<MatrixRef>::type>::type {
+   typedef minor_base<MatrixRef, RowIndexSetRef, ColIndexSetRef> base_t;
 public:
-   typedef typename _base::matrix_type matrix_type;
+   typedef typename base_t::matrix_type matrix_type;
    typedef typename container_traits<MatrixRef>::value_type value_type;
    typedef typename container_traits<MatrixRef>::reference reference;
    typedef typename container_traits<MatrixRef>::const_reference const_reference;
 
-   MatrixMinor(typename _base::matrix_arg_type matrix_arg,
-               typename _base::row_set_arg_type rset_arg,
-               typename _base::col_set_arg_type cset_arg)
-      : _base(matrix_arg,rset_arg,cset_arg) {}
+   MatrixMinor(typename base_t::matrix_arg_type matrix_arg,
+               typename base_t::row_set_arg_type rset_arg,
+               typename base_t::col_set_arg_type cset_arg)
+      : base_t(matrix_arg,rset_arg,cset_arg) {}
 
    /// Assignment operator should copy elements instead of alias pointers
    MatrixMinor& operator= (const MatrixMinor& other) { return MatrixMinor::generic_type::operator=(other); }
    using MatrixMinor::generic_type::operator=;
 
 protected:
-   void clear(True)
+   void clear_impl(std::true_type)
    {
-      for (typename Entire< Cols<MatrixMinor> >::iterator c=entire(pm::cols(*this)); !c.at_end(); ++c)
+      for (auto c=entire(pm::cols(*this)); !c.at_end(); ++c)
          c->fill(0);
    }
-   void clear(False)
+   void clear_impl(std::false_type)
    {
-      for (typename Entire< Rows<MatrixMinor> >::iterator r=entire(pm::rows(*this)); !r.at_end(); ++r)
+      for (auto r=entire(pm::rows(*this)); !r.at_end(); ++r)
          r->fill(0);
    }
 public:
    /// fill with zeroes (if dense), delete elements (if sparse)
    void clear()
    {
-      clear(identical<typename _base::row_set_type,all_selector>());
+      clear_impl(std::is_same<typename base_t::row_set_type, all_selector>());
    }
 };
 
@@ -482,92 +505,92 @@ public:
    }
 };
 
-template <typename Minor, int dir>
+template <typename TMinor, int dir>
 struct RowCol_helper;
 
-template <typename Minor>
-struct RowCol_helper<Minor,1> : masquerade<Rows, typename extract_template_type_param<Minor,0>::type> {};
+template <typename TMinor>
+struct RowCol_helper<TMinor, 1> : masquerade<Rows, typename mget_template_parameter<TMinor, 0>::type> {};
 
-template <typename Minor>
-struct RowCol_helper<Minor,2> : masquerade<Cols, typename extract_template_type_param<Minor,0>::type> {};
+template <typename TMinor>
+struct RowCol_helper<TMinor, 2> : masquerade<Cols, typename mget_template_parameter<TMinor, 0>::type> {};
 
-template <typename Minor, typename RenumberVal, int dir, typename Selector=typename extract_template_type_param<Minor,dir>::type>
+template <typename TMinor, typename TRenumber, int TDir, typename TSelector=typename mget_template_parameter<TMinor, TDir>::type>
 class RowColSubset
-   : public indexed_subset_impl< RowColSubset<Minor, RenumberVal, dir, Selector>,
-                                 list( Container1< typename RowCol_helper<Minor,dir>::type >,
-                                       Container2< Selector >,
-                                       Renumber< RenumberVal >,
-                                       Hidden< Minor > ) > {
-   typedef indexed_subset_impl<RowColSubset> _super;
+   : public indexed_subset_impl< RowColSubset<TMinor, TRenumber, TDir, TSelector>,
+                                 mlist< Container1Tag< typename RowCol_helper<TMinor, TDir>::type >,
+                                        Container2Tag< TSelector >,
+                                        RenumberTag< TRenumber >,
+                                        HiddenTag< TMinor > > > {
+   typedef indexed_subset_impl<RowColSubset> base_t;
 public:
-   typename _super::container1& get_container1()
+   typename base_t::container1& get_container1()
    {
-      return reinterpret_cast<typename _super::container1&>(this->hidden().get_matrix());
+      return reinterpret_cast<typename base_t::container1&>(this->hidden().get_matrix());
    }
-   const typename _super::container1& get_container1() const
+   const typename base_t::container1& get_container1() const
    {
-      return reinterpret_cast<const typename _super::container1&>(this->hidden().get_matrix());
+      return reinterpret_cast<const typename base_t::container1&>(this->hidden().get_matrix());
    }
-   const typename _super::container2& get_container2() const
+   const typename base_t::container2& get_container2() const
    {
-      return this->hidden().get_subset(int2type<dir>());
+      return this->hidden().get_subset(int_constant<TDir>());
    }
 };
 
-template <typename Minor, typename RenumberVal, int dir>
-class RowColSubset<Minor, RenumberVal, dir, const all_selector&>
-   : public redirected_container< RowColSubset<Minor, RenumberVal, dir, const all_selector&>,
-                                  list( Container< typename RowCol_helper<Minor,dir>::type >,
-                                        Hidden< Minor > ) > {
-   typedef redirected_container<RowColSubset> _super;
+template <typename TMinor, typename TRenumber, int TDir>
+class RowColSubset<TMinor, TRenumber, TDir, const all_selector&>
+   : public redirected_container< RowColSubset<TMinor, TRenumber, TDir, const all_selector&>,
+                                  mlist< ContainerTag< typename RowCol_helper<TMinor, TDir>::type >,
+                                         HiddenTag< TMinor > > > {
+   typedef redirected_container<RowColSubset> base_t;
 public:
-   typename _super::container& get_container()
+   typename base_t::container& get_container()
    {
-      return reinterpret_cast<typename _super::container&>(this->hidden().get_matrix());
+      return reinterpret_cast<typename base_t::container&>(this->hidden().get_matrix());
    }
-   const typename _super::container& get_container() const
+   const typename base_t::container& get_container() const
    {
-      return reinterpret_cast<const typename _super::container&>(this->hidden().get_matrix());
+      return reinterpret_cast<const typename base_t::container&>(this->hidden().get_matrix());
    }
 };
 
-template <typename Minor, typename RenumberVal, int dir, typename SliceConstructor,
-          typename CrossSelector=typename extract_template_type_param<Minor,3-dir>::type>
+template <typename TMinor, typename TRenumber, int TDir, typename TSliceConstructor,
+          typename TCrossSelector=typename mget_template_parameter<TMinor, 3-TDir>::type>
 class RowsCols
-   : public modified_container_pair_impl< RowsCols<Minor, RenumberVal, dir, SliceConstructor,CrossSelector>,
-                                          list( Container1< RowColSubset<Minor, RenumberVal, dir> >,
-                                                Container2< constant_value_container<CrossSelector> >,
-                                                Hidden< Minor >,
-                                                Operation< SliceConstructor > ) > {
-   typedef modified_container_pair_impl<RowsCols> _super;
+   : public modified_container_pair_impl< RowsCols<TMinor, TRenumber, TDir, TSliceConstructor, TCrossSelector>,
+                                          mlist< Container1Tag< RowColSubset<TMinor, TRenumber, TDir> >,
+                                                 Container2Tag< constant_value_container<TCrossSelector> >,
+                                                 HiddenTag< TMinor >,
+                                                 OperationTag< TSliceConstructor > > > {
+   typedef modified_container_pair_impl<RowsCols> base_t;
 protected:
    ~RowsCols();
 public:
-   const typename _super::container2& get_container2() const
+   const typename base_t::container2& get_container2() const
    {
-      return constant(this->hidden().get_subset_alias(int2type<3-dir>()));
+      return constant(this->hidden().get_subset_alias(int_constant<3-TDir>()));
    }
 };
 
-template <typename Minor, typename RenumberVal, int dir, typename SliceConstructor>
-class RowsCols<Minor, RenumberVal, dir, SliceConstructor, const all_selector&>
-   : public RowColSubset<Minor, RenumberVal, dir> {
+template <typename TMinor, typename TRenumber, int TDir, typename TSliceConstructor>
+class RowsCols<TMinor, TRenumber, TDir, TSliceConstructor, const all_selector&>
+   : public RowColSubset<TMinor, TRenumber, TDir> {
 protected:
    ~RowsCols();
 };
 
 template <typename MatrixRef, typename RowIndexSetRef, typename ColIndexSetRef>
 class Rows< MatrixMinor<MatrixRef, RowIndexSetRef, ColIndexSetRef> >
-   : public RowsCols< minor_base<MatrixRef, RowIndexSetRef, ColIndexSetRef>, True, 1,
-                      operations::construct_binary2<IndexedSlice,void> > {
+   : public RowsCols< minor_base<MatrixRef, RowIndexSetRef, ColIndexSetRef>, std::true_type, 1,
+                      operations::construct_binary2<IndexedSlice, mlist<>> > {
 protected:
    ~Rows();
 };
 
 template <typename MatrixRef, typename RowIndexSetRef, typename ColIndexSetRef>
 class Cols< MatrixMinor<MatrixRef, RowIndexSetRef, ColIndexSetRef> >
-   : public RowsCols< minor_base<MatrixRef, RowIndexSetRef, ColIndexSetRef>, True, 2,
-                      operations::construct_binary2<IndexedSlice,void> > {
+   : public RowsCols< minor_base<MatrixRef, RowIndexSetRef, ColIndexSetRef>, std::true_type, 2,
+                      operations::construct_binary2<IndexedSlice, mlist<>> > {
 protected:
    ~Cols();
 };
@@ -578,17 +601,19 @@ protected:
 
 template <typename MatrixRef1, typename MatrixRef2>
 class RowChain
-   : public container_pair_base<MatrixRef1, MatrixRef2>,
-     public inherit_generic< RowChain<MatrixRef1,MatrixRef2>,
+   : public container_pair_base<MatrixRef1, MatrixRef2>
+   , public inherit_generic< RowChain<MatrixRef1,MatrixRef2>,
                              cons<typename deref<MatrixRef1>::type, typename deref<MatrixRef2>::type> >::type {
 
-   typedef container_pair_base<MatrixRef1, MatrixRef2> _base;
+   typedef container_pair_base<MatrixRef1, MatrixRef2> base_t;
    typedef typename deref<MatrixRef1>::type matrix1_type;
    typedef typename deref<MatrixRef2>::type matrix2_type;
 public:
-   typedef typename identical<typename container_traits<MatrixRef1>::value_type,
-                              typename container_traits<MatrixRef2>::value_type>::type
-      value_type;
+   typedef typename container_traits<MatrixRef1>::value_type value_type;
+
+   static_assert(std::is_same<value_type, typename container_traits<MatrixRef2>::value_type>::value,
+                 "blocks with different element types");
+
    typedef typename compatible<typename container_traits<MatrixRef1>::reference,
                                typename container_traits<MatrixRef2>::reference>::type
       reference;
@@ -596,8 +621,8 @@ public:
                                typename container_traits<MatrixRef2>::const_reference>::type
       const_reference;
 
-   RowChain(typename _base::first_arg_type m1, typename _base::second_arg_type m2)
-      : _base(m1,m2)
+   RowChain(typename base_t::first_arg_type m1, typename base_t::second_arg_type m2)
+      : base_t(m1, m2)
    {
       const int c1=m1.cols(), c2=m2.cols();
       if (c1) {
@@ -668,27 +693,27 @@ public:
 
 template <typename MatrixRef1, typename MatrixRef2>
 class Rows< RowChain<MatrixRef1, MatrixRef2> >
-   : public container_chain_impl< Rows< RowChain<MatrixRef1,MatrixRef2> >,
-                                  list( Container1< masquerade<pm::Rows,MatrixRef1> >,
-                                        Container2< masquerade<pm::Rows,MatrixRef2> >,
-                                        MasqueradedTop ) > {
-   typedef container_chain_impl<Rows> _super;
+   : public container_chain_impl< Rows< RowChain<MatrixRef1, MatrixRef2> >,
+                                  mlist< Container1Tag< masquerade<pm::Rows, MatrixRef1> >,
+                                         Container2Tag< masquerade<pm::Rows, MatrixRef2> >,
+                                         MasqueradedTop > > {
+   typedef container_chain_impl<Rows> base_t;
 protected:
    ~Rows();
 public:
-   typename _super::container1& get_container1()
+   typename base_t::container1& get_container1()
    {
       return rows(this->hidden().get_container1());
    }
-   typename _super::container2& get_container2()
+   typename base_t::container2& get_container2()
    {
       return rows(this->hidden().get_container2());
    }
-   const typename _super::container1& get_container1() const
+   const typename base_t::container1& get_container1() const
    {
       return rows(this->hidden().get_container1());
    }
-   const typename _super::container2& get_container2() const
+   const typename base_t::container2& get_container2() const
    {
       return rows(this->hidden().get_container2());
    }
@@ -699,29 +724,29 @@ public:
 };
 
 template <typename MatrixRef1, typename MatrixRef2>
-class Cols< RowChain<MatrixRef1,MatrixRef2> >
-   : public modified_container_pair_impl< Cols< RowChain<MatrixRef1,MatrixRef2> >,
-                                          list( Container1< masquerade<pm::Cols,MatrixRef1> >,
-                                                Container2< masquerade<pm::Cols,MatrixRef2> >,
-                                                Operation< BuildBinary<operations::concat> >,
-                                                MasqueradedTop ) > {
-   typedef modified_container_pair_impl<Cols> _super;
+class Cols< RowChain<MatrixRef1, MatrixRef2> >
+   : public modified_container_pair_impl< Cols< RowChain<MatrixRef1, MatrixRef2> >,
+                                          mlist< Container1Tag< masquerade<pm::Cols, MatrixRef1> >,
+                                                 Container2Tag< masquerade<pm::Cols, MatrixRef2> >,
+                                                 OperationTag< BuildBinary<operations::concat> >,
+                                                 MasqueradedTop > > {
+   typedef modified_container_pair_impl<Cols> base_t;
 protected:
    ~Cols();
 public:
-   typename _super::container1& get_container1()
+   typename base_t::container1& get_container1()
    {
       return cols(this->hidden().get_container1());
    }
-   typename _super::container2& get_container2()
+   typename base_t::container2& get_container2()
    {
       return cols(this->hidden().get_container2());
    }
-   const typename _super::container1& get_container1() const
+   const typename base_t::container1& get_container1() const
    {
       return cols(this->hidden().get_container1());
    }
-   const typename _super::container2& get_container2() const
+   const typename base_t::container2& get_container2() const
    {
       return cols(this->hidden().get_container2());
    }
@@ -739,17 +764,19 @@ public:
 
 template <typename MatrixRef1, typename MatrixRef2>
 class ColChain
-   : public container_pair_base<MatrixRef1, MatrixRef2>,
-     public inherit_generic<ColChain<MatrixRef1,MatrixRef2>,
-                            cons<typename deref<MatrixRef1>::type, typename deref<MatrixRef2>::type> >::type {
+   : public container_pair_base<MatrixRef1, MatrixRef2>
+   , public inherit_generic< ColChain<MatrixRef1,MatrixRef2>,
+                             cons<typename deref<MatrixRef1>::type, typename deref<MatrixRef2>::type> >::type {
 
-   typedef container_pair_base<MatrixRef1, MatrixRef2> _base;
+   typedef container_pair_base<MatrixRef1, MatrixRef2> base_t;
    typedef typename deref<MatrixRef1>::type matrix1_type;
    typedef typename deref<MatrixRef2>::type matrix2_type;
 public:
-   typedef typename identical<typename container_traits<MatrixRef1>::value_type,
-                              typename container_traits<MatrixRef2>::value_type>::type
-      value_type;
+   typedef typename container_traits<MatrixRef1>::value_type value_type;
+
+   static_assert(std::is_same<value_type, typename container_traits<MatrixRef2>::value_type>::value,
+                 "blocks with different element types");
+      
    typedef typename compatible<typename container_traits<MatrixRef1>::reference,
                                typename container_traits<MatrixRef2>::reference>::type
       reference;
@@ -757,8 +784,8 @@ public:
                                typename container_traits<MatrixRef2>::const_reference>::type
       const_reference;
 
-   ColChain(typename _base::first_arg_type m1, typename _base::second_arg_type m2)
-      : _base(m1,m2)
+   ColChain(typename base_t::first_arg_type m1, typename base_t::second_arg_type m2)
+      : base_t(m1, m2)
    {
       const int r1=m1.rows(), r2=m2.rows();
       if (r1) {
@@ -818,28 +845,28 @@ public:
 
 template <typename MatrixRef1, typename MatrixRef2>
 class Rows< ColChain<MatrixRef1,MatrixRef2> >
-   : public modified_container_pair_impl< Rows< ColChain<MatrixRef1,MatrixRef2> >,
-                                          list( Container1< masquerade<pm::Rows,MatrixRef1> >,
-                                                Container2< masquerade<pm::Rows,MatrixRef2> >,
-                                                Operation< BuildBinary<operations::concat> >,
-                                                MasqueradedTop ) > {
-   typedef modified_container_pair_impl<Rows> _super;
+   : public modified_container_pair_impl< Rows< ColChain<MatrixRef1, MatrixRef2> >,
+                                          mlist< Container1Tag< masquerade<pm::Rows, MatrixRef1> >,
+                                                 Container2Tag< masquerade<pm::Rows, MatrixRef2> >,
+                                                 OperationTag< BuildBinary<operations::concat> >,
+                                                 MasqueradedTop > > {
+   typedef modified_container_pair_impl<Rows> base_t;
 protected:
    ~Rows();
 public:
-   typename _super::container1& get_container1()
+   typename base_t::container1& get_container1()
    {
       return rows(this->hidden().get_container1());
    }
-   typename _super::container2& get_container2()
+   typename base_t::container2& get_container2()
    {
       return rows(this->hidden().get_container2());
    }
-   const typename _super::container1& get_container1() const
+   const typename base_t::container1& get_container1() const
    {
       return rows(this->hidden().get_container1());
    }
-   const typename _super::container2& get_container2() const
+   const typename base_t::container2& get_container2() const
    {
       return rows(this->hidden().get_container2());
    }
@@ -853,27 +880,27 @@ public:
 
 template <typename MatrixRef1, typename MatrixRef2>
 class Cols< ColChain<MatrixRef1,MatrixRef2> >
-   : public container_chain_impl< Cols< ColChain<MatrixRef1,MatrixRef2> >,
-                                  list( Container1< masquerade<pm::Cols,MatrixRef1> >,
-                                        Container2< masquerade<pm::Cols,MatrixRef2> >,
-                                        MasqueradedTop ) > {
-   typedef container_chain_impl<Cols> _super;
+   : public container_chain_impl< Cols< ColChain<MatrixRef1, MatrixRef2> >,
+                                  mlist< Container1Tag< masquerade<pm::Cols, MatrixRef1> >,
+                                         Container2Tag< masquerade<pm::Cols, MatrixRef2> >,
+                                         MasqueradedTop > > {
+   typedef container_chain_impl<Cols> base_t;
 protected:
    ~Cols();
 public:
-   typename _super::container1& get_container1()
+   typename base_t::container1& get_container1()
    {
       return cols(this->hidden().get_container1());
    }
-   typename _super::container2& get_container2()
+   typename base_t::container2& get_container2()
    {
       return cols(this->hidden().get_container2());
    }
-   const typename _super::container1& get_container1() const
+   const typename base_t::container1& get_container1() const
    {
       return cols(this->hidden().get_container1());
    }
-   const typename _super::container2& get_container2() const
+   const typename base_t::container2& get_container2() const
    {
       return cols(this->hidden().get_container2());
    }
@@ -904,7 +931,6 @@ public:
 
 namespace polymake {
    using pm::Transposed;
-   using pm::All;
    using pm::Symmetric;
    using pm::NonSymmetric;
    using pm::SkewSymmetric;

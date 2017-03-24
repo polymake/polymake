@@ -21,7 +21,7 @@ namespace polymake { namespace topaz {
   
 void is_pseudo_manifold_client(perl::Object p)
 {
-   const HasseDiagram HD=p.give("HASSE_DIAGRAM");
+   const Lattice<BasicDecoration>& HD = p.give("HASSE_DIAGRAM");
    p.take("PSEUDO_MANIFOLD") << is_pseudo_manifold(HD,true);
 }
 

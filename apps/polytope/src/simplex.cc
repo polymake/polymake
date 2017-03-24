@@ -18,7 +18,6 @@
 #include "polymake/Rational.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Matrix.h"
-#include "polymake/group/group_domain.h"
 #include "polymake/Array.h"
 #include "polymake/SparseMatrix.h"
 
@@ -27,27 +26,15 @@ namespace polymake { namespace polytope {
 namespace {
 
 perl::Object simplex_group(int d) {
-   perl::Object g("group::GroupOfPolytope");
-   g.set_description() << "full combinatorial group on vertices of " << d << "-dim simplex" << endl;
-   g.set_name("fullCombinatorialGroupOnRays");
-   g.take("DOMAIN") << polymake::group::OnRays;
-   int n_gens=2;
-   if (d==1){
-      n_gens=1;
-   }
+   const int n_gens= d==1 ? 1 : 2;
    Array< Array< int > > gens(n_gens);
    if ( d==1 ) {
-      Array< int > gen(2);
-      gen[0]=1;
-      gen[1]=0;
-      gens[0]=gen;
+      gens[0]=Array<int>{1, 0};
    } else {
-      Array< int > gen=sequence(0,d+1);
+      Array<int> gen{sequence(0,d+1)};
       gen[0]=1;
       gen[1]=0;
-
       gens[0]=gen;
-
       
       gen[0]=d;
       for ( int j=1; j<=d; ++j ) {
@@ -56,7 +43,14 @@ perl::Object simplex_group(int d) {
       gens[1]=gen;
    }
 
-   g.take("GENERATORS") << gens;
+   perl::Object a("group::PermutationAction");
+   a.take("GENERATORS") << gens;
+
+   perl::Object g("group::Group");
+   g.set_description() << "full combinatorial group on vertices of " << d << "-dim simplex" << endl;
+   g.set_name("fullCombinatorialGroupOnRays");
+   g.take("RAYS_ACTION") << a;
+
    return g;
 }
 
@@ -90,11 +84,7 @@ perl::Object simplex(int d, const Scalar& s, perl::OptionSet options)
 
    p.take("VERTICES") << V;
    p.take("CONE_AMBIENT_DIM") << d+1;
-   p.take("LINEALITY_SPACE") << Matrix<Scalar>();
-   if (d == 0)
-     p.take("CENTERED") << true;
-   else    
-     p.take("CENTERED") << false;
+   p.take("CENTERED") << (d == 0);
    add_simplex_data(p,d,options["group"]);
 
    return p;
@@ -116,7 +106,6 @@ perl::Object regular_simplex(const int d, perl::OptionSet options)
    SparseMatrix<QE> V( ones_vector<QE>(d+1) | (unit_matrix<QE>(d) / same_element_vector<QE>(c,d)));
 
    p.take("VERTICES") << V;
-   p.take("LINEALITY_SPACE") << Matrix<QE>();
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("CENTERED") << true;
    add_simplex_data(p,d,options["group"]);
@@ -136,7 +125,6 @@ perl::Object fano_simplex(int d, perl::OptionSet options)
    SparseMatrix<Rational> V( ones_vector<Rational>(d+1) | (unit_matrix<Rational>(d) / same_element_vector<Rational>(-1,d)) );
 
    p.take("VERTICES") << V;
-   p.take("LINEALITY_SPACE") << Matrix<Rational>();
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("CENTERED") << true;
    p.take("REFLEXIVE") << true;
@@ -160,7 +148,6 @@ perl::Object lecture_hall_simplex(int d, perl::OptionSet options)
    }
 
    p.take("VERTICES") << V;
-   p.take("LINEALITY_SPACE") << Matrix<Rational>();
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("CENTERED") << false;
    add_simplex_data(p,d,options["group"]);
@@ -185,11 +172,11 @@ UserFunction4perl("# @category Producing regular polytopes and their generalizat
                   "# entrys thus represent the number 1/2*(1-sqrt(3))."
                   "# @example To store a regular 3-simplex in the variable $s and also calculate its"
                   "# symmetry group, type this:"
-                  "# > $s = regular_simplex(3,group=>1);"
+                  "# > $s = regular_simplex(3, group=>1);"
                   "# You can then print the groups generators like so:"
-                  "# > print $s->GROUP->GENERATORS;"
-                  "# | 1 0 2"
-                  "# | 2 0 1",
+                  "# > print $s->GROUP->RAYS_ACTION->GENERATORS;"
+                  "# | 1 0 2 3"
+                  "# | 3 0 1 2",
                   &regular_simplex, "regular_simplex(Int; { group => undef } )");
 
 UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
@@ -208,7 +195,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
                           "# | 1 0 1"
                           "# The first row vector is sparse and encodes the origin."
                           "# @example To create a 3-simplex and also calculate its symmetry group, type this:"
-                          "# > simplex(3,group=>1);",
+                          "# > simplex(3, group=>1);",
                           "simplex<Scalar> [ is_ordered_field(type_upgrade<Scalar, Rational>) ] (Int; type_upgrade<Scalar>=1, { group => undef } )");
 
 UserFunction4perl("# @category Producing a polytope from scratch"
@@ -218,8 +205,8 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @return Polytope"
                   "# @example To create the 2-dimensional fano simplex and compute its symmetry group, type this:"
                   "# and print ints generators, do this:"
-                  "# > fano_simplex(2,group=>1);"
-                  "# > print $p->GROUP->GENERATORS;"
+                  "# > $p = fano_simplex(2,group=>1);"
+                  "# > print $p->GROUP->RAYS_ACTION->GENERATORS;"
                   "# | 1 0 2"
                   "# | 2 0 1",
                   &fano_simplex, "fano_simplex(Int; { group => undef } )");
@@ -230,8 +217,8 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @option Bool group"
                   "# @return Polytope"
                   "# @example To create the 2-dimensional lecture hall simplex and compute its symmetry group, type this:"
-                  "# > $p = lecture_hall_simplex(2,group=>1);"
-                  "# > print $p->GROUP->GENERATORS;"
+                  "# > $p = lecture_hall_simplex(2, group=>1);"
+                  "# > print $p->GROUP->RAYS_ACTION->GENERATORS;"
                   "# | 1 0 2"
                   "# | 2 0 1",
                   &lecture_hall_simplex, "lecture_hall_simplex(Int; { group => undef } )");

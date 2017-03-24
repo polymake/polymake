@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -119,11 +119,11 @@ use Polymake::Struct (
 );
 
 # name without whitespace and such
-# notice that "-", "{", and "}" occur in names of simplices of a TRIANGULATION
+# notice that "-", "{", and "}" occur in names of simplices of a TRIANGULATION and "#" in unnamed subobjects
 sub id {
    my ($self)=@_;
    my $id=$self->name;
-   $id =~ s/[\s\{\}-]+//g;
+   $id =~ s/[\#\s\{\}-]+//g;
    return $id;
 }
 
@@ -163,6 +163,21 @@ sub pointsToString {
             $text .= "  \\tikzstyle{pointstyle\_$id} = [fill=pointcolor\_$id]\n";
         }
     }
+    # node border coloring
+    if (defined($color=$self->source->VertexBorderColor)){
+        $text .= "\n  % LABEL BORDER STYLE\n";
+        if(is_code($color)){
+            my $i = 0;
+            foreach (@{$self->source->Vertices}){
+                my $vcstring = join ",", split(/ /, ($color->($i) // new RGB("255 255 255"))->toFloat);
+                $text .= "  \\definecolor{vertexbordercolor\_$id"."_$i}{rgb}{ $vcstring }\n" unless ($color->($i) =~ $Visual::hidden_re);
+                ++$i;
+            }
+        } elsif($color !~ $Visual::hidden_re){
+            my $vcstring = join ",", split(/ /, $color->toFloat);
+            $text .= "  \\definecolor{vertexbordercolor\_$id}{rgb}{ $vcstring }\n";
+        }
+    }
 
     # Point definitions
     $text .= "\n  % DEF POINTS\n";
@@ -189,19 +204,37 @@ sub drawPoint {
     my $point_color=$self->source->VertexColor;
     my $point_labels=$self->source->VertexLabels;
     my $point_thickness=$self->source->VertexThickness;
-	 my $alignment = $self->source->LabelAlignment;
+    my $border_color=$self->source->VertexBorderColor;
+    my $border_width=$self->source->VertexBorderThickness;
+    my $alignment = $self->source->LabelAlignment;
+
+    $border_width=$border_width->($i) if is_code($border_width);
+    $point_labels=$point_labels->($i) if is_code($point_labels);
 
     my $text;
-    if (defined($point_labels)) {
-        if(is_code($point_labels)){
-            $text .= "  \\node at (v$i\_$id) [inner sep=0.5pt, above right, black,align=".$alignment."] {".$point_labels->($i).'};'."\n";
-        } elsif($point_labels !~ $Visual::hidden_re){
-            $text .= "  \\node at (v$i\_$id) [inner sep=0.5pt, above right, black,align=".$alignment."] {".$point_labels.'};'."\n";
-        }
-    }
+
     my $option_string = (is_code($point_color)) ? "pointcolor\_$id\_$i" : "pointcolor\_$id";
     my $pthick = (is_code($point_thickness)) ? $point_thickness->($i) : $point_thickness;
-    $text .= "  \\fill[$option_string] (v$i\_$id) circle ($pthick pt);\n" if ($pthick ne "");
+
+    my $label_style = "text=black";
+    if (defined($border_color) || defined($border_width)) {
+        $label_style .= ", inner sep=2pt, rectangle, rounded corners=3pt, fill=$option_string";
+        if (defined($border_color)) {
+           $label_style .= ", draw=vertexbordercolor_$id";
+           $label_style .= "_$i" if (is_code($border_color));
+        }
+        $label_style .= ", line width=${border_width}pt" if (defined($border_width));
+    } else {
+        $text .= "  \\fill[$option_string] (v$i\_$id) circle ($pthick pt);\n" if ($pthick ne "");
+        $label_style .= ", inner sep=0.5pt, above right, draw=none";
+    }
+
+
+    if (defined($point_labels) && $point_labels !~ $Visual::hidden_re) {
+        # heuristic to add math mode for labels: _ or ^ without \ before or $ in the string
+        $point_labels = '$'.$point_labels.'$' if ($point_labels !~ /\$/ && $point_labels =~ /(?<!\\)[_^]/);
+        $text .= "  \\node at (v$i\_$id) [$label_style, align=$alignment] {$point_labels};\n";
+    }
     return $text;
 }
 
@@ -384,7 +417,6 @@ sub facesToString {
     my $edge_style=$self->source->EdgeStyle;
     my $edge_flag= ($edge_style !~  $Visual::hidden_re) ? 1 : 0;
 
-
     ####
     # Sort Facets (behind to front)
     my @sorted_facets =();
@@ -414,7 +446,7 @@ sub facesToString {
 
     ####
     # Edge Style
-    my $edge_optionstring = "draw=none";
+    my $edge_optionstring = ", draw=none";
     if($edge_flag){
         # only one edge and thickness color is allowed when visualizing polytopes
         my @edgecolor = (is_code($edge_color)) ? split(/ /, $edge_color->(0)->toFloat) : split(/ /, $edge_color->toFloat);
@@ -452,6 +484,10 @@ sub facesToString {
         }
     } else {
         my $option_string = "fill=".$self->facetColorString(undef).", fill opacity=".$self->facetTransp(undef);
+        if($self->facetColorString(undef) eq "none"){
+           my $thickness = $self->source->EdgeThickness // 1;
+           $option_string .=  ", preaction={draw=white, line cap=round, line width=".(1.5*$thickness)." pt}" 
+        }
         $option_string .= $edge_optionstring;
         $text .= "  \\tikzstyle{".$self->facetStyleString(undef)."} = [$option_string]\n";
     }

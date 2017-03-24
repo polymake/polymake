@@ -16,98 +16,88 @@
 # @category Symmetry
 # A symmetric polytope defined as the convex hull of the orbit of a single point
 # under a permutation group acting on coordinates.
-# @tparam Scalar default: [[Rational]]
-declare object OrbitPolytope<Scalar=Rational> : SymmetricPolytope<Scalar> {
+# currently only for [[Polytope<Rational>]]
+
+declare object_specialization PointOrbit = Polytope<Rational> {
+
+    precondition : GROUP.COORDINATE_ACTION.N_POINTS_GENERATORS {
+       $this->GROUP->COORDINATE_ACTION->N_POINTS_GENERATORS==1;
+    }
 
 #------------------------------------------------------
 # properties
 #------------------------------------------------------
 
-# The generating point of the orbit polytope.
-property GEN_POINT : Vector<Scalar>;
+   property GROUP {
+
+      property COORDINATE_ACTION  {
+
+         # The NOP-graph of [[POINTS_GENERATORS]] with respect to the
+         # [[GROUP]]. The nodes of the NOP-graph
+         # correspond to the [[REPRESENTATIVE_CERTIFIERS]], 
+         # which represent the different orbit polytopes
+         # contained in the given orbit polytope.
+         property NOP_GRAPH : objects::Graph<Directed>;
+
+         # A matrix of representatives of all certifiers
+         # for [[POINTS_GENERATORS]] with respect to the
+         # [[GROUP]].
+         # A certifier is an integer point in the
+         # given orbit polytope. 
+         # Note that the representative certifiers must be in 
+         # the same order as the corresponding nodes
+         # in the [[NOP_GRAPH]]. Further, the [[CP_INDICES]]
+         # refer to row indices of this property.
+         property REPRESENTATIVE_CERTIFIERS : Matrix<Rational>;
 
 
-# The NOP-graph of [[GEN_POINT]] with respect to the
-# [[GENERATING_GROUP]]. The nodes of the NOP-graph
-# correspond to the [[REPRESENTATIVE_CERTIFIERS]], 
-# which represent the different orbit polytopes
-# contained in the given orbit polytope.
-property NOP_GRAPH : Graph<Directed>;
+         # The number of [[REPRESENTATIVE_CERTIFIERS]].
+         property N_REPRESENTATIVE_CERTIFIERS : Int;
 
 
-# A matrix of representatives of all certifiers
-# for [[GEN_POINT]] with respect to the
-# [[GENERATING_GROUP]].
-# A certifier is an integer point in the
-# given orbit polytope. 
-# Note that the representative certifiers must be in 
-# the same order as the corresponding nodes
-# in the [[NOP_GRAPH]]. Further, the [[CP_INDICES]]
-# refer to row indices of this property.
-property REPRESENTATIVE_CERTIFIERS : Matrix<Scalar>;
+         # The row indices of all core points among
+         # the [[REPRESENTATIVE_CERTIFIERS]].
+         property CP_INDICES : Set<Int>;
 
 
-# The number of [[REPRESENTATIVE_CERTIFIERS]].
-property N_REPRESENTATIVE_CERTIFIERS : Int;
+         # A matrix of representatives of all core points in
+         # the given orbit polytope.
+         # A core point is an integer point whose orbit
+         # polytope is lattice-free (i.e. does not contain
+         # integer points besides its vertices).
+         property REPRESENTATIVE_CORE_POINTS : Matrix<Rational>;
 
 
-# The row indices of all core points among
-# the [[REPRESENTATIVE_CERTIFIERS]].
-property CP_INDICES : Set<Int>;
-
-
-# A matrix of representatives of all core points in
-# the given orbit polytope.
-# A core point is an integer point whose orbit
-# polytope is lattice-free (i.e. does not contain
-# integer points besides its vertices).
-property REPRESENTATIVE_CORE_POINTS : Matrix<Scalar>;
-
-
-# The number of [[REPRESENTATIVE_CORE_POINTS]].
-property N_REPRESENTATIVE_CORE_POINTS : Int;
-
+         # The number of [[REPRESENTATIVE_CORE_POINTS]].
+         property N_REPRESENTATIVE_CORE_POINTS : Int;
 
 #------------------------------------------------------
 # rules
 #------------------------------------------------------
 
-
-rule initial : GEN_POINT : GEN_POINTS {
-   if ($this->GEN_POINTS->rows != 1) {
-      croak( "An OrbitPolytope has only one generating point!");
-   } else {
-       $this->GEN_POINT = $this->GEN_POINTS->[0];
-   }   
-}
+         rule N_REPRESENTATIVE_CERTIFIERS : REPRESENTATIVE_CERTIFIERS {
+             $this->N_REPRESENTATIVE_CERTIFIERS = $this->REPRESENTATIVE_CERTIFIERS->rows;
+         }
 
 
-rule GEN_POINTS : GEN_POINT {
-    $this->GEN_POINTS = vector2row($this->GEN_POINT);
-} 
+         rule N_REPRESENTATIVE_CORE_POINTS : REPRESENTATIVE_CORE_POINTS {
+             $this->N_REPRESENTATIVE_CORE_POINTS = $this->REPRESENTATIVE_CORE_POINTS->rows;
+         }
 
-# TODO: the following claim is not true anymore
-#rule NOP_GRAPH : LATTICE_POINTS, GENERATING_GROUP { #FIXME: normaliz kann nicht verwendet werden, da der cast von OrbitPolytope nach LatticePolytope nicht funktioniert!
-rule NOP_GRAPH, REPRESENTATIVE_CERTIFIERS, REPRESENTATIVE_CORE_POINTS, CP_INDICES : GEN_POINT, POINTS, GENERATING_GROUP {
+      }
+      
+   }
+
+rule GROUP.COORDINATE_ACTION.NOP_GRAPH, GROUP.COORDINATE_ACTION.REPRESENTATIVE_CERTIFIERS, GROUP.COORDINATE_ACTION.REPRESENTATIVE_CORE_POINTS, GROUP.COORDINATE_ACTION.CP_INDICES : GROUP.COORDINATE_ACTION.POINTS_GENERATORS, POINTS, LATTICE_POINTS_GENERATORS {
     
-    my $lattice_poly = new Polytope(VERTICES=>$this->POINTS, LINEALITY_SPACE=>[], LATTICE=>1, BOUNDED=>1); 
-    my @res=nestedOPGraph($this->GEN_POINT, $this->POINTS, $lattice_poly->LATTICE_POINTS, $this->GENERATING_GROUP, 0);
-    $this->NOP_GRAPH = $res[0];
-    $this->REPRESENTATIVE_CERTIFIERS = $res[1];
-    $this->REPRESENTATIVE_CORE_POINTS = $res[3];
-    $this->CP_INDICES = $res[4];
+    my @res=nestedOPGraph($this->GROUP->COORDINATE_ACTION->POINTS_GENERATORS->[0], $this->POINTS, $this->LATTICE_POINTS_GENERATORS->[0], $this->GROUP->COORDINATE_ACTION, 0);
+    $this->GROUP->COORDINATE_ACTION->NOP_GRAPH = $res[0];
+    $this->GROUP->COORDINATE_ACTION->REPRESENTATIVE_CERTIFIERS = $res[1];
+    $this->GROUP->COORDINATE_ACTION->REPRESENTATIVE_CORE_POINTS = $res[3];
+    $this->GROUP->COORDINATE_ACTION->CP_INDICES = $res[4];
 }
-
-
-rule N_REPRESENTATIVE_CERTIFIERS : REPRESENTATIVE_CERTIFIERS {
-    $this->N_REPRESENTATIVE_CERTIFIERS = $this->REPRESENTATIVE_CERTIFIERS->rows;
-}
-
-
-rule N_REPRESENTATIVE_CORE_POINTS : REPRESENTATIVE_CORE_POINTS {
-    $this->N_REPRESENTATIVE_CORE_POINTS = $this->REPRESENTATIVE_CORE_POINTS->rows;
-}
-
+precondition : BOUNDED;
+precondition : FEASIBLE;
 
 }
 

@@ -49,7 +49,7 @@ function FaceLattice_from_plain_text {
       push @faces, $1;
       push @adjacency, $2;
    }
-   new FaceLattice(ADJACENCY => \@adjacency, FACES => \@faces, DIMS => $dims);
+   new Lattice<BasicDecoration>(ADJACENCY => \@adjacency, FACES => \@faces, DIMS => $dims);
 }
 
 

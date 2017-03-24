@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,6 +13,7 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+# @category Combinatorics
 # A graph with optional node and edge attributes.
 #
 declare object Graph<Dir=Undirected> {
@@ -20,13 +21,15 @@ declare object Graph<Dir=Undirected> {
 file_suffix graph
 
 # combinatorial description of the Graph in the form of adjacency matrix
+# @example This prints the adjacency matrix of the complete graph of three nodes, whereby the i-th node is connected to the nodes shown in the i-th row:
+# > print complete(3)->ADJACENCY;
+# | {1 2}
+# | {0 2}
+# | {0 1}
 property ADJACENCY : props::Graph<Dir>;
 
-declare permutation NodePerm {
-
-   # Transforming this [[ADJACENCY]] into the basic object
-   property PERMUTATION : Array<Int>;
-}
+# permutation of nodes
+permutation NodePerm : PermBase;
 
 rule ADJACENCY : NodePerm.ADJACENCY, NodePerm.PERMUTATION {
    $this->ADJACENCY=permuted_nodes($this->NodePerm->ADJACENCY, $this->NodePerm->PERMUTATION);
@@ -34,27 +37,45 @@ rule ADJACENCY : NodePerm.ADJACENCY, NodePerm.PERMUTATION {
 weight 1.20;
 
 # Number of nodes of the graph.
+# @example This prints the number of nodes of the complete bipartite graph of 1 and 3 nodes (which is the sum of the nodes in each partition):
+# > print complete_bipartite(1,3)->N_NODES;
+# | 4
 property N_NODES : Int;
 
 # Number of [[EDGES]] of the graph.
+# @example This prints the number of edges of the complete graph of 4 nodes (which is 4 choose 2):
+# > print complete(4)->N_EDGES;
+# | 6
 property N_EDGES : Int;
 
 # Degrees of nodes in the graph.
+# @example This prints the node degrees of the complete bipartite graph of 1 and 3 nodes:
+# > print complete_bipartite(1,3)->NODE_DEGREES;
+# | 3 1 1 1
 property NODE_DEGREES : Array<Int>;
 
 # The diameter of the graph.
+# @example This prints the diameter of the complete bipartite graph of 1 and 3 nodes:
+# > print complete_bipartite(1,3)->NODE_DEGREES;
+# | 3 1 1 1
 property DIAMETER : Int;
 
 # True if the graph is a connected graph.
+# @example The following checks whether a graph is connected or not. 
+# A single edge with its endpoints is obviously connected. We construct the adjacency matrix beforehand:
+# > $IM = new IncidenceMatrix<Symmetric>([[1],[0]]);
+# > print new Graph(ADJACENCY=>$IM)->CONNECTED;      
+# | 1
+# The same procedure yields the opposite outcome after adding an isolated node:
+# > $IM = new IncidenceMatrix<Symmetric>([[1],[0],[]]);
+# > print new Graph(ADJACENCY=>$IM)->CONNECTED;      
+# | 
 property CONNECTED : Bool;
 
-# The connected components, encoded as node sets.
-property CONNECTED_COMPONENTS : PowerSet;
-
-# Number of [[CONNECTED_COMPONENTS]] of the graph.
-property N_CONNECTED_COMPONENTS : Int;
-
 # Labels of the nodes of the graph.
+# @example The following prints the node labels of the generalized_johnson_graph with parameters (4,2,1):
+# > print generalized_johnson_graph(4,2,1)->NODE_LABELS;
+# | {0 1} {0 2} {0 3} {1 2} {1 3} {2 3}
 property NODE_LABELS : Array<String> : mutable;
 
 # @notest  Rule defined "in stock" - currently without use
@@ -64,63 +85,184 @@ rule NODE_LABELS : NodePerm.NODE_LABELS, NodePerm.PERMUTATION {
 weight 1.10;
 
 # Signed vertex-edge incidence matrix; for undirected graphs, the orientation comes from the lexicographic order of the nodes.
+# @example The following prints the signed incidence matrix of the cylcic graph with 4 nodes:
+# > print cycle_graph(4)->SIGNED_INCIDENCE_MATRIX;
+# | 1 0 1 0
+# | -1 1 0 0
+# | 0 -1 0 1
+# | 0 0 -1 -1
 property SIGNED_INCIDENCE_MATRIX : SparseMatrix<Int>;
 
 rule SIGNED_INCIDENCE_MATRIX : ADJACENCY {
     $this->SIGNED_INCIDENCE_MATRIX = signed_incidence_matrix($this);
 }
 
+# eigenvalues of the discrete laplacian operator of a graph
+# @example The following prints the eigenvalues of the discrete laplacian operator of the complete graph
+# with 3 nodes:
+# > print complete(3)->EIGENVALUES_LAPLACIAN
+# | 3 -3 0
+property EIGENVALUES_LAPLACIAN : Vector<Float>;
+
+rule EIGENVALUES_LAPLACIAN : ADJACENCY {
+    $this->EIGENVALUES_LAPLACIAN = eigenvalues_laplacian($this);
+}
+
 # Characteristic polynomial of the adjacency matrix; its roots are the eigenvalues
+# @example The following prints the characteristic polynomial of a complete graph with three nodes:
+# > print complete(3)->CHARACTERISTIC_POLYNOMIAL
+# | x^3 -3*x -2
 property CHARACTERISTIC_POLYNOMIAL : UniPolynomial;
 
 }
 
 object Graph<Undirected> {
 
+# The connected components.
+# Every row contains nodes from a single component.
+# @example The following prints the connected components of two seperate triangles:
+# > $g = new Graph<Undirected>(ADJACENCY=>[[1,2],[0,2],[0,1],[4,5],[3,5],[3,4]]);
+# > print $g->CONNECTED_COMPONENTS;
+# | {0 1 2}
+# | {3 4 5}
+property CONNECTED_COMPONENTS : IncidenceMatrix;
+
+# Number of [[CONNECTED_COMPONENTS]] of the graph.
+# @example The following prints the number of connected components of two seperate 
+# triangles:
+# > $g = new Graph<Undirected>(ADJACENCY=>[[1,2],[0,2],[0,1],[4,5],[3,5],[3,4]]);
+# > print $g->N_CONNECTED_COMPONENTS;
+# | 2
+property N_CONNECTED_COMPONENTS : Int;
+
+# Biconnected components.
+# Every row contains nodes from a single component.
+# Articulation nodes may occur in several rows.
+# @example The following prints the biconnected components of two triangles having
+# a single common node: 
+# > $g = new Graph<Undirected>(ADJACENCY=>[[1,2],[0,2],[0,1,3,4],[2,4],[2,3]]);
+# > print $g->BICONNECTED_COMPONENTS;
+# | {2 3 4}
+# | {0 1 2}
+property BICONNECTED_COMPONENTS : IncidenceMatrix;
+
 # True if the graph is a bipartite.
+# @example The following checks if a square (as a graph) is bipartite:
+# > $g = new Graph<Undirected>(ADJACENCY=>[[1,3],[0,2],[1,3],[0,2]]);
+# > print $g->BIPARTITE;
+# | 1
 property BIPARTITE : Bool;
 
 # Difference of the black and white nodes if the graph is [[BIPARTITE]].
 # Otherwise -1.
+# @example The following prints the signature of the complete bipartite graph with 2
+# and 7 nodes:
+# > print complete_bipartite(2,7)->SIGNATURE;
+# | 5
 property SIGNATURE : Int;
 
 # Determine whether the graph has triangles or not.
+# @example The following checks if the petersen graph contains triangles:
+# > print petersen()->TRIANGLE_FREE;
+# | 1
 property TRIANGLE_FREE : Bool;
 
 # Node connectivity of the graph, that is, the minimal number of nodes to be removed
 # from the graph such that the result is disconnected.
+# @example The following prints the connectivity of the complete bipartite graph of 2 and
+# 4 nodes:
+# > print complete_bipartite(2,4)->CONNECTIVITY;
+# | 2
 property CONNECTIVITY : Int;
 
 # The maximal cliques of the graph, encoded as node sets.
+# @example The following prints the maximal cliques of two complete graphs with 3 nodes being
+# connected by a single edge:
+# > $g = new Graph<Undirected>(ADJACENCY=>[[1,2],[0,2],[0,1,3],[2,4,5],[3,5],[3,4]]);
+# > print $g->MAX_CLIQUES;
+# | {{0 1 2} {2 3} {3 4 5}}
 property MAX_CLIQUES : PowerSet;
 
 # How many times a node of a given degree occurs
+# @example The following prints how often each degree of a node in the complete bipartite graph
+# with 1 and 3 nodes occurs, whereby the first entry of a tuple represents the degree:
+# > print complete_bipartite(1,3)->DEGREE_SEQUENCE;
+# | {(1 3) (3 1)}
 property DEGREE_SEQUENCE : Map<Int,Int>;
 
 # The average degree of a node
+# @example The following prints the average degree of a node for the complete bipartite graph 
+# with 1 and 3 nodes:
+# > print complete_bipartite(1,3)->AVERAGE_DEGREE;
+# | 3/2
 property AVERAGE_DEGREE : Rational;
 
 }
 
 object Graph<Directed> {
 
+# True if the graph is weakly connected
+# @example The following checks a graph for weak connectivity. First we construct a graph with 4 
+# nodes consisting of two directed circles, which are connected by a single directed edge. We then 
+# check the property:
+# > $g = new Graph<Directed>(ADJACENCY=>[[1],[0,2],[3],[2]]);
+# > print $g->WEAKLY_CONNECTED;
+# | 1
+property WEAKLY_CONNECTED : Bool;
+
+# Weakly connected components.
+# Every row contains nodes from a single component
+# @example To print the weakly connected components of a graph with 4 nodes consisting of two 
+# directed circles, which are connected by a single directed edge, type this:
+# > $g = new Graph<Directed>(ADJACENCY=>[[1],[0,2],[3],[2]]);
+# > print $g->WEAKLY_CONNECTED_COMPONENTS;
+# | {0 1 2 3}
+# The same procedure yields the opposite outcome using the same graph without the linking edge between
+# the two circles:
+# > $g = new Graph<Directed>(ADJACENCY=>[[1],[0],[3],[2]]);
+# > print $g->WEAKLY_CONNECTED_COMPONENTS;
+# | {0 1}
+# | {2 3}
+property WEAKLY_CONNECTED_COMPONENTS : IncidenceMatrix;
+
+# True if the graph is strongly connected
+# @example The following checks a graph for strong connectivity. First we construct a graph with 4 nodes 
+# consisting of two directed circles, which are connected by a single directed edge. We then and check 
+# the property:
+# > $g = new Graph<Directed>(ADJACENCY=>[[1],[0,2],[3],[2]]);
+# > print $g->STRONGLY_CONNECTED;
+# | 
+# The same procedure yields the opposite result for the graph with the reversed edge added in the middle: 
+# > $g = new Graph<Directed>(ADJACENCY=>[[1],[0,2],[1,3],[2]]);
+# > print $g->STRONGLY_CONNECTED;
+# | 1
+property STRONGLY_CONNECTED : Bool;
+
+# Strong components.
+# Every row contains nodes from a single component
+# @example To print the strong connected components of a graph with 4 nodes consisting of two 
+# directed circles and which are connected by a single directed edge, type this:
+# > $g = new Graph<Directed>(ADJACENCY=>[[1],[0,2],[3],[2]]);
+# > print $g->STRONG_COMPONENTS;
+# | {2 3}
+# | {0 1}
+property STRONG_COMPONENTS : IncidenceMatrix;
+
 # The number of outgoing edges of the graph nodes.
+# @example To print the number of incoming edges of a directed version of the complete graph with 3 nodes, type this:
+# > $g = new Graph<Directed>(ADJACENCY=>[[1,2],[2],[]]);
+# > print $g->NODE_OUT_DEGREES;
+# | 2 1 0
 property NODE_OUT_DEGREES : Array<Int>;
 
 # The number of incoming edges of the graph nodes.
+# @example To print the number of incoming edges of a directed version of the complete graph with 3 nodes, type this:
+# > $g = new Graph<Directed>(ADJACENCY=>[[1,2],[2],[]]);
+# > print $g->NODE_IN_DEGREES;
+# | 0 1 2
 property NODE_IN_DEGREES : Array<Int>;
 
 }
-
-
-# A graph with edge weights.
-declare object EdgeWeightedGraph : Graph<Undirected> {
-
-   # Associated edge weights.
-
-   property EDGE_WEIGHTS : EdgeMap<Undirected,Float> : construct(ADJACENCY);
-}
-
 
 # Local Variables:
 # mode: perl

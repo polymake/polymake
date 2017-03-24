@@ -35,9 +35,9 @@ template <typename Operation>
 class is_partially_defined {
    typedef typename Operation::first_argument_type first_orig_argument_type;
    typedef typename Operation::second_argument_type second_orig_argument_type;
-   typedef typename if_else<identical<first_orig_argument_type, void>::value, void*, first_orig_argument_type>::type
+   typedef typename std::conditional<std::is_same<first_orig_argument_type, void>::value, void*, first_orig_argument_type>::type
       first_argument_type;
-   typedef typename if_else<identical<second_orig_argument_type, void>::value, void*, second_orig_argument_type>::type
+   typedef typename std::conditional<std::is_same<second_orig_argument_type, void>::value, void*, second_orig_argument_type>::type
       second_argument_type;
    struct helper {
       template <typename Result>
@@ -393,11 +393,11 @@ class clear {
 public:
    typedef OpRef argument_type;
    typedef typename deref<OpRef>::type value_type;
-   typedef typename if_else<object_traits<value_type>::allow_static, typename attrib<OpRef>::plus_const_ref, value_type>::type result_type;
+   typedef typename std::conditional<object_traits<value_type>::allow_static, typename attrib<OpRef>::plus_const_ref, value_type>::type result_type;
 
    result_type operator() () const
    {
-      return default_instance(bool2type<object_traits<value_type>::allow_static>());
+      return default_instance(bool_constant<object_traits<value_type>::allow_static>());
    }
 
    void operator() (typename lvalue_arg<OpRef>::type x) const
@@ -407,14 +407,14 @@ public:
 
 private:
    static
-   result_type default_instance(True)
+   result_type default_instance(std::true_type)
    {
       static const value_type dflt = value_type();
       return dflt;
    }
 
    static
-   result_type default_instance(False)
+   result_type default_instance(std::false_type)
    {
       return value_type();
    }
@@ -464,11 +464,13 @@ public:
 template <typename Cref, typename Operation>
 struct fix1 : Operation {
    typedef Operation super;
-   typedef typename Diligent<Cref>::type stored_type;
+   typedef Cref stored_type;
    stored_type c;
 
    typedef typename Operation::second_argument_type argument_type;
    typedef typename Operation::result_type result_type;
+
+   fix1() {}
 
    fix1(typename function_argument<Cref>::type c_arg, const Operation& op_arg=Operation())
       : super(op_arg), c(c_arg) {}
@@ -482,11 +484,13 @@ struct fix1 : Operation {
 template <typename Cref, typename Operation>
 struct fix2 : Operation {
    typedef Operation super;
-   typedef typename Diligent<Cref>::type stored_type;
+   typedef Cref stored_type;
    stored_type c;
 
    typedef typename Operation::first_argument_type argument_type;
    typedef typename Operation::result_type result_type;
+
+   fix2() {}
 
    fix2(typename function_argument<Cref>::type c_arg, const Operation& op_arg=Operation())
       : super(op_arg), c(c_arg) {}
@@ -530,7 +534,7 @@ struct composed11 {
 };
 
 // OuterUnary(InnerBinary(x,y))
-template <typename InnerOperation, typename OuterOperation, bool _partial=is_partially_defined<InnerOperation>::value>
+template <typename InnerOperation, typename OuterOperation, bool is_partial=is_partially_defined<InnerOperation>::value>
 struct composed21 {
    InnerOperation inner;
    OuterOperation outer;
@@ -592,7 +596,7 @@ struct composed12_is_partially_defined<OuterOperation, void> : is_partially_defi
 
 // OuterBinary(InnerUnary1(x), InnerUnary2(y))
 template <typename InnerOperation1, typename InnerOperation2, typename OuterOperation,
-          bool _partial=composed12_is_partially_defined<InnerOperation2,OuterOperation>::value>
+          bool is_partial=composed12_is_partially_defined<InnerOperation2,OuterOperation>::value>
 struct composed12 {
    InnerOperation1 inner1;
    InnerOperation2 inner2;
@@ -986,7 +990,16 @@ protected:
    const PropertyMap* map;
 };
 
-} // end namespace operations
+template <typename TRef>
+struct move {
+   typedef TRef argument_type;
+   typedef std::add_lvalue_reference_t<pure_type_t<TRef>> unconst_type;
+   typedef std::add_rvalue_reference_t<pure_type_t<TRef>> result_type;
+
+   result_type operator() (argument_type x) const { return static_cast<result_type>(const_cast<unconst_type>(x)); }
+};
+
+}
 
 template <typename Iterator>
 struct operation_cross_const_helper< operations::random_access<Iterator> > {
@@ -1016,11 +1029,11 @@ struct unary_op_builder< operations::composed11<InnerOperation, OuterOperation>,
    }
 };
 
-template <typename InnerOperation, typename OuterOperation, bool _partial,
+template <typename InnerOperation, typename OuterOperation, bool is_partial,
           typename Iterator1, typename Iterator2, typename Reference1, typename Reference2>
-struct binary_op_builder< operations::composed21<InnerOperation,OuterOperation,_partial>,
+struct binary_op_builder< operations::composed21<InnerOperation, OuterOperation, is_partial>,
                           Iterator1, Iterator2, Reference1, Reference2> {
-   typedef operations::composed21<InnerOperation, OuterOperation, _partial> Operation;
+   typedef operations::composed21<InnerOperation, OuterOperation, is_partial> Operation;
    typedef binary_op_builder<InnerOperation, Iterator1, Iterator2, Reference1, Reference2> inner_builder;
    typedef typename inner_builder::operation inner_operation;
    typedef typename inner_operation::result_type inner_result;
@@ -1031,17 +1044,17 @@ struct binary_op_builder< operations::composed21<InnerOperation,OuterOperation,_
    static const operation& create(const operation& op) { return op; }
 
    template <typename AltInnerOperation, typename AltOuterOperation>
-   static operation create(const operations::composed21<AltInnerOperation, AltOuterOperation, _partial>& op)
+   static operation create(const operations::composed21<AltInnerOperation, AltOuterOperation, is_partial>& op)
    {
       return operation(inner_builder::create(op.inner), outer_builder::create(op.outer));
    }
 };
                          
-template <typename InnerOperation1, typename InnerOperation2, typename OuterOperation, bool _partial,
+template <typename InnerOperation1, typename InnerOperation2, typename OuterOperation, bool is_partial,
           typename Iterator1, typename Iterator2, typename Reference1, typename Reference2>
-struct binary_op_builder< operations::composed12<InnerOperation1,InnerOperation2,OuterOperation,_partial>,
+struct binary_op_builder< operations::composed12<InnerOperation1, InnerOperation2, OuterOperation, is_partial>,
                           Iterator1, Iterator2, Reference1, Reference2> {
-   typedef operations::composed12<InnerOperation1, InnerOperation2, OuterOperation, _partial> Operation;
+   typedef operations::composed12<InnerOperation1, InnerOperation2, OuterOperation, is_partial> Operation;
    typedef unary_op_builder<InnerOperation1, Iterator1, Reference1> inner_builder1;
    typedef unary_op_builder<InnerOperation2, Iterator2, Reference2> inner_builder2;
    typedef typename inner_builder1::operation inner_operation1;
@@ -1057,17 +1070,17 @@ struct binary_op_builder< operations::composed12<InnerOperation1,InnerOperation2
    static const operation& create(const operation& op) { return op; }
 
    template <typename AltInnerOperation1, typename AltInnerOperation2, typename AltOuterOperation>
-   static operation create(const operations::composed12<AltInnerOperation1, AltInnerOperation2, AltOuterOperation, _partial>& op)
+   static operation create(const operations::composed12<AltInnerOperation1, AltInnerOperation2, AltOuterOperation, is_partial>& op)
    {
       return operation(inner_builder1::create(op.inner1), inner_builder2::create(op.inner2), outer_builder::create(op.outer));
    }
 };
 
-template <typename InnerOperation1, typename OuterOperation, bool _partial,
+template <typename InnerOperation1, typename OuterOperation, bool is_partial,
           typename Iterator1, typename Iterator2, typename Reference1, typename Reference2>
-struct binary_op_builder< operations::composed12<InnerOperation1,void,OuterOperation,_partial>,
+struct binary_op_builder< operations::composed12<InnerOperation1, void, OuterOperation, is_partial>,
                           Iterator1, Iterator2, Reference1, Reference2> {
-   typedef operations::composed12<InnerOperation1, void, OuterOperation, _partial> Operation;
+   typedef operations::composed12<InnerOperation1, void, OuterOperation, is_partial> Operation;
    typedef unary_op_builder<InnerOperation1, Iterator1, Reference1> inner_builder1;
    typedef typename inner_builder1::operation inner_operation1;
    typedef typename inner_operation1::result_type inner_result1;
@@ -1080,17 +1093,17 @@ struct binary_op_builder< operations::composed12<InnerOperation1,void,OuterOpera
    static const operation& create(const operation& op) { return op; }
 
    template <typename AltInnerOperation1, typename AltOuterOperation>
-   static operation create(const operations::composed12<AltInnerOperation1, void, AltOuterOperation, _partial>& op)
+   static operation create(const operations::composed12<AltInnerOperation1, void, AltOuterOperation, is_partial>& op)
    {
       return operation(inner_builder1::create(op.inner1), outer_builder::create(op.outer));
    }
 };
                          
-template <typename InnerOperation2, typename OuterOperation, bool _partial,
+template <typename InnerOperation2, typename OuterOperation, bool is_partial,
           typename Iterator1, typename Iterator2, typename Reference1, typename Reference2>
-struct binary_op_builder< operations::composed12<void,InnerOperation2,OuterOperation,_partial>,
+struct binary_op_builder< operations::composed12<void, InnerOperation2, OuterOperation, is_partial>,
                           Iterator1, Iterator2, Reference1, Reference2> {
-   typedef operations::composed12<void, InnerOperation2, OuterOperation, _partial> Operation;
+   typedef operations::composed12<void, InnerOperation2, OuterOperation, is_partial> Operation;
    typedef unary_op_builder<InnerOperation2, Iterator2, Reference2> inner_builder2;
    typedef typename inner_builder2::operation inner_operation2;
    typedef typename inner_operation2::result_type inner_result2;
@@ -1103,17 +1116,17 @@ struct binary_op_builder< operations::composed12<void,InnerOperation2,OuterOpera
    static const operation& create(const operation& op) { return op; }
 
    template <typename AltInnerOperation2, typename AltOuterOperation>
-   static operation create(const operations::composed12<void, AltInnerOperation2, AltOuterOperation, _partial>& op)
+   static operation create(const operations::composed12<void, AltInnerOperation2, AltOuterOperation, is_partial>& op)
    {
       return operation(inner_builder2::create(op.inner2), outer_builder::create(op.outer));
    }
 };
 
-template <typename InnerOperation, typename OuterOperation, bool _partial,
+template <typename InnerOperation, typename OuterOperation, bool is_partial,
           typename Iterator1, typename Iterator2, typename Reference1, typename Reference2>
-struct binary_op_builder< operations::composed12<InnerOperation,OuterOperation,void,_partial>,
+struct binary_op_builder< operations::composed12<InnerOperation, OuterOperation, void, is_partial>,
                           Iterator1, Iterator2, Reference1, Reference2> {
-   typedef operations::composed12<InnerOperation, OuterOperation, void, _partial> Operation;
+   typedef operations::composed12<InnerOperation, OuterOperation, void, is_partial> Operation;
    typedef unary_op_builder<InnerOperation, Iterator1, Reference1> inner_builder1;
    typedef unary_op_builder<InnerOperation, Iterator2, Reference2> inner_builder2;
    typedef typename inner_builder1::operation inner_operation1;
@@ -1125,30 +1138,30 @@ struct binary_op_builder< operations::composed12<InnerOperation,OuterOperation,v
       outer_builder;
    typedef typename outer_builder::operation outer_operation;
 
-   static const bool ident12=identical<inner_operation1, inner_operation2>::value;
-   typedef typename if_else< ident12,
-                             operations::composed12<inner_operation1, outer_operation, void>,
-                             operations::composed12<inner_operation1, inner_operation2, outer_operation> >::type
+   static const bool ident12=std::is_same<inner_operation1, inner_operation2>::value;
+   typedef typename std::conditional< ident12,
+                                      operations::composed12<inner_operation1, outer_operation, void>,
+                                      operations::composed12<inner_operation1, inner_operation2, outer_operation> >::type
       operation;
 
    static const operation& create(const operation& op) { return op; }
 
    template <typename AltInnerOperation, typename AltOuterOperation>
-   static operation _create(const operations::composed12<AltInnerOperation, AltOuterOperation, void, _partial>& op, False)
+   static operation create_impl(const operations::composed12<AltInnerOperation, AltOuterOperation, void, is_partial>& op, std::false_type)
    {
       return operation(inner_builder1::create(op.inner), inner_builder2::create(op.inner), outer_builder::create(op.outer));
    }
 
    template <typename AltInnerOperation, typename AltOuterOperation>
-   static operation _create(const operations::composed12<AltInnerOperation, AltOuterOperation, void, _partial>& op, True)
+   static operation create_impl(const operations::composed12<AltInnerOperation, AltOuterOperation, void, is_partial>& op, std::true_type)
    {
       return operation(inner_builder1::create(op.inner), outer_builder::create(op.outer));
    }
 
    template <typename AltInnerOperation, typename AltOuterOperation>
-   static operation create(const operations::composed12<AltInnerOperation, AltOuterOperation, void, _partial>& op)
+   static operation create(const operations::composed12<AltInnerOperation, AltOuterOperation, void, is_partial>& op)
    {
-      return _create(op, bool2type<ident12>());
+      return create_impl(op, bool_constant<ident12>());
    }
 };
 
@@ -1274,7 +1287,7 @@ void accumulate_in(Iterator src, const Operation& op_arg, Object& x)
 
 template <typename Iterator, typename Operation, typename Object> inline
 void accumulate_in(Iterator src, const Operation& op_arg, const Object& x,
-                   typename enable_if<void**, object_traits<Object>::is_temporary>::type =0)
+                   typename std::enable_if<object_traits<Object>::is_temporary, void**>::type=nullptr)
 {
    Object xc(x);
    accumulate_in(src, op_arg, xc);
@@ -1498,7 +1511,7 @@ template <typename IteratorRef>
 struct dereference {
    typedef IteratorRef argument_type;
    typedef typename iterator_traits<typename deref<IteratorRef>::type>::reference ref;
-   typedef typename if_else<attrib<IteratorRef>::is_const, typename attrib<ref>::plus_const, ref>::type result_type;
+   typedef typename std::conditional<attrib<IteratorRef>::is_const, typename attrib<ref>::plus_const, ref>::type result_type;
    result_type operator() (IteratorRef it) const { return *it; }
 };
 
@@ -1663,6 +1676,8 @@ namespace polymake {
       using pm::operations::construct_binary;
       using pm::operations::construct_binary2;
 
+      typedef BuildUnary<pm::operations::move> move;
+
       /// these come from pair, but Build*ary is not defined there
       typedef BuildBinary<pm::operations::pair_maker> pair_maker;
       typedef BuildUnary<pm::operations::take_first> take_first;
@@ -1671,6 +1686,19 @@ namespace polymake {
 }
 
 #include "polymake/internal/extend_algo.h"
+
+#ifdef __clang__
+
+// FIXME: remove this hack when all composed operations are expelled in favor of lambdas
+namespace std {
+
+template <typename InnerOperation, typename OuterOperation>
+struct is_default_constructible<pm::operations::composed11<InnerOperation, OuterOperation>>
+   : polymake::mlist_and<is_default_constructible<InnerOperation>, is_default_constructible<OuterOperation>> {};
+
+}
+
+#endif // __clang__
 
 #endif // POLYMAKE_INTERNAL_OPERATIONS_H
 

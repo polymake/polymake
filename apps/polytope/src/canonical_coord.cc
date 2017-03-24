@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,59 +16,74 @@
 
 #include "polymake/client.h"
 #include "polymake/linalg.h"
-#include "polymake/permutations.h"
+#include "polymake/common/find_matrix_row_permutation.h"
 #include "polymake/polytope/canonicalize.h"
 
 namespace polymake { namespace polytope {
 
-template <typename Vector>
-typename pm::enable_if<void, pm::check_container_feature<Vector,pm::sparse>::value>::type
-canonicalize_rays(GenericVector<Vector>& V)
+template <typename TVector>
+typename std::enable_if<pm::check_container_feature<TVector, pm::sparse>::value>::type
+canonicalize_rays(GenericVector<TVector>& V)
 {
-   typename Vector::iterator it=V.top().begin();
+   auto it=V.top().begin();
    if (!it.at_end())
-         canonicalize_oriented(it);
+      canonicalize_oriented(it);
 }
 
-template <typename Vector>
-typename pm::disable_if<void, pm::check_container_feature<Vector,pm::sparse>::value>::type
-canonicalize_rays(GenericVector<Vector>& V)
+template <typename TVector>
+typename std::enable_if<!pm::check_container_feature<TVector, pm::sparse>::value>::type
+canonicalize_rays(GenericVector<TVector>& V)
 {
-   if (!V.top().empty()) {
-      canonicalize_oriented(find_if(entire(V.top()), operations::non_zero()));
-   }
+   if (!V.top().empty())
+      canonicalize_oriented(find_in_range_if(entire(V.top()), operations::non_zero()));
 }
 
-template <typename Vector, typename E> inline
-void canonicalize_facets(GenericVector<Vector,E>& V)
+template <typename TVector>
+void canonicalize_rays(GenericVector<TVector>&& V)
 {
-   canonicalize_oriented(find_if(entire(V.top()), operations::non_zero()));
+   canonicalize_rays(V);
 }
 
-template <typename Vector> inline
-void canonicalize_facets(GenericVector<Vector,double>& V)
+template <typename TVector, typename E>
+void canonicalize_facets(GenericVector<TVector, E>& V)
+{
+   canonicalize_oriented(find_in_range_if(entire(V.top()), operations::non_zero()));
+}
+
+template <typename TVector>
+void canonicalize_facets(GenericVector<TVector, double>& V)
 {
    V.top() /= sqrt(sqr(V.top()));
 }
 
-template <typename Matrix> inline
-void canonicalize_rays(GenericMatrix<Matrix>& M)
+template <typename TVector>
+void canonicalize_facets(GenericVector<TVector>&& V)
 {
-   for (typename Entire< Rows<Matrix> >::iterator r=entire(rows(M)); !r.at_end();  ++r)
-      canonicalize_rays(r->top());
+   canonicalize_facets(V);
+}
+
+template <typename TMatrix>
+void canonicalize_rays(GenericMatrix<TMatrix>& M)
+{
+   if (M.cols() == 0 && M.rows() != 0)
+      throw std::runtime_error("canonicalize_rays - ambient dimension is 0");
+   for (auto r=entire(rows(M)); !r.at_end();  ++r)
+      canonicalize_rays(*r);
 }
 
 
-template <typename Matrix> inline
-void canonicalize_facets(GenericMatrix<Matrix>& M)
+template <typename TMatrix>
+void canonicalize_facets(GenericMatrix<TMatrix>& M)
 {
-   for (typename Entire< Rows<Matrix> >::iterator r=entire(rows(M)); !r.at_end();  ++r)
-      canonicalize_facets(r->top());
+   if (M.cols() == 0 && M.rows() != 0)
+      throw std::runtime_error("canonicalize_facets - ambient dimension is 0");
+   for (auto r=entire(rows(M)); !r.at_end();  ++r)
+      canonicalize_facets(*r);
 }
 
 
-template <typename Matrix> inline
-void orthogonalize_subspace(GenericMatrix<Matrix>& M)
+template <typename TMatrix>
+void orthogonalize_subspace(GenericMatrix<TMatrix>& M)
 {
    orthogonalize_affine(entire(rows(M)));
 }
@@ -85,31 +100,13 @@ FunctionTemplate4perl("dehomogenize(Matrix)");
 template <typename Matrix2, typename E>
 void orthogonalize_facets(Matrix<E>& F, const GenericMatrix<Matrix2,E>& AH)
 {
-   for (typename Entire< Rows<Matrix2> >::const_iterator a=entire(rows(AH)); !a.at_end(); ++a) {
+   for (auto a=entire(rows(AH)); !a.at_end(); ++a) {
       const E s=sqr(a->slice(1));
-      for (typename Entire< Rows< Matrix<E> > >::iterator f=entire(rows(F)); !f.at_end(); ++f) {
+      for (auto f=entire(rows(F)); !f.at_end(); ++f) {
          const E x = f->slice(1) * a->slice(1);
          if (!is_zero(x)) *f -= (x/s) * (*a);
       }
    }
-}
-
-template <typename E>
-struct coord_comparator {
-   typedef operations::cmp type;
-};
-
-template <>
-struct coord_comparator<double> {
-   typedef operations::cmp_with_leeway type;
-};
-
-template <typename Matrix1, typename Matrix2, typename E>
-Array<int> find_matrix_row_permutation(const GenericMatrix<Matrix1,E>& M1, const GenericMatrix<Matrix2,E>& M2)
-{
-   if (M1.rows() != M2.rows() || M1.cols() != M2.cols())
-      throw no_match("find_matrix_row_permutation: dimension mismatch");
-   return find_permutation(rows(M1), rows(M2), typename coord_comparator<E>::type());
 }
 
 template <typename Matrix1, typename Matrix2, typename Matrix3, typename E>
@@ -132,10 +129,9 @@ Array<int> find_representation_permutation(const GenericMatrix<Matrix1,E>& Facet
       canonicalize_rays(F1);
       canonicalize_rays(F2);
    }
-   return find_permutation(rows(F1), rows(F2), typename coord_comparator<E>::type());
+   return find_permutation(rows(F1), rows(F2), typename common::matrix_elem_comparator<E>::type());
 }
 
-FunctionTemplate4perl("find_matrix_row_permutation(Matrix, Matrix)");
 FunctionTemplate4perl("find_representation_permutation(Matrix, Matrix, Matrix,$)");
 
 

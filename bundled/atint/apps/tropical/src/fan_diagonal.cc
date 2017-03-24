@@ -29,7 +29,6 @@
 #include "polymake/Array.h"
 #include "polymake/PowerSet.h"
 #include "polymake/tropical/divisor.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/skeleton.h"
 #include "polymake/tropical/misc_tools.h"
 #include "polymake/tropical/thomog.h"
@@ -37,9 +36,6 @@
 namespace polymake { namespace tropical {
 
 
-	using namespace atintlog::donotlog;
-	//using namespace atintlog::dolog;
-	//   using namespace atintlog::dotrace;
 
 	///////////////////////////////////////////////////////////////////////////////////////
 
@@ -81,35 +77,24 @@ namespace polymake { namespace tropical {
 				for(int c2 = 0; c2 < cones.rows(); c2++) {
 					Set<int> cone2 = cones.row(c2);
 					Set<int> inter = cone1 * cone2;
-					//dbgtrace << "Cones " << cone1 << ", " << cone2 << " intersect in " << inter.size() << " elements " << endl;
 					//If the cones share no ray, their product is not subdivided
-					if(inter.size() == 0) {
-						Set<int> cone2_translate = 
-							attach_operation(cone2, pm::operations::associative_access<Map<int,int>, int>(&second_comp));
-						p_cones |= (cone1 + cone2_translate);
-						p_weights |= weights[c1] * weights[c2];
+					if (inter.size() == 0) {
+                                           Set<int> cone2_translate{ second_comp.map(cone2) };
+                                           p_cones |= (cone1 + cone2_translate);
+                                           p_weights |= weights[c1] * weights[c2];
 					}
 					else {
 						//Otherwise we get a subdivision cone for each subset of the intersection
-						Array<Set<int> > subdivisions = pm::all_subsets(inter);
-						//dbgtrace << "Replaced by " << subdivisions.size() << " cones " << endl;
+                                                Array<Set<int>> subdivisions{ pm::all_subsets(inter) };
 						for(int sd = 0; sd < subdivisions.size(); sd++) {
 							Set<int> complement = inter - subdivisions[sd];
 							//We replace the elements from the subset of the intersection in the FIRST cone
 							//by the corresponding diagonal rays and replace the elements of the rest of the
 							//intersection in the SECOND cone by the corresponding diagonal rays
 							Set<int> first_cone_remaining = cone1 - subdivisions[sd];
-							Set<int> second_cone_remaining = cone2 - complement;
-							second_cone_remaining = 
-								attach_operation(second_cone_remaining,
-										pm::operations::associative_access<Map<int,int>, int>(&second_comp));
-
-							Set<int> first_cone_diagonal = 
-								attach_operation(subdivisions[sd], 
-										pm::operations::associative_access<Map<int,int>, int>(&diagon_comp));
-							Set<int> second_cone_diagonal = 
-								attach_operation(complement,
-										pm::operations::associative_access<Map<int,int>, int>(&diagon_comp));
+							Set<int> second_cone_remaining{ second_comp.map(cone2 - complement) };
+							Set<int> first_cone_diagonal{ diagon_comp.map(subdivisions[sd]) };
+							Set<int> second_cone_diagonal{ diagon_comp.map(complement) };
 
 							Set<int> final_cone = first_cone_remaining + second_cone_remaining + 
 								first_cone_diagonal + second_cone_diagonal;
@@ -189,13 +174,12 @@ namespace polymake { namespace tropical {
 
 				//Now go through all d-dimensional cones in the divisor and insert their weight at the appropriate point
 				Vector<Integer> tau_column(skeleton_cones.rows());
-				for(int rho = 0; rho < div_cones.rows(); rho++) {
+				for (int rho = 0; rho < div_cones.rows(); rho++) {
 					//Map rho rays to old rays
-					Set<int> rho_old = 
-						attach_operation(div_cones.row(rho), pm::operations::associative_access<Map<int,int>, int>(&div_ray_to_old));
+                                        Set<int> rho_old{ div_ray_to_old.map(div_cones.row(rho)) };
 					//Find the original cone equal to that
-					for(int oc = 0; oc < skeleton_cones.rows(); oc++) {
-						if( (skeleton_cones.row(oc) * rho_old).size() == fan_dim+1) {
+					for (int oc = 0; oc < skeleton_cones.rows(); oc++) {
+						if ((skeleton_cones.row(oc) * rho_old).size() == fan_dim+1) {
 							tau_column[oc] = div_weights[rho]; break;
 						}
 					}
@@ -229,11 +213,11 @@ namespace polymake { namespace tropical {
 				sk_rays = tdehomog(sk_rays);
 			IncidenceMatrix<> sk_cones = skeleton.give("SEPARATED_MAXIMAL_POLYTOPES");
 			Set<int> diag_rays; 
-			for(int r = 0; r < sk_rays.rows(); r++) {
-				if(sk_rays.row(r).slice(1,fan_ambient_dim) ==
+			for (int r = 0; r < sk_rays.rows(); r++) {
+				if (sk_rays.row(r).slice(1,fan_ambient_dim) ==
 						sk_rays.row(r).slice(fan_ambient_dim+1, fan_ambient_dim) && sk_rays(r,0) == 0) 
 					diag_rays += r;
-				if(sk_rays.row(r).slice(~scalar2set(0)) == zero_vector<Rational>(sk_rays.cols()-1))
+				if (is_zero(sk_rays.row(r).slice(1)))
 					diag_rays += r; // Add the origin as well.
 			}
 			Set<int> diag_cones;

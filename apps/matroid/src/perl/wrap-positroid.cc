@@ -16,11 +16,11 @@
 
 namespace polymake { namespace matroid { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( perl::Object (pm::Array<int, void>, pm::Set<int, pm::operations::cmp>) ) {
+   FunctionWrapper4perl( perl::Object (pm::Array<int>, pm::Set<int, pm::operations::cmp>) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
       IndirectWrapperReturn( arg0.get< perl::TryCanned< const Array< int > > >(), arg1.get< perl::TryCanned< const Set< int > > >() );
    }
-   FunctionWrapperInstance4perl( perl::Object (pm::Array<int, void>, pm::Set<int, pm::operations::cmp>) );
+   FunctionWrapperInstance4perl( perl::Object (pm::Array<int>, pm::Set<int, pm::operations::cmp>) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

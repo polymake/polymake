@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -21,8 +21,13 @@ use vars qw( %special_imports );
 $special_imports{"namespaces.pm"}=1;
 
 $INC{"namespaces.pm"}=$INC{"Polymake/Namespaces.pm"};
+$INC{"namespaces/AnonLvalue.pm"}=$INC{"Polymake/Namespaces.pm"};
 $INC{"namespaces/Params.pm"}=$INC{"Polymake/Namespaces.pm"};
-$INC{"namespaces/Package.pm"}=$INC{"Polymake/Namespaces.pm"};
 *Polymake::Namespaces::import=\&import;
+
+sub set_autolookup {
+   my $pkg=caller;
+   Polymake::define_function($pkg, ".AUTOLOOKUP", $_[0]);
+}
 
 1

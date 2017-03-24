@@ -32,7 +32,7 @@ const type2type<T>& make_mutable_alias(T&, T&);
 template <typename T> inline
 void make_mutable_alias(const T&, const T&) {}
 
-template <typename T, bool _apply=!identical<typename deref<T>::type, typename attrib<T>::minus_const_ref>::value>
+template <typename T, bool _apply=!std::is_same<typename deref<T>::type, typename attrib<T>::minus_const_ref>::value>
 struct demasq {
    typedef T type;
    static const bool apply=_apply;
@@ -75,13 +75,13 @@ namespace object_classifier {
          ? alias_masqueraded :
          deserves_special_alias<T>::value
          ? alias_special :
-         (derived_from_instance2i<T,alias>::value && !check_container_feature<T,sparse>::value)
+         (is_derived_from_instance2i<T,alias>::value && !check_container_feature<T,sparse>::value)
          ? alias_based :
          object_traits<T>::is_temporary
          ? alias_temporary :
          attrib<ObjectRef>::is_reference
          ? alias_ref :
-         is_enum<T>::value || (is_pod<T>::value && sizeof(T) <= 2 * sizeof(T*))
+         std::is_enum<T>::value || (std::is_pod<T>::value && sizeof(T) <= 2 * sizeof(T*))
          ? alias_primitive
          : alias_obj;
    };
@@ -102,7 +102,7 @@ public:
    alias() {}
    alias(arg_type arg) : value(new(alloc.allocate(1)) value_type(arg)) {}
 
-   typedef typename if_else<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
+   typedef typename std::conditional<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
    alias(alt_alias_arg_type& other) : value(*other) {}
 
    reference operator* () { return *value; }
@@ -134,7 +134,7 @@ public:
    alias() {}
    alias(arg_type arg) : val(arg) {}
 
-   typedef typename if_else<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
+   typedef typename std::conditional<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
    alias(alt_alias_arg_type& other) : val(*other) {}
 
    const_reference operator* () const { return val; }
@@ -160,7 +160,7 @@ public:
    alias() : ptr(0) {}
    alias(arg_type arg) : ptr(&arg) {}
 
-   typedef typename if_else<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
+   typedef typename std::conditional<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
    alias(alt_alias_arg_type& other) : ptr(other.ptr) {}
 
    reference operator* () { return *ptr; }
@@ -190,7 +190,7 @@ public:
    alias() {}
    alias(arg_type arg) : val(arg) { make_mutable_alias(val,arg); }
 
-   typedef typename if_else<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
+   typedef typename std::conditional<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
    alias(alt_alias_arg_type& other) : val(other.val) {}
 
    reference operator* () { return val; }
@@ -212,9 +212,9 @@ public:
    typedef alias alias_type;
    typedef typename attrib<T>::minus_const_ref value_type;
    typedef typename attrib<T>::plus_const_ref const_reference;
-   typedef typename if_else<object_traits<value_type>::is_always_const, const_reference, typename attrib<T>::plus_ref>::type reference;
+   typedef typename std::conditional<object_traits<value_type>::is_always_const, const_reference, typename attrib<T>::plus_ref>::type reference;
    typedef const value_type* const_pointer;
-   typedef typename if_else<attrib<reference>::is_const, const_pointer, typename attrib<T>::minus_ref*>::type pointer;
+   typedef typename std::conditional<attrib<reference>::is_const, const_pointer, typename attrib<T>::minus_ref*>::type pointer;
    typedef const_reference arg_type;
 
    alias() : init(false) {}
@@ -229,7 +229,7 @@ public:
       if (init) new(allocate()) value_type(*other);
    }
 
-   typedef typename if_else<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
+   typedef typename std::conditional<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
 
    alias(alt_alias_arg_type& other) : init(other.init)
    {
@@ -240,7 +240,7 @@ public:
    {
       if (this != &other) {
          if (init) {
-            std::_Destroy(ptr());
+            destroy_at(ptr());
             init=false;
          }
          if (other.init) {
@@ -251,7 +251,7 @@ public:
       return *this;
    }
 
-   ~alias() { if (init) std::_Destroy(ptr()); }
+   ~alias() { if (init) destroy_at(ptr()); }
 
    reference operator* () { return *ptr(); }
    const_reference operator* () const { return *ptr(); }
@@ -287,7 +287,7 @@ public:
    alias(typename _super::arg_type arg) : _super(arg) {}
    alias(arg_type arg) : _super(arg) {}
 
-   typedef typename if_else<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
+   typedef typename std::conditional<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
    alias(alt_alias_arg_type& other) : _super(other) {}
 
    reference operator* () { return static_cast<reference>(static_cast<_super&>(*this)); }
@@ -306,19 +306,19 @@ class alias<T, object_classifier::alias_masqueraded>
 public:
    typedef alias alias_type;
    typedef typename attrib<T>::plus_const_ref const_reference;
-   typedef typename if_else<(object_traits<typename is_masquerade<T>::hidden_type>::is_always_const ||
-                             object_traits<typename attrib<T>::minus_const_ref>::is_always_const),
-                            const_reference, typename attrib<T>::plus_ref>::type
+   typedef typename std::conditional<object_traits<typename is_masquerade<T>::hidden_type>::is_always_const ||
+                                     object_traits<typename attrib<T>::minus_const_ref>::is_always_const,
+                                     const_reference, typename attrib<T>::plus_ref>::type
       reference;
    typedef const typename attrib<T>::minus_ref* const_pointer;
-   typedef typename if_else<attrib<reference>::is_const, const_pointer, typename attrib<T>::minus_ref*>::type pointer;
+   typedef typename std::conditional<attrib<reference>::is_const, const_pointer, typename attrib<T>::minus_ref*>::type pointer;
    typedef reference arg_type;
 
    alias() {}
    alias(arg_type arg)
       : _super(reinterpret_cast<typename is_masquerade<T>::hidden_stored_type>(arg)) {}
 
-   typedef typename if_else<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
+   typedef typename std::conditional<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
    alias(alt_alias_arg_type& other) : _super(other) {}
 
    reference operator* () { return reinterpret_cast<reference>(_super::operator*()); }
@@ -338,17 +338,17 @@ class alias<T, object_classifier::alias_delayed_masquerade>
 public:
    typedef alias alias_type;
    typedef typename attrib<M>::plus_const_ref const_reference;
-   typedef typename if_else<(object_traits<typename is_masquerade<M>::hidden_type>::is_always_const ||
-                             object_traits<typename attrib<M>::minus_const_ref>::is_always_const),
-                            const_reference, typename attrib<M>::plus_ref>::type
+   typedef typename std::conditional<object_traits<typename is_masquerade<M>::hidden_type>::is_always_const ||
+                                     object_traits<typename attrib<M>::minus_const_ref>::is_always_const,
+                                     const_reference, typename attrib<M>::plus_ref>::type
       reference;
    typedef const typename attrib<M>::minus_ref* const_pointer;
-   typedef typename if_else<attrib<reference>::is_const, const_pointer, typename attrib<M>::minus_ref*>::type pointer;
+   typedef typename std::conditional<attrib<reference>::is_const, const_pointer, typename attrib<M>::minus_ref*>::type pointer;
 
    alias() {}
    alias(typename _super::arg_type arg) : _super(arg) {}
 
-   typedef typename if_else<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
+   typedef typename std::conditional<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
    alias(alt_alias_arg_type& other) : _super(other) {}
 
    reference operator* () { return reinterpret_cast<reference>(_super::operator*()); }

@@ -59,12 +59,12 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# @param Matrix points"
                           "# @param Vector weights"
                           "# @return Array<Set<Int>>"
-                          "# @example The following generates a regular subdivision of the square."
+                          "# @example [prefer cdd] The following generates a regular subdivision of the square."
                           "# > $w = new Vector(2,23,2,2);"
                           "# > $r = regular_subdivision(cube(2)->VERTICES,$w);"
                           "# > print $r;"
-                          "# | {0 1 3}"
                           "# | {0 2 3}"
+                          "# | {0 1 3}"
                           "# @author Sven Herrmann",
                           "regular_subdivision<Scalar>(Matrix<type_upgrade<Scalar>> Vector<type_upgrade<Scalar>>)");
 } }

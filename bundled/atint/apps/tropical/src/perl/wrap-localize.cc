@@ -41,5 +41,6 @@ namespace polymake { namespace tropical { namespace {
    FunctionInstance4perl(local_restrict_T_x_x, Max);
    FunctionInstance4perl(local_point_T_x_x, Max);
    FunctionInstance4perl(local_point_T_x_x, Min);
+   FunctionInstance4perl(local_vertex_T_x_x, Min);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

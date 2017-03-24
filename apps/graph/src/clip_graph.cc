@@ -56,7 +56,7 @@ perl::Object clip_graph(const Graph<>& G, const Matrix<Rational>& V, const Matri
    Bitset valid(n);
    for (int i=0; i<n; ++i) {
       coords[i]=V[i];
-      if (V(i,0) != 0 && find_if(entire(BB*V[i]), polymake::operations::negative()).at_end())
+      if (V(i,0) != 0 && find_in_range_if(entire(BB*V[i]), polymake::operations::negative()).at_end())
          valid+=i;
    }
 

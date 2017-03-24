@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -62,18 +62,18 @@ void process_rays(perl::Object& p_in, int first_coord, const Array<int>& indices
       points_read=true;
       if ( indices.empty() )  { // if we do a full projection then vertices remain vertices, so we write back whatever we got
          p_out.take(got_property) << Rays.minor(All,~coords_to_eliminate);
-         if ( p_in.lookup("LINEALITY_SPACE | INPUT_LINEALITY") >> lineality && lineality.rows() )
+         if (p_in.lookup("LINEALITY_SPACE | INPUT_LINEALITY") >> lineality && lineality.rows() > 0)
             p_out.take( got_property=="RAYS" || got_property=="VERTICES" ? "LINEALITY_SPACE" : "INPUT_LINEALITY") << lineality.minor(All,~coords_to_eliminate);
          else {
-            Matrix<Rational> empty;
+            Matrix<Rational> empty(0, Rays.cols() - coords_to_eliminate.size());
             p_out.take( got_property=="RAYS" || got_property=="VERTICES" ? "LINEALITY_SPACE" : "INPUT_LINEALITY") << empty;
          }
       } else {
          p_out.take("INPUT_RAYS") << Rays.minor(All,~coords_to_eliminate);
-         if ( p_in.lookup("LINEALITY_SPACE | INPUT_LINEALITY") >> lineality && lineality.rows() ) 
+         if (p_in.lookup("LINEALITY_SPACE | INPUT_LINEALITY") >> lineality && lineality.rows() > 0) 
             p_out.take("INPUT_LINEALITY") << lineality.minor(All,~coords_to_eliminate);  
          else {
-            Matrix<Rational> empty;
+            Matrix<Rational> empty(0, Rays.cols() - coords_to_eliminate.size());
             p_out.take("INPUT_LINEALITY") << empty;
          }
       }
@@ -81,10 +81,10 @@ void process_rays(perl::Object& p_in, int first_coord, const Array<int>& indices
   
    if (!points_read && options["nofm"])
       throw std::runtime_error("projection: no rays found and Fourier-Motzkin elimination excluded");
-   if ( indices.empty() && options["relabel"]) {
+   if ( indices.empty() && !options["no_labels"]) {
       // here we assume that, if VERTEX_LABELS are present in the object, then also VERTICES are known
       // otherwise this will trigger a convex hull computation
-      int n_vertices = p_in.give("N_VERTICES");
+      int n_vertices = p_in.give("N_RAYS");
       Array<std::string> labels(n_vertices);
       read_labels(p_in, "RAY_LABELS", labels);
       p_out.take("RAY_LABELS") << labels;
@@ -141,21 +141,20 @@ void process_facets(perl::Object& p_in, const Array<int>& indices, perl::OptionS
 }  // end anonymous namespace
 
 template <typename Scalar>
-perl::Object projection_impl(perl::Object p_in, const std::string object_prefix, const std::string linear_span_name, int first_coord, const Array<int> indices, perl::OptionSet options) {
-
-
+perl::Object projection_impl(perl::Object p_in, const std::string object_prefix, const std::string linear_span_name, int first_coord, const Array<int> indices, perl::OptionSet options)
+{
    if ( (object_prefix=="CONE" || object_prefix=="FAN") && !p_in.exists("RAYS | INPUT_RAYS") &&
         ! (object_prefix=="CONE" && p_in.exists("FACETS | INEQUALITIES") ) )
       throw std::runtime_error("projection is not defined for combinatorially given objects");
    
-   const int ambient_dim = p_in.give((object_prefix + "_AMBIENT_DIM").c_str());
-   const int dim = p_in.give((object_prefix + "_DIM").c_str());
+   const int ambient_dim = p_in.give(object_prefix + "_AMBIENT_DIM");
+   const int dim = p_in.give(object_prefix + "_DIM");
    const int codim = ambient_dim-dim;
    if (indices.empty() && codim==0) return p_in; // nothing to do
 
-   const Matrix<Scalar> linear_span = p_in.give(linear_span_name.c_str());
-   if (codim!=linear_span.rows())
-      throw std::runtime_error(("projection: " + linear_span_name + " has wrong number of rows").c_str());
+   const Matrix<Scalar> linear_span = p_in.give(linear_span_name);
+   if (codim != linear_span.rows())
+      throw std::runtime_error("projection: " + linear_span_name + " has wrong number of rows");
    const int last_coord=ambient_dim-1;
    const Set<int> coords_to_eliminate = coordinates_to_eliminate(indices, first_coord, last_coord, codim, linear_span, options["revert"]);   // set of columns to project to
 
@@ -180,7 +179,70 @@ perl::Object projection_impl(perl::Object p_in, const std::string object_prefix,
    return p_out;
 }
 
+template <typename Scalar>
+perl::Object projection_preimage_impl(const Array<perl::Object>& pp_in)
+{
+   auto p_in = entire(pp_in);
+
+   const bool 
+      is_poc = p_in->isa("Polytope") || p_in->isa("PointConfiguration"),
+      is_cone = p_in->isa("Cone");
+
+   const std::string 
+      rays_section = p_in->isa("Polytope")
+      ? "VERTICES | POINTS"
+      : p_in->isa("PointConfiguration")
+      ? "POINTS"
+      : p_in->isa("Cone")
+      ? "RAYS | INPUT_RAYS"
+      : "VECTORS",
+
+      lin_space_section = is_poc
+      ? "AFFINE_HULL"
+      : "LINEAR_SPAN",
+      
+      output_rays = is_cone
+      ? "INPUT_RAYS"
+      : "VECTORS";
+
+   Matrix<Scalar> Rays = p_in->give(rays_section);
+   Matrix<Scalar> LinSpace = p_in->give(lin_space_section);
+
+   const auto type_name = p_in->type().name();
+   perl::Object p_out(p_in->type());
+   std::string descr_names = p_in->name();
+
+   while (! (++p_in).at_end()) {
+      if (p_in->type().name() != type_name)
+         throw std::runtime_error("projection_preimage: cannot mix objects of different type");
+
+      const Matrix<Scalar> V = p_in->give(rays_section);
+      const Matrix<Scalar> L = p_in->give(lin_space_section);
+      if (V.rows() != Rays.rows())
+         throw std::runtime_error("projection_preimage: mismatch in the number of rays or points");
+      if (is_poc)
+         Rays |= V.minor(All, ~scalar2set(0));
+      else
+         Rays |= V;
+
+      if (is_cone) {
+         LinSpace |= zero_matrix<Scalar>(LinSpace.rows(), L.cols()-1);
+         LinSpace /= L.col(0) | zero_matrix<Scalar>(L.rows(), LinSpace.cols()-1) | L.minor(All, ~scalar2set(0));
+      }      
+      descr_names += ", " + p_in->name();
+   }
+
+   p_out.set_description() << "preimage under projection of " << descr_names << endl;
+   if (is_cone)
+      p_out.take("INPUT_LINEALITY") << LinSpace;
+   p_out.take(output_rays) << Rays;
+   return p_out;
+}
+
 FunctionTemplate4perl("projection_impl<Scalar=Rational>($$$$$ {revert => 0, nofm => 0})");
+
+FunctionTemplate4perl("projection_preimage_impl<Scalar=Rational>($)");
+
 
 } }
 

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -14,24 +14,22 @@
 #-------------------------------------------------------------------------------
 
 
-object Cone {
+object Polytope {
 
 	# @category Geometry
 	# Dimension of the tropical projective space which contains the tropical polytope.
 	property PROJECTIVE_AMBIENT_DIM : Int;
 
-	# @category Geometry 
-	# Input points in tropical homogeneous coordinates.  
+	# @category Geometry
+	# Input points in tropical homogeneous coordinates.
 	# This is the fixed system of generators with respect
 	# to which many combinatorial properties are expressed.
-	property POINTS : Matrix<TropicalNumber<Addition,Scalar> > {
-		sub canonical { &canonicalize_to_leading_zero_and_check_columns; } 
+	property POINTS : Matrix<TropicalNumber<Addition,Scalar>> {
+		sub canonical { &canonicalize_to_leading_zero_and_check_columns; }
 	}
 
-	declare permutation PointsPerm {
-
-		property PERMUTATION : Array<Int>;
-	}
+        # permuting the [[POINTS]]
+	permutation PointsPerm : PermBase;
 
 	rule PointsPerm.PERMUTATION : PointsPerm.POINTS, POINTS {
 		$this->PointsPerm->PERMUTATION=find_permutation($this->PointsPerm->POINTS, $this->POINTS);
@@ -44,19 +42,17 @@ object Cone {
 
 	# @category Geometry
 	# Vertices of the tropical convex hull, a submatrix of [[POINTS]]
-	property VERTICES : Matrix<TropicalNumber<Addition,Scalar> > {
-		sub canonical { &canonicalize_to_leading_zero; }	
+	property VERTICES : Matrix<TropicalNumber<Addition,Scalar>> {
+		sub canonical { &canonicalize_to_leading_zero; }
 	}
 
-	declare permutation VertexPerm {
-		
-		property PERMUTATION : Array<Int>;
-	}
-	
+        # permuting the [[VERTICES]]
+	permutation VertexPerm : PermBase;
+
 	rule VertexPerm.PERMUTATION : VertexPerm.VERTICES, VERTICES {
 		$this->VertexPerm->PERMUTATION=find_permutation($this->VertexPerm->VERTICES, $this->VERTICES);
 	}
-	
+
 	rule VERTICES : VertexPerm.VERTICES, VertexPerm.PERMUTATION {
 		$this->VERTICES=permuted_rows($this->VertexPerm->VERTICES, $this->VertexPerm->PERMUTATION);
 	}
@@ -72,8 +68,8 @@ object Cone {
 	# Pseudovertices are the vertices of the type decomposition of the tropical torus induced by [[POINTS]].
 	# They are projections of the vertices of [[ENVELOPE]]. Note that each pseudovertex is given in tropical
 	# homogeneous coordinates with a leading 1 or 0, depending on whether it is a vertex or a ray.
-	property PSEUDOVERTICES : Matrix<Scalar> { 		
-		sub canonical { &canonicalize_vertices_to_leading_zero; } 
+	property PSEUDOVERTICES : Matrix<Scalar> {
+		sub canonical { &canonicalize_vertices_to_leading_zero; }
 	}
 
 	# @category Combinatorics
@@ -86,7 +82,7 @@ object Cone {
 	# This is the face lattice of the polyhedral complex, whose vertices are [[PSEUDOVERTICES]] and
 	# whose cells are the cells of the covector decomposition. For each face in this lattice, we save the following information:
 	# 1) What PSEUDOVERTICES make up this face, i.e. a Set<int>
-	# 2) What is the covector of this face, i.e. an IncidenceMatrix (whose rows correspond to coordinates and 
+	# 2) What is the covector of this face, i.e. an IncidenceMatrix (whose rows correspond to coordinates and
 	# whose columns to [[POINTS]]).
 	# NOTE: This lattice does not contain any far faces of the polyhedral cells, as they do not have well-defined covectors.
 	property TORUS_COVECTOR_DECOMPOSITION : CovectorLattice;
@@ -94,13 +90,13 @@ object Cone {
 	# @category Combinatorics
 	# This is a sublattice of [[TORUS_COVECTOR_DECOMPOSITION]], containing only the cells that belong to the tropical span
 	# of [[POINTS]].
-	property CONE_COVECTOR_DECOMPOSITION : CovectorLattice;
+	property POLYTOPE_COVECTOR_DECOMPOSITION : CovectorLattice;
 
 	# @category Combinatorics
-	# This is a description of the tropical cone as a polyhedral complex. Each 
-	# row is a maximal cell of the covector subdivision of the tropical cone. Indices refer to
+	# This is a description of the tropical polytope as a polyhedral complex. Each 
+	# row is a maximal cell of the covector subdivision of the tropical polytope. Indices refer to
 	# [[PSEUDOVERTICES]]. 
-	property CONE_MAXIMAL_COVECTOR_CELLS : IncidenceMatrix;
+	property POLYTOPE_MAXIMAL_COVECTOR_CELLS : IncidenceMatrix;
 
 	# @category Combinatorics
 	# The covectors of the maximal cells of the torus subdivision. Entries correspond
@@ -108,30 +104,30 @@ object Cone {
 	property MAXIMAL_COVECTORS : Array<IncidenceMatrix>;
 
 	# @category Combinatorics
-	# The covectors of the maximal cells of the cone subdivision. Entries correspond
-	# to rows of [[CONE_MAXIMAL_COVECTOR_CELLS]].
-	property CONE_MAXIMAL_COVECTORS : Array<IncidenceMatrix>;
+	# The covectors of the maximal cells of the polytope subdivision. Entries correspond
+	# to rows of [[POLYTOPE_MAXIMAL_COVECTOR_CELLS]].
+	property POLYTOPE_MAXIMAL_COVECTORS : Array<IncidenceMatrix>;
 
 	# @category Visualization
 	# Unique names assigned to the [[VERTICES]].
 	# If specified, they are shown by visualization tools instead of vertex indices.
 	#property VERTEX_LABELS : Array<String>;
-	
+
 	# @category Visualization
 	# Unique names assigned to the [[PSEUDOVERTICES]].
 	# Can be used as "NodeLabels" in [[VISUAL_PLANAR]].
 	#property PSEUDOVERTEX_LABELS : Array<String>;
 	
 	# @category Geometry 
-	# Tropical cones have a natural description as the complex of certain faces of their envelopes.
+	# Tropical polytopes have a natural description as the complex of certain faces of their envelopes.
 	# This envelope depends on the choice of the [[POINTS]] that generate the tropical polytope.
 	property ENVELOPE : polytope::Polytope<Scalar>;
 
 	# @category Geometry
 	# This is the dome of the tropical hyperplane arrangement defined by the [[POINTS]].
-	# I.e. we take as function the (tropical) product of the tropical linear polynomials defined 
+	# I.e. we take as function the (tropical) product of the tropical linear polynomials defined
 	# in the following manner: For each point (p_0,...,p_d) we get the linear polynomial
-	# sum_{i=1}^d (1/p_i) * x_i, where sum is the DUAL tropical addition and * and /  is regular 
+	# sum_{i=1}^d (1/p_i) * x_i, where sum is the DUAL tropical addition and * and /  is regular
 	# addition and subtraction, respectively.
 	property DOME : polytope::Polytope<Scalar>;
 
@@ -142,11 +138,11 @@ object Cone {
 	# in the i-th sector of all points indexed by S.
 	# For bounded vertices, the type is computed as usual. For unbounded rays (i.e. starting with a 0), the type
 	# is computed as follows. Let g be a generator, with infinite entries at positions J and let the ray be
-	# e_J = sum_{j in J} +- e_j (the sign being the orientation of the addition). 
+	# e_J = sum_{j in J} +- e_j (the sign being the orientation of the addition).
 	# If J is contained in K, the ray is "contained" in all sectors of g.
 	# Otherwise, the ray is "contained" in the sectors indexed by g.
 	# NOTE: The latter is an artificial definition in the sense that it is not compatible with intersecting
-	# faces of the covector lattice. However, it is correct in the sense that faces spanned by a 
+	# faces of the covector lattice. However, it is correct in the sense that faces spanned by a
 	# list of pseudovertices have as covector the intersection of the respective covectors.
 	property PSEUDOVERTEX_COVECTORS : Array<IncidenceMatrix>;
 
@@ -155,16 +151,16 @@ object Cone {
 	# Each row corresponds to a row of [[PSEUDOVERTICES]] and encodes at position i, how many [[POINTS]]
 	# contain that pseudovertex in the i-th sector.
 	property PSEUDOVERTEX_COARSE_COVECTORS : Matrix<Int>;
-	
+
 	#FIXME: Properties for exterior description?
 
 	# @category Geometry 
-	# Tropical halfspaces defining this tropical cone. Encoded as a pair of tropical matrices M,M' with the same
+	# Tropical halfspaces defining this tropical polytopes. Encoded as a pair of tropical matrices M,M' with the same
 	# dimensions. The row count of the matrices is the number of halfspaces. The column count is the
-	# number of (tropical homogeneous) coordinates of the cone. A point p lies in the cone described by these
+	# number of (tropical homogeneous) coordinates of the polytope. A point p lies in the polytope described by these
 	# halfspaces, if and only M*p ~ M'*p, where ~ is >= for max and <= for min and all operations
-	# are tropical. In other words, p lies in the cone, if and only if (M + M')*p = M*p.
-	#property HALF_SPACES : Pair< Matrix<TropicalNumber<Addition,Scalar> >, Matrix<TropicalNumber<Addition,Scalar> > >;
+	# are tropical. In other words, p lies in the polytope, if and only if (M + M')*p = M*p.
+	#property HALF_SPACES : Pair<Matrix<TropicalNumber<Addition,Scalar>>, Matrix<TropicalNumber<Addition,Scalar>>>;
 
 	# @category Geometry
 	# This returns the subdivision of the tropical torus induced by [[POINTS]] as a
@@ -177,49 +173,49 @@ object Cone {
 	}
 
 	# @category Geometry
-	# This returns the subdivision of the cone induced by [[POINTS]] as a polyhedral
+	# This returns the subdivision of the polytope induced by [[POINTS]] as a polyhedral
 	# complex on a chosen affine chart.
 	# @param Int chart Which coordinate to normalize to 0. This is 0 by default.
 	# @return fan::PolyhedralComplex
-	user_method cone_subdivision_as_complex(;$=0) {
+	user_method polytope_subdivision_as_complex(;$=0) {
 		my ($cone,$chart) = @_;
-		my $cov = $cone->CONE_COVECTOR_DECOMPOSITION;
+		my $cov = $cone->POLYTOPE_COVECTOR_DECOMPOSITION;
 		my $used_pvertices = $cov->FACES->[$cov->top_node()];
 		return (new Cycle<Addition>(VERTICES=>$cone->PSEUDOVERTICES->minor($used_pvertices,All), 
-											 MAXIMAL_POLYTOPES=>$cone->CONE_MAXIMAL_COVECTOR_CELLS->minor(All,$used_pvertices)))->affine_chart($chart);	
+											 MAXIMAL_POLYTOPES=>$cone->POLYTOPE_MAXIMAL_COVECTOR_CELLS->minor(All,$used_pvertices)))->affine_chart($chart);	
 	}
 
 
 }
 
 # @category Conversion of tropical addition
-# This function takes a tropical cone and returns a tropical cone that uses
+# This function takes a tropical polytope and returns a tropical polytope that uses
 # the opposite tropical addition. By default, the signs of the [[POINTS]] are inverted.
-# @param Cone<Addition,Scalar> cone
+# @param Polytope<Addition,Scalar> polytope  
 # @param Bool strong_conversion This is optional and TRUE by default.
 # It indicates, whether the signs of the vertices should be inverted.
-# @return Cone,
-user_function dual_addition_version<Addition,Scalar>(Cone<Addition,Scalar>;$=1) {
+# @return Polytope,
+user_function dual_addition_version<Addition,Scalar>(Polytope<Addition,Scalar>;$=1) {
 	return dual_addition_version_cone(@_);
 }
 
 # @category Other
 # This function takes a Matrix of tropical vectors in projective coordinates 
-# (e.g. the [[POINTS]] of a [[Cone]]) and a Matrix of Scalar vectors in extended tropical projective
-# coordinates (e.g. the [[PSEUDOVERTICES]] of a tropical [[Cone]]).
+# (e.g. the [[POINTS]] of a [[Polytope]]) and a Matrix of Scalar vectors in extended tropical projective
+# coordinates (e.g. the [[PSEUDOVERTICES]] of a tropical [[Polytope]]).
 # It returns the set of row indices of the second matrix such that the corresponding row 
 # starts with a 1 and the remaining vector occurs in the first matrix.
-# @param Matrix<TropicalNumber<Addition, Scalar>> points 
+# @param Matrix<TropicalNumber<Addition, Scalar>> points
 # @param Matrix<Scalar> pseudovertices
 # @return Set<Int>
 user_function points_in_pseudovertices<Addition,Scalar>(Matrix<TropicalNumber<Addition, Scalar>>, Matrix<Scalar>) {
-  my ($points,$pseudovertices)=@_;
+  my ($points, $pseudovertices)=@_;
   $points = (ones_vector<Scalar>($points->rows())) | (new Matrix<Scalar>($points));
   my $generators=new HashSet<Vector<Scalar>>(rows($points));
 
   my $result = new Set<Int>();
   for my $i (0..$pseudovertices->rows()-1) {
-  if (exists $generators->{$pseudovertices->row($i)}) {$result += $i;}
-  }  
+    if (exists $generators->{$pseudovertices->row($i)}) { $result += $i; }
+  }
   return $result;
-} 
+}

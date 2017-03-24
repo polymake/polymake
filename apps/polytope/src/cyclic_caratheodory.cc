@@ -33,9 +33,9 @@ perl::Object cyclic_caratheodory(const int d, const int n)
    p.set_description() << "Cyclic " << d << "-polytope on " << n << " vertices on the trigonometric moment curve" << endl;
 
    Matrix<Rational> Vertices(n,d+1);
-   Rational* v=concat_rows(Vertices).begin();
+   auto v=concat_rows(Vertices).begin();
 
-   AccurateFloat x, s, c;
+   AccurateFloat x(0), s, c;
    for (int r=0; r<n; ++r, ++x) {
       *v++ = 1;
       for (int i = 1; i <= d/2; ++i) {
@@ -49,7 +49,6 @@ perl::Object cyclic_caratheodory(const int d, const int n)
    p.take("CONE_DIM") << d+1;
    p.take("N_VERTICES") << n;
    p.take("VERTICES") << Vertices;
-   p.take("LINEALITY_SPACE") << Matrix<Rational>();
    p.take("BOUNDED") << true;
    return p;
 }

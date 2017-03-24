@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,7 +18,7 @@
 
 namespace polymake { namespace topaz {
 
-bool is_pure(const HasseDiagram& HD)
+bool is_pure(const Lattice<BasicDecoration>& HD)
 {
    int test_dim = -1;
    for (Entire< Graph<Directed>::in_edge_list >::const_iterator it=entire(HD.in_edges(HD.top_node()));
@@ -33,7 +33,7 @@ bool is_pure(const HasseDiagram& HD)
    return true;
 }
 
-Set<int> vertices_of_vertex_link(const HasseDiagram& HD, const int v)
+Set<int> vertices_of_vertex_link(const Lattice<BasicDecoration>& HD, const int v)
 {
    Set<int> V;
    accumulate_in(vertex_star_in_HD(HD,v), operations::add(), V);
@@ -41,7 +41,7 @@ Set<int> vertices_of_vertex_link(const HasseDiagram& HD, const int v)
    return V;
 }
 
-void remove_vertex_star(HasseDiagram& HD, const int v)
+void remove_vertex_star(ShrinkingLattice<BasicDecoration>& HD, const int v)
 {
    graph::BFSiterator< Graph<Directed> > n_it(HD.graph(), find_vertex_node(HD,v));
    const int top_node=HD.top_node();
@@ -61,11 +61,12 @@ void remove_vertex_star(HasseDiagram& HD, const int v)
    }
 
    HD.delete_nodes(n_it.node_visitor().get_visited_nodes()-top_node);
+   HD.set_implicit_top_rank();
 }
 
-void remove_facet_node(HasseDiagram& HD, const int start_node)
+void remove_facet_node(ShrinkingLattice<BasicDecoration>& HD, const int start_node)
 {
-   graph::BFSiterator< Graph<Directed>, graph::Reversed<pm::True> > n_it(HD.graph(), start_node);
+   graph::BFSiterator<Graph<Directed>, graph::TraversalDirectionTag<int_constant<-1>>> n_it(HD.graph(), start_node);
    const int bottom_node=HD.bottom_node();
    HD.graph().out_edges(start_node).clear();
    Set<int> to_delete;
@@ -83,6 +84,7 @@ void remove_facet_node(HasseDiagram& HD, const int start_node)
    }
 
    HD.delete_nodes(to_delete);
+   HD.set_implicit_top_rank();
 }
 
 } }

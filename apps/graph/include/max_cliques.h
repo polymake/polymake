@@ -98,9 +98,9 @@ max_independent_sets(const GenericGraph<GraphTop, Undirected>& G) { return ~G; }
 
 namespace pm {
 template <typename Graph>
-struct check_iterator_feature<polymake::graph::max_cliques_iterator<Graph>, end_sensitive> : True {};
+struct check_iterator_feature<polymake::graph::max_cliques_iterator<Graph>, end_sensitive> : std::true_type {};
 template <typename Graph>
-struct check_iterator_feature<polymake::graph::max_cliques_iterator<Graph>, rewindable> : True {};
+struct check_iterator_feature<polymake::graph::max_cliques_iterator<Graph>, rewindable> : std::true_type {};
 
 }
 

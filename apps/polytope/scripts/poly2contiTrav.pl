@@ -96,7 +96,6 @@ sub eqSys2ContiTrav {
 	@vars = ( @vars, "t");
     }
     @vars=( @vars , map { "x$_" } (1..$eqs->cols-1) );
-    my $r=new Ring(@vars);
     my @ideal;
     my $isRHS=1;# the first col is the right hand side of eqs
     my $bPoly;
@@ -111,21 +110,21 @@ sub eqSys2ContiTrav {
 	}
 	$monomVec=$monomVec|(new Vector<Int>(zero_vector<Int>($eqs->cols)));
 	if($isRHS){
-	    $bPoly=new Monomial($monomVec,$r);
+	    $bPoly=new Polynomial(vector2row($monomVec),ones_vector<Rational>(1));
 	    $isRHS=0;
 	} else {
 	my $x_i_pos=$eqs->rows+(1-$isNonNeg)+($j-1);
 	my $x_i_mono=new Vector<Int>(unit_vector<Int>($monomVec->dim,$x_i_pos));
 	my $polyMatrix=new Matrix<Int>($monomVec,$x_i_mono);
 	my $coeffs=new Vector<Rational>(1,-1);
-	my $poly=new Polynomial($polyMatrix,$coeffs,$r);
+	my $poly=new Polynomial($polyMatrix,$coeffs);
 	push(@ideal,$poly);
 	}
     }
 
     if(!$isNonNeg){	
 	my $negMonoVec=new Vector<Int>((ones_vector<Int>($eqs->rows+1))|(zero_vector<Int>($eqs->cols)));
-	my $negMono=new Monomial($negMonoVec,$r);
+	my $negMono=new Polynomial(vector2row($negMonoVec),ones_vector<Rational>(1));
 	my $negPoly=$negMono-1;
 	push(@ideal,$negPoly);
     }
@@ -138,7 +137,7 @@ sub eqSys2ContiTrav {
 # from the ideal and the RHS monomial generated in 'eqSys2ContiTrav'.
 # The given cost vector c gives rise to an appropriate monomial ordering.
 sub generateContiTravSingularInput {
-    my ($varsRef,$xcols,$c,$idealRef,$bPoly,$filename)=@_; #FIXME: pass ring if it is possible to get number of variables in some way
+    my ($varsRef,$xcols,$c,$idealRef,$bPoly,$filename)=@_;
     my @ideal=@$idealRef;
     my @vars=@$varsRef;
     open(OUT, ">$filename")

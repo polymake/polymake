@@ -1,44 +1,130 @@
 Changelog
 
-
-=== Polymake 3.0r2 ===
+=== Polymake 3.1 ===
 
 -- distribution --
- * support for perl 5.24
- * support for gcc 6 (add no-delete-null-pointer-checks)
- * workaround for compile error under clang 3.8 / xcode 7.3
- * warn when neither bliss nor nauty are enabled
- * include nauty interface in minimal tarball
+ * polymake now requires C++ 14 to compile, in particular we need gcc >= 5 or clang >= 3.4 and perl >= 5.16.
+ * support for perl 5.24.
+ * fix endianness issue and update struct magic_state (thanks Jerry James)
+ * support for gcc 6 and clang up to 4.0.
+ * workaround for compile error under clang 3.8 / xcode 7.3.
+ * fix incompatibility of the Integer type with libnormaliz on 32bit platforms.
+ * fix several other minor compilation issues.
+ * ship test-driver to allow example-code to be tested in the distribution
+ * boost is now required for the polymake core (for permlib)
+ * perl module Term-ReadKey is now a requirement
+
+-- interfaces --
+ * include beta jupyter-polymake kernel (thanks: Sebastian Gutsche)
+ * include nauty interface in minimal tarball.
+ * warn when neither bliss nor nauty are enabled.
+ * polydb interface is now in the polymake core
+ * updated bundled permlib to 0.2.9
+ * improved interfaces for permlib and sympol:
+   - both have (experimental) support for using non-bundled installations
+   - permlib is now a core requirement
+   - bundled:group disbanded into bundled:sympol / core functionality
+   - bundled permlib headers are now installed with polymake unless external permlib is used
+ * improved handling of matrices with zero cols xor zero rows in convex hull interfaces
+ * improved singular configuration to support pkg-config (e.g. on Ubuntu)
 
 -- general --
- * several small fixes in handling of subobjects and specializations
- * several other minor bugfixes
+ * polymake can now generate xml schemes and validate the data files against those
+ * completely refactored Polynomial related data types:
+   - rings are now uniquely identified by coefficient type, exponent type and number of variables
+   - variable names are only used for pretty printing and parsing (and can be customized)
+   - improved parser for polynomials
+   - types Monomial, Term and Ring are gone
+ * improved visualization with graphviz and ThreeJS.
+ * new and improved visualization client svg.
+ * basic support for output of 3-polytopes in STL file format (common in 3d printing).
+ * new mechanism for "twin" properties (such as Matroid.DUAL).
+ * many more example code fragments, in particular for construction of big object types.
+ * improvements for map and set types:
+	- only accept ordered types as keys / elements
+ * various bugfixes and code optimizations.
+ * fixes for find_permutation with unordered types
+ * fixes for the TikZ visualization:
+   - for drawing PointConfigurations.
+   - for drawing lattice points in polytopes.
+   - for drawing subobjects
+ * fixes in singular value decomposition
 
 -- fan --
- * fix in regularity client (thanks: Sebastian Gutsche)
+ * new big object types SubdivisionOfPoints and SubdivisionOfVectors.
+ * new subobject SubdivisionOfPoints.TIGHT_SPAN with method VISUAL_METRIC_TIGHT_SPAN for metric tight spans.
+ * new functions metric_extended_tight_span and metric_tight_span
+ * new client to compute the k-skeleton of a fan
+ * secondary_cone is now a method of SubdivisionOfVectors.
+ * improved heuristics for planar nets of 3-polytopes.
+ * improved visualization for fans
+ * fix in regularity client (thanks: Sebastian Gutsche).
+ * another fix in regularity client.
+ * fixed issues with empty matrices
+
+-- graph --
+ * completely rewritten and modularized Hasse diagram data types and functions
+ * new client all_spanningtrees, which finds all spanning trees in a connected graph.
+ * new properties for bi-,weak and strong connectedness of a (directed) graph.
+ * new property EIGENVALUES_LAPLACIAN, containing the eigenvalues of the discrete Laplacian of a graph.
+ * new client for graph homomorphisms
+ * fixes in hungarian method and tropical::tdet
+
+
+-- group --
+ * major refactoring of symmetries on objects:
+   - new big object types Action, PermutationAction, PermutationActionOnSets, ImplicitActionOnSet, MatrixGroupActionOnVector.
+   - objects with symmetries now contain multiple subobjects of type Group, which in turn can contain different kinds of Actions as properties.
+ * boost_dynamic_bitset replaced with polymake Bitset
+
+-- ideal --
+ * new client pluecker_ideal, computing the Plücker ideal of the Grassmannian.
+ * new property INITIAL_FORMS in Ideal.
 
 -- matroid --
- * fix in dual matroid client
+ * refactoring of dual matroids:
+   - each matroid has a twin property DUAL, which is a matroid again.
+   - there are various rules, which compute properties in a matroid from its dual.
+ * new big object type ValuatedMatroid.
+ * added many new properties to Matroid: AUTOMORPHISM_GROUP, CATENARY_G_INVARIANT, G_INVARIANT, IDENTICALLY_SELF_DUAL, LAMINAR, LATTICE_OF_CYCLIC_FLATS, N_CONNECTED_COMPONENTS, N_CYCLIC_FLATS, N_FLATS, NESTED, SELF_DUAL, SIMPLE, SPLIT, SPLIT_FLACETS, SPARSE_PAVING, TRANSVERSAL, UNIFORM.
+ * various clients for matroid operations: various lifts and extensions, truncation, union, intersection.
+ * replaced client "oxley_matroids" by client "special_matroids", where matroids can be selected by name.
+ * matroids can now be defined via their flats or cyclic flats.
 
 -- polytope --
- * fix for degenerate hypersimplices (thanks: Charles Wang)
- * fix in separating hyperplane client
+ * updated bundled extension libnormaliz to version 3.1.3.
+ * new properties in Polytope for excess vertex and facet degree.
+ * new client face to create Polytope from a face of a polytope
+ * new visualization for cones
+ * revived OrbitPolytope type as object specialization PointOrbit
+ * improved handling of matrices with zero cols xor zero rows
+ * improved initial rules for polytopes and cones
+ * improved computation of separating hyperplanes, which allows for weak separation as well.
+ * improved computation of whether a point lies in (the interior of) a polytope. In particular, this works now for generic polytopes, not just over the rationals.
+ * removed Object TightSpan. Functionality is now in fan:
+   - moved functions min_metric, max_metric, thrackle_metric into application fan.
+   - splitstree is moved to fan as a userfunction
+ * fix for degenerate hypersimplices (thanks: Charles Wang).
+ * fixes for solving LPs with lineality
+ * fixes in TOPCOM interface.
+ * fixed loading of old data files with OrbitPolytope and SymmetricPolytope
 
+-- topaz --
+ * homology can be computed for arbitrary chaincomplexes, represented by their boundary matrices.
+ * new clients for computing Vietoris-Rips complexes and filtrations.
+ * new client for computing persistent homology, both over arbitrary fields and the integers.
+ * new function to compute boundary matrices of simplicial complexes
+ * new function to compute betti numbers of chaincomplexes and simplicial complexes
+ * added property VERTEX_MAP for subcomplexes (e.g. BOUNDARY)
+ * various fixes and improvements regarding subcomplexes
 
-=== Polymake 3.0r1 ===
-
--- distribution --
- * fix incompatibility of the Integer type with libnormaliz on 32bit platforms
- * fix several other minor compilation issues
-
--- general --
- * fixes for the TikZ visualization of pointsets:
-     - for drawing PointConfigurations
-     - for drawing lattice points in polytopes
- * fixes in handling of nested Ring types
-
--- polytope --
- * fixes in TOPCOM interface
+-- tropical --
+ * renamed tropical::Cone to tropical::Polytope.
+ * new clients for tropical distance, perimeter, Cramer's rule and variants of the determinant.
+ * new clients for computing the star of a cycle in bundled extension atint.
+ * new big object type MatroidRingCycle in bundled extension atint, which represents linear combinations of matroid fans.
+ * new client for computing tropical linear spaces of arbitrary valuated matroids.
+ * refactoring of function linear_space
 
 
 === Polymake 3.0 ===

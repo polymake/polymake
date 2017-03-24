@@ -1,0 +1,141 @@
+#  Copyright (c) 1997-2016
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object PermutationAction {
+
+   # Strong generating set with respect to [[BASE]].
+   property STRONG_GENERATORS : Array<Array<Int>>;
+
+   # The number of [[STRONG_GENERATORS]].
+   property N_STRONG_GENERATORS : Int;
+
+   # A base for [[STRONG_GENERATORS]].
+   property BASE : Array<Int>;
+
+
+
+# Transversals along the stabilizer chain. 
+   property TRANSVERSALS : Array<Array<Int>>;
+
+# The number of group elements per transversal.
+   property TRANSVERSAL_SIZES : Array<Int>;
+
+
+   rule initial : {
+      my $g=$this->lookup("GENERATORS");
+      my $length=$g->size && $g->[0]->size;
+      foreach (@$g) {
+         if ($_->size != $length) {
+            croak( "all generators must have the same length" );
+         }
+         my %vals;
+         foreach my $entry (@$_) {
+            if ($entry<0 || $entry>=$length) {
+               croak( "each generator must be a permutation of (0,...,DEGREE-1)" );
+            }
+            $vals{$entry}++;
+         }
+         if (keys %vals != $length) {
+            croak( "each generator must be a permutation of (0,...,DEGREE-1)" );
+         }
+      }
+   }
+   precondition : exists(GENERATORS);
+
+   rule DEGREE : GENERATORS {
+      $this->DEGREE=$this->GENERATORS->[0]->size;
+   }
+
+#counts the number of elements in each transversal that are not null
+   rule TRANSVERSAL_SIZES : TRANSVERSALS {
+      my $trans_sizes=new Array<Int>($this->TRANSVERSALS->size);
+      for(my $i=0;$i<$this->TRANSVERSALS->size;$i++){
+         my $trans_size=1;
+         my $single_trans=$this->TRANSVERSALS->[$i];
+         for(my $j=0;$j<$single_trans->size;$j++){
+            if($single_trans->[$j]>=0){
+               $trans_size++;
+            }
+         }
+         $trans_sizes->[$i]=$trans_size;
+      }
+      $this->TRANSVERSAL_SIZES=$trans_sizes;
+   }
+
+   rule CHARACTER : CONJUGACY_CLASS_REPRESENTATIVES {
+       $this->CHARACTER = new Array<Int>(map { n_fixed_points($_) } @{$this->CONJUGACY_CLASS_REPRESENTATIVES});
+   }
+   precondition : !exists(EXPLICIT_ORBIT_REPRESENTATIVES);
+
+   rule CHARACTER : GENERATORS, CONJUGACY_CLASS_REPRESENTATIVES, EXPLICIT_ORBIT_REPRESENTATIVES {
+       $this->CHARACTER = implicit_character($this);
+   }
+
+   rule CONJUGACY_CLASSES : GENERATORS, CONJUGACY_CLASS_REPRESENTATIVES {
+      $this->CONJUGACY_CLASSES(temporary) = conjugacy_classes($this->GENERATORS, $this->CONJUGACY_CLASS_REPRESENTATIVES);
+   }
+
+   rule ORBITS : GENERATORS {
+       $this->ORBITS = orbits_of_action($this);
+   }
+
+   rule N_ORBITS : ORBITS {
+       $this->N_ORBITS = $this->ORBITS->size();
+   }
+
+   rule N_INPUT_RAYS_GENERATORS : INPUT_RAYS_GENERATORS {
+       $this->N_INPUT_RAYS_GENERATORS = $this->INPUT_RAYS_GENERATORS->rows;
+   }
+
+   rule N_RAYS_GENERATORS : RAYS_GENERATORS {
+       $this->N_RAYS_GENERATORS = $this->RAYS_GENERATORS->rows;
+   }
+
+   rule N_INEQUALITIES_GENERATORS : INEQUALITIES_GENERATORS {
+       $this->N_INEQUALITIES_GENERATORS = $this->INEQUALITIES_GENERATORS->rows;
+   }
+
+   rule N_EQUATIONS_GENERATORS : EQUATIONS_GENERATORS {
+       $this->N_EQUATIONS_GENERATORS = $this->EQUATIONS_GENERATORS->rows;
+   }
+
+   rule ORBIT_REPRESENTATIVES : GENERATORS {
+       $this->ORBIT_REPRESENTATIVES = orbit_representatives($this->GENERATORS);
+   }
+
+   rule PERMUTATION_TO_ORBIT_ORDER : GENERATORS, ORBIT_REPRESENTATIVES {
+       $this->PERMUTATION_TO_ORBIT_ORDER = to_orbit_order($this->GENERATORS, $this->ORBIT_REPRESENTATIVES);
+   }
+
+}
+
+user_function induced_action(PermutationAction, Array<Set<Int>>) {
+    my ($action, $domain) = @_;
+    my $iod = index_of($domain);
+    my $ia = new PermutationActionOnSets;
+    map {
+        if (defined($action->$_)) {
+            $ia->$_ = induced_representation_gens($action->$_, $domain, $iod);
+        }
+    } ('GENERATORS', 'CONJUGACY_CLASS_REPRESENTATIVES');
+    return $ia;
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

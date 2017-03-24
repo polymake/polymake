@@ -46,7 +46,7 @@ sub run_qhull {
 
    # toggle the signs and move the facet offset in the first position
    for (my $i=0; $i<$n; ++$i) {
-      $_=<$Q> or die "premature end of input\n";
+      defined($_=<$Q>) or die "premature end of input\n";
       my $f=new Vector<Float>($_);
       @{$FACETS->[$i]}=(-$f->[$d], @{ -($f->slice(0,$d)) });
    }
@@ -55,7 +55,7 @@ sub run_qhull {
    /(\d+)/ && $1==$n or die "inconsistency in qhull output\n";
    my @VIF; $#VIF=$n-1;
    for (my $i=0; $i<$n; ++$i) {
-      $_=<$Q> or die "premature end of input\n";
+      defined($_=<$Q>) or die "premature end of input\n";
       chomp;
       $VIF[$i]="{$_}";
    }
@@ -72,7 +72,7 @@ rule qhull.convex_hull.primal: FACETS, N_FACETS, VERTICES_IN_FACETS : VERTICES {
 precondition : BOUNDED;
 precondition : FULL_DIM;
 weight 4.10;
-permutation : FacetPerm;
+incurs FacetPerm;
 
 # @notest
 rule qhull.convex_hull.primal: FACETS, N_FACETS, POINTS_IN_FACETS : POINTS {
@@ -84,7 +84,7 @@ rule qhull.convex_hull.primal: FACETS, N_FACETS, POINTS_IN_FACETS : POINTS {
 precondition : BOUNDED;
 precondition : FULL_DIM;
 weight 4.10;
-permutation : FacetPerm;
+incurs FacetPerm;
 
 }
 

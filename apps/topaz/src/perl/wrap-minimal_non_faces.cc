@@ -11,15 +11,20 @@
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
+--------------------------------------------------------------------------------
 */
+
+#include "polymake/graph/Decoration.h"
 
 namespace polymake { namespace topaz { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::Array<pm::Set<int, pm::operations::cmp>, void> (polymake::graph::HasseDiagram) ) {
+   template <typename T0, typename T1>
+   FunctionInterface4perl( minimal_non_faces_T_x, T0,T1 ) {
       perl::Value arg0(stack[0]);
-      IndirectWrapperReturn( arg0 );
-   }
-   FunctionWrapperInstance4perl( pm::Array<pm::Set<int, pm::operations::cmp>, void> (polymake::graph::HasseDiagram) );
+      WrapperReturn( (minimal_non_faces<T0,T1>(arg0)) );
+   };
 
+   FunctionInstance4perl(minimal_non_faces_T_x, graph::lattice::BasicDecoration, graph::lattice::Sequential);
+   FunctionInstance4perl(minimal_non_faces_T_x, graph::lattice::BasicDecoration, graph::lattice::Nonsequential);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

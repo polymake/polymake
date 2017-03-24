@@ -28,16 +28,11 @@
 #include "polymake/Polynomial.h"
 #include "polymake/TropicalNumber.h"
 #include "polymake/tropical/polynomial_tools.h"
-#include "polymake/tropical/LoggingPrinter.h"
 
 
 namespace polymake { namespace tropical {
 
-	FunctionTemplate4perl("evaluate_polynomial<Addition>(Polynomial<TropicalNumber<Addition> >,Vector)");
+	FunctionTemplate4perl("evaluate_polynomial<Addition>(Polynomial<TropicalNumber<Addition>>,Vector)");
 	FunctionTemplate4perl("polynomial_degree<Coefficient>(Polynomial<Coefficient>)");
 	FunctionTemplate4perl("is_homogeneous<Coefficient>(Polynomial<Coefficient>)");
-	FunctionTemplate4perl("tolerant_addition<Coefficient>(Polynomial<Coefficient>, Polynomial<Coefficient>)");
-	FunctionTemplate4perl("tolerant_multiplication<Coefficient>(Polynomial<Coefficient>, Polynomial<Coefficient>)");
-
-}}
-
+} }

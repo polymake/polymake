@@ -30,11 +30,11 @@ namespace polymake { namespace tropical {
 			if (k < 1 || k > d)
 				throw std::runtime_error("hypersimplex: 1 <= k <= d required");
 
-			perl::Object p(perl::ObjectType::construct<Addition>("Cone"));
+			perl::Object p(perl::ObjectType::construct<Addition>("Polytope"));
 			p.set_description() << "tropical (" << k << "," << d << ")-hypersimplex" << endl;
 
 			// number of vertices
-			const int n=Integer::binom(d+1,k).to_int();
+			const int n(Integer::binom(d+1,k));
 
 			Matrix<TropicalNumber<Addition> > Vertices(n,d+1);
 				Vertices.fill( TropicalNumber<Addition>::one());
@@ -56,7 +56,7 @@ namespace polymake { namespace tropical {
 			"# @param Int d the dimension"
 			"# @param Int k the number of +/-1 entries"
 			"# @tparam Addition Max or Min"
-			"# @return Cone<Addition>",
+			"# @return Polytope<Addition>",
 			"hypersimplex<Addition>($;$=1)");
 } }
 

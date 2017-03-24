@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,6 +13,7 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+# @category Geometry
 object Cone {
 
 rule N_INPUT_RAYS : INPUT_RAYS {
@@ -77,19 +78,13 @@ rule FULL_DIM : CONE_AMBIENT_DIM, CONE_DIM {
 }
 weight 0.1;
 
-rule CONE_AMBIENT_DIM : {
-  $this->CONE_AMBIENT_DIM=$this->lookup_ambient_dim(undef) // 0;
-}
-precondition : defined(RAYS | INPUT_RAYS | LINEALITY_SPACE | INPUT_LINEALITY | INEQUALITIES | FACETS | EQUATIONS | LINEAR_SPAN);
-weight 0.1;
-
 rule CONE_DIM : CONE_AMBIENT_DIM, LINEAR_SPAN {
    $this->CONE_DIM= $this->CONE_AMBIENT_DIM - $this->LINEAR_SPAN->rows;
 }
 weight 0.1;
 
-rule LINEAR_SPAN : {
-   $this->LINEAR_SPAN=new Matrix<Scalar>;
+rule LINEAR_SPAN : CONE_AMBIENT_DIM {
+   $this->LINEAR_SPAN=new Matrix<Scalar>(0, $this->CONE_AMBIENT_DIM);
 }
 precondition : FULL_DIM;
 weight 0.1;
@@ -175,28 +170,23 @@ rule cone_only : LINEALITY_SPACE : FACETS | INEQUALITIES {
       $F=$this->FACETS | INEQUALITIES;
    }
    my $cmp=$this->prepare_computations;
-   if ($F->rows()) {
-       $this->LINEALITY_SPACE=common::null_space($F);
-   } else {
-       $this->LINEALITY_SPACE=unit_matrix<Scalar>($this->CONE_AMBIENT_DIM);
-   }
+   $this->LINEALITY_SPACE=common::null_space($F);
 }
-precondition : CONE_AMBIENT_DIM {
-   $this->CONE_AMBIENT_DIM>=0;
-}
+precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM >= 1 }
 weight 1.10;
 
-rule LINEALITY_DIM, LINEALITY_SPACE : {
+rule LINEALITY_DIM, LINEALITY_SPACE : CONE_AMBIENT_DIM {
    $this->LINEALITY_DIM=0;
-   $this->LINEALITY_SPACE=new Matrix<Scalar>;
+   $this->LINEALITY_SPACE=new Matrix<Scalar>(0, $this->CONE_AMBIENT_DIM);
 }
 precondition : POINTED;
-weight 0.1;
+weight 0.10;
 
-rule ONE_RAY : RAYS, N_RAYS {
-  $this->ONE_RAY= $this->N_RAYS ? $this->RAYS->[0] : undef;
+rule ONE_RAY : RAYS {
+  $this->ONE_RAY=$this->RAYS->[0];
 }
-weight 0.1;
+precondition : N_RAYS;
+weight 0.10;
 
 rule cone_only : REL_INT_POINT : RAYS {
    $this->REL_INT_POINT=barycenter($this->RAYS);
@@ -280,46 +270,56 @@ user_method FACET_DEGREES = DUAL_GRAPH.NODE_DEGREES;
 
 # @category Backward compatibility
 # The diameter of the [[GRAPH]] of the cone
+# @return Int
 user_method DIAMETER = GRAPH.DIAMETER;
 
 # @category Backward compatibility
 # The diameter of the [[DUAL_GRAPH]]
+# @return Int
 user_method DUAL_DIAMETER = DUAL_GRAPH.DIAMETER;
 
 # @category Backward compatibility
 # True if the [[GRAPH]] contains no triangle
+# @return Bool
 user_method TRIANGLE_FREE = GRAPH.TRIANGLE_FREE;
 
 # @category Backward compatibility
 # True if the [[DUAL_GRAPH]] contains no triangle
+# @return Bool
 user_method DUAL_TRIANGLE_FREE = DUAL_GRAPH.TRIANGLE_FREE;
 
 # @category Combinatorics
 # True if the [[GRAPH]] is bipartite
+# @return Bool
 user_method EVEN = GRAPH.BIPARTITE;
 
 # @category Combinatorics
 # True if the [[DUAL_GRAPH]] is bipartite
+# @return Bool
 user_method DUAL_EVEN = DUAL_GRAPH.BIPARTITE;
 
 # @category Topology
 # Difference of the black and white nodes if the [[GRAPH]] is [[BIPARTITE]].
 # Otherwise -1.
+# @return Int
 user_method GRAPH_SIGNATURE = GRAPH.SIGNATURE;
 
 # @category Topology
 # Difference of the black and white nodes if the [[DUAL_GRAPH]] is [[BIPARTITE]].
 # Otherwise -1.
+# @return Int
 user_method DUAL_GRAPH_SIGNATURE = DUAL_GRAPH.SIGNATURE;
 
 # @category Combinatorics
 # Connectivity of the [[GRAPH]]
 # this is the minimum number of nodes that have to be removed from the [[GRAPH]] to make it disconnected
+# @return Int
 user_method CONNECTIVITY = GRAPH.CONNECTIVITY;
 
 # @category Combinatorics
 # Connectivity of the [[DUAL_GRAPH]]
 # this is the minimum number of nodes that have to be removed from the [[DUAL_GRAPH]] to make it disconnected
+# @return Int
 user_method DUAL_CONNECTIVITY = DUAL_GRAPH.CONNECTIVITY;
 
 
@@ -338,7 +338,7 @@ rule N_RAY_FACET_INC : F2_VECTOR {
 }
 weight 0.1;
 
-rule F2_VECTOR : HASSE_DIAGRAM, COMBINATORIAL_DIM {
+rule F2_VECTOR : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE, COMBINATORIAL_DIM {
   my $d=$this->COMBINATORIAL_DIM;
   if ( $d < 0 ) {  # polytope empty or point
      $this->F2_VECTOR=undef;
@@ -356,12 +356,12 @@ rule F_VECTOR : F2_VECTOR {
 precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM >= 1 }
 weight 0.10;
 
-rule F_VECTOR : HASSE_DIAGRAM {
+rule F_VECTOR : HASSE_DIAGRAM.N_NODES, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
   my $n=$this->HASSE_DIAGRAM->N_NODES;
   if ( $n >= 2 ) {
-      my @d=@{$this->HASSE_DIAGRAM->DIMS};
-      my @f=map { $d[$_]-$d[$_-1] } 1..$#d;
-      $this->F_VECTOR= $this->HASSE_DIAGRAM->top_node ? \@f : [ reverse @f ];
+     my $rk = $this->HASSE_DIAGRAM->rank();
+     my @f= map { scalar(@{$this->HASSE_DIAGRAM->nodes_of_rank($_)}) } (1 .. $rk-1);
+     $this->F_VECTOR= \@f;
   }
 }
 weight 0.10;
@@ -410,8 +410,8 @@ rule DUAL_GRAPH.ADJACENCY : RAYS_IN_FACETS {
 }
 weight 3.10;
 
-rule HASSE_DIAGRAM : RAYS_IN_FACETS {
-   $this->HASSE_DIAGRAM=hasse_diagram($this->RAYS_IN_FACETS);
+rule HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE : RAYS_IN_FACETS, COMBINATORIAL_DIM {
+   $this->HASSE_DIAGRAM=hasse_diagram($this->RAYS_IN_FACETS, $this->COMBINATORIAL_DIM+1);
 }
 weight 6.20;
 
@@ -420,17 +420,13 @@ rule COMBINATORIAL_DIM : RAYS_IN_FACETS {
 }
 weight 3.10;
 
-rule COMBINATORIAL_DIM : HASSE_DIAGRAM {
+rule COMBINATORIAL_DIM : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    $this->COMBINATORIAL_DIM=$this->HASSE_DIAGRAM->dim;
 }
 weight 0.1;
 
-rule cone_only : GRAPH.ADJACENCY : HASSE_DIAGRAM {
+rule cone_only : GRAPH.ADJACENCY : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    $this->GRAPH->ADJACENCY=vertex_graph($this->HASSE_DIAGRAM);
-}
-
-rule cone_only : DUAL_GRAPH.ADJACENCY : HASSE_DIAGRAM {
-   $this->DUAL_GRAPH->ADJACENCY=facet_graph($this->HASSE_DIAGRAM);
 }
 
 rule RAY_SIZES : RAYS_IN_FACETS {
@@ -467,15 +463,6 @@ rule LINEAR_SPAN : RAYS | INPUT_RAYS {
 }
 weight 1.10;
 
-# the following rule is wrong (since INPUT_RAYS are not addressed); moreover it should not depend on mixed input
-# replace by something sensible or delete altogether
-#
-#rule LINEALITY_SPACE : INPUT_LINEALITY, RAYS {
-# the RAYS must exist, but they are not processed in this rule
-#  $this->LINEALITY_SPACE = $this->INPUT_LINEALITY->minor(basis_rows($this->INPUT_LINEALITY),All);
-#}
-#weight 1.10;
-
 rule RAYS_IN_FACETS : RAYS, FACETS {
    my $cmp=$this->prepare_computations;
    $this->RAYS_IN_FACETS=incidence_matrix($this->FACETS, $this->RAYS);
@@ -496,14 +483,14 @@ rule RAYS_IN_FACETS, RAYS, LINEALITY_SPACE : INPUT_RAYS_IN_FACETS, INPUT_RAYS {
    compress_incidence_primal($this);
    $this->remove("INPUT_RAYS_IN_FACETS");
 }
-permutation : VertexPerm;
+incurs VertexPerm;
 
 rule RAYS_IN_FACETS, FACETS, LINEAR_SPAN : RAYS_IN_INEQUALITIES, INEQUALITIES {
    my $cmp=$this->prepare_computations;
    compress_incidence_dual($this);
    $this->remove("RAYS_IN_INEQUALITIES");
 }
-permutation : FacetPerm;
+incurs FacetPerm;
 
 rule FACETS, LINEAR_SPAN : RAYS, LINEALITY_SPACE, RAYS_IN_FACETS {
    my $cmp=$this->prepare_computations;
@@ -547,17 +534,60 @@ rule FTR_CYCLIC_NORMAL, NEIGHBOR_RAYS_CYCLIC_NORMAL : CONE_DIM, FACETS, RAYS_IN_
 precondition : POINTED;
 precondition : CONE_DIM { $this->CONE_DIM>=3 && $this->CONE_DIM<=4 }
 
+# @category Combinatorics
+# The interior //d//-dimensional simplices of a cone of combinatorial dimension //d//
+# symmetries of the cone are NOT taken into account
+rule MAX_INTERIOR_SIMPLICES : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS {
+    $this->MAX_INTERIOR_SIMPLICES = max_interior_simplices($this);
+}
+
+# @category Combinatorics
+# The interior //d-1//-dimensional simplices of a cone of combinatorial dimension //d//
+# symmetries of the cone are NOT taken into account
+rule INTERIOR_RIDGE_SIMPLICES, MAX_BOUNDARY_SIMPLICES : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS {
+    my $pair=interior_and_boundary_ridges($this);
+    $this->INTERIOR_RIDGE_SIMPLICES = $pair->first;
+    $this->MAX_BOUNDARY_SIMPLICES = $pair->second;
+}
+
+# @category Combinatorics
+# A matrix whose rows contain the cocircuit equations of a cone C
+# symmetries of the cone are NOT taken into account
+rule COCIRCUIT_EQUATIONS : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, INTERIOR_RIDGE_SIMPLICES, MAX_INTERIOR_SIMPLICES {
+    $this->COCIRCUIT_EQUATIONS = cocircuit_equations($this->COMBINATORIAL_DIM, $this->RAYS, $this->RAYS_IN_FACETS, $this->INTERIOR_RIDGE_SIMPLICES, $this->MAX_INTERIOR_SIMPLICES);
+}
+
+# @category Combinatorics
+# A matrix whose rows contain the cocircuit equations of a cone C
+# symmetries of the cone are NOT taken into account
+rule FOLDABLE_COCIRCUIT_EQUATIONS : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, INTERIOR_RIDGE_SIMPLICES, MAX_INTERIOR_SIMPLICES {
+    $this->FOLDABLE_COCIRCUIT_EQUATIONS = foldable_cocircuit_equations($this->COMBINATORIAL_DIM, $this->RAYS, $this->RAYS_IN_FACETS, $this->INTERIOR_RIDGE_SIMPLICES, $this->MAX_INTERIOR_SIMPLICES);
+}
+
+# @category Combinatorics
+# The vertex degrees add up to twice the number of edges.
+rule EXCESS_RAY_DEGREE : N_RAYS, GRAPH.N_EDGES, CONE_DIM {
+  $this->EXCESS_RAY_DEGREE = 2 * $this->GRAPH->N_EDGES - $this->N_VERTICES * ($this->CONE_DIM-1);
+}
+
+# @category Combinatorics
+# The vertex degrees add up to twice the number of edges.
+rule EXCESS_FACET_DEGREE : N_FACETS, DUAL_GRAPH.N_EDGES, CONE_DIM {
+  $this->EXCESS_FACET_DEGREE = 2 * $this->DUAL_GRAPH->N_EDGES - $this->N_FACETS * ($this->CONE_DIM-1);
+}
+
 # @category Geometry
 # returns the dimension of the ambient space of the cone
+# @return Int
 user_method AMBIENT_DIM {
   my ($self)=@_;
   return $self->CONE_AMBIENT_DIM;
 }
 
-
 # @category Geometry
 # returns the geometric dimension of the cone (including the lineality space)
 # for the dimension of the pointed part ask for [[COMBINATORIAL_DIM]]
+# @return Int
 user_method DIM {
   my ($self)=@_;
   if (!defined ($self->lookup("LINEALITY_SPACE | INPUT_LINEALITY | INPUT_RAYS | RAYS | INEQUALITIES | EQUATIONS | FACETS | LINEAR_SPAN"))) {
@@ -566,37 +596,47 @@ user_method DIM {
   return $self->CONE_DIM;
 }
 
-
-# @category Combinatorics
-# For a given set of vertices compute the smallest face F containing them all.
-# Returns a Pair<Set,Set> where the first is the set of vertices of F, while the second is the set of facets containing F.
-# Example: $c=cube(3); print rank($c->VERTICES->minor($c->face([0,1])->first(),All))-1;
-# computes the dimension of the face of the 3-cube which is spanned by the vertices 0 and 1.
-user_method face {
-   my ($self,$some_vertices)=@_;
-   $some_vertices=new Set($some_vertices); # be flexible; take anything which can be interpreted as a Set
-   my $vif=$self->RAYS_IN_FACETS;
-   my $facets_containing_given_vertices; # will become of type Set
-   if ($some_vertices->size()==0) {
-      $facets_containing_given_vertices=sequence(0,$self->N_FACETS);
-   } else {
-      my @vertex_list=@{$some_vertices};
-      $facets_containing_given_vertices=new Set($vif->col($vertex_list[0]));
-      for (my $i=1; $i<$some_vertices->size(); ++$i) {
-         $facets_containing_given_vertices*=$vif->col($vertex_list[$i]);
+# @category Geometry
+# checks whether a given point is contained in a cone
+# @param Vector<Scalar> v point
+# @return Bool
+user_method contains {
+  my ($self,$v)=@_;
+  my $zero=0;
+  if (defined (my $f=$self->lookup("FACETS | INEQUALITIES"))) {
+    if (defined (my $ah=$self->lookup("LINEAR_SPAN | INPUT_LINEALITY")) ) {
+      if ( $ah->rows ) {
+        my $b=$ah*$v;
+        foreach (@{$b}) { if ( $_ != $zero ) { return 0; } }
       }
-   }
-   my $vertices_in_facets_found; # will become of type Set
-   if ($facets_containing_given_vertices->size()==0) {
-      $vertices_in_facets_found=sequence(0,$self->N_VERTICES);
-   } else {
-      my @facet_list=@{$facets_containing_given_vertices};
-      $vertices_in_facets_found=new Set($vif->row($facet_list[0]));
-      for (my $i=1; $i<$facets_containing_given_vertices->size(); ++$i) {
-         $vertices_in_facets_found*=$vif->row($facet_list[$i]);
+    }
+    my $b=$f*$v;
+    foreach (@{$b}) { if ( $_ < $zero ) { return 0; } }
+    return 1;
+  } else {
+    return cone_contains_point($self,$v,in_interior=>0);
+  }
+}
+		      
+# @category Geometry
+# checks whether a given point is contained in the strict interior of a cone
+# @param Vector<Scalar> v point
+# @return Bool
+user_method contains_in_interior {
+  my ($self,$v)=@_;
+  if (defined (my $f=$self->lookup("FACETS | INEQUALITIES"))) {
+    if (defined (my $ah=$self->lookup("LINEAR_SPAN | INPUT_LINEALITY")) ) {
+      if ( $ah->rows ) {
+        my $b=$ah*$v;
+        foreach (@{$b}) { if ( $_ != 0 ) { return 0; } }
       }
-   }
-   return new Pair<Set,Set>($vertices_in_facets_found,$facets_containing_given_vertices);
+    }
+    my $b=$f*$v;
+    foreach (@{$b}) { if ( $_ <= 0 ) { return 0; } }
+    return 1;
+  }else {
+    return cone_contains_point($self,$v,in_interior=>1);
+  }
 }
 
 }
@@ -605,25 +645,23 @@ user_method face {
 # Create a simplicial complex as a barycentric subdivision of a given cone or polytope.
 # Each vertex in the new complex corresponds to a face in the old complex.
 # @param Cone c input cone or polytope
-# @option Bool relabel generate vertex labels from the faces of the original complex; default true
+# @option Bool no_labels Do not generate [[VERTEX_LABELS]] from the faces of the original cone. default: 0
 # @option Bool geometric_realization create a [[topaz::GeometricSimplicialComplex]]; default is true
 # @return topaz::SimplicialComplex
-user_function barycentric_subdivision<Scalar>(Cone<Scalar> { relabel=>1, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", geometric_realization=>1, coord_section=>"RAYS" }) {
-  topaz::barycentric_subdivision_impl<Scalar>(@_);
+user_function barycentric_subdivision<Scalar>(Cone<Scalar> { no_labels=>0, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", geometric_realization=>1, coord_section=>"RAYS", ignore_top_node=>0 }) {
+  topaz::barycentric_subdivision_impl<BasicDecoration,Sequential,Scalar>(@_);
 }
-
 
 # @category Triangulations, subdivisions and volume
 # Create a simplicial complex as an iterated barycentric subdivision of a given cone or polytope.
 # @param Cone c input cone or polytope
 # @param Int n how many times to subdivide
-# @option Bool relabel write labels of new points; default is false
+# @option Bool no_labels Do not generate [[VERTEX_LABELS]] from the faces of the original cone. default: 0
 # @option Bool geometric_realization create a [[topaz::GeometricSimplicialComplex]]; default is false
 # @return topaz::SimplicialComplex
-user_function iterated_barycentric_subdivision<Scalar>(Cone<Scalar> $ { relabel=>1, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", pout_section=>"TRIANGULATION.FACETS", geometric_realization=>0, coord_section=>"RAYS" }) {
-    topaz::iterated_barycentric_subdivision_impl<Scalar>(@_);
+user_function iterated_barycentric_subdivision<Scalar>(Cone<Scalar> $ { no_labels=>0, ignore_top_node=>0, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", pout_section=>"TRIANGULATION.FACETS", geometric_realization=>0, coord_section=>"RAYS" }) {
+    topaz::iterated_barycentric_subdivision_impl<BasicDecoration,Sequential,Scalar>(@_);
 }
-
 
 # @category Other
 # @param Matrix M
@@ -652,6 +690,22 @@ user_function lawrence<Scalar>(Cone<Scalar>) {
     my $p = shift;
     return new Polytope<Scalar>(VERTICES=>lawrence_matrix($p->VERTICES));
 }
+
+# @category Triangulations, subdivisions and volume
+# Find the maximal interior simplices of a polytope P.
+# Symmetries of P are NOT taken into account.
+# @param Polytope P the input polytope
+# @return Array<Set>
+# @example > print max_interior_simplices(cube(2));
+# | {0 1 2}
+# | {0 1 3}
+# | {0 2 3}
+# | {1 2 3}
+user_function max_interior_simplices<Scalar>(Cone<Scalar>) {
+    max_interior_simplices_impl<Scalar>(@_);
+}
+
+
 
 # Local Variables:
 # c-basic-offset:2

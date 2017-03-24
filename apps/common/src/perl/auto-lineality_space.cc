@@ -47,12 +47,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(lineality_space_X, perl::Canned< const pm::RowChain<pm::SparseMatrix<pm::QuadraticExtension<pm::Rational>, pm::NonSymmetric> const&, pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&> >);
    FunctionInstance4perl(lineality_space_X, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
    FunctionInstance4perl(lineality_space_X, perl::Canned< const pm::RowChain<pm::Matrix<pm::Rational> const&, pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&> >);
-   FunctionInstance4perl(lineality_space_X, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
-   FunctionInstance4perl(lineality_space_X, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
-   FunctionInstance4perl(lineality_space_X, perl::Canned< const SparseMatrix< PuiseuxFraction< Min, Rational, Rational >, NonSymmetric > >);
    FunctionInstance4perl(lineality_space_X, perl::Canned< const SparseMatrix< double, NonSymmetric > >);
-   FunctionInstance4perl(lineality_space_X, perl::Canned< const pm::RowChain<pm::Matrix<pm::PuiseuxFraction<pm::Min, pm::Rational, pm::Rational> > const&, pm::Matrix<pm::PuiseuxFraction<pm::Min, pm::Rational, pm::Rational> > const&> >);
-   FunctionInstance4perl(lineality_space_X, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, int > > >);
-   FunctionInstance4perl(lineality_space_X, perl::Canned< const Matrix< PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > > >);
+   FunctionInstance4perl(lineality_space_X, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

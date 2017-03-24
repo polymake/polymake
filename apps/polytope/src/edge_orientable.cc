@@ -15,18 +15,21 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/graph/HasseDiagram.h"
 #include "polymake/Array.h"
 #include "polymake/Map.h"
 #include "polymake/Matrix.h"
 #include "polymake/Graph.h"
 #include "polymake/vector"
 #include "polymake/list"
+#include "polymake/graph/Lattice.h"
+#include "polymake/graph/Decoration.h"
 #include <stack>
 #include <algorithm>
 #include <cassert>
 
 namespace polymake { namespace polytope {
+
+typedef graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential> Lattice;
 
 namespace {
 
@@ -39,7 +42,7 @@ class EdgeOrientationAlg {
       int parent_edge;
 
       Edge ( int arg_id, int arg_head, int arg_tail, int arg_parent_edge = -1 )
-         : id(arg_id), 
+         : id(arg_id),
            head(arg_head),
            tail(arg_tail),
            parent_edge(arg_parent_edge)
@@ -49,8 +52,8 @@ class EdgeOrientationAlg {
    typedef std::stack< Edge, std::vector<Edge> > stack_type;
 
    enum  orientation_type { NOT_ORIENTED=0, LEFT=1, RIGHT=-1 } ;
-  
-   const graph::HasseDiagram HD;
+
+   const Lattice HD;
    const int      m, first_edge_in_HD;
    Array<int>     orientation;
    Array<int>     parent_edge;
@@ -63,10 +66,10 @@ class EdgeOrientationAlg {
 
 public:
    // --------------------------------------------------------------
-   EdgeOrientationAlg (const graph::HasseDiagram& arg_HD )
+   EdgeOrientationAlg (const Lattice& arg_HD )
       :              HD (arg_HD),
-                     m (HD.node_range_of_dim(1).size()),
-                     first_edge_in_HD (HD.node_range_of_dim(1).front()),
+                     m (HD.nodes_of_rank(2).size()),
+                     first_edge_in_HD (HD.nodes_of_rank(2).front()),
                      orientation (m, static_cast<int>(NOT_ORIENTED)),
                      parent_edge (m, -1)
    {
@@ -78,8 +81,8 @@ public:
    /** Orient all dual cycles. */
    bool orient_edges ()
    {
-      for (int ee=0; ee < m; ++ee) 
-         if (orientation[ee] == NOT_ORIENTED) 
+      for (int ee=0; ee < m; ++ee)
+         if (orientation[ee] == NOT_ORIENTED)
             if (!orient_dual_cycle(ee, LEFT))
                return false;
 
@@ -94,9 +97,9 @@ public:
            it != moebius_strip.end(); ++it, ++i) {
          const int e = *it;
 
-         M(i,0) = (orientation[e] == LEFT) ? HD.face(e+first_edge_in_HD).front() 
+         M(i,0) = (orientation[e] == LEFT) ? HD.face(e+first_edge_in_HD).front()
             : HD.face(e+first_edge_in_HD).back();
-         M(i,1) = (orientation[e] == LEFT) ? HD.face(e+first_edge_in_HD).back() 
+         M(i,1) = (orientation[e] == LEFT) ? HD.face(e+first_edge_in_HD).back()
             : HD.face(e+first_edge_in_HD).front();
       }
 
@@ -108,10 +111,10 @@ public:
 
       for (int i=0; i < m; ++i) {
 
-         E(i,0) = (orientation[i] == LEFT) ? HD.face(i+first_edge_in_HD).front() 
+         E(i,0) = (orientation[i] == LEFT) ? HD.face(i+first_edge_in_HD).front()
             : HD.face(i+first_edge_in_HD).back();
 
-         E(i,1) = (orientation[i] == LEFT) ? HD.face(i+first_edge_in_HD).back() 
+         E(i,1) = (orientation[i] == LEFT) ? HD.face(i+first_edge_in_HD).back()
             : HD.face(i+first_edge_in_HD).front();
       }
 
@@ -122,27 +125,27 @@ private:
    // --------------------------------------------------------------
    bool orient_dual_cycle ( int ee, int orient ) {
       set_edge_orientation(ee, orient);
-        
+
       while(!stack.empty()) {
          const Edge e = stack.top(); stack.pop();
-            
+
          for (Graph<Directed>::out_edge_list::const_iterator q = entire(HD.out_edges(e.id+first_edge_in_HD)); !q.at_end(); ++q) {
 #if POLYMAKE_DEBUG
             if (debug_print) cout << "Quad " << q.to_node() << " (" << HD.face(q.to_node()) << ")" << endl;
 #endif
             const Edge opposite_edge = get_opposite_edge(e, entire(HD.in_edges(q.to_node())));
-              
+
             if (!set_edge_orientation(opposite_edge))
                return false;
-         } 
+         }
       } // end of while loop
-  
+
       return true;
    } // end of method
    // --------------------------------------------------------------
    bool set_edge_orientation ( Edge e ) {
-      return set_edge_orientation(e.id, 
-                                  (e.head == HD.face(e.id+first_edge_in_HD).front()) ? LEFT : RIGHT, e.parent_edge); 
+      return set_edge_orientation(e.id,
+                                  (e.head == HD.face(e.id+first_edge_in_HD).front()) ? LEFT : RIGHT, e.parent_edge);
    }
    // --------------------------------------------------------------
    inline int same_orientation ( int p, int orient ) {
@@ -152,12 +155,12 @@ private:
    bool set_edge_orientation ( int e, int orient, int p = -1 ) {
       assert(orient != NOT_ORIENTED);
 
-      const int head = (orient == LEFT) ? HD.face(e+first_edge_in_HD).front() 
+      const int head = (orient == LEFT) ? HD.face(e+first_edge_in_HD).front()
          : HD.face(e+first_edge_in_HD).back();
-      const int tail = (orient == LEFT) ? HD.face(e+first_edge_in_HD).back()  
+      const int tail = (orient == LEFT) ? HD.face(e+first_edge_in_HD).back()
          : HD.face(e+first_edge_in_HD).front();
 
-       
+
 #if POLYMAKE_DEBUG
       if (debug_print) {
          cout << e << ": " << HD.face(e+first_edge_in_HD) << " --> " << orient;
@@ -177,7 +180,7 @@ private:
          std::list<int> tmp;
          process_parent_edges(e, p, std::front_inserter(tmp));
          tmp.pop_front();
-      
+
          std::copy(tmp.begin(), tmp.end(), std::back_inserter(moebius_strip));
 
          return false;
@@ -189,9 +192,9 @@ private:
       stack.push(Edge(e, head, tail));
       if (p != -1)
          parent_edge[e] = p;
-    
+
       orientation[e] = orient;
-    
+
       return true;
    }
    // --------------------------------------------------------------
@@ -205,7 +208,7 @@ private:
             return eit;
 
       assert(false);
-      return EdgeIterator(); 
+      return EdgeIterator();
    }
 
    template <typename OutIterator>
@@ -232,7 +235,7 @@ private:
 
 #if POLYMAKE_DEBUG
       if (debug_print)
-         cout << "\t#### get_opposite_edge(e=" << e.id 
+         cout << "\t#### get_opposite_edge(e=" << e.id
               << "(" << e.id+first_edge_in_HD << ")"
               << ", h=" << e.head << ", t=" << e.tail << ")" << endl;
 #endif
@@ -246,37 +249,37 @@ private:
 
       // Create graph nodes
       Map<int,int> node_number; int n=0;
-      for (Entire< Set<int> >::const_iterator v = entire(nodes); 
+      for (Entire< Set<int> >::const_iterator v = entire(nodes);
            !v.at_end(); ++n, ++v) {
          node_number[*v] = n;
          nm[n] = *v;
       }
-      
+
       // Create graph edges
       for (EdgeIt eit = eit_begin; !eit.at_end(); ++eit) {
          const int tail = node_number[HD.face(eit.from_node()).front()];
          const int head = node_number[HD.face(eit.from_node()).back()];
 
 #if POLYMAKE_DEBUG
-         if (debug_print) cout << "new edge: head=" << head << ", tail=" << tail << endl; 
+         if (debug_print) cout << "new edge: head=" << head << ", tail=" << tail << endl;
 #endif
 
          em(head, tail)=eit.index();
       }
-    
+
 #if POLYMAKE_DEBUG
       if (debug_print) cout << "GRAPH" << endl << G << endl;
 #endif
       // Get first cycle edge
 
-      Graph<>::out_edge_list::const_iterator 
+      Graph<>::out_edge_list::const_iterator
          eit_first_edge = entire(G.out_edges(node_number[e.head]));
-      for (; !eit_first_edge.at_end() && em[*eit_first_edge] != e.id+first_edge_in_HD; 
+      for (; !eit_first_edge.at_end() && em[*eit_first_edge] != e.id+first_edge_in_HD;
            ++eit_first_edge)
          ; // OK!
       assert(!eit_first_edge.at_end() && em[*eit_first_edge] == e.id+first_edge_in_HD);
 
-      Graph<>::out_edge_list::const_iterator 
+      Graph<>::out_edge_list::const_iterator
          eit = next_cycle_edge(G, next_cycle_edge(G, eit_first_edge));
 
       const int tail = nm[eit.from_node()];
@@ -295,7 +298,8 @@ void edge_orientable(perl::Object p)
    if (cubicality < 2)
       throw std::runtime_error("2-cubical polytope expected");
 
-   const graph::HasseDiagram HD=p.give("HASSE_DIAGRAM");
+   perl::Object HD_obj =p.give("HASSE_DIAGRAM");
+   const Lattice HD(HD_obj);
    EdgeOrientationAlg alg(HD);
 
    // main method

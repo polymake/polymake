@@ -102,12 +102,16 @@ public:
     bool do_class_group;
     bool do_module_gens_intcl;
     bool do_module_rank;
+    bool do_cone_dec;
+    bool stop_after_cone_dec;
+    bool do_hsop;
     
     bool do_extreme_rays;
     bool do_pointed;
 
     // internal helper control variables
     bool do_only_multiplicity;
+    bool do_only_mult_and_decomp;
     bool do_evaluation;
     bool do_all_hyperplanes;  // controls whether all support hyperplanes must be computed
     bool use_bottom_points;
@@ -123,8 +127,9 @@ public:
     vector<Integer> Sorting;
     mpq_class multiplicity;
     Matrix<Integer> Generators;
+    Matrix<Integer> ExtStrahl;
     vector<key_t> PermGens;  // stores the permutation of the generators created by sorting
-    vector<bool> Extreme_Rays;
+    vector<bool> Extreme_Rays_Ind;
     Matrix<Integer> Support_Hyperplanes;
     size_t nrSupport_Hyperplanes;
     list<vector<Integer> > Hilbert_Basis;
@@ -163,6 +168,7 @@ public:
         size_t BornAt;                      // number of generator (in order of insertion) at which this hyperplane was added,, counting from 0
         size_t Ident;                      // unique number identifying the hyperplane (derived from HypCounter)
         size_t Mother;                     // Ident of positive mother if known, 0 if unknown
+        bool simplicial;                   // indicates whether facet is simplicial
     };
 
     list<FACETDATA> Facets;  // contains the data for Fourier-Motzkin and extension of triangulation
@@ -238,7 +244,7 @@ public:
     void number_hyperplane(FACETDATA& hyp, const size_t born_at, const size_t mother);
     bool is_hyperplane_included(FACETDATA& hyp);
     void add_hyperplane(const size_t& new_generator, const FACETDATA & positive,const FACETDATA & negative,
-                     list<FACETDATA>& NewHyps);
+                     list<FACETDATA>& NewHyps, bool known_to_be_simplicial);
     void extend_triangulation(const size_t& new_generator);
     void find_new_facets(const size_t& new_generator);
     void process_pyramids(const size_t new_generator,const bool recursive);
@@ -299,6 +305,7 @@ public:
     // void compute_support_hyperplanes(bool do_extreme_rays=false);
     bool check_evaluation_buffer();
     bool check_evaluation_buffer_size();
+    void prepare_old_candidates_and_support_hyperplanes();
     void evaluate_triangulation();
     void evaluate_large_simplices();
     void evaluate_large_simplex(size_t j, size_t lss);
@@ -315,9 +322,9 @@ public:
     void check_grading_after_dual_mode();
 
     void minimize_support_hyperplanes();   
-    void compute_extreme_rays();
-    void compute_extreme_rays_compare();
-    void compute_extreme_rays_rank();
+    void compute_extreme_rays(bool use_facets=false);
+    void compute_extreme_rays_compare(bool use_facets);
+    void compute_extreme_rays_rank(bool use_facets);
     void select_deg1_elements();
 
     void check_pointed();
@@ -334,8 +341,17 @@ public:
     void reset_tasks();
     void addMult(Integer& volume, const vector<key_t>& key, const int& tn); // multiplicity sum over thread tn
     
+    void check_simpliciality_hyperplane(const FACETDATA& hyp) const;
+    void set_simplicial(FACETDATA& hyp);
+    
+
+    void compute_hsop();
+    void heights(list<vector<key_t>>& facet_keys,list<pair<boost::dynamic_bitset<>,size_t>> faces, size_t index,vector<size_t>& ideal_heights, size_t max_dim);
+    
     void start_message();
     void end_message();
+    
+    void set_zero_cone();
 
 
 #ifdef NMZ_MIC_OFFLOAD
@@ -349,7 +365,7 @@ public:
  *                      Constructors
  *---------------------------------------------------------------------------
  */
-    Full_Cone(Matrix<Integer> M, bool do_make_prime=true);            //main constructor
+    Full_Cone(const Matrix<Integer>& M, bool do_make_prime=true);            //main constructor
     Full_Cone(Cone_Dual_Mode<Integer> &C);            // removes data from the argument!
     Full_Cone(Full_Cone<Integer>& C, const vector<key_t>& Key); // for pyramids
 

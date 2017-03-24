@@ -32,11 +32,12 @@ namespace pm {
    A list of row vectors. The implementation is based on std::list. It can be parameterized with any @ref persistent vector type.
 */
 
-template <typename Vector>
-class ListMatrix : public GenericMatrix< ListMatrix<Vector>, typename Vector::element_type> {
+template <typename TVector>
+class ListMatrix
+   : public GenericMatrix< ListMatrix<TVector>, typename TVector::element_type> {
 protected:
-   typedef std::list<Vector> row_list;
-   shared_object< ListMatrix_data<Vector>, AliasHandler<shared_alias_handler> > data;
+   typedef std::list<TVector> row_list;
+   shared_object<ListMatrix_data<TVector>, AliasHandlerTag<shared_alias_handler>> data;
 
    friend ListMatrix& make_mutable_alias(ListMatrix& alias, ListMatrix& owner)
    {
@@ -46,36 +47,36 @@ protected:
 
    // elementwise
    template <typename Iterator>
-   void _copy(int r, int c, Iterator src, False)
+   void copy_impl(int r, int c, Iterator src, std::false_type)
    {
       data->dimr=r;
       data->dimc=c;
       row_list& R=data->R;
       while (--r>=0) {
          Iterator src_next=src;
-         std::advance(src_next,c);
-         R.push_back(Vector(c, make_iterator_range(src,src_next)));
+         std::advance(src_next, c);
+         R.push_back(TVector(c, make_iterator_range(src, src_next)));
          src=src_next;
       }
    }
 
    // rowwise
    template <typename Iterator>
-   void _copy(int r, int c, Iterator src, True)
+   void copy_impl(int r, int c, Iterator src, std::true_type)
    {
       data->dimr=r;
       data->dimc=c;
       row_list& R=data->R;
       while (--r>=0) {
-         R.push_back(Vector(*src)); ++src;
+         R.push_back(TVector(*src)); ++src;
       }
    }
 
 public:
-   typedef typename Vector::value_type value_type;
-   typedef typename Vector::reference reference;
-   typedef typename Vector::const_reference const_reference;
-   typedef typename Vector::element_type element_type;
+   typedef typename TVector::value_type value_type;
+   typedef typename TVector::reference reference;
+   typedef typename TVector::const_reference const_reference;
+   typedef typename TVector::element_type element_type;
 
    /// create as empty
    ListMatrix() {}
@@ -85,14 +86,14 @@ public:
    {
       data->dimr=r;
       data->dimc=c;
-      data->R.assign(r, Vector(c));
+      data->R.assign(r, TVector(c));
    }
 
-   ListMatrix(int r, int c, typename function_argument<element_type>::type init)
+   ListMatrix(int r, int c, const element_type& init)
    {
       data->dimr=r;
       data->dimc=c;
-      data->R.assign(r, same_element_vector(init,c));
+      data->R.assign(r, same_element_vector(init, c));
    }
 
    /** Create a matrix with given dimensions.  Elements are initialized from an input sequence.
@@ -101,33 +102,32 @@ public:
    template <typename Iterator>
    ListMatrix(int r, int c, Iterator src)
    {
-      _copy(r, c, src, bool2type<isomorphic_types<Vector, typename iterator_traits<Iterator>::value_type>::value>());
+      copy_impl(r, c, src, bool_constant<isomorphic_types<TVector, typename iterator_traits<Iterator>::value_type>::value>());
    }
 
    template <typename Matrix2>
    ListMatrix(const GenericMatrix<Matrix2,element_type>& M)
    {
-      _copy(M.rows(), M.cols(), pm::rows(M).begin(), True());
+      copy_impl(M.rows(), M.cols(), pm::rows(M).begin(), std::true_type());
    }
 
    template <typename Matrix2, typename E2>
    explicit ListMatrix(const GenericMatrix<Matrix2,E2>& M)
    {
-      _copy(M.rows(), M.cols(), pm::rows(M).begin(), True());
+      copy_impl(M.rows(), M.cols(), pm::rows(M).begin(), std::true_type());
    }
 
-   template <typename Container>
-   ListMatrix(const Container& src,
-              typename enable_if<void**, isomorphic_to_container_of<Container, Vector>::value>::type=0)
+   template <typename Container, typename enabled=typename std::enable_if<isomorphic_to_container_of<Container, TVector>::value>::type>
+   ListMatrix(const Container& src)
    {
-      _copy(src.size(), src.empty() ? 0 : get_dim(src.front()), src.begin(), True());
+      copy_impl(src.size(), src.empty() ? 0 : get_dim(src.front()), src.begin(), std::true_type());
    }
 
 private:
    template <typename Input>
    void input(Input& is)
    {
-      if ((data->dimr=retrieve_container(is, data->R, io_test::as_list< array_traits<Vector> >())))
+      if ((data->dimr=retrieve_container(is, data->R, io_test::as_list< array_traits<TVector> >())))
          data->dimc=data->R.front().dim();
    }
 
@@ -144,13 +144,7 @@ public:
       Alias objects, such as matrix minor or block matrix, cannot be resized, thus must have the same dimensions as on the right hand side.
     */
    ListMatrix& operator= (const ListMatrix& other) { assign(other); return *this; }
-#ifdef __clang__
-   template <typename Matrix2>
-   typename ListMatrix::generic_type::template enable_if_assignable_from<Matrix2>::type&
-   operator= (const GenericMatrix<Matrix2>& other) { return ListMatrix::generic_type::operator=(other); }
-#else
    using ListMatrix::generic_type::operator=;
-#endif
 
    /// Exchange the contents of two matrices in a most efficient way. 
    /// If at least one non-persistent object is involved, the operands must have equal dimensions. 
@@ -175,7 +169,7 @@ public:
          data->dimc=c;
       }
 
-      for (; old_r<r; ++old_r) R.push_back(Vector(c));
+      for (; old_r<r; ++old_r) R.push_back(TVector(c));
    }
 
    /// Truncate to 0x0 matrix.
@@ -188,13 +182,13 @@ public:
    int cols() const { return data->dimc; }
 
    /// Insert a new row at the given position: before the row pointed to by where.
-   template <typename Vector2>
+   template <typename TVector2>
    typename row_list::iterator
-   insert_row(const typename row_list::iterator& where, const GenericVector<Vector2>& v)
+   insert_row(const typename row_list::iterator& where, const GenericVector<TVector2>& v)
    {
       if (!this->rows()) {
          data->dimc=v.dim();
-      } else if (POLYMAKE_DEBUG || !Unwary<Vector2>::value) {
+      } else if (POLYMAKE_DEBUG || !Unwary<TVector2>::value) {
          if (this->cols() != v.dim())
             throw std::runtime_error("ListMatrix::insert_row - dimension mismatch");
       }
@@ -234,12 +228,12 @@ protected:
    template <typename Matrix2>
    void append_rows(const Matrix2& m)
    {
-      copy(entire(pm::rows(m)), std::back_inserter(data->R));
+      copy_range(entire(pm::rows(m)), std::back_inserter(data->R));
       data->dimr+=m.rows();
    }
 
-   template <typename Vector2>
-   void append_row(const Vector2& v)
+   template <typename TVector2>
+   void append_row(const TVector2& v)
    {
       data->R.push_back(v);
       ++data->dimr;
@@ -248,58 +242,57 @@ protected:
    template <typename Matrix2>
    void append_cols(const Matrix2& m)
    {
-      typename Rows<Matrix2>::const_iterator row2=pm::rows(m).begin();
-      for (typename Entire<row_list>::iterator row=entire(data->R); !row.at_end(); ++row, ++row2)
+      auto row2=pm::rows(m).begin();
+      for (auto row=entire(data->R); !row.at_end(); ++row, ++row2)
          *row |= *row2;
       data->dimc+=m.cols();
    }
 
-   template <typename Vector2>
-   void append_col(const Vector2& v)
+   template <typename TVector2>
+   void append_col(const TVector2& v)
    {
-      typename ensure_features<Vector2, dense>::const_iterator
-         e=ensure(v.top(), (dense*)0).begin();
-      for (typename Entire<row_list>::iterator row=entire(data->R); !row.at_end(); ++row, ++e)
+      auto e=ensure(v.top(), (dense*)0).begin();
+      for (auto row=entire(data->R); !row.at_end(); ++row, ++e)
          *row |= *e;
       ++data->dimc;
    }
 };
 
-template <typename Vector>
-struct check_container_feature<ListMatrix<Vector>, sparse>
-   : check_container_feature<Vector, sparse> {};
+template <typename TVector>
+struct check_container_feature<ListMatrix<TVector>, sparse>
+   : check_container_feature<TVector, sparse> {};
 
-template <typename Vector>
-struct check_container_feature<ListMatrix<Vector>, pure_sparse>
-   : check_container_feature<Vector, pure_sparse> {};
+template <typename TVector>
+struct check_container_feature<ListMatrix<TVector>, pure_sparse>
+   : check_container_feature<TVector, pure_sparse> {};
 
-template <typename Vector>
-class Rows< ListMatrix<Vector> >
-   : public redirected_container< Rows< ListMatrix<Vector> >,
-                                  list( Container< std::list<Vector> >,
-                                        MasqueradedTop ) > {
-   typedef redirected_container<Rows> _super;
+template <typename TVector>
+class Rows< ListMatrix<TVector> >
+   : public redirected_container< Rows< ListMatrix<TVector> >,
+                                  mlist< ContainerTag< std::list<TVector> >,
+                                         MasqueradedTop > > {
+   typedef redirected_container<Rows> base_t;
 protected:
    Rows();
    ~Rows();
 public:
-   typename _super::container& get_container() { return this->hidden().data->R; }
-   const typename _super::container& get_container() const { return this->hidden().data->R; }
+   typename base_t::container& get_container() { return this->hidden().data->R; }
+   const typename base_t::container& get_container() const { return this->hidden().data->R; }
 
    int size() const { return this->hidden().rows(); }
    void resize(int n) { this->hidden().resize(n, this->hidden().cols()); }
    void clear() { this->hidden().clear(); }
 
-   template <typename Vector2>
-   typename _super::iterator insert(typename _super::iterator where, const GenericVector<Vector2>& v)
+   template <typename TVector2>
+   typename base_t::iterator insert(typename base_t::iterator where, const GenericVector<TVector2>& v)
    {
-      return this->hidden().insert_row(where,v);
+      return this->hidden().insert_row(where, v);
    }
 };
 
-template <typename Vector>
-class Cols< ListMatrix<Vector> >
-   : public ListMatrix_cols<ListMatrix<Vector>, Vector> {
+template <typename TVector>
+class Cols< ListMatrix<TVector> >
+   : public ListMatrix_cols<ListMatrix<TVector>, TVector> {
 protected:
    Cols();
    ~Cols();

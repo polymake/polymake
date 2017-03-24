@@ -236,7 +236,7 @@ sub import {
                 }
                 my %options=splice @$field, 2;
                 $init_deferred=$set_filter_is_method= $expr =~ /(?<!\\)\$this\b/;
-                if ($expr =~ s{(?: ^ | [\s,(]) \K \#(?:([\d+]) | (%)) (?= $ | [\s,)])}
+                if ($expr =~ s{(?: ^ | [\s,([{]) \K \#(?:([\d+]) | (%)) (?= $ | [-\s,)\]}])}
                               { $2 ? $keyed_args
                                      ? ($add_to_keys=1, '#%')
                                      : croak("constructor has no keyword arguments")
@@ -524,7 +524,7 @@ _#_6_#_
       define_function($symtab, ".defined", sub { "$file line $line" });
       define_function($symtab, ".constructor", sub { ($cnt, $constructor, $constructor_deferred, $merger) });
       define_function($symtab, "sizeof", sub { $cnt });
-      define_function($symtab, ".signature", sub { ($signature, $min_arg, $max_arg, $trailing_arg) }) if $own_signature;
+      define_function($symtab, ".signature", sub { ($signature, $min_arg, $max_arg, $trailing_arg) }) if defined($own_signature);
       if ($keys_changed) {
          define_function($symtab, ".keys", sub { \%keys });
       }

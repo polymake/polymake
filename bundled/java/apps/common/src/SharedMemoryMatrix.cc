@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,7 +17,7 @@
 #include "polymake/common/SharedMemoryMatrix.h"
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#include <sstream>
+#include <string>
 #include <cerrno>
 
 namespace polymake { namespace common {
@@ -25,26 +25,23 @@ namespace polymake { namespace common {
 void SharedMemorySegment::resize(size_t size)
 {
    shmid=shmget(IPC_PRIVATE, size, 0600);
-   if (shmid<0) {
-      std::ostringstream err;
-      err << "shmget error " << errno;
-      throw std::runtime_error(err.str());
+   if (shmid<0)
+      throw std::runtime_error("shmget error " + std::to_string(errno));
+
+   void* p=shmat(shmid, NULL, 0);
+   if (p==(void*)-1L) {
+      std::string err="shmat error " + std::to_string(errno);
+      shmctl(shmid, IPC_RMID, 0);
+      throw std::runtime_error(err);
    }
-   shmaddr=shmat(shmid, NULL, 0);
-   if (shmaddr==(void*)-1L) {
-      shmaddr=NULL;
-      std::ostringstream err;
-      err << "shmat error " << errno;
-      shmctl(shmid,IPC_RMID,0);
-      throw std::runtime_error(err.str());
-   }
+   shmaddr.set(p);
 }
 
 SharedMemorySegment::~SharedMemorySegment()
 {
-   if (shmaddr) {
-      shmdt(shmaddr);
-      shmctl(shmid,IPC_RMID,0);
+   if (void* p=shmaddr.get()) {
+      shmdt(p);
+      shmctl(shmid, IPC_RMID, 0);
    }
 }
 

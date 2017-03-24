@@ -16,7 +16,18 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/Set.h"
+#include "polymake/Vector.h"
+#include "polymake/client.h"
+
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0>
+   FunctionInterface4perl( front_f1, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturn( arg0.get<T0>().front() );
+   };
+
+   FunctionInstance4perl(front_f1, perl::Canned< const Set< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

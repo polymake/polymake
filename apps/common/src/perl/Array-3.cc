@@ -21,7 +21,6 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
-#include "polymake/Polynomial.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
@@ -52,12 +51,10 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(assign, Array< Matrix< Rational > >, perl::Canned< const Array< Matrix< Integer > > >);
    FunctionInstance4perl(new, Array< Vector< Rational > >);
    OperatorInstance4perl(convert, Array< int >, perl::Canned< const Set< int > >);
-   FunctionInstance4perl(new_X, Array< Polynomial< Rational, int > >, perl::Canned< const Array< Polynomial< Rational, int > > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< int > >, perl::Canned< const Array< int > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< Set< int > > >, perl::Canned< const Array< Set< int > > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< std::string > >, perl::Canned< const Array< std::string > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< bool > >, perl::Canned< const Array< bool > >);
-   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< Polynomial< Rational, int > > >, perl::Canned< const Array< Polynomial< Rational, int > > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< Array< int > > >, perl::Canned< const Array< Array< int > > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< std::pair< Array< int >, Array< int > > > >, perl::Canned< const Array< std::pair< Array< int >, Array< int > > > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< Array< std::list< int > > > >, perl::Canned< const Array< Array< std::list< int > > > >);

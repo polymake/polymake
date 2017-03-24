@@ -420,7 +420,7 @@ LEAVE;
    for (f=frame_top-3; f >= frame_bottom; --f)
       if (mainstack[f].any_ptr == (void*)&localize_marker
           && f+2 < frame_top
-          && mainstack[f+2].any_i32 == SAVEt_DESTRUCTOR_X) {
+          && mainstack[f+2].any_uv == SAVEt_DESTRUCTOR_X) {
 
          if (scope != (AV*)mainstack[f+1].any_ptr) break;
 

@@ -61,8 +61,8 @@ compute_new_vertex(const Matrix<Rational>& Facets, const Matrix<Rational>& Verti
 
 } // end unnamed namespace
 
-template <typename SetTop>
-perl::Object stack(perl::Object p_in, const GenericSet<SetTop>& stack_facets, perl::OptionSet options)
+template <typename TSet>
+perl::Object stack(perl::Object p_in, const GenericSet<TSet>& stack_facets, perl::OptionSet options)
 {
    const bool bounded = p_in.give("BOUNDED");
    if (!bounded)
@@ -77,7 +77,7 @@ perl::Object stack(perl::Object p_in, const GenericSet<SetTop>& stack_facets, pe
       if (lift_factor<=0 || lift_factor>=1)
          throw std::runtime_error("lift factor must be between 0 and 1");
    }
-   const bool relabel=options["relabel"],
+   const bool relabel=!options["no_labels"],
       noc=options["no_coordinates"];
    const int dim=p_in.give("COMBINATORIAL_DIM");
    if (dim<=2)
@@ -97,7 +97,7 @@ perl::Object stack(perl::Object p_in, const GenericSet<SetTop>& stack_facets, pe
       throw std::runtime_error("facet numbers out of range");
 
    perl::Object p_out("Polytope<Rational>");
-   if (pm::identical<SetTop, Set<int> >::value)
+   if (std::is_same<TSet, Set<int> >::value)
       p_out.set_description() << p_in.name() << " with facets " << stack_facets << " stacked" << endl;
 
    const int n_stack_facets=stack_facets.top().size();
@@ -109,8 +109,8 @@ perl::Object stack(perl::Object p_in, const GenericSet<SetTop>& stack_facets, pe
 
    IncidenceMatrix<> VIF_out(n_facets_out, n_vertices_out);
    // copy untouched facets
-   Rows< IncidenceMatrix<> >::iterator new_facet=rows(VIF_out).begin();
-   new_facet=copy(entire(rows(VIF.minor(~stack_facets,All))), new_facet);
+   auto new_facet=rows(VIF_out).begin();
+   new_facet=copy_range(entire(rows(VIF.minor(~stack_facets,All))), new_facet);
 
    std::vector<std::string> labels, facet_labels;
    if (relabel) {
@@ -130,7 +130,7 @@ perl::Object stack(perl::Object p_in, const GenericSet<SetTop>& stack_facets, pe
 
    if (simplicial) {
       int nv=n_vertices;     // new vertex
-      for (typename Entire<SetTop>::const_iterator sf=entire(stack_facets.top());  !sf.at_end();  ++sf, ++nv) {
+      for (auto sf=entire(stack_facets.top());  !sf.at_end();  ++sf, ++nv) {
          // new facet = old facet - one of its vertices + new vertex
          for (Subsets_less_1<const IncidenceMatrix<>::const_row_type&>::const_iterator
                  ridges=entire(all_subsets_less_1(VIF[*sf]));  !ridges.at_end();  ++ridges, ++new_facet) {
@@ -142,14 +142,14 @@ perl::Object stack(perl::Object p_in, const GenericSet<SetTop>& stack_facets, pe
       if (!noc) {
          const Graph<> DG=p_in.give("DUAL_GRAPH.ADJACENCY");
          Rows< Matrix<Rational> >::iterator nv=rows(Vertices_out).begin()+n_vertices;
-         for (typename Entire<SetTop>::const_iterator sf=entire(stack_facets.top());  !sf.at_end();  ++sf, ++nv) {
+         for (auto sf=entire(stack_facets.top());  !sf.at_end();  ++sf, ++nv) {
             *nv=compute_new_vertex(Facets,Vertices,Vb,VIF,DG,stack_facets,*sf,lift_factor);
          }
       }
 
       if (relabel) {
          std::vector<std::string>::iterator nl=labels.begin()+n_vertices;
-         for (typename Entire<SetTop>::const_iterator sf=entire(stack_facets.top());  !sf.at_end();  ++sf, ++nl)
+         for (auto sf=entire(stack_facets.top());  !sf.at_end();  ++sf, ++nl)
             *nl = "f(" + facet_labels[*sf] + ')';
       }
 
@@ -161,10 +161,10 @@ perl::Object stack(perl::Object p_in, const GenericSet<SetTop>& stack_facets, pe
       const int vertices_per_facet=1<<dim-1;
       std::vector<int> new_neighbors(n_vertices);
 
-      for (typename Entire<SetTop>::const_iterator sf=entire(stack_facets.top());  !sf.at_end();  ++sf) {
+      for (auto sf=entire(stack_facets.top());  !sf.at_end();  ++sf) {
          *new_facet=sequence(first_new_vertex, vertices_per_facet);
          ++new_facet;
-         copy(entire(sequence(first_new_vertex, vertices_per_facet)), select(new_neighbors, VIF[*sf]).begin());
+         copy_range(entire(sequence(first_new_vertex, vertices_per_facet)), select(new_neighbors, VIF[*sf]).begin());
 
          for (Graph<>::adjacent_node_list::const_iterator nb=DG.adjacent_nodes(*sf).begin();
               !nb.at_end();  ++nb, ++new_facet) {
@@ -193,8 +193,6 @@ perl::Object stack(perl::Object p_in, const GenericSet<SetTop>& stack_facets, pe
 
    if (!noc) {
       p_out.take("VERTICES") << Vertices_out;
-      const Matrix<Rational> empty;
-      p_out.take("LINEALITY_SPACE") << empty;
    }
    if (relabel)
       p_out.take("VERTEX_LABELS") << labels;
@@ -254,13 +252,13 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# @option Rational lift controls the exact coordinates of the new vertices;"
                           "#   rational number between 0 and 1; default value: 1/2"
                           "# @option Bool no_coordinates  produces a pure combinatorial description (in contrast to //lift//)"
-                          "# @option Bool relabel creates an additional section [[VERTEX_LABELS]];"
+                          "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytope. default: 0"
                           "#   New vertices get labels 'f(FACET_LABEL)' in the simplicial case,"
                           "#   and 'f(FACET_LABEL)-NEIGHBOR_VERTEX_LABEL' in the cubical case."
                           "# @return Polytope"
                           "# @example To generate a cubical polytope by stacking all facets of the 3-cube to height 1/4, do this:"
                           "#  > $p = stack(cube(3),All,lift=>1/4);",
-                          "stack(Polytope * {lift=>undef, no_coordinates=>undef, relabel=>undef})");
+                          "stack(Polytope * {lift=>undef, no_coordinates=>undef, no_labels=>0})");
 } }
 
 // Local Variables:

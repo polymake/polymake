@@ -28,26 +28,11 @@
 #include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/tropical/separated_data.h"
-#include "polymake/tropical/LoggingPrinter.h"
 
 
 namespace polymake { namespace tropical {
 
-	using namespace atintlog::donotlog;
-	// using namespace atintlog::dolog;
-	// using namespace atintlog::dotrace;
 	
-	bool is_coneset_compatible(const Set<int> &cone, const IncidenceMatrix<> &local_restriction) {
-		for(int i = 0; i < local_restriction.rows(); i++) { 
-			Set<int> inter = cone * local_restriction[i];
-			if(inter.size() == local_restriction.row(i).size()) {
-				return true;
-			}
-		}
-		return false;
-	}//END is_coneset_compatible
-
-
 	void computeSeparatedData(perl::Object X) {
 		//Extract properties of X
 		Matrix<Rational> rays = X.give("VERTICES");
@@ -56,10 +41,6 @@ namespace polymake { namespace tropical {
 		IncidenceMatrix<> maximalCones = X.give("MAXIMAL_POLYTOPES");
 		IncidenceMatrix<> facet_incidences = X.give("MAXIMAL_AT_CODIM_ONE");
 		facet_incidences = T(facet_incidences);
-		IncidenceMatrix<> local_restriction;
-		if(X.exists("LOCAL_RESTRICTION")) {
-			X.give("LOCAL_RESTRICTION") >> local_restriction;
-		}
 
 		//Result variables
 		Matrix<Rational> cmplxrays(0,rays.cols());
@@ -67,7 +48,6 @@ namespace polymake { namespace tropical {
 		Vector<Set<int> > codimone(codimOneCones.rows());
 		Vector<int> conversion;
 
-		//dbgtrace << "Dividing rays..." << endl;
 
 		//Divide the set of rays into those with x0 != 0 and those with x0 = 0
 		Set<int> affineRays;
@@ -101,26 +81,9 @@ namespace polymake { namespace tropical {
 			}
 		}
 
-		//If there is a local restriction, we keep only compatible affine rays
-		//for equivalence computation
-		if(local_restriction.rows() > 0) {
-			//       affineRays *= accumulate(rows(local_restriction),operations::add());
-			Set<int> compatible;
-			for(Entire<Set<int> >::iterator af = entire(affineRays); !af.at_end(); af++) {
-				Set<int> single; single += *af;
-				if(is_coneset_compatible(single, local_restriction)) {
-					compatible += *af;
-				}
-			}
-			affineRays = compatible;
-		}
-
-		//dbgtrace << "Added affine rays to cones" << endl;
-
 		//Now we go through the directional rays and compute the connected component for each one
 		for(Entire<Set<int> >::iterator r = entire(directionalRays); !r.at_end(); ++r) {
 
-			//dbgtrace << "Computing components of ray " << *r << endl;
 
 			//List of connected components of this ray, each element is a component
 			//containing the indices of the maximal cones
@@ -136,12 +99,10 @@ namespace polymake { namespace tropical {
 				}
 			}
 
-			//dbgtrace << "Computed set of cones containing r:" << rcones << endl;
 
 			//For each such maximal cone, compute its component (if it hasnt been computed yet).
 			for(Entire<Set<int> >::iterator mc = entire(rcones); !mc.at_end(); ++mc) {
 				if(!inverseMap.exists(*mc)) {
-					//dbgtrace << "Creating new component" << endl;
 					//Create new component
 					Set<int> newset; newset = newset + *mc;
 					connectedComponents |= newset;
@@ -151,7 +112,6 @@ namespace polymake { namespace tropical {
 					std::list<int> queue;
 					queue.push_back(*mc);
 					//Semantics: Elements in that queue have been added but their neighbours might not
-					//dbgtrace << "Calculating component" << endl;
 					while(queue.size() != 0) {
 						int node = queue.front(); //Take the first element and find its neighbours
 						queue.pop_front();
@@ -172,7 +132,6 @@ namespace polymake { namespace tropical {
 				}
 			} //END computation of connected components
 
-			//dbgtrace << "Connected components:\n" << connectedComponents << endl;
 
 			//Now add r once for each connected component to the appropriate cones
 			for(int cc = 0; cc < connectedComponents.dim(); cc++) {
@@ -180,7 +139,6 @@ namespace polymake { namespace tropical {
 				conversion |= (*r);
 				int rowindex = cmplxrays.rows()-1;
 				Set<int> ccset = connectedComponents[cc];
-				//dbgtrace << "Inserting for component " << cc+1 << endl;
 				for(Entire<Set<int> >::iterator mc = entire(ccset); !mc.at_end(); ++mc) {
 					maxcones[*mc] = maxcones[*mc] + rowindex;
 					//For each facet of mc that contains r, add rowindex

@@ -29,5 +29,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(cube_T_int_C_C_o, QuadraticExtension< Rational >, perl::Canned< const QuadraticExtension< Rational > >, perl::Canned< const QuadraticExtension< Rational > >);
    FunctionInstance4perl(cube_T_int_C_C_o, Rational, perl::Canned< const Rational >, perl::Canned< const Rational >);
    FunctionInstance4perl(cube_T_int_C_C_o, QuadraticExtension< Rational >, int, int);
+   FunctionInstance4perl(cube_T_int_C_C_o, Rational, perl::Canned< const Rational >, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

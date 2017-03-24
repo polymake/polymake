@@ -17,20 +17,20 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
-#include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/SparseVector.h"
 #include "polymake/TropicalNumber.h"
 #include "polymake/Vector.h"
+#include "polymake/PuiseuxFraction.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( add_extra_polytope_ineq_x_X2_x_f16, T0 ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      WrapperReturnVoid( (add_extra_polytope_ineq(arg0, arg1.get<T0>(), arg2)) );
+   FunctionInterface4perl( add_extra_polytope_ineq_X2_f16, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturnVoid( (add_extra_polytope_ineq(arg0.get<T0>())) );
    };
 
    template <typename T0>
@@ -44,20 +44,12 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(canonicalize_polytope_generators_X2_f16, perl::Canned< SparseMatrix< Rational, NonSymmetric > >);
    FunctionInstance4perl(canonicalize_polytope_generators_X2_f16, perl::Canned< SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >);
    FunctionInstance4perl(canonicalize_polytope_generators_X2_f16, perl::Canned< Matrix< QuadraticExtension< Rational > > >);
-   FunctionInstance4perl(add_extra_polytope_ineq_x_X2_x_f16, perl::Canned< Matrix< Rational > >);
-   FunctionInstance4perl(add_extra_polytope_ineq_x_X2_x_f16, perl::Canned< Matrix< double > >);
-   FunctionInstance4perl(add_extra_polytope_ineq_x_X2_x_f16, perl::Canned< SparseMatrix< Rational, NonSymmetric > >);
-   FunctionInstance4perl(add_extra_polytope_ineq_x_X2_x_f16, perl::Canned< SparseMatrix< double, NonSymmetric > >);
-   FunctionInstance4perl(add_extra_polytope_ineq_x_X2_x_f16, perl::Canned< Matrix< QuadraticExtension< Rational > > >);
-   FunctionInstance4perl(add_extra_polytope_ineq_x_X2_x_f16, perl::Canned< SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >);
-   FunctionInstance4perl(canonicalize_polytope_generators_X2_f16, perl::Canned< Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
-   FunctionInstance4perl(add_extra_polytope_ineq_x_X2_x_f16, perl::Canned< Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
-   FunctionInstance4perl(canonicalize_polytope_generators_X2_f16, perl::Canned< Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
-   FunctionInstance4perl(add_extra_polytope_ineq_x_X2_x_f16, perl::Canned< Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
-   FunctionInstance4perl(add_extra_polytope_ineq_x_X2_x_f16, perl::Canned< SparseMatrix< PuiseuxFraction< Max, Rational, Rational >, NonSymmetric > >);
-   FunctionInstance4perl(add_extra_polytope_ineq_x_X2_x_f16, perl::Canned< SparseMatrix< PuiseuxFraction< Min, Rational, Integer >, NonSymmetric > >);
-   FunctionInstance4perl(add_extra_polytope_ineq_x_X2_x_f16, perl::Canned< SparseMatrix< PuiseuxFraction< Min, Rational, Rational >, NonSymmetric > >);
-   FunctionInstance4perl(add_extra_polytope_ineq_x_X2_x_f16, perl::Canned< Matrix< PuiseuxFraction< Min, Rational, int > > >);
-   FunctionInstance4perl(add_extra_polytope_ineq_x_X2_x_f16, perl::Canned< Matrix< PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > > >);
+   FunctionInstance4perl(add_extra_polytope_ineq_X2_f16, perl::Canned< Matrix< double > >);
+   FunctionInstance4perl(add_extra_polytope_ineq_X2_f16, perl::Canned< Matrix< Rational > >);
+   FunctionInstance4perl(add_extra_polytope_ineq_X2_f16, perl::Canned< SparseMatrix< Rational, NonSymmetric > >);
+   FunctionInstance4perl(add_extra_polytope_ineq_X2_f16, perl::Canned< Matrix< QuadraticExtension< Rational > > >);
+   FunctionInstance4perl(add_extra_polytope_ineq_X2_f16, perl::Canned< SparseMatrix< double, NonSymmetric > >);
+   FunctionInstance4perl(add_extra_polytope_ineq_X2_f16, perl::Canned< SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >);
+   FunctionInstance4perl(add_extra_polytope_ineq_X2_f16, perl::Canned< Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

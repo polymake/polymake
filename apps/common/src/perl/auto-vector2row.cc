@@ -16,19 +16,26 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
+#include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
-#include "polymake/Vector.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
+#include "polymake/Vector.h"
+#include "polymake/client.h"
 #include "polymake/linalg.h"
+
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( vector2row_X8, T0 ) {
+   FunctionInterface4perl( vector2row_X32, T0 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturnAnch( 1, (arg0), vector2row(arg0.get<T0>()) );
+      WrapperReturn( (vector2row(arg0.get<T0>())), arg0 );
    };
 
-   FunctionInstance4perl(vector2row_X8, perl::Canned< const Vector< Rational > >);
+   FunctionInstance4perl(vector2row_X32, perl::Canned< const Vector< Rational > >);
+   FunctionInstance4perl(vector2row_X32, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSetCmp<int, pm::operations::cmp>, int> >);
+   FunctionInstance4perl(vector2row_X32, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSetCmp<int, pm::operations::cmp>, pm::Rational> >);
+   FunctionInstance4perl(vector2row_X32, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true>, mlist<> > >);
+   FunctionInstance4perl(vector2row_X32, perl::Canned< const Vector< QuadraticExtension< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

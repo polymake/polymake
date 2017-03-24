@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -42,7 +42,7 @@ UserFunctionTemplate4perl("# @category Optimization"
                           "# @return Vector"
                           "# @example To print an inner point of the square, do this:"
                           "# > print inner_point(cube(2)->VERTICES);"
-                          "# |1 -1/3 -1/3",
+                          "# | 1 -1/3 -1/3",
                           "inner_point(Matrix)");
 } }
 

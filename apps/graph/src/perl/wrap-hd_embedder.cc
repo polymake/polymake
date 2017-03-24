@@ -14,13 +14,19 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/graph/Decoration.h"
+#include "polymake/tropical/covectors.h"
+
 namespace polymake { namespace graph { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( pm::Matrix<double> (perl::Object, pm::Vector<double> const&, perl::OptionSet) ) {
+   template <typename T0, typename T1>
+   FunctionInterface4perl( hd_embedder_T_x_x_o, T0,T1 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      IndirectWrapperReturn(arg0, arg1.get< perl::TryCanned< const Vector< double > > >(), arg2);
-   }
-   FunctionWrapperInstance4perl( pm::Matrix<double> (perl::Object, pm::Vector<double> const&, perl::OptionSet) );
+      WrapperReturn( (hd_embedder<T0,T1>(arg0, arg1, arg2)) );
+   };
 
+   FunctionInstance4perl(hd_embedder_T_x_x_o, graph::lattice::BasicDecoration, graph::lattice::Sequential);
+   FunctionInstance4perl(hd_embedder_T_x_x_o, graph::lattice::BasicDecoration, graph::lattice::Nonsequential);
+   FunctionCrossAppInstance4perl(hd_embedder_T_x_x_o, (1, "tropical"), CovectorDecoration, graph::lattice::Nonsequential);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

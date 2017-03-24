@@ -22,7 +22,8 @@
 
 #include "polymake/client.h"
 #include "polymake/Vector.h"
-#include "polymake/graph/HasseDiagram.h"
+#include "polymake/graph/Lattice.h"
+#include "polymake/graph/Decoration.h"
 #include "polymake/Fibonacci.h"
 #include "polymake/Integer.h"
 
@@ -32,17 +33,17 @@ namespace {
 typedef Graph<Directed> PartialLattice;
 typedef NodeMap<Directed,Integer> IncidenceMap;
 
-Integer* calcEntry(const graph::HasseDiagram& F, PartialLattice& G, IncidenceMap& Inc, int k, Integer* fl)
+Vector<Integer>::iterator calcEntry(const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential>& F, PartialLattice& G, IncidenceMap& Inc, int k, Vector<Integer>::iterator fl)
 {
    // INVARIANT for G here: layer k is connected to some upper layer, all layers below k have no edges at all
    Integer Entry=0;
-   for (Entire<sequence>::iterator k_node=entire(F.node_range_of_dim(k)); !k_node.at_end(); ++k_node)
+   for (auto k_node=entire(F.nodes_of_rank(k+1)); !k_node.at_end(); ++k_node)
       Entry += (Inc[*k_node] = accumulate(select(Inc, G.out_adjacent_nodes(*k_node)), operations::add()));
 
    int i=k-2;
    if (i>=0) {
       // connect layer k-2 with layer k
-      for (Entire<sequence>::iterator i_node=entire(F.node_range_of_dim(i)); !i_node.at_end(); ++i_node)
+      for (auto i_node=entire(F.nodes_of_rank(i+1)); !i_node.at_end(); ++i_node)
          // iterate over the adjacent nodes in the layer between (==k-1)
          for (PartialLattice::out_adjacent_node_list::const_iterator btw_node=F.out_adjacent_nodes(*i_node).begin(); !btw_node.at_end(); ++btw_node)
             G.out_adjacent_nodes(*i_node) += F.out_adjacent_nodes(*btw_node);
@@ -51,7 +52,7 @@ Integer* calcEntry(const graph::HasseDiagram& F, PartialLattice& G, IncidenceMap
          fl=calcEntry(F,G,Inc,i,fl);
          if (i==0) break;
          // move the edges from layer i to layer i-1
-         for (Entire<sequence>::iterator i_node=entire(F.node_range_of_dim(i)); !i_node.at_end(); ++i_node) {
+         for (auto i_node=entire(F.nodes_of_rank(i+1)); !i_node.at_end(); ++i_node) {
             for (PartialLattice::in_adjacent_node_list::const_iterator down_node=F.in_adjacent_nodes(*i_node).begin(); !down_node.at_end(); ++down_node)
                G.out_adjacent_nodes(*down_node) += G.out_adjacent_nodes(*i_node);
             G.out_edges(*i_node).clear();
@@ -59,7 +60,7 @@ Integer* calcEntry(const graph::HasseDiagram& F, PartialLattice& G, IncidenceMap
          --i;
       }
       // remove all edges betwen layers 0 and k, thus restoring the entry invariant
-      for (Entire<sequence>::const_iterator k_node=entire(F.node_range_of_dim(k)); !k_node.at_end(); ++k_node)
+      for (auto k_node=entire(F.nodes_of_rank(k+1)); !k_node.at_end(); ++k_node)
          G.in_edges(*k_node).clear();
    }
    *--fl=Entry;
@@ -69,8 +70,8 @@ Integer* calcEntry(const graph::HasseDiagram& F, PartialLattice& G, IncidenceMap
 
 Vector<Integer> flag_vector(perl::Object HD_obj)
 {
-   const graph::HasseDiagram F(HD_obj);
-   const int d = F.dim();
+   const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential> F(HD_obj);
+   const int d = F.rank()-1;
    PartialLattice G(F.nodes());
    IncidenceMap Inc(G);
    // provide for Inc[TOP]==1 avoiding extra conditionals in the recursive part
@@ -80,7 +81,7 @@ Vector<Integer> flag_vector(perl::Object HD_obj)
    return fl;
 }
 
-Function4perl(&flag_vector, "flag_vector(FaceLattice)");
+Function4perl(&flag_vector, "flag_vector(Lattice<BasicDecoration, Sequential>)");
 
 } }
 

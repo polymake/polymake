@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -39,14 +39,13 @@ perl::Object create_delpezzo(const int d, const Scalar& s, const bool pseudo_fla
    p.set_description() << "del-pezzo-polytope of dimension " << d << endl;
 
    SparseMatrix<Scalar> V((s*unit_matrix<Scalar>(d)) / ((-s)*unit_matrix<Scalar>(d)) / (s*ones_vector<Scalar>(d)));
-   if(!pseudo_flag) V/= ((-s)*ones_vector<Scalar>(d));
+   if (!pseudo_flag) V /= ((-s)*ones_vector<Scalar>(d));
    V = ones_vector<Scalar>() | V;
 
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("CONE_DIM") << d+1;
    p.take("N_VERTICES") << n_vertices;
    p.take("VERTICES") << V;
-   p.take("LINEALITY_SPACE") << Matrix<Scalar>();
    p.take("BOUNDED") << true;
    p.take("CENTERED") << true;
    p.take("FEASIBLE") << true;

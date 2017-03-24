@@ -10,7 +10,7 @@
 #include "libnormaliz/libnormaliz.h"
 #include <list>
 #include <vector>
-#include "libnormaliz/offload.h"  // offload system header
+#include <offload.h>  // offload system header
 
 namespace libnormaliz {
 
@@ -53,6 +53,9 @@ private:
   void transfer_grading();
   void transfer_triangulation_info();
   void primal_algorithm_initialize();
+
+  // inner routines
+  void transfer_pyramids_inner(key_t *data, long size);
 
   // collect data routines
   void collect_integers(); // TriangulationSize, DetSum, Multiplicity

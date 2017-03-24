@@ -35,7 +35,6 @@
 #include "polymake/tropical/misc_tools.h"
 #include "polymake/tropical/linear_algebra_tools.h"
 #include "polymake/tropical/polynomial_tools.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/rational_function.h"
 
 namespace polymake { namespace tropical {
@@ -48,8 +47,8 @@ namespace polymake { namespace tropical {
 	 */
 	template <typename Addition>
 		void computeDomain(perl::Object function) {
-			Polynomial<TropicalNumber<Addition> > num = function.give("NUMERATOR");
-			Polynomial<TropicalNumber<Addition> > den = function.give("DENOMINATOR");
+			Polynomial<TropicalNumber<Addition>> num = function.give("NUMERATOR");
+			Polynomial<TropicalNumber<Addition>> den = function.give("DENOMINATOR");
 
 			perl::Object domain_num = computePolynomialDomain(num);
 			perl::Object domain_den = computePolynomialDomain(den);
@@ -66,8 +65,8 @@ namespace polymake { namespace tropical {
 	 */
 	template <typename Addition>
 		void computeGeometricFunctionData(perl::Object function) {
-			Polynomial<TropicalNumber<Addition> > num = function.give("NUMERATOR");
-			Polynomial<TropicalNumber<Addition> > den = function.give("DENOMINATOR");
+			Polynomial<TropicalNumber<Addition>> num = function.give("NUMERATOR");
+			Polynomial<TropicalNumber<Addition>> den = function.give("DENOMINATOR");
 			perl::Object domain = function.give("DOMAIN");
 
 			//This just computes the associated vertices
@@ -122,9 +121,9 @@ namespace polymake { namespace tropical {
 	 * @return RationalFunction
 	 */
 	template <typename Addition>
-		perl::Object homogenize_quotient(Polynomial<TropicalNumber<Addition> > num, 
-				Polynomial<TropicalNumber<Addition> > den,
-				int chart) {
+		perl::Object homogenize_quotient(const Polynomial<TropicalNumber<Addition>>& num, 
+                                                 const Polynomial<TropicalNumber<Addition>>& den,
+                                                 int chart) {
 			Matrix<int> num_mons = num.monomials_as_matrix();
 			Vector<TropicalNumber<Addition> > num_coefs = num.coefficients_as_vector();
 			Matrix<int> den_mons = den.monomials_as_matrix();
@@ -152,9 +151,8 @@ namespace polymake { namespace tropical {
 			new_den_mons.minor(All,~scalar2set(chart)) = den_mons;
 
 			//Make ring and return result
-			Ring<TropicalNumber<Addition> > r(num_mons.cols()+1);
-			Polynomial<TropicalNumber<Addition> > new_num(new_num_mons, num_coefs,r);
-			Polynomial<TropicalNumber<Addition> > new_den(new_den_mons, den_coefs,r);
+			Polynomial<TropicalNumber<Addition> > new_num(num_coefs, new_num_mons);
+			Polynomial<TropicalNumber<Addition> > new_den(den_coefs, new_den_mons);
 
 			perl::Object result(perl::ObjectType::construct<Addition>("RationalFunction"));
 			result.take("NUMERATOR") << new_num;
@@ -218,10 +216,10 @@ namespace polymake { namespace tropical {
 
 	// PERL WRAPPER //////////////////////////
 
-	FunctionTemplate4perl("computePolynomialDomain<Addition>(Polynomial<TropicalNumber<Addition> >)");
+	FunctionTemplate4perl("computePolynomialDomain<Addition>(Polynomial<TropicalNumber<Addition>>)");
 	FunctionTemplate4perl("computeDomain<Addition>(RationalFunction<Addition>) : void");
 	FunctionTemplate4perl("computeGeometricFunctionData<Addition>(RationalFunction<Addition>) : void");
-	FunctionTemplate4perl("homogenize_quotient<Addition>(Polynomial<TropicalNumber<Addition> >,Polynomial<TropicalNumber<Addition> >;$=0)");
-	FunctionTemplate4perl("add_rational_functions<Addition>(RationalFunction<Addition>,RationalFunction<Addition>)");
+	FunctionTemplate4perl("homogenize_quotient<Addition>(Polynomial<TropicalNumber<Addition>>, Polynomial<TropicalNumber<Addition>>; $=0)");
+	FunctionTemplate4perl("add_rational_functions<Addition>(RationalFunction<Addition>, RationalFunction<Addition>)");
 
 }}

@@ -15,28 +15,31 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/graph/HasseDiagram.h"
 #include "polymake/Vector.h"
 #include "polymake/Matrix.h"
 #include "polymake/RandomSubset.h"
 #include <cmath>
+#include "polymake/graph/Lattice.h"
 
 namespace polymake { namespace graph {
 
+template <typename Decoration, typename SeqType>
 class HDEmbedder {
 protected:
-   const HasseDiagram& HD;
+   const Lattice<Decoration, SeqType>& HD;
    const Vector<double>& label_width;
-   int dim;
+   int top_dim;
+   int bottom_dim;
+   int dim_delta;
    typedef std::vector< std::vector<int> > layer_vector;
    layer_vector layers;
    double total_width, epsilon;
    Vector<double> node_x, weights, nb_x_sum, width_in_layer;
 
 public:
-   HDEmbedder(const HasseDiagram& HD_arg, const Vector<double>& label_width_arg)
+   HDEmbedder(const Lattice<Decoration, SeqType>& HD_arg, const Vector<double>& label_width_arg)
       : HD(HD_arg), label_width(label_width_arg),
-        dim(HD.dim()), layers(dim), node_x(HD.nodes()), weights(dim+1), nb_x_sum(HD.nodes()), width_in_layer(dim) {}
+        top_dim(HD.rank()), bottom_dim(HD.lowest_rank()), dim_delta(top_dim - bottom_dim), layers(dim_delta-1), node_x(HD.nodes()), weights(dim_delta), nb_x_sum(HD.nodes()), width_in_layer(dim_delta-1) {}
 
    Matrix<double> compute(const perl::OptionSet& options);
 
@@ -51,7 +54,8 @@ private:
    inline bool good_swap(int lnode, int rnode, const double delta, const double *w) const;
 };
 
-void HDEmbedder::init(const perl::OptionSet& options)
+template <typename Decoration, typename SeqType>
+void HDEmbedder<Decoration, SeqType>::init(const perl::OptionSet& options)
 {
    options["eps"] >> epsilon;
    const RandomSeed seed(options["seed"]);
@@ -61,11 +65,11 @@ void HDEmbedder::init(const perl::OptionSet& options)
    // randomly toss the nodes in each layer
    layer_vector::iterator l=layers.begin();
    Vector<double>::iterator wd=width_in_layer.begin();
-   for (int d=0; d<dim; ++d, ++l, ++wd) {
-      const HasseDiagram::nodes_of_dim_set nodes=HD.nodes_of_dim(d);
+   for (int d=bottom_dim+1; d<top_dim; ++d, ++l, ++wd) {
+      const typename Lattice<Decoration, SeqType>::nodes_of_rank_type nodes=HD.nodes_of_rank(d);
       const int n=nodes.size();
       l->resize(n);
-      copy(entire(random_permutation(nodes, random)), l->begin());
+      copy_range(entire(random_permutation(nodes, random)), l->begin());
       accumulate_in(entire(select(label_width, nodes)), operations::max(), *wd);
       assign_max(total_width, (*wd)*n);
    }
@@ -77,11 +81,11 @@ void HDEmbedder::init(const perl::OptionSet& options)
 
    Vector<double>::iterator wt=weights.begin();
    double prev_width=1;
-   for (int d=0; d<dim; ++d, ++wt) {
-      const int layer_width=HD.nodes_of_dim(d).size();
+   for (int d=bottom_dim+1, l = 0; d<top_dim; ++d, ++wt,++l) {
+      const int layer_width=HD.nodes_of_rank(d).size();
       const double width=total_width/layer_width;
       double x=(width-total_width)/2;
-      for (Entire< std::vector<int> >::iterator n=entire(layers[d]); !n.at_end(); ++n, x+=width)
+      for (auto n=entire(layers[l]); !n.at_end(); ++n, x+=width)
          node_x[*n]=x;
       *wt=layer_width/prev_width;
       prev_width=layer_width;
@@ -89,8 +93,8 @@ void HDEmbedder::init(const perl::OptionSet& options)
    *wt=1/prev_width;
 
    wt=weights.begin();
-   for (int d=0; d<dim; ++d, ++wt) {
-      for (Entire<HasseDiagram::nodes_of_dim_set>::const_iterator nodes=entire(HD.nodes_of_dim(d)); !nodes.at_end(); ++nodes) {
+   for (int d=bottom_dim+1; d<top_dim; ++d, ++wt) {
+      for (auto nodes=entire(HD.nodes_of_rank(d)); !nodes.at_end(); ++nodes) {
          const int n=*nodes;
          nb_x_sum[n]= accumulate(select(node_x, HD.out_adjacent_nodes(n)), operations::add())*wt[1] +
             accumulate(select(node_x, HD.in_adjacent_nodes(n)), operations::add())/wt[0];
@@ -98,7 +102,8 @@ void HDEmbedder::init(const perl::OptionSet& options)
    }
 }
 
-Matrix<double> HDEmbedder::compute(const perl::OptionSet& options)
+template <typename Decoration, typename SeqType>
+Matrix<double> HDEmbedder<Decoration, SeqType>::compute(const perl::OptionSet& options)
 {
    init(options);
 #if POLYMAKE_DEBUG
@@ -140,9 +145,9 @@ Matrix<double> HDEmbedder::compute(const perl::OptionSet& options)
    Matrix<double> embedding(HD.nodes(), 2);
    const bool dual=options["dual"];
    double y=0;
-   for (int d=(dual ? -1 : 0), d_step=(dual ? -1 : 1), d_last=(dual ? -dim-1 : dim);
+   for (int d=(dual ? top_dim-1 : bottom_dim+1), d_step=(dual ? -1 : 1), d_last=(dual ? bottom_dim: top_dim);
         d!=d_last;  d+=d_step, y+=1) {
-      for (Entire<HasseDiagram::nodes_of_dim_set>::const_iterator n=entire(HD.nodes_of_dim(d)); !n.at_end(); ++n) {
+      for (auto n=entire(HD.nodes_of_rank(d)); !n.at_end(); ++n) {
          embedding(*n,0)=node_x[*n];
          embedding(*n,1)=y;
       }
@@ -152,7 +157,8 @@ Matrix<double> HDEmbedder::compute(const perl::OptionSet& options)
    return embedding;
 }
 
-int HDEmbedder::try_move_node(std::vector<int>::iterator n,
+template <typename Decoration, typename SeqType>
+int HDEmbedder<Decoration, SeqType>::try_move_node(std::vector<int>::iterator n,
                               const std::vector<int>::iterator& n_first, const std::vector<int>::iterator& n_last,
                               const double delta, const double* wt)
 {
@@ -228,7 +234,8 @@ int HDEmbedder::try_move_node(std::vector<int>::iterator n,
    return moved;
 }
 
-void HDEmbedder::adjust_x(int node, const double x, const double* wt)
+template <typename Decoration, typename SeqType>
+void HDEmbedder<Decoration, SeqType>::adjust_x(int node, const double x, const double* wt)
 {
    const double dx=x-node_x[node];
    node_x[node]=x;
@@ -240,22 +247,24 @@ void HDEmbedder::adjust_x(int node, const double x, const double* wt)
       nb_x_sum[*nb]+=dx*wt[0];
 }
 
-bool HDEmbedder::good_swap(int lnode, int rnode, const double delta, const double* wt) const
+template <typename Decoration, typename SeqType>
+bool HDEmbedder<Decoration, SeqType>::good_swap(int lnode, int rnode, const double delta, const double* wt) const
 {
    return delta*( (delta+2*node_x[lnode])*( (HD.out_degree(lnode)-HD.out_degree(rnode))*wt[1] +
                                             (HD.in_degree(lnode)-HD.in_degree(rnode))/wt[0] )
                   - 2*(nb_x_sum[lnode]-nb_x_sum[rnode])) < 0;
 }
 
+template <typename Decoration, typename SeqType>
 Matrix<double> hd_embedder(perl::Object HD_obj, const Vector<double>& label_width, perl::OptionSet options)
 {
-   const HasseDiagram HD(HD_obj);
-   HDEmbedder HDE(HD, label_width);
+   const Lattice<Decoration, SeqType> HD(HD_obj);
+   HDEmbedder<Decoration, SeqType> HDE(HD, label_width);
    return HDE.compute(options);
 }
 
-UserFunction4perl("# @category Visualization"
-                  "# Create an embedding of the Hasse diagram as a layered graph."
+UserFunctionTemplate4perl("# @category Visualization"
+                  "# Create an embedding of the Lattice as a layered graph."
                   "# The embedding algorithm tries to minimize the weighted sum of squares of edge lengths,"
                   "# starting from a random distribution. The weights are relative to the fatness of the layers."
                   "# The y-space between the layers is constant."
@@ -265,7 +274,7 @@ UserFunction4perl("# @category Visualization"
                   "# @option Bool dual  the node representing the empty face is put on the topmost level"
                   "# @option Float eps  calculation accuracy."
                   "# @option Int seed  effects the initial placement of the nodes.",
-                  &hd_embedder, "hd_embedder(FaceLattice $ { dual => undef, eps => 1e-4, seed => undef })");
+                  "hd_embedder<Decoration, SeqType>(Lattice<Decoration, SeqType> $ { dual => undef, eps => 1e-4, seed => undef })");
 } }
 
 // Local Variables:

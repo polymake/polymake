@@ -73,7 +73,7 @@ public:
    bool operator== (const MultiDimCounter& count) const
    {
       return count->size() == my_counter.size()
-             && equal(entire(my_counter), count->begin());
+             && equal_ranges(entire(my_counter), count->begin());
    }
 
    bool operator!= (const MultiDimCounter& count) const { return !operator==(count); }
@@ -100,7 +100,7 @@ public:
             if (*v < *s || *v >= *l)
                throw std::runtime_error("MultiDimCounter::set - value out of range");
       }
-      copy(values.begin(), entire(my_counter));
+      copy_range(values.begin(), entire(my_counter));
    }
 
    void set_digit(int digit, typename function_argument<number_type>::type value)
@@ -120,10 +120,10 @@ public:
 };
 
 template <bool left_to_right, typename number_type>
-struct check_iterator_feature<MultiDimCounter<left_to_right, number_type>, end_sensitive> : True { };
+struct check_iterator_feature<MultiDimCounter<left_to_right, number_type>, end_sensitive> : std::true_type { };
 
 template <bool left_to_right, typename number_type>
-struct check_iterator_feature<MultiDimCounter<left_to_right, number_type>, rewindable> : True { };
+struct check_iterator_feature<MultiDimCounter<left_to_right, number_type>, rewindable> : std::true_type { };
 
 template <bool left_to_right, typename number_type>
 MultiDimCounter<left_to_right, number_type>&

@@ -63,8 +63,8 @@ user_method LATTICE_COLORED(%Visual::PointSet::decorations) {
     }
     $P->provide("LATTICE_POINTS_GENERATORS");
     my $vert = $P->VERTICES;
-    my $nlv = new Matrix<Float>([grep {!is_integral($_)} @$vert]);
-    my $points = new Matrix<Float>(0,$P->CONE_DIM);
+    my $nlv = new Matrix<Float>(map { convert_to<Float>($_) } grep {!is_integral($_)} @$vert);
+    my $points = new Matrix<Float>(0, $P->CONE_DIM);
     $points /= convert_to<Float>($P->INTERIOR_LATTICE_POINTS) if ($P->N_INTERIOR_LATTICE_POINTS);
     $points /= convert_to<Float>($P->BOUNDARY_LATTICE_POINTS) if ($P->N_BOUNDARY_LATTICE_POINTS);
     $points /= $nlv if ($nlv->rows);

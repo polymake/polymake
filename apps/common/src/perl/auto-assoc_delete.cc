@@ -26,7 +26,7 @@ namespace polymake { namespace common { namespace {
    template <typename T0, typename T1>
    FunctionInterface4perl( assoc_delete_X2_X, T0,T1 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturnTmp( pm::perl::delayed_erase(arg0.get<T0>(), arg1.get<T1>()) );
+      WrapperReturn( pm::perl::delayed_erase(arg0.get<T0>(), arg1.get<T1>()) );
    };
 
    FunctionInstance4perl(assoc_delete_X2_X, perl::Canned< Map< Vector< double >, int > >, perl::Canned< const Vector< double > >);

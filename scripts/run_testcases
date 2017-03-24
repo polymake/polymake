@@ -1,0 +1,403 @@
+#  Copyright (c) 1997-2017
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+#
+#  Driver for unit tests
+#
+
+use Polymake::Test;
+
+##################################################################
+#
+#  Option parsing and preparations
+#
+
+my (@apps, @extensions, @testgroups, @examples, $jenkins_report, $report_writer, $emacs_style,
+    $validate, $ignore_random_failures, $shuffle_seed, $no_new_glue_code, $single_script,
+    %extensions, %found_testgroups, $exit, $auto_adjust);
+
+if ( !GetOptions( 'applications=s' => sub { collect_arglist(\@apps, $_[1]) },
+                  'extensions=s' => sub { collect_arglist(\@extensions, $_[1]) },
+                  'testgroups=s' => sub { collect_arglist(\@testgroups, $_[1]) },
+                  'examples=s' => sub { collect_arglist(\@examples, $_[1]) },
+                  'jenkins-report=s' => \$jenkins_report,
+                  'emacs-style' => \$emacs_style,
+                  'validate-XML' => \$validate,
+                  'shuffle:i' => \$shuffle_seed,
+                  'ignore-random-failures' => \$ignore_random_failures,
+                  'no-new-glue-code' => \$no_new_glue_code,
+                  'allow-exec-time=f' => \$Test::Case::allowed_exec_time,
+                  'auto-adjust' =>\$auto_adjust,
+                )
+     or @ARGV>1
+     or @ARGV==1 && !-f ($single_script=shift @ARGV) &&
+        die ("script file $single_script ", -e $single_script ? "is not a regular file " : "does not exist", "\n")
+     or $jenkins_report && ($emacs_style || @extensions || @testgroups || @examples || $ignore_random_failures)
+     or $single_script && ($jenkins_report || @apps || @extensions || @testgroups || @examples) ) {
+   die <<'.'
+usage: polymake --script run_testcases [ options ] [ test_script.pl ]
+   or: polymake --script run_testcases [ options ] --jenkins-report REPORT
+
+If a test script file is specified, it is executed and the success indicator
+returned to the caller.  Otherwise all existing test groups are executed,
+which satisfy the filtering options described below, if any.
+
+Options are:
+   --applications APPNAME ...
+       only run tests from the specified applications (default: all known applications)
+   --extensions EXTDIR ... | 'ALL' | 'all'
+       run tests from the specified extensions; ALL means from all registered extension
+       (default: from bundled extensions only)
+   --testgroups TESTNAME ...
+       only execute testgroups with matching names; shell-like wildcards allowed
+   --examples TOPIC ...
+       only execute examples embedded in the interactive help for matching topics, e.g. functions
+       or properties; shell-like wildcards allowed;
+       "NONE" or "none" will suppress execution of any examples
+   --shuffle [SEED]
+       permute apps and testgroups randomly
+       specify an integer SEED to reproduce a (failed) run;
+       if omitted, a random seed is generated and reported on stdout
+   --ignore-random-failures
+       separately report mismatching results in tests marked as random
+       and don't count them as test failures
+   --validate-XML
+       perform additional sanity checks on data files: generate elaborated schemata,
+       validate all input files, and check the idempotence of a save & load sequence
+   --no-new-glue-code
+       forbid automatic generation and compilation of C++/perl interface code snippets (aka wrappers)
+   --allow-exec-time SEC
+       increase the allowed execution time for a single test case;
+       test scripts may still override this for especially slow cases
+   --jenkins-report REPORT
+       produce a JUnit-compatible test report REPORT_APPNAME.xml for each application,
+       do not print any test results or warnings to STDOUT.
+       This option is incompatible with --extensions, --testgroups, and --ignore-random-failures.
+   --emacs-style
+       produce simple report without colors, cursor control, and with error messages
+       comprehensible to emacs compilation mode
+   --auto-adjust
+       try to adjust test objects to changed rules or version upgrade by adding/removing properties;
+       to be used in interactive mode only and with uttermost care
+.
+}
+
+# run as a standalone script from the command line?
+my $standalone=(caller(1))[3] eq "Polymake::Main::run_script";
+
+if (@extensions) {
+   if ($#extensions==0 && lc($extensions[0]) eq "all") {
+      @extensions=();
+   } elsif ($standalone) {
+      # detect wrong extension directories
+      $_=Cwd::abs_path($_) for @extensions;
+      @extensions{@extensions}=();
+      my @known=grep { exists $extensions{$_->dir} } @Core::Extension::active;
+      if (@known != @extensions) {
+         my @unknown=grep { !contains_string(\@known, $_) } @extensions;
+         die "Unknown extension", @unknown>1 && "s", " ", join(", ", @unknown), "\n";
+      }
+
+      # filter out unwanted extensions; preserve all bundled extensions
+      my %keep=%extensions;
+      for (my $i=$#Core::Extension::active; $i>=$Core::Extension::num_bundled; --$i) {
+         my $ext=$Core::Extension::active[$i];
+         if (exists $keep{$ext->dir}) {
+            @keep{ map { $_->dir } @{$ext->requires} }=();
+         } else {
+            splice @Core::Extension::active, $i, 1;
+         }
+      }
+   } else {
+      die "Sorry, filtering by extensions is not supported when this script is called from polymake shell\n";
+   }
+} elsif ($standalone) {
+   # crop the extension list after the last bundled extension
+   $#Core::Extension::active=$Core::Extension::num_bundled-1;
+}
+
+if (@apps) {
+   if (@extensions) {
+      foreach my $appname (@apps) {
+         if ((map { glob "$_/apps/$appname" } @extensions)==0) {
+            if (@extensions>1) {
+               die "None of specified extensions contributes to the application $appname\n";
+            } else {
+               die "Extension @extensions does not contribute to the application $appname\n";
+            }
+         }
+      }
+   }
+
+} elsif ($single_script) {
+   $single_script=Cwd::abs_path($single_script) if $single_script !~ m{^/};
+   if ($single_script =~ m{/apps/(\w+)/testsuite/[^/]+/test(?:_.*)?\.pl$}) {
+      push @apps, $1;
+   } else {
+      die "A test script must reside in an application-specific testsuite subdirectory and be named 'test[_SUBGROUP].pl'\n";
+   }
+
+} else {
+   if (@extensions) {
+      @apps= sorted_uniq(sort( map { /$filename_re/o } map { glob("$_/apps/*") } @extensions ));
+   } else {
+      @apps= map { /$filename_re/o } glob "$InstallTop/apps/*";
+   }
+}
+
+my $env=new Test::Environment($Scope, shuffle_seed => $shuffle_seed,
+                              validate => $validate,
+                              no_new_glue_code => $no_new_glue_code,
+                              ignore_random_failures => $ignore_random_failures);
+
+if ($jenkins_report) {
+   $jenkins_report =~ s{^(?=[^/.])}{$InstallTop/};
+} else {
+   $env->prepare_pretty_output($emacs_style);
+}
+
+if (defined $shuffle_seed) {
+   # on Jenkins, applications are often tested in parallel, the output must be disambiguated
+   print "\n*** RANDOM SEED=", $env->shuffle_seed, @apps==1 && " (application @apps)", " ***\n";
+}
+
+my $disable_examples= @examples==1 && uc($examples[0]) eq "NONE"
+  and pop @examples;
+$Polymake::Core::InteractiveHelp::store_provenience=!$disable_examples;
+
+########################################
+#
+#  The outer loop over all applications
+#
+
+foreach my $app ($env->shuffle->(@apps)) {
+
+   local $_=12345;
+   readonly($_);        # detect the abuse of $_ in the rules
+
+   application($app);
+   Test::Rule::fill_rule_cache($_) for $application, values %{$application->used};
+
+   local_unshift(\@INC, $application);
+   local_unshift($application->myINC, $Test::Subgroup::preamble);
+
+   if ($single_script) {
+      if (index($single_script, $application->top) != 0) {
+         foreach my $ext (@{$application->extensions}) {
+            if (index($single_script, $ext->app_dir($application)) == 0) {
+               push @extensions, $ext;  last;
+            }
+         }
+         @extensions
+           or die "Test script $single_script does not reside in the application core tree neither in one of registered extensions\n";
+      }
+      my $group=new Test::Group($env, $single_script, $application, $extensions[0]);
+      my $OK=$group->run;
+      err_print($@), $@="" if $OK<0;
+      $exit= $OK<=0;
+      last;
+   }
+
+   $env->start_testsuite($jenkins_report, $app);
+
+   ##################################################
+   #
+   #  The middle loop over all (selected) extensions,
+   #    unless we only want to run some examples
+   #
+   if (!@examples or @testgroups) {
+
+      foreach my $ext ($env->shuffle->(undef, @{$application->extensions})) {
+         my $top_dir;
+         if (defined $ext) {
+            next if @extensions && !exists $extensions{$ext->dir};
+            $top_dir=$ext->app_dir($application);
+         } else {
+            $top_dir=$application->top;
+         }
+
+         #################################################
+         #
+         #  The inner loop over all (selected) testgroups
+         #
+         if (@testgroups) {
+            foreach my $pattern (@testgroups) {
+               foreach my $dir (list_matching_testgroups($top_dir, $pattern)) {
+                  $found_testgroups{$pattern}=1;
+                  my $group=new Test::Group($env, $dir, $application, $ext);
+                  if (@{$group->subgroups}) {
+                     my $OK=$group->run;
+                     $exit ||= $OK<=0;
+                  } else {
+                     warn("No test scripts found in testgroup $dir\n");
+                     $exit=1;
+                  }
+               }
+            }
+         } else {
+            my $tests_found;
+            foreach my $dir ($env->shuffle->(glob("$top_dir/testsuite/*/."))) {
+               substr($dir,-2)="";
+               my $group=new Test::Group($env, $dir, $application, $ext);
+               if (@{$group->subgroups}) {
+                  $tests_found=1;
+                  my $OK=$group->run;
+                  $exit ||= $OK<=0;
+               }
+            }
+            # tolerate for a while bundled extensions without testsuites
+            if (!$tests_found && -d "$top_dir/testsuite") {
+               if (glob("$top_dir/rules/*.rule*") ||
+                   glob("$top_dir/include/*.h") ||
+                   glob("$top_dir/src/*.cc") ||
+                   glob("$top_dir/perllib/*")) {
+                  warn_print( "No testcases found for application $app", $ext && " in extension ".$ext->URI );
+                  $exit=1 if !$ext || @extensions || $ext->is_bundled;
+               }
+            }
+         }
+      }
+   }
+
+   ###########################################################################
+   #
+   #  Run all or selected examples,
+   #    unless they have been disabled or we only want to run some testgroups
+   #
+   if (@examples) {
+      foreach my $topic_name (@examples) {
+         my $group=new Test::Examples($env, $topic_name, $application);
+         if (@{$group->subgroups}) {
+            my $OK=$group->run;
+            $exit ||= $OK<=0;
+         } elsif (@examples > 1 || $examples[0] ne "*") {
+            warn("No examples found in any topics matching $topic_name\n");
+            $exit=1;
+         } else {
+            print "No examples found\n";
+         }
+      }
+
+   } elsif (!$disable_examples && !@testgroups) {
+      my $group=new Test::Examples($env, undef, $application);
+      if (@{$group->subgroups}) {
+         my $OK=$group->run;
+         $exit ||= $OK<=0;
+      }
+   }
+
+   $env->close_testsuite;
+}
+
+
+if ($validate) {
+   if (keys %{$env->validation_groups}) {
+      my $schemata=$env->create_validation_schemata;
+   
+      while (my ($app, $groups)=each %{$env->validation_groups}) {
+         $env->start_testsuite($jenkins_report, $app, "validation");
+         foreach my $group (@$groups) {
+            my $OK=$group->run($schemata);
+            $exit ||= $OK<=0;
+         }
+         $env->close_testsuite;
+      }
+   }
+}
+
+
+if (!$jenkins_report) {
+   if (@testgroups==keys %found_testgroups) {
+      $env->print_summary;
+   } else {
+      foreach (grep { !$found_testgroups{$_} } @testgroups) {
+         warn( /[*?\[\]{}]/ ? "No matching testgroups for the pattern '$_'\n" : "Testgroup $_ does not exist\n" );
+      }
+      $exit=1;
+   }
+}
+
+if ($standalone) {
+   exit($exit) if $exit;
+} else {
+   if ($auto_adjust && @{$env->failed}) {
+      foreach (@{$env->failed}) {
+         my ($where, @errors)=split /\n/;
+         my $obj;
+         if ($where =~ m{^"(.*)/[^/]+", line \d+: testcase (\S+)}) {
+            my ($dir, $testcase)=($1, $2);
+            my @files=glob("$dir/$testcase.[a-z]*");
+            if (@files > 1) {
+               print STDERR "ambiguous testcase $dir/$testcase\n";
+               next;
+            } elsif (@files) {
+               $obj=$files[0];
+            } else {
+               print STDERR "no testcase found for $dir/$testcase\n";
+               next;
+            }
+            my (@remove, @provide);
+            foreach (@errors) {
+               if (m{^lacking property (\w+)$}) {
+                  push @remove, $1;
+               } elsif (m{^unexpected property (\w+)$}) {
+                  push @provide, $1;
+               } else {
+                  print STDERR "$obj: unknown action for $_\n";
+                  undef $obj;
+                  last;
+               }
+            }
+            if (defined $obj) {
+               eval {
+                  $obj=Test::Environment::load_trusted_object_file($obj);
+                  if (@remove) {
+                     $obj->remove(@remove);
+                  }
+                  if (@provide) {
+                     $obj->provide(@provide);
+                  }
+               };
+               if ($@) {
+                  print STDERR "auto-adjustment for ", $obj->name, " failed: $@";
+               }
+            }
+         }
+      }
+   }
+   return !$exit;   # 0 (=SUCCESS) => TRUE
+}
+
+##################################################################
+#
+#  Internal functions
+#
+
+sub list_matching_testgroups {
+   my ($top_dir, $pattern)=@_;
+   if ($pattern =~ /[*?]/) {
+      map { substr($_, 0, length($_)-2) } glob("$top_dir/testsuite/$pattern/.")
+   } elsif (-d (my $dir="$top_dir/testsuite/$pattern")) {
+      $dir
+   } else {
+      ()
+   }
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

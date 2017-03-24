@@ -1,0 +1,53 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# object IsotypicComponent {
+
+# # When the domain sets are listed in orbit order, pi_V decomposes into
+# # diagonal blocks, one for each orbit. For each orbit representative
+# # sigma, we remember the list of images g(sigma) that index linearly
+# # independent rows of pi_V.
+# property SPARSE_BASIS : Array<HashMap<Bitset,Rational>>;
+
+# } # end object IsotypicComponent
+
+
+object Cone {
+
+    property GROUP {
+
+        # @category Symmetry
+        property BITSET_ACTION : group::ImplicitActionOnSets : multiple;
+
+    }
+
+    rule GROUP.BITSET_ACTION.ORBIT_REPRESENTATIVES, GROUP.BITSET_ACTION.ORBIT_SIZES : GROUP.BITSET_ACTION.DOMAIN_NAME, GROUP.BITSET_ACTION.GENERATORS, MAX_INTERIOR_SIMPLICES | INTERIOR_RIDGE_SIMPLICES {
+        my $dom = $this->GROUP->BITSET_ACTION->DOMAIN_NAME;
+        my ($reps, $sizes) = reps_and_sizes($this->GROUP->BITSET_ACTION->GENERATORS, $this->$dom);
+        $this->GROUP->BITSET_ACTION->ORBIT_REPRESENTATIVES = $reps;
+        $this->GROUP->BITSET_ACTION->ORBIT_SIZES = $sizes;
+    }
+
+} # end object Cone
+
+
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

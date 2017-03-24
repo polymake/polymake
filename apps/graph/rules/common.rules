@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -30,31 +30,6 @@ rule NODE_DEGREES : ADJACENCY {
 }
 weight 1.10;
 
-rule DIAMETER : ADJACENCY {
-   $this->DIAMETER=diameter($this->ADJACENCY);
-}
-precondition : CONNECTED;
-
-rule CONNECTED : ADJACENCY {
-   $this->CONNECTED=is_connected($this->ADJACENCY);
-}
-weight 1.10;
-
-rule CONNECTED_COMPONENTS : ADJACENCY {
-   $this->CONNECTED_COMPONENTS=connected_components($this->ADJACENCY);
-}
-
-rule N_CONNECTED_COMPONENTS : CONNECTED_COMPONENTS {
-   $this->N_CONNECTED_COMPONENTS=@{$this->CONNECTED_COMPONENTS};
-}
-weight 0.1;
-
-rule CONNECTED : N_CONNECTED_COMPONENTS {
-   $this->CONNECTED = $this->N_CONNECTED_COMPONENTS <= 1;
-}
-weight 0.1;
-
-
 # Explore the graph as a sequence of its edges.
 # @return Array<Set<Int>>
 user_method EDGES {
@@ -70,6 +45,44 @@ user_method EDGES {
 }
 
 object Graph<Undirected> {
+
+rule CONNECTED : ADJACENCY {
+   $this->CONNECTED=is_connected($this->ADJACENCY);
+}
+weight 1.10;
+
+rule CONNECTED_COMPONENTS : ADJACENCY {
+   $this->CONNECTED_COMPONENTS=connected_components($this->ADJACENCY);
+}
+weight 1.10;
+
+rule N_CONNECTED_COMPONENTS : CONNECTED_COMPONENTS {
+   $this->N_CONNECTED_COMPONENTS=$this->CONNECTED_COMPONENTS->rows;
+}
+weight 0.1;
+
+rule CONNECTED : N_CONNECTED_COMPONENTS {
+   $this->CONNECTED = $this->N_CONNECTED_COMPONENTS <= 1;
+}
+weight 0.1;
+
+rule BICONNECTED_COMPONENTS : ADJACENCY {
+   $this->BICONNECTED_COMPONENTS=biconnected_components($this->ADJACENCY);
+}
+weight 1.10;
+
+rule CONNECTED_COMPONENTS : NodePerm.CONNECTED_COMPONENTS, NodePerm.PERMUTATION {
+   $this->CONNECTED_COMPONENTS=permuted_cols($this->NodePerm->CONNECTED_COMPONENTS, $this->NodePerm->PERMUTATION);
+};
+
+rule BICONNECTED_COMPONENTS : NodePerm.BICONNECTED_COMPONENTS, NodePerm.PERMUTATION {
+   $this->BICONNECTED_COMPONENTS=permuted_cols($this->NodePerm->BICONNECTED_COMPONENTS, $this->NodePerm->PERMUTATION);
+};
+
+rule DIAMETER : ADJACENCY {
+   $this->DIAMETER=diameter($this->ADJACENCY);
+}
+precondition : CONNECTED;
 
 rule BIPARTITE, SIGNATURE : ADJACENCY {
    bipartite_signature($this);
@@ -99,8 +112,7 @@ rule DEGREE_SEQUENCE, AVERAGE_DEGREE : ADJACENCY {
 }
 
 rule CHARACTERISTIC_POLYNOMIAL : N_NODES, ADJACENCY {
-   my $r = new Ring(1);
-   my $x = new UniPolynomial($r->variable());
+   my $x = monomials(1);
    my $u = new UniPolynomial(-1);
    my $n = $this->N_NODES;
    my $m = new Matrix<UniPolynomial>($n, $n); # don't use unit_matrix because it will get full
@@ -120,6 +132,60 @@ rule CHARACTERISTIC_POLYNOMIAL : N_NODES, ADJACENCY {
 }
 
 object Graph<Directed> {
+
+rule WEAKLY_CONNECTED : ADJACENCY {
+   $this->WEAKLY_CONNECTED=is_weakly_connected($this->ADJACENCY);
+}
+weight 1.10;
+
+rule WEAKLY_CONNECTED_COMPONENTS : ADJACENCY {
+   $this->WEAKLY_CONNECTED_COMPONENTS=weakly_connected_components($this->ADJACENCY);
+}
+weight 1.10;
+
+rule WEAKLY_CONNECTED : WEAKLY_CONNECTED_COMPONENTS {
+   $this->WEAKLY_CONNECTED = $this->WEAKLY_CONNECTED_COMPONENTS->rows <= 1;
+}
+weight 0.1;
+
+rule STRONGLY_CONNECTED : ADJACENCY {
+   $this->STRONGLY_CONNECTED=is_strongly_connected($this->ADJACENCY);
+}
+weight 1.10;
+
+rule STRONG_COMPONENTS : ADJACENCY {
+   $this->STRONG_COMPONENTS=strong_components($this->ADJACENCY);
+}
+weight 1.10;
+
+rule STRONGLY_CONNECTED : STRONG_COMPONENTS {
+   $this->STRONGLY_CONNECTED = $this->STRONG_COMPONENTS->rows <= 1;
+}
+weight 0.1;
+
+rule WEAKLY_CONNECTED_COMPONENTS : NodePerm.WEAKLY_CONNECTED_COMPONENTS, NodePerm.PERMUTATION {
+   $this->WEAKLY_CONNECTED_COMPONENTS=permuted_cols($this->NodePerm->WEAKLY_CONNECTED_COMPONENTS, $this->NodePerm->PERMUTATION);
+};
+
+rule STRONG_COMPONENTS : NodePerm.STRONG_COMPONENTS, NodePerm.PERMUTATION {
+   $this->STRONG_COMPONENTS=permuted_cols($this->NodePerm->STRONG_COMPONENTS, $this->NodePerm->PERMUTATION);
+};
+
+rule CONNECTED : ADJACENCY, STRONG_COMPONENTS {
+   $this->CONNECTED=is_totally_ordered(component_connectivity($this->ADJACENCY, $this->STRONG_COMPONENTS));
+}
+weight 1.10;
+
+rule CONNECTED : {
+   $this->CONNECTED=1;
+}
+precondition : STRONGLY_CONNECTED;
+weight 0.1;
+
+rule DIAMETER : ADJACENCY {
+   $this->DIAMETER=diameter($this->ADJACENCY);
+}
+precondition : STRONGLY_CONNECTED;
 
 rule NODE_OUT_DEGREES : ADJACENCY {
    $this->NODE_OUT_DEGREES(temporary)=[ map { $this->ADJACENCY->out_degree($_) } 0..($this->ADJACENCY->nodes-1) ];
@@ -163,46 +229,110 @@ user_function graph_from_edges($) {
    return new Graph(ADJACENCY=>$g);
 }
 
-# @category Combinatorics
-# Creates the __Laplacian matrix__ of a graph.
-# @param Graph G
-# @return Matrix
-# @example > $M = laplacian(cycle_graph(4));
-# > print $M;
-# | 2 -1 0 -1
-# | -1 2 -1 0
-# | 0 -1 2 -1
-# | -1 0 -1 2
-
-user_function laplacian($) {
-    my $g = shift;
-    my $e = new Matrix<Rational>(signed_incidence_matrix($g));
-    return $e * transpose($e);
-}
 
 # @category Combinatorics
 # Creates the __line graph__ of a graph.
 # @param Graph G
 # @return Graph
-user_function line_graph(props::Graph) : c++ (include=>["polymake/graph/line_graph.h"]);
+# @example The following prints the adjacency matrix of the line graph of the star graph with 4 nodes:
+# > $g = new Graph<Undirected>(ADJACENCY=>[[],[0],[0],[0]]);
+# > print line_graph($g->ADJACENCY);
+# | {1 2}
+# | {0 2}
+# | {0 1}
+user_function line_graph(props::Graph) : c++ (include=>["polymak_/graph/line_graph.h"]);
 
 # @category Combinatorics
 # Creates the __complement graph__ of a graph.
 # @param Graph G
 # @return Graph
-user_function complement_graph($){
-    my $g = shift;
-    my $inv_adj = ~( adjacency_matrix($g->ADJACENCY) )- index_matrix( unit_matrix($g->N_NODES) );
-    return new Graph(ADJACENCY=>$inv_adj, N_NODES=>$g->N_NODES, NODE_LABELS=>$g->NODE_LABELS);
+# @example The following prints the adjancency matrix of the complement graph of the star graph with 4 nodes: 
+# > $g = new Graph<Undirected>(ADJACENCY=>[[],[0],[0],[0]]);
+# > print complement_graph($g)->ADJACENCY;
+# | {}
+# | {2 3}
+# | {1 3}
+# | {1 2}
+user_function complement_graph($) {
+   my $g = shift;
+   my $inv_adj = ~( adjacency_matrix($g->ADJACENCY) )- index_matrix( unit_matrix($g->N_NODES) );
+   my $G = new Graph(ADJACENCY=>$inv_adj, N_NODES=>$g->N_NODES);
+   if (defined $g->lookup("NODE_LABELS")) {
+      $G->NODE_LABELS = $g->NODE_LABELS;
+   }
+   return $G;
 }
 
+# @category Combinatorics
+# Compute the unsigned vertex-edge incidence matrix of the graph.
+ # @param Graph G
+# @return SparseMatrix<Int>
+# @example > $I = incidence_matrix(cycle_graph(4));
+# > print $I
+# | 1 0 1 0
+# | 1 1 0 0
+# | 0 1 0 1
+# | 0 0 1 1
+user_function incidence_matrix<Dir>(Graph<Dir>): c++ (include=>["polymake/graph/incidence_matrix.h"]);
+
+# @category Combinatorics
+# Compute the signed vertex-edge incidence matrix of the graph.
+# in case of undirected graphs, the orientation of the edges is induced by the order of the nodes.
+# @param Graph G
+# @return SparseMatrix<Int>
+ # @example > $I = signed_incidence_matrix(cycle_graph(4));
+ # > print $I;
+# | 1 0 1 0
+# | -1 1 0 0
+# | 0 -1 0 1
+# | 0 0 -1 -1
+user_function signed_incidence_matrix<Dir>(Graph<Dir>): c++ (include=>["polymake/graph/incidence_matrix.h"]);
+      
+# @category Combinatorics
+# Compute the unsigned vertex-edge incidence matrix of the graph.
+# @param Graph G
+# @return SparseMatrix<Int>
+# @example > $I = incidence_matrix(cycle_graph(4)->ADJACENCY);
+# > print $I;
+# | 1 0 1 0
+# | 1 1 0 0
+# | 0 1 0 1
+# | 0 0 1 1
+user_function incidence_matrix(props::Graph) : c++ (include=>["polymake/graph/incidence_matrix.h"]);
+      
+# @category Combinatorics
+# Compute the unsigned vertex-edge incidence matrix of the graph.
+# @param Graph G
+# @return SparseMatrix<Int>
+# @example > $I = signed_incidence_matrix(cycle_graph(4)->ADJACENCY);
+# > print $I;
+# | 1 0 1 0
+# | -1 1 0 0
+# | 0 -1 0 1
+# | 0 0 -1 -1
+user_function signed_incidence_matrix(props::Graph) : c++ (include=>["polymake/graph/incidence_matrix.h"]);
+                               
 ############################################################################
 
-function is_connected(props::Graph) : c++ (include=>["polymake/graph/connected.h"]);
+function is_connected(props::Graph<Undirected>) : c++ (include=>["polymake/graph/connected.h"]);
 
-function connected_components(props::Graph) : c++ (include=>["polymake/graph/connected.h"]);
+function connected_components(props::Graph<Undirected>) : c++ (include=>["polymake/graph/connected.h"]);
 
-function max_cliques(props::Graph) : c++ (include=>["polymake/graph/max_cliques.h"]);
+function is_weakly_connected(props::Graph<Directed>) : c++ (include=>["polymake/graph/connected.h"]);
+
+function weakly_connected_components(props::Graph<Directed>) : c++ (include=>["polymake/graph/connected.h"]);
+
+function is_strongly_connected(props::Graph<Directed>) : c++ (include=>["polymake/graph/strong_connected.h"]);
+
+function strong_components(props::Graph<Directed>) : c++ (include=>["polymake/graph/strong_connected.h"]);
+
+function is_totally_ordered(props::Graph<Directed>) : c++ (include=>["polymake/graph/connected.h"]);
+
+function component_connectivity(props::Graph, IncidenceMatrix) : c++ (include=>["polymake/graph/connected.h"]);
+
+function biconnected_components(props::Graph<Undirected>) : c++ (include=>["polymake/graph/biconnected.h"]);
+
+function max_cliques(props::Graph<Undirected>) : c++ (include=>["polymake/graph/max_cliques.h"]);
 
 function diameter(props::Graph) : c++ (include=>["polymake/graph/diameter.h"]);
 

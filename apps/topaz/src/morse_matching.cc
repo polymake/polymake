@@ -15,7 +15,9 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/graph/HasseDiagram.h"
+#include "polymake/graph/Lattice.h"
+#include "polymake/graph/ShrinkingLattice.h"
+#include "polymake/graph/Decoration.h"
 #include "polymake/Array.h"
 #include "polymake/topaz/morse_matching_tools.h"
 #include <cassert>
@@ -42,8 +44,9 @@ HasseEdgeMap morse_matching(perl::Object p, perl::OptionSet options)
            << ", runCancel=" << runCancel << endl;
 #endif
 
-   graph::HasseDiagram M = p.give("HASSE_DIAGRAM"); // not const, will be modified
-   const int d = M.dim() - 1;
+   graph::Lattice<graph::lattice::BasicDecoration> M_obj = p.give("HASSE_DIAGRAM");
+   graph::ShrinkingLattice<graph::lattice::BasicDecoration> M(M_obj); // not const, will be modified
+   const int d = M.rank() - 2;
    int size = 0;
 
 #if POLYMAKE_DEBUG
@@ -89,7 +92,7 @@ HasseEdgeMap morse_matching(perl::Object p, perl::OptionSet options)
    int m = 0;          // number of arcs
    int numFaces = 0;   // number of faces
    for (int k = 0; k < d; ++k) 
-      for (Entire<graph::HasseDiagram::nodes_of_dim_set>::const_iterator f = entire(M.nodes_of_dim(k)); !f.at_end(); ++f, ++numFaces) 
+      for (auto f = entire(M.nodes_of_rank(k+1)); !f.at_end(); ++f, ++numFaces) 
          for (HasseDiagramOutConstIterator e = entire(M.out_edges(*f)); !e.at_end(); ++e, ++m)
             varLevel.push_back(k);
    

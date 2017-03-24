@@ -24,11 +24,11 @@
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0, typename T1>
-   FunctionInterface4perl( permutation_matrix_T_X8, T0,T1 ) {
+   FunctionInterface4perl( permutation_matrix_T_X32, T0,T1 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturnAnch( 1, (arg0), (permutation_matrix<T0>(arg0.get<T1>())) );
+      WrapperReturn( (permutation_matrix<T0>(arg0.get<T1>())), arg0 );
    };
 
-   FunctionInstance4perl(permutation_matrix_T_X8, int, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(permutation_matrix_T_X32, int, perl::Canned< const Array< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

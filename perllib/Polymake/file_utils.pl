@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -41,8 +41,8 @@ sub find_file_in_path {
 # replace ~ with $HOME and remove trailing slashes
 sub replace_special_paths {
    foreach (@_) {
-      s|^~(?=/)|$ENV{HOME}|;
-      s|(?<!^)/$||;
+      s{^~(?=/|$)}{$ENV{HOME}};
+      s{(?<!^)/$}{};
    }
 }
 

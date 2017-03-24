@@ -47,11 +47,11 @@ namespace polymake { namespace tropical {
 		"# Produces the tropical polytope (//lambda// \\( \\otimes \\) //P//) \\( \\oplus \\) (//mu// \\( \\otimes \\) //Q//), where \\( \\otimes \\) and \\( \\oplus \\) are tropical scalar multiplication"
 		"# and tropical addition, respectively."
 		"# @param TropicalNumber<Addition,Scalar> lambda"
-		"# @param Cone<Addition,Scalar> P"
+		"# @param Polytope<Addition,Scalar> P"
 		"# @param TropicalNumber<Addition,Scalar> mu"
-		"# @param Cone<Addition,Scalar> Q"
-		"# @return Cone<Addition,Scalar>" ,
-		"minkowski_sum<Addition,Scalar>($ Cone<Addition,Scalar> $ Cone<Addition,Scalar>)");
+		"# @param Polytope<Addition,Scalar> Q"
+		"# @return Polytope<Addition,Scalar>" ,
+		"minkowski_sum<Addition,Scalar>($ Polytope<Addition,Scalar> $ Polytope<Addition,Scalar>)");
 } }
 
 // Local Variables:

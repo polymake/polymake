@@ -34,7 +34,7 @@ perl::Object unirand(perl::Object p_in, int n_points_out, perl::OptionSet option
       throw std::runtime_error("unirand: input polyhedron must be bounded");
 
    const Matrix<Rational> V=p_in.give("VERTICES");
-   const int d=V.cols(), dim=p_in.CallPolymakeMethod("DIM");
+   const int d=V.cols(), dim=p_in.call_method("DIM");
    if (dim!=d-1) {
       throw std::runtime_error("unirand: polytope must be full-dimensional");
    }
@@ -61,9 +61,9 @@ perl::Object unirand(perl::Object p_in, int n_points_out, perl::OptionSet option
       F.col(0).fill(0);
 
       Rows< Matrix<Rational> >::iterator f=rows(F).begin();
-      for (Entire<triangulation>::const_iterator fs=entire(f_triangs);  
+      for (Entire<triangulation>::const_iterator fs=entire(f_triangs);
            !fs.at_end();  ++fs, ++f) {
-         const Rational approx_f_norm=sqrt(sqr(*f).to_double());
+         const Rational approx_f_norm{ sqrt(double(sqr(*f))) };
          for (Entire< Set<int> >::const_iterator s=entire(*fs); !s.at_end(); ++s) {
             partial_volume.push_back(total_volume, Triangulation[*s]);
             total_volume += abs(det( V.minor(Triangulation[*s],All) / *f )) / approx_f_norm;
@@ -85,13 +85,12 @@ perl::Object unirand(perl::Object p_in, int n_points_out, perl::OptionSet option
    Matrix<Rational> points_out(n_points_out, d);
    Vector<Rational> part_1(d-boundary);
 
-   for (Entire< Rows< Matrix<Rational> > >::iterator p_i=entire(rows(points_out)); 
-        !p_i.at_end(); ++p_i) {
+   for (auto p_i=entire(rows(points_out)); !p_i.at_end(); ++p_i) {
       // choose the simplex randomly
       const Set<int>& simplex=partial_volume.find_nearest((*random)*total_volume, operations::le())->second;
 
       // produce a random partition of 1 for the simplex vertices
-      copy(random, entire(part_1));
+      copy_range(random, entire(part_1));
       part_1 /= accumulate(part_1, operations::add());
 
       *p_i= part_1 * V.minor(simplex, All);

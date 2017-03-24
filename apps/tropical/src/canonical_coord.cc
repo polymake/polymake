@@ -25,10 +25,10 @@ namespace polymake { namespace tropical {
 	namespace {
 
 		template <typename Iterator> inline
-			bool leading_non_zero(const Iterator& it, pm::False) { return !is_zero(*it); }
+			bool leading_non_zero(const Iterator& it, std::false_type) { return !is_zero(*it); }
 
 		template <typename Iterator> inline
-			bool leading_non_zero(const Iterator& it, pm::True) { return !it.at_end() && it.index()==0; }
+			bool leading_non_zero(const Iterator& it, std::true_type) { return !it.at_end() && it.index()==0; }
 	}
 
 	//The following all canonicalize a matrix/vector of tropical numbers such that the first entry
@@ -38,7 +38,7 @@ namespace polymake { namespace tropical {
 		void canonicalize_to_leading_zero(GenericVector<Vector, TropicalNumber<Addition, Scalar> >& V)
 		{
 			typename Vector::iterator it=V.top().begin();
-			if (leading_non_zero(it, bool2type<pm::check_container_feature<Vector,pm::sparse>::value>())) {
+			if (leading_non_zero(it, bool_constant<pm::check_container_feature<Vector, pm::sparse>::value>())) {
 				const typename Vector::element_type first=*it;
 				V/=first;
 			}
@@ -95,7 +95,7 @@ namespace polymake { namespace tropical {
 		void canonicalize_scalar_to_leading_zero(GenericVector<Vector,Scalar>& V)
 		{
 			typename Vector::iterator it=V.top().begin();
-			if (leading_non_zero(it, bool2type<pm::check_container_feature<Vector,pm::sparse>::value>())) {
+			if (leading_non_zero(it, bool_constant<pm::check_container_feature<Vector, pm::sparse>::value>())) {
 				const typename Vector::element_type first=*it;
 				V-=same_element_vector(first, V.dim());
 			}
@@ -138,15 +138,15 @@ namespace polymake { namespace tropical {
 	template <typename Matrix, typename Scalar>
 		void canonicalize_vertices_to_leading_zero(GenericMatrix<Matrix,Scalar> &M) {
 			canonicalize_scalar_to_leading_zero(M.minor(All,~scalar2set(0)).top());
-			for(typename Entire< Rows<Matrix> >::iterator r = entire(rows(M)); !r.at_end(); ++r) {
-				polymake::polytope::canonicalize_oriented( find_if(entire(r->top()), operations::non_zero()) );
+			for (auto r = entire(rows(M)); !r.at_end(); ++r) {
+				polytope::canonicalize_oriented( find_in_range_if(entire(r->top()), operations::non_zero()) );
 			}
 		}
 
 	template <typename Vector, typename Scalar>
 		void canonicalize_vertex_to_leading_zero(GenericVector<Vector,Scalar> &V) {
 			canonicalize_scalar_to_leading_zero(V.slice(~scalar2set(0)).top());
-			polymake::polytope::canonicalize_oriented( find_if(entire(V.top()), operations::non_zero()) );
+			polytope::canonicalize_oriented( find_in_range_if(entire(V.top()), operations::non_zero()) );
 		}
 
 	FunctionTemplate4perl("canonicalize_scalar_to_leading_zero(Vector&) : void");

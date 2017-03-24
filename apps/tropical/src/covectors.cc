@@ -110,6 +110,7 @@ namespace polymake { namespace tropical {
 
       FunctionTemplate4perl("artificial_ray_covector<Addition,Scalar>(Set<Int>, Matrix<TropicalNumber<Addition, Scalar> >)");
 
+      FunctionTemplate4perl("generalized_apex_covector<Addition, Scalar>(Vector<TropicalNumber<Addition,Scalar> >,Matrix<TropicalNumber<Addition,Scalar> >)");
 
 
 } }

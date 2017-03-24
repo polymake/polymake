@@ -19,6 +19,7 @@
 #include "polymake/Matrix.h"
 #include "polymake/Set.h"
 #include "polymake/topaz/complex_tools.h"
+#include "polymake/topaz/hasse_diagram.h"
 #include "polymake/Rational.h"
 #include "polymake/list"
 
@@ -28,13 +29,13 @@ perl::Object unknot(const int m, const int n, perl::OptionSet options)
 {
   if (m<2 || n<1)
     throw std::runtime_error("unknot: m>=2 and n>=1 required\n");
-  
+
   Rational eps;
   if (!(options["eps"] >> eps))  eps=Rational(1,200*(n+m+2));
-  
+
   perl::Object p("GeometricSimplicialComplex<Rational>");
   p.set_description() << "Vicious embedding of the unknot in the 1-skeleton of the 3-sphere.\n";
-  
+
   std::list< Set<int> > C;
   const int k1=2*(m+1)-1;
   const int k2=2*(n+m+2)-1;
@@ -63,14 +64,14 @@ perl::Object unknot(const int m, const int n, perl::OptionSet options)
     f-=i-5; f-=i-4; f+=i-1; f+=i;
     C.push_back(f);
   }
-  
+
   f.clear();
   f+=k3+1; f+=k3+2;
   for (int i=k3+4; i<=k4; i+=2) {
     f-=i-5; f-=i-4; f+=i-1; f+=i;
     C.push_back(f);
   }
-  
+
   // add "cone" simplices of the knot
   f.clear();
   f+=a; f+=0; f+=1;
@@ -154,10 +155,10 @@ perl::Object unknot(const int m, const int n, perl::OptionSet options)
   C.push_back(f);
 
   // add cone over boundary
-  const HasseDiagram HD = pure_hasse_diagram(C,-1);
+  const Lattice<BasicDecoration> HD = hasse_diagram_from_facets(Array<Set<int> >(C));
   const Boundary_of_PseudoManifold B = boundary_of_pseudo_manifold(HD);
   for (Entire<Boundary_of_PseudoManifold>::const_iterator b=entire(B); !b.at_end(); ++b)
-    C.push_back(*b + scalar2set(a+1));
+    C.push_back(b->face + scalar2set(a+1));
 
   // compute knot
   std::list< Set<int> > K;
@@ -179,7 +180,7 @@ perl::Object unknot(const int m, const int n, perl::OptionSet options)
     e+=i-2; e+=i-1;
     K.push_back(e);
   }
-  
+
   for (int i=k2+4; i<=k3; i+=2) {
     Set<int> e;
     e+=i-3; e+=i;
@@ -188,7 +189,7 @@ perl::Object unknot(const int m, const int n, perl::OptionSet options)
     e+=i-2; e+=i-1;
     K.push_back(e);
   }
-  
+
   for (int i=k3+4; i<=k4; i+=2) {
     Set<int> e;
     e+=i-3; e+=i;
@@ -197,7 +198,7 @@ perl::Object unknot(const int m, const int n, perl::OptionSet options)
     e+=i-2; e+=i-1;
     K.push_back(e);
   }
-  
+
   Set<int> e;
   e+=k1; e+=k1+2;
   K.push_back(e);
@@ -243,7 +244,7 @@ perl::Object unknot(const int m, const int n, perl::OptionSet options)
     Coordinates(i,1)=Rational(i/2);
     Coordinates(i,2) = i%2==0 ? -Rational((i-k1-1)/2)*eps : Rational((i-k1-1)/2)*eps;
   }
- 
+
   for (int i=k2+1; i<=k3; ++i){
     Coordinates(i,0)=Rational(3-(i%2));
     Coordinates(i,1)=Rational((i-k2+k1)/2);
@@ -262,7 +263,7 @@ perl::Object unknot(const int m, const int n, perl::OptionSet options)
   Coordinates(a+1,0)=Rational(3,2);
   Coordinates(a+1,1)=Rational((k1+k2)/4);
   Coordinates(a+1,2)=Rational(2);
-  
+
   p.take("FACETS") << C;
   p.take("COORDINATES") << Coordinates;
   p.take("KNOT") << K;

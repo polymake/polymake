@@ -21,17 +21,17 @@
 
 namespace pm {
 
-template <typename Top, typename Params=typename Top::manipulator_params,
-          bool _modified=extract_type_param<Params,Operation>::specified>
+template <typename Top, typename TParams=typename Top::manipulator_params,
+          bool TModified=mtagged_list_extract<TParams, OperationTag>::is_specified>
 class modified_tree_impl
-   : public modified_container_impl<Top, Params> {
-   typedef modified_container_impl<Top, Params> _super;
+   : public modified_container_impl<Top, TParams> {
+   typedef modified_container_impl<Top, TParams> base_t;
 public:
-   typedef typename _super::iterator iterator;
-   typedef typename _super::const_iterator const_iterator;
-   typedef typename _super::reverse_iterator reverse_iterator;
-   typedef typename _super::const_reverse_iterator const_reverse_iterator;
-   typedef typename _super::container::tree_type tree_type;
+   using typename base_t::iterator;
+   using typename base_t::const_iterator;
+   using typename base_t::reverse_iterator;
+   using typename base_t::const_reverse_iterator;
+   typedef typename base_t::container::tree_type tree_type;
 protected:
    iterator finalize(typename tree_type::iterator it)
    {
@@ -51,15 +51,15 @@ protected:
    }
 };
 
-template <typename Top, typename Params>
-class modified_tree_impl<Top, Params, false>
-   : public redirected_container<Top, Params> {
-   typedef redirected_container<Top, Params> _super;
+template <typename Top, typename TParams>
+class modified_tree_impl<Top, TParams, false>
+   : public redirected_container<Top, TParams> {
+   typedef redirected_container<Top, TParams> base_t;
 public:
-   typedef typename _super::iterator iterator;
-   typedef typename _super::const_iterator const_iterator;
-   typedef typename _super::reverse_iterator reverse_iterator;
-   typedef typename _super::const_reverse_iterator const_reverse_iterator;
+   using typename base_t::iterator;
+   using typename base_t::const_iterator;
+   using typename base_t::reverse_iterator;
+   using typename base_t::const_reverse_iterator;
 protected:
    iterator finalize(iterator it) { return it; }
    const_iterator finalize(const_iterator it) const { return it; }
@@ -67,16 +67,16 @@ protected:
    const_reverse_iterator finalize(const_reverse_iterator it) const { return it; }
 };
 
-template <typename Top, typename Params=typename Top::manipulator_params>
+template <typename Top, typename TParams=typename Top::manipulator_params>
 class modified_tree
-   : public modified_tree_impl<Top, Params> {
-   typedef modified_tree_impl<Top, Params> _super;
+   : public modified_tree_impl<Top, TParams> {
+   typedef modified_tree_impl<Top, TParams> base_t;
 public:
-   typedef typename _super::iterator iterator;
-   typedef typename _super::const_iterator const_iterator;
-   typedef typename _super::reverse_iterator reverse_iterator;
-   typedef typename _super::const_reverse_iterator const_reverse_iterator;
-   typedef typename _super::container::tree_type tree_type;
+   using typename base_t::iterator;
+   using typename base_t::const_iterator;
+   using typename base_t::reverse_iterator;
+   using typename base_t::const_reverse_iterator;
+   typedef typename base_t::container::tree_type tree_type;
 
    template <typename Key>
    iterator find(const Key& k)
@@ -134,7 +134,7 @@ protected:
    template <typename First>
    struct insert_helper {
       static const bool is_reverse_iterator=tree_type::template insert_arg_helper<First>::is_reverse_iterator;
-      typedef typename if_else<is_reverse_iterator, typename _super::reverse_iterator, iterator>::type return_type;
+      typedef typename std::conditional<is_reverse_iterator, typename base_t::reverse_iterator, iterator>::type return_type;
    };
 public:
    template <typename First>

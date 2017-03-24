@@ -16,11 +16,17 @@
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( void (perl::Object, polymake::graph::HasseDiagram const&, pm::Set<int, pm::operations::cmp> const&, int) ) {
+   FunctionWrapper4perl( void (perl::Object, perl::Object, pm::Set<int, pm::operations::cmp> const&, int) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
       IndirectWrapperReturnVoid( arg0, arg1, arg2.get< perl::TryCanned< const Set< int > > >(), arg3 );
    }
-   FunctionWrapperInstance4perl( void (perl::Object, polymake::graph::HasseDiagram const&, pm::Set<int, pm::operations::cmp> const&, int) );
+   FunctionWrapperInstance4perl( void (perl::Object, perl::Object, pm::Set<int, pm::operations::cmp> const&, int) );
+
+   FunctionWrapper4perl( void (pm::Array<int> const&, pm::IncidenceMatrix<pm::NonSymmetric> const&, perl::Object) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
+      IndirectWrapperReturnVoid( arg0.get< perl::TryCanned< const Array< int > > >(), arg1.get< perl::TryCanned< const IncidenceMatrix< NonSymmetric > > >(), arg2 );
+   }
+   FunctionWrapperInstance4perl( void (pm::Array<int> const&, pm::IncidenceMatrix<pm::NonSymmetric> const&, perl::Object) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

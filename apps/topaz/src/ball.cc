@@ -46,7 +46,12 @@ perl::Object ball(const int d)
 UserFunction4perl("# @category Producing from scratch\n"
                   "# A //d//-dimensional __ball__, realized as the //d//-simplex.\n"
                   "# @param Int d dimension"
-                  "# @return GeometricSimplicialComplex",
+                  "# @return GeometricSimplicialComplex"
+                  "# @example The following produces the 3-ball and stores it in the variable $b:"
+                  "# > $b = ball(3);"
+                  "# You can print the facets of the resulting simplicial complex like so:"
+                  "# > print $b->FACETS;"
+                  "# | {0 1 2 3}",
                   &ball, "ball($)");
 } }
 

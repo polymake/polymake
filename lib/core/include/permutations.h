@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -23,6 +23,7 @@
 #include "polymake/Set.h"
 #include "polymake/Array.h"
 #include "polymake/Bitset.h"
+#include "polymake/hash_map"
 #include "polymake/vector"
 #include "polymake/list"
 #include <algorithm>
@@ -37,7 +38,7 @@ int permutation_sign(const Permutation& v)
    if (l<=1) return 1;
 
    std::vector<int> w(v.size());
-   copy(v.begin(), entire(w));
+   copy_range(v.begin(), entire(w));
 
    int sign=1;
    for (int i=0; i<l; ) {
@@ -160,7 +161,7 @@ const PermutationCycles<Permutation>& permutation_cycles(const Permutation& p)
 }
 
 template <typename Permutation>
-struct check_iterator_feature<permutation_cycles_iterator<Permutation>, end_sensitive> : True {};
+struct check_iterator_feature<permutation_cycles_iterator<Permutation>, end_sensitive> : std::true_type {};
 
 template <typename Permutation>
 struct spec_object_traits< PermutationCycles<Permutation> >
@@ -170,18 +171,32 @@ struct spec_object_traits< PermutationCycles<Permutation> >
    static const IO_separator_kind IO_separator=IO_sep_inherit;
 };
 
+template <typename Value, typename Comparator, typename enabled=void>
+struct permutation_map {
+   typedef Map<Value, int, Comparator> type;
+};
+
+template <typename Value>
+struct permutation_map<Value, operations::cmp, typename std::enable_if<!std::numeric_limits<Value>::is_specialized && is_ordered<Value>::value>::type> {
+   typedef Map<Value, int, operations::cmp> type;
+};
+
+template <typename Value>
+struct permutation_map<Value, operations::cmp, typename std::enable_if<std::numeric_limits<Value>::is_specialized>::type> {
+   typedef hash_map<Value, int> type;
+};
+
 template <typename Input1, typename Input2, typename Output, typename Comparator>
-void find_permutation(Input1 src1, Input2 src2, Output dst, const Comparator& comparator)
+void find_permutation(Input1&& src1, Input2&& src2, Output&& dst, const Comparator& comparator)
 {
-   typedef Map<typename iterator_traits<Input1>::value_type, int, Comparator> map_type;
-   map_type index_map(comparator);
+   typename permutation_map<typename iterator_traits<Input1>::value_type, Comparator>::type index_map;
 
    for (int i=0; !src1.at_end(); ++src1, ++i)
       index_map[*src1]=i;
 
    for (; !src2.at_end(); ++src2, ++dst) {
-      typename map_type::iterator where=index_map.find(*src2);
-      if (where.at_end()) {
+      const auto where=index_map.find(*src2);
+      if (where == index_map.end()) {
          std::string reason;
          if (index_map.empty()) {
             reason="not a permutation: first sequence is shorter";
@@ -211,12 +226,31 @@ Array<int> find_permutation(const Container1& c1, const Container2& c2, const Co
 template <typename Container1, typename Container2> inline
 Array<int> find_permutation(const Container1& c1, const Container2& c2)
 {
-   return find_permutation(c1,c2,polymake::operations::cmp());
+   return find_permutation(c1, c2, polymake::operations::cmp());
+}
+
+template <typename Container1, typename Container2, typename Comparator> inline
+bool are_permuted(const Container1& c1, const Container2& c2, const Comparator& comparator)
+{
+   Array<int> perm(c1.size());
+   try {
+      find_permutation(entire(c1), entire(c2), perm.begin(), comparator);
+      return true;
+   } catch (no_match) {
+      return false;
+   }
+   return false;
+}
+
+template <typename Container1, typename Container2> inline
+bool are_permuted(const Container1& c1, const Container2& c2)
+{
+   return are_permuted(c1,c2,polymake::operations::cmp());
 }
 
 template <typename Container, typename Permutation> inline
-typename enable_if<typename object_traits<Container>::persistent_type,
-                   identical<typename object_traits<Container>::generic_tag, is_container>::value>::type
+typename std::enable_if<std::is_same<typename object_traits<Container>::generic_tag, is_container>::value,
+                        typename object_traits<Container>::persistent_type>::type
 permuted(const Container& c, const Permutation& perm)
 {
    if (POLYMAKE_DEBUG) {
@@ -224,13 +258,13 @@ permuted(const Container& c, const Permutation& perm)
          throw std::runtime_error("permuted - dimension mismatch");
    }
    typename object_traits<Container>::persistent_type result(c.size());
-   copy(entire(select(c,perm)), result.begin());
+   copy_range(entire(select(c, perm)), result.begin());
    return result;
 }
 
 template <typename Container, typename Permutation> inline
-typename enable_if<typename object_traits<Container>::persistent_type,
-                   identical<typename object_traits<Container>::generic_tag, is_container>::value>::type
+typename std::enable_if<std::is_same<typename object_traits<Container>::generic_tag, is_container>::value,
+                        typename object_traits<Container>::persistent_type>::type
 permuted_inv(const Container& c, const Permutation& perm)
 {
    if (POLYMAKE_DEBUG) {
@@ -238,7 +272,7 @@ permuted_inv(const Container& c, const Permutation& perm)
          throw std::runtime_error("permuted_inv - dimension mismatch");
    }
    typename object_traits<Container>::persistent_type result(c.size());
-   copy(entire(c), select(result,perm).begin());
+   copy_range(entire(c), select(result,perm).begin());
    return result;
 }
 
@@ -267,7 +301,7 @@ protected:
 
    permutation_iterator_base() {}
    permutation_iterator_base(int n) : perm(n) { reset(n); }
-   void reset(int n) { copy(entire(sequence(0,n)), perm.begin()); }
+   void reset(int n) { copy_range(entire(sequence(0, n)), perm.begin()); }
 
 public:
    reference operator* () const { return perm; }
@@ -288,17 +322,21 @@ protected:
    int n, pos;
 
    permutation_iterator(int n_arg, bool)
-      : permutation_iterator_base(n_arg),
-        cnt(n_arg,0), n(n_arg), pos(n_arg) {}
+      : permutation_iterator_base(n_arg)
+      , cnt(n_arg, 0)
+      , n(n_arg)
+      , pos(n_arg) {}
 
 public:
    permutation_iterator()
-      : n(0), pos(0) {}
+      : n(0)
+      , pos(0) {}
 
    explicit permutation_iterator(int n_arg)
-      : permutation_iterator_base(n_arg),
-        cnt(size_t(n_arg),0),
-        n(n_arg), pos(n_arg>1) {}
+      : permutation_iterator_base(n_arg)
+      , cnt(size_t(n_arg), 0)
+      , n(n_arg)
+      , pos(n_arg>1) {}
 
    iterator& operator++ ()
    {
@@ -319,7 +357,7 @@ public:
 
    bool operator== (const iterator& it) const
    {
-      return n==it.n && pos==it.pos && equal(entire(cnt), it.cnt.begin());
+      return n==it.n && pos==it.pos && cnt==it.cnt;
    }
    bool operator!= (const iterator& it) const
    {
@@ -330,7 +368,7 @@ public:
    {
       reset(n);
       pos=1;
-      fill(entire(cnt), 0);
+      fill_range(entire(cnt), 0);
    }
 };
 
@@ -383,8 +421,10 @@ public:
    permutation_iterator() : n(0) {}
 
    explicit permutation_iterator(int n_arg)
-      : permutation_iterator_base(n_arg),
-        move(size_t(n_arg),1), n(n_arg), next(n-1)
+      : permutation_iterator_base(n_arg)
+      , move(size_t(n_arg), 1)
+      , n(n_arg)
+      , next(n-1)
    {
       if (next>0) {
          next=1; move[0]=2;
@@ -405,7 +445,7 @@ public:
 
    bool operator== (const iterator& it) const
    {
-      return next==it.next && n==it.n && (!next || equal(entire(move), it.move.begin()));
+      return next==it.next && n==it.n && (!next || move==it.move);
    }
    bool operator!= (const iterator& it) const
    {
@@ -415,7 +455,7 @@ public:
    void rewind()
    {
       reset(n);
-      fill(entire(move),1);
+      fill_range(entire(move), 1);
       next=n-1;
       if (next>1) {
          next=1; move[0]=2;
@@ -452,7 +492,7 @@ public:
 
    bool operator== (const iterator& it) const
    {
-      return _at_end ? it._at_end : !it._at_end && perm.size()==it.perm.size() && equal(entire(perm), it.perm.begin());
+      return _at_end ? it._at_end : !it._at_end && perm==it.perm;
    }
    bool operator!= (const iterator& it) const
    {
@@ -467,9 +507,9 @@ public:
 };
 
 template <permutation_sequence kind>
-struct check_iterator_feature<permutation_iterator<kind>, end_sensitive> : True {};
+struct check_iterator_feature<permutation_iterator<kind>, end_sensitive> : std::true_type {};
 template <permutation_sequence kind>
-struct check_iterator_feature<permutation_iterator<kind>, rewindable> : True {};
+struct check_iterator_feature<permutation_iterator<kind>, rewindable> : std::true_type {};
 
 template <permutation_sequence kind>
 class AllPermutations {
@@ -492,7 +532,7 @@ public:
       return value_type(sequence(0,n).begin(), sequence(0,n).end());
    }
    //FIXME: ticket 727 changed from Integer to int to get perl acces 
-   int size() const { return n ? Integer::fac(n).to_int() : 0; } 
+   long size() const { return n ? long(Integer::fac(n)) : 0; } 
    bool empty() const { return n==0; }
 };
 
@@ -546,7 +586,7 @@ struct spec_object_traits< PermutationMatrix<PermutationRef,Element> >
 };
 
 template <typename PermutationRef, typename Element>
-struct check_container_feature< PermutationMatrix<PermutationRef,Element>, pure_sparse> : True {};
+struct check_container_feature< PermutationMatrix<PermutationRef,Element>, pure_sparse> : std::true_type {};
 
 template <typename PermutationRef, typename Element>
 class matrix_random_access_methods< PermutationMatrix<PermutationRef,Element> > {
@@ -560,50 +600,50 @@ public:
 };
 
 template <typename PermutationRef, typename Element>
-class Rows< PermutationMatrix<PermutationRef,Element> >
-   : public modified_container_pair_impl< Rows< PermutationMatrix<PermutationRef,Element> >,
-                                          list( Container1< PermutationRef >,
-                                                Container2< constant_value_container<const Element&> >,
-                                                Operation< SameElementSparseVector_factory<2> >,
-                                                MasqueradedTop ) > {
-   typedef modified_container_pair_impl<Rows> _super;
+class Rows< PermutationMatrix<PermutationRef, Element> >
+   : public modified_container_pair_impl< Rows< PermutationMatrix<PermutationRef, Element> >,
+                                          mlist< Container1Tag< PermutationRef >,
+                                                 Container2Tag< constant_value_container<const Element&> >,
+                                                 OperationTag< SameElementSparseVector_factory<2> >,
+                                                 MasqueradedTop > > {
+   typedef modified_container_pair_impl<Rows> base_t;
 protected:
    ~Rows();
 public:
-   const typename _super::container1& get_container1() const
+   const typename base_t::container1& get_container1() const
    {
       return this->hidden().get_perm();
    }
-   typename _super::container2 get_container2() const
+   typename base_t::container2 get_container2() const
    {
       return one_value<Element>();
    }
-   typename _super::operation get_operation() const
+   typename base_t::operation get_operation() const
    {
       return this->size();
    }
 };
 
 template <typename PermutationRef, typename Element>
-class Cols< PermutationMatrix<PermutationRef,Element> >
-   : public modified_container_pair_impl< Cols< PermutationMatrix<PermutationRef,Element> >,
-                                          list( Container1< std::vector<int> >,
-                                                Container2< constant_value_container<const Element&> >,
-                                                Operation< SameElementSparseVector_factory<2> >,
-                                                MasqueradedTop ) > {
-   typedef modified_container_pair_impl<Cols> _super;
+class Cols< PermutationMatrix<PermutationRef, Element> >
+   : public modified_container_pair_impl< Cols< PermutationMatrix<PermutationRef, Element> >,
+                                          mlist< Container1Tag< std::vector<int> >,
+                                                 Container2Tag< constant_value_container<const Element&> >,
+                                                 OperationTag< SameElementSparseVector_factory<2> >,
+                                                 MasqueradedTop > > {
+   typedef modified_container_pair_impl<Cols> base_t;
 protected:
    ~Cols();
 public:
-   const typename _super::container1& get_container1() const
+   const typename base_t::container1& get_container1() const
    {
       return this->hidden().get_inv_perm();
    }
-   typename _super::container2 get_container2() const
+   typename base_t::container2 get_container2() const
    {
       return one_value<Element>();
    }
-   typename _super::operation get_operation() const
+   typename base_t::operation get_operation() const
    {
       return this->size();
    }

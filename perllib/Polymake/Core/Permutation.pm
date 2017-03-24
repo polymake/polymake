@@ -20,12 +20,7 @@ package Polymake::Core::Permutation;
 
 use Polymake::Struct (
    [ '@ISA' => 'Property' ],
-   [ new => '$$' ],
-   [ '$flags' => '$is_subobject | $is_locally_derived | $is_permutation' ],
-   [ '$type' => '#1' ],
-   [ '$name' => '#2' ],
-   [ '$belongs_to' => '#1' ],
-
+   [ '$flags' => '$is_subobject | $is_permutation' ],
    '%sensitive_props',                  # Property->key => [ Rule ]  or  { $sub_key }->{ Property }-> ... ->[ Rule ]
                                         # rules transferring Property from the permuted subobject back into the basis
    '%sub_permutations',                 # Property->key (subobject) => Property (permutation)
@@ -34,27 +29,19 @@ use Polymake::Struct (
 
 sub new {
    my $self=&_new;
-   $self->mixin=new ObjectType::LocalDerivationMixin($self, $self->type);
-   $self->inst_cache={ };
-   if ($self->type->abstract) {
-      $self->accept=sub : method {
-         my $self=shift;
-         clone($self, $_[1])->accept->(@_);
-      };
-   } else {
-      $self->accept=sub : method {
-         my $self=shift;
-         clone_locally_derived($self, $_[1]->type)->accept->(@_);
-      };
+   $self->type=$self->type->create_derived($self, $self->belongs_to);
+   unless ($self->type->abstract) {
+      $self->accept=\&accept_subobject;
+      $self->flags |= $is_concrete;
    }
-
    $self;
 }
-####################################################################################
-sub create_locally_derived_type : method {
-   my ($self, $parent_proto)=@_;
-   _clone($self, new ObjectType::Permuted($parent_proto, $self->mixin));
+
+sub update_pure_type {
+   my ($self, $proto)=@_;
+   $self->type=$proto->create_derived($self, $self->belongs_to);
 }
+
 ####################################################################################
 
 declare $sub_key=\(1);      # singular key value used in sensitive_props

@@ -27,13 +27,12 @@ perl::Object bound(perl::Object p_in)
    if (!is_positive)
       throw std::runtime_error("polyhedron must be positive");
 
-
-   const int d=p_in.CallPolymakeMethod("AMBIENT_DIM");
+   const int d=p_in.call_method("AMBIENT_DIM");
 
    SparseMatrix<Scalar> tau=unit_matrix<Scalar>(d+1);
    tau.col(0).fill(1);
 
-   perl::Object p_out=transform<Scalar>(p_in,tau);
+   perl::Object p_out=transform<Scalar>(p_in, tau);
    p_out.set_description() << "Bounded polytope transformed from " << p_in.name() << endl;
 
    p_out.take("BOUNDED") << true;

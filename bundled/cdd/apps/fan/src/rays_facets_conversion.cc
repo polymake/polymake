@@ -109,9 +109,9 @@ void raysToFacetNormals(perl::Object f)
       if (diff > 0) 
       {
          int linearSpanIndex = 0;
-         for(typename Entire< Rows< ListMatrix< Vector<Coord> > > >::const_iterator lsrow = entire(rows(linearSpan)); !lsrow.at_end(); ++lsrow, ++linearSpanIndex)
+         for (auto lsrow = entire(rows(linearSpan)); !lsrow.at_end(); ++lsrow, ++linearSpanIndex)
          {
-            if (coneRays * (*lsrow) == zero_vector<Coord>(coneRays.rows()))
+            if (is_zero(coneRays * (*lsrow)))
             {
                linearSpanIndices.row(coneNum) +=linearSpanIndex;
                coneRays /= *lsrow;
@@ -151,14 +151,10 @@ void raysToFacetNormals(perl::Object f)
       coneNum++;
    }
     
-   // create matrices
-   SparseMatrix<int> facetIndicesMatrix(facetIndices);
-   IncidenceMatrix<NonSymmetric> linearSpanIndicesMatrix(linearSpanIndices);
-    
    f.take("FACET_NORMALS") << facets;
-   f.take("MAXIMAL_CONES_FACETS") << facetIndicesMatrix;
+   f.take("MAXIMAL_CONES_FACETS") << SparseMatrix<int>(std::move(facetIndices));
    f.take("LINEAR_SPAN_NORMALS") << linearSpan;
-   f.take("MAXIMAL_CONES_LINEAR_SPAN_NORMALS") << linearSpanIndicesMatrix;
+   f.take("MAXIMAL_CONES_LINEAR_SPAN_NORMALS") << IncidenceMatrix<NonSymmetric>(std::move(linearSpanIndices));
 }
 
 FunctionTemplate4perl("raysToFacetNormals<Coord> (PolyhedralFan<Coord>) : void");

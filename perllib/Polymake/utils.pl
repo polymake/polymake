@@ -221,7 +221,7 @@ sub croak {
    if (is_object($INC[0]) && defined($INC[0]->compile_scope)) {
       do {
          ($pkg, $file, $line, $sub)=caller(++$i);
-      } while ($pkg =~ /^Polymake(?:$|::Core::|::Overload\b|::Struct\b)/);
+      } while ($pkg =~ /^Polymake(?:$|::Core::|::Overload\b|::Struct\b)/ || $sub =~ /::check_object_pkg$/ );
 
    } else {
       my ($app_file, $app_line);

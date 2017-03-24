@@ -46,7 +46,7 @@ int fill_graph(Graph<>& G, const Complex& C, int *bad_link_p)
 
 // return values: 1=true, 0=false, -1=undef (does not occur here)
 template <typename Complex, typename VertexSet>
-int is_ball_or_sphere(const Complex& C, const GenericSet<VertexSet>& V, int2type<1>)
+int is_ball_or_sphere(const Complex& C, const GenericSet<VertexSet>& V, int_constant<1>)
 {
    Graph<> G(V);
    // check graph for three properties
@@ -66,7 +66,7 @@ int is_ball_or_sphere(const Complex& C, const GenericSet<VertexSet>& V, int2type
 
 // return values: 1=true, 0=false, -1=undef (does not occur here)
 template <typename Complex, typename VertexSet>
-int is_manifold(const Complex& C, const GenericSet<VertexSet>& V, int2type<1>, int *bad_link_p)
+int is_manifold(const Complex& C, const GenericSet<VertexSet>& V, int_constant<1>, int *bad_link_p)
 {
    Graph<> G(V);
    return fill_graph(G,C,bad_link_p);

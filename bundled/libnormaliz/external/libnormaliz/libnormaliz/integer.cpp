@@ -24,7 +24,9 @@
 //---------------------------------------------------------------------------
 
 #include <algorithm>
+#include <sstream>
 #include "libnormaliz/integer.h"
+#include "libnormaliz/vector_operations.h"
 
 //---------------------------------------------------------------------------
 
@@ -177,14 +179,17 @@ template<> mpz_class lcm<mpz_class>(const mpz_class& a, const mpz_class& b) {
 
 template <typename Integer>
 size_t decimal_length(Integer a){
-    size_t l=1;
+    /* size_t l=1;
     if (a<0) {
         a=-a;
         l++;
     }
     while((a/=10)!=0)
-        l++;
-    return l;
+        l++;*/
+
+    ostringstream test;
+    test << a;
+    return test.str().size();
 }
 
 //---------------------------------------------------------------------------
@@ -273,8 +278,7 @@ void check_range_list(const std::list<Candidate<Integer> >& ll){
             if(Iabs(v->values[i])>= test){
             // cout << *v;
             // cout << "i " << i << " " << Iabs((*v)[i]) << endl;
-                errorOutput()<<"Vector out of range. Imminent danger of arithmetic overflow.\n";
-                throw ArithmeticException();
+                throw ArithmeticException("Vector entry out of range. Imminent danger of arithmetic overflow.");
             }
                     
     }
@@ -303,5 +307,4 @@ void minimal_remainder(const Integer& a, const Integer&b, Integer& quot, Integer
 }
 
 
-
-}
+} //end namespace libnormaliz

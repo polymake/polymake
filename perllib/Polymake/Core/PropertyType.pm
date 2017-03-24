@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -29,20 +29,18 @@ sub isa_fallback : method { UNIVERSAL::isa($_[1], $_[0]->pkg) }
 sub coherent_type_fallback { undef }
 sub parse_fallback : method { croak( "no string parsing routine defined for class ", $_[0]->full_name ) }
 sub toString_fallback { "$_[0]" }
-sub toXML_fallback {
-   my ($value, $writer, @attrs)=@_;
-   $writer->dataElement("e", "$value", @attrs);
-}
+
 sub init_fallback { }
 sub performs_deduction { 0 }
 sub type_param_index { undef }
 
 sub type : method { $_[0] }
 define_function(__PACKAGE__, ".type", \&type);
+sub generic { undef }
 
 use Polymake::Struct (
    [ new => '$$$;$' ],
-   [ '$name | full_name | mangled_name' => '#1' ],
+   [ '$name | full_name | mangled_name | xml_name' => '#1' ],
    [ '$pkg' => '#2' ],
    [ '$application' => '#3' ],
    [ '$extension' => '$Application::extension' ],
@@ -54,7 +52,9 @@ use Polymake::Struct (
    [ '$upgrades' => 'undef' ],                                     # optional hash PropertyType => 1/0/-1
    [ '&coherent_type' => '->super || \&coherent_type_fallback' ],  # object of a different type => PropertyType of this or a derived type or undef
    [ '&toString' => '->super || \&toString_fallback' ],            # object => "string"
-   [ '&toXML' => '->super || \&toXML_fallback' ],                  # object, writer =>
+   [ '&toXML' => '->super' ],                                      # object, XMLwriter, opt. attributes =>
+   [ '&toXMLschema' => 'undef || \&Polymake::Core::XMLwriter::type_toXMLschema' ],          # XMLwriter, opt. attributes =>
+   [ '&XMLdatatype' => '->super' ],                                # => "string" referring to a XML Schema datatype or a pattern
    [ '$construct_node' => 'undef' ],                               # Overload::Node
    [ '&construct' => '\&construct_object' ],                       # args ... => object
    [ '&parse' => '->super || \&parse_fallback' ],                  # "string" => object
@@ -66,7 +66,7 @@ use Polymake::Struct (
    [ '$help' => 'undef' ],              # InteractiveHelp (in interactive mode, when comments are supplied for user methods)
 );
 
-declare @override_methods=qw( canonical equal isa coherent_type parse toString toXML init );
+declare @override_methods=qw( canonical equal isa coherent_type parse toString XMLdatatype init );
 
 declare @string_ops=map { $_ => eval <<"." } qw( . cmp eq ne lt le gt ge );
 sub { \$_[2] ? "\$_[1]" $_ "\$_[0]" : "\$_[0]" $_ "\$_[1]" }
@@ -107,8 +107,12 @@ sub establish_inheritance {
    @{$self->pkg."::ISA"}=@isa;
    mro::set_mro($self->pkg, "c3");
 }
-##################################################################################
 
+sub derived {
+   my ($self)=@_;
+   map { $_->type } @{mro::get_isarev($self->pkg)}
+}
+##################################################################################
 sub add_constructor {
    my ($self, $name, $code, $arg_types)=@_;
    $self->construct_node //= do {
@@ -214,85 +218,6 @@ sub add_upgrade_relations {
    }
    $self
 }
-##################################################################################
-sub trivialArray_toXML {
-   my ($elem_proto, $value, $writer, @attr)=@_;
-   if (@$value) {
-      if (defined ($elem_proto->toString)) {
-         $writer->dataElement("v", join(" ", map { $elem_proto->toString->($_) } @$value), @attr);
-      } else {
-         $writer->dataElement("v", "@$value", @attr);
-      }
-   } else {
-      $writer->emptyTag("v",@attr);
-   }
-}
-
-sub nontrivialArray_toXML {
-   my ($elem_proto, $value, $writer, @attr)=@_;
-   my $tag= $elem_proto->dimension ? "m" : "v";
-   if (@$value) {
-      $writer->startTag($tag, @attr);
-      foreach my $elem (@$value) {
-         $elem_proto->toXML->($elem,$writer);
-      }
-      $writer->endTag($tag);
-   } else {
-      $writer->emptyTag($tag, @attr);
-   }
-}
-
-sub sparseArray_toXML {
-   my ($elem_proto, $value, $writer, @attr)=@_;
-   push @attr, dim => $value->dim unless $writer->{"!dim"};
-   $writer->startTag("v",@attr);
-   $writer->setDataMode(0);
-   for (my $it=args::entire($value); $it; ++$it) {
-      $writer->characters(" ");
-      $elem_proto->toXML->($it->deref, $writer, i => $it->index);
-   }
-   $writer->characters(" ");
-   $writer->setDataMode(1);
-   $writer->endTag("v");
-}
-
-sub sparseMatrix_toXML {
-   my ($elem_proto, $value, $writer)=@_;
-   if ($value->rows) {
-      local $writer->{"!dim"}=1;
-      nontrivialArray_toXML(@_,  cols => $value->cols);
-   } else {
-      $writer->emptyTag("m",@_[3..$#_]);
-   }
-}
-
-sub trivialComposite_toXML {
-   my ($value, $writer, @attr)=@_;
-   $writer->dataElement("t", "@$value", @attr);
-}
-
-sub nontrivialComposite_toXML {
-   my ($elem_protos, $value, $writer, @attr)=@_;
-   $writer->startTag("t",@attr);
-   my $i=0;
-   foreach my $elem (@$value) {
-      $elem_protos->[$i++]->toXML->($elem,$writer);
-   }
-   $writer->endTag("t");
-}
-
-sub assocContainer_toXML {
-   my ($pair_proto, $value, $writer, @attr)=@_;
-   if (keys %$value) {
-      $writer->startTag("m",@attr);
-      while (my ($k, $v)=each %$value) {
-         $pair_proto->toXML->([$k,$v],$writer);
-      }
-      $writer->endTag("m");
-   } else {
-      $writer->emptyTag("m");
-   }
-}
 #################################################################################
 # produce a name sufficient for reconstruction from a data file
 sub qualified_name {
@@ -329,13 +254,14 @@ package Polymake::Core::PropertyParamedType;
 use Polymake::Struct (
    [ '@ISA' => 'PropertyType' ],
    [ new => '$$$' ],
-   [ '$name' => '#1 ->name' ],
-   [ '$pkg' => '#1 ->pkg' ],
-   [ '$application' => '#1 ->application' ],
-   [ '$extension' => '#1 ->extension' ],
+   [ '$name' => '#1->name' ],
+   [ '$pkg' => '#1->pkg' ],
+   [ '$application' => '#1->application' ],
+   [ '$extension' => '#1->extension' ],
    [ '$super' => '#2 // #1' ],
    [ '$generic' => '#1' ],
    [ '$params' => '#3' ],
+   '@derived_abstract',
 );
 
 use Polymake::Struct (
@@ -438,6 +364,8 @@ sub new_generic {
          if ($self->construct_node=$super->construct_node) {
             $self->create_method_new();
          }
+         push @{$super->derived_abstract}, $self;
+         weak($super->derived_abstract->[-1]);
       }
       $subpkg="props";
    }
@@ -510,6 +438,12 @@ sub mangled_name {
    $1
 }
 
+# produce a name adhering to the XML name syntax rule, e.g. as a schema element identifier
+sub xml_name {
+   my ($self)=@_;
+   join(".", $self->name, map { $_->xml_name } @{$self->params})
+}
+
 # produce a name sufficient for reconstruction from a data file
 sub qualified_name {
    my ($self, $in_app)=@_;
@@ -560,9 +494,9 @@ package Polymake::Core::PropertyTypeInstance;
 use Polymake::Struct (
    [ '@ISA' => 'PropertyType' ],
    [ new => '$$$;$' ],
-   [ '$name' => '#1 ->name' ],
-   [ '$pkg' => '#1 ->pkg' ],
-   [ '$application' => '#1 ->application' ],
+   [ '$name' => '#1->name' ],
+   [ '$pkg' => '#1->pkg' ],
+   [ '$application' => '#1->application' ],
    [ '$super' => '#2 || #4' ],
    [ '$generic' => '#1' ],
    [ '$param' => '#3' ],
@@ -761,7 +695,7 @@ use Polymake::Struct (
    [ '$super' => 'undef' ],
    [ '$generic' => 'undef' ],
    [ '$params' => '[ #1 ]' ],
-   [ '$context_pkg' => '#1 ->context_pkg' ],
+   [ '$context_pkg' => '#1->context_pkg' ],
    [ '&perform_typecheck' => '\&check_upgradable' ],
 );
 

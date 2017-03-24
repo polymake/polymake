@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -24,13 +24,12 @@ my $bind=<<'.';
 
 foreach my $file (@ARGV) {
    open my $C, $file or die "can't read $file: $!\n";
-   my $ugly_cast= $] <= 5.008 && "(char*)";
    while (<$C>) {
       if (/^XS(?:_EXTERNAL)?\((boot_(\w+))\);/) {
          $proto .= "$&\n";
          my $func=$1;
          (my $pkg=$2) =~ s/_/:/g;
-         $bind .= qq{   newXS("$pkg\::bootstrap", $func, $ugly_cast"$file");\n};
+         $bind .= qq{   newXS("$pkg\::bootstrap", $func, "$file");\n};
       }
    }
 }

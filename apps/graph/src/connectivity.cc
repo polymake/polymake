@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -32,7 +32,7 @@ int FF_rec(int n, int t, Bitset& visited, dgraph& G, EdgeMap<Directed,bool>& sat
       return t;
 
    // traversing the outgoing edges (in the original graph)
-   for (Entire<dgraph::out_edge_list>::iterator e=entire(G.out_edges(n)); !e.at_end(); ++e) {
+   for (auto e=entire(G.out_edges(n)); !e.at_end(); ++e) {
       int nn=e.to_node();
       if ( !visited.contains(nn) && !saturated[*e] ) {   // nn has not been visited and the arc (n,nn) is not saturated
          visited+=nn;
@@ -45,7 +45,7 @@ int FF_rec(int n, int t, Bitset& visited, dgraph& G, EdgeMap<Directed,bool>& sat
    }
 
    // traversing the ingoing edges (= reversed edges in the residual graph)
-   for (Entire<dgraph::in_edge_list>::iterator e=entire(G.in_edges(n)); !e.at_end(); ++e) {
+   for (auto e=entire(G.in_edges(n)); !e.at_end(); ++e) {
       int nn=e.from_node();
       if ( !visited.contains(nn) && saturated[*e] ) {   // nn has not been visited and the arc (nn,n) is saturated, therefore it exists in the res graph
          visited+=nn;
@@ -111,11 +111,12 @@ UserFunctionTemplate4perl("# @category Combinatorics"
                           "# Compute the [[CONNECTIVITY]] of a given //graph// using the Ford-Fulkerson flow algorithm."
                           "# @param props::Graph<Undirected> graph"
                           "# @return Int"
-                          "# @example Compute the connectivity of the vertex-edge graph of the square:"
+                          "# @example [application polytope]"
+                          "# Compute the connectivity of the vertex-edge graph of the square:"
                           "# > print connectivity(cube(2)->GRAPH->ADJACENCY);"
                           "# | 2"
                           "# This means that at least two nodes or edges need to be removed in order"
-                          "# for the resulting graoh not to be connected anymore."
+                          "# for the resulting graph not to be connected anymore."
                           "# @author Nikolaus Witte",
                           "connectivity(props::Graph<Undirected>)");
 } }

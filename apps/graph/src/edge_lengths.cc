@@ -37,7 +37,11 @@ UserFunctionTemplate4perl("# @category Other"
 			  "# the coordinates //coords// of its nodes."
 			  "# @param props::Graph<Directed> G the input graph"
 			  "# @param Matrix coords the coordinates of the nodes"
-			  "# @return EdgeMap",
+			  "# @return EdgeMap"
+			  "# @example [application polytope] The following prints the edge length of the complete graph with 3 nodes"
+			  "# and edge lengths given by the coordiantes of the standard 2-simplex:"
+           "# > print edge_lengths(complete(3)->ADJACENCY,simplex(2)->VERTICES);"
+           "# | 1 1 1.414213562",
 			  "edge_lengths(props::Graph Matrix)");
 } }
 

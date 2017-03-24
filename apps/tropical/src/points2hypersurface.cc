@@ -29,13 +29,10 @@ namespace polymake { namespace tropical {
 			const Matrix<TDualNumber> dual_points = 
 				dual_addition_version(points,1);
 			
-			Ring<TDualNumber> r(d);
-			Polynomial<TDualNumber > hyperpoly(TDualNumber::one(), r);
+			Polynomial<TDualNumber > hyperpoly(TDualNumber::one(), d);
 
-			for(typename Entire<Rows<Matrix<TDualNumber> > >::const_iterator pt = entire(rows(dual_points));
-					!pt.at_end(); pt++) {
-				Matrix<int> monoms = unit_matrix<int>(d);
-				hyperpoly *= Polynomial<TDualNumber >(monoms, *pt, r);
+			for (auto pt = entire(rows(dual_points)); !pt.at_end(); pt++) {
+				hyperpoly *= Polynomial<TDualNumber >(*pt, unit_matrix<int>(d));
 			}
 
 			perl::Object result(perl::ObjectType::construct<typename Addition::dual>("Hypersurface"));

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,27 +13,34 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-use Polymake::Enum qw( domain: OnRays=1 OnFacets=2 OnCoords=3 );
-
 object Cone {
 
-# @category Symmetry
-# A group acting on the cone via permutation of its 
-# rays ([[group::GroupOfCone::DOMAIN|DOMAIN]]=1), facets ([[group::GroupOfCone::DOMAIN|DOMAIN]]=2), or
-# coordinates ([[group::GroupOfCone::DOMAIN|DOMAIN]]=3). 
-property GROUP : group::GroupOfCone : multiple;
+    rule RAYS : GROUP.RAYS_ACTION.GENERATORS, GROUP.RAYS_ACTION.ORBIT_REPRESENTATIVES {
+        $this->RAYS = group::orbits_in_orbit_order($this->GROUP->RAYS_ACTION, $this->GROUP->RAYS_ACTION->ORBIT_REPRESENTATIVES);
+    }
 
+    rule FACETS : GROUP.FACETS_ACTION.GENERATORS, GROUP.FACETS_ACTION.ORBIT_REPRESENTATIVES {
+        $this->FACETS = group::orbits_in_orbit_order($this->GROUP->FACETS_ACTION, $this->GROUP->FACETS_ACTION->ORBIT_REPRESENTATIVES);
+    }
 }
 
+object Polytope {
 
-object VectorConfiguration {
+    property GROUP {
 
-# @category Symmetry
-# A group acting on the cone via permutation of its 
-# rays ([[group::GroupOfCone::DOMAIN|DOMAIN]]=1), facets ([[group::GroupOfCone::DOMAIN|DOMAIN]]=2), or
-# coordinates ([[group::GroupOfCone::DOMAIN|DOMAIN]]=3). 
-property GROUP : group::GroupOfCone : multiple;
+        property SYMMETRIC_FACETS : Matrix<Scalar>;
 
+        property SYMMETRIC_RAYS : Matrix<Scalar>;
+
+    }
+
+    rule GROUP.SYMMETRIC_FACETS : FACETS, LINEAR_SPAN, GROUP.COORDINATE_ACTION {
+        $this->GROUP->SYMMETRIC_FACETS = symmetrize_poly_reps($this->FACETS, $this->LINEAR_SPAN, $this->GROUP->COORDINATE_ACTION)->first;
+    }
+
+    rule GROUP.SYMMETRIC_RAYS : RAYS, LINEALITY_SPACE, GROUP.COORDINATE_ACTION {
+        $this->GROUP->SYMMETRIC_RAYS = symmetrize_poly_reps($this->RAYS, $this->LINEALITY_SPACE, $this->GROUP->COORDINATE_ACTION)->first;
+    }
 }
 
 
@@ -42,4 +49,3 @@ property GROUP : group::GroupOfCone : multiple;
 # cperl-indent-level: 3
 # indent-tabs-mode:nil
 # End:
-

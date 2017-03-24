@@ -140,8 +140,8 @@ struct accessor {
 template <typename Traits>
 class element
    : public modified_container_impl< element<Traits>,
-                                     list( Container< typename std::vector< typename AVL::tree< tree_traits<Traits> >::const_iterator > >,
-                                           Operation< accessor<Traits> > ) >,
+                                     mlist< ContainerTag< typename std::vector< typename AVL::tree< tree_traits<Traits> >::const_iterator > >,
+                                            OperationTag< accessor<Traits> > > >,
      public GenericSet< element<Traits>, typename Traits::key_type, typename Traits::key_comparator_type> {
 protected:
    typedef AVL::tree< tree_traits<Traits> > tree_type;
@@ -256,7 +256,7 @@ struct index_traits {
 } // end namespace face_map
 
 template <typename Traits>
-struct check_iterator_feature<face_map::Iterator<Traits>, end_sensitive> : True { };
+struct check_iterator_feature<face_map::Iterator<Traits>, end_sensitive> : std::true_type { };
 
 /** @class FaceMap
 

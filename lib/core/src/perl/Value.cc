@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -23,7 +23,7 @@ namespace pm { namespace perl {
 SVHolder::SVHolder()
 {
    dTHX;
-   sv=newSV(0);
+   sv=newSV_type(SVt_NULL);
 }
 
 void SVHolder::forget()
@@ -38,7 +38,7 @@ SV* SVHolder::get_temp()
    return sv_2mortal(sv);
 }
 
-SVHolder::SVHolder(SV* sv_arg, True)
+SVHolder::SVHolder(SV* sv_arg, std::true_type)
 {
    dTHX;
    sv=newSVsv(sv_arg);
@@ -59,8 +59,7 @@ SV* Scalar::undef()
 SV* Scalar::const_string(const char* s, size_t l)
 {
    dTHX;
-   SV* sv=newSV(0);
-   sv_upgrade(sv, SVt_PV);
+   SV* sv=newSV_type(SVt_PV);
    SvFLAGS(sv) |= SVf_READONLY | SVf_POK | SVp_POK;
    SvPV_set(sv,(char*)s);
    SvCUR_set(sv,l);
@@ -70,8 +69,7 @@ SV* Scalar::const_string(const char* s, size_t l)
 SV* Scalar::const_string_with_int(const char* s, size_t l, int i)
 {
    dTHX;
-   SV* sv=newSV(0);
-   sv_upgrade(sv, SVt_PVIV);
+   SV* sv=newSV_type(SVt_PVIV);
    SvFLAGS(sv) |= SVf_READONLY | SVf_POK | SVp_POK | SVf_IOK | SVp_IOK;
    SvPV_set(sv,(char*)s);
    SvCUR_set(sv,l);
@@ -90,7 +88,7 @@ double Scalar::convert_to_float(SV* sv)
 {
    MAGIC* mg=SvMAGIC(SvRV(sv));
    const glue::scalar_vtbl* t=(const glue::scalar_vtbl*)mg->mg_virtual;
-   return (t->to_double)(mg->mg_ptr);
+   return (t->to_float)(mg->mg_ptr);
 }
 
 SV* ArrayHolder::init_me(int size)
@@ -104,11 +102,13 @@ SV* ArrayHolder::init_me(int size)
 void ArrayHolder::upgrade(int size)
 {
    dTHX;
-   AV* av=newAV();
-   if (size>0) av_extend(av, size-1);
-   (void)SvUPGRADE(sv, SVt_RV);
-   SvRV(sv)=(SV*)av;
-   SvROK_on(sv);
+   if (!SvROK(sv)) {
+      AV* av=newAV();
+      if (size>0) av_extend(av, size-1);
+      (void)SvUPGRADE(sv, SVt_RV);
+      SvRV(sv)=(SV*)av;
+      SvROK_on(sv);
+   }
 }
 
 void ArrayHolder::verify() const
@@ -138,11 +138,22 @@ int ArrayHolder::dim(bool& has_sparse_representation) const
 {
    dTHX;
    MAGIC* mg=pm_perl_array_flags_magic(aTHX_ SvRV(sv));
-   if (mg && mg->mg_len>=0) {
+   if (mg && mg->mg_len>=0 && mg->mg_obj && SvPOKp(mg->mg_obj) && SvCUR(mg->mg_obj)==3 && !strncmp(SvPVX(mg->mg_obj), "dim", 3)) {
       has_sparse_representation=true;
       return mg->mg_len;
    } else {
       has_sparse_representation=false;
+      return -1;
+   }
+}
+
+int ArrayHolder::cols() const
+{
+   dTHX;
+   MAGIC* mg=pm_perl_array_flags_magic(aTHX_ SvRV(sv));
+   if (mg && mg->mg_len>=0 && mg->mg_obj && SvPOKp(mg->mg_obj) && SvCUR(mg->mg_obj)==4 && !strncmp(SvPVX(mg->mg_obj), "cols", 4)) {
+      return mg->mg_len;
+   } else {
       return -1;
    }
 }
@@ -156,16 +167,6 @@ bool SVHolder::is_tuple() const
    } else {
       return false;
    }
-}
-
-SV* Value::store_instance_in() const
-{
-   dTHX;
-   if (SvROK(sv)) {
-      if (MAGIC* mg=pm_perl_array_flags_magic(aTHX_ SvRV(sv)))
-         return mg->mg_obj;
-   }
-   return NULL;
 }
 
 SV* ArrayHolder::shift()
@@ -227,17 +228,17 @@ void HashHolder::verify()
       throw std::runtime_error("input argument is not a hash");
 }
 
-bool HashHolder::exists(const char* key, size_t klen) const
+bool HashHolder::exists(const AnyString& key) const
 {
    dTHX;
-   return hv_exists((HV*)SvRV(sv), key, klen);
+   return hv_exists((HV*)SvRV(sv), key.ptr, key.len);
 }
 
-Value HashHolder::_access(const char* key, size_t klen, bool create) const
+SV* HashHolder::fetch(const AnyString& key, bool create) const
 {
    dTHX;
-   SV** valp=hv_fetch((HV*)SvRV(sv), key, klen, create);
-   return Value(valp ? *valp : &PL_sv_undef, value_flags(value_not_trusted | value_allow_undef));
+   SV** valp=hv_fetch((HV*)SvRV(sv), key.ptr, key.len, create);
+   return valp ? *valp : &PL_sv_undef;
 }
 
 Stack::Stack()
@@ -257,13 +258,28 @@ Stack::Stack(bool room_for_object, int reserve)
 {
    dTHX;
    pi=getTHX;
-   PmStartFuncall;
-   EXTEND(SP,reserve);
+   PmStartFuncall(reserve);
    if (room_for_object) PUSHs(&PL_sv_undef);
    PUTBACK;
 }
 
+Stack::Stack(int reserve)
+{
+   dTHX;
+   pi=getTHX;
+   PmStartFuncall(reserve);
+   PUTBACK;
+}
+
 void Stack::push(SV* x) const
+{
+   dTHXa(pi);
+   dSP;
+   PUSHs(x);
+   PUTBACK;
+}
+
+void Stack::xpush(SV* x) const
 {
    dTHXa(pi);
    dSP;
@@ -281,12 +297,6 @@ void ListReturn::upgrade(int size)
 {
    dTHX; dSP;
    EXTEND(SP, size);
-}
-
-bool Value::on_stack(const char* val, const char* frame_upper_bound)
-{
-  char frame_lower_bound=0;
-  return (val<&frame_lower_bound) != (val<frame_upper_bound);
 }
 
 long Value::int_value() const
@@ -307,7 +317,7 @@ double Value::float_value() const
    return SvNV(sv);
 }
 
-False* Value::retrieve(std::string& x) const
+std::false_type* Value::retrieve(std::string& x) const
 {
    dTHX;
    if (__builtin_expect(SvOK(sv), 1)) {
@@ -319,23 +329,25 @@ False* Value::retrieve(std::string& x) const
    } else {
       x.clear();
    }
-   return NULL;
+   return nullptr;
 }
 
-False* Value::retrieve(const char* &x) const
+std::false_type* Value::retrieve(AnyString& x) const
 {
    dTHX;
    if (__builtin_expect(SvOK(sv), 1)) {
       if (__builtin_expect(SvROK(sv) && !SvAMAGIC(sv), 0))
          throw std::runtime_error("invalid value for an input string property");
-      x=SvPV_nolen(sv);
+      size_t l;
+      const char* p=SvPV(sv, l);
+      x=AnyString(p, l);
    } else {
-      x=NULL;
+      x=AnyString();
    }
-   return NULL;
+   return nullptr;
 }
 
-False* Value::retrieve(char& x) const
+std::false_type* Value::retrieve(char& x) const
 {
    dTHX;
    if (SvPOK(sv)) {
@@ -366,10 +378,10 @@ False* Value::retrieve(char& x) const
    } else {
       x=0;
    }
-   return NULL;
+   return nullptr;
 }
 
-bool Value::is_defined() const
+bool Value::is_defined() const noexcept
 {
    return (SvFLAGS(sv) & (SVf_IOK|SVf_NOK|SVf_POK|SVf_ROK|SVp_IOK|SVp_NOK|SVp_POK|SVs_GMG)) != 0;
 }
@@ -424,7 +436,7 @@ Value::number_flags Value::classify_number() const
    return not_a_number;
 }
 
-False* Value::retrieve(bool& x) const
+std::false_type* Value::retrieve(bool& x) const
 {
    dTHX;
    if (SvPOK(sv) && SvCUR(sv)==5 && !strcmp(SvPVX(sv), "false")) {
@@ -432,10 +444,10 @@ False* Value::retrieve(bool& x) const
    } else {
       x=SvTRUE(sv);
    }
-   return NULL;
+   return nullptr;
 }
 
-False* Value::retrieve(double& x) const
+std::false_type* Value::retrieve(double& x) const
 {
    dTHX;
    switch (classify_number()) {
@@ -454,10 +466,10 @@ False* Value::retrieve(double& x) const
    default:
       throw std::runtime_error("invalid value for an input floating-point property");
    }
-   return NULL;
+   return nullptr;
 }
 
-False* Value::retrieve(Array& x) const
+std::false_type* Value::retrieve(Array& x) const
 {
    dTHX;
    if (__builtin_expect(SvOK(sv), 1)) {
@@ -469,7 +481,7 @@ False* Value::retrieve(Array& x) const
    } else {
       throw undefined();
    }
-   return NULL;
+   return nullptr;
 }
 
 bool Value::is_plain_text(bool expect_numeric_scalar) const
@@ -480,8 +492,8 @@ bool Value::is_plain_text(bool expect_numeric_scalar) const
       dTHX;
       SV* type;
       if (sv_derived_from(sv, "Polymake::Core::Object")) {
-         PmStartFuncall;
-         XPUSHs(sv);
+         PmStartFuncall(1);
+         PUSHs(sv);
          PUTBACK;
          type=glue::call_method_scalar(aTHX_ "type");
       } else if (sv_derived_from(sv, "Polymake::Core::ObjectType")) {
@@ -489,8 +501,8 @@ bool Value::is_plain_text(bool expect_numeric_scalar) const
       } else {
          return false;
       }
-      PmStartFuncall;
-      XPUSHs(type);
+      PmStartFuncall(1);
+      PUSHs(type);
       PUTBACK;
       type=glue::call_method_scalar(aTHX_ "full_name");
       std::string type_name(SvPVX(type));
@@ -501,7 +513,7 @@ bool Value::is_plain_text(bool expect_numeric_scalar) const
    }
 }
 
-Value::canned_data_t Value::get_canned_data(SV* sv_arg)
+Value::canned_data_t Value::get_canned_data(SV* sv_arg) noexcept
 {
    if (SvROK(sv_arg)) {
       MAGIC* mg;
@@ -528,39 +540,39 @@ int Value::get_canned_dim(bool tell_size_if_dense) const
    return -1;
 }
 
-Value::NoAnchor* Value::put(long x, const char*, int)
+Value::NoAnchors Value::put_val(long x, int, int)
 {
    dTHX;
    sv_setiv(sv, x);
-   return NULL;
+   return NoAnchors();
 }
 
-Value::NoAnchor* Value::put(unsigned long x, const char*, int)
+Value::NoAnchors Value::put_val(unsigned long x, int, int)
 {
    dTHX;
    sv_setuv(sv, x);
-   return NULL;
+   return NoAnchors();
 }
 
-Value::NoAnchor* Value::put(bool x, const char*, int)
+Value::NoAnchors Value::put_val(bool x, int, int)
 {
    dTHX;
    sv_setsv(sv, x ? &PL_sv_yes : &PL_sv_no);
-   return NULL;
+   return NoAnchors();
 }
 
-Value::NoAnchor* Value::put(double x, const char*, int)
+Value::NoAnchors Value::put_val(double x, int, int)
 {
    dTHX;
    sv_setnv(sv, x);
-   return NULL;
+   return NoAnchors();
 }
 
-Value::NoAnchor* Value::put(const undefined&, const char*, int)
+Value::NoAnchors Value::put_val(const undefined&, int, int)
 {
    dTHX;
    sv_setsv(sv, &PL_sv_undef);
-   return NULL;
+   return NoAnchors();
 }
 
 void Value::set_copy(const SVHolder& x)
@@ -581,111 +593,107 @@ void Value::set_string_value(const char* x, size_t l)
    sv_setpvn(sv, x, l);
 }
 
-void Value::set_perl_type(SV* proto)
-{
-   dTHX;
-   if (SvROK(sv) && proto)
-      sv_bless(sv, gv_stashsv(PmArray(proto)[glue::PropertyType_pkg_index], TRUE));
-}
-
 namespace {
 
 inline
-Value::Anchor* finalize_primitive_ref(pTHX_ const Value& v, const char* xptr, SV* descr, bool take_ref)
+Value::Anchor* finalize_primitive_ref(pTHX_ const Value& v, const char* xptr, SV* descr, int n_anchors, bool take_ref)
 {
    if (take_ref) {
-      MAGIC* mg=glue::upgrade_to_builtin_magic_sv(aTHX_ v.get(), descr, v.get_num_anchors());
+      MAGIC* mg=glue::upgrade_to_builtin_magic_sv(aTHX_ v.get(), descr, n_anchors);
       mg->mg_ptr=(char*)xptr;
       mg->mg_flags |= v.get_flags() & value_read_only;
-      return glue::MagicAnchors::first(mg);
+      return n_anchors ? glue::MagicAnchors::first(mg) : nullptr;
    } else {
       MAGIC* mg=glue::upgrade_to_builtin_magic_sv(aTHX_ v.get(), descr, 0);
       mg->mg_flags |= value_read_only;
-      return NULL;
+      return nullptr;
    }
 }
 
 }
 
-Value::Anchor& Value::Anchor::store_anchor(SV* sv)
+void Value::Anchor::store(SV* sv) noexcept
 {
-   if (this != NULL) {
-      if (SvROK(sv)) sv=SvRV(sv);
-      stored=SvREFCNT_inc_simple_NN(sv);
-      return this[1];
-   } else {
-      return *this;
-   }
+   if (SvROK(sv)) sv=SvRV(sv);
+   stored=SvREFCNT_inc_simple_NN(sv);
 }
 
-void* Value::allocate_canned(SV* descr) const
+std::pair<void*, Value::Anchor*> Value::allocate_canned(SV* descr, int n_anchors) const
 {
    dTHX;
-   return glue::allocate_canned_magic(aTHX_ sv, descr, options | value_alloc_magic, n_anchors)->mg_ptr;
+   MAGIC* mg=glue::allocate_canned_magic(aTHX_ sv, descr, options | value_alloc_magic, n_anchors);
+   mg->mg_flags |= MGf_GSKIP;    // if the following constructor call dies with an exception, destroy_canned won't try to delete the non-existent object
+   return { mg->mg_ptr, n_anchors ? glue::MagicAnchors::first(mg) : nullptr };
 }
 
-Value::Anchor* Value::first_anchor_slot() const
+void Value::mark_canned_as_initialized()
 {
-   SV* x= SvROK(sv) ? SvRV(sv) : sv;
-   return glue::MagicAnchors::first(SvMAGIC(x));
+   MAGIC* mg=SvMAGIC(SvRV(sv));
+   mg->mg_flags &= ~MGf_GSKIP;    // confirm that the canned object is fully initialized
 }
 
-Value::Anchor* Value::store_canned_ref(SV* descr, void* val, value_flags flags) const
+SV* Value::get_constructed_canned()
+{
+   mark_canned_as_initialized();
+   return get_temp();
+}
+
+Value::Anchor* Value::store_canned_ref_impl(void* val, SV* descr, value_flags flags, int n_anchors) const
 {
    dTHX;
    MAGIC* mg=glue::allocate_canned_magic(aTHX_ sv, descr, flags, n_anchors);
    mg->mg_ptr=(char*)val;
-   return glue::MagicAnchors::first(mg);
+   return n_anchors ? glue::MagicAnchors::first(mg) : nullptr;
 }
 
-Value::Anchor* Value::store_primitive_ref(const bool& x, SV* descr, bool take_ref)
+Value::Anchor* Value::store_primitive_ref(const bool& x, SV* descr, int n_anchors, bool take_ref)
 {
    dTHX;
    sv_upgrade(sv, SVt_PVLV);
    sv_setiv(sv, x);
-   return finalize_primitive_ref(aTHX_ *this, reinterpret_cast<const char*>(&x), descr, take_ref);
+   return finalize_primitive_ref(aTHX_ *this, reinterpret_cast<const char*>(&x), descr, n_anchors, take_ref);
 }
-Value::Anchor* Value::store_primitive_ref(const int& x, SV* descr, bool take_ref)
+Value::Anchor* Value::store_primitive_ref(const int& x, SV* descr, int n_anchors, bool take_ref)
 {
    dTHX;
    sv_upgrade(sv, SVt_PVLV);
    sv_setiv(sv, x);
-   return finalize_primitive_ref(aTHX_ *this, reinterpret_cast<const char*>(&x), descr, take_ref);
+   return finalize_primitive_ref(aTHX_ *this, reinterpret_cast<const char*>(&x), descr, n_anchors, take_ref);
 }
-Value::Anchor* Value::store_primitive_ref(const unsigned int& x, SV* descr, bool take_ref)
+Value::Anchor* Value::store_primitive_ref(const unsigned int& x, SV* descr, int n_anchors, bool take_ref)
 {
    dTHX;
    sv_upgrade(sv, SVt_PVLV);
    sv_setuv(sv, x);
-   return finalize_primitive_ref(aTHX_ *this, reinterpret_cast<const char*>(&x), descr, take_ref);
+   return finalize_primitive_ref(aTHX_ *this, reinterpret_cast<const char*>(&x), descr, n_anchors, take_ref);
 }
-Value::Anchor* Value::store_primitive_ref(const long& x, SV* descr, bool take_ref)
+Value::Anchor* Value::store_primitive_ref(const long& x, SV* descr, int n_anchors, bool take_ref)
 {
    dTHX;
    sv_upgrade(sv, SVt_PVLV);
    sv_setiv(sv, x);
-   return finalize_primitive_ref(aTHX_ *this, reinterpret_cast<const char*>(&x), descr, take_ref);
+   return finalize_primitive_ref(aTHX_ *this, reinterpret_cast<const char*>(&x), descr, n_anchors, take_ref);
 }
-Value::Anchor* Value::store_primitive_ref(const unsigned long& x, SV* descr, bool take_ref)
+Value::Anchor* Value::store_primitive_ref(const unsigned long& x, SV* descr, int n_anchors, bool take_ref)
 {
    dTHX;
    sv_upgrade(sv, SVt_PVLV);
    sv_setuv(sv, x);
-   return finalize_primitive_ref(aTHX_ *this, reinterpret_cast<const char*>(&x), descr, take_ref);
+   return finalize_primitive_ref(aTHX_ *this, reinterpret_cast<const char*>(&x), descr, n_anchors, take_ref);
 }
-Value::Anchor* Value::store_primitive_ref(const double& x, SV* descr, bool take_ref)
+Value::Anchor* Value::store_primitive_ref(const double& x, SV* descr, int n_anchors, bool take_ref)
 {
    dTHX;
    sv_upgrade(sv, SVt_PVLV);
    sv_setnv(sv, x);
-   return finalize_primitive_ref(aTHX_ *this, reinterpret_cast<const char*>(&x), descr, take_ref);
+   return finalize_primitive_ref(aTHX_ *this, reinterpret_cast<const char*>(&x), descr, n_anchors, take_ref);
 }
-Value::Anchor* Value::store_primitive_ref(const std::string& x, SV* descr, bool take_ref)
+Value::Anchor* Value::store_primitive_ref(const std::string& x, SV* descr, int n_anchors, bool take_ref)
 {
    dTHX;
    sv_upgrade(sv, SVt_PVLV);
    sv_setpvn(sv, x.c_str(), x.size());
-   return finalize_primitive_ref(aTHX_ *this, reinterpret_cast<const char*>(&x), descr, take_ref);
+   return finalize_primitive_ref(aTHX_ *this, reinterpret_cast<const char*>(&x), descr, n_anchors, take_ref);
 }
 
 istream::istream(SV* sv)
@@ -698,9 +706,7 @@ istream::istream(SV* sv)
 
 std::runtime_error istream::parse_error() const
 {
-   std::ostringstream err_pos;
-   err_pos << CharBuffer::get_ptr(rdbuf()) - CharBuffer::get_buf_start(rdbuf()) << '\t';
-   return std::runtime_error(err_pos.str());
+   return std::runtime_error(std::to_string(CharBuffer::get_ptr(rdbuf()) - CharBuffer::get_buf_start(rdbuf())) + '\t');
 }
 
 istreambuf::istreambuf(SV* sv)

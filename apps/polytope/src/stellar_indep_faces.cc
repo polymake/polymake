@@ -18,7 +18,8 @@
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
-#include "polymake/graph/HasseDiagram.h"
+#include "polymake/graph/Lattice.h"
+#include "polymake/graph/Decoration.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Graph.h"
 #include "polymake/PowerSet.h"
@@ -39,7 +40,8 @@ perl::Object stellar_indep_faces(perl::Object p_in, const Array< Set<int> >& in_
    const Matrix<Scalar> lineality_space=p_in.give("LINEALITY_SPACE");
    const Vector<Scalar> rel_int_point=p_in.give("REL_INT_POINT");
    const IncidenceMatrix<> VIF=p_in.give("VERTICES_IN_FACETS");
-   const graph::HasseDiagram HD=p_in.give("HASSE_DIAGRAM");
+   graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential> HD = p_in.give("HASSE_DIAGRAM");
+
    const Graph<> DG=p_in.give("DUAL_GRAPH.ADJACENCY");
 
    PowerSet<int> spec_faces;
@@ -47,7 +49,7 @@ perl::Object stellar_indep_faces(perl::Object p_in, const Array< Set<int> >& in_
         !it.at_end(); ++it)
       spec_faces += *it;
 
-   const int dim = HD.dim();
+   const int dim = HD.rank()-1;
 
    int v_count = V.rows();
    int indep_vert = 0;
@@ -55,7 +57,7 @@ perl::Object stellar_indep_faces(perl::Object p_in, const Array< Set<int> >& in_
 
    // iterate over dimensions dim-1..0 and over all faces of each dimension
    for (int d=dim-1; d>=0; --d) {
-      for (Entire<sequence>::iterator it=entire(HD.node_range_of_dim(d));
+      for (auto it=entire(HD.nodes_of_rank(d+1));
            !it.at_end(); ++it) {
          const Set<int>& face = HD.face(*it);
          if (spec_faces.contains(face)) {

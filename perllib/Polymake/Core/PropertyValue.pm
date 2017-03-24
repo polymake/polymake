@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -36,8 +36,8 @@ use Polymake::Enum qw( is: temporary=1024 strong_ref=1 weak_ref=2 ref=3 );
 sub new {
    my $self=&_new;
    if ($self->flags & $is_ref) {
-      readonly($self->value);
       weak($self->value) if $self->flags & $is_weak_ref;
+      readonly($self->value);
    } else {
       readonly_deep($self->value);
    }
@@ -67,15 +67,33 @@ sub delete_from_subobjects {
 }
 
 sub copy {
-   my $self=shift;
+   my ($self, $parent_obj, $to_prop)=@_;
+   $to_prop //= $self->property;
    if ($self->flags & $is_ref || !defined($self->value)) {
-      new($self, @$self);
+      # TODO: special treatment for inner-object-tree references
+      new($self, $to_prop, $self->value, $self->flags);
    } else {
-      $self->property->copy->($self->value, @_);
+      $to_prop->copy->($self->value, $parent_obj, $to_prop != $self->property);
    }
 }
 ######################################################################
-package Polymake::Core::PropertyMultipleValue;
+package _::BackRefToParent;
+
+use Polymake::Struct (
+   [ new => '$;$' ],
+   [ '$owner' => 'weak(#1)' ],
+);
+
+sub value { $_[0]->owner->parent }
+sub property { $_[0]->owner->property }
+sub is_temporary { $_[0]->owner->is_temporary }
+sub flags { $is_weak_ref }
+*copy=\&new;
+
+sub toString { '@PARENT' }
+
+######################################################################
+package __::Multiple;
 
 use Polymake::Struct (
    [ new => '$$' ],
@@ -147,15 +165,16 @@ sub ensure_unique_name {
 }
 ######################################################################
 sub copy {
-   my $self=shift;
-   if (my @subobjs=map {
-         if (!$_->is_temporary && defined (my $subcopy=$_->copy(@_))) {
+   my ($self, $parent_obj, $to_prop, $filter)=@_;
+   $to_prop //= $self->property;
+   if (my @copies=map {
+         if (!$_->is_temporary && defined (my $subcopy=$_->copy($parent_obj, $to_prop, $filter))) {
             $subcopy
          } else {
             ()
          }
       } @{$self->values}) {
-      new($self, $self->property, \@subobjs);
+      new($self, $to_prop, \@copies);
    } else {
       undef;
    }
@@ -212,8 +231,8 @@ sub find_instance {
 }
 
 sub find {
-   if ($#_==1 && $_[1] eq '*') {
-      &value;
+   if ($#_==1 && ref($_[1]) eq "") {
+      $_[1] eq '*' ? $_[0]->values : &find_by_name;
    } else {
       scalar(&find_instance);
    }

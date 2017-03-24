@@ -33,7 +33,7 @@ foreach my $type (sort { $a->name cmp $b->name } @{$application->object_types}) 
    print " {\n";
    foreach my $prop (sort { $a->name cmp $b->name } values %{$type->properties}) {
       if ($prop->belongs_to == $type) {
-	 if ($prop->flags & $Core::Property::is_locally_derived) {
+	 if ($prop->flags & $Core::Property::is_augmented) {
 	    print "    ", $prop->name, ":", $prop->type->super->[1]->full_name, " {\n";
 	    foreach my $local_prop (sort { $a->name cmp $b->name } values %{$prop->type->super->[0]->properties}) {
 	       print "      ", $local_prop->name, ":", $local_prop->type->full_name, "\n";

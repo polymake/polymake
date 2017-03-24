@@ -24,8 +24,8 @@ property STEINER_POINTS : Matrix<Scalar>;
 # Steiner point of the whole polytope.
 property STEINER_POINT : Vector<Scalar>;
 
-# @notest
-rule STEINER_POINTS : HASSE_DIAGRAM, GRAPH.ADJACENCY, VERTICES, CONE_DIM {
+rule STEINER_POINTS : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE, \
+                      GRAPH.ADJACENCY, VERTICES, CONE_DIM {
    $this->STEINER_POINTS=all_steiner_points($this);
 }
 precondition : BOUNDED;

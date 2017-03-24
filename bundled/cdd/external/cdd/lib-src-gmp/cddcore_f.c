@@ -492,30 +492,30 @@ _L99:;
 void ddf_FreeDDMemory0(ddf_ConePtr cone)
 {
   ddf_RayPtr Ptr, PrevPtr;
-  long count;
+  long count=0;
   ddf_colrange j;
   ddf_boolean localdebug=ddf_FALSE;
   
   /* THIS SHOULD BE REWRITTEN carefully */
-  PrevPtr=cone->ArtificialRay;
-  if (PrevPtr!=NULL){
-    count=0;
-    for (Ptr=cone->ArtificialRay->Next; Ptr!=NULL; Ptr=Ptr->Next){
-      /* Added Marc Pfetsch 2/19/01 */
-      for (j=0;j < cone->d;j++)
-ddf_clear(PrevPtr->Ray[j]);
-      ddf_clear(PrevPtr->ARay);
+  for (PrevPtr=cone->ArtificialRay; PrevPtr!=NULL; PrevPtr=Ptr) {
+    Ptr=PrevPtr->Next;
+    /* Added Marc Pfetsch 2/19/01 */
+    for (j=0;j < cone->d;j++)
+      ddf_clear(PrevPtr->Ray[j]);
+    ddf_clear(PrevPtr->ARay);
 
-      free(PrevPtr->Ray);
-      free(PrevPtr->ZeroSet);
-      free(PrevPtr);
-      count++;
-      PrevPtr=Ptr;
-    };
-    cone->FirstRay=NULL;
+    free(PrevPtr->Ray);
+    free(PrevPtr->ZeroSet);
+    free(PrevPtr);
+    count++;
+    if (PrevPtr == cone->LastRay)
+      cone->LastRay=NULL;
+  }
+  cone->FirstRay=NULL;
+  if (cone->LastRay) {
     /* Added Marc Pfetsch 010219 */
     for (j=0;j < cone->d;j++)
-ddf_clear(cone->LastRay->Ray[j]);
+      ddf_clear(cone->LastRay->Ray[j]);
     ddf_clear(cone->LastRay->ARay);
 
     free(cone->LastRay->Ray);
@@ -524,9 +524,10 @@ ddf_clear(cone->LastRay->Ray[j]);
     cone->LastRay->ZeroSet = NULL;
     free(cone->LastRay);
     cone->LastRay = NULL;
-    cone->ArtificialRay=NULL;
-    if (localdebug) fprintf(stderr,"%ld ray storage spaces freed\n",count);
   }
+  cone->ArtificialRay=NULL;
+  if (localdebug) fprintf(stderr,"%ld ray storage spaces freed\n",count);
+
 /* must add (by Sato) */
   free(cone->Edges);
   

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,44 +17,51 @@
 #ifndef POLYMAKE_GRAPH_CONNECTED_H
 #define POLYMAKE_GRAPH_CONNECTED_H
 
-#include "polymake/graph/BFSiterator.h"
-#include "polymake/PowerSet.h"
+#include "polymake/graph/graph_iterators.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Graph.h"
 
 namespace polymake { namespace graph {
 
-/// Determine whether a graph is connected.
-template <typename Graph>
-bool is_connected(const GenericGraph<Graph>& G)
+template <typename Iterator, typename TGraph> inline
+bool connectivity_via_BFS(const TGraph& G)
 {
    if (!G.nodes()) return true;
-   BFSiterator<Graph> it(G.top(), nodes(G).front());
-   while (!it.at_end()) {
-      if (it.unvisited_nodes()==0) return true;
-      ++it;
+   for (Iterator it(G, nodes(G).front()); !it.at_end(); ++it) {
+      if (it.undiscovered_nodes()==0) return true;
    }
    return false;
 }
 
-template <typename Graph>
-class connected_components_iterator : protected BFSiterator< Graph, Visitor< BoolNodeVisitor<true> > > {
+/// Determine whether an undirected graph is connected.
+template <typename TGraph>
+typename std::enable_if<!TGraph::is_directed, bool>::type
+is_connected(const GenericGraph<TGraph>& G)
+{
+   return connectivity_via_BFS<BFSiterator<TGraph>>(G.top());
+}
+
+/// Determine whether a directed graph is weakly connected.
+template <typename TGraph>
+typename std::enable_if<TGraph::is_directed, bool>::type
+is_weakly_connected(const GenericGraph<TGraph>& G)
+{
+   return connectivity_via_BFS<BFSiterator<TGraph, TraversalDirectionTag<int_constant<0>>>>(G.top());
+}
+
+template <typename TGraph>
+class connected_components_iterator
+   : protected BFSiterator<TGraph, VisitorTag<NodeVisitor<true>>, TraversalDirectionTag<int_constant<!TGraph::is_directed>>> {
 protected:
-   typedef BFSiterator< Graph, Visitor< BoolNodeVisitor<true> > > BFS;
+   typedef BFSiterator<TGraph, VisitorTag<NodeVisitor<true>>, TraversalDirectionTag<int_constant<!TGraph::is_directed>>> base_t;
    Set<int> component;
 
    void fill()
    {
       do {
-         component+=this->queue.front();
-         BFS::operator++();
-      } while (!BFS::at_end());
-   }
-
-   void next()
-   {
-      const int n=this->visitor.get_visited_nodes().front();
-      this->queue.push_back(n);
-      this->visitor.add(n);
-      --this->unvisited;
+         component += this->queue.front();
+         base_t::operator++();
+      } while (!base_t::at_end());
    }
 
 public:
@@ -68,10 +75,11 @@ public:
    typedef iterator const_iterator;
 
    connected_components_iterator() {}
-   connected_components_iterator(const Graph& graph_arg)
-      : BFS(graph_arg, graph_arg.nodes() ? nodes(graph_arg).front() : -1)
+
+   explicit connected_components_iterator(const GenericGraph<TGraph>& graph_arg)
+      : base_t(graph_arg)
    {
-      if (this->unvisited>=0) fill();
+      rewind();
    }
 
    reference operator* () const { return component; }
@@ -80,7 +88,10 @@ public:
    iterator& operator++ ()
    {
       component.clear();
-      if (BFS::unvisited>0) { next(); fill(); }
+      if (this->undiscovered_nodes() != 0) {
+         this->process(this->visitor.get_visited_nodes().front());
+         fill();
+      }
       return *this;
    }
    const iterator operator++ (int) { iterator copy(*this);  operator++();  return copy; }
@@ -93,78 +104,61 @@ public:
    void rewind()
    {
       if (this->graph->nodes()) {
-         BFS::reset(nodes(*this->graph).front());
+         this->reset(nodes(*this->graph).front());
          component.clear();
          fill();
       }
    }
 };
 
-/// Compute the connected components
-template <typename Graph> inline
-pm::GraphComponents<const Graph&, connected_components_iterator>
-connected_components(const GenericGraph<Graph>& G) { return G.top(); }
-
-namespace {
-
-template<typename Container, typename E>
-void add_to(Container& C, const E& e) 
+/// Compute the connected components of an undirected graph
+template <typename TGraph> inline
+typename std::enable_if<!TGraph::is_directed, IncidenceMatrix<>>::type
+connected_components(const GenericGraph<TGraph>& G)
 {
-   C.push_back(e);
+   RestrictedIncidenceMatrix<only_cols> m(G.top().dim(), rowwise(), connected_components_iterator<TGraph>(G));
+   return IncidenceMatrix<>(std::move(m));
 }
 
-template<typename E>
-void add_to(Set<E>& C, const E& e)
+/// Compute the weakly connected components of a directed graph
+template <typename TGraph> inline
+typename std::enable_if<TGraph::is_directed, IncidenceMatrix<>>::type
+weakly_connected_components(const GenericGraph<TGraph>& G)
 {
-   C += e;
+   RestrictedIncidenceMatrix<only_cols> m(G.top().dim(), rowwise(), connected_components_iterator<TGraph>(G));
+   return IncidenceMatrix<>(std::move(m));
 }
 
-} // end anonymous namespace
-
-// compute a spanning tree rooted at vertex root_node,
-// optionally restricted to a support set
-template<typename GraphType, typename DirType, typename Container>
-void
-connected_component(const GenericGraph<GraphType, DirType>& G, 
-                    Container& C,
-                    int root_node=0,
-                    const Set<int> support=Set<int>())
+/// Construct a connectivity graph of components of another graph
+template <typename TGraph>
+Graph<typename TGraph::dir>
+component_connectivity(const GenericGraph<TGraph>& G, const IncidenceMatrix<>& C)
 {
-   std::list<int> unprocessed_leaves;
-   Bitset marked;  // nodes already included in the tree
-
-   unprocessed_leaves.push_back(root_node); // we start the tree at the given node
-   add_to(C, root_node);
-   marked.insert(root_node);
-
-   while ( !unprocessed_leaves.empty() ) {      
-      const int current = unprocessed_leaves.front();
-      unprocessed_leaves.pop_front();
-      const Set<int> neighbours = G.top().adjacent_nodes(current);  
-      for (Entire< Set< int > >::const_iterator v = entire(neighbours); !v.at_end(); ++v) 
-         if ((!support.size() || support.contains(*v)) 
-             && !marked.contains(*v)) {
-            unprocessed_leaves.push_back(*v);
-            marked.insert(*v);
-            add_to(C, *v);
+   Graph<typename TGraph::dir> result(C.rows());
+   for (auto e=entire(edges(G)); !e.at_end(); ++e) {
+      for (auto comp1=entire(C.col(e.from_node())); !comp1.at_end(); ++comp1) {
+         for (auto comp2=entire(C.col(e.to_node())); !comp2.at_end(); ++comp2) {
+            if (*comp1 != *comp2)
+               result.add_edge(*comp1, *comp2);
          }
+      }
    }
+   return result;
 }
-
 
 } }
 
 namespace pm {
 
-template <typename Graph>
-struct check_iterator_feature< polymake::graph::connected_components_iterator<Graph>, end_sensitive > : True {};
+template <typename TGraph>
+struct check_iterator_feature<polymake::graph::connected_components_iterator<TGraph>, end_sensitive> : std::true_type {};
 
-template <typename Graph>
-struct check_iterator_feature< polymake::graph::connected_components_iterator<Graph>, rewindable > : True {};
+template <typename TGraph>
+struct check_iterator_feature<polymake::graph::connected_components_iterator<TGraph>, rewindable> : std::true_type {};
 
 template <typename GraphRef>
 class generic_of_GraphComponents<GraphRef, polymake::graph::connected_components_iterator>
-   : public GenericSet< GraphComponents<GraphRef,polymake::graph::connected_components_iterator>, Set<int>, operations::cmp > {};
+   : public GenericSet< GraphComponents<GraphRef, polymake::graph::connected_components_iterator>, Set<int>, operations::cmp > {};
 }
 
 #endif // POLYMAKE_GRAPH_CONNECTED_H

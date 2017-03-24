@@ -61,9 +61,8 @@ perl::ListReturn singular_get_var(const std::string varname){
             Matrix<Integer> pmmat(iv->rows(), iv->cols());
             
             int i = 0;
-            for(Integer *elem = concat_rows(pmmat).begin(); elem != concat_rows(pmmat).end(); ++elem, ++i){
+            for (auto elem=entire(concat_rows(pmmat)); !elem.at_end(); ++elem, ++i)
                *elem = (*iv)[i];
-            }
             res << pmmat;
             break;
          }
@@ -71,7 +70,7 @@ perl::ListReturn singular_get_var(const std::string varname){
          {
             //int n = r.n_vars();
             const poly q = (poly) IDDATA(var);
-            std::pair<ListMatrix<Vector<int> >, std::vector<Rational> > decomposed = convert_poly_to_matrix_and_vector(q);
+            std::pair<std::vector<Rational>, ListMatrix<Vector<int>>> decomposed = convert_poly_to_vector_and_matrix(q);
             res << decomposed.first;
             res << decomposed.second;
             break;

@@ -41,5 +41,6 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(convert, FacetList, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
    FunctionInstance4perl(new, FacetList);
    FunctionInstance4perl(new_X, FacetList, perl::Canned< const FacetList >);
+   FunctionInstance4perl(new_X, FacetList, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

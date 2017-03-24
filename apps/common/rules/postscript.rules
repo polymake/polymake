@@ -20,7 +20,7 @@ package Postscript;
 custom $viewer;
 
 CONFIGURE_OPT {
-   find_program($viewer, qw( gv evince kghostview ggv okular ghostview ), { prompt => "a PostScript viewer program" });
+   find_program($viewer, qw( gv evince kghostview ggv okular ghostview open ), { prompt => "a PostScript viewer program" });
 }
 
 # @topic custom

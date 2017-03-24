@@ -24,30 +24,21 @@
 
 namespace polymake { namespace topaz {
 
-perl::Object stanley_reisner(perl::Object C, perl::OptionSet options) {
+perl::Object stanley_reisner(perl::Object C) {
   const Array< Set<int> > non_faces=C.give("MINIMAL_NON_FACES");
   const int n_non_faces=non_faces.size();
   const int n_vertices=C.give("N_VERTICES");
 
-  Ring<Rational,int> R;
-  if ((options["ring"] >> R)) {
-     if (R.n_vars()!=n_vertices)
-        throw std::runtime_error("stanley_reisner: number of variables do not match");
-  } else {
-     Ring<Rational,int> newR(n_vertices);
-     R=newR;
-  }
   Array< Polynomial<Rational,int> > gens(n_non_faces);
 
   for (int k=0; k<n_non_faces; ++k) {
-     Monomial<Rational,int> M(same_element_sparse_vector(non_faces[k],1,n_vertices),R);
-     gens[k]=M;
+     gens[k]=Polynomial<Rational,int>(1, same_element_sparse_vector(non_faces[k],1,n_vertices));
   }
 
   perl::Object I("ideal::Ideal");
   I.take("GENERATORS") << gens;
   I.take("MONOMIAL") << true;
-  I.take("RING") << R;
+  I.take("N_VARIABLES") << n_vertices;
   I.set_description() << "Stanley-Reisner ideal of " << C.name();
 
   return I;
@@ -55,11 +46,9 @@ perl::Object stanley_reisner(perl::Object C, perl::OptionSet options) {
 
 UserFunction4perl("# @category Other"
                   "# Creates the __Stanley-Reisner ideal__ of a simplicial complex."
-                  "# Optional //ring// parameter is required to have precisely as many variables as //C// has vertices."
                   "# @param  SimplicialComplex complex"
-                  "# @option Ring<Rational,int> ring"
                   "# @return ideal::Ideal",
-                  &stanley_reisner, "stanley_reisner(SimplicialComplex { ring => undef })");
+                  &stanley_reisner, "stanley_reisner(SimplicialComplex)");
 } }
 
 // Local Variables:

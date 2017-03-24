@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -34,11 +34,7 @@ SV** pm_perl_get_cx_curpad(pTHX_ PERL_CONTEXT* cx, PERL_CONTEXT* cx_bottom)
          break;
       case CXt_EVAL:
          if (!CxTRYBLOCK(cx)) {
-#if PerlVersion >= 5120
             cv=cx->blk_eval.cv;
-#else
-            cv=PL_compcv;
-#endif
             d=0;
             goto FOUND;
          }
@@ -95,49 +91,6 @@ const char* pm_perl_get_gv_name(pTHX_ GV *x)
    if (SvTYPE(x)==SVt_PVGV) return GvNAME(x);
    return "*** not a glob ***";
 }
-
-#if PerlVersion >= 5120
-
-/* copied from perl-5.10.0/mathoms.c - disappeared in 5.12.0 */
-
-AV* Perl_av_fake(pTHX_ I32 size, SV **strp)
-{
-   SV** ary;
-   AV* const av = (AV*)newSV_type(SVt_PVAV);
-   Newx(ary,size+1,SV*);
-   AvALLOC(av) = ary;
-   Copy(strp,ary,size,SV*);
-   AvREIFY_only(av);
-   AvARRAY(av) = ary;
-   AvFILLp(av) = size - 1;
-   AvMAX(av) = size - 1;
-   while (size--) {
-      assert(*strp);
-      SvTEMP_off(*strp);
-      strp++;
-   }
-   return av;
-}
-#endif
-
-#if PerlVersion < 5140
-
-MAGIC* pm_perl_mg_findext(const SV *sv, int type, const MGVTBL *vtbl)
-{
-   if (sv) {
-      MAGIC *mg;
-
-      for (mg = SvMAGIC(sv); mg; mg = mg->mg_moremagic) {
-         if (mg->mg_type == type && mg->mg_virtual == vtbl) {
-            return mg;
-         }
-      }
-   }
-
-   return NULL;
-}
-
-#endif
 
 MODULE = Polymake::Ext          PACKAGE = Polymake::Ext
 

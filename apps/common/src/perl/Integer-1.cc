@@ -71,8 +71,8 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary__lt, perl::Canned< const Integer >, perl::Canned< const Rational >);
    OperatorInstance4perl(Binary__gt, perl::Canned< const Integer >, perl::Canned< const Rational >);
    FunctionInstance4perl(new_X, Integer, double);
-   OperatorInstance4perl(BinaryAssign_add, perl::Canned< pm::GMP::Proxy<(pm::GMP::proxy_kind)0, true> >, long);
-   OperatorInstance4perl(BinaryAssign_add, perl::Canned< pm::GMP::Proxy<(pm::GMP::proxy_kind)1, true> >, long);
+   OperatorInstance4perl(BinaryAssign_add, perl::Canned< pm::RationalParticle<false> >, long);
+   OperatorInstance4perl(BinaryAssign_add, perl::Canned< pm::RationalParticle<true> >, long);
    OperatorInstance4perl(Binary__lt, int, perl::Canned< const Integer >);
    OperatorInstance4perl(Binary__ne, perl::Canned< const Integer >, int);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Integer >, int);

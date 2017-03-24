@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -25,7 +25,7 @@ namespace {
    Matrix<Rational> cyclic_vertices(const int d, const int n, const int x_start)
    {
       Matrix<Rational> vertices(n,d+1);
-      Rational* v=concat_rows(vertices).begin();
+      auto v=concat_rows(vertices).begin();
 
       // and now we compute n points (x_i^1,..,x_i^d) on the momentum curve in R^d
       for (int i=0, x=x_start;  i<n;  ++i, ++x) {
@@ -50,7 +50,7 @@ namespace {
    Matrix<Rational> spherical_cyclic_vertices(const int d, const int n, const int x_start)
    {
       Matrix<Rational> vertices(n,d+1);
-      Rational* v=concat_rows(vertices).begin();
+      auto v=concat_rows(vertices).begin();
 
       // and now we compute n points on the spherical momentum curve in R^d
       for (int i=0, x=x_start;  i<n;  ++i, ++x) {
@@ -101,7 +101,6 @@ perl::Object cyclic(const int d, const int n, perl::OptionSet options)
    p.take("CONE_DIM") << d+1;
    p.take("N_VERTICES") << n;
    p.take("VERTICES") << vertices;
-   p.take("LINEALITY_SPACE") << Matrix<Rational>();
    p.take("BOUNDED") << true;
    return p;
 }
@@ -117,11 +116,12 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @param Int n the number of points"
                   "# @option Int start defaults to 0 (or to 1 if spherical)"
                   "# @option Bool spherical defaults to false"
-                  "# @return Polytope"
+                  "# @return Polytope<Rational>"
                   "# @example To create the 2-dimensional cyclic polytope with 6 points on the sphere, starting at 3:"
                   "# > $p = cyclic(2,6,start=>3,spherical=>1);"
                   "# > print $p->VERTICES;"
                   "# | 1 1/10 3/10"
+                  "# | 1 1/17 4/17"
                   "# | 1 1/26 5/26"
                   "# | 1 1/37 6/37"
                   "# | 1 1/50 7/50"

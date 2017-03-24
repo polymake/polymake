@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,6 +20,12 @@ static HV *secret_pkg;
 
 static Perl_check_t def_ck_AASSIGN;
 
+#if PerlVersion >= 5220
+# define PmDenyStealingScalar SVs_GMG|SVs_SMG|SVf_PROTECT
+#else
+# define PmDenyStealingScalar SVs_GMG|SVs_SMG
+#endif
+
 typedef struct method_info {
    OP* next_op;
    SV* filter;
@@ -28,10 +34,6 @@ typedef struct method_info {
    I32 filter_is_method;
    CV* accessor;
 } method_info;
-
-#ifndef NewOp
-#define NewOp Newz
-#endif
 
 static
 OP* pp_hide_orig_object(pTHX)
@@ -134,38 +136,44 @@ static
 OP* pp_access(pTHX)
 {
    dSP; dTOPss;
-   SV *obj, *method_name;
-   HV* class;
-   MAGIC* mg;
-   if (!SvROK(sv) || (obj=SvRV(sv), !SvOBJECT(obj))) return Perl_pp_method_named(aTHX);
-
-   class=SvSTASH(obj);
-   method_name=cSVOP_sv;
-   mg=SvMAGIC(method_name);
-   do {
-      if (class == (HV*)mg->mg_obj) {
-         method_info* info=(method_info*)mg->mg_ptr;
-         SV* field=*av_fetch((AV*)obj, info->field_index, 1);
-         if (info->filter) {
-            SV* rhs=SP[-1];     // rhs value
-            SP[-1]=field;       // preserve it below the mark
-            if (info->filter_is_method)
-               XPUSHs(method_name);     // preserve ref(obj) on the stack
-            else 
-               SP[0]=method_name;
-            XPUSHs(rhs);
-            XPUSHs(info->filter);
-            PUTBACK;
-            return info->next_op;
-         } else {
-            SETs(field);        // replace ref(obj) on the stack top by the requested field
-            (void)POPMARK;      // skip pp_entersub
-            return info->next_op->op_next;
+   SV* obj;
+   if (SvROK(sv) && (obj=SvRV(sv), SvOBJECT(obj))) {
+      HV* class=SvSTASH(obj);
+      SV* method_name=cSVOP_sv;
+      MAGIC* mg=SvMAGIC(method_name);
+      do {
+         if (class == (HV*)mg->mg_obj) {
+            method_info* info=(method_info*)mg->mg_ptr;
+            SV* field=*av_fetch((AV*)obj, info->field_index, 1);
+            if (info->filter) {
+               SV* rhs=SP[-1];     // rhs value
+               SP[-1]=field;       // preserve it below the mark
+               if (info->filter_is_method)
+                  XPUSHs(method_name);     // preserve ref(obj) on the stack
+               else
+                  SP[0]=method_name;
+               XPUSHs(rhs);
+               XPUSHs(info->filter);
+               PUTBACK;
+               return info->next_op;
+            } else {
+               SETs(field);        // replace ref(obj) on the stack top by the requested field
+               (void)POPMARK;      // skip pp_entersub
+               return info->next_op->op_next;
+            }
          }
-      }
-   } while ((mg=mg->mg_moremagic));
-
+      } while ((mg=mg->mg_moremagic) != NULL);
+   }
    return Perl_pp_method_named(aTHX);
+}
+
+static
+OP* pp_swap(pTHX)
+{
+   dSP; dTOPss;
+   SP[0]=SP[-1];
+   SP[-1]=sv;
+   return NORMAL;
 }
 
 // better to repeat some code than to put extra tests in the heavily used pp_access
@@ -300,7 +308,7 @@ PPCODE:
 
    if (o != NULL) {
       OP* next_op=PL_op->op_next;
-      SV* filter=NULL;
+      SV* filter=Nullsv;
       SV* method_name=cSVOPo_sv;
       HV* class=SvSTASH(obj);
       MAGIC* mg=NULL;
@@ -318,23 +326,37 @@ PPCODE:
          if (next_op->op_type == OP_SASSIGN && !(next_op->op_private & OPpASSIGN_BACKWARDS)) {
             filter=GvSV(CvGV(cv));
             if (filter && (SvROK(filter) || (SvPOK(filter) && SvCUR(filter)))) {
-               OP *sub_op;
-               NewOp(0, sub_op, 1, OP);
-               Copy(PL_op, sub_op, 1, OP);
-               sub_op->op_private &= ~OPpLVAL_INTRO;
-               sub_op->op_next=next_op;
-               next_op->op_private ^= OPpASSIGN_BACKWARDS;
-               next_op=sub_op;
+               OP* sub_op=OpSIBLING(o);
                if (SvROK(filter)) {
                   filter=SvRV(filter);
                } else {
-                  GV *method_gv=gv_fetchmethod(SvSTASH(obj), SvPVX(filter));
-                  CV *filter_cv= method_gv && isGV(method_gv)
+                  GV* method_gv=gv_fetchmethod(SvSTASH(obj), SvPVX(filter));
+                  CV* filter_cv= method_gv && isGV(method_gv)
                                ? GvCV(method_gv)
                                : (CV*)pm_perl_namespace_try_lookup(aTHX_ SvSTASH(obj), filter, SVt_PVCV);
                   if (!filter_cv) Perl_croak(aTHX_ "access filter method %.*s not found", (int)SvCUR(filter), SvPVX(filter));
                   filter=(SV*)filter_cv;
                }
+               if (!sub_op) {
+                  OP* swap_op;
+                  NewOp(0, sub_op, 1, OP);
+                  sub_op->op_type=OP_CUSTOM;
+                  sub_op->op_ppaddr=PL_ppaddr[OP_ENTERSUB];
+                  sub_op->op_flags=PL_op->op_flags & ~(OPf_KIDS);
+                  sub_op->op_private=PL_op->op_private & ~(OPpLVAL_INTRO);
+                  NewOp(0, swap_op, 1, OP);
+                  swap_op->op_type=OP_CUSTOM;
+                  swap_op->op_ppaddr=&pp_swap;
+                  swap_op->op_next=next_op;
+                  sub_op->op_next=swap_op;
+                  // CAUTION:
+                  // This linkage does not match the op_last field of parent ENTERSUB, but that can't be changed without breaking method_named_op().
+                  // The design must be rethought when it starts to fire exceptions in perl core because of inconsistency.
+                  OpMORESIB_set(o, sub_op);
+                  OpMORESIB_set(sub_op, swap_op);
+                  OpLASTSIB_set(swap_op, PL_op);
+               }
+               next_op=sub_op;
             } else {
                next_op=PL_op;
                filter=NULL;
@@ -529,9 +551,8 @@ create_accessor(index, xsubr)
    SV *xsubr;
 PPCODE:
 {
-   SV *sub=newSV(0);
-   CV *xsub=(CV*)SvRV(xsubr);
-   sv_upgrade(sub, SVt_PVCV);
+   SV* sub=newSV_type(SVt_PVCV);
+   CV* xsub=(CV*)SvRV(xsubr);
    CvDEPTH(sub)=index;
    CvXSUB(sub)=CvXSUB(xsub);
    CvFLAGS(sub)=CvFLAGS(cv) | CVf_ANON | CVf_LVALUE | CVf_METHOD | CVf_NODEBUG; /* the standard flags should be the same by all XSUBs */
@@ -554,14 +575,12 @@ PPCODE:
    AvMAX(av) = items-2;
    for (; src < src_end; ++src, ++ary) {
       SV *sv=*src;
-      if ((SvFLAGS(sv) & (SVs_TEMP|SVs_GMG|SVs_SMG))==SVs_TEMP) {
+      if ((SvFLAGS(sv) & (SVs_TEMP|PmDenyStealingScalar))==SVs_TEMP) {
          SvTEMP_off(sv);
          SvREFCNT_inc_simple_void_NN(sv);
          *ary = sv;
       } else {
-         SV *copy_sv=NEWSV(0,0);
-         sv_setsv(copy_sv, sv);
-         *ary = copy_sv;
+         *ary = newSVsv(sv);
       }
    }
    rv=newRV_noinc((SV*)av);

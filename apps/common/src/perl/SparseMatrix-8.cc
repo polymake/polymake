@@ -54,7 +54,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_int_int, SparseMatrix< QuadraticExtension< Rational >, NonSymmetric >);
    Class4perl("Polymake::common::SparseMatrix_A_Float_I_Symmetric_Z", SparseMatrix< double, Symmetric >);
    OperatorInstance4perl(Binary_mul, perl::Canned< const Wary< SparseMatrix< double, NonSymmetric > > >, perl::Canned< const Matrix< double > >);
-   FunctionInstance4perl(new_X, SparseMatrix< Rational, NonSymmetric >, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<pm::QuadraticExtension<pm::Rational>, pm::NonSymmetric> const&, pm::Array<int, void> const&, pm::all_selector const&> >);
+   FunctionInstance4perl(new_X, SparseMatrix< Rational, NonSymmetric >, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<pm::QuadraticExtension<pm::Rational>, pm::NonSymmetric> const&, pm::Array<int> const&, pm::all_selector const&> >);
    FunctionInstance4perl(new_X, SparseMatrix< Rational, NonSymmetric >, perl::Canned< const pm::RowChain<pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, pm::Matrix<pm::Rational> const&> >);
    FunctionInstance4perl(new_X, SparseMatrix< int, NonSymmetric >, perl::Canned< const pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true> >);
    Class4perl("Polymake::common::SparseMatrix_A_TropicalNumber_A_Min_I_Rational_Z_I_Symmetric_Z", SparseMatrix< TropicalNumber< Min, Rational >, Symmetric >);

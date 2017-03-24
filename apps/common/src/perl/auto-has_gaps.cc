@@ -16,8 +16,10 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
-#include "polymake/client.h"
 #include "polymake/Graph.h"
+#include "polymake/IndexedSubgraph.h"
+#include "polymake/Set.h"
+#include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -30,5 +32,9 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(has_gaps_f1, perl::Canned< const Graph< Undirected > >);
    FunctionInstance4perl(has_gaps_f1, perl::Canned< const Graph< Directed > >);
    FunctionInstance4perl(has_gaps_f1, perl::Canned< const Graph< DirectedMulti > >);
+   FunctionInstance4perl(has_gaps_f1, perl::Canned< const Graph< UndirectedMulti > >);
+   FunctionInstance4perl(has_gaps_f1, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Undirected> const&, pm::Set<int, pm::operations::cmp> const&, mlist<> > >);
+   FunctionInstance4perl(has_gaps_f1, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Undirected> const&, pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> const&, mlist<> > >);
+   FunctionInstance4perl(has_gaps_f1, perl::Canned< const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Undirected> const&, pm::Series<int, true> const&, mlist<pm::RenumberTag<std::integral_constant<bool, true> > > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

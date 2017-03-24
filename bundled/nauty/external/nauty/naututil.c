@@ -1,9 +1,9 @@
 /*****************************************************************************
 *                                                                            *
-* miscellaneous utilities for use with nauty 2.5.                            *
+* miscellaneous utilities for use with nauty 2.6.                            *
 * None of these procedures are needed by nauty, but all are by dreadnaut.    *
 *                                                                            *
-*   Copyright (1984-2013) Brendan McKay.  All rights reserved.               *
+*   Copyright (1984-2016) Brendan McKay.  All rights reserved.               *
 *   Subject to waivers and disclaimers in nauty.h.                           *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
@@ -72,6 +72,11 @@
 *       17-Mar-12 : move seed definition to naututil.h                       *
 *       20-Sep-12 : allow quoted strings in readstring()                     *
 *       20-Sep-12 : the first argument of ungetc is int, not char            *
+*        4-Mar-13 : remove a side-effect issue in setinter()                 *
+*       17-Dec-15 : add readgraph_swg() and update putgraph_sg()             *
+*       22-Jan-16 : add readintger_sl() and getint_sl()                      *
+*       29-Feb-16 : add subpartition()                                       *
+*        6-Apr-16 : add countcells(), make subpartition return a count       *
 *                                                                            *
 *****************************************************************************/
 
@@ -93,9 +98,12 @@ static TLS_ATTR int workperm[MAXN+2];   /* used for scratch purposes */
 static TLS_ATTR set workset[MAXM];      /* used for scratch purposes */
 #endif
 
-#define ECHUNKSIZE 1000  /* should be even */
-typedef struct echunk {struct echunk *next; int edge[2*ECHUNKSIZE];} echunk;
+#define ECHUNKSIZE 1000  /* should be a multiple of 2 */
+typedef struct echunk {struct echunk *next; int edge[ECHUNKSIZE];} echunk;
 static TLS_ATTR echunk first_echunk = {NULL,{0}};
+typedef struct echunkw {struct echunkw *next; \
+ struct {int v1,v2; sg_weight wt;} edge[ECHUNKSIZE];} echunkw;
+static TLS_ATTR echunkw first_echunkw = {NULL,{0,0,0}};
 
 #ifdef  NLMAP
 #define GETNW(c,f) do c = getc(f); while (c==' '||c=='\t')
@@ -114,6 +122,10 @@ static const long fuzz2[] = {2001381726L,1615243355L, 191176436L,1212176501L};
 #define FUZZ1(x) ((x) ^ fuzz1[(x)&3L])
 #define FUZZ2(x) ((x) ^ fuzz2[(x)&3L])
 
+#define SORT_OF_SORT 1
+#define SORT_NAME sort1int
+#define SORT_TYPE1 int
+#include "sorttemplates.c"   /* define sort1int(a,n) */
 
 /*****************************************************************************
 *                                                                            *
@@ -135,7 +147,11 @@ setinter(set *set1, set *set2, int m)
 
     count = 0;
     for (i = m; --i >= 0;)
-        if ((x = (*set1++) & (*set2++)) != 0) count += POPCOUNT(x);
+    {
+        if ((x = (*set1 & *set2)) != 0) count += POPCOUNT(x);
+        ++set1;
+	++set2;
+    }
 
     return count;
 #endif
@@ -232,6 +248,43 @@ readinteger(FILE *f, int *p)
 
 /*****************************************************************************
 *                                                                            *
+*  readinteger_sl(f,&i) reads an optionally-signed integer from f, preceded  *
+*  by any amount of white space except newlines.  The function value         *
+*  returned is TRUE if an integer was found, FALSE otherwise.                *
+*                                                                            *
+*****************************************************************************/
+
+boolean
+readinteger_sl(FILE *f, int *p)
+{
+    int c,ans,minus;
+
+    GETNW(c,f);
+    if (!ISDIGIT(c) && c != '-' && c != '+')
+    {
+        if (c != EOF) ungetc(c,f);
+        return FALSE;
+    }
+
+    minus = c == '-';
+    ans = (c == '-' || c == '+' ? 0 : c - '0');
+
+    c = getc(f);
+    while (ISDIGIT(c))
+    {
+        ans *= 10;
+        ans += c - '0';
+        c = getc(f);
+    }
+
+    if (c != EOF) ungetc(c,f);
+
+    *p = (minus ? -ans : ans);
+    return TRUE;
+}
+
+/*****************************************************************************
+*                                                                            *
 *  readstring(f,s,slen) reads a string from f. First any amount of white     *
 *  space is skipped (including newlines).  If the next character is a        *
 *  double-quote, everything after that before the next double-quote or       *
@@ -261,18 +314,18 @@ readstring(FILE *f, char *s, int slen)
 	c = getc(f);
 	while (c != '"' && c != '\n' && c != '\r' && c != EOF)
 	{
-	    if (s <= slim) *s++ = c;
+	    if (s <= slim) *s++ = (char)c;
             c = getc(f);
         }
 	if (c != '"' && c != EOF) ungetc(c,f);
     }
     else
     {
-        if (s <= slim) *s++ = c;
+        if (s <= slim) *s++ = (char)c;
         c = getc(f);
         while (c != ' ' && c != '\n' && c != '\t' && c != '\r' && c != EOF)
         {
-            if (s <= slim) *s++ = c;
+            if (s <= slim) *s++ = (char)c;
             c = getc(f);
         }
         if (c != EOF) ungetc(c,f);
@@ -300,6 +353,25 @@ getint(FILE *f)
 
     if (readinteger(f,&i)) return i;
     else                   return -1;
+}
+
+/*****************************************************************************
+*                                                                            *
+* getint_sl(f) reads an integer from f, optionally preceded by '=' and       *
+* white space other than newlines.  -1 is returned if the attempt was        *
+* unsuccessful.                                                              *
+*****************************************************************************/
+
+int
+getint_sl(FILE *f)
+{
+    int i,c;
+
+    GETNW(c,f);
+    if (c != '=') ungetc(c,f);
+
+    if (readinteger_sl(f,&i)) return i;
+    else                      return -1;
 }
 
 /*****************************************************************************
@@ -559,12 +631,7 @@ ranreg_sg(sparsegraph *sg, int degree, int n)
 
     SG_ALLOC(*sg,n,nde,"ranreg_sg");
     SG_VDE(sg,vv,dd,ee);
-    if (sg->w)
-    {
-        FREES(sg->w);
-        sg->w = NULL;
-        sg->wlen = 0;
-    }
+    DYNFREE(sg->w,sg->wlen);
 
     sg->nv = n;
     sg->nde = nde;
@@ -640,12 +707,7 @@ readgraph_sg(FILE *f, sparsegraph *sg, boolean digraph, boolean prompt,
     sg->nv = n;
     DYNALLOC1(size_t,sg->v,sg->vlen,n,"malloc");
     DYNALLOC1(int,sg->d,sg->dlen,n,"malloc");
-    if (sg->w)
-    {
-        FREES(sg->w);
-        sg->w = NULL;
-        sg->wlen = 0;
-    }
+    DYNFREE(sg->w,sg->wlen);
     v = sg->v;
     d = sg->d;
 
@@ -834,9 +896,285 @@ readgraph_sg(FILE *f, sparsegraph *sg, boolean digraph, boolean prompt,
 
 /*****************************************************************************
 *                                                                            *
+*  readgraph_swg(f,sg,digraph,prompt,linelength,n) reads a sparse weighted   *
+*  graph g from f.                                                           *
+*  Commands: (There is always a "current vertex" v, initially labelorg;      *
+*             n is an unsigned integer, w is a weight.)                      *
+*  n  : add edge (v,n)                                                       *
+*  -n : delete edge (v,n)                                                    *
+*  n: : set v := n, and exit if v >= n.                                      *
+*  ?  : type neighbours of vertex v     ** NOT IMPLEMENTED **                *
+*  ;  : increment v, and exit if v >= n.                                     *
+*  .  : exit                                                                 *
+*  !  : skip rest of input line                                              *
+*  w# : set the weight for the next edge only                                *
+*  W# : set the weight from now on                                           *
+*  sg must be initialised                                                    *
+*                                                                            *
+* If digraph==FALSE, loops are illegal and (x,y) => (y,x)                    *
+* For digraphs, an unspecified opposite edge has weight SG_MINWEIGHT         *
+* If edges are inserted more than once, the largest weight counts.           *
+* If prompt==TRUE, prompts are written to PROMPTFILE.                        *
+* linelength is a limit on the number of characters per line caused by '?'   *
+* A value of linelength <= 0 dictates no line breaks at all.                 *
+* labelorg is used.                                                          *
+*                                                                            *
+*****************************************************************************/
+
+void
+readgraph_swg(FILE *f, sparsegraph *sg, boolean digraph, boolean prompt,
+             int linelength, int n)
+{
+    int i,j,k,vv,ww,c;
+    boolean neg,done;
+    int *d,*e,*evi;
+    echunkw *ec,*ecnext,*ec_end;
+    size_t ned,*v,iec,iec_end;
+    sg_weight *wt,currwt,defwt,*wvi;
+
+    sg->nv = n;
+    DYNALLOC1(size_t,sg->v,sg->vlen,n,"malloc");
+    DYNALLOC1(int,sg->d,sg->dlen,n,"malloc");
+    v = sg->v;
+    d = sg->d;
+    wt = sg->w;
+
+    for (i = 0; i < n; ++i) d[i] = 0;
+
+    defwt = currwt = 1; 
+    ec = &first_echunkw;
+    iec = 0;
+    vv = 0;
+    neg = done = FALSE;
+
+    while (!done)
+    {
+        GETNWC(c,f);
+        if (ISDIGIT(c))
+        {
+            ungetc(c,f);
+            readinteger(f,&ww);
+            ww -= labelorg;
+            if (neg)
+            {
+                neg = FALSE;
+                if (ww < 0 || ww >= n || (!digraph && ww == vv))
+                    fprintf(ERRFILE,"illegal edge (%d,%d) ignored\n\n",
+                            vv+labelorg,ww+labelorg);
+                else
+                {
+                    if (iec == ECHUNKSIZE)
+                    {
+                        if (!ec->next)
+                        {
+                            ecnext = (echunkw*)ALLOCS(1,sizeof(echunkw));
+                            if (!ecnext) alloc_error("malloc");
+                            ecnext->next = NULL;
+                            ec->next = ecnext;
+                        }
+                        ec = ec->next;
+                        iec = 0;
+                    }
+                    ec->edge[iec].v1 = vv;
+                    ec->edge[iec].v2 = -1 - ww;
+                    ec->edge[iec].wt = currwt;
+		    ++iec;
+                    currwt = defwt;
+                    ++d[vv];
+                    if (ww != vv) ++d[ww];
+                }
+            }
+            else
+            {
+                GETNWC(c,f);
+                if (c == ':')
+                {
+                    if (ww < 0 || ww >= n)
+                        fprintf(ERRFILE,
+                                "illegal vertex number %d ignored\n\n",
+                                ww+labelorg);
+                    else
+                        vv = ww;
+                }
+                else
+                {
+                    ungetc(c,f);
+                    if (ww < 0 || ww >= n || (!digraph && ww == vv))
+                        fprintf(ERRFILE,"illegal edge (%d,%d) ignored\n\n",
+                                vv+labelorg,ww+labelorg);
+                    else
+                    {
+                        if (iec == ECHUNKSIZE)
+                        {
+                            if (!ec->next)
+                            {
+                                ecnext = (echunkw*)ALLOCS(1,sizeof(echunkw));
+                                if (!ecnext) alloc_error("malloc");
+                                ecnext->next = NULL;
+                                ec->next = ecnext;
+                            }
+                            ec = ec->next;
+                            iec = 0;
+                        }
+                        ec->edge[iec].v1 = vv;
+                        ec->edge[iec].v2 = ww;
+                        ec->edge[iec].wt = currwt;
+			++iec;
+                        currwt = defwt;
+                        ++d[vv];
+                        if (ww != vv) ++d[ww];
+                    }
+                }
+            }
+        }
+        else switch(c)
+        {
+            case ';':
+                neg = FALSE;
+                ++vv;
+                if (vv >= n) done = TRUE;
+                break;
+            case '?':
+                neg = FALSE;
+                fprintf(ERRFILE,"Command \'?\' not implemented.\n\n");
+                break;
+            case '\n':
+                neg = FALSE;
+                if (prompt) fprintf(PROMPTFILE,"%2d : ",vv+labelorg);
+                break;
+            case EOF:
+            case '.':
+                done = TRUE;
+                break;
+            case '-':
+                neg = TRUE;
+                break;
+            case 'w':
+                readinteger(f,&currwt);
+		if (currwt <= SG_MINWEIGHT)
+		{
+		    fprintf(ERRFILE,"Weight too small\n\n");
+		    currwt = 1;
+		}
+		break;
+            case 'W':
+                readinteger(f,&currwt);
+		if (currwt <= SG_MINWEIGHT)
+		{
+		    fprintf(ERRFILE,"Weight too small\n\n");
+		    currwt = 1;
+		}
+		defwt = currwt;
+		break;
+            case '!':
+                do
+                    c = getc(f);
+                while (c != '\n' && c != EOF);
+                if (c == '\n') ungetc(c,f);
+                break;
+            default :
+                fprintf(ERRFILE,"illegal char '%c' - use '.' to exit\n\n",
+                        (char)c);
+        }
+    }
+
+    ned = 0;
+    for (i = 0; i < n; ++i) ned += d[i];
+    DYNALLOC1(int,sg->e,sg->elen,ned,"malloc");
+    DYNALLOC1(sg_weight,sg->w,sg->wlen,ned,"malloc");
+    e = sg->e;
+    wt = sg->w;
+
+    v[0] = 0;
+    for (i = 1; i < n; ++i) v[i] = v[i-1] + d[i-1];
+    for (i = 0; i < n; ++i) d[i] = 0;
+
+    iec_end = iec;
+    ec_end = ec;
+
+    iec = 0;
+    ec = &first_echunkw;
+
+    if (ned != 0) while (TRUE)
+    {
+        vv = ec->edge[iec].v1;
+        ww = ec->edge[iec].v2;
+        currwt = ec->edge[iec].wt;
+        ++iec;
+
+        if (ww >= 0)
+        {
+            e[v[vv]+d[vv]] = ww;
+            wt[v[vv]+d[vv]] = currwt;
+	    ++d[vv];
+            if (ww != vv)
+            {
+		e[v[ww]+d[ww]] = vv;
+		wt[v[ww]+d[ww]] = (digraph ? SG_MINWEIGHT : currwt);
+		++d[ww];
+	    }
+        }
+        else
+        {
+            ww = -1 - ww;
+            for (i = 0; i < d[vv]; ++i)
+                if (e[v[vv]+i] == ww) break;
+            if (i < d[vv])
+            {
+                e[v[vv]+i] = e[v[vv]+d[vv]-1];
+                wt[v[vv]+i] = wt[v[vv]+d[vv]-1];
+                --d[vv];
+            }
+            if (ww != vv)
+            {
+                for (i = 0; i < d[ww]; ++i)
+                    if (e[v[ww]+i] == vv) break;
+                if (i < d[ww])
+                {
+                    e[v[ww]+i] = e[v[ww]+d[ww]-1];
+                    wt[v[ww]+i] = wt[v[ww]+d[ww]-1];
+                    --d[ww];
+                }
+            }
+        }
+        if (iec == iec_end && ec == ec_end) break;
+        if (iec == ECHUNKSIZE) { iec = 0; ec = ec->next; }
+    }
+
+    sortlists_sg(sg);
+
+    ned = 0;
+    for (i = 0; i < n; ++i)
+    {
+        if (d[i] > 1)
+        {
+            evi = e + v[i];
+	    wvi = wt + v[i];
+            j = 1;
+            for (k = 1; k < d[i]; ++k)
+            {
+                if (evi[k] != evi[j-1])
+                {
+		    evi[j] = evi[k];
+		    wvi[j] = wvi[k];
+		    ++j;
+		}
+		else if (wvi[k] > wvi[j-1])
+		    wvi[j-1] = wvi[k];
+            }
+            d[i] = j;
+        }
+        ned += d[i];
+    }
+    sg->nde = ned; 
+}
+
+/*****************************************************************************
+*                                                                            *
 *  putgraph(f,g,linelength,m,n) writes a list of the edges of g to f         *
 *  using at most linelength characters per line (excluding '\n').            *
-*  A value of linelength <= 0 dictates no line breaks at all.                *
+*  A value of linelength <= 0 dictates no line breaks at all within the      *
+*    list for each vertex.                                                   *
 *  labelorg is used.                                                         *
 *                                                                            *
 *  FUNCTIONS CALLED: putset()                                                *
@@ -860,9 +1198,10 @@ putgraph(FILE *f, graph *g, int linelength, int m, int n)
 
 /*****************************************************************************
 *                                                                            *
-*  putgraph_sg(f,sg,linelength,m,n) writes a list of the edges of g to f     *
+*  putgraph_sg(f,sg,linelength) writes a list of the edges of g to f         *
 *  using at most linelength characters per line (excluding '\n').            *
-*  A value of linelength <= 0 dictates no line breaks at all.                *
+*  A value of linelength <= 0 dictates no line breaks at all within the      *
+*    list for each vertex.                                                   *
 *  labelorg is used.                                                         *
 *                                                                            *
 *****************************************************************************/
@@ -873,10 +1212,11 @@ putgraph_sg(FILE *f, sparsegraph *sg, int linelength)
     int i,n,curlen,slen;
     int *d,*e;
     size_t *v,j;
+    sg_weight *wt;
     char s[60];
 
     n = sg->nv;
-    SG_VDE(sg,v,d,e);
+    SWG_VDE(sg,v,d,e,wt);
 
     for (i = 0; i < n; ++i)
     {
@@ -885,7 +1225,25 @@ putgraph_sg(FILE *f, sparsegraph *sg, int linelength)
 
         for (j = v[i]; j < v[i]+d[i]; ++j)
         {
-            slen = itos(e[j]+labelorg,s);
+	    if (wt && wt[j] != 1)
+	    {
+		s[0] = 'w';
+		if (wt[j] == SG_MINWEIGHT)
+		{
+		    s[1] = 'X';
+		    s[2] = ' ';
+		    slen = 3;
+		}
+		else
+		{
+		    slen = 2 + itos(wt[j],s+1);
+		    s[slen-1] = ' ';
+		}
+                slen += itos(e[j]+labelorg,s+slen);
+            }
+            else
+                slen = itos(e[j]+labelorg,s);
+
             if (linelength > 0 && curlen + slen + 1 > linelength)
             {
                 putstring(f,"\n  ");
@@ -1193,7 +1551,7 @@ putquotient(FILE *f, graph *g, int *lab, int *ptn, int level,
 *  linelength is very small.  A value of linelength <= 0 dictates no line    *
 *  breaks at all.   labelorg is used.                                        *
 *                                                                            *
-*  FUNCTIONS CALLED: itos()                                                  *
+*  Weughts are ignored.                                                      *
 *                                                                            *
 *****************************************************************************/
 
@@ -1297,8 +1655,6 @@ putquotient_sg(FILE *f, sparsegraph *g, int *lab, int *ptn,
 *  A value of linelength <= 0 dictates no line breaks at all.                *
 *  labelorg is used.                                                         *
 *                                                                            *
-*  FUNCTIONS CALLED: itos(),putset()                                         *
-*                                                                            *
 *****************************************************************************/
 
 void
@@ -1342,8 +1698,6 @@ putptn(FILE *f, int *lab, int *ptn, int level, int linelength, int n)
 *  (excluding '\n') per line.   labelorg is used.                            *
 *  A value of linelength <= 0 dictates no line breaks at all.                *
 *                                                                            *
-*  FUNCTIONS CALLED: writeperm(),putgraph()                                  *
-*                                                                            *
 *****************************************************************************/
 
 void
@@ -1366,8 +1720,6 @@ putcanon(FILE *f, int *canonlab, graph *canong, int linelength, int m, int n)
 *  and the graph canong to f, using at most linelength characters            *
 *  (excluding '\n') per line.   labelorg is used.                            *
 *  A value of linelength <= 0 dictates no line breaks at all.                *
-*                                                                            *
-*  FUNCTIONS CALLED: writeperm(),putgraph_sg()                               *
 *                                                                            *
 *****************************************************************************/
 
@@ -1525,13 +1877,13 @@ unitptn(int *lab,int *ptn, int *numcells, int n)
 *                                                                            *
 *  individualise(lab,ptn,level,v,&pos,&numcells,n) individualises vertex v.  *
 *  numcells is updated and the position of the possibly-new singleton is     *
-*  returned in pos.
+*  returned in pos.                                                          *
 *                                                                            *
 *****************************************************************************/
 
 void
 individualise(int *lab,int *ptn, int level,
-					int v, int *pos, int *numcells, int n)
+				int v, int *pos, int *numcells, int n)
 {
     int i,j;
 
@@ -1699,6 +2051,7 @@ hashgraph_sg(sparsegraph *sg, long key)
     size_t *v;
     unsigned long val,accum;
 
+    CHECK_SWG(sg,"hashgraph_sg");
     accum = n = sg->nv;
 
     SG_VDE(sg,v,d,e);
@@ -1904,8 +2257,6 @@ ranperm(int *perm, int n)
 *  scratch space.  If lab!=NULL, it is taken as a labelling vector and       *
 *  also permuted.                                                            *
 *                                                                            *
-*  FUNCTIONS CALLED: updatecan()                                             *
-*                                                                            *
 *****************************************************************************/
 
 void
@@ -1932,8 +2283,6 @@ relabel(graph *g, int *lab, int *perm, graph *workg, int m, int n)
 *  relabel_sg(g,perm,lab,workg,m,n) replaces g by g^perm, using workg as     *
 *  scratch space.  If lab!=NULL, it is taken as a labelling vector and       *
 *  also permuted.                                                            *
-*                                                                            *
-*  FUNCTIONS CALLED: copy_sg(), updatecan_sg()                               *
 *                                                                            *
 *****************************************************************************/
 
@@ -2004,6 +2353,62 @@ sublabel(graph *g, int *perm, int nperm, graph *workg, int m, int n)
 
 /*****************************************************************************
 *                                                                            *
+*  countcells(ptn,level,n) finds the number of elements of ptn[0..n-1]       *
+*  that are <= level.                                                        *
+*                                                                            *
+*****************************************************************************/
+
+int
+countcells(int *ptn, int level, int n)
+{
+    int i,cnt;
+
+    cnt = 0;
+    for (i = 0; i < n; ++i) if (ptn[i] <= level) ++cnt;
+
+    return cnt;
+}
+
+/*****************************************************************************
+*                                                                            *
+*  subpartion(lab,ptn,n,perm,nperm) replaces the partition (lab,ptn) of      *
+*  0..n-1 by the induced partition of 0..nperm-1, using the partial          *
+*  ordering of 0..n-1 given in perm[0..nperm-1].                             *
+*  Return the new number of cells.                                           *
+*                                                                            *
+*****************************************************************************/
+
+#define DEB(str,x) fprintf(stderr,"%s=%d\n",str,x);
+
+int
+subpartition(int *lab, int *ptn, int n, int *perm, int nperm)
+{
+    int i,j;
+
+#if !MAXN
+    DYNALLOC1(int,workperm,workperm_sz,n+2,"subpartition");
+#endif
+    for (i = 0; i < n; ++i) workperm[i] = -1;
+    for (i = 0; i < nperm; ++i) workperm[perm[i]] = i;
+
+    j = -1;
+    for (i = 0; i < n; ++i)
+    {
+	if (workperm[lab[i]] >= 0)
+	{      
+	    ++j;     
+	    lab[j] = workperm[lab[i]];
+	    ptn[j] = ptn[i];
+	}
+	else if (j >= 0 && ptn[i] < ptn[j])
+	    ptn[j] = ptn[i];
+    }
+
+    return countcells(ptn,0,nperm);
+}
+
+/*****************************************************************************
+*                                                                            *
 *  sublabel_sg(sg,perm,nperm,workg) replaces g by g^perm, using workg as     *
 *  scratch space.  perm is a partial vector, of length nperm, where it is    *
 *  known that the elements of perm are distinct.                             *
@@ -2021,6 +2426,7 @@ sublabel_sg(sparsegraph *sg, int *perm, int nperm, sparsegraph *workg)
     int *dd,*ee;
     size_t *v,*vv;
 
+    CHECK_SWG(sg,"sublabel_sg");
     n = sg->nv;
  
 #if !MAXN
@@ -2145,17 +2551,13 @@ converse_sg(sparsegraph *g1, sparsegraph *g2)
     size_t *v1,*v2,j;
     int i,k,n;
 
+    CHECK_SWG(g1,"converse_sg");
     n = g1->nv;
 
     SG_ALLOC(*g2,n,g1->nde,"converse_sg");
     g2->nv = n;
     g2->nde = g1->nde;
-    if (g2->w)
-    {
-        FREES(g2->w);
-        g2->w = NULL;
-        g2->wlen = 0;
-    }
+    DYNFREE(g2->w,g2->wlen);
 
     SG_VDE(g1,v1,d1,e1);
     SG_VDE(g2,v2,d2,e2);
@@ -2192,6 +2594,7 @@ complement_sg(sparsegraph *g1, sparsegraph *g2)
     int i,l,m,n;
     int loops;
 
+    CHECK_SWG(g1,"complement_sg");
     n = g1->nv;
     SG_VDE(g1,v1,d1,e1);
 
@@ -2211,12 +2614,7 @@ complement_sg(sparsegraph *g1, sparsegraph *g2)
     DYNALLOC1(set,workset,workset_sz,m,"putorbits");
 #endif
 
-    if (g2->w)
-    {
-        FREES(g2->w);
-        g2->w = NULL;
-        g2->wlen = 0;
-    }
+    DYNFREE(g2->w,g2->wlen);
 
     ndec = 0;
 
@@ -2248,17 +2646,14 @@ mathon_sg(sparsegraph *g1, sparsegraph *g2)
     size_t *v1,*v2,j;
     int i,k,m,n1,n2;
 
+    CHECK_SWG(g1,"mathon_sg");
+
     n1 = g1->nv;
     n2 = 2*n1 + 2;
     SG_ALLOC(*g2,n2,n2*(size_t)n1,"mathon_sg");
     g2->nv = n2;
     g2->nde = n2*(size_t)n1;
-    if (g2->w)
-    {
-        FREES(g2->w);
-        g2->w = NULL;
-        g2->wlen = 0;
-    }
+    DYNFREE(g2->w,g2->wlen);
 
     SG_VDE(g1,v1,d1,e1);
     SG_VDE(g2,v2,d2,e2);
@@ -2449,12 +2844,7 @@ rangraph2_sg(sparsegraph *sg, boolean digraph, int p1, int p2, int n)
  
     SG_ALLOC(*sg,n,(size_t)expec+4*inc,"rangraph2_sg");
     SG_VDE(sg,vv,dd,ee);
-    if (sg->w)
-    {
-        FREES(sg->w);
-        sg->w = NULL;
-        sg->wlen = 0;
-    }
+    DYNFREE(sg->w,sg->wlen);
 
     for (i = 0; i < n; ++i) dd[i] = 0;
     vv[0] = 0;
@@ -2552,6 +2942,46 @@ putsequence(FILE *f, int *x, int linelength, int n)
     PUTC('\n',f);
 }
 
+/****************************************************************************/
+
+static void
+putnumbers(FILE *f, int *x, int linelength, int n)
+/* Write n integers to f with equal values combined as multiplicities.
+ * labelorg is NOT used. */
+{
+    char s[60];
+    int j,v1,v2,xval,curlen;
+
+    curlen = 0;
+    v1 = 0;
+    while (v1 < n)
+    {
+        xval = x[v1];
+
+        for (v2 = v1; v2 < n - 1 && x[v2+1] == xval; ++v2) {}
+	if (v2 > v1)
+	{
+	    j = itos(v2-v1+1,s);
+	    s[j++] = '*';
+	}
+	else
+	    j = 0;
+
+        j += itos(xval,&s[j]);
+        s[j] = ' ';
+        s[j+1] = '\0';
+        if (linelength > 0 && curlen + j >= linelength)
+        {
+            PUTC('\n',f);
+            curlen = 0;
+        }
+        curlen += j + 1;
+        putstring(f,s);
+        v1 = v2 + 1;
+    }
+    PUTC('\n',f);
+}
+
 /*****************************************************************************
 *                                                                            *
 *  putdegs(f,g,linelength,m,n)  writes the degree of each vertex of g to     *
@@ -2581,6 +3011,31 @@ putdegs(FILE *f, graph *g, int linelength, int m, int n)
 
 /*****************************************************************************
 *                                                                            *
+*  putdegseq(f,g,linelength,m,n)  writes the sorted degree sequence of g     *
+*  file f, using at most linelength characters per line (excluding '\n').    *
+*  A value of linelength <= 0 dictates no line breaks at all.                *
+*                                                                            *
+*****************************************************************************/
+
+void
+putdegseq(FILE *f, graph *g, int linelength, int m, int n)
+{
+    int i;
+    graph *gp;
+
+#if !MAXN
+    DYNALLOC1(int,workperm,workperm_sz,n,"putdegs");
+#endif
+
+    for (i = 0, gp = g; i < n; ++i, gp += M)
+        workperm[i] = setsize(gp,m);
+
+    sort1int(workperm,n);
+    putnumbers(f,workperm,linelength,n);
+}
+
+/*****************************************************************************
+*                                                                            *
 *  putdegs_sg(f,sg,linelength)  writes the degree of each vertex of sg to    *
 *  file f, using at most linelength characters per line (excluding '\n').    *
 *  A value of linelength <= 0 dictates no line breaks at all.                *
@@ -2594,6 +3049,29 @@ void
 putdegs_sg(FILE *f, sparsegraph *sg, int linelength)
 {
     putsequence(f,sg->d,linelength,sg->nv);
+}
+
+/*****************************************************************************
+*                                                                            *
+*  putdegseq_sg(f,sg,linelength) writes the sorted degree sequence of sg to  *
+*  file f, using at most linelength characters per line (excluding '\n').    *
+*  A value of linelength <= 0 dictates no line breaks at all.                *
+*                                                                            *
+*****************************************************************************/
+
+void
+putdegseq_sg(FILE *f, sparsegraph *sg, int linelength)
+{
+    int i;
+#if !MAXN
+    DYNALLOC1(int,workperm,workperm_sz,sg->nv,"putdegs");
+#endif
+
+    for (i = 0; i < sg->nv; ++i)
+        workperm[i] = sg->d[i];
+
+    sort1int(workperm,sg->nv);
+    putnumbers(f,workperm,linelength,sg->nv);
 }
 
 /*****************************************************************************

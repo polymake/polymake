@@ -48,7 +48,7 @@ perl::Object dual_linear_program(perl::Object p_in, bool maximize)
   p_in.give("LP") >> old_lp;
   old_lp.give("LINEAR_OBJECTIVE") >> new_right;
   p_in.lookup("FACETS | INEQUALITIES") >> old_ineq;
-  p_in.lookup("EQUATIONS | AFFINE_HULL") >> old_eq;
+  p_in.lookup("AFFINE_HULL | EQUATIONS") >> old_eq;
   
   dim_dual_positive = old_ineq.rows();  // number of variables which must be >= 0
   dim_dual_free = old_eq.rows();        // number of variables which do not have a sign constrain

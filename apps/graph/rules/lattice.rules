@@ -1,0 +1,197 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @category Combinatorics
+# Sequential lattices are those where all nodes are sorted to rank.
+declare property_type Sequential : c++(special => 'graph::lattice::Sequential', include => "polymake/graph/Decoration.h");
+
+# @category Combinatorics
+# Nonsequential lattices are those where not all nodes are necessarily sorted to rank.
+declare property_type Nonsequential : c++(special => 'graph::lattice::Nonsequential', include => "polymake/graph/Decoration.h");
+
+# @category Combinatorics
+# This provides an efficient way to obtain all nodes of a lattice of given rank.
+declare property_type InverseRankMap<SeqType> : c++ (name=>"graph::lattice::InverseRankMap", include=>"polymake/graph/Decoration.h", operators=>"==") {
+
+   # @category Combinatorics
+   # @param Int r
+   # @return List<Int> All nodes of rank r.
+   user_method nodes_of_rank($) : c++;
+
+   # @category Combinatorics
+   # @param Int r1
+   # @param Int r2
+   # @return List<Int> or Set<Int> All indices of rank r1 <= r <= r2
+   user_method nodes_of_rank_range($,$) : c++;
+
+   # @category Combinatorics
+   # @return Map<Int, List<Int> > or Map<Int, Pair<Int,Int> >. An actual map object sorting nodes according to rank.
+   # In the nonsequential case, each integer (= rank) is mapped to a list of the corresponding nodes.\
+   # In the sequential case, it is mapped to the first and last index of all nodes of that rank.
+   user_method get_map() : c++;
+
+}
+
+# @category Combinatorics
+# This is the prototype of decorations attached to a Lattice. It consists of two properties, face and rank of type
+# Set<Int> and Int, respectively.
+declare property_type BasicDecoration : c++ (name=>"graph::lattice::BasicDecoration", include=>"polymake/graph/Decoration.h");
+
+# @category Combinatorics
+# A Lattice is a poset where join and meet exist for any two elements.
+# It is realized as a directed graph, such that an arbitrar decoration is attached
+# to each node.
+# It is assumed that this decoration always contains at least a face (a Set<Int>) and
+# a rank (an Int). 
+# Lattices occur in two different flavors: [[Sequential]] and [[Nonsequential]]. They are sequential,
+# if it is clear that all nodes occur sorted according to rank (forwards or backwards).
+# Otherwise they should be declared nonsequential. Sequential Lattices are more efficient in terms
+# of storing them in XML files.
+declare object Lattice<Decoration, SeqType = Nonsequential> : Graph<Directed> {
+
+   # @category Combinatorics
+   # This is the data associated to each node. The prototype for this is [[BasicDecoration]],
+   # which consists of properties face and rank.
+   # @example [application polytope] [prefer cdd] The following prints this property of the face lattice of the 2-simplex (triangle):
+   # > print simplex(2)->HASSE_DIAGRAM->DECORATION;
+   # | ({} 0)
+   # | ({0} 1)
+   # | ({1} 1)
+   # | ({2} 1)
+   # | ({1 2} 2)
+   # | ({0 2} 2)
+   # | ({0 1} 2)
+   # | ({0 1 2} 3)
+   property DECORATION : NodeMap<Directed, Decoration> : construct(ADJACENCY);
+
+   # @category Combinatorics
+   # This property provides an efficient way to enumerate all nodes of a given rank.
+   # Internally these are realized differently, depending on whether the Lattice 
+   # is [[Sequential]] or [[Nonsequential]]. 
+   # Both provide the same user methods though.
+   # @example [application polytope] [prefer cdd]The following prints this property of the face lattice of the 2-simplex (triangle), where the tuples represent the ranges of nodes belonging to a specific rank:
+   # > print simplex(2)->HASSE_DIAGRAM->INVERSE_RANK_MAP;
+   # | {(0 (0 0)) (1 (1 3)) (2 (4 6)) (3 (7 7))}
+   property INVERSE_RANK_MAP : InverseRankMap<SeqType>;
+
+   # @category Combinatorics
+   # The index of the top node
+   # @example [application polytope] The following prints the top node of the face lattice of the 2-simplex (triangle):
+   # > print simplex(2)->HASSE_DIAGRAM->TOP_NODE;
+   # | 7
+   property TOP_NODE : Int;
+
+   # @category Combinatorics
+   # The index of the bottom node
+   # @example [application polytope] [prefer cdd] The following prints the bottom node of the face lattice of the 2-simplex (triangle):
+   # > print simplex(2)->HASSE_DIAGRAM->BOTTOM_NODE;
+   # | 0
+   property BOTTOM_NODE : Int;
+
+   # @category Combinatorics
+   # The face of each node, realized as a NodeMap. 
+   # This property is kept for two reasons: As a convenient way to access only the face part
+   # of the decoration (in this case the property is temporary) and
+   # for reasons of backwards compatibility.
+   # @example [application polytope] [prefer cdd] The following prints the faces of the face lattice of the 2-simplex (triangle):
+   # > print simplex(2)->HASSE_DIAGRAM->FACES;
+   # | {}
+   # | {0}
+   # | {1}
+   # | {2}
+   # | {1 2}
+   # | {0 2}
+   # | {0 1}
+   # | {0 1 2}
+   property FACES : NodeMap<Directed, Set > : construct(ADJACENCY);
+
+   # @category Combinatorics
+   # Kept only for backwards compatibility. Basically encodes the [[INVERSE_RANK_MAP]] in 
+   # FaceLattice objects prior to 3.0.7
+   property DIMS : Array<Int>;
+
+
+   # @category Combinatorics
+   # @param Int r
+   # @return List<Int> All indices of nodes of rank r
+   # @example [application polytope] The following prints the nodes of rank 1 of the face lattice of the 2-simplex (triangle):
+   # > print simplex(2)->HASSE_DIAGRAM->nodes_of_rank(1);
+   # | {1 2 3}
+   user_method nodes_of_rank($) : INVERSE_RANK_MAP {
+      my ($this,$d) = @_;
+      return $this->INVERSE_RANK_MAP->nodes_of_rank($d);
+   }
+
+   # @category Combinatorics
+   # @param Int r1
+   # @param Int r2
+   # @return List<Int> or Set<Int> All indices of rank r1 <= r <= r2
+   # @example [application polytope] The following prints the nodes with rank between 1 and 2 of the face lattice of the 2-simplex (triangle):
+   # > print simplex(2)->HASSE_DIAGRAM->nodes_of_rank_range(1,2);
+   # | {1 2 3 4 5 6}
+   user_method nodes_of_rank_range($,$) : INVERSE_RANK_MAP {
+      my ($this,$d1,$d2) = @_;
+      return $this->INVERSE_RANK_MAP->nodes_of_rank_range($d1,$d2);
+   }
+
+   # @category Combinatorics
+   # @return Int The rank of the [[TOP_NODE]]
+   # @example [application polytope] The following prints the rank of the top node of the face lattice of the 2-simplex (triangle):
+   # > print simplex(2)->HASSE_DIAGRAM->rank();
+   # | 3
+   user_method rank() : DECORATION, TOP_NODE {
+      my $this = shift;
+      return $this->DECORATION->[$this->TOP_NODE]->rank;
+   }
+
+   # @category Combinatorics
+   # @return Array<Set<Int> > For each node, contains the indices of maximal nodes it lies below.
+   # @example [application polytope] [prefer cdd] The following prints the dual faces of the face lattice of the 2-simplex (triangle):
+   # > print simplex(2)->HASSE_DIAGRAM->dual_faces();
+   # | {0 1 2}
+   # | {1 2}
+   # | {0 2}
+   # | {0 1}
+   # | {0}
+   # | {1}
+   # | {2}
+   # | {}
+   user_method dual_faces() {
+      return lattice_dual_faces(shift);
+   }
+
+   rule FACES : ADJACENCY, DECORATION {
+      $this->FACES(temporary) = faces_map_from_decoration($this->ADJACENCY, $this->DECORATION);
+   }
+   weight 1.10;
+
+}
+
+declare object_specialization BasicLattice<SeqType> = Lattice<BasicDecoration, SeqType> {
+
+   rule DECORATION, INVERSE_RANK_MAP, TOP_NODE, BOTTOM_NODE : FACES, DIMS, ADJACENCY {
+      #Backwards compatibility rule
+      migrate_hasse_properties($this);
+      $this->remove("DIMS");
+      $this->remove("FACES"); #FIXME This has currently no effect - why?
+   }
+   weight 1.10;
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

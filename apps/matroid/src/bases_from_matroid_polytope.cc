@@ -24,9 +24,8 @@ namespace polymake { namespace matroid {
 
 Array< Set <int> > bases_from_matroid_polytope(const Matrix<Rational>& verts)
 {
+  Array<Set<int>> bases(verts.rows());
 
-  Array< Set <int> > bases(verts.rows());
- 
   for (int i=0;i<verts.rows();++i) {
     Set<int> b;
     for (int j=1;j<verts.cols();++j)
@@ -38,26 +37,11 @@ Array< Set <int> > bases_from_matroid_polytope(const Matrix<Rational>& verts)
 }
 
 
-Set< Set <int> > bases_from_matroid_polytope_as_set(const Matrix<Rational>& verts)
-{
-  Set< Set <int> > bases;
- 
-  for (int i=0;i<verts.rows();++i) {
-    Set<int> b;
-    for (int j=1;j<verts.cols();++j)
-      if (verts(i,j)!=0) b.insert(j-1);
-    bases.insert(b);
-  }
-
-  return bases;
-}
-
-
 perl::Object matroid_from_matroid_polytope(perl::Object p)
 {
   perl::Object m("Matroid");
   m.take("BASES") << bases_from_matroid_polytope(p.give("VERTICES"));
-  const int n_elements = p.CallPolymakeMethod("AMBIENT_DIM");
+  const int n_elements = p.call_method("AMBIENT_DIM");
   m.take("N_ELEMENTS") << n_elements;
   m.take("POLYTOPE") << p;
 
@@ -65,7 +49,6 @@ perl::Object matroid_from_matroid_polytope(perl::Object p)
 }
 
 Function4perl(&bases_from_matroid_polytope, "bases_from_matroid_polytope");
-Function4perl(&bases_from_matroid_polytope_as_set, "bases_from_matroid_polytope_as_set");
 UserFunction4perl("# @category Producing a matroid from other objects\n"
                   "# Creates a matroid from the corresponding matroid\n"
                   "# polytope //p//.\n"

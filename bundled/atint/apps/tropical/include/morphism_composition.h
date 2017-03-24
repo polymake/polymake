@@ -28,7 +28,6 @@
 #include "polymake/Rational.h"
 #include "polymake/Vector.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/tropical/LoggingPrinter.h"
 #include "polymake/tropical/thomog.h"
 #include "polymake/tropical/morphism_thomog.h"
 #include "polymake/tropical/refine.h"
@@ -37,9 +36,6 @@
 
 namespace polymake { namespace tropical {
 
-	using namespace atintlog::donotlog;
-	//using namespace atintlog::dolog;
-	//using namespace atintlog::dotrace;
 
 	/**
 	  @brief Computes the composition g(f) of two morphisms f and g (as in f:X->Y, g:Y->Z). 
@@ -77,8 +73,8 @@ namespace polymake { namespace tropical {
 				f_dehomog_matrix = dehom_f.first;
 				f_dehomog_translate = dehom_f.second;
 			}
-			Vector< Matrix<Rational> > f_hreps_ineq;
-			Vector< Matrix<Rational> > f_hreps_eq;
+         std::vector< Matrix<Rational> > f_hreps_ineq;
+         std::vector< Matrix<Rational> > f_hreps_eq;
 
 			//Now tropically dehomogenize everything and create version of f-values with leading coordinate.
 			f_rays = tdehomog(f_rays,0);
@@ -108,8 +104,8 @@ namespace polymake { namespace tropical {
 			IncidenceMatrix<> g_cones = g_domain.give("SEPARATED_MAXIMAL_POLYTOPES");
 			Matrix<Rational> g_on_rays = g.give("VERTEX_VALUES");
 			Matrix<Rational> g_on_lin = g.give("LINEALITY_VALUES");
-			Vector< Matrix<Rational> > g_hreps_ineq;
-			Vector< Matrix<Rational> > g_hreps_eq;
+         std::vector< Matrix<Rational> > g_hreps_ineq;
+         std::vector< Matrix<Rational> > g_hreps_eq;
 
 			//Tropically dehomogenize everything - g's values don't need a leading coordinate
 			g_rays = tdehomog(g_rays,0);
@@ -118,18 +114,18 @@ namespace polymake { namespace tropical {
 			g_on_lin = tdehomog( g_on_lin,0,false);	
 
 			//Prepare result variables
-			Matrix<Rational> pullback_rays(0, f_ambient_dim);
-			Matrix<Rational> pullback_lineality(0, f_ambient_dim);
+			ListMatrix<Vector<Rational>> pullback_rays(0, f_ambient_dim);
+			ListMatrix<Vector<Rational>> pullback_lineality(0, f_ambient_dim);
 			bool lineality_computed = false;
-			Vector<Set<int> > pullback_cones;
+         std::vector<Set<int> > pullback_cones;
 			Set<Set<int> > pullback_cones_set; //Used to check for doubles
-			Matrix<Rational> pullback_ray_values(0,g_on_rays.cols());
-			Matrix<Rational> pullback_lin_values(0,g_on_lin.cols());
-			Vector<Integer> pullback_weights;
+			ListMatrix<Vector<Rational>> pullback_ray_values(0,g_on_rays.cols());
+			ListMatrix<Vector<Rational>> pullback_lin_values(0,g_on_lin.cols());
+         std::vector<Integer> pullback_weights;
 			//The following two variables contain for each cone of the pullback domain the representation 
 			//as an affine linear function on this cone
-			Vector<Matrix<Rational> > pullback_matrices; 
-			Vector<Vector<Rational> > pullback_translates;
+         std::vector<Matrix<Rational> > pullback_matrices; 
+         std::vector<Vector<Rational> > pullback_translates;
 
 			//Compute H-representations of all cones in f_domain and g_domain
 			solver<Rational> sv;
@@ -137,15 +133,15 @@ namespace polymake { namespace tropical {
 				std::pair<Matrix<Rational>, Matrix<Rational> > p = sv.enumerate_facets(
 						f_rays.minor(f_cones.row(fcone),All), 
 						f_lin, false,false);
-				f_hreps_ineq |= p.first;
-				f_hreps_eq |= p.second;
+				f_hreps_ineq.push_back(p.first);
+				f_hreps_eq.push_back(p.second);
 			}//END compute fcone-H-rep
 			for(int gcone = 0; gcone < g_cones.rows(); gcone++) {
 				std::pair<Matrix<Rational>, Matrix<Rational> > p = sv.enumerate_facets(
 						g_rays.minor(g_cones.row(gcone),All), 
 						g_lin, false,false);
-				g_hreps_ineq |= p.first;
-				g_hreps_eq |= p.second;
+				g_hreps_ineq.push_back(p.first);
+				g_hreps_eq.push_back(p.second);
 			}//END compute gcone-H-rep
 
 
@@ -155,7 +151,6 @@ namespace polymake { namespace tropical {
 
 			//Now iterate all cones of f's domain
 			for(int fcone = 0; fcone < f_cones.rows(); fcone++) {
-				//dbgtrace << "Computing on function cone " << fcone << endl;
 				//Compute H-representation of the image of the cone
 				std::pair<Matrix<Rational>, Matrix<Rational> > image_rep = sv.enumerate_facets(
 						(f_on_rays_homog.minor(f_cones.row(fcone),All)),
@@ -163,7 +158,6 @@ namespace polymake { namespace tropical {
 
 				int image_dim = image_rep.first.cols() - image_rep.second.rows() - 1;
 
-				dbgtrace << "Image of cone has H-rep " << image_rep << endl;
 
 				//Compute representation of morphism on current cone
 				Matrix<Rational> fmatrix;
@@ -178,45 +172,35 @@ namespace polymake { namespace tropical {
 							f_on_lin, ftranslate, fmatrix);
 				}
 
-				dbgtrace << "Local representation is " << ftranslate << " and " << fmatrix << endl;
 
 				//Iterate all cones of the function
 				for(int gcone = 0; gcone < g_cones.rows(); gcone++) {
-					dbgtrace << "Intersecting with g cone " << gcone << endl;
 					//Compute intersection 
 					Matrix<Rational> intersection_ineq;
 					Matrix<Rational> intersection_eq;
 
 					//Compute an irredundant H-rep of the intersection
-					dbgtrace << "Computing irredundant H-rep" << endl;
-					dbgtrace << image_rep.first << "\n" << g_hreps_ineq[gcone] << endl;
 
 					intersection_ineq = (image_rep.first) / (g_hreps_ineq[gcone]);
 					intersection_eq = (image_rep.second) / (g_hreps_eq[gcone]);
 					Matrix<Rational> isMatrix = intersection_ineq / intersection_eq;
 
-					dbgtrace << "Canonicalizing..." << endl;
 
 					std::pair<Bitset,Bitset> isection = 
 						sv.canonicalize( intersection_ineq,intersection_eq,1);
 
-					dbgtrace << "Assigning canonical rays " << endl;
 
 					intersection_ineq = isMatrix.minor(isection.first,All);
 					intersection_eq = isMatrix.minor(isection.second,All);
 
 
 					int interdim = isMatrix.cols()  - isection.second.size() - 1 ;
-					dbgtrace << "intersection dimension is " << interdim << endl;
 
 					//Check dimension of intersection - if its not the correct one, take the next g cone
 					if( interdim != std::min(image_dim, g_domain_dim)) continue;
 
-					dbgtrace << "Cone is valid " << endl;	    
 
-					dbgtrace << "Intersection cone has H-rep " << intersection_ineq << "\n" << intersection_eq << endl;
 
-					dbgtrace << "Computing representation on g cone" << endl;
 
 					//Compute g's representation on the current cone
 					Vector<Rational> gtranslate;
@@ -226,23 +210,17 @@ namespace polymake { namespace tropical {
 						gtranslate = g_dehomog_translate;
 					}
 					else {
-						dbgtrace << g_cones.row(gcone) << endl;
-						dbgtrace << "Rays of g: " << g_rays.minor(g_cones.row(gcone),All) << "," << g_lin << endl;
-						dbgtrace << g_on_rays << endl;
-						dbgtrace << "Values " << g_on_rays.minor(g_cones.row(gcone),All) << "," << g_on_lin << endl;
 						computeConeFunction(g_rays.minor(g_cones.row(gcone),All), g_lin, 
 								g_on_rays.minor(g_cones.row(gcone),All), g_on_lin, gtranslate, 
 								gmatrix);
 					}
 
-					dbgtrace << "g's representation on this cone " << gmatrix << " and " << gtranslate << endl;
 
 					//Compute preimage of the intersection cone
 					//If (b,-A) is the representation of (in)equalities of the cone
 					// and x |-> v + Mx is the representation of the morphism, then
 					//(b - Av, -AM) is the representation of the preimage
 
-					dbgtrace << "Computing preimage and pullback" << endl;
 
 					Matrix<Rational> preimage_ineq = intersection_ineq.minor(All,~scalar2set(0)) * fmatrix;
 					preimage_ineq = (intersection_ineq.col(0) + intersection_ineq.minor(All,~scalar2set(0)) * ftranslate)
@@ -261,7 +239,6 @@ namespace polymake { namespace tropical {
 					preimage_eq /= f_hreps_eq[fcone];
 
 
-					//dbgtrace << "Preimage ineq " << preimage_ineq << "\n eq " << preimage_eq << endl;
 
 
 					std::pair<Matrix<Rational>, Matrix<Rational> > preimage_cone;
@@ -273,9 +250,7 @@ namespace polymake { namespace tropical {
 						preimage_cone = std::make_pair(Matrix<Rational>(0,f_ambient_dim), Matrix<Rational>(0,f_ambient_dim));
 					}
 
-					dbgtrace << "Preimage has rays " << preimage_cone.first << " and lin " << preimage_cone.second << endl;
 
-					//dbgtrace << "Canonicalizing rays" << endl;
 
 					Matrix<Rational> preimage_rays = preimage_cone.first;
 					Matrix<Rational> preimage_lin = preimage_cone.second;
@@ -284,7 +259,6 @@ namespace polymake { namespace tropical {
 					if(!lineality_computed) {
 						pullback_lineality = preimage_lin;
 						lineality_computed = true;
-						dbgtrace << "Setting lineality to " << pullback_lineality << endl;
 					}
 					Set<int> pcone; 
 					for(int r = 0; r < preimage_rays.rows(); r++) {
@@ -302,8 +276,9 @@ namespace polymake { namespace tropical {
 						}
 						//Find correct ray index
 						int ray_index = -1;
-						for(int oray = 0; oray < pullback_rays.rows(); oray++) {
-							if(pullback_rays.row(oray) == preimage_rays.row(r)) {
+						int oray = 0;
+                  for(auto pb_ray_it = entire(rows(pullback_rays)); !pb_ray_it.at_end(); ++oray, ++pb_ray_it) {
+							if(*pb_ray_it == preimage_rays.row(r)) {
 								ray_index = oray; 
 								break;
 							}
@@ -315,32 +290,28 @@ namespace polymake { namespace tropical {
 						}
 						pcone += ray_index;
 					}
-					dbgtrace << "Ray set is " << pcone << endl;
 					//Add cone if it doesn't exist yet
 					if(!pullback_cones_set.contains(pcone)) {
-						pullback_cones |= pcone;
+						pullback_cones.push_back(pcone);
 						pullback_cones_set += pcone;
-						dbgtrace << "Adding cone " << pcone << endl;
 
 						if(interdim == image_dim)
 							have_full_dimensional_pullback_cone = true;
 						//If the pullback cone has full dimension (<=> the dimension of
 						//the intersection is the dimension of the image cone), we copy f's domain's weight.
 						if(f_has_weights){ 
-							pullback_weights |= (interdim == image_dim? f_domain_weights[fcone] :0);
+							pullback_weights.push_back( (interdim == image_dim? f_domain_weights[fcone] :0) );
 						}
 
 						//Now we compute the representation of h = g after f 
 						Matrix<Rational> hmatrix = gmatrix * fmatrix;
 						Vector<Rational> htranslate = gmatrix * ftranslate + gtranslate;
 
-						dbgtrace << "Composition on preimage: " << hmatrix << " and " << htranslate << endl;
 
-						pullback_matrices |= hmatrix;
-						pullback_translates |= htranslate;
+						pullback_matrices.push_back(hmatrix);
+						pullback_translates.push_back(htranslate);
 
 					}
-					//dbgtrace << "Rays now read " << pullback_rays << endl;
 
 
 				}//END iterate all cones of morphism g 
@@ -349,7 +320,6 @@ namespace polymake { namespace tropical {
 
 			// ------------------------- COMPUTE VALUES --------------------------------- //
 
-			//dbgtrace << "Computing values on SEPARATED_VERTICES " << endl;
 
 			//Compute SEPARATED_VERTICES / SEPARATED_MAXIMAL_POLYTOPES
 
@@ -365,24 +335,23 @@ namespace polymake { namespace tropical {
 			IncidenceMatrix<> pb_cmplx_cones = pullback_domain.give("SEPARATED_MAXIMAL_POLYTOPES");
 			IncidenceMatrix<> pb_cones_by_rays = T(pb_cmplx_cones);
 
-			dbgtrace << "Pullback rays: " << pb_cmplx_rays << endl;
-			dbgtrace << "Pullback cones: " << pb_cmplx_cones << endl;
 			
 
 			//Go trough all rays
 			int basepoint = -1; //Save the first vertex
+         Vector<Rational> basepoint_value;
 			for(int cr = 0; cr < pb_cmplx_rays.rows(); cr++) {
-				dbgtrace << "Value on ray " << pb_cmplx_rays.row(cr) << endl;
 				//Take any cone containing this ray
 				int cone_index = *(pb_cones_by_rays.row(cr).begin());
 				Matrix<Rational> cone_matrix = pullback_matrices[cone_index];
 				Vector<Rational> cone_translate = pullback_translates[cone_index];
-				dbgtrace << "Matrix is " <<  cone_matrix << cone_translate << endl;
 				//If its a vertex, just compute the value
 				if(pb_cmplx_rays(cr,0) == 1) {
-					pullback_ray_values /= 
-						(cone_matrix* pb_crays_dehomog.row(cr) + cone_translate);
-					if(basepoint == -1) basepoint = cr;
+               auto pbr_value = 	(cone_matrix* pb_crays_dehomog.row(cr) + cone_translate);
+					pullback_ray_values /= pbr_value;
+      			if(basepoint == -1) {
+                  basepoint_value = pbr_value; basepoint = cr;
+               }
 				}
 				//Otherwise find an associated vertex
 				else {
@@ -407,14 +376,11 @@ namespace polymake { namespace tropical {
 				Vector<Rational> sum = pb_crays_dehomog.row(basepoint) + pb_lin_dehomog.row(l);
 				pullback_lin_values /= 
 					(
-					 (pullback_matrices[0] * sum + pullback_translates[0]) - 
-					 pullback_ray_values.row(basepoint)
-					);
+					 (pullback_matrices[0] * sum + pullback_translates[0]) - basepoint_value );
 			}
 
 			// ------------------------------- RETURN RESULT ------------------------------- //
 
-			dbgtrace << "Done. Preparing result" << endl;
 
 			perl::Object result(perl::ObjectType::construct<Addition>("Morphism"));
 			result.take("DOMAIN") << pullback_domain;

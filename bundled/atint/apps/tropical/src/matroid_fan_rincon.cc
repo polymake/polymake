@@ -32,14 +32,10 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Map.h"
 #include "polymake/tropical/specialcycles.h"
-#include "polymake/tropical/LoggingPrinter.h"
 
 
 namespace polymake { namespace tropical { 
 
-	using namespace atintlog::donotlog;
-	//using namespace atintlog::dolog;
-	//using namespace atintlog::dotrace;
 
 	///////////////////////////////////////////////////////////////////////////////////////
 
@@ -48,19 +44,20 @@ namespace polymake { namespace tropical {
 	  @param Matrix<Rational> m 
 	  @return IncidenceMatrix An incidence matrix whose rows correspond to the bases and where each row contains the colum indices contained in that basis.
 	  */
-	IncidenceMatrix<> computeMatrixBases(Matrix<Rational> m) {
-		//First we determine the rank of the matrix
-		int r = rank(m);
+	IncidenceMatrix<> computeMatrixBases(const Matrix<Rational>& m)
+        {
+          //First we determine the rank of the matrix
+          int r = rank(m);
 
-		Vector<Set<int> > result;
-		Array<Set<int> > rsets = all_subsets_of_k(sequence(0,m.cols()),r);
-		//pm::Subsets_of_k<Set<int> > ( sequence(0,m.cols()),r );
-		for(int i = 0; i < rsets.size(); i++) {
-			if(rank(m.minor(All,rsets[i])) == r) {
-				result |= rsets[i];
-			}
-		}
-		return IncidenceMatrix<>(result);
+          RestrictedIncidenceMatrix<> result(0);
+          // FIXME: should be auto=all_subsets_of_k, but this can't currently be compiled
+          const Array<Set<int>> rsets{ all_subsets_of_k(sequence(0, m.cols()), r) };
+          for (auto rset=entire(rsets); !rset.at_end(); ++rset) {
+            if (rank(m.minor(All, *rset)) == r) {
+              result /= *rset;
+            }
+          }
+          return IncidenceMatrix<>(std::move(result));
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////
@@ -165,7 +162,6 @@ namespace polymake { namespace tropical {
 		Matrix<Rational> wbs(0,n);
 		//Compute the complement of L (i.e. the singleton blocks of the defining tree)
 		Set<int> Lcomp = B - Set<int>(L);
-		//dbgtrace << "Computing leaves" << endl;
 		//For each element in L find the attached leafs
 		Vector<Set<int> > leafsAttached(L.dim());
 		for(int l = 0; l < leafsAttached.dim(); l++) { leafsAttached[l] = Set<int>();}
@@ -188,7 +184,6 @@ namespace polymake { namespace tropical {
 			wbs /= unit_vector<Rational>(n,*c);
 		} //End attach leaves
 
-		//dbgtrace << "Computing block vectors" << endl;
 
 		//Now compute the rays w_b for b in L (except for the smallest one, which gives (1,..1))
 		for(int b = 1; b < L.dim(); b++) {
@@ -204,8 +199,6 @@ namespace polymake { namespace tropical {
 			wbs /= wb;
 		}
 
-		//dbgtrace << "Cone rays: " << wbs << endl;
-		//dbgtrace << "Checking rays" << endl;
 
 		//Now we check for existence of the rays and compute indices
 		Set<int> result;
@@ -225,7 +218,6 @@ namespace polymake { namespace tropical {
 				result += newindex;
 			}
 		}
-		//dbgtrace << "Indices: " << result << endl;
 		return result;
 	}
 
@@ -242,7 +234,7 @@ namespace polymake { namespace tropical {
 	std::pair<Matrix<Rational>, IncidenceMatrix<> > bergman_fan(int n, const IncidenceMatrix<> &bases, bool is_linear, const Matrix<Rational> &m) {
 		//Prepare result variables
 		Matrix<Rational> rays(0,n);
-		Vector<Set<int> > cones;
+		RestrictedIncidenceMatrix<> cones;
 
 		//Now compute cones for each basis
 		Set<int> complete = sequence(0,n);
@@ -272,16 +264,12 @@ namespace polymake { namespace tropical {
 			// (0,-1): Start adding elements from F_k \ Im(p)
 			// (b,x): In the last iteration we took the element at index b in F_k and inserted it
 			// at position x in L. Find the next valid position
-			Vector<std::pair<int,int> > iterations(complement.dim());
-			for(int t = 0; t < iterations.dim(); t++) {
-				iterations[t] = std::make_pair(-1,-1);
-			}	
-			while(k != -1) {
+                        std::vector<std::pair<int,int>> iterations(complement.dim(), std::make_pair(-1,-1));
+
+			while (k != -1) {
 				//If we're through all k's, make a cone -------------------------
-				if(k >= complement.dim()) {
-					//dbgtrace << "Compatible pair: \n: Order: " << L <<"\np: " << p << endl;
-					//dbgtrace << "Qb: " << Qb << endl;
-					cones |= computeCone(n,rays,bases.row(B),Fksets,p,L,Qb);
+				if (k >= complement.dim()) {
+					cones /= computeCone(n,rays,bases.row(B),Fksets,p,L,Qb);
 					k--;
 					continue;
 				}
@@ -291,10 +279,9 @@ namespace polymake { namespace tropical {
 				//Check F_k \cap L for elements --------------------------------
 				int smallestInL = -1; //contains the smallest element in Fk cap L (or -1 if none)
 				int smallestx = -1; // contains the position of the above element in L
-				if(iterations[k].first == -1) {
-					//dbgtrace << "Iteration for " << complement[k] << " at " << iterations[k] << endl;
+				if (iterations[k].first == -1) {
 					iterations[k] = std::make_pair(0,-1); 
-					for(int l = 0; l < L.dim(); l++) {
+					for (int l = 0; l < L.dim(); l++) {
 						if(Fksets[k].contains(L[l])) {
 							smallestInL = L[l]; break;
 							smallestx = l;
@@ -309,12 +296,9 @@ namespace polymake { namespace tropical {
 				}
 				//Go through the basis elements -------------------------------
 				//Remove the last b we added
-				if(iterations[k].second != -1) {
+				if (iterations[k].second != -1) {
 					L = L.slice(~scalar2set(iterations[k].second));  
 				}
-				//dbgtrace << "Iteration for " << complement[k] << " at " << iterations[k] << endl;
-				//dbgtrace << "L is " << L << endl;
-				//dbgtrace << "Smallest x is " << smallestx << endl; 
 				//Have to recompute minimal element from Fk cap L (any other b from Fk must
 				//be placed before that element)
 				smallestx = -1;	      
@@ -378,7 +362,7 @@ namespace polymake { namespace tropical {
 					}
 				} while(true);
 				//If we found a position, continue the iteration
-				if(found) {
+				if (found) {
 					p[k] = Fklists[k][b];
 					Qb[Fklists[k][b]] += complement[k];
 					iterations[k] = std::make_pair(b,x);
@@ -401,7 +385,7 @@ namespace polymake { namespace tropical {
 
 		} //End for all bases
 
-		return std::make_pair(rays,cones);
+		return std::make_pair(rays, IncidenceMatrix<>(std::move(cones)));
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////
@@ -463,13 +447,13 @@ namespace polymake { namespace tropical {
 		//First we check for loops - if there is one, the fan is empty - and coloops
 		Set<int> coloops;
 		int mrank = rank(m);
-		for(int c = 0; c < m.cols(); c++) {
-			if(m.col(c) == zero_vector<Rational>(m.rows())) {
-				return empty_cycle<Addition>(m.cols()-1);
-			}
-			if(rank(m.minor(All,~scalar2set(c))) < mrank) {
-				coloops += c;
-			}
+		for (int c = 0; c < m.cols(); c++) {
+                   if (is_zero(m.col(c))) {
+                      return empty_cycle<Addition>(m.cols()-1);
+                   }
+                   if (rank(m.minor(All, ~scalar2set(c))) < mrank) {
+                      coloops += c;
+                   }
 		}
 		m = m.minor(All,~coloops);
 		//Now we make sure that m.rows = rank(m)
@@ -495,7 +479,7 @@ namespace polymake { namespace tropical {
 		Array<Set<int> > bases_array = matroid.give("BASES");
 		IncidenceMatrix<>	bases = IncidenceMatrix<>(bases_array);
 		//First we check for loops and coloops
-		Set<int> coloops = matroid.give("COLOOPS");
+		Set<int> coloops = matroid.call_method("COLOOPS");
 		Set<int> loops = matroid.give("LOOPS");
 		//If it has any loops, the fan is empty
 		if(loops.size() > 0) {

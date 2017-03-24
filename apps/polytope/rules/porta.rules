@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -58,7 +58,7 @@ rule porta.convex_hull.primal: FACETS, AFFINE_HULL : CONE_AMBIENT_DIM, CONE_DIM,
 weight 4.20;
 precondition : CONE_DIM { $this->CONE_DIM > 1 }
 precondition : POINTED;
-permutation : FacetPerm;
+incurs FacetPerm;
 
 
 rule porta.convex_hull.dual: VERTICES, LINEALITY_SPACE : CONE_AMBIENT_DIM, FACETS | INEQUALITIES, VALID_POINT {
@@ -80,7 +80,7 @@ rule porta.convex_hull.dual: VERTICES, LINEALITY_SPACE : CONE_AMBIENT_DIM, FACET
 }
 weight 4.10;
 precondition : POINTED;
-permutation : VertexPerm;
+incurs VertexPerm;
 
 
 }

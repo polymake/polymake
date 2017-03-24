@@ -26,17 +26,15 @@ Array<Set <int> >invert_bases(const Array< Set<int> >& bases, int n_elements)
 {
   const int rank=bases[0].size();
   Set< Set<int> > bases_set;
-  for (Entire< Array <Set <int> > >::const_iterator i = entire(bases); !i.at_end(); ++i)
-    bases_set.insert(*i);
-    
+  for (auto i = entire(bases); !i.at_end(); ++i)
+     bases_set.insert(*i);
 
-  Array< Set <int> > inverted(Integer::binom(n_elements,rank).to_int()-bases.size());
+  Array<Set<int>> inverted(int(Integer::binom(n_elements,rank))-bases.size());
   int j=0;
-  for (Entire< Subsets_of_k<const sequence&> >::const_iterator i=entire(all_subsets_of_k(sequence(0,n_elements),rank)); !i.at_end(); ++i)
-    {
-      const Set<int> base = *i;
-      if (!bases_set.contains(base)) inverted[j++]=base;
-    }
+  for (Entire< Subsets_of_k<const sequence&> >::const_iterator i=entire(all_subsets_of_k(sequence(0,n_elements),rank)); !i.at_end(); ++i) {
+     const Set<int> base = *i;
+     if (!bases_set.contains(base)) inverted[j++]=base;
+  }
 
   return inverted;
 }

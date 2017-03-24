@@ -23,11 +23,11 @@
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
    template <typename T0>
-   FunctionInterface4perl( lex_ordered_X8, T0 ) {
+   FunctionInterface4perl( lex_ordered_X32, T0 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturnAnch( 1, (arg0), (lex_ordered(arg0.get<T0>())) );
+      WrapperReturn( (lex_ordered(arg0.get<T0>())), arg0 );
    };
 
-   FunctionInstance4perl(lex_ordered_X8, perl::Canned< const FacetList >);
+   FunctionInstance4perl(lex_ordered_X32, perl::Canned< const FacetList >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

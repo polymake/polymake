@@ -17,6 +17,7 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/FacetList.h"
+#include "polymake/IncidenceMatrix.h"
 #include "polymake/Map.h"
 #include "polymake/Matrix.h"
 #include "polymake/Set.h"
@@ -38,7 +39,7 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(erase_X_f17, perl::Canned< Map< Vector< double >, int > >, perl::Canned< const Vector< double > >);
-   FunctionInstance4perl(erase_X_f17, perl::Canned< Map< Vector< double >, int > >, perl::Canned< const pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>, void> const&, pm::Series<int, true>, void> >);
+   FunctionInstance4perl(erase_X_f17, perl::Canned< Map< Vector< double >, int > >, perl::Canned< const pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<int, true>> const&, pm::Series<int, true>> >);
    FunctionInstance4perl(erase_X_f1, perl::Canned< FacetList >, perl::Canned< const Set< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

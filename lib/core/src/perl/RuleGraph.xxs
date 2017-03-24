@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2017
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -27,7 +27,7 @@ namespace pm { namespace perl {
 class RuleGraph {
 public:
    // must be kept in sync with Scheduler.pm
-   enum arc_state_t { inactive_arc, optional_arc, exclusive_arc, unique_arc, resolved_arc, source_arc };
+   enum arc_state_t { inactive_arc, weak_arc, initial_arc, optional_arc=initial_arc, exclusive_arc, unique_arc, resolved_arc, source_arc };
 
    // lower bits in node_in_state
    enum { alive_node=1, ready_node=2, scheduled_node=4, pending_supplier=8 };
@@ -51,7 +51,7 @@ public:
    bool eliminate_after_gather(pTHX_ SV* tell_sv, SV** rules_to_elim, int n_elim);
 
    // elimination in a variant
-   bool eliminate_in_variant(pTHX_ char* state_vec, AV* ready_rules, SV** rules_to_elim, int n_elim) const;
+   bool eliminate_in_variant(pTHX_ char* state_vec, arc_state_t max_optional_state, AV* ready_rules, SV** rules_to_elim, int n_elim) const;
 
    bool add_scheduled_rule(pTHX_ char* state_vec, AV* ready_rules, SV* rule_to_add, int enforced, SV* rule_without_perm) const;
 
@@ -101,7 +101,7 @@ private:
    static SV** extract_ready_rule(pTHX_ SV** SP, AV* ready_rules, SV** ready, SV** ready_last);
 
    template <typename GraphAdapter>
-   bool eliminate(pTHX_ const GraphAdapter& adapter, AV* ready_rules) const;
+   bool eliminate(pTHX_ const GraphAdapter& adapter, arc_state_t max_optional_state, AV* ready_rules) const;
 
    void add_rule(pTHX_ const overlaid_state_adapter& adapter, AV* ready_rules, int node, int enforced=0, bool with_permutation=false) const;
 
@@ -144,7 +144,7 @@ int RuleGraph::add_node(pTHX_ AV* rule)
    } else {
       rule_deputies[node]=rule;
    }
-   if (rule != Nullav) {
+   if (rule) {
       SV* node_sv=AvARRAY(rule)[RuleDeputy_rgr_node_index];
       assert(!SvOK(node_sv));
       sv_setiv(node_sv, node);
@@ -155,15 +155,15 @@ int RuleGraph::add_node(pTHX_ AV* rule)
 class RuleGraph::renumber_nodes {
 public:
    renumber_nodes(pTHX_ std::vector<AV*>& rule_deputies_arg)
-      : pi(getTHX)
-      , rule_deputies(rule_deputies_arg) {}
+      : PmPerlInterpreterMemberInit(pi)
+        rule_deputies(rule_deputies_arg) {}
 
    void operator() (int old_n, int new_n) const
    {
       if (old_n != new_n) {
-         assert(rule_deputies[new_n] == Nullav);
+         assert(!rule_deputies[new_n]);
          AV* rule=rule_deputies[old_n];
-         if (rule != Nullav) {
+         if (rule) {
             dTHXa(pi);
             SV* node_sv=AvARRAY(rule)[RuleDeputy_rgr_node_index];
             assert(SvIOKp(node_sv) && SvIVX(node_sv)==old_n);
@@ -171,13 +171,13 @@ public:
          }
          rule_deputies[new_n]=rule;
 #ifndef NDEBUG
-         rule_deputies[old_n]=Nullav;
+         rule_deputies[old_n]=nullptr;
 #endif
       }
    }
 
 private:
-   PerlInterpreter* const pi;
+   PmPerlInterpreterMemberDecl(const pi);
    std::vector<AV*>& rule_deputies;
 };
 
@@ -186,7 +186,7 @@ int RuleGraph::rule_ref2node(SV* rule_ref)
 {
    assert(SvROK(rule_ref));
    SV* const node_sv=PmArray(rule_ref)[RuleDeputy_rgr_node_index];
-   return node_sv != Nullsv && SvIOKp(node_sv) ? SvIVX(node_sv) : -1;
+   return node_sv && SvIOKp(node_sv) ? SvIVX(node_sv) : -1;
 }
 
 void RuleGraph::init_state(pTHX_ char* state_vec, AV* ready_rules)
@@ -198,16 +198,16 @@ void RuleGraph::init_state(pTHX_ char* state_vec, AV* ready_rules)
    rule_deputies.resize(graph.nodes());
 
    int* node_state=node_state_vec;
-   for (Entire< Nodes<graph_t> >::const_iterator node_it=entire(nodes(graph));  !node_it.at_end();  ++node_it, node_state+=2) {
+   for (auto node_it=entire(nodes(graph));  !node_it.at_end();  ++node_it, node_state+=2) {
       int cnt=alive_node;
-      for (graph_t::in_edge_list::const_iterator supplier=node_it.in_edges().begin();  !supplier.at_end();  ++supplier) {
+      for (auto supplier=node_it.in_edges().begin();  !supplier.at_end();  ++supplier) {
          const arc_state_t arc_state=arc_state_vec[*supplier];
          if (arc_state != inactive_arc && arc_state != exclusive_arc)
             cnt += pending_supplier;
       }
       if (cnt==alive_node) {
          AV* rule=rule_deputies[node_it.index()];
-         if (rule != Nullav) {
+         if (rule) {
             av_push(ready_rules, newRV((SV*)rule));
             cnt += ready_node;
          }
@@ -215,7 +215,7 @@ void RuleGraph::init_state(pTHX_ char* state_vec, AV* ready_rules)
       node_state[in_state] = cnt;
 
       cnt=0;
-      for (graph_t::out_edge_list::const_iterator consumer=node_it.out_edges().begin();  !consumer.at_end();  ++consumer) {
+      for (auto consumer=node_it.out_edges().begin();  !consumer.at_end();  ++consumer) {
          const arc_state_t arc_state=arc_state_vec[*consumer];
          if (arc_state > optional_arc)
             ++cnt;
@@ -241,7 +241,7 @@ void RuleGraph::remove_ready_rule(pTHX_ AV* ready_rules, int node) const
 {
    if (AvFILLp(ready_rules) >= 0) {
       SV* rule=(SV*)rule_deputies[node];
-      assert(rule != Nullsv);
+      assert(rule);
       for (SV **ready=AvARRAY(ready_rules), **ready_last=ready+AvFILLp(ready_rules);
            ready <= ready_last;  ++ready) {
          if (rule == SvRV(*ready)) {
@@ -256,7 +256,7 @@ void RuleGraph::remove_ready_rule(pTHX_ AV* ready_rules, int node) const
 }
 
 template <typename GraphAdapter>
-bool RuleGraph::eliminate(pTHX_ const GraphAdapter& adapter, AV* ready_rules) const
+bool RuleGraph::eliminate(pTHX_ const GraphAdapter& adapter, arc_state_t max_optional_state, AV* ready_rules) const
 {
    for (bool second_round=false; ; second_round=true) {
 
@@ -269,15 +269,15 @@ bool RuleGraph::eliminate(pTHX_ const GraphAdapter& adapter, AV* ready_rules) co
 
          // check the consumer rules: some of them may become infeasible
 
-         for (graph_t::out_edge_list::const_iterator consumer=graph.out_edges(node).begin();  !consumer.at_end();  ++consumer) {
+         for (auto consumer=graph.out_edges(node).begin();  !consumer.at_end();  ++consumer) {
             arc_state_t& arc_state=adapter.arc_state(*consumer);
             if (arc_state == inactive_arc) continue;
 
             const int cons_node=consumer.to_node();
-            if (arc_state > optional_arc && !marked_elim_nodes.contains(cons_node)) {
+            if (arc_state > max_optional_state && !marked_elim_nodes.contains(cons_node)) {
                bool alt_exists=false;
                if (arc_state >= source_arc) {
-                  for (graph_t::in_edge_list::const_iterator other_supplier=graph.in_edges(cons_node).begin();  !other_supplier.at_end();  ++other_supplier) {
+                  for (auto other_supplier=graph.in_edges(cons_node).begin();  !other_supplier.at_end();  ++other_supplier) {
                      const arc_state_t alt_state=adapter.arc_state(*other_supplier);
                      if (alt_state == arc_state && other_supplier.from_node() != node) {
                         alt_exists=true;
@@ -297,17 +297,17 @@ bool RuleGraph::eliminate(pTHX_ const GraphAdapter& adapter, AV* ready_rules) co
 
          // check the supplier rules: some of them may become useless
 
-         for (graph_t::in_edge_list::const_iterator supplier=graph.in_edges(node).begin();  !supplier.at_end();  ++supplier) {
+         for (auto supplier=graph.in_edges(node).begin();  !supplier.at_end();  ++supplier) {
             arc_state_t& arc_state=adapter.arc_state(*supplier);
             if (arc_state == inactive_arc) continue;
 
             const int supp_node=supplier.from_node();
             // optional arcs only occur between initial rules and the final rule (which can never be eliminated)
-            // or between PermAction and CreatingPermutation before scheduling the latter (can be ignored because of an oposite unique_arc)
+            // or between PermAction and CreatingPermutation before scheduling the latter (can be ignored because of an opposite unique_arc)
             if (arc_state > optional_arc && !marked_elim_nodes.contains(supp_node)) {
                if (adapter.remove_out_arc(supp_node, *supplier) == 0) {
                   AV* const supp_rule=rule_deputies[supp_node];
-                  if (supp_rule==Nullav || !adapter.is_scheduled(supp_node)) {
+                  if (!supp_rule || !adapter.is_scheduled(supp_node)) {
                      // An unscheduled rule or a property node without consumers
                      adapter.announce_elim(supp_node, announce_no_consumer);
                      marked_elim_nodes += supp_node;
@@ -338,7 +338,7 @@ bool RuleGraph::eliminate(pTHX_ const GraphAdapter& adapter, AV* ready_rules) co
       elim_queue.push_back(0);
       while (!elim_queue.empty()) {
          const int node=elim_queue.front();  elim_queue.pop_front();
-         for (graph_t::in_edge_list::const_iterator supplier=graph.in_edges(node).begin();  !supplier.at_end();  ++supplier) {
+         for (auto supplier=graph.in_edges(node).begin();  !supplier.at_end();  ++supplier) {
             switch (adapter.arc_state(*supplier)) {
             case inactive_arc:
                break;
@@ -362,7 +362,7 @@ bool RuleGraph::eliminate(pTHX_ const GraphAdapter& adapter, AV* ready_rules) co
          }
       }
 
-      for (Bitset::iterator unreached=marked_elim_nodes.begin();  !unreached.at_end();  ++unreached) {
+      for (auto unreached=marked_elim_nodes.begin();  !unreached.at_end();  ++unreached) {
          const int node=*unreached;
          if (adapter.is_alive(node)) {
             if (adapter.is_scheduled(node)) {
@@ -382,8 +382,8 @@ class RuleGraph::bare_graph_adapter {
 public:
    bare_graph_adapter(pTHX_ RuleGraph& me_arg, SV* tell_arg)
       : me(me_arg)
-      , pi(getTHX)
-      , tell_sv(tell_arg) {}
+      , PmPerlInterpreterMemberInit(pi)
+        tell_sv(tell_arg) {}
 
    arc_state_t& arc_state(int edge_id) const
    {
@@ -392,12 +392,12 @@ public:
 
    void announce_elim(int node, announce_t reason) const
    {
-      if (tell_sv != Nullsv) {
+      if (tell_sv) {
          if (AV* rule=me.rule_deputies[node]) {
             dTHXa(pi);
-            PmStartFuncall;
-            XPUSHs(sv_2mortal(newRV((SV*)rule)));
-            XPUSHs(sv_2mortal(newSViv(reason)));
+            PmStartFuncall(2);
+            mPUSHs(newRV((SV*)rule));
+            mPUSHi(reason);
             PUTBACK;
             glue::call_func_void(aTHX_ tell_sv);
          }
@@ -418,9 +418,11 @@ public:
    {
       me.graph.delete_node(node);
       if (AV* rule=me.rule_deputies[node]) {
+#if PerlVersion < 5220
          dTHXa(pi);
+#endif
          SvOK_off(AvARRAY(rule)[RuleDeputy_rgr_node_index]);
-         me.rule_deputies[node]=Nullav;
+         me.rule_deputies[node]=nullptr;
       }
    }
 
@@ -441,7 +443,7 @@ public:
 
 private:
    RuleGraph& me;
-   PerlInterpreter* const pi;
+   PmPerlInterpreterMemberDecl(const pi);
    SV* const tell_sv;
 };
 
@@ -546,7 +548,7 @@ bool RuleGraph::rule_is_ready_to_use(pTHX_ SV* rule_ref)
    const int node=rule_ref2node(rule_ref);
    assert(node>=0);
    if (graph.in_degree(node) == 0) {
-      bare_graph_adapter(aTHX_ *this, Nullsv).delete_node(node);
+      bare_graph_adapter(aTHX_ *this, nullptr).delete_node(node);
       return true;
    }
    return false;
@@ -556,20 +558,20 @@ bool RuleGraph::eliminate_after_gather(pTHX_ SV* tell_sv, SV** rules_to_elim, in
 {
    marked_elim_nodes.reserve(graph.dim());
    fill_elim_queue(rules_to_elim, n_elim);
-   return eliminate(aTHX_ bare_graph_adapter(aTHX_ *this, tell_sv), Nullav);
+   return eliminate(aTHX_ bare_graph_adapter(aTHX_ *this, tell_sv), optional_arc, nullptr);
 }
 
-bool RuleGraph::eliminate_in_variant(pTHX_ char* state_vec, AV* ready_rules, SV** rules_to_elim, int n_elim) const
+bool RuleGraph::eliminate_in_variant(pTHX_ char* state_vec, arc_state_t max_optional_state, AV* ready_rules, SV** rules_to_elim, int n_elim) const
 {
    fill_elim_queue(rules_to_elim, n_elim);
-   return eliminate(aTHX_ overlaid_state_adapter(*this, state_vec), ready_rules);
+   return eliminate(aTHX_ overlaid_state_adapter(*this, state_vec), max_optional_state, ready_rules);
 }
 
 void RuleGraph::add_rule(pTHX_ const overlaid_state_adapter& adapter, AV* ready_rules, int node, int enforced, bool with_permutation) const
 {
    adapter.mark_as_scheduled(node, enforced);
 
-   for (graph_t::out_edge_list::const_iterator consumer=graph.out_edges(node).begin();  !consumer.at_end();  ++consumer) {
+   for (auto consumer=graph.out_edges(node).begin();  !consumer.at_end();  ++consumer) {
       arc_state_t& arc_state=adapter.arc_state(*consumer);
       const arc_state_t old_arc_state=arc_state;
       if (arc_state == inactive_arc) continue;
@@ -580,7 +582,7 @@ void RuleGraph::add_rule(pTHX_ const overlaid_state_adapter& adapter, AV* ready_
       int n_resolved_inputs;
       if (arc_state >= source_arc) {
          n_resolved_inputs=0;
-         for (graph_t::in_edge_list::const_iterator supplier=graph.in_edges(cons_node).begin();  !supplier.at_end();  ++supplier) {
+         for (auto supplier=graph.in_edges(cons_node).begin();  !supplier.at_end();  ++supplier) {
             arc_state_t& source_arc_state=adapter.arc_state(*supplier);
             if (source_arc_state == old_arc_state) {
                ++n_resolved_inputs;
@@ -638,18 +640,18 @@ void RuleGraph::add_rule(pTHX_ const overlaid_state_adapter& adapter, AV* ready_
          const int action_node=cons_node;
 #ifndef NDEBUG
          AV* const action=rule_deputies[action_node];
-         assert(action != Nullav);
+         assert(action);
          SV* const action_flags=AvARRAY(action)[RuleDeputy_flags_index];
          assert(SvIOKp(action_flags) && (SvIVX(action_flags) & Rule_is_perm_action));
 #endif
-         for (graph_t::out_edge_list::const_iterator action_consumer=graph.out_edges(action_node).begin();  !action_consumer.at_end();  ++action_consumer) {
+         for (auto action_consumer=graph.out_edges(action_node).begin();  !action_consumer.at_end();  ++action_consumer) {
             const int edge_id=*action_consumer;
             switch (adapter.arc_state(*action_consumer)) {
             case inactive_arc:
                // block the final rule and other production rules triggering the same permutation until the permuted property is restored
                {
                   const int rule_node=action_consumer.to_node();
-                  assert(rule_deputies[rule_node] != Nullav);
+                  assert(rule_deputies[rule_node]);
                   if (rule_node==0 ||
                       adapter.is_alive(rule_node) && !adapter.is_scheduled(rule_node) && !marked_elim_nodes.contains(rule_node)) {
                      if (adapter.activate_arc(action_node, rule_node, edge_id, unique_arc))
@@ -657,8 +659,8 @@ void RuleGraph::add_rule(pTHX_ const overlaid_state_adapter& adapter, AV* ready_
                   }
                }
                break;
-            case optional_arc:
-               // deactivate the optional reverse arc between the action and the rule creating a permutation;
+            case weak_arc:
+               // hide the weak reverse arc between the action and the rule creating a permutation;
                // the in_state of the latter has already been updated in the caller
                assert(action_consumer.to_node()==node);
                adapter.arc_state(edge_id)=inactive_arc;
@@ -667,8 +669,8 @@ void RuleGraph::add_rule(pTHX_ const overlaid_state_adapter& adapter, AV* ready_
                // remove all other suppliers of the property
                {
                   const int prop_node=action_consumer.to_node();
-                  assert(rule_deputies[prop_node]==Nullav);
-                  for (graph_t::in_edge_list::const_iterator prop_supplier=graph.in_edges(prop_node).begin();  !prop_supplier.at_end();  ++prop_supplier) {
+                  assert(!rule_deputies[prop_node]);
+                  for (auto prop_supplier=graph.in_edges(prop_node).begin();  !prop_supplier.at_end();  ++prop_supplier) {
                      arc_state_t& supp_arc_state=adapter.arc_state(*prop_supplier);
                      if (supp_arc_state==source_arc && *prop_supplier != edge_id) {
                         supp_arc_state=inactive_arc;
@@ -719,7 +721,7 @@ bool RuleGraph::add_scheduled_rule(pTHX_ char* state_vec, AV* ready_rules, SV* r
       assert(adapter.node_in_state(node) == alive_node + ready_node);
       add_rule(aTHX_ adapter, ready_rules, node, enforced, false);
    }
-   return eliminate(aTHX_ adapter, ready_rules);
+   return eliminate(aTHX_ adapter, optional_arc, ready_rules);
 }
 
 inline
@@ -749,7 +751,7 @@ SV** RuleGraph::select_ready_rule(pTHX_ char* state_vec, AV* ready_rules) const
       const int rule_node=rule_ref2node(*ready);
       assert(rule_node > 0);
 
-      for (graph_t::out_edge_list::const_iterator consumer=graph.out_edges(rule_node).begin();  !consumer.at_end();  ++consumer) {
+      for (auto consumer=graph.out_edges(rule_node).begin();  !consumer.at_end();  ++consumer) {
          if (adapter.arc_state(*consumer) != source_arc) continue;
          const int cons_node=consumer.to_node();
          if (cons_node==0) {
@@ -757,11 +759,11 @@ SV** RuleGraph::select_ready_rule(pTHX_ char* state_vec, AV* ready_rules) const
             return extract_ready_rule(aTHX_ SP, ready_rules, ready, ready_last);
          }
          // rules restoring permuted properties are filtered away in Scheduler.pm prior to calling this
-         assert(rule_deputies[cons_node]==Nullav);
+         assert(!rule_deputies[cons_node]);
 
          int num_prod=0, num_ready_prod=0;
 
-         for (graph_t::in_edge_list::const_iterator supplier=graph.in_edges(cons_node).begin();  !supplier.at_end();  ++supplier) {
+         for (auto supplier=graph.in_edges(cons_node).begin();  !supplier.at_end();  ++supplier) {
             if (adapter.arc_state(*supplier) != source_arc) continue;
             ++num_prod;
             const int supp_node=supplier.from_node();
@@ -796,12 +798,11 @@ SV** RuleGraph::select_ready_rule(pTHX_ char* state_vec, AV* ready_rules) const
 
    // Choose a ready producer of the selected properties with maximal weight
 
-   SV* best_rule=Nullsv;
+   SV* best_rule=nullptr;
    int max_major_wt=-1, max_minor_wt=-1;
 
-   for (std::deque<int>::iterator prop_it=elim_queue.begin(), prop_end=elim_queue.end();  prop_it != prop_end;  ++prop_it) {
-      const int prop_node=*prop_it;
-      for (graph_t::in_edge_list::const_iterator supplier=graph.in_edges(prop_node).begin();  !supplier.at_end();  ++supplier) {
+   for (const int prop_node : elim_queue) {
+      for (auto supplier=graph.in_edges(prop_node).begin();  !supplier.at_end();  ++supplier) {
          if (adapter.arc_state(*supplier) != source_arc) continue;
          const int supp_node=supplier.from_node();
          if (adapter.is_ready(supp_node)) {
@@ -818,7 +819,7 @@ SV** RuleGraph::select_ready_rule(pTHX_ char* state_vec, AV* ready_rules) const
       }
    }
 
-   assert(best_rule != Nullsv);
+   assert(best_rule);
 
    for (SV **ready=AvARRAY(ready_rules), **ready_last=ready+AvFILLp(ready_rules);  ready <= ready_last;  ++ready) {
       if (best_rule == SvRV(*ready))
@@ -846,29 +847,29 @@ void RuleGraph::constrain_to_rules(pTHX_ char* state_vec, AV* ready_rules, char*
       }
    }
 
-   for (Bitset::iterator unneeded=marked_elim_nodes.begin(); !unneeded.at_end(); ++unneeded) {
+   for (auto unneeded=marked_elim_nodes.begin(); !unneeded.at_end(); ++unneeded) {
       const int node=*unneeded;
-      if (rule_deputies[node] != Nullav) {
+      if (rule_deputies[node]) {
          if (adapter.is_ready(node))
             remove_ready_rule(aTHX_ ready_rules, node);
          adapter.delete_node(node);
-         for (graph_t::out_edge_list::const_iterator consumer=graph.out_edges(node).begin();  !consumer.at_end();  ++consumer) {
+         for (auto consumer=graph.out_edges(node).begin();  !consumer.at_end();  ++consumer) {
             arc_state_t& arc_state=adapter.arc_state(*consumer);
             if (arc_state != inactive_arc) {
                assert(arc_state != exclusive_arc);
                const int cons_node=consumer.to_node();
-               if (!marked_elim_nodes.contains(cons_node) || rule_deputies[cons_node]==Nullav) {
-                  assert(adapter.node_in_state(cons_node) > (rule_deputies[cons_node]!=Nullav ? 2*pending_supplier : 0));
+               if (!marked_elim_nodes.contains(cons_node) || !rule_deputies[cons_node]) {
+                  assert(adapter.node_in_state(cons_node) > (rule_deputies[cons_node] ? 2*pending_supplier : 0));
                   adapter.node_in_state(cons_node) -= pending_supplier;
                }
                arc_state=inactive_arc;
             }
          }
-         for (graph_t::in_edge_list::const_iterator supplier=graph.in_edges(node).begin();  !supplier.at_end();  ++supplier) {
+         for (auto supplier=graph.in_edges(node).begin();  !supplier.at_end();  ++supplier) {
             arc_state_t& arc_state=adapter.arc_state(*supplier);
             if (arc_state > optional_arc) {
                const int supp_node=supplier.from_node();
-               if (!marked_elim_nodes.contains(supp_node) || rule_deputies[supp_node]==Nullav) {
+               if (!marked_elim_nodes.contains(supp_node) || !rule_deputies[supp_node]) {
                   assert(adapter.node_out_state(supp_node) > 0);
                   --adapter.node_out_state(supp_node);
                }
@@ -897,7 +898,7 @@ SV** RuleGraph::push_resolved_consumers(pTHX_ char* state_vec, SV* rule_ref) con
    do {
       const int node=elim_queue.front();  elim_queue.pop_front();
       assert(adapter.is_scheduled(node));
-      for (graph_t::out_edge_list::const_iterator consumer=graph.out_edges(node).begin();  !consumer.at_end();  ++consumer) {
+      for (auto consumer=graph.out_edges(node).begin();  !consumer.at_end();  ++consumer) {
          if (adapter.arc_state(*consumer) == resolved_arc) {
             const int cons_node=consumer.to_node();
             if (adapter.node_in_state(cons_node) & (ready_node | scheduled_node)) {
@@ -931,7 +932,7 @@ SV** RuleGraph::push_resolved_suppliers(pTHX_ char* state_vec, SV* rule_ref) con
 
    do {
       const int node=elim_queue.front();  elim_queue.pop_front();
-      for (graph_t::in_edge_list::const_iterator supplier=graph.in_edges(node).begin();  !supplier.at_end();  ++supplier) {
+      for (auto supplier=graph.in_edges(node).begin();  !supplier.at_end();  ++supplier) {
          if (adapter.arc_state(*supplier) == resolved_arc) {
             const int supp_node=supplier.from_node();
             assert(adapter.is_scheduled(supp_node));
@@ -964,9 +965,9 @@ SV** RuleGraph::push_active_rules(pTHX_ char* state_vec) const
    EXTEND(SP, graph.dim());
 
    overlaid_state_adapter adapter(*this, state_vec);
-   for (Entire< Nodes<graph_t> >::const_iterator node_it=entire(nodes(graph));  !node_it.at_end();  ++node_it) {
+   for (auto node_it=entire(nodes(graph));  !node_it.at_end();  ++node_it) {
       const int node=node_it.index();
-      if (adapter.is_alive(node) && !adapter.is_scheduled(node) && rule_deputies[node] != Nullav)
+      if (adapter.is_alive(node) && !adapter.is_scheduled(node) && rule_deputies[node])
          PUSHs(sv_2mortal(newRV((SV*)rule_deputies[node])));
    }
 
@@ -981,7 +982,7 @@ SV** RuleGraph::push_active_suppliers(pTHX_ char* state_vec, SV* rule_ref) const
    EXTEND(SP, graph.in_degree(node));
 
    overlaid_state_adapter adapter(*this, state_vec);
-   for (graph_t::in_edge_list::const_iterator supplier=graph.in_edges(node).begin();  !supplier.at_end();  ++supplier) {
+   for (auto supplier=graph.in_edges(node).begin();  !supplier.at_end();  ++supplier) {
       if (adapter.arc_state(*supplier) != inactive_arc)
          mPUSHi(supplier.from_node());
    }
@@ -997,7 +998,7 @@ SV** RuleGraph::push_active_consumers(pTHX_ char* state_vec, SV* rule_ref) const
    EXTEND(SP, graph.out_degree(node));
 
    overlaid_state_adapter adapter(*this, state_vec);
-   for (graph_t::out_edge_list::const_iterator consumer=graph.out_edges(node).begin();  !consumer.at_end();  ++consumer) {
+   for (auto consumer=graph.out_edges(node).begin();  !consumer.at_end();  ++consumer) {
       if (adapter.arc_state(*consumer) != inactive_arc)
          mPUSHi(consumer.to_node());
    }
@@ -1006,7 +1007,7 @@ SV** RuleGraph::push_active_consumers(pTHX_ char* state_vec, SV* rule_ref) const
 }
 
 
-SV* RuleGraph::class_descr=NULL;
+SV* RuleGraph::class_descr=nullptr;
 int RuleGraph::RuleChain_rgr_index=0;
 int RuleGraph::RuleChain_rgr_state_index=0;
 int RuleGraph::RuleChain_ready_rules_index=0;
@@ -1044,10 +1045,9 @@ new(pkg)
    SV* pkg;
 PPCODE:
 {
-   if (RuleGraph::class_descr==NULL) {
+   if (!RuleGraph::class_descr) {
       // this initialization can't be done in the BOOT block because CPlusPlus is not yet initialized that early
-      static const char pkg_name[]="Polymake::Core::Scheduler::RuleGraph";
-      RuleGraph::class_descr=OpaqueClassRegistrator<RuleGraph>::register_it(pkg_name, sizeof(pkg_name)-1, NULL);
+      RuleGraph::class_descr=OpaqueClassRegistrator<RuleGraph>::register_it("Polymake::Core::Scheduler::RuleGraph", nullptr);
       RuleGraph::RuleChain_rgr_index=CvDEPTH(get_cv("Polymake::Core::Scheduler::TentativeRuleChain::rgr", false));
       RuleGraph::RuleChain_rgr_state_index=CvDEPTH(get_cv("Polymake::Core::Scheduler::TentativeRuleChain::rgr_state", false));
       RuleGraph::RuleChain_ready_rules_index=CvDEPTH(get_cv("Polymake::Core::Scheduler::TentativeRuleChain::ready", false));
@@ -1056,7 +1056,8 @@ PPCODE:
       RuleGraph::RuleDeputy_weight_index=CvDEPTH(get_cv("Polymake::Core::Rule::Deputy::weight", false));
 
       sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_inactive_arc", FALSE),  RuleGraph::inactive_arc);
-      sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_optional_arc", FALSE),  RuleGraph::optional_arc);
+      sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_weak_arc", FALSE),      RuleGraph::weak_arc);
+      sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_initial_arc", FALSE),   RuleGraph::initial_arc);
       sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_exclusive_arc", FALSE), RuleGraph::exclusive_arc);
       sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_unique_arc", FALSE),    RuleGraph::unique_arc);
       sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_resolved_arc", FALSE),  RuleGraph::resolved_arc);
@@ -1065,7 +1066,7 @@ PPCODE:
       RuleGraph::Rule_is_precondition=SvIVX(get_sv("Polymake::Core::Rule::is_precondition", false));
       RuleGraph::Rule_is_perm_action=SvIVX(get_sv("Polymake::Core::Rule::is_perm_action", false));
    }
-   SV* ref=newSV(0);
+   SV* ref=newSV_type(SVt_NULL);
    MAGIC* mg=glue::allocate_canned_magic(aTHX_ ref, RuleGraph::class_descr, value_alloc_magic, 0);
    new(mg->mg_ptr) RuleGraph();
    PUSHs(sv_2mortal(ref));
@@ -1079,7 +1080,7 @@ PPCODE:
 {
    dTARGET;
    RetrieveGraphArg();
-   const int node=rgr->add_node(aTHX_ items==2 ? (AV*)SvRV(ST(1)) : Nullav);
+   const int node=rgr->add_node(aTHX_ items==2 ? (AV*)SvRV(ST(1)) : nullptr);
    if (items==1) PUSHi(node);
 }
 
@@ -1111,7 +1112,7 @@ PPCODE:
    RetrieveChainGraph();
    RetrieveState();
    RetrieveReadyRules();
-   SV* tell_sv=SvROK(tell_eliminated) ? SvRV(tell_eliminated) : Nullsv;
+   SV* tell_sv=SvROK(tell_eliminated) ? SvRV(tell_eliminated) : nullptr;
    if (items>2 && !rgr->eliminate_after_gather(aTHX_ tell_sv, &ST(2), items-2))
       XSRETURN_NO;
    const size_t state_size=rgr->state_vector_size();
@@ -1123,16 +1124,20 @@ PPCODE:
 }
 
 void
-eliminate(chain, ...)
+eliminate(chain, max_optional_state, ...)
    SV* chain;
+   SV* max_optional_state;
 PPCODE:
 {
-   if (items==1) XSRETURN_YES;
+   const int first_rule_arg=2;
+   if (items == first_rule_arg) XSRETURN_YES;
    RetrieveChainGraph(const);
    RetrieveState();
    RetrieveReadyRules();
    assert(SvPOKp(state));
-   if (rgr->eliminate_in_variant(aTHX_ SvPVX(state), ready_rules, &ST(1), items-1))
+   assert(SvIOK(max_optional_state) && SvIVX(max_optional_state) <= RuleGraph::optional_arc);
+   if (rgr->eliminate_in_variant(aTHX_ SvPVX(state), static_cast<RuleGraph::arc_state_t>(SvIVX(max_optional_state)),
+                                 ready_rules, &ST(first_rule_arg), items-first_rule_arg))
       PUSHs(&PL_sv_yes);
    else
       PUSHs(&PL_sv_no);

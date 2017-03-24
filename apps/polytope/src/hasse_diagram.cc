@@ -14,33 +14,14 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/client.h"
-#include "polymake/polytope/face_lattice_tools.h"
-#include "polymake/graph/HasseDiagram.h"
+#include "polymake/polytope/hasse_diagram.h"
 
 namespace polymake { namespace polytope {
 
-template <typename Matrix>
-perl::Object hasse_diagram(const GenericIncidenceMatrix<Matrix>& VIF, int dim_upper_bound=-1)
-{
-   graph::HasseDiagram HD;
-   if (dim_upper_bound>=0 || VIF.cols() <= VIF.rows())
-      face_lattice::compute(VIF, filler(HD,true), face_lattice::Primal(), dim_upper_bound);
-   else
-      face_lattice::compute(T(VIF), filler(HD,false), face_lattice::Dual());
-   return HD.makeObject();
-}
-
-template <typename Matrix, typename Set>
-perl::Object bounded_hasse_diagram(const GenericIncidenceMatrix<Matrix>& VIF, const GenericSet<Set>& far_face, int dim_upper_bound=-1)
-{
-   graph::HasseDiagram HD;
-   face_lattice::compute_bounded(VIF, far_face, filler(HD,true), dim_upper_bound);
-   return HD.makeObject();
-}
-
-FunctionTemplate4perl("hasse_diagram(IncidenceMatrix; $=-1)");
-FunctionTemplate4perl("bounded_hasse_diagram(IncidenceMatrix Set; $=-1)");
+	FunctionTemplate4perl("hasse_diagram(IncidenceMatrix, $)");
+	FunctionTemplate4perl("bounded_hasse_diagram(IncidenceMatrix, Set<Int>; $=-1)");
+	FunctionTemplate4perl("lower_hasse_diagram(IncidenceMatrix, $)");
+	FunctionTemplate4perl("upper_hasse_diagram(IncidenceMatrix, $,$)");
 
 } }
 

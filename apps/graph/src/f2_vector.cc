@@ -15,20 +15,21 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/graph/HasseDiagram.h"
+#include "polymake/graph/Lattice.h"
 #include "polymake/Matrix.h"
 #include "polymake/Integer.h"
 
 namespace polymake { namespace graph {
 
+template <typename Decoration, typename SeqType>
 Matrix<Integer> f2_vector(perl::Object p)
 {
-   const HasseDiagram HD(p);
-   const int d=HD.dim();
+   const Lattice<Decoration, SeqType> HD(p);
+   const int d=HD.rank()-1;
 
    Matrix<Integer> F2(d,d);
    if(d == 0) return F2;
-   F2(0,0) = HD.node_range_of_dim(0).size();
+   F2(0,0) = HD.nodes_of_rank(1).size();
    if (d>1) {
       Graph<Directed> G(HD.graph());
       for (int i=1;;) {
@@ -37,19 +38,19 @@ Matrix<Integer> f2_vector(perl::Object p)
           */
          for (int j=0; j<i; ++j) {
             Integer cnt(0);
-            for (Entire<sequence>::iterator f=entire(HD.node_range_of_dim(j)); !f.at_end(); ++f)
+            for (auto f=entire(HD.nodes_of_rank(j+1)); !f.at_end(); ++f)
                cnt += G.out_degree(*f);
             F2(i,j)=F2(j,i)=cnt;
          }
 
-         const sequence this_layer=HD.node_range_of_dim(i);
+         const typename Lattice<Decoration, SeqType>::nodes_of_rank_type this_layer=HD.nodes_of_rank(i+1);
          F2(i,i) = this_layer.size();
          if (++i>=d) break;
 
-         for (Entire<sequence>::const_iterator this_layer_node=entire(this_layer);
+         for (auto this_layer_node=entire(this_layer);
               !this_layer_node.at_end();  ++this_layer_node) {
             Graph<Directed>::in_adjacent_node_list_ref in_edges=G.in_adjacent_nodes(*this_layer_node);
-            for (Graph<Directed>::out_adjacent_node_list::iterator next_layer_node=G.out_adjacent_nodes(*this_layer_node).begin();
+            for (auto next_layer_node=G.out_adjacent_nodes(*this_layer_node).begin();
                  !next_layer_node.at_end();  ++next_layer_node)
                G.in_adjacent_nodes(*next_layer_node) += in_edges;
             in_edges.clear();
@@ -60,7 +61,7 @@ Matrix<Integer> f2_vector(perl::Object p)
    return F2;
 }
 
-Function4perl(&f2_vector, "f2_vector(FaceLattice)");
+FunctionTemplate4perl("f2_vector<Decoration, SeqType>(Lattice<Decoration, SeqType>)");
 
 } }
 

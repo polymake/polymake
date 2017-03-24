@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,10 +18,10 @@
 
 namespace pm { namespace perl {
 
-SV* get_parameterized_type(const char* pkg, size_t pkgl, bool exact_match)
+SV* get_parameterized_type_impl(const AnyString& pkg, bool exact_match)
 {
    dTHX;
-   PL_stack_base[TOPMARK+1]=sv_2mortal(Scalar::const_string(pkg,pkgl));
+   PL_stack_base[TOPMARK+1]=sv_2mortal(Scalar::const_string(pkg.ptr, pkg.len));
    if (!exact_match)
       sv_setiv(save_scalar(glue::PropertyType_nesting_level), 1);
    return glue::call_method_scalar(aTHX_ "typeof");
@@ -46,70 +46,60 @@ bool type_infos::set_descr()
    if (SvROK(opts)) {
       descr=PmArray(opts)[glue::CPPOptions_descr_index];
       if (!SvROK(descr)) {
-         descr=NULL;
+         descr=nullptr;
       } else if (SvTYPE(SvRV(descr))==SVt_PVCV) {
-         PmStartFuncall;
+         PmStartFuncall(0);
          const int ret=call_sv(descr, G_VOID | G_EVAL);
          if (__builtin_expect(ret>0, 0)) {
-            descr=NULL;
+            descr=nullptr;
             PmFuncallFailed;
          }
          FREETMPS; LEAVE;
          descr=PmArray(opts)[glue::CPPOptions_descr_index];
       }
    }
-   return descr != NULL;
+   return descr;
 }
 
 void type_infos::set_proto(SV* known_proto)
 {
    dTHX;
-   if (known_proto != NULL) {
+   if (known_proto) {
       proto=newSVsv(known_proto);
    } else {
       SV** type_gvp=hv_fetch((HV*)SvRV(PmArray(descr)[glue::TypeDescr_pkg_index]), "type", 4, false);
       if (type_gvp) {
-         PmStartFuncall;
-         call_sv(*type_gvp, G_SCALAR | G_EVAL);
-         SPAGAIN;
-         if (__builtin_expect(SvTRUE(ERRSV), 0)) {
-            PmFuncallFailed;
-         }
-         proto=POPs;
-         assert(SvTEMP(proto));  SvREFCNT_inc_simple_void_NN(proto);       // prevent from being destroyed in FREETMPS
-         PUTBACK; FREETMPS; LEAVE;
+         PmStartFuncall(0);
+         proto=glue::call_func_scalar(aTHX_ *type_gvp, true);
+      } else {
+         return;
       }
+   }
+   SV* opts=PmArray(proto)[glue::PropertyType_cppoptions_index];
+   if (SvROK(opts)) {
+      SV* builtin=PmArray(opts)[glue::CPPOptions_builtin_index];
+      magic_allowed=!SvTRUE(builtin);
    }
 }
 
 void type_infos::set_proto(SV* prescribed_pkg, const std::type_info& ti, SV* super_proto)
 {
    dTHX;
-   PmStartFuncall;
-   XPUSHs(prescribed_pkg);
+   PmStartFuncall(3);
+   PUSHs(prescribed_pkg);
    const char* const type_name=ti.name();
-   mXPUSHp(type_name, strlen(type_name));
-   if (super_proto) XPUSHs(super_proto);
+   mPUSHp(type_name, strlen(type_name));
+   if (super_proto) PUSHs(super_proto);
    PUTBACK;
-   proto=glue::call_func_scalar(aTHX_ glue::fetch_typeof_gv(aTHX_ SvPVX(prescribed_pkg), SvCUR(prescribed_pkg)));
-}
-
-bool type_infos::allow_magic_storage() const
-{
-   dTHX;
-   SV* opts=PmArray(proto)[glue::PropertyType_cppoptions_index];
-   if (SvROK(opts)) {
-      SV* builtin=PmArray(opts)[glue::CPPOptions_builtin_index];
-      return !SvTRUE(builtin);
-   }
-   return false;
+   proto=glue::call_func_scalar(aTHX_ glue::fetch_typeof_gv(aTHX_ SvPVX(prescribed_pkg), SvCUR(prescribed_pkg)), true);
+   magic_allowed=true;
 }
 
 namespace {
 
-SV* resolve_auto_function_cv=NULL;
-SV* fake_args_ref=NULL;
-AV* fake_args=NULL;
+SV* resolve_auto_function_cv=nullptr;
+SV* fake_args_ref=nullptr;
+AV* fake_args=nullptr;
 
 }
 
@@ -117,8 +107,8 @@ wrapper_type type_cache_base::get_function_wrapper(SV* src, SV* dst_descr, int a
 {
    dTHX; dSP;
    SV* auto_func=PmArray(GvSV(glue::CPP_root))[auto_func_index];
-   wrapper_type ret=NULL;
-   if (resolve_auto_function_cv == NULL) {
+   wrapper_type ret=nullptr;
+   if (!resolve_auto_function_cv) {
       resolve_auto_function_cv=(SV*)get_cv("Polymake::Core::CPlusPlus::resolve_auto_function", FALSE);
       fake_args=newAV();
       av_extend(fake_args,2);
@@ -148,17 +138,17 @@ wrapper_type type_cache_base::get_function_wrapper(SV* src, SV* dst_descr, int a
 
 wrapper_type type_cache_base::get_conversion_operator(SV* src, SV* dst_descr)
 {
-   return dst_descr != NULL ? get_function_wrapper(src, dst_descr, glue::CPP_auto_conversion_index) : NULL;
+   return dst_descr ? get_function_wrapper(src, dst_descr, glue::CPP_auto_conversion_index) : nullptr;
 }
 
 wrapper_type type_cache_base::get_conversion_constructor(SV* src, SV* dst_descr)
 {
-   return dst_descr != NULL ? get_function_wrapper(src, dst_descr, glue::CPP_auto_convert_constructor_index) : NULL;
+   return dst_descr ? get_function_wrapper(src, dst_descr, glue::CPP_auto_convert_constructor_index) : nullptr;
 }
 
 wrapper_type type_cache_base::get_assignment_operator(SV* src, SV* dst_descr)
 {
-   return dst_descr != NULL ? get_function_wrapper(src, dst_descr, glue::CPP_auto_assignment_index) : NULL;
+   return dst_descr ? get_function_wrapper(src, dst_descr, glue::CPP_auto_assignment_index) : nullptr;
 }
 
 namespace {

@@ -18,8 +18,11 @@
 
 #include "polymake/Graph.h"
 #include "polymake/Integer.h"
+#include "polymake/Matrix.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
+#include "polymake/TropicalNumber.h"
 #include "polymake/Vector.h"
 #include "polymake/client.h"
 
@@ -56,5 +59,10 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_X, EdgeMap< Undirected, Vector< QuadraticExtension< Rational > > >, perl::Canned< const Graph< Undirected > >);
    Class4perl("Polymake::common::EdgeMap_A_Undirected_I_QuadraticExtension__Rational_Z", EdgeMap< Undirected, QuadraticExtension< Rational > >);
    FunctionInstance4perl(new_X, EdgeMap< Undirected, QuadraticExtension< Rational > >, perl::Canned< const Graph< Undirected > >);
+   Class4perl("Polymake::common::EdgeMap_A_Undirected_I_Vector__Float_Z", EdgeMap< Undirected, Vector< double > >);
+   Class4perl("Polymake::common::EdgeMap_A_Undirected_I_PuiseuxFraction_A_Max_I_Rational_I_Rational_Z_Z", EdgeMap< Undirected, PuiseuxFraction< Max, Rational, Rational > >);
+   Class4perl("Polymake::common::EdgeMap_A_Undirected_I_PuiseuxFraction_A_Min_I_Rational_I_Rational_Z_Z", EdgeMap< Undirected, PuiseuxFraction< Min, Rational, Rational > >);
+   Class4perl("Polymake::common::EdgeMap_A_Undirected_I_Vector__PuiseuxFraction_A_Max_I_Rational_I_Rational_Z_Z", EdgeMap< Undirected, Vector< PuiseuxFraction< Max, Rational, Rational > > >);
+   Class4perl("Polymake::common::EdgeMap_A_Undirected_I_Vector__PuiseuxFraction_A_Min_I_Rational_I_Rational_Z_Z", EdgeMap< Undirected, Vector< PuiseuxFraction< Min, Rational, Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

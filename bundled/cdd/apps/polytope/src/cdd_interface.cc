@@ -26,7 +26,7 @@ int solver_count = 0;
 template <> inline
 Rational cdd_lp_sol<Rational>::optimal_value() const
 {
-   return Rational(ptr->optvalue);
+   return Rational(std::move(ptr->optvalue));
 }
 
 template class cdd_matrix<Rational>;

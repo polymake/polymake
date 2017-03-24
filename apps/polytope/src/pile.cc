@@ -42,7 +42,6 @@ perl::Object pile(const Vector<int>& sizes)
       *V_i = 1 | *x | (sqr(*x) / factor);
 
    p.take("VERTICES") << V;
-   p.take("LINEALITY_SPACE") << Matrix<Rational>();
    p.take("N_VERTICES") << n;
    return p;
 }

@@ -25,9 +25,13 @@ object Ideal {
    property DEPTH : Int;
 
    # @category Commutative algebra
-   # The dimension of the ideal, i.e. the Krull dimension of [[RING]]/Ideal.
+   # The dimension of the ideal, i.e. the Krull dimension of Polynomial ring/Ideal.
    # @depends singular
    property DIM : Int;
+
+	# @category Commutative algebra
+	# The number of variables of the polynomial ring containing the ideal.
+	property N_VARIABLES : Int;
 
    # @category Input properties
    # A set of generators usually given by the user and not unique.
@@ -76,10 +80,6 @@ object Ideal {
    property RADICAL : Ideal;
 
    # @category Commutative algebra
-   # The ambient (polynomial) ring containing the ideal.
-   property RING : Ring;
-
-   # @category Commutative algebra
    # True if the ideal is the zero ideal.
    property ZERO : Bool;
 }
@@ -100,15 +100,25 @@ object Groebner {
    # @depends singular
    property INITIAL_IDEAL : Ideal;
 
+   # @category Commutative algebra
+   # The initial forms of all polynomials in the [[BASIS]], with respect to either the [[ORDER_VECTOR]] or
+   # the first row of the [[ORDER_MATRIX]].
+   # @depends singular
+   property INITIAL_FORMS : Array<Polynomial>;
+
    # @category Input properties
    # The matrix defining the monomial ordering.
+   # For performance reasons this is realized via several weight vectors preceding a lexicographic order.
+   # (Singular: a(row), a(row),...,lp)
    #
    # Note that only one of [[ORDER_MATRIX]], [[ORDER_VECTOR]], [[ORDER_NAME]]
    # should be given.
    property ORDER_MATRIX : Matrix<Int>;
    
    # @category Input properties
-   # A weight vector for the monomial ordering.
+   # A weight vector for the monomial ordering, a reverse lexicographic order will be used
+   # as tie-breaker. (Singular: wp(vector))
+   # This vector is expected to consist of positive integers only.
    #
    # Note that only one of [[ORDER_MATRIX]], [[ORDER_VECTOR]], [[ORDER_NAME]]
    # should be given.
@@ -116,7 +126,7 @@ object Groebner {
    
    # @category Input properties
    # A string containing the name of the monomial ordering. Currently we follow
-   # the singular conventions, i.e. dp, lex, ds, etc.
+   # the singular conventions, i.e. dp, lp, rp, ds, etc.
    #
    # Note that only one of [[ORDER_MATRIX]], [[ORDER_VECTOR]], [[ORDER_NAME]]
    # should be given.

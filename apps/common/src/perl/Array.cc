@@ -17,8 +17,20 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/Array.h"
+#include "polymake/Bitset.h"
 #include "polymake/Graph.h"
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Integer.h"
+#include "polymake/Matrix.h"
+#include "polymake/Polynomial.h"
+#include "polymake/Rational.h"
+#include "polymake/Set.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/Vector.h"
 #include "polymake/client.h"
+#include "polymake/hash_map"
+#include "polymake/hash_set"
+#include "polymake/list"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -28,13 +40,8 @@ namespace polymake { namespace common { namespace {
       WrapperReturnNew(T0, (arg0.get<T1>()) );
    };
 
-   template <typename T0>
-   FunctionInterface4perl( new, T0 ) {
-      WrapperReturnNew(T0, () );
-   };
-
-   Class4perl("Polymake::common::Array__Float", Array< double >);
-   FunctionInstance4perl(new_X, Array< double >, perl::Canned< const EdgeMap< Undirected, double > >);
-   FunctionInstance4perl(new, Array< double >);
+   OperatorInstance4perl(assign, Array< Array< Array< int > > >, perl::Canned< const Array< Set< Array< int > > > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const Array< hash_map< Bitset, Rational > > >, perl::Canned< const Array< hash_map< Bitset, Rational > > >);
+   FunctionInstance4perl(new_X, Array< Set< int > >, perl::Canned< const Array< hash_set< int > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

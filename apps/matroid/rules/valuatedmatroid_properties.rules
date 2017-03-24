@@ -1,0 +1,72 @@
+#  Copyright (c) 1997-2015
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object ValuatedMatroid {
+
+  ### PROPERTIES ###
+
+
+  # @category Valuation
+  # Defines a valuation on each basis. Entry number i is a valuation on 
+  # the i-th element of [[BASES]]. Must fulfill the tropical Plücker relations.
+  property VALUATION_ON_BASES : Vector<TropicalNumber<Addition,Scalar>> {
+    sub canonical { &canonicalize_tropical_rays; }
+  };
+  
+  # @category Valuation
+  # Defines a valuation on each circuit. Row i is a representative of 
+  # the i-th element of [[CIRCUITS]]. Must fulfill the tropical circuit
+  # valuation axioms. The representative is normalized such that the first
+  # non-tropical-zero entry is 0.
+  property VALUATION_ON_CIRCUITS : Matrix<TropicalNumber<Addition,Scalar>> {
+    sub canonical { &canonicalize_tropical_rays; }
+  };
+
+  # @category Combinatorics 
+  # This is the matroid subdivision of [[POLYTOPE]] according to the lifting defined by 
+  # [[VALUATION_ON_BASES]] (or minus [[VALUATION_ON_BASES]] in the case of max).
+  property SUBDIVISION : Array<Set<Int>> {
+      sub equal {
+          defined(eval { find_permutation(@_) })
+      }
+  }
+ 
+  ### RULES ###
+  
+  rule VALUATION_ON_BASES : N_ELEMENTS, BASES, CIRCUITS, VALUATION_ON_CIRCUITS {
+    valuated_bases_from_circuits($this);
+  }
+  
+  rule VALUATION_ON_CIRCUITS  : N_ELEMENTS, BASES, CIRCUITS, VALUATION_ON_BASES {
+    valuated_circuits_from_bases($this);
+  }
+  
+  rule CIRCUITS, N_ELEMENTS : VALUATION_ON_CIRCUITS {
+    circuits_supports($this);
+  }
+  
+  rule SUBDIVISION : POLYTOPE, VALUATION_ON_BASES {
+      my $v = Addition->orientation * (new Vector<Scalar>($this->VALUATION_ON_BASES));
+      $this->SUBDIVISION = polytope::regular_subdivision($this->POLYTOPE->VERTICES, $v);
+  }
+  
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:
+

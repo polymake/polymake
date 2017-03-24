@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -27,9 +27,32 @@ property MONOMIALS : Matrix<Int>;
 
 property COEFFICIENTS : Vector<TropicalNumber<Addition>>;
 
+# permuting [[MONOMIALS]] and [[COEFFICIENTS]]
+permutation TermPerm : PermBase;
+
+rule TermPerm.PERMUTATION : TermPerm.MONOMIALS, MONOMIALS {
+   $this->TermPerm->PERMUTATION=find_matrix_row_permutation($this->TermPerm->MONOMIALS, $this->MONOMIALS);
+}
+
+rule MONOMIALS : TermPerm.MONOMIALS, TermPerm.PERMUTATION {
+   $this->MONOMIALS=permuted_rows($this->TermPerm->MONOMIALS, $this->TermPerm->PERMUTATION);
+}
+weight 1.10;
+
+
+rule COEFFICIENTS : TermPerm.COEFFICIENTS, TermPerm.PERMUTATION {
+   $this->COEFFICIENTS=permuted($this->TermPerm->COEFFICIENTS, $this->TermPerm->PERMUTATION);
+}
+weight 1.10;
+
 # Indices of [[MONOMIALS]] which do not define facets of the [[DOME]].
 
 property REDUNDANT_MONOMIALS : Set;
+
+rule REDUNDANT_MONOMIALS : TermPerm.REDUNDANT_MONOMIALS, TermPerm.PERMUTATION {
+   $this->REDUNDANT_MONOMIALS=permuted($this->TermPerm->REDUNDANT_MONOMIALS, $this->TermPerm->PERMUTATION);
+}
+weight 1.10;
 
 # The __dome__ of a tropical polynomial \(F:\mathbb R^d\to\mathbb R\) (and the corresponding tropical hypersurface) is the set 
 # \[D(F)=\left\{(p,s)\in\mathbb R^{d+1}\mid p\in\mathbb R^d, s\in\mathbb R, s \oplus F(p) = s\right\}.\]
@@ -52,10 +75,10 @@ rule MONOMIALS, COEFFICIENTS : POLYNOMIAL {
    $this->COEFFICIENTS=$p->coefficients_as_vector();
 }
 weight 0.10;
+incurs TermPerm;
 
 rule POLYNOMIAL : MONOMIALS, COEFFICIENTS {
-   my $ring = new Ring<TropicalNumber<Addition> >($this->MONOMIALS->cols());
-   $this->POLYNOMIAL = new Polynomial<TropicalNumber<Addition> >($this->MONOMIALS, $this->COEFFICIENTS,$ring);
+   $this->POLYNOMIAL = new Polynomial<TropicalNumber<Addition> >($this->COEFFICIENTS, $this->MONOMIALS);
 }
 weight 0.10;
 
@@ -65,22 +88,33 @@ rule DOME, PROJECTIVE_VERTICES, LINEALITY_SPACE, FAR_VERTICES, MAXIMAL_POLYTOPES
 
 
 
+# @category Combinatorics
 # Subdivision of the Newton polytope dual to the tropical hypersurface.
 # The vertices of this PolyhedralComplex are the non-redundant [[MONOMIALS]].
-# @return fan::PolyhedralComplex<Rational>
-user_method dual_subdivision : MONOMIALS, REDUNDANT_MONOMIALS, REGIONS, FAR_VERTICES {
+# @return fan::SubdivisionOfPoints
+user_method dual_subdivision : MONOMIALS, COEFFICIENTS {
    my $this=shift;
-   my $red=$this->REDUNDANT_MONOMIALS;
-   my $n=$this->MONOMIALS->rows()-$red->size();
-   my $homogenized=new Matrix<Rational>((new Vector<Int>(ones_vector($n)))|$this->MONOMIALS->minor(~$red,All));
-   my $d=$homogenized->cols();
-   my $dual_cells=transpose(new IncidenceMatrix($this->REGIONS));
-   new fan::PolyhedralComplex<Rational>(VERTICES=>$homogenized,
-                                        MAXIMAL_POLYTOPES=>$dual_cells->minor(~$this->FAR_VERTICES,All),
-                                        LINEALITY_SPACE=>[],
-                                        FAN_AMBIENT_DIM=>$d);
+   my $homog = ones_vector($this->MONOMIALS->rows()) | new Matrix($this->MONOMIALS);
+   my $rat_coeff = new Vector<Rational>($this->COEFFICIENTS);
+   return new fan::SubdivisionOfPoints( POINTS=> $homog, WEIGHTS=> Addition->orientation() * $rat_coeff);
 }
 
+# @category Topology
+# The topological genus of a onedimensional hypersurface, i.e. the number of
+# interior lattice points that occur in the dual subdivision.
+user_method GENUS : MONOMIALS, REDUNDANT_MONOMIALS {
+   my $this = shift;
+   my $homog = ones_vector($this->MONOMIALS->rows()) | new Matrix($this->MONOMIALS);
+   my $interior = (new polytope::Polytope(POINTS=>$homog))->INTERIOR_LATTICE_POINTS->minor(All,~[0]);
+   my $interior_set = new Set<Vector<Integer> >(@{rows($interior)});
+   my $monomial_set = new Set<Vector<Integer> >(@{rows($this->MONOMIALS)});
+   my $redundant = new Matrix<Integer>($this->MONOMIALS->minor($this->REDUNDANT_MONOMIALS,All));
+   my $redundant_set = new Set<Vector<Integer> >(@{rows($redundant)});
+   return ($interior_set*$monomial_set - $redundant_set)->size();
+}
+precondition : PROJECTIVE_DIM {
+   $this->PROJECTIVE_DIM == 1 
+}
 
 
 } # object Hypersurface

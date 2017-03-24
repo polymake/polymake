@@ -1,0 +1,352 @@
+# Copyright (c) 2013-2016 Silke Horn, Andreas Paffenholz
+# http://solros.de/polymake/poly_db
+# http://www.mathematik.tu-darmstadt.de/~paffenholz
+# 
+# This file is part of the polymake extension polyDB.
+# 
+# polyDB is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# polyDB is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with polyDB.  If not, see <http://www.gnu.org/licenses/>.
+
+use Term::ANSIColor;
+
+# @category Database
+# Print information about available databases and collections.
+# @option String db name of the database, default: all available databases
+# @option String collection name of the collection, default: all available collections
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @option String username Some databases might have access control.
+user_function db_info ({db => undef, collection => undef, local => 0, username => $db_user}) {
+
+	my $options = shift;
+	
+	my $client = get_client($options->{local},"","");
+		
+	my $idb = $client->get_database($db_info_db);
+	my $icol = $idb->get_collection("Info");
+
+	my %query = ();
+	my %db_query = ('$or' => [{"users"=>$options->{username}}, {"users"=>"polymake"}] );
+	$db_query{"col"} = "db_info";
+	if (defined($options->{db})) {
+		$db_query{"db"} = $options->{db};
+	}
+	if (defined($options->{collection})) {
+		$query{"col"} = $options->{collection};
+	}
+
+	my $dbs = $icol->find(\%db_query)->sort({"db"=>1});
+
+	while (my $db_cursor = $dbs->next) {
+		my $current_db = $db_cursor->{db};
+		$query{"db"} = $current_db;
+		my $search = $icol->find(\%query)->sort({"col"=>1});
+
+		if (!$search->has_next) {next;}
+		
+		print colored ['red'], "DATABASE: ".$current_db."\n";
+		print $db_cursor->{description}."\n\n";
+		
+		while (my $col_cursor = $search->next) {
+			if ($col_cursor->{col} eq "db_info") {next;}
+			print colored ['blue'], "Collection: ".$col_cursor->{col}."\n";
+			print $col_cursor->{description}."\n\n";
+		}
+		print "__________________\n\n";
+	}
+
+	undef $client;
+}
+
+
+# @category Database
+# Returns a list of available databases and collections (in the form db.collection).
+# @option String db name of the database, default: all available databases
+# @option String collection name of the collection, default: all available collections
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @option String username
+# @return Array
+user_function db_get_list_db_col ({db => undef, collection => undef, local => 0, username => $db_user}) {
+	my $options = shift;
+	
+	my $client = get_client($options->{local},"","");
+		
+	my $idb = $client->get_database($db_info_db);
+	my $icol = $idb->get_collection("Info");
+
+	my @ret = ();
+
+	my %query = ();
+	my %db_query = ('$or' => [{"users"=>$options->{username}}, {"users"=>"pm"}] );
+	$db_query{"col"} = "db_info";
+	if (defined($options->{db})) {
+		$db_query{"db"} = $options->{db};
+	}
+	if (defined($options->{collection})) {
+		$query{"col"} = $options->{collection};
+	}
+
+	my $dbs = $icol->find(\%db_query)->sort({"db"=>1});
+
+	while (my $db_cursor = $dbs->next) {
+		my $current_db = $db_cursor->{db};
+		$query{"db"} = $current_db;
+		my $search = $icol->find(\%query)->sort({"col"=>1});
+
+		if (!$search->has_next) {next;}
+				
+		while (my $col_cursor = $search->next) {
+			if ($col_cursor->{col} eq "db_info") {next;}
+			push @ret, $current_db.".".$col_cursor->{col};
+		}
+	}
+
+	undef $client;
+	
+	return \@ret;
+}
+
+# @category Database
+# Returns a list of available databases.
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @option String username
+# @return Array
+user_function db_get_list_db ({local => 0, username => $db_user}) {
+	my $options = shift;
+	
+	my $client = get_client($options->{local},"","");
+		
+	my $idb = $client->get_database($db_info_db);
+	my $icol = $idb->get_collection("Info");
+
+	my @ret = ();
+
+	my %query = ();
+	my %db_query = ('$or' => [{"users"=>$options->{username}}, {"users"=>"polymake"}] );
+	$db_query{"col"} = "db_info";
+
+	my $dbs = $icol->find(\%db_query)->sort({"db"=>1});
+
+	while (my $db_cursor = $dbs->next) {
+		push @ret, $db_cursor->{db};
+	}
+
+	undef $client;
+	
+	return \@ret;
+}
+
+# @category Database
+# Returns a list of all collections in the database //db//.
+# @param String db name of the database
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @option String username
+# @return Array
+user_function db_get_list_col_for_db ($, {local => 0, username => $db_user}) {
+	my ($db, $options) = @_;
+	
+	my $client = get_client($options->{local},"","");
+		
+	my $idb = $client->get_database($db_info_db);
+	my $icol = $idb->get_collection("Info");
+
+	my @ret = ();
+
+	my %query = ();
+
+	$query{"db"} = $db;
+	my $search = $icol->find(\%query)->sort({"col"=>1});
+			
+	while (my $col_cursor = $search->next) {
+		if ($col_cursor->{col} eq "db_info") {next;}
+		push @ret, $col_cursor->{col};
+	}
+
+	undef $client;
+	
+	return \@ret;
+}
+
+
+
+# @category Database Admin
+# Set or update the information for database //db//. You need write access for this.
+# @param String db name of the database
+# @param String description
+# @option Array users usernames that have read access; if you do not specify this, the list will remain unchanged; for a new database the default is ["pm"] (read access for everyone)
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @option String username
+# @option String password
+user_function set_db_info ($, $, {users => undef, local => 0, username => $db_user, password => $db_pwd}) {
+
+	my ($db, $desc, $options) = @_;
+
+	my $client = get_client($options);
+		
+	my $idb = $client->get_database($db_info_db);
+	my $icol = $idb->get_collection("Info");
+
+	my $search = $icol->find_one({'db'=>$db, 'col'=>"db_info"});
+
+
+	my $users;
+	if ($search) {
+		unless (defined($users = $options->{users})) {
+			$users = $search->{users};
+		}
+
+		my $output = $icol->update({'db'=>$db, 'col'=>"db_info"}, { '$set' => {'description'=>$desc, 'users'=>$users} });
+
+		if ($output->{ok}) {
+			print "Successfully updated information for database $db:\n";
+			print "Description: $desc\n";
+			print "Users with read access: ".join(", ", @{$users})."\n\n";
+		} else {
+			print "an error occurred when trying to update description for database $db\n";
+		}
+	} else {
+		unless (defined($users = $options->{users})) {
+			$users = ["pm"];
+		}
+
+		my $output = $icol->insert_one({'db'=>$db, 'col'=>"db_info", 'description'=>$desc, 'users'=>$users});
+
+		if ($output->acknowledged) {
+			print "Successfully set information for database $db:\n";
+			print "Description: $desc\n";
+			print "Users with read access: ".join(", ", @{$users})."\n\n";
+		} else {
+			print "an error occurred when trying to set description for database $db\n";
+		}
+	}
+
+	
+	undef $client;
+}
+
+# @category Database Admin
+# Add a user to database //db//. Note that this only affects the user's output for [[db_info]], [[db_list]] etc and the tabcompletion. It does not create the user.
+# You need write access for this.
+# @param String db name of the database
+# @param String user
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @option String username
+# @option String password
+function add_user_to_db ($, $, {local => 0, username => $db_user, password => $db_pwd}){
+	my ($db, $user, $options) = @_;
+	
+	
+	my $client = get_client($options);
+		
+	my $idb = $client->get_database($db_info_db);
+	my $icol = $idb->get_collection("Info");
+
+	my $search = $icol->find_one({'db'=>$db, 'col'=>"db_info"});
+
+
+	if ($search) {
+		my $users = $search->{users};
+		push @$users, $user;
+		my $output = $icol->update({'db'=>$db, 'col'=>"db_info"}, { '$set' => {'users'=>$users} });
+
+		if ($output->{ok}) {
+			print "Successfully added user $user to database $db.\n";
+			print "Users with read access: ".join(", ", @{$users})."\n\n";
+		} else {
+			print "an error occurred when trying to user $user to database $db\n";
+		}
+	} else {
+		croak("There is no type information for database $db");
+	}
+	undef $client;
+}
+
+# @category Database Admin
+# Set the information for collection //col// in database //db//. You need write access for this.
+# @param String db name of the database
+# @param String collection name of the collection
+# @param String description
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @option String username
+# @option String password
+user_function set_col_info ($, $, $, {local => 0, username => $db_user, password => $db_pwd}) {
+
+	my ($db, $col, $desc, $options) = @_;
+	
+	my $client = get_client($options);
+		
+	my $idb = $client->get_database($db_info_db);
+	my $icol = $idb->get_collection("Info");
+
+	my $search = $icol->find_one({'db'=>$db, 'col'=>$col});
+
+
+	if ($search) {
+		my $output = $icol->update({'db'=>$db, 'col'=>$col}, { '$set' => {'description'=>$desc} });
+
+		if ($output->{ok}) {
+			print "Successfully updated information for collection $db.$col:\n";
+			print "Description: $desc\n";
+		} else {
+			print "an error occurred when trying to update description for collection $db.$col\n";
+		}
+	} else {
+		my $output = $icol->save({'db'=>$db, 'col'=>$col, 'description'=>$desc});
+
+		if ($output->{ok}) {
+			print "Successfully set information for collection $db.$col:\n";
+			print "Description: $desc\n";
+		} else {
+			print "an error occurred when trying to set description for collection $db.$col\n";
+		}
+	}
+	
+	undef $client;
+}
+
+
+# @category Database Admin
+# Returns the description of //db//.
+# @param String db name of the database
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @return String
+function get_db_info {
+	my ($db, $options) = @_;
+	return get_col_info($db, "db_info", $options);
+}
+
+# @category Database Admin
+# Returns the description of collection //col// in //db//.
+# @param String db name of the database
+# @param String col name of the collection
+# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
+# @return String
+function get_col_info {
+	my ($db, $col, $options) = @_;
+
+	my $client = get_client($options->{local},"","");
+		
+	my $idb = $client->get_database($db_info_db);
+	my $icol = $idb->get_collection("Info");
+
+	my %db_query = ();
+	$db_query{"col"} = $col;
+	$db_query{"db"} = $db;
+
+	my $doc = $icol->find_one(\%db_query);
+
+	undef $client;
+
+	return $doc->{description};
+}
+
+

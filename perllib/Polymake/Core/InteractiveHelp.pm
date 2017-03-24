@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2017
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -24,7 +24,7 @@ package Polymake::Core::InteractiveHelp;
 
 use Polymake::Struct (
    [ new => ';$$$' ],
-   [ '$parent' => 'weak( #1 )' ],
+   [ '$parent' => 'weak(#1)' ],
    [ '$name' => '#2' ],
    '$category',
    [ '$text' => '#3' ],
@@ -66,19 +66,31 @@ sub spez_topic { undef }
 
 #################################################################################
 my $stripped=qr{ [ \t]* (.*(?<!\s)) [ \t]*\n }xm;
+my $help_line_start=qr{^[ \t]*\#[ \t]*}m;
 
 sub add {
    my ($self, $path, $text, $signature)=@_;
    unless (is_ARRAY($path)) {
       $path=[ split m'/', $path ];
    }
-   my $defined_at;
+   my ($source_file, $source_line, @example_start_lines);
    if ($store_provenience) {
-      my @where=(caller)[1,2];
-      if ($where[0] =~ /InteractiveHelp\.pm/) {
-         @where=(caller(1))[1,2];
+      ($source_file, $source_line)=(caller)[1,2];
+      if ($source_file =~ /(?:ObjectType|InteractiveHelp)\.pm/) {
+         ($source_file, $source_line)=(caller(1))[1,2];
       }
-      $defined_at=join(", line ", @where);
+
+      if ($text =~ /\@example\s/) {
+         my @lines=split /\n/, $text;
+         # in embedded rules, compiler sees everything on a single (last) line because of a macro
+         my $line = $source_file =~ /\.(?:cc|cpp|C|h|hh|H)$/ ? $source_line-@lines : $source_line;
+         foreach (@lines) {
+            if (/$help_line_start \@example\s /xo) {
+               push @example_start_lines, $line;
+            }
+            ++$line;
+         }
+      }
    }
 
    my ($cat, @related, %annex, $top);
@@ -87,14 +99,14 @@ sub add {
          # can happen if some undocumented declaration immediately follows the rule file header
          $text = "UNDOCUMENTED\n";
       } else {
-         $text =~ s/^\s*\#\s* \@notest \s*$//xmi;
+         $text =~ s/$help_line_start \@notest \s*$//xomi;
 
-         if ($text =~ s/^\s*\#\s* \@category $stripped//xomi) {
+         if ($text =~ s/$help_line_start \@category $stripped//xomi) {
             splice @$path, -1, 0, $1;
             $cat=1;
          }
 
-         if ($text =~ s/^\s*\#\s* \@relates \s+ $stripped//xomi) {
+         if ($text =~ s/$help_line_start \@relates \s+ $stripped//xomi) {
             my $related=$1;
             $top=$self->top;
             @related=map {
@@ -110,7 +122,7 @@ sub add {
          }
 
          my ($opt_group, @option_lists);
-         while ($text =~ s/^\s*\#\s* \@($id_re) [ \t]+ ( .*\n (?:^ (?>\s*\#[ \t]*) (?! \@$id_re) .*\n)* )//xom) {
+         while ($text =~ s/$help_line_start \@($id_re) [ \t]+ ( .*\n (?:(?>$help_line_start) (?! \@$id_re) .*\n)* )//xom) {
             my ($tag, $value)=(lc($1), $2);
             sanitize_help($value);
 
@@ -181,10 +193,17 @@ sub add {
                   croak( "help tag \@$tag '$value' does not start with valid type and name" );
                }
                $annex{function}=0 if $tag eq "option";
+
             } elsif ($tag eq "depends") {
-               $annex{$tag}= $value;
+               $annex{$tag}=$value;
+
             } elsif ($tag eq "example") {
-               push @{$annex{"examples"}}, $value;
+               my @hints;
+               while ($value =~ s/^\s*\[(.*?)\]\s*//s) {
+                  push @hints, $1;
+               }
+               push @{$annex{examples}}, new Example($value, $source_file, shift(@example_start_lines), @hints);
+
             } else {
                croak( "unknown help tag \@$tag" );
             }
@@ -223,7 +242,7 @@ sub add {
          } else {
             push @{$self->toc}, $_;
             $self=$self->topics->{$_}=new Help($self, $_);
-            $self->defined_at=$defined_at;
+            $self->defined_at="$source_file, line $source_line";
          }
       }
 
@@ -303,7 +322,7 @@ sub add {
 
       $self=($self->topics->{$topic}=new Help($self, $topic, $text));
       $self->category= $signature eq "category";
-      $self->defined_at=$defined_at;
+      $self->defined_at="$source_file, line $source_line";
 
    } else {
       if (length($self->text)) {
@@ -323,171 +342,90 @@ sub add_tparams {
    $self->annex->{tparam} //= [ map { [ $_ ] } @_ ];
 }
 #################################################################################
-*clean_text=\&InteractiveCommands::clean_text;
-
-sub cleaned_text {
-   my $text=(shift)->text;
-   clean_text($text);
-   $text;
-}
-
 # for functions
-sub display_function_text {
-   my ($self, $parent, $full)=@_;
+sub write_function_text {
+   my ($self, $parent, $writer, $full)=@_;
    my ($tparams, $params, $options, $mandatory, $ellipsis, $return, $depends, $examples)=@{$self->annex}{qw(tparam param options mandatory ellipsis return depends examples)};
 
-   my $text=($parent // $self)->name;
+   my $header=($parent // $self)->name;
    if (defined $tparams) {
       if (@{$tparams->[0]} > 1) {
-         $text .= "<" . join(", ", map { $_->[0] } @$tparams) . ">";
+         $header .= "<" . join(", ", map { $_->[0] } @$tparams) . ">";
       } else {
          # undescribed type parameters just for checking purposes
          undef $tparams;
       }
    }
-   $text .= "(";
+   $header .= "(";
    if (defined $params) {
       if (defined $mandatory) {
-         $text .= join(", ", map { split /\s+/, $_->[1] } @{$params}[0..$mandatory])
-               . "; " . join(", ", map { split /\s+/, $_->[1] } @{$params}[$mandatory+1 .. $#$params]);
+         $header .= join(", ", map { split /\s+/, $_->[1] } @{$params}[0..$mandatory])
+                  . "; " . join(", ", map { split /\s+/, $_->[1] } @{$params}[$mandatory+1 .. $#$params]);
          if ($ellipsis) {
-            $text .= " ... ";
+            $header .= " ... ";
          }
          if (defined $options) {
-            $text .= ", " if $mandatory < $#$params;
-            $text .= "Options";
+            $header .= ", " if $mandatory < $#$params;
+            $header .= "Options";
          }
       } else {
-         $text .= join(", ", map { split /\s+/, $_->[1] } @$params);
+         $header .= join(", ", map { split /\s+/, $_->[1] } @$params);
       }
    } elsif (defined $options) {
-      $text .= "Options";
+      $header .= "Options";
    }
-   $text .= ")";
+   $header .= ")";
    if (defined $return) {
-      $text .= " -> $return->[0]";
+      $header .= " -> $return->[0]";
    }
-   $text .= "\n\n";
-   
-   if ($full) {
-      my $comment=display_spez($self) . ($self->text || $parent->text);
-      clean_text($comment);
-      $text .= $comment;
+   $writer->header($header."\n");
 
-      if ($tparams // $params) {
-         $text .= "\nArguments:\n";
-      }
-      if (defined $tparams) {
-         foreach (@$tparams) {
-            $comment=$_->[1];
-            clean_text($comment);
-            $comment =~ s/\n[ \t]*(?=\S)/\n    /g;
-            $text .= "  " . InteractiveCommands::underline($_->[0]) . " $comment";
-         }
+   if ($full) {
+      write_spez($self, $writer);
+      $writer->function_full($self->text || $parent->text);
+
+      if (defined($tparams) and
+          my @visible=grep { @$_ > 1 } @$tparams) {
+         $writer->function_type_params(@visible);
       }
       if (defined $params) {
-         foreach (@$params) {
-            $comment=$_->[2];
-            clean_text($comment);
-            $comment =~ s/\n[ \t]*(?=\S)/\n    /g;
-            my ($name)= $_->[1] =~ /^($id_re)/;
-            $text .= "  $_->[0] " . InteractiveCommands::underline($name) . " $comment";
-            if (defined (my $value_list=$_->[3])) {
-               $text .= "    Possible values:\n";
-               foreach my $value (@$value_list) {
-                  $comment=$value->[1];
-                  clean_text($comment);
-                  $text .= "      " . $value->[0] . " : $comment";
-               }
-            }
-         }
+         $writer->function_args($params);
       }
       if (defined $options) {
          foreach my $opt_group (@$options) {
             if (is_object($opt_group)) {
-               $comment=$opt_group->text;
-               clean_text($comment);
-               $text .= "\nOptions: $comment";
-               foreach my $topic ($opt_group, @{$opt_group->related}) {
-                  my $keys=$topic->annex->{keys} or next;
-                  foreach my $key (@$keys) {
-                     $comment=$key->[2];
-                     clean_text($comment);
-                     $comment =~ s/\n[ \t]*(?=\S)/\n    /g;
-                     $text .= "  " . InteractiveCommands::underline($key->[1]) . " => $key->[0] $comment";
-                  }
-               }
+               my $keys;
+               $writer->function_options($opt_group->text, map { defined($keys=$_->annex->{keys}) ? @$keys : () } $opt_group, @{$opt_group->related});
             } else {
-               $comment=local_shift($opt_group);
-               if (length($comment)) {
-                  clean_text($comment);
-                  $text .= "\nOptions: $comment";
-               } else {
-                  $text .= "\nOptions:\n";
-               }
-               foreach my $opt (@$opt_group) {
-                  $comment=$opt->[2];
-                  clean_text($comment);
-                  $comment =~ s/\n[ \t]*(?=\S)/\n    /g;
-                  $text .= "  " . InteractiveCommands::underline($opt->[1]) . " => $opt->[0] $comment";
-               }
+               my $comment=local_shift($opt_group);
+               $writer->function_options($comment, @$opt_group);
             }
          }
       }
-      if (defined $return) {
-         $comment=$return->[1];
-         clean_text($comment);
-         $comment =~ s/\n[ \t]*(?=\S)/\n    /g;
-         $text .= "\nReturns $return->[0] $comment\n";
-      }
+      $writer->function_return($return);
 
       if (defined $depends) {
-         clean_text($depends);
-         $text .= "Depends on:\n  $depends\n";
+         $writer->depends($depends);
       }
-
       if (defined $examples) {
-         $text .= display_examples_text($examples);
+         $writer->examples($examples);
       }
 
    } else {
-      # brief
+      my @options;
       if (defined $options) {
-         $text .= "Options:";
          foreach my $opt_group (@$options) {
             if (is_object($opt_group)) {
-               foreach my $topic ($opt_group, @{$opt_group->related}) {
-                  my $keys=$topic->annex->{keys} or next;
-                  foreach my $key (@$keys) {
-                     $text .= " ".$key->[1];
-                  }
-               }
+               my $keys;
+               push @options, map { defined($keys=$_->annex->{keys}) ? @$keys : () } $opt_group, @{$opt_group->related};
             } else {
                local_shift($opt_group);
-               foreach my $opt (@$opt_group) {
-                  $text .= " ".$opt->[1];
-               }
+               push @options, @$opt_group;
             }
          }
-         $text .= "\n\n";
       }
+      $writer->function_brief(map { $_->[1] } @options);
    }
-   $text
-}
-
-sub display_keys_text {
-   my ($self)=@_;
-   my $text="";
-   foreach my $topic ($self, @{$self->related}) {
-      my $keys=$topic->annex->{keys} or next;
-      foreach my $key (@$keys) {
-         my $comment=$key->[2];
-         clean_text($comment);
-         $comment =~ s/\n[ \t]*(?=\S)/\n    /g;
-         $text .= "  " . InteractiveCommands::underline($key->[1]) . " => $key->[0] $comment";
-      }
-   }
-   $text
 }
 
 sub display_text {
@@ -495,65 +433,53 @@ sub display_text {
    my $full;
    if (@_) {
       $full=shift;
-      $_[0]=!$full;
+      $_[0]=!$full && grep { defined } @{$self->annex}{qw(function depends examples)};
    } else {
       $full=1;
    }
+   my $writer=new HelpAsPlainText();
+   write_text($self, $writer, $full);
+   $writer->text
+}
+
+sub write_text {
+   my ($self, $writer, $full)=@_;
    if (defined (my $ovcnt=$self->annex->{function})) {
       if ($ovcnt) {
-         join($separator, map { $self->topics->{"overload#$_"}->display_function_text($self,$full) } 0..$ovcnt);
+         for (0..$ovcnt) {
+            $writer->add_separator($separator) if $_>0;
+            $self->topics->{"overload#$_"}->write_function_text($self, $writer, $full);
+         }
       } else {
-         display_function_text($self,$self,$full);
+         $self->write_function_text($self, $writer, $full);
       }
    } else {
-      my $text=$self->annex->{header} . display_spez($self) . $self->text;
-      if (length($text)) {
-         clean_text($text);
+      if (length(my $header=$self->annex->{header})) {
+         $writer->header($header);
       }
+      write_spez($self, $writer);
+      $writer->description($self->text);
       if (exists $self->annex->{keys}) {
-         $text .= "\n" . display_keys_text($self);
+         my $keys;
+         $writer->topic_keys(map { defined($keys=$_->annex->{keys}) ? @$keys : () } $self, @{$self->related});
       }
 
       if ($full) {
          if (defined (my $depends=$self->annex->{depends})) {
-            clean_text($depends);
-            $text .= "Depends on:\n  $depends\n";
+            $writer->depends($depends);
          }
-
          if (defined (my $examples=$self->annex->{examples})) {
-            $text .= display_examples_text($examples);
+            $writer->examples($examples);
          }
       }
-      $text
    }
 }
 
-sub display_spez {
-   my ($self)=@_;
+sub write_spez {
+   my ($self, $writer)=@_;
    if (defined (my $spez=$self->annex->{spez})) {
-      " Only defined for [[" . $spez->name . "]].\n"
+      $writer->specialized(" Only defined for [[" . $spez->name . "]].\n");
    }
-}
-
-sub display_examples_text {
-   my ($examples) = @_;
-   my $text = @$examples > 1 ? "Examples:\n" : "Example:\n";
-   my $prefix = @$examples > 1 ? "*) " : "   ";
-   foreach (@$examples) {
-      my $i = 0;
-      foreach my $line (split(/\n/, $_)) {
-         $text .= $i++ ? "  " : $prefix ;
-         if ($line =~ /^\s*\|/) {
-            $text .= " ".$'."\n";
-         } elsif ($line =~ /^\s*>/) {
-            $text .= " ".$line."\n";
-         } else {
-            clean_text($line);
-            $text .= $line;
-         }
-      }
-   }
-   $text
 }
 
 #################################################################################
@@ -671,15 +597,26 @@ sub argument_completions {
    }
 }
 #################################################################################
+sub get_examples {
+   my ($self)=@_;
+   if (defined (my $examples=$self->annex->{examples})) {
+      @$examples
+   } elsif (my $ovcnt=$self->annex->{function}) {
+      map { get_examples($self->topics->{"overload#$_"}) } 0..$ovcnt
+   } else {
+      ()
+   }
+}
+#################################################################################
 # => (min, max)
 sub expects_template_params {
    my ($self, $rec)=@_;
    if (defined (my $tparams=$self->annex->{tparam})) {
       ($self->annex->{min_tparam}, scalar @$tparams)
-   } elsif (!$rec && defined (my $ovcnt=$self->annex->{function})) {
+   } elsif (!$rec && (my $ovcnt=$self->annex->{function})) {
       my ($min_min, $max_max);
       my $ret;
-      foreach (0..$ovcnt-1) {
+      foreach (0..$ovcnt) {
          if (my ($min, $max)=expects_template_params($self->topics->{"overload#$_"}, 1)) {
             assign_min($min_min, $min);
             assign_max($max_max, $max);
@@ -697,7 +634,7 @@ sub return_type {
    if (defined (my $ret=$self->annex->{return})) {
       return $ret->[0];
    } elsif (my $ovcnt=$self->annex->{function}) {
-      foreach (0..$ovcnt-1) {
+      foreach (0..$ovcnt) {
          my $h=$self->topics->{"overload#$_"};
          if (defined ($ret=$h->annex->{return})) {
             return $ret->[0];
@@ -747,9 +684,21 @@ sub new_specialization {
 
 redefine Help;
 
-#################################################################################
+require Polymake::Core::HelpAsPlainText;
 
-package _::Specialization;
+#################################################################################
+package _::Example;
+
+use Polymake::Struct (
+   [ new => '$$$@' ],
+   [ '$body' => '#1' ],
+   [ '$source_file' => '#2' ],
+   [ '$source_line' => '#3' ],
+   [ '@hints' => '@' ],
+);
+
+#################################################################################
+package __::Specialization;
 
 use Polymake::Struct (
    [ new => '$$' ],
@@ -768,7 +717,6 @@ sub find { () }
 sub list_completions { () }
 
 1
-
 
 # Local Variables:
 # cperl-indent-level:3

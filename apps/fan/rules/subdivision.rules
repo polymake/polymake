@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2016
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -47,6 +47,54 @@ rule N_VECTORS : VECTORS {
     $this->N_VECTORS=$this->VECTORS->rows;
 }
 weight 0.10;
+
+rule N_MAXIMAL_CELLS : MAXIMAL_CELLS {
+   $this->N_MAXIMAL_CELLS = $this->MAXIMAL_CELLS->rows();
+}
+weight 0.10;
+
+# @category Geometry
+# Parameters for user method [[secondary_cone]].
+options %secondary_cone_options=(
+    # Matrix<Scalar> system of linear equation the cone is cut with
+    equations => undef,
+    # Set<Int> restrict lifting function to zero at points designated
+    lift_to_zero => undef,
+    # Bool restrict lifting functions to zero at the entire face spanned by points designated
+    lift_face_to_zero => undef,
+    # Bool throws an exception if subdivision is not regular
+    test_regularity => undef
+    );
+    
+# @category Geometry
+# The secondary cone is the polyhedral cone of all lifting functions on the [[VECTORS]] which induce the subdivision given by the [[MAXIMAL_CELLS]].
+# If the subdivision is not regular, the cone will be the secondary cone of the finest regular coarsening.
+# @return Cone<Scalar>
+user_method secondary_cone(%secondary_cone_options) : VECTORS, MAXIMAL_CELLS {
+    my ($self, $options) = @_;
+    my $vectors=$self->VECTORS;
+    my $cells=new Array<Set>(rows($self->MAXIMAL_CELLS));
+
+    my $n=$vectors->rows();
+    my $rank=rank($vectors);
+    if ($cells->size()==1 && $cells->[0]->size()==$n && $rank==$n) {
+        return new Cone<Scalar>(RAYS=>(new Matrix<Scalar>(0,$n)),
+                                CONE_AMBIENT_DIM=>$n,
+                                LINEALITY_SPACE=>unit_matrix<Scalar>($n));
+    }
+
+    my $sc_ineq=secondary_cone_ineq($vectors,$cells,$options);
+    my $sc=new Cone<Scalar>(INEQUALITIES=>$sc_ineq->first, EQUATIONS=>$sc_ineq->second);
+    if ($options->{test_regularity}) {
+        my $w=$sc->REL_INT_POINT;
+        my $slack=$sc_ineq->first*$w;
+        for (my $i=0; $i<$slack->dim; ++$i) {
+            die "subdivision not regular" if $slack->[$i]==0;
+        }
+    }
+    
+    return $sc;
+}
 
 }
 
@@ -99,6 +147,8 @@ rule MAXIMAL_CELLS : POINTS, WEIGHTS {
    $this->MAXIMAL_CELLS = polytope::regular_subdivision($this->POINTS, $this->WEIGHTS);
 }
 weight 3.10;
+incurs CellPerm;
+
 #
 rule REGULAR, WEIGHTS : POINTS, MAXIMAL_CELLS {
    my $pair = polytope::is_regular($this->POINTS, rows($this->MAXIMAL_CELLS));
@@ -108,10 +158,28 @@ rule REGULAR, WEIGHTS : POINTS, MAXIMAL_CELLS {
 }
 weight 3.10;
 
+rule TIGHT_SPAN.HASSE_DIAGRAM.ADJACENCY, TIGHT_SPAN.HASSE_DIAGRAM.DECORATION, TIGHT_SPAN.HASSE_DIAGRAM.INVERSE_RANK_MAP, \
+     TIGHT_SPAN.HASSE_DIAGRAM.TOP_NODE, TIGHT_SPAN.HASSE_DIAGRAM.BOTTOM_NODE : \
+     POLYHEDRAL_COMPLEX.MAXIMAL_POLYTOPES, POLYHEDRAL_COMPLEX.MAXIMAL_POLYTOPES_INCIDENCES, \
+     POLYHEDRAL_COMPLEX.MAXIMAL_POLYTOPES_COMBINATORIAL_DIMS, POLYHEDRAL_COMPLEX.COMBINATORIAL_DIM {
+   $this->TIGHT_SPAN->HASSE_DIAGRAM = tight_span_lattice_for_subdivision(
+      $this->POLYHEDRAL_COMPLEX->MAXIMAL_POLYTOPES,
+      $this->POLYHEDRAL_COMPLEX->MAXIMAL_POLYTOPES_INCIDENCES,
+      $this->POLYHEDRAL_COMPLEX->COMBINATORIAL_DIM);
+}
+weight 6.10;
 
+rule TIGHT_SPAN.VERTICES : MAXIMAL_CELLS, POINTS, WEIGHTS {
+   $this->TIGHT_SPAN->VERTICES = tight_span_vertices($this->POINTS, $this->MAXIMAL_CELLS, $this->WEIGHTS);
+}
+precondition : VECTOR_DIM, VECTOR_AMBIENT_DIM {$this->VECTOR_DIM+1 >= $this->VECTOR_AMBIENT_DIM}
+weight 3.10;
 
+rule TIGHT_SPAN.VERTEX_LABELS : TIGHT_SPAN.VERTICES {
+   $this->TIGHT_SPAN->VERTEX_LABELS = [0.. $this->TIGHT_SPAN->VERTICES->rows-1];
 }
 
+}
 
 object polytope::Polytope {
 
@@ -142,3 +210,9 @@ rule POLYTOPAL_SUBDIVISION.REFINED_SPLITS : SPLITS, POINTS, POLYTOPAL_SUBDIVISIO
 }
 
 }
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

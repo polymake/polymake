@@ -30,7 +30,7 @@ double minimal_vertex_angle(perl::Object p)
   
    SparseMatrix<double> tau=unit_matrix<double>(d);
    tau[0].slice(1)=-origin.slice(1);
-   perl::Object spherical_p=transform<double>(p, tau,false);
+   perl::Object spherical_p=transform<double>(p, tau, false);
    Matrix<double> spherical_V=spherical_p.give("VERTICES");
    spherical_V=spherical_V.minor(All,range(1,d-1));
   

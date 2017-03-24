@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2016
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -25,14 +25,14 @@ namespace polymake { namespace polytope {
 template <typename Scalar>
 perl::Object intersection(const Array<perl::Object>& pp_in)
 {
-   Entire< Array<perl::Object> >::const_iterator p_in=entire(pp_in);
+   auto p_in=entire(pp_in);
 
    if (p_in.at_end()) throw std::runtime_error("empty input");
 
    bool containsPolytope=false;
    bool containsCone=false;
    const int dim=p_in->give("CONE_AMBIENT_DIM");
-   ListMatrix< Vector<Scalar> > Inequalities(0,dim), Equations(0,dim);
+   ListMatrix< Vector<Scalar> > Inequalities(0, dim), Equations(0, dim);
    std::string descr_names;
 
    while (! p_in.at_end()) {
@@ -48,10 +48,10 @@ perl::Object intersection(const Array<perl::Object>& pp_in)
       }
 
       // take care of description
-      if(Inequalities.rows()!=0||Equations.rows()!=0)
+      if (!descr_names.empty())
          descr_names+=", ";
       descr_names+=p_in->name();
-      
+
       // append inequalities and equations
       try {
          const Matrix<Scalar>
@@ -62,25 +62,27 @@ perl::Object intersection(const Array<perl::Object>& pp_in)
       } catch(perl::undefined) {
          const Matrix<Scalar> AH=p_in->give("LINEAR_SPAN | EQUATIONS");
          Equations /= AH;
-      }         
+      }
 
       ++p_in;
    }
 
-   perl::ObjectType t=(containsPolytope)?(perl::ObjectType::construct<Scalar>("Polytope")):(perl::ObjectType::construct<Scalar>("Cone"));
+   perl::ObjectType t=perl::ObjectType::construct<Scalar>(containsPolytope ? Str("Polytope") : Str("Cone"));
    perl::Object p_out(t);
-        
+
    p_out.take("INEQUALITIES") << Inequalities;
    if (Equations.rows()) p_out.take("EQUATIONS") << Equations;
    p_out.take("CONE_AMBIENT_DIM") << dim;
-   
+
    if (containsCone) {
       if (containsPolytope)
          p_out.set_description() << "Intersection of cones and polytopes " << descr_names << endl;
       else
          p_out.set_description() << "Intersection of cones " << descr_names << endl;
-   } else // since input non-empty the only case left ...
+   } else {
+      // since input non-empty the only case left ...
       p_out.set_description() << "Intersection of polytopes " << descr_names << endl;
+   }
 
    return p_out;
 }
@@ -91,16 +93,17 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# If the input contains both cones and polytopes, the output will be a polytope."
                           "# @param Cone C ... polyhedra and cones to be intersected"
                           "# @return Cone"
-                          "# @example > $p = intersection(cube(2),cross(2,3/2));"
+                          "# @example [prefer cdd]"
+                          "# > $p = intersection(cube(2), cross(2,3/2));"
                           "# > print $p->VERTICES;"
-                          "# | 1 1 1/2 -1"
-                          "# | 1 1 1/2"
-                          "# | 1 1/2 1"
-                          "# | 1 1 -1/2"
                           "# | 1 -1/2 1"
                           "# | 1 -1 1/2"
-                          "# | 1 -1 -1/2"
-                          "# | 1 -1/2 -1",
+                          "# | 1 1/2 1"
+                          "# | 1 1 1/2"
+                          "# | 1 1/2 -1"
+                          "# | 1 1 -1/2"
+                          "# | 1 -1/2 -1"
+                          "# | 1 -1 -1/2",
                           "intersection<Scalar>(Cone<type_upgrade<Scalar>> +)");
 } }
 

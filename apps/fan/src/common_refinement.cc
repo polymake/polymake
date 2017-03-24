@@ -33,10 +33,9 @@ Array<perl::Object> construct_cones(const IncidenceMatrix<>& max_cones, const Ma
 
    const int size = max_cones.rows();
 
-   Array<perl::Object> all_cones(size, cone_type);
-   for (int i=0; i<max_cones.rows(); ++i) {
-      const Matrix<Coord> cone_vert=rays.minor(max_cones[i], All);
-      all_cones[i].take("RAYS") << cone_vert;
+   Array<perl::Object> all_cones(cone_type, size);
+   for (int i=0; i<size; ++i) {
+      all_cones[i].take("RAYS") << rays.minor(max_cones[i], All);
       all_cones[i].take("LINEALITY_SPACE") << lin_space;
       all_cones[i].take("CONE_AMBIENT_DIM") << ambient_dim;
    }
@@ -85,20 +84,20 @@ perl::Object common_refinement(perl::Object f1, perl::Object f2)
    Array<perl::Object> all_cones1 = construct_cones(max_cones1, rays1, lineality_space1, ambient_dim);
    Array<perl::Object> all_cones2 = construct_cones(max_cones2, rays2, lineality_space2, ambient_dim);
 
-   for (Entire<Array<perl::Object> >::iterator i1=entire(all_cones1); !i1.at_end(); ++i1) {
-      for (Entire<Array<perl::Object> >::iterator i2=entire(all_cones2); !i2.at_end(); ++i2) {
-         perl::Object inters=CallPolymakeFunction("intersection", *i1, *i2);
+   for (auto i1=entire(all_cones1); !i1.at_end(); ++i1) {
+      for (auto i2=entire(all_cones2); !i2.at_end(); ++i2) {
+         perl::Object inters=call_function("intersection", *i1, *i2);
          const int inters_dim=inters.give("CONE_DIM");
          if (inters_dim==d || !complete) {
             Matrix<Coord> inters_rays=inters.give("RAYS");
             project_to_orthogonal_complement(inters_rays, lineality_space);
             Array<int> ray_indices(inters_rays.rows());
             int index=0;
-            for (typename Entire<Rows<Matrix<Coord> > >::const_iterator i=entire(rows(inters_rays)); !i.at_end(); ++i,++index) {
-         
+            for (auto i=entire(rows(inters_rays)); !i.at_end(); ++i, ++index) {
+
                const Vector<Coord> ray=*i;
-               const typename hash_map<Vector<Coord>,int>::iterator rep=ray_map.find(ray);
-               if (rep!=ray_map.end()) {
+               const auto rep=ray_map.find(ray);
+               if (rep != ray_map.end()) {
                   ray_indices[index]=rep->second;
                } else {
                   ray_indices[index]=rays.rows();
@@ -118,19 +117,26 @@ perl::Object common_refinement(perl::Object f1, perl::Object f2)
    }
 
    perl::Object f_out("PolyhedralFan");
-   if (complete)
-      f_out.take("FAN_DIM")<<d;
+
    f_out.take("COMPLETE") << complete;
    f_out.take("FAN_AMBIENT_DIM") << ambient_dim;
    f_out.take("LINEALITY_DIM") << lineality_space.rows();
-   f_out.take(complete ? "RAYS" : "INPUT_RAYS")<<rays;
-   f_out.take(complete ? "MAXIMAL_CONES" : "INPUT_CONES")<<new_max_cones;
-   f_out.take(complete ? "LINEALITY_SPACE" : "INPUT_LINEALITY")<<lineality_space;
+   if (complete) {
+      f_out.take("FAN_DIM") << d;
+      f_out.take("RAYS") << rays;
+      f_out.take("MAXIMAL_CONES") << new_max_cones;
+      f_out.take("LINEALITY_SPACE") << lineality_space;
+   } else {
+      f_out.take("INPUT_RAYS") << rays;
+      f_out.take("INPUT_CONES") << new_max_cones;
+      f_out.take("INPUT_LINEALITY") << lineality_space;
+   }
+
    return f_out;
 }
 
 UserFunctionTemplate4perl("# @category Producing a fan"
-								  "# Computes the common refinement of two fans."
+                          "# Computes the common refinement of two fans."
                           "# @param PolyhedralFan f1"
                           "# @param PolyhedralFan f2"
                           "# @return PolyhedralFan",

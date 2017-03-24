@@ -46,11 +46,11 @@ sub header {
    my $when=localtime();
    my $title=$self->title || "unnamed";
 
-	my $source = ${$self->geometries}[0]->source;
+   my $source = ${$self->geometries}[0]->source;
    my ($view_point, $view_direction, $view_up, $scale) = $source->transform2view($trans, \%ThreeJS::default::);
-	$view_point = join ", ", @$view_point;
-	$view_direction = join ", ", @$view_direction;
-	$view_up = join ", ", @$view_up;
+   $view_point = join ", ", @$view_point;
+   $view_direction = join ", ", @$view_direction;
+   $view_up = join ", ", @$view_up;
 
    my $bgColor = Utils::rgbToHex(@ThreeJS::default::bgColor);
    my $bgOp = $ThreeJS::default::bgOpacity;
@@ -58,7 +58,23 @@ sub header {
    my $near = $ThreeJS::default::near_plane;
    my $far = $ThreeJS::default::far_plane;
 
-   return <<"%";
+
+   my $random_id = int(rand(100000000000));
+
+   my $width_height_start = "";
+   my $width = "window.innerWidth";
+   my $height = "window.innerHeight";
+
+
+   if (defined $common::is_used_in_jupyter && $common::is_used_in_jupyter) {
+      $width_height_start = "var box = document.getElementsByClassName( 'input_area' )[0];";
+
+		$width = "box.clientWidth*0.9";
+		$height = "window.innerHeight * width/(window.innerWidth)";
+		
+   }
+
+   my $head=<<"%";
 <!--
 polymake for $who
 $when
@@ -67,54 +83,409 @@ $title
 
 
 <html>
-	<head>
-		<title>$title</title>
-		<style>canvas { width: 100%; height: 100% }</style>
-	</head>
+   <head>
+      <title>$title</title>
+      <style>
+/*
+// COMMON_CODE_BLOCK_BEGIN
+*/
+			html{overflow: scroll;}
+			body { font-family: Arial, Helvetica, sans-serif}
+			strong{font-size: 18px;}
+			canvas {position: fixed; right: 50%; top: 0; transform: translate(50%,0); }
+			input[type='range'] {}
+			input[type='radio'] {margin-left:0;}
+			input[type='checkbox'] {margin-right:7px; margin-left: 0px; padding-left:0px;}
+			.group{padding-bottom: 50px;}
+			#settings{display: none; width: 15vw; min-height: 97vh; border-right:solid 1px silver; padding-right: 0.5vw; padding-top: 15px;}
+			.indented{margin-left: 20px; margin-top: 15px; padding-bottom: 0px;} 
+			#shownObjectsList{overflow: auto; max-width: 150px; max-height: 150px;}
+			#showSettingsButton{display: block;}
+			#closeButtonContainer{position: absolute; top: 5px; width: 15.4vw; text-align: right;}
+			#hideSettingsButton{display: none; opacity: 0.5; padding: 10px;}
+			#resetButton{margin-top: 20px;}
+			button{margin-left: 0;}
+			img{cursor: pointer;}
+			.suboption{padding-top: 30px;}
+			#transparency{display: none;}
+			#labelsCheckbox{margin-top: 10px;}
+			
+
+			input[type=range] {
+			  -webkit-appearance: none;
+			  padding:0; 
+			  width:13vw; 
+			  margin-left: 20px;
+			  margin-top: 20px;
+			  display: block;	
+			}
+			input[type=range]:focus {
+			  outline: none;
+			}
+			input[type=range]::-webkit-slider-runnable-track {
+			  height: 4px;
+			  cursor: pointer;
+			  animate: 0.2s;
+			  box-shadow: 0px 0px 0px #000000;
+			  background: #E3E3E3;
+			  border-radius: 0px;
+			  border: 0px solid #000000;
+			}
+			input[type=range]::-webkit-slider-thumb {
+			  box-shadow: 1px 1px 2px #B8B8B8;
+			  border: 1px solid #ABABAB;
+			  height: 13px;
+			  width: 25px;
+			  border-radius: 20px;
+			  background: #E0E0E0;
+			  cursor: pointer;
+			  -webkit-appearance: none;
+			  margin-top: -5px;
+			}
+			input[type=range]:focus::-webkit-slider-runnable-track {
+			  background: #E3E3E3;
+			}
+			input[type=range]::-moz-range-track {
+			  height: 4px;
+			  cursor: pointer;
+			  animate: 0.2s;
+			  box-shadow: 0px 0px 0px #000000;
+			  background: #E3E3E3;
+			  border-radius: 0px;
+			  border: 0px solid #000000;
+			}
+			input[type=range]::-moz-range-thumb {
+			  box-shadow: 1px 1px 2px #B8B8B8;
+			  border: 1px solid #ABABAB;
+			  height: 13px;
+			  width: 25px;
+			  border-radius: 20px;
+			  background: #E0E0E0;
+			  cursor: pointer;
+			}
+			input[type=range]::-ms-track {
+			  height: 4px;
+			  cursor: pointer;
+			  animate: 0.2s;
+			  background: transparent;
+			  border-color: transparent;
+			  color: transparent;
+			}
+			input[type=range]::-ms-fill-lower {
+			  background: #E3E3E3;
+			  border: 0px solid #000000;
+			  border-radius: 0px;
+			  box-shadow: 0px 0px 0px #000000;
+			}
+			input[type=range]::-ms-fill-upper {
+			  background: #E3E3E3;
+			  border: 0px solid #000000;
+			  border-radius: 0px;
+			  box-shadow: 0px 0px 0px #000000;
+			}
+			input[type=range]::-ms-thumb {
+			  box-shadow: 1px 1px 2px #B8B8B8;
+			  border: 1px solid #ABABAB;
+			  height: 13px;
+			  width: 25px;
+			  border-radius: 20px;
+			  background: #E0E0E0;
+			  cursor: pointer;
+			}
+			input[type=range]:focus::-ms-fill-lower {
+			  background: #E3E3E3;
+			}
+			input[type=range]:focus::-ms-fill-upper {
+			  background: #E3E3E3;
+			}
+/*
+// COMMON_CODE_BLOCK_END
+*/
+		</style>
+   </head>
 
 <body>
 
-<div id="model"></div>
+		<div id='settings'>
+%
+	if (@{$self->geometries}>1){
+      $head .= <<"%";
+			<div class=group id=explode>
+				<strong>Explode</strong>
+				<input id='explodeRange' type='range' min=0 max=6 step=0.01 value=0 oninput=triggerExplode(event)>
+				<div class=indented><input id='explodeCheckbox' type='checkbox' onchange=triggerAutomaticExplode(event)>Automatic explosion</div>
+				<div class=suboption>Exploding speed</div>
+				<input id='explodingSpeedRange' type='range' min=0 max=0.5 step=0.001 value=0.05 oninput=setExplodingSpeed(event)>
+			</div>
 
-<script src="js/three.polymake.js"></script>
+			
+%
+	}
+
+   if ($source->isa("Visual::PlanarNet::Polygons")){
+      $head .= <<"%";
+			<div class=group id=fold>
+				<strong>Fold</strong>
+				<input id='foldRange' type='range' min=0 max=1 step=0.001 value=0 oninput=fold(event)>
+			</div>
+
+%
+   }
+
+   $head .= <<"%";
+			<div class=group id=transparency>
+				<strong>Transparency</strong>
+				<input id='transparencyRange' type='range' min=0 max=1 step=0.01 value=0 oninput=changeTransparency(event)>
+			</div>
+			
+			<div class=group id=rotation>
+				<strong>Rotation</strong>
+				<div class=indented>
+					<div><input type='checkbox' onchange=changeRotationX(event)> x-axis</div>
+					<div><input type='checkbox' onchange=changeRotationY(event)> y-axis</div>
+					<div><input type='checkbox' onchange=changeRotationZ(event)> z-axis</div>
+					<button id=resetButton onclick=resetScene()>Reset</button>
+				</div>
+
+				<div class=suboption>Rotation speed</div>
+				<input id='rotationSpeedRange' type='range' min=0 max=5 step=0.01 value=2 oninput=changeRotationSpeedFactor(event)>
+
+			</div>
+
+
+			<div class=group id=display>
+				<strong>Display</strong>
+				<div class=indented>
+					<div id=shownObjectsList></div>
+					<div id=labelsCheckbox><input type='checkbox' onchange=displayOrHideLabels(event) checked>Labels</div>
+				</div>
+			</div>
+
+
+			<div class=group id=svg>
+				<strong>SVG</strong>
+				<div class=indented>
+					<form>
+						<input type="radio" name='screenshotMode' value='download' id=download checked> Download<br>
+						<input type="radio" name='screenshotMode' value='tab' id=tab > New tab<br>
+					</form>
+					<button onclick=takeSvgScreenshot()>Screenshot</button>
+				</div>
+			</div>
+
+		</div>	<!-- end of settings -->
+
+		<div id=closeButtonContainer>
+			<img id=hideSettingsButton src='js/images/close.svg' width=12 onclick="hideSettings(event)">
+		</div>
+		<img id=showSettingsButton src='js/images/menu.svg' width=22 onclick="showSettings(event)">
+%
+   $head .= <<"%";
+<div id="model$random_id"></div>
+
+%
+
+   if (!defined $common::is_used_in_jupyter || !$common::is_used_in_jupyter ) {
+      $head .= "<script src='js/three.polymake.js'></script>\n";
+   }
+
+   $head .= <<"%";
 
 
 <script>
-	var container = document.getElementById( 'model' );
-	var renderer = Detector.webgl? new THREE.WebGLRenderer({antialias: true}): new THREE.CanvasRenderer({antialias: true});
-
-	renderer.setSize(window.innerWidth, window.innerHeight);
-	renderer.setClearColor($bgColor, $bgOp);
-
-	container.appendChild(renderer.domElement);
-
-
-	var scene = new THREE.Scene();
-	var camera = new THREE.PerspectiveCamera($camera_angle, window.innerWidth/window.innerHeight, $near, $far);
-					
-	camera.position.set($view_point);
-	camera.lookAt($view_direction);
-	camera.up.set($view_up);
-
-	var controls = new THREE.TrackballControls(camera, container);
-	
-	var all_objects = [];
-	var centroids = [];
+// COMMON_CODE_BLOCK_BEGIN
+	var foldable = false;
 %
+   if ($source->isa("Visual::PlanarNet::Polygons")){
+      $head.=<<"%";
+
+		foldable = true;
+
+// rotate point p around axis defined by points p1 and p2 by given angle
+function rotate(p, p1, p2, angle ){   
+   angle = -angle;
+   var x = p.x, y = p.y, z = p.z, 
+   a = p1.x, b = p1.y, c = p1.z, 
+   u = p2.x-p1.x, v = p2.y-p1.y, w = p2.z-p1.z;
+   var result = [];
+   var L = u*u + v*v + w*w;
+   var sqrt = Math.sqrt;
+   var cos = Math.cos;
+   var sin = Math.sin;
+
+   result[0] = ((a*(v*v+w*w)-u*(b*v+c*w-u*x-v*y-w*z))*(1-cos(angle))+L*x*cos(angle)+sqrt(L)*(-c*v+b*w-w*y+v*z)*sin(angle))/L;
+   result[1] = ((b*(u*u+w*w)-v*(a*u+c*w-u*x-v*y-w*z))*(1-cos(angle))+L*y*cos(angle)+sqrt(L)*(c*u-a*w+w*x-u*z)*sin(angle))/L;
+   result[2] = ((c*(u*u+v*v)-w*(a*u+b*v-u*x-v*y-w*z))*(1-cos(angle))+L*z*cos(angle)+sqrt(L)*(-b*u+a*v-v*x+u*y)*sin(angle))/L;
+
+   return result;
+}
+
+var oldScale = 0;
+function fold(event){
+   if (typeof(event) == 'number'){
+      var x = event;
+   }
+   else var x = Number(event.currentTarget.value);
+
+   var scale = x - oldScale;
+
+   for (var j=0; j<axes.length; j++){
+      rotateVertices(j, scale);
+   }
+   update();
+   oldScale += scale;
+   moveToBaryCenter();
+}
+
+function moveToBaryCenter(){
+   controls.target = barycenter();
+}
+
+function barycenter(){
+   var center = new THREE.Vector3(0,0,0);
+   for (var i=0; i<allpoints.length; i++){
+      center.add(allpoints[i].vector);
+   }
+   center.divideScalar(allpoints.length);
+   return center;
+}
+
+function rotateVertices(edge, scale){
+   if (edge < axes.length){
+      for (var j=0; j<subtrees[edge].length; j++){
+         var rotP = rotate(allpoints[subtrees[edge][j]].vector, allpoints[axes[edge][0]].vector,allpoints[axes[edge][1]].vector , scale * (Math.PI - angles[edge]));
+         allpoints[subtrees[edge][j]].set(rotP[0],rotP[1],rotP[2]);
+      }
+   }
+}
+
+
+function update(){
+   for (index = 0; index < obj.children.length; ++index) { 
+      if (obj.children[index] instanceof THREE.Line || obj.children[index] instanceof THREE.Mesh) {
+            obj.children[index].geometry.verticesNeedUpdate=true; 
+      } 
+   }
+}
+
+%
+   }
+
+   $head.=<<"%";
+   var container = document.getElementById( 'model$random_id' );
+   var renderer = Detector.webgl? new THREE.WebGLRenderer({antialias: true}): new THREE.CanvasRenderer({antialias: true});
+	var svgRenderer = new THREE.SVGRenderer({antialias: true});
+   $width_height_start
+   var width = $width * 0.83;
+   var height = $height;
+   renderer.setSize(width, height);
+   svgRenderer.setSize(width, height);
+   renderer.setClearColor($bgColor, $bgOp);
+   svgRenderer.setClearColor($bgColor, $bgOp);
+
+   container.appendChild(renderer.domElement);
+
+   var scene = new THREE.Scene();
+   var camera = new THREE.PerspectiveCamera($camera_angle, width/height, $near, $far);
+
+   camera.position.set($view_point);
+   camera.lookAt($view_direction);
+   camera.up.set($view_up);
+
+   // class to allow move points together with labels and spheres
+   var PMPoint = function (x,y,z) {
+      this.vector = new THREE.Vector3(x,y,z);
+      this.sprite = null;
+      this.sphere = null;
+   }
+   PMPoint.prototype.makelabel = function(label) {
+      this.sprite = textSprite( label );
+      this.sprite.position.copy(this.vector);
+   }
+   PMPoint.prototype.makesphere = function(radius,material) {
+      this.sphere = new THREE.Mesh(new THREE.SphereGeometry(radius), material);
+      this.sphere.position.copy(this.vector);
+   }
+
+   PMPoint.prototype.setX = function(x) {
+      this.vector.setX(x);
+      if (this.sprite) {
+         this.sprite.position.setX(x);
+      }
+      if (this.sphere) {
+         this.sphere.position.setX(x);
+      }
+   };
+   PMPoint.prototype.setY = function(y) {
+      this.vector.setY(y);
+      if (this.sprite) {
+         this.sprite.position.setY(y);
+      }
+      if (this.sphere) {
+         this.sphere.position.setY(y);
+      }
+   };
+   PMPoint.prototype.setZ = function(z) {
+      this.vector.setZ(z);
+      if (this.sprite) {
+         this.sprite.position.setZ(z);
+      }
+      if (this.sphere) {
+         this.sphere.position.setZ(z);
+      }
+   };
+   PMPoint.prototype.set = function(x,y,z) {
+      this.vector.set(x,y,z);
+      if (this.sprite) {
+         this.sprite.position.set(x,y,z);
+      }
+      if (this.sphere) {
+         this.sphere.position.set(x,y,z);
+      }
+   };
+   PMPoint.prototype.add = function(o) {
+      if (this.sprite) {
+         o.add(this.sprite);
+      }
+      if (this.sphere) {
+         o.add(this.sphere);
+      }
+   };
+
+
+   var controls = new THREE.TrackballControls(camera, container);
+	controls.zoomSpeed = 0.2;
+	controls.rotateSpeed = 4;
+
+   var all_objects = [];
+   var centroids = [];
+
+// COMMON_CODE_BLOCK_END
+
+%
+	$head .= '   var objectnames = ["'.join('","',map { $_->name } @{$self->geometries})."\"];\n";
+   if ($source->isa("Visual::PlanarNet::Polygons")){
+      # extra data for planar net folding
+      $head .= Utils::convertExtraData("axes",$source->Axes) if defined $source->Axes;
+      $head .= Utils::convertExtraData("angles",$source->DihedralAngles) if defined $source->DihedralAngles;
+      $head .= Utils::convertExtraData("subtrees",$source->DependendVertices) if defined $source->DependendVertices;
+      $head .= Utils::convertExtraData("polytoperoot",$source->PolytopeRoot) if defined $source->PolytopeRoot;
+   }
+   return $head;
 }
 
 sub trailer {
 #	my @threejs_ext = grep { $_->URI =~ "http://solros.de/polymake/threejs" } @{User::application("common")->extensions};
 #	my $threejs_ext_path = $threejs_ext[0]->dir;
 
-	my $polydir = $Polymake::InstallTop;
-	open FILEHANDLE, "$polydir/resources/threejs/trailer_string.html" or die $!;
-	do { local $/; <FILEHANDLE> };
+   my $polydir = $Polymake::InstallTop;
+   open FILEHANDLE, "$polydir/resources/threejs/trailer_string.html" or die $!;
+   do { local $/; <FILEHANDLE> };
 }
 
 sub toString {
    my ($self)=@_;
-	my $trans = $self->transform;
+   my $trans = $self->transform;
    $self->header($trans) . join("", map { $_->toString($trans) } @{$self->geometries}) . $self->trailer;
 }
 
@@ -130,167 +501,191 @@ use Polymake::Struct (
 );
 
 sub newGeometry {
-	my ($self, $var) = @_;
-	return <<"%"
-	var $var = new THREE.Geometry();
+   my ($self, $var) = @_;
+   return <<"%"
+   var $var = new THREE.Geometry();
+%
+}
+
+sub newCoord {
+   my ($self, $coords) = @_;
+
+   return <<"%"
+   allpoints.push(new PMPoint($coords));
 %
 }
 
 sub newVertex {
-	my ($self, $var, $coords) = @_;
-	return <<"%"
-	$var.vertices.push(new THREE.Vector3($coords));
+   my ($self, $var, $index) = @_;
+   return <<"%"
+   $var.vertices.push(allpoints[$index].vector);
 %
 }
 
 sub newPoint {
-	my ($self, $var, $coords, $size, $index) = @_;
-	my $r = (is_code($size)) ? $size->($index) : $size;
-	return "" unless $r;
-	
-	my $radius = $r/50;
-	my $mat = (is_code($self->source->VertexColor)) ? "materials[$index]" : $var."_material";
-	return <<"%"
-	var sphere = new THREE.Mesh(new THREE.SphereGeometry($radius), $mat);
-	sphere.position.set($coords);
-	obj.add(sphere);
+   my ($self, $var, $size, $index) = @_;
+   my $r = (is_code($size)) ? $size->($index) : $size;
+   return "" unless $r;
+
+   my $radius = $r/50;
+   my $mat = (is_code($self->source->VertexColor)) ? "materials[$index]" : $var."_material";
+   return <<"%"
+   allpoints[$index].makesphere($radius,$mat);
 %
 }
 
 sub newLabel {
-	my ($self, $coords, $label) = @_;
-	return <<"%"
-	makelabel("$label", $coords);
+   my ($self, $index, $label) = @_;
+   return <<"%"
+   allpoints[$index].makelabel("$label");
 %
 }
 
 sub newLine {
-	my ($self, $var) = @_;
-	my $mat = $var."_material";
-	return <<"%"
-	obj.add(new THREE.Line($var, $mat));
-	
+   my ($self, $var) = @_;
+   my $mat = $var."_material";
+   return <<"%"
+   obj.add(new THREE.Line($var, $mat));
+
 %
 }
 
 
 sub newMaterial {
-	my ($self, $var, $type) = @_;
-	my $matvar = $var."_material";
+   my ($self, $var, $type) = @_;
+   my $matvar = $var."_material";
 
-	my $material;
-	my @code_props = ();
-	my @type_props;
-	my $number = 0;
+   my $material;
+   my @code_props = ();
+   my @type_props;
+   my $number = 0;
 
-	my $text = "	<!-- $type style -->\n";
+   my $text = "   <!-- $type style -->\n";
 
-	if ($type eq "Vertex") {
-		$material = "MeshBasicMaterial";
-		@type_props = ("VertexColor");
-		$number = @{$self->source->Vertices};
-	} elsif ($type eq "Facet") {
-		$material = "MeshBasicMaterial";		
-		@type_props = ("FacetColor", "FacetTransparency");
-		$number = @{$self->source->Facets};
-	} elsif ($type eq "Edge") {
-		$material = "LineBasicMaterial";	
-		@type_props = ("EdgeColor", "EdgeThickness");
-		
-		
-		if ($self->source->can("NEdges")) {
-			$number = $self->source->NEdges;
-		} elsif ($self->source->can("n_edges")) {
-			$number = $self->source->n_edges;
-		}
-	} else {
-		# should not happen
-	}
-	my $common_string = $self->find_common_string(\@code_props, \@type_props);		
+   if ($type eq "Vertex") {
+      $material = "MeshBasicMaterial";
+      @type_props = ("VertexColor");
+      $number = @{$self->source->Vertices};
+   } elsif ($type eq "Facet") {
+      $material = "MeshBasicMaterial";
+      @type_props = ("FacetColor", "FacetTransparency");
+      $number = @{$self->source->Facets};
+   } elsif ($type eq "Edge") {
+      $material = "LineBasicMaterial";
+      @type_props = ("EdgeColor", "EdgeThickness");
 
-	if (@code_props) {
-#		die "Edge decorations must be constants when using three.js." if $type eq "Edge";
-		if ($type eq "Edge") {
-			return $text . $self->edgeMaterial($matvar, $material, $common_string, \@code_props);
-		}
-		return $text . $self->codeMaterial($matvar, $material, $common_string, \@code_props, $number);
-	} else {
-		return $text . Utils::constantMaterial($matvar, $material, "{".$common_string."}");
-	}
+
+      if ($self->source->can("NEdges")) {
+         $number = $self->source->NEdges;
+      } elsif ($self->source->can("n_edges")) {
+         $number = $self->source->n_edges;
+      }
+   } else {
+      # should not happen
+   }
+   my $common_string = $self->find_common_string(\@code_props, \@type_props);
+
+   if (@code_props) {
+#     die "Edge decorations must be constants when using three.js." if $type eq "Edge";
+      if ($type eq "Edge") {
+         return $text . $self->edgeMaterial($matvar, $material, $common_string, \@code_props);
+      }
+      return $text . $self->codeMaterial($matvar, $material, $common_string, \@code_props, $number);
+   } else {
+      $text .= Utils::constantMaterial($matvar, $material, "{".$common_string."}");
+      $text .= "   $matvar.side = THREE.DoubleSide;\n";
+      $text .= "   $matvar.transparent = true;\n";
+      return $text;
+   }
 }
 
 
 
 sub header {
-	return <<"%"
-	var obj = new THREE.Object3D();
-	
+   return <<"%"
+   var obj = new THREE.Object3D();
+   var allpoints = [];
 %
 }
 
 sub trailer {
-	return <<"%"
-	scene.add(obj);
-	all_objects.push(obj);
+   return <<"%"
+   scene.add(obj);
+   all_objects.push(obj);
 
 %
 }
 
-
-sub pointsToString {
-    my ($self, $var)=@_;
-    
-   my $labels = $self->source->VertexLabels;
-
+sub coordsToString {
+   my ($self) = @_;
    my $text = "";
 
-	if ($self->source->VertexStyle !~ $Visual::hidden_re){
-		my @coords = Utils::pointCoords($self);
+   my @coords = Utils::pointCoords($self);
+   foreach (@coords) {
+      $text .= $self->newCoord($_);
+   }
+   return $text."\n";
+}
 
-		my $thickness = $self->source->VertexThickness || 1;
-		
+sub pointsToString {
+   my ($self, $var)=@_;
 
-		$text .= $self->newMaterial("points", "Vertex");
+   my $text = $self->coordsToString();
 
-		$text .= "\n	<!-- POINTS -->\n";
-		
-		my $i = 0;
-		foreach (@coords){
-			$text .= $self->newPoint($var, $_, $thickness, $i++);
-		}
-		if ($labels !~	$Visual::hidden_re && $labels != "") {
-			my $i=-1;
-			foreach (@coords){
-				if (defined(my $label = $labels->(++$i))) {
-					$text .= $self->newLabel($_, $label);
-				}
-			}
-		}
-		
-		$text .= "\n";
-	}
-	
-	return $text;
+   my $labels = $self->source->VertexLabels;
+
+   if ($self->source->VertexStyle !~ $Visual::hidden_re){
+      my $n = scalar(@{$self->source->Vertices});
+
+      my $thickness = $self->source->VertexThickness || 1;
+
+
+      $text .= $self->newMaterial("points", "Vertex");
+
+      $text .= "\n   <!-- POINTS -->\n";
+
+      my $i = 0;
+      while ($i < $n){
+         $text .= $self->newPoint($var, $thickness, $i++);
+      }
+      if ($labels !~ $Visual::hidden_re && $labels != "") {
+         my $i=-1;
+         while ($i < $n-1){
+            if (defined(my $label = $labels->(++$i))) {
+               $text .= $self->newLabel($i, $label);
+            }
+         }
+      }
+
+      $text .= "\n";
+   }
+
+   $text .= <<"%";
+   for (index = 0; index < allpoints.length; ++index) {
+      allpoints[index].add(obj);
+   }
+%
+
+   return $text;
 }
 
 sub verticesToString {
-	my ($self, $var) = @_; 
+   my ($self, $var) = @_; 
 
-	my $text = "";
-	
-    my @coords = Utils::pointCoords($self);
-    $text .= "\n   <!-- VERTICES -->\n";
-    foreach (@coords) {
-        $text .= $self->newVertex($var, $_);
+   my $text = "";
+
+   my $n = $self->source->Vertices->rows;
+   $text .= "\n   <!-- VERTICES -->\n";
+   foreach (0..$n-1) {
+      $text .= $self->newVertex($var, $_);
    }
 
-	$text .= <<"%";
-	
-	centroids.push(computeCentroid($var));
+   $text .= <<"%";
+
+   centroids.push(computeCentroid($var));
 
 %
-
-	return $text;
+   return $text;
 }
 
 
@@ -302,59 +697,65 @@ sub toString {
 
 
 sub find_common_string {
-	my ($self, $code_props, $type_props) = @_;
-	
-	my $common_string = "";
-	foreach (@$type_props) {
-		if (is_code($self->source->$_)) {
-			push @$code_props, $_;
-		} else {
-			$common_string .= Utils::writeDecor($_, $self->source->$_);
-		}
-	}
-	return $common_string;
+   my ($self, $code_props, $type_props) = @_;
+
+   my $common_string = "";
+   foreach (@$type_props) {
+      if (is_code($self->source->$_)) {
+         push @$code_props, $_;
+      } else {
+         $common_string .= Utils::writeDecor($_, $self->source->$_);
+      }
+   }
+   return $common_string;
 }
 
 
 sub codeMaterial {
-	my ($self, $matvar, $material_type, $common_string, $code_props, $number) = @_;
-	
-	my $text = "	var materials = [\n";
+   my ($self, $matvar, $material_type, $common_string, $code_props, $number) = @_;
 
-	for (my $i=0; $i<$number; ++$i) {
-		$text .= $self->oneCodeMaterial($i, $material_type, $common_string, $code_props);
-	}
+   my $text = "   var materials = [\n";
 
-	$text .= "	];\n";
+   for (my $i=0; $i<$number; ++$i) {
+      $text .= $self->oneCodeMaterial($i, $material_type, $common_string, $code_props);
+   }
 
-	return $text .= Utils::constantMaterial($matvar, "MeshFaceMaterial", "materials");
+   $text .= "   ];\n";
+
+   $text .= <<"%";
+   for (index = 0; index < materials.length; ++index) {
+      materials[index].side = THREE.DoubleSide;
+   }
+%
+
+   return $text .= Utils::constantMaterial($matvar, "MeshFaceMaterial", "materials");
 }
 
 sub oneCodeMaterial {
-	my ($self, $index, $material_type, $common_string, $code_props) = @_;
+   my ($self, $index, $material_type, $common_string, $code_props) = @_;
 
-	my $text = "		new THREE.".$material_type."({ ".$common_string;
-	
-	foreach (@$code_props) {
-		$text .= Utils::writeDecor($_, $self->source->$_->($index));
-	}
-	
-	$text .= "}),\n";
-	
-	return $text;
+   my $text = "      new THREE.".$material_type."({ ".$common_string;
+
+   foreach (@$code_props) {
+      $text .= Utils::writeDecor($_, $self->source->$_->($index));
+   }
+
+   $text .= "}),\n";
+
+   return $text;
 }
 
 sub edgeMaterial {
-	my ($self, $matvar, $material_type, $common_string, $code_props) = @_;
+   my ($self, $matvar, $material_type, $common_string, $code_props) = @_;
 
-	my $text = "		var $matvar = new THREE.".$material_type."({ " . $common_string;
-	
-	foreach (@$code_props) {
-		$text .= Utils::writeDecor($_, $self->source->$_->(0));
-	}
-	$text .= "});\n";
-	
-	return $text;
+   my $text = "      var $matvar = new THREE.".$material_type."({ " . $common_string;
+
+   foreach (@$code_props) {
+      $text .= Utils::writeDecor($_, $self->source->$_->(0));
+   }
+   $text .= "});\n";
+
+   return $text;
 }
 
 ##############################################################################################
@@ -367,43 +768,41 @@ use Polymake::Struct (
 );
 
 sub newEdge {
-	my ($self, $var, $a, $b) = @_;
-	
-	return $self->newGeometry($var) . $self->newVertex($var, $a) . $self->newVertex($var, $b) . $self->newLine($var);
+   my ($self, $var, $a, $b) = @_;
+
+   return $self->newGeometry($var) . $self->newVertex($var, $a) . $self->newVertex($var, $b) . $self->newLine($var);
 }
 
 
 sub linesToString {
-    my ($self, $var)=@_;
+   my ($self, $var)=@_;
 
 #	  TODO: arrows
 #    my $arrows=$self->source->ArrowStyle;
 
- #   if($arrows==1) {
- #       TODO
- #   } elsif($arrows==-1) {
- #       TODO
- #   }
+   #   if($arrows==1) {
+   #       TODO
+   #   } elsif($arrows==-1) {
+   #       TODO
+   #   }
 
-    my $text ="";
+   my $text ="";
 
-	if ($self->source->EdgeStyle !~ $Visual::hidden_re) {
-		$text .= $self->newMaterial($var, "Edge");
+   if ($self->source->EdgeStyle !~ $Visual::hidden_re) {
+      $text .= $self->newMaterial($var, "Edge");
 
-		$text .= "\n	<!-- EDGES -->\n";
+      $text .= "\n   <!-- EDGES -->\n";
 
-		my @coords = Utils::pointCoords($self);
+      for (my $e=$self->source->all_edges; $e; ++$e) {
+         $text .= $self->newEdge($var, $e->[0], $e->[1]);
+      }
+   }
 
-		for (my $e=$self->source->all_edges; $e; ++$e) {
-			$text .= $self->newEdge($var, $coords[$e->[0]], $coords[$e->[1]]);
-		}
-	}
-	
-	return $text;
+   return $text;
 }
 
 sub toString {
-    my ($self, $trans)=@_;
+   my ($self, $trans)=@_;
    $self->header . $self->pointsToString("points") . $self->linesToString("line") . $self->trailer;
 }
 
@@ -419,13 +818,13 @@ use Polymake::Struct (
 
 
 sub newFace {
-	my ($self, $var, $indices, $facet, $facet_color) = @_;
-	my $m_index = 0;
-	if (is_code($facet_color) || is_code($self->source->FacetTransparency)) {
-		$m_index = $facet;
-	}
-	return <<"%"
-	$var.faces.push(new THREE.Face3($indices, undefined, undefined, $m_index));
+   my ($self, $var, $indices, $facet, $facet_color) = @_;
+   my $m_index = 0;
+   if (is_code($facet_color) || is_code($self->source->FacetTransparency)) {
+      $m_index = $facet;
+   }
+   return <<"%"
+   $var.faces.push(new THREE.Face3($indices, undefined, undefined, $m_index));
 %
 }
 
@@ -435,72 +834,71 @@ sub facesToString {
 
     my $text = "";
 
-	### FACETS
-	my $facets = new Array<Array<Int>>($self->source->Facets);	
+   ### FACETS
+   my $facets = new Array<Array<Int>>($self->source->Facets);
 
-	if ($self->source->FacetStyle !~ $Visual::hidden_re){
-		$text .= $self->newGeometry($var);
-		$text .= $self->verticesToString($var);
+   if ($self->source->FacetStyle !~ $Visual::hidden_re){
+      $text .= $self->newGeometry($var);
+      $text .= $self->verticesToString($var);
 
-		$text .= $self->newMaterial($var, "Facet");
+      $text .= $self->newMaterial($var, "Facet");
 
-    
-    	# draw facets
-		$text .= "\n   <!-- FACETS --> \n";  
-		my $facet_color = $self->source->FacetColor;
-		for (my $facet = 0; $facet<@$facets; ++$facet) {
-			# triangulate the facet
-			for (my $triangle = 0; $triangle<@{$facets->[$facet]}-2; ++$triangle) {
-				my @vs = @{$facets->[$facet]}[0, $triangle+1, $triangle+2];
-				$text .= $self->newFace($var, join(", ", @vs), $facet, $facet_color);
-			}
-			$text.="\n";
-		}
 
-		my $mat = $var."_material";
-		$text .= <<"%"
-	
-	$var.computeFaceNormals();
-	$var.computeVertexNormals();
-	
-	var object = new THREE.Mesh($var, $mat);
-	obj.add(object);
-	
+      # draw facets
+      $text .= "\n   <!-- FACETS --> \n";  
+      my $facet_color = $self->source->FacetColor;
+      for (my $facet = 0; $facet<@$facets; ++$facet) {
+         # triangulate the facet
+         for (my $triangle = 0; $triangle<@{$facets->[$facet]}-2; ++$triangle) {
+            my @vs = @{$facets->[$facet]}[0, $triangle+1, $triangle+2];
+            $text .= $self->newFace($var, join(", ", @vs), $facet, $facet_color);
+         }
+         $text.="\n";
+      }
+
+      my $mat = $var."_material";
+      $text .= <<"%"
+
+   $var.computeFaceNormals();
+   $var.computeVertexNormals();
+
+   var object = new THREE.Mesh($var, $mat);
+   obj.add(object);
+
 %
-	}
-	
+   }
 
 
 
-	## EDGES
-	if ($self->source->EdgeStyle !~ $Visual::hidden_re){
-		$var = "line";
-		
-		$text .= $self->newMaterial($var, "Edge");		
-    
-    	# draw edges
-		$text .= "\n   <!-- EDGES --> \n";  
-		my @coords = Utils::pointCoords($self);
 
-		for (my $facet = 0; $facet<@$facets; ++$facet) {
-			$text .= $self->newGeometry($var);
-			
-			foreach (@{$facets->[$facet]}) {
-				$text .= $self->newVertex($var, $coords[$_]);
-			}
-			# first vertex again
-			$text .= $self->newVertex($var, $coords[$facets->[$facet]->[0]]);
-			$text .= $self->newLine($var);
-		}
-	}
-	
+   ## EDGES
+   if ($self->source->EdgeStyle !~ $Visual::hidden_re){
+      $var = "line";
 
-	return $text;
+      $text .= $self->newMaterial($var, "Edge");
+
+      # draw edges
+      $text .= "\n   <!-- EDGES --> \n";  
+
+      for (my $facet = 0; $facet<@$facets; ++$facet) {
+         $text .= $self->newGeometry($var);
+
+         foreach (@{$facets->[$facet]}) {
+            $text .= $self->newVertex($var,$_);
+         }
+         # first vertex again
+         $text .= $self->newVertex($var, $facets->[$facet]->[0]);
+         $text .= $self->newLine($var);
+      }
+   }
+
+
+   return $text;
 }
 
 sub toString {
-	my ($self, $transform)=@_;
-	return $self->header . $self->pointsToString("points") . $self->facesToString($transform, "faces") . $self->trailer;
+   my ($self, $transform)=@_;
+   return $self->header . $self->pointsToString("points") . $self->facesToString($transform, "faces") . $self->trailer;
 }
 
 
@@ -509,67 +907,71 @@ sub toString {
 package ThreeJS::Utils;
 
 sub rgbToHex {    
-	my $red=shift;
-	my $green=shift;
-	my $blue=shift;
-	my $hex = sprintf ("0x%2.2X%2.2X%2.2X", $red*255, $green*255, $blue*255);
-	return ($hex);
+   my $red=shift;
+   my $green=shift;
+   my $blue=shift;
+   my $hex = sprintf ("0x%2.2X%2.2X%2.2X", $red*255, $green*255, $blue*255);
+   return ($hex);
 }
 
 sub pointCoords {
-	my ($self) = @_;
-	my @coords = ();
+   my ($self) = @_;
+   my @coords = ();
    my $d = is_object($self->source->Vertices) ? $self->source->Vertices->cols : 3;
-	foreach (@{$self->source->Vertices}) {
+   foreach (@{$self->source->Vertices}) {
 #		print $_."		";
-		my $point=ref($_) ? Visual::print_coords($_) : "$_".(" 0"x($d-1));
-		$point =~ s/\s+/, /g;
-		if ($d == 2) {
-			$point.= ", 0";
-		}
-		if ($d == 1) {
-			$point.= ", 0, 0";
-		}
+      my $point=ref($_) ? Visual::print_coords($_) : "$_".(" 0"x($d-1));
+      $point =~ s/\s+/, /g;
+      if ($d == 2) {
+         $point.= ", 0";
+      }
+      if ($d == 1) {
+         $point.= ", 0, 0";
+      }
 #		print $point."\n";
-		push @coords, $point;
-	}
-	return @coords;
+      push @coords, $point;
+   }
+   return @coords;
 }
 
 
 sub writeDecor {
-	my ($name, $value) = @_;
-	
-	if ($name =~ "Color") {
-		return "color: " . Utils::rgbToHex(@$value) . ", ";
-	}
-	
-	if ($name eq "FacetTransparency") {
-		my $opacity = defined($value) ? 1-$value : 1;
-		if ($opacity == 1) {
-			return "";
+   my ($name, $value) = @_;
+
+   if ($name =~ "Color") {
+      return "color: " . Utils::rgbToHex(@$value) . ", ";
+   }
+
+   if ($name eq "FacetTransparency") {
+      my $opacity = defined($value) ? 1-$value : 1;
+		if ($opacity > 0.5) {
+			return "transparent: true, opacity: $opacity, side: THREE.DoubleSide , depthWrite: true, depthTest: true, ";
+		} else {
+			return "transparent: true, opacity: $opacity, side: THREE.DoubleSide , depthWrite: false, depthTest: false, ";
 		}
-		return "transparent: true, opacity: $opacity, ";
-	}
-	
-	if ($name eq "EdgeThickness") {
-		my $width = $value || 1;
-		return "linewidth: $width, ";
-	}
+   }
+
+   if ($name eq "EdgeThickness") {
+      my $width = $value || 1.5;
+      return "linewidth: $width, ";
+   }
 }
 
 
 sub constantMaterial {
-	my ($matvar, $material_type, $material_string) = @_;
+   my ($matvar, $material_type, $material_string) = @_;
 
-	return << "%";	
-	var $matvar = new THREE.$material_type ( $material_string );
-	$matvar.side = THREE.DoubleSide;
-	
+   return << "%";
+   var $matvar = new THREE.$material_type ( $material_string );
+
 %
 }
 
+sub convertExtraData {
+   my ($name,$data) = @_;
+   return "   var $name = [". join(",\n      ", map {ref $_ eq "ARRAY" ? "[".join(",",@$_)."]" : $_ } @$data)."];\n\n";
 
+}
 
 
 1

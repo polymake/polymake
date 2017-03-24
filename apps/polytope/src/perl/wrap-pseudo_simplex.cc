@@ -14,7 +14,6 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/TropicalNumber.h"
@@ -29,6 +28,5 @@ namespace polymake { namespace polytope { namespace {
 
    FunctionInstance4perl(pseudo_simplex_T_x_x_x_f16, Rational);
    FunctionInstance4perl(pseudo_simplex_T_x_x_x_f16, QuadraticExtension< Rational >);
-   FunctionInstance4perl(pseudo_simplex_T_x_x_x_f16, PuiseuxFraction< Min, Rational, Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }
