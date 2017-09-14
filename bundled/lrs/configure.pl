@@ -39,7 +39,7 @@ sub proceed {
 
    if (defined ($lrs_path=$options->{lrs}) and $lrs_path ne "bundled") {
       my $lrs_inc="$lrs_path/include";
-      my $lrs_lib=Polymake::Configure::get_libdir($lrs_path, "lrs");
+      my $lrs_lib=Polymake::Configure::get_libdir($lrs_path, "lrsgmp");
       if (-f "$lrs_inc/lrslib.h" && -f "$lrs_lib/liblrsgmp.$Config::Config{so}" ) {
          $CXXflags="-I$lrs_inc";
          $LDflags="-L$lrs_lib -Wl,-rpath,$lrs_lib";
