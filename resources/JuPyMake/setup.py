@@ -13,7 +13,7 @@ if sys.version_info < (3,0):
     FileNotFoundError = OSError
 
 def conditional_decode( string ):
-  if sys.version_info < (3,5):
+  if sys.version_info < (3,0):
       return string
   return string.decode( 'utf-8' )
 
@@ -28,7 +28,7 @@ os.environ["CXX"] = polymake_cc
 
 setup(
     name = 'JuPyMake',
-    version = '0.7',
+    version = '0.8',
     description = 'A simple interface to Polymake',
     author = 'Sebastian Gutsche',
     author_email = 'sebastian.gutsche@gmail.com',
